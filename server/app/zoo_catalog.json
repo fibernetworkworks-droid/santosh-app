@@ -8,10 +8,11 @@
   "Kind image = still picture; kind video = clip. mode = what goes in (t2i/i2i/t2v/i2v).",
   "v0.463.1: +22 kie.ai entries (gateway: 'kie', endpoints = kie createTask model names from",
   "Open-Higgsfield-AI data/models.json). Param names differ per model - image_field/images_param/",
-  "resolution_field/audio_field carry the real ones. Local refs upload to kie's CDN first."
+  "resolution_field/audio_field carry the real ones. Local refs upload to kie's CDN first.",
+  "v0.463.2 (2026-11-03): the FULL kie.ai catalog appended - 229 live models from GET api.kie.ai/api/v1/models (owner key, probe-verified), deduped against the 22 curated kie entries, Chat taskType excluded (media gateway, not an LLM chat endpoint). Param fields (aspects / durations / resolutions / image-audio-video fields / has_prompt) parsed mechanically from each model's OpenAPI spec at docs.kie.ai/market/**.md - 160 of the non-chat models have parsed specs; the rest ride minimal entries (endpoint + mode from taskType only). Video-to-video / video-editing models use mode v2v (reference video goes through extra, per-entry video_field). Speech / music / audio models are kind audio (t2s / t2m / a2a). Add more models by appending entries."
  ],
  "gateway": "muapi",
- "count": 233,
+ "count": 436,
  "models": [
   {
    "id": "t2i:nano-banana",
@@ -3762,6 +3763,3583 @@
    "resolutions": [
     "480p",
     "720p"
+   ]
+  },
+  {
+   "id": "a2a:kie:ai-music-api-add-instrumental",
+   "name": "Ai Music Add Instrumental",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/add-instrumental",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-add-vocals",
+   "name": "Ai Music Add Vocals",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/add-vocals",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-generate-midi-from-audio",
+   "name": "Ai Music Generate MIDI from Audio",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/generate-midi-from-audio",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-generate-persona",
+   "name": "Ai Music Generate Persona",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/generate-persona",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-mashup",
+   "name": "Ai Music Mashup",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/mashup",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-replace-section",
+   "name": "Ai Music Replace Music Section",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/replace-section",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-sounds",
+   "name": "Ai Music Sounds",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/sounds",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-convert-to-wav-format",
+   "name": "Ai Music Upload And Convert to WAV Format",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/convert-to-wav-format",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-check-voice",
+   "name": "check-voice",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/check-voice",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-create-voice",
+   "name": "Create Voice",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/create-voice",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-regenerate-phrase",
+   "name": "Regenerate Phrase",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/regenerate-phrase",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "a2a:kie:ai-music-api-validation-phrase",
+   "name": "Validation Phrase",
+   "kind": "audio",
+   "mode": "a2a",
+   "endpoint": "ai-music-api/validation-phrase",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-boost-music-style",
+   "name": "Ai Music Boost Music Style",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/boost-music-style",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-extend",
+   "name": "Ai Music Extend Music",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/extend",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-generate",
+   "name": "AI music generate",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/generate",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-generate-lyrics",
+   "name": "Ai Music Generate Lyrics",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/generate-lyrics",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-timeStamped-lyrics",
+   "name": "Ai Music Get TimeStamped Lyrics",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/timeStamped-lyrics",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-suno-recovery-audio",
+   "name": "Ai Music Restore Link",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/suno-recovery-audio",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-separate-vocals",
+   "name": "Ai Music Separate Vocals",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/separate-vocals",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-upload-and-cover-audio",
+   "name": "Ai Music Upload And Cover Audio",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/upload-and-cover-audio",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2m:kie:ai-music-api-upload-and-extend-audio",
+   "name": "AI Music Upload And Extend Audio",
+   "kind": "audio",
+   "mode": "t2m",
+   "endpoint": "ai-music-api/upload-and-extend-audio",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2s:kie:elevenlabs-text-to-dialogue-v3",
+   "name": "Elevenlabs Text to Dialogue V3",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "elevenlabs/text-to-dialogue-v3",
+   "gateway": "kie",
+   "family": "elevenlabs",
+   "params": "dialogue, stability, language_code",
+   "has_prompt": false
+  },
+  {
+   "id": "t2s:kie:elevenlabs-text-to-speech-multilingual-v2",
+   "name": "Elevenlabs Text to Speech Multilingual V2",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "elevenlabs/text-to-speech-multilingual-v2",
+   "gateway": "kie",
+   "family": "elevenlabs",
+   "params": "text, voice, stability, similarity_boost, style, speed, timestamps, previous_text, next_text, language_code",
+   "has_prompt": false
+  },
+  {
+   "id": "t2s:kie:elevenlabs-text-to-speech-turbo-2-5",
+   "name": "Elevenlabs Text to Speech Turbo V2.5",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "elevenlabs/text-to-speech-turbo-2-5",
+   "gateway": "kie",
+   "family": "elevenlabs",
+   "params": "text, voice, stability, similarity_boost, style, speed, timestamps, previous_text, next_text, language_code",
+   "has_prompt": false
+  },
+  {
+   "id": "t2s:kie:google-gemini-2-5-pro-tts",
+   "name": "Gemini 2.5 Pro Talk to speech",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "google/gemini-2-5-pro-tts",
+   "gateway": "kie",
+   "family": "google",
+   "params": "temperature, scene, sample_context, speakers, dialogue_turns",
+   "has_prompt": false
+  },
+  {
+   "id": "t2s:kie:google-gemini-3-1-flash-tts",
+   "name": "Gemini 3.1 Flash Text to Speech",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "google/gemini-3-1-flash-tts",
+   "gateway": "kie",
+   "family": "google",
+   "params": "temperature, scene, sample_context, speakers, dialogue_turns",
+   "has_prompt": false
+  },
+  {
+   "id": "t2s:kie:google-gemini-3-8-flash-lite-tts",
+   "name": "Gemini 3.8 Flash Lite TTS",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "google/gemini-3-8-flash-lite-tts",
+   "gateway": "kie",
+   "family": "google",
+   "params": "temperature, speakers, filler_words, dialogue_turns",
+   "has_prompt": false
+  },
+  {
+   "id": "t2s:kie:google-gemini-3-8-flash-tts",
+   "name": "Gemini 3.8 Flash TTS",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "google/gemini-3-8-flash-tts",
+   "gateway": "kie",
+   "family": "google",
+   "params": "temperature, speakers, filler_words, dialogue_turns",
+   "has_prompt": false
+  },
+  {
+   "id": "t2s:kie:gemini-omni-audio",
+   "name": "Gemini Omni Audio",
+   "kind": "audio",
+   "mode": "t2s",
+   "endpoint": "gemini-omni-audio",
+   "gateway": "kie",
+   "family": "google"
+  },
+  {
+   "id": "i2i:kie:4o-image-api",
+   "name": "4o Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "4o-image-api",
+   "gateway": "kie",
+   "family": "openai"
+  },
+  {
+   "id": "i2i:kie:flux-2-flex-image-to-image",
+   "name": "Flux 2 Flex Image To Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "flux-2/flex-image-to-image",
+   "gateway": "kie",
+   "family": "black forest labs",
+   "params": "input_urls, prompt, aspect_ratio, resolution, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "images_param": "input_urls"
+  },
+  {
+   "id": "i2i:kie:flux-2-pro-image-to-image",
+   "name": "Flux 2 Pro Image To Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "flux-2/pro-image-to-image",
+   "gateway": "kie",
+   "family": "black forest labs",
+   "params": "input_urls, prompt, aspect_ratio, resolution, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "images_param": "input_urls"
+  },
+  {
+   "id": "i2i:kie:flux-3-klein-edit-image",
+   "name": "Flux 3 Klein Edit Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "flux-3/klein-edit-image",
+   "gateway": "kie",
+   "family": "black forest labs",
+   "params": "prompt, image_urls, aspect_ratio, resolution, width, height, output_format, num_images, enhance_prompt, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "9:21",
+    "auto"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:flux1-kontext",
+   "name": "Flux Kontext",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "flux1-kontext",
+   "gateway": "kie",
+   "family": "black forest labs"
+  },
+  {
+   "id": "i2i:kie:gpt-image-2-5-flare-image-to-image",
+   "name": "Gpt Image 2.5 Flare Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "gpt-image-2-5-flare-image-to-image",
+   "gateway": "kie",
+   "family": "openai",
+   "params": "prompt, input_urls, aspect_ratio, resolution, background",
+   "aspects": [
+    "auto",
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "27:16",
+    "16:27",
+    "9:8",
+    "8:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "images_param": "input_urls"
+  },
+  {
+   "id": "i2i:kie:gpt-image-2-5-sunburst-image-to-image",
+   "name": "Gpt Image 2.5 Sunburst Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "gpt-image-2-5-sunburst-image-to-image",
+   "gateway": "kie",
+   "family": "openai",
+   "params": "prompt, input_urls, aspect_ratio, resolution, background",
+   "aspects": [
+    "auto",
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "27:16",
+    "16:27",
+    "9:8",
+    "8:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "images_param": "input_urls"
+  },
+  {
+   "id": "i2i:kie:gpt-image-1.5-image-to-image",
+   "name": "GPT-Image 1.5 Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "gpt-image/1.5-image-to-image",
+   "gateway": "kie",
+   "family": "openai",
+   "params": "aspect_ratio, input_urls, prompt, quality",
+   "aspects": [
+    "1:1",
+    "2:3",
+    "3:2"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "medium",
+    "high"
+   ],
+   "images_param": "input_urls"
+  },
+  {
+   "id": "i2i:kie:grok-imagine-image-2-0-image-edit",
+   "name": "Grok Imagine Image 2.0 Image  Edit",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "grok-imagine-image-2-0/image-edit",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "prompt, aspect_ratio, image_urls",
+   "aspects": [
+    "1:1",
+    "2:3",
+    "3:2",
+    "16:9",
+    "9:16",
+    "auto"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:grok-imagine-image-2-0-segment-edit",
+   "name": "Grok Imagine Image 2.0 Segment Edit",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "grok-imagine-image-2-0/segment-edit",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "prompt, task_id, mask_indexs"
+  },
+  {
+   "id": "i2i:kie:grok-imagine-image-to-image",
+   "name": "Grok Imagine Image To Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "grok-imagine/image-to-image",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "prompt, image_urls",
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:ideogram-character",
+   "name": "Ideogram Character Base",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "ideogram/character",
+   "gateway": "kie",
+   "family": "ideogram",
+   "params": "prompt, reference_image_urls, rendering_speed, style, expand_prompt, num_images, image_size, negative_prompt",
+   "image_field": "image_size"
+  },
+  {
+   "id": "i2i:kie:ideogram-character-edit",
+   "name": "ideogram character edit",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "ideogram/character-edit",
+   "gateway": "kie",
+   "family": "ideogram",
+   "params": "prompt, image_url, mask_url, reference_image_urls, rendering_speed, style, expand_prompt, num_images",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:ideogram-character-remix",
+   "name": "ideogram character remix",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "ideogram/character-remix",
+   "gateway": "kie",
+   "family": "ideogram",
+   "params": "prompt, image_url, reference_image_urls, rendering_speed, style, expand_prompt, image_size, num_images, strength, negative_prompt, image_urls, reference_mask_urls",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:ideogram-v3-edit",
+   "name": "Ideogram V3 Edit Image-Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "ideogram/v3-edit",
+   "gateway": "kie",
+   "family": "ideogram",
+   "params": "prompt, image_url, mask_url, rendering_speed, expand_prompt",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:ideogram-v3-remix",
+   "name": "Ideogram V3 Remix",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "ideogram/v3-remix",
+   "gateway": "kie",
+   "family": "ideogram",
+   "params": "prompt, image_url, rendering_speed, style, expand_prompt, image_size, num_images, strength, negative_prompt",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:nano-banana-2-1",
+   "name": "Nano Banana 2.1",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "nano-banana-2-1",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, image_input, aspect_ratio, resolution, output_format",
+   "aspects": [
+    "1:1",
+    "2:3",
+    "3:2",
+    "1:4",
+    "4:1",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "1:8",
+    "8:1",
+    "9:16",
+    "16:9",
+    "21:9",
+    "auto"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "images_param": "image_input"
+  },
+  {
+   "id": "i2i:kie:omnihuman-1-5-human-identification",
+   "name": "OmniHuman 1.5 Human Identification",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "omnihuman-1-5/human-identification",
+   "gateway": "kie",
+   "family": "other",
+   "params": "image_url",
+   "image_field": "image_url",
+   "has_prompt": false
+  },
+  {
+   "id": "i2i:kie:omnihuman-1-5-subject-detection",
+   "name": "OmniHuman 1.5 Subject Detection",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "omnihuman-1-5/subject-detection",
+   "gateway": "kie",
+   "family": "other",
+   "params": "image_url",
+   "image_field": "image_url",
+   "has_prompt": false
+  },
+  {
+   "id": "i2i:kie:qwen-image-to-image",
+   "name": "Qwen - Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "qwen/image-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, image_url, strength, output_format, acceleration, negative_prompt, num_inference_steps, guidance_scale, enable_safety_checker, nsfw_checker",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:qwen2-1-image-to-image",
+   "name": "Qwen 2.1 - Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "qwen2-1/image-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "image_urls, prompt, mask_url, aspect_ratio, resolution, background, output_format, enhance_prompt, nsfw_checker",
+   "aspects": [
+    "auto",
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "9:21"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:qwen-image-edit",
+   "name": "Qwen Image Edit",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "qwen/image-edit",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, image_url, acceleration, image_size, num_inference_steps, guidance_scale, num_images, enable_safety_checker, output_format, negative_prompt, nsfw_checker",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:qwen2-image-edit",
+   "name": "Qwen2 - Image edit",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "qwen2/image-edit",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, image_url, image_size, output_format, nsfw_checker",
+   "image_field": "image_size"
+  },
+  {
+   "id": "i2i:kie:qwen3-image-to-image",
+   "name": "Qwen3 - Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "qwen3/image-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "image_urls, prompt, resolution, image_size, output_format, prompt_extend, negative_prompt, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "image_field": "image_size"
+  },
+  {
+   "id": "i2i:kie:qwen3-pro-image-to-image",
+   "name": "Qwen3 Pro - Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "qwen3/pro-image-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "image_urls, prompt, resolution, image_size, output_format, prompt_extend, negative_prompt, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "image_field": "image_size"
+  },
+  {
+   "id": "i2i:kie:recraft-remove-background",
+   "name": "Recraft Remove Background",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "recraft/remove-background",
+   "gateway": "kie",
+   "family": "elevenlabs",
+   "params": "image",
+   "image_field": "image",
+   "has_prompt": false
+  },
+  {
+   "id": "i2i:kie:bytedance-seedream-v4-edit",
+   "name": "Seedream 4.0 Image to Image(Edit)",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "bytedance/seedream-v4-edit",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_urls, image_size, image_resolution, max_images, nsfw_checker",
+   "resolution_field": "image_resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "image_field": "image_size"
+  },
+  {
+   "id": "i2i:kie:seedream-4.5-edit",
+   "name": "Seedream 4.5 Image to Image(Edit)",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "seedream/4.5-edit",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_urls, aspect_ratio, quality, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "basic",
+    "high"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:seedream-5-lite-image-to-image",
+   "name": "Seedream 5 Lite Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "seedream/5-lite-image-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_urls, aspect_ratio, quality, output_format, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "basic",
+    "high",
+    "ultra"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:seedream-5-pro-image-to-image",
+   "name": "Seedream 5 Pro image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "seedream/5-pro-image-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_urls, aspect_ratio, quality, output_format, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "basic",
+    "high"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:seedream-5-pro-layer-decomposition",
+   "name": "Seedream 5 Pro Layer Decomposition",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "seedream/5-pro-layer-decomposition",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_url, size, output_format",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:seedream-5-flash-image-to-image",
+   "name": "Seedream 5.0 Flash Image to Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "seedream/5-flash-image-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_urls, aspect_ratio, size, output_format, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2i:kie:seedream-5-flash-layer-decomposition",
+   "name": "Seedream 5.0 Flash Layer Decomposition",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "seedream/5-flash-layer-decomposition",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_url, size, output_format",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2i:kie:topaz-image-upscale",
+   "name": "topaz Upscale Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "topaz/image-upscale",
+   "gateway": "kie",
+   "family": "topaz",
+   "params": "image_url, upscale_factor",
+   "image_field": "image_url",
+   "has_prompt": false
+  },
+  {
+   "id": "i2i:kie:wan-2-7-image",
+   "name": "Wan 2.7 Image",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "wan/2-7-image",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, input_urls, aspect_ratio, enable_sequential, n, resolution, thinking_mode, color_palette, bbox_list, watermark, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "4:3",
+    "21:9",
+    "3:4",
+    "9:16",
+    "8:1",
+    "1:8"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ],
+   "images_param": "input_urls"
+  },
+  {
+   "id": "i2i:kie:wan-2-7-image-pro",
+   "name": "Wan 2.7 Image Pro",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "wan/2-7-image-pro",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, input_urls, aspect_ratio, enable_sequential, n, resolution, thinking_mode, color_palette, bbox_list, watermark, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "4:3",
+    "21:9",
+    "3:4",
+    "9:16",
+    "8:1",
+    "1:8"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ],
+   "images_param": "input_urls"
+  },
+  {
+   "id": "i2i:kie:wan-2-7-r2v",
+   "name": "Wan 2.7 Reference to Video",
+   "kind": "image",
+   "mode": "i2i",
+   "endpoint": "wan/2-7-r2v",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, negative_prompt, reference_image, reference_video, first_frame, reference_voice, resolution, aspect_ratio, duration, prompt_extend, watermark, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1",
+    "4:3",
+    "3:4"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2i:kie:4o-image-api",
+   "name": "4o Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "4o-image-api",
+   "gateway": "kie",
+   "family": "openai"
+  },
+  {
+   "id": "t2i:kie:ai-music-api-cover-generate",
+   "name": "Ai Music Generate Music Cover",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "ai-music-api/cover-generate",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2i:kie:flux-2-flex-text-to-image",
+   "name": "Flux 2 Flex Text To Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "flux-2/flex-text-to-image",
+   "gateway": "kie",
+   "family": "black forest labs",
+   "params": "prompt, aspect_ratio, resolution, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ]
+  },
+  {
+   "id": "t2i:kie:flux-2-pro-text-to-image",
+   "name": "Flux 2 Pro Text To Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "flux-2/pro-text-to-image",
+   "gateway": "kie",
+   "family": "black forest labs",
+   "params": "prompt, aspect_ratio, resolution, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "3:2",
+    "2:3"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ]
+  },
+  {
+   "id": "t2i:kie:flux-3-klein-text-to-image",
+   "name": "Flux 3 Klein Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "flux-3/klein-text-to-image",
+   "gateway": "kie",
+   "family": "black forest labs",
+   "params": "prompt, aspect_ratio, resolution, width, height, output_format, num_images, enhance_prompt, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "9:21"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ]
+  },
+  {
+   "id": "t2i:kie:flux1-kontext",
+   "name": "Flux Kontext",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "flux1-kontext",
+   "gateway": "kie",
+   "family": "black forest labs"
+  },
+  {
+   "id": "t2i:kie:google-imagen4-ultra",
+   "name": "Google Imagen 4 Ultra-Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "google/imagen4-ultra",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, negative_prompt, aspect_ratio",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "9:16",
+    "3:4",
+    "4:3",
+    "auto"
+   ]
+  },
+  {
+   "id": "t2i:kie:google-imagen4",
+   "name": "Google Imagen 4-Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "google/imagen4",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, negative_prompt, aspect_ratio",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "9:16",
+    "3:4",
+    "4:3",
+    "auto"
+   ]
+  },
+  {
+   "id": "t2i:kie:gpt-image-2-5-flare-text-to-image",
+   "name": "Gpt Image 2.5 Flare Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "gpt-image-2-5-flare-text-to-image",
+   "gateway": "kie",
+   "family": "openai",
+   "params": "prompt, aspect_ratio, resolution, background",
+   "aspects": [
+    "auto",
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "27:16",
+    "16:27",
+    "9:8",
+    "8:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ]
+  },
+  {
+   "id": "t2i:kie:gpt-image-2-5-sunburst-text-to-image",
+   "name": "Gpt Image 2.5 Sunburst Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "gpt-image-2-5-sunburst-text-to-image",
+   "gateway": "kie",
+   "family": "openai",
+   "params": "prompt, aspect_ratio, resolution, background",
+   "aspects": [
+    "auto",
+    "1:1",
+    "3:2",
+    "2:3",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9",
+    "27:16",
+    "16:27",
+    "9:8",
+    "8:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ]
+  },
+  {
+   "id": "t2i:kie:gpt-image-1.5-text-to-image",
+   "name": "GPT-Image 1.5 Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "gpt-image/1.5-text-to-image",
+   "gateway": "kie",
+   "family": "openai",
+   "params": "prompt, aspect_ratio, quality",
+   "aspects": [
+    "1:1",
+    "2:3",
+    "3:2"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "medium",
+    "high"
+   ]
+  },
+  {
+   "id": "t2i:kie:grok-imagine-image-2-0-segment-map",
+   "name": "Grok Imagine Image 2.0 Segment Map",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "grok-imagine-image-2-0/segment-map",
+   "gateway": "kie",
+   "family": "grok",
+   "has_prompt": false
+  },
+  {
+   "id": "t2i:kie:grok-imagine-image-2-0-text-to-image",
+   "name": "Grok Imagine Image 2.0 Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "grok-imagine-image-2-0/text-to-image",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "prompt, aspect_ratio",
+   "aspects": [
+    "1:1",
+    "2:3",
+    "3:2",
+    "16:9",
+    "9:16"
+   ]
+  },
+  {
+   "id": "t2i:kie:grok-imagine-text-to-image",
+   "name": "Grok Imagine Text To Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "grok-imagine/text-to-image",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "prompt, aspect_ratio, nsfw_checker, enable_pro",
+   "aspects": [
+    "2:3",
+    "3:2",
+    "1:1",
+    "16:9",
+    "9:16"
+   ]
+  },
+  {
+   "id": "t2i:kie:google-imagen4-fast",
+   "name": "Imagen 4 Fast-Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "google/imagen4-fast",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, negative_prompt, aspect_ratio",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "9:16",
+    "3:4",
+    "4:3",
+    "auto"
+   ]
+  },
+  {
+   "id": "t2i:kie:nano-banana-2-1",
+   "name": "Nano Banana 2.1",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "nano-banana-2-1",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, image_input, aspect_ratio, resolution, output_format",
+   "aspects": [
+    "1:1",
+    "2:3",
+    "3:2",
+    "1:4",
+    "4:1",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "1:8",
+    "8:1",
+    "9:16",
+    "16:9",
+    "21:9",
+    "auto"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ]
+  },
+  {
+   "id": "t2i:kie:qwen-text-to-image",
+   "name": "Qwen - Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "qwen/text-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, image_size, num_inference_steps, guidance_scale, enable_safety_checker, output_format, negative_prompt, acceleration, nsfw_checker"
+  },
+  {
+   "id": "t2i:kie:qwen2-1-text-to-image",
+   "name": "Qwen 2.1 - Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "qwen2-1/text-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, aspect_ratio, resolution, background, output_format, enhance_prompt, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "16:9",
+    "9:16",
+    "21:9",
+    "9:21"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ]
+  },
+  {
+   "id": "t2i:kie:qwen2-text-to-image",
+   "name": "Qwen2 - Text To Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "qwen2/text-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, image_size, output_format, nsfw_checker"
+  },
+  {
+   "id": "t2i:kie:qwen3-text-to-image",
+   "name": "Qwen3 - text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "qwen3/text-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, resolution, image_size, output_format, prompt_extend, negative_prompt, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ]
+  },
+  {
+   "id": "t2i:kie:qwen3-pro-text-to-image",
+   "name": "Qwen3 Pro - Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "qwen3/pro-text-to-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, resolution, image_size, output_format, prompt_extend, negative_prompt, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ]
+  },
+  {
+   "id": "t2i:kie:recraft-crisp-upscale",
+   "name": "Recraft Crisp Upscale",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "recraft/crisp-upscale",
+   "gateway": "kie",
+   "family": "elevenlabs",
+   "params": "image",
+   "has_prompt": false
+  },
+  {
+   "id": "t2i:kie:bytedance-seedream-v4-text-to-image",
+   "name": "Seedream 4.0 Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "bytedance/seedream-v4-text-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_size, image_resolution, max_images, nsfw_checker",
+   "resolution_field": "image_resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ]
+  },
+  {
+   "id": "t2i:kie:seedream-4.5-text-to-image",
+   "name": "Seedream 4.5 Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "seedream/4.5-text-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, aspect_ratio, quality, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "basic",
+    "high"
+   ]
+  },
+  {
+   "id": "t2i:kie:seedream-5-lite-text-to-image",
+   "name": "Seedream 5 Lite Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "seedream/5-lite-text-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, aspect_ratio, quality, output_format, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "basic",
+    "high",
+    "ultra"
+   ]
+  },
+  {
+   "id": "t2i:kie:seedream-5-pro-text-to-image",
+   "name": "Seedream 5 Pro Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "seedream/5-pro-text-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, aspect_ratio, quality, output_format, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "basic",
+    "high"
+   ]
+  },
+  {
+   "id": "t2i:kie:seedream-5-flash-text-to-image",
+   "name": "Seedream 5.0 Flash Text To Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "seedream/5-flash-text-to-image",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, aspect_ratio, size, output_format, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ]
+  },
+  {
+   "id": "t2i:kie:bytedance-seedream",
+   "name": "Seedream V3",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "bytedance/seedream",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_size, guidance_scale"
+  },
+  {
+   "id": "t2i:kie:wan-2-7-image",
+   "name": "Wan 2.7 Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "wan/2-7-image",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, input_urls, aspect_ratio, enable_sequential, n, resolution, thinking_mode, color_palette, bbox_list, watermark, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "4:3",
+    "21:9",
+    "3:4",
+    "9:16",
+    "8:1",
+    "1:8"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K"
+   ]
+  },
+  {
+   "id": "t2i:kie:wan-2-7-image-pro",
+   "name": "Wan 2.7 Image Pro",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "wan/2-7-image-pro",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, input_urls, aspect_ratio, enable_sequential, n, resolution, thinking_mode, color_palette, bbox_list, watermark, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "4:3",
+    "21:9",
+    "3:4",
+    "9:16",
+    "8:1",
+    "1:8"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1K",
+    "2K",
+    "4K"
+   ]
+  },
+  {
+   "id": "t2i:kie:z-image",
+   "name": "Z Image Turbo Text to Image",
+   "kind": "image",
+   "mode": "t2i",
+   "endpoint": "z-image",
+   "gateway": "kie",
+   "family": "qwen",
+   "params": "prompt, aspect_ratio, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16"
+   ]
+  },
+  {
+   "id": "i2v:kie:gemini-omni-character",
+   "name": "Gemini Omni Character",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "gemini-omni-character",
+   "gateway": "kie",
+   "family": "google"
+  },
+  {
+   "id": "i2v:kie:google-gemini-omni-flash-1-1",
+   "name": "Gemini Omni Flash 1.1",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "google/gemini-omni-flash-1-1",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, image_urls, first_frame_url, last_frame_url, audio_ids, video_list, character_ids, duration, aspect_ratio, resolution",
+   "aspects": [
+    "16:9",
+    "9:16"
+   ],
+   "durations": [
+    4,
+    6,
+    8,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "360p",
+    "720p",
+    "1080p",
+    "4k"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:gemini-omni-video",
+   "name": "Gemini Omni Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "gemini-omni-video",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, image_urls, audio_ids, video_list, character_ids, duration, aspect_ratio, resolution",
+   "aspects": [
+    "16:9",
+    "9:16"
+   ],
+   "durations": [
+    4,
+    6,
+    8,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p",
+    "4k"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:grok-imagine-video-1-5-preview",
+   "name": "grok image 1.5 preview",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "grok-imagine-video-1-5-preview",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "prompt, image_urls, aspect_ratio, resolution, duration, first_frame_url, last_frame_url, loop_url, keyframes, enable_audio, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "9:16",
+    "4:3",
+    "3:4",
+    "3:2",
+    "2:3",
+    "auto"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:grok-imagine-image-to-video",
+   "name": "Grok Imagine Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "grok-imagine/image-to-video",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "image_urls, task_id, index, prompt, mode, duration, resolution, aspect_ratio, nsfw_checker",
+   "aspects": [
+    "2:3",
+    "3:2",
+    "1:1",
+    "16:9",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:hailuo-02-image-to-video-pro",
+   "name": "Hailuo 02 Image to Video - Pro",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "hailuo/02-image-to-video-pro",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, image_url, end_image_url, prompt_optimizer, nsfw_checker",
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:hailuo-02-image-to-video-standard",
+   "name": "Hailuo 02 Image to Video - Standard",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "hailuo/02-image-to-video-standard",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, image_url, end_image_url, duration, resolution, prompt_optimizer, nsfw_checker",
+   "durations": [
+    6,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "512P",
+    "768P"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:hailuo-2-3-image-to-video-pro",
+   "name": "Hailuo 2.3 Image to Video - Pro",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "hailuo/2-3-image-to-video-pro",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, image_url, duration, resolution, nsfw_checker",
+   "durations": [
+    6,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "768P",
+    "1080P"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:hailuo-2-3-image-to-video-standard",
+   "name": "Hailuo 2.3 Image to Video - Standard",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "hailuo/2-3-image-to-video-standard",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, image_url, duration, resolution, nsfw_checker",
+   "durations": [
+    6,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "768P",
+    "1080P"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:happyhorse-1-1-image-to-video",
+   "name": "HappyHorse 1.1 Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "happyhorse-1-1/image-to-video",
+   "gateway": "kie",
+   "family": "alibaba",
+   "params": "prompt, image_urls, resolution, duration",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:happyhorse-1-1-reference-to-video",
+   "name": "HappyHorse 1.1 Reference To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "happyhorse-1-1/reference-to-video",
+   "gateway": "kie",
+   "family": "alibaba",
+   "params": "prompt, reference_image, resolution, aspect_ratio, duration",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "3:4",
+    "4:3",
+    "4:5",
+    "5:4",
+    "1:1",
+    "9:21",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "i2v:kie:happyhorse-image-to-video",
+   "name": "HappyHorse Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "happyhorse/image-to-video",
+   "gateway": "kie",
+   "family": "alibaba",
+   "params": "prompt, image_urls, resolution, duration",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:happyhorse-reference-to-video",
+   "name": "HappyHorse Reference To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "happyhorse/reference-to-video",
+   "gateway": "kie",
+   "family": "alibaba",
+   "params": "prompt, reference_image, resolution, aspect_ratio, duration",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1",
+    "4:3",
+    "3:4"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "i2v:kie:kling-v2-1-pro",
+   "name": "Kling 2.1 Pro: Professional Image-to-Video Generation",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling/v2-1-pro",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, image_url, duration, negative_prompt, cfg_scale, tail_image_url",
+   "durations": [
+    5,
+    10
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:kling-v2-1-standard",
+   "name": "Kling 2.1 Standard: Cost-Effective Image to Video Generation",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling/v2-1-standard",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, image_url, duration, negative_prompt, cfg_scale",
+   "durations": [
+    5,
+    10
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:kling-2.6-image-to-video",
+   "name": "Kling 2.6 Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling-2.6/image-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, image_urls, sound, duration",
+   "durations": [
+    5,
+    10
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:kling-3.0-omni-image-to-video",
+   "name": "Kling 3.0 Omni Image to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling-3.0-omni/image-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "has_prompt": false
+  },
+  {
+   "id": "i2v:kie:kling-4.0-keyframe-to-video",
+   "name": "Kling 4.0 Keyframe To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling-4.0/keyframe-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, duration, resolution, aspect_ratio, first_frame_url, keyframe_urls, last_frame_url",
+   "aspects": [
+    "auto",
+    "16:9",
+    "9:16",
+    "1:1",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "i2v:kie:kling-4.0-reference-to-video",
+   "name": "Kling 4.0 Reference To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling-4.0/reference-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, duration, resolution, aspect_ratio, image_urls, video_urls, keep_original_sound, elements, voices",
+   "aspects": [
+    "auto",
+    "16:9",
+    "9:16",
+    "1:1",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:kling-v2-1-master-image-to-video",
+   "name": "Kling v2.1 Master: AI Image to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling/v2-1-master-image-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, image_url, duration, negative_prompt, cfg_scale",
+   "durations": [
+    5,
+    10
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:kling-v2-5-turbo-image-to-video-pro",
+   "name": "Kling V2.5 Turbo Image To Video  Pro",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling/v2-5-turbo-image-to-video-pro",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, image_url, tail_image_url, duration, negative_prompt, cfg_scale",
+   "durations": [
+    5,
+    10
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:kling-v3-turbo-image-to-video",
+   "name": "Kling V3.0 Turbo Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "kling/v3-turbo-image-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, image_urls, duration, resolution",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:minimax-h3-image-to-video",
+   "name": "MiniMax H3 Image to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "minimax-h3/image-to-video",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, first_frame_url, last_frame_url, duration, resolution",
+   "durations": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "768P",
+    "2K"
+   ]
+  },
+  {
+   "id": "i2v:kie:minimax-h3-reference-to-video",
+   "name": "MiniMax H3 Reference to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "minimax-h3/reference-to-video",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, reference_image_urls, reference_video_urls, reference_audio_urls, aspect_ratio, duration, resolution",
+   "aspects": [
+    "21:9",
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "durations": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "768P",
+    "2K"
+   ]
+  },
+  {
+   "id": "i2v:kie:omnihuman-2-0",
+   "name": "OmniHuman 2.0",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "omnihuman-2-0",
+   "gateway": "kie",
+   "family": "other",
+   "params": "image_urls, audio_url, prompt, enable_watermark",
+   "images_param": "image_urls",
+   "audio_field": "audio_url"
+  },
+  {
+   "id": "i2v:kie:pixverse-v6-image-to-video",
+   "name": "PixVerse V6 Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "pixverse-v6/image-to-video",
+   "gateway": "kie",
+   "family": "pixverse",
+   "params": "prompt, image_urls, quality, duration, generate_audio_switch, generate_multi_clip_switch, template_id",
+   "resolution_field": "quality",
+   "resolutions": [
+    "360p",
+    "540p",
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:pixverse-v6-max-image-to-video",
+   "name": "PixVerse V6 Max Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "pixverse-v6-max/image-to-video",
+   "gateway": "kie",
+   "family": "pixverse",
+   "params": "prompt, image_urls, quality, duration, generate_audio_switch",
+   "resolution_field": "quality",
+   "resolutions": [
+    "360p",
+    "540p",
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:pixverse-v6-transition",
+   "name": "PixVerse V6 Transition (First/Last Frame)",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "pixverse-v6/transition",
+   "gateway": "kie",
+   "family": "pixverse",
+   "params": "prompt, first_frame_image_url, last_frame_image_url, quality, duration, generate_audio_switch",
+   "resolution_field": "quality",
+   "resolutions": [
+    "360p",
+    "540p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "i2v:kie:runway",
+   "name": "Runway",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "runway",
+   "gateway": "kie",
+   "family": "runway"
+  },
+  {
+   "id": "i2v:kie:bytedance-v1-lite-image-to-video",
+   "name": "Seedance 1.0 Lite Image to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "bytedance/v1-lite-image-to-video",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_url, resolution, duration, camera_fixed, enable_safety_checker, end_image_url, nsfw_checker",
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:bytedance-v1-pro-fast-image-to-video",
+   "name": "Seedance 1.0 Pro-Fast-Image to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "bytedance/v1-pro-fast-image-to-video",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_url, resolution, duration, nsfw_checker",
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:bytedance-v1-pro-image-to-video",
+   "name": "Seedance 1.0 Pro-Image to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "bytedance/v1-pro-image-to-video",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, image_url, resolution, duration, camera_fixed, enable_safety_checker, nsfw_checker",
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:bytedance-seedance-2-mini",
+   "name": "Seedance 2.0 Mini",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "bytedance/seedance-2-mini",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, generate_audio, resolution, aspect_ratio, duration, web_search, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  },
+  {
+   "id": "i2v:kie:bytedance-seedance-2-5",
+   "name": "Seedance 2.5",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "bytedance/seedance-2-5",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, return_last_frame, generate_audio, resolution, aspect_ratio, duration, output_format, web_search, draft, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "i2v:kie:veo-3-1",
+   "name": "Veo 3.1",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "veo-3-1",
+   "gateway": "kie",
+   "family": "google"
+  },
+  {
+   "id": "i2v:kie:vidu-q4-image-to-video",
+   "name": "Vidu Q4 Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "vidu-q4/image-to-video",
+   "gateway": "kie",
+   "family": "vidu",
+   "params": "prompt, duration, resolution, audio, image_url",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "540p",
+    "720p",
+    "1080p",
+    "2k",
+    "4k"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:vidu-q4-reference-to-video",
+   "name": "Vidu Q4 Reference To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "vidu-q4/reference-to-video",
+   "gateway": "kie",
+   "family": "vidu",
+   "params": "prompt, duration, resolution, audio, reference_image_urls, reference_audio_urls, aspect_ratio",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1",
+    "4:3",
+    "3:4"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "540p",
+    "720p",
+    "1080p",
+    "2k",
+    "4k"
+   ]
+  },
+  {
+   "id": "i2v:kie:volcengine-video-to-video-lip-sync",
+   "name": "Volcengine Video-to-Video Lip Sync",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "volcengine/video-to-video-lip-sync",
+   "gateway": "kie",
+   "family": "other",
+   "params": "mode, video_url, audio_url, separate_vocal, open_scenedet, align_audio, align_audio_reverse, templ_start_seconds",
+   "audio_field": "audio_url",
+   "has_prompt": false
+  },
+  {
+   "id": "i2v:kie:wan-2-2-a14b-image-to-video-turbo",
+   "name": "Wan 2.2 A14B Image to Video Turbo",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-2-a14b-image-to-video-turbo",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "image_url, prompt, resolution, enable_prompt_expansion, acceleration, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:wan-2-2-animate-move",
+   "name": "Wan 2.2 Animate Move",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-2-animate-move",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "video_url, image_url, resolution, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p"
+   ],
+   "image_field": "image_url",
+   "has_prompt": false
+  },
+  {
+   "id": "i2v:kie:wan-2-2-animate-replace",
+   "name": "Wan 2.2 Animate Replace",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-2-animate-replace",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "video_url, image_url, resolution, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "580p",
+    "720p"
+   ],
+   "image_field": "image_url",
+   "has_prompt": false
+  },
+  {
+   "id": "i2v:kie:wan-2-5-image-to-video",
+   "name": "Wan 2.5 Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-5-image-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, image_url, duration, resolution, negative_prompt, enable_prompt_expansion, nsfw_checker",
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "image_field": "image_url"
+  },
+  {
+   "id": "i2v:kie:wan-2-6-flash-image-to-video",
+   "name": "Wan 2.6 Flash Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-6-flash-image-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, image_urls, duration, resolution, audio, multi_shots, nsfw_checker",
+   "durations": [
+    5,
+    10,
+    15
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:wan-2-6-image-to-video",
+   "name": "Wan 2.6 Image To Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-6-image-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, image_urls, duration, resolution, multi_shots, nsfw_checker",
+   "durations": [
+    5,
+    10,
+    15
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "images_param": "image_urls"
+  },
+  {
+   "id": "i2v:kie:wan-2-7-image-to-video",
+   "name": "Wan 2.7 Image to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-7-image-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, negative_prompt, first_frame_url, last_frame_url, first_clip_url, driving_audio_url, resolution, duration, prompt_extend, watermark, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "audio_field": "driving_audio_url"
+  },
+  {
+   "id": "i2v:kie:wan-2-7-r2v",
+   "name": "Wan 2.7 Reference to Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/2-7-r2v",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, negative_prompt, reference_image, reference_video, first_frame, reference_voice, resolution, aspect_ratio, duration, prompt_extend, watermark, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1",
+    "4:3",
+    "3:4"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "i2v:kie:wan-3-0-video",
+   "name": "Wan 3.0 Video",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/3-0-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, reference_file_urls, reference_link_urls, resolution, aspect_ratio, duration, audio, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480P",
+    "720P",
+    "1080P"
+   ]
+  },
+  {
+   "id": "i2v:kie:wan-3-0-video-prime",
+   "name": "Wan 3.0 Video Prime",
+   "kind": "video",
+   "mode": "i2v",
+   "endpoint": "wan/3-0-video-prime",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, reference_file_urls, reference_link_urls, resolution, aspect_ratio, duration, audio, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480P",
+    "720P",
+    "1080P"
+   ]
+  },
+  {
+   "id": "t2v:kie:ai-music-api-create-music-video",
+   "name": "Ai Music Create Music Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "ai-music-api/create-music-video",
+   "gateway": "kie",
+   "family": "suno"
+  },
+  {
+   "id": "t2v:kie:google-gemini-omni-flash-1-1",
+   "name": "Gemini Omni Flash 1.1",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "google/gemini-omni-flash-1-1",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, image_urls, first_frame_url, last_frame_url, audio_ids, video_list, character_ids, duration, aspect_ratio, resolution",
+   "aspects": [
+    "16:9",
+    "9:16"
+   ],
+   "durations": [
+    4,
+    6,
+    8,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "360p",
+    "720p",
+    "1080p",
+    "4k"
+   ]
+  },
+  {
+   "id": "t2v:kie:gemini-omni-video",
+   "name": "Gemini Omni Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "gemini-omni-video",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, image_urls, audio_ids, video_list, character_ids, duration, aspect_ratio, resolution",
+   "aspects": [
+    "16:9",
+    "9:16"
+   ],
+   "durations": [
+    4,
+    6,
+    8,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p",
+    "4k"
+   ]
+  },
+  {
+   "id": "t2v:kie:grok-imagine-text-to-video",
+   "name": "Grok Imagine Text To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "grok-imagine/text-to-video",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "prompt, aspect_ratio, mode, duration, resolution, nsfw_checker",
+   "aspects": [
+    "2:3",
+    "3:2",
+    "1:1",
+    "16:9",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:hailuo-02-text-to-video-pro",
+   "name": "Hailuo 02 Text to Video - Pro",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "hailuo/02-text-to-video-pro",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, prompt_optimizer, nsfw_checker"
+  },
+  {
+   "id": "t2v:kie:hailuo-02-text-to-video-standard",
+   "name": "Hailuo 02 Text to Video - Standard",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "hailuo/02-text-to-video-standard",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, duration, prompt_optimizer, nsfw_checker",
+   "durations": [
+    6,
+    10
+   ]
+  },
+  {
+   "id": "t2v:kie:happyhorse-text-to-video",
+   "name": "HappyHorse Text To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "happyhorse/text-to-video",
+   "gateway": "kie",
+   "family": "alibaba",
+   "params": "prompt, resolution, aspect_ratio, duration",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1",
+    "4:3",
+    "3:4"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:ideogram-v3-text-to-image",
+   "name": "Ideogram V3 Text to Image",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "ideogram/v3-text-to-image",
+   "gateway": "kie",
+   "family": "ideogram",
+   "params": "prompt, rendering_speed, style, expand_prompt, image_size, negative_prompt"
+  },
+  {
+   "id": "t2v:kie:kling-v2-1-master-text-to-video",
+   "name": "Kling 2.1 Master \u2014 Premium Text-to-Video Generation",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "kling/v2-1-master-text-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, duration, aspect_ratio, negative_prompt, cfg_scale",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1"
+   ],
+   "durations": [
+    5,
+    10
+   ]
+  },
+  {
+   "id": "t2v:kie:kling-2.6-text-to-video",
+   "name": "Kling 2.6 Text To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "kling-2.6/text-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, sound, aspect_ratio, duration",
+   "aspects": [
+    "1:1",
+    "16:9",
+    "9:16"
+   ],
+   "durations": [
+    5,
+    10
+   ]
+  },
+  {
+   "id": "t2v:kie:kling-3.0-video",
+   "name": "Kling 3.0",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "kling-3.0/video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, image_urls, sound, duration, aspect_ratio, mode, multi_shots, multi_prompt, kling_elements",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1"
+   ],
+   "durations": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ]
+  },
+  {
+   "id": "t2v:kie:kling-3.0-omni-text-to-video",
+   "name": "Kling 3.0 Omni Text to Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "kling-3.0-omni/text-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, customize_multi_shots, prefer_multi_shots, multi_prompt, elements, audio, resolution, aspect_ratio, duration",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1"
+   ],
+   "durations": [
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p",
+    "4k"
+   ]
+  },
+  {
+   "id": "t2v:kie:kling-4.0-keyframe-to-video",
+   "name": "Kling 4.0 Keyframe To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "kling-4.0/keyframe-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, duration, resolution, aspect_ratio, first_frame_url, keyframe_urls, last_frame_url",
+   "aspects": [
+    "auto",
+    "16:9",
+    "9:16",
+    "1:1",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:kling-4.0-reference-to-video",
+   "name": "Kling 4.0 Reference To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "kling-4.0/reference-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, duration, resolution, aspect_ratio, image_urls, video_urls, keep_original_sound, elements, voices",
+   "aspects": [
+    "auto",
+    "16:9",
+    "9:16",
+    "1:1",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:kling-v2-5-turbo-text-to-video-pro",
+   "name": "Kling V2.5 Turbo Text To Video Pro",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "kling/v2-5-turbo-text-to-video-pro",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, duration, aspect_ratio, negative_prompt, cfg_scale",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1"
+   ],
+   "durations": [
+    5,
+    10
+   ]
+  },
+  {
+   "id": "t2v:kie:minimax-h3-text-to-video",
+   "name": "MiniMax H3 Text to Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "minimax-h3/text-to-video",
+   "gateway": "kie",
+   "family": "hailuo",
+   "params": "prompt, aspect_ratio, duration, resolution",
+   "aspects": [
+    "21:9",
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "durations": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "768P",
+    "2K"
+   ]
+  },
+  {
+   "id": "t2v:kie:pixverse-v6-max-text-to-video",
+   "name": "PixVerse V6 Max Text To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "pixverse-v6-max/text-to-video",
+   "gateway": "kie",
+   "family": "pixverse",
+   "params": "prompt, aspect_ratio, quality, duration, generate_audio_switch",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "360p",
+    "540p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:pixverse-v6-text-to-video",
+   "name": "PixVerse V6 Text To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "pixverse-v6/text-to-video",
+   "gateway": "kie",
+   "family": "pixverse",
+   "params": "prompt, aspect_ratio, quality, duration, generate_audio_switch, generate_multi_clip_switch",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "360p",
+    "540p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:pixverse-v6-transition",
+   "name": "PixVerse V6 Transition (First/Last Frame)",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "pixverse-v6/transition",
+   "gateway": "kie",
+   "family": "pixverse",
+   "params": "prompt, first_frame_image_url, last_frame_image_url, quality, duration, generate_audio_switch",
+   "resolution_field": "quality",
+   "resolutions": [
+    "360p",
+    "540p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:runway",
+   "name": "Runway",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "runway",
+   "gateway": "kie",
+   "family": "runway"
+  },
+  {
+   "id": "t2v:kie:runway-extend-ai-video",
+   "name": "Runway Extend AI Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "runway/extend-ai-video",
+   "gateway": "kie",
+   "family": "runway"
+  },
+  {
+   "id": "t2v:kie:bytedance-v1-lite-text-to-video",
+   "name": "Seedance 1.0 Lite Text to Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "bytedance/v1-lite-text-to-video",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, aspect_ratio, resolution, duration, camera_fixed, enable_safety_checker, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16",
+    "9:21"
+   ],
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:bytedance-v1-pro-text-to-video",
+   "name": "Seedance 1.0 Pro-Text to Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "bytedance/v1-pro-text-to-video",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, aspect_ratio, resolution, duration, camera_fixed, enable_safety_checker, nsfw_checker",
+   "aspects": [
+    "21:9",
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:bytedance-seedance-2",
+   "name": "Seedance 2.0",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "bytedance/seedance-2",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, return_last_frame, generate_audio, resolution, aspect_ratio, duration, web_search, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p",
+    "4k"
+   ]
+  },
+  {
+   "id": "t2v:kie:bytedance-seedance-2-fast",
+   "name": "Seedance 2.0 Fast",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "bytedance/seedance-2-fast",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, return_last_frame, generate_audio, resolution, aspect_ratio, duration, web_search, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  },
+  {
+   "id": "t2v:kie:bytedance-seedance-2-mini",
+   "name": "Seedance 2.0 Mini",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "bytedance/seedance-2-mini",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, generate_audio, resolution, aspect_ratio, duration, web_search, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  },
+  {
+   "id": "t2v:kie:bytedance-seedance-2-5",
+   "name": "Seedance 2.5",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "bytedance/seedance-2-5",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, return_last_frame, generate_audio, resolution, aspect_ratio, duration, output_format, web_search, draft, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:veo-3-1",
+   "name": "Veo 3.1",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "veo-3-1",
+   "gateway": "kie",
+   "family": "google"
+  },
+  {
+   "id": "t2v:kie:veo-extend",
+   "name": "Veo Extend",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "veo/extend",
+   "gateway": "kie",
+   "family": "google"
+  },
+  {
+   "id": "t2v:kie:wan-2-2-a14b-text-to-video-turbo",
+   "name": "Wan 2.2 A14B Text to Video Turbo",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "wan/2-2-a14b-text-to-video-turbo",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, resolution, aspect_ratio, enable_prompt_expansion, acceleration, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  },
+  {
+   "id": "t2v:kie:wan-2-6-text-to-video",
+   "name": "Wan 2.6 Text To Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "wan/2-6-text-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, duration, resolution, multi_shots, nsfw_checker",
+   "durations": [
+    5,
+    10,
+    15
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:wan-2-7-text-to-video",
+   "name": "Wan 2.7 Text to Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "wan/2-7-text-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, negative_prompt, audio_url, resolution, ratio, duration, prompt_extend, watermark, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "t2v:kie:wan-3-0-video",
+   "name": "Wan 3.0 Video",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "wan/3-0-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, reference_file_urls, reference_link_urls, resolution, aspect_ratio, duration, audio, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480P",
+    "720P",
+    "1080P"
+   ]
+  },
+  {
+   "id": "t2v:kie:wan-3-0-video-prime",
+   "name": "Wan 3.0 Video Prime",
+   "kind": "video",
+   "mode": "t2v",
+   "endpoint": "wan/3-0-video-prime",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, reference_file_urls, reference_link_urls, resolution, aspect_ratio, duration, audio, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480P",
+    "720P",
+    "1080P"
+   ]
+  },
+  {
+   "id": "v2v:kie:google-gemini-omni-flash-1-1",
+   "name": "Gemini Omni Flash 1.1",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "google/gemini-omni-flash-1-1",
+   "gateway": "kie",
+   "family": "google",
+   "params": "prompt, image_urls, first_frame_url, last_frame_url, audio_ids, video_list, character_ids, duration, aspect_ratio, resolution",
+   "aspects": [
+    "16:9",
+    "9:16"
+   ],
+   "durations": [
+    4,
+    6,
+    8,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "360p",
+    "720p",
+    "1080p",
+    "4k"
+   ]
+  },
+  {
+   "id": "v2v:kie:grok-imagine-extend",
+   "name": "Grok Imagine Extend",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "grok-imagine/extend",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "task_id, prompt, extend_at, extend_times"
+  },
+  {
+   "id": "v2v:kie:grok-imagine-upscale",
+   "name": "Grok Imagine Upscale",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "grok-imagine/upscale",
+   "gateway": "kie",
+   "family": "grok",
+   "params": "task_id, resolution",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "has_prompt": false
+  },
+  {
+   "id": "v2v:kie:happyhorse-video-edit",
+   "name": "HappyHorse Video Edit",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "happyhorse/video-edit",
+   "gateway": "kie",
+   "family": "alibaba",
+   "params": "prompt, video_url, reference_image, resolution, audio_setting",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "video_field": "video_url"
+  },
+  {
+   "id": "v2v:kie:kling-2.6-motion-control",
+   "name": "Kling 2.6 Motion Control",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "kling-2.6/motion-control",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, input_urls, video_urls, character_orientation, mode"
+  },
+  {
+   "id": "v2v:kie:kling-3.0-motion-control",
+   "name": "Kling 3.0 Motion Control",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "kling-3.0/motion-control",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, input_urls, video_urls, mode, character_orientation"
+  },
+  {
+   "id": "v2v:kie:kling-3.0-omni-reference-to-video",
+   "name": "Kling 3.0 Omni Reference to Video",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "kling-3.0-omni/reference-to-video",
+   "gateway": "kie",
+   "family": "kling",
+   "has_prompt": false
+  },
+  {
+   "id": "v2v:kie:kling-3.0-omni-transformation",
+   "name": "Kling 3.0 Omni Transformation",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "kling-3.0-omni/transformation",
+   "gateway": "kie",
+   "family": "kling",
+   "params": "prompt, video_urls, image_urls, duration, resolution, aspect_ratio, audio, elements",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1",
+    "auto"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p",
+    "4k"
+   ]
+  },
+  {
+   "id": "v2v:kie:pixverse-v6-extend",
+   "name": "PixVerse V6 Video Extension",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "pixverse-v6/extend",
+   "gateway": "kie",
+   "family": "pixverse",
+   "has_prompt": false
+  },
+  {
+   "id": "v2v:kie:pixverse-v6-reference-to-video",
+   "name": "PixVerse V6 Video Fusion",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "pixverse-v6/reference-to-video",
+   "gateway": "kie",
+   "family": "pixverse",
+   "params": "prompt, image_references, aspect_ratio, quality, duration, generate_audio_switch",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16",
+    "2:3",
+    "3:2",
+    "21:9"
+   ],
+   "resolution_field": "quality",
+   "resolutions": [
+    "360p",
+    "540p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "v2v:kie:bytedance-seedance-2",
+   "name": "Seedance 2.0",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "bytedance/seedance-2",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, return_last_frame, generate_audio, resolution, aspect_ratio, duration, web_search, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p",
+    "4k"
+   ]
+  },
+  {
+   "id": "v2v:kie:bytedance-seedance-2-fast",
+   "name": "Seedance 2.0 Fast",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "bytedance/seedance-2-fast",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, return_last_frame, generate_audio, resolution, aspect_ratio, duration, web_search, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  },
+  {
+   "id": "v2v:kie:bytedance-seedance-2-mini",
+   "name": "Seedance 2.0 Mini",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "bytedance/seedance-2-mini",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, generate_audio, resolution, aspect_ratio, duration, web_search, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p"
+   ]
+  },
+  {
+   "id": "v2v:kie:bytedance-seedance-2-5",
+   "name": "Seedance 2.5",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "bytedance/seedance-2-5",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, return_last_frame, generate_audio, resolution, aspect_ratio, duration, output_format, web_search, draft, nsfw_checker",
+   "aspects": [
+    "1:1",
+    "4:3",
+    "3:4",
+    "16:9",
+    "9:16",
+    "21:9"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480p",
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "v2v:kie:bytedance-seedance-2-5-draft",
+   "name": "Seedance 2.5 Draft",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "bytedance/seedance-2-5-draft",
+   "gateway": "kie",
+   "family": "bytedance",
+   "params": "draft_task_id, resolution, output_format, return_last_frame, nsfw_checker",
+   "resolution_field": "resolution",
+   "resolutions": [
+    "1080p"
+   ],
+   "has_prompt": false
+  },
+  {
+   "id": "v2v:kie:topaz-video-upscale",
+   "name": "Topaz Video Upscale",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "topaz/video-upscale",
+   "gateway": "kie",
+   "family": "other",
+   "params": "video_url, upscale_factor",
+   "video_field": "video_url",
+   "has_prompt": false
+  },
+  {
+   "id": "v2v:kie:veo-get-1080p-video",
+   "name": "Veo 1080p video",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "veo/get-1080p-video",
+   "gateway": "kie",
+   "family": "google"
+  },
+  {
+   "id": "v2v:kie:veo-get-4k-video",
+   "name": "Veo 4k video",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "veo/get-4k-video",
+   "gateway": "kie",
+   "family": "google"
+  },
+  {
+   "id": "v2v:kie:volcengine-video-to-video-lip-sync",
+   "name": "Volcengine Video-to-Video Lip Sync",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "volcengine/video-to-video-lip-sync",
+   "gateway": "kie",
+   "family": "other",
+   "params": "mode, video_url, audio_url, separate_vocal, open_scenedet, align_audio, align_audio_reverse, templ_start_seconds",
+   "video_field": "video_url",
+   "has_prompt": false
+  },
+  {
+   "id": "v2v:kie:wan-2-6-flash-video-to-video",
+   "name": "Wan 2.6 Flash  Video to Video",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "wan/2-6-flash-video-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, video_urls, duration, resolution, audio, multi_shots, nsfw_checker",
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "v2v:kie:wan-2-6-video-to-video",
+   "name": "Wan 2.6 Video To Video",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "wan/2-6-video-to-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, video_urls, duration, resolution, multi_shots, nsfw_checker",
+   "durations": [
+    5,
+    10
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ]
+  },
+  {
+   "id": "v2v:kie:wan-2-7-videoedit",
+   "name": "Wan 2.7 Video Edit",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "wan/2-7-videoedit",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, negative_prompt, video_url, reference_image, resolution, aspect_ratio, duration, audio_setting, prompt_extend, watermark, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "9:16",
+    "1:1",
+    "4:3",
+    "3:4"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "720p",
+    "1080p"
+   ],
+   "video_field": "video_url"
+  },
+  {
+   "id": "v2v:kie:wan-3-0-video",
+   "name": "Wan 3.0 Video",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "wan/3-0-video",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, reference_file_urls, reference_link_urls, resolution, aspect_ratio, duration, audio, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480P",
+    "720P",
+    "1080P"
+   ]
+  },
+  {
+   "id": "v2v:kie:wan-3-0-video-prime",
+   "name": "Wan 3.0 Video Prime",
+   "kind": "video",
+   "mode": "v2v",
+   "endpoint": "wan/3-0-video-prime",
+   "gateway": "kie",
+   "family": "wan",
+   "params": "prompt, first_frame_url, last_frame_url, reference_image_urls, reference_video_urls, reference_audio_urls, reference_file_urls, reference_link_urls, resolution, aspect_ratio, duration, audio, nsfw_checker",
+   "aspects": [
+    "16:9",
+    "4:3",
+    "1:1",
+    "3:4",
+    "9:16"
+   ],
+   "resolution_field": "resolution",
+   "resolutions": [
+    "480P",
+    "720P",
+    "1080P"
    ]
   }
  ]
