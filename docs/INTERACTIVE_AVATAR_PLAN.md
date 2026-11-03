@@ -231,3 +231,23 @@ that slow first batch; playback (stall) is the measure. Decision still open for 
 8-hour school day) vs cold starts (~36 s for a student when no card is free, $0 idle). Not yet measured: voice -> face end to end, video
 delivery to a phone (WebRTC), the real teacher face.
 
+
+## 12. Live to a phone / browser (built, NOT yet run on a GPU)
+
+Transport decision: **WebSocket, not WebRTC, for the lab.** Modal exposes TCP / HTTPS / WebSocket but no UDP, and WebRTC
+needs UDP (or a TURN relay we do not have). The engine already makes 25 fps JPEG pictures and a WAV per speech chunk, so the
+engine's new `/live` WebSocket sends exactly those, and the page plays them with the audio as the clock. A WebRTC front
+(aiortc on our own GPU server, later) can replace the transport without touching the pipeline.
+
+- Engine: `/live` in `avatar_engine/modal_app.py`. First message `{key, avatar_id, text, lang}` (key never in the address);
+  `split_speech` chunks; every chunk's voice starts at once on the warm voice containers; the face is made chunk by chunk;
+  binary frames `[type u8][chunk u16][index u32][payload]` (2 = WAV, 1 = JPEG); status lines as JSON. The face stream is
+  always read to its end (cancelling a Modal call restarts the container); voice calls are never cancelled.
+- Student side: `server/app/static/interactive/live.html` + `live.js` (served at `/static/interactive/live.html`): jitter
+  buffer 0.35 s before the first word, each next chunk starts exactly when the previous ends, the picture shown is the one
+  for the audio clock's moment, a missing picture holds the last one and counts a stall. The key is typed in, kept in memory
+  only, never stored.
+- NOT verified: a real browser / phone against the real engine, stalls over mobile data, the first-picture time as the
+  STUDENT sees it (adds network + decode to the 2.8 s measured inside Modal), many students, the tutor brain feeding it text.
+- Run it: Actions > Interactive lab > `deploy` (prints the engine's web address; `lab-live` was prepared by the e2e runs and
+  lives on the volume), open `/static/interactive/live.html` on the Hoola server, paste the address + engine key, Speak.

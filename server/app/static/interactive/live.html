@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hoola Interactive - live lab</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--ink:#16181d;--mut:#5b6270;--line:#d9dde5;--brand:#5b3df5}
+@media (prefers-color-scheme:dark){:root{--bg:#10131a;--ink:#eef0f5;--mut:#9aa3b5;--line:#2a3040}}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,sans-serif}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:8px 0 4px}p.s{color:var(--mut);margin:0 0 12px}
+label{display:block;font-size:13px;color:var(--mut);margin:10px 0 4px}
+input,textarea{width:100%;box-sizing:border-box;padding:10px;border:1px solid var(--line);border-radius:8px;background:transparent;color:var(--ink);font:inherit}
+button{margin-top:12px;padding:10px 16px;border:0;border-radius:8px;background:var(--brand);color:#fff;font:inherit;cursor:pointer}
+canvas{width:100%;max-width:512px;aspect-ratio:1;background:#000;border-radius:12px;display:block;margin:14px auto}
+#st{font-variant-numeric:tabular-nums;color:var(--mut);white-space:pre-line}
+</style></head><body><main>
+<h1>Hoola Interactive - live lab</h1>
+<p class="s">Type what the teacher should say; the engine makes the voice and the face and streams them here. The key is used only for this page load and is never saved.</p>
+<label>Engine address (https://...modal.run)</label><input id="url" placeholder="https://your-engine.modal.run" autocomplete="off">
+<label>Engine key</label><input id="key" type="password" autocomplete="off">
+<label>Avatar id</label><input id="av" value="lab-live" autocomplete="off">
+<label>Teacher says</label><textarea id="tx" rows="3">नमस्ते आरव, आज हम गति के बारे में सीखेंगे। गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।</textarea>
+<button id="go">Speak</button>
+<canvas id="cv" width="512" height="512"></canvas>
+<div id="st">idle</div>
+</main>
+<script src="live.js"></script>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)}, cv=$("cv"), g=cv.getContext("2d"), L=window.HoolaLive;
+  var ws, ctx, chunks, prevEnd, sentAt, firstShown, stalls, t0, running=false;
+  function log(m){ $("st").textContent=m; }
+  function reset(){ chunks=[]; prevEnd=0; firstShown=null; stalls=0; }
+  function draw(){
+    if(!running){ return; }
+    if(ctx && chunks.length){
+      var p=L.pick(chunks, ctx.currentTime);
+      if(p && !p.over){
+        var f=chunks[p.k].frames[p.idx];
+        if(f){ g.drawImage(f,0,0,cv.width,cv.height); if(!firstShown){ firstShown=performance.now()-sentAt; } }
+        if(!p.have){ stalls++; }
+      }
+    }
+    var tail=(chunks.length?chunks[chunks.length-1]:null);
+    log("first picture: "+(firstShown?Math.round(firstShown)+" ms":"waiting")+"\nchunks: "+chunks.length+"   stalls (frames missing on time): "+stalls);
+    requestAnimationFrame(draw);
+  }
+  function onBinary(buf){
+    var v=new DataView(buf), type=v.getUint8(0), k=v.getUint16(1), i=v.getUint32(3), body=buf.slice(7);
+    if(type===2){
+      ctx.decodeAudioData(body).then(function(ab){
+        var c=chunks[k]=chunks[k]||{frames:[]}; c.dur=ab.duration;
+        c.start=L.startFor(ctx.currentTime, prevEnd, 0.35, k===0); prevEnd=c.start+c.dur;
+        var src=ctx.createBufferSource(); src.buffer=ab; src.connect(ctx.destination); src.start(c.start);
+      });
+    } else if(type===1){
+      createImageBitmap(new Blob([body],{type:"image/jpeg"})).then(function(bm){
+        var c=chunks[k]=chunks[k]||{frames:[]}; c.frames[i]=bm;
+      });
+    }
+  }
+  $("go").onclick=function(){
+    try{ if(ws) ws.close(); }catch(e){}
+    reset(); ctx=ctx||new (window.AudioContext||window.webkitAudioContext)(); ctx.resume();
+    var base=$("url").value.trim().replace(/^http/,"ws").replace(/\/+$/,"");
+    if(!/^wss?:\/\//.test(base)){ log("enter the engine address"); return; }
+    ws=new WebSocket(base+"/live"); ws.binaryType="arraybuffer";
+    sentAt=performance.now(); running=true; requestAnimationFrame(draw);
+    ws.onopen=function(){ ws.send(JSON.stringify({key:$("key").value,avatar_id:$("av").value.trim(),text:$("tx").value,lang:"hi"})); };
+    ws.onmessage=function(e){
+      if(typeof e.data==="string"){ var m=JSON.parse(e.data); if(m.type==="error"){ log("engine: "+m.msg); running=false; } }
+      else onBinary(e.data);
+    };
+    ws.onclose=function(){ setTimeout(function(){ running=false; },8000); };
+  };
+})();
+</script></body></html>

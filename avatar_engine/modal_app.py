@@ -598,7 +598,7 @@ class Live:
 def web():
     import hmac
 
-    from fastapi import Depends, FastAPI, Header, HTTPException
+    from fastapi import Depends, FastAPI, Header, HTTPException, WebSocket
     from fastapi.responses import Response
 
     api = FastAPI(title="Hoola Interactive Model Lab")
@@ -663,6 +663,77 @@ def web():
     @api.post("/face/forget", dependencies=[Depends(key)])
     def face_forget(body: dict):
         return Face().forget.remote(str(body.get("avatar_id") or ""))
+
+    async def live_socket(ws):
+        """One student, one live talk. The browser sends ONE json line {key, avatar_id, text, lang} (the key travels
+        in the message, never in the address), then receives: json status lines, and binary frames
+        [type u8][chunk u16][index u32][payload]: type 2 = a WAV chunk, type 1 = a JPEG picture of that chunk (25 fps).
+        Voice for every chunk starts at once on the warm voice containers; the face is made chunk by chunk."""
+        import asyncio
+        import struct
+
+        await ws.accept()
+        gone = False
+
+        async def say(**m):
+            nonlocal gone
+            if not gone:
+                try:
+                    await ws.send_text(json.dumps(m))
+                except Exception:
+                    gone = True
+
+        async def push(kind: int, k: int, i: int, data: bytes):
+            nonlocal gone
+            if not gone:
+                try:
+                    await ws.send_bytes(struct.pack(">BHI", kind, k, i) + data)
+                except Exception:
+                    gone = True
+
+        tasks: list = []
+        try:
+            hello = json.loads(await asyncio.wait_for(ws.receive_text(), 15))
+            want = os.environ.get("ENGINE_KEY", "")
+            if not want or not hmac.compare_digest(str(hello.get("key") or ""), want):
+                await say(type="error", msg="locked")
+                return
+            avatar = str(hello.get("avatar_id") or "")
+            text = str(hello.get("text") or "").strip()
+            if not AVATAR_ID.match(avatar) or not text or len(text) > MAX_TEXT:
+                await say(type="error", msg=f"avatar_id or text (1-{MAX_TEXT} characters) is not valid")
+                return
+            chunks = split_speech(text)
+            lang = str(hello.get("lang") or "hi")[:5]
+            await say(type="start", fps=25, chunks=len(chunks))
+            voice, face = Chatterbox(), Live()
+            tasks = [asyncio.create_task(voice.speak.remote.aio(c, lang)) for c in chunks]
+            for k, t in enumerate(tasks):
+                r = await asyncio.wait_for(t, 180)
+                await push(2, k, 0, r["wav"])
+                n = 0
+                # The stream is ALWAYS read to its end, even if the student left: cancelling a Modal call restarts its
+                # container (a cold start for the next student). A gone student just stops being sent to.
+                async for b in face.stream.remote_gen.aio(avatar, r["wav"], 8, 1):
+                    for jpg in b["frames"]:
+                        await push(1, k, n, jpg)
+                        n += 1
+                await say(type="chunk_done", id=k, frames=n)
+            await say(type="end")
+        except Exception as e:                          # never show internals to the browser
+            print("live socket:", type(e).__name__, str(e)[:300], flush=True)
+            await say(type="error", msg="the live talk stopped - try again")
+        finally:
+            for t in tasks:                              # voice calls are NOT cancelled (same restart rule): let them finish
+                if not t.done():
+                    t.add_done_callback(lambda f: f.exception())
+            try:
+                await ws.close()
+            except Exception:
+                pass
+
+    live_socket.__annotations__ = {"ws": WebSocket}      # this file uses postponed annotations: FastAPI could not find a name imported inside web()
+    api.websocket("/live")(live_socket)
 
     return api
 

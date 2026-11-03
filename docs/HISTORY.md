@@ -18227,3 +18227,9 @@ Internet routing section grew the scrape bullet: structured/bulk data = scrape t
 ### VPS deploy note
 
 `pip install "scrapling[fetchers,rag]>=0.5"` in the venv once (no browser download needed for the default engine), then the usual ritual: checkout tag -> `cp -r server/app ~/apps/santosh-core/` -> `pm2 restart santosh --update-env` -> sleep 20 -> healthz grep version.
+
+## v0.462.x INTERACTIVE LAB - live to a browser (avatar_engine/modal_app.py `/live`, static/interactive/live.html + live.js)
+Chunked speech (first chunk ~5 words, then growing), three warm voice containers, face read to the end, WebSocket stream of
+JPEG + WAV chunks, student page with audio-clock playback. Measured inside Modal (L40S, warm): first picture 2.8 s, no gaps.
+NOT verified: a real browser / phone, network cost, many students, tutor brain wiring. WebSocket chosen over WebRTC because
+Modal has no UDP (docs/INTERACTIVE_AVATAR_PLAN.md S12).

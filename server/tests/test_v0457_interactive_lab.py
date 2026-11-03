@@ -272,3 +272,24 @@ def test_parallel_voice_containers():
     assert "min_containers=VOICE_WARM" in MODAL_SRC and 'HOOLA_LAB_VOICES' in MODAL_SRC
     assert "HOOLA_LAB_VOICES" in open("../.github/workflows/interactive-lab.yml").read()
     assert "make(i: int, c: str)" in MODAL_SRC                   # chunks are asked for at once, not one after another
+
+
+def test_live_socket_and_student_page():
+    import shutil
+    import subprocess
+    from pathlib import Path
+    src = MODAL_SRC
+    assert 'api.websocket("/live")(live_socket)' in src and "live_socket.__annotations__" in src
+    body = src[src.index("async def live_socket"):src.index('api.websocket("/live")')]
+    assert 'hello.get("key")' in body and "compare_digest" in body          # key in the first message, never in the address
+    assert "AVATAR_ID.match(avatar)" in body and "MAX_TEXT" in body          # same guards as the other doors
+    assert "asyncio.create_task(voice.speak.remote.aio" in body              # every chunk's voice starts at once
+    assert "async for b in face.stream.remote_gen.aio" in body               # read to the end: cancelling restarts a container
+    assert ".cancel()" not in body                                           # voice calls are never cancelled
+    assert "the live talk stopped" in body and "str(e)" not in body.split("say(type=\"error\", msg=\"the live")[1][:80]   # no internals to the browser
+    root = Path(__file__).resolve().parents[1] / "app" / "static" / "interactive"
+    html = (root / "live.html").read_text()
+    assert "live.js" in html and 'type="password"' in html and "localStorage" not in html and "sessionStorage" not in html
+    if shutil.which("node"):
+        r = subprocess.run(["node", str(Path(__file__).with_name("live_js_check.js")), str(root / "live.js")], capture_output=True, text=True)
+        assert r.returncode == 0 and "live.js ok" in r.stdout, r.stdout + r.stderr
