@@ -587,3 +587,55 @@ async def to_dossier(result: VendorResult, question: str, goals: list[str], poli
     d["vendor"] = {"engine": result.engine, "run_id": result.run_id, "claims": len(result.claims), "verified_by_hoola": ok,
                    "dropped_no_source": len(no_cite), "stop": result.stop, "reported_cost_inr": result.cost_inr}
     return d
+
+
+# ---------------------------------------------------------------- one vendor job, end to end (shared by the background runner and the run-off card)
+async def gather(engine: str, question: str, goals: list[str], pol: "E.Policy", deps: "E.Deps", meter: Any, st: Any, over: dict | None = None,
+                 on_id: Callable[[str], None] = lambda rid: None, on_cost: Callable[[], None] = lambda: None, resume_id: str = "") -> dict[str, Any]:
+    """Gate re-check, price committed on the meter, the vendor run (start or re-attach), then Hoola's own verification -> the dossier.
+    `StoppedByHer` propagates (the caller records the stop)."""
+    ok, why = check(engine, "", st)                         # keys / allow-list / terms / price can change between the ask and the start
+    if not ok:
+        raise VendorError(why)
+    price = float(getattr(st, REGISTRY[engine]["price"]))
+    if not meter.vendor:                                    # a resumed run already carries its vendor line
+        meter.set_vendor(engine, price, False, "the price you set; the vendor has not reported a cost")
+    over = over or {}
+    req = Req(question=question, goals=list(goals), include_domains=list(over.get("include_domains") or pol.include_domains),
+              exclude_domains=list(over.get("exclude_domains") or pol.exclude_domains), after_date=str(over.get("after_date") or pol.after_date),
+              price_inr=price, st=st)
+    result = await run_vendor(engine, req, deps.step, deps.stopped, on_id, resume_id)
+    if result.cost_inr is not None:
+        meter.set_vendor(engine, result.cost_inr, True, "reported by the vendor")
+    on_cost()
+    d = await to_dossier(result, question, goals, pol, deps.fetch, deps.step)
+    d["cost"] = meter.breakdown()                           # page fetches were counted by the step callback as they happened
+    d["stats"]["cost_inr"] = d["cost"].get("total_inr")
+    return d
+
+
+# ---------------------------------------------------------------- which engine is the DEFAULT (v0.478 R7: the run-off's decision, if she applied one)
+def default_file():
+    from ..quality.run import _dir
+    return _dir() / "research_default.json"
+
+
+def read_default() -> dict[str, Any] | None:
+    try:
+        d = json.loads(default_file().read_text())
+        return d if isinstance(d, dict) and d.get("engine") in REGISTRY else None
+    except Exception:       # noqa: BLE001
+        return None
+
+
+def effective_engine(st: Any = None) -> tuple[str, str]:
+    """(engine, why). `research_engine` = "auto" (the default) means the run-off's applied winner, else Hoola's own; any other value is her explicit choice."""
+    from ..config import get_settings
+    st = st or get_settings()
+    eng = str(getattr(st, "research_engine", "auto") or "auto").lower()
+    if eng != "auto":
+        return eng, "set in the settings"
+    d = read_default()
+    if d:
+        return d["engine"], f"the run-off winner applied on {d.get('decided_at', '?')}"
+    return "hoola", "no run-off has been applied: Hoola's own engine"

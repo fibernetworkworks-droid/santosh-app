@@ -113,7 +113,7 @@ class Settings(BaseSettings):
     research_bg_stale_s: int = 180          # a running run that has not heartbeated for this long is picked up again from its checkpoint
     research_bg_tries: int = 3              # ... at most this many starts (the first + restarts)
     research_engine_on: bool = True         # v0.473 R2: the `research_run` tool (Hoola's own research engine) is available
-    research_engine: str = "hoola"          # v0.473 which engine runs it; only "hoola" exists until R6 adds the paid ones
+    research_engine: str = "auto"           # v0.478 R7: "auto" = the run-off winner she applied, else Hoola's own; or name one (hoola | parallel | exa | openai | linkup) - a vendor still needs every R6 gate open
     research_tasks_max: int = 6             # goals in the first round
     research_steps: int = 8                 # model steps one goal may take
     research_pages_per_task: int = 6        # pages one goal may read

@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 def make_router(require_key, current_tenant) -> APIRouter:
     from . import bill, runner, store
+    from . import vendors as V
 
     r = APIRouter(prefix="/api/research", dependencies=[Depends(require_key)])
 
@@ -20,6 +21,20 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.get("/runs")
     async def runs(tenant: str = Depends(current_tenant)):
         return {"runs": await asyncio.to_thread(runner.status, tenant)}
+
+    @r.get("/runoff")
+    async def runoff():
+        """The newest run-off table + the default in force + every engine's gate. Read-only: applying a default is a command of hers."""
+        from ..quality import runoffcard as RO
+
+        def get():
+            card = RO.latest()
+            if card:
+                card["table"], card["decision"] = RO.rebuild(card)
+                card["rows"] = [{k: v for k, v in x.items() if k != "report"} for x in card["rows"]]
+            eng, why = V.effective_engine()
+            return {"latest": card, "history": RO.saved(), "default": {"engine": eng, "why": why, "file": V.read_default()}, "engines": V.status_table()}
+        return await asyncio.to_thread(get)
 
     @r.post("/runs/{run_id}/stop")
     async def stop(run_id: str, tenant: str = Depends(current_tenant)):

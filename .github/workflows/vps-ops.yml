@@ -40,6 +40,7 @@ on:
           - hard_card
           - maps_card
           - research_card
+          - research_runoff_check
           - long_jobs
           - long_card_try
           - long_card
@@ -381,6 +382,12 @@ jobs:
                 echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality research 2>&1 | tail -20'
                 echo 'echo "== live, 4 topics"; cd $CORE && timeout 1500 .venv/bin/python -m app.quality research --live --only official_cpi,rule_gst_einvoice,calc_smartphones,scholarly_rag --label vps-ops 2>&1 | tail -30'
                 echo 'echo "== live, the traps"; cd $CORE && timeout 900 .venv/bin/python -m app.quality research --live --kind trap --label vps-ops 2>&1 | tail -20' ;;
+              research_runoff_check)
+                # v0.478 R7: the FREE part of the run-off - which engines may run (every R6 gate), what the card would cost for the engine alone, the newest saved table and
+                # its decision. A LIVE run-off spends real model / web / vendor money: run it on the VPS with an explicit budget -
+                # python -m app.quality research runoff --engines hoola,parallel --budget-inr 800
+                echo 'cd $CORE && echo "== can it run, and what would it cost"; timeout 120 .venv/bin/python -m app.quality research runoff --check --engines hoola,parallel,exa,openai,linkup 2>&1 | tail -12'
+                echo 'echo "== newest saved run-off"; cd $CORE && timeout 120 .venv/bin/python -m app.quality research runoff --status 2>&1 | tail -20' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.

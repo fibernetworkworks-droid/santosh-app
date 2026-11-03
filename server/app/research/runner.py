@@ -158,35 +158,18 @@ class _StoppedMarker(Exception):
 async def _vendor_job(engine: str, run_id: str, v: dict, deps: E.Deps, pol: E.Policy, st) -> dict:
     """v0.477 R6: start (or RE-ATTACH to) the vendor's run, wait for it, then re-check every claim with Hoola's own fetch. The same dossier as the own engine."""
     from . import vendors
-    tenant, conv, question, goals = v["tenant"], v["conv"], v["question"], list(v["goals"])
     meter = deps.__dict__["_meter"]
-    ok, why = vendors.check(engine, "", st)                      # keys / allow-list / terms / price can change between the ask and the start
-    if not ok:
-        raise vendors.VendorError(why)
-    price = float(getattr(st, vendors.REGISTRY[engine]["price"]))
-    if not meter.vendor:                                         # a resumed run already carries its vendor line
-        meter.set_vendor(engine, price, False, "the price you set; the vendor has not reported a cost")
-    over = v["policy"].get("over") or {}
-    req = vendors.Req(question=question, goals=goals, include_domains=list(over.get("include_domains") or pol.include_domains),
-                      exclude_domains=list(over.get("exclude_domains") or pol.exclude_domains), after_date=str(over.get("after_date") or pol.after_date),
-                      price_inr=price, st=st)
     resume_id = str(((v.get("checkpoint") or {}).get("vendor") or {}).get("run_id") or "")
 
     def on_id(rid: str) -> None:                                 # the vendor's run id is written the moment it exists: a restart re-attaches
         store.save_checkpoint(run_id, {"vendor": {"engine": engine, "run_id": rid}}, {"goals_total": 1, "goals_done": 0, "now": engine})
         store.set_cost(run_id, meter.breakdown())
     try:
-        result = await vendors.run_vendor(engine, req, deps.step, deps.stopped, on_id, resume_id)
+        return await vendors.gather(engine, v["question"], list(v["goals"]), pol, deps, meter, st, over=v["policy"].get("over") or {}, on_id=on_id,
+                                    on_cost=lambda: store.set_cost(run_id, meter.breakdown()), resume_id=resume_id)
     except vendors.StoppedByHer:
         store.finish(run_id, "stopped", None, "", cost=meter.breakdown())
         raise _StoppedMarker()
-    if result.cost_inr is not None:
-        meter.set_vendor(engine, result.cost_inr, True, "reported by the vendor")
-    store.set_cost(run_id, meter.breakdown())
-    d = await vendors.to_dossier(result, question, goals, pol, deps.fetch, deps.step)
-    d["cost"] = meter.breakdown()                       # page fetches were counted by the step callback as they happened
-    d["stats"]["cost_inr"] = d["cost"].get("total_inr")
-    return d
 
 
 async def run_background(run_id: str) -> None:

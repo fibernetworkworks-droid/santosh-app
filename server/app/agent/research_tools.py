@@ -123,10 +123,16 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
     except _bill.ResearchCapped as e:
         raise ToolError(str(e))
     from ..research import vendors as _vend
-    eng = str(engine or getattr(st, "research_engine", "hoola") or "hoola").lower()
+    fell_back = ""
+    if engine:
+        eng = str(engine).lower()
+    else:
+        eng, _why = _vend.effective_engine(st)                   # v0.478 R7: the run-off's applied default, else Hoola's own
     okv, whyv = _vend.check(eng, ctx.tenant_id, st)               # v0.477 R6: a vendor engine runs only when every gate is open
     if not okv:
-        raise ToolError(whyv)
+        if engine or str(getattr(st, "research_engine", "auto")).lower() != "auto":
+            raise ToolError(whyv)                                 # she named it: tell her why it cannot run
+        fell_back, eng = f"The default engine ({eng}) cannot run now: {whyv} Hoola's own engine is used instead.", "hoola"
     over = {"include_domains": include_domains if isinstance(include_domains, list) else None,
             "exclude_domains": exclude_domains if isinstance(exclude_domains, list) else None, "after_date": after_date}
     asked = E._URL.findall(q + " " + " ".join(goals))
@@ -138,7 +144,7 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
         import re as _re
         hi = bool(_re.search(r"(?i)\b(karo|hai|ka|ke|ki|mein|chahiye|batao|aur|kya)\b|[\u0900-\u097F]", q + " " + " ".join(goals)))
         rid = runner.start(ctx.tenant_id, ctx.conversation_id, q or goals[0], goals, {k: v for k, v in over.items() if v}, hi, asked, eng)
-        return {"started": True, "run_id": rid, "goals": len(goals) or 1, "engine": eng,
+        return {"started": True, "run_id": rid, "goals": len(goals) or 1, "engine": eng, **({"engine_note": fell_back} if fell_back else {}),
                 "say": ("The research run has STARTED in the background (it takes 10-40 minutes and survives a restart). Tell her in ONE short "
                         "line, in her language, that it has started and that you will bring the report here when it is done; "
                         "do NOT write any findings now and do not call research_run again. Her stop word is Rokiye."),

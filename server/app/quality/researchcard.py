@@ -442,15 +442,23 @@ def verdicts() -> dict[str, dict]:
         return {}
 
 
-def set_verdict(ask_id: str, verdict: str, note: str = "") -> dict:
+def set_verdict(ask_id: str, verdict: str, note: str = "", engine: str = "") -> dict:
+    """Her verdict on one ask. With `engine` it is about THAT engine's report (the run-off); without, about the ask in general."""
     if verdict not in ("right", "wrong"):
         raise ValueError("verdict is right or wrong")
     if ask_id not in {a["id"] for a in ASKS}:
         raise ValueError("no such research ask: " + ask_id)
+    key = f"{engine}:{ask_id}" if engine else ask_id
     v = verdicts()
-    v[ask_id] = {"verdict": verdict, "note": note[:400], "at": int(time.time()), "set": RESEARCH_SET_V}
+    v[key] = {"verdict": verdict, "note": note[:400], "at": int(time.time()), "set": RESEARCH_SET_V, **({"engine": engine} if engine else {})}
     _verdict_path().write_text(json.dumps(v, ensure_ascii=False, indent=1))
-    return v[ask_id]
+    return v[key]
+
+
+def verdict_for(ask_id: str, engine: str = "") -> dict | None:
+    """Her verdict on this ask for this engine's report, else her general one for the ask."""
+    v = verdicts()
+    return v.get(f"{engine}:{ask_id}") if engine and f"{engine}:{ask_id}" in v else v.get(ask_id)
 
 
 # ---------------------------------------------------------------- picking, saving, printing
