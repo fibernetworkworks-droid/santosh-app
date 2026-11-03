@@ -46,8 +46,8 @@ def quiet_bus(bz):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.470.0"
-    assert "0.470.0+515" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.471.0"
+    assert "0.471.0+516" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_queue_bound_and_drop_oldest(quiet_bus):
@@ -251,7 +251,8 @@ def test_watchdog_stays_silent_on_signalless_shutdown():
 def test_vps_ops_restarts_carry_kill_timeout():
     yml = (REPO / ".github" / "workflows" / "vps-ops.yml").read_text()
     restarts = [ln for ln in yml.splitlines() if "pm2 restart santosh" in ln]
-    assert len(restarts) == 4                           # ack_refresh + deploy + rollback_stable + rea_setup (v0.210.0)
+    assert len(restarts) == 6                           # ack_refresh + deploy + rollback_stable + rea_setup (v0.210.0)
+                                                        # + hf_setup (v0.471.0 HOOLA FRAMES) + lab_setup (v0.461.0)
     for ln in restarts:
         assert "--kill-timeout 12000" in ln, ln         # default 1600 ms was the SIGKILL inside the wait
 

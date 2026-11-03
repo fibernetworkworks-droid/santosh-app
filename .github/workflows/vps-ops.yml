@@ -35,6 +35,7 @@ on:
           - web
           - web_fix
           - rea_setup
+          - hf_setup
           - studio_apis
           - tool_card
           - hard_card
@@ -337,6 +338,33 @@ jobs:
                 echo 'print(s)'
                 echo 'assert s["enabled"] and s["apk"], "rea_khoj not ready on the live app"'
                 echo 'print("rea_khoj READY: tools=%d apk=%s" % (s["tools"], s["apk"]))'
+                echo 'PY'
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+              hf_setup)
+                # v0.471 HOOLA FRAMES: install HeyGen's open-source HyperFrames engine (pinned 0.9.6,
+                # Apache 2.0) + pre-warm its headless Chromium + wire FRAMES_* into the santosh-core .env
+                # + restart santosh so the hoola_frames tool can render real MP4s from chat. Needs node >= 22
+                # + npm + ffmpeg with libass (already from setup_video.sh). A standalone Node 22 lives fine in
+                # ~/apps/node22 and never touches pm2's runtime; install_hyperframes.sh tells the owner plainly
+                # what is missing and the deploy user has no passwordless sudo, so the owner runs apt installs
+                # from the DigitalOcean console and re-runs this job.
+                echo 'set -e'
+                echo 'echo "== node + ffmpeg (pre-install)"; node --version 2>&1 | head -1; npm --version 2>&1 | head -1; command -v ffmpeg >/dev/null && ffmpeg -version 2>&1 | head -1 || echo "ffmpeg missing: owner runs in DO console: sudo apt install -y ffmpeg"'
+                echo 'echo "== HyperFrames pre-existing?"; [ -x "$HOME/apps/hoola-frames-cli/node_modules/.bin/hyperframes" ] && "$HOME/apps/hoola-frames-cli/node_modules/.bin/hyperframes" --version 2>&1 | head -1 || echo "HyperFrames not yet installed"'
+                echo 'echo "== run install_hyperframes.sh (idempotent; pinned 0.9.6; browser pre-warm)"; bash $REPO/server/deploy/install_hyperframes.sh 2>&1 | tail -20'
+                echo 'echo "== node version on PATH"; echo "node: $(node -v 2>/dev/null || echo MISSING)"; case "$(node -v 2>/dev/null)" in v2[3-9]*|v22*) echo "node ok";; *) echo "NODE 22+ MISSING: owner runs in DO console: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs";; esac'
+                echo 'echo "== wire .env (idempotent)"; touch $CORE/.env'
+                echo 'grep -q "^FRAMES_BIN=" $CORE/.env || { printf "FRAMES_BIN=%s/apps/hoola-frames-cli/node_modules/.bin/hyperframes\n" "$HOME" >> $CORE/.env; printf "FRAMES_ROOT=%s/apps/hoola-frames\n" "$HOME" >> $CORE/.env; printf "FRAMES_TIMEOUT_S=900\n" >> $CORE/.env; printf "FRAMES_DISK_CAP_GB=10\n" >> $CORE/.env; echo added; }'
+                echo 'echo "== .env FRAMES_*"; grep -E "^FRAMES_" $CORE/.env | sed -E "s/(=).*/\1<set>/" 2>/dev/null || echo "no FRAMES_ keys"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?'
+                echo 'echo "== health"; health'
+                echo 'echo "== hoola_frames status (live app, FRAMES_BIN forced for the check only)"; cd $CORE && FRAMES_BIN="$HOME/apps/hoola-frames-cli/node_modules/.bin/hyperframes" FRAMES_ROOT="$HOME/apps/hoola-frames" timeout 120 .venv/bin/python - <<PY 2>&1 | tail -8'
+                echo 'from app.studio import frames'
+                echo 's = frames.status()'
+                echo 'print({k: s.get(k) for k in ("enabled", "bin", "pin", "version", "busy")})'
+                echo 'assert s["enabled"], "hoola_frames not ready on the live app"'
+                echo 'print("hoola_frames READY: pin=%s version=%s" % (s.get("pin"), s.get("version")))'
                 echo 'PY'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               studio_apis)
