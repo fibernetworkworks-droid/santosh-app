@@ -225,6 +225,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.475 HOOLA FRAMES on the web console (owner: "DEPLOYE IT TO WEB CONSOLE ALSO"; collision #9 - the dev's SCRAPLING took 0.474.0, both kept, mine re-versioned): the console could already RECEIVE a frames MP4 (pc_file card = inline <video> in results.js, video tab in panel.js) but nothing OFFERED the free engine - workspace.js "Video & motion" only knew the paid video_studio path and the Kaam catalog had no frames row. Now: an Engine choice in the video form (HOOLA FRAMES animated/free/~2 min DEFAULT vs AI film storyboard-first/paid; voiceover select only for film - the free engine is honest about no AI voiceover; per-engine submit label, tool line and note), the frames request points the model at app/studio/frames_contract.md with action=check -> fix -> action=render and "never claim ready before render succeeds", and kaam.js "Photos & video" gains the "HOOLA FRAMES video" job (free animated MP4, ~2 min). Chat itself needed nothing - same brain, same tools. Server-only; pubspec 0.475.0+520, stamps ?v=0.475.0 x20, pins ->0.475.0 in 146 suites (the dev's 76 full-string +519 pins moved coherently to +520). Tests test_v0475_console_frames.py 14.
 - v0.474 SCRAPLING (owner: "NOW DEPLOY THIS SCRAPER FOR HOOLA --- THUS HOOLA CAN SCRAP ANY WEBSITE SMOOTHLY"): new Scrapling-powered tool module `agent/scrape_tools.py` - 5 tools beside web_tools: scrape_page (fast TLS-impersonated HTTP read, markdown/text, no browser), scrape_extract (css/xpath -> JSON rows with a fields map, ADAPTIVE per-tenant element memory in data/scraping/<tenant>/elements.db that survives site redesigns, similar= expands one card to its siblings), scrape_many (up to 15 urls), scrape_site (polite same-host BFS map, robots respected), scrape_stealth (real-browser last resort for Cloudflare/anti-bot/JS-only, OFF by default behind scrape_stealth_enabled + one-time `scrapling install`, semaphore(1) - MEM-CURE RAM discipline: default engine is pure HTTP). SSRF guard (public IPs only, metadata/loopback/RFC1918 refused), robots.txt gate (scrape_respect_robots, default on), caps everywhere, outputs masked like every tool. Dep scrapling[fetchers,rag]>=0.5 (BSD-3-Clause). Full section in docs/HISTORY.md "v0.474.0 SCRAPLING".
 - v0.471 HOOLA FRAMES (owner: "GO and start Phase 0 + Phase 1" on docs/HYPERFRAMES_PLAN.md): the avatar composes and renders a REAL MP4 from chat - ONE new tool `hoola_frames` (action=render|check|timeline|snapshot|add|status) on the rea_khoj shape; the model writes the HTML composition (data attributes + one paused GSAP timeline), `app/studio/frames.py` runs HeyGen's open-source HyperFrames engine (Apache 2.0, PINNED hyperframes@0.9.6, installed by the new vps-ops `hf_setup` job / `install_hyperframes.sh`) - deterministic frame-clock seek -> Chrome capture -> FFmpeg; Phase 0 measured 4 s 1080p30 in 9.4 s (~13 fps on 4 vCPU). Discipline: ONE render at a time, nice -n 19, process group killed on timeout, per-tenant sha1 LRU projects + 10 GB janitor, `check --json` determinism gate first; assets are HER files owner-resolved; the MP4 lands as a chat file card. Voice: VOICE_TOOL_NAMES + VOICE_VIA_KAAM (never declared to Live). Safety: model-authored HTML only, no HeyGen keys, nothing she has no right to use. Tests test_v0_frames.py 22. Server-only; pubspec 0.471.0+516, stamps ?v=0.471.0.
 - v0.470 GOOGLE MAPS Phase 11 PROOF (all 11 phases now addressed): the MAPS card `app/quality/maps_asks.py` + `mapscard.py` - 26 asks whose answers are CHECKABLE (4 geo computed from the coordinates the ask carries, so no remembered world fact; 17 tool-choice; 5 licence / cap guards, the cap one proved by running it), every maps tool registered AND reachable 20/20, rupees per answer from mapsbill; `python -m app.quality maps [--live]`, GET /api/quality/maps, vps-ops `maps_card`. Free card today: 26/26 in view, guards 5/5, ~Rs 23.67 for one of every answer. NOT VERIFIED: the live card has never run (needs her Maps key on the VPS); read `docs/MAPS_PLAN.md` §11 for the four things only she can unblock.
@@ -921,3 +922,36 @@ Version 0.473.0 (APP_VERSION story, pubspec 0.473.0+518, pins ->0.473.0 in 144 s
 0.221.0 → 0.473.0 on rebase — the dev's v0.222…v0.472 SEMANTIC DESKTOP stretch took ~250 numbers
 first, EIGHTH collision, both works kept); Mera PC freeze respected; desktop untouched —
 server-only deploy, old APKs keep working.
+
+## v0.475.0 HOOLA FRAMES on the web console — the free video engine is now OFFERED where the user already is (owner: "DEPLOYE IT TO WEB CONSOLE ALSO"; collision #9: the dev's SCRAPLING took 0.474.0+519 first, both works kept, mine re-versioned 0.475.0+520)
+
+What was already true (no change needed): hoola_frames is a server-side tool on the same chat brain, so console chat could
+always ask for a video; the delivered pc_file card already renders as an inline <video> in results.js (fetched with the
+Bearer token into a blob: URL, only for the media the server marks inline) and opens as a video tab in panel.js
+(media() maps .mp4 -> video). The gap was OFFERING: the Creative workspace "Video & motion" form hard-routed to the PAID
+video_studio storyboard flow, and the Kaam "What Santosh can do" catalog had no frames row - a console user would never
+learn the free engine exists.
+
+Three client-side touch-ups (server untouched, already live since v0.471.0):
+1. workspace.js video mode grows an ENGINE choice, HOOLA FRAMES (animated, free, ~2 min) as the DEFAULT, "AI film"
+   (storyboard first, paid) as the opt-in. The Voiceover select renders only for film - the free engine is honest: it
+   cannot fake a voice yet. Submit label, tool line and the note under the form all speak per engine ("Render video ·
+   free · ~2 min" / "It cannot film real people, and voiceover needs the AI film engine"). The frames request tells the
+   model to write the composition per app/studio/frames_contract.md (data-start/data-duration clips, one paused GSAP
+   timeline on window.__timelines, no network fetch / wall clock / Math.random, safe margins, font fallbacks), copy the
+   attached reference images into the project as assets, run action=check, fix every error, then action=render, and put
+   the MP4 file card in chat - never claiming ready before render succeeds. The film branch is byte-identical to before,
+   just gated on vengine==='film'. A data-vengine chip handler preserves the draft (take() first) and redraws.
+2. kaam.js "Photos & video" group gains the "HOOLA FRAMES video" job (Free animated MP4, ~2 min, example "Is product ka
+   15 second ka Diwali sale video banao (animated)", icon 📼) right beside AI video (Studio) so free vs paid is visible.
+3. Chat itself: nothing - same brain, same tool registry, same mailbox delivery.
+
+Version ritual 0.475.0 (APP_VERSION story, pubspec 0.475.0+520, console ?v=0.475.0 x20, pins ->0.475.0 in 146 suites;
+the dev's 76 full-string 0.474.0+519 pins moved coherently to 0.475.0+520 in the same sweep - no stale build number this
+time, the v0.473 +517 lesson applied at sweep time). Tests: NEW test_v0475_console_frames.py (14): engine chips + frames
+default, voiceover-only-for-film, the frames request pillow texts (contract pointer, check-then-render, never-claim-ready),
+film branch intact and gated, per-engine labels + note, take()/chip-handler wiring, the old storyboard hint gone, kaam row
++ icon beside studio, receive-side pins (results.js inline video, panel.js .mp4), stamp count 20 @ 0.475.0, APP_VERSION
+story, pubspec. KNOWN PRE-EXISTING RED (dev's, stash-proven on pristine HEAD, untouched):
+test_v142_console.py::test_conversations_recent_and_isolation expects two conversations in the console list and gets one -
+fails on pristine HEAD too. Desktop untouched - server-only deploy, old APKs keep working.
