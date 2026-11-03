@@ -856,6 +856,7 @@ def init_db(url: str | None = None):
     from . import ownmap as _ownmap  # noqa: F401  (v0.468 her own pins / areas)
     from .agent import research_plan as _research_plan  # noqa: F401  (v0.472 research plans waiting for her Haan)
     from .research import store as _research_store  # noqa: F401  (v0.475 background research runs)
+    from .research import watch as _research_watch  # noqa: F401  (v0.480 watched research topics)
     from .courier import models as _courier  # noqa: F401
     from .drivers import models as _drivers  # noqa: F401
     from .logistics import models as _logistics  # noqa: F401

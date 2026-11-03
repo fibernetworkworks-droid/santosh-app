@@ -515,8 +515,9 @@ async def research_jobs() -> None:
         return
     _rs_last = time.time()
     try:
-        from .research import runner
+        from .research import runner, watch
         await runner.tick()
+        await watch.tick()                              # v0.480 R9: watched topics that are due
     except Exception:
         log.exception("research tick failed")
 

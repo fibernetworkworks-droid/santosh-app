@@ -36,6 +36,16 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return {"latest": card, "history": RO.saved(), "default": {"engine": eng, "why": why, "file": V.read_default()}, "engines": V.status_table()}
         return await asyncio.to_thread(get)
 
+    @r.get("/watches")
+    async def watches(tenant: str = Depends(current_tenant)):
+        from . import watch as W
+
+        def get():
+            return [{"id": w["id"], "question": w["question"][:160], "every_days": w["every_days"], "status": w["status"], "engine": w["engine"], "checks": w["checks"],
+                     "changes": w["changes"], "next_check": w["next_run_at"].isoformat() if w["next_run_at"] else "", "note": w["note"],
+                     "spent_this_month_inr": W.spent_this_month(w["id"], tenant), "month_cap_inr": w["month_cap_inr"]} for w in W.list_for(tenant)]
+        return {"watches": await asyncio.to_thread(get)}
+
     @r.post("/runs/{run_id}/stop")
     async def stop(run_id: str, tenant: str = Depends(current_tenant)):
         got = await asyncio.to_thread(runner.stop, tenant, run_id)

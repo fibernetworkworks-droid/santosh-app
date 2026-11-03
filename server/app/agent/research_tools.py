@@ -51,6 +51,23 @@ RESEARCH_TOOLS = [
          "title": {"type": "string", "description": "Optional title; default is taken from her question"},
          "include_cost": {"type": "boolean", "description": "Show what the research cost in 'How this was made' (default true; false for a document she will give to a client)"}},
          "required": ["report"]}},
+    {"name": "research_watch", "description": (
+        "WATCH a research topic: it re-runs on a schedule (daily / weekly / fortnightly / monthly) and tells her ONLY what changed - a figure that moved, something new, something no "
+        "longer seen. A check that changed nothing says nothing. A watch costs money every time it runs, so: action=add FIRST returns a proposal with the cost per run, per month and the "
+        "ceilings - tell her those numbers and ask; only after she says yes call action=add again with confirm=true. Other actions: list (her watches, last check, last change, "
+        "spent this month), pause, resume, delete (needs confirm=true), check_now (one check now), result (the change digest of a finished check - used when a watch woke you; write a SHORT "
+        "message from it). At most 3 active watches."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["add", "list", "pause", "resume", "delete", "check_now", "result"]},
+         "question": {"type": "string", "description": "add: the topic as a research question"},
+         "sub_questions": {"type": "array", "items": {"type": "string"}, "description": "add: the 4-6 sub-questions (the approved plan's if she approved one)"},
+         "every": {"type": "string", "description": "add: daily | weekly | fortnightly | monthly, or a number of days (minimum 1). Default weekly"},
+         "engine": {"type": "string", "enum": ["hoola", "parallel", "exa", "openai", "linkup"], "description": "add: default Hoola's own"},
+         "include_domains": {"type": "array", "items": {"type": "string"}}, "exclude_domains": {"type": "array", "items": {"type": "string"}},
+         "baseline": {"type": "string", "enum": ["last", "run"], "description": "add: 'last' = start from the research just delivered in this chat (first check after one period); default 'run' = the first check runs now and sets the baseline quietly"},
+         "confirm": {"type": "boolean", "description": "add / delete: true ONLY after she said yes"},
+         "id": {"type": "string", "description": "the watch id (pause / resume / delete / check_now)"}, "run_id": {"type": "string", "description": "result: the run id from the wake text"}},
+         "required": ["action"]}},
     {"name": "research_status", "description": (
         "A background research run: check = progress (goals done, pages read), result = the DOSSIER of a finished run (write the report from it "
         "- same rules as research_run), stop = Rokiye. Use it when she asks how the research is going, and when a research run has finished "
@@ -59,7 +76,7 @@ RESEARCH_TOOLS = [
                                                        "id": {"type": "string", "description": "the run id; empty = the latest run of this chat"}},
                       "required": ["action"]}},
 ]
-RESEARCH_LABELS = {"research_run": "Research chala raha hoon (pages padh raha hoon)", "research_status": "Research ki haalat dekh raha hoon", "research_document": "Research ka document bana raha hoon"}
+RESEARCH_LABELS = {"research_run": "Research chala raha hoon (pages padh raha hoon)", "research_status": "Research ki haalat dekh raha hoon", "research_document": "Research ka document bana raha hoon", "research_watch": "Research watch dekh raha hoon"}
 
 _ALLOWED = ("owner", "goal", "routine", "wake")
 
@@ -267,4 +284,108 @@ async def research_document(ctx: Ctx, report="", kinds=None, title="", include_c
                      + "; ".join(built["notes"]) + ". Tell her in one or two lines what is in it and, plainly, what could not be confirmed.").strip()}
 
 
-RESEARCH_HANDLERS = {"research_run": research_run, "research_status": research_status, "research_document": research_document}
+def _every_days(every: Any) -> int:
+    from ..research import watch as W
+    e = "weekly" if every is None or str(every).strip() == "" else str(every).strip().lower()
+    if e in W.FREQ:
+        return W.FREQ[e]
+    try:
+        return max(W.MIN_DAYS, int(float(e)))
+    except ValueError:
+        raise ToolError("every: daily | weekly | fortnightly | monthly, or a number of days.")
+
+
+async def research_watch(ctx: Ctx, action="list", question="", sub_questions=None, every="weekly", engine=None, include_domains=None, exclude_domains=None,
+                         baseline="", confirm=False, id="", run_id="", **_) -> dict[str, Any]:
+    """v0.480 R9 NIGRANI: watched research topics. Costs money on a schedule, so creation needs her yes (`confirm`)."""
+    import re as _re
+    from ..config import get_settings
+    from ..research import bill, runner, vendors
+    from ..research import engine as E
+    from ..research import watch as W
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    if actor not in _ALLOWED and not actor.startswith("approved:"):
+        raise ToolError("Research watch sirf malik chala sakta hai.")
+    st = get_settings()
+    action = str(action or "list").lower()
+    tenant, conv = ctx.tenant_id, ctx.conversation_id
+    if action == "list":
+        ws = W.list_for(tenant)
+        return {"watches": [{"id": w["id"], "question": w["question"][:120], "every_days": w["every_days"], "status": w["status"], "engine": w["engine"],
+                             "next_check": w["next_run_at"].isoformat() if w["next_run_at"] else "", "checks": w["checks"], "changes": w["changes"],
+                             "last_checked": w["last_checked_at"].isoformat() if w["last_checked_at"] else "",
+                             "last_change": w["last_change_at"].isoformat() if w["last_change_at"] else "", "spent_this_month_inr": W.spent_this_month(w["id"], tenant),
+                             "month_cap_inr": w["month_cap_inr"], "note": w["note"]} for w in ws],
+                "note": "" if ws else "Abhi koi topic watch par nahi hai."}
+    if action == "add":
+        q = str(question or "").strip()
+        goals = [str(x).strip() for x in (sub_questions or []) if str(x).strip()] if isinstance(sub_questions, list) else []
+        if not q or not goals:
+            raise ToolError("Watch ke liye question aur sub_questions chahiye.")
+        eng = str(engine or "hoola").lower()
+        ok, why = vendors.check(eng, tenant, st)
+        if not ok:
+            raise ToolError(why)
+        days = _every_days(every)
+        per, src = W.estimate_run_inr(tenant, len(goals))
+        c = bill.caps()
+        runs_month = max(1.0, 30.0 / days)
+        if not confirm:
+            return {"proposal": True, "question": q[:200], "every_days": days, "engine": eng, "goals": len(goals), "est_per_check_inr": per, "estimate_source": src,
+                    "est_per_month_inr": round(per * runs_month, 0) if per else None, "month_cap_inr": float(getattr(st, "research_watch_month_inr", 300.0)),
+                    "run_ceiling_inr": c["run_inr"], "daily_ceiling_inr": c["day_inr"],
+                    "say": ("Tell her what this will cost - per check and per month (if the estimate is null say plainly that the cost is not measured yet and a check is capped at "
+                            f"Rs {c['run_inr']:.0f}) - that a check that finds nothing new says nothing, and that it pauses itself at Rs "
+                            f"{float(getattr(st, 'research_watch_month_inr', 300.0)):.0f} a month. Ask for her yes. Only after she says yes call research_watch add again with confirm=true.")}
+        hi = bool(_re.search(r"(?i)\b(karo|hai|ka|ke|ki|mein|chahiye|batao|aur|kya)\b|[\u0900-\u097F]", q))
+        base = E.recall(conv) if str(baseline) == "last" else None
+        if str(baseline) == "last" and (base is None or not base.get("fields")):
+            raise ToolError("Is chat mein abhi koi research nahi hai jisse baseline bane - baseline mat do, pehla check abhi chal jayega.")
+        over = {"over": {k: v for k, v in {"include_domains": include_domains if isinstance(include_domains, list) else None,
+                                           "exclude_domains": exclude_domains if isinstance(exclude_domains, list) else None}.items() if v},
+                "asked": E._URL.findall(q + " " + " ".join(goals))}
+        try:
+            w = W.add(tenant, conv, q, goals, days, eng, over, hi, base)
+        except ValueError as e:
+            raise ToolError(str(e))
+        return {"created": True, "id": w["id"], "every_days": days, "first_check": "after one period (the research just delivered is the baseline)" if base else "now (it sets the baseline quietly)",
+                "say": "Tell her in one line: the topic is watched, how often, and that she will only hear when something changes. She can say 'watch rok do' any time."}
+    wid = str(id or "").strip()
+    if action in ("pause", "resume", "delete", "check_now"):
+        w = W.get(wid)
+        if w is None or w["tenant"] != tenant:
+            raise ToolError("Yeh watch nahi mili (research_watch list se id lo).")
+        if action == "delete" and not confirm:
+            return {"proposal": True, "say": "Ask her to confirm deleting this watch, then call again with confirm=true."}
+        if action == "check_now":
+            try:
+                bill.preflight(tenant)
+            except bill.ResearchCapped as e:
+                raise ToolError(str(e))
+            ok, why = vendors.check(w["engine"], tenant, st)
+            if not ok:
+                raise ToolError(why)
+            rid = runner.start(tenant, w["conv"] or conv, w["question"], w["goals"], w["over"].get("over") or {}, bool(w["hi"]), w["over"].get("asked") or [], w["engine"], watch=wid)
+            from ..db import session as _s
+            with _s() as s:
+                row = s.get(W.ResearchWatch, wid)
+                row.last_run_id = rid
+            return {"started": True, "run_id": rid, "say": "A check is running in the background; she hears only if something changed."}
+        try:
+            W.set_status(wid, tenant, {"pause": "paused", "resume": "active", "delete": "deleted"}[action], "paused by her" if action == "pause" else "")
+        except ValueError as e:
+            raise ToolError(str(e))
+        return {"done": action, "id": wid}
+    if action == "result":
+        got = W.result_for(tenant, str(run_id or "").strip())
+        if got is None:
+            raise ToolError("Is run ka badlaav-digest nahi mila (run_id wake text se lo).")
+        E.remember(conv, got["check"])                      # the change message is checked against the new run + the earlier values
+        return {"digest": got["digest"], "changed": len(got["diff"]["changed"]), "new": len(got["diff"]["new"]), "not_seen": len(got["diff"]["gone"]),
+                "say": ("Write a SHORT message (3-8 lines) in her language from this digest only: what changed (earlier value -> now, with the period), what is new, what was not seen "
+                        "this time (say 'not seen', never 'changed'). Cite the new values with [n]; write an earlier value without a source number and with the word 'earlier' / 'pehle'. "
+                        "Do not give reasons for a change that no note states. End by offering the full report (research_status result) or stopping the watch.")}
+    raise ToolError("action: add | list | pause | resume | delete | check_now | result")
+
+
+RESEARCH_HANDLERS = {"research_run": research_run, "research_status": research_status, "research_document": research_document, "research_watch": research_watch}

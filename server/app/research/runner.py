@@ -30,14 +30,22 @@ from . import store
 log = logging.getLogger("santosh.research.runner")
 
 REPORT_MARK = "<research_report_due"
+CHANGE_MARK = "<research_change_due"
 STATS = {"started": 0, "resumed": 0, "done": 0, "failed": 0, "stopped": 0}
 _RUNNING: set[str] = set()
 _BG: set = set()
 _deps_factory = None            # tests replace it: (ctx, settings) -> E.Deps
 
 
+def is_change_due(text: str) -> bool:
+    """The wake text of a WATCHED topic's change: a short message that cites [n] sources - not a report with a links list."""
+    return CHANGE_MARK in str(text or "")
+
+
 def is_report_due(text: str) -> bool:
-    return REPORT_MARK in str(text or "")
+    """A wake text that asks the brain to WRITE a research message (a report, or the change message of a watch) - that turn is a held + checked answer."""
+    s = str(text or "")
+    return REPORT_MARK in s or CHANGE_MARK in s
 
 
 # ---------------------------------------------------------------- narration in her language
@@ -64,10 +72,11 @@ def progress_text(p: dict, hi: bool) -> str:
 
 # ---------------------------------------------------------------- start / stop / status
 def start(tenant: str, conv: str, question: str, goals: list[str], over: dict | None = None, hi: bool = True,
-          asked: list[str] | None = None, engine: str = "hoola") -> str:
-    rid = store.create(tenant, conv, question, goals, {"over": over or {}, "hi": hi, "asked": asked or [], "engine": engine or "hoola"})
+          asked: list[str] | None = None, engine: str = "hoola", watch: str = "") -> str:
+    rid = store.create(tenant, conv, question, goals, {"over": over or {}, "hi": hi, "asked": asked or [], "engine": engine or "hoola", **({"watch": watch} if watch else {})})
     STATS["started"] += 1
-    _publish(conv, rid, question, "queued", "shuru ho raha hai" if hi else "starting")
+    if not watch:                                    # v0.480 R9: a scheduled check of a watched topic is quiet - no start line in her chat
+        _publish(conv, rid, question, "queued", "shuru ho raha hai" if hi else "starting")
     return rid
 
 
@@ -93,7 +102,7 @@ def _publish(conv: str, rid: str, question: str, status: str, say: str, stage: s
 
 
 # ---------------------------------------------------------------- one run
-def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: int = 0, base: dict | None = None) -> E.Deps:
+def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: int = 0, base: dict | None = None, quiet: bool = False) -> E.Deps:
     from ..agent.tools import Ctx
     if _deps_factory is not None:
         d = _deps_factory(Ctx(tenant_id=tenant, conversation_id=conv, actor="owner"), settings)
@@ -117,8 +126,9 @@ def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: 
         txt = line(kind, hi, g, n, detail)
         prog["now"] = txt
         try:
-            bus.publish(conv, "step", {"tool": "research", "label": txt, "state": "running", "id": f"rs-{run_id[-6:]}-{g}",
-                                       "args": {"goal": goal[:120]}})
+            if not quiet:
+                bus.publish(conv, "step", {"tool": "research", "label": txt, "state": "running", "id": f"rs-{run_id[-6:]}-{g}",
+                                           "args": {"goal": goal[:120]}})
         except Exception:       # noqa: BLE001
             pass
         if time.time() - last["t"] > 5:          # heartbeat + progress, not a DB write per step
@@ -133,7 +143,8 @@ def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: 
                      "pages": len(cp.get("pages") or {}), "notes": sum(len(r.get("notes", [])) for r in results)})
         store.save_checkpoint(run_id, cp, dict(prog))
         store.set_cost(run_id, meter.breakdown())
-        _publish(conv, run_id, cp.get("question", ""), "running", progress_text(prog, hi), stage=progress_text(prog, hi))
+        if not quiet:
+            _publish(conv, run_id, cp.get("question", ""), "running", progress_text(prog, hi), stage=progress_text(prog, hi))
 
     def stopped() -> bool:
         v = store.get(run_id)
@@ -172,6 +183,17 @@ async def _vendor_job(engine: str, run_id: str, v: dict, deps: E.Deps, pol: E.Po
         raise _StoppedMarker()
 
 
+def _watch_done(run_id: str, status: str) -> None:
+    """The run of a watched topic ended: compare with the last snapshot; only a material change wakes the brain."""
+    try:
+        from . import watch
+        v = store.get(run_id)
+        if v is not None:
+            watch.on_run_done({**v, "id": run_id}, status, v.get("dossier"))
+    except Exception:       # noqa: BLE001
+        log.exception("watch bookkeeping failed for %s", run_id)
+
+
 async def run_background(run_id: str) -> None:
     """One persisted run end to end. Never raises (except CancelledError); every outcome is recorded and reported."""
     from ..config import get_settings
@@ -182,12 +204,13 @@ async def run_background(run_id: str) -> None:
     tenant, conv, question = v["tenant"], v["conv"], v["question"]
     hi = bool(v["policy"].get("hi", True))
     engine = str(v["policy"].get("engine") or "hoola")
+    watch_id = str(v["policy"].get("watch") or "")
     _RUNNING.add(run_id)
     store.set_status(run_id, "running", only_from=("queued", "running"))
     try:
         pol = E.Policy.from_settings(st, bg=True, **(v["policy"].get("over") or {}))
         goals = list(v["goals"])
-        deps = _build_deps(tenant, conv, run_id, hi, st, total=(1 if engine != "hoola" else (len(goals) or 1)), base=v.get("cost") or None)
+        deps = _build_deps(tenant, conv, run_id, hi, st, total=(1 if engine != "hoola" else (len(goals) or 1)), base=v.get("cost") or None, quiet=bool(watch_id))
         if v["tries"] > 1 and v["checkpoint"]:
             STATS["resumed"] += 1
         from .. import usage
@@ -206,8 +229,15 @@ async def run_background(run_id: str) -> None:
         if s["pages_read"] == 0 and s["verified_notes"] == 0:
             store.finish(run_id, "failed", d, "no readable pages were found", cost=cost)
             STATS["failed"] += 1
-            _publish(conv, run_id, question, "failed",
-                     "koi padhne layak page nahi mila" if hi else "no readable pages were found")
+            if watch_id:
+                _watch_done(run_id, "failed")
+            else:
+                _publish(conv, run_id, question, "failed",
+                         "koi padhne layak page nahi mila" if hi else "no readable pages were found")
+        elif watch_id:                                                   # v0.480 R9: a watched topic - only a material change reaches her
+            store.finish(run_id, "done", d, cost=cost)
+            STATS["done"] += 1
+            _watch_done(run_id, "done")
         else:
             store.finish(run_id, "done", d, cost=cost)
             STATS["done"] += 1
@@ -224,7 +254,10 @@ async def run_background(run_id: str) -> None:
         log.exception("background research %s failed", run_id)
         store.finish(run_id, "failed", None, f"{type(e).__name__}: {str(e)[:200]}")
         STATS["failed"] += 1
-        _publish(conv, run_id, question, "failed", "research beech mein ruk gaya" if hi else "the research stopped part-way")
+        if watch_id:
+            _watch_done(run_id, "failed")
+        else:
+            _publish(conv, run_id, question, "failed", "research beech mein ruk gaya" if hi else "the research stopped part-way")
     finally:
         _RUNNING.discard(run_id)
 
