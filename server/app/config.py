@@ -434,6 +434,10 @@ class Settings(BaseSettings):
     coder_delegate_max_children: int = 3   # concurrent child agents (Hermes 10; tightened for a voice box)
     coder_delegate_timeout_s: int = 120    # per-child hard timeout (Hermes None; unbounded is wrong here)
 
+    # --- HOOLA SMART HOME (v0.479): Home Assistant REST - ghar ka control, HOME gate PC se alag hai ---
+    home_control: bool = False              # the HOME gate (default OFF - bake on the VPS, then flip to true)
+    home_assistant_url: str = ""            # e.g. http://192.168.1.10:8123 (the HA base URL, no trailing slash)
+    home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""
     email_password: str = ""                # app password (Gmail/Outlook/Zoho "app password")

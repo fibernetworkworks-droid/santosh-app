@@ -252,6 +252,20 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "desk2": ("desk",),
     "team": ("agents", "agent lagao", "agent banao", "team banao", "team laga", "crew", "deploy",
              "parallel", "kai agents", "multiple agents", "agents lagao", "madadgar dal", "team se karo"),
+    # v0.479 HOOLA SMART HOME: ghar ke devices (Home Assistant). Fridge / geyser words bhi yahin
+    # admit hote hain TAAKI Hoola politely refuse kar sake (read-only guard app/home.py mein).
+    "home": ("home assistant", "smart home", "smart bulb", "smart light", "smart plug", "smart speaker",
+             "ghar ki light", "ghar ki lights", "ghar ka", "ghar ke device", "ghar ke devices",
+             "light on", "light off", "light band", "light jalao", "light bujha", "lights band", "lights on",
+             "bulb", "led strip", "dim ", "mood light",
+             "pankha", "fan chala", "fan band", "fan on", "fan off", "fan band karo",
+             "ac chala", "ac band", "ac on", "ac off", "ac lagao", "ac temperature", "ac 24", "ac 22", "ac 26",
+             "thermostat", "hvac", "temperature set",
+             "curtain", "curtains", "parda", "parde", "blind", "blinds", "shutter", "shutters",
+             "taala", "lock khol", "lock kar", "door lock", "main door",
+             "home_devices", "home_state", "home_on", "home_off", "home_link",
+             "fridge", "refrigerator", "washing machine", "geyser", "washer",
+             "home assistant link", "smart plug on", "device band karo", "device chalao", "saari lights"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys

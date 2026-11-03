@@ -911,6 +911,8 @@ def init_db(url: str | None = None):
     from . import turn_inbox as _turn_inbox  # noqa: F401  (v0.192.0 the durable accepted-message inbox - registered
         # HERE on day one, the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
+    from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
+        # HERE on day one AND self-healing via home.ensure_table(), same lesson)
     from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session
         # log - registered HERE on day one AND self-healing via eventlog.ensure_table(), same lesson)
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'

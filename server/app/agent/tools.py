@@ -1041,6 +1041,17 @@ TOOL_LABELS.update(DELEGATE_LABELS)
 HANDLERS.update(DELEGATE_HANDLERS)
 del _seen
 
+# v0.479 HOOLA SMART HOME: ghar ke devices Home Assistant ke official REST se - home_link /
+# home_devices / home_on / home_off / home_state. Reads gate-free (link ke bina kabhi nahi
+# chalte), controls `home_control` gate ke peeche (PC se alag). Locks confirm-only, routine
+# turns se kabhi nahi; fridge/washer/geyser read-only; AC 20-28 °C; volume <= 90 %.
+from .home_tools import HOME_HANDLERS, HOME_LABELS, HOME_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in HOME_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(HOME_LABELS)
+HANDLERS.update(HOME_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 
