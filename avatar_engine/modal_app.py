@@ -865,6 +865,68 @@ def bench_streams():
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
 
 
+def _wav_seconds(wav: bytes) -> float:
+    """Length of a WAV in seconds, read from its header (no audio library needed on the runner)."""
+    i = wav.find(b"data")
+    if i < 0 or len(wav) < 36:
+        return 0.0
+    sr = int.from_bytes(wav[24:28], "little")
+    align = int.from_bytes(wav[32:34], "little") or 2
+    size = int.from_bytes(wav[i + 4:i + 8], "little")
+    size = min(size, len(wav) - i - 8)
+    return size / align / sr if sr else 0.0
+
+
+@app.local_entrypoint()
+def bench_e2e():
+    """Voice + face together: from 'the teacher decides to speak' to 'the first picture exists'. Two containers
+    (Chatterbox voice, then MuseTalk face), so this includes the hand-over of the audio between them."""
+    os.makedirs("lab_out", exist_ok=True)
+    lines = [f"GPU {GPU}  Hindi teacher lines: text -> Chatterbox voice -> MuseTalk face (warm, first 4 frames)"]
+
+    def note(text: str) -> None:
+        lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_e2e.txt", "w") as f:
+            f.write("\n".join(lines) + "\n")
+
+    cases = [
+        ("short greeting", "नमस्ते आरव, आज हम गति के बारे में सीखेंगे।"),
+        ("one sentence", "गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।"),
+        ("long sentence", "अगर एक गाड़ी दो घंटे में एक सौ बीस किलोमीटर जाती है, तो उसकी औसत चाल साठ किलोमीटर प्रति घंटा होगी।"),
+        ("first clause only", "अगर एक गाड़ी दो घंटे में एक सौ बीस किलोमीटर जाती है,"),
+    ]
+    try:
+        voice, live = Chatterbox(), Live()
+        p = _call("live prepare", live.prepare, "lab-live", _sample_face.remote(), "ai_generated", wait=2700)
+        note(f"face prepared: {p['prepare_s']}s   (warm-up below is not counted)")
+        w = _call("voice warm-up", voice.speak, "नमस्ते।", "hi", wait=900)
+        _ = list(live.stream.remote_gen("lab-live", w["wav"], 4, 1))
+        note("case               audio_s  tts_s  tts/audio  face_first_s  e2e_first_frame_s")
+        e2e_all, rtf_all = [], []
+        for name, text in cases:
+            t0 = time.time()
+            r = _call(f"voice: {name}", voice.speak, text, "hi", wait=300)
+            t_tts = time.time() - t0
+            audio_s = _wav_seconds(r["wav"])
+            first = None
+            for b in live.stream.remote_gen("lab-live", r["wav"], 4, 1):
+                first = b["ready_s"]
+                break
+            e2e = time.time() - t0
+            rtf = round(t_tts / audio_s, 2) if audio_s else 0
+            e2e_all.append(e2e)
+            rtf_all.append(rtf)
+            note(f"{name:<18} {audio_s:>7.1f} {t_tts:>6.1f} {rtf:>10} {str(first):>13} {e2e:>18.1f}")
+        best, worst = min(e2e_all), max(e2e_all)
+        word = "conversational (<=2 s)" if worst <= 2 else "acceptable (<=4 s)" if worst <= 4 else "slow (>4 s)"
+        note(f"RESULT: first picture after {best:.1f}-{worst:.1f} s -> {word}")
+        note("Voice keeps up with real time: " + ("yes, a long answer can be spoken sentence by sentence without gaps"
+             if max(rtf_all) < 1 else "NO - voice is slower than speech, long answers need the first clause sent early"))
+    except Exception as e:
+        note(f"e2e FAILED: {type(e).__name__} {str(e)[:500]}")
+
+
 @app.function(image=face_image, timeout=300)
 def _sample_audio() -> bytes:
     """MuseTalk's own demo speech clip (MIT repo) - lets the face be tested without running a voice model first."""

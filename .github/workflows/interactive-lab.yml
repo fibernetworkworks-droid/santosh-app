@@ -15,7 +15,7 @@ on:
         description: What to run
         type: choice
         default: smoke
-        options: [setup, prefetch, smoke, face, bench, streams, deploy, down]
+        options: [setup, prefetch, smoke, face, bench, streams, e2e, deploy, down]
       gpu:
         description: GPU for this run (T4 is cheapest, L4 is the free-credit default, A10G / L40S are faster)
         type: choice
@@ -82,6 +82,11 @@ jobs:
         working-directory: avatar_engine
         run: modal run modal_app.py::bench_streams
 
+      - name: End to end - Hindi text to voice to first picture (two containers)
+        if: inputs.job == 'e2e'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::bench_e2e
+
       - name: Deploy the engine endpoint
         if: inputs.job == 'deploy'
         working-directory: avatar_engine
@@ -95,7 +100,7 @@ jobs:
         run: modal app stop hoola-lab
 
       - name: Keep the clips and the timing report
-        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams') && always()
+        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams' || inputs.job == 'e2e') && always()
         uses: actions/upload-artifact@v4
         with:
           name: lab-output-${{ inputs.gpu }}

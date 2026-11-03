@@ -235,3 +235,16 @@ def test_a_prepared_face_is_shared_through_the_volume_so_any_container_can_strea
     assert "volume.commit()      # results/ is the volume" in MODAL_SRC
     assert "def _avatar(self, avatar_id: str):" in MODAL_SRC and "preparation=False" in MODAL_SRC
     assert "av = self._avatar(avatar_id)" in MODAL_SRC and "latents.pt" in MODAL_SRC
+
+
+def test_e2e_bench_wired():
+    import re
+    import struct
+    wf = open("../.github/workflows/interactive-lab.yml").read()
+    assert "bench_e2e" in wf and "e2e, deploy" in wf
+    assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
+    ns: dict = {}
+    exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    pcm = b"\0\0" * 24000
+    hdr = b"RIFF" + struct.pack("<I", 36 + len(pcm)) + b"WAVEfmt " + struct.pack("<IHHIIHH", 16, 1, 1, 24000, 48000, 2, 16) + b"data" + struct.pack("<I", len(pcm))
+    assert abs(ns["_wav_seconds"](hdr + pcm) - 1.0) < 0.01
