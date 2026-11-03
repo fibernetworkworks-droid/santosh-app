@@ -53,6 +53,8 @@ on:
           - lab_setup
           - lab_images
           - lab_prune
+          - zoo_key
+          - zoo_check
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -87,6 +89,7 @@ jobs:
         env:
           JOB: ${{ inputs.job }}
           LINES_IN: ${{ inputs.lines }}
+          ZOO_KIE_KEY_IN: ${{ secrets.ZOO_KIE_KEY }}   # v0.463.1 zoo_key: runner-side interpolation (the pc_pair pattern); GitHub masks the value in every log
         run: |
           # inputs go through env + strict checks, never straight into the script (no injection)
           case "$LINES_IN" in ''|*[!0-9]*) N=300 ;; *) N=$LINES_IN ;; esac
@@ -451,6 +454,35 @@ jobs:
                 # ECC fixer specialist - must stay at the no-specialist score (hard 12/12, mobile 10/10) before it goes live.
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.quality code --set 2 --kind fix --spec --label vps-ops-spec 2>&1 | tail -14'
                 echo 'cd $CORE && timeout 660 .venv/bin/python -m app.quality code --set 3 --kind fix --spec --label vps-ops-spec 2>&1 | tail -14' ;;
+              zoo_key)
+                # v0.463.1 ZOO kie: install/refresh the kie.ai key into $CORE/.env from the repo secret
+                # ZOO_KIE_KEY. The key value is interpolated runner-side (the pc_pair pattern) and GitHub
+                # masks it in every log line (incl. the job.sh cat below); the Run step's sed redacts too.
+                # Idempotent: replaces an existing line. Never echoed by the job itself.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo "if grep -q '^ZOO_KIE_KEY=' \$CORE/.env; then sed -i \"s#^ZOO_KIE_KEY=.*#ZOO_KIE_KEY=$ZOO_KIE_KEY_IN#\" \$CORE/.env; else printf 'ZOO_KIE_KEY=$ZOO_KIE_KEY_IN\\n' >> \$CORE/.env; fi"
+                echo 'grep -qE "^ZOO_KIE_KEY=.+" $CORE/.env && echo "== ZOO_KIE_KEY present in .env (value hidden)"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app import zoo; print(\"zoo keys on server - kie:\", zoo.kie_key() != \"\", \"| muapi:\", zoo.muapi_key() != \"\")"' ;;
+              zoo_check)
+                # v0.463.1 ZOO kie live proof: catalog counts per gateway, key presence, then ONE REAL cheap
+                # kie image (nano-banana-2-lite, a few credits of the owner's kie balance) on a throw-away
+                # __zoocheck__ tenant. Fixed model + fixed prompt on purpose (no free-typed anything).
+                echo 'cd $CORE && timeout 300 .venv/bin/python - <<"PY" 2>&1 | tail -30'
+                echo 'import asyncio'
+                echo 'from app import zoo'
+                echo 'cat = zoo.load_catalog()["models"]'
+                echo 'print("catalog:", len(cat), "| kie:", sum(1 for m in cat if m.get("gateway") == "kie"), "| muapi:", sum(1 for m in cat if m.get("gateway", "muapi") != "kie"))'
+                echo 'print("kie key on server:", zoo.kie_key() != "")'
+                echo 'm = zoo.model("t2i:kie:nano-banana-2-lite")'
+                echo 'r = asyncio.run(zoo.run(m, "ek laal chhata beach par", tenant="__zoocheck__", wait_s=110.0))'
+                echo 'print("status:", r["status"], "| request_id:", r["request_id"])'
+                echo 'print("urls:", r.get("urls"))'
+                echo 'print("error:", str(r.get("error", ""))[:200])'
+                echo 'raise SystemExit(0 if r["status"] == "done" else 3)'
+                echo 'PY' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
