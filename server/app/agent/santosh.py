@@ -1776,6 +1776,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             await asyncio.to_thread(_coder.turn_prompt, tenant_id, conversation_id, user_text or "")
         except Exception:
             pass
+        try:   # v0.477 HOOLA NUDGE: a live turn began - any background reflection fork thinking
+               # about this conversation drops its writes (it never makes the live turn wait)
+            from .. import coder as _coder
+            _coder.nudge.poke(conversation_id)
+        except Exception:
+            pass
 
         history = _load_history(conversation_id)
         if not save_user and not saved_wake and agent_text.strip():
@@ -1800,7 +1806,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 try:   # v0.473 HOOLA CODER: the compact coder-memory primer rides BESIDE yaad, never
                        # instead of it - KAAM KA HAAL and the diary keep their order, this lands after
                     from .. import coder as _coder
-                    cb = await asyncio.to_thread(_coder.inject.turn_block, tenant_id, conversation_id)
+                    cb = await asyncio.to_thread(_coder.inject.turn_block, tenant_id, conversation_id,
+                                                 query=user_text or "")
                     if cb:
                         block = (block + "\n\n" + cb) if block else cb
                 except Exception:
@@ -1879,6 +1886,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                                 "owner" if who == "owner" else ("routine" if who == "goal" else who))
             except Exception:
                 log.exception("memory after turn failed")
+            try:   # v0.477 HOOLA NUDGE: the turn counter - at coder_nudge_every turns ONE quiet
+                   # reflection writes memories + skills in the background (never this turn's path)
+                from .. import coder as _coder
+                _coder.nudge.count_turn(tenant_id, conversation_id)
+            except Exception:
+                log.exception("coder nudge count failed")
         if who == "owner":
             from .. import chats
             if chats.enabled():   # v0.162 the chat gets a short title after her first exchange (background)

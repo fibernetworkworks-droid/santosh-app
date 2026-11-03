@@ -1,4 +1,4 @@
-"""v0.476.0 HOOLA FRAMES on the web console (owner: "DEPLOYE IT TO WEB CONSOLE ALSO").
+"""v0.478.0 HOOLA FRAMES on the web console (owner: "DEPLOYE IT TO WEB CONSOLE ALSO").
 
 The console could already RECEIVE a frames MP4 - the pc_file card renders as an inline
 <video> (results.js) and opens as a video tab (panel.js). What was missing was OFFERING
@@ -105,7 +105,7 @@ def test_panel_knows_mp4_is_video():
 
 def test_console_stamps_0_4_7_4():
     # server-only release line: the console last changed in v0.475.0, so its stamps stay
-    # at 0.475.0 while the server moves to 0.476.0 (the Phase 1 precedent - stamps move
+    # at 0.475.0 while the server moves to 0.479.0 (the Phase 1 precedent - stamps move
     # only when the console itself changes)
     s = src(V2)
     assert s.count('v=0.475.0') == 20, f"expected 20 stamps, got {s.count('v=0.475.0')}"
@@ -114,13 +114,14 @@ def test_console_stamps_0_4_7_4():
 
 def test_app_version_story():
     main = (ROOT / 'app/main.py').read_text(encoding='utf-8')
-    assert 'APP_VERSION = "0.476.0"' in main
-    assert 'AVATAR FILMS' in main and 'Phase 2' in main
-    assert 'WHAT PAHSE 2 DOES' in main
+    assert 'APP_VERSION = "0.479.0"' in main
+    # story pin moved to the v0.479 story (the v0.476 precedent: the newest release's story
+    # carries the marker; the older stories live in git history)
+    assert 'HOOLA SMART HOME' in main and 'home_audit' in main
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.476.0+521' in pub
+    assert 'version: 0.479.0+524' in pub

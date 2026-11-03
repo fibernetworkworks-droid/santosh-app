@@ -1,4 +1,4 @@
-"""HOOLA CODER storage - the observations vault (v0.473.0).
+"""HOOLA CODER storage - the observations vault (v0.478.0).
 
 A raw-sqlite3 store, one file, following the gyan/store.py house pattern (per-process RLock,
 WAL, idempotent schema). It keeps the durable memory the coder observer compresses out of
@@ -82,6 +82,10 @@ _SCHEMA = [
         status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','merged','distinct','dismissed')),
         created_at TEXT NOT NULL,
         UNIQUE(observation_id, duplicate_of_id))""",
+    """CREATE TABLE IF NOT EXISTS skills (
+        name TEXT NOT NULL, tenant TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '',
+        body TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+        PRIMARY KEY (name, tenant))""",
     """CREATE TABLE IF NOT EXISTS consumed (key TEXT PRIMARY KEY, at TEXT NOT NULL)""",
     """CREATE TABLE IF NOT EXISTS token_df (
         tenant TEXT NOT NULL, token TEXT NOT NULL, df INTEGER NOT NULL DEFAULT 0,
@@ -104,6 +108,21 @@ _FTS_SQL = [
     """CREATE TRIGGER IF NOT EXISTS sum_fts_ai AFTER INSERT ON summaries BEGIN
         INSERT INTO sum_fts(rowid, request, investigated, learned, completed, next_steps, notes)
         VALUES (new.id, new.request, new.investigated, new.learned, new.completed, new.next_steps, new.notes); END""",
+    # v0.477 HOOLA SKILLS: the file is the source of truth; this mirror exists so the FTS
+    # search covers skills with the same discipline as observations.
+    """CREATE VIRTUAL TABLE IF NOT EXISTS skills_fts USING fts5(
+        name, description, body, content='skills', content_rowid='rowid')""",
+    """CREATE TRIGGER IF NOT EXISTS skills_fts_ai AFTER INSERT ON skills BEGIN
+        INSERT INTO skills_fts(rowid, name, description, body)
+        VALUES (new.rowid, new.name, new.description, new.body); END""",
+    """CREATE TRIGGER IF NOT EXISTS skills_fts_ad AFTER DELETE ON skills BEGIN
+        INSERT INTO skills_fts(skills_fts, rowid, name, description, body)
+        VALUES ('delete', old.rowid, old.name, old.description, old.body); END""",
+    """CREATE TRIGGER IF NOT EXISTS skills_fts_au AFTER UPDATE ON skills BEGIN
+        INSERT INTO skills_fts(skills_fts, rowid, name, description, body)
+        VALUES ('delete', old.rowid, old.name, old.description, old.body);
+        INSERT INTO skills_fts(rowid, name, description, body)
+        VALUES (new.rowid, new.name, new.description, new.body); END""",
 ]
 
 _LOCK = threading.RLock()
@@ -463,6 +482,68 @@ def work_read(lst: str | None = None, include_closed: bool = False) -> dict:
     return out
 
 
+# ---------------------------------------------------------------- skills (v0.477 mirror + search)
+
+def skill_mirror(name: str, tenant: str, description: str, body: str) -> None:
+    """The vault row behind one skill file (files are the source of truth; this is the index)."""
+    ensure()
+    now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    with db(write=True) as c:
+        c.execute("INSERT INTO skills(name, tenant, description, body, created_at, updated_at) "
+                  "VALUES (?,?,?,?,?,?) ON CONFLICT(name, tenant) DO UPDATE SET "
+                  "description=excluded.description, body=excluded.body, updated_at=excluded.updated_at",
+                  (name, tenant, description[:300], body[:8000], now, now))
+
+
+def skill_unmirror(name: str, tenant: str) -> None:
+    ensure()
+    with db(write=True) as c:
+        c.execute("DELETE FROM skills WHERE name=? AND tenant=?", (name, tenant))
+
+
+def skills_search(tenant: str, query: str, limit: int = 2) -> list[dict]:
+    """Top skills for the current ask - the injection shortlist. FTS5 match first; LIKE fallback
+    (the obs search discipline); scoped to the caller's tenant always."""
+    ensure()
+    q = (query or "").strip()
+    if not q:
+        return []
+    with db() as c:
+        if _fts_ok:
+            terms = " OR ".join(f'"{t.replace(chr(34), "")}"' for t in q.split() if len(t) >= 3)[:400]
+            if terms:
+                try:
+                    rows = c.execute(
+                        "SELECT s.name, s.description, s.body FROM skills_fts f "
+                        "JOIN skills s ON s.rowid = f.rowid "
+                        "WHERE skills_fts MATCH ? AND s.tenant=? "
+                        "ORDER BY rank LIMIT ?", (terms, tenant, limit)).fetchall()
+                    return [dict(r) for r in rows]
+                except sqlite3.Error:
+                    pass                       # a malformed match string falls through to LIKE
+        like = f"%{q[:200]}%"
+        rows = c.execute(
+            "SELECT name, description, body FROM skills WHERE tenant=? AND "
+            "(name LIKE ? OR description LIKE ? OR body LIKE ?) LIMIT ?",
+            (tenant, like, like, like, limit)).fetchall()
+        return [dict(r) for r in rows]
+
+
+def skills_count() -> int:
+    ensure()
+    with db() as c:
+        return int(c.execute("SELECT COUNT(*) FROM skills").fetchone()[0])
+
+
+def nudge_counts() -> dict:
+    """What the self-teaching fork has written so far (rows carry actor='nudge')."""
+    ensure()
+    with db() as c:
+        obs = c.execute("SELECT COUNT(*) FROM observations WHERE actor='nudge'").fetchone()[0]
+        convs = c.execute("SELECT COUNT(DISTINCT conv) FROM observations WHERE actor='nudge'").fetchone()[0]
+    return {"nudge_observations": int(obs), "nudge_conversations": int(convs)}
+
+
 # ---------------------------------------------------------------- dedup candidates (review-only)
 
 def note_candidate(obs_id: int, dup_of: int, score: float) -> None:
@@ -520,5 +601,7 @@ def stats() -> dict:
         n_tools = c.execute("SELECT COUNT(*) FROM tool_uses").fetchone()[0]
         disc = c.execute("SELECT COALESCE(SUM(discovery_tokens),0) FROM observations").fetchone()[0]
         cand = c.execute("SELECT COUNT(*) FROM dedup_candidates WHERE status='pending'").fetchone()[0]
+        n_skills = c.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
     return {"observations": n_obs, "summaries": n_sum, "sessions": n_sessions, "tool_uses": n_tools,
-            "discovery_tokens": disc, "pending_dedup_candidates": cand, "fts": bool(_fts_ok)}
+            "discovery_tokens": disc, "pending_dedup_candidates": cand, "skills": int(n_skills),
+            **nudge_counts(), "fts": bool(_fts_ok)}

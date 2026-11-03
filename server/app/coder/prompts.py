@@ -1,4 +1,4 @@
-"""HOOLA CODER prompts - the observer's instructions (v0.473.0).
+"""HOOLA CODER prompts - the observer's instructions (v0.478.0).
 
 The claude-mem prompt architecture, ported: one cacheable system prefix (identity, role, focus,
 skip rules), one per-event user turn (<observed_from_santosh_session> blocks with capped fields),
@@ -103,3 +103,51 @@ def summary_prompt(last_assistant: str, history_tail: str) -> tuple[str, str]:
             "\n\nWhat the observer saw (oldest first):\n" + _cap_field(history_tail, 24_000) +
             "\n\nWrite the <summary> block now.")
     return system, user
+
+
+# ---------------------------------------------------------------- v0.477 HOOLA NUDGE
+
+REFLECTION_MAX_OUTPUT_TOKENS = 1200
+
+_REFLECTION_SYSTEM = (
+    "You are the quiet self-teaching memory inside Santosh, a Hindi/Hinglish voice+chat assistant. "
+    "You run BETWEEN her turns, invisible: the user never reads you and can never reply to you. "
+    "You have no tools and no contact with anyone - your entire output is parsed into memory writes. "
+    "You never write in Hindi: memory is English so any Hoola surface can search it.\n\n"
+    "YOUR JOB: look at the recent stretch of one conversation and decide what is worth KEEPING. "
+    "Write durable observations (the same XML the session observer uses) and, only when the stretch "
+    "reveals a reusable CLASS of task, propose a skill. Rules:\n"
+    "- Observations: durable facts only (decisions, discoveries, how-things-work, credentials NEVER). "
+    "Routine chatter, one-off errors and anything already obvious from the digest are noise: skip them.\n"
+    "- Skills: only for a repeatable CLASS of task ('deploy-a-flask-app'), never for one incident "
+    "(a name must never contain a specific date, error string, or one-off detail). Propose a skill "
+    "ONLY when the stretch shows a procedure that would be done again. Use action=update to improve "
+    "a skill from the CURRENT SKILLS list (its name + description are given); action=create for a new one.\n"
+    "- Write at most 4 blocks total (observations + skills together). Fewer is better. If nothing is "
+    "durable, reply with exactly <skip_summary reason=\"nothing durable\" />.\n\n"
+    "OUTPUT SHAPES (exactly these; no prose outside them):\n"
+    "<observation>\n  <type>bugfix|feature|refactor|change|discovery|decision|security_alert|"
+    "security_note|sensitive</type>\n  <title>max 120 chars, the durable fact</title>\n"
+    "  <subtitle>max 24 words</subtitle>\n  <facts><fact>one fact</fact></facts>\n"
+    "  <narrative>full context</narrative>\n  <concepts><concept>how-it-works</concept></concepts>\n"
+    "</observation>\n"
+    "<skill action=\"create\" name=\"lowercase-hyphenated\" description=\"<= 60 chars, one sentence\">"
+    "the instructions, markdown</skill>\n"
+    "<skill action=\"update\" name=\"an-existing-skill\" description=\"<= 60 chars\">"
+    "the FULL new instructions (an update replaces the body)</skill>")
+
+
+def reflection_system() -> str:
+    """The STABLE prefix: this prompt never changes between runs (the cheap-brain cache shape)."""
+    return _REFLECTION_SYSTEM
+
+
+def reflection_user(digest: str, skills: list[dict], last_ask: str) -> str:
+    """The one user turn: the redacted digest, her ask, and the current skill list (the
+    read-before-write input - an update is only legal for a skill listed here)."""
+    sk = "\n".join(f"- {s['name']}: {s['description']}" for s in skills) or "(no skills yet)"
+    return ("HER LAST ASK:\n" + (last_ask or "(not recorded)") +
+            "\n\nCURRENT SKILLS (update only these names):\n" + sk +
+            "\n\nTHE RECENT STRETCH (redacted, oldest first):\n" + _cap_field(digest, 20_000) +
+            "\n\nWrite the keep-worthy blocks now. At most 4. Nothing durable -> "
+            "<skip_summary reason=\"nothing durable\" />.")

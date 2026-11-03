@@ -1,4 +1,4 @@
-"""HOOLA CODER injection - the session-start primer (v0.473.0).
+"""HOOLA CODER injection - the session-start primer (v0.478.0).
 
 claude-mem's context primer, ported with the house ordering rules: her KAAM YAAD block stays
 first (undelivered news outranks history); the coder primer rides AFTER it and NEVER displaces
@@ -20,7 +20,36 @@ from . import store
 
 VOICE_BUDGET = 10_000
 COMPACT_BUDGET = 1_600
+SKILLS_VOICE_BUDGET = 1_200      # v0.477 the matched-skills carve-out inside the coder block
+SKILLS_COMPACT_BUDGET = 400
 HEADER = "CODER MEMORY (what was built here before; never ask her to repeat it):"
+
+
+def _skills_enabled() -> bool:
+    try:
+        from ..config import get_settings
+        return bool(getattr(get_settings(), "coder_enabled", True)
+                    and getattr(get_settings(), "coder_skills", True))
+    except Exception:
+        return False
+
+
+def skills_block(tenant: str, query: str, compact: bool = False) -> str:
+    """Top matched LEARNED SKILLS for the current ask (zero model calls - pure FTS5). Name +
+    description only: she reads the full skill via skill_manage before following it (Hermes's
+    read-before-follow discipline). Empty on no match, empty query or the switch off."""
+    if not query or not _skills_enabled():
+        return ""
+    try:
+        rows = store.skills_search(tenant, query, limit=2)
+    except Exception:
+        return ""
+    if not rows:
+        return ""
+    lines = [f"- {r['name']}: {r['description']}" for r in rows]
+    block = ("LEARNED SKILLS matching this ask (skill_manage read the skill before you follow "
+             "it):\n" + "\n".join(lines))
+    return block[:SKILLS_COMPACT_BUDGET if compact else SKILLS_VOICE_BUDGET]
 
 
 def _decode(r: dict) -> dict:
@@ -78,20 +107,25 @@ def _fit(items_full: list[str], items_plain: list[str], summary_block: str, head
     return "\n".join(p for p in parts if p)[:budget]
 
 
-def primer(tenant: str, conv: str | None = None, compact: bool = False) -> str:
-    """The block. compact=True is the per-chat-turn version (small); voice uses the full 10k."""
+def primer(tenant: str, conv: str | None = None, compact: bool = False, query: str = "") -> str:
+    """The block. compact=True is the per-chat-turn version (small); voice uses the full 10k.
+    query is her current ask: matched skills ride at the TOP of the coder block (how-to outranks
+    what-was-built), inside the same budget, never displacing the header."""
     budget = COMPACT_BUDGET if compact else VOICE_BUDGET
     try:
         store.ensure()
     except Exception:
         return ""
     header = HEADER
+    sk = skills_block(tenant, query, compact=compact)
+    if sk:
+        header += "\n" + sk
     work = _work_lines()
     if work:
         header += "\nStill open:\n" + "\n".join(work[:6])
     limit = 6 if compact else 30
     rows = store.recent_observations(tenant, limit=limit, conv=conv)
-    if not rows and not work:
+    if not rows and not work and not sk:
         return ""
     rows = [_decode(r) for r in rows]
     plain = [_row(r) for r in rows]
@@ -106,23 +140,24 @@ def primer(tenant: str, conv: str | None = None, compact: bool = False) -> str:
     return _fit(full, plain, summary_block, header, footer, budget)
 
 
-def turn_block(tenant: str, conv: str) -> str:
-    """The compact per-chat-turn block (rides beside yaad.turn_block, never instead of it)."""
+def turn_block(tenant: str, conv: str, query: str = "") -> str:
+    """The compact per-chat-turn block (rides beside yaad.turn_block, never instead of it).
+    query = her current ask, for the matched-skills lines."""
     try:
         from ..config import get_settings
         if not getattr(get_settings(), "coder_enabled", True):
             return ""
-        return primer(tenant, conv=None, compact=True)
+        return primer(tenant, conv=None, compact=True, query=query)
     except Exception:
         return ""
 
 
-def voice_block(tenant: str, conv: str) -> str:
+def voice_block(tenant: str, conv: str, query: str = "") -> str:
     """The full call-start block (rides after the KAAM YAAD block in the voice context)."""
     try:
         from ..config import get_settings
         if not getattr(get_settings(), "coder_enabled", True):
             return ""
-        return primer(tenant, conv=conv, compact=False)
+        return primer(tenant, conv=conv, compact=False, query=query)
     except Exception:
         return ""

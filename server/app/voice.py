@@ -2402,8 +2402,12 @@ class Call:
             try:   # v0.108 the call turn is indexed + lasting facts picked (only when the owner herself is talking)
                 from . import yaad
                 cur = (self.vid.current or {}) if self.vid is not None else {}
+                _voice_owner = (not unclear and (not cur or cur.get("relation") == "self"))
                 yaad.after_turn(self.tenant, self.conv, user, reply,
-                                "owner" if (not unclear and (not cur or cur.get("relation") == "self")) else "call")
+                                "owner" if _voice_owner else "call")
+                if _voice_owner:   # v0.477 HOOLA NUDGE: her voice turns count too (voice-first law)
+                    from . import coder as _coder
+                    _coder.nudge.count_turn(self.tenant, self.conv)
             except Exception:
                 log.exception("voice memory failed")
 
