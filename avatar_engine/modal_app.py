@@ -36,6 +36,7 @@ import registry
 APP = "hoola-lab"
 GPU = os.environ.get("HOOLA_LAB_GPU", "L4")          # L4 is in Modal's free monthly credit range; A10G / L40S for speed tests
 WARM = int(os.environ.get("HOOLA_LAB_WARM", "0"))      # containers kept running (0 = scale to zero); 1 = a teacher mid-lesson never meets a cold start
+VOICES = int(os.environ.get("HOOLA_LAB_VOICES", "2" if WARM else "0"))   # voice containers kept warm: chunks 2, 3... are made at the SAME time as chunk 1 on the others
 IDLE = 120                                          # seconds an idle container lives (credit saver)
 MODELS_DIR = "/models"
 HF_ENV = {"HF_HOME": f"{MODELS_DIR}/hf", "HF_HUB_ENABLE_HF_TRANSFER": "0"}
@@ -114,7 +115,7 @@ def _tmp(data: bytes | None, suffix: str) -> str | None:
 
 # ---------------------------------------------------------------- voice engines
 @app.cls(gpu=GPU, image=chatterbox_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
-         min_containers=WARM)
+         min_containers=VOICES, max_containers=4)
 class Chatterbox:
     @modal.enter()
     def load(self):
@@ -880,9 +881,9 @@ def bench_streams():
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
 
 
-def split_speech(text: str, first_words: int = 7) -> list:
-    """Cut a teacher's answer so speech starts early AND never runs dry: a first chunk of about seven words (about
-    2.5-3 s of speech, ending at a comma / full stop when one is near), then chunks that GROW (~14, ~28, ... words),
+def split_speech(text: str, first_words: int = 4) -> list:
+    """Cut a teacher's answer so speech starts early AND never runs dry: a first chunk of about four words (about
+    1.5-2 s of speech, ending at a comma / full stop when one is near), then chunks that GROW (~8, ~16, ~32 words),
     each cut at a natural pause. Measured: voice time ~ 0.75 x the speech it makes, so every chunk must speak longer
     than the next one takes to make; a chunk of 4-5 words (1.5 s of speech) left a 1.2 s gap. Never fewer than 3 words
     in a chunk: a one-word line made the voice ramble for 12 s."""
@@ -979,21 +980,32 @@ def bench_e2e():
         long_text = " ".join(c[1] for c in (cases[1], cases[2])) + " अब आप बताइए कि अगर वही गाड़ी तीन घंटे चले, तो कितने किलोमीटर जाएगी?"
         chunks = split_speech(long_text)
         note(f"chunked answer: {len(chunks)} chunks of {[len(c.split()) for c in chunks]} words")
+        import threading
         t0 = time.time()
-        r = _call("voice: chunk 1", voice.speak, chunks[0], "hi", wait=300)
-        ready = time.time() - t0                          # when chunk 1's audio exists
+        done: dict = {}
+
+        def make(i: int, c: str) -> None:                  # every chunk is asked for at once; free voice containers pick them up in order
+            done[i] = (_call(f"voice: chunk {i}", voice.speak, c, "hi", wait=300), time.time() - t0)
+
+        th = []
+        for i, c in enumerate(chunks, 1):
+            x = threading.Thread(target=make, args=(i, c), daemon=True)
+            x.start()
+            th.append(x)
+            time.sleep(0.15)                               # keep the order: chunk 1 first
+        th[0].join(300)
+        r, ready = done[1]
         keep("chunk1", r["wav"])
         chunk_e2e = None
         for b in live.stream.remote_gen("lab-live", r["wav"], 4, 1):
             if chunk_e2e is None:
                 chunk_e2e = time.time() - t0
         play_end = chunk_e2e + _wav_seconds(r["wav"])     # chunk 1 starts playing at its first picture
-        note(f"chunk 1 ({len(chunks[0].split())} words): voice {ready:.1f}s, first picture {chunk_e2e:.1f}s, speaks {_wav_seconds(r['wav']):.1f}s, tries {r.get('tries')}")
+        note(f"chunk 1 ({len(chunks[0].split())} words): voice ready at {ready:.1f}s, first picture {chunk_e2e:.1f}s, speaks {_wav_seconds(r['wav']):.1f}s, tries {r.get('tries')}")
         gaps = 0.0
         for i, c in enumerate(chunks[1:], 2):
-            t = time.time()
-            r = _call(f"voice: chunk {i}", voice.speak, c, "hi", wait=300)
-            ready += time.time() - t                       # voice keeps working while chunk i-1 plays
+            th[i - 1].join(300)
+            r, ready = done[i]
             keep(f"chunk{i}", r["wav"])
             gap = max(0.0, ready - play_end)
             gaps += gap

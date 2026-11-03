@@ -258,7 +258,7 @@ def test_chunker_and_warm_switch():
     long_t = " ".join(["शब्द%d" % i + ("," if i % 6 == 0 else "") for i in range(1, 61)])
     parts = sp(long_t)
     sizes = [len(p.split()) for p in parts]
-    assert 5 <= sizes[0] <= 10 and len(parts) >= 3
+    assert 3 <= sizes[0] <= 6 and len(parts) >= 3
     assert sizes[1] > sizes[0] and min(sizes) >= 3                       # chunks grow, none is a stub
     assert " ".join(parts).split() == long_t.split()                     # nothing lost, nothing added
     assert sp("") == [] and sp("नमस्ते") == ["नमस्ते"]
@@ -266,3 +266,9 @@ def test_chunker_and_warm_switch():
     assert "min_containers=WARM" in MODAL_SRC and 'HOOLA_LAB_WARM", "0"' in MODAL_SRC
     assert "HOOLA_LAB_WARM" in open("../.github/workflows/interactive-lab.yml").read()
     assert '"runaway"' in MODAL_SRC and "e2e_chunk" in MODAL_SRC or 'keep(f"chunk' in MODAL_SRC
+
+
+def test_parallel_voice_containers():
+    assert "min_containers=VOICES" in MODAL_SRC and 'HOOLA_LAB_VOICES' in MODAL_SRC
+    assert "HOOLA_LAB_VOICES" in open("../.github/workflows/interactive-lab.yml").read()
+    assert "make(i: int, c: str)" in MODAL_SRC                   # chunks are asked for at once, not one after another
