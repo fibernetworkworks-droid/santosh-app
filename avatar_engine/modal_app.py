@@ -607,7 +607,8 @@ def bench_face():
     os.makedirs("lab_out", exist_ok=True)
     try:
         d = _call("face bench", Face().bench, _sample_audio.remote(), _sample_face.remote(), wait=3000)
-        lines = [f"GPU {d['gpu']}  (MuseTalk {d['musetalk_commit']})",
+        # GPU comes from THIS side (the runner holds HOOLA_LAB_GPU); inside the container it falls back to L4, so d['gpu'] lies
+        lines = [f"GPU {GPU}  (MuseTalk {d['musetalk_commit']})",
                  f"models loaded once: {d['load_s']}s   face prepared: {d['prepare_s']}s   clip: {d['audio_s']}s = {d['frames']} frames",
                  "batch  secs  frames/s  x_realtime  ms_per_batch"]
         lines += [f"{r['batch']:>5}  {r['secs']:>4}  {r['fps']:>8}  {r['x_realtime']:>10}  {r['ms_per_batch']:>12}" for r in d["rows"]]

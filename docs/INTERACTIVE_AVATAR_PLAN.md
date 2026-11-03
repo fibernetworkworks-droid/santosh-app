@@ -175,3 +175,25 @@ stays ON for every cloned voice. Phase 10 in section 7 (My Voice) moves earlier:
 - Audio2Face licences: github.com/NVIDIA/Audio2Face-3D-SDK, huggingface.co/nvidia/Audio2Face-3D-v3.0.
 - GPU prices: computeprices.com (RunPod L4 / RTX 4090 / L40S), gpu-cost.pages.dev, pricingsaas.com/companies/runpod.
 - Provider prices for comparison: docs in the v0.456-era chat price card (LiveAvatar, Tavus, Anam).
+
+## 11. Phase 0 RESULT - the GPU decision (3 Nov 2026, measured on Modal, owner: "L40S")
+
+**Decision: live teaching runs on an L40S; pre-made lesson videos run on an L4.** Measured with `bench` (models loaded once,
+MuseTalk 1.5, one 8 s clip = 200 frames, warm-up excluded, two timed passes per size; live needs >= 25 fps = <= 1.0x real time):
+
+| GPU | batch 4 (ms/batch) | batch 8 | batch 20 | live? |
+|---|---|---|---|---|
+| L4 | 18 fps, 1.38x (221) | 20 fps, 1.26x (405) | 22.5 fps, 1.11x (892) | no |
+| A10G | 21 fps, 1.2x (190) | 22.5 fps, 1.11x (355) | 26.5 fps, 0.94x (755) | only at batch 20, no headroom |
+| L40S | 34 fps, 0.74x (118) | 39 fps, 0.65x (207) | 42 fps, 0.59x (475) | yes at every size |
+
+Modal's published rates (modal.com/pricing, read 3 Nov 2026; billed per second, container idle-tail = `IDLE` 120 s):
+L4 $0.000222/s = $0.80/h, A10 $0.000306/s = $1.10/h, L40S $0.000542/s = $1.95/h = **$0.0325 per minute of one live stream**.
+A session's 2-minute idle tail adds ~$0.065. Pre-made lecture, 10 min of video (face only): L4 ~$0.15, A10G ~$0.17, L40S ~$0.19 -
+so lessons go on the CHEAPER L4 (slower is fine when nobody waits), live goes on the L40S.
+
+**What these numbers do NOT cover** (open, measure before promising anything): the voice time (Chatterbox / Parler) before and
+during an answer; frame streaming + WebRTC to a phone; MORE THAN ONE student on one GPU (cost per live minute drops if a GPU serves
+two streams, but that is untested); a real consented / AI-made teacher face (the test used MuseTalk's own demo person); IndicF5 after
+its transformers pin. The per-call lab path (models reloaded each call) measured 12x - never use it as the speed.
+Next (Phase 1/3): an always-warm face service on the L40S with a streaming output, then the concurrency test.
