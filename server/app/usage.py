@@ -82,9 +82,29 @@ BACKGROUND = {"routine", "employee", "website", "video", "motion", "studio", "ne
 FEATURE_LABEL = {"chat": "Chat", "call": "Voice call", "routine": "Routines", "employee": "Team / graahak", "website":
                  "Website jobs", "pc": "PC par kaam", "video": "Video editor", "motion": "Motion reels", "studio":
                  "Video Studio", "create": "Create Studio", "network": "Hoola Network", "lekhak": "Typist / translator", "reels": "Reels",
-                 "notebook": "Notebook", "voiceid": "Awaaz Pehchaan", "other": "Baaki"}
+                 "notebook": "Notebook", "voiceid": "Awaaz Pehchaan", "research": "Research", "other": "Baaki"}
 
 _CTX: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_usage", default=None)
+# v0.476 R5: a RUN-scoped meter. Whatever work binds one (a research run) sees the USD of exactly its own model calls - a concurrent chat of the
+# same tenant is not in it, because the dict lives in this context (tasks started inside inherit it; a sibling task does not).
+_RUN: contextvars.ContextVar[dict | None] = contextvars.ContextVar("hoola_usage_run", default=None)
+
+
+@contextmanager
+def run_meter(acc: dict | None = None):
+    """Count the model calls made inside this block into `acc` (usd, calls, tok_in, tok_out, by_model). Yields the dict."""
+    acc = acc if acc is not None else {}
+    acc.setdefault("usd", 0.0)
+    acc.setdefault("calls", 0)
+    acc.setdefault("tok_in", 0)
+    acc.setdefault("tok_out", 0)
+    acc.setdefault("by_model", {})
+    tok = _RUN.set(acc)
+    try:
+        yield acc
+    finally:
+        _RUN.reset(tok)
+
 _BUF: dict[tuple, dict[str, float]] = {}
 _LOCK = threading.Lock()
 _LAST_FLUSH = [time.time()]
@@ -219,6 +239,15 @@ def record(model: str, tok_in: int = 0, tok_out: int = 0, cache_read: int = 0, c
         tenant = tenant if tenant is not None else t
         feature = feature or f
         usd = cost(model, tok_in, tok_out, cache_read, cache_write, audio_in, audio_out, sec_in, sec_out)
+        acc = _RUN.get()
+        if acc is not None:         # v0.476 R5: the run that is making this call counts it
+            acc["usd"] += usd
+            acc["calls"] += 1
+            acc["tok_in"] += int(tok_in + cache_read + cache_write)
+            acc["tok_out"] += int(tok_out)
+            m = acc["by_model"].setdefault((model or "?")[:60], {"calls": 0, "usd": 0.0})
+            m["calls"] += 1
+            m["usd"] += usd
         day = datetime.now(IST).date().isoformat()
         key = (tenant or "", day, feature, (model or "?")[:80])
         with _LOCK:

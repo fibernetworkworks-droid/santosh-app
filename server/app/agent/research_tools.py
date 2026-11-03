@@ -114,6 +114,11 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
     goals = [str(x).strip() for x in (sub_questions or []) if str(x).strip()] if isinstance(sub_questions, list) else []
     if not q and not goals:
         raise ToolError("Batayiye kya research karna hai (question aur sub_questions).")
+    from ..research import bill as _bill
+    try:                 # v0.476 R5: no room left today = refused before anything starts
+        _bill.preflight(ctx.tenant_id)
+    except _bill.ResearchCapped as e:
+        raise ToolError(str(e))
     over = {"include_domains": include_domains if isinstance(include_domains, list) else None,
             "exclude_domains": exclude_domains if isinstance(exclude_domains, list) else None, "after_date": after_date}
     asked = E._URL.findall(q + " " + " ".join(goals))
@@ -129,9 +134,34 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
                         "do NOT write any findings now and do not call research_run again. Her stop word is Rokiye."),
                 "check": "research_status check " + rid}
     pol = E.Policy.from_settings(st, **over)
-    d = await E.run(q or goals[0], goals, pol, _deps(ctx, st), asked_urls=asked)
+    from .. import usage
+    from ..research import store
+    deps = _deps(ctx, st)
+    meter = _bill.Meter(ctx.tenant_id, "")
+    deps.afford, deps.cost = meter.afford, meter.breakdown            # v0.476 R5: the ceiling holds inline too
+
+    base_step = deps.step
+
+    def step(goal, kind, detail):
+        if kind == "search":
+            meter.counts["searches"] += 1
+        elif kind == "read":
+            meter.counts["fetches"] += 1
+        base_step(goal, kind, detail)
+    deps.step = step
+    with usage.run_meter(meter.acc):
+        d = await E.run(q or goals[0], goals, pol, deps, asked_urls=asked)
+    try:                 # an inline run is a ledger row too, so today's total and the measured cost per goal include it
+        rid = store.create(ctx.tenant_id, ctx.conversation_id, q or goals[0], goals, {"over": {}, "hi": False, "asked": asked, "inline": True})
+        store.finish(rid, "done", d, cost=d.get("cost") or {})
+    except Exception:    # noqa: BLE001 - a ledger that cannot be written never costs her the research
+        pass
     E.remember(ctx.conversation_id, d)           # v0.474 R3: the report check reads it back
     s = d["stats"]
+    if d.get("cost", {}).get("stopped_by_cost"):
+        return {"dossier": E.render(d), "stats": s, "stop_reason": d["stop_reason"], "cost": d["cost"],
+                "say": ("The run STOPPED at its cost ceiling and returned what it had - say so plainly in the report (what is covered and what is "
+                        "not), and offer to continue with a higher ceiling if she wants more. Write only from the dossier; cite only its sources.")}
     if s["verified_notes"] == 0 and s["pages_read"] == 0:
         say = ("The engine found no readable pages for this. Say so plainly; do not write findings from memory. "
                "Offer to try other words, another source, or google_search.")

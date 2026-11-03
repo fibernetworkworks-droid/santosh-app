@@ -10,7 +10,7 @@ import json
 from datetime import datetime, timezone
 from typing import Any
 
-from sqlalchemy import DateTime, Integer, String, Text, select
+from sqlalchemy import DateTime, Float, Integer, String, Text, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
@@ -30,6 +30,8 @@ class ResearchRun(Base):
     progress: Mapped[str] = mapped_column(Text, default="{}")
     dossier: Mapped[str] = mapped_column(Text, default="")
     error: Mapped[str] = mapped_column(Text, default="")
+    cost_inr: Mapped[float | None] = mapped_column(Float, nullable=True, default=0.0)    # v0.476 R5: rupees this run has spent (model calls)
+    cost: Mapped[str | None] = mapped_column(Text, nullable=True, default="")           # ... itemised, JSON
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
@@ -75,7 +77,7 @@ def view(row: ResearchRun) -> dict[str, Any]:
     return {"id": row.id, "tenant": row.tenant_id, "conv": row.conversation_id, "question": row.question,
             "goals": _j(row.goals, []), "policy": _j(row.policy, {}), "status": row.status, "tries": row.tries,
             "checkpoint": _j(row.checkpoint, None), "progress": _j(row.progress, {}), "error": row.error,
-            "dossier": _j(row.dossier, None), "updated_at": aware(row.updated_at), "created_at": aware(row.created_at)}
+            "dossier": _j(row.dossier, None), "cost_inr": float(row.cost_inr or 0.0), "cost": _j(row.cost or "", {}), "updated_at": aware(row.updated_at), "created_at": aware(row.created_at)}
 
 
 def get(run_id: str) -> dict[str, Any] | None:
@@ -97,6 +99,32 @@ def set_status(run_id: str, status: str, error: str = "", only_from: tuple[str, 
         return True
 
 
+def set_cost(run_id: str, cost: dict) -> None:
+    """The running tally, written at every checkpoint so a restart (and the day's total) counts what was already spent."""
+    with session() as s:
+        row = s.get(ResearchRun, run_id)
+        if row is not None and row.status in ("queued", "running"):
+            row.cost_inr, row.cost = float(cost.get("total_inr") or 0.0), json.dumps(cost, ensure_ascii=False, default=str)
+
+
+def spent_since(tenant: str, since: datetime, exclude: str = "") -> float:
+    """Rupees this tenant's research runs have spent since `since` (rows touched since then), optionally without one run."""
+    ensure_table()
+    with session() as s:
+        rows = s.scalars(select(ResearchRun).where(ResearchRun.tenant_id == tenant, ResearchRun.updated_at >= since)).all()
+        return round(sum(float(r.cost_inr or 0.0) for r in rows if r.id != exclude), 4)
+
+
+def costs(tenant: str, limit: int = 12, only_done: bool = True) -> list[dict[str, Any]]:
+    ensure_table()
+    with session() as s:
+        q = select(ResearchRun).where(ResearchRun.tenant_id == tenant)
+        if only_done:
+            q = q.where(ResearchRun.status == "done")
+        return [{"id": r.id, "goals": len(_j(r.goals, [])), "cost_inr": float(r.cost_inr or 0.0), "status": r.status,
+                 "created_at": aware(r.created_at)} for r in s.scalars(q.order_by(ResearchRun.created_at.desc()).limit(limit)).all()]
+
+
 def save_checkpoint(run_id: str, cp: dict, progress: dict | None = None) -> None:
     with session() as s:
         row = s.get(ResearchRun, run_id)
@@ -116,13 +144,17 @@ def touch(run_id: str, progress: dict | None = None) -> None:
             row.updated_at = now()
 
 
-def finish(run_id: str, status: str, dossier: dict | None, error: str = "") -> bool:
+def finish(run_id: str, status: str, dossier: dict | None, error: str = "", cost: dict | None = None) -> bool:
     """Close a run. A run she stopped stays stopped (the stop already went out)."""
     with session() as s:
         row = s.get(ResearchRun, run_id)
+        if row is not None and row.status == "stopped" and cost is not None:     # a stopped run still spent what it spent
+            row.cost_inr, row.cost = float(cost.get("total_inr") or 0.0), json.dumps(cost, ensure_ascii=False, default=str)
         if row is None or row.status == "stopped":
             return False
         row.status, row.error, row.updated_at = status, error[:600], now()
+        if cost is not None:
+            row.cost_inr, row.cost = float(cost.get("total_inr") or 0.0), json.dumps(cost, ensure_ascii=False, default=str)
         if dossier is not None:
             row.dossier = json.dumps(dossier, ensure_ascii=False, default=str)
         row.checkpoint = ""                       # the dossier is the result; the checkpoint is no longer needed

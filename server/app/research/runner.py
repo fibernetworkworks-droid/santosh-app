@@ -23,6 +23,7 @@ from typing import Any
 
 from ..db import now
 from ..events import bus
+from . import bill
 from . import engine as E
 from . import store
 
@@ -91,13 +92,14 @@ def _publish(conv: str, rid: str, question: str, status: str, say: str, stage: s
 
 
 # ---------------------------------------------------------------- one run
-def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: int = 0) -> E.Deps:
+def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: int = 0, base: dict | None = None) -> E.Deps:
     from ..agent.tools import Ctx
     if _deps_factory is not None:
         d = _deps_factory(Ctx(tenant_id=tenant, conversation_id=conv, actor="owner"), settings)
     else:
         from ..agent import research_tools as RT
         d = RT._deps(Ctx(tenant_id=tenant, conversation_id=conv, actor="owner"), settings)
+    meter = bill.Meter(tenant, run_id, base=base)          # v0.476 R5: a restarted run starts from what it had already spent
     prog = {"goals_total": total, "goals_done": 0, "pages": 0, "notes": 0, "now": "", "round": 1}
     last = {"t": 0.0}
     order: dict[str, int] = {}
@@ -106,6 +108,10 @@ def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: 
         return order.setdefault(goal, len(order) + 1)
 
     def step(goal: str, kind: str, detail: str) -> None:
+        if kind == "search":
+            meter.counts["searches"] += 1
+        elif kind == "read":
+            meter.counts["fetches"] += 1
         g, n = num(goal), max(prog["goals_total"], len(order))
         txt = line(kind, hi, g, n, detail)
         prog["now"] = txt
@@ -125,6 +131,7 @@ def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: 
                                         sum(1 for r in results if r.get("round") != cp.get("round"))),
                      "pages": len(cp.get("pages") or {}), "notes": sum(len(r.get("notes", [])) for r in results)})
         store.save_checkpoint(run_id, cp, dict(prog))
+        store.set_cost(run_id, meter.breakdown())
         _publish(conv, run_id, cp.get("question", ""), "running", progress_text(prog, hi), stage=progress_text(prog, hi))
 
     def stopped() -> bool:
@@ -138,7 +145,8 @@ def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: 
             return False
 
     d.stopped, d.step, d.checkpoint = stopped, step, checkpoint
-    d.__dict__["_prog"] = prog
+    d.afford, d.cost = meter.afford, meter.breakdown
+    d.__dict__["_prog"], d.__dict__["_meter"] = prog, meter
     return d
 
 
@@ -156,24 +164,31 @@ async def run_background(run_id: str) -> None:
     try:
         pol = E.Policy.from_settings(st, bg=True, **(v["policy"].get("over") or {}))
         goals = list(v["goals"])
-        deps = _build_deps(tenant, conv, run_id, hi, st, total=len(goals) or 1)
+        deps = _build_deps(tenant, conv, run_id, hi, st, total=len(goals) or 1, base=v.get("cost") or None)
         if v["tries"] > 1 and v["checkpoint"]:
             STATS["resumed"] += 1
-        d = await E.run(question, goals, pol, deps, asked_urls=v["policy"].get("asked") or [], resume=v["checkpoint"] or None)
+        from .. import usage
+        usage.bind(tenant, "research")                           # her research is hers: counted under her, as "Research"
+        with usage.run_meter(deps.__dict__["_meter"].acc):       # v0.476 R5: this run's own model calls, nobody else's
+            d = await E.run(question, goals, pol, deps, asked_urls=v["policy"].get("asked") or [], resume=v["checkpoint"] or None)
+        cost = d.get("cost") or {}
         stopped_now = (store.get(run_id) or {}).get("status") == "stopped"
         s = d["stats"]
         if stopped_now:
+            store.finish(run_id, "stopped", None, "", cost=cost)          # a stopped run still spent what it spent
             return
         if s["pages_read"] == 0 and s["verified_notes"] == 0:
-            store.finish(run_id, "failed", d, "no readable pages were found")
+            store.finish(run_id, "failed", d, "no readable pages were found", cost=cost)
             STATS["failed"] += 1
             _publish(conv, run_id, question, "failed",
                      "koi padhne layak page nahi mila" if hi else "no readable pages were found")
         else:
-            store.finish(run_id, "done", d)
+            store.finish(run_id, "done", d, cost=cost)
             STATS["done"] += 1
-            say = (f"report likhne ko taiyaar: {s['pages_read']} pages, {s['verified_notes']}/{s['notes']} baatein verified"
-                   if hi else f"ready to write: {s['pages_read']} pages, {s['verified_notes']}/{s['notes']} findings verified")
+            tail = (f" - KHARCHA seema par ruk gaya (Rs {cost.get('total_inr', 0):.0f})" if hi else f" - stopped at the cost ceiling (Rs {cost.get('total_inr', 0):.0f})") \
+                if cost.get("stopped_by_cost") else ""
+            say = (f"report likhne ko taiyaar: {s['pages_read']} pages, {s['verified_notes']}/{s['notes']} baatein verified{tail}"
+                   if hi else f"ready to write: {s['pages_read']} pages, {s['verified_notes']}/{s['notes']} findings verified{tail}")
             _publish(conv, run_id, question, "done", say)
     except asyncio.CancelledError:
         raise
@@ -231,5 +246,5 @@ def status(tenant: str, conv: str = "", run_id: str = "") -> list[dict[str, Any]
         hi = bool(v["policy"].get("hi", True))
         out.append({"id": v["id"], "status": v["status"], "question": v["question"][:160], "tries": v["tries"],
                     "progress": progress_text(v["progress"], hi) if v["progress"] else "", "now": v["progress"].get("now", ""),
-                    "error": v["error"], "has_report": v["dossier"] is not None})
+                    "error": v["error"], "has_report": v["dossier"] is not None, "cost_inr": round(v.get("cost_inr", 0.0), 2)})
     return out

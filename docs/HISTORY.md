@@ -18269,3 +18269,22 @@ capped at 900 s and died with the process.
   Bugs found by the tests: the narration total read 1/1 on the first step (seeded from the goals now); the first draft of the tick tests started tasks in a loop that `asyncio.run` closed.
 - NOT VERIFIED: no live run; the restart path is tested by a faked checkpoint + stale heartbeat, not a real pm2 restart. NOT BUILT: the rupee ceiling and per-run cost (R5), paid engines (R6), a tappable card / console view of a running research.
 
+## v0.476.0 - RESEARCH Phase R5 KHARCHA
+
+Owner: "GO R5". Part 9 of `docs/RESEARCH_PRO_PLAN.md` (Valyu `data_max_price` / Exa's itemised cost), built like `mapsbill.py` and shipped BEFORE any paid engine (R6).
+
+- `usage.py`: `run_meter()` + `_RUN` contextvar; `record()` adds each call's usd / tokens / model to the bound meter. Context-scoped, so tasks started inside a run count into it and a sibling task or a chat does not.
+  Feature label `research`.
+- `research/bill.py` (new): `Meter` (model rupees = list price x `usd_inr`, web calls counted, `afford()`, `day_spent_inr()`, `breakdown()`), `preflight()`, `caps()`, `format_line()` (an unpriced part is SAID),
+  `measured_per_goal()` (median over her last finished runs that cost something, needs 3), `usage_report()` with an `assumed` list. Config: `research_run_cap_inr` 150, `research_daily_inr` 600, `research_call_reserve_inr` 3,
+  `research_search_inr` 0, `research_fetch_inr` 0 (= unknown; say so).
+- `research/store.py`: columns `cost_inr` / `cost` (nullable, old rows work), `set_cost` (written at every checkpoint), `spent_since(tenant, since, exclude)`, `costs()`; `finish(..., cost=)` and a STOPPED run still records its spend.
+- `engine.py` (ENGINE_V 4): `Deps.afford` / `Deps.cost`; asked before every worker model call and before a re-plan; a refusal ends the goal with "stopped at the cost ceiling", the run with `cost ceiling: <why>` (no re-plan), the dossier carries `cost` and `stats.cost_inr`, `render` prints the cost line.
+- `runner.py`: a Meter per run seeded from the run's saved cost on a restart (money already spent before the crash counts against the ceiling); `usage.bind(tenant, "research")` + `usage.run_meter(meter.acc)` around `E.run`; the done event says when the ceiling stopped it; `status` shows cost.
+- `research_tools.py`: `preflight` before any run (background or inline; refusal names `RESEARCH_DAILY_INR`), the inline path is metered + ceilinged + written to the ledger, a cost-stopped inline result tells the model to say what is and is not covered.
+- `research_plan.py`: `estimate(n, settings, tenant)` uses the measured median per goal once 3 runs exist (`assumed: False`, "from your last N runs"), else the assumed sizes; the card shows the per-run ceiling and what is left today; `gate` / `build` pass the tenant.
+- `research/api.py` (new, mounted in `main.py`): `GET /api/research/usage`, `GET /api/research/runs`, `POST /api/research/runs/{id}/stop`.
+- Tests: `test_v0476_research_bill.py` (24). No code fault found by the first run of them.
+- NOT VERIFIED: no live run, so no measured cost per goal exists yet and the 150 / 600 defaults are guesses; the web price is unknown (counted, unpriced); rupees are list price x the server's rate, not an invoice.
+  NOT BUILT: the paid engines (R6) and any console / phone view of research cost.
+

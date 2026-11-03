@@ -168,24 +168,39 @@ async def _questions(ask: str, note: str, a: dict[str, Any], settings) -> dict[s
         return _fallback(a)
 
 
-def estimate(n_q: int, settings) -> dict[str, Any]:
-    """Minutes and rupees for n sub-questions. ASSUMED sizes x the model's list price (usage.cost); said so on the card."""
+def estimate(n_q: int, settings, tenant: str = "") -> dict[str, Any]:
+    """Minutes and rupees for n sub-questions. v0.476 R5: once she has 3 finished runs, the MEDIAN rupees per goal of her own runs
+    (`bill.measured_per_goal`); before that the ASSUMED sizes x the model's list price. The card says which one it used."""
     from .. import usage
+    from ..research import bill
+    caps = bill.caps()
+    left = None
+    measured = None
+    if tenant:
+        try:
+            measured = bill.measured_per_goal(tenant)
+            left = bill.usage_report(tenant)["left_today_inr"]
+        except Exception:       # noqa: BLE001
+            measured = None
+    if measured:
+        return {"minutes": ASSUMED_MIN_BASE + ASSUMED_MIN_PER_Q * n_q, "inr": round(measured["per_goal_inr"] * n_q, 0), "model": "measured",
+                "assumed": False, "measured_runs": measured["runs"], "caps": caps, "left_today_inr": left}
     model = getattr(settings, "agent_hard_model", "") or settings.anthropic_model
     tin, tout = n_q * ASSUMED_IN_PER_Q + ASSUMED_IN_WRITE, n_q * ASSUMED_OUT_PER_Q + ASSUMED_OUT_WRITE
     try:
         inr = round(float(usage.cost(model, tok_in=tin, tok_out=tout)) * usage.usd_inr(), 0)
     except Exception:       # noqa: BLE001 - an unpriced model: say so rather than invent a figure
         inr = None
-    return {"minutes": ASSUMED_MIN_BASE + ASSUMED_MIN_PER_Q * n_q, "inr": inr, "model": model, "assumed": True}
+    return {"minutes": ASSUMED_MIN_BASE + ASSUMED_MIN_PER_Q * n_q, "inr": inr, "model": model, "assumed": True, "caps": caps,
+            "left_today_inr": left}
 
 
-async def build(ask: str, settings, note: str = "") -> dict[str, Any]:
+async def build(ask: str, settings, note: str = "", tenant: str = "") -> dict[str, Any]:
     a = assess(ask)
     q = await _questions(ask, note, a, settings)
     return {"v": PLAN_V, "ask": ask[:1500], "tier": a["tier"], "corpus": a["corpus"], "calc": a["calc"],
             "hinglish": a["hinglish"], "sub_questions": q["sub_questions"], "look_in": q["look_in"],
-            "as_of": q["as_of"], "from_model": q["from_model"], "est": estimate(len(q["sub_questions"]), settings),
+            "as_of": q["as_of"], "from_model": q["from_model"], "est": estimate(len(q["sub_questions"]), settings, tenant),
             "note": note[:600]}
 
 
@@ -195,18 +210,23 @@ def card_text(p: dict[str, Any]) -> str:
     est = p["est"]
     money = f"~Rs {int(est['inr']):,}" if est.get("inr") is not None else ("kharcha andaza nahi laga paaya" if hi else
                                                                           "cost could not be estimated")
+    src_hi = (f"aapke pichhle {est['measured_runs']} runs ke hisaab se" if not est.get("assumed") else "andaza hai - asli kharcha research card se pakka hoga")
+    src_en = (f"from your last {est['measured_runs']} runs" if not est.get("assumed") else "an estimate - the research card will make it exact")
+    caps = est.get("caps") or {}
+    cap_hi = (f"\n**Seema:** ek run Rs {caps['run_inr']:.0f} se zyada nahi" + (f", aaj Rs {est['left_today_inr']:.0f} baaki" if est.get("left_today_inr") is not None else "")) if caps else ""
+    cap_en = (f"\n**Ceiling:** a run never spends more than Rs {caps['run_inr']:.0f}" + (f", Rs {est['left_today_inr']:.0f} left today" if est.get("left_today_inr") is not None else "")) if caps else ""
     qs = "\n".join(f"{i}. {q}" for i, q in enumerate(p["sub_questions"], 1))
     where = ", ".join(p["look_in"])
     if hi:
         return (f"**Research plan** - chalne se pehle aapki haan chahiye.\n\n**Sawal:** {p['ask'][:400]}\n\n"
                 f"**Main yeh dhoondhunga:**\n{qs}\n\n**Kahan dekhunga:** {where}\n**Kab tak ka data:** {p['as_of']}\n"
-                f"**Andaza:** ~{est['minutes']} minute, {money} (andaza hai - asli kharcha research card se pakka hoga)\n"
+                f"**Andaza:** ~{est['minutes']} minute, {money} ({src_hi}){cap_hi}\n"
                 f"**Report mein:** har number ke saath uska source aur date, aur jo confirm nahi ho paya woh alag se.\n\n"
                 f"Theek hai to **\"Haan, shuru karo\"** likhiye. Kuch badalna ho to saath mein likh dijiye "
                 f"(jaise \"Haan, par Pakistan se bhi tulna\"). Nahi karna to **\"nahi\"**.")
     return (f"**Research plan** - I need your Haan before I start.\n\n**Question:** {p['ask'][:400]}\n\n"
             f"**What I will find out:**\n{qs}\n\n**Where I will look:** {where}\n**Current to:** {p['as_of']}\n"
-            f"**Estimate:** ~{est['minutes']} min, {money} (an estimate - the research card will make it exact)\n"
+            f"**Estimate:** ~{est['minutes']} min, {money} ({src_en}){cap_en}\n"
             f"**In the report:** every number with its source and date, and what could not be confirmed kept separate.\n\n"
             f"Reply **\"Haan, shuru karo\"** to start. Add a change in the same message "
             f"(e.g. \"Haan, but also compare with Pakistan\"). Reply **\"no\"** to drop it.")
@@ -294,7 +314,7 @@ async def gate(tenant: str, conv: str, text: str, settings) -> dict[str, Any] | 
             _close(wait.id, "superseded")
         elif not t.startswith(("[", "(")) and len(t) <= 400:         # anything else short = her change to the plan
             note = (plan.get("note", "") + " | " if plan.get("note") else "") + t
-            newp = await build(plan["ask"], settings, note)
+            newp = await build(plan["ask"], settings, note, tenant)
             _close(wait.id, "superseded")
             _save_plan(tenant, conv, plan["ask"], newp)
             return {"action": "say", "words": t, "text": card_text(newp)}
@@ -306,6 +326,6 @@ async def gate(tenant: str, conv: str, text: str, settings) -> dict[str, Any] | 
         return None
     if assess(t)["tier"] != "large":
         return None
-    plan = await build(t, settings)
+    plan = await build(t, settings, tenant=tenant)
     _save_plan(tenant, conv, t, plan)
     return {"action": "say", "words": t, "text": card_text(plan)}

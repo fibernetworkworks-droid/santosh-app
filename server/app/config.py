@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
+    research_run_cap_inr: float = 150.0     # v0.476 R5: ONE research run may spend at most this many rupees (model calls; a default, not a measured need)
+    research_daily_inr: float = 600.0       # ... and one tenant's research runs together at most this much a day (IST); 0 = no research that day
+    research_call_reserve_inr: float = 3.0  # a run asks "can I still afford another call?" with this much room - it refuses BEFORE the call that would cross
+    research_search_inr: float = 0.0        # price of ONE Parallel search call in rupees: UNKNOWN until her plan is read, so 0 and said so on every cost line
+    research_fetch_inr: float = 0.0         # price of ONE page fetch in rupees: same
     research_background: bool = True        # v0.475 R4: research_run starts a PERSISTED background run and returns at once (False = inline, inside the turn)
     research_bg_soft_s: float = 1500.0      # a background run's soft clock: after this the workers finish with what they have
     research_bg_max_running: int = 2        # background research runs at once per tenant

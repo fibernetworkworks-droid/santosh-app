@@ -35,14 +35,15 @@ from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable
 from urllib.parse import urlparse
 
+from . import bill as _bill
 from . import claims as _claims
 from . import figures as _fig
 
 log = logging.getLogger("santosh.research")
 
-ENGINE_V = 3          # v0.475 R4: resumable (checkpoints), prunes old page text, narrates each step
+ENGINE_V = 4          # v0.476 R5: asks before every model call whether it can still afford it; the dossier carries its cost
 STATS = {"runs": 0, "tasks": 0, "pages": 0, "notes": 0, "unverified_notes": 0, "refused_reads": 0, "replans": 0,
-         "figure_gaps": 0, "pruned": 0, "resumed": 0}
+         "figure_gaps": 0, "pruned": 0, "resumed": 0, "cost_stops": 0}
 
 # v0.474 R3: the newest dossier of each conversation, so the report check (agent/santosh._hard_check) can read it. In memory on
 # purpose: a restart drops it and the check falls back to the older link-only check (R4 persists runs).
@@ -195,6 +196,7 @@ class State:
     counts: dict[str, int] = field(default_factory=lambda: {"searches": 0, "reads": 0, "calcs": 0, "refused": 0,
                                                             "steps": 0, "llm_calls": 0})
     started: float = field(default_factory=time.time)
+    cost_stop: str = ""                                          # v0.476 R5: why the run stopped asking for more (a ceiling), '' = it did not
 
     def time_left(self) -> bool:
         return (time.time() - self.started) < self.policy.soft_s
@@ -211,6 +213,8 @@ class Deps:
     emit: Callable[[str, str, str], None] = lambda goal, state, label: None
     checkpoint: Callable[[dict], None] = lambda cp: None            # v0.475 R4: called after each goal finishes
     step: Callable[[str, str, str], None] = lambda goal, kind, detail: None   # v0.475 R4: live narration of each step
+    afford: Callable[[], tuple[bool, str]] = lambda: (True, "")             # v0.476 R5: asked BEFORE every model call
+    cost: Callable[[str], dict] = lambda stop: {}                            # v0.476 R5: the itemised cost of the run so far
 
 
 # ---------------------------------------------------------------- 1. url discipline + the note check
@@ -375,6 +379,12 @@ async def run_worker(state: State, deps: Deps, goal: str, rnd: int) -> TaskResul
         for step in range(pol.steps_per_task):
             if deps.stopped() or not state.time_left():
                 res.unresolved = res.unresolved or "ran out of time before this goal was finished"
+                break
+            ok, why = deps.afford()                          # v0.476 R5: refuse BEFORE the call that would cross a ceiling
+            if not ok:
+                state.cost_stop = state.cost_stop or why
+                STATS["cost_stops"] += 1
+                res.unresolved = res.unresolved or ("stopped at the cost ceiling before this goal was finished (" + why + ")")
                 break
             prune_history(history, keep=2)
             blocks, stop = await deps.llm(_worker_system(state.question, goal, pol), history, _WORKER_TOOLS, 2500)
@@ -581,6 +591,9 @@ async def run(question: str, goals: list[str], policy: Policy, deps: Deps, asked
         if deps.stopped():
             stop_reason = "stopped by her"
             break
+        if state.cost_stop:
+            stop_reason = "cost ceiling: " + state.cost_stop
+            break
         if rnd >= policy.rounds:
             stop_reason = "round limit"
             break
@@ -589,6 +602,11 @@ async def run(question: str, goals: list[str], policy: Policy, deps: Deps, asked
             break
         if len(state.pages) >= policy.pages_total:
             stop_reason = "page budget used"
+            break
+        ok, why_c = deps.afford()
+        if not ok:
+            state.cost_stop = state.cost_stop or why_c
+            stop_reason = "cost ceiling: " + why_c
             break
         action, new, why = await replan(state, deps, results)
         for e in rounds_log:
@@ -604,7 +622,14 @@ async def run(question: str, goals: list[str], policy: Policy, deps: Deps, asked
             deps.checkpoint(snapshot(state, results, rounds_log + [{"round": rnd, "goals": list(todo)}], rnd, todo))
         except Exception:      # noqa: BLE001
             log.exception("research checkpoint failed")
-    return dossier(question, policy, state, results, rounds_log, stop_reason)
+    d = dossier(question, policy, state, results, rounds_log, stop_reason)
+    try:
+        d["cost"] = deps.cost(state.cost_stop)
+    except Exception:      # noqa: BLE001 - a cost that cannot be read is no reason to lose the research
+        log.exception("research cost read failed")
+        d["cost"] = {}
+    d["stats"]["cost_inr"] = d["cost"].get("total_inr") if d["cost"] else None
+    return d
 
 
 def dossier(question: str, policy: Policy, state: State, results: list[TaskResult], rounds: list[dict], stop_reason: str) -> dict[str, Any]:
@@ -654,6 +679,8 @@ def render(d: dict[str, Any], limit: int = 30000) -> str:
     if cf:
         out.append("Field confidence (a rule, not a feeling): " + ", ".join(f"{k} {cf.get(k, 0)}" for k in ("high", "medium", "low", "unconfirmed"))
                    + ". Lead with high / medium; state low as tentative and unconfirmed as NOT confirmed.")
+    if d.get("cost"):
+        out.append(_bill.format_line(d["cost"], hi=False))
     if d.get("after_date"):
         out.append(f"Source policy: material on or after {d['after_date']} preferred.")
     for t in d["tasks"]:
