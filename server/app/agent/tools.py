@@ -1098,6 +1098,9 @@ TOOL_LANES: dict[str, str] = {
                      "new places (maps_nearby / maps_search).",
     "ownmap_near": "LANE: which of HER OWN imported pins / areas are near somewhere. Other businesses -> maps_nearby. Her "
                    "Google listing -> gbp_locations.",
+    "solar_check": "LANE: is rooftop SOLAR workable at one building (roof area, panels, sunshine, kWh). Not electricity "
+                   "prices or payback maths (pylab).",
+    "maps_snap": "LANE: clean a recorded GPS trail onto roads. Finding places / routes -> maps_nearby / maps_directions.",
     "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
                   "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms

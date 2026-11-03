@@ -18061,3 +18061,26 @@ she hands the data over ONCE and Hoola owns it. Nothing in this version calls Go
   Dynamic Maps per load), the Datasets API (Google-hosted, OAuth + a project), the Data Portability API route to pull a My Maps
   map without her exporting (restricted scopes + Google app verification), syncing with later edits in Google (no route exists -
   she must re-import). **NOT verified** against a real My Maps export or a real Takeout file.
+
+## v0.469.0 — GOOGLE MAPS Phase 10: BAAKI SAB (Solar + Roads built; four APIs deliberately not)
+
+Owner: *"GO PHASE 10"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
+
+Each API's own Service Specific Terms were read FIRST (cloud.google.com is reachable) - the result is in
+`docs/research/maps/06_phase10_terms.md` with the quotes. Two are built, four are not, for stated reasons:
+- **BUILT `solar_check`** (`maps.solar_building`): Solar API Building Insights for the building nearest a point. SST 20.1 permits
+  feasibility for an address, so one-building feasibility is inside the licence. Returns Google's numbers only: roof area, max panels,
+  max array area, sunshine hours, panel watts and three layouts (about 25 / 50 / 100 % of the maximum) with Google's yearly DC kWh
+  untouched. Google's `financialAnalyses` are NOT used (they are US-tariff based); the tool tells the model to get her bill/tariff and
+  use pylab for payback and never invent savings. `requiredQuality=BASE` (the lowest bar, widest coverage). A 404 = no imagery there:
+  reported `covered:false`, refunded (not a successful request), never filled in.
+- **BUILT `maps_snap`** (`maps.snap_to_roads`): Roads snapToRoads for a recorded GPS trail, at most 100 points, driving / walking /
+  cycling, returns the snapped points, the snapped km and the indexes that could not be placed.
+- New SKUs `solar.building` (India $4.00, 70,000 free; global $10.00, 10,000) and `roads.snap` (India $3.00, 35,000; global $10.00,
+  5,000) from `04_prices.md`; the Roads billing unit is not confirmed so `/api/maps/usage` lists it under `assumed_tier`.
+- **NOT built, by the terms:** Air Quality (SST 2.1 permits only air-quality-based routing and environmental risk indices/research -
+  a plain "what is the AQI" answer is outside it) and Pollen (SST 16.1, same); Elevation (no SST section, and ToS 3.2.3(c)(iii) bars
+  terrain models from it; no sourced price); Time Zone (India has one zone).
+- Tests: `server/tests/test_v0469_solar_roads.py` (8). Nothing is stored; a test asserts neither function touches the database.
+- **NOT verified live:** no real call; Solar coverage for her city unknown (it falls back to "not covered"); the 100-point Roads ceiling
+  is from memory of the blocked prose docs.

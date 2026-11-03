@@ -69,6 +69,8 @@ SKU_DYNAMIC_MAP = "maps.dynamic"                    # Phase 2 option B - a Googl
 SKU_STATIC_MAP = "maps.static"                      # Phase 7
 SKU_STREETVIEW = "streetview.static"                # Phase 7
 SKU_OPT = "routeopt.fleet"                         # Phase 5 - Route Optimization (FleetRouting list price used for every request)
+SKU_SOLAR = "solar.building"                       # Phase 10 - Building Insights (India $4.00 / global $10.00)
+SKU_ROADS = "roads.snap"                           # Phase 10 - Roads snap-to-road ("Route Travelled": India $3.00 / global $10.00)
 SKU_STREETVIEW_META = "streetview.metadata"         # free - check a panorama exists before paying for it
 
 # ---------------------------------------------------------------- the price list
@@ -90,7 +92,7 @@ _INDIA: dict[str, float] = {
     SKU_AUTOCOMPLETE: 0.85, SKU_AUTOCOMPLETE_SESSION: 0.0,
     SKU_ADDRESS_PRO: 5.10, SKU_ADDRESS_ENT: 7.50,
     SKU_DYNAMIC_MAP: 2.10, SKU_STATIC_MAP: 0.60, SKU_STREETVIEW: 2.10, SKU_STREETVIEW_META: 0.0,
-    SKU_OPT: 2.40,
+    SKU_OPT: 2.40, SKU_SOLAR: 4.00, SKU_ROADS: 3.00,
 }
 _GLOBAL: dict[str, float] = {
     SKU_TEXT_IDS: 0.0, SKU_TEXT_PRO: 32.00, SKU_TEXT_ENT: 35.00,
@@ -101,14 +103,15 @@ _GLOBAL: dict[str, float] = {
     SKU_AUTOCOMPLETE: 2.83, SKU_AUTOCOMPLETE_SESSION: 0.0,
     SKU_ADDRESS_PRO: 17.00, SKU_ADDRESS_ENT: 25.00,
     SKU_DYNAMIC_MAP: 7.00, SKU_STATIC_MAP: 2.00, SKU_STREETVIEW: 7.00, SKU_STREETVIEW_META: 0.0,
-    SKU_OPT: 30.00,
+    SKU_OPT: 30.00, SKU_SOLAR: 10.00, SKU_ROADS: 10.00,
 }
 # ASSUMED, and said so out loud: Routes is tiered Essentials / Pro / Enterprise and no Google page we found
 # maps OUR field mask (TRAFFIC_AWARE + navigationInstruction) to a tier. We charge the DEAREST tier for
 # routes and the matrix, which can only make the cap fire early. ASSUMED_TIER is reported by /api/maps/usage
 # so the guess is visible instead of silent, and is the first thing to fix against her real bill.
 ASSUMED_TIER = {SKU_ROUTES: "enterprise", SKU_MATRIX: "enterprise", SKU_ADDRESS_ENT: "enterprise",
-                SKU_OPT: "fleet rate, per shipment (unit not confirmed)"}
+                SKU_OPT: "fleet rate, per shipment (unit not confirmed)",
+                SKU_ROADS: "per request (billing unit not confirmed; rate is the sourced Route Travelled rate)"}
 
 # Free events a MONTH, per SKU. These belong to the BILLING ACCOUNT, not to one user: "Google aggregates
 # service usage for all projects linked to the customer billing account", so the counter below is global
@@ -123,7 +126,7 @@ _FREE_INDIA: dict[str, int] = {
     SKU_AUTOCOMPLETE: 70000, SKU_AUTOCOMPLETE_SESSION: UNLIMITED,
     SKU_ADDRESS_PRO: 35000, SKU_ADDRESS_ENT: 7000,
     SKU_DYNAMIC_MAP: 70000, SKU_STATIC_MAP: 70000, SKU_STREETVIEW: 70000, SKU_STREETVIEW_META: UNLIMITED,
-    SKU_OPT: 7000,
+    SKU_OPT: 7000, SKU_SOLAR: 70000, SKU_ROADS: 35000,
 }
 _FREE_GLOBAL: dict[str, int] = {
     SKU_TEXT_IDS: UNLIMITED, SKU_TEXT_PRO: 5000, SKU_TEXT_ENT: 1000,
@@ -134,7 +137,7 @@ _FREE_GLOBAL: dict[str, int] = {
     SKU_AUTOCOMPLETE: 10000, SKU_AUTOCOMPLETE_SESSION: UNLIMITED,
     SKU_ADDRESS_PRO: 5000, SKU_ADDRESS_ENT: 1000,
     SKU_DYNAMIC_MAP: 10000, SKU_STATIC_MAP: 10000, SKU_STREETVIEW: 10000, SKU_STREETVIEW_META: UNLIMITED,
-    SKU_OPT: 1000,
+    SKU_OPT: 1000, SKU_SOLAR: 10000, SKU_ROADS: 5000,
 }
 
 PER_REQUEST = "request"

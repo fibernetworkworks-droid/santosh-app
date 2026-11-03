@@ -356,6 +356,9 @@ async def matrix(origins: list[dict], destinations: list[dict], mode: str = "DRI
 
 
 # ---------------------------------------------------------------- v0.466 Phase 7: KAAGAZ PAR (links, not pictures)
+SOLAR_URL = "https://solar.googleapis.com/v1/buildingInsights:findClosest"       # v0.469 Phase 10
+SNAP_URL = "https://roads.googleapis.com/v1/snapToRoads"
+SNAP_MAX_POINTS = 100                          # Roads API's documented per-request ceiling
 STREETVIEW_META_URL = "https://maps.googleapis.com/maps/api/streetview/metadata"
 
 
@@ -389,6 +392,81 @@ async def streetview_check(lat: float, lng: float, tenant_id: str = "") -> dict:
         raise MapsError(f"Google Maps: {st} {d.get('error_message', '')}"[:200])
     return {"available": st == "OK", "pano_id": d.get("pano_id", "") if st == "OK" else "",
             "date": d.get("date", "") if st == "OK" else ""}
+
+
+# ---------------------------------------------------------------- v0.469 Phase 10: BAAKI SAB (solar + roads)
+def _pick_configs(configs: list[dict], max_panels: int) -> list[dict]:
+    """A few arrangements from Google's own list (ordered by panel count): about 25 / 50 / 100 % of the maximum.
+    Google's DC energy numbers are passed through untouched - nothing here is a financial guess."""
+    out, seen = [], set()
+    for frac in (0.25, 0.5, 1.0):
+        target = max(1, round(max_panels * frac))
+        c = min(configs, key=lambda x: abs(int(x.get("panelsCount") or 0) - target), default=None)
+        if c and c.get("panelsCount") not in seen:
+            seen.add(c.get("panelsCount"))
+            out.append({"panels": int(c.get("panelsCount") or 0), "yearly_dc_kwh": round(float(c.get("yearlyEnergyDcKwh") or 0))})
+    return out
+
+
+async def solar_building(lat: float, lng: float, tenant_id: str = "") -> dict:
+    """Solar API Building Insights for the building nearest a point: roof size, how many panels fit, sunshine, and what
+    a few layouts would generate. Permitted use is feasibility / design / a requested proposal for an address (SST 20.1);
+    nothing is stored. Coverage is not universal: a place Google has no imagery for answers NOT_FOUND and is reported
+    as 'not covered', never filled in. Billed per successful request."""
+    if not (-90 <= float(lat) <= 90 and -180 <= float(lng) <= 180):
+        raise MapsError("Location sahi nahi hai")
+    rc = _bill(tenant_id, mapsbill.SKU_SOLAR)
+    r = await _client().get(SOLAR_URL, params={"location.latitude": float(lat), "location.longitude": float(lng),
+                                               "requiredQuality": "BASE"}, headers={"X-Goog-Api-Key": _key()})
+    if r.status_code == 404:                       # no building / imagery here: not a successful result, not billed
+        _unbill(rc)
+        return {"covered": False}
+    if r.status_code >= 400:
+        _unbill(rc)
+        raise MapsError(_explain(r))
+    d = r.json() or {}
+    sp = d.get("solarPotential") or {}
+    whole = sp.get("wholeRoofStats") or {}
+    mx = int(sp.get("maxArrayPanelsCount") or 0)
+    im = d.get("imageryDate") or {}
+    return {"covered": True, "quality": d.get("imageryQuality", ""),
+            "imagery_date": "-".join(str(im.get(k)) for k in ("year", "month", "day") if im.get(k)),
+            "roof_area_m2": round(float(whole.get("areaMeters2") or 0), 1),
+            "max_panels": mx, "max_array_area_m2": round(float(sp.get("maxArrayAreaMeters2") or 0), 1),
+            "panel_watts": sp.get("panelCapacityWatts"), "sunshine_hours_per_year": sp.get("maxSunshineHoursPerYear"),
+            "layouts": _pick_configs(sp.get("solarPanelConfigs") or [], mx) if mx else [],
+            "attribution": ATTRIBUTION}
+
+
+async def snap_to_roads(points: list[dict], mode: str = "DRIVING", interpolate: bool = False,
+                        tenant_id: str = "") -> dict:
+    """Roads API snapToRoads: a GPS trail -> the road it was on. At most 100 points a request. Billed per request.
+    The snapped lat/lng are returned live and not kept (Roads allows lat/lng for 30 days, nothing else)."""
+    if not points:
+        raise MapsError("Kam se kam ek point chahiye.")
+    if len(points) > SNAP_MAX_POINTS:
+        raise MapsError(f"Ek baar mein {SNAP_MAX_POINTS} point tak; {len(points)} hain. Hisson mein baant dein.")
+    for p in points:
+        if not (-90 <= p["lat"] <= 90 and -180 <= p["lng"] <= 180):
+            raise MapsError("Koi point galat hai (lat/lng).")
+    mode = mode if mode in ("DRIVING", "WALKING", "CYCLING") else "DRIVING"
+    path = "|".join(f"{p['lat']},{p['lng']}" for p in points)
+    rc = _bill(tenant_id, mapsbill.SKU_ROADS)
+    r = await _client().get(SNAP_URL, params={"path": path, "travelMode": mode, "interpolate": str(bool(interpolate)).lower()},
+                            headers={"X-Goog-Api-Key": _key()})
+    if r.status_code >= 400:
+        _unbill(rc)
+        raise MapsError(_explain(r))
+    d = r.json() or {}
+    sp = d.get("snappedPoints") or []
+    snapped = [{"lat": (x.get("location") or {}).get("latitude"), "lng": (x.get("location") or {}).get("longitude"),
+                "original_index": x.get("originalIndex")} for x in sp]
+    km = sum(_km({"lat": a["lat"], "lng": a["lng"]}, {"lat": b["lat"], "lng": b["lng"]})
+             for a, b in zip(snapped, snapped[1:]) if None not in (a["lat"], a["lng"], b["lat"], b["lng"]))
+    kept = {x["original_index"] for x in snapped if x["original_index"] is not None}
+    return {"snapped": snapped, "snapped_km": round(km, 2),
+            "not_snapped": [i for i in range(len(points)) if i not in kept],
+            "warning": d.get("warningMessage", ""), "attribution": ATTRIBUTION}
 
 
 # ---------------------------------------------------------------- v0.464 Phase 6: PATA PAKKA

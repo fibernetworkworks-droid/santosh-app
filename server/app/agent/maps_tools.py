@@ -160,6 +160,23 @@ MAPS_TOOLS = [
         "only after she says yes. Owner only."),
      "input_schema": {"type": "object", "properties": {
          "map": {"type": "string"}, "confirm": {"type": "boolean"}}, "required": ["map"]}},
+    # v0.469 Phase 10 BAAKI SAB (the parts whose terms allow a plain business use)
+    {"name": "solar_check", "description": (
+        "Rooftop SOLAR feasibility for ONE address / building (Google Solar API): roof area, how many panels fit, "
+        "sunshine hours a year, and what a few layouts would generate (Google's DC kWh a year, before inverter losses). "
+        "Use only when she asks whether solar is workable at a place, or to prepare a solar proposal for it. Coverage is "
+        "not everywhere - a place with no imagery is reported 'not covered', never guessed. Costs money per call; one "
+        "building per call. Google's money / savings estimates are not used (US-based) - work out payback with pylab "
+        "from her tariff. Read live, not stored."),
+     "input_schema": {"type": "object", "properties": {
+         "place": {"type": "string"}, "lat": {"type": "number"}, "lng": {"type": "number"}}}},
+    {"name": "maps_snap", "description": (
+        "Clean a GPS trail onto the road it was on (Google Roads snap-to-road): up to 100 points. Gives the snapped "
+        "points, the snapped distance in km and which points could not be placed. For a driver's recorded trail, not for "
+        "finding places. Points are [{lat,lng}] or 'lat,lng' strings."),
+     "input_schema": {"type": "object", "properties": {
+         "points": {"type": "array", "items": {}}, "mode": {"type": "string", "enum": ["driving", "walking", "cycling"]},
+         "interpolate": {"type": "boolean"}}, "required": ["points"]}},
     {"name": "maps_kharcha", "description": (
         "Today's Google Maps spend for this user: calls made, how many were inside Google's free monthly "
         "allowance, rupees spent, the daily cap and what is left. Use it when she asks what Maps is costing, or "
@@ -178,6 +195,7 @@ MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directi
                "ownmap_import": "Aapka map import kar raha hoon", "ownmap_list": "Aapke maps dekh raha hoon",
                "ownmap_near": "Aapke pins mein paas wale dekh raha hoon", "ownmap_pin": "Pin jod raha hoon",
                "ownmap_delete": "Map hata raha hoon",
+               "solar_check": "Chhat par solar ki jaanch kar raha hoon", "maps_snap": "Rasta saaf kar raha hoon",
                "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
 
 
@@ -661,6 +679,48 @@ async def ownmap_delete(ctx: Ctx, map, confirm=False, **_):
     return _own_call(ownmap.delete_map, ctx.tenant_id, str(map))
 
 
+async def solar_check(ctx: Ctx, place="", lat=None, lng=None, **_):
+    if not maps.configured():
+        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+    la, lo = await _point(ctx, place, lat, lng)
+    try:
+        before = mapsbill.usage(ctx.tenant_id)["inr"]
+        r = await maps.solar_building(la, lo, tenant_id=ctx.tenant_id)
+    except maps.MapsError as e:
+        raise ToolError(str(e))
+    r["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
+    if not r.get("covered"):
+        r["message"] = "Google ke paas is jagah ki chhat ka solar data nahi hai (imagery nahi). Andaza nahi lagaunga."
+    else:
+        r["note"] = ("Tell her roof area, panels that fit, sunshine hours and the layouts' yearly DC kWh. DC = before "
+                     "inverter/wiring losses (real output is lower). Do NOT invent savings: ask her monthly bill / tariff and "
+                     "use pylab for payback. Read live from Google, not stored.")
+    return r
+
+
+def _pt(x):
+    if isinstance(x, dict):
+        return {"lat": float(x.get("lat", x.get("latitude"))), "lng": float(x.get("lng", x.get("longitude", x.get("lon"))))}
+    a, b = str(x).split(",")[:2]
+    return {"lat": float(a), "lng": float(b)}
+
+
+async def maps_snap(ctx: Ctx, points, mode="driving", interpolate=False, **_):
+    if not maps.configured():
+        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+    try:
+        pts = [_pt(p) for p in (points if isinstance(points, list) else [])]
+    except (TypeError, ValueError, KeyError):
+        raise ToolError("Points [{lat,lng}] ya 'lat,lng' mein chahiye.")
+    try:
+        before = mapsbill.usage(ctx.tenant_id)["inr"]
+        r = await maps.snap_to_roads(pts, str(mode or "driving").upper(), bool(interpolate), tenant_id=ctx.tenant_id)
+    except maps.MapsError as e:
+        raise ToolError(str(e))
+    r["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
+    return r
+
+
 async def maps_kharcha(ctx: Ctx, **_):
     u = mapsbill.usage(ctx.tenant_id)
     return {**u, "note": ("Rupees are an estimate: Google's own list is in USD and bills the billing account's "
@@ -674,4 +734,5 @@ MAPS_HANDLERS = {"maps_search": maps_search, "maps_directions": maps_directions,
                  "maps_route_plan": maps_route_plan, "maps_links": maps_links,
                  "gbp_locations": gbp_locations, "gbp_numbers": gbp_numbers,
                  "ownmap_import": ownmap_import, "ownmap_list": ownmap_list, "ownmap_near": ownmap_near,
-                 "ownmap_pin": ownmap_pin, "ownmap_delete": ownmap_delete, "maps_kharcha": maps_kharcha}
+                 "ownmap_pin": ownmap_pin, "ownmap_delete": ownmap_delete,
+                 "solar_check": solar_check, "maps_snap": maps_snap, "maps_kharcha": maps_kharcha}
