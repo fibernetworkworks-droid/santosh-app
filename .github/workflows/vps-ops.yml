@@ -39,6 +39,7 @@ on:
           - tool_card
           - hard_card
           - maps_card
+          - research_card
           - long_jobs
           - long_card_try
           - long_card
@@ -371,6 +372,15 @@ jobs:
                 echo 'echo "== usage before"; cd $CORE && timeout 60 .venv/bin/python -c "from app.mapsbill import usage; import json; print(json.dumps(usage(\"__quality__\"), default=str))" 2>&1 | tail -2'
                 echo 'echo "== live, geo answers (arithmetic key)"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind geo --label vps-ops 2>&1 | tail -20'
                 echo 'echo "== live, the guards"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind rule --label vps-ops 2>&1 | tail -20' ;;
+              research_card)
+                # v0.471 R0 NAAP: the RESEARCH card. The free part (scorer calibration: it must pass an honest report and
+                # catch every planted fault; research recognised; tools in view) then a SHORT live run - 4 topic asks and
+                # the 3 trap asks (a company / scheme / standard invented for the card) - each scored IN CODE against the
+                # pages and pylab results that turn really fetched, with minutes and rupees per report. All 20 live: on
+                # the VPS itself - python -m app.quality research --live [--judge]. A live run spends model calls + web.
+                echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality research 2>&1 | tail -20'
+                echo 'echo "== live, 4 topics"; cd $CORE && timeout 1500 .venv/bin/python -m app.quality research --live --only official_cpi,rule_gst_einvoice,calc_smartphones,scholarly_rag --label vps-ops 2>&1 | tail -30'
+                echo 'echo "== live, the traps"; cd $CORE && timeout 900 .venv/bin/python -m app.quality research --live --kind trap --label vps-ops 2>&1 | tail -20' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.

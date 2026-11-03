@@ -6,6 +6,8 @@
    | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
    | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
+   | research [--live] [--judge] [--only id,id] [--limit N] [--kind topic|trap] [--label x]
+       | research verdict <id> right|wrong ["why"]   (v0.471 R0 RESEARCH card: report quality scored from its own evidence)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -41,6 +43,27 @@ def _mapscard(argv: list[str]) -> int:
     print("\n".join(MC.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
+
+
+def _researchcard(argv: list[str]) -> int:
+    from . import researchcard as RC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "verdict":       # HER verdict outranks every number on the card
+        if len(argv) < 3:
+            print('usage: python -m app.quality research verdict <ask id> right|wrong ["why"]')
+            return 2
+        try:
+            print(RC.set_verdict(argv[1], argv[2], " ".join(argv[3:])))
+        except ValueError as e:
+            print(str(e))
+            return 2
+        return 0
+    items = RC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    card = asyncio.run(RC.live_card(items, judge="--judge" in argv)) if "--live" in argv else RC.free_card(items)
+    card = RC.save(card, val("--label"))
+    print("\n".join(RC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 1 if card["kind"] == "free" and card["calibration_ok"] < len(card["calibration"]) else 0
 
 
 def _code(argv: list[str]) -> int:
@@ -119,6 +142,8 @@ def main(argv: list[str]) -> int:
         return 0
     if argv and argv[0] == "maps":          # v0.470 MAPS card (free; --live costs model calls + real Maps rupees)
         return _mapscard(argv[1:])
+    if argv and argv[0] == "research":      # v0.471 R0 RESEARCH card (free; --live costs model calls + web)
+        return _researchcard(argv[1:])
     if argv and argv[0] == "code":          # v0.360 coding card (model calls: ~12 Opus jobs)
         return _code(argv[1:])
     if argv and argv[0] == "tools":

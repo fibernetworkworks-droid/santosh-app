@@ -18137,3 +18137,34 @@ Google has no imagery for reported not covered, the daily cap refusing before it
 - **NOT VERIFIED, said plainly:** the live card has never run - it needs a real Maps key on the VPS and spends real
   money. Every Phase 4-10 number in this repo is still "built and unit-tested", never "answered by Google". The three
   assumed rates (Routes/matrix tier, Route Optimization unit, Roads unit) are settled only by that first real bill.
+
+## v0.471.0 - RESEARCH Phase R0 NAAP (the scorecard first)
+
+Owner: "GO R0" (plan: `docs/RESEARCH_PRO_PLAN.md`). Nothing in that plan may be called "perfect" until a number exists.
+
+- `server/app/quality/research_asks.py` - 20 asks, set v1: 17 topics in her world (official numbers via MoSPI/TRAI, rules that
+  change - DPDP, GST e-invoice, PM Surya Ghar, GeM tenders -, market / supplier / competitor, a literature review, official health
+  guidance, a syllabus, a workshop machine, two that need CAGR in pylab) and 3 TRAPS - a company, a scheme and a BIS standard invented
+  for the card. The set stores NO answer: a research answer's value is never a fact remembered about the world.
+- `server/app/quality/researchcard.py` - the scorer `score_report(report, docs, ask, tools, opened)` (pure). Hard checks:
+  sources_enough, links_opened (a link no tool returned/opened in THIS run fails), numbers_traced (<=10% of key figures may be
+  untraceable to a fetched page or a pylab result; years, dates, [n], list numerals, small counts and numbers already in the ask are
+  not key figures), refs_match, as_of, sources_dated (a year inside a URL is not a date), uncertainty, calc_in_pylab, first_stop_tool.
+  Traps: not_found_said + no_untraced_figure + links_opened. Measured only: corroborated share (a figure two different websites carry)
+  and primary-looking share of cited domains (by domain NAME, said so). Thresholds are constants at the top; `RUBRIC_V` moves with
+  the scorer so two cards are only compared at equal rubric.
+- CALIBRATION (free): 11 reports written from fixtures with their own made-up facts - one honest report that must pass, and one per
+  planted fault that must fail for its own reason. First run found a REAL scorer bug (the URL's `/2025` counted as a source date);
+  fixed and pinned.
+- Live card: one real turn per ask on tenant `__quality__`, the evidence read back with `yaad.full_history` (tool_use inputs +
+  tool_result bodies of THIS turn), minutes, rupees (month usage delta x usd_inr), optional Opus usefulness judge (`--judge`).
+  HER verdict: `python -m app.quality research verdict <id> right|wrong "why"` - stored in data/quality/research_verdicts.json, shown on the card,
+  outranks every number.
+- Wiring: CLI `research`, `GET /api/quality/research`, vps-ops `research_card` (free part + 4 topics + the 3 traps).
+- Tests: `test_v0471_research_card.py` (13).
+- FINDING, not fixed here (R1): `hard.research_wanted` recognises only 9 of the 20 asks. The pattern needs "deep research" or
+  "research karo/on/about/into/report/paper"; "Research the cotton situation...", "Research India's...", "Compare Razorpay..." are not
+  seen as research, so they get no research recipe and no `research_check`. Everything else the free card checks is green: first-stop tools
+  and the document tool are in view for 20/20.
+- NOT VERIFIED: no live card has run. The free card proves the scorer, not the engine.
+
