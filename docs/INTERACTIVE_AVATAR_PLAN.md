@@ -212,3 +212,13 @@ non-overlapped build managed 2-3 slowly, so the new thread pool deadlocks under 
 thread dump every 240 s in the container log, watchdog 240 s, then re-run `streams`. Until two is proven, plan CAPACITY = 1 student per
 L40S -> $0.033 per student-minute (+~$0.065 idle tail per session).
 
+
+
+**Why two students per GPU is off the table (3rd concurrency run, same day):** the faulthandler dump of the hung 2-student run shows BOTH
+threads inside the UNet forward (modal_app.py `stream`, diffusers `unet_2d_condition.forward` -> `Linear`), the CPU pool idle: two Python
+threads calling the GPU at once stalled it. And even if they did not, the card's total is ~43 fps (the bench ceiling), two students need 2 x 25.
+**Decision: ONE student per GPU container** (Live has no `@modal.concurrent`, `max_containers=4`); a second student gets a second card from Modal
+(a cold start: image + models ~7 s + face from the volume), so a WARM POOL (`min_containers`) is the next product question - it is what
+decides how long a student waits, and what it costs while nobody is talking.
+Cost of one live student-minute on an L40S, all-in: GPU $0.0325 + 4 CPU cores ~$0.0031 (Modal $0.0000131 per physical core-second) + memory
+~$0.001 (est., $0.00000222 per GiB-second) = **~$0.036 per student-minute** (+ the 120 s idle tail ~$0.07 per session), vs ~$0.08 HeyGen.

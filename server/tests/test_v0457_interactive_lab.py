@@ -211,7 +211,7 @@ def test_stall_maths_for_the_concurrency_test():
     assert slow["stalls"] == 4 and abs(slow["stall_s"] - 4 * 0.18) < 0.01
     # Nothing came back: reported as nothing, never as 'smooth'.
     assert play([])["first_s"] is None
-    assert "max_containers=1" in MODAL_SRC and "@modal.concurrent(max_inputs=8)" in MODAL_SRC   # one card, shared on purpose
+    assert "max_containers=4" in MODAL_SRC and "@modal.concurrent" not in MODAL_SRC   # one student per card: sharing hung the GPU
     assert "streams" in WORKFLOW and "modal_app.py::bench_streams" in WORKFLOW and "REPORT_streams.txt" in MODAL_SRC
 
 
@@ -220,10 +220,18 @@ def test_live_face_overlaps_cpu_with_gpu_and_the_streams_test_cannot_hang_for_ha
     half of each frame (blend + JPEG) ran in line with the GPU half, and 4 streams hung until Modal's 1800 s limit."""
     assert "cpu=4" in MODAL_SRC and "ThreadPoolExecutor(max_workers=6)" in MODAL_SRC
     assert "pending = None" in MODAL_SRC and "self.pool.submit(finish" in MODAL_SRC      # next GPU batch runs while this one is blended
-    assert "deadline = time.time() + 240" in MODAL_SRC and "timeout=600" in MODAL_SRC      # a stuck stream costs minutes
+    assert "deadline = time.time() + 420" in MODAL_SRC and "timeout=600" in MODAL_SRC      # a stuck stream costs minutes
 
 
 def test_a_hung_live_stream_leaves_a_thread_dump_and_opencv_does_not_add_its_own_threads():
     """The second `streams` run: ONE student 37.7 fps and smooth, TWO students hung with no error text. The next hang must say
     where every thread is stuck (faulthandler dump into the container log) and OpenCV must not spawn a second pool."""
     assert "faulthandler.dump_traceback_later(240, repeat=True)" in MODAL_SRC and "cv2.setNumThreads(1)" in MODAL_SRC
+
+
+def test_a_prepared_face_is_shared_through_the_volume_so_any_container_can_stream_it():
+    """One student per card means a second student lands on a COLD container, which has never prepared the face (84-160 s):
+    it must load it from the volume (committed by `prepare`), and an unknown or badly named face must still be refused."""
+    assert "volume.commit()      # results/ is the volume" in MODAL_SRC
+    assert "def _avatar(self, avatar_id: str):" in MODAL_SRC and "preparation=False" in MODAL_SRC
+    assert "av = self._avatar(avatar_id)" in MODAL_SRC and "latents.pt" in MODAL_SRC

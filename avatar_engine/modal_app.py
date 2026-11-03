@@ -412,8 +412,8 @@ class Face:
 # ---------------------------------------------------------------- live face (warm, in-process, streams frames)
 @app.cls(gpu=GPU, image=face_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600,
          cpu=4,                     # the CPU half of every frame (blend + JPEG) needs real cores, not Modal's 0.125 default
-         max_containers=1)          # ONE container = ONE GPU: the concurrency test must share a single card, never spread out
-@modal.concurrent(max_inputs=8)
+         max_containers=4)          # ONE student per container (input concurrency stays off): measured, a second student on the same card
+                                    # hangs the GPU call AND could never be smooth (~43 fps total < 2 x 25), so Modal adds a card
 class Live:
     """The face the way a live teacher needs it: every model loaded ONCE when the container starts, prepared faces kept in
     memory, and `stream` hands back JPEG frames batch by batch as they are made (the lab's Face class starts a new process
@@ -493,7 +493,27 @@ class Live:
             t = time.time()
             self.avatars[avatar_id] = self.rt.Avatar(avatar_id=avatar_id, video_path=src, bbox_shift=0,
                                                      batch_size=8, preparation=True)
+            volume.commit()      # results/ is the volume: any container that starts later can load this face in seconds
             return {"avatar_id": avatar_id, "prepare_s": round(time.time() - t, 1), "cached": False, "load_s": self.load_s}
+
+    def _avatar(self, avatar_id: str):
+        """The prepared face: from memory, else from the volume (a fresh container for a second student)."""
+        av = self.avatars.get(avatar_id)
+        if av is not None:
+            return av
+        with self.lock:
+            av = self.avatars.get(avatar_id)
+            if av is None:
+                try:
+                    volume.reload()
+                except Exception:
+                    pass
+                if not AVATAR_ID.match(avatar_id or "") or not os.path.exists(
+                        f"{MUSE_DIR}/results/v15/avatars/{avatar_id}/latents.pt"):
+                    raise ValueError("unknown avatar (prepare it first, with consent)")
+                av = self.rt.Avatar(avatar_id=avatar_id, video_path="", bbox_shift=0, batch_size=8, preparation=False)
+                self.avatars[avatar_id] = av
+        return av
 
     @modal.method()
     def stream(self, avatar_id: str, audio: bytes, batch: int = 8, loops: int = 1):
@@ -505,9 +525,7 @@ class Live:
         import numpy as np
         from musetalk.utils.blending import get_image_blending
         from musetalk.utils.utils import datagen
-        av = self.avatars.get(avatar_id)
-        if av is None:
-            raise ValueError("unknown avatar (prepare it first, with consent)")
+        av = self._avatar(avatar_id)
         if not audio or len(audio) > MAX_SPEAK_AUDIO:
             raise ValueError("audio missing or over 8 MB")
         if not 1 <= int(batch) <= 32 or not 1 <= int(loops) <= 8:
@@ -791,11 +809,12 @@ def _playback(batches: list) -> dict:
 
 @app.local_entrypoint()
 def bench_streams():
-    """How many students can ONE GPU hold at once? 1, 2, 3, 4 simultaneous streams of the same face on one warm container.
-    A stream is smooth when its pictures are ready before the 25 fps playhead needs them (stall ~ 0)."""
+    """What happens when 1, 2, 3 students arrive at once? Each is one stream of the same face; Modal gives each its own GPU
+    container (the first is warm, the others are cold starts). A stream is smooth when its pictures are ready before the
+    25 fps playhead needs them (stall ~ 0); first_batch_s shows how long a student waits when no card is free."""
     import threading
     os.makedirs("lab_out", exist_ok=True)
-    lines = [f"GPU {GPU}  one container, one card, batch 8, 24 s of speech per stream (the 8 s sample, 3 times)"]
+    lines = [f"GPU {GPU}  one student per container, batch 8, 24 s of speech per stream (the 8 s sample, 3 times)"]
 
     def note(text: str) -> None:
         lines.append(text)
@@ -809,9 +828,9 @@ def bench_streams():
         audio = _sample_audio.remote()
         note(f"models loaded once: {p['load_s']}s   face prepared: {p['prepare_s']}s")
         _ = list(live.stream.remote_gen("lab-live", audio, 8, 1))                      # warm-up, not counted
-        note("streams  first_batch_s(worst)  stall_s(worst)  stalls(worst)  fps/stream(worst)  smooth?")
+        note("students  first_batch_s(best/worst)  stall_s(worst)  stalls(worst)  fps/student(worst)  smooth?")
         smooth_max = 0
-        for n in (1, 2, 3, 4):
+        for n in (1, 2, 3):
             res: list = [None] * n
 
             def one(i: int) -> None:
@@ -827,20 +846,21 @@ def bench_streams():
 
             th = [threading.Thread(target=one, args=(i,), daemon=True) for i in range(n)]
             [x.start() for x in th]
-            deadline = time.time() + 240      # a stuck stream must cost minutes, never the half hour it cost once
+            deadline = time.time() + 420      # cold starts of the extra containers take minutes; a hang must still cost only minutes
             [x.join(max(0.0, deadline - time.time())) for x in th]
             ok = [r for r in res if r]
             if len(ok) < n:
-                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished within 240 s - stopping here")
+                note(f"{n:>7}  FAILED: only {len(ok)} of {n} streams finished within 420 s - stopping here")
                 break
             worst_first = max(r["first_wall"] for r in ok)
+            best_first = min(r["first_wall"] for r in ok)
             worst_stall = max(r["stall_s"] for r in ok)
             worst_stalls = max(r["stalls"] for r in ok)
             worst_fps = min(r["fps"] for r in ok)
             smooth = worst_stall <= 0.25
             smooth_max = n if smooth and smooth_max == n - 1 else smooth_max
-            note(f"{n:>7}  {worst_first:>19}  {worst_stall:>14}  {worst_stalls:>13}  {worst_fps:>17}  {'yes' if smooth else 'NO'}")
-        note(f"RESULT: {smooth_max} simultaneous smooth stream(s) on one {GPU}")
+            note(f"{n:>8}  {str(best_first) + ' / ' + str(worst_first):>24}  {worst_stall:>14}  {worst_stalls:>13}  {worst_fps:>18}  {'yes' if smooth else 'NO'}")
+        note(f"RESULT: {smooth_max} simultaneous students all smooth, one {GPU} each")
     except Exception as e:
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
 
