@@ -1005,6 +1005,16 @@ for _t, _l, _h in ((SHIKSHA_TOOLS, SHIKSHA_LABELS, SHIKSHA_HANDLERS), (GURU_TOOL
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
 
+# v0.463 ZOO: the BYOK model zoo (one Muapi gateway, 211 models, registry-driven, app/zoo.py + zoo_catalog.json).
+# Purely ADDITIVE - the curated studios (video_studio / photo_banao / create_studio) keep their exact specs;
+# the zoo only ADDS one tool for the models/styles they don't cover. Same refusals, same usage counting.
+from .zoo_tools import ZOO_HANDLERS, ZOO_LABELS, ZOO_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in ZOO_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(ZOO_LABELS)
+HANDLERS.update(ZOO_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 
