@@ -489,6 +489,38 @@ def smoke():
         note(f"face              FAILED: {type(e).__name__} {str(e)[:300]}")
 
 
+@app.local_entrypoint()
+def smoke_face():
+    """The face alone: prepare MuseTalk's sample face, then render it speaking MuseTalk's sample audio. The first start
+    of this image is the slow one (big image + ~5 GB of weights), so the waits are long; the report is written first."""
+    os.makedirs("lab_out", exist_ok=True)
+    rows: list[str] = []
+
+    def note(row: str) -> None:
+        rows.append(row)
+        print(row, flush=True)
+        with open("lab_out/REPORT_face.txt", "w") as f:
+            f.write(f"GPU {GPU}\n" + "\n".join(rows) + "\n")
+
+    try:
+        sample = _call("face prepare", Face().prepare, "lab-sample", _sample_face.remote(), "ai_generated", wait=2700)
+        note(f"face prepare  OK  {sample['prepare_s']}s  (MuseTalk {sample['musetalk_commit']})")
+        r = _call("face speak", Face().speak, "lab-sample", _sample_audio.remote(), wait=1500)
+        with open("lab_out/face_sample.mp4", "wb") as f:
+            f.write(r["mp4"])
+        note(f"face speak    OK  render {r['render_s']}s for {r['audio_s']}s audio = {r['x_realtime']}x real time")
+        Face().forget.remote("lab-sample")
+    except Exception as e:
+        note(f"face          FAILED: {type(e).__name__} {str(e)[:300]}")
+
+
+@app.function(image=face_image, timeout=300)
+def _sample_audio() -> bytes:
+    """MuseTalk's own demo speech clip (MIT repo) - lets the face be tested without running a voice model first."""
+    with open(f"{MUSE_DIR}/data/audio/yongen.wav", "rb") as f:
+        return f.read()
+
+
 @app.function(image=face_image, timeout=300)
 def _sample_face() -> bytes:
     """MuseTalk's own demo clip (shipped in its MIT repo) - a lab stand-in until our consented / AI-made face exists."""
