@@ -33,6 +33,14 @@ Muse / Grok Bot" and approved "START PHASE 1", so `server/app/pc/hub.py` + `oper
 `agent/pc_tools.py` gained the multi-PC kind routing and the coworker VM mode (her-PC behaviour kept
 byte-identical), and the NEW `desktop-linux/` agent was added (the Windows `desktop/` app stays untouched,
 1.4.0). The freeze is back in force for everything else the moment this ships.
+Exception recorded (3 Nov 2026): v0.472.0 SEMANTIC DESKTOP — the owner asked in chat "NOW LETS WORK ON
+DESKTOP ACCESS FOR THIS" (repo vercel-labs/agent-desktop) and said "START", so `server/app/pc/operator.py`
+gained the 9 ax_* tools + dispatch + prompt (additive; pixel and browser lanes byte-identical) and
+`desktop/` gained NEW `santosh_desktop/axtree.py` + the `do_ax_*` block in `actions.py` (desktop 1.5.0 ->
+1.6.0; every action behind the existing control switch; PyInstaller spec untouched; the helper binary
+ships BESIDE the exe via build-desktop.yml). Re-versioned 0.471.0->0.472.0: the dev's parallel HOOLA
+FRAMES took 0.471.0 — both works kept, REBASE PROTOCOL respected. The freeze is back in force for
+everything else the moment this ships.
 Exception recorded (29 Oct 2026): v0.238.0 DATA DESK — the owner said "GO for 1–3 (server only)" after the
 100-repo PDF root cause, so ONLY the `hoola_pc_do` description in `agent/pc_tools.py` was rewritten (desktop software
 only, never data; a VM file does not come back to the chat). No PC behaviour, endpoint or desktop file changed; fix 4
