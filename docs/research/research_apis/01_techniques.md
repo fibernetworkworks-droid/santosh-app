@@ -111,28 +111,29 @@ as unknown. (The one exception is where a vendor's SDK itself carries a cost fie
   tier as a price dial, `source_policy` + `after_date`, FindAll for "list all suppliers / tenders / colleges", and
   monitors for a topic she watches. Hoola already pays for this key, so it is the cheapest experiment.
 
-## 5. Exa — "a planner that emits tasks, then search → crawl → think, until it says stop"
-`exa-py 2.27.0` · `exa_py/research/models.py`, `research/sync_client.py`
+## 5. Exa — "a planner that emits tasks, then search → crawl → think, until it says stop" (RETIRED) → now an AGENT API with a spend ceiling
+`exa-py 2.27.0` · `exa_py/research/*` (retired), `exa_py/agent/*` (current)
 
-- **Shape:** `research.create(instructions=…, model=…, output_schema=…)`, then `poll_until_finished`
-  (`poll_interval=1000ms`, `timeout_ms=600000` — **a ten-minute default run**), with `events=True` to stream.
-- **Three tiers:** `exa-research-fast` (the SDK default), `exa-research`, `exa-research-pro`.
-- **The event list is the architecture, verbatim from the models file:**
-  - `research-definition` (instructions + output schema),
-  - `plan-definition` → `plan-operation` → **`plan-output`**, where the plan's output is either
-    **`tasks`** (`reasoning` + **`tasks_instructions: List[str]`** = the fan-out) or **`stop`** (`reasoning`),
-  - each **operation** is one of `think` (content), `search` (`query`, `search_type: neural|keyword|auto|fast`,
-    `results`, `page_tokens`, and a **`goal`**), or `crawl` (one result, `page_tokens`, `goal`),
-  - `research-output`: `completed` (content + optional `parsed` against the schema) or `failed`.
-- **Cost is itemised in the response** (`CostDollars`): `total`, **`num_pages`**, **`num_searches`**,
-  **`reasoning_tokens`**. The only vendor whose SDK hands you the cost breakdown of a research run.
-- Beside it: `websets` (searches + enrichments + imports + **monitors** + items) — a saved, growing collection.
-- **The technique in one line:** *a planner that writes sub-task instructions, workers that each run goal-tagged
-  neural/keyword searches and page crawls with a think step, and a planner that decides each round to issue more
-  tasks or stop — billed per page, per search and per reasoning token.*
-- **What Hoola takes:** this IS the reference loop for `engine=hoola`: plan → `tasks_instructions` → per-task
-  goal-tagged search/crawl/think → re-plan or stop. And **every operation carries its `goal`**, which is what makes
-  a live narration and an audit honest.
+> **CORRECTION, 3 Nov 2026 (found while building R6).** The first version of this section described Exa's `/research/v1` as the current API. Exa's own
+> SDK says otherwise: every method of `exa_py/research/*` raises `RESEARCH_RETIRED_MESSAGE` — *"The Exa Research API has been retired and no longer accepts
+> requests. Use the Agent API (exa.agent.runs.create) for asynchronous, multi-step research."* Everything below under **Research API** is HISTORY: the
+> technique (planner → `tasks_instructions[]` → goal-tagged think / search / crawl → stop) is still the best public description of the loop and is what Hoola's own
+> engine (R2) copies, but it is no longer something a customer can call. The bullets under **Agent API** are what is callable.
+
+**Research API (retired — kept because Hoola's R2 loop is modelled on it)**
+- `research.create(instructions, model, output_schema)`, `exa-research-fast | exa-research | exa-research-pro`, polled (default 10 min).
+- Events: `research-definition`, `plan-definition` → `plan-operation` → `plan-output` (`tasks` with `tasksInstructions[]`, or `stop`), operations
+  `think` / `search(neural|keyword|auto|fast)` / `crawl`, each with a `goal`; `research-output` `completed` (content + parsed) or `failed`.
+- Cost itemised: `costDollars{total, numPages, numSearches, reasoningTokens}`.
+
+**Agent API (current)** — `POST /agent/runs` on `https://api.exa.ai`, header `x-api-key`.
+- Create: `query`, `systemPrompt`, `input{data, exclusion}`, **`outputSchema`**, **`effort`**, **`budget{maxCostDollars (1-100, only auto / ultra; default 5 / 20), maxDurationSeconds (300-10,800, ultra only)}`**,
+  `previousRunId`, `metadata`, `dataSources[]` (Exa Connect providers), `userIdentifier`.
+- Run: `status` `queued | running | completed | failed | cancelled`, `stopReason`, `output{text, structured, grounding[{field, citations[{url, title}], score, confidence}]}`,
+  `usage{agentComputeUnits, searches, emails, phoneNumbers, dataSources}`, **`costDollars{total, agentCompute, search, ...}`**, `error`. Methods `create / get / list / cancel / stop / delete / poll_until_finished / create_and_wait` + a run-events list.
+- **The technique in one line:** *an agent run with its own effort tier, a vendor-side per-run spend ceiling, schema-shaped output and per-field grounding (URL + title, no excerpt), billed in dollars you can read back.*
+- **What Hoola takes:** the vendor-side `budget.maxCostDollars` as a SECOND ceiling beside Hoola's own (R5), `costDollars.total` as a real cost instead of an estimate, and per-field grounding — but with NO excerpt,
+  so Hoola must verify each claim against the cited page itself (R6).
 
 ## 6. Linkup — "one call, depth and mode as dials, answer or schema"
 `linkup-sdk 0.24.0` · `linkup/_client.py`, `linkup/_types.py`
@@ -206,7 +207,7 @@ as unknown. (The one exception is where a vendor's SDK itself carries a cost fie
 
 | Technique | OpenAI | Google | Anthropic | Parallel | Exa | Linkup | Perplexity | Valyu |
 |---|---|---|---|---|---|---|---|---|
-| Plan shown before the work | — | **yes** (`collaborative_planning`) | your loop | — | internal (`plan-output`) | — | — | `strategy` |
+| Plan shown before the work | — | **yes** (`collaborative_planning`) | your loop | — | internal (`plan-output`, API retired) | — | — | `strategy` |
 | Sub-question fan-out | model's own | steps | your loop | `search_queries[]` | **`tasks_instructions[]`** | internal | `query[]` | internal |
 | Effort / cost tier | `reasoning.effort` | agent cfg | your loop | **processor** | 3 models | `reasoning_depth` S–XL | `reasoning_effort` | `instant`→`max` |
 | Domain / date source policy | `allowed_domains` | — | allow+block | **`source_policy`** | — | **both + dates** | **domain+lang+recency** | sources + dates |
@@ -218,7 +219,7 @@ as unknown. (The one exception is where a vendor's SDK itself carries a cost fie
 | Context pruning for long runs | — | — | **`clear_tool_uses`** | — | — | — | — | — |
 | Keeps watching the topic | — | — | — | **monitors** | websets monitors | — | — | alerts |
 | Output as a FILE | — | — | — | — | — | — | — | **`deliverables`** |
-| Cost itemised in the result | usage | usage | usage | — | **pages/searches/tokens** | quota | usage | **3-way split** |
+| Cost itemised in the result | usage | usage | usage | — | **`costDollars` (Agent API) + vendor budget ceiling** | quota | usage | **3-way split** |
 
 **Unanimous:** a research answer is a *schema or a sourced answer*, never free prose; source policy (domains +
 dates) is an input, not a prompt instruction; effort is a paid dial; long runs are submitted and polled, never held

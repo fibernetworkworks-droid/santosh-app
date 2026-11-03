@@ -65,6 +65,9 @@ class Meter:
         self.base = base or {}
         self.counts: dict[str, int] = {"searches": 0, "fetches": 0}
         self._day_base: float | None = None
+        # v0.477 R6: a vendor engine's charge (NOT a model call, so usage.record never sees it). Starts as the run's PRICE (the committed
+        # estimate), becomes the vendor's own reported cost when it reports one. A restart carries it in `base`.
+        self.vendor: dict[str, Any] = dict(self.base.get("vendor") or {})
 
     # -- the money
     def model_inr(self) -> float:
@@ -77,8 +80,15 @@ class Meter:
         n_f = int(self.base.get("fetches", 0)) + self.counts["fetches"]
         return round(n_s * p["search_inr"] + n_f * p["fetch_inr"], 4)
 
+    def vendor_inr(self) -> float:
+        return round(float(self.vendor.get("inr", 0.0)), 4)
+
+    def set_vendor(self, engine: str, inr: float, known: bool, note: str = "") -> None:
+        """Replace (never add to) the vendor line: first the price committed at the start, later the real cost if the vendor reported one."""
+        self.vendor = {"engine": engine, "inr": round(float(inr), 4), "known": bool(known), "note": note[:200]}
+
     def total_inr(self) -> float:
-        return round(self.model_inr() + self.web_inr(), 4)
+        return round(self.model_inr() + self.web_inr() + self.vendor_inr(), 4)
 
     def update_counts(self, searches: int, fetches: int) -> None:
         self.counts["searches"], self.counts["fetches"] = max(0, searches), max(0, fetches)
@@ -110,7 +120,8 @@ class Meter:
             cur = by.setdefault(k, {"calls": 0, "inr": 0.0})
             cur["calls"] += v.get("calls", 0)
             cur["inr"] = round(cur["inr"] + v.get("inr", 0.0), 4)
-        return {"total_inr": self.total_inr(), "model_inr": self.model_inr(), "web_inr": self.web_inr(),
+        return {"total_inr": self.total_inr(), "model_inr": self.model_inr(), "web_inr": self.web_inr(), "vendor": dict(self.vendor),
+                "vendor_inr": self.vendor_inr(),
                 "model_calls": int(self.base.get("model_calls", 0)) + int(self.acc.get("calls", 0)),
                 "tok_in": int(self.base.get("tok_in", 0)) + int(self.acc.get("tok_in", 0)),
                 "tok_out": int(self.base.get("tok_out", 0)) + int(self.acc.get("tok_out", 0)),
@@ -138,9 +149,12 @@ def format_line(b: dict, hi: bool = True) -> str:
     """The cost as one honest line. An unpriced part is said, not hidden."""
     web = ("web price abhi pata nahi" if hi else "web price not known") if not b.get("web_price_known") else \
           (f"web Rs {b['web_inr']:.1f}" if not hi else f"web Rs {b['web_inr']:.1f}")
-    head = (f"Kharcha: Rs {b['total_inr']:.1f} (model Rs {b['model_inr']:.1f}, {b['model_calls']} calls; {b['searches']} searches + "
+    v = b.get("vendor") or {}
+    ven_hi = (f", {v['engine']} Rs {v['inr']:.1f} ({'vendor ka apna hisaab' if v.get('known') else 'andaza - vendor ne kharcha nahi bataya'})") if v else ""
+    ven_en = (f", {v['engine']} Rs {v['inr']:.1f} ({'reported by the vendor' if v.get('known') else 'an ESTIMATE - the vendor did not report its cost'})") if v else ""
+    head = (f"Kharcha: Rs {b['total_inr']:.1f} (model Rs {b['model_inr']:.1f}, {b['model_calls']} calls{ven_hi}; {b['searches']} searches + "
             f"{b['fetches']} pages - {web}) / run seema Rs {b['run_cap_inr']:.0f}") if hi else \
-           (f"Cost: Rs {b['total_inr']:.1f} (model Rs {b['model_inr']:.1f}, {b['model_calls']} calls; {b['searches']} searches + "
+           (f"Cost: Rs {b['total_inr']:.1f} (model Rs {b['model_inr']:.1f}, {b['model_calls']} calls{ven_en}; {b['searches']} searches + "
             f"{b['fetches']} pages - {web}) of a Rs {b['run_cap_inr']:.0f} ceiling")
     if b.get("stopped_by_cost"):
         head += (" - ROKA GAYA: " if hi else " - STOPPED: ") + str(b.get("stop"))
@@ -161,10 +175,12 @@ def usage_report(tenant: str) -> dict[str, Any]:
     c = caps()
     today = store.spent_since(tenant, day_start_utc())
     month = store.spent_since(tenant, day_start_utc().replace(day=1))
-    return {"today_inr": today, "month_inr": month, "caps": c, "left_today_inr": round(max(0.0, c["day_inr"] - today), 2),
+    from . import vendors
+    return {"engines": vendors.status_table(), "today_inr": today, "month_inr": month, "caps": c, "left_today_inr": round(max(0.0, c["day_inr"] - today), 2),
             "web": web_prices(), "measured": measured_per_goal(tenant),
             "assumed": ["the ceilings are defaults, not measured needs",
                         *([] if web_prices()["known"] else ["the rupee price of a web search / page fetch is UNKNOWN (set RESEARCH_SEARCH_INR / RESEARCH_FETCH_INR once her plan is read): "
                                                             "web calls are counted but not priced"]),
-                        "model rupees = list price x the server's USD->INR rate (`usage.PRICES`), not an invoice"],
+                        "model rupees = list price x the server's USD->INR rate (`usage.PRICES`), not an invoice",
+                        "a vendor engine's cost is the price YOU set per run unless the vendor reports its own (Exa does); no vendor wire format has been answered live"],
             "runs": [{"id": r["id"], "goals": r["goals"], "cost_inr": r["cost_inr"], "status": r["status"]} for r in store.costs(tenant, 10, only_done=False)]}

@@ -32,6 +32,9 @@ RESEARCH_TOOLS = [
                              "description": "ONLY these sites (e.g. [\"gov.in\"]) - set only when she asked for specific sources"},
          "exclude_domains": {"type": "array", "items": {"type": "string"}, "description": "Never use these sites"},
          "after_date": {"type": "string", "description": "ISO date: prefer material on or after it"},
+         "engine": {"type": "string", "enum": ["hoola", "parallel", "exa", "openai", "linkup"],
+                    "description": "Which engine gathers. Default hoola (Hoola's own). A vendor engine runs only when SHE has enabled it; the answer is "
+                                   "checked by Hoola against the cited pages either way. Omit unless she named one."},
          "mode": {"type": "string", "enum": ["background", "inline"],
                   "description": "background (default) = it starts and you reply with ONE short line; the report is written when the run "
                                  "finishes. inline = wait here (short jobs only)"}},
@@ -101,7 +104,7 @@ def _deps(ctx: Ctx, settings: Any):
 
 
 async def research_run(ctx: Ctx, question="", sub_questions=None, include_domains=None, exclude_domains=None,
-                       after_date=None, mode=None, **_) -> dict[str, Any]:
+                       after_date=None, mode=None, engine=None, **_) -> dict[str, Any]:
     from ..config import get_settings
     from ..research import engine as E
     st = get_settings()
@@ -119,16 +122,23 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
         _bill.preflight(ctx.tenant_id)
     except _bill.ResearchCapped as e:
         raise ToolError(str(e))
+    from ..research import vendors as _vend
+    eng = str(engine or getattr(st, "research_engine", "hoola") or "hoola").lower()
+    okv, whyv = _vend.check(eng, ctx.tenant_id, st)               # v0.477 R6: a vendor engine runs only when every gate is open
+    if not okv:
+        raise ToolError(whyv)
     over = {"include_domains": include_domains if isinstance(include_domains, list) else None,
             "exclude_domains": exclude_domains if isinstance(exclude_domains, list) else None, "after_date": after_date}
     asked = E._URL.findall(q + " " + " ".join(goals))
     background = bool(getattr(st, "research_background", True)) if mode in (None, "") else str(mode) == "background"
+    if eng != "hoola":
+        background = True                                          # a vendor's run takes minutes and is polled: never inside a turn
     if background:       # v0.475 R4: persisted, worker-run, self-reporting
         from ..research import runner
         import re as _re
         hi = bool(_re.search(r"(?i)\b(karo|hai|ka|ke|ki|mein|chahiye|batao|aur|kya)\b|[\u0900-\u097F]", q + " " + " ".join(goals)))
-        rid = runner.start(ctx.tenant_id, ctx.conversation_id, q or goals[0], goals, {k: v for k, v in over.items() if v}, hi, asked)
-        return {"started": True, "run_id": rid, "goals": len(goals) or 1,
+        rid = runner.start(ctx.tenant_id, ctx.conversation_id, q or goals[0], goals, {k: v for k, v in over.items() if v}, hi, asked, eng)
+        return {"started": True, "run_id": rid, "goals": len(goals) or 1, "engine": eng,
                 "say": ("The research run has STARTED in the background (it takes 10-40 minutes and survives a restart). Tell her in ONE short "
                         "line, in her language, that it has started and that you will bring the report here when it is done; "
                         "do NOT write any findings now and do not call research_run again. Her stop word is Rokiye."),

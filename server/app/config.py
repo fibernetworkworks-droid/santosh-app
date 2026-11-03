@@ -85,6 +85,23 @@ class Settings(BaseSettings):
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
+    research_engines_allowed: str = "hoola"   # v0.477 R6: comma list of engines she lets run research ("hoola" is always allowed); a vendor must be listed here ...
+    research_vendor_terms_ack: str = ""       # ... AND here: the vendors whose current terms SHE has read and accepts for this use (storing + showing the result to her). Nothing is assumed.
+    exa_api_key: str = ""                     # VPS .env only (EXA_API_KEY), never in chat or the repo
+    linkup_api_key: str = ""                  # VPS .env only (LINKUP_API_KEY)
+    research_parallel_run_inr: float = 0.0    # ONE run's price in rupees per vendor: UNKNOWN until she reads the vendor's plan, so 0 = that engine is REFUSED (a ceiling needs a price)
+    research_exa_run_inr: float = 0.0         # (Exa also takes this as its own vendor-side budget.maxCostDollars and reports its real costDollars back)
+    research_openai_run_inr: float = 0.0
+    research_linkup_run_inr: float = 0.0
+    research_parallel_processor: str = "core"          # Parallel processor tier: lite | base | core | pro (read from the SDK; the price of each is NOT known)
+    research_exa_effort: str = "auto"                  # Exa agent effort (SDK literal: minimal low medium high xhigh auto ultra max)
+    research_openai_model: str = "o4-mini-deep-research"   # or o3-deep-research
+    research_openai_search_tool: str = "web_search_preview"
+    research_openai_max_tool_calls: int = 40
+    research_linkup_depth: str = "L"                   # S | M | L | XL
+    research_linkup_mode: str = "research"
+    research_vendor_poll_s: float = 10.0
+    research_vendor_wait_s: float = 1500.0             # a vendor run that has not finished by now is given up on (it may still bill)
     research_run_cap_inr: float = 150.0     # v0.476 R5: ONE research run may spend at most this many rupees (model calls; a default, not a measured need)
     research_daily_inr: float = 600.0       # ... and one tenant's research runs together at most this much a day (IST); 0 = no research that day
     research_call_reserve_inr: float = 3.0  # a run asks "can I still afford another call?" with this much room - it refuses BEFORE the call that would cross

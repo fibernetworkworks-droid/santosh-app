@@ -118,6 +118,17 @@ def test_a_figure_only_an_unverified_or_unsupported_note_carries_is_caught(env):
     assert found and "99999" in found[0] and "NOT VERIFIED" in found[0]
 
 
+def test_a_figure_stated_as_unconfirmed_in_its_own_sentence_is_not_flagged_but_stated_as_fact_is(env):
+    """v0.477: an honest report may name a figure only to say it could not be confirmed."""
+    play = [("search", {"queries": ["corvane index"]}), ("read", {"url": "https://index.example.gov.in/corvane/2025"}),
+            ("note", {"claim": "Output was 99,999 units", "url": "https://index.example.gov.in/corvane/2025",
+                      "excerpt": "Output was 99,999 units in the whole period"}), ("finish", {"summary": "x", "unresolved": "output unclear"})]
+    d = _dossier({"Corvane value": play})
+    assert C.check_report("I could not confirm the figure of 99,999 units that one note gave.", d) == []
+    found = C.check_report("Output was 99,999 units [1]. What I could not confirm: the baseline.", d)
+    assert found and "99999" in found[0]
+
+
 def test_a_link_that_is_not_a_source_of_this_run_is_caught(env):
     found = C.check_report(HONEST + "[2] https://made-up.example.org/page\n", _dossier())
     assert found and "made-up.example.org" in found[0]

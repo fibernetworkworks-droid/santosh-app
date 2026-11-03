@@ -126,6 +126,8 @@ def check_report(report: str, dossier: dict | None) -> list[str]:
                 continue
             if not by_good:
                 by_weak = [f for f in weak if F.near(v, f["figures_in_words"]) or F.near(v, f["figures"])]
+                if by_weak and any(w in seg.lower() for w in F.UNSURE):
+                    continue            # v0.477: the report states that figure AS unconfirmed in the same sentence - exactly what it should do
                 flagged.add(round(v, 4))
                 if by_weak:
                     out.append(f"The figure {v:g} comes only from a note that is NOT VERIFIED or whose claim outruns its quoted words "

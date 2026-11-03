@@ -47,6 +47,7 @@ _LINES = {
     "note": ("{g}/{n} - {d} se baat note ki", "{g}/{n} - noted a finding from {d}"),
     "calc": ("{g}/{n} - hisaab kar raha hoon: {d}", "{g}/{n} - working out: {d}"),
     "finish": ("{g}/{n} - yeh sawal poora", "{g}/{n} - this question is done"),
+    "wait": ("{g}/{n} - intezaar: {d}", "{g}/{n} - waiting: {d}"),          # v0.477 R6 a vendor's run is going on
 }
 
 
@@ -63,8 +64,8 @@ def progress_text(p: dict, hi: bool) -> str:
 
 # ---------------------------------------------------------------- start / stop / status
 def start(tenant: str, conv: str, question: str, goals: list[str], over: dict | None = None, hi: bool = True,
-          asked: list[str] | None = None) -> str:
-    rid = store.create(tenant, conv, question, goals, {"over": over or {}, "hi": hi, "asked": asked or []})
+          asked: list[str] | None = None, engine: str = "hoola") -> str:
+    rid = store.create(tenant, conv, question, goals, {"over": over or {}, "hi": hi, "asked": asked or [], "engine": engine or "hoola"})
     STATS["started"] += 1
     _publish(conv, rid, question, "queued", "shuru ho raha hai" if hi else "starting")
     return rid
@@ -150,6 +151,44 @@ def _build_deps(tenant: str, conv: str, run_id: str, hi: bool, settings, total: 
     return d
 
 
+class _StoppedMarker(Exception):
+    """A vendor run was stopped by her: recorded already (status + what it spent); nothing more to report."""
+
+
+async def _vendor_job(engine: str, run_id: str, v: dict, deps: E.Deps, pol: E.Policy, st) -> dict:
+    """v0.477 R6: start (or RE-ATTACH to) the vendor's run, wait for it, then re-check every claim with Hoola's own fetch. The same dossier as the own engine."""
+    from . import vendors
+    tenant, conv, question, goals = v["tenant"], v["conv"], v["question"], list(v["goals"])
+    meter = deps.__dict__["_meter"]
+    ok, why = vendors.check(engine, "", st)                      # keys / allow-list / terms / price can change between the ask and the start
+    if not ok:
+        raise vendors.VendorError(why)
+    price = float(getattr(st, vendors.REGISTRY[engine]["price"]))
+    if not meter.vendor:                                         # a resumed run already carries its vendor line
+        meter.set_vendor(engine, price, False, "the price you set; the vendor has not reported a cost")
+    over = v["policy"].get("over") or {}
+    req = vendors.Req(question=question, goals=goals, include_domains=list(over.get("include_domains") or pol.include_domains),
+                      exclude_domains=list(over.get("exclude_domains") or pol.exclude_domains), after_date=str(over.get("after_date") or pol.after_date),
+                      price_inr=price, st=st)
+    resume_id = str(((v.get("checkpoint") or {}).get("vendor") or {}).get("run_id") or "")
+
+    def on_id(rid: str) -> None:                                 # the vendor's run id is written the moment it exists: a restart re-attaches
+        store.save_checkpoint(run_id, {"vendor": {"engine": engine, "run_id": rid}}, {"goals_total": 1, "goals_done": 0, "now": engine})
+        store.set_cost(run_id, meter.breakdown())
+    try:
+        result = await vendors.run_vendor(engine, req, deps.step, deps.stopped, on_id, resume_id)
+    except vendors.StoppedByHer:
+        store.finish(run_id, "stopped", None, "", cost=meter.breakdown())
+        raise _StoppedMarker()
+    if result.cost_inr is not None:
+        meter.set_vendor(engine, result.cost_inr, True, "reported by the vendor")
+    store.set_cost(run_id, meter.breakdown())
+    d = await vendors.to_dossier(result, question, goals, pol, deps.fetch, deps.step)
+    d["cost"] = meter.breakdown()                       # page fetches were counted by the step callback as they happened
+    d["stats"]["cost_inr"] = d["cost"].get("total_inr")
+    return d
+
+
 async def run_background(run_id: str) -> None:
     """One persisted run end to end. Never raises (except CancelledError); every outcome is recorded and reported."""
     from ..config import get_settings
@@ -159,18 +198,22 @@ async def run_background(run_id: str) -> None:
         return
     tenant, conv, question = v["tenant"], v["conv"], v["question"]
     hi = bool(v["policy"].get("hi", True))
+    engine = str(v["policy"].get("engine") or "hoola")
     _RUNNING.add(run_id)
     store.set_status(run_id, "running", only_from=("queued", "running"))
     try:
         pol = E.Policy.from_settings(st, bg=True, **(v["policy"].get("over") or {}))
         goals = list(v["goals"])
-        deps = _build_deps(tenant, conv, run_id, hi, st, total=len(goals) or 1, base=v.get("cost") or None)
+        deps = _build_deps(tenant, conv, run_id, hi, st, total=(1 if engine != "hoola" else (len(goals) or 1)), base=v.get("cost") or None)
         if v["tries"] > 1 and v["checkpoint"]:
             STATS["resumed"] += 1
         from .. import usage
         usage.bind(tenant, "research")                           # her research is hers: counted under her, as "Research"
         with usage.run_meter(deps.__dict__["_meter"].acc):       # v0.476 R5: this run's own model calls, nobody else's
-            d = await E.run(question, goals, pol, deps, asked_urls=v["policy"].get("asked") or [], resume=v["checkpoint"] or None)
+            if engine == "hoola":
+                d = await E.run(question, goals, pol, deps, asked_urls=v["policy"].get("asked") or [], resume=v["checkpoint"] or None)
+            else:                                                # v0.477 R6: a vendor gathers, Hoola verifies
+                d = await _vendor_job(engine, run_id, v, deps, pol, st)
         cost = d.get("cost") or {}
         stopped_now = (store.get(run_id) or {}).get("status") == "stopped"
         s = d["stats"]
@@ -192,6 +235,8 @@ async def run_background(run_id: str) -> None:
             _publish(conv, run_id, question, "done", say)
     except asyncio.CancelledError:
         raise
+    except _StoppedMarker:
+        pass
     except Exception as e:      # noqa: BLE001
         log.exception("background research %s failed", run_id)
         store.finish(run_id, "failed", None, f"{type(e).__name__}: {str(e)[:200]}")
@@ -246,5 +291,6 @@ def status(tenant: str, conv: str = "", run_id: str = "") -> list[dict[str, Any]
         hi = bool(v["policy"].get("hi", True))
         out.append({"id": v["id"], "status": v["status"], "question": v["question"][:160], "tries": v["tries"],
                     "progress": progress_text(v["progress"], hi) if v["progress"] else "", "now": v["progress"].get("now", ""),
-                    "error": v["error"], "has_report": v["dossier"] is not None, "cost_inr": round(v.get("cost_inr", 0.0), 2)})
+                    "error": v["error"], "has_report": v["dossier"] is not None, "cost_inr": round(v.get("cost_inr", 0.0), 2),
+                    "engine": v["policy"].get("engine", "hoola")})
     return out

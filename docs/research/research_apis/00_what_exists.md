@@ -1,6 +1,8 @@
 > Companion file: **`01_techniques.md`** — the exact research technique of each vendor, one by one, with the
 > SDK file that proves each line.
 
+> **CORRECTION 3 Nov 2026:** Exa's `/research/v1` listed below is RETIRED (its own SDK says so); its replacement is the Agent API (`POST /agent/runs`). See `01_techniques.md` s5.
+
 # Deep-research APIs — what exists, read from the vendors' OWN shipped SDKs (3 Nov 2026)
 
 **How this was read, and why it matters.** Every vendor's documentation host is BLOCKED from this sandbox
