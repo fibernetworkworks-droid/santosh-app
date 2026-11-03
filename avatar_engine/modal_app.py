@@ -77,8 +77,9 @@ face_image = (
         "pip install gdown",
         # MuseTalk's script points downloads at a mirror; the lab downloads from the source.
         f"sed -i '/HF_ENDPOINT/d' {MUSE_DIR}/download_weights.sh",
-        # last: the pins MuseTalk's own requirements.txt uses (a later install had pulled NumPy 2, which cv2 cannot load)
-        "pip install 'numpy==1.23.5' 'huggingface_hub==0.30.2'",
+        # last: NumPy must stay on 1.x (a later install had pulled NumPy 2, which cv2 cannot load) but matplotlib needs
+        # >=1.25 on Python 3.11, so not MuseTalk's 1.23.5; hub pinned to what its requirements.txt uses
+        "pip install 'numpy==1.26.4' 'huggingface_hub==0.30.2'",
     )
     .env(HF_ENV)
     .add_local_python_source("registry")
