@@ -355,6 +355,7 @@ async def tick() -> None:
     goal_resume_jobs()
     await inbox_jobs()
     await team_jobs()
+    await research_jobs()
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
@@ -501,6 +502,23 @@ async def team_jobs() -> None:
         await team.tick()
     except Exception:
         log.exception("agent team tick failed")
+
+
+_rs_last = 0.0
+
+
+async def research_jobs() -> None:
+    """v0.475 R4 background research runs: start queued ones, pick a stalled one up again from its checkpoint, forget old rows."""
+    global _rs_last
+    import time
+    if time.time() - _rs_last < 20:
+        return
+    _rs_last = time.time()
+    try:
+        from .research import runner
+        await runner.tick()
+    except Exception:
+        log.exception("research tick failed")
 
 
 _el_last = 0.0

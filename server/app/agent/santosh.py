@@ -414,10 +414,12 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
         full, _ = _hardc.evidence(history, limit=400_000, per=200_000)   # v0.437 every link a tool returned
         why = ((state.get("hard_why") or {}).get("why")) or []
         problems = _hardc.code_check(state.get("request", ""), draft, why, names, full)
-        if not problems and "research_run" in names:
+        if not problems and ("research_run" in names or "research_status" in names):
             try:    # v0.474 R3 SABOOT: every figure in the report must be carried by a note's own words or a calculation
                 from ..research import claims as _claims, engine as _reng
-                problems = _claims.check_report(draft, _reng.recall(conversation_id))
+                _d = _reng.recall(conversation_id)
+                if _d is not None and float(_d.get("_delivered", 0)) >= float(state.get("t0", 0)):   # handed to the model in THIS turn
+                    problems = _claims.check_report(draft, _d)
             except Exception:
                 log.exception("claim check failed")
         if not problems:
@@ -818,6 +820,14 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                           int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
         except Exception:
             log.exception("hard check failed")
+    elif ctx.actor == "wake":
+        try:    # v0.475 R4: the wake turn that WRITES a finished research report is a hard, held answer (Opus, room, the R3 check)
+            from ..research import runner as _rrun
+            if _rrun.is_report_due(user_text):
+                state["hard"], state["hard_why"] = True, {"hard": True, "why": ["research"], "score": 3}
+                state["max_tokens"] = max(state.get("max_tokens") or 0, int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
+        except Exception:
+            log.exception("research report wake setup failed")
     if settings.agent_goal:
         g0 = _goal.active_for(conversation_id)
         if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step

@@ -395,13 +395,20 @@ async def _one(ask: dict, tenant: str, judge: bool) -> dict[str, Any]:
 
 
 async def live_card(asks: list[dict] | None = None, judge: bool = False, tenant: str = "") -> dict[str, Any]:
+    from ..config import get_settings
     from .run import TENANT
     items = asks or ASKS
     rows: list[dict] = []
-    for a in items:
-        rows.append(await _one(a, tenant or TENANT, judge))
-        if len(rows) >= 3 and all("error" in r for r in rows):
-            break                     # three dead turns: print the cause, do not waste the rest
+    st = get_settings()
+    was_bg, was_gate = st.research_background, st.research_plan_gate
+    st.research_background, st.research_plan_gate = False, False     # the card scores the report of ONE turn: no plan wait, no background hand-off
+    try:
+        for a in items:
+            rows.append(await _one(a, tenant or TENANT, judge))
+            if len(rows) >= 3 and all("error" in r for r in rows):
+                break                 # three dead turns: print the cause, do not waste the rest
+    finally:
+        st.research_background, st.research_plan_gate = was_bg, was_gate
     done = [r for r in rows if "error" not in r]
     topic, trap = [r for r in done if r["kind"] == "topic"], [r for r in done if r["kind"] == "trap"]
     judged = [r["judge"]["score"] for r in done if r.get("judge")]

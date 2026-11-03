@@ -178,7 +178,7 @@ def test_the_tool_remembers_the_dossier_for_the_check(env, monkeypatch):
     from app.agent.tools import Ctx
     d_, _ = deps(Script({"g": GOOD_PLAY}))
     monkeypatch.setattr(RT, "_deps", lambda ctx, st: d_)
-    asyncio.run(RT.research_run(Ctx(tenant_id="t", conversation_id="conv-z", actor="owner"), question="q", sub_questions=["g"]))
+    asyncio.run(RT.research_run(Ctx(tenant_id="t", conversation_id="conv-z", actor="owner"), question="q", sub_questions=["g"], mode="inline"))
     assert E.recall("conv-z")["fields"]
 
 

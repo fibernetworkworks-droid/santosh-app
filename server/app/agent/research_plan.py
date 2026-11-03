@@ -217,7 +217,7 @@ def approved_block(p: dict[str, Any], note: str = "") -> str:
     qs = "\n".join(f"{i}. {q}" for i, q in enumerate(p["sub_questions"], 1))
     out = (f"<approved_research_plan>\nShe approved this plan - it is already approved, so do not ask her again and do not "
            f"write another plan card: start now by calling research_run with this question and EXACTLY these sub-questions (plus her change below, "
-           f"if any). Answer exactly these sub-questions, look where it says, "
+           f"if any); it runs in the background - tell her in one short line it has started and end the turn, the report comes when it is done. Answer exactly these sub-questions, look where it says, "
            f"keep the report current to: {p['as_of']}.\n{qs}\nLook in: {', '.join(p['look_in'])}\n")
     if note.strip():
         out += f"HER CHANGE TO THE PLAN (follow it): {note.strip()[:600]}\n"

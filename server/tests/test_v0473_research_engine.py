@@ -269,12 +269,12 @@ def test_the_tool_runs_the_engine_and_returns_the_dossier_with_an_honest_say(env
     d, _ = deps(script)
     monkeypatch.setattr(RT, "_deps", lambda ctx, st: d)
     out = asyncio.run(RT.research_run(Ctx(tenant_id="t", conversation_id="c", actor="owner"), question="What is it?",
-                                      sub_questions=["g"], exclude_domains=["spam.example.org"]))
+                                      sub_questions=["g"], exclude_domains=["spam.example.org"], mode="inline"))
     assert "RESEARCH DOSSIER" in out["dossier"] and out["stats"]["verified_notes"] == 1 and "dossier only" in out["say"]
     empty = Script({"g": [("finish", {"summary": "nothing"})]})
     d2, _ = deps(empty)
     monkeypatch.setattr(RT, "_deps", lambda ctx, st: d2)
-    out = asyncio.run(RT.research_run(Ctx(tenant_id="t", conversation_id="c", actor="owner"), question="q", sub_questions=["g"]))
+    out = asyncio.run(RT.research_run(Ctx(tenant_id="t", conversation_id="c", actor="owner"), question="q", sub_questions=["g"], mode="inline"))
     assert "no readable pages" in out["say"]
 
 

@@ -542,7 +542,7 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
         adm.why = {**adm.why, "pylab": "calculation"}
     try:                            # v0.473 R2: a research ask brings Hoola's own research engine into view
         from . import hard as _hard
-        if "research" in set(FAMILY_OF.values()) and _hard.research_wanted(text):
+        if "research" in set(FAMILY_OF.values()) and (_hard.research_wanted(text) or "research_status" in str(text)):
             adm.admit_families(["research"])
             adm.why = {**adm.why, "research": "research ask"}
     except Exception:               # noqa: BLE001 - routing never fails a turn

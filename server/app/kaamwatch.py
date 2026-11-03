@@ -55,6 +55,7 @@ KINDS: dict[str, dict[str, Any]] = {
     "blender3d": {"label": "3D model (Blender)", "map": {"writing": "working", "building": "working", "rendering": "working", "checking": "working"}},
     "goal": {"label": "Lamba kaam", "map": {"blocked": "waiting"},   # v0.187 goal mode: blocked on her = aapki baari
              "waiting_say": "lamba kaam aapke jawab par ruka hai"},
+    "research_run": {"label": "Research", "map": {"queued": "working"}},   # v0.475 R4 background research runs (research/runner.py)
     "agent_team": {"label": "Agent team", "map": {}},   # v0.193 background agent crews (agent/team.py)
     # v0.191 SAMAJHDAR CARD: aapka PC (source='pc') aur Hoola ka browser dono kind='browser' bolte hain — jab step
     # uski manzoori par atakti hai (needs_confirm), woh sun'ti hai 'aapki baari' aur bas 'haan karo' bol deti hai

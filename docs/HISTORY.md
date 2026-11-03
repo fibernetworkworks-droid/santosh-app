@@ -18250,3 +18250,22 @@ Owner: "GO R3". Part 7 of `docs/RESEARCH_PRO_PLAN.md`: the report is built from 
 - NOT DONE, said plainly: it cannot tell whether a page is RIGHT (traceable is not true); it does not re-open the live page (the worker's read is the evidence); it does not detect two sources that
   disagree; the dossier lives in memory per conversation (a restart drops it and the check falls back to the older link-only check - R4 persists runs). NOT VERIFIED live: the check has only run on scripted fakes.
 
+## v0.475.0 - RESEARCH Phase R4 LAMBA KAAM
+
+Owner: "GO R4". Part 8 of `docs/RESEARCH_PRO_PLAN.md` (Google's `continuation_token` / OpenAI `background` / Anthropic `clear_tool_uses`): a real report is 10-40 minutes; inside one turn it was
+capped at 900 s and died with the process.
+
+- `research/store.py` (new, table `research_runs`): question, goals, policy `{over, hi, asked}`, status queued / running / done / failed / stopped, tries, CHECKPOINT, progress, DOSSIER. `ensure_table()` + registered in `db.init_db`.
+  `candidates()` = queued runs within the per-tenant cap + running runs whose heartbeat is older than the stale limit (tries left); a stalled run out of tries is marked failed with the reason. `finish()` leaves a stopped run stopped and clears the checkpoint.
+- `research/engine.py` (ENGINE_V 3): `snapshot` / `restore` (finished goals, admitted links, page texts trimmed to 4,000 chars, counts, elapsed), `run(..., resume=cp)` (a `while` over rounds; only the unfinished goals of the saved round run; the elapsed clock is restored),
+  `Deps.checkpoint` called after each goal and at each re-plan (a failing checkpoint is logged, never fatal), `Deps.step` narration, `prune_history(keep=2)` before every worker model call, the page budget counts DISTINCT pages (re-reading is free), `Policy.from_settings(bg=True)` uses the 1,500 s background clock.
+- `research/runner.py` (new): `start` / `stop` / `status`, `run_background` (never raises; failed = nothing readable or a crash, both reported), `tick` (the worker slot), narration lines in her language, `REPORT_MARK`.
+  The finish event is `research_run` -> kaamwatch (new KIND, queued = working) -> kaam_followup. `worker.research_jobs` calls `runner.tick` every ~20 s.
+- `kaam_followup._wake_text` for a finished research run: the report is written HERE - `research_status action=result id=...`, only from the dossier, [n] + dates, a NOT CONFIRMED section, her language, doc_studio PDF when asked. `santosh._steps`: a wake turn carrying `<research_report_due>` is a hard, held answer
+  (Opus, room, the R3 claim check); `_hard_check` applies the claim check only to a dossier stamped `_delivered` at or after the turn's start (a stale dossier from an earlier run of the chat can never fail a short "started" line); it also fires for `research_status`.
+- `research_tools`: `research_run(mode=background|inline)` (default from `research_background`; background returns `{started, run_id, say}` - one short line, end the turn), new `research_status(check | result | stop)`; admit brings the family in when a text names `research_status`.
+- R0 card: `live_card` switches `research_background` and `research_plan_gate` off while it runs and restores them (R1's plan wait would have stopped every live row at the plan card - a hole in R1 found here).
+- Tests: `test_v0475_research_background.py` (26, incl. a run_turn(actor='wake') end to end: the brain fetches the dossier, drafts a made-up figure, the check sends it back once, the corrected report is what she gets). R2 / R3 tests that call `research_run` directly now pass `mode="inline"`.
+  Bugs found by the tests: the narration total read 1/1 on the first step (seeded from the goals now); the first draft of the tick tests started tasks in a loop that `asyncio.run` closed.
+- NOT VERIFIED: no live run; the restart path is tested by a faked checkpoint + stale heartbeat, not a real pm2 restart. NOT BUILT: the rupee ceiling and per-run cost (R5), paid engines (R6), a tappable card / console view of a running research.
+

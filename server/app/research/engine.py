@@ -40,9 +40,9 @@ from . import figures as _fig
 
 log = logging.getLogger("santosh.research")
 
-ENGINE_V = 2          # v0.474 R3: the dossier carries FIELDS with a confidence; the report is checked against them
+ENGINE_V = 3          # v0.475 R4: resumable (checkpoints), prunes old page text, narrates each step
 STATS = {"runs": 0, "tasks": 0, "pages": 0, "notes": 0, "unverified_notes": 0, "refused_reads": 0, "replans": 0,
-         "figure_gaps": 0}
+         "figure_gaps": 0, "pruned": 0, "resumed": 0}
 
 # v0.474 R3: the newest dossier of each conversation, so the report check (agent/santosh._hard_check) can read it. In memory on
 # purpose: a restart drops it and the check falls back to the older link-only check (R4 persists runs).
@@ -53,6 +53,7 @@ LAST_MAX = 50
 def remember(conv: str, d: dict) -> None:
     if not conv:
         return
+    d["_delivered"] = time.time()           # the check only applies to a dossier handed to the model in THIS turn
     LAST[conv] = d
     LAST.move_to_end(conv)
     while len(LAST) > LAST_MAX:
@@ -120,12 +121,13 @@ class Policy:
         return True, ""
 
     @staticmethod
-    def from_settings(st: Any, **over: Any) -> "Policy":
+    def from_settings(st: Any, bg: bool = False, **over: Any) -> "Policy":
         base = {"max_tasks": int(getattr(st, "research_tasks_max", 6)), "steps_per_task": int(getattr(st, "research_steps", 8)),
                 "pages_per_task": int(getattr(st, "research_pages_per_task", 6)),
                 "pages_total": int(getattr(st, "research_pages_total", 30)),
                 "calcs_total": int(getattr(st, "research_calcs_max", 8)), "rounds": int(getattr(st, "research_rounds", 2)),
-                "parallel": int(getattr(st, "research_parallel", 3)), "soft_s": float(getattr(st, "research_soft_s", 420.0)),
+                "parallel": int(getattr(st, "research_parallel", 3)),
+                "soft_s": float(getattr(st, "research_bg_soft_s", 1500.0) if bg else getattr(st, "research_soft_s", 420.0)),
                 "read_chars": int(getattr(st, "research_read_chars", 12000))}
         # a caller may LOWER a budget, never raise it above the server's own (Valyu: "max_calls can only be lowered")
         for k, v in over.items():
@@ -207,6 +209,8 @@ class Deps:
     calc: Callable[[str, str], Awaitable[dict]]                     # (code, purpose) -> {ok, output}
     stopped: Callable[[], bool] = lambda: False
     emit: Callable[[str, str, str], None] = lambda goal, state, label: None
+    checkpoint: Callable[[dict], None] = lambda cp: None            # v0.475 R4: called after each goal finishes
+    step: Callable[[str, str, str], None] = lambda goal, kind, detail: None   # v0.475 R4: live narration of each step
 
 
 # ---------------------------------------------------------------- 1. url discipline + the note check
@@ -247,6 +251,65 @@ def admit_from_page(state: State, page: Page, links: list[tuple[str, str]]) -> i
             state.admitted[href] = "same-site"
             n += 1
     return n
+
+
+# ---------------------------------------------------------------- context pruning (Anthropic's clear_tool_uses, in Hoola's words)
+def prune_history(history: list[dict], keep: int = 2) -> int:
+    """A worker that reads six pages carries ~70,000 characters of page text it no longer needs: its notes already hold what
+    mattered. Keep the newest `keep` page results whole and replace older ones with a stub that says what was cleared and how to
+    get it back (`read` the link again - a page already fetched costs no new fetch). Search results and notes are never cleared.
+    Returns how many were cleared; the tool_use / tool_result pairing is untouched (the ids stay)."""
+    spots = [(m, b) for m in history if m.get("role") == "user" and isinstance(m.get("content"), list)
+             for b in m["content"] if isinstance(b, dict) and b.get("type") == "tool_result"
+             and isinstance(b.get("content"), str) and b["content"].startswith("PAGE ")
+             and "[page text cleared" not in b["content"]]
+    old = spots[:-keep] if keep > 0 else spots
+    for _m, b in old:
+        head = b["content"].split("\n", 1)[0]
+        b["content"] = (f"{head}\n[page text cleared to save room ({len(b['content']):,} characters) - the notes you recorded "
+                        f"are kept; `read` the link again if you need the page]")
+    STATS["pruned"] += len(old)
+    return len(old)
+
+
+# ---------------------------------------------------------------- checkpoint: what a restart needs to carry on
+def _task_dict(r: "TaskResult") -> dict:
+    from dataclasses import asdict
+    return asdict(r)
+
+
+def _task_from(d: dict) -> "TaskResult":
+    return TaskResult(goal=d["goal"], round=int(d.get("round", 1)), notes=[Note(**n) for n in d.get("notes", [])],
+                      calcs=[Calc(**c) for c in d.get("calcs", [])], pages=list(d.get("pages", [])),
+                      summary=d.get("summary", ""), unresolved=d.get("unresolved", ""), error=d.get("error", ""),
+                      steps=int(d.get("steps", 0)))
+
+
+def snapshot(state: "State", results: list["TaskResult"], rounds_log: list[dict], rnd: int, todo: list[str]) -> dict:
+    seen: set[int] = set()
+    pages = {}
+    for p in state.pages.values():
+        if id(p) in seen:
+            continue
+        seen.add(id(p))
+        pages[p.url] = {"url": p.url, "title": p.title, "host": p.host, "text": p.text[:4000]}
+    return {"v": 1, "question": state.question, "round": rnd, "todo": list(todo), "rounds": rounds_log,
+            "results": [_task_dict(r) for r in results], "admitted": dict(state.admitted), "asked": sorted(state.asked_urls),
+            "counts": dict(state.counts), "elapsed": round(time.time() - state.started, 1), "pages": pages,
+            "seen_text": {u: x[:1500] for u, x in state.seen_text.items()}}
+
+
+def restore(state: "State", cp: dict) -> tuple[list["TaskResult"], list[dict], int, list[str]]:
+    state.admitted.update(cp.get("admitted") or {})
+    state.asked_urls.update(cp.get("asked") or [])
+    state.counts.update(cp.get("counts") or {})
+    state.seen_text.update(cp.get("seen_text") or {})
+    for u, p in (cp.get("pages") or {}).items():
+        pg = Page(p["url"], p.get("title", ""), p.get("text", ""), p.get("host", ""))
+        state.pages[u] = pg
+    state.started = time.time() - float(cp.get("elapsed") or 0)      # the clock already used stays used
+    STATS["resumed"] += 1
+    return [_task_from(d) for d in cp.get("results") or []], list(cp.get("rounds") or []), int(cp.get("round") or 1), list(cp.get("todo") or [])
 
 
 # ---------------------------------------------------------------- 2. the worker: one goal, a few steps
@@ -307,13 +370,13 @@ async def run_worker(state: State, deps: Deps, goal: str, rnd: int) -> TaskResul
     res = TaskResult(goal=goal, round=rnd)
     deps.emit(goal, "running", "Research: " + _clip(goal, 70))
     history: list[dict] = [{"role": "user", "content": [{"type": "text", "text": f"Start. Goal: {goal}"}]}]
-    pages_here = 0
     finished = False
     try:
         for step in range(pol.steps_per_task):
             if deps.stopped() or not state.time_left():
                 res.unresolved = res.unresolved or "ran out of time before this goal was finished"
                 break
+            prune_history(history, keep=2)
             blocks, stop = await deps.llm(_worker_system(state.question, goal, pol), history, _WORKER_TOOLS, 2500)
             state.counts["llm_calls"] += 1
             state.counts["steps"] += 1
@@ -329,14 +392,13 @@ async def run_worker(state: State, deps: Deps, goal: str, rnd: int) -> TaskResul
             for b in calls:
                 name, inp = str(b.get("name")), (b.get("input") or {})
                 if name == "finish":
+                    deps.step(goal, "finish", "")
                     res.summary = _clip(inp.get("summary"), 900)
                     res.unresolved = _clip(inp.get("unresolved"), 500)
                     results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "ok"})
                     finished = True
                     continue
-                out = await _tool(state, deps, res, name, inp, pages_here)
-                if name == "read" and out.startswith("PAGE "):
-                    pages_here += 1
+                out = await _tool(state, deps, res, name, inp)
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": out})
             history.append({"role": "user", "content": results})
             if finished:
@@ -353,12 +415,13 @@ async def run_worker(state: State, deps: Deps, goal: str, rnd: int) -> TaskResul
     return res
 
 
-async def _tool(state: State, deps: Deps, res: TaskResult, name: str, inp: dict, pages_here: int) -> str:
+async def _tool(state: State, deps: Deps, res: TaskResult, name: str, inp: dict) -> str:
     pol = state.policy
     try:
         if name == "search":
             qs = [str(q).strip() for q in (inp.get("queries") or []) if str(q).strip()][:3] or [res.goal[:120]]
             state.counts["searches"] += 1
+            deps.step(res.goal, "search", qs[0])
             found = await deps.search(res.goal, qs)
             shown = []
             for f in found:
@@ -379,12 +442,13 @@ async def _tool(state: State, deps: Deps, res: TaskResult, name: str, inp: dict,
                 state.counts["refused"] += 1
                 STATS["refused_reads"] += 1
                 return "REFUSED: " + why
-            if pages_here >= pol.pages_per_task:
+            if url not in res.pages and len(res.pages) >= pol.pages_per_task:     # re-reading a page already read is free
                 return "REFUSED: this goal has used its page budget. Record what you have and finish."
             cached = state.pages.get(url)
             if cached is None:
                 if len(state.pages) >= pol.pages_total:
                     return "REFUSED: this run has used its page budget. Record what you have and finish."
+                deps.step(res.goal, "read", _host(url))
                 got = await deps.fetch(url)
                 final = str(got.get("url") or url)
                 cached = Page(final, str(got.get("title") or ""), str(got.get("text") or ""), _host(final))
@@ -406,6 +470,7 @@ async def _tool(state: State, deps: Deps, res: TaskResult, name: str, inp: dict,
             page = state.pages.get(url) or state.pages.get(url.rstrip("/"))
             hay = (page.text if page else "") + " " + state.seen_text.get(url, "")
             verified = excerpt_in(excerpt, hay)
+            deps.step(res.goal, "note", _host(url))
             res.notes.append(Note(goal=res.goal, claim=claim, url=url, excerpt=excerpt, verified=verified,
                                   title=page.title if page else "", date=_clip(inp.get("date"), 60)))
             STATS["notes"] += 1
@@ -426,6 +491,7 @@ async def _tool(state: State, deps: Deps, res: TaskResult, name: str, inp: dict,
             if state.counts["calcs"] >= pol.calcs_total:
                 return "REFUSED: this run has used its calculation budget."
             state.counts["calcs"] += 1
+            deps.step(res.goal, "calc", _clip(inp.get("purpose"), 60))
             out = await deps.calc(str(inp.get("code") or ""), _clip(inp.get("purpose"), 200))
             res.calcs.append(Calc(goal=res.goal, purpose=_clip(inp.get("purpose"), 200), code=_clip(inp.get("code"), 2000),
                                   output=_clip(out.get("output"), 1500), ok=bool(out.get("ok"))))
@@ -477,29 +543,41 @@ async def replan(state: State, deps: Deps, results: list[TaskResult]) -> tuple[s
 
 
 # ---------------------------------------------------------------- 4. the run
-async def run(question: str, goals: list[str], policy: Policy, deps: Deps, asked_urls: list[str] | None = None) -> dict[str, Any]:
-    """The whole job. `goals` are the approved sub-questions (R1's plan). Returns the dossier."""
+async def run(question: str, goals: list[str], policy: Policy, deps: Deps, asked_urls: list[str] | None = None,
+              resume: dict | None = None) -> dict[str, Any]:
+    """The whole job. `goals` are the approved sub-questions (R1's plan). `resume` = a checkpoint (v0.475 R4): the goals already
+    finished are kept, only the rest of the round is run, and the clock already used stays used. Returns the dossier."""
     STATS["runs"] += 1
     state = State(question=question, policy=policy)
     for u in asked_urls or []:                         # links in her own ask are hers to open
         if policy.allows(u)[0]:
             state.admitted[u] = "ask"
             state.asked_urls.add(u)
-    todo = [g.strip() for g in goals if str(g).strip()][:policy.max_tasks] or [question]
     results: list[TaskResult] = []
     rounds_log: list[dict] = []
+    rnd = 1
+    todo = [g.strip() for g in goals if str(g).strip()][:policy.max_tasks] or [question]
+    if resume:
+        results, rounds_log, rnd, todo = restore(state, resume)
+        todo = todo or [g.strip() for g in goals if str(g).strip()][:policy.max_tasks] or [question]
     sem = asyncio.Semaphore(max(1, policy.parallel))
     stop_reason = "all goals done"
 
-    async def one(g: str, rnd: int) -> TaskResult:
+    async def one(g: str, n: int) -> None:
         async with sem:
-            return await run_worker(state, deps, g, rnd)
+            r = await run_worker(state, deps, g, n)
+        results.append(r)
+        STATS["tasks"] += 1
+        try:
+            deps.checkpoint(snapshot(state, results, rounds_log, n, todo))
+        except Exception:      # noqa: BLE001 - a checkpoint that cannot be written never kills the research
+            log.exception("research checkpoint failed")
 
-    for rnd in range(1, max(1, policy.rounds) + 1):
-        batch = await asyncio.gather(*(one(g, rnd) for g in todo))
-        results.extend(batch)
-        STATS["tasks"] += len(batch)
-        rounds_log.append({"round": rnd, "goals": list(todo)})
+    while rnd <= max(1, policy.rounds):
+        if not any(e.get("round") == rnd for e in rounds_log):
+            rounds_log.append({"round": rnd, "goals": list(todo)})
+        done_here = {r.goal for r in results if r.round == rnd}
+        await asyncio.gather(*(one(g, rnd) for g in todo if g not in done_here))
         if deps.stopped():
             stop_reason = "stopped by her"
             break
@@ -513,12 +591,19 @@ async def run(question: str, goals: list[str], policy: Policy, deps: Deps, asked
             stop_reason = "page budget used"
             break
         action, new, why = await replan(state, deps, results)
-        rounds_log[-1]["replan"] = {"action": action, "why": why, "new": new}
+        for e in rounds_log:
+            if e.get("round") == rnd:
+                e["replan"] = {"action": action, "why": why, "new": new}
         if action != "tasks":
             stop_reason = "planner stopped: " + (why or "question answered")
             break
         STATS["replans"] += 1
+        rnd += 1
         todo = new
+        try:
+            deps.checkpoint(snapshot(state, results, rounds_log + [{"round": rnd, "goals": list(todo)}], rnd, todo))
+        except Exception:      # noqa: BLE001
+            log.exception("research checkpoint failed")
     return dossier(question, policy, state, results, rounds_log, stop_reason)
 
 

@@ -85,6 +85,11 @@ class Settings(BaseSettings):
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
+    research_background: bool = True        # v0.475 R4: research_run starts a PERSISTED background run and returns at once (False = inline, inside the turn)
+    research_bg_soft_s: float = 1500.0      # a background run's soft clock: after this the workers finish with what they have
+    research_bg_max_running: int = 2        # background research runs at once per tenant
+    research_bg_stale_s: int = 180          # a running run that has not heartbeated for this long is picked up again from its checkpoint
+    research_bg_tries: int = 3              # ... at most this many starts (the first + restarts)
     research_engine_on: bool = True         # v0.473 R2: the `research_run` tool (Hoola's own research engine) is available
     research_engine: str = "hoola"          # v0.473 which engine runs it; only "hoola" exists until R6 adds the paid ones
     research_tasks_max: int = 6             # goals in the first round
