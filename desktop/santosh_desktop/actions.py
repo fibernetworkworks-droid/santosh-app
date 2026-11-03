@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import __version__, browser, extract
+from . import __version__, axtree, browser, extract
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
@@ -219,6 +219,109 @@ class Actions:
         self._control_on()
         out = browser.downloads(minutes=int(minutes or 15))
         self.log(f"Downloads dekhe ({out.get('count', 0)})")
+        return out
+
+    # ---------------- v1.6.0 SEMANTIC DESKTOP (UIA via agent-desktop): act on ANY app by ref, not pixels --------
+    # The desktop twin of the v1.5.0 semantic browser: ax_snapshot lists every button / field of a DESKTOP app
+    # (Excel, Word, TallyPrime's UI, Explorer dialogs) with a ref like @s8f3k2p9:e12; ax_click / ax_set_value
+    # land on the ref - headless, no focus steal, twin controls refused instead of clicked by luck. Same gates
+    # as every other control action (the 'Hoola ko PC chalane dein' switch), same log lines, and when the
+    # helper binary is missing the clear error tells the server to fall back to the pixel lane.
+    def _ax(self) -> None:
+        """Control gate + helper availability in one place for every ax_* action."""
+        self._control_on()
+        if not axtree.available():
+            raise ActionError("Semantic desktop mode needs the agent-desktop helper beside SantoshDesktop.exe "
+                              "(naya SantoshDesktop.exe install kijiye). Pixel mode abhi bhi chal raha hai.")
+
+    def do_ax_status(self, **_) -> dict[str, Any]:
+        self._ax()
+        return axtree.status()
+
+    def do_ax_apps(self, **_) -> dict[str, Any]:
+        self._ax()
+        out = axtree.list_apps()
+        out.update(axtree.windows())
+        self.log(f"AX apps dekhe ({out.get('count', 0)}, {out.get('windows') and len(out['windows']) or 0} windows)")
+        return out
+
+    def do_ax_snapshot(self, app: str = "", window_id: str = "", skeleton: bool = False, root: str = "",
+                       surface: str = "", timeout_ms: int = 6000, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.snapshot(str(app or "")[:60], str(window_id or "")[:24], bool(skeleton),
+                                  str(root or "")[:40], str(surface or "")[:20], int(timeout_ms or 6000))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX snapshot: {out.get('app') or out.get('window') or app!s:.60} ({out.get('count', 0)} elements)")
+        return out
+
+    def do_ax_text(self, app: str = "", surface: str = "", max_chars: int = 6000, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.read(str(app or "")[:60], str(surface or "")[:20], max_chars=int(max_chars or 6000))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX text padha: {out.get('app')!s:.60}")
+        return out
+
+    def do_ax_find(self, app: str = "", role: str = "", name: str = "", text: str = "", exact: bool = False, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.find(str(app or "")[:60], str(role or "")[:24], str(name or "")[:80],
+                              str(text or "")[:80], bool(exact))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX find: {out.get('count', 0)} matches")
+        return out
+
+    def do_ax_click(self, ref: str = "", **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.click(str(ref or ""))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX click {out.get('ref', '')[:24]} ({out.get('delivery', '')})")
+        return out
+
+    def do_ax_set_value(self, ref: str = "", text: str = "", **_) -> dict[str, Any]:
+        """Type into a desktop-app field BY REF; only length + verification come back (the value never leaves the PC)."""
+        self._ax()
+        try:
+            out = axtree.set_value(str(ref or ""), str(text or "")[:4000])
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX likha {out.get('ref', '')[:24]} ({out.get('length', 0)} akshar)")
+        return out
+
+    def do_ax_press(self, keys: str = "", app: str = "", **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.press(str(keys or ""), str(app or "")[:60])
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX press: {out.get('pressed', '')[:24]}")
+        return out
+
+    def do_ax_launch(self, name: str = "", **_) -> dict[str, Any]:
+        from .control import BLOCKED_APP_WORDS
+        if BLOCKED_APP_WORDS.search(str(name or "")):
+            raise ActionError("Santosh doesn't open command-line or system tools")
+        self._ax()
+        try:
+            out = axtree.launch(str(name or ""))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX khol raha hoon: {out.get('launched', '')[:60]}")
+        return out
+
+    def do_ax_wait(self, app: str = "", text: str = "", window: str = "", seconds: int = 10, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.wait(str(app or "")[:60], str(text or "")[:80], str(window or "")[:80], int(seconds or 10))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX wait: {'text' if text else 'window'} ({out.get('waited', 0)}s)")
         return out
 
     def do_status(self, **_) -> dict[str, Any]:
