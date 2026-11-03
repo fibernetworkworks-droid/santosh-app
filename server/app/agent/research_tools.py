@@ -39,6 +39,18 @@ RESEARCH_TOOLS = [
                   "description": "background (default) = it starts and you reply with ONE short line; the report is written when the run "
                                  "finishes. inline = wait here (short jobs only)"}},
          "required": ["question", "sub_questions"]}},
+    {"name": "research_document", "description": (
+        "Turn the research report you wrote into a DOCUMENT she can hand over: a PDF (her brand colours when she has a brand kit), a Word file and / or a workbook. "
+        "It adds, from the research dossier itself, an 'At a glance' page of key figures, a Key figures table with each figure's period, source and confidence, the FULL "
+        "'Not confirmed' list, a numbered Sources table with dates, a 'How this was made' box, and charts only where a calculation printed a real series. Call it AFTER "
+        "you wrote the final report (pass that text as `report`) and only when she asked for a file or the report is long; the chat then carries the summary + the file. "
+        "It refuses a report that fails the same figure check as the chat answer - fix what it names and call again."),
+     "input_schema": {"type": "object", "properties": {
+         "report": {"type": "string", "description": "The FINAL report text, exactly what you would send her (markdown), with [n] sources"},
+         "kinds": {"type": "array", "items": {"type": "string", "enum": ["pdf", "docx", "xlsx"]}, "description": "Default [pdf]. Add docx for Word, xlsx for the figures + sources workbook"},
+         "title": {"type": "string", "description": "Optional title; default is taken from her question"},
+         "include_cost": {"type": "boolean", "description": "Show what the research cost in 'How this was made' (default true; false for a document she will give to a client)"}},
+         "required": ["report"]}},
     {"name": "research_status", "description": (
         "A background research run: check = progress (goals done, pages read), result = the DOSSIER of a finished run (write the report from it "
         "- same rules as research_run), stop = Rokiye. Use it when she asks how the research is going, and when a research run has finished "
@@ -47,7 +59,7 @@ RESEARCH_TOOLS = [
                                                        "id": {"type": "string", "description": "the run id; empty = the latest run of this chat"}},
                       "required": ["action"]}},
 ]
-RESEARCH_LABELS = {"research_run": "Research chala raha hoon (pages padh raha hoon)", "research_status": "Research ki haalat dekh raha hoon"}
+RESEARCH_LABELS = {"research_run": "Research chala raha hoon (pages padh raha hoon)", "research_status": "Research ki haalat dekh raha hoon", "research_document": "Research ka document bana raha hoon"}
 
 _ALLOWED = ("owner", "goal", "routine", "wake")
 
@@ -217,8 +229,42 @@ async def research_status(ctx: Ctx, action="check", id="", **_) -> dict[str, Any
                 "say": ("Write the report from this dossier only. A note marked NOT VERIFIED is unconfirmed - say so. Keep what was NOT CONFIRMED "
                         "in the report. Cite only the listed sources as [n] with their dates. Every figure must be one a note's words carry "
                         "(cited to THAT source) or one a calculation printed - a check refuses a figure from memory before she sees the report. "
-                        "A PDF with doc_studio when she asked for a file or it is long; the chat then carries the summary + the file.")}
+                        "When she asked for a file or the report is long, build it with research_document (PDF / Word / workbook with the key figures, the full Not-confirmed list and the sources; doc_studio is the plain fallback); the chat then carries the summary + the file.")}
     return {"runs": rows[:3]}
 
 
-RESEARCH_HANDLERS = {"research_run": research_run, "research_status": research_status}
+async def research_document(ctx: Ctx, report="", kinds=None, title="", include_cost=True, **_) -> dict[str, Any]:
+    """v0.479 R8: the report becomes a document. Refused when the report would not pass the figure check, or when this chat has no research dossier."""
+    from ..brand import service as brand_service
+    from ..research import claims as C
+    from ..research import document as D
+    from ..research import engine as E
+    from .make_tools import _deliver, _safe
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    if actor not in _ALLOWED and not actor.startswith("approved:"):
+        raise ToolError("Research ka document sirf malik ke liye banta hai.")
+    d = E.recall(ctx.conversation_id)
+    if d is None:
+        raise ToolError("Is chat mein abhi koi research dossier nahi hai - pehle research_status action=result (ya research_run) se dossier lo, phir report likho.")
+    rep = str(report or "").strip()
+    if len(rep) < 200:
+        raise ToolError("Report bahut chhoti hai - poori final report `report` mein do.")
+    found = C.check_report(rep, d)
+    if found:
+        raise ToolError("This report cannot become a document yet - the figure check found: " + " | ".join(found[:4]) + " Fix exactly these and call research_document again.")
+    ks = [str(k).lower() for k in (kinds if isinstance(kinds, list) else ["pdf"])]
+    try:
+        brand = await asyncio.to_thread(brand_service.kit, ctx.tenant_id)
+    except Exception:       # noqa: BLE001 - no kit, or the kit table is not there: the topic's own look
+        brand = None
+    built = await asyncio.to_thread(D.build_files, rep, d, ks, brand, title=str(title or ""), include_cost=bool(include_cost))
+    views = []
+    for f in built["files"]:
+        name = _safe(built["title"], "." + f["kind"])
+        views.append(await asyncio.to_thread(_deliver, ctx, name, f["data"], "research"))
+    return {"made": [f["kind"] for f in built["files"]], "files": views, "title": built["title"], "sections": built["sections"], "built_from": d.get("question", "")[:160],
+            "note": ("The file card(s) are in chat; they are her FINAL files - do not make another version unless she asks for a change. "
+                     + "; ".join(built["notes"]) + ". Tell her in one or two lines what is in it and, plainly, what could not be confirmed.").strip()}
+
+
+RESEARCH_HANDLERS = {"research_run": research_run, "research_status": research_status, "research_document": research_document}

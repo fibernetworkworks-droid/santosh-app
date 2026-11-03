@@ -18324,3 +18324,15 @@ Owner: "GO R7". The measurement and the rule for "which engine researches best",
 - Tests: `test_v0478_research_runoff.py` (21). Four first-run failures were all in the tests: a wrong median in my expectation, and verdict calls with made-up ask ids (correctly rejected); a vendor test whose canned report carried a derived figure no calculation backs - the scorer was right and the test now asserts that difference explicitly.
 - NOT VERIFIED / NOT BUILT: no live run-off has happened; the 15-point margin, 2-point tie and 80% floor are judgement, not measurements; the writer's own cost is the same for every engine but unknown until run. Perplexity / valyu / gemini are still not engines (R6).
 
+## v0.479.0 - RESEARCH Phase R8 KAAGAZ
+
+Owner: "GO R8". Part 10 of `docs/RESEARCH_PRO_PLAN.md`: "a perfect research doc is a document, not a chat reply". The existing Document Studio (HOOLA PRINT PDF, Word, workbook) is reused; the new part is WHAT goes into it and that none of it depends on the model remembering to include it.
+
+- `research/document.py` (new): `title_of`, `figure_text`, `key_cards` (the glance figures by rule), `figures_rows`, `unconfirmed` (the full list, de-duplicated), `sources_rows`, `series_from_calcs` (a real printed series only), `method_rows`, `build_markdown` (the Document Studio mini-language: `[stat: value | label]`, `[!note]`, `[!important]`, pipe tables; sections At a glance / The report / Key figures / Not confirmed / Sources / How this was made),
+  `brand_art(brand)` (a stand-in for the art-direction call: her kit's colours + name as the fixed parts `htmlpdf._sane` accepts, NO model call), `workbook_sheets` (Figures / Sources / Not confirmed / Method / Series N + chart specs), `build_files` (PDF via HOOLA PRINT with the ReportLab fallback, Word, workbook).
+  The cells are made safe (no pipes / newlines; nothing that a sheet would read as a formula).
+- tool `research_document` (family `research`): needs a dossier delivered in THIS chat (`engine.recall`), a real report (>= 200 chars), and the same `claims.check_report` the chat answer passes - a failing report is refused with the findings named and nothing is built or sent; her brand kit is read (`brand.service.kit`; a missing kit never blocks); each file goes through the existing `_deliver` path as a file card.
+  `research_status result`, the wake text and `RECIPE_KIND["research"]` now point to it instead of plain doc_studio.
+- Tests: `test_v0479_research_document.py` (18; the three files are really built and read back: PDF text via pypdf, Word headings + tables via python-docx, workbook sheets via openpyxl). One failure on the first run: Document Studio lower-cases hex colours (test fixed); a positional `maxsplit` deprecation fixed.
+- NOT BUILT: a Google Doc; charts in the PDF / Word. NOT VERIFIED: HOOLA PRINT (Chromium is not installed in this sandbox, so the PDF was built by the ReportLab fallback and the brand-coloured HOOLA PRINT path was only checked at the `_sane` spec level); how the glance stat row and the tables look in the printed PDF has not been seen by anyone.
+

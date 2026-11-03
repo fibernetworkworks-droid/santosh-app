@@ -231,7 +231,7 @@ RECIPE_KIND = {
                 "carries its source as [n] with the date; the key numbers from two sources when you can, and say when "
                 "they disagree; (d) derived figures (growth, share, CAGR, totals) from pylab; (e) write: a 5-7 line "
                 "summary with the key numbers first, then findings by sub-question, what is still uncertain, and "
-                "'Sources: [n] title - link - date'; a PDF with doc_studio when she asked for a file or the report is "
+                "'Sources: [n] title - link - date'; a document with research_document (PDF / Word / workbook) when she asked for a file or the report is "
                 "long, the chat then carries the summary + the file. Never cite a link you did not get from a tool in "
                 "this work.",
     "calculation": "Calculation: write the formula in words, compute it in pylab, show the 2-4 inputs and the result; "

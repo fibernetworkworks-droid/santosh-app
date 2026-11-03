@@ -159,7 +159,7 @@ def _wake_text(r: KaamFollowup) -> str:
                 f"Ab uski REPORT likho: pehle research_status tool se action=result, id={rid} lo - usme dossier hai. Report sirf us dossier "
                 f"se likho (research_run dobara mat chalao): har number uske note ke source ke saath [n] aur date ke saath, jo confirm nahi hua "
                 f"woh alag section mein 'jo confirm nahi ho paya', aur sources ki list. Uski bhasha mein likho. Lamba ya file maangi ho to "
-                f"doc_studio se PDF banao aur chat mein saar + file do.\n</research_report_due>")
+                f"research_document tool se PDF / Word banao (uske liye apni final report `report` mein do) aur chat mein saar + file do.\n</research_report_due>")
     head = f"{r.label} {r.title}".strip()
     digest = f"Kaam: {head}\nNatija: {STATE_WORD.get(r.state, r.state)}"
     if r.detail:
