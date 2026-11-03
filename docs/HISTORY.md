@@ -18084,3 +18084,37 @@ Each API's own Service Specific Terms were read FIRST (cloud.google.com is reach
 - Tests: `server/tests/test_v0469_solar_roads.py` (8). Nothing is stored; a test asserts neither function touches the database.
 - **NOT verified live:** no real call; Solar coverage for her city unknown (it falls back to "not covered"); the 100-point Roads ceiling
   is from memory of the blocked prose docs.
+
+## v0.470.0 — GOOGLE MAPS Phase 11: PROOF (the MAPS card)
+
+Owner: *"GO PHASE 11"* (3 Nov 2026), on `docs/MAPS_PLAN.md` - the last of the eleven Maps phases.
+
+**The honest-key problem first.** A geographic "right answer" must never be a fact remembered about the world (how far
+one town is from another, where a station stands) - this project's rule, and the one that would quietly poison a card.
+So `app/quality/maps_asks.py` stores NO answer at all (a test asserts it): a geo ask carries its own coordinates in its
+own text, and `mapscard.key_for()` works the answer out with the SAME haversine the server uses. Points are spaced so
+the straight-line winner cannot differ from the road winner, and where a tie was possible (203 km vs 217 km) the ask
+says *seedhi doori* so the arithmetic answer IS the asked answer.
+
+**26 asks, three kinds:** 4 **geo** (nearest of four, within 150 km, order of three, the straight-line km - checked in
+code, with tolerance), 17 **tool** (is the right one of the 20 maps / listing / own-map tools the first pick - this is
+what measures whether Phases 4-10 are reachable from her words at all), 5 **rule** (the guards everything rests on: a
+lead list refused *with a reason*, a map in a PDF as a link and never a picture, the day's plan only proposing, a roof
+Google has no imagery for reported not covered, the daily cap refusing before it spends).
+
+- **`free_card()`** - no model, no Google, no key: the right tool in view per ask, every maps tool **registered AND
+  reachable from a real ask** (the v0.393 lesson: green tests never prove a feature can be reached), the five guards
+  (four read in the code, the **cap one proved by running it** - `_cap_fires()` spends the day's room and asserts
+  `MapsCapped`), and **what one answer costs** from `mapsbill`'s own table, never a number typed in the card. Today:
+  **in view 26/26, wrong family 0, registered 20/20, reachable 20/20, guards 5/5, ~Rs 23.67 for one of every answer**
+  (dearest: nearest-of-N, because the matrix bills per pair).
+- **`live_card()`** - one real turn per ask on `__quality__`, scored in code, and **the rupees that ask really spent**
+  read from `mapsbill.usage()` around the turn (`inr` per row, `inr_per_answer` on the card). Three dead turns in a row
+  stop the run with the server's own log lines, as the hard card does.
+- `python -m app.quality maps [--live] [--kind geo|tool|rule] [--only id,id] [--limit N]`, **GET /api/quality/maps**,
+  vps-ops job **`maps_card`** (free card, then the geo + guard asks live with the usage line before them).
+- A test pins `MAPS_TOOLS == set(MAPS_HANDLERS)`, so a maps tool added later cannot go unmeasured.
+- Tests: `server/tests/test_v0470_maps_card.py` (11).
+- **NOT VERIFIED, said plainly:** the live card has never run - it needs a real Maps key on the VPS and spends real
+  money. Every Phase 4-10 number in this repo is still "built and unit-tested", never "answered by Google". The three
+  assumed rates (Routes/matrix tier, Route Optimization unit, Roads unit) are settled only by that first real bill.
