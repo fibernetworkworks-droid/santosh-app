@@ -52,6 +52,28 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (3 Nov 2026, owner: "NOW DEPLOY ON VPS AND SAVE THE STATE" after the GOOGLE MAPS work): branch
+  `stable-2026-11-03-v470` = commit d8160b41 = v0.470.0, pubspec 0.470.0+515. ALL ELEVEN MAPS PHASES are addressed
+  (`docs/MAPS_PLAN.md` S11 has the per-phase state and the four things only she can unblock): v0.463 SABSE PAAS
+  (`maps_nearest`, computeRouteMatrix billed per element, cap refuses first; fleet wired), v0.464 PATA PAKKA
+  (`maps_address_check` graded pakka / sadak_tak / galat, `maps_pata`), v0.465 DIN KA RASTA (`maps_route_plan`,
+  proposal only, needs HER Cloud project + service account), v0.466 KAAGAZ PAR **as links** (the picture-in-a-PDF form
+  is a licence breach - ToS 3.2.3(a)(i), `docs/research/maps/05_static_maps_licence.md`), v0.467 APNI DUKAAN read side
+  (`gbp_locations` / `gbp_numbers`), v0.468 APNA NAKSHA (her My Maps KML / Takeout imported once, `/api/ownmap`),
+  v0.469 BAAKI SAB (Solar + Roads built; Air Quality / Pollen / Elevation / Time Zone deliberately NOT, per their own
+  terms - `06_phase10_terms.md`), v0.470 PROOF (the MAPS card). This commit also carries the other sessions' ZOO model
+  zoo (436 models) and the interactive lab's GPU runs, merged with both works kept.
+  The MAPS card's free run on this exact commit: **right tool in view 26/26, wrong family 0, maps tools registered
+  20/20, reachable from a real ask 20/20, guards 5/5, ~Rs 23.67 for one of every answer** (`python -m app.quality maps`).
+  **NOT VERIFIED AT THIS CHECKPOINT, said plainly:** (1) the VPS deploy had NOT run when the branch was cut - this
+  session's GitHub token cannot start a `workflow_dispatch` (403 on the dispatch API), so the owner (or any session with
+  Actions write) must run **vps-ops > deploy** for hoola.ainewtika.com to serve 0.470.0; until then the live healthz
+  still reads 0.462.0. (2) No live Google Maps call has EVER been made from any phase - everything is built against
+  Google's own machine-readable specs and terms and unit-tested, never answered by Google. The first `maps_card --live`
+  run (or any real maps ask on the VPS) is what confirms or corrects it, and it is also the first real bill: three rates
+  stay assumed until then (the Routes / matrix tier, Route Optimization's billing unit, the Roads unit; `/api/maps/usage`
+  names them). APK release for this commit: `v0.470.0-b1360` (CI run 41605635744 was still building at the save).
+  Roll back to it exactly like the ones below, with `stable-2026-11-03-v470` as the branch.
 - WEB STEP 2 (1 Nov 2026, end of web Step 2 = W1 one backend + W13 Architect, docs/WEB_PLATFORM_PLAN.md): branch
   `stable-2026-11-01-v414` = commit 35caab6c = v0.414.0, pubspec 0.414.0+458, APK release `v0.414.0-b1112`:
   https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.414.0-b1112/app-release.apk
