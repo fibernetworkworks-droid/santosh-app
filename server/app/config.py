@@ -348,6 +348,8 @@ class Settings(BaseSettings):
     voice_vad_idle_gate: bool = True       # while nobody talks, pure noise (fan, traffic, clatter) reaches Gemini as silence
     voice_resume_after_noise_s: float = 1.5  # he was cut off but nobody spoke: carry on after this long (0 = off)
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
+    scrape_respect_robots: bool = True     # v0.474 scrape tools refuse paths the site's robots.txt disallows for bots
+    scrape_stealth_enabled: bool = False   # v0.474 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_backchannel: bool = True         # v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)

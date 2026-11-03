@@ -18137,3 +18137,60 @@ Google has no imagery for reported not covered, the daily cap refusing before it
 - **NOT VERIFIED, said plainly:** the live card has never run - it needs a real Maps key on the VPS and spends real
   money. Every Phase 4-10 number in this repo is still "built and unit-tested", never "answered by Google". The three
   assumed rates (Routes/matrix tier, Route Optimization unit, Roads unit) are settled only by that first real bill.
+
+---
+
+## v0.474.0 SCRAPLING — Hoola can scrape any website smoothly
+
+**Owner:** "NOW DEPLOY THIS SCRAPER FOR HOOLA --- THUS HOOLA CAN SCRAP ANY WEBSITE SMOOTHLY"
+**Re-versioned twice while building:** the dev's parallel chain took 0.217-0.473 — both works kept, REBASE PROTOCOL respected (rebuilt from a fresh origin/main checkout as v0.474.0).
+
+### What shipped
+
+New dependency: the **Scrapling library** (PyPI v0.5, github.com/D4Vinci/Scrapling, ~13.8k stars, **BSD-3-Clause** — embed-friendly; `server/requirements.txt`: `scrapling[fetchers,rag]>=0.5`). New tool module **`server/app/agent/scrape_tools.py`** — 5 tools registered in `agent/tools.py` beside web_tools, the structured/bulk scraping lane `open_website` / `browse_web` never had:
+
+- **scrape_page** — fast public-page read: curl_cffi TLS-impersonated fetch (1-3 s, no browser); markdown (default) / text / html, optional `css` focus, optional 60 outgoing links, title + status.
+- **scrape_extract** — THE tool: one css/xpath selector over repeating elements -> JSON rows; optional `fields` map `{"title": "h3 a@title", "price": "p.price_color"}` (`@attr` = attribute, plain = deep text via get_all_text, `xpath:` prefix supported). **ADAPTIVE by default**: Scrapling remembers the element per tenant (Simhash text similarity + DOM-tree relative positioning) in `data/scraping/<tenant>/elements.db` (SQLite), so the same pull keeps working after the site redesigns. `similar=true` expands one matched card to all its siblings.
+- **scrape_many** — the same selector across up to 15 urls; per-page rows + per-page errors (one dead page never kills the batch); polite 0.25 s pauses.
+- **scrape_site** — polite same-host BFS crawl, max 25 pages, robots respected, 0.4 s delays, `include` regex on urls; per-page title + text head — to MAP a site, then scrape_extract the right page.
+- **scrape_stealth** — last resort for Cloudflare / anti-bot / JS-only pages: Scrapling StealthyFetcher (real browser engine) with optional `solve_cloudflare`. **OFF by default** behind the `scrape_stealth_enabled` setting (default false) AND a one-time `scrapling install`; process-wide `BoundedSemaphore(1)` so only one stealth browser ever runs — the MEM-CURE RAM discipline: the default engine is pure HTTP, no browser, no heavy RAM.
+
+### Fixes made while bringing up (all verified against the scrapling 0.5 source)
+
+- `StealthyFetcher.fetch` timeout is **milliseconds** in scrapling 0.5 (default 30_000) — seconds in, ms out, capped 180 s.
+- The robots gate runs `protego.can_fetch(url, user_agent)` — the classic `(user_agent, url)` order of stdlib robotparser silently always-allows.
+- DNS resolution (`_guard_url`) and the robots fetch run **off the event loop** (`asyncio.to_thread`) — they can block for seconds.
+- Field specs return **deep text** (`get_all_text`), not just the node's direct text (`<h3><a>T</a></h3>` would have come back empty).
+
+### Safety rails (server-side, before any fetch)
+
+- **SSRF guard**: http/https only; the host must resolve to a PUBLIC ip — loopback / RFC1918 / link-local / 169.254.169.254 metadata / ULA never fetched (documented TOCTOU: the fetcher re-resolves DNS; Scrapling's own `follow_redirects="safe"` is the second layer).
+- **robots.txt gate** (`scrape_respect_robots`, default True): disallowed paths refused honestly in Hinglish; unreachable robots fail open; 1 h per-host cache.
+- **Caps everywhere**: 24k char output default / 60k hard, 15 urls, 25 pages, 60 s per fetch; all handlers run scrapling in `asyncio.to_thread` (house pattern); outputs pass `operator.browser.mask_ids` like every other tool.
+- Per-tenant adaptive storage paths (`data/scraping/<sanitised-tenant>/elements.db`) — no cross-tenant memory.
+
+### Config (config.py)
+
+- `scrape_respect_robots: bool = True` — robots.txt gate.
+- `scrape_stealth_enabled: bool = False` — stealth browser gate (RAM).
+
+### prompts.py
+
+Internet routing section grew the scrape bullet: structured/bulk data = scrape tools; login pages / typing / forms stay with browse_web / computer_operator.
+
+### Tests
+
+`server/tests/test_v0474_scrapling.py` (27): registry wiring, SSRF guard (private/loopback/metadata/junk refused, public passes), robots gate on+off+unreachable-fail-open, field syntax (attr/text/xpath/deep text), offline extraction via a local scrapling Response (rows, fields, similar-expansion, xpath, 404 refusal), page flow (markdown/links/css focus), cap truncation, per-tenant storage path sanitising, scrape_many error isolation + 15-url cap, scrape_site same-host-only + include filter, stealth gate refusal without the setting + stealth run offline with ms-timeout cap and semaphore release, version pin.
+
+### Sweeps + live proof
+
+- All version-pin suites re-pointed to 0.474.0 and green (one pytest process per suite), with the ONE documented sandbox-only red (`test_v0185_pc_browser::test_desktop_version_is_140`, byte-identical on pristine main).
+- Live smoke through the real handlers on books.toscrape.com: scrape_page 200 + markdown + title; scrape_extract 5 structured rows (title/price/link correct); per-tenant `elements.db` created; robots.txt gate exercised (404 -> fail open).
+
+### Version
+
+0.474.0 (pubspec 0.474.0+519, console ?v=0.474.0 x20, pins ->0.474.0 in all pin suites). Desktop untouched — server-only deploy, old APKs keep working.
+
+### VPS deploy note
+
+`pip install "scrapling[fetchers,rag]>=0.5"` in the venv once (no browser download needed for the default engine), then the usual ritual: checkout tag -> `cp -r server/app ~/apps/santosh-core/` -> `pm2 restart santosh --update-env` -> sleep 20 -> healthz grep version.
