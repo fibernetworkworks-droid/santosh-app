@@ -222,3 +222,12 @@ threads calling the GPU at once stalled it. And even if they did not, the card's
 decides how long a student waits, and what it costs while nobody is talking.
 Cost of one live student-minute on an L40S, all-in: GPU $0.0325 + 4 CPU cores ~$0.0031 (Modal $0.0000131 per physical core-second) + memory
 ~$0.001 (est., $0.00000222 per GiB-second) = **~$0.036 per student-minute** (+ the 120 s idle tail ~$0.07 per session), vs ~$0.08 HeyGen.
+
+**Third concurrency run (3 Nov 2026, L40S, one student per container, run #23):** 3 students arriving at once, each on its OWN L40S (Modal
+started the extra cards; the prepared face loaded from the volume): all smooth, 0.0 s frozen, 0 stalls, "3 simultaneous students all smooth".
+First frames: 1.01 s on the warm card, 36.1 s worst (cold container: start + models ~7 s + face from the volume + the card's first-call
+warm-up - the warm-up part is a likely cause, not confirmed). The "19.1 fps" in that row counts from the start of the call and so includes
+that slow first batch; playback (stall) is the measure. Decision still open for her: warm pool (one L40S kept warm ~ $1.95/h, ~$16 per
+8-hour school day) vs cold starts (~36 s for a student when no card is free, $0 idle). Not yet measured: voice -> face end to end, video
+delivery to a phone (WebRTC), the real teacher face.
+
