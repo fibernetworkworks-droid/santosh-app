@@ -132,9 +132,22 @@ class Chatterbox:
     def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, **_) -> dict:
         ref = _tmp(ref_audio, ".wav")
         t = time.time()
-        wav = self.model.generate(text, language_id=lang, **({"audio_prompt_path": ref} if ref else {}))
+        # Guard: a short line can make this voice ramble (one word -> 12 s of audio). A line of N words should speak for
+        # about N x 0.45 s (Hindi); more than N x 0.9 s + 1.5 s is a runaway - make it again, keep the shortest take.
+        limit = len(text.split()) * 0.9 + 1.5
+        best, tries = None, 0
+        for _ in range(3):
+            tries += 1
+            w = self.model.generate(text, language_id=lang, **({"audio_prompt_path": ref} if ref else {}))
+            secs = w.shape[-1] / self.model.sr
+            if best is None or secs < best[1]:
+                best = (w, secs)
+            if secs <= limit:
+                break
+        wav, secs = best
         out = _wav_bytes(wav, self.model.sr)
-        return {"wav": out, "sr": self.model.sr, "synth_s": round(time.time() - t, 2), "load_s": self.load_s}
+        return {"wav": out, "sr": self.model.sr, "synth_s": round(time.time() - t, 2), "load_s": self.load_s,
+                "tries": tries, "runaway": secs > limit}
 
 
 @app.cls(gpu=GPU, image=indicf5_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600)
@@ -867,24 +880,37 @@ def bench_streams():
         note(f"streams FAILED: {type(e).__name__} {str(e)[:500]}")
 
 
-def split_speech(text: str, first_words: int = 5) -> list:
-    """Cut a teacher's answer so speech can start early: a SHORT first chunk (about five words, ending at a comma /
-    full stop if one is near), then the rest one sentence at a time. Voice time grows with length, so the first chunk
-    decides how long the student waits; the later chunks only have to be ready before the earlier audio ends."""
+def split_speech(text: str, first_words: int = 7) -> list:
+    """Cut a teacher's answer so speech starts early AND never runs dry: a first chunk of about seven words (about
+    2.5-3 s of speech, ending at a comma / full stop when one is near), then chunks that GROW (~14, ~28, ... words),
+    each cut at a natural pause. Measured: voice time ~ 0.75 x the speech it makes, so every chunk must speak longer
+    than the next one takes to make; a chunk of 4-5 words (1.5 s of speech) left a 1.2 s gap. Never fewer than 3 words
+    in a chunk: a one-word line made the voice ramble for 12 s."""
     import re
-    text = " ".join(text.split())
-    if not text:
+    words = " ".join(text.split()).split(" ")
+    if not words or words == [""]:
         return []
-    words = text.split(" ")
-    cut = min(first_words, len(words))
-    for i in range(2, min(len(words), first_words + 3)):          # a natural pause close to the target wins
-        if re.search(r"[,;:।.?!]$", words[i - 1]):
-            cut = i
-            break
-    first, rest = " ".join(words[:cut]), " ".join(words[cut:])
-    out = [first]
-    if rest:
-        out += [x.strip() for x in re.split(r"(?<=[।.?!])\s+", rest) if x.strip()]
+    stop = re.compile(r"[,;:।.?!]$")
+
+    def cut_at(start: int, target: int) -> int:
+        end = min(len(words), start + target)
+        if end >= len(words):
+            return len(words)
+        lo, hi = start + max(3, int(target * 0.6)), min(len(words), start + int(target * 1.4) + 1)
+        best = None
+        for i in range(lo, hi):                                  # the pause closest to the target wins
+            if stop.search(words[i - 1]) and (best is None or abs(i - end) < abs(best - end)):
+                best = i
+        cut = best or end
+        if len(words) - cut < 3:                                 # no stub left over at the end
+            cut = len(words)
+        return cut
+
+    out, i, target = [], 0, max(3, first_words)
+    while i < len(words):
+        j = cut_at(i, target)
+        out.append(" ".join(words[i:j]))
+        i, target = j, min(target * 2, 40)
     return out
 
 
@@ -941,33 +967,40 @@ def bench_e2e():
             e2e_all.append(e2e)
             rtf_all.append(rtf)
             note(f"{name:<18} {audio_s:>7.1f} {t_tts:>6.1f} {r['synth_s']:>8} {rtf:>10} {str(first):>13} {e2e:>18.1f}")
-        # Fixed cost of one voice call: a one-word line. If this is still ~3 s, the time is overhead per call, not speech length.
-        tiny = _call("voice: one word", voice.speak, "हाँ।", "hi", wait=300)
-        note(f"one-word probe: gpu {tiny['synth_s']}s for {_wav_seconds(tiny['wav']):.1f}s of audio (fixed cost per call)")
-        # The real answer path: a SHORT first chunk, the rest sentence by sentence behind it.
-        long_text = cases[2][1]
+        def keep(name: str, wav: bytes) -> None:          # the audio goes into the artifact so a person can LISTEN to it
+            with open(f"lab_out/e2e_{name}.wav", "wb") as f:
+                f.write(wav)
+
+        # A line of one word used to ramble for 12 s; the voice now makes it again when audio runs far past the words.
+        tiny = _call("voice: one word", voice.speak, "हाँ, ठीक है।", "hi", wait=300)
+        note(f"short-line probe: gpu {tiny['synth_s']}s for {_wav_seconds(tiny['wav']):.1f}s of audio, tries {tiny.get('tries')}, runaway {tiny.get('runaway')}")
+        keep("shortline", tiny["wav"])
+        # The real answer path: first chunk ~7 words, then chunks that grow. Voice runs ahead of playback.
+        long_text = " ".join(c[1] for c in (cases[1], cases[2])) + " अब आप बताइए कि अगर वही गाड़ी तीन घंटे चले, तो कितने किलोमीटर जाएगी?"
         chunks = split_speech(long_text)
-        note(f"chunked answer: {len(chunks)} chunks -> " + " | ".join(chunks))
+        note(f"chunked answer: {len(chunks)} chunks of {[len(c.split()) for c in chunks]} words")
         t0 = time.time()
-        r1 = _call("voice: chunk 1", voice.speak, chunks[0], "hi", wait=300)
-        tts1 = time.time() - t0
+        r = _call("voice: chunk 1", voice.speak, chunks[0], "hi", wait=300)
+        ready = time.time() - t0                          # when chunk 1's audio exists
+        keep("chunk1", r["wav"])
         chunk_e2e = None
-        for b in live.stream.remote_gen("lab-live", r1["wav"], 4, 1):
+        for b in live.stream.remote_gen("lab-live", r["wav"], 4, 1):
             if chunk_e2e is None:
                 chunk_e2e = time.time() - t0
-        note(f"chunk 1 '{chunks[0]}': voice {tts1:.1f}s, picture at {chunk_e2e:.1f}s, speaks for {_wav_seconds(r1['wav']):.1f}s")
-        gapless, prev_audio, spent = True, _wav_seconds(r1["wav"]), 0.0
+        play_end = chunk_e2e + _wav_seconds(r["wav"])     # chunk 1 starts playing at its first picture
+        note(f"chunk 1 ({len(chunks[0].split())} words): voice {ready:.1f}s, first picture {chunk_e2e:.1f}s, speaks {_wav_seconds(r['wav']):.1f}s, tries {r.get('tries')}")
+        gaps = 0.0
         for i, c in enumerate(chunks[1:], 2):
             t = time.time()
-            ri = _call(f"voice: chunk {i}", voice.speak, c, "hi", wait=300)
-            dt = time.time() - t
-            spent += dt
-            ok = dt <= prev_audio
-            gapless = gapless and ok
-            note(f"chunk {i}: voice {dt:.1f}s, previous audio lasts {prev_audio:.1f}s -> {'ready in time' if ok else 'GAP'}")
-            prev_audio = _wav_seconds(ri["wav"])
+            r = _call(f"voice: chunk {i}", voice.speak, c, "hi", wait=300)
+            ready += time.time() - t                       # voice keeps working while chunk i-1 plays
+            keep(f"chunk{i}", r["wav"])
+            gap = max(0.0, ready - play_end)
+            gaps += gap
+            play_end = max(ready, play_end) + _wav_seconds(r["wav"])
+            note(f"chunk {i} ({len(c.split())} words): ready at {ready:.1f}s, speaks {_wav_seconds(r['wav']):.1f}s, tries {r.get('tries')}, wait before it: {gap:.1f}s")
         e2e_all.append(chunk_e2e)
-        note(f"CHUNKED: first picture after {chunk_e2e:.1f} s; rest of the answer " + ("arrives without gaps" if gapless else "has gaps - needs a faster voice"))
+        note(f"CHUNKED: first picture after {chunk_e2e:.1f} s; total waiting between chunks {gaps:.1f} s -> " + ("no gaps" if gaps < 0.3 else "audible gaps"))
         best, worst = min(e2e_all), max(e2e_all)
         word = "conversational (<=2 s)" if worst <= 2 else "acceptable (<=4 s)" if worst <= 4 else "slow (>4 s)"
         note(f"RESULT: first picture after {best:.1f}-{worst:.1f} s -> {word}")

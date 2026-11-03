@@ -255,10 +255,14 @@ def test_chunker_and_warm_switch():
     ns: dict = {}
     exec(re.search(r"def split_speech.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
     sp = ns["split_speech"]
-    long_t = "अगर एक गाड़ी दो घंटे में एक सौ बीस किलोमीटर जाती है, तो उसकी औसत चाल साठ किलोमीटर प्रति घंटा होगी। अब आप बताइए?"
+    long_t = " ".join(["शब्द%d" % i + ("," if i % 6 == 0 else "") for i in range(1, 61)])
     parts = sp(long_t)
-    assert len(parts[0].split()) <= 8 and len(parts) >= 3
-    assert " ".join(parts).split() == long_t.split()                      # nothing lost, nothing added
+    sizes = [len(p.split()) for p in parts]
+    assert 5 <= sizes[0] <= 10 and len(parts) >= 3
+    assert sizes[1] > sizes[0] and min(sizes) >= 3                       # chunks grow, none is a stub
+    assert " ".join(parts).split() == long_t.split()                     # nothing lost, nothing added
     assert sp("") == [] and sp("नमस्ते") == ["नमस्ते"]
+    assert len(sp("एक दो तीन चार पाँच")) == 1
     assert "min_containers=WARM" in MODAL_SRC and 'HOOLA_LAB_WARM", "0"' in MODAL_SRC
     assert "HOOLA_LAB_WARM" in open("../.github/workflows/interactive-lab.yml").read()
+    assert '"runaway"' in MODAL_SRC and "e2e_chunk" in MODAL_SRC or 'keep(f"chunk' in MODAL_SRC
