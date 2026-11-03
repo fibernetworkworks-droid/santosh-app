@@ -130,6 +130,36 @@ MAPS_TOOLS = [
         "listing. Owner only, read live, nothing kept."),
      "input_schema": {"type": "object", "properties": {
          "location": {"type": "string"}, "days": {"type": "integer", "description": "1-540, default 30"}}}},
+    # v0.468 Phase 9 APNA NAKSHA - her own pins / areas, kept on Hoola's server
+    {"name": "ownmap_import", "description": (
+        "Bring HER OWN map into Hoola once: the KML/KMZ she exported from My Maps (Menu > Export to KML/KMZ), or the file "
+        "from Google Takeout > Saved. Give the uploaded file's file_id. Hoola cannot read or edit My Maps or her saved lists "
+        "by itself (Google offers no way), so this is a one-time hand-over; after it the pins live in Hoola. It says "
+        "exactly what it found. Entries without coordinates are kept as 'no location' and are NOT looked up. Owner only."),
+     "input_schema": {"type": "object", "properties": {
+         "file_id": {"type": "string"}, "name": {"type": "string", "description": "What to call this map"}},
+         "required": ["file_id"]}},
+    {"name": "ownmap_list", "description": "HER imported maps (name, where it came from, how many entries). Owner only.",
+     "input_schema": {"type": "object", "properties": {}}},
+    {"name": "ownmap_near", "description": (
+        "Which of HER OWN saved pins / areas are within some km of a place - 'mere 40 customers mein se Tilak Road ke "
+        "paas kaun'. 'place' is a name / 'lat,lng' (a name is looked up live on Google, one geocode) or pass lat+lng. "
+        "Straight-line distance from her own data; no Google cost beyond that one lookup. 'map' optional."),
+     "input_schema": {"type": "object", "properties": {
+         "place": {"type": "string"}, "lat": {"type": "number"}, "lng": {"type": "number"},
+         "radius_km": {"type": "number", "description": "default 5"}, "map": {"type": "string"},
+         "limit": {"type": "integer"}}}},
+    {"name": "ownmap_pin", "description": (
+        "Add ONE pin to one of HER maps (name, place or lat/lng, optional note). Owner only."),
+     "input_schema": {"type": "object", "properties": {
+         "map": {"type": "string"}, "name": {"type": "string"}, "place": {"type": "string"},
+         "lat": {"type": "number"}, "lng": {"type": "number"}, "note": {"type": "string"}},
+         "required": ["map", "name"]}},
+    {"name": "ownmap_delete", "description": (
+        "Delete one of HER imported maps with all its entries (cannot be undone). ASK her first; call with confirm=true "
+        "only after she says yes. Owner only."),
+     "input_schema": {"type": "object", "properties": {
+         "map": {"type": "string"}, "confirm": {"type": "boolean"}}, "required": ["map"]}},
     {"name": "maps_kharcha", "description": (
         "Today's Google Maps spend for this user: calls made, how many were inside Google's free monthly "
         "allowance, rupees spent, the daily cap and what is left. Use it when she asks what Maps is costing, or "
@@ -145,6 +175,9 @@ MAPS_LABELS = {"maps_search": "Google Maps par dhoondh raha hoon", "maps_directi
                "maps_route_plan": "Din ka rasta bana raha hoon",
                "maps_links": "Map ke links bana raha hoon",
                "gbp_locations": "Aapki Google listing dekh raha hoon", "gbp_numbers": "Google par kitne log aaye dekh raha hoon",
+               "ownmap_import": "Aapka map import kar raha hoon", "ownmap_list": "Aapke maps dekh raha hoon",
+               "ownmap_near": "Aapke pins mein paas wale dekh raha hoon", "ownmap_pin": "Pin jod raha hoon",
+               "ownmap_delete": "Map hata raha hoon",
                "maps_kharcha": "Maps ka kharcha dekh raha hoon"}
 
 
@@ -561,6 +594,73 @@ async def gbp_numbers(ctx: Ctx, location="", days=None, **_):
     return r
 
 
+def _own_call(fn, *a, **k):
+    from .. import ownmap
+    try:
+        return fn(*a, **k)
+    except ownmap.OwnMapError as e:
+        raise ToolError(str(e))
+
+
+async def ownmap_import(ctx: Ctx, file_id, name="", **_):
+    from .. import ownmap
+    from ..mailbox import service as ms
+    _owner_only(ctx)
+    try:
+        fname, _m, data = ms.load_files(ctx.tenant_id, [{"type": "file", "file_id": str(file_id)}])[0]
+    except Exception as e:
+        raise ToolError(f"File nahi mili: {e}")
+    r = _own_call(ownmap.import_file, ctx.tenant_id, data or b"", fname, str(name or ""))
+    r["note"] = ("Tell her plainly what was found (r.detected) and how many have no location. The map now lives in Hoola; "
+                 "changes made later in Google My Maps do NOT come across - she must re-import. Drawing it on a Google "
+                 "map is not available yet.")
+    return r
+
+
+async def ownmap_list(ctx: Ctx, **_):
+    from .. import ownmap
+    _owner_only(ctx)
+    return {"maps": _own_call(ownmap.maps, ctx.tenant_id)}
+
+
+async def _point(ctx: Ctx, place, lat, lng):
+    if lat is not None and lng is not None:
+        return float(lat), float(lng)
+    if not str(place or "").strip():
+        raise ToolError("Kis jagah ke paas? Naam ya lat/lng bataiye.")
+    try:
+        pt = await maps.resolve(str(place), ctx.tenant_id, near=maps.where_am_i(ctx.tenant_id))
+    except maps.MapsError as e:
+        raise ToolError(str(e))
+    if pt is None:
+        raise ToolError(f"'{place}' Google Maps par nahi mila.")
+    return pt["lat"], pt["lng"]
+
+
+async def ownmap_near(ctx: Ctx, place="", lat=None, lng=None, radius_km=5, map="", limit=20, **_):
+    from .. import ownmap
+    _owner_only(ctx)
+    la, lo = await _point(ctx, place, lat, lng)
+    rows = _own_call(ownmap.near, ctx.tenant_id, la, lo, float(radius_km or 5), str(map or ""), int(limit or 20))
+    return {"within_km": float(radius_km or 5), "count": len(rows), "places": rows,
+            "note": "Straight-line distances from her own saved data (not road distance)."}
+
+
+async def ownmap_pin(ctx: Ctx, map, name, place="", lat=None, lng=None, note="", **_):
+    from .. import ownmap
+    _owner_only(ctx)
+    la, lo = await _point(ctx, place, lat, lng)
+    return _own_call(ownmap.add_pin, ctx.tenant_id, str(map), str(name), la, lo, str(note or ""))
+
+
+async def ownmap_delete(ctx: Ctx, map, confirm=False, **_):
+    from .. import ownmap
+    _owner_only(ctx)
+    if confirm is not True:
+        raise ToolError("Pehle unse poochiye: 'Yeh map aur uski saari entries hata dun?' Haan ke baad confirm=true se bulaiye.")
+    return _own_call(ownmap.delete_map, ctx.tenant_id, str(map))
+
+
 async def maps_kharcha(ctx: Ctx, **_):
     u = mapsbill.usage(ctx.tenant_id)
     return {**u, "note": ("Rupees are an estimate: Google's own list is in USD and bills the billing account's "
@@ -572,4 +672,6 @@ MAPS_HANDLERS = {"maps_search": maps_search, "maps_directions": maps_directions,
                  "maps_nearby": maps_nearby, "maps_place": maps_place, "maps_nearest": maps_nearest,
                  "maps_address_check": maps_address_check, "maps_pata": maps_pata,
                  "maps_route_plan": maps_route_plan, "maps_links": maps_links,
-                 "gbp_locations": gbp_locations, "gbp_numbers": gbp_numbers, "maps_kharcha": maps_kharcha}
+                 "gbp_locations": gbp_locations, "gbp_numbers": gbp_numbers,
+                 "ownmap_import": ownmap_import, "ownmap_list": ownmap_list, "ownmap_near": ownmap_near,
+                 "ownmap_pin": ownmap_pin, "ownmap_delete": ownmap_delete, "maps_kharcha": maps_kharcha}

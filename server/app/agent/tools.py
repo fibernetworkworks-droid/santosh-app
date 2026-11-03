@@ -1094,6 +1094,10 @@ TOOL_LANES: dict[str, str] = {
                      "maps_nearby. How people found her -> gbp_numbers.",
     "gbp_numbers": "LANE: how many people saw / called / asked directions to HER business on Google. Not a competitor "
                    "or any other place.",
+    "ownmap_import": "LANE: bring HER OWN My Maps export (KML/KMZ) or Takeout 'Saved' file into Hoola once. Not for finding "
+                     "new places (maps_nearby / maps_search).",
+    "ownmap_near": "LANE: which of HER OWN imported pins / areas are near somewhere. Other businesses -> maps_nearby. Her "
+                   "Google listing -> gbp_locations.",
     "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
                   "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms

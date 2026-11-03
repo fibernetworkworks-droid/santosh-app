@@ -18034,3 +18034,30 @@ Owner: *"GO PHASE 8"* (3 Nov 2026), on `docs/MAPS_PLAN.md`.
 `locations.patch` + `updateMask`, whose shape IS in the discovery doc) - they need a hash-bound approval tap and the documented
 10-edits-per-minute-per-profile cap, and are the next step once approval is real; the connect screen.
 **NOT verified:** no live call (project unapproved).
+
+## v0.468.0 — GOOGLE MAPS Phase 9: APNA NAKSHA (her own pins and areas, kept on Hoola)
+
+Owner: *"GO PHASE 9"* (3 Nov 2026), on `docs/MAPS_PLAN.md` and `docs/research/maps/03_her_existing_map.md`.
+
+The research settled the shape: Google gives NO way to write to a My Maps map and NO way to read or write her saved lists, so
+she hands the data over ONCE and Hoola owns it. Nothing in this version calls Google.
+- **`server/app/ownmap.py`**: tables `own_maps` / `own_features` (registered in `db.init_db` + `ensure_tables()` self-heal);
+  `parse_kml` (KML + KMZ; **lon,lat order**; folders -> layers; description tags stripped; ExtendedData kept; points, lines,
+  polygon outer rings; DOCTYPE/ENTITY refused, 5 MB file ceiling = My Maps' own, 20 MB unzipped ceiling against zip bombs);
+  `parse_takeout` which **sniffs** GeoJSON or CSV and REPORTS what it found, because the Takeout "Saved" format is documented
+  nowhere and third parties disagree - an unknown JSON shape is refused, not guessed; a row with no coordinates is kept as
+  `unlocated` (name + the Maps link she saved) and is NEVER geocoded behind her back (a billed call, and Google's geocodes may only be kept
+  30 days); `near()` = straight-line distance over her own data, no Google call; `geojson()` for the Maps JS Data layer; pins; delete.
+  Limits: 20 maps, 5,000 entries each. Tenants cannot see each other's maps ("not found", never "forbidden").
+- **Tools** (chat, owner only): `ownmap_import` (file_id of an uploaded KML/KMZ/Takeout file), `ownmap_list`, `ownmap_near`
+  (a place NAME costs one live geocode, then pure arithmetic), `ownmap_pin`, `ownmap_delete` (needs `confirm=true`, i.e. her yes).
+- **Routes** `/api/ownmap`: list, `POST /import` (multipart), `GET /{id}/geojson` (what `map.data.addGeoJson` takes - her data
+  never leaves her server), `DELETE /{id}`; a test calls them through the real router, and the real app is checked for mounting.
+- Tests: `server/tests/test_v0468_ownmap.py` (15), including a guard that the module never imports httpx / calls googleapis.
+- **Stated assumption:** a My Maps export and a Takeout file are HER data (user-authored / her own export), not "Google Maps
+  Content" obtained from the Maps Platform, so the Maps caching rules (ToS 3.2.3) do not apply to them. Rows that came from
+  Google's place data (Takeout "Saved" names/addresses) are the grey part; nothing from the Maps APIs is ever merged in or refreshed.
+- **NOT built:** the screen that DRAWS it (Maps JS Data layer in the console / phone - needs a restricted browser key and bills
+  Dynamic Maps per load), the Datasets API (Google-hosted, OAuth + a project), the Data Portability API route to pull a My Maps
+  map without her exporting (restricted scopes + Google app verification), syncing with later edits in Google (no route exists -
+  she must re-import). **NOT verified** against a real My Maps export or a real Takeout file.
