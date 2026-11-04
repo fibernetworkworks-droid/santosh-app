@@ -323,6 +323,16 @@ TOOLS = [
             "isliye ek chhota Windows alias jodu?') FIRST - it changes a Windows setting - then call with "
             "on=true. Use when she says 'Win+R se hoola khulwao' / 'hoola ek command bana do'.",
      "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = alias jodo, false = hatao"}}}},
+    # v0.484 W2b POWERTRYS RUN: the same 'hoola' door inside PowerToys Run (Alt+Space).
+    {"name": "pt_run", "description":
+            "ONE-TIME SETUP: make Alt+Space 'hoola' open Hoola on this PC - installs the Hoola plugin into "
+            "PowerToys Run's user-level plugins folder (%LOCALAPPDATA%, no admin, only Hoola's own folder "
+            "changes; PowerToys restart baad mein ek baar). PowerToys NA hone par Hoola khud Ctrl+Alt+H "
+            "global hotkey door on kar deta hai (wahi window laata hai). on=false dono doors hata deta hai. "
+            "Windows-only. ALWAYS ask_approval('Alt+Space par 'hoola' likhne se Hoola khul jaye - isliye "
+            "PowerToys Run ka plugin jodu?') FIRST - it changes a Windows setting - then call with on=true. "
+            "Use when she says 'Hoola ko PowerToys Run se khulwao' / 'Alt+Space se hoola khulwao'.",
+     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = plugin jodo, false = hatao"}}}},
     {"name": "screenshot", "description": "Look again without doing anything. monitor 'primary' (default) or 'all' = every "
                                           "monitor stitched into one picture (use when the thing you need may be on her "
                                           "second screen).",
@@ -616,6 +626,9 @@ def _say(name: str, a: dict[str, Any]) -> str:
     if name == "app_paths":
         return ("Win+R ka 'hoola' alias jod raha hoon" if a.get("on", True)
                 else "Win+R wala alias hata raha hoon")
+    if name == "pt_run":
+        return ("PowerToys Run ka 'hoola' plugin jod raha hoon" if a.get("on", True)
+                else "PowerToys Run wala plugin hata raha hoon")
     if name in ("ax_status", "ax_apps"):
         return "apps ki asli list dekh raha hoon (exact mode)"
     if name == "page_type":
@@ -661,7 +674,7 @@ def _desktop_says(e: Exception, action: str) -> str | None:
     if action in ("open_url", "window", "screenshot", "page_text", "tabs", "switch_tab", "downloads",
                   "page_elements", "page_click", "page_type", "page_select", "page_fill_form", "wait_for",
                   "ax_status", "ax_apps", "ax_snapshot", "ax_text", "ax_find", "ax_click", "ax_set_value",
-                  "ax_press", "ax_launch", "ax_wait", "app_paths") and "Unknown action" in msg:
+                  "ax_press", "ax_launch", "ax_wait", "app_paths", "pt_run") and "Unknown action" in msg:
         return _OLD_DESKTOP
     return None
 
@@ -897,6 +910,25 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         if r.get("ok"):
             return f"Done: {r.get('message', 'alias hata diya')}"
         return f"alias nahi laga: {r.get('message', 'yeh PC support nahi karta')}"
+    if name == "pt_run":
+        # v0.484 W2b: the PowerToys Run plugin install (or the Ctrl+Alt+H fallback when PowerToys is
+        # absent); the desktop gates it behind PC control and only ever touches its own plugin folder.
+        on = bool(a.get("on", True))
+        try:
+            r = await _pc(op, "pt_run", {"on": on}, timeout=25)
+        except Exception as e:
+            return _desktop_says(e, "pt_run") or f"ERROR: {e}"
+        if not r.get("ok"):
+            return f"plugin nahi laga: {r.get('message', 'yeh PC support nahi karta')}"
+        if on and r.get("plugin"):
+            return (f"PowerToys Run plugin ready: Alt+Space dabakar 'hoola' likhiye - Hoola Desktop khulta hai "
+                    f"({r.get('dir', '')}). PowerToys ko ek baar restart kijiye.")
+        if on and not r.get("pt_present"):
+            hk = r.get("hotkey") or {}
+            if hk.get("registered"):
+                return f"PowerToys yahan nahi hai, isliye hotkey door on kar diya: {hk.get('message', 'Ctrl+Alt+H dabaiye')}"
+            return f"PowerToys nahi mila aur hotkey bhi nahi bana: {hk.get('message', r.get('message', ''))}"
+        return f"Done: {r.get('message', 'hata diya')}"
     if name == "list_apps":
         r = await _pc(op, "apps", {}, timeout=25)
         return "Installed apps: " + ", ".join(r.get("apps", [])[:250]) + ". Open windows: " + ", ".join(r.get("windows", [])[:20])

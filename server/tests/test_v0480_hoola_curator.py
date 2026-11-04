@@ -1,4 +1,4 @@
-"""v0.485.0 HOOLA CURATOR - the weekly memory consolidation (the review layer the dedup
+"""v0.484.0 HOOLA CURATOR - the weekly memory consolidation (the review layer the dedup
 ladder was built for, the claude-mem curator role ported onto the vault).
 
 What this suite pins, piece by piece:
@@ -514,7 +514,7 @@ def test_version_stamps():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     main = (root / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.486.0"' in main
+    assert 'APP_VERSION = "0.489.0"' in main
     pubspec = (root.parent / "pubspec.yaml").read_text(encoding="utf-8")
     m = _re.search(r"version:\s*(\S+)", pubspec)
-    assert m and m.group(1) == "0.485.0+530"
+    assert m and m.group(1) == "0.489.0+533"

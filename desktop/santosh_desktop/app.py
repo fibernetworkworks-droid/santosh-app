@@ -6,7 +6,7 @@ import queue
 import time
 from pathlib import Path
 
-from . import __version__, autostart
+from . import __version__, autostart, pt_run, quickkey
 from .actions import Actions
 from .bridge import Bridge, Reindexer, pair
 from .config import Config, app_dir, load, save
@@ -30,6 +30,10 @@ class App:
         self.actions.control.on_activity = lambda what: self.events.put(("control", what))
         self._banner = None
         self._banner_at = 0.0
+        # v1.8.0 W2b: the Ctrl+Alt+H fallback door lives with the window (its events queue is the
+        # thread-safe bridge from the hotkey thread to the Tk main loop); do_pt_run can start/stop it
+        self.quickkey: quickkey.QuickKey | None = None
+        self.actions.set_hotkey = self._set_quickkey
 
         self.root = tk.Tk()
         self.root.title("Hoola Desktop")
@@ -49,6 +53,7 @@ class App:
         self.bridge.start()
         self.reindex.start()
         self.root.after(200, self._pump)
+        self._start_quickkey_silently()
         if background and self.cfg.paired:
             self.root.after(300, self.root.iconify)
 
@@ -192,6 +197,34 @@ class App:
         self.logbox = tk.Text(a, height=10, relief="flat", bg="#FBFAFF", fg=INK, state="disabled", wrap="word")
         self.logbox.pack(fill="both", expand=True, padx=12, pady=(0, 12))
 
+    # ---------------- v1.8.0 W2b: the Ctrl+Alt+H fallback door (PowerToys absent) ----------------
+    def _start_quickkey_silently(self) -> None:
+        """PowerToys na ho to Ctrl+Alt+H khud on - ek chupchaap log line, koi popup nahi."""
+        if not quickkey.supported() or pt_run.power_toys_present():
+            return
+        out = self._set_quickkey(True)
+        if out.get("registered"):
+            self.events.put(("log", "Ctrl+Alt+H: Hoola Desktop yahin laaiye (PowerToys nahi hai, isliye hotkey door on hai)."))
+        elif out.get("message"):
+            self.events.put(("log", out["message"]))
+
+    def _set_quickkey(self, on: bool) -> dict:
+        """Runs on the Tk main loop or the bridge/worker threads via do_pt_run - QuickKey is thread-safe
+        (RegisterHotKey on its own thread), so only the handle bookkeeping happens here."""
+        if on:
+            if self.quickkey is not None and self.quickkey.registered:
+                return {"on": True, "registered": True, "message": f"{quickkey.KEY_NAME} pehle se chal raha hai."}
+            qk = quickkey.QuickKey(lambda: self.events.put(("focus", "")))
+            if qk.start():
+                self.quickkey = qk
+                return {"on": True, "registered": True, "message": f"{quickkey.KEY_NAME} dabaiye - Hoola Desktop khul jaayega."}
+            return {"on": False, "registered": False, "message": qk.error or f"{quickkey.KEY_NAME} register nahi ho paya."}
+        if self.quickkey is not None:
+            self.quickkey.stop()
+            self.quickkey = None
+            return {"on": False, "registered": False, "message": f"{quickkey.KEY_NAME} hotkey hata di."}
+        return {"on": False, "registered": False, "message": f"{quickkey.KEY_NAME} pehle se off hai."}
+
     def _log(self, m: str) -> None:
         box = getattr(self, "logbox", None)
         if box is None or not box.winfo_exists():
@@ -214,6 +247,11 @@ class App:
                     self.bridge.push_info()
                 elif kind == "unpaired":
                     self._render()
+                elif kind == "focus":
+                    # W2b hotkey door: the QuickKey thread asks, the Tk main loop obeys
+                    self.root.deiconify()
+                    self.root.lift()
+                    self.root.focus_force()
                 elif kind == "control":
                     self._show_banner(v)
         except queue.Empty:
@@ -256,6 +294,9 @@ class App:
         self._banner_lbl.configure(text=f"🤖 Hoola is PC ko chala raha hai · {what[:40]}")
 
     def quit(self) -> None:
+        if self.quickkey is not None:
+            self.quickkey.stop()
+            self.quickkey = None
         self.bridge.stop()
         self.root.destroy()
 

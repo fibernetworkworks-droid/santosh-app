@@ -690,43 +690,7 @@ Stage Summary:
   (change tracking, monitors-lite) stay queued in the workspace worklog Task 14-c.
 
 ---
-Task ID: 25 (HOOLA SAPNE - MOAT PLAN Phase 1 -> v0.484.0; built as 0.479.0, re-versioned on the FIFTEENTH collision)
-Agent: main (Z.ai, MOAT plan session)
-Task: Owner: "USE THIS 2 REPO --- MOAT AND PREPARE PERFECT POWERFULL HOOLA AI PLAN FIRST" (OpenClaw @ b3487e66 + mattpocock/skills @ 4ae2317 cloned and read first) -> plan docs/HOOLA_AI_MOAT_PLAN.md prepared FIRST (6 phases, commodity-vs-moat, not-ported list with rules) -> simple-English Phase 1 explainer -> owner: "GO".
-
-Work Log:
-- Phase 1 = SAPNE built server-only: coder/dreams.py (LIGHT nightly 26h + DEEP weekly 7d, <=4 curated rows/pass, deep rewrite with mandatory preimage), store.py +2 additive tables (dreams_state, obs_preimages) + helpers (_preimage_sql shared by obs_update_curated/obs_restore_preimage), prompts.py dreams_system/dreams_user (STABLE prefix, same <observation> XML), config.py coder_dreams default OFF (+light_hours/deep_days/max_writes), worker.coder_jobs awaits dreams.tick, service.py GET /api/coder/dreams, coder/__init__ exports dreams.
-- Safety pins: tenant conv bucket dreams-<tenant> (cross-tenant dedup impossible), tenant privacy gate (latest_prompt_private_for_tenant), usage gate, no self-recursion (input excludes actor='dreams'), empty window books the run, one consolidation per tick max, digest file + .pre file preimage.
-- BUG caught by own suite: obs_update_curated called obs_preimage inside an open write transaction -> "cannot start a transaction within a transaction"; fixed with the shared _preimage_sql(c,...) inner helper. The suite then pinned the honest contract: TWO preimages exist after an explicit snapshot + a rewrite.
-- FIFTEENTH COLLISION at push: the dev's parallel chain had taken 0.479.0 (Smart Home W1), 0.480.0 (their HOOLA CURATOR - weekly Tier-1 dedup arbitration + soft revivable merges + skill promotion), 0.481.0 (Launcher), 0.482.0 (research merge), 0.483.0 (Firecrawl Core). REBASE PROTOCOL: rebuilt on their fresh base f9bf4db6 - their store gained superseded_by (schema v2), so dreams' window queries filter superseded_by=0 and obs_update_curated refuses superseded rows; their curator.tick sits beside dreams.tick in coder_jobs; both curators kept, complementary not duplicate. Suite renamed test_v0479 -> test_v0484.
-- Stale-guard heals on the fresh base: test_v0179 + test_v0221 cache-buster guards were STILL red on pristine main (they demand ?v=APP_VERSION while the maintained v0475 precedent pins stamps at the last console change, now 0.482.0) - both now pin ONE coherent app stamp (0.482.0) + the vendor exception, matching test_v0475.
-- Version layer on their base: pubspec 0.484.0+529, APP_VERSION story with the collision preamble, equality pins ->0.484.0, full-string +528->+529, story pins moved (v0475/v0480/v0481/v0482), console stamps stay 0.482.0 x20 (console unchanged).
-- Tests on the rebased base: dreams 19 + their curator 28 + coder 24 = 71 green; selfteach 24 + swarm 17 + v0475 + v0179 + v0221 + routines = 70 green. Dashboard/live_features reds = the documented Playwright-cache env class (stash-proven class, untouched).
-
-Stage Summary:
-- v0.484.0 SAPNE ready on their base: the vault COMPOUNDS - capture (v0.473) -> dreaming (this) -> dedup arbitration (their v0.480 curator) -> skills (v0.477) -> programs (MOAT Phase 3 next). Kill switch coder_dreams default OFF: bake on the VPS, then flip, digest at GET /api/coder/dreams.
-- NOT verified: consolidation quality on real tenant data (needs the VPS bake + her flip; the digest is where she judges it); the combined dreams+curator brain cost on a real tenant count.
-- Next: MOAT Phase 2 v0.485.0 KAARKHANA (skill workshop: revisions, undo, 30-day auto-archive, diet) - on her GO.
-
----
-Task ID: 26 (HOOLA SKILL DESK - the skills platform -> v0.485.0; owner: "NOW LETS WORK ON SKILLS FOR HOOLA" + "MAKE IT VERY POWERFULL BIGGER THEN HOW CLAUDE HANDDLE SKILLS")
-Agent: main (Z.ai skills session)
-Task: The skills platform - the owner chose ALL, PHASED (desk, telemetry, packs, sharing, reach), console-first, swarm + DevSahayak reach, auto-anonymised sharing with her tap as the gate, a seed pack. BUILT AS 0.481.0, re-versioned twice on collisions: FIFTEENTH (their chain took 0.481.0 Launcher / 0.482.0 research / 0.483.0 Firecrawl - rebuilt on f9bf4db6) and SIXTEENTH (their SAPNE took 0.484.0 - rebuilt on 3beb5a9f, both curators + dreams kept beside the desk).
-
-Work Log:
-- READ FIRST: skills_store/skills_tool/inject/nudge/curator/delegate/service/store end to end; the v0.477/v0.480 tests for the house fixture shapes; the console (v2.js NAV + account menu + go() registry, employees.js module pattern, api()/esc() helpers); the frames suite's stamp + story pins; the config coder_* block.
-- W2 CORE (the base everything stands on): NEW vault table skill_uses (shown/read/published/installed; store.skill_use_mark/counts/reads/recent + skill_share_rows; stats carries skills_live/skill_uses/skill_reads/skill_shares_pending). inject.skills_block marks 'shown' (surface chat/voice) and gained the RECENCY BOOST (_matched: telemetry-hot in 30 days outranks an equally-ranked cold one). skills_store.read marks 'read' (the follow signal) - the lazy-import lesson re-learned (store was NameError until imported inside the function). NEW skills.enabled (frontmatter 'enabled: false'), set_enabled the ONE writer, the model's apply funnel has NO enable op (the "unknown action" test pins it); ADDITIVE migration pragma-lift + schema_version -> 3 (SAPNE's dreams tables ride beside it, additive both ways).
-- W3 PACKS (NEW coder/skill_packs.py): seed (10 starters under coder/skillpack/, generated by scripts/gen_skillpack.py, once ever via the consumed stamp, create-if-missing, coder_skills_seed gate); import_skills (markdown strings = the Claude Code / ClawHub shape, or JSON rows; <=25; lint via the same funnel; NEVER overwrites); export_skills (raw reads - no telemetry pollution); share_nominate (>= coder_skills_share_min_reads real reads, parked refused, dup refused, pending cap) + share_decide (THE TAP: publish re-redacts via strip_private + redact_secrets and writes to the RESERVED tenant _packs with NO source-tenant trace; reject closes; decided rows never re-decide; same-name-different-body collision refuses) + packs/pack_read/pack_install (create-if-missing, hers win).
-- CURATOR: _share_candidates (top-3 by real reads among live, never-decided skills) + the NOMINATE act moved FIRST in consolidate - no brain call, and a quiet week with no pending pairs must not starve the shelf; report gains 'nominated'.
-- REACH: delegate.run_child prepends inject.child_skills (<=400 chars) to the CHILD's system prompt (a child owns skill_manage - read-before-follow survives delegation); devsahayak/loop.py _skills_block (top-2 whole bodies, 1600 budget) wired into run() AND plan_run() first messages (source-pinned), gated + fail-open.
-- W1 DESK (console): NEW static/console/skills.js (3 tabs: Meri skills with usage + search + create/edit/read/park/delete + import/export; Pack bazaar; Shares with the pending nominations + decided ledger); v2.html + #v-skills section + skills.js script tag; v2.js: SK module init, go() title, account menu 'Skills' row (icon: open book), /skills slash command. The sidebar stays clean (her v0.456 ask). Stamps 0.482.0 -> 0.485.0 x21 - the console itself changed this release, so the frames stamp pin moved (test_console_stamps_0_4_8_5, 21 stamps + skills.js + #v-skills pins), the newest-story pin came to the v0.485 story, and the v0179/r1 stale-guards re-pointed to the new maintained convention (one coherent app stamp 0.485.0, vendor qrcode 1.4.4 excepted).
-- ROUTES: /api/coder/skills GET (index + usage + the once-ever seed) + POST (ops) + /skills/enabled + /skills/import + /skills/export + /skills/shares + /skills/shares/decide + /skills/packs + /skills/packs/read + /skills/packs/install (ten routes, beside SAPNE's /api/coder/dreams). Package-export law: skill_packs on the app/coder import list beside dreams; config knobs coder_skills_seed / coder_skills_share / coder_skills_share_min_reads / coder_skills_share_max_pending.
-- Tests: NEW test_v0485_hoola_skill_desk.py (41) - the full story per the suite docstring (renamed twice with the re-versions). Caught and fixed during the build: the read() telemetry NameError (lazy import), the current_tenant lambda arity, seed-twice accounting, reads==4 not 3, module-not-callable. Rebase lessons recorded: during a rebase THEIRS is the commit being replayed and OURS is the base (the first rebalance's bulk checkout was inverted and redone by explicit checkout from origin/main); the curator migration pin schema_version 2 -> 3 healed twice (once per rebase).
-- Sweeps green on the merged base: desk 41 + frames 14 + curator 28 + launcher 16 + selfteach 24 + swarm 17 + coder 24 = 164, devsahayak + sampled swept suites 49; the dev's dreams 19 + firecrawl suite ride beside (firecrawl's 17 reds STASH-PROVEN pre-existing on pristine main - the sandbox's missing scrapling stack, the documented red class, untouched by this diff).
-- Version ritual 0.485.0: APP_VERSION story (the full platform story + the SIXTEENTH collision preamble in main.py), pubspec 0.485.0+530, pins ->0.485.0 (+529 -> +530) coherent across 151 asserting suites, docs/HISTORY.md section appended. Mera PC freeze respected (no pc/*, no desktop/, no pc_tools changes; the launcher's desktop 1.7.0 rides untouched); desktop untouched - server-only deploy, old APKs keep working.
-
-Stage Summary:
-- v0.485.0 HOOLA SKILL DESK: the skills loop is closed - Santosh learns (skill_manage), the vault remembers (telemetry), the curator nominates (evidence-based), the owner decides (the desk's tap), the shelf shares (anonymised), avatars install, and the reach covers chat, voice, swarm children and the DevSahayak loop. SAPNE distills the nights; the desk keeps the skills honest by day. Deploy order: bake on the VPS (server-only), open the desk once to seed the starters, flip coder_curator when the weekly consolidation should nominate. Rollback = one version (the migrations are additive; the shelf is additive; nothing destructive).
+++ b/docs/WORKLOG.md
 
 Task ID: byox-skill-pack-v0486
 Date: 2026-11-04
@@ -739,3 +703,87 @@ Date: 2026-11-04
 Branch: claude/loving-goldberg-ywnzsq
 Version: v0.487.0
 Summary: BYOX FULL DATASET — all 415 tutorials from 31 categories with language filtering. Added TUTORIALS dict to byox/__init__.py, tutorial_count on every category, language= param in get_guide() / byox_guide tool. 22 sandbox tests pass. Server-only deploy.
+
+## Task 25 — v0.489.0 HOOLA POWERTOYS RUN (W2b) (2026-11-04; SEVENTEENTH then EIGHTEENTH COLLISION rebase)
+
+Owner: "W2b - PowerToys Run plugin" (the Platforms plan's W2 full step; W2a Win+R alias v0.481.0 live).
+REBASE (start of W3, 2026-11-04): origin had taken 0.484.0 (HOOLA SAPNE, 3beb5a9f) and 0.485.0 (HOOLA SKILL
+DESK, e2a57481) while W2b built - SEVENTEENTH COLLISION. W2b rebuilt on e2a57481 (rebase -X theirs for the
+153 pin-conflict suites, docs reconciled by hand: main's SAPNE + SKILL DESK HISTORY sections and the CLAUDE
+one-liner restored), the version layer moved coherently to 0.486.0+531 (ritual_0486: full-strings 84 files,
+APP_VERSION asserts 153 files, ZERO residual; the v=0.485.0 console-stamp pins untouched by the regex sweep).
+
+State check first: w2-launcher worktree sat at 09a1a673 (v0.481.0, already merged upstream); origin had
+moved 16 commits (the research R0-R9 chain re-versioned 0.471-0.480, then 1fdb7714 merged the launcher in,
+then f9bf4db6 = v0.483.0 FIRECRAWL CORE). 0.484 was free on tags -> ff-only to f9bf4db6, W2b built fresh on it.
+
+THE READ: PowerToys Run's documented community-plugin path: plugins are FOLDERS under
+%LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins\<Name> holding plugin.json + the plugin DLL
+(microsoft/PowerToys doc/thirdPartyRunPlugins.md + the community installers do exactly this); IPlugin =
+Init(PluginInitContext) + Query(Query)->List<Result> + Name/Description (Wox.Plugin namespace, stable since
+0.84); plugin.json = ID (32-hex GUID) / ActionKeyword / IsGlobal / Name / Author / Version / Language
+"csharp" / Website / ExecuteFileName / IcoPathDark / IcoPathLight / DynamicLoading. Current PowerToys is
+0.102/0.103; Microsoft's checklist TFM is net10.0, the community reference package
+(Community.PowerToys.Run.Plugin.Dependencies 0.97.0) targets net9.0 - a net9 assembly loads on the .NET 10
+host (forward compatibility, what every community plugin relies on) and on every .NET 9 PowerToys since 0.87.
+
+THE PLUGIN: desktop/ptrun_plugin/Community.PowerToys.Run.Plugin.Hoola - Main.cs (IPlugin + IDisposable,
+static PluginID 162E72D3C1D7464E865293A276993A7B = plugin.json ID, ActionKeyword 'hoola', themed dark/light
+icons), and the launch decision: READ the W2a alias back (HKCU App Paths\hoola.exe default value, trimmed of
+quotes, File.Exists) and Process.Start(UseShellExecute) on it - ONE launch truth on the PC, the plugin adds
+no second mechanism; alias off -> honest ShowMsg telling her the Win+R alias is the door. csproj: net9.0-
+windows10.0.26100.0 + UseWPF + Platforms x64 (with the AnyCPU->x64 pin, because a bare `dotnet build` defaults
+Platform to AnyCPU and the arch-aware reference package would resolve nothing), Dependencies 0.97.0,
+plugin.json + Images copy to output, DynamicLoading false (only Wox.Plugin + BCL are used).
+
+THE RIDE: build-desktop.yml gains setup-dotnet 9.0.x + the publish step BEFORE PyInstaller, staging
+desktop/ptrun_payload/ (DLL + plugin.json + Images, cherry-picked - never the reference copies); the spec's
+datas pick the payload up when present (dev machines without dotnet still build) and ride it INSIDE
+SantoshDesktop.exe -> %TEMP%\_MEIxxxx\ptrun at runtime; the release also ships Hoola-PowerToysRun-plugin.zip.
+
+THE INSTALLER: desktop/santosh_desktop/pt_run.py (the app_paths.py twin): plugins_root/plugin_dir under
+LOCALAPPDATA, power_toys_present() (per-user exe, machine exe, plugins root), installed() (plugin.json +
+ExecuteFileName), set_enabled(on) = install (whole-folder replace = upgrade; only Hoola's own folder touched)
+/ uninstall (calm idempotent undo); honest error dicts for missing/bad payload ("naya exe chahiye"); PowerToys
+absent -> ok=True with pt_present=False pointing at the hotkey door, nothing installed.
+
+THE FALLBACK: quickkey.py - Ctrl+Alt+H via user32 RegisterHotKey on a daemon message-loop thread (ctypes
+only, _MSG struct, PostThreadMessageW WM_QUIT for a clean stop); WM_HOTKEY -> on_fired runs on the hotkey
+thread and the App routes it through its events queue (("focus", "") -> deiconify/lift/focus_force on the Tk
+main loop) - the control.on_activity injection pattern; Actions gains set_hotkey=None, the window app wires
+it; App registers it silently at start only when PowerToys is absent; Quit unregisters. Hoola never presses
+keys herself (win+r stays BLOCKED_KEYS): both doors open the window, the USER presses.
+
+Desktop 1.8.0: do_pt_run behind _control_on(); PowerToys absent at install -> also starts the hotkey;
+on=false undoes both. Server: operator pt_run tool (ONE-TIME SETUP, ask_approval PEHLE wording, on=false,
+no admin, Ctrl+Alt+H mentioned), _do branch (plugin ready / hotkey door / honest not-ok / old-desktop upgrade
+line via _desktop_says pt_run), _say line.
+
+Tests: NEW test_v0484_ptrun.py (33) - plugin.json shape + ID/Main.PluginID match + icons exist, alias-launch
+pins, csproj TFM/dependencies/x64 pins, plugin-version-rides-desktop, CI payload pins, spec datas pin,
+install/upgrade/undo round trips on a fake %LOCALAPPDATA% (neighbours of Hoola's folder untouched), PT-absent
+hotkey pointer, power_toys_present three ways, missing/bad/dll-less payload honesty, non-Windows refusals,
+quickkey win32 shape + no-thread-off-windows, app events-queue wiring, do_pt_run gate, operator spec/_do/
+_say/_desktop_says (incl. old desktop), win+r still blocked, version (0.484.0+529, desktop 1.8.0, plugin 1.8.0).
+One test bug of mine caught on first run: plugin.json carries Windows separators (IcoPathDark) - the repo-file
+check needs a backslash->slash swap on Linux; fixed in the TEST, the json stays Windows-form.
+Sweeps: 33 + launcher 16 + frames 14 + pc-pins 19 = 82/82, then ax/bridge/kinds/curator 83 and home/coder/
+selfteach 72 - 237 green, one pytest process per suite.
+
+Version ritual 0.484.0 (scripts/ritual_0484.py, line-wise): APP_VERSION story (line 36 replaced whole),
+pubspec 0.484.0+529, pins ->0.484.0(+529) in 153 bare + 82 full-string suites (zero residual), desktop pins
+1.7.0 -> 1.8.0 (test_v0185 + test_v0481), frames story pin -> the v0.484 story (newest-story precedent),
+console stamps stay 0.482.0 x20 (console untouched by this release). CLAUDE.md: current-state one-liner +
+current-version line + the v0.484 section at the end. Mera PC freeze respected (pc/* lanes untouched except
+the operator's own tool surface; desktop/ follows its own version line).
+
+Deliberately NOT built (named for W3): the PC->Hoola text lane - a typed quick-ask that lands in the Hoola
+conversation needs a new server surface (the desktop bridge is a job channel only today); W3's "send page to
+Hoola" builds exactly that lane and both doors will ride it. The C# compile runs for the first time on the
+next push (CI-only; the source is reviewed against the documented API), and the plugin has not yet been
+loaded by a real PowerToys - her first "Hoola ko PowerToys Run se khulwao" after deploy is the live test.
+
+Stage Summary:
+- The 'hoola' door now exists in all three hands: Win+R (W2a), PowerToys Run 'hoola' (W2b), Ctrl+Alt+H
+  (W2b fallback) - all opening the same Hoola Desktop window, all user-level, all behind the same PC-control
+  switch, all undone by on=false. Next: W3 (the MV3 web extension, which brings the PC->Hoola text lane).

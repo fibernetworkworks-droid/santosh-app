@@ -18511,6 +18511,8 @@ ZDR/US-only/Exchange) - ONLY the design was taken; the engine is AGPL-3.0 and ne
 - The scrapling-10-reds class noted by the v0.480 sweep is sandbox-environment-only (missing scrapling/playwright stack
   in that recycled box); this sandbox has the stack and runs the lane green.
 
+---
+
 ## v0.484.0 HOOLA SAPNE — the NIGHTLY curator (OpenClaw's dreaming sweep ported; MOAT PLAN Phase 1)
 
 Owner: "USE THIS 2 REPO --- MOAT AND PREPARE PERFECT POWERFULL HOOLA AI PLAN FIRST" (OpenClaw @ b3487e66 +
@@ -18630,6 +18632,10 @@ Routes: GET `/api/coder/skills` (index + usage + the once-ever seed), POST `/ski
 
 Sweeps green on the merged base: desk 41 + frames 14 + curator 28 + launcher 16 + selfteach 24 + swarm 17 + coder 24 = 164, devsahayak + sampled swept suites 49; the dev's dreams 19 rides beside (firecrawl's 17 reds STASH-PROVEN pre-existing on pristine main - the sandbox's missing scrapling stack, the documented red class, untouched by this diff). Version 0.485.0 (APP_VERSION story + collision preamble, pubspec 0.485.0+530, pins ->0.485.0 in 151 asserting suites, full-string +529 -> +530 coherent on the rebased base; console stamps `v=0.485.0` x21 and the v0179/r1 stale-guards re-pointed to the new maintained convention). Mera PC freeze respected; desktop untouched by this release (the launcher's desktop 1.7.0 rides untouched) - server-only deploy, old APKs keep working.
 
+---
+
+++ b/docs/HISTORY.md
+
 ## v0.486.0 BYOX SKILL PACK — Build-Your-Own-X: 31 categories, seed default on
 
 Owner: "Read https://github.com/codecrafters-io/build-your-own-x — build the unified BYOX skill pack for Hoola: full depth, all 31 categories, seed default on."
@@ -18691,3 +18697,67 @@ Owner: "YES BUILD IT WITH ALL 389 LINKS" (actual count: 415 tutorials across 31 
 - pubspec 0.486.0+531 → 0.487.0+532
 - Console stamps updated 0.485.0 × 21 → 0.487.0 × 21
 - Mera PC freeze respected; desktop untouched; server-only deploy, old APKs keep working
+
+# v0.489.0 — HOOLA POWERTOYS RUN (W2b, 2026-11-04; SEVENTEENTH then EIGHTEENTH COLLISION — the dev's parallel chain took 0.484.0/0.485.0 while this built and 0.486.0 (BYOX SKILL PACK) + 0.487.0 (BYOX FULL DATASET) + 0.488.0 (CRAWL JOBS) while it sat unpushed; REBASE PROTOCOL respected twice, rebuilt on their fresh base fdc7c402, all five works kept, the version layer moved coherently on top)
+
+Owner: "W2b - PowerToys Run plugin". The Platforms plan's W2 full step: the 'hoola' door inside PowerToys Run
+(`Alt+Space`, `hoola`, `Enter` → Hoola Desktop), built fresh on f9bf4db6 (v0.483.0) after an ff-only rebase;
+0.484 was free on tags (no collision this time).
+
+## What shipped
+
+- **The plugin** `desktop/ptrun_plugin/Community.PowerToys.Run.Plugin.Hoola/`: .NET 9 class library
+  (`net9.0-windows10.0.26100.0`, UseWPF, x64-only with the AnyCPU→x64 property pin) referencing the community
+  reference package `Community.PowerToys.Run.Plugin.Dependencies` 0.97.0. `Main : IPlugin, IDisposable`:
+  static `PluginID = "162E72D3C1D7464E865293A276993A7B"` (32-hex, = plugin.json ID, never changes), Name
+  "Hoola", ActionKeyword `hoola`, one result per query (empty query = "Hoola Desktop kholo", else the query
+  echoed in the title), Score 100. The launch reads the W2a alias back (HKCU `App Paths\hoola.exe` default,
+  quote-trimmed, `File.Exists`) and `Process.Start(UseShellExecute=true)` on the full path — ONE launch truth,
+  no second mechanism; alias missing → `Context.API.ShowMsg` guidance (the desktop app owns that switch), alias
+  stale → the Win32 error is caught and shown. Dark/light icons follow `API.ThemeChanged` (subscribed in Init,
+  unsubscribed in Dispose). `plugin.json` in Microsoft's documented community shape; `DynamicLoading: false`
+  (only Wox.Plugin + BCL are used, nothing extra ships in the folder).
+- **The ride** `.github/workflows/build-desktop.yml`: setup-dotnet 9.0.x → `dotnet publish
+  desktop/ptrun_plugin/... -c Release -p:Platform=x64` → stage `desktop/ptrun_payload/` (only the plugin DLL +
+  plugin.json + Images — never the reference-assembly copies) → the PyInstaller spec's conditional `datas`
+  carry the payload INSIDE `SantoshDesktop.exe` (onefile → `%TEMP%\_MEIxxxx\ptrun` at runtime) so Hoola can
+  install it herself with no extra download; the desktop release additionally ships
+  `Hoola-PowerToysRun-plugin.zip` for manual installs (extract into
+  `%LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins`, restart PowerToys).
+- **The installer** `desktop/santosh_desktop/pt_run.py` (the `app_paths.py` twin): `plugins_root()` /
+  `plugin_dir()` under LOCALAPPDATA (`...\Microsoft\PowerToys\PowerToys Run\Plugins\Hoola` — Microsoft's
+  documented user-level community-plugin location), `power_toys_present()` (per-user `%LOCALAPPDATA%\PowerToys`
+  exe, machine `%ProgramFiles%\PowerToys` exe, or the Run plugins root itself), `installed()` (plugin.json +
+  its ExecuteFileName), `install()` (whole-folder replace = upgrade; only Hoola's own folder ever touched;
+  Images copied through), `uninstall()` (calm idempotent undo), honest error dicts for missing payload /
+  unreadable plugin.json / missing DLL, and the PowerToys-absent branch that installs nothing and points at
+  the hotkey door.
+- **The fallback** `desktop/santosh_desktop/quickkey.py`: `Ctrl+Alt+H` (MOD_CONTROL|MOD_ALT + VK 'H') via
+  `RegisterHotKey` on a daemon message-loop thread (ctypes `_MSG`, `GetMessageW`, `PostThreadMessageW(WM_QUIT)`
+  for a clean stop, `UnregisterHotKey` on exit). `start()` polls briefly for an honest registered/error answer
+  (the combo may already belong to another app — that is a message, not a crash). The window app owns the
+  QuickKey (its events queue is the thread-safe bridge: WM_HOTKEY → `("focus", "")` → deiconify/lift/
+  focus_force on the Tk main loop); registered silently at app start ONLY when PowerToys is absent; Quit
+  unregisters. Hoola never presses keys herself — win+r stays in BLOCKED_KEYS; the doors open windows, the
+  USER presses.
+- **Desktop 1.8.0** `actions.do_pt_run(on)` behind the SAME `_control_on()` switch: install (PowerToys present)
+  or install + hotkey (PowerToys absent, via the injected `actions.set_hotkey`); `on=false` undoes both doors;
+  log lines for every outcome. `App` wires `set_hotkey = self._set_quickkey`.
+- **Server** pc operator: `pt_run` tool (ONE-TIME SETUP, ALWAYS ask_approval FIRST — settings change; on=false;
+  no admin; mentions Ctrl+Alt+H), `_do` branch (plugin-ready line with the folder + restart note / hotkey-door
+  line / honest not-ok line with the desktop's message / `_desktop_says` upgrade line for old desktops),
+  `_say` line ("PowerToys Run ka 'hoola' plugin jod raha hoon" / "hata raha hoon").
+
+## Sweeps + known state
+
+- `test_v0484_ptrun.py` 33 green; launcher 16 + frames 14 + pc-pins 19 beside it (82/82), then ax/bridge/kinds/
+  curator 83 and home/coder/selfteach 72 — 237 green, one pytest process per suite. One test-side fix on first
+  run: plugin.json's IcoPath* carry Windows separators; the repo-file existence check swaps them on Linux.
+- Version ritual 0.484.0 (`scripts/ritual_0484.py`, line-wise): APP_VERSION story (line 36 replaced whole),
+  pubspec 0.484.0+529, pins →0.484.0(+529) in 153 bare + 82 full-string suites (zero residual), desktop pins
+  1.7.0→1.8.0 (test_v0185 + test_v0481), frames story pin → the v0.484 story, console stamps stay 0.482.0 x20
+  (console untouched this release).
+- Deliberately NOT built (named for W3): the PC→Hoola text lane — a typed quick-ask that lands in the Hoola
+  conversation needs a new server surface (the desktop bridge is a job channel only today); W3's "send page to
+  Hoola" builds exactly that lane and both doors will ride it. NOT VERIFIED: the dotnet compile runs for the
+  first time on the next push; the plugin has not yet been loaded by a real PowerToys.
