@@ -73,7 +73,7 @@ def test_registry_531_and_wired():
 def test_story_and_prompts_pins():
     from app import main as main_mod
     from app.agent import prompts
-    assert main_mod.APP_VERSION == "0.496.0"
+    assert main_mod.APP_VERSION == "0.497.0"
     story = (Path(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1])[:20000]
     assert "OFFICE HOURS" in story and "gstack" in story
     ptxt = Path(prompts.__file__).read_text()

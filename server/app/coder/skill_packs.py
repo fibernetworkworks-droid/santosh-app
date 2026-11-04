@@ -42,6 +42,7 @@ IMPORT_MAX = 25
 SEED_STAMP = "skills:seeded:{}"
 SHARE_STAMP = "skills:shared:{}"
 BYOX_STAMP = "skills:byox:{}"           # its OWN once-ever stamp: tenants already seeded still get the BYOX pack
+PROG_STAMP = "skills:progpack:{}"       # its OWN once-ever stamp (the v0.492 pattern): the v0.495 PROG pack
 
 
 # ---------------------------------------------------------------- helpers
@@ -102,7 +103,8 @@ def _max_pending() -> int:
 def seed_files() -> list[Path]:
     """The shipped starter library (SKILL.md files beside this module)."""
     try:
-        return sorted(f for f in SEED_DIR.glob("*.md") if not f.name.startswith("byox-"))
+        return sorted(f for f in SEED_DIR.glob("*.md")
+                      if not f.name.startswith(("byox-", "prog-")))
     except Exception:
         return []
 
@@ -111,6 +113,14 @@ def byox_files() -> list[Path]:
     """The Build-Your-Own-X pack (31 SKILL.md files, one per category)."""
     try:
         return sorted(SEED_DIR.glob("byox-*.md"))
+    except Exception:
+        return []
+
+
+def prog_files() -> list[Path]:
+    """The PROG pack (v0.495): the vetted-library registry + the windows script lane."""
+    try:
+        return sorted(SEED_DIR.glob("prog-*.md"))
     except Exception:
         return []
 
@@ -150,6 +160,44 @@ def seed_byox(tenant: str) -> dict:
     if wrote:
         log.info("byox seed: %d skills into %s", wrote, tenant)
     return {"byox_seeded": wrote}
+
+
+def seed_progpack(tenant: str) -> dict:
+    """Copy the PROG pack into a tenant once ever, create-if-missing (the seed_byox twin).
+    Its own stamp: tenants that already consumed seed AND byox still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "progpack_enabled", True):
+            return {"prog_seeded": 0}
+    except Exception:
+        return {"prog_seeded": 0}
+    if not _seed_armed():
+        return {"prog_seeded": 0}
+    stamp = PROG_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"prog_seeded": 0}
+    except Exception:
+        return {"prog_seeded": 0}
+    wrote = 0
+    for f in prog_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("prog seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("prog seed: %d skills into %s", wrote, tenant)
+    return {"prog_seeded": wrote}
 
 
 def seed(tenant: str) -> dict:

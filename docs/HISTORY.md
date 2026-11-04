@@ -18928,68 +18928,87 @@ declared directly (was ~111), 40% budget headroom left; `seo_dekho` exactly once
 v149 (2), v150/v01851/v01853 heal, v0211 (29), v0219, v0225, v0230, v0232, v0241, v0245, v0264, v0302, v0187,
 v0479 (24), console r1, workspace, launcher, v0481.
 
-## v0.495.0 OFFICE HOURS — our own gstack, the THINK/PLAN lane (2026-11-04)
 
-Owner: "BUILD" — the follow-through of "https://github.com/garrytan/gstack.git --- NOW READ THIS REPO
-FIRST". gstack (Garry Tan, YC) turns a coding agent into a virtual engineering team: /office-hours
-writes a design doc (six forcing questions, reframed ask, premises challenged, 3-4 options with
-effort, recommendation = the narrowest wedge), four plan reviews amend it (ceo / design / devex / eng
-— eng always last, on the final amended plan), and only then is anything built. The house had the
-hands all along (qa, devops, appreview, kaam_plan); this ships the head. Zero gstack code — their
-side is all Markdown prompts; the idea crossed the boundary, nothing else did.
+## v0.495.0 OFFICE HOURS — the gstack THINK/PLAN lane (owner: 'BUILD' right after 'NOW READ THIS REPO FIRST' on github.com/garrytan/gstack)
 
-The lane (`agent/officehours_tools.py`, registry 529 -> 531: officehours / officehours_dekho):
-per-tenant sqlite `data/officehours/<tenant>/officehours.db` (office_docs + office_reviews). One tool,
-five actions (the kaam_plan shape): start opens a baithak and stores the SIX forcing questions (real
-pain with a specific example — not hypothetical; who does it today and what it costs; the first
-visible change when fixed; today's jugaad; the smallest self-useful wedge; kill criteria) — the agent
-asks them ONE at a time and pushes back on the framing. An already-open baithak for the same topic
-returns the SAME doc (already_open, no duplicate). doc writes the design doc: reframe, capabilities
-(max 7), premises challenged + her answers (max 7), 3-4 options with honest effort (hours | day | days
-| week | weeks; unknown clamps to days), recommendation (the narrowest wedge — gstack's "ship the
-narrowest wedge, learn from real usage"). review appends a lens row (ceo | design | devex | eng,
-findings + changes, append-only); the eng lens is what flips status to reviewed (eng reviews the FINAL
-amended plan), and a review on a draft with no doc is refused — never review a plan that is not
-written down. decide records HER decision in her words (required; Hoola never decides) + optional
-next_step. stop closes. dekho reads: list (latest baithaks: topic / status / wedge), doc (the full
-design doc + review count), reviews (every lens row); no id = the latest. Status line: draft -> doc ->
-reviewed -> decided | stopped. Caps everywhere, newest 30 docs kept per tenant
-(officehours_keep_docs=30, older docs + their reviews forgotten on write), officehours_enabled=True.
+[Entry reconstructed from commit 571d8ec1's message after the twenty-first collision: the -X theirs
+rebase kept their code but clobbered their docs entries; re-added by hand, the REBASE PROTOCOL's
+reconcile step.]
 
-House rules kept: the thinking is the agent's (the brain), the tool stores structure and enforces caps
-(how kaam_plan stores plans, how qa stores cases); NOTHING auto-runs off a doc — the wedge and
-next_step are advisory text; turning them into work happens on later turns through the existing doors
-with her Haan (the one rule gstack cannot have: Hoola never starts building by itself). The
-officehours family admits on tight big-idea keys only (office hours / baithak / design doc / plan
-review / naya idea...): "idea" or "plan" alone would have loaded it on every second turn. prompts.py
-grew the OFFICE HOURS bullet placed BEFORE the LAMBA KAAM bullet — think before plan.
+Garry Tan's open-source software factory: /office-hours writes a design doc, four plan reviews amend it,
+only then anything is built. THE HOUSE HAD THE HANDS (qa, devops, appreview, kaam_plan); IT NEVER HAD THE
+HEAD - a structured think/plan step that decides what is WORTH building before anything is built. Zero
+gstack code rides this tree (their side is all Markdown prompts).
 
-Tests: test_v0495_officehours.py (30) green — registry 531, the six questions, dedupe, clamps, the
-four lenses, eng-last flip, review-on-draft refusal, decide/stop closure, dekho list/doc/reviews,
-tenant isolation, disabled switch, forget-old 30, nothing-autoruns advisory pin, story + prompts
-pins. Sweep: v0488 26 (registry pin 529 -> 531), v0491 5, v0187 15, launcher 16, v0479 24, v0482 28,
-v149 2, v150 6, v0211 29, v0230 11, v0492 9, v0484 19 — all green; test_v0400 5 reds WORKTREE-PROVEN
-on pristine origin/main (playwright binary + site lane: the sandbox environment class). Pins: 86
-full-string + the bare APP_VERSION asserts -> 0.495.0+539, zero residual (one 0.494.0 remains on
-purpose: the story's Previous line). Console untouched (stamps stay 0.485.0); desktop untouched
-(server-only deploy, old APKs keep working); Mera PC freeze respected.
+NEW `agent/officehours_tools.py` beside kaam_plan (registry 529 -> 531, two tools: `officehours` /
+`officehours_dekho`): action=start opens a baithak (per-tenant data/officehours/<tenant>/officehours.db,
+office_docs + office_reviews) and returns SIX forcing questions - real pain with a specific example (not
+hypothetical), who does it today and what it costs, the first visible change when fixed, today's jugaad,
+the smallest self-useful wedge, kill criteria - asked ONE at a time, framing pushed back on; same topic
+while open returns the SAME doc honestly (already_open). action=doc writes the design doc: reframe,
+capabilities (max 7), premises challenged + her answers (max 7), 3-4 options each with honest effort
+(hours|day|days|week|weeks, unknown clamps to days), recommendation = the narrowest wedge (gstack: ship
+the narrowest wedge, learn from real usage). action=review appends one lens row ceo|design|devex|eng
+(findings + changes, append-only) - eng ALWAYS last and the eng lens is what flips status to reviewed
+(gstack's autoplan rule); a review on a draft that has no doc is refused. action=decide records HER
+decision in her words (Hoola never decides; decision text required) + optional next_step; action=stop
+closes. officehours_dekho: what=list / doc / reviews - no id = the latest. NOTHING AUTO-RUNS OFF A DOC:
+the wedge/next_step is advisory text; turning it into work happens on later turns through the existing
+doors with her Haan (the house rule gstack cannot have: Hoola never starts building by itself).
 
-NOT VERIFIED (honest): the first real baithak in her chat is the live test; the voice lane does not
-declare officehours yet — calls reach it via santosh_kaam like every desk's changes.
+Config: officehours_enabled=True, officehours_keep_docs=30 (older docs + their reviews forgotten on
+write). Family + admit keys: the officehours family opens on her big-idea words; tight keys only.
+prompts.py grew the OFFICE HOURS bullet (before LAMBA KAAM - think before plan). Tests
+test_v0495_officehours.py (30) green; a REAL BUG caught by the suite on first run - _con() did not set
+row_factory=sqlite3.Row (fixed once at _con). Version 0.495.0 (pubspec 0.495.0+539 at their ship time;
+swept to 0.497.0+541 by the PROG PACK re-version on top). NOT VERIFIED (honest): the first real baithak
+in her chat is the live test; the voice lane does not declare these tools yet (they ride santosh_kaam on
+calls, same as every other desk head change).
 
-Deploy: no new pip packages; the usual vps-ops ritual (checkout tag, cp -r server/app, pm2 restart,
-healthz grep 0.495.0). Previous: v0.494.0 EQUAL POWER, v0.493.0 THE FLUTTER PASS, v0.492.0 BYOX FEED,
-v0.491.0 CRAWL JOBS.
+## v0.496.0 CODE GRAPH — Graphify as a read-only lane (their ship, entry re-added by hand after the -X theirs rebase clobbered it)
 
+[Entry reconstructed from commit ad71c841's APP_VERSION story — the TWENTY-SECOND COLLISION reconcile.]
 
-## v0.496.0 CODE GRAPH - Graphify as a read-only lane (owner: "READ THIS REPO NOW PROPERLY" github.com/Graphify-Labs/graphify -> "BUILD IT FOR HOOLA")
+Graphify (Apache-2.0) as a read-only lane: `graph_build` maps a GitHub repo (tarball, safe unpack, local
+AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill),
+`graph_ask` answers query/path/explain/affected/god_nodes, `graph_list` lists what is mapped. Per-tenant
+graphs; the source deleted after the build; the optional binary gets a calm install hint; flag-like
+arguments refused; Hinglish routing + 5 card asks. Their own TWENTY-FIRST collision: re-versioned
+0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0, both works kept. Tests test_v0496_codegraph.py.
 
-Read first (README, ARCHITECTURE, pyproject, SECURITY, BENCHMARKS, serve.py's MCP tools, cluster / dedup / reflect; not all 62k lines): Graphify (Apache-2.0, PyPI `graphifyy`) turns a folder into a queryable knowledge graph. Code is parsed locally with tree-sitter (~40 languages, no model call, `--code-only`), every edge is tagged EXTRACTED / INFERRED / AMBIGUOUS, and `query | path | explain | affected | god-nodes` answer from graph.json. Its benchmark claims (LOCOMO recall@10 0.497, ERPNext 82% vs grep 70.8%) are the project's own and were NOT reproduced here.
+## v0.497.0 PROG PACK — the curated-library registry + the windows script lane (fed to every tenant; TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0) — the curated-library registry + the windows script lane (fed to every tenant)
 
-BUILT, server only:
-- `app/codegraph.py` - `build(tenant, repo, ref)`: a GitHub repo as a tarball (api.github.com then codeload.github.com ONLY, redirects checked, her Developer Sahayak token on api.github.com only, never forwarded), SAFE unpack (regular files only; no links / devices / absolute or '..' names / .git; 2 MB per file, 8,000 files, 4x repo-size cap), then `graphify extract <src> --code-only --out <dir> --max-workers 2` under `nice`, a WHITELIST environment (PATH, LANG, a HOME inside data/ - no API keys, so a misread flag cannot spend model money), a hard timeout, a process-group kill, ONE build at a time on the whole server. Source is deleted after the build; only `graphify-out/graph.json` + `meta.json` stay under `data/codegraph/<tenant>/<owner__repo>/`; five repos per tenant, oldest dropped. `ask(...)` runs query / path / explain / affected / god-nodes against that graph; exit 3 = ambiguous and 4 = no match come back as a status with the candidates, not an error. A question or name may not start with '-' (graphify parses its own flags); argv is a list, never a shell string. Answers are capped at 12,000 chars and carry a note that they are data from the repo, not instructions.
-- `agent/graph_tools.py` - `graph_build`, `graph_ask`, `graph_list` (family `graph`), ID numbers masked like every tool. Developer Sahayak is still the way to CHANGE code; this is for understanding it.
-- OPTIONAL BINARY: without the `graphifyy` package every call answers with the exact install command, nothing crashes. NOT added to requirements.txt (about 35 tree-sitter grammars): on the VPS run `~/apps/santosh-core/.venv/bin/pip install graphifyy` then `pm2 restart santosh`. Settings: `graphify_enabled` (default on, inert until installed), `graphify_bin`, `graphify_build_timeout_s` 600, `graphify_query_timeout_s` 60, `graphify_max_repo_mb` 80, `graphify_max_files` 8000, `graphify_keep_repos` 5.
-- ROUTING: family `graph` admitted by phrases ('map this repo', 'who calls', 'what depends on', 'what breaks if', 'knowledge graph', 'call graph', 'repo ka naksha', 'kaun call karta', ...). The bare word 'graph' (charts / dashboards) and 'build' ('build a website') are in `_GENERIC` so they do not admit it - tested. 5 asks added to the tool-choice card: router 176/176 in view, 0 wrong family.
-- Tests `test_v0496_codegraph.py` (23): fake GitHub (httpx.MockTransport) + a fake `graphify` script, so no outside code ran. Covers the build/ask round trip, unpack safety (symlink, traversal, .git, oversize), file and download caps, the Authorization header not reaching codeload, tenant isolation, flag-like arguments refused, keys never visible to the child, timeout kill + lock release, one build at a time, retention, the missing-binary message, the kill switch, registration, masking, admission both ways.
-- NOT VERIFIED, said plainly: the real `graphify` binary was NOT run here (installing the PyPI package in the sandbox was blocked), so its real flags and output shape come from reading its CLI source (`extract --code-only --out`, `query --depth --budget --graph`, `path`, `explain`, `affected --depth`, `god-nodes --top`, exit codes 0 / 3 / 4). The first real `graph_build` on the VPS is the live test; a flag that differs will show as a "Graph nahi bana" message with the tail of Graphify's own error. Not wired into the Developer Sahayak loop or the Architect desk yet (a follow-up).
+Owner ask (the awesome Programming Languages (77) read): "Programming Languages (77) - awesome-python/vetted
+library lists -> code mode with a curated registry: when Hoola writes a script it picks libraries from
+awesome lists, never hallucinated package names (also a supply-chain safety win). AutoHotkey/AutoIt/VBA lists
+-> Hoola generates AHK/VBA automation scripts as a THIRD lane beside pixels and ax_* - for apps the
+accessibility tree can't reach. NOW CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI."
+
+Built on the skill-pack platform (v0.484 seeds, v0.486 BYOX pack, v0.492 BYOX feed): TWO skills in
+server/app/coder/skillpack/ - prog-library-registry.md (the vetted registry rides IN the body: requests/httpx,
+beautifulsoup4+lxml/scrapy/feedparser, openpyxl/xlsxwriter/pandas, pypdf/reportlab/pdfplumber, python-docx/
+python-pptx, Pillow, python-dateutil, qrcode, pytesseract, flask/fastapi/pytest, STDLIB FIRST; the never-invent
+law: outside the registry = verify on PyPI via the gated run door or say unverified, never a plausible guess;
+install only with her tap, pin what was installed, ek kaam ek library; the pylab sandbox is no-network so the
+registry governs her-PC/server scripts) and prog-windows-script-lane.md (ax first, pixels second, scripts last
+or script-native: AutoHotkey v2 house style #Requires/#SingleInstance Force/WinWaitActive-before-Send/Hinglish
+comments, AutoIt for Win32 controls, VBA when the app IS Office; the delivery law: the script is a FILE shown
+one line per block, nothing self-runs, execution rides the gated run door or her double-click, winget install
+door for a missing runtime, money/delete macros read back before the file lands; the NEVER law: no
+Win+R/Task-Manager/lock-screen keys, no AV/UAC, no registry beyond the app's HKCU).
+
+THE FEED (the v0.492 pattern): skill_packs.prog_files() + PROG_STAMP "skills:progpack:{}" + seed_progpack(tenant)
+- its OWN once-ever stamp so tenants that consumed seed AND byox still get this pack on the next skills-desk
+open; the desk route calls it beside seed_byox; seed_files() excludes prog- (starter 10, byox 31, prog 2);
+config progpack_enabled default ON. She discovers them through the coder injection block (FTS name+description
+match, top 2, shown-telemetry) and reads the full skill via skill_manage before following.
+
+Tests: test_v0495_progpack.py 9 (counts, once-ever, hers-win, switch-off, desk route, lint gate, registry
+content, script-lane law, injection match) + test_v0492_byox_feed 9 still green. BONUS HEAL: the dev chain's
+v0.494 ritual left the three story pins asserting the 0.493.0 story - RED proven on pristine 7c1e5139 before
+any change; moved to the newest story and green again. Version 0.497.0 (pubspec 0.497.0+541, pins zero
+residual; desktop 1.9.0 untouched, console stamps untouched; TWENTY-FIRST + TWENTY-SECOND COLLISION
+re-version - the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH while this sat unpushed,
+rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand).
+Previous: v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS, v0.494.0 EQUAL POWER, v0.493.0 THE
+FLUTTER PASS, v0.492.0 BYOX FEED, v0.491.0 CRAWL JOBS [full chains in git history].

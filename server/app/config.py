@@ -504,6 +504,8 @@ class Settings(BaseSettings):
     home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
     # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
+    # --- v0.495.0 PROG PACK: the vetted-library registry + the windows script lane ---
+    progpack_enabled: bool = True           # PROG pack seeds on first open (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
     coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)

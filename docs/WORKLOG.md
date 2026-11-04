@@ -867,68 +867,45 @@ Work Log:
 - NOT VERIFIED (honest): the APK compile runs first on the CI push (no flutter in the sandbox);
   if a constraint lies about its SDK ceiling the build fails and the constraint reverts.
 
-## Task 28 — v0.495.0 OFFICE HOURS (owner: "BUILD", straight after "NOW READ THIS REPO FIRST" on github.com/garrytan/gstack) (2026-11-04)
-
-Task: read Garry Tan's gstack first, then build our own. gstack = the open-source software factory:
-/office-hours reframes the ask into a design doc, four plan reviews (CEO / design / devex / eng) amend
-it, only then anything is built. The house already had the hands (qa, devops, appreview, kaam_plan);
-it never had the HEAD - the structured think/plan step that decides what is WORTH building.
+---
+Task ID: officehours-0.495.0 (reconstructed from commit 571d8ec1 - the dev chain's OFFICE HOURS; their docs entry was clobbered by the twenty-first-collision -X theirs rebase and re-added by hand)
+Agent: dev-chain (reconstructed by main)
+Task: Owner: 'BUILD' right after 'NOW READ THIS REPO FIRST' on github.com/garrytan/gstack - the gstack THINK/PLAN lane shipped as v0.495.0
 
 Work Log:
-- Read gstack end to end in the fresh clone: README (the sprint table), DESIGN.md, ETHOS.md (boil the
-  ocean / search before building), SKILL.md preamble protocol, ship + review + office-hours SKILL.md
-  shapes (981/984/683 lines). What transfers to a chat agent: the office-hours design doc + the review
-  lenses + "eng always last" + "recommendation = the narrowest wedge" + "decide is hers". What cannot:
-  the rest is Markdown prompts for a coding agent on a repo - zero gstack code enters this tree.
-- State check first: origin/main had moved AGAIN - v0.494.0 EQUAL POWER (7c1e5139) landed on top of
-  our v0.491.0 while this was being planned (our own crawl-jobs story re-versioned by the equal-power
-  build's NINETEENTH COLLISION). Branch office-hours-v0495 cut on 7c1e5139; v0.495.0 free on tags
-  (latest v0.494.0-b1473), b1474 next.
-- Built agent/officehours_tools.py (the house shape of kaam_plan + crawl_jobs): per-tenant sqlite
-  data/officehours/<tenant>/officehours.db (office_docs + office_reviews); officehours (start | doc |
-  review | decide | stop) + officehours_dekho (list | doc | reviews); SIX_QUESTIONS stored at start
-  and asked one at a time; same-topic-while-open dedupes honestly (already_open); caps everywhere
-  (topic 200, texts 2k, capabilities 7, premises 7, options 4 with effort enum clamp to days, findings
-  12, verdict 60); status line draft -> doc -> reviewed (eng lens flips it; review on a doc-less draft
-  refused) -> decided | stopped; keep newest 30 docs per tenant (config officehours_keep_docs, forget
-  on write); decide requires HER words.
-- Wiring: tools.py extend (registry 529 -> 531); config.py officehours_enabled=True +
-  officehours_keep_docs=30 beside the scrape_crawl block; admit.py EXTRA_KEYS "officehours" family
-  (tight keys: office hours / baithak / design doc / plan review / naya idea / product idea / business
-  idea / idea pe soch / shuru karne se pehle / officehours_dekho - "idea"/"plan" alone would load it
-  every second turn); prompts.py OFFICE HOURS bullet BEFORE the LAMBA KAAM bullet (think before plan);
-  NOTHING auto-runs off a doc - the wedge/next_step is advisory text, real work rides the existing
-  doors with her Haan (the house rule gstack cannot have: Hoola never starts building by itself).
-- Version layer: APP_VERSION story (v0.495.0 OFFICE HOURS), pubspec 0.494.0+538 -> 0.495.0+539, pins
-  swept by xargs-sed: 86 full-string 0.494.0+538 -> 0.495.0+539 + every bare assert APP_VERSION ==
-  "0.494.0" -> "0.495.0", zero residual (the one 0.494.0 left in server/ is the story's Previous:
-  line - history stays); test_v0488's registry pin 529 -> 531 ("529 (v0.494, EQUAL POWER on) + 2
-  office-hours tools"). NOTE: the first sweep attempt through a while-read loop silently did nothing
-  (persistent-shell quirk) - the verify step caught it (86 residual) and the xargs form worked; sweep
-  without verify is not a sweep.
-- Tests: NEW tests/test_v0495_officehours.py (30): registry 531 + family + labels; story + prompts
-  pins; six questions; start dedupe/clamps; doc caps + effort clamp; doc on missing/decided refused;
-  review on draft refused; ceo keeps status doc; eng flips to reviewed; bad lens refused; findings
-  capped 12; review after decided refused; decide records her words / requires words / twice refused;
-  stop; dekho list (latest first, empty honest) / doc / reviews (newest first) / default-latest /
-  unknown-what; actions without any baithak refused; tenant isolation; disabled switch; forget-old 30
-  (time monkeypatched); nothing-autoruns advisory pin. First run 15 failed with "tuple indices must be
-  integers" - _con() did not set row_factory=sqlite3.Row (start_doc set its own; the four other store
-  functions read rows by name) - fixed once at _con, 30/30 green.
-- Suite sweep (one pytest process each): v0495 30 + v0488 26 (registry pin swept) + v0491 5 + v0187
-  15 + v0481 launcher 16 + v0479 24 + v0482 28 + v149 2 + v150 6 + v0211 29 + v0230 11 + v0492 9 +
-  v0484 19 = all green. test_v0400 5 failed / 3 passed - WORKTREE-PROVEN on pristine origin/main
-  7c1e5139 in a clean worktree: identical 5/3 (playwright chromium binary missing in the sandbox +
-  the site-lane SiteError class) - pre-existing environment class, untouched by this diff.
-- Docs: CLAUDE.md current-state v0.495 line + Current version line (ritual tail kept); WORKLOG Task
-  28; HISTORY section. Mera PC freeze respected: nothing in server/app/pc/, desktop/ or
-  lib/ui/pc_screen.dart touched; console untouched (stamps stay 0.485.0).
-- NOT VERIFIED (honest): the first real baithak in her chat is the live test; the voice lane does not
-  declare officehours yet (calls reach it via santosh_kaam, same as every desk's changes - declaring
-  heads would touch the fresh v0.494 surface without its owner asking).
+- NEW agent/officehours_tools.py beside kaam_plan (registry 529 -> 531, tools officehours / officehours_dekho): start = a baithak with SIX forcing questions one at a time (real pain + specific example, who does it today + cost, first visible change, today's jugaad, the smallest self-useful wedge, kill criteria); doc = reframe + capabilities (max 7) + premises challenged + 3-4 options with honest effort + recommendation = the narrowest wedge; review = one lens row ceo|design|devex|eng, eng ALWAYS last and flips status to reviewed, review on a doc-less draft refused; decide = HER decision in her words + next_step; stop closes; same topic returns the SAME doc honestly.
+- NOTHING AUTO-RUNS OFF A DOC - the wedge is advisory; building happens through the existing doors with her Haan. Per-tenant data/officehours/<tenant>/officehours.db (office_docs + office_reviews); config officehours_enabled=True, officehours_keep_docs=30; prompts.py OFFICE HOURS bullet before LAMBA KAAM.
+- Tests test_v0495_officehours.py (30): the six questions, dedupe, caps, the four lenses, eng-last flip, review-on-draft refusal, decide/stop closure, dekho, tenant isolation, disabled switch, forget-old, prompts + story pins. A REAL BUG caught on first run: _con() missing row_factory=sqlite3.Row (fixed once at _con).
+- Version 0.495.0 (pubspec 0.495.0+539 at their ship time; the PROG PACK re-version on top moved the shared version layer to 0.497.0+541).
+Stage Summary:
+- The house got its HEAD: think/plan before build, her decision recorded in her words, nothing auto-runs off a doc.
 
-Deploy: no new pip packages; the usual vps-ops ritual (checkout tag, cp -r server/app, pm2 restart,
-healthz grep 0.495.0).
 
-Task ID: codegraph-0.496.0
-Summary: Graphify read (README / ARCHITECTURE / security / MCP / benchmarks) and built as a read-only code-graph lane: codegraph.py (safe tarball unpack, whitelist env, timeout + group kill, one build at a time, per-tenant, source deleted), graph_build / graph_ask / graph_list, routing + card asks. Binary optional; real graphify run NOT verified. Server-only, PC freeze untouched.
+---
+Task ID: codegraph-0.496.0 (reconstructed from commit ad71c841 - the dev chain's CODE GRAPH; their docs entry was clobbered by the twenty-second-collision -X theirs rebase and re-added by hand)
+Agent: dev-chain (reconstructed by main)
+Task: Graphify (Apache-2.0) as a read-only lane shipped as v0.496.0 (their own TWENTY-FIRST collision: re-versioned 0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0)
+
+Work Log:
+- graph_build maps a GitHub repo: tarball, safe unpack, local AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill.
+- graph_ask answers query/path/explain/affected/god_nodes; graph_list lists what is mapped. Per-tenant graphs; the source deleted after the build; the optional binary gets a calm install hint; flag-like arguments refused; Hinglish routing + 5 card asks.
+- Tests test_v0496_codegraph.py.
+Stage Summary:
+- Repo ka naksha bana, padhne ke liye - read-only, per-tenant, source build ke baad miti.
+
+
+---
+Task ID: 30 (PROG PACK -> v0.497.0 - the awesome Programming Languages read turned into two fed skills; TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0: the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH while this sat unpushed, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand)
+Agent: main
+Task: Owner: "Programming Languages (77) - awesome-python/vetted library lists -> code mode with a curated registry ... AutoHotkey/AutoIt/VBA lists -> Hoola generates AHK/VBA automation scripts as a THIRD lane beside pixels and ax_* ... NOW CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI"
+
+Work Log:
+- State check: origin/main 7c1e5139 (v0.494.0 EQUAL POWER, the dev chain's; deployed by us at the owner's "DEPLOY", healthz 0.494.0). Fresh worktree prog-pack from origin/main. Next free version 0.495.0 (latest tag v0.494.0-b1473).
+- Read the skill platform end to end: skill_packs.py (seed/seed_byox/import/export/share, the once-ever stamps), skills_store.py (parse_skill + validate: name ^[a-z0-9-]+$, desc <=60, body <=4000), coder/inject.py (skills_block: FTS5 match on name+description, top 2 ride the coder memory block, she reads the full skill via skill_manage before following), the desk route (seed + seed_byox), config byox_enabled, the v0.492 test suite (the pattern to mirror).
+- TWO SKILLPACK FILES: server/app/coder/skillpack/prog-library-registry.md (the vetted registry IN the body: 13 named packages across http/scrape/excel/pdf/office/image/qr/ocr/web/test + STDLIB-FIRST; never-invent = verify on PyPI via the gated run door or say unverified; install only with her tap, pin in the header; pylab no-network scope note) and prog-windows-script-lane.md (lane order ax_ -> pixels -> scripts; AHK v2 house style #Requires+#SingleInstance+WinWaitActive-before-Send+Hinglish comments, AutoIt ControlClick/WinList, VBA for Office-native; delivery law = FILE shown+explained, nothing self-runs, gated run door or her double-click, winget install door; NEVER law = no Win+R-class keys / AV / UAC / registry-beyond-HKCU, money+delete macros read back first).
+- THE FEED (v0.492 pattern): skill_packs.py + PROG_STAMP "skills:progpack:{}" + prog_files() + seed_progpack(tenant) (the seed_byox twin, own once-ever stamp - tenants that consumed seed AND byox still get it); seed_files() excludes prog- (10/31/2 counts preserved); service.py desk route calls seed_progpack beside seed_byox; config.py progpack_enabled default ON.
+- Tests test_v0495_progpack.py 9 green (counts, once-ever on a both-stamps-consumed tenant, hers-win, PROGPACK_ENABLED=false, desk-route source pin, lint gate, registry content pins, script-lane law pins, injection FTS match on "excel ... python script library" + "autohotkey script likho"); test_v0492_byox_feed 9 still green beside it (18 total in the two suites).
+- Ritual 0.497.0 (scripts/ritual_0497.py on the twice-rebased tree): APP_VERSION story line-wise (exactly-one hit), pubspec 0.497.0+541, 86 full-string + 159 assert pin files swept zero residual, 3 story pins moved to the v0.497 story (the frames markers are this story's own tokens; the officehours suite's story tokens ride the Previous line). BONUS HEAL: the dev chain's v0.494 ritual left test_v0475:118 / test_v0480:517 / test_v0485:556 asserting the 0.493.0 story - RED proven on pristine 7c1e5139 (1 failed, 12 passed) BEFORE any change; the story-pin move heals them.
+- Docs: CLAUDE.md one-liner + current-version line + the v0.495 section; WORKLOG Task 30; HISTORY section.
+Stage Summary:
+- The PROG PACK is built and fed: two behavior skills in the seed platform, own stamp, every tenant gets them on the next skills-desk open. Honest NOT VERIFIED: the FTS match is tested, the first real VPS ask is the live proof. NOT TOUCHED: Mera PC (the script lane skill only WRITES files + names the existing gated doors).

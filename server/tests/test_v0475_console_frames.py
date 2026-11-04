@@ -115,14 +115,14 @@ def test_console_stamps_0_4_8_5():
 
 def test_app_version_story():
     main = (ROOT / 'app/main.py').read_text(encoding='utf-8')
-    assert 'APP_VERSION = "0.493.0"' in main
+    assert 'APP_VERSION = "0.497.0"' in main
     # story pin moved to the v0.479 story (the v0.476 precedent: the newest release's story
     # carries the marker; the older stories live in git history)
-    assert 'FLUTTER PASS' in main and 'curated pubspec upgrade' in main
+    assert 'PROG PACK' in main and 'prog-library-registry' in main and 'prog-windows-script-lane' in main
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.496.0+540' in pub
+    assert 'version: 0.497.0+541' in pub

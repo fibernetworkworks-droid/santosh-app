@@ -232,7 +232,9 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
-- v0.495 OFFICE HOURS (our own gstack, the THINK/PLAN lane; owner: "BUILD" after "NOW READ THIS REPO FIRST" on github.com/garrytan/gstack - Garry Tan's software factory where /office-hours writes a design doc and plan reviews amend it BEFORE anything is built): NEW agent/officehours_tools.py, registry 529 -> 531 (officehours / officehours_dekho); per-tenant data/officehours/<tenant>/officehours.db (office_docs + office_reviews); action=start opens a baithak with the SIX forcing questions (real pain w/ example, who does it today, first visible change, today's jugaad, smallest self-useful wedge, kill criteria) asked ONE at a time; action=doc writes the design doc (reframe / capabilities 7 / premises 7 / options 4 with honest effort / recommendation = the narrowest wedge); action=review appends lens rows ceo|design|devex|eng - eng ALWAYS last and the eng lens flips status to reviewed, review on a doc-less draft refused; action=decide records HER words (Hoola never decides); action=stop; dekho = list / doc / reviews; NOTHING auto-runs off a doc - the wedge is advisory, real work needs her Haan through the existing doors; family "officehours" + tight admit keys (office hours / baithak / design doc / plan review / naya idea); config officehours_enabled=True + officehours_keep_docs=30; prompts.py OFFICE HOURS bullet before LAMBA KAAM; test_v0495 (30).
+- v0.497 PROG PACK (TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0: the dev's chain took 0.495.0 OFFICE HOURS and then 0.496.0 CODE GRAPH while this sat unpushed - REBASE PROTOCOL respected twice, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand; owner: the awesome Programming Languages read - 'CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI'): two skillpack files, prog-library-registry (pick libraries from the vetted registry - requests/httpx, beautifulsoup4+lxml/scrapy, openpyxl/pandas/xlsxwriter, pypdf/reportlab/pdfplumber, python-docx/python-pptx, Pillow, flask/fastapi/pytest, stdlib first; outside it = VERIFY on PyPI through the gated run door or say unverified, NEVER a plausible guess; install only on her tap - the supply-chain safety win) and prog-windows-script-lane (the THIRD automation lane beside pixels and ax_*: AutoHotkey v2 / AutoIt / VBA for the apps the accessibility tree cannot reach; the script is a FILE shown + explained, nothing self-runs, execution rides the gated run door or her own double-click; no Win+R-class keys, no AV/UAC, money/delete macros read back first). THE FEED: skill_packs.seed_progpack(tenant) with its OWN once-ever stamp (the v0.492 pattern) - every tenant gets it on the next skills-desk open, create-if-missing, hers win; progpack_enabled default ON. Tests test_v0495_progpack.py 9 (+ the desk-route live count 41 -> 43 healed in test_v0485). Bonus heal: the dev chain's missed story pins (0.493.0 asserts left red on main 7c1e5139) now ride this newest story.
+- v0.496 CODE GRAPH (Graphify, Apache-2.0, as a read-only lane): graph_build maps a GitHub repo (tarball, safe unpack, local AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill), graph_ask answers query/path/explain/affected/god_nodes, graph_list; per-tenant graphs, the source deleted after the build, the optional binary gets a calm install hint, flag-like arguments refused, Hinglish routing + 5 card asks (their own TWENTY-FIRST collision: re-versioned 0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0). Tests test_v0496_codegraph.py.
+- v0.495 OFFICE HOURS (owner: 'BUILD' on github.com/garrytan/gstack - Garry Tan's open-source software factory: /office-hours writes a design doc, four plan reviews amend it, only then anything is built): the house had the hands (qa, devops, appreview, kaam_plan) but never the HEAD - a structured think/plan step that decides what is WORTH building before anything is built. NEW agent/officehours_tools.py beside kaam_plan (registry 529 -> 531, tools officehours / officehours_dekho): start opens a baithak asking SIX forcing questions ONE at a time (real pain with a specific example, who does it today + what it costs, the first visible change when fixed, today's jugaad, the smallest self-useful wedge, kill criteria), same topic returns the SAME doc honestly (already_open); doc writes reframe + capabilities (max 7) + premises challenged + 3-4 options with honest effort + recommendation = the narrowest wedge; review appends one lens row ceo|design|devex|eng - eng ALWAYS last and the eng lens flips status to reviewed, review on a doc-less draft is refused; decide records HER decision in her words (Hoola never decides) + next_step; stop closes. NOTHING AUTO-RUNS OFF A DOC - the wedge is advisory; building happens later through the existing doors with her Haan. Config officehours_enabled=True, officehours_keep_docs=30. Tests test_v0495_officehours.py 30. NOT VERIFIED: the first real baithak in her chat is the live test.
 - v0.494 EQUAL POWER (NINETEENTH COLLISION, re-versioned 0.491.0 -> 0.494.0 on the dev's fresh base 8e3339fe; owner: "GIVE EQUAL POWER TO ALL - WIRE ALL AI FUNCTIONALITIES, TOOLS, SKILLS ETC TO ALL THUS CALL SECTION CAN WORK PROPERLY"): the difference was that chat surfaces share one brain by construction while the call declared only ~111 of 368 listed tools - now the head of every suite is declared: campaigns (auto_send=False on a call, the SEND still waits for her card), Ghar Home Assistant x5, the Forms/Slides/Notebook/Photos/doc READ heads, scrape_page/research_status/skill_manage, and VOICE_HEADS = the 30 main desks' X_dekho state readers (every desk's CHANGES stay fenced); MCP on calls 25->40 and the SETUP ladder burns vocab/langcodes before her MCP tools; the phone can TYPE INTO A CALL (the server took {"type":"text"} all along; LiveVoice.sendText + CallSession.sendText with chat fallback + a type bar in the call screen); NEW test_v0491_equal_power.py (5 tests) holds it equal forever - no dead names, heads stay declared, money guards stay up, card parity both clients; test_v149 updated; budget proven green locally. NOT VERIFIED (honest): the first live call on the VPS is the real test; the type bar compiles first on CI; W4 (console card parity + SAPNE page) and W5 (phone edit/retry + Skill Desk + Ghar screens) are the next versions.
 - v0.487 HOOLA WEB EXTENSION (W3 of the Platforms plan, owner: 'W3 (web extension)'): the 'send page to Hoola' door + the PC→Hoola TEXT LANE the desktop bridge never had. `server/app/quicklane.py` (NEW surface beside the PC block, one include_router; no frozen endpoint/setting touched): POST /api/pc/quickask takes a PAIRED device's {text?, url?, title?, selection?, client_id?} (the SAME spc_ token; the extension pairs through the SAME /api/pc/pair flow and shows on her Mera PC list), composes ONE honest Hinglish user message server-side and rides the SAME turn pipeline as the phone (convs.mark + bus.publish + turn_inbox.accept + run_owned) - Hoola answers in her conversation with her own tools (the page she reads with her v0.483 scrape lane; this lane never fetches); GET /api/pc/quickask/messages reads the answer back; guards = device-token auth, tenant check, 30/hour/device cap, client_id dedup. THE EXTENSION `desktop/ext/hoola-extension` (MV3 Chrome/Edge): service worker + popup + right-click 'Hoola ko bhejiye' + Ctrl+Shift+H, pairing in options with the phone's 6-digit code, custom server asks its host permission first, no eval/remote code; rides INSIDE the exe (ext_payload, %TEMP%\_MEIxxxx\ext), release ships Hoola-Chrome-extension.zip; `ext_install.py` (the pt_run.py twin) copies ONLY Hoola's folder to %LOCALAPPDATA%\Hoola\chrome-extension (no browser policy, nothing auto-starts), the window card installs on HER click; desktop 1.9.0 do_ext behind the SAME _control_on() switch. THE DOORS RIDE IT: Main.cs 'hoola <sawaal>' -> 'Hoola se poochho' -> --ask (alias launch truth kept, plugin ID unchanged); the single-instance lock port receives ASK: lines (second instance hands over, the running window sends via the events queue); the window's own ask box; desktop quickask.py. SERVER: operator ext tool (ONE-TIME SETUP, ask_approval PEHLE) + _do/_say/_desktop_says; win+r still BLOCKED_KEYS. Tests test_v0487_webext.py 30. Version 0.487.0 (pubspec 0.487.0+532, desktop/plugin/extension 1.9.0, stamps stay 0.485.0 x21). NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet; the C# ask-door compiles first on the next push - her first right-click after deploy is the live test.
 - v0.489 HOOLA POWERTOYS RUN (W2b of the Platforms plan, owner: 'W2b - PowerToys Run plugin'): the 'hoola' door inside PowerToys Run - Alt+Space, 'hoola', Enter. The plugin (`desktop/ptrun_plugin/Community.PowerToys.Run.Plugin.Hoola`, .NET 9 class library on the community Dependencies 0.97.0 references, static PluginID 162E72D3C1D7464E865293A276993A7B = plugin.json, ActionKeyword 'hoola') launches through the SAME W2a HKCU App Paths alias - one launch truth; CI (build-desktop.yml) publishes it and rides it INSIDE SantoshDesktop.exe (PyInstaller datas -> %TEMP%\_MEIxxxx\ptrun); desktop 1.8.0 `pt_run.py` (the app_paths.py twin) installs ONLY Hoola's own folder into %LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins\Hoola (user-level, no admin, whole-folder replace = upgrade); PowerToys absent -> `quickkey.py` registers Ctrl+Alt+H (RegisterHotKey on its own thread, events-queue -> Tk, Quit unregisters) as the same door - Hoola never presses keys (win+r stays BLOCKED_KEYS); `do_pt_run` behind the SAME _control_on() switch, on=false undoes both doors; server operator `pt_run` tool (ask_approval PEHLE) + _do/_say/_desktop_says wiring. Tests test_v0484_ptrun.py 33. Version 0.486.0 (pubspec 0.486.0+531, desktop pin 1.8.0, stamps stay 0.485.0 x21; SEVENTEENTH COLLISION - rebuilt on the dev's e2a57481 base). The PC→Hoola text lane is deliberately left for W3 (the extension's send-page lane; both doors will ride it).
@@ -321,7 +323,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.495.0 (pubspec 0.495.0+539; OFFICE HOURS v0.495.0 = the gstack THINK/PLAN lane (design docs + the four review lenses, eng last, her decide); desktop/plugin/extension 1.9.0; Firecrawl core v0.483.0, SAPNE v0.484.0, Skill Desk v0.485.0, PowerToys Run v0.489.0, Web Extension v0.490.0 = W3, the Flutter pass v0.493.0 = W4, EQUAL POWER v0.494.0 = the equal-power call feed + type-into-a-call). Version ritual = main.py APP_VERSION + pubspec version(+build) + Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.497.0 (pubspec 0.497.0+541; PROG PACK v0.497.0 = the vetted-library registry + the windows script lane, fed to every tenant; CODE GRAPH v0.496.0 = the Graphify read-only lane; OFFICE HOURS v0.495.0 = the gstack THINK/PLAN lane; EQUAL POWER v0.494.0 = the equal-power call feed + type-into-a-call; desktop/plugin/extension 1.9.0; Firecrawl core v0.483.0, SAPNE v0.484.0, Skill Desk v0.485.0, PowerToys Run v0.489.0 (the W2b SEVENTEENTH+EIGHTEENTH-COLLISION rebase on fdc7c402), Web Extension v0.490.0 = W3 (the EIGHTEENTH-COLLISION rebase), the Flutter pass v0.493.0 = W4 - the text lane both doors ride). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (21 now, all 0.485.0 since the Skill Desk console change; vendor qrcode.js 1.4.4 excepted) + the version pins in tests (grep the old number in
 - v0.459 ABHI ABHI WEBSITE (web Step 5 = W6 + W7, `site/livesite.py` + `site/webpush.py`): linked websites get the live SSE (read-rule filtered, replay), visitor <-> team chat (her reply = her tap), clinic queue (tokens under lock, TV board numbers only, ONE "turn near" SMS via her approved connector), browser push only after her tap (RFC 8291/8292); connectors: `remind` trigger (once per booking, never cancelled), `queue`, HubSpot, Composio (her account), signed website webhooks; console Live panel.
 - v0.452 DUKAAN PLUS (web Step 4B): `site/shopplus.py` = website GST invoice / credit note on HER ONE series (hidden `_web_orders` app rows), AutoPay plans for website members, marketplace (seller apply -> her approval, commission, Route account, product moderation, transfer once), Shiprocket (her tap: AWB + label, tracking), wishlist + opted-in cart reminders she sends herself.
@@ -1157,3 +1159,107 @@ InheritedWidget pattern carries the app fine today).
 
 Version 0.493.0 (pubspec 0.493.0+537, pins → 0.493.0(+537); desktop 1.9.0 and the 0.487.0 console
 stamps untouched). Mera PC freeze respected — server untouched except the APP_VERSION story.
+
+
+## v0.496.0 CODE GRAPH — Graphify as a read-only lane (their ship, entry re-added by hand after the -X theirs rebase clobbered it)
+
+[Entry reconstructed from commit ad71c841's APP_VERSION story — the TWENTY-SECOND COLLISION reconcile.]
+
+Graphify (Apache-2.0) as a read-only lane: `graph_build` maps a GitHub repo (tarball, safe unpack, local
+AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill),
+`graph_ask` answers query/path/explain/affected/god_nodes, `graph_list` lists what is mapped. Per-tenant
+graphs; the source deleted after the build; the optional binary gets a calm install hint; flag-like
+arguments refused; Hinglish routing + 5 card asks. Their own TWENTY-FIRST collision: re-versioned
+0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0, both works kept. Tests test_v0496_codegraph.py.
+
+## v0.495.0 OFFICE HOURS — the gstack THINK/PLAN lane (owner: 'BUILD' right after 'NOW READ THIS REPO FIRST' on github.com/garrytan/gstack)
+
+[Entry reconstructed from commit 571d8ec1's message after the twenty-first collision: the -X theirs
+rebase kept their code but clobbered their docs entries; re-added by hand, the REBASE PROTOCOL's
+reconcile step.]
+
+Garry Tan's open-source software factory: /office-hours writes a design doc, four plan reviews amend it,
+only then anything is built. THE HOUSE HAD THE HANDS (qa, devops, appreview, kaam_plan); IT NEVER HAD THE
+HEAD - a structured think/plan step that decides what is WORTH building before anything is built. Zero
+gstack code rides this tree (their side is all Markdown prompts).
+
+NEW `agent/officehours_tools.py` beside kaam_plan (registry 529 -> 531, two tools: `officehours` /
+`officehours_dekho`): action=start opens a baithak (per-tenant data/officehours/<tenant>/officehours.db,
+office_docs + office_reviews) and returns SIX forcing questions - real pain with a specific example (not
+hypothetical), who does it today and what it costs, the first visible change when fixed, today's jugaad,
+the smallest self-useful wedge, kill criteria - asked ONE at a time, framing pushed back on; same topic
+while open returns the SAME doc honestly (already_open). action=doc writes the design doc: reframe,
+capabilities (max 7), premises challenged + her answers (max 7), 3-4 options each with honest effort
+(hours|day|days|week|weeks, unknown clamps to days), recommendation = the narrowest wedge (gstack: ship
+the narrowest wedge, learn from real usage). action=review appends one lens row ceo|design|devex|eng
+(findings + changes, append-only) - eng ALWAYS last and the eng lens is what flips status to reviewed
+(gstack's autoplan rule); a review on a draft that has no doc is refused. action=decide records HER
+decision in her words (Hoola never decides; decision text required) + optional next_step; action=stop
+closes. officehours_dekho: what=list / doc / reviews - no id = the latest. NOTHING AUTO-RUNS OFF A DOC:
+the wedge/next_step is advisory text; turning it into work happens on later turns through the existing
+doors with her Haan (the house rule gstack cannot have: Hoola never starts building by itself).
+
+Config: officehours_enabled=True, officehours_keep_docs=30 (older docs + their reviews forgotten on
+write). Family + admit keys: the officehours family opens on her big-idea words; tight keys only.
+prompts.py grew the OFFICE HOURS bullet (before LAMBA KAAM - think before plan). Tests
+test_v0495_officehours.py (30) green; a REAL BUG caught by the suite on first run - _con() did not set
+row_factory=sqlite3.Row (fixed once at _con). Version 0.495.0 (pubspec 0.495.0+539 at their ship time;
+swept to 0.496.0+540 by the PROG PACK re-version on top). NOT VERIFIED (honest): the first real baithak
+in her chat is the live test; the voice lane does not declare these tools yet (they ride santosh_kaam on
+calls, same as every other desk head change).
+
+## v0.497.0 PROG PACK (TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0 - the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH while this sat unpushed, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept) — the curated-library registry + the windows script lane, fed to every tenant (owner: the awesome Programming Languages read, "NOW CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI"; TWENTY-FIRST COLLISION re-version 0.495.0 -> 0.496.0 - the dev's chain took 0.495.0 OFFICE HOURS while this sat unpushed, rebased -X theirs on 571d8ec1, both works kept)
+
+The owner took the Programming Languages (77) category of the sindresorhus/awesome index and asked for
+its two insights turned into Hoola skills: (1) awesome-python/vetted library lists -> code mode with a
+curated registry, so a script Hoola writes picks libraries from awesome lists, NEVER hallucinated
+package names (a hallucinated name is a supply-chain door — typosquatting); (2) the AutoHotkey/AutoIt/VBA
+lists -> a THIRD automation lane beside pixels and ax_*, for the apps the accessibility tree cannot
+reach. Built as the PROG PACK on the skill-pack platform (v0.484 seeds, v0.486/v0.492 BYOX pack, own
+stamp).
+
+**The two skills** (`server/app/coder/skillpack/`, the skills_store shape: frontmatter name + description
+<= 60 chars, body <= 4000 chars):
+
+- `prog-library-registry` — the vetted registry itself rides IN the skill body: HTTP requests/httpx;
+  scraping beautifulsoup4+lxml, scrapy, feedparser; Excel openpyxl/xlsxwriter/pandas; PDF
+  pypdf/reportlab/pdfplumber; Word python-docx, PowerPoint python-pptx; images Pillow; dates
+  python-dateutil; QR qrcode; OCR pytesseract; web flask/fastapi; tests pytest; STDLIB FIRST for
+  zip/files/paths/email/json (zero supply chain, zero install). The never-invent law: a need outside the
+  registry is VERIFIED (`pip index versions` / the PyPI JSON) through the gated run door, or named
+  honestly as unverified — never a plausible guess from memory. Install only with her tap, pin what was
+  installed in the script header, ek kaam ek library. Scope note: the pylab sandbox has no network, this
+  registry governs scripts written for HER PC / her servers.
+- `prog-windows-script-lane` — the lane order is ax_* first, pixels second, THIS lane last or when the
+  ask is script-native: AutoHotkey v2 (house style: `#Requires AutoHotkey v2.0` + `#SingleInstance Force`
+  + `WinWait -> WinActivate -> WinWaitActive` before Send + Hinglish block comments), AutoIt for Win32
+  controls (ControlClick/WinList), VBA when the app IS Office (its native tongue). The delivery law: the
+  script is a FILE shown in chat one line per block, nothing self-runs, execution rides the gated run
+  door (exit + output shown) or her own double-click; AutoHotkey missing -> the winget install door, her
+  tap again; delete/send/money macros are read back before the file even lands. The NEVER law: no
+  Win+R/Task-Manager/lock-screen keys (the same BLOCKED_KEYS law the PC lane keeps), no AV/UAC
+  disabling, no registry beyond the app's own HKCU, no network call inside the script unless the ask is
+  a network ask (then the registry picks the package).
+
+**The feed** (the v0.492 pattern exactly): `skill_packs.prog_files()` + `PROG_STAMP = "skills:progpack:{}"`
++ `seed_progpack(tenant)` — its OWN once-ever stamp, so tenants that already consumed the seed stamp AND
+the byox stamp still receive this pack on their next skills-desk open (the desk route in
+`coder/service.py` calls it right after `seed_byox`); create-if-missing, hers win; `seed_files()` now
+excludes the `prog-` prefix (starter stays 10, byox stays 31, prog = 2); `config.progpack_enabled`
+default ON. How she uses them: the coder injection block FTS-matches name+description against the ask
+and shows the one-liner; she reads the FULL skill via skill_manage before following it (the
+read-before-follow law).
+
+**Tests** `server/tests/test_v0495_progpack.py` (9): counts (10/31/2), once-ever reaches an
+already-seeded tenant, hers-win, switch-off, desk-route call, the lint gate, registry content (13 real
+packages named + the pypi verify door + NEVER), script-lane content (three lanes + the law), injection
+FTS match on Hinglish asks. **Bonus heal**: the dev chain's v0.494 ritual left the three story pins
+asserting 0.493.0 (test_v0475:118 / test_v0480:517 / test_v0485:556) — RED proven on pristine 7c1e5139
+before any change of ours; this ritual moves them to the newest story (the v0.476 precedent) and they
+go green.
+
+Version 0.497.0 (pubspec 0.497.0+541, pins -> 0.497.0(+541) zero residual; desktop 1.9.0 untouched,
+console stamps untouched). Mera PC freeze respected — nothing in server/app/pc/, desktop/ or lib/
+touched. NOT VERIFIED (honest): the FTS matching is tested, but the first real "excel ka macro likho"
+ask on the VPS is the live proof; the pack lands in a tenant only when the skills desk is opened (the
+feed's own design).
