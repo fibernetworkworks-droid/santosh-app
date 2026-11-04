@@ -1111,3 +1111,4 @@ in server/app/pc/, desktop/ or lib/ touched; server-only deploy, old APKs keep w
 the first real "naya model zoo mein" ask on the VPS is the live proof; the pack lands in a tenant on its next
 skills-desk open or first turn (the feed's own design). Deploy: no new pip packages; the usual vps-ops ritual.
 Previous: v0.510.0 HOOLA CORE, v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK [full chains in git history].
+- DEPLOY follow-up: vps-ops run #244 (id 41873690351) SUCCESS -> healthz 0.511.0 ok=True (the CS pack is live; tenants receive it on their next skills-desk open or first turn).
