@@ -15,6 +15,7 @@ index exists so a future session can find the right one in one read instead of l
 | 4 | `04_cost_contract_qs_procurement.md` | 37 | QS, estimation, billing, contracts, claims, delay analysis, tendering, procurement |
 | 5 | `05_approvals_developer_fm.md` | 42 | liaison & permits, the developer/client side, handover, facilities and operations |
 | 6 | `06_digital_survey_sustainability.md` | 44 | BIM/ISO 19650, survey & reality capture, green/energy, commissioning, visualisation |
+| 7 | `07_ai_employees_register.md` | 123 AI Employees (from the 276) | the owner's 4 Nov 2026 register: 15 fields, tier + human gate per employee, the NEVER list, the suggested build order — the input to `docs/CONSTRUCTION_EMPLOYEE_PLAN.md` |
 
 ---
 
