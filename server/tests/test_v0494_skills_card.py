@@ -81,7 +81,7 @@ def test_agent_loop_calls_admit_tool():
 def test_free_card_numbers(desk):
     card = skillscard.free_card(tenant=T)
     assert card["pack_missing"] == []
-    assert card["skills_on_tenant"] == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.cs_files()) + len(skill_packs.mg_files()) + len(skill_packs.bd_files()) + len(skill_packs.claude_dirs())
+    assert card["skills_on_tenant"] == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.cs_files()) + len(skill_packs.mg_files()) + len(skill_packs.bd_files()) + len(skill_packs.cr_files()) + len(skill_packs.claude_dirs())
     assert (card["in_top2"], card["pos"]) == (10, 10)
     assert card["tool_in_view"] == 10 and card["files_ok"] == 10
     assert (card["neg_clean"], card["neg"]) == (4, 4)

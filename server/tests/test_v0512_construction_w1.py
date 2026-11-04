@@ -394,7 +394,7 @@ def test_registry_553_and_dispatch(env):
     for n in ("const_store", "const_store_dekho", "const_labour", "const_labour_dekho", "const_customer",
               "const_customer_dekho", "const_quality", "const_quality_dekho", "const_meet", "const_meet_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 553
+    assert len(TOOLS) == 554, "553 (v0.522) + 1 crew_run (v0.523)"
 
 
 def test_const_store_tool_end_to_end(env):
@@ -453,6 +453,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.522.0"
-    assert 'APP_VERSION = "0.522.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.522.0+551" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.523.0"
+    assert 'APP_VERSION = "0.523.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.523.0+552" in (REPO / "pubspec.yaml").read_text()

@@ -563,10 +563,17 @@ class Settings(BaseSettings):
     coder_magic21_max_per_hour: int = 12   # per-tenant rolling-hour window over OPS (the three wire POSTs are the bridge's own business)
     magicpack_enabled: bool = True         # the mg- seed (the 21st.dev UI skill) seeds on first open under its own stamp (default ON)
 
+    # --- Hoola Crew (v0.514): the crewAI port, role-based agent crews over the delegate machinery ---
+    coder_crew: bool = False               # the crew_run tool (brain rounds, not network - but real cost: bake, then flip)
+    coder_crew_max_agents: int = 6         # a voice box is not a cluster (library backstop MAX_AGENTS doubled at the door)
+    coder_crew_max_tasks: int = 12         # the task-list cap (library backstop MAX_TASKS doubled at the door)
+    coder_crew_task_timeout_s: int = 180   # per task/manager-round ceiling (the delegate child shape, widened for a worker)
+    coder_crew_timeout_s: int = 600        # the whole-crew wall clock; partial work is not kept (honest)
+    crewpack_enabled: bool = True          # the cr- seed (crew plays) seeds on first open under its own stamp (default ON)
+
     # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
     aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
     aep_trace_redact: bool = True          # redaction before storage (strip_private + redact_secrets); a test seam, prod keeps True
-
 
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""

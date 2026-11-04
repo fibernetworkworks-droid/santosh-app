@@ -1155,6 +1155,25 @@ TOOL_LABELS.update(MAGIC21_LABELS)
 HANDLERS.update(MAGIC21_HANDLERS)
 del _seen
 
+# v0.514 HOOLA CREW: ONE crew_run tool (the coder/crew_run surface) - the crewAIInc/crewAI
+# port: a named team of role agents (role/goal/backstory) working a task list inside one
+# turn - sequential with context threading or hierarchical (a manager with NO tools
+# delegating via DELEGATE/ASK/FINISH lines), guardrails with bounded retries, async tasks
+# joining before the next sync task. The library (app.crew: core/agent/task/crew/engine)
+# is inert and provider-free - the RUNNER here is the house child worker (delegate.py's
+# _call_brain + _run_tool funnel) framed by the identity, so capture/scrub/timeout see
+# every crew worker like every other child. The deny set is structural: a crew member can
+# NEVER delegate, send, approve or start PC jobs (delegate.CHILD_DENIED, money never moves
+# inside a crew). Caps: 6 agents / 12 tasks / 180 s per task / 600 s whole-crew. Voice
+# never sees it (out of the VOICE_TOOL_NAMES allowlist); coder_crew gates the handler
+# (default OFF - bake, then flip). Stateless: the crew IS the tool call (v0.514).
+from ..coder.crew_run import CREW_HANDLERS, CREW_LABELS, CREW_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in CREW_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(CREW_LABELS)
+HANDLERS.update(CREW_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 

@@ -140,7 +140,7 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "magic21" in tools.HANDLERS and "magic21" in tools.TOOL_LABELS
     assert any(t["name"] == "magic21" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 553, "536 (v0.501) + 5 dhara tools (v0.502) + 1 magic21 (their v0.512) + 1 dhara_dsl (v0.514)"
+    assert len(tools.TOOLS) == 554, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523)"
 
 
 def test_voice_absence(env):
@@ -178,12 +178,12 @@ def test_config_defaults(env, monkeypatch):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.522.0"
+    assert main_mod.APP_VERSION == "0.523.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     # the newest-story precedent (the v0.520 rebase): the story pin rides the NEWEST story
     assert "HOOLA TRACE" in story and "astream_events" in story and "aep_run" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.522.0+551" in pub
+    assert "version: 0.523.0+552" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches
@@ -491,7 +491,7 @@ def test_mg_lane_counts(env):
     assert len(skill_packs.seed_files()) == 11       # the starter lane untouched (mg- excluded)
     assert len(skill_packs.byox_files()) == 31 and len(skill_packs.prog_files()) == 2
     seed_dir = skill_packs.SEED_DIR
-    assert len(list(seed_dir.glob("*.md"))) == 67    # 11 + 31 + 2 + 15 + 3 + 2 + 1 + 2, EIGHT lanes
+    assert len(list(seed_dir.glob("*.md"))) == 68    # 11 + 31 + 2 + 15 + 3 + 2 + 1 + 2 + 1, NINE lanes
     seeder_names = {f.__name__ for f in skill_packs._pack_seeders()}
     assert "seed_magicpack" in seeder_names          # found by name - no seed_all edit
 
