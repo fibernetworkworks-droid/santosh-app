@@ -2,7 +2,7 @@
 
 Owner's ask (4 Nov 2026): *"DEEP RESEARCH ON HEALTHCARE INDUSTRY OF ENTIRE WORLD AND EXTRACT AI EMPLOYEES LIST FROM EVERY FIELD IN HEALTHCARE"*.
 
-**23 fields, 160 candidate AI Employees.** Same method as `docs/research/building_industry/`: split every field into
+**22 fields, 160 candidate AI Employees.** Same method as `docs/research/building_industry/`: split every field into
 jobs, then ask of each job what software may *prepare* and what a licensed human must *decide / sign*.
 
 ## How honest this is (read first)
