@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import __version__, axtree, browser, extract
+from . import __version__, axtree, app_paths, browser, extract
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
@@ -322,6 +322,18 @@ class Actions:
         except axtree.AxError as e:
             raise ActionError(str(e))
         self.log(f"AX wait: {'text' if text else 'window'} ({out.get('waited', 0)}s)")
+        return out
+
+    # ---------------- v1.7.0 WIN+R LAUNCHER (HKCU App Paths - user-level alias, no admin) --------
+    # W2a of the Platforms plan: 'Win+R se hoola' - Windows ka apna App Paths alias, isliye Start menu
+    # search bhi 'hoola' dhoondh leta hai. Koi Run-key nahi, kuch auto-start nahi, doosra user untouched.
+    # Same gate as every control action; on=false alias hata deta hai (undo, like autostart).
+    def do_app_paths(self, on: bool = True, **_) -> dict[str, Any]:
+        """v1.7 Win+R 'hoola': HKCU App Paths alias SantoshDesktop.exe par (user-level, no admin)."""
+        self._control_on()
+        out = app_paths.set_enabled(bool(on))
+        self.log("Win+R alias 'hoola' joda" if out.get("on") else
+                 ("Win+R alias 'hoola' hata diya" if out.get("ok") else "Win+R alias nahi bana"))
         return out
 
     def do_status(self, **_) -> dict[str, Any]:

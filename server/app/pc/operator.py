@@ -315,6 +315,14 @@ TOOLS = [
                                         "smarter than a blind wait when Excel / Tally is loading.",
      "input_schema": {"type": "object", "properties": {"app": {"type": "string"}, "text": {"type": "string"},
                                                       "window": {"type": "string"}, "seconds": {"type": "integer"}}}},
+    # v0.481 W2a WIN+R LAUNCHER: the one-time setup that makes 'hoola' a real command on her PC.
+    {"name": "app_paths", "description":
+            "ONE-TIME SETUP: make Win+R open Hoola on this PC - writes the user-level App Paths alias "
+            "'hoola' -> SantoshDesktop.exe (HKCU, no admin, no autostart, nothing else changes; on=false "
+            "removes it). Windows-only. ALWAYS ask_approval('Win+R se 'hoola' likhne par Hoola khul jaye - "
+            "isliye ek chhota Windows alias jodu?') FIRST - it changes a Windows setting - then call with "
+            "on=true. Use when she says 'Win+R se hoola khulwao' / 'hoola ek command bana do'.",
+     "input_schema": {"type": "object", "properties": {"on": {"type": "boolean", "description": "true = alias jodo, false = hatao"}}}},
     {"name": "screenshot", "description": "Look again without doing anything. monitor 'primary' (default) or 'all' = every "
                                           "monitor stitched into one picture (use when the thing you need may be on her "
                                           "second screen).",
@@ -605,6 +613,9 @@ def _say(name: str, a: dict[str, Any]) -> str:
         return f"{str(a.get('name', ''))[:30]} khol raha hoon (exact mode)"
     if name == "ax_wait":
         return "kholne ka intezaar kar raha hoon (exact mode)"
+    if name == "app_paths":
+        return ("Win+R ka 'hoola' alias jod raha hoon" if a.get("on", True)
+                else "Win+R wala alias hata raha hoon")
     if name in ("ax_status", "ax_apps"):
         return "apps ki asli list dekh raha hoon (exact mode)"
     if name == "page_type":
@@ -650,7 +661,7 @@ def _desktop_says(e: Exception, action: str) -> str | None:
     if action in ("open_url", "window", "screenshot", "page_text", "tabs", "switch_tab", "downloads",
                   "page_elements", "page_click", "page_type", "page_select", "page_fill_form", "wait_for",
                   "ax_status", "ax_apps", "ax_snapshot", "ax_text", "ax_find", "ax_click", "ax_set_value",
-                  "ax_press", "ax_launch", "ax_wait") and "Unknown action" in msg:
+                  "ax_press", "ax_launch", "ax_wait", "app_paths") and "Unknown action" in msg:
         return _OLD_DESKTOP
     return None
 
@@ -873,6 +884,19 @@ async def _do(op: Op, name: str, a: dict[str, Any]) -> str:
         except Exception as e:
             return _desktop_says(e, "window") or f"ERROR: {e}"
         return f"window {wop}: {r.get('window', '')}"
+    if name == "app_paths":
+        # v0.481 W2a: one safe alias write on her PC (HKCU App Paths); the desktop gates it behind PC control.
+        on = bool(a.get("on", True))
+        try:
+            r = await _pc(op, "app_paths", {"on": on}, timeout=25)
+        except Exception as e:
+            return _desktop_says(e, "app_paths") or f"ERROR: {e}"
+        if r.get("ok") and r.get("on"):
+            return (f"Win+R alias ready: ab Win+R mein 'hoola' likhne se Hoola Desktop khulta hai "
+                    f"({r.get('exe', '')})")
+        if r.get("ok"):
+            return f"Done: {r.get('message', 'alias hata diya')}"
+        return f"alias nahi laga: {r.get('message', 'yeh PC support nahi karta')}"
     if name == "list_apps":
         r = await _pc(op, "apps", {}, timeout=25)
         return "Installed apps: " + ", ".join(r.get("apps", [])[:250]) + ". Open windows: " + ", ".join(r.get("windows", [])[:20])
