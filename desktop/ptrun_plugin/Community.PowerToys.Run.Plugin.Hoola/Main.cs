@@ -129,11 +129,11 @@ namespace Community.PowerToys.Run.Plugin.Hoola
                     return null;
                 }
                 v = v.Trim().Trim('"');
-                return File.Exists(v) ? v : null;
+                return System.IO.File.Exists(v) ? v : null;
             }
             catch (Exception e)
             {
-                Log.Warn($"Alias read failed: {e.Message}", GetType());
+                Log.Warn($"Alias read failed: {e.Message}", typeof(Main));
                 return null;
             }
         }
