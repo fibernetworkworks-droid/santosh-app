@@ -1066,6 +1066,12 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 adm.why.update({f: "chat" for f in _sticky})
     if adm is not None and state.get("hard"):
         adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
+    if adm is not None:             # v0.494 a LEARNED SKILL matched this ask: skill_manage must be callable to read it
+        try:
+            from .. import coder as _coder_adm
+            await asyncio.to_thread(_coder_adm.inject.admit_tool, adm, tenant_id, state.get("request", "") or "")
+        except Exception:
+            log.exception("skill tool admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session

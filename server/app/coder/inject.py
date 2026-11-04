@@ -69,6 +69,23 @@ def _matched(tenant: str, query: str, limit: int = 4) -> list[dict]:
     return rows[:2]
 
 
+def admit_tool(adm, tenant: str, query: str) -> bool:
+    """v0.494 REACHABILITY: the matched-skills line tells the model to `skill_manage read` the skill,
+    but skill_manage lives in the non-core `skill` family, so on an ordinary turn the model could not
+    call it (only via a tool_search detour). When a skill matches this ask, admit that ONE tool for the
+    turn - no match, no extra tool, no extra prompt weight. Returns True when it was admitted."""
+    if adm is None or not query or not _skills_enabled():
+        return False
+    try:
+        if not _matched(tenant, query):
+            return False
+    except Exception:
+        return False
+    adm.extra.add("skill_manage")
+    adm.why = {**getattr(adm, "why", {}), "skill_manage": "matched skill"}
+    return True
+
+
 def skills_block(tenant: str, query: str, compact: bool = False, conv: str = "",
                  surface: str = "") -> str:
     """Top matched LEARNED SKILLS for the current ask (zero model calls - pure FTS5). Name +

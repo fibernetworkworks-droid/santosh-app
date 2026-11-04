@@ -107,3 +107,15 @@ safest skills. Exit per wave: store tests green, card numbers printed, nothing i
   common Hinglish verbs (banao, likho) in a when_to_use line widen matches: keep trigger lines to distinctive nouns.
   Still open: P5 live card (does a model really follow them), S3 script running, S4 wider candidate selection,
   seeding on first chat turn, version bump.
+- 4 Nov 2026 P5 DONE (free card + live card built; LIVE CARD NOT RUN: no model key in the build sandbox).
+  `python -m app.quality skills [--live]` (`quality/skills_asks.py` 10 positive + 4 unrelated asks, `quality/skillscard.py`).
+  FREE card: right skill in the injected top 2 10/10, skill_manage callable 10/10, files open 10/10, unrelated asks
+  leave the pack out 4/4. LIVE card (to run on the VPS with a key): opened the skill, opened the file it needed,
+  markers in the reply, honest about limits (webapp-testing, mcp-builder asks invite a false "it passed" claim),
+  does NOT save a skill before the user says yes (skill-maker), rupees per answer. Markers prove the guidance
+  reached the reply, not that the writing is good.
+  FOUND BY THE CARD (a real bug since v0.477): `skill_manage` is in the non-core `skill` family, so on an ordinary
+  turn it was NOT in the model's tool list while the prompt said "skill_manage read the skill before you follow it":
+  a matched skill could not be opened without a tool_search detour. Fixed: `coder.inject.admit_tool` admits that one
+  tool when a skill matches the ask (no match / switch off = no extra tool); the agent loop calls it after admission.
+  NOT FIXED: voice calls (skill_manage is not a declared call tool; a call hands work to santosh_kaam).
