@@ -13,8 +13,12 @@ def test_voice_tool_list_fits_the_budget():
     assert len(specs) <= 170, len(specs)
     assert len(names) == len(set(names))
     assert "santosh_kaam" in names and "create_reminder" in names and "music_control" in names
-    for n in ("darzi", "darzi_dekho", "society", "gst_dekho", "app_banao", "hoola_deal"):
+    for n in ("darzi", "society", "app_banao", "hoola_deal", "form_create", "slides_create"):
         assert n not in names and voice.via_kaam(n)
+    # v0.491 EQUAL POWER: the suite READ heads and the desk readers are declared now - they must stay
+    for n in ("darzi_dekho", "gst_dekho", "photos_pick", "form_find", "notebook_ask", "create_campaign",
+              "home_on", "skill_manage"):
+        assert n in names and not voice.via_kaam(n)
     for t in specs:
         assert len(t["description"]) <= 700
         assert t["name"] == "santosh_kaam" or t["name"] == "side_talk" or t["name"] in voice.VOICE_TOOL_NAMES

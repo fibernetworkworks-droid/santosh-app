@@ -172,14 +172,14 @@ NEGATIVE = [        # unrelated asks: none of the three pack skills may ride the
 
 
 def _full_tenant():
-    skill_packs.seed(T)
-    skill_packs.seed_byox(T)
-    skill_packs.seed_claude(T)
+    for fn in (skill_packs.seed, skill_packs.seed_byox, skill_packs.seed_progpack, skill_packs.seed_sp,
+               skill_packs.seed_claude):          # every pack a real user gets
+        fn(T)
 
 
 def test_retrieval_card_right_skill_in_top2(desk):
     _full_tenant()
-    assert len(skills_store.listing(T)) == 10 + 31 + len(ALL)
+    assert len(skills_store.listing(T)) == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(ALL)
     miss = [(a, w, [r["name"] for r in inject._matched(T, a)]) for a, w in ASKS
             if w not in [r["name"] for r in inject._matched(T, a)]]
     assert not miss, f"right skill missing from top 2: {miss}"

@@ -557,6 +557,15 @@ def skill_unmirror(name: str, tenant: str) -> None:
         c.execute("DELETE FROM skills WHERE name=? AND tenant=?", (name, tenant))
 
 
+# Everyday English / Hinglish words that appear in almost any skill body: as OR-terms they pulled an unrelated
+# skill (and its tool schema) into ordinary asks ("... mein ..." matched a skill that merely contains "mein").
+_SKILL_STOP = frozenset((
+    "the and for with this that from your you are was were have has had not but can will just into onto "
+    "about please what when where which who how why mein hai hain hoon tha thi the aur par per ko ki ka ke "
+    "se liye wala wali kya kaise kab kahan kyun nahi mera meri mere aap aapka aapki main hum tum yeh woh "
+    "iska iski uska uski abhi kuch koi sab bhi toh bas ek kar karo karna kiya hota hoti").split())
+
+
 def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: bool = False) -> list[dict]:
     """Top skills for the current ask - the injection shortlist. FTS5 match first; LIKE fallback
     (the obs search discipline); scoped to the caller's tenant always. A parked skill
@@ -568,7 +577,8 @@ def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: boo
     live = "" if include_disabled else " AND s.enabled=1"
     with db() as c:
         if _fts_ok:
-            terms = " OR ".join(f'"{t.replace(chr(34), "")}"' for t in q.split() if len(t) >= 3)[:400]
+            terms = " OR ".join(f'"{t.replace(chr(34), "")}"' for t in q.split()
+                                if len(t) >= 3 and t.lower().strip(".,?!;:'\"()") not in _SKILL_STOP)[:400]
             if terms:
                 try:
                     rows = c.execute(

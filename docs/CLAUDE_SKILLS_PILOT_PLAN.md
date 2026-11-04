@@ -127,3 +127,11 @@ safest skills. Exit per wave: store tests green, card numbers printed, nothing i
   Regression run: 280 tests pass; 2 failures are PRE-EXISTING on the committed code and unrelated
   (test_v0473 coder_routes_mounted: FastAPI `_IncludedRouter` has no `.path` in this sandbox; test_v108 voice memory:
   `_tone_tag` missing on a fake).
+- 4 Nov 2026 MERGED WITH main (v0.499.0): main had moved 8 commits (PROG pack, Superpowers pack, UIUX, code graph...).
+  Conflicts kept BOTH works: `seed_all` now runs five packs (starters, BYOX, PROG, superpowers, Claude) exactly-once
+  each; desk = 11 + 31 + 2 + 15 + 8 = 67 skills; config keeps `claude_skills_enabled` + `progpack_enabled` + `sp_enabled`.
+  Found while merging: skill search matched on ANY word, so a plain weather ask ("... mein ...") pulled the PROG skill
+  in (and with it the skill_manage tool schema). `store.skills_search` now drops everyday English/Hinglish filler words.
+  The three other-chain desk-route pins that grepped service.py for a literal seed call now check seed_all.
+  Regression: 332 related tests; 12 failures are PRE-EXISTING (identical on a clean origin/main checkout):
+  5 stale version pins, 5 UIUX vendored-engine tests, coder routes_mounted (FastAPI sandbox), voice memory `_tone_tag`.

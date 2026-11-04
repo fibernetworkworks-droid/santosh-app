@@ -9,7 +9,7 @@ What this suite pins, piece by piece:
     frontmatter `enabled: false` flag lives in the file; a parked skill vanishes from search and
     injection but stays listed; a content update never flips the owner's flag; the legacy vault
     lift (a real v2-schema DB gets the column ALTERed in place).
-(3) SEED: the 10 class-level starters under coder/skillpack/ copy once ever per tenant
+(3) SEED: the 42 class-level starters under coder/skillpack/ copy once ever per tenant
     (create-if-missing - hers win), the consumed stamp makes it exactly-once, coder_skills_seed
     gates it, every shipped file passes the store's own lint.
 (4) IMPORT/EXPORT: raw SKILL.md markdown (the Claude Code / ClawHub shape) and JSON rows both
@@ -200,11 +200,11 @@ def test_legacy_vault_lift_adds_enabled(env, monkeypatch, tmp_path):
 
 def test_seed_lands_once(desk):
     r = skill_packs.seed(T)
-    assert r["seeded"] == 10
+    assert r["seeded"] == 11   # the starters lane (v0.492 model; byox rides seed_byox: 31 more, superpowers rides seed_sp: 15 more (v0.495), each under its own stamp, the route total stays 57)
     names = {s["name"] for s in skills_store.listing(T)}
     assert {"deploy-flask-app", "whatsapp-campaign", "gst-invoice", "meeting-minutes",
             "morning-briefing", "excel-data-clean", "upi-payment-chase", "seo-page-audit",
-            "hindi-reply-tone", "pdf-fill-form"} <= names
+            "hindi-reply-tone", "pdf-fill-form", "uiux-pro-max"} <= names
     assert skill_packs.seed(T)["seeded"] == 0              # the stamp: never twice
     assert store.is_consumed(skill_packs.SEED_STAMP.format(T))
 
@@ -212,7 +212,7 @@ def test_seed_lands_once(desk):
 def test_seed_respects_hers(desk):
     skills_store.create(T, "deploy-flask-app", "Her own deploy runbook", "her words win")
     r = skill_packs.seed(T)
-    assert r["seeded"] == 9                                # the other nine land
+    assert r["seeded"] == 10                               # the other ten land (starters lane only)
     assert skills_store.read(T, "deploy-flask-app")["body"] == "her words win"
     assert skill_packs.seed(T)["seeded"] == 0              # the stamp: never twice
 
@@ -229,7 +229,7 @@ def test_seed_switch_off(desk, monkeypatch):
 def test_seed_files_pass_the_lint():
     """The shipped starters must clear the store's own hard lint (class-level, budgeted)."""
     files = skill_packs.seed_files()
-    assert len(files) == 10
+    assert len(files) == 11   # seed_files = the non-byox starters (v0.492 model)
     for f in files:
         name, desc, body = skills_store.parse_skill(f.read_text(encoding="utf-8"))
         assert name == f.stem and desc and len(desc) <= 60 and 0 < len(body) <= 4000
@@ -477,7 +477,7 @@ def test_routes_mounted():
 def test_desk_route_live_seeds_and_counts(desk):
     c = _client()
     got = c.get("/api/coder/skills").json()
-    assert len(got["skills"]) == 10 + 31 + len(skill_packs.claude_dirs())   # starters + BYOX + the Claude pack (v0.494)
+    assert len(got["skills"]) == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.claude_dirs())
     assert got["skills"][0]["shown"] == 0 and got["skills"][0]["read"] == 0
     inject.skills_block(T, "deploy")                        # one shown
     skills_store.read(T, "deploy-flask-app")
@@ -487,7 +487,7 @@ def test_desk_route_live_seeds_and_counts(desk):
     # a second tenant: her pre-existing skill survives the seed untouched (hers win)
     skills_store.create(T2, "deploy-flask-app", "Her own deploy runbook", "her words")
     got2 = _client(T2).get("/api/coder/skills").json()
-    assert len(got2["skills"]) == 10 + 31 + len(skill_packs.claude_dirs())
+    assert len(got2["skills"]) == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.claude_dirs())
     row2 = next(s for s in got2["skills"] if s["name"] == "deploy-flask-app")
     assert row2["description"] == "Her own deploy runbook"
 
@@ -553,7 +553,7 @@ def test_package_exports_skill_packs(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.493.0"' in main   # the story pin rides the newest story (the v0.476 precedent)
+    assert 'APP_VERSION = "0.499.0"' in main   # the story pin rides the newest story (the v0.476 precedent)
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.493.0+537" in pub
+    assert "version: 0.499.0+543" in pub
     assert store._SCHEMA_VERSION == 3

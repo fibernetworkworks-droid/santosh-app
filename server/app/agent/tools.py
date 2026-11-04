@@ -339,6 +339,18 @@ TOOLS.extend(CRAWL_TOOLS)
 TOOL_LABELS.update(CRAWL_LABELS)
 HANDLERS.update(CRAWL_HANDLERS)
 
+from .officehours_tools import OFFICEHOURS_HANDLERS, OFFICEHOURS_LABELS, OFFICEHOURS_TOOLS  # noqa: E402  v0.495 office hours (the gstack THINK/PLAN lane)
+
+TOOLS.extend(OFFICEHOURS_TOOLS)
+TOOL_LABELS.update(OFFICEHOURS_LABELS)
+HANDLERS.update(OFFICEHOURS_HANDLERS)
+
+from .graph_tools import GRAPH_HANDLERS, GRAPH_LABELS, GRAPH_TOOLS  # noqa: E402  v0.496 Graphify code graph
+
+TOOLS.extend(GRAPH_TOOLS)
+TOOL_LABELS.update(GRAPH_LABELS)
+HANDLERS.update(GRAPH_HANDLERS)
+
 from .army_tools import ARMY_HANDLERS, ARMY_LABELS, ARMY_TOOLS  # noqa: E402
 
 TOOLS.extend(ARMY_TOOLS)
@@ -1042,6 +1054,17 @@ _seen = {t["name"] for t in TOOLS}
 TOOLS.extend(t for t in SKILL_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(SKILL_LABELS)
 HANDLERS.update(SKILL_HANDLERS)
+del _seen
+
+# v0.486 HOOLA UIUX PRO MAX: ONE uiux_design tool (the coder/uiux_tool surface over the
+# vendored MIT engine coder/uiux/) - the design database (79 styles, 192 palettes, 74 font
+# pairings, 119 UX guidelines, 22 stacks) behind one local search; the seed skill
+# uiux-pro-max.md teaches when, the tool is how. Zero network, zero brain calls.
+from ..coder.uiux_tool import UIUX_HANDLERS, UIUX_LABELS, UIUX_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in UIUX_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(UIUX_LABELS)
+HANDLERS.update(UIUX_HANDLERS)
 del _seen
 
 # v0.478 HOOLA SWARM: ONE delegate_task tool (the coder/delegate surface) - parallel bounded

@@ -398,7 +398,16 @@ class Settings(BaseSettings):
     scrape_crawl_max_running: int = 1      # v0.486 crawl jobs running at once, globally (HTTP-only, politeness first)
     scrape_crawl_stale_s: int = 180        # v0.486 a running crawl without a heartbeat this long is resumed from its checkpoint
     scrape_crawl_tries: int = 3            # v0.486 a crawl job is started at most this many times before it is failed
+    graphify_enabled: bool = True          # v0.496 Graphify code graph (graph_build / graph_ask); inert until the graphifyy package is installed
+    graphify_bin: str = ""                 # v0.496 path to the graphify CLI ("" = next to the server Python, then PATH)
+    graphify_build_timeout_s: int = 600    # v0.496 one repo map may run this long, then its process group is killed
+    graphify_query_timeout_s: int = 60     # v0.496 one graph question
+    graphify_max_repo_mb: int = 80         # v0.496 refuse a repo tarball bigger than this (unpacked cap = 4x)
+    graphify_max_files: int = 8000         # v0.496 files unpacked per repo
+    graphify_keep_repos: int = 5           # v0.496 mapped repos kept per tenant, oldest dropped
     scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
+    officehours_enabled: bool = True       # v0.495 office hours (the gstack THINK/PLAN lane: design docs + plan reviews)
+    officehours_keep_docs: int = 30        # v0.495 baithak docs kept per tenant; older ones (and their reviews) are forgotten
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_backchannel: bool = True         # v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)
@@ -479,10 +488,13 @@ class Settings(BaseSettings):
     coder_nudge_max_writes: int = 4        # max observations + skill ops ONE reflection may write
 
     # --- Hoola Skill Desk (v0.481): the skills platform - seeds, import/export, the share shelf ---
-    coder_skills_seed: bool = True         # the 10-skill starter library copied into a fresh tenant once (create-if-missing)
+    coder_skills_seed: bool = True         # the 57-skill seed library copied into a fresh tenant once (create-if-missing)
     coder_skills_share: bool = True        # the anonymised share lane: nominations need the curator armed, publishing needs her tap
     coder_skills_share_min_reads: int = 3  # real reads (the telemetry) before a skill may be nominated
     coder_skills_share_max_pending: int = 10  # nominations waiting for the owner at once
+
+    # --- Hoola UIUX Pro Max (v0.486): the vendored design database behind ONE local tool ---
+    coder_uiux: bool = True                # uiux_design over coder/uiux/ (MIT engine, pure stdlib, zero network, zero brain calls)
 
     # --- Hoola Swarm (v0.475): self-spawning subagents for parallel work ---
     coder_delegate: bool = False           # the delegate_task tool (bake on the VPS, then flip to true)
@@ -497,6 +509,10 @@ class Settings(BaseSettings):
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---
     claude_skills_enabled: bool = True      # skillpack/claude/* seeds on first open (create-if-missing, hers win)
+    # --- v0.495.0 PROG PACK: the vetted-library registry + the windows script lane ---
+    progpack_enabled: bool = True           # PROG pack seeds on first open (default ON)
+    # --- v0.495.0 HOOLA SUPERPOWERS: the obra/superpowers process pack (15 sp-* seeds, MIT), default on ---
+    sp_enabled: bool = True                 # superpowers lane seeds on first open under its own stamp (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
     coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)

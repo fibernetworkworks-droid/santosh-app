@@ -3,7 +3,7 @@ import/export, and the anonymised share shelf. Bigger than a static skills folde
 TRAVEL - in from files and packs, out to the shelf - and every hop is linted, redacted and
 telemetry-marked.
 
-  SEED      a first tenant opens the desk with a starter library (10 class-level skills under
+  SEED      a first tenant opens the desk with a starter library (42 class-level skills under
             skillpack/, copied create-if-missing, exactly-once via the consumed stamp,
             coder_skills_seed gate). Files are the source of truth - seeds are ordinary
             SKILL.md files the owner can edit or delete like any other.
@@ -42,6 +42,8 @@ IMPORT_MAX = 25
 SEED_STAMP = "skills:seeded:{}"
 SHARE_STAMP = "skills:shared:{}"
 BYOX_STAMP = "skills:byox:{}"           # its OWN once-ever stamp: tenants already seeded still get the BYOX pack
+PROG_STAMP = "skills:progpack:{}"       # its OWN once-ever stamp (the v0.492 pattern): the v0.495 PROG pack
+SP_STAMP = "skills:sp:{}"               # its OWN once-ever stamp (v0.495): the superpowers lane, same once-ever law
 
 
 # ---------------------------------------------------------------- helpers
@@ -102,7 +104,8 @@ def _max_pending() -> int:
 def seed_files() -> list[Path]:
     """The shipped starter library (SKILL.md files beside this module)."""
     try:
-        return sorted(f for f in SEED_DIR.glob("*.md") if not f.name.startswith("byox-"))
+        return sorted(f for f in SEED_DIR.glob("*.md")
+                      if not f.name.startswith(("byox-", "prog-", "sp-")))
     except Exception:
         return []
 
@@ -113,6 +116,60 @@ def byox_files() -> list[Path]:
         return sorted(SEED_DIR.glob("byox-*.md"))
     except Exception:
         return []
+
+
+def prog_files() -> list[Path]:
+    """The PROG pack (v0.495): the vetted-library registry + the windows script lane."""
+    try:
+        return sorted(SEED_DIR.glob("prog-*.md"))
+    except Exception:
+        return []
+
+
+def sp_files() -> list[Path]:
+    """The obra/superpowers pack (15 distilled seeds; verbatim archive under upstream/)."""
+    try:
+        return sorted(SEED_DIR.glob("sp-*.md"))
+    except Exception:
+        return []
+
+
+def seed_sp(tenant: str) -> dict:
+    """Copy the superpowers pack into a tenant once ever, create-if-missing. Own stamp,
+    same shape as seed_byox (v0.495): a new library reaches already-seeded tenants too."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "sp_enabled", True):
+            return {"sp_seeded": 0}
+    except Exception:
+        return {"sp_seeded": 0}
+    if not _seed_armed():
+        return {"sp_seeded": 0}
+    stamp = SP_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"sp_seeded": 0}
+    except Exception:
+        return {"sp_seeded": 0}
+    wrote = 0
+    for f in sp_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("sp seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("sp seed: %d skills into %s", wrote, tenant)
+    return {"sp_seeded": wrote}
 
 
 def seed_byox(tenant: str) -> dict:
@@ -208,6 +265,44 @@ def seed_claude(tenant: str) -> dict:
     return {"claude_seeded": wrote}
 
 
+def seed_progpack(tenant: str) -> dict:
+    """Copy the PROG pack into a tenant once ever, create-if-missing (the seed_byox twin).
+    Its own stamp: tenants that already consumed seed AND byox still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "progpack_enabled", True):
+            return {"prog_seeded": 0}
+    except Exception:
+        return {"prog_seeded": 0}
+    if not _seed_armed():
+        return {"prog_seeded": 0}
+    stamp = PROG_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"prog_seeded": 0}
+    except Exception:
+        return {"prog_seeded": 0}
+    wrote = 0
+    for f in prog_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("prog seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("prog seed: %d skills into %s", wrote, tenant)
+    return {"prog_seeded": wrote}
+
+
 _SEEDED: set[tuple[str, str]] = set()      # (coder root, tenant) already checked in this process
 
 
@@ -226,7 +321,7 @@ def seed_all(tenant: str) -> dict:
     if key in _SEEDED or not _seed_armed():
         return {}
     out: dict = {}
-    for fn in (seed, seed_byox, seed_claude):
+    for fn in (seed, seed_byox, seed_progpack, seed_sp, seed_claude):
         try:
             out.update(fn(t))
         except Exception:

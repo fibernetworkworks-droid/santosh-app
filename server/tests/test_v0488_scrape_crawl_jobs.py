@@ -110,7 +110,7 @@ def test_registry_3_crawl_tools():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 529, "526 (v0.487, dev BYOX included) + 3 crawl tools"
+    assert len(TOOLS) == 535, "526 (v0.487, dev BYOX included) + 3 crawl tools + 1 uiux_design + 2 officehours + 3 code-graph tools (v0.497, healed on the rebase)"
 
 
 # ---------------------------------------------------------------- crawl_start / the queue
@@ -477,7 +477,7 @@ def test_crawl_results_masks_ids(monkeypatch):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.493.0"
+    assert APP_VERSION == "0.499.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.493.0+537" in pub.read_text()
+    assert "0.499.0+543" in pub.read_text()
