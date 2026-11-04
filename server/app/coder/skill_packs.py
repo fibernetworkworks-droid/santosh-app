@@ -206,12 +206,129 @@ def _rows_from(items) -> list[tuple[str, str, str]]:
     return rows
 
 
-def import_skills(tenant: str, items, surface: str = "import") -> dict:
-    """Linted create-if-missing batch. Never overwrites: a name that exists reports 'exists'."""
+def _import_full(tenant: str, items, surface: str) -> dict:
+    """The Claude-format lane (v0.494): raw SKILL.md strings under Claude's own limits, stamped
+    `imported: true`, the extra frontmatter kept. Create-if-missing, same report shape."""
+    created, skipped, errors = [], [], []
+    for it in items:
+        name = ""
+        try:
+            if isinstance(it, str):
+                front, body = skills_store.parse_front(it)
+                name, desc = str(front.get("name") or ""), str(front.get("description") or "")
+            elif isinstance(it, dict):
+                front, body = it, str(it.get("body") or "")
+                name, desc = str(it.get("name") or ""), str(it.get("description") or "")
+            else:
+                raise SkillError("each item is an object or a markdown string")
+            if not name:
+                raise SkillError("markdown item without frontmatter name")
+            res = skills_store.install(tenant, name, desc, body, extra=front)
+            created.append(res["name"])
+            store.skill_use_mark(tenant, res["name"], "installed", surface=surface)
+        except SkillError as e:
+            msg = str(e)
+            if "already exists" in msg:
+                skipped.append({"name": name[:80], "reason": msg})
+            else:
+                errors.append({"name": name[:80], "error": msg})
+        except Exception as e:                                   # noqa: BLE001
+            errors.append({"name": name[:80], "error": f"{type(e).__name__}: {e}"})
+    return {"ok": True, "created": created, "skipped": skipped, "errors": errors}
+
+
+ZIP_FILES_MAX = 200
+ZIP_TOTAL_MAX = 8_000_000
+ZIP_FILE_MAX = 1_000_000
+ZIP_BYTES_MAX = 10_000_000
+
+
+def import_zip(tenant: str, data: bytes, surface: str = "zip") -> dict:
+    """One skill from a .zip (the claude.ai / Claude Code shape: SKILL.md at the root or inside ONE
+    top folder, plus its reference/ examples/ scripts/ files). Safe extraction: no '..', no
+    absolute paths, no symlinks, no executables, capped count/size (the declared size is not
+    trusted - every file is read with a hard limit). Stored, never executed. Never overwrites."""
+    import io
+    import zipfile
+    if not data or len(data) > ZIP_BYTES_MAX:
+        return {"error": f"zip must be 1 byte to {ZIP_BYTES_MAX // 1_000_000} MB."}
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(data))
+        infos = [i for i in zf.infolist() if not i.is_dir()]
+    except zipfile.BadZipFile:
+        return {"error": "not a zip file."}
+    entries: dict[str, zipfile.ZipInfo] = {}
+    for i in infos:
+        n = i.filename.replace("\\", "/")
+        if n.startswith("__MACOSX/") or n.rsplit("/", 1)[-1] in (".DS_Store", "Thumbs.db"):
+            continue
+        if (i.external_attr >> 16) & 0o170000 == 0o120000:
+            return {"error": f"zip holds a symbolic link ({n[:80]!r}) - refused."}
+        try:
+            skills_store.safe_rel(n)
+        except SkillError as e:
+            return {"error": f"zip path refused: {e}"}
+        entries[n] = i
+    if len(entries) > ZIP_FILES_MAX or sum(i.file_size for i in entries.values()) > ZIP_TOTAL_MAX:
+        return {"error": f"zip is too big (max {ZIP_FILES_MAX} files / {ZIP_TOTAL_MAX // 1_000_000} MB)."}
+    roots = [n for n in entries if n.rsplit("/", 1)[-1] == "SKILL.md" and n.count("/") <= 1]
+    if len(roots) != 1:
+        return {"error": "zip must hold exactly one skill: a SKILL.md at the root or inside one top folder."}
+    prefix = roots[0][:-len("SKILL.md")]
+
+    def _read(info) -> bytes:
+        with zf.open(info) as f:
+            b = f.read(ZIP_FILE_MAX + 1)
+        if len(b) > ZIP_FILE_MAX:
+            raise SkillError(f"{info.filename[:80]!r} is over {ZIP_FILE_MAX // 1000} KB")
+        return b
+
+    try:
+        raw = _read(entries[roots[0]]).decode("utf-8")
+        front, body = skills_store.parse_front(raw)
+        name = str(front.get("name") or prefix.strip("/"))
+        files = {n[len(prefix):]: _read(i) for n, i in entries.items()
+                 if n.startswith(prefix) and n != roots[0]}
+        res = skills_store.install(tenant, name, str(front.get("description") or ""), body,
+                                   extra=front, files=files)
+    except UnicodeDecodeError:
+        return {"error": "SKILL.md is not UTF-8 text."}
+    except SkillError as e:
+        return {"error": str(e)}
+    store.skill_use_mark(tenant, res["name"], "installed", surface=surface)
+    return {"ok": True, "created": [res["name"]], "files": res["files"]}
+
+
+def export_zip(tenant: str, name: str) -> bytes | None:
+    """One skill as a .zip (SKILL.md at the root + its bundled files) - the same shape import_zip
+    takes, so a round-trip loses nothing. None when the skill does not exist."""
+    import io
+    import zipfile
+    try:
+        p = skills_store.raw_path(tenant, name)
+        if not os.path.isfile(p):
+            return None
+        buf = io.BytesIO()
+        with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+            z.write(p, "SKILL.md")
+            if skills_store.is_folder(tenant, name):
+                base = os.path.dirname(p)
+                for rel in skills_store.files_of(tenant, name):
+                    z.write(os.path.join(base, rel), rel)
+        return buf.getvalue()
+    except (SkillError, OSError):
+        return None
+
+
+def import_skills(tenant: str, items, surface: str = "import", full: bool = False) -> dict:
+    """Linted create-if-missing batch. Never overwrites: a name that exists reports 'exists'.
+    full=True is the Claude-format lane (Claude's limits, `imported: true`, extra frontmatter kept)."""
     if not isinstance(items, list) or not items:
         return {"error": "items must be a non-empty array (markdown strings or {name, description, body})."}
     if len(items) > IMPORT_MAX:
         return {"error": f"import is capped at {IMPORT_MAX} skills per call."}
+    if full:
+        return _import_full(tenant, items, surface)
     try:
         rows = _rows_from(items)
     except SkillError as e:
@@ -243,8 +360,7 @@ def export_skills(tenant: str, names=None) -> dict:
         if want is not None and row["name"] not in want:
             continue
         try:
-            with open(os.path.join(skills_store.skills_dir(tenant), row["name"] + ".md"),
-                      encoding="utf-8") as f:
+            with open(skills_store.raw_path(tenant, row["name"]), encoding="utf-8") as f:
                 _, desc, body = parse_skill(f.read())
             out.append({"name": row["name"], "description": desc, "body": body,
                         "enabled": bool(row.get("enabled", True))})
@@ -264,12 +380,16 @@ def share_nominate(tenant: str, name: str, note: str = "") -> dict:
     name = name.strip()
     try:
         name = skills_store.validate_name(name)
-        p = os.path.join(skills_store.skills_dir(tenant), name + ".md")
+        p = skills_store.raw_path(tenant, name)
         with open(p, encoding="utf-8") as f:
             raw = f.read()
         _, desc, body = parse_skill(raw)
     except (SkillError, OSError):
         return {"error": f"skill {name!r} does not exist"}
+    if skills_store._truthy(skills_store.parse_front(raw)[0].get("imported")):
+        return {"error": "an imported skill is never nominated (its licence travels with its source)"}
+    if skills_store.is_folder(tenant, name) and skills_store.files_of(tenant, name):
+        return {"error": "a skill with bundled files cannot go on the shelf yet"}
     reads = store.skill_reads(tenant, name)
     if reads < _min_reads():
         return {"error": f"only {reads} read(s) - a skill needs {_min_reads()} real reads before "
@@ -328,7 +448,7 @@ def share_decide(tenant: str, name: str, approve: bool, note: str = "") -> dict:
         return {"ok": True, "name": name, "status": "rejected"}
     # publish: read, redact, lint, write to the shelf (the source tenant is never recorded)
     try:
-        p = os.path.join(skills_store.skills_dir(tenant), name + ".md")
+        p = skills_store.raw_path(tenant, name)
         with open(p, encoding="utf-8") as f:
             raw = f.read()
         _, desc, body = parse_skill(raw)

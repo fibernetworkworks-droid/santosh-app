@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 import threading
 import time
 
@@ -46,13 +47,27 @@ DESC_MAX = 60
 BODY_MAX = 4_000
 BATCH_MAX_OPS = 10
 
+# v0.494 CLAUDE SKILLS P1: a skill that came IN through the import lane (Anthropic's SKILL.md
+# format) carries `imported: true` in its frontmatter and lives under Claude's own limits
+# (description 1,024 chars, a long body); skills Hoola/the model writes keep the strict ones.
+IMPORT_DESC_MAX = 1_024
+IMPORT_BODY_MAX = 30_000
+FILE_READ_MAX = 60_000                       # one read_file answer (chars)
+FILES_LIST_MAX = 60
+BLOCKED_EXTS = {".exe", ".dll", ".msi", ".apk", ".dmg", ".jar", ".so", ".dylib", ".bat", ".cmd", ".scr"}
+# Extra frontmatter kept verbatim on every rewrite so a round-trip loses nothing. Honoured today:
+# when_to_use (added to the search text) and disable-model-invocation (indexed out of the
+# model's shortlist); the rest are stored for export and later phases.
+KEEP_FIELDS = ("imported", "when_to_use", "license", "disable-model-invocation", "user-invocable",
+               "allowed-tools", "paths", "context", "model", "argument-hint", "compatibility")
+
 _NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 _FRONT_RE = re.compile(r"\A---\s*\n(.*?)\n---\s*\n?", re.DOTALL)
 
 _LOCK = threading.RLock()
 _READ_OK: set[tuple[str, str]] = set()       # (tenant, name) that did a read() in this process
 
-_OPS = ("read", "list", "create", "update", "delete")
+_OPS = ("read", "list", "create", "update", "delete", "read_file")
 
 
 class SkillError(Exception):
@@ -69,18 +84,24 @@ def validate_name(name: str) -> str:
     return n
 
 
-def validate(desc: str, body: str) -> tuple[str, str]:
+def validate(desc: str, body: str, imported: bool = False) -> tuple[str, str]:
+    dmax = IMPORT_DESC_MAX if imported else DESC_MAX
+    bmax = IMPORT_BODY_MAX if imported else BODY_MAX
     d = str(desc or "").strip()
     if not d:
         raise SkillError("description is required (one sentence, <= 60 chars)")
-    if len(d) > DESC_MAX:
-        raise SkillError(f"description must be <= {DESC_MAX} chars (got {len(d)})")
+    if len(d) > dmax:
+        raise SkillError(f"description must be <= {dmax} chars (got {len(d)})")
     b = str(body or "").strip()
     if not b:
         raise SkillError("body is required (the instructions)")
-    if len(b) > BODY_MAX:
-        raise SkillError(f"body must be <= {BODY_MAX} chars (got {len(b)})")
+    if len(b) > bmax:
+        raise SkillError(f"body must be <= {bmax} chars (got {len(b)})")
     return d, b
+
+
+def _truthy(v) -> bool:
+    return str(v or "").strip().lower() in ("true", "1", "yes", "on")
 
 
 # ---------------------------------------------------------------- files
@@ -93,14 +114,100 @@ def skills_dir(tenant: str) -> str:
     return d
 
 
-def _path(tenant: str, name: str) -> str:
+def _flat(tenant: str, name: str) -> str:
     return os.path.join(skills_dir(tenant), validate_name(name) + ".md")
 
 
-def render(name: str, desc: str, body: str, enabled: bool = True) -> str:
-    head = f"---\nname: {name}\ndescription: {desc}"
+def _folder(tenant: str, name: str) -> str:
+    return os.path.join(skills_dir(tenant), validate_name(name))
+
+
+def _path(tenant: str, name: str) -> str:
+    """The skill's SKILL.md: a folder skill (<name>/SKILL.md, may carry resources) wins over the
+    legacy single file (<name>.md). New model-written skills are always the single file."""
+    f = os.path.join(_folder(tenant, name), "SKILL.md")
+    return f if os.path.isfile(f) else _flat(tenant, name)
+
+
+def raw_path(tenant: str, name: str) -> str:
+    """Public: where this skill's SKILL.md lives (for export / share code that reads the file)."""
+    return _path(tenant, name)
+
+
+def is_folder(tenant: str, name: str) -> bool:
+    return os.path.isfile(os.path.join(_folder(tenant, name), "SKILL.md"))
+
+
+def files_of(tenant: str, name: str) -> list[str]:
+    """Bundled resource files of a folder skill (relative paths, SKILL.md and backups left out)."""
+    base = _folder(tenant, name)
+    out: list[str] = []
+    for dp, dns, fns in os.walk(base):
+        dns[:] = sorted(d for d in dns if not d.startswith("."))
+        for fn in sorted(fns):
+            if fn.startswith(".") or fn.endswith((".bak", ".tmp")):
+                continue
+            rel = os.path.relpath(os.path.join(dp, fn), base).replace(os.sep, "/")
+            if rel != "SKILL.md":
+                out.append(rel)
+    return out
+
+
+def safe_rel(rel: str) -> str:
+    """A resource path that stays INSIDE a skill folder: relative, no '..', no dot-parts, no
+    drive letters, no backslashes. Raises SkillError otherwise."""
+    r = str(rel or "").replace("\\", "/").strip()
+    parts = r.split("/")
+    if (not r or r.startswith("/") or len(r) > 200 or ":" in r
+            or any(p in ("", ".", "..") or p.startswith(".") for p in parts)):
+        raise SkillError(f"bad file path {r[:80]!r}")
+    return "/".join(parts)
+
+
+def parse_front(text: str) -> tuple[dict, str]:
+    """Full frontmatter -> ({key: value}, body). Understands quoted values and YAML block scalars
+    (`description: >` / `|`) as real Claude skills write them; one-line values otherwise."""
+    m = _FRONT_RE.match(text or "")
+    if not m:
+        return {}, (text or "").strip()
+    lines = m.group(1).splitlines()
+    out: dict = {}
+    i = 0
+    while i < len(lines):
+        ln = lines[i]
+        i += 1
+        if not ln.strip() or ln[0] in " \t" or ":" not in ln:
+            continue
+        k, v = ln.split(":", 1)
+        k, v = k.strip(), v.strip()
+        if v in (">", "|", ">-", "|-", ">+", "|+"):
+            block: list[str] = []
+            while i < len(lines) and (not lines[i].strip() or lines[i][0] in " \t"):
+                block.append(lines[i].strip())
+                i += 1
+            v = (" " if v[0] == ">" else "\n").join(x for x in block if x)
+        elif len(v) >= 2 and v[0] == v[-1] and v[0] in "\"'":
+            v = v[1:-1]
+        out[k] = v
+    return out, text[m.end():].strip()
+
+
+def _extra_of(front: dict) -> dict:
+    """The preserved extra frontmatter (single-line, capped) from a parsed frontmatter dict."""
+    out = {}
+    for k in KEEP_FIELDS:
+        if k in front and str(front[k]).strip():
+            out[k] = " ".join(str(front[k]).split())[:1536]
+    return out
+
+
+def render(name: str, desc: str, body: str, enabled: bool = True, extra: dict | None = None) -> str:
+    head = f"---\nname: {name}\ndescription: {' '.join(str(desc).split())}"
     if not enabled:
         head += "\nenabled: false"          # v0.484 the parked skill keeps its flag on disk
+    for k in KEEP_FIELDS:
+        if extra and extra.get(k):
+            head += f"\n{k}: {' '.join(str(extra[k]).split())}"
     return head + f"\n---\n{body}\n"
 
 
@@ -172,9 +279,16 @@ def _restore(snap: dict[str, str | None]) -> None:
 
 # ---------------------------------------------------------------- vault mirror + search hooks
 
-def _mirror(tenant: str, name: str, desc: str, body: str, enabled: bool = True) -> None:
+def _mirror(tenant: str, name: str, desc: str, body: str, enabled: bool = True,
+            extra: dict | None = None) -> None:
     from . import store
-    store.skill_mirror(name, tenant, desc, body, enabled=int(bool(enabled)))
+    extra = extra or {}
+    if _truthy(extra.get("disable-model-invocation")):
+        enabled = False                  # manual-only: never in the model's shortlist (file flag untouched)
+    search_desc = desc
+    if extra.get("when_to_use"):
+        search_desc = f"{desc} {extra['when_to_use']}"   # trigger phrases make the skill findable
+    store.skill_mirror(name, tenant, search_desc, body, enabled=int(bool(enabled)))
 
 
 def _unmirror(tenant: str, name: str) -> None:
@@ -208,10 +322,12 @@ def update(tenant: str, name: str, desc: str | None = None, body: str | None = N
         raw = open(p, encoding="utf-8").read()
         old_name, old_desc, old_body = parse_skill(raw)
         enabled = _front_enabled(raw)            # a content update never flips the owner's flag
+        extra = _extra_of(parse_front(raw)[0])   # nor drops the imported flag / extra fields
         new_desc, new_body = validate(desc if desc is not None else old_desc,
-                                      body if body is not None else old_body)
-        _write_atomic(p, render(name, new_desc, new_body, enabled=enabled))
-        _mirror(tenant, name, new_desc, new_body, enabled=enabled)
+                                      body if body is not None else old_body,
+                                      imported=_truthy(extra.get("imported")))
+        _write_atomic(p, render(name, new_desc, new_body, enabled=enabled, extra=extra))
+        _mirror(tenant, name, new_desc, new_body, enabled=enabled, extra=extra)
         return {"op": "update", "name": name, "chars": len(new_body)}
 
 
@@ -225,8 +341,77 @@ def read(tenant: str, name: str) -> dict:
     _, desc, body = parse_skill(raw)
     from . import store as _store            # lazy (the module's import direction)
     _store.skill_use_mark(tenant, name, "read")   # v0.484 telemetry: the follow signal
-    return {"name": name, "description": desc, "body": body,
-            "enabled": _front_enabled(raw)}
+    out = {"name": name, "description": desc, "body": body, "enabled": _front_enabled(raw)}
+    when = _extra_of(parse_front(raw)[0]).get("when_to_use")
+    if when:
+        out["when_to_use"] = when
+    if is_folder(tenant, name):
+        out["files"] = files_of(tenant, name)[:FILES_LIST_MAX]   # read_file pulls one on demand
+    return out
+
+
+def read_file(tenant: str, name: str, rel: str) -> dict:
+    """Level-3 loading: one bundled text file of a folder skill, on demand. Confined to the
+    skill's own folder (no '..', no symlink out), size-capped, text types only."""
+    name = validate_name(name)
+    if not is_folder(tenant, name):
+        raise SkillError(f"skill {name!r} has no bundled files")
+    rel = safe_rel(rel)
+    base = os.path.realpath(_folder(tenant, name))
+    target = os.path.realpath(os.path.join(base, rel))
+    if os.path.commonpath([base, target]) != base or not os.path.isfile(target):
+        raise SkillError(f"file {rel!r} is not in skill {name!r}")
+    ext = os.path.splitext(target)[1].lower()
+    if ext in BLOCKED_EXTS or ext in (".png", ".jpg", ".jpeg", ".gif", ".webp", ".pdf", ".ttf", ".otf",
+                                      ".woff", ".woff2", ".zip", ".mp3", ".mp4", ".wav"):
+        raise SkillError(f"{rel!r} is not a text file (it ships with the skill but cannot be read here)")
+    with open(target, "rb") as f:
+        data = f.read(FILE_READ_MAX * 4 + 1)
+    text = data.decode("utf-8", "replace")
+    return {"op": "read_file", "name": name, "path": rel, "content": text[:FILE_READ_MAX],
+            "truncated": len(text) > FILE_READ_MAX}
+
+
+def install(tenant: str, name: str, desc: str, body: str, extra: dict | None = None,
+            files: dict | None = None) -> dict:
+    """The IMPORT lane's writer (Anthropic SKILL.md format): Claude's limits, `imported: true`
+    stamped, optional bundled files (folder layout). Create-if-missing - never overwrites.
+    A folder is built beside the final name and renamed in, so a failure leaves nothing."""
+    with _LOCK:
+        name = validate_name(name)
+        desc = " ".join(str(desc or "").split())
+        desc, body = validate(desc, body, imported=True)
+        if os.path.exists(_flat(tenant, name)) or os.path.isdir(_folder(tenant, name)):
+            raise SkillError(f"skill {name!r} already exists (use update)")
+        extra = {**_extra_of(extra or {}), "imported": "true"}
+        content = render(name, desc, body, extra=extra)
+        if files:
+            clean: dict[str, bytes] = {}
+            for rel, data in files.items():
+                r = safe_rel(rel)
+                if r.lower() == "skill.md" or os.path.splitext(r)[1].lower() in BLOCKED_EXTS:
+                    continue
+                clean[r] = bytes(data)
+            tmp = os.path.join(skills_dir(tenant), f".{name}.partial")
+            shutil.rmtree(tmp, ignore_errors=True)
+            try:
+                os.makedirs(tmp)
+                with open(os.path.join(tmp, "SKILL.md"), "w", encoding="utf-8") as f:
+                    f.write(content)
+                for r, data in clean.items():
+                    dest = os.path.join(tmp, r)
+                    os.makedirs(os.path.dirname(dest), exist_ok=True)
+                    with open(dest, "wb") as f:
+                        f.write(data)
+                os.replace(tmp, _folder(tenant, name))
+            except Exception:
+                shutil.rmtree(tmp, ignore_errors=True)
+                raise
+        else:
+            _write_atomic(_flat(tenant, name), content)
+        _READ_OK.add((tenant, name))
+        _mirror(tenant, name, desc, body, extra=extra)
+        return {"op": "install", "name": name, "chars": len(body), "files": len(files or {})}
 
 
 def delete(tenant: str, name: str) -> dict:
@@ -237,10 +422,13 @@ def delete(tenant: str, name: str) -> dict:
         p = _path(tenant, name)
         if not os.path.exists(p):
             raise SkillError(f"skill {name!r} does not exist")
-        os.remove(p)
-        for junk in (p + ".bak", p + ".tmp"):
-            if os.path.exists(junk):
-                os.remove(junk)
+        if os.path.basename(p) == "SKILL.md":    # a folder skill goes with all its files
+            shutil.rmtree(os.path.dirname(p), ignore_errors=True)
+        else:
+            os.remove(p)
+            for junk in (p + ".bak", p + ".tmp"):
+                if os.path.exists(junk):
+                    os.remove(junk)
         _unmirror(tenant, name)
         _READ_OK.discard((tenant, name))
         return {"op": "delete", "name": name}
@@ -251,16 +439,20 @@ def listing(tenant: str) -> list[dict]:
     out: list[dict] = []
     try:
         for fn in sorted(os.listdir(d)):
-            if not fn.endswith(".md"):
+            folder = os.path.isfile(os.path.join(d, fn, "SKILL.md"))
+            if not folder and not fn.endswith(".md"):
                 continue
             try:
-                with open(os.path.join(d, fn), encoding="utf-8") as f:
+                fp = os.path.join(d, fn, "SKILL.md") if folder else os.path.join(d, fn)
+                with open(fp, encoding="utf-8") as f:
                     raw = f.read()
                 _, desc, body = parse_skill(raw)
-                out.append({"name": fn[:-3], "description": desc, "chars": len(body),
-                            "enabled": _front_enabled(raw),
-                            "updated_at": time.strftime("%Y-%m-%d", time.localtime(
-                                os.path.getmtime(os.path.join(d, fn))))})
+                row = {"name": fn if folder else fn[:-3], "description": desc, "chars": len(body),
+                       "enabled": _front_enabled(raw),
+                       "updated_at": time.strftime("%Y-%m-%d", time.localtime(os.path.getmtime(fp)))}
+                if folder:
+                    row["folder"] = True
+                out.append(row)
             except Exception:
                 continue
     except FileNotFoundError:
@@ -290,8 +482,9 @@ def set_enabled(tenant: str, name: str, on: bool) -> dict:
         if _front_enabled(raw) == bool(on):
             return {"op": "enable" if on else "park", "name": name, "changed": False}
         _, desc, body = parse_skill(raw)
-        _write_atomic(p, render(name, desc, body, enabled=bool(on)))
-        _mirror(tenant, name, desc, body, enabled=bool(on))
+        extra = _extra_of(parse_front(raw)[0])
+        _write_atomic(p, render(name, desc, body, enabled=bool(on), extra=extra))
+        _mirror(tenant, name, desc, body, enabled=bool(on), extra=extra)
         return {"op": "enable" if on else "park", "name": name, "changed": True}
 
 
@@ -317,7 +510,7 @@ def apply(tenant: str, operations: list[dict]) -> dict:
                 act = op.get("action")
                 if act not in _OPS:
                     raise SkillError(f"unknown action {act!r} (one of {', '.join(_OPS)})")
-                if act not in ("list", "read"):
+                if act not in ("list", "read", "read_file"):
                     paths.append(_path(tenant, str(op.get("name") or "")))
             snap = _snapshot(paths)
         except SkillError as e:
@@ -332,6 +525,8 @@ def apply(tenant: str, operations: list[dict]) -> dict:
                     results.append({"op": "list", "skills": listing(tenant)})
                 elif act == "read":
                     results.append({"op": "read", **read(tenant, nm)})
+                elif act == "read_file":
+                    results.append(read_file(tenant, nm, str(op.get("path") or "")))
                 elif act == "create":
                     results.append(create(tenant, nm, str(op.get("description") or ""),
                                           str(op.get("body") or "")))

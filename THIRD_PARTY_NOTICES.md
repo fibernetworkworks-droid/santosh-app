@@ -135,6 +135,14 @@ native apps' tracking screens (Android WebView) and the console's riders map. BS
 `server/app/static/vendor/maplibre/LICENSE.txt`. Map tiles come from OpenFreeMap (https://openfreemap.org, free, no key);
 the map shows their attribution: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL).
 
+## Anthropic example skills (planned import, not yet shipped)
+
+The pilot in `docs/CLAUDE_SKILLS_PILOT_PLAN.md` will import skills from https://github.com/anthropics/skills
+(internal-comms, theme-factory, frontend-design, webapp-testing, canvas-design, mcp-builder, skill-creator), each
+licensed under the Apache License, Version 2.0, Copyright Anthropic, PBC. Each imported skill will keep its own
+LICENSE.txt, carry a "Modified by Newtika for Hoola" notice where changed, and be credited here by name when it ships.
+Licence verdicts: `docs/research/skills/licences.md`.
+
 ## Mermaid (diagram drawing for the Architecture Desk, v0.413)
 
 `server/app/archdesk/vendor/mermaid.min.js` is Mermaid 11.4.1 (https://github.com/mermaid-js/mermaid), unmodified,

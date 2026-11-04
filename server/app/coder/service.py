@@ -146,7 +146,31 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return {"error": "skills are switched off (coder_skills)"}
         body = await request.json()
         from . import skill_packs
-        return skill_packs.import_skills(current_tenant(request), body.get("items") or [])
+        return skill_packs.import_skills(current_tenant(request), body.get("items") or [],
+                                         full=str(body.get("format") or "") == "claude")
+
+    @r.post("/skills/import-zip")
+    async def skills_import_zip(request: Request):
+        """v0.494 ONE skill from a .zip sent as the raw request body (SKILL.md + its reference /
+        examples / scripts files, the claude.ai upload shape). Stored, never executed."""
+        await require_key(request)
+        from ..config import get_settings
+        if not getattr(get_settings(), "coder_skills", True):
+            return {"error": "skills are switched off (coder_skills)"}
+        from . import skill_packs
+        return skill_packs.import_zip(current_tenant(request), await request.body())
+
+    @r.get("/skills/export-zip")
+    async def skills_export_zip(request: Request, name: str = ""):
+        """v0.494 one skill as a .zip (the same shape import-zip takes)."""
+        await require_key(request)
+        from fastapi.responses import Response
+        from . import skill_packs
+        data = skill_packs.export_zip(current_tenant(request), name)
+        if data is None:
+            return {"error": "skill not found"}
+        return Response(content=data, media_type="application/zip",
+                        headers={"Content-Disposition": f'attachment; filename="{name}.zip"'})
 
     @r.get("/skills/export")
     async def skills_export(request: Request, names: str = ""):

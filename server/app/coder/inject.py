@@ -41,6 +41,15 @@ def _skills_enabled() -> bool:
         return False
 
 
+def _line(r: dict) -> str:
+    """One injected skill line. An imported skill's description can run to 1,024 chars (Claude's
+    limit) - the prompt carries only the first 110; skill_manage read gives the rest."""
+    d = " ".join(str(r.get("description") or "").split())
+    if len(d) > 110:
+        d = d[:107].rstrip() + "..."
+    return f"- {r['name']}: {d}"
+
+
 def _matched(tenant: str, query: str, limit: int = 4) -> list[dict]:
     """The matched skills, FTS-ranked, with the recency boost on top: a skill telemetry saw in
     the last 30 days outranks an equally-ranked cold one (used beats written). Disabled rows
@@ -73,7 +82,7 @@ def skills_block(tenant: str, query: str, compact: bool = False, conv: str = "",
         return ""
     for r in rows:
         store.skill_use_mark(tenant, r["name"], "shown", conv=conv, surface=surface)
-    lines = [f"- {r['name']}: {r['description']}" for r in rows]
+    lines = [_line(r) for r in rows]
     block = ("LEARNED SKILLS matching this ask (skill_manage read the skill before you follow "
              "it):\n" + "\n".join(lines))
     return block[:SKILLS_COMPACT_BUDGET if compact else SKILLS_VOICE_BUDGET]
@@ -91,7 +100,7 @@ def child_skills(tenant: str, query: str, budget: int = 400) -> str:
         return ""
     if not rows:
         return ""
-    lines = [f"- {r['name']}: {r['description']}" for r in rows]
+    lines = [_line(r) for r in rows]
     block = ("LEARNED SKILLS for this task (skill_manage read a skill before you follow it):\n"
              + "\n".join(lines))
     return block[:budget]

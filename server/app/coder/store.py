@@ -548,7 +548,7 @@ def skill_mirror(name: str, tenant: str, description: str, body: str, enabled: i
                   "VALUES (?,?,?,?,?,?,?) ON CONFLICT(name, tenant) DO UPDATE SET "
                   "description=excluded.description, body=excluded.body, updated_at=excluded.updated_at, "
                   "enabled=excluded.enabled",
-                  (name, tenant, description[:300], body[:8000], now, now, int(enabled)))
+                  (name, tenant, description[:1200], body[:8000], now, now, int(enabled)))
 
 
 def skill_unmirror(name: str, tenant: str) -> None:
