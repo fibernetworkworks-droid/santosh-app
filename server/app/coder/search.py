@@ -46,7 +46,7 @@ def search(tenant: str, query: str, limit: int = 20, obs_type: str | None = None
         q = _fts_match(query)
         sql = ("SELECT o.id, o.conv, o.type, o.title, o.subtitle, o.created_at, o.created_epoch "
                "FROM obs_fts JOIN observations o ON o.id = obs_fts.rowid WHERE obs_fts MATCH ? "
-               "AND o.tenant=?")
+               "AND o.tenant=? AND o.superseded_by=0")
         args: list = [q, tenant]
         rows = _run(sql, args, obs_type, date_start, date_end, limit)
         if not rows:
@@ -63,7 +63,7 @@ def search(tenant: str, query: str, limit: int = 20, obs_type: str | None = None
             for tok in like.split(" AND "):
                 args += [f"%{tok}%", f"%{tok}%", f"%{tok}%"]
             sql = f"SELECT o.id, o.conv, o.type, o.title, o.subtitle, o.created_at, o.created_epoch " \
-                  f"FROM observations o WHERE o.tenant=? AND {cond}"
+                  f"FROM observations o WHERE o.tenant=? AND o.superseded_by=0 AND {cond}"
             rows = _run(sql, [tenant] + args, obs_type, date_start, date_end, limit)
     return {"query": query, "total": len(rows), "observations": rows[:limit]}
 
@@ -95,31 +95,36 @@ def timeline(tenant: str, anchor: str | None, depth_before: int = 5, depth_after
     depth_after = max(0, min(int(depth_after or 5), 50))
     with store.db() as c:
         if anchor and anchor.isdigit():
-            row = c.execute("SELECT id, conv, created_epoch FROM observations WHERE id=? AND tenant=?",
+            row = c.execute("SELECT id, conv, created_epoch FROM observations "
+                            "WHERE id=? AND tenant=? AND superseded_by=0",
                             (int(anchor), tenant)).fetchone()
             if row is None:
                 return {"anchor": anchor, "rows": []}
             ep, conv = row["created_epoch"], row["conv"]
             before = c.execute(
-                "SELECT * FROM observations WHERE conv=? AND (created_epoch < ? OR (created_epoch = ? "
-                "AND id < ?)) ORDER BY created_epoch DESC, id DESC LIMIT ?",
+                "SELECT * FROM observations WHERE conv=? AND superseded_by=0 AND "
+                "(created_epoch < ? OR (created_epoch = ? AND id < ?)) "
+                "ORDER BY created_epoch DESC, id DESC LIMIT ?",
                 (conv, ep, ep, row["id"], depth_before)).fetchall()
             after = c.execute(
-                "SELECT * FROM observations WHERE conv=? AND (created_epoch > ? OR (created_epoch = ? "
-                "AND id > ?)) ORDER BY created_epoch ASC, id ASC LIMIT ?",
+                "SELECT * FROM observations WHERE conv=? AND superseded_by=0 AND "
+                "(created_epoch > ? OR (created_epoch = ? AND id > ?)) "
+                "ORDER BY created_epoch ASC, id ASC LIMIT ?",
                 (conv, ep, ep, row["id"], depth_after)).fetchall()
-            mid = [dict(c.execute("SELECT * FROM observations WHERE id=?", (row["id"],)).fetchone())]
+            mid = [dict(c.execute("SELECT * FROM observations WHERE id=? AND superseded_by=0",
+                                  (row["id"],)).fetchone() or {'id': row['id']})]
         elif anchor:
             rows = c.execute(
-                "SELECT * FROM observations WHERE tenant=? AND created_at LIKE ? "
+                "SELECT * FROM observations WHERE tenant=? AND superseded_by=0 AND created_at LIKE ? "
                 "ORDER BY created_epoch ASC, id ASC LIMIT 200", (tenant, anchor + "%")).fetchall()
             return {"anchor": anchor, "rows": [dict(r) for r in rows][:depth_before + depth_after + 1]}
         else:
             newest = c.execute("SELECT created_epoch FROM observations WHERE tenant=? "
-                               "ORDER BY created_epoch DESC LIMIT 1", (tenant,)).fetchone()
+                               "AND superseded_by=0 ORDER BY created_epoch DESC LIMIT 1",
+                               (tenant,)).fetchone()
             ep = newest[0] if newest else 0
-            before = c.execute("SELECT * FROM observations WHERE tenant=? AND created_epoch <= ? "
-                               "ORDER BY created_epoch DESC, id DESC LIMIT ?",
+            before = c.execute("SELECT * FROM observations WHERE tenant=? AND superseded_by=0 "
+                               "AND created_epoch <= ? ORDER BY created_epoch DESC, id DESC LIMIT ?",
                                (tenant, ep, depth_before + 1)).fetchall()
             after, mid = [], []
             if before:

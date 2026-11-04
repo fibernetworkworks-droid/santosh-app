@@ -88,7 +88,7 @@ face_image = (
     .add_local_python_source("registry")
 )
 hear_image = (modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg")
-              .pip_install("faster-whisper==1.1.0").add_local_python_source("registry"))
+              .pip_install("faster-whisper==1.1.0", "requests", "huggingface_hub").add_local_python_source("registry"))
 studio_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg").add_local_python_source("registry")
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi[standard]").add_local_python_source("registry")
 
@@ -1482,9 +1482,16 @@ def studio_card():
 
     def run(name: str, op: str, payload: dict, save: dict | None = None) -> dict | None:
         t = time.time()
+        call = None
         try:
-            r = studio_job.remote(op, payload)
+            call = studio_job.spawn(op, payload)
+            r = call.get(timeout=900)          # a feature that crash-loops at startup must cost 15 minutes, never the whole run
         except Exception as e:
+            if call is not None:
+                try:
+                    call.cancel()
+                except Exception:
+                    pass
             note(f"{name:<22} FAIL  {type(e).__name__}: {str(e)[:300]}")
             results[name] = False
             return None
@@ -1516,7 +1523,7 @@ def studio_card():
     run("3b my voice -> video", "video", {"avatar_id": "lab-live", "voice_id": "lab-voice", "text": "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।", "lang": "hi"},
         {"video.mp4": "studio_3_my_voice.mp4"})
     try:
-        studio_job.remote("voice_save", {"voice_id": "lab-bad", "wav": audio, "consent": "ai_generated"})
+        studio_job.spawn("voice_save", {"voice_id": "lab-bad", "wav": audio, "consent": "ai_generated"}).get(timeout=300)
         note("3c no-consent clone     FAIL  a voice was saved WITHOUT a consent record")
         results["3c refused"] = False
     except Exception as e:

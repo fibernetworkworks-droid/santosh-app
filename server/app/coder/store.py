@@ -1,4 +1,4 @@
-"""HOOLA CODER storage - the observations vault (v0.478.0).
+"""HOOLA CODER storage - the observations vault (v0.480.0).
 
 A raw-sqlite3 store, one file, following the gyan/store.py house pattern (per-process RLock,
 WAL, idempotent schema). It keeps the durable memory the coder observer compresses out of
@@ -36,7 +36,7 @@ from contextlib import contextmanager
 
 log = __import__("logging").getLogger("coder.store")
 
-_SCHEMA_VERSION = 1
+_SCHEMA_VERSION = 2
 
 _SCHEMA = [
     """CREATE TABLE IF NOT EXISTS schema_version (v INTEGER NOT NULL)""",
@@ -54,7 +54,8 @@ _SCHEMA = [
         discovery_tokens INTEGER NOT NULL DEFAULT 0, content_hash TEXT NOT NULL,
         title_norm_key TEXT NOT NULL DEFAULT '', occurrence_count INTEGER NOT NULL DEFAULT 1,
         reinforcement_dates TEXT NOT NULL DEFAULT '[]', last_reinforced TEXT NOT NULL DEFAULT '',
-        created_at TEXT NOT NULL, created_epoch INTEGER NOT NULL)""",
+        created_at TEXT NOT NULL, created_epoch INTEGER NOT NULL,
+        superseded_by INTEGER NOT NULL DEFAULT 0)""",
     """CREATE UNIQUE INDEX IF NOT EXISTS idx_obs_content ON observations(conv, content_hash)""",
     """CREATE INDEX IF NOT EXISTS idx_obs_conv ON observations(conv, created_epoch)""",
     """CREATE INDEX IF NOT EXISTS idx_obs_tenant ON observations(tenant, created_epoch)""",
@@ -192,9 +193,18 @@ def ensure() -> None:
             conn.execute("PRAGMA journal_mode=WAL")
             for stmt in _SCHEMA:
                 conn.execute(stmt)
+            # v0.480 additive migration: observations.superseded_by (0 = live; N = absorbed into
+            # observation N by the curator). The column is in _SCHEMA for fresh vaults; this
+            # pragma check lifts every vault created before v0.479. NEVER destructive: a
+            # superseded row stays on disk, search just stops showing it.
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(observations)").fetchall()]
+            if cols and "superseded_by" not in cols:
+                conn.execute("ALTER TABLE observations ADD COLUMN superseded_by INTEGER NOT NULL DEFAULT 0")
             row = conn.execute("SELECT v FROM schema_version").fetchone()
             if row is None:
                 conn.execute("INSERT INTO schema_version(v) VALUES (?)", (_SCHEMA_VERSION,))
+            elif int(row[0]) < _SCHEMA_VERSION:
+                conn.execute("UPDATE schema_version SET v=?", (_SCHEMA_VERSION,))
             if _fts_ok is None:
                 try:
                     conn.execute("CREATE VIRTUAL TABLE temp._fts_probe USING fts5(x)")
@@ -364,14 +374,21 @@ def _bump_df(c, tenant: str, title_norm: str) -> None:
                   "ON CONFLICT(tenant, token) DO UPDATE SET df = df + 1", (tenant, tok))
 
 
-def reinforce(obs_id: int) -> None:
+def reinforce(obs_id: int, bump: bool = False) -> None:
+    """Stamp today as a re-confirmation; bump=True also raises occurrence_count (the curator's
+    merge verdict: absorbing a duplicate IS the world saying it again)."""
     ensure()
     today = time.strftime("%Y-%m-%d")
     with db(write=True) as c:
         r = c.execute("SELECT reinforcement_dates FROM observations WHERE id=?", (obs_id,)).fetchone()
         if r is not None:
-            c.execute("UPDATE observations SET last_reinforced=?, reinforcement_dates=? WHERE id=?",
-                      (today, _bump_dates(r[0], today), obs_id))
+            if bump:
+                c.execute("UPDATE observations SET occurrence_count = occurrence_count + 1, "
+                          "last_reinforced=?, reinforcement_dates=? WHERE id=?",
+                          (today, _bump_dates(r[0], today), obs_id))
+            else:
+                c.execute("UPDATE observations SET last_reinforced=?, reinforcement_dates=? WHERE id=?",
+                          (today, _bump_dates(r[0], today), obs_id))
 
 
 def get_observations(ids: list[int]) -> list[dict]:
@@ -387,8 +404,10 @@ def get_observations(ids: list[int]) -> list[dict]:
 
 
 def recent_observations(tenant: str, limit: int = 50, conv: str | None = None) -> list[dict]:
+    """The primer's recent block - live rows only (a curator-superseded row is absorbed history,
+    the canonical row it points at is the memory)."""
     ensure()
-    q = "SELECT * FROM observations WHERE tenant=?"
+    q = "SELECT * FROM observations WHERE tenant=? AND superseded_by=0"
     args: list = [tenant]
     if conv:
         q += " AND conv=?"
@@ -544,6 +563,50 @@ def nudge_counts() -> dict:
     return {"nudge_observations": int(obs), "nudge_conversations": int(convs)}
 
 
+# ---------------------------------------------------------------- curator (v0.480)
+
+def supersede(obs_id: int, canonical_id: int) -> bool:
+    """The curator's merge verdict: the newer row is absorbed into the canonical (older) one.
+    Soft by law - the row stays on disk with superseded_by=canonical, search stops showing it,
+    and clearing the column revives it. Only a LIVE row can be superseded, exactly once."""
+    ensure()
+    with db(write=True) as c:
+        cur = c.execute("UPDATE observations SET superseded_by=? WHERE id=? AND superseded_by=0",
+                        (int(canonical_id), int(obs_id)))
+        return cur.rowcount > 0
+
+
+def revive(obs_id: int) -> bool:
+    """Undo one curator merge (the rollback path: superseded_by back to 0)."""
+    ensure()
+    with db(write=True) as c:
+        cur = c.execute("UPDATE observations SET superseded_by=0 WHERE id=? AND superseded_by!=0",
+                        (int(obs_id),))
+        return cur.rowcount > 0
+
+
+def set_candidate_status(obs_id: int, dup_of: int, status: str) -> None:
+    ensure()
+    if status not in ("pending", "merged", "distinct", "dismissed"):
+        return
+    with db(write=True) as c:
+        c.execute("UPDATE dedup_candidates SET status=? WHERE observation_id=? AND duplicate_of_id=?",
+                  (status, int(obs_id), int(dup_of)))
+
+
+def curator_counts() -> dict:
+    """The curator's ledger: pending review work + what past runs decided."""
+    ensure()
+    with db() as c:
+        pend = c.execute("SELECT COUNT(*) FROM dedup_candidates WHERE status='pending'").fetchone()[0]
+        merged = c.execute("SELECT COUNT(*) FROM dedup_candidates WHERE status='merged'").fetchone()[0]
+        distinct = c.execute("SELECT COUNT(*) FROM dedup_candidates WHERE status='distinct'").fetchone()[0]
+        dismissed = c.execute("SELECT COUNT(*) FROM dedup_candidates WHERE status='dismissed'").fetchone()[0]
+        sup = c.execute("SELECT COUNT(*) FROM observations WHERE superseded_by!=0").fetchone()[0]
+    return {"pending": int(pend), "merged": int(merged), "distinct": int(distinct),
+            "dismissed": int(dismissed), "superseded": int(sup)}
+
+
 # ---------------------------------------------------------------- dedup candidates (review-only)
 
 def note_candidate(obs_id: int, dup_of: int, score: float) -> None:
@@ -577,6 +640,14 @@ def is_consumed(key: str) -> bool:
         return c.execute("SELECT 1 FROM consumed WHERE key=?", (key,)).fetchone() is not None
 
 
+def last_run_at(key: str) -> str:
+    """The recorded timestamp of a marker ("" when never run) - the curator's due gate reads it."""
+    ensure()
+    with db() as c:
+        r = c.execute("SELECT at FROM consumed WHERE key=?", (key,)).fetchone()
+        return str(r[0]) if r else ""
+
+
 def forget_old(days) -> None:
     """Explicit retention only. 0/negative/malformed = keep forever (a typo must never purge)."""
     try:
@@ -604,4 +675,4 @@ def stats() -> dict:
         n_skills = c.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
     return {"observations": n_obs, "summaries": n_sum, "sessions": n_sessions, "tool_uses": n_tools,
             "discovery_tokens": disc, "pending_dedup_candidates": cand, "skills": int(n_skills),
-            **nudge_counts(), "fts": bool(_fts_ok)}
+            **nudge_counts(), "curator": curator_counts(), "fts": bool(_fts_ok)}

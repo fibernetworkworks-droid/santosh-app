@@ -46,8 +46,8 @@ def quiet_bus(bz):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.480.0"
-    assert "0.480.0+525" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.482.0"
+    assert "0.482.0+527" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_queue_bound_and_drop_oldest(quiet_bus):
@@ -251,10 +251,11 @@ def test_watchdog_stays_silent_on_signalless_shutdown():
 def test_vps_ops_restarts_carry_kill_timeout():
     yml = (REPO / ".github" / "workflows" / "vps-ops.yml").read_text()
     restarts = [ln for ln in yml.splitlines() if "pm2 restart santosh" in ln]
-    assert len(restarts) == 7                           # ack_refresh + deploy + rollback_stable + rea_setup (v0.210.0)
+    assert len(restarts) == 8                           # ack_refresh + deploy + rollback_stable + rea_setup (v0.210.0)
     # +1 the live-talk engine_attach deploy (the dev's own post-v0.476 line); healed at v0.477 -
     # the count moved in their infra commit without this pin moving (pre-existing red on their base)
                                                         # + hf_setup (v0.471.0 HOOLA FRAMES) + lab_setup (v0.461.0)
+                                                        # + coder_flip (v0.480.0 Phase D - the owner's FLIP)
     for ln in restarts:
         assert "--kill-timeout 12000" in ln, ln         # default 1600 ms was the SIGKILL inside the wait
 

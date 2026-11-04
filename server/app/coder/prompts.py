@@ -1,4 +1,4 @@
-"""HOOLA CODER prompts - the observer's instructions (v0.478.0).
+"""HOOLA CODER prompts - the observer's instructions (v0.480.0).
 
 The claude-mem prompt architecture, ported: one cacheable system prefix (identity, role, focus,
 skip rules), one per-event user turn (<observed_from_santosh_session> blocks with capped fields),
@@ -140,6 +140,75 @@ _REFLECTION_SYSTEM = (
 def reflection_system() -> str:
     """The STABLE prefix: this prompt never changes between runs (the cheap-brain cache shape)."""
     return _REFLECTION_SYSTEM
+
+
+# ---------------------------------------------------------------- v0.480 HOOLA CURATOR
+
+CURATOR_MAX_OUTPUT_TOKENS = 1200
+
+_CURATOR_SYSTEM = (
+    "You are the memory curator inside Santosh, a Hindi/Hinglish voice+chat assistant. You run "
+    "about once a week, invisible: the user never reads you and can never reply to you. You have "
+    "no tools and no contact with anyone - your entire output is parsed into curation decisions. "
+    "You never write in Hindi: memory is English so any Hoola surface can search it.\n\n"
+    "YOU HAVE TWO JOBS on the memory vault you are shown:\n"
+    "1. ARBITRATE near-duplicate pairs. The dedup ladder flagged each pair as 'maybe the same "
+    "memory' (high similarity, no rare-token veto). For every pair decide:\n"
+    '   - verdict="merge"   ONLY when both rows state the SAME fact about the SAME specific '
+    "subject - same target, same outcome, interchangeable. Keep the older row's wording in mind; "
+    "the newer row will be absorbed into it. When in doubt, do NOT merge.\n"
+    '   - verdict="distinct"  the rows look alike but carry different facts (a different file, '
+    "version, person, outcome, or one failed where the other succeeded).\n"
+    '   - verdict="dismiss"  the NEWER row is pure noise (routine chatter, a re-run of the same '
+    "command, nothing durable) and is not even worth keeping as its own memory.\n"
+    "   Rules: a rare distinctive token in one title (a function name, an error code, a version) "
+    "is identity, not noise - that is a distinct. Failed vs succeeded is distinct. Never merge "
+    "rows from different subjects merely because they share generic words.\n"
+    "2. PROMOTE recurring memories into skills. A skill names a CLASS of task ('deploy-a-flask-app'), "
+    "never one incident - a name must not contain a date, an error string, or a one-off detail. "
+    "Propose a skill ONLY when several memories show the same procedure that will be done again. "
+    "action=update may target ONLY the skills in the CURRENT SKILLS list (its names are given).\n\n"
+    "OUTPUT SHAPES (exactly these; no prose outside them):\n"
+    '<pair id="7" verdict="merge" />\n'
+    "<skill action=\"create\" name=\"lowercase-hyphenated\" description=\"<= 60 chars, one sentence\">"
+    "the instructions, markdown</skill>\n"
+    "<skill action=\"update\" name=\"an-existing-skill\" description=\"<= 60 chars\">"
+    "the FULL new instructions (an update replaces the body)</skill>\n"
+    "If nothing needs deciding and nothing is worth promoting, reply with exactly "
+    "<skip_summary reason=\"nothing to curate\" />.")
+
+
+def curator_system() -> str:
+    """The STABLE prefix: this prompt never changes between runs (the cheap-brain cache shape)."""
+    return _CURATOR_SYSTEM
+
+
+def curator_user(pairs: list[dict], skills: list[dict], max_merges: int) -> str:
+    """The one user turn: the candidate pairs (both rows, already-redacted vault content) and the
+    current skill list (the read-before-write input). All text below passed the vault's privacy
+    gate at capture time."""
+    sk = "\n".join(f"- {s['name']}: {s['description']}" for s in skills) or "(no skills yet)"
+    blocks = []
+    for p in pairs:
+        a, b = p["newer"], p["older"]
+        blocks.append(
+            f'<pair id="{p["id"]}" score="{p["score"]:.2f}">\n'
+            f'  <row side="older" id="{a["id"]}" conv="{a["conv"]}" date="{str(a["created_at"])[:10]}" '
+            f'seen="{a["occurrence_count"]}x">\n'
+            f'    <title>{str(a["title"])[:160]}</title>\n'
+            f'    <body>{str(a["narrative"])[:500]}</body>\n  </row>\n'
+            f'  <row side="newer" id="{b["id"]}" conv="{b["conv"]}" date="{str(b["created_at"])[:10]}" '
+            f'seen="{b["occurrence_count"]}x">\n'
+            f'    <title>{str(b["title"])[:160]}</title>\n'
+            f'    <body>{str(b["narrative"])[:500]}</body>\n  </row>\n'
+            "</pair>")
+    body = "\n".join(blocks) or "(no pending pairs this week)"
+    return ("MERGE BUDGET THIS RUN: at most " + str(max_merges) + " merges.\n\n"
+            "PENDING PAIRS (oldest row first - a merge absorbs the NEWER row into the OLDER):\n" +
+            body +
+            "\n\nCURRENT SKILLS (update only these names):\n" + sk +
+            "\n\nGive one verdict per pair, then any skill blocks. Nothing to do -> "
+            "<skip_summary reason=\"nothing to curate\" />.")
 
 
 def reflection_user(digest: str, skills: list[dict], last_ask: str) -> str:

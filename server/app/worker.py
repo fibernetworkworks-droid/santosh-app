@@ -557,6 +557,7 @@ async def coder_jobs() -> None:
         if not getattr(get_settings(), "coder_enabled", True):
             return
         await coder.observer.tick(get_settings())
+        await coder.curator.tick(get_settings())   # v0.480: the weekly consolidation, due-gated
     except Exception:
         log.exception("coder tick failed")
 

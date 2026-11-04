@@ -479,6 +479,13 @@ class Settings(BaseSettings):
     home_control: bool = False              # the HOME gate (default OFF - bake on the VPS, then flip to true)
     home_assistant_url: str = ""            # e.g. http://192.168.1.10:8123 (the HA base URL, no trailing slash)
     home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
+    # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
+    coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
+    coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)
+    coder_curator_max_pairs: int = 20      # pending pairs the brain arbitrates per tenant per run
+    coder_curator_max_merges: int = 10     # merges per run; the rest stays pending (soft merges, revivable)
+    coder_dedup_min_docs: int = 10         # the Tier-1 scan's corpus gate (IDF on 3 documents is astrology)
+
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""
     email_password: str = ""                # app password (Gmail/Outlook/Zoho "app password")
