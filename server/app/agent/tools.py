@@ -1056,6 +1056,17 @@ TOOL_LABELS.update(SKILL_LABELS)
 HANDLERS.update(SKILL_HANDLERS)
 del _seen
 
+# v0.486 HOOLA UIUX PRO MAX: ONE uiux_design tool (the coder/uiux_tool surface over the
+# vendored MIT engine coder/uiux/) - the design database (79 styles, 192 palettes, 74 font
+# pairings, 119 UX guidelines, 22 stacks) behind one local search; the seed skill
+# uiux-pro-max.md teaches when, the tool is how. Zero network, zero brain calls.
+from ..coder.uiux_tool import UIUX_HANDLERS, UIUX_LABELS, UIUX_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in UIUX_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(UIUX_LABELS)
+HANDLERS.update(UIUX_HANDLERS)
+del _seen
+
 # v0.478 HOOLA SWARM: ONE delegate_task tool (the coder/delegate surface) - parallel bounded
 # child agents; every child tool call rides _run_tool so capture sees the whole picture; the
 # voice allowlist never admits it (a call routes it to a kaam job instead).

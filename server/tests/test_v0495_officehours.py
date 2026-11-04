@@ -63,7 +63,7 @@ def _doc(did, **kw):
 
 def test_registry_531_and_wired():
     names = {t["name"] for t in TOOLS}
-    assert len(TOOLS) == 534, "531 (v0.495 office hours) + 3 code-graph tools (v0.496)"
+    assert len(TOOLS) == 535, "531 (v0.495 office hours) + 3 code-graph tools (v0.496) + 1 uiux_design (v0.497)"
     assert {"officehours", "officehours_dekho"} <= names
     assert {"officehours", "officehours_dekho"} <= set(HANDLERS)
     assert "officehours" in TOOL_LABELS and "officehours_dekho" in TOOL_LABELS
@@ -73,7 +73,7 @@ def test_registry_531_and_wired():
 def test_story_and_prompts_pins():
     from app import main as main_mod
     from app.agent import prompts
-    assert main_mod.APP_VERSION == "0.497.0"
+    assert main_mod.APP_VERSION == "0.499.0"
     story = (Path(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1])[:20000]
     assert "OFFICE HOURS" in story and "gstack" in story
     ptxt = Path(prompts.__file__).read_text()

@@ -21,7 +21,7 @@ def desk(env, monkeypatch, tmp_path):
 
 def test_seed_files_exclude_byox_and_byox_files_are_31():
     from app.coder import skill_packs
-    assert len(skill_packs.seed_files()) == 10
+    assert len(skill_packs.seed_files()) == 11   # the 10 class-level starters + uiux-pro-max (v0.494, healed on the rebase; byox rides its own feed lane)
     assert len(skill_packs.byox_files()) == 31
 
 
@@ -80,7 +80,7 @@ def test_card_has_byox_asks_and_set_is_valid():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.497.0"
+    assert APP_VERSION == "0.499.0"
 
 
 def test_coder_routes_work_with_the_real_sync_require_key(desk):

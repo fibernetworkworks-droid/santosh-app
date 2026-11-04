@@ -101,6 +101,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         skill_packs.seed(tenant)                     # exactly-once per tenant, create-if-missing
         skill_packs.seed_byox(tenant)                # the BYOX pack, its own once-ever stamp
         skill_packs.seed_progpack(tenant)            # the PROG pack (registry + script lane), own once-ever stamp
+        skill_packs.seed_sp(tenant)                  # the superpowers pack, its own once-ever stamp (v0.495)
         counts = store.skill_use_counts(tenant)
         out = []
         for s in skills_store.listing(tenant):

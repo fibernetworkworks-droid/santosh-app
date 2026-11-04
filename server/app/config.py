@@ -488,10 +488,13 @@ class Settings(BaseSettings):
     coder_nudge_max_writes: int = 4        # max observations + skill ops ONE reflection may write
 
     # --- Hoola Skill Desk (v0.481): the skills platform - seeds, import/export, the share shelf ---
-    coder_skills_seed: bool = True         # the 10-skill starter library copied into a fresh tenant once (create-if-missing)
+    coder_skills_seed: bool = True         # the 57-skill seed library copied into a fresh tenant once (create-if-missing)
     coder_skills_share: bool = True        # the anonymised share lane: nominations need the curator armed, publishing needs her tap
     coder_skills_share_min_reads: int = 3  # real reads (the telemetry) before a skill may be nominated
     coder_skills_share_max_pending: int = 10  # nominations waiting for the owner at once
+
+    # --- Hoola UIUX Pro Max (v0.486): the vendored design database behind ONE local tool ---
+    coder_uiux: bool = True                # uiux_design over coder/uiux/ (MIT engine, pure stdlib, zero network, zero brain calls)
 
     # --- Hoola Swarm (v0.475): self-spawning subagents for parallel work ---
     coder_delegate: bool = False           # the delegate_task tool (bake on the VPS, then flip to true)
@@ -506,6 +509,8 @@ class Settings(BaseSettings):
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- v0.495.0 PROG PACK: the vetted-library registry + the windows script lane ---
     progpack_enabled: bool = True           # PROG pack seeds on first open (default ON)
+    # --- v0.495.0 HOOLA SUPERPOWERS: the obra/superpowers process pack (15 sp-* seeds, MIT), default on ---
+    sp_enabled: bool = True                 # superpowers lane seeds on first open under its own stamp (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
     coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)

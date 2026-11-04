@@ -25,7 +25,7 @@ def desk(env, monkeypatch, tmp_path):
 
 def test_seed_files_exclude_prog_and_prog_files_are_2():
     from app.coder import skill_packs
-    assert len(skill_packs.seed_files()) == 10          # the starter library is untouched
+    assert len(skill_packs.seed_files()) == 11          # 11 here: uiux-pro-max joined the starters lane (v0.498)
     assert len(skill_packs.byox_files()) == 31          # the BYOX pack is untouched
     prog = skill_packs.prog_files()
     assert len(prog) == 2
