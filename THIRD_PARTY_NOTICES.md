@@ -135,12 +135,15 @@ native apps' tracking screens (Android WebView) and the console's riders map. BS
 `server/app/static/vendor/maplibre/LICENSE.txt`. Map tiles come from OpenFreeMap (https://openfreemap.org, free, no key);
 the map shows their attribution: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL).
 
-## Anthropic example skills (planned import, not yet shipped)
+## Anthropic example skills (Apache License 2.0)
 
-The pilot in `docs/CLAUDE_SKILLS_PILOT_PLAN.md` will import skills from https://github.com/anthropics/skills
-(internal-comms, theme-factory, frontend-design, webapp-testing, canvas-design, mcp-builder, skill-creator), each
-licensed under the Apache License, Version 2.0, Copyright Anthropic, PBC. Each imported skill will keep its own
-LICENSE.txt, carry a "Modified by Newtika for Hoola" notice where changed, and be credited here by name when it ships.
+Shipped (v0.494, `server/app/coder/skillpack/claude/`): **internal-comms**, **theme-factory**, **frontend-design**,
+from https://github.com/anthropics/skills (commit ca45fc49), Copyright Anthropic, PBC, licensed under the Apache
+License, Version 2.0. Each folder keeps its own LICENSE.txt. Changes by Newtika for Hoola (marked in each SKILL.md
+under "Hoola note"): one added `when_to_use` frontmatter line and an appended Hoola section; the original text is
+otherwise unchanged and pinned by a hash test. No Anthropic trademarks are used beyond naming the origin.
+
+Planned (not yet shipped): webapp-testing, canvas-design, mcp-builder, skill-creator, under the same licence.
 Licence verdicts: `docs/research/skills/licences.md`.
 
 ## Mermaid (diagram drawing for the Architecture Desk, v0.413)

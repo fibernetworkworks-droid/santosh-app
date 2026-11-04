@@ -152,6 +152,62 @@ def seed_byox(tenant: str) -> dict:
     return {"byox_seeded": wrote}
 
 
+CLAUDE_DIR = SEED_DIR / "claude"
+CLAUDE_STAMP = "skills:claude:{}"        # its OWN once-ever stamp: older tenants still get this pack
+
+
+def claude_dirs() -> list[Path]:
+    """The Anthropic example skills Hoola ships (each a folder with SKILL.md + LICENSE.txt + resources)."""
+    try:
+        return sorted(d for d in CLAUDE_DIR.iterdir() if (d / "SKILL.md").is_file())
+    except Exception:
+        return []
+
+
+def seed_claude(tenant: str) -> dict:
+    """Install the shipped Claude-format skills into a tenant once ever, create-if-missing (a skill she
+    already has, edited or deleted-and-recreated, is never touched). They go through the SAME import
+    lane as a zip: Claude's limits, `imported: true`, the folder kept with its LICENSE.txt."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "claude_skills_enabled", True):
+            return {"claude_seeded": 0}
+    except Exception:
+        return {"claude_seeded": 0}
+    if not _seed_armed():
+        return {"claude_seeded": 0}
+    stamp = CLAUDE_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"claude_seeded": 0}
+    except Exception:
+        return {"claude_seeded": 0}
+    wrote = 0
+    for d in claude_dirs():
+        try:
+            front, body = skills_store.parse_front((d / "SKILL.md").read_text(encoding="utf-8"))
+            files = {}
+            for f in sorted(d.rglob("*")):
+                if f.is_file() and f.name != "SKILL.md":
+                    files[f.relative_to(d).as_posix()] = f.read_bytes()
+            res = skills_store.install(tenant, str(front.get("name") or d.name),
+                                       str(front.get("description") or ""), body, extra=front, files=files)
+            store.skill_use_mark(tenant, res["name"], "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue                       # already exists: hers stays
+        except Exception:
+            log.exception("claude seed of %s failed for %s", d.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("claude skill seed: %d skills into %s", wrote, tenant)
+    return {"claude_seeded": wrote}
+
+
 def seed(tenant: str) -> dict:
     """Copy the starter library into a tenant once ever (create-if-missing, stamped)."""
     if not _seed_armed():

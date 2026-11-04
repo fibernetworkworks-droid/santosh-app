@@ -477,7 +477,7 @@ def test_routes_mounted():
 def test_desk_route_live_seeds_and_counts(desk):
     c = _client()
     got = c.get("/api/coder/skills").json()
-    assert len(got["skills"]) == 41                         # the seed rode the desk's first open
+    assert len(got["skills"]) == 44                         # 10 starters + 31 BYOX + 3 Claude pack skills (v0.494)
     assert got["skills"][0]["shown"] == 0 and got["skills"][0]["read"] == 0
     inject.skills_block(T, "deploy")                        # one shown
     skills_store.read(T, "deploy-flask-app")
@@ -487,7 +487,7 @@ def test_desk_route_live_seeds_and_counts(desk):
     # a second tenant: her pre-existing skill survives the seed untouched (hers win)
     skills_store.create(T2, "deploy-flask-app", "Her own deploy runbook", "her words")
     got2 = _client(T2).get("/api/coder/skills").json()
-    assert len(got2["skills"]) == 41
+    assert len(got2["skills"]) == 44
     row2 = next(s for s in got2["skills"] if s["name"] == "deploy-flask-app")
     assert row2["description"] == "Her own deploy runbook"
 

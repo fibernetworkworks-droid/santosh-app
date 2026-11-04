@@ -83,3 +83,12 @@ safest skills. Exit per wave: store tests green, card numbers printed, nothing i
 - GO for P0+P1 now (server-only, no APK, no PC files)?
 - skill-creator: accept a Hoola-original version if its licence is unclear or its machinery cannot run?
 - webapp-testing and mcp-builder scripts: sandbox-only with first-run approval (recommended)?
+
+## 8. Status log
+- 4 Nov 2026 P0 DONE (licences + tool map in docs/research/skills/). P1 DONE (folder skills, Claude limits for
+  imported skills, read_file, zip import/export; commit eb67c647).
+- 4 Nov 2026 P2 DONE: internal-comms, theme-factory, frontend-design seeded from `skillpack/claude/` via
+  `skill_packs.seed_claude` (own once-ever stamp, switch `claude_skills_enabled`, rides the Skill Desk's first open
+  like BYOX). Upstream text pinned unchanged by hash; Hoola note + Hinglish when_to_use added. Retrieval card in
+  tests: 10/10 asks find the right skill in the injected top 2 (English + Hinglish) on a 44-skill tenant, 0/4
+  unrelated asks pull a pack skill in. NOT measured: a live model actually following the skills (needs the P5 live card).
