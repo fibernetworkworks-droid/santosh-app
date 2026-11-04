@@ -526,6 +526,8 @@ class Settings(BaseSettings):
     fepack_enabled: bool = True             # FE pack seeds on first open (default ON)
     # --- CS PACK: the zoo expansion radar + the operator loop's dialogue/QA patterns ---
     cspack_enabled: bool = True             # CS pack seeds on first open (default ON)
+    # --- BD PACK: the public-dataset eval benchmarks + the campaign-graph analytics ---
+    bdpack_enabled: bool = True             # Big Data pack seeds on first open (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
     coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)

@@ -178,11 +178,11 @@ def test_config_defaults(env, monkeypatch):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.512.0"
+    assert main_mod.APP_VERSION == "0.513.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     assert "HOOLA 21ST" in story and "coder/magic21.py" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.512.0+547" in pub
+    assert "version: 0.513.0+548" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches
@@ -490,7 +490,7 @@ def test_mg_lane_counts(env):
     assert len(skill_packs.seed_files()) == 11       # the starter lane untouched (mg- excluded)
     assert len(skill_packs.byox_files()) == 31 and len(skill_packs.prog_files()) == 2
     seed_dir = skill_packs.SEED_DIR
-    assert len(list(seed_dir.glob("*.md"))) == 65    # 11 + 31 + 2 + 15 + 3 + 2 + 1, SEVEN lanes
+    assert len(list(seed_dir.glob("*.md"))) == 67    # 11 + 31 + 2 + 15 + 3 + 2 + 1 + 2, EIGHT lanes
     seeder_names = {f.__name__ for f in skill_packs._pack_seeders()}
     assert "seed_magicpack" in seeder_names          # found by name - no seed_all edit
 
