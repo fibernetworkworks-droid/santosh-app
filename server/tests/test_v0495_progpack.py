@@ -69,7 +69,7 @@ def test_seed_progpack_switch_off(desk):
 def test_desk_route_seeds_progpack():
     from app.coder import service, skill_packs
     assert "seed_all(tenant)" in inspect.getsource(service)           # v0.494: the desk calls seed_all ...
-    assert "seed_progpack" in inspect.getsource(skill_packs.seed_all)  # ... which runs the PROG pack
+    assert "seed_progpack" in [f.__name__ for f in skill_packs._pack_seeders()]  # ... which finds the PROG pack by name
 
 
 def test_prog_files_pass_the_lint_gate():

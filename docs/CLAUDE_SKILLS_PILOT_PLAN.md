@@ -135,3 +135,6 @@ safest skills. Exit per wave: store tests green, card numbers printed, nothing i
   The three other-chain desk-route pins that grepped service.py for a literal seed call now check seed_all.
   Regression: 332 related tests; 12 failures are PRE-EXISTING (identical on a clean origin/main checkout):
   5 stale version pins, 5 UIUX vendored-engine tests, coder routes_mounted (FastAPI sandbox), voice memory `_tone_tag`.
+- 4 Nov 2026 SECOND MERGE (main v0.500.0, FE PACK): `seed_all` now FINDS every pack seeder by name
+  (`skill_packs._pack_seeders`: `seed` + every `seed_<pack>`), so a new pack needs no edit to seed_all or the desk
+  route; the pack-specific tests check discovery instead of a literal call. Desk = 11+31+2+15+3+8 = 70 skills.

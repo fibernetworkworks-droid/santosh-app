@@ -30,8 +30,7 @@ CARD_TENANT = "__skillcard__"
 
 def _seed(tenant: str) -> None:
     from ..coder import skill_packs
-    for fn in (skill_packs.seed, skill_packs.seed_byox, skill_packs.seed_progpack, skill_packs.seed_sp,
-               skill_packs.seed_claude):          # the same five packs a real user gets (seed_all skips '_' tenants)
+    for fn in skill_packs._pack_seeders():          # the same packs a real user gets (seed_all skips '_' tenants)
         fn(tenant)
 
 

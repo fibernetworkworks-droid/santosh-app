@@ -44,6 +44,7 @@ SHARE_STAMP = "skills:shared:{}"
 BYOX_STAMP = "skills:byox:{}"           # its OWN once-ever stamp: tenants already seeded still get the BYOX pack
 PROG_STAMP = "skills:progpack:{}"       # its OWN once-ever stamp (the v0.492 pattern): the v0.495 PROG pack
 SP_STAMP = "skills:sp:{}"               # its OWN once-ever stamp (v0.495): the superpowers lane, same once-ever law
+FE_STAMP = "skills:fepack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the FE pack, same once-ever law
 
 
 # ---------------------------------------------------------------- helpers
@@ -105,7 +106,7 @@ def seed_files() -> list[Path]:
     """The shipped starter library (SKILL.md files beside this module)."""
     try:
         return sorted(f for f in SEED_DIR.glob("*.md")
-                      if not f.name.startswith(("byox-", "prog-", "sp-")))
+                      if not f.name.startswith(("byox-", "prog-", "sp-", "fe-")))
     except Exception:
         return []
 
@@ -134,42 +135,13 @@ def sp_files() -> list[Path]:
         return []
 
 
-def seed_sp(tenant: str) -> dict:
-    """Copy the superpowers pack into a tenant once ever, create-if-missing. Own stamp,
-    same shape as seed_byox (v0.495): a new library reaches already-seeded tenants too."""
+def fe_files() -> list[Path]:
+    """The FE pack (the awesome Front-End read): the HyperFrames template packs + campaign
+    email templates + the Hoola UI kit tokens."""
     try:
-        from ..config import get_settings
-        if not getattr(get_settings(), "sp_enabled", True):
-            return {"sp_seeded": 0}
+        return sorted(SEED_DIR.glob("fe-*.md"))
     except Exception:
-        return {"sp_seeded": 0}
-    if not _seed_armed():
-        return {"sp_seeded": 0}
-    stamp = SP_STAMP.format(str(tenant or "default"))
-    try:
-        store.ensure()
-        if store.is_consumed(stamp):
-            return {"sp_seeded": 0}
-    except Exception:
-        return {"sp_seeded": 0}
-    wrote = 0
-    for f in sp_files():
-        try:
-            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
-            skills_store.create(tenant, name or f.stem, desc, body)
-            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
-            wrote += 1
-        except SkillError:
-            continue
-        except Exception:
-            log.exception("sp seed of %s failed for %s", f.name, tenant)
-    try:
-        store.mark_consumed(stamp)
-    except Exception:
-        pass
-    if wrote:
-        log.info("sp seed: %d skills into %s", wrote, tenant)
-    return {"sp_seeded": wrote}
+        return []
 
 
 def seed_byox(tenant: str) -> dict:
@@ -303,6 +275,91 @@ def seed_progpack(tenant: str) -> dict:
     return {"prog_seeded": wrote}
 
 
+def seed_sp(tenant: str) -> dict:
+    """Copy the superpowers pack into a tenant once ever, create-if-missing. Own stamp,
+    same shape as seed_byox (v0.495): a new library reaches already-seeded tenants too."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "sp_enabled", True):
+            return {"sp_seeded": 0}
+    except Exception:
+        return {"sp_seeded": 0}
+    if not _seed_armed():
+        return {"sp_seeded": 0}
+    stamp = SP_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"sp_seeded": 0}
+    except Exception:
+        return {"sp_seeded": 0}
+    wrote = 0
+    for f in sp_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("sp seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("sp seed: %d skills into %s", wrote, tenant)
+    return {"sp_seeded": wrote}
+
+
+def seed_fepack(tenant: str) -> dict:
+    """Copy the FE pack into a tenant once ever, create-if-missing (the seed_progpack twin).
+    Its own stamp: tenants that already consumed seed AND byox AND prog still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "fepack_enabled", True):
+            return {"fe_seeded": 0}
+    except Exception:
+        return {"fe_seeded": 0}
+    if not _seed_armed():
+        return {"fe_seeded": 0}
+    stamp = FE_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"fe_seeded": 0}
+    except Exception:
+        return {"fe_seeded": 0}
+    wrote = 0
+    for f in fe_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("fe seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("fe seed: %d skills into %s", wrote, tenant)
+    return {"fe_seeded": wrote}
+
+
+def _pack_seeders() -> list:
+    """Every pack seeder in this module, found by name: the starters (`seed`) plus every `seed_<pack>(tenant)`.
+    A new pack therefore needs NO edit to seed_all - it only has to follow the convention (its own stamp,
+    create-if-missing, fail-open). Order is stable (sorted by name)."""
+    skip = {"seed_all", "seed_files"}
+    return [seed] + [f for n, f in sorted(globals().items())
+                     if n.startswith("seed_") and n not in skip and callable(f)]
+
+
 _SEEDED: set[tuple[str, str]] = set()      # (coder root, tenant) already checked in this process
 
 
@@ -321,7 +378,7 @@ def seed_all(tenant: str) -> dict:
     if key in _SEEDED or not _seed_armed():
         return {}
     out: dict = {}
-    for fn in (seed, seed_byox, seed_progpack, seed_sp, seed_claude):
+    for fn in _pack_seeders():
         try:
             out.update(fn(t))
         except Exception:

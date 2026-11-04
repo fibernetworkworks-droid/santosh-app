@@ -511,8 +511,9 @@ class Settings(BaseSettings):
     claude_skills_enabled: bool = True      # skillpack/claude/* seeds on first open (create-if-missing, hers win)
     # --- v0.495.0 PROG PACK: the vetted-library registry + the windows script lane ---
     progpack_enabled: bool = True           # PROG pack seeds on first open (default ON)
-    # --- v0.495.0 HOOLA SUPERPOWERS: the obra/superpowers process pack (15 sp-* seeds, MIT), default on ---
     sp_enabled: bool = True                 # superpowers lane seeds on first open under its own stamp (default ON)
+    # --- FE PACK: the HyperFrames template packs + campaign email templates + UI kit ---
+    fepack_enabled: bool = True             # FE pack seeds on first open (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
     coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)

@@ -35,7 +35,7 @@ def _count(tenant=T):
 def test_first_turn_seeds_everything_and_the_skill_rides_that_turn(desk):
     assert _count() == 0
     block = inject.turn_block(T, "conv1", query="write this week's status report for my team")
-    assert _count() == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.claude_dirs())
+    assert _count() == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.claude_dirs())
     assert "internal-comms" in block                        # found on the SAME turn that seeded it
 
 
@@ -74,7 +74,7 @@ def test_switches_turn_it_off_and_back_on_without_restart(desk):
     desk.setenv("CODER_SKILLS_SEED", "true")
     get_settings.cache_clear()
     inject.turn_block(T, "c1", query="status report")
-    assert _count() == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.claude_dirs())
+    assert _count() == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.claude_dirs())
     desk.setenv("CODER_SKILLS", "false")
     get_settings.cache_clear()
     assert inject.turn_block("other-user", "c1", query="status report") == "" and _count("other-user") == 0
@@ -83,7 +83,7 @@ def test_switches_turn_it_off_and_back_on_without_restart(desk):
 def test_voice_path_seeds_too(desk):
     assert _count("caller") == 0
     inject.voice_block("caller", "call1", query="status report")
-    assert _count("caller") == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.claude_dirs())
+    assert _count("caller") == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.claude_dirs())
 
 
 def test_desk_route_uses_the_same_function():
@@ -105,3 +105,10 @@ def test_failing_pack_is_retried_not_remembered(desk, monkeypatch):
     desk.setenv("CODER_SKILLS", "true")
     inject.turn_block(T, "c1", query="status report")                      # next turn heals
     assert any(s["name"] == "internal-comms" for s in skills_store.listing(T))
+
+
+def test_seed_all_finds_every_pack_by_name():
+    """A new pack follows the convention (a seed_<pack>(tenant) function) and needs no edit to seed_all."""
+    names = {f.__name__ for f in skill_packs._pack_seeders()}
+    assert {"seed", "seed_byox", "seed_claude", "seed_progpack", "seed_sp", "seed_fepack"} <= names
+    assert "seed_all" not in names and "seed_files" not in names

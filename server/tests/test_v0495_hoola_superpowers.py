@@ -1,4 +1,4 @@
-"""v0.499.0 HOOLA SUPERPOWERS: the obra/superpowers process pack (15 sp-* seeds, MIT)
+"""v0.500.0 HOOLA SUPERPOWERS: the obra/superpowers process pack (15 sp-* seeds, MIT)
 reaches already-seeded tenants via its OWN once-ever stamp - the v0.492 BYOX lesson,
 third lane. The verbatim archive (LICENSE + skills/** complete, byte-verified at feed
 time) rides under skillpack/upstream/obra-superpowers and never seeds."""
@@ -88,7 +88,7 @@ def test_desk_route_seeds_sp():
     import inspect
     from app.coder import service, skill_packs
     assert "seed_all(tenant)" in inspect.getsource(service)           # v0.494: the desk calls seed_all ...
-    assert "seed_sp" in inspect.getsource(skill_packs.seed_all)       # ... which runs the superpowers lane
+    assert "seed_sp" in [f.__name__ for f in skill_packs._pack_seeders()]   # ... which finds the superpowers lane by name
 
 
 def test_desk_route_returns_all_four_lanes(desk):
@@ -101,7 +101,7 @@ def test_desk_route_returns_all_four_lanes(desk):
     assert got.status_code == 200
     names = [s["name"] for s in got.json()["skills"]]
     from app.coder import skill_packs
-    assert len(names) == 59 + len(skill_packs.claude_dirs())   # 11 starters + 31 byox + 15 sp + 2 prog + the Claude pack
+    assert len(names) == 59 + len(skill_packs.fe_files()) + len(skill_packs.claude_dirs())   # 11 starters + 31 byox + 15 sp + 2 prog + 3 fe + the Claude pack
     assert len([n for n in names if n.startswith("sp-")]) == 15
     assert len([n for n in names if n.startswith("byox-")]) == 31
 
@@ -136,4 +136,4 @@ def test_seeds_carry_upstream_words_not_the_scripts():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.499.0"
+    assert APP_VERSION == "0.500.0"

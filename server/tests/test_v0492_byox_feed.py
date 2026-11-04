@@ -64,7 +64,7 @@ def test_desk_route_seeds_byox():
     # v0.494: the desk calls seed_all, which runs the starters, BYOX and the Claude pack (each its own stamp)
     from app.coder import skill_packs
     assert "seed_all(tenant)" in inspect.getsource(service)
-    assert "seed_byox" in inspect.getsource(skill_packs.seed_all)
+    assert "seed_byox" in [f.__name__ for f in skill_packs._pack_seeders()]   # found by name
 
 
 def test_hinglish_asks_admit_byox():
@@ -83,7 +83,7 @@ def test_card_has_byox_asks_and_set_is_valid():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.499.0"
+    assert APP_VERSION == "0.500.0"
 
 
 def test_coder_routes_work_with_the_real_sync_require_key(desk):

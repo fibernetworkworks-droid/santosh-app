@@ -909,3 +909,51 @@ Work Log:
 - Docs: CLAUDE.md one-liner + current-version line + the v0.495 section; WORKLOG Task 30; HISTORY section.
 Stage Summary:
 - The PROG PACK is built and fed: two behavior skills in the seed platform, own stamp, every tenant gets them on the next skills-desk open. Honest NOT VERIFIED: the FTS match is tested, the first real VPS ask is the live proof. NOT TOUCHED: Mera PC (the script lane skill only WRITES files + names the existing gated doors).
+
+---
+Task ID: 31 (FE PACK -> v0.500.0 - the awesome Front-End (85) read turned into three fed skills: HyperFrames template packs + campaign email templates + the UI kit tokens; TWENTY-THIRD COLLISION re-version 0.498.0 -> 0.500.0: the dev's chain took 0.498.0 UIUX PRO MAX + 0.499.0 SUPERPOWERS while this sat unpushed, rebased on their e90e60f1, both lanes kept, their sp wiring restored by hand)
+Agent: main (continuation session)
+Task: owner: "Front-End (85) - awesome-charting + web-animation + CSS frameworks -> HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly into the campaigns engine. Design-systems list -> Hoola's own UI kit consistency. NOW WORK ON IT MAKE THE SKILL. FEED THIS TO HOOLA"
+
+Work Log:
+- Fresh state check: origin/main had moved 7c1e5139 -> 8f110ee2 (then, at push time, e90e60f1) with dev-chain versions we did not
+  ship (0.495.0 OFFICE HOURS, 0.496.0 CODE GRAPH, 0.497.0 PROG PACK) - the Programming Languages (77) ask
+  from the previous turn was already delivered by the dev chain as v0.497.0 (prog-library-registry +
+  prog-windows-script-lane, fed, tested, live per healthz). No new collision to reconcile: our FE PACK is
+  the next read, 0.498.0 free on tags, b543 next after b1485.
+- Template survey: the PROG PACK shape (skillpack files + own stamp + seed twin + desk-route call + config
+  flag) is the exact pattern; HyperFrames = server/app/studio/frames.py (HTML composition -> deterministic
+  MP4, determinism check gate with lint/runtime/layout/motion/contrast/craft sections, hoola_frames tool
+  actions render/check/timeline/snapshot/add/status/avatar_film); the email lane = email_draft
+  (markdown=true, never raw HTML) + email_bulk (approval card) + kalam publish; the UI kit =
+  lib/ui/glass.dart class C (the REAL tokens - read, not invented).
+- Three skillpack files written (desc <=60, body <=4000, all pass parse_skill + validate):
+  fe-frames-templates (CHART PACK: KPI card/CSS bars/SVG line-area draw-on/donut ring; MOTION PACK: kinetic
+  type/lower-third/logo sting/price reveal/countdown/gradient wash; LAYOUT: 1920x1080 or 1080x1920, ~10%
+  safe margins, ek scene ek idea; LAWS: everything INLINE - the determinism gate refuses CDN/webfonts/
+  network, CHECK cheap BEFORE render expensive, fe-ui-kit colors, project-relative assets, existing doors
+  only) and fe-email-templates (six template structures with subject pattern + body skeleton; the lane
+  email_draft markdown=true / email_bulk behind the approval card / kalam publish; her facts only with
+  [blanks]; NEVER OTP/password/card in a mail, no spam shape, no bought lists) and fe-ui-kit (the REAL
+  Night Glass tokens: #0B0A1A->#120E2A bg, #F4F2FF ink, #FFB15C saffron action, #7C5CFF violet, house
+  gradient #FFD9A8->#FF9A3C->#C055F5, Sora display + 16px/1.5 serif body; tokens first, >=7:1 contrast,
+  ONE accent per screen, motion one family).
+- Feed wired: skill_packs.fe_files() + FE_STAMP skills:fepack:{} + seed_fepack(tenant) (the seed_progpack
+  twin; own once-ever stamp so already-seeded+byox+prog tenants still get it); desk route calls it right
+  after seed_progpack; seed_files() excludes the fe- prefix (starter 10, byox 31, prog 2, fe 3);
+  config.py fepack_enabled default ON.
+- Tests test_v0498_fepack.py (10) green: counts (10/31/2/3), once-ever on an all-three-stamps tenant,
+  hers-win, FEPACK_ENABLED=false, desk-route source pin, lint gate, frames law pins, email law pins,
+  ui-kit REAL-token pins CROSS-CHECKED against lib/ui/glass.dart itself (a wrong hex in the skill can
+  never pass again), injection FTS match on three Hinglish asks; test_v0485 desk-route live count
+  43 -> 46 healed.
+- Ritual 0.498.0 then the TWENTY-THIRD COLLISION re-version 0.500.0 (scripts/ritual_0498.py + ritual_0500.py): APP_VERSION story line-wise (exactly-one hit), pubspec
+  0.500.0+542, 87 full-string + 163 assert pin occurrences swept across 162 py files, zero residual
+  outside the story's Previous chain; story pins (test_v0475:118/128, test_v0480:517, test_v0485:556)
+  now ride the v0.498 story.
+- Docs: CLAUDE.md one-liner + current-version line + the v0.498 section; HISTORY section; WORKLOG Task 31.
+Stage Summary:
+- The FE PACK is built and fed: three behavior skills in the seed platform, own stamp, every tenant gets
+  them on the next skills-desk open. Honest NOT VERIFIED: the FTS match is tested, the first real VPS ask
+  ('reels ke liye chart video banao' / 'diwali offer ka email') is the live proof. NOT TOUCHED: Mera PC,
+  desktop/, lib/ (the pack only NAMES existing doors and tokens - zero runtime code change outside the feed).
