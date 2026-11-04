@@ -81,3 +81,18 @@ def test_card_has_byox_asks_and_set_is_valid():
 def test_version():
     from app.main import APP_VERSION
     assert APP_VERSION == "0.493.0"
+
+
+def test_coder_routes_work_with_the_real_sync_require_key(desk):
+    """main.require_key is a plain function; every route used to `await` it and 500 live."""
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+    from app.coder.service import make_router
+    from app.main import require_key as real_key
+    app = FastAPI()
+    app.include_router(make_router(lambda _req: None, lambda _req: "sync-t"))
+    got = TestClient(app).get("/api/coder/skills")
+    assert got.status_code == 200
+    assert len([s for s in got.json()["skills"] if s["name"].startswith("byox-")]) == 31
+    import inspect
+    assert not inspect.iscoroutinefunction(real_key)

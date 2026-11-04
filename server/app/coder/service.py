@@ -5,6 +5,8 @@ like every house router (require_key), scoped to the caller's tenant. Read paths
 another tenant's rows."""
 from __future__ import annotations
 
+import inspect
+
 import logging
 
 from fastapi import APIRouter, Request
@@ -16,6 +18,12 @@ log = logging.getLogger("coder.service")
 
 def make_router(require_key, current_tenant) -> APIRouter:
     r = APIRouter(prefix="/api/coder", tags=["coder"])
+    _auth = require_key
+
+    async def require_key(request):          # main.require_key is a plain function; tests pass an async one
+        out = _auth(request)
+        if inspect.isawaitable(out):
+            await out
 
     @r.get("/context")
     async def context(request: Request, conv: str = "", compact: bool = False):

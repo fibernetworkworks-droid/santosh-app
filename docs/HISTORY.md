@@ -18933,3 +18933,6 @@ cached_network_image · flutter_svg · dio · riverpod.
 Sweeps: version layer 0.491.0+535 in 85 full-string + 155 assert suites (zero residual); the APK
 compile is the CI check. NOT VERIFIED: no flutter in the sandbox - the constraints' SDK ceilings
 were verified against pub.dev, not compiled.
+
+### v0.493.0 fix (no version bump): /api/coder/* returned 500 live
+`coder/service.py` awaited `require_key(request)` in every route, but `main.require_key` is a plain function (`TypeError: object NoneType can't be used in 'await' expression`). The tests passed an async stand-in (`_nok`), so nothing caught it; the Skills desk (and with it the BYOX seeding) never worked live. `make_router` now accepts a sync or async key check. New test `test_coder_routes_work_with_the_real_sync_require_key` runs the real router with a plain function. Found by the owner's healthz check of v0.492.0 (HTTP 500 on GET /api/coder/skills). Unrelated, pre-existing red: `test_v0473_hoola_coder.py::test_coder_routes_mounted` (`r.path` on a Mount).
