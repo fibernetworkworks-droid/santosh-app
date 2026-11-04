@@ -19012,3 +19012,61 @@ re-version - the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH w
 rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand).
 Previous: v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS, v0.494.0 EQUAL POWER, v0.493.0 THE
 FLUTTER PASS, v0.492.0 BYOX FEED, v0.491.0 CRAWL JOBS [full chains in git history].
+
+## v0.498.0 FE PACK — the HyperFrames template packs + the campaign email templates + the UI kit tokens, fed to every tenant (2026-11-04)
+
+Owner ask (the awesome Front-End (85) read): "awesome-charting + web-animation + CSS frameworks ->
+HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly
+into the campaigns engine. Design-systems list -> Hoola's own UI kit consistency. NOW WORK ON IT MAKE THE
+SKILL. FEED THIS TO HOOLA."
+
+Three insights, three skills (server/app/coder/skillpack/, the skills_store shape: frontmatter name +
+description <=60, body <=4000; the v0.497 PROG PACK pattern exactly - own once-ever stamp, seed on the
+next skills-desk open, create-if-missing, hers win):
+- fe-frames-templates: HyperFrames MP4 styles are ASSEMBLED, not invented. CHART PACK for numbers
+  (big-number KPI card, CSS bar chart, SVG line/area polyline with stroke-dasharray draw-on, donut
+  progress ring), MOTION PACK for movement (kinetic type with 80-120ms stagger, lower-third, logo sting,
+  price/offer reveal, countdown strip, gradient wash on the house gradient), LAYOUT discipline (16:9
+  1920x1080 / 9:16 1080x1920, ~10% safe margins, flex/grid center, ek scene ek idea, 6-12 words per
+  screen). LAWS: everything INLINE (no CDN, no webfont fetch, no network mid-render - the determinism
+  gate refuses), CHECK first (hoola_frames action=check, cheap) and render only on pass (action=render,
+  expensive - minutes), colors and motion from fe-ui-kit so every video is one recognisable family,
+  assets project-relative only, only the existing hoola_frames doors.
+- fe-email-templates: campaign emails ASSEMBLED from the template library (OFFER/SALE, NEWSLETTER,
+  APPOINTMENT/PAYMENT REMINDER, FESTIVAL GREETING, PRODUCT LAUNCH, FEEDBACK REQUEST), her facts inside.
+  The LANE: email_draft markdown=true (markdown, never raw HTML), email_bulk for a list (mail merge,
+  approval card first), kalam action=publish for marketing. LAWS: subject <=45 chars, first line =
+  preheader, ONE CTA, paras 2-3 lines, HER facts only with [blanks] for unknowns (the kalam law), no
+  spam shape (ALL CAPS, !!!, URGENT, fake Re:), consent/unsubscribe on bulk, bought/rented lists never;
+  NEVER OTP/password/card/Aadhaar in a mail, no misleading subject, no bulk without the approval card,
+  no sent-claim before the tool result.
+- fe-ui-kit: the REAL Night Glass tokens from lib/ui/glass.dart class C - bg #0B0A1A -> #120E2A, ink
+  #F4F2FF / muted #B9B3DA / faint #9C96C2, saffron #FFB15C with onAccent #1B1030, violet #7C5CFF,
+  magenta #C055F5, teal #2DD4BF, ok/warn/bad #34D399/#FFC27A/#F87171, chip #D7D2F2, house gradient
+  #FFD9A8 -> #FF9A3C -> #C055F5, panels/lines white 8% (#FFFFFF14); type = Sora display (height 1.12,
+  letterSpacing -1.5%) over a 16px/1.5 serif body. LAWS: tokens first (never invent a shade a token
+  already covers), contrast ink-on-bg >=7:1, ONE accent per screen (saffron = the action), motion one
+  family (150-250ms fades, 80-120ms stagger, ease-out) - composition, email and console card all one
+  family.
+
+THE FEED (the v0.492/v0.495 pattern): skill_packs.fe_files() + FE_STAMP skills:fepack:{} +
+seed_fepack(tenant) - its OWN once-ever stamp, so tenants that already consumed seed AND byox AND prog
+still receive this pack on their next skills-desk open; the desk route calls it right after
+seed_progpack; create-if-missing, hers win; seed_files() excludes the fe- prefix (starter stays 10,
+byox 31, prog 2, fe = 3); config fepack_enabled default ON. Discovery through the coder injection
+block (FTS5 match on name+description, top 2 ride the block, shown-telemetry), the FULL skill read via
+skill_manage before following it (the read-before-follow law).
+
+Tests test_v0498_fepack.py (10): counts (10/31/2/3), once-ever reaches an already-all-three-stamps
+tenant, hers-win, FEPACK_ENABLED=false, the desk-route source pin, the lint gate, frames content
+(check-before-render + determinism + safe margins + doors), email content (email_draft markdown +
+email_bulk card + NEVER), ui-kit content (the REAL hex tokens cross-checked against lib/ui/glass.dart
+itself), injection FTS match on Hinglish asks; the desk-route live counts 43 -> 46 (10+31+2+3) healed
+in test_v0485. Version 0.498.0 (pubspec 0.498.0+542; full-string + assert pin files swept zero
+residual - the story's Previous chain keeps history; desktop 1.9.0 untouched, console stamps
+untouched). Mera PC freeze respected: nothing in server/app/pc/, desktop/ or lib/ touched - the pack
+only NAMES existing doors and tokens. NOT VERIFIED (honest): the first real 'reels ke liye chart video
+banao' ask on the VPS is the live proof; the pack lands in a tenant only when the skills desk is
+opened (the feed's own design). Deploy: the usual vps-ops ritual.
+Previous: v0.497.0 PROG PACK, v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS, v0.494.0 EQUAL POWER,
+v0.493.0 THE FLUTTER PASS, v0.492.0 BYOX FEED, v0.491.0 CRAWL JOBS [full chains in git history].

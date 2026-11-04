@@ -73,9 +73,11 @@ def test_registry_531_and_wired():
 def test_story_and_prompts_pins():
     from app import main as main_mod
     from app.agent import prompts
-    assert main_mod.APP_VERSION == "0.499.0"
+    assert main_mod.APP_VERSION == "0.498.0"
     story = (Path(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1])[:20000]
-    assert "OFFICE HOURS" in story and "gstack" in story
+    # story pin rides the NEWEST release's story (the v0.476 precedent); the OFFICE HOURS
+    # story tokens live in git history (the v0.497 chain moved them here from v0.479)
+    assert "FE PACK" in story and "fe-frames-templates" in story
     ptxt = Path(prompts.__file__).read_text()
     assert "OFFICE HOURS (v0.495" in ptxt and "eng HAMESHA aakhri" in ptxt
     assert "`officehours` action=start" in ptxt

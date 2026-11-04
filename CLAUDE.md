@@ -232,6 +232,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.498 FE PACK (owner: the awesome Front-End (85) read - 'awesome-charting + web-animation + CSS frameworks -> HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly into the campaigns engine. Design-systems list -> Hoola's own UI kit consistency. NOW WORK ON IT MAKE THE SKILL. FEED THIS TO HOOLA'): three skillpack files, fe-frames-templates (HyperFrames MP4 styles ASSEMBLED not invented - the CHART PACK (big-number KPI card, CSS bar chart, SVG line/area draw-on, donut ring) + the MOTION PACK (kinetic type 80-120ms stagger, lower-third, logo sting, price reveal, countdown, gradient wash) + the layout discipline (16:9 1920x1080 / 9:16 1080x1920, ~10% safe margins, ek scene ek idea); the laws: everything INLINE (no CDN/webfont/network - the determinism gate refuses), CHECK cheap BEFORE render expensive, colors/motion from fe-ui-kit) and fe-email-templates (campaign emails assembled from the template library - OFFER/SALE, NEWSLETTER, REMINDER, FESTIVAL GREETING, PRODUCT LAUNCH, FEEDBACK REQUEST - subject <=45 chars + preheader first line + ONE CTA + her facts only with [blanks]; the lane: email_draft markdown=true, email_bulk behind the approval card, kalam publish; NEVER OTP/password/card numbers in a mail, no spam shape, no bought lists) and fe-ui-kit (the REAL Night Glass tokens from lib/ui/glass.dart class C - bg #0B0A1A -> #120E2A, ink #F4F2FF, saffron #FFB15C, violet #7C5CFF, house gradient #FFD9A8 -> #FF9A3C -> #C055F5, Sora display + serif body; tokens first, contrast >=7:1, ONE accent per screen, motion one family - composition, email aur console card sab ek family). THE FEED: skill_packs.seed_fepack(tenant) with its OWN once-ever stamp (the v0.492/v0.495 pattern) - every tenant gets it on the next skills-desk open, create-if-missing, hers win; fepack_enabled default ON. Tests test_v0498_fepack.py 10 (+ the desk-route live count 43 -> 46 healed in test_v0485; the ui-kit hexes cross-checked against glass.dart itself).
 - v0.497 PROG PACK (TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0: the dev's chain took 0.495.0 OFFICE HOURS and then 0.496.0 CODE GRAPH while this sat unpushed - REBASE PROTOCOL respected twice, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand; owner: the awesome Programming Languages read - 'CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI'): two skillpack files, prog-library-registry (pick libraries from the vetted registry - requests/httpx, beautifulsoup4+lxml/scrapy, openpyxl/pandas/xlsxwriter, pypdf/reportlab/pdfplumber, python-docx/python-pptx, Pillow, flask/fastapi/pytest, stdlib first; outside it = VERIFY on PyPI through the gated run door or say unverified, NEVER a plausible guess; install only on her tap - the supply-chain safety win) and prog-windows-script-lane (the THIRD automation lane beside pixels and ax_*: AutoHotkey v2 / AutoIt / VBA for the apps the accessibility tree cannot reach; the script is a FILE shown + explained, nothing self-runs, execution rides the gated run door or her own double-click; no Win+R-class keys, no AV/UAC, money/delete macros read back first). THE FEED: skill_packs.seed_progpack(tenant) with its OWN once-ever stamp (the v0.492 pattern) - every tenant gets it on the next skills-desk open, create-if-missing, hers win; progpack_enabled default ON. Tests test_v0495_progpack.py 9 (+ the desk-route live count 41 -> 43 healed in test_v0485). Bonus heal: the dev chain's missed story pins (0.493.0 asserts left red on main 7c1e5139) now ride this newest story.
 - v0.496 CODE GRAPH (Graphify, Apache-2.0, as a read-only lane): graph_build maps a GitHub repo (tarball, safe unpack, local AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill), graph_ask answers query/path/explain/affected/god_nodes, graph_list; per-tenant graphs, the source deleted after the build, the optional binary gets a calm install hint, flag-like arguments refused, Hinglish routing + 5 card asks (their own TWENTY-FIRST collision: re-versioned 0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0). Tests test_v0496_codegraph.py.
 - v0.495 OFFICE HOURS (owner: 'BUILD' on github.com/garrytan/gstack - Garry Tan's open-source software factory: /office-hours writes a design doc, four plan reviews amend it, only then anything is built): the house had the hands (qa, devops, appreview, kaam_plan) but never the HEAD - a structured think/plan step that decides what is WORTH building before anything is built. NEW agent/officehours_tools.py beside kaam_plan (registry 529 -> 531, tools officehours / officehours_dekho): start opens a baithak asking SIX forcing questions ONE at a time (real pain with a specific example, who does it today + what it costs, the first visible change when fixed, today's jugaad, the smallest self-useful wedge, kill criteria), same topic returns the SAME doc honestly (already_open); doc writes reframe + capabilities (max 7) + premises challenged + 3-4 options with honest effort + recommendation = the narrowest wedge; review appends one lens row ceo|design|devex|eng - eng ALWAYS last and the eng lens flips status to reviewed, review on a doc-less draft is refused; decide records HER decision in her words (Hoola never decides) + next_step; stop closes. NOTHING AUTO-RUNS OFF A DOC - the wedge is advisory; building happens later through the existing doors with her Haan. Config officehours_enabled=True, officehours_keep_docs=30. Tests test_v0495_officehours.py 30. NOT VERIFIED: the first real baithak in her chat is the live test.
@@ -323,7 +324,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.497.0 (pubspec 0.497.0+541; PROG PACK v0.497.0 = the vetted-library registry + the windows script lane, fed to every tenant; CODE GRAPH v0.496.0 = the Graphify read-only lane; OFFICE HOURS v0.495.0 = the gstack THINK/PLAN lane; EQUAL POWER v0.494.0 = the equal-power call feed + type-into-a-call; desktop/plugin/extension 1.9.0; Firecrawl core v0.483.0, SAPNE v0.484.0, Skill Desk v0.485.0, PowerToys Run v0.489.0 (the W2b SEVENTEENTH+EIGHTEENTH-COLLISION rebase on fdc7c402), Web Extension v0.490.0 = W3 (the EIGHTEENTH-COLLISION rebase), the Flutter pass v0.493.0 = W4 - the text lane both doors ride). Version ritual = main.py APP_VERSION + pubspec version(+build) +
+- Current version: v0.498.0 (pubspec 0.498.0+542; FE PACK v0.498.0 = the HyperFrames template packs + the campaign email templates + the UI kit tokens, fed to every tenant; PROG PACK v0.497.0 = the vetted-library registry + the windows script lane, fed to every tenant; CODE GRAPH v0.496.0 = the Graphify read-only lane; OFFICE HOURS v0.495.0 = the gstack THINK/PLAN lane; EQUAL POWER v0.494.0 = the equal-power call feed + type-into-a-call; desktop/plugin/extension 1.9.0; Firecrawl core v0.483.0, SAPNE v0.484.0, Skill Desk v0.485.0, PowerToys Run v0.489.0 (the W2b SEVENTEENTH+EIGHTEENTH-COLLISION rebase on fdc7c402), Web Extension v0.490.0 = W3 (the EIGHTEENTH-COLLISION rebase), the Flutter pass v0.493.0 = W4 - the text lane both doors ride). Version ritual = main.py APP_VERSION + pubspec version(+build) +
   console `?v=` stamps in `server/app/static/console/v2.html` (21 now, all 0.485.0 since the Skill Desk console change; vendor qrcode.js 1.4.4 excepted) + the version pins in tests (grep the old number in
 - v0.459 ABHI ABHI WEBSITE (web Step 5 = W6 + W7, `site/livesite.py` + `site/webpush.py`): linked websites get the live SSE (read-rule filtered, replay), visitor <-> team chat (her reply = her tap), clinic queue (tokens under lock, TV board numbers only, ONE "turn near" SMS via her approved connector), browser push only after her tap (RFC 8291/8292); connectors: `remind` trigger (once per booking, never cancelled), `queue`, HubSpot, Composio (her account), signed website webhooks; console Live panel.
 - v0.452 DUKAAN PLUS (web Step 4B): `site/shopplus.py` = website GST invoice / credit note on HER ONE series (hidden `_web_orders` app rows), AutoPay plans for website members, marketplace (seller apply -> her approval, commission, Route account, product moderation, transfer once), Shiprocket (her tap: AWB + label, tracking), wishlist + opted-in cart reminders she sends herself.
@@ -1207,6 +1208,61 @@ row_factory=sqlite3.Row (fixed once at _con). Version 0.495.0 (pubspec 0.495.0+5
 swept to 0.496.0+540 by the PROG PACK re-version on top). NOT VERIFIED (honest): the first real baithak
 in her chat is the live test; the voice lane does not declare these tools yet (they ride santosh_kaam on
 calls, same as every other desk head change).
+
+## v0.498.0 FE PACK — the HyperFrames template packs + the campaign email templates + the UI kit tokens, fed to every tenant (owner: the awesome Front-End (85) read, "NOW WORK ON IT MAKE THE SKILL. FEED THIS TO HOOLA")
+
+The owner took the Front-End (85) category of the awesome index and asked for its three insights turned
+into Hoola skills: (1) awesome-charting + web-animation + CSS frameworks -> HyperFrames template packs so a
+new MP4 style is cheap (assembled from proven blocks, not invented from scratch - fewer check-gate failures,
+fewer expensive re-renders); (2) awesome-emails -> campaign email templates directly into the campaigns
+lane (email_draft / email_bulk / kalam publish - proven structures, her facts inside); (3) the design-systems
+discipline -> Hoola's OWN UI kit tokens pinned in one skill so every surface (composition, email, console
+card) stays one recognisable family. The v0.497 PROG PACK pattern exactly: skillpack files, own once-ever
+stamp, seed on the next skills-desk open, create-if-missing, hers win.
+
+The three skills (`server/app/coder/skillpack/`, frontmatter name + description <=60, body <=4000):
+- `fe-frames-templates`: MP4 styles are ASSEMBLED - the CHART PACK for numbers (big-number KPI card, CSS bar
+  chart, SVG line/area with stroke-dasharray draw-on, donut progress ring), the MOTION PACK for movement
+  (kinetic type with 80-120ms stagger, lower-third, logo sting, price/offer reveal, countdown strip, gradient
+  wash), the LAYOUT discipline (16:9 1920x1080 / 9:16 1080x1920, ~10% safe margins, flex/grid, ek scene ek
+  idea, 6-12 words per screen). LAWS: everything INLINE (no CDN, no webfont fetch, no network mid-render -
+  the determinism gate refuses), CHECK first (`hoola_frames action=check`, cheap) and render only on pass
+  (expensive, minutes), colors/motion from fe-ui-kit, assets project-relative only, only the existing
+  hoola_frames doors - never a self-made Chrome/FFmpeg.
+- `fe-email-templates`: the template library (OFFER/SALE, NEWSLETTER, APPOINTMENT/PAYMENT REMINDER, FESTIVAL
+  GREETING, PRODUCT LAUNCH, FEEDBACK REQUEST) each with its subject pattern + body skeleton; the LANE is
+  email_draft markdown=true (markdown, never raw HTML), email_bulk for a list (mail merge, approval card
+  first), kalam action=publish for marketing. LAWS: subject <=45 chars, first line = preheader, ONE CTA,
+  paras 2-3 lines, HER facts only with [blanks] for unknowns (the kalam law), no spam shape (ALL CAPS, !!!,
+  URGENT, fake Re:), consent/unsubscribe on bulk, bought lists never; NEVER OTP/password/card/Aadhaar in a
+  mail, no misleading subject, no bulk without the card, no sent-claim before the tool result.
+- `fe-ui-kit`: the REAL Night Glass tokens read from `lib/ui/glass.dart` class C (the test cross-checks the
+  hexes against the file itself): bg #0B0A1A -> #120E2A, ink #F4F2FF / muted #B9B3DA / faint #9C96C2, saffron
+  action #FFB15C with onAccent #1B1030, violet #7C5CFF, magenta #C055F5, teal #2DD4BF, ok/warn/bad
+  #34D399/#FFC27A/#F87171, chip #D7D2F2, house gradient #FFD9A8 -> #FF9A3C -> #C055F5, panels/lines white 8%
+  #FFFFFF14; type = Sora display (height 1.12) over a 16px/1.5 serif body. LAWS: tokens first, contrast
+  ink-on-bg >=7:1, ONE accent per screen, motion one family (150-250ms fades, 80-120ms stagger, ease-out).
+
+THE FEED (the v0.492/v0.495 pattern): `skill_packs.fe_files()` + `FE_STAMP skills:fepack:{}`
++ `seed_fepack(tenant)` - its OWN once-ever stamp, so tenants that already consumed seed AND byox AND prog
+still receive this pack on their next skills-desk open; the desk route calls it right after seed_progpack;
+create-if-missing, hers win; `seed_files()` excludes the fe- prefix (starter stays 10, byox 31, prog 2,
+fe = 3); config `fepack_enabled` default ON. Discovery through the coder injection block (FTS5 match on
+name+description, top 2 ride the block, shown-telemetry), the FULL skill read via skill_manage before
+following it (the read-before-follow law).
+
+TESTS `server/tests/test_v0498_fepack.py` (10): counts (10/31/2/3), once-ever reaches an
+already-all-three-stamps tenant, hers-win, FEPACK_ENABLED=false, the desk-route source pin, the lint gate,
+frames content (check-before-render + determinism + safe margins + doors), email content (email_draft
+markdown + email_bulk card + NEVER), ui-kit content (the REAL hex tokens cross-checked against
+lib/ui/glass.dart itself), injection FTS match on Hinglish asks (video/chart -> fe-frames-templates, email
+template -> fe-email-templates, colors/brand -> fe-ui-kit); the desk-route live counts 43 -> 46
+(10+31+2+3) healed in test_v0485. Version 0.498.0 (pubspec 0.498.0+542; full-string + assert pin files
+swept zero residual - the story's Previous chain keeps history; desktop 1.9.0 untouched, console stamps
+untouched). Mera PC freeze respected: nothing in server/app/pc/, desktop/ or lib/ touched - the pack only
+NAMES existing doors and tokens. NOT VERIFIED (honest): the first real 'reels ke liye chart video banao'
+ask on the VPS is the live proof; the pack lands in a tenant only when the skills desk is opened (the
+feed's own design). Deploy: the usual vps-ops ritual.
 
 ## v0.497.0 PROG PACK (TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0 - the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH while this sat unpushed, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept) — the curated-library registry + the windows script lane, fed to every tenant (owner: the awesome Programming Languages read, "NOW CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI"; TWENTY-FIRST COLLISION re-version 0.495.0 -> 0.496.0 - the dev's chain took 0.495.0 OFFICE HOURS while this sat unpushed, rebased -X theirs on 571d8ec1, both works kept)
 
