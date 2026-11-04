@@ -187,6 +187,12 @@ def primer(tenant: str, conv: str | None = None, compact: bool = False, query: s
         store.ensure()
     except Exception:
         return ""
+    if _skills_enabled():          # v0.494 a user's first turn seeds her skills (no Skill Desk visit needed)
+        try:
+            from . import skill_packs
+            skill_packs.seed_all(tenant)
+        except Exception:
+            pass
     header = HEADER
     sk = skills_block(tenant, query, compact=compact, conv=conv or "",
                       surface="voice" if not compact else "chat")

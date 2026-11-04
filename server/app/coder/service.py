@@ -98,9 +98,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
             return {"skills": []}
         tenant = current_tenant(request)
         from . import skill_packs, skills_store
-        skill_packs.seed(tenant)                     # exactly-once per tenant, create-if-missing
-        skill_packs.seed_byox(tenant)                # the BYOX pack, its own once-ever stamp
-        skill_packs.seed_claude(tenant)              # the Anthropic example skills (Apache 2.0), own stamp
+        skill_packs.seed_all(tenant)                 # starters + BYOX + Claude pack, each exactly-once (own stamps)
         counts = store.skill_use_counts(tenant)
         out = []
         for s in skills_store.listing(tenant):

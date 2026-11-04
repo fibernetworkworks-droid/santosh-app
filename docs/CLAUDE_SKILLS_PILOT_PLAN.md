@@ -119,3 +119,11 @@ safest skills. Exit per wave: store tests green, card numbers printed, nothing i
   a matched skill could not be opened without a tool_search detour. Fixed: `coder.inject.admit_tool` admits that one
   tool when a skill matches the ask (no match / switch off = no extra tool); the agent loop calls it after admission.
   NOT FIXED: voice calls (skill_manage is not a declared call tool; a call hands work to santosh_kaam).
+- 4 Nov 2026 FIX SEEDING DONE: `skill_packs.seed_all` (starters + BYOX + Claude pack, each its own once-ever stamp)
+  now runs on a user's FIRST memory-block build (`inject.primer`: chat turn or call start), not only when the Skill
+  Desk opens; remembered per process (keyed by coder dir + tenant) so later turns pay nothing; internal tenants
+  ('_packs', '__quality__', ...) are never auto-seeded; a skill she deleted stays deleted (stamps); switches still
+  work and re-arm without a restart; a failing pack is retried next turn. First turn pays a one-off file copy.
+  Regression run: 280 tests pass; 2 failures are PRE-EXISTING on the committed code and unrelated
+  (test_v0473 coder_routes_mounted: FastAPI `_IncludedRouter` has no `.path` in this sandbox; test_v108 voice memory:
+  `_tone_tag` missing on a fake).

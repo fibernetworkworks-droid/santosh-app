@@ -61,7 +61,10 @@ def test_seed_byox_switch_off(desk):
 def test_desk_route_seeds_byox():
     import inspect
     from app.coder import service
-    assert "seed_byox(tenant)" in inspect.getsource(service)
+    # v0.494: the desk calls seed_all, which runs the starters, BYOX and the Claude pack (each its own stamp)
+    from app.coder import skill_packs
+    assert "seed_all(tenant)" in inspect.getsource(service)
+    assert "seed_byox" in inspect.getsource(skill_packs.seed_all)
 
 
 def test_hinglish_asks_admit_byox():

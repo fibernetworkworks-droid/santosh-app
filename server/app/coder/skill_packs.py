@@ -208,6 +208,34 @@ def seed_claude(tenant: str) -> dict:
     return {"claude_seeded": wrote}
 
 
+_SEEDED: set[tuple[str, str]] = set()      # (coder root, tenant) already checked in this process
+
+
+def seed_all(tenant: str) -> dict:
+    """Every shipped pack for a tenant, exactly-once each (their own stamps), fail-open. Called on a user's
+    FIRST memory-block build (chat turn or call start) and by the Skill Desk, so a user who never opens the
+    desk still gets her skills. Internal tenants (a leading '_': the shelf, the cards) are never auto-seeded.
+    After one successful pass the process remembers it, so later turns pay nothing."""
+    t = str(tenant or "")
+    if not t or t.startswith("_"):
+        return {}
+    try:
+        key = (os.path.realpath(store.root()), t)
+    except Exception:
+        return {}
+    if key in _SEEDED or not _seed_armed():
+        return {}
+    out: dict = {}
+    for fn in (seed, seed_byox, seed_claude):
+        try:
+            out.update(fn(t))
+        except Exception:
+            log.exception("%s failed for %s", fn.__name__, t)
+            return out                       # not remembered: the next turn tries again
+    _SEEDED.add(key)
+    return out
+
+
 def seed(tenant: str) -> dict:
     """Copy the starter library into a tenant once ever (create-if-missing, stamped)."""
     if not _seed_armed():
@@ -567,5 +595,5 @@ def pack_install(tenant: str, name: str) -> dict:
 
 
 def reset_for_tests() -> None:
-    """Test isolation hook (parity with the other coder modules; stateless beyond the vault)."""
-    return None
+    """Test isolation hook: forget which tenants this process already seeded."""
+    _SEEDED.clear()
