@@ -161,10 +161,10 @@ def test_console_files_carry_the_search_power(env):
     assert "FIND_SEQ" in cl and "&lt;&lt;" in cl                                       # FTS marks painted safely
     import re
     from app.main import APP_VERSION
-    # Healed at v0.484.0 (stale-red on pristine main since the v0.476 stamps precedent): the
+    # Healed at v0.485.0 (stale-red on pristine main since the v0.476 stamps precedent): the
     # maintained convention (pinned in test_v0475_console_frames) is that console stamps move
     # only when the console itself changes; a server-only release leaves them coherent at the
-    # last console version (0.482.0). The guard's real job: never MIXED app stamps in one page.
+    # last console version (0.485.0 - v0.485 SKILL DESK changed the console). The guard's real job: never MIXED app stamps in one page.
     vs = {v for v in re.findall(r"\?v=([0-9.]+)", html) if v.startswith("0.")}   # vendor stamps excluded
-    assert vs == {"0.482.0"}, f"mixed console cache stamps: {sorted(vs)}"
-    assert APP_VERSION == "0.484.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert vs == {"0.485.0"}, f"mixed console cache stamps: {sorted(vs)}"
+    assert APP_VERSION == "0.485.0"    # conscious-bump guard: moves with every release (bump with pubspec)

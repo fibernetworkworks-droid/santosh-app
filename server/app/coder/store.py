@@ -12,6 +12,9 @@ Santosh's sessions:
   tool_uses   the raw index of what ran (retention-limited, the deep-dig layer)
   work_state  cross-session to-do lists (todo / doing / done)
   dedup_candidates  near-duplicate pairs awaiting a human decision (never auto-merged)
+  skill_uses  the skill telemetry ledger (v0.484): shown / read / published / installed
+              per (tenant, name) - the desk's usage column and the share nomination's
+              evidence live here; nothing model-made, pure bookkeeping
   consumed    exactly-once markers for the spool drainer (filename is the dedupe key)
 
 Full-text search rides FTS5 external-content tables kept in sync by triggers; when FTS5 is
@@ -36,7 +39,7 @@ from contextlib import contextmanager
 
 log = __import__("logging").getLogger("coder.store")
 
-_SCHEMA_VERSION = 2
+_SCHEMA_VERSION = 3
 
 _SCHEMA = [
     """CREATE TABLE IF NOT EXISTS schema_version (v INTEGER NOT NULL)""",
@@ -86,8 +89,20 @@ _SCHEMA = [
     """CREATE TABLE IF NOT EXISTS skills (
         name TEXT NOT NULL, tenant TEXT NOT NULL DEFAULT '', description TEXT NOT NULL DEFAULT '',
         body TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (name, tenant))""",
+    """CREATE TABLE IF NOT EXISTS skill_uses (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, tenant TEXT NOT NULL DEFAULT '',
+        name TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('shown','read','published','installed')),
+        surface TEXT NOT NULL DEFAULT '', conv TEXT NOT NULL DEFAULT '',
+        at TEXT NOT NULL, at_epoch INTEGER NOT NULL)""",
+    """CREATE INDEX IF NOT EXISTS idx_skill_uses ON skill_uses(tenant, name, at_epoch)""",
     """CREATE TABLE IF NOT EXISTS consumed (key TEXT PRIMARY KEY, at TEXT NOT NULL)""",
+    """CREATE TABLE IF NOT EXISTS skill_shares (
+        name TEXT NOT NULL, tenant TEXT NOT NULL DEFAULT '',
+        status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','published','rejected')),
+        note TEXT NOT NULL DEFAULT '', created_at TEXT NOT NULL, decided_at TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (name, tenant))""",
     """CREATE TABLE IF NOT EXISTS token_df (
         tenant TEXT NOT NULL, token TEXT NOT NULL, df INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (tenant, token))""",
@@ -215,6 +230,12 @@ def ensure() -> None:
             cols = [r[1] for r in conn.execute("PRAGMA table_info(observations)").fetchall()]
             if cols and "superseded_by" not in cols:
                 conn.execute("ALTER TABLE observations ADD COLUMN superseded_by INTEGER NOT NULL DEFAULT 0")
+            # v0.484 additive migration: skills.enabled (1 = injected when matched; 0 = the owner
+            # parked it - the file stays, search and injection stop showing it). In _SCHEMA for
+            # fresh vaults; this pragma check lifts every vault created before v0.481.
+            scols = [r[1] for r in conn.execute("PRAGMA table_info(skills)").fetchall()]
+            if scols and "enabled" not in scols:
+                conn.execute("ALTER TABLE skills ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1")
             row = conn.execute("SELECT v FROM schema_version").fetchone()
             if row is None:
                 conn.execute("INSERT INTO schema_version(v) VALUES (?)", (_SCHEMA_VERSION,))
@@ -518,15 +539,16 @@ def work_read(lst: str | None = None, include_closed: bool = False) -> dict:
 
 # ---------------------------------------------------------------- skills (v0.477 mirror + search)
 
-def skill_mirror(name: str, tenant: str, description: str, body: str) -> None:
+def skill_mirror(name: str, tenant: str, description: str, body: str, enabled: int = 1) -> None:
     """The vault row behind one skill file (files are the source of truth; this is the index)."""
     ensure()
     now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     with db(write=True) as c:
-        c.execute("INSERT INTO skills(name, tenant, description, body, created_at, updated_at) "
-                  "VALUES (?,?,?,?,?,?) ON CONFLICT(name, tenant) DO UPDATE SET "
-                  "description=excluded.description, body=excluded.body, updated_at=excluded.updated_at",
-                  (name, tenant, description[:300], body[:8000], now, now))
+        c.execute("INSERT INTO skills(name, tenant, description, body, created_at, updated_at, enabled) "
+                  "VALUES (?,?,?,?,?,?,?) ON CONFLICT(name, tenant) DO UPDATE SET "
+                  "description=excluded.description, body=excluded.body, updated_at=excluded.updated_at, "
+                  "enabled=excluded.enabled",
+                  (name, tenant, description[:300], body[:8000], now, now, int(enabled)))
 
 
 def skill_unmirror(name: str, tenant: str) -> None:
@@ -535,30 +557,32 @@ def skill_unmirror(name: str, tenant: str) -> None:
         c.execute("DELETE FROM skills WHERE name=? AND tenant=?", (name, tenant))
 
 
-def skills_search(tenant: str, query: str, limit: int = 2) -> list[dict]:
+def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: bool = False) -> list[dict]:
     """Top skills for the current ask - the injection shortlist. FTS5 match first; LIKE fallback
-    (the obs search discipline); scoped to the caller's tenant always."""
+    (the obs search discipline); scoped to the caller's tenant always. A parked skill
+    (enabled=0) never rides the shortlist unless the caller asks for it by name (the desk)."""
     ensure()
     q = (query or "").strip()
     if not q:
         return []
+    live = "" if include_disabled else " AND s.enabled=1"
     with db() as c:
         if _fts_ok:
             terms = " OR ".join(f'"{t.replace(chr(34), "")}"' for t in q.split() if len(t) >= 3)[:400]
             if terms:
                 try:
                     rows = c.execute(
-                        "SELECT s.name, s.description, s.body FROM skills_fts f "
+                        "SELECT s.name, s.description, s.body, s.enabled FROM skills_fts f "
                         "JOIN skills s ON s.rowid = f.rowid "
-                        "WHERE skills_fts MATCH ? AND s.tenant=? "
-                        "ORDER BY rank LIMIT ?", (terms, tenant, limit)).fetchall()
+                        "WHERE skills_fts MATCH ? AND s.tenant=?" + live +
+                        " ORDER BY rank LIMIT ?", (terms, tenant, limit)).fetchall()
                     return [dict(r) for r in rows]
                 except sqlite3.Error:
                     pass                       # a malformed match string falls through to LIKE
         like = f"%{q[:200]}%"
         rows = c.execute(
-            "SELECT name, description, body FROM skills WHERE tenant=? AND "
-            "(name LIKE ? OR description LIKE ? OR body LIKE ?) LIMIT ?",
+            "SELECT name, description, body, enabled FROM skills WHERE tenant=?" + live +
+            " AND (name LIKE ? OR description LIKE ? OR body LIKE ?) LIMIT ?",
             (tenant, like, like, like, limit)).fetchall()
         return [dict(r) for r in rows]
 
@@ -567,6 +591,74 @@ def skills_count() -> int:
     ensure()
     with db() as c:
         return int(c.execute("SELECT COUNT(*) FROM skills").fetchone()[0])
+
+
+# ---------------------------------------------------------------- skill telemetry (v0.484)
+
+_KINDS = ("shown", "read", "published", "installed")
+
+
+def skill_use_mark(tenant: str, name: str, kind: str, conv: str = "", surface: str = "") -> None:
+    """One telemetry row. Fail-open at every caller - bookkeeping must never break a turn."""
+    if kind not in _KINDS:
+        return
+    try:
+        ensure()
+        now, ep = time.strftime("%Y-%m-%dT%H:%M:%S%z"), int(time.time())
+        with db(write=True) as c:
+            c.execute("INSERT INTO skill_uses(tenant, name, kind, surface, conv, at, at_epoch) "
+                      "VALUES (?,?,?,?,?,?,?)",
+                      (str(tenant or ""), str(name or "")[:64], kind, str(surface or "")[:16],
+                       str(conv or "")[:80], now, ep))
+    except Exception:
+        log.exception("skill_use_mark failed (%s/%s/%s)", tenant, name, kind)
+
+
+def skill_use_counts(tenant: str) -> dict[str, dict]:
+    """Per-skill usage for one tenant: total shows, total reads (the follow signal), the last
+    activity of each kind. One GROUP BY pass - the desk reads this, never a per-row query."""
+    ensure()
+    out: dict[str, dict] = {}
+    with db() as c:
+        rows = c.execute("SELECT name, kind, COUNT(*) n, MAX(at) last_at FROM skill_uses "
+                         "WHERE tenant=? GROUP BY name, kind", (str(tenant or ""),)).fetchall()
+    for r in rows:
+        d = out.setdefault(r["name"], {"shown": 0, "read": 0, "published": 0, "installed": 0,
+                                       "last_shown": "", "last_read": ""})
+        d[r["kind"]] = int(r["n"])
+        if r["kind"] == "shown":
+            d["last_shown"] = r["last_at"] or ""
+        elif r["kind"] == "read":
+            d["last_read"] = r["last_at"] or ""
+    return out
+
+
+def skill_reads(tenant: str, name: str) -> int:
+    """How often this skill was actually opened (the share nomination's evidence)."""
+    ensure()
+    with db() as c:
+        return int(c.execute("SELECT COUNT(*) FROM skill_uses WHERE tenant=? AND name=? AND kind='read'",
+                             (str(tenant or ""), str(name or ""))).fetchone()[0])
+
+
+def skill_recent(tenant: str, days: int = 30) -> set[str]:
+    """Skills with ANY telemetry inside the window - the injection's recency boost."""
+    ensure()
+    cut = int(time.time()) - max(1, days) * 86400
+    with db() as c:
+        rows = c.execute("SELECT DISTINCT name FROM skill_uses WHERE tenant=? AND at_epoch>=?",
+                         (str(tenant or ""), cut)).fetchall()
+    return {r["name"] for r in rows}
+
+
+def skill_share_rows(tenant: str, status: str = "") -> list[dict]:
+    """The share ledger for one tenant (newest first); status='' means everything."""
+    ensure()
+    q = ("SELECT name, tenant, status, note, created_at, decided_at FROM skill_shares "
+         "WHERE tenant=?" + (" AND status=?" if status else "") + " ORDER BY rowid DESC")
+    with db() as c:
+        rows = c.execute(q, (str(tenant or ""),) + ((status,) if status else ())).fetchall()
+    return [dict(r) for r in rows]
 
 
 def nudge_counts() -> dict:
@@ -688,8 +780,14 @@ def stats() -> dict:
         disc = c.execute("SELECT COALESCE(SUM(discovery_tokens),0) FROM observations").fetchone()[0]
         cand = c.execute("SELECT COUNT(*) FROM dedup_candidates WHERE status='pending'").fetchone()[0]
         n_skills = c.execute("SELECT COUNT(*) FROM skills").fetchone()[0]
+        n_live = c.execute("SELECT COUNT(*) FROM skills WHERE enabled=1").fetchone()[0]
+        uses = c.execute("SELECT COUNT(*) FROM skill_uses").fetchone()[0]
+        reads = c.execute("SELECT COUNT(*) FROM skill_uses WHERE kind='read'").fetchone()[0]
+        shares = c.execute("SELECT COUNT(*) FROM skill_shares WHERE status='pending'").fetchone()[0]
     return {"observations": n_obs, "summaries": n_sum, "sessions": n_sessions, "tool_uses": n_tools,
             "discovery_tokens": disc, "pending_dedup_candidates": cand, "skills": int(n_skills),
+            "skills_live": int(n_live), "skill_uses": int(uses), "skill_reads": int(reads),
+            "skill_shares_pending": int(shares),
             **nudge_counts(), "curator": curator_counts(), "fts": bool(_fts_ok)}
 
 

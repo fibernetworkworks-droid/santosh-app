@@ -10,6 +10,13 @@ CONTEXT_OUTPUT_LIMIT) and the chat-turn compact block at 1,600. When over budget
 drop in a fixed order (narratives first, then summaries, then older rows) - header and at least
 one row always survive. Resume sessions inject nothing new (cache stability), matching voice's
 resume path.
+
+v0.484 SKILL DESK hooks: every matched skill that rides the block marks the telemetry ledger
+(kind='shown' - the desk's usage column and the share nominations' evidence), a skill the
+telemetry saw recently (30 days) outranks an equally-ranked cold one, a PARKED skill (the
+owner's enabled=false) never rides at all, and child_skills() gives a swarm worker the same
+matched-skills lines inside its own 400-char budget (it reads the full skill itself via
+skill_manage, which a child owns - the same read-before-follow law).
 """
 from __future__ import annotations
 
@@ -34,10 +41,48 @@ def _skills_enabled() -> bool:
         return False
 
 
-def skills_block(tenant: str, query: str, compact: bool = False) -> str:
+def _matched(tenant: str, query: str, limit: int = 4) -> list[dict]:
+    """The matched skills, FTS-ranked, with the recency boost on top: a skill telemetry saw in
+    the last 30 days outranks an equally-ranked cold one (used beats written). Disabled rows
+    never leave the store."""
+    try:
+        rows = store.skills_search(tenant, query, limit=limit)
+    except Exception:
+        return []
+    if not rows:
+        return []
+    try:
+        hot = store.skill_recent(tenant, 30)
+        if hot:
+            rows.sort(key=lambda r: r["name"] not in hot)   # stable: rank order kept inside each class
+    except Exception:
+        pass
+    return rows[:2]
+
+
+def skills_block(tenant: str, query: str, compact: bool = False, conv: str = "",
+                 surface: str = "") -> str:
     """Top matched LEARNED SKILLS for the current ask (zero model calls - pure FTS5). Name +
     description only: she reads the full skill via skill_manage before following it (Hermes's
-    read-before-follow discipline). Empty on no match, empty query or the switch off."""
+    read-before-follow discipline). Empty on no match, empty query or the switch off.
+    v0.481: every shown match lands in the telemetry ledger (fail-open bookkeeping)."""
+    if not query or not _skills_enabled():
+        return ""
+    rows = _matched(tenant, query)
+    if not rows:
+        return ""
+    for r in rows:
+        store.skill_use_mark(tenant, r["name"], "shown", conv=conv, surface=surface)
+    lines = [f"- {r['name']}: {r['description']}" for r in rows]
+    block = ("LEARNED SKILLS matching this ask (skill_manage read the skill before you follow "
+             "it):\n" + "\n".join(lines))
+    return block[:SKILLS_COMPACT_BUDGET if compact else SKILLS_VOICE_BUDGET]
+
+
+def child_skills(tenant: str, query: str, budget: int = 400) -> str:
+    """v0.484 the swarm worker's carve-out: the same matched-skills lines inside the child's own
+    budget, telling it to read the full skill via skill_manage (a child owns the tool - the
+    read-before-follow law survives delegation). Zero model cost, fail-open."""
     if not query or not _skills_enabled():
         return ""
     try:
@@ -47,9 +92,9 @@ def skills_block(tenant: str, query: str, compact: bool = False) -> str:
     if not rows:
         return ""
     lines = [f"- {r['name']}: {r['description']}" for r in rows]
-    block = ("LEARNED SKILLS matching this ask (skill_manage read the skill before you follow "
-             "it):\n" + "\n".join(lines))
-    return block[:SKILLS_COMPACT_BUDGET if compact else SKILLS_VOICE_BUDGET]
+    block = ("LEARNED SKILLS for this task (skill_manage read a skill before you follow it):\n"
+             + "\n".join(lines))
+    return block[:budget]
 
 
 def _decode(r: dict) -> dict:
@@ -117,7 +162,8 @@ def primer(tenant: str, conv: str | None = None, compact: bool = False, query: s
     except Exception:
         return ""
     header = HEADER
-    sk = skills_block(tenant, query, compact=compact)
+    sk = skills_block(tenant, query, compact=compact, conv=conv or "",
+                      surface="voice" if not compact else "chat")
     if sk:
         header += "\n" + sk
     work = _work_lines()

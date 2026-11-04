@@ -18583,3 +18583,49 @@ throttle, deep-wins-when-both-due, worker awaits dreams.tick, the route (on + of
 - The 26h/7d cadence is assumed right; `coder_dreams_light_hours` / `coder_dreams_deep_days` retune without a deploy.
 - The dreams + curator passes run BESIDE each other; their combined brain cost (light nightly + curator weekly) is
   bounded but unobserved on a real tenant count - watch `GET /api/coder/stats` after the flip.
+
+
+## v0.485.0 HOOLA SKILL DESK — the skills platform (owner: "NOW LETS WORK ON SKILLS FOR HOOLA" + "MAKE IT VERY POWERFULL BIGGER THEN HOW CLAUDE HANDDLE SKILLS"; the plan she chose: ALL, PHASED; SIXTEENTH COLLISION - the dev's chain took 0.481.0 Launcher / 0.482.0 research / 0.483.0 Firecrawl / 0.484.0 SAPNE, REBASE PROTOCOL respected, rebuilt on their fresh base 3beb5a9f, both curators + dreams kept beside the desk)
+
+What v0.477 taught (skill_manage), v0.478 delegated, and v0.480 promoted now gets its own surface, its telemetry, its seeds, its travel papers and its reach. Five pieces, all fail-open, every hop through the SAME atomic skills_store funnel:
+
+### 1. The Desk (web console, server-only)
+
+Account menu > **Skills** (also the `/skills` slash command; an open-book icon; NO sidebar row - her v0.456 no-desk-rows ask respected). New `static/console/skills.js`, `#v-skills` view. Three tabs:
+- **Meri skills** - the library with its usage (shown / read counts, last-read date per skill), search, create/edit (frontmatter lint mirrored client-side), Read (expands the body through the real read op), **Park/Unpark** (see 2), Delete (solo, confirmed). New / Import (paste a SKILL.md file or a JSON array) / Export (downloads the library as JSON - the same shape import takes, so a round-trip is a no-op).
+- **Pack bazaar** - the anonymised share shelf (see 4): read a pack, Install into her own library (create-if-missing - hers win).
+- **Shares** - the curator's nominations awaiting her tap, the decided ledger under it.
+
+### 2. Telemetry + the parked flag
+
+NEW vault table `skill_uses` (shown / read / published / installed per tenant+skill, one row per event):
+- **shown** is marked by `inject.skills_block` on every matched injection (surface chat/voice) - the desk's usage column.
+- **read** is marked by `skills_store.read` - the follow signal (read-before-follow made measurable).
+- **Recency boost**: a skill the telemetry saw in the last 30 days outranks an equally-ranked cold one (`inject._matched` - used beats written).
+- **Park**: `skills.enabled` (frontmatter `enabled: false`) - `skills_store.set_enabled` is the ONE writer and the model has NO such operation (parking is the owner's judgement). A parked skill vanishes from search and injection but stays listed; a content update never flips her flag. ADDITIVE migration: pragma-lifted for legacy vaults, `schema_version -> 3`, never destructive (SAPNE's dreams_state + obs_preimages tables ride beside it, additive both ways).
+- `store.stats()` carries skills_live / skill_uses / skill_reads / skill_shares_pending.
+
+### 3. Seeds, import, export (`coder/skill_packs.py`)
+
+- **SEED**: 10 class-level starters shipped under `coder/skillpack/` (deploy-flask-app, whatsapp-campaign, gst-invoice, meeting-minutes, morning-briefing, excel-data-clean, upi-payment-chase, seo-page-audit, hindi-reply-tone, pdf-fill-form) copied ONCE ever per tenant on the desk's first open - create-if-missing (hers win), the consumed stamp, `coder_skills_seed` gate. Seeds are ordinary SKILL.md files she can edit or delete.
+- **IMPORT**: raw SKILL.md markdown (the Claude Code / ClawHub file shape - same `---` frontmatter) or JSON rows, <=25 per call, linted through the same funnel, create-if-missing, NEVER overwrites (a collision reports 'exists').
+- **EXPORT**: the library as JSON rows; raw files are read directly so the follow telemetry stays honest.
+
+### 4. The share lane - auto-anonymised, the owner's hand on the tap
+
+The curator NOMINATES a skill only when the telemetry proves it was followed (`>= coder_skills_share_min_reads` real reads, default 3; parked never; no dups; pending cap `coder_skills_share_max_pending`). Nominations run FIRST in `curator.consolidate` and need NO brain call - a quiet week with no pending dedup pairs must not starve the shelf. The body is RE-REDACTED at nomination and again at publish (`strip_private` + `redact_secrets` - the shelf is a wire). **Nothing leaves the tenant without the owner's tap** (`share_decide`) - the same law as money. Published packs land in the RESERVED tenant `_packs` with NO trace of the source tenant (no name, no row, nowhere - anonymous by construction); a same-name different-body collision refuses (rename to publish); any avatar installs from the shelf into its own tenant.
+
+### 5. The reach (her two picks)
+
+- **Swarm**: `delegate.run_child` prepends `inject.child_skills` - the parent's matched-skills lines (<=400 chars) into the CHILD's own system prompt; the read-before-follow law survives delegation because a child owns `skill_manage`.
+- **DevSahayak**: `loop._skills_block` puts the top-2 matched skills WHOLE into the first message of the edit loop AND the read-only plan pass (1600 budget - the loop has no skill_manage tool, so the bodies ride). Zero model cost, fail-open, gated by coder_enabled+coder_skills.
+
+### Routes + tests
+
+Routes: GET `/api/coder/skills` (index + usage + the once-ever seed), POST `/skills` (the atomic ops), POST `/skills/enabled`, POST `/skills/import`, GET `/skills/export`, GET `/skills/shares`, POST `/skills/shares/decide` (THE TAP), GET `/skills/packs`, POST `/skills/packs/read`, POST `/skills/packs/install` - beside SAPNE's `/api/coder/dreams`. Package-export law: `skill_packs` rides the `app/coder` import list beside `dreams`.
+
+`server/tests/test_v0485_hoola_skill_desk.py` (41): telemetry shown/read/counts/last-activity + recency boost, park hidden-but-listed + file flag + update-preserves-flag + no-model-op, the legacy v2-schema lift to v3, seed once-ever + respects-hers + switch-off + every shipped file passes the lint + tenant law, import markdown/JSON/skip/cap/lint-refusal, export round-trip, nomination gates (reads evidence, parked, dup, cap, switch-off), the tap publish/reject + redaction at publish + NO tenant trace on the shelf + collision rename + install hers-win, the curator nomination wiring end-to-end (no brain call), `child_skills` + the child system prompt carries skills, DevSahayak `_skills_block` + first-message source pins, ten routes mounted + live, kill switches, version layer.
+
+### Sweeps + version
+
+Sweeps green on the merged base: desk 41 + frames 14 + curator 28 + launcher 16 + selfteach 24 + swarm 17 + coder 24 = 164, devsahayak + sampled swept suites 49; the dev's dreams 19 rides beside (firecrawl's 17 reds STASH-PROVEN pre-existing on pristine main - the sandbox's missing scrapling stack, the documented red class, untouched by this diff). Version 0.485.0 (APP_VERSION story + collision preamble, pubspec 0.485.0+530, pins ->0.485.0 in 151 asserting suites, full-string +529 -> +530 coherent on the rebased base; console stamps `v=0.485.0` x21 and the v0179/r1 stale-guards re-pointed to the new maintained convention). Mera PC freeze respected; desktop untouched by this release (the launcher's desktop 1.7.0 rides untouched) - server-only deploy, old APKs keep working.

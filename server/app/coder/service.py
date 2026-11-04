@@ -1,6 +1,8 @@
-"""HOOLA CODER HTTP surface (v0.480.0) - the three memory layers as routes, plus the manual
-write path and the admin drain. Loopback-keyed like every house router (require_key), scoped to
-the caller's tenant. Read paths never return another tenant's rows."""
+"""HOOLA CODER HTTP surface (v0.484.0) - the three memory layers as routes, plus the manual
+write path, the admin drain and the SKILL DESK's own surface (the owner's skills platform:
+index with usage, park/unpark, import/export, the share ledger, the pack shelf). Loopback-keyed
+like every house router (require_key), scoped to the caller's tenant. Read paths never return
+another tenant's rows."""
 from __future__ import annotations
 
 import logging
@@ -80,13 +82,22 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.get("/skills")
     async def skills_list(request: Request):
-        """The skill index (v0.474): the vault rows behind the SKILL.md files."""
+        """The desk's index (v0.484): the SKILL.md files with their telemetry (shown / read
+        counts, last activity) and the enabled flag. Seeds the starter library once ever."""
         await require_key(request)
         from ..config import get_settings
         if not getattr(get_settings(), "coder_skills", True):
             return {"skills": []}
-        from . import skills_store
-        return {"skills": skills_store.listing(current_tenant(request))}
+        tenant = current_tenant(request)
+        from . import skill_packs, skills_store
+        skill_packs.seed(tenant)                     # exactly-once per tenant, create-if-missing
+        counts = store.skill_use_counts(tenant)
+        out = []
+        for s in skills_store.listing(tenant):
+            u = counts.get(s["name"], {})
+            out.append({**s, "shown": u.get("shown", 0), "read": u.get("read", 0),
+                        "last_shown": u.get("last_shown", ""), "last_read": u.get("last_read", "")})
+        return {"skills": out}
 
     @r.post("/skills")
     async def skills_apply(request: Request):
@@ -99,6 +110,98 @@ def make_router(require_key, current_tenant) -> APIRouter:
         body = await request.json()
         from . import skills_store
         return skills_store.apply(current_tenant(request), body.get("operations") or [])
+
+    @r.post("/skills/enabled")
+    async def skills_enabled(request: Request):
+        """v0.484 the desk's park/unpark (the ONE enabled writer - the model has no such op).
+        {name, enabled: true|false}."""
+        await require_key(request)
+        from ..config import get_settings
+        if not getattr(get_settings(), "coder_skills", True):
+            return {"error": "skills are switched off (coder_skills)"}
+        body = await request.json()
+        from . import skills_store
+        try:
+            return skills_store.set_enabled(current_tenant(request), str(body.get("name") or ""),
+                                            bool(body.get("enabled", True)))
+        except skills_store.SkillError as e:
+            return {"error": str(e)}
+
+    @r.post("/skills/import")
+    async def skills_import(request: Request):
+        """v0.484 bring skills in: JSON rows {name, description, body} or raw SKILL.md markdown
+        strings (the Claude Code / ClawHub file shape). Create-if-missing, <=25 per call."""
+        await require_key(request)
+        from ..config import get_settings
+        if not getattr(get_settings(), "coder_skills", True):
+            return {"error": "skills are switched off (coder_skills)"}
+        body = await request.json()
+        from . import skill_packs
+        return skill_packs.import_skills(current_tenant(request), body.get("items") or [])
+
+    @r.get("/skills/export")
+    async def skills_export(request: Request, names: str = ""):
+        """v0.484 her library out as JSON rows (the same shape import takes)."""
+        await require_key(request)
+        from ..config import get_settings
+        if not getattr(get_settings(), "coder_skills", True):
+            return {"skills": [], "ok": True}
+        from . import skill_packs
+        want = [n for n in names.split(",") if n.strip()] if names else None
+        return skill_packs.export_skills(current_tenant(request), want)
+
+    @r.get("/skills/shares")
+    async def skills_shares(request: Request):
+        """v0.484 the share ledger: the pending nominations (the curator's proposals, the
+        telemetry as evidence) and everything already decided."""
+        await require_key(request)
+        from ..config import get_settings
+        st = get_settings()
+        if not getattr(st, "coder_skills", True):
+            return {"pending": [], "decided": [], "armed": False}
+        tenant = current_tenant(request)
+        rows = store.skill_share_rows(tenant)
+        return {"armed": bool(getattr(st, "coder_skills_share", True)),
+                "pending": [r for r in rows if r["status"] == "pending"],
+                "decided": [r for r in rows if r["status"] != "pending"]}
+
+    @r.post("/skills/shares/decide")
+    async def skills_share_decide(request: Request):
+        """v0.484 THE TAP: {name, approve: true|false}. approve publishes the REDACTED body to
+        the anonymous shelf; nothing ever leaves the tenant without this call."""
+        await require_key(request)
+        body = await request.json()
+        from . import skill_packs
+        return skill_packs.share_decide(current_tenant(request), str(body.get("name") or ""),
+                                        bool(body.get("approve", False)),
+                                        str(body.get("note") or ""))
+
+    @r.get("/skills/packs")
+    async def skills_packs(request: Request):
+        """v0.484 the shelf: every published pack, anonymous by construction."""
+        await require_key(request)
+        from ..config import get_settings
+        if not getattr(get_settings(), "coder_skills", True):
+            return {"packs": []}
+        from . import skill_packs
+        return {"packs": skill_packs.packs()}
+
+    @r.post("/skills/packs/read")
+    async def skills_pack_read(request: Request):
+        """v0.484 one pack's full body (the shelf read - no telemetry, no tenant law crossed)."""
+        await require_key(request)
+        body = await request.json()
+        from . import skill_packs
+        row = skill_packs.pack_read(str(body.get("name") or ""))
+        return row or {"error": "pack not found"}
+
+    @r.post("/skills/packs/install")
+    async def skills_pack_install(request: Request):
+        """v0.484 one shelf pack into the tenant's own library (create-if-missing - hers win)."""
+        await require_key(request)
+        body = await request.json()
+        from . import skill_packs
+        return skill_packs.pack_install(current_tenant(request), str(body.get("name") or ""))
 
     @r.get("/stats")
     async def stats_route(request: Request):

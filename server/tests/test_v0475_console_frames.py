@@ -103,25 +103,26 @@ def test_panel_knows_mp4_is_video():
 
 # ---------- Version layer ----------
 
-def test_console_stamps_0_4_7_4():
-    # server-only release line: the console last changed in v0.475.0, so its stamps stay
-    # at 0.475.0 while the server moves to 0.483.0 (the Phase 1 precedent - stamps move
-    # only when the console itself changes)
+def test_console_stamps_0_4_8_5():
+    # v0.485 HOOLA SKILL DESK: the console itself changed (skills.js + the Skills view +
+    # the account-menu entry), so every stamp moved 0.482.0 -> 0.485.0 (21 = the 20 originals
+    # + the new skills.js tag)
     s = src(V2)
-    assert s.count('v=0.482.0') == 20, f"expected 20 stamps, got {s.count('v=0.483.0')}"
-    assert 'v=0.473.0' not in s
+    assert s.count('v=0.485.0') == 21, f"expected 21 stamps, got {s.count('v=0.485.0')}"
+    assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
+    assert 'console/skills.js?v=0.485.0' in s and 'id="v-skills"' in s
 
 
 def test_app_version_story():
     main = (ROOT / 'app/main.py').read_text(encoding='utf-8')
-    assert 'APP_VERSION = "0.484.0"' in main
-    # story pin moved to the v0.479 story (the v0.476 precedent: the newest release's story
+    assert 'APP_VERSION = "0.485.0"' in main
+    # story pin moved to the v0.485 story (the newest-release precedent: the newest story
     # carries the marker; the older stories live in git history)
-    assert 'HOOLA SAPNE' in main and 'dreams' in main
+    assert 'HOOLA SKILL DESK' in main and 'skill_packs' in main and 'skill_uses' in main
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.484.0+529' in pub
+    assert 'version: 0.485.0+530' in pub

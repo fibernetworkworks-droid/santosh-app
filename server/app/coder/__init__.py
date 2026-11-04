@@ -1,4 +1,4 @@
-"""HOOLA CODER (v0.480.0) - persistent session memory for Santosh, the claude-mem architecture
+"""HOOLA CODER (v0.485.0) - persistent session memory for Santosh, the claude-mem architecture
 ported into the house stack: capture -> spool -> observer (cheap brain) -> SQLite/FTS5 vault ->
 three-layer search -> session-start primer. Fail-open at every joint; secrets never stored.
 v0.477 HOOLA SELF-TEACH adds the skills store (SKILL.md files + skill_manage), the nudge
@@ -7,12 +7,15 @@ v0.478 HOOLA SWARM adds delegate_task: bounded parallel child agents on the same
 v0.480 HOOLA CURATOR adds the weekly consolidation: the Tier-1 scan finally wired, one
 cheap-brain arbitration of the pending pairs (soft, revivable merges), recurring memories
 promoted to skills through the same funnel.
+v0.484 HOOLA SKILL DESK adds the skills platform: the usage telemetry, the owner's park flag,
+the seed library, import/export (skill_packs) and the anonymised share shelf with the owner's
+tap as the only gate out of a tenant.
 v0.484 HOOLA SAPNE adds the NIGHTLY curator: the window's raw observations distilled into
 curated memory rows (light 26h + deep 7d rewrite with mandatory preimages), OpenClaw's
 dreaming sweep ported - the vault that captures starts to COMPOUND. Beside, never instead:
 the v0.480 curator merges near-duplicates, SAPNE distills time windows."""
 from . import capture, curator, dedup, delegate, dreams, inject, modes, nudge, observer, parser, \
-    prompts, redact, search, skills_store, skills_tool, spool, store
+    prompts, redact, search, skill_packs, skills_store, skills_tool, spool, store
 
 # v0.478 FIX (caught by the swarm funnel-capture test): the agent funnel calls
 # coder.tool_observed / coder.turn_prompt / coder.session_started / coder.session_ended /
@@ -25,6 +28,6 @@ from . import capture, curator, dedup, delegate, dreams, inject, modes, nudge, o
 from .capture import save_memory, session_ended, session_started, tool_observed, turn_prompt
 
 __all__ = ["capture", "curator", "dedup", "delegate", "dreams", "inject", "modes", "nudge",
-           "observer", "parser", "prompts", "redact", "search", "skills_store", "skills_tool",
-           "spool", "store", "save_memory", "session_ended", "session_started", "tool_observed",
-           "turn_prompt"]
+           "observer", "parser", "prompts", "redact", "search", "skill_packs", "skills_store",
+           "skills_tool", "spool", "store", "save_memory", "session_ended", "session_started",
+           "tool_observed", "turn_prompt"]

@@ -31,7 +31,7 @@ def test_one_stylesheet():
 
 
 def test_one_cache_buster_on_every_asset():
-    # Healed at v0.484.0 (stale-red on pristine main since the v0.476 stamps precedent): the
+    # Healed at v0.485.0 (stale-red on pristine main since the v0.476 stamps precedent): the
     # maintained convention (pinned in test_v0475_console_frames) is that console stamps move
     # only when the console itself changes; a server-only release leaves them coherent at the
     # last console version. The guard's real job: ONE app stamp across every non-vendor asset.
@@ -39,7 +39,7 @@ def test_one_cache_buster_on_every_asset():
     refs = re.findall(r'(?:src|href)="/static/console/([\w/.-]+)\?([^"]*)"', html)
     assert refs, "no console assets found"
     stamps = {q for name, q in refs if name != "vendor/qrcode.js"}
-    assert stamps == {"v=0.482.0"}, f"mixed console cache stamps: {sorted(stamps)}"
+    assert stamps == {"v=0.485.0"}, f"mixed console cache stamps: {sorted(stamps)}"
     assert all(q == "v=1.4.4" for name, q in refs if name == "vendor/qrcode.js")
 
 
@@ -77,5 +77,5 @@ def test_console_chrome_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.484.0"    # conscious-bump guard: moves with every release (bump with pubspec)
-    assert "0.484.0+529" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.485.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert "0.485.0+530" in (ROOT / "pubspec.yaml").read_text()

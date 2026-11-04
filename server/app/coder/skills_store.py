@@ -1,4 +1,5 @@
-"""HOOLA SKILLS (v0.478.0) - the reusable-skill store, the Hermes SKILL.md discipline ported.
+"""HOOLA SKILLS (v0.478.0; v0.484 the Skill Desk) - the reusable-skill store, the Hermes
+SKILL.md discipline ported.
 
 A skill is ONE markdown file under <coder_dir>/skills/<tenant>/:
 
@@ -22,6 +23,14 @@ Hermes's hard rules, kept:
 Files are the source of truth; each write mirrors a row into the vault's skills table so the
 FTS5 search covers skills with the same three-layer discipline as observations. Tenant scoping
 is the house law: one directory per tenant, a tenant never reads another's skills.
+
+v0.484 HOOLA SKILL DESK: the owner's surface over the same files -
+  enabled flag       an optional frontmatter line `enabled: false` PARKS a skill: the file
+                     stays, the mirror keeps the flag, injection and search stop showing it.
+                     set_enabled() is the one writer (the desk's toggle; the model has no such
+                     op - parking is the owner's judgement, never the agent's)
+  telemetry          every read() marks the ledger (store.skill_use_mark kind='read') - the
+                     desk's usage column and the share nomination's evidence
 """
 from __future__ import annotations
 
@@ -88,8 +97,22 @@ def _path(tenant: str, name: str) -> str:
     return os.path.join(skills_dir(tenant), validate_name(name) + ".md")
 
 
-def render(name: str, desc: str, body: str) -> str:
-    return f"---\nname: {name}\ndescription: {desc}\n---\n{body}\n"
+def render(name: str, desc: str, body: str, enabled: bool = True) -> str:
+    head = f"---\nname: {name}\ndescription: {desc}"
+    if not enabled:
+        head += "\nenabled: false"          # v0.484 the parked skill keeps its flag on disk
+    return head + f"\n---\n{body}\n"
+
+
+def _front_enabled(text: str) -> bool:
+    """The frontmatter's enabled flag; absent = enabled (a hand-written file never parks itself)."""
+    m = _FRONT_RE.match(text or "")
+    if not m:
+        return True
+    for line in m.group(1).splitlines():
+        if line.strip().startswith("enabled:"):
+            return str(line.split(":", 1)[1]).strip().lower() not in ("false", "0", "no", "off")
+    return True
 
 
 def parse_skill(text: str) -> tuple[str, str, str]:
@@ -149,9 +172,9 @@ def _restore(snap: dict[str, str | None]) -> None:
 
 # ---------------------------------------------------------------- vault mirror + search hooks
 
-def _mirror(tenant: str, name: str, desc: str, body: str) -> None:
+def _mirror(tenant: str, name: str, desc: str, body: str, enabled: bool = True) -> None:
     from . import store
-    store.skill_mirror(name, tenant, desc, body)
+    store.skill_mirror(name, tenant, desc, body, enabled=int(bool(enabled)))
 
 
 def _unmirror(tenant: str, name: str) -> None:
@@ -182,11 +205,13 @@ def update(tenant: str, name: str, desc: str | None = None, body: str | None = N
         p = _path(tenant, name)
         if not os.path.exists(p):
             raise SkillError(f"skill {name!r} does not exist (use create)")
-        old_name, old_desc, old_body = parse_skill(open(p, encoding="utf-8").read())
+        raw = open(p, encoding="utf-8").read()
+        old_name, old_desc, old_body = parse_skill(raw)
+        enabled = _front_enabled(raw)            # a content update never flips the owner's flag
         new_desc, new_body = validate(desc if desc is not None else old_desc,
                                       body if body is not None else old_body)
-        _write_atomic(p, render(name, new_desc, new_body))
-        _mirror(tenant, name, new_desc, new_body)
+        _write_atomic(p, render(name, new_desc, new_body, enabled=enabled))
+        _mirror(tenant, name, new_desc, new_body, enabled=enabled)
         return {"op": "update", "name": name, "chars": len(new_body)}
 
 
@@ -198,7 +223,10 @@ def read(tenant: str, name: str) -> dict:
         raw = f.read()
     _READ_OK.add((tenant, validate_name(name)))
     _, desc, body = parse_skill(raw)
-    return {"name": name, "description": desc, "body": body}
+    from . import store as _store            # lazy (the module's import direction)
+    _store.skill_use_mark(tenant, name, "read")   # v0.484 telemetry: the follow signal
+    return {"name": name, "description": desc, "body": body,
+            "enabled": _front_enabled(raw)}
 
 
 def delete(tenant: str, name: str) -> dict:
@@ -227,8 +255,10 @@ def listing(tenant: str) -> list[dict]:
                 continue
             try:
                 with open(os.path.join(d, fn), encoding="utf-8") as f:
-                    _, desc, body = parse_skill(f.read())
+                    raw = f.read()
+                _, desc, body = parse_skill(raw)
                 out.append({"name": fn[:-3], "description": desc, "chars": len(body),
+                            "enabled": _front_enabled(raw),
                             "updated_at": time.strftime("%Y-%m-%d", time.localtime(
                                 os.path.getmtime(os.path.join(d, fn))))})
             except Exception:
@@ -236,6 +266,33 @@ def listing(tenant: str) -> list[dict]:
     except FileNotFoundError:
         pass
     return out
+
+
+def is_parked(tenant: str, name: str) -> bool:
+    """True when the file's frontmatter parks this skill (enabled: false)."""
+    p = _path(tenant, name)
+    if not os.path.exists(p):
+        raise SkillError(f"skill {name!r} does not exist")
+    with open(p, encoding="utf-8") as f:
+        return not _front_enabled(f.read())
+
+
+def set_enabled(tenant: str, name: str, on: bool) -> dict:
+    """v0.484 the desk's park/unpark: ONE writer for the enabled flag, the file rewritten
+    atomically, the mirror updated. The model has no such operation - parking is the owner's
+    judgement (a skill she does not want followed right now, not one to delete)."""
+    with _LOCK:
+        name = validate_name(name)
+        p = _path(tenant, name)
+        if not os.path.exists(p):
+            raise SkillError(f"skill {name!r} does not exist")
+        raw = open(p, encoding="utf-8").read()
+        if _front_enabled(raw) == bool(on):
+            return {"op": "enable" if on else "park", "name": name, "changed": False}
+        _, desc, body = parse_skill(raw)
+        _write_atomic(p, render(name, desc, body, enabled=bool(on)))
+        _mirror(tenant, name, desc, body, enabled=bool(on))
+        return {"op": "enable" if on else "park", "name": name, "changed": True}
 
 
 # ---------------------------------------------------------------- batch apply (Hermes shape)

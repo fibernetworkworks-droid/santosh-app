@@ -1,4 +1,4 @@
-"""v0.483.0 HOOLA CURATOR - the weekly memory consolidation (the review layer the dedup
+"""v0.485.0 HOOLA CURATOR - the weekly memory consolidation (the review layer the dedup
 ladder was built for, the claude-mem curator role ported onto the vault).
 
 What this suite pins, piece by piece:
@@ -130,7 +130,8 @@ def test_migration_lifts_legacy_vault(cur, tmp_path, monkeypatch):
     conn = sqlite3.connect(store.path())
     cols = [r[1] for r in conn.execute("PRAGMA table_info(observations)").fetchall()]
     assert "superseded_by" in cols
-    assert conn.execute("SELECT v FROM schema_version").fetchone()[0] == 2
+    # v0.484 HOOLA SKILL DESK: schema_version moved to 3 (the additive skills.enabled lift)
+    assert conn.execute("SELECT v FROM schema_version").fetchone()[0] == 3
     conn.close()
 
 
@@ -513,7 +514,7 @@ def test_version_stamps():
     from pathlib import Path
     root = Path(__file__).resolve().parents[1]
     main = (root / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.484.0"' in main
+    assert 'APP_VERSION = "0.485.0"' in main
     pubspec = (root.parent / "pubspec.yaml").read_text(encoding="utf-8")
     m = _re.search(r"version:\s*(\S+)", pubspec)
-    assert m and m.group(1) == "0.484.0+529"
+    assert m and m.group(1) == "0.485.0+530"

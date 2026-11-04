@@ -472,6 +472,12 @@ class Settings(BaseSettings):
     coder_nudge_every: int = 10            # turns between reflections (Hermes nudge_interval = 10)
     coder_nudge_max_writes: int = 4        # max observations + skill ops ONE reflection may write
 
+    # --- Hoola Skill Desk (v0.481): the skills platform - seeds, import/export, the share shelf ---
+    coder_skills_seed: bool = True         # the 10-skill starter library copied into a fresh tenant once (create-if-missing)
+    coder_skills_share: bool = True        # the anonymised share lane: nominations need the curator armed, publishing needs her tap
+    coder_skills_share_min_reads: int = 3  # real reads (the telemetry) before a skill may be nominated
+    coder_skills_share_max_pending: int = 10  # nominations waiting for the owner at once
+
     # --- Hoola Swarm (v0.475): self-spawning subagents for parallel work ---
     coder_delegate: bool = False           # the delegate_task tool (bake on the VPS, then flip to true)
     coder_delegate_max_children: int = 3   # concurrent child agents (Hermes 10; tightened for a voice box)

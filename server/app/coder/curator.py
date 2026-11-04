@@ -22,6 +22,11 @@ call per tenant, about once a week:
   PROMOTE     the same call may propose skills from recurring memories (class-level names,
               <=2 ops per run), through the SAME skills_store.apply funnel with read-before-
               write honored - update targets only the skills listed in the prompt.
+  NOMINATE    v0.484 the same call may also hand much-read skills to the SHARE ledger: the
+              telemetry is the evidence (>= coder_skills_share_min_reads real reads), the body
+              is re-redacted at nomination, and NOTHING leaves the tenant until the owner taps
+              approve on the Skill Desk (skill_packs.share_decide) - the auto-anonymised lane
+              with the human hand on the tap.
 
 Scheduling: worker.coder_jobs calls curator.tick() beside observer.tick() - the worker slot
 discipline, never inside a live turn (no poke coupling needed: nothing here can stall a voice
@@ -84,6 +89,14 @@ def _max_pairs() -> int:
         return max(1, int(getattr(st, "coder_curator_max_pairs", 20) or 20))
     except Exception:
         return 20
+
+
+def _min_reads() -> int:
+    st = _settings()
+    try:
+        return max(1, int(getattr(st, "coder_skills_share_min_reads", 3) or 3))
+    except Exception:
+        return 3
 
 
 def _max_merges() -> int:
@@ -174,6 +187,24 @@ def scan(tenant: str) -> int:
 
 # ---------------------------------------------------------------- ARBITRATE + PROMOTE - one call
 
+def _share_candidates(tenant: str, limit: int = 3) -> list[str]:
+    """v0.484 the nomination shortlist: live skills with the most REAL reads (the telemetry's
+    evidence), the ones already decided never re-nominated. Fail-open, capped."""
+    out: list[str] = []
+    try:
+        counts = store.skill_use_counts(tenant)
+        decided = {r["name"] for r in store.skill_share_rows(tenant)
+                   if r["status"] in ("published", "pending")}
+        live = {s["name"] for s in skills_store.listing(tenant) if s.get("enabled", True)}
+        ranked = sorted(((d["read"], n) for n, d in counts.items()
+                         if n in live and n not in decided and d.get("read", 0) >= _min_reads()),
+                        reverse=True)
+        out = [n for _reads, n in ranked[:limit]]
+    except Exception:
+        log.exception("share candidates failed (%s)", tenant)
+    return out
+
+
 def _pending_for(tenant: str) -> list[dict]:
     """Pending pairs of one tenant, both rows loaded, guards applied, oldest row first.
     Each item: {'key': (obs_id, dup_of), 'score': s, 'older': row, 'newer': row}."""
@@ -220,14 +251,29 @@ async def consolidate(tenant: str, st) -> dict:
     """One tenant's run: scan, ONE combined cheap-brain call, apply the verdicts + promotions.
     Best-effort end to end; every failure leaves the vault exactly as it was."""
     report = {"tenant": tenant, "new_candidates": 0, "decided": 0, "merged": 0,
-              "distinct": 0, "dismissed": 0, "skills": 0, "brain": False}
+              "distinct": 0, "dismissed": 0, "skills": 0, "nominated": 0, "brain": False}
     try:
         report["new_candidates"] = scan(tenant)
     except Exception:
         log.exception("curator scan failed (%s) - arbitrating what is pending", tenant)
+    # v0.484 NOMINATE - the share lane runs FIRST and needs NO brain call: the telemetry is the
+    # whole evidence, and a quiet week with no pending pairs must not starve the shelf.
+    if getattr(st, "coder_skills_share", True):
+        try:
+            from . import skill_packs
+            for name in _share_candidates(tenant):
+                res = skill_packs.share_nominate(tenant, name,
+                                                 note="curator nomination: the telemetry shows "
+                                                      "this skill was followed repeatedly")
+                if res.get("ok"):
+                    report["nominated"] += 1
+        except Exception:
+            log.exception("curator share nomination failed (%s)", tenant)
     pairs = _pending_for(tenant)
     if not pairs:
         _stats["skipped"] += 1
+        _stats["runs"] += 1
+        _stats["skills"] += 0
         return report
     numbered = [{**p, "id": i + 1} for i, p in enumerate(pairs)]
     skills_now = skills_store.listing(tenant)
