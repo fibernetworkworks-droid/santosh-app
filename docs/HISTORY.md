@@ -14,6 +14,23 @@ word in chat — relayed via `dhara_control approve` — moves it past the gate.
 actor="routine": the house's own actor gates are the safety n8n never had. Registry 536 -> 541
 (dhara_save / dhara_run / dhara_runs / dhara_control / dhara_list). Tests: test_v0502_dhara.py (35).
 
+## v0.511.0 HOOLA CS PACK — the zoo radar + the operator loop's dialogue patterns (4 Nov 2026)
+
+The awesome Computer Science read turned into two fed skills (owner: "Computer Science (38) — 
+awesome-generative-ai → zoo expansion radar; awesome-conversational-ai → dialogue/QA patterns for 
+the operator loop"). cs-zoo-radar: the 436-model zoo BYOK catalog is the source of truth (186 image 
+/ 221 video / 29 audio; muapi 211 + kie 225), the awesome-generative-ai families are SEARCH TERMS 
+for `zoo action=models`, never invented model ids; the catalog grows only by the owner's tap (the 
+real append shape is in the skill body), the gateway question is asked, never assumed. 
+cs-dialogue-patterns: the operator loop's proven moves — slot ledger (never re-ask an answered slot, 
+ek turn ek sawaal), confirm-before-irreversible, the repair ladder (one fix attempt, honest fallback, 
+never retry-spam), QA shape (answer first, "mujhe nahi pata" over a guess), close-the-loop, voice 
+budget. Fed via its own once-ever stamp `skills:cspack:{}` (the v0.492 pattern), seed_all finds it 
+by name, cspack_enabled default ON. Tests: test_v0502_cspack.py (10) with the zoo numbers 
+cross-checked against the real zoo_catalog.json. Rebuilt on the dev chain's v0.510.0 base after the 
+26th+27th collisions (DHARA took 0.502.0, HOOLA CORE took 0.510.0). Registry stays 541. 
+Server-only deploy; old APKs keep working.
+
 ## 🔒 FROZEN BY OWNER — MERA PC / PC OPERATOR / SANTOSH DESKTOP (25 Oct 2026)
 The owner froze ALL Mera PC code and its AI side. DO NOT touch, edit, refactor, "improve", reformat
 or upgrade any of these until the owner EXPLICITLY asks in chat:

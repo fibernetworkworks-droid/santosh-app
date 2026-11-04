@@ -1071,3 +1071,43 @@ Stage Summary:
   nothing composes yet by design (P1 is the substrate; the agent loop arrives in P3/P4).
 - Previous: v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS, v0.498.0 HOOLA
   UIUX PRO MAX [full chains in git history].
+
+## Task 35 — v0.511.0 HOOLA CS PACK (owner: "Computer Science (38) — awesome-generative-ai → zoo expansion radar (new models/tools for the 436-model BYOK); awesome-conversational-ai → dialogue/QA patterns for the operator loop. ---- DEVLOPE A SKILL AND MAKE IT FUCTIONAL FRO HOOLA AI")
+
+The awesome Computer Science read turned into two fed skills (server/app/coder/skillpack/, the skills_store
+shape: frontmatter name + description <=60, body <=4000):
+
+- cs-zoo-radar — the 436-model zoo BYOK catalog (zoo_catalog.json: 186 image / 221 video / 29 audio; muapi 211
+  + kie 225) is the source of truth; the awesome-generative-ai families (flux / nano-banana / seedream / ideogram
+  / sdxl / imagen / recraft / dall-e; kling / sora / runway / luma / pika / hailuo-minimax / wan / veo / seedance;
+  suno / udio / stable-audio / elevenlabs / whisper / kokoro / xtts / bark) are SEARCH TERMS for
+  `zoo action=models q=`, never model ids. Protocol: catalog first, family variants second, then honestly
+  "unverified - zoo catalog mein nahi". The catalog grows ONLY by the owner's tap - the body carries the REAL
+  append shape; the gateway question (Muapi ya kie) is asked, never assumed; aspects/resolutions/durations only
+  catalog values; make waits for ZOO_MUAPI_KEY / ZOO_KIE_KEY; videos return request_id -> action=status.
+- cs-dialogue-patterns — the operator loop's conversational-AI moves: the SLOT LEDGER (collect a tool's params
+  before the call, never re-ask an answered slot, EK turn EK sawaal), CONFIRM BEFORE IRREVERSIBLE (the house law
+  repeated per loop), the REPAIR LADDER (error in her words, ONE fix attempt, honest fallback, never retry-spam),
+  QA SHAPE (answer first, "mujhe nahi pata" over a plausible guess - the never-invent law, numbers from tool
+  results only), CLOSE THE LOOP (ho gaya / pending / nahi-kyunki - silent failure is the one unforgivable),
+  VOICE BUDGET (call turns short, one idea per turn).
+
+THE FEED (the v0.492/0.500 pattern): skill_packs.cs_files() + CS_STAMP skills:cspack:{} + seed_cspack(tenant) -
+its OWN once-ever stamp; seed_all finds it by name; create-if-missing, hers win; seed_files() excludes cs-
+(starter 11, byox 31, prog 2, sp 15, fe 3, cs 2); config cspack_enabled default ON. Discovery via the coder
+injection block (FTS5 top-2, shown-telemetry), full read via skill_manage before following.
+
+Tests: NEW test_v0502_cspack.py (10, first-run green): counts, once-ever reach, hers-win, kill switch, the
+pack-seeders pin, the lint gate, radar content, dialogue content, the zoo numbers cross-checked against the REAL
+zoo_catalog.json, injection FTS on Hinglish asks. Desk-route live-count pins healed +2 (skill-desk x2, claude-pack,
+seed-on-first-turn x3, skills-card, superpowers, uiux seed-file 62 -> 64).
+
+THE TWENTY-SIXTH + TWENTY-SEVENTH COLLISIONS: the dev chain took 0.502.0 (DHARA) and 0.510.0 (HOOLA CORE) while
+this sat unpushed - REBASE PROTOCOL: rebuilt on their fresh base 0fab4d87, both works kept, the version layer moved
+coherently on top (0.502.0 -> 0.511.0, pins re-swept 0.510.0 -> 0.511.0 + +545 -> +546 zero residual; their core
+314-run and dhara suites re-verified green on the merged tree; registry stays 541). Version 0.511.0 (APP_VERSION
+story, pubspec 0.511.0+546, CLAUDE.md healed; console stamps stay 0.487.0 x21; Mera PC freeze respected - nothing
+in server/app/pc/, desktop/ or lib/ touched; server-only deploy, old APKs keep working). NOT VERIFIED (honest):
+the first real "naya model zoo mein" ask on the VPS is the live proof; the pack lands in a tenant on its next
+skills-desk open or first turn (the feed's own design). Deploy: no new pip packages; the usual vps-ops ritual.
+Previous: v0.510.0 HOOLA CORE, v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK [full chains in git history].

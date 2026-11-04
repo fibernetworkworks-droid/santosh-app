@@ -136,8 +136,8 @@ def test_config_defaults(env):
 
 def test_version(env):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.510.0"
-    assert "version: 0.510.0+545" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.511.0"
+    assert "version: 0.511.0+546" in (REPO_ROOT / "pubspec.yaml").read_text()
 
 
 # ------------------------------------------------------------------ (2) resolve formatting

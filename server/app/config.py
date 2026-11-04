@@ -524,6 +524,8 @@ class Settings(BaseSettings):
     sp_enabled: bool = True                 # superpowers lane seeds on first open under its own stamp (default ON)
     # --- FE PACK: the HyperFrames template packs + campaign email templates + UI kit ---
     fepack_enabled: bool = True             # FE pack seeds on first open (default ON)
+    # --- CS PACK: the zoo expansion radar + the operator loop's dialogue/QA patterns ---
+    cspack_enabled: bool = True             # CS pack seeds on first open (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
     coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)
