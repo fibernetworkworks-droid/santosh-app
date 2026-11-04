@@ -4,7 +4,7 @@ Owner's ask (4 Nov 2026): *"NOW A PHARMACY INDUSTRY AI EMPLOYEE LIST"*. Follows 
 (which has 22 fields and a few pharmacy roles #54-61 and #62-86); this register goes deep on pharmacy alone, from the
 shop counter to the drug factory to the regulator.
 
-**18 fields, 118 candidate AI Employees.**
+**17 fields, 118 candidate AI Employees.**
 
 ## How honest this is
 - No new web research was run for this file (the earlier healthcare searches returned thin secondary pages). The
