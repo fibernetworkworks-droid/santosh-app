@@ -115,7 +115,7 @@ def test_console_stamps_0_4_8_5():
 
 def test_app_version_story():
     main = (ROOT / 'app/main.py').read_text(encoding='utf-8')
-    assert 'APP_VERSION = "0.485.0"' in main
+    assert 'APP_VERSION = "0.486.0"' in main
     # story pin moved to the v0.485 story (the newest-release precedent: the newest story
     # carries the marker; the older stories live in git history)
     assert 'HOOLA SKILL DESK' in main and 'skill_packs' in main and 'skill_uses' in main

@@ -81,7 +81,7 @@ def _rows(conv: str, role: str) -> int:
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.485.0"
+    assert APP_VERSION == "0.486.0"
     assert "0.485.0+530" in (REPO / "pubspec.yaml").read_text()
 
 

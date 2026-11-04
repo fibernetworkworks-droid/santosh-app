@@ -266,6 +266,17 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "home_devices", "home_state", "home_on", "home_off", "home_link",
              "fridge", "refrigerator", "washing machine", "geyser", "washer",
              "home assistant link", "smart plug on", "device band karo", "device chalao", "saari lights"),
+    "byox": ("build your own", "byox", "from scratch", "scratch se banao", "scratch se banana",
+             "implement a", "write a compiler", "write a database", "write a shell", "write a web server",
+             "build a database", "build a git", "build a compiler", "build a shell", "build a browser",
+             "build a container", "build an os", "build an operating system", "build a renderer",
+             "build a torrent", "build a blockchain", "build a neural", "build a physics",
+             "systems programming", "how does git work", "how does a database work",
+             "how does tcp work", "how does docker work", "low-level programming",
+             "byox_list", "byox_guide", "byox_plan",
+             "3d renderer", "bittorrent client", "blockchain", "docker container",
+             "emulator", "frontend framework", "language interpreter", "memory allocator",
+             "regex engine", "search engine", "voxel engine", "web browser"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys

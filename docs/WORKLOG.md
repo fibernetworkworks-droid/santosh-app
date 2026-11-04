@@ -727,3 +727,9 @@ Work Log:
 
 Stage Summary:
 - v0.485.0 HOOLA SKILL DESK: the skills loop is closed - Santosh learns (skill_manage), the vault remembers (telemetry), the curator nominates (evidence-based), the owner decides (the desk's tap), the shelf shares (anonymised), avatars install, and the reach covers chat, voice, swarm children and the DevSahayak loop. SAPNE distills the nights; the desk keeps the skills honest by day. Deploy order: bake on the VPS (server-only), open the desk once to seed the starters, flip coder_curator when the weekly consolidation should nominate. Rollback = one version (the migrations are additive; the shelf is additive; nothing destructive).
+
+Task ID: byox-skill-pack-v0486
+Date: 2026-11-04
+Branch: claude/loving-goldberg-ywnzsq
+Version: v0.486.0
+Summary: BYOX SKILL PACK — Build-Your-Own-X 31 categories, seed default on. New: server/app/byox/ (registry + guide functions), agent/byox_tools.py (3 tools), 31 SKILL.md seed files, admit byox family, /api/byox/* routes, byox_enabled config (default ON). 26 tests (17 pass in sandbox, 9 need server deps). Server-only deploy.

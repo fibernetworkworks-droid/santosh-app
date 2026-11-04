@@ -1059,6 +1059,15 @@ TOOL_LABELS.update(HOME_LABELS)
 HANDLERS.update(HOME_HANDLERS)
 del _seen
 
+# v0.486.0 BYOX SKILL PACK: Build-Your-Own-X — 31 categories, seed default on.
+# byox_list / byox_guide / byox_plan admitted under the "byox" family.
+from .byox_tools import BYOX_HANDLERS, BYOX_LABELS, BYOX_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in BYOX_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(BYOX_LABELS)
+HANDLERS.update(BYOX_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 

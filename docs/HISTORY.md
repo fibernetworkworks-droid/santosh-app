@@ -18629,3 +18629,48 @@ Routes: GET `/api/coder/skills` (index + usage + the once-ever seed), POST `/ski
 ### Sweeps + version
 
 Sweeps green on the merged base: desk 41 + frames 14 + curator 28 + launcher 16 + selfteach 24 + swarm 17 + coder 24 = 164, devsahayak + sampled swept suites 49; the dev's dreams 19 rides beside (firecrawl's 17 reds STASH-PROVEN pre-existing on pristine main - the sandbox's missing scrapling stack, the documented red class, untouched by this diff). Version 0.485.0 (APP_VERSION story + collision preamble, pubspec 0.485.0+530, pins ->0.485.0 in 151 asserting suites, full-string +529 -> +530 coherent on the rebased base; console stamps `v=0.485.0` x21 and the v0179/r1 stale-guards re-pointed to the new maintained convention). Mera PC freeze respected; desktop untouched by this release (the launcher's desktop 1.7.0 rides untouched) - server-only deploy, old APKs keep working.
+
+## v0.486.0 BYOX SKILL PACK — Build-Your-Own-X: 31 categories, seed default on
+
+Owner: "Read https://github.com/codecrafters-io/build-your-own-x — build the unified BYOX skill pack for Hoola: full depth, all 31 categories, seed default on."
+
+### What was built
+
+**`server/app/byox/__init__.py`** — 31-entry category registry dict (CATEGORIES + SLUGS). Each entry carries: slug (`byox-<name>`), display_name, description, core_concepts (3-5 bullets), best_languages, phases (5 ordered build milestones), and reference_url (top tutorial from the BYOX README). All 31 codecrafters categories covered: 3D Renderer, AI Model, Augmented Reality, BitTorrent, Blockchain, Bot, CLI Tool, Database, Distributed Systems, Docker, Emulator, Frontend Framework, Game, Git, Memory Allocator, Network Stack, Neural Network, Operating System, Physics Engine, Processor, Programming Language, Regex Engine, Search Engine, Shell, Template Engine, Text Editor, Visual Recognition, Voxel Engine, Web Browser, Web Server, Misc Systems.
+
+**`server/app/byox/guide.py`** — three pure functions:
+- `list_categories(q)` — returns all 31 categories, optionally filtered by keyword
+- `get_guide(slug_or_name, level)` — full guide for one category; level=quick/standard/deep; fuzzy match via difflib
+- `plan_learning(want, background, time_weeks)` — personalised week-by-week learning plan matching want against category keywords
+
+**`server/app/agent/byox_tools.py`** — exports BYOX_TOOLS / BYOX_LABELS / BYOX_HANDLERS for three agent tools:
+- `byox_list` — list categories (optionally filtered)
+- `byox_guide` — full guide for one category
+- `byox_plan` — personalised BYOX learning plan
+
+**31 SKILL.md seed files** in `server/app/coder/skillpack/byox-*.md` — one per category, each with valid frontmatter (name ≤64 chars, description ≤60 chars), 5 build phases, core concepts, language guidance, and a VERIFY criterion. Seeded once-ever per tenant on the skill desk's first open (coder_skills_seed=True, existing skills win, byox_enabled default ON).
+
+**`server/app/agent/tools.py`** — BYOX tools registered after home_tools block (same pattern).
+
+**`server/app/agent/admit.py`** — "byox" family keywords: "build your own", "from scratch", language-specific build phrases, all 3 tool names.
+
+**`server/app/config.py`** — `byox_enabled: bool = True` (seed default on).
+
+**`server/app/main.py`** — APP_VERSION bumped to "0.486.0"; two new routes: `GET /api/byox/categories` and `GET /api/byox/guide/{slug}`.
+
+**`pubspec.yaml`** — bumped to 0.486.0+531.
+
+**`server/tests/test_v0486_byox.py`** — 26 tests: registry completeness, every-category field coverage, slug prefix, list/filter/no-match, get_guide exact/name/fuzzy/quick/deep/missing, plan_learning basic/background/fallback, tool exports, tools.py registration, admit family, config default, 31 seed files exist + valid frontmatter, routes, version.
+
+### NOT BUILT (explicitly out of scope)
+- Interactive BYOX course UI (a future Prayogshala-style phase)
+- Automated progress tracking per user per category
+- Code execution sandbox for BYOX exercises (would need the devlab gate)
+
+### Version ritual
+- APP_VERSION 0.485.0 → 0.486.0
+- pubspec 0.485.0+530 → 0.486.0+531
+- 153 version-pin test files updated (excluding test_v0485_hoola_skill_desk.py and test_v0179_search.py)
+- Console stamps stay at 0.485.0 (server-only release, no console change — v0.479/v0.483 precedent)
+- Mera PC freeze respected; desktop untouched; server-only deploy, old APKs keep working
+
