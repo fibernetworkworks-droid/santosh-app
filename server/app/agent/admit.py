@@ -288,6 +288,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "systems seekhna", "sikhna chahta", "sikhna chahti", "kaise kaam karta hai git",
              "kaise kaam karta hai database", "kaise kaam karta hai docker",
              "खुद से बनाओ", "स्क्रैच से", "बनाना सिखाओ", "कैसे बनाते हैं"),
+
+    # v0.496 CODE GRAPH (Graphify): structure questions about a repo. No bare 'graph' (charts / dashboards own that word).
+    "graph": ("graphify", "knowledge graph", "code graph", "call graph", "dependency graph", "codebase map",
+              "map the codebase", "map this repo", "map this codebase", "who calls", "what calls", "what depends on",
+              "what breaks if", "impact of changing", "architecture of this repo", "codebase samjh", "code ka naksha",
+              "repo ka naksha", "kaun call karta", "kis par depend", "isko badalne se kya tootega", "graph_build",
+              "graph_ask", "graph_list"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys
@@ -322,6 +329,8 @@ _GENERIC = frozenset({
     "act", "skills", "business", "connect", "find", "me", "inbox", "send", "post", "digest", "booking", "remove",
     "detail", "action", "status", "list", "my", "chat", "config", "output", "discover", "open", "ask", "add",
     "pdf",       # making a pdf = docstudio; working ON a pdf = the "pdf work" intent
+    "build",     # v0.496 "build a website / app" is not a code-graph ask
+    "graph",     # v0.496 charts / dashboards own the bare word; the code-graph family has its own phrases
 })
 
 

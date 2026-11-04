@@ -398,6 +398,13 @@ class Settings(BaseSettings):
     scrape_crawl_max_running: int = 1      # v0.486 crawl jobs running at once, globally (HTTP-only, politeness first)
     scrape_crawl_stale_s: int = 180        # v0.486 a running crawl without a heartbeat this long is resumed from its checkpoint
     scrape_crawl_tries: int = 3            # v0.486 a crawl job is started at most this many times before it is failed
+    graphify_enabled: bool = True          # v0.496 Graphify code graph (graph_build / graph_ask); inert until the graphifyy package is installed
+    graphify_bin: str = ""                 # v0.496 path to the graphify CLI ("" = next to the server Python, then PATH)
+    graphify_build_timeout_s: int = 600    # v0.496 one repo map may run this long, then its process group is killed
+    graphify_query_timeout_s: int = 60     # v0.496 one graph question
+    graphify_max_repo_mb: int = 80         # v0.496 refuse a repo tarball bigger than this (unpacked cap = 4x)
+    graphify_max_files: int = 8000         # v0.496 files unpacked per repo
+    graphify_keep_repos: int = 5           # v0.496 mapped repos kept per tenant, oldest dropped
     scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
     officehours_enabled: bool = True       # v0.495 office hours (the gstack THINK/PLAN lane: design docs + plan reviews)
     officehours_keep_docs: int = 30        # v0.495 baithak docs kept per tenant; older ones (and their reviews) are forgotten

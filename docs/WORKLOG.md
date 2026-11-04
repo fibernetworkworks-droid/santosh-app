@@ -929,3 +929,6 @@ Work Log:
 
 Deploy: no new pip packages; the usual vps-ops ritual (checkout tag, cp -r server/app, pm2 restart,
 healthz grep 0.495.0).
+
+Task ID: codegraph-0.496.0
+Summary: Graphify read (README / ARCHITECTURE / security / MCP / benchmarks) and built as a read-only code-graph lane: codegraph.py (safe tarball unpack, whitelist env, timeout + group kill, one build at a time, per-tenant, source deleted), graph_build / graph_ask / graph_list, routing + card asks. Binary optional; real graphify run NOT verified. Server-only, PC freeze untouched.
