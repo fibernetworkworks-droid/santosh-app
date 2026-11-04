@@ -94,9 +94,11 @@ jobs:
           SHA=$(sha256sum desktop/dist/SantoshDesktop.exe | cut -d' ' -f1)
           ADSIZE=$(stat -c%s desktop/dist/agent-desktop.exe)
           # v1.8.0 W2b: the plugin payload also ships as a standalone zip (manual install = extract
-          # into %LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins, then restart PowerToys)
-          (cd desktop/ptrun_payload && zip -r ../dist/Hoola-PowerToysRun-plugin.zip .)
-          (cd desktop/ext_payload && zip -r ../dist/Hoola-Chrome-extension.zip .)
+          # into %LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins, then restart PowerToys).
+          # zip via pwsh Compress-Archive: the windows runner's Git Bash has no zip binary
+          # (first live publish run died there, exit 127 - the exe itself had built fine).
+          pwsh -Command "Compress-Archive -Path desktop/ptrun_payload/* -DestinationPath desktop/dist/Hoola-PowerToysRun-plugin.zip -Force"
+          pwsh -Command "Compress-Archive -Path desktop/ext_payload/* -DestinationPath desktop/dist/Hoola-Chrome-extension.zip -Force"
           gh release delete desktop-latest --yes --cleanup-tag || true
           gh release create desktop-latest desktop/dist/SantoshDesktop.exe desktop/dist/agent-desktop*.exe desktop/dist/Hoola-PowerToysRun-plugin.zip desktop/dist/Hoola-Chrome-extension.zip \
             --title "Santosh Desktop (Windows)" --latest=false \
