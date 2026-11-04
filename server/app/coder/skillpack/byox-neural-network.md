@@ -1,6 +1,6 @@
 ---
 name: byox-neural-network
-description: Build a neural network with backprop and Adam, no ML frameworks
+description: Build a neural net with backprop and Adam, no frameworks
 ---
 GOAL: a 2-layer MLP trained on MNIST that reaches 97%+ test accuracy.
 

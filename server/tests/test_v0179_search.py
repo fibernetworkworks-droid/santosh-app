@@ -167,4 +167,4 @@ def test_console_files_carry_the_search_power(env):
     # on main). The guard's real job: never MIXED app stamps in one page.
     vs = {v for v in re.findall(r"\?v=([0-9.]+)", html) if v.startswith("0.")}   # vendor stamps excluded
     assert vs == {"0.487.0"}, f"mixed console cache stamps: {sorted(vs)}"
-    assert APP_VERSION == "0.491.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.492.0"    # conscious-bump guard: moves with every release (bump with pubspec)

@@ -1,6 +1,6 @@
 ---
 name: byox-template-engine
-description: Build a template engine: tags, loops, conditionals, inheritance
+description: Build a template engine: tags, loops, inheritance
 ---
 GOAL: a Jinja2-like template engine with inheritance that auto-escapes HTML.
 

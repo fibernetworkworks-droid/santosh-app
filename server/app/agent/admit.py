@@ -276,7 +276,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
              "byox_list", "byox_guide", "byox_plan",
              "3d renderer", "bittorrent client", "blockchain", "docker container",
              "emulator", "frontend framework", "language interpreter", "memory allocator",
-             "regex engine", "search engine", "voxel engine", "web browser"),
+             "regex engine", "search engine", "voxel engine", "web browser",
+             # v0.488 Hinglish / Hindi: how people actually ask
+             "khud se banao", "khud se banana", "khud banana sikhao", "banana sikhao", "banate hain",
+             "kaise banta hai", "kaise banate", "ground up", "bilkul scratch", "shuru se banao",
+             "systems seekhna", "sikhna chahta", "sikhna chahti", "kaise kaam karta hai git",
+             "kaise kaam karta hai database", "kaise kaam karta hai docker",
+             "खुद से बनाओ", "स्क्रैच से", "बनाना सिखाओ", "कैसे बनाते हैं"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys

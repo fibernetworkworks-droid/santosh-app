@@ -1,4 +1,4 @@
-"""v0.491.0 CRAWL JOBS - the background crawl lane (the Firecrawl /crawl idea, house-sized).
+"""v0.492.0 CRAWL JOBS - the background crawl lane (the Firecrawl /crawl idea, house-sized).
 
 Owner: "PHASE 2 END TO END".
 
@@ -477,7 +477,7 @@ def test_crawl_results_masks_ids(monkeypatch):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.491.0"
+    assert APP_VERSION == "0.492.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.491.0+535" in pub.read_text()
+    assert "0.492.0+536" in pub.read_text()

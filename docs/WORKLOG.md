@@ -837,3 +837,6 @@ Sweeps on the v0.490 base: crawl-jobs 26 + scrape-firecrawl 28 + scrapling 27 + 
 pins ->0.491.0(+535) on the rebased base; console stamps stay 0.487.0 (dev's console changed, mine did not).
 Version ritual: pubspec 0.491.0+535, APP_VERSION story, CLAUDE.md one line, HISTORY.md section.
 - Re-ship notes: the stray data/scraping/tenantabd/cache.db test artifact the v0.488 branch build accidentally committed is dropped; this deploy also carries the dev's v0.489/v0.490 server side (PowerToys lane + quickask lane).
+
+Task ID: byox-feed-0.492.0
+Summary: BYOX skills reach already-seeded tenants (own stamp); 15 over-long descriptions fixed (only 16/31 were being created); Hinglish/Hindi routing; 8 card asks; /api/byox/* routes restored after v0.491 dropped them. Server-only, PC freeze untouched.

@@ -41,6 +41,7 @@ SEED_DIR = Path(__file__).parent / "skillpack"
 IMPORT_MAX = 25
 SEED_STAMP = "skills:seeded:{}"
 SHARE_STAMP = "skills:shared:{}"
+BYOX_STAMP = "skills:byox:{}"           # its OWN once-ever stamp: tenants already seeded still get the BYOX pack
 
 
 # ---------------------------------------------------------------- helpers
@@ -101,9 +102,54 @@ def _max_pending() -> int:
 def seed_files() -> list[Path]:
     """The shipped starter library (SKILL.md files beside this module)."""
     try:
-        return sorted(SEED_DIR.glob("*.md"))
+        return sorted(f for f in SEED_DIR.glob("*.md") if not f.name.startswith("byox-"))
     except Exception:
         return []
+
+
+def byox_files() -> list[Path]:
+    """The Build-Your-Own-X pack (31 SKILL.md files, one per category)."""
+    try:
+        return sorted(SEED_DIR.glob("byox-*.md"))
+    except Exception:
+        return []
+
+
+def seed_byox(tenant: str) -> dict:
+    """Copy the BYOX pack into a tenant once ever, create-if-missing. Independent of seed()'s stamp."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "byox_enabled", True):
+            return {"byox_seeded": 0}
+    except Exception:
+        return {"byox_seeded": 0}
+    if not _seed_armed():
+        return {"byox_seeded": 0}
+    stamp = BYOX_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"byox_seeded": 0}
+    except Exception:
+        return {"byox_seeded": 0}
+    wrote = 0
+    for f in byox_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("byox seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("byox seed: %d skills into %s", wrote, tenant)
+    return {"byox_seeded": wrote}
 
 
 def seed(tenant: str) -> dict:

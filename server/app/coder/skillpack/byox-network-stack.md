@@ -1,6 +1,6 @@
 ---
 name: byox-network-stack
-description: Build a TCP/IP stack: Ethernet, ARP, IP, ICMP, TCP in userspace
+description: Build a TCP/IP stack: Ethernet, ARP, IP, ICMP, TCP
 ---
 GOAL: a userspace TCP stack that can serve an HTTP response to curl.
 

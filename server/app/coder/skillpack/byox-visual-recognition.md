@@ -1,6 +1,6 @@
 ---
 name: byox-visual-recognition
-description: Build image recognition: CNN, transfer learning, face detection, OCR
+description: Build image recognition: CNN, transfer learning, OCR
 ---
 GOAL: a classifier that reaches 95%+ on a dataset without a pre-trained backbone.
 

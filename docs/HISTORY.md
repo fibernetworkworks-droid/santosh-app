@@ -18893,3 +18893,15 @@ to the maintained 0.487.0 convention, the frames count-line re-aligned). Version
 docs/WORKLOG.md Task 25. Mera PC freeze respected; desktop untouched - server-only deploy, old APKs keep
 working. VPS deploy: no new pip packages (the usual ritual: checkout tag + cp -r server/app + pm2 restart
 + healthz grep 0.488.0).
+
+## v0.492.0 BYOX FEED — every BYOX skill actually reaches Hoola (owner: "IS ALL BYOX FEED TO HOOLA AI" -> "PERFECT"; re-versioned 0.488.0 -> 0.492.0, the dev chain took 0.488-0.491, REBASE PROTOCOL respected)
+
+Found by checking, not assuming:
+(1) `skill_packs.seed()` is once-ever per tenant, so the 31 `byox-*.md` skills never reached a tenant already stamped with the 10 starters.
+(2) 15 of the 31 files had a description over the store's 60-char lint, so even a fresh tenant got only 16 of 31 (the old file-format test never checked that length). Those desk "seed-reds" the v0.491 note called pre-existing were this.
+(3) The family keywords were English-only: "mujhe database khud se banana sikhao" matched nothing.
+(4) The v0.491.0 merge had DROPPED the `/api/byox/categories` and `/api/byox/guide/{slug}` routes from `main.py` (the tools, data and skill files were intact). Restored, and the guide route now takes `language=`.
+- `skill_packs.seed_files()` = the 10 starters only; new `byox_files()` (31) + `seed_byox(tenant)` with its OWN stamp `skills:byox:<tenant>`, create-if-missing (hers win), gated by `byox_enabled` + the seed switch; the desk route calls it after `seed()`.
+- 15 descriptions shortened to <= 60; the file test enforces it. `admit.py` byox family: Hinglish / Hindi phrases. `tool_asks.py`: 8 BYOX asks, router card 171/171 in view, 0 wrong family.
+- Tests: NEW `test_v0492_byox_feed.py` (8); v0486 route tests rewritten (the old ones used a fixture key that does not exist); pins ->0.492.0+536.
+- NOT VERIFIED: the live brain's first pick on the 8 new asks (`python -m app.quality tools --live`). Skills reach a tenant when the Skills desk is first opened (existing seed() behaviour). Console stamps stay 0.487.0 (server-only).

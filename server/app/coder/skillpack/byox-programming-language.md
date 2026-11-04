@@ -1,6 +1,6 @@
 ---
 name: byox-programming-language
-description: Build an interpreter: lexer, Pratt parser, AST evaluator, closures
+description: Build an interpreter: lexer, Pratt parser, AST, closures
 ---
 GOAL: a working interpreter for a small language with closures and first-class functions.
 

@@ -215,6 +215,15 @@ ASKS: list[dict] = [
     {"id": "h58", "text": 'Mera last quotation kaunsa tha jo Verma ji ko bheja', "ok": ['yaad_khojo', 'memory_search', 'email_check'], "bad": PC},
     {"id": "h59", "text": 'Customer list ko WhatsApp pe naye saal ki wishes bhejo', "ok": ['create_campaign', 'list_lead_lists'], "bad": PC},
     {"id": "h60", "text": 'Iska photo ka background white kar do', "ok": ['photo_clean', 'photo_banao'], "bad": PC},
+    # v0.488 BYOX: build-it-yourself learning asks (Hinglish / English / Hindi)
+    {"id": "byox_list_en", "text": "What systems can I build from scratch to learn programming?", "ok": ["byox_list"], "bad": PC},
+    {"id": "byox_git_en", "text": "I want to build my own git from scratch in Rust, guide me", "ok": ["byox_guide"], "bad": PC},
+    {"id": "byox_db_hi", "text": "Mujhe database khud se banana sikhao", "ok": ["byox_guide", "byox_list"], "bad": PC},
+    {"id": "byox_plan_hi", "text": "Main Python jaanta hoon, 8 hafte mein systems programming sikhna chahta hoon, plan do", "ok": ["byox_plan"], "bad": PC},
+    {"id": "byox_docker", "text": "How does docker work? I want to build a container runtime myself", "ok": ["byox_guide"], "bad": PC},
+    {"id": "byox_shell_hi", "text": "Ek shell scratch se banana hai, kahan se shuru karun", "ok": ["byox_guide", "byox_plan"], "bad": PC},
+    {"id": "byox_hindi", "text": "मुझे ब्लॉकचेन खुद से बनाना सिखाओ", "ok": ["byox_guide", "byox_list"], "bad": PC},
+    {"id": "byox_emulator", "text": "Build an emulator from scratch, what are the phases?", "ok": ["byox_guide"], "bad": PC},
 ]
 
 

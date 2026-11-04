@@ -1,6 +1,6 @@
 ---
 name: byox-ai-model
-description: Build an LLM or diffusion model from first principles in Python
+description: Build an LLM or diffusion model from scratch in Python
 ---
 GOAL: a working character-level language model trained on real text; optionally a DDPM image model.
 

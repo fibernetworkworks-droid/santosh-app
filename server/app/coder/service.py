@@ -91,6 +91,7 @@ def make_router(require_key, current_tenant) -> APIRouter:
         tenant = current_tenant(request)
         from . import skill_packs, skills_store
         skill_packs.seed(tenant)                     # exactly-once per tenant, create-if-missing
+        skill_packs.seed_byox(tenant)                # the BYOX pack, its own once-ever stamp
         counts = store.skill_use_counts(tenant)
         out = []
         for s in skills_store.listing(tenant):

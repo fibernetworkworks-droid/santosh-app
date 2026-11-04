@@ -1,6 +1,6 @@
 ---
 name: byox-cli-tool
-description: Build a polished CLI tool with sub-commands, config, and completions
+description: Build a CLI tool: sub-commands, config, completions
 ---
 GOAL: a production-ready CLI with --help, sub-commands, config file, and shell completion.
 
