@@ -547,6 +547,14 @@ class Settings(BaseSettings):
     coder_docs7_max_per_hour: int = 12     # the <=3-per-question law, enforceable locally (upstream 429s server-side)
     coder_docs7_ttl_hours: int = 168       # the vault IS the cache: a week before the same query re-fetches
 
+    # --- Hoola 21st (v0.512): the 21st.dev UI catalog + hosted AI generation, the 21st-dev/magic-mcp port ---
+    coder_magic21: bool = False            # the magic21 tool (outbound network: bake on the VPS, then flip)
+    magic21_api_url: str = "https://21st.dev/api/mcp"   # upstream default (mcp.json:3; env MCP_URL_21ST there)
+    magic21_api_key: str = ""              # x-api-key from 21st.dev/mcp (REQUIRED upstream); BYOK - keys never in chat
+    coder_magic21_timeout_s: int = 20      # ONE attempt, drop-don't-wait: a live turn cannot wait on a marketplace
+    coder_magic21_max_per_hour: int = 12   # per-tenant rolling-hour window over OPS (the three wire POSTs are the bridge's own business)
+    magicpack_enabled: bool = True         # the mg- seed (the 21st.dev UI skill) seeds on first open under its own stamp (default ON)
+
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""
     email_password: str = ""                # app password (Gmail/Outlook/Zoho "app password")

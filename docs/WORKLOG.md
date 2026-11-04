@@ -1112,3 +1112,62 @@ the first real "naya model zoo mein" ask on the VPS is the live proof; the pack 
 skills-desk open or first turn (the feed's own design). Deploy: no new pip packages; the usual vps-ops ritual.
 Previous: v0.510.0 HOOLA CORE, v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK [full chains in git history].
 - DEPLOY follow-up: vps-ops run #244 (id 41873690351) SUCCESS -> healthz 0.511.0 ok=True (the CS pack is live; tenants receive it on their next skills-desk open or first turn).
+
+## Task 36 — v0.512.0 HOOLA 21ST (owner: "now this read first properly and then feed to hoola ai")
+
+- The READ: github.com/21st-dev/magic-mcp @ 6b5299e8, end to end. The finding that shapes everything:
+  Magic MCP no longer EXISTS as a product - the repo is a 164 KB shell: a thin stdio<->HTTP proxy
+  (src/index.ts, the whole 7.4 KB source) forwarding JSON-RPC to the unified 21st MCP endpoint
+  (https://21st.dev/api/mcp), the agent-plugin packaging (.claude-plugin + .codex-plugin +
+  .cursor-plugin + .agents + server.json + smithery.yaml) and ONE skill (skills/21st-ui/SKILL.md,
+  3,454 bytes). The proxy's comments are the best protocol documentation in the repo: one POST per
+  message, the Mcp-Session-Id echo, notifications expect no reply, empty body = error, id:null
+  restored for strict clients, NOT_AUTHED verbatim, and the 401 LATCH ("the endpoint saw ~100k of
+  those an hour after 0.2.0 shipped, from clients that could never succeed").
+- THE FEED (the docs7 v0.501 pattern - port the capability, pin the deviations): server/app/coder/
+  magic21.py, ONE magic21 tool, five ops (list / usage / search / get / call); the wire stateless per
+  turn (three POSTs: initialize, the initialized notification, the call); the 401 latch process-wide;
+  no key answers locally with ZERO network; ONE attempt drop-don't-wait (20 s); the per-tenant
+  rolling-hour window counts OPS not POSTs; redaction before egress on every string leaf of
+  arguments (upstream WARNS in the skill, Hoola enforces); the STOP-LAW (ai_subscription_required =
+  stop, never retry through the legacy aliases or the CLI); voice never sees it; NO vault landing
+  (component code is a tool result, not a memory of her work).
+- THE SEED: mg-21st-ui.md (the 4,000 cap) - search-first over from-scratch, the two workflows, the
+  entitlement check BEFORE generate, the stop-law, free-tier honesty (2 installs/day, paid code
+  unlock ke baad), legacy names named honestly, secrets kabhi nahi, fe-ui-kit family laws.
+  skill_packs gains mg_files() + MG_STAMP + seed_magicpack (once-ever; _pack_seeders finds it by
+  name, no seed_all edit); config magicpack_enabled default ON; library 65 = 11 + 31 + 2 + 15 + 3 +
+  2 cs + 1 mg, SEVEN lanes.
+- THE ARCHIVE: upstream/21st-magic-mcp/ verbatim (ISC (c) 2026 21st.dev - LICENSE ships, PROVENANCE.md
+  records the commit + exclusions (.git only)); ZERO upstream code runs in Hoola.
+- Wiring: agent/tools.py mounts the ONE tool last (the docs7 shape), registry 541 -> 542 (count pins
+  healed in officehours / dhara / crawl with the +1 note); package-export law honored (magic21 on the
+  app/coder import list + __all__); config knobs coder_magic21 (OFF) / magic21_api_url / magic21_api_key
+  (BYOK) / coder_magic21_timeout_s / coder_magic21_max_per_hour / magicpack_enabled.
+- Tests: NEW test_v0512_hoola_magic21.py (34) - shape + registry + voice + package export + config
+  defaults + version pins; kill switch + coder master fail-closed with the network SEALED; no-key
+  local refusal (zero network); NOT_AUTHED verbatim (module constant AND the archive's index.ts); the
+  401 latch; the wire sequence (3 POSTs, the session echo, the notification without id); tools/list
+  entitlement awareness (generate_listed true AND false); op=call passthrough + legacy translation;
+  redaction before egress (flat AND nested leaves); the stop-law; the SSE fallback; empty body;
+  unreachable fail-closed; the courtesy window (the third op spends ZERO network); the mg lane
+  (counts, once-ever on an all-stamps tenant, hers-win, disabled, content pins); the archive
+  verbatim. All network through the mocked _http seam.
+- THE TWENTY-SIXTH COLLISION: the dev chain took 0.511.0 (HOOLA CS PACK) while this port sat built on
+  0fab4d87 - REBASE PROTOCOL: rebuilt on their fresh base 84b88c6b, both works kept, the version layer
+  moved coherently (0.511.0 -> 0.512.0), their cs lane + my mg lane side by side in seed_files'
+  exclusion tuple; the desk-total formulas carry BOTH terms; the seed-file total pin 64 -> 65; their
+  story-marker pins stay satisfied by the Previous chain (the HOOLA CORE / server/app/aep tokens ride
+  my chain).
+- Version ritual: APP_VERSION story (this entry is its marker source), pubspec 0.512.0+547, CLAUDE.md
+  current-version line healed, pins swept 0.511.0 -> 0.512.0 + +546 -> +547 (254 + 88 hits across 164
+  files, zero residual except deliberate history); console stamps untouched; Mera PC freeze respected:
+  nothing in server/app/pc/, desktop/ or lib/ touched; docs/HISTORY.md section added.
+- Deploy: no new pip packages (httpx already in). Server-only deploy, old APKs keep working. The flip
+  is one .env line (coder_magic21=1) + magic21_api_key on the VPS + the usual restart.
+- NOT VERIFIED (honest): the first real search against the live 21st.dev endpoint (needs a baked key
+  on the VPS - the kill switch is OFF by design), the first generate with AI access enabled, the
+  first paid-component unlock story, the SSE reply shape against the REAL endpoint.
+- Base: 84b88c6b (v0.511.0 HOOLA CS PACK). Previous: v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE,
+  v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS [full chains
+  in git history].

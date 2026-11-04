@@ -1118,6 +1118,24 @@ TOOL_LABELS.update(DOCS7_LABELS)
 HANDLERS.update(DOCS7_HANDLERS)
 del _seen
 
+# v0.512 HOOLA 21ST: ONE magic21 tool (the coder/magic21 surface) - the 21st-dev/magic-mcp
+# port: search the 21st.dev UI catalog, fetch a component's full code, generate new UI only
+# when the account's entitlement says so (get_usage.aiGenerationEnabled; a result carrying
+# ai_subscription_required STOPS - no retries through legacy aliases or the CLI). Five ops
+# (list/usage/search/get/call) over the MCP wire (initialize -> initialized -> tools/call,
+# the session echo honoured per turn, stateless between turns); the endpoint's NOT_AUTHED
+# sentence rides verbatim; 401 latches for the process life (upstream saw ~100k doomed
+# initialize retries an hour - src/index.ts:146-152); no key or latched auth answers locally
+# with ZERO network; arguments pass strip_private + redact_secrets before egress; one attempt
+# drop-don't-wait (20 s); per-tenant rolling-hour window; voice never sees it (the
+# VOICE_TOOL_NAMES allowlist); coder_magic21 gates the handler (default OFF - bake, then flip).
+from ..coder.magic21 import MAGIC21_HANDLERS, MAGIC21_LABELS, MAGIC21_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in MAGIC21_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(MAGIC21_LABELS)
+HANDLERS.update(MAGIC21_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 

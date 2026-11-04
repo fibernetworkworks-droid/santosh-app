@@ -72,7 +72,7 @@ def test_registry_5_dhara_tools():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 541, "536 (v0.501, docs7 in) + 5 dhara tools"
+    assert len(TOOLS) == 542, "536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512)"
 
 
 def test_family_map():
@@ -580,7 +580,7 @@ def test_outputs_pass_mask_ids():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.511.0"
+    assert APP_VERSION == "0.512.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.511.0+546" in pub.read_text()
+    assert "0.512.0+547" in pub.read_text()

@@ -19130,3 +19130,26 @@ contracts, InMemoryCache, InMemoryRateLimiter, ModelProfile, FakeList fakes), pr
 serializable. Inert library — no network, no threads, no config reads, no kill switch (nothing executes unless
 called); the flag law applies from P2 on. Tests test_v0510_hoola_core.py (79) + core sweep 314/314. P2 TRACE is next;
 then P3 GRAPH, P4 AGENT, P5 the 24-middlewares, P6 RETRIEVE, P7 HUB, P8 the parity audit.
+
+## v0.512.0 HOOLA 21ST — the 21st.dev UI catalog door, the 21st-dev/magic-mcp port (2026-11-05)
+
+magic-mcp read end to end at 6b5299e8: Magic MCP is DEAD as a standalone — it is the unified 21st MCP
+(the npm package is a thin stdio→HTTP proxy to https://21st.dev/api/mcp, x-api-key REQUIRED, old Magic
+keys reset; the proxy IS the protocol documentation: one POST per JSON-RPC message, the Mcp-Session-Id
+echo, notifications get no write-back, empty body = error, NOT_AUTHED verbatim, the 401 latch after the
+~100k doomed initialize retries/hour lesson). NEW server/app/coder/magic21.py: ONE magic21 tool, five
+ops (list = entitlement-aware tools/list; usage = get_usage.aiGenerationEnabled; search; get =
+get_component; call = any tool by its CURRENT name, the legacy table carried), the wire stateless per
+turn (initialize → notifications/initialized → the call), the 401 latch process-wide, no key answers
+locally with zero network, ONE attempt drop-don't-wait (20 s), per-tenant rolling-hour window (12 ops),
+REDACTION BEFORE EGRESS on every string leaf of arguments, the STOP-LAW (ai_subscription_required =
+stop, no retries through aliases or the CLI), voice never sees it, NO vault landing (component code is
+a tool result, not a memory). Kill switch coder_magic21 default OFF. THE SEED: skillpack/mg-21st-ui.md
+(the 21st-ui SKILL.md distilled under the 4,000 cap) + skill_packs mg_files()/MG_STAMP/seed_magicpack
+(once-ever, the v0.492 pattern, found by _pack_seeders by name) + magicpack_enabled default ON — the
+library now 65 = 11 starters + 31 byox + 2 prog + 15 sp + 3 fe + 2 cs + 1 mg across SEVEN lanes. The
+upstream repo rides VERBATIM under skillpack/upstream/21st-magic-mcp/ (ISC (c) 2026 21st.dev, LICENSE
++ PROVENANCE; zero upstream code runs in Hoola). Registry 541 → 542 (the docs7 mount shape, count pins
+healed). Tests test_v0512_hoola_magic21.py (34), all network through the mocked _http seam. TWENTY-SIXTH
+COLLISION: rebuilt on the dev chain's fresh base 84b88c6b (v0.511.0 HOOLA CS PACK), re-versioned
+0.511.0 → 0.512.0, both works kept. Base: 84b88c6b.

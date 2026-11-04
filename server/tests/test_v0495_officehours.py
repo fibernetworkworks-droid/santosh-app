@@ -63,7 +63,7 @@ def _doc(did, **kw):
 
 def test_registry_531_and_wired():
     names = {t["name"] for t in TOOLS}
-    assert len(TOOLS) == 541, "536 (v0.501) + 5 dhara tools (v0.502)"
+    assert len(TOOLS) == 542, "536 (v0.501) + 5 dhara tools (v0.502) + 1 magic21 (v0.512)"
     assert {"officehours", "officehours_dekho"} <= names
     assert {"officehours", "officehours_dekho"} <= set(HANDLERS)
     assert "officehours" in TOOL_LABELS and "officehours_dekho" in TOOL_LABELS
@@ -73,7 +73,7 @@ def test_registry_531_and_wired():
 def test_story_and_prompts_pins():
     from app import main as main_mod
     from app.agent import prompts
-    assert main_mod.APP_VERSION == "0.511.0"
+    assert main_mod.APP_VERSION == "0.512.0"
     story = (Path(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1])[:20000]
     # story pin rides the NEWEST release's story (the v0.476 precedent); the OFFICE HOURS
     # story tokens live in git history (the v0.497 chain moved them here from v0.479)

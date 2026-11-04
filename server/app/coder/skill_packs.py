@@ -46,6 +46,7 @@ PROG_STAMP = "skills:progpack:{}"       # its OWN once-ever stamp (the v0.492 pa
 SP_STAMP = "skills:sp:{}"               # its OWN once-ever stamp (v0.495): the superpowers lane, same once-ever law
 FE_STAMP = "skills:fepack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the FE pack, same once-ever law
 CS_STAMP = "skills:cspack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the CS pack, same once-ever law
+MG_STAMP = "skills:magicpack:{}"        # its OWN once-ever stamp (the v0.492 pattern): the 21st/Magic UI pack, same once-ever law
 
 
 # ---------------------------------------------------------------- helpers
@@ -107,7 +108,7 @@ def seed_files() -> list[Path]:
     """The shipped starter library (SKILL.md files beside this module)."""
     try:
         return sorted(f for f in SEED_DIR.glob("*.md")
-                      if not f.name.startswith(("byox-", "prog-", "sp-", "fe-", "cs-")))
+                      if not f.name.startswith(("byox-", "prog-", "sp-", "fe-", "cs-", "mg-")))
     except Exception:
         return []
 
@@ -150,6 +151,15 @@ def cs_files() -> list[Path]:
     operator loop's dialogue/QA patterns."""
     try:
         return sorted(SEED_DIR.glob("cs-*.md"))
+    except Exception:
+        return []
+
+
+def mg_files() -> list[Path]:
+    """The MAGIC pack (v0.512, the 21st-dev/magic-mcp read): the 21st.dev UI skill -
+    search-first over the catalog, the generate entitlement law, the family laws."""
+    try:
+        return sorted(SEED_DIR.glob("mg-*.md"))
     except Exception:
         return []
 
@@ -397,6 +407,45 @@ def seed_cspack(tenant: str) -> dict:
     if wrote:
         log.info("cs seed: %d skills into %s", wrote, tenant)
     return {"cs_seeded": wrote}
+
+
+def seed_magicpack(tenant: str) -> dict:
+    """Copy the MAGIC pack into a tenant once ever, create-if-missing (the seed_fepack twin,
+    v0.512). Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND
+    fe AND cs still get this pack. Discovered automatically by _pack_seeders (no seed_all edit)."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "magicpack_enabled", True):
+            return {"mg_seeded": 0}
+    except Exception:
+        return {"mg_seeded": 0}
+    if not _seed_armed():
+        return {"mg_seeded": 0}
+    stamp = MG_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"mg_seeded": 0}
+    except Exception:
+        return {"mg_seeded": 0}
+    wrote = 0
+    for f in mg_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("mg seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("mg seed: %d skills into %s", wrote, tenant)
+    return {"mg_seeded": wrote}
 
 
 def _pack_seeders() -> list:
