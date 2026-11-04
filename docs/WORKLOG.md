@@ -1113,133 +1113,40 @@ skills-desk open or first turn (the feed's own design). Deploy: no new pip packa
 Previous: v0.510.0 HOOLA CORE, v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK [full chains in git history].
 - DEPLOY follow-up: vps-ops run #244 (id 41873690351) SUCCESS -> healthz 0.511.0 ok=True (the CS pack is live; tenants receive it on their next skills-desk open or first turn).
 
-## Task 36 — v0.512.0 HOOLA 21ST (owner: "now this read first properly and then feed to hoola ai")
+## Task 36 — v0.521.0 DIFY FOR HOOLA (owner: "NOW DIFY FOR HOOLA PLAN POWERFULL AND RELIBLE" -> "BUILD")
 
-- The READ: github.com/21st-dev/magic-mcp @ 6b5299e8, end to end. The finding that shapes everything:
-  Magic MCP no longer EXISTS as a product - the repo is a 164 KB shell: a thin stdio<->HTTP proxy
-  (src/index.ts, the whole 7.4 KB source) forwarding JSON-RPC to the unified 21st MCP endpoint
-  (https://21st.dev/api/mcp), the agent-plugin packaging (.claude-plugin + .codex-plugin +
-  .cursor-plugin + .agents + server.json + smithery.yaml) and ONE skill (skills/21st-ui/SKILL.md,
-  3,454 bytes). The proxy's comments are the best protocol documentation in the repo: one POST per
-  message, the Mcp-Session-Id echo, notifications expect no reply, empty body = error, id:null
-  restored for strict clients, NOT_AUTHED verbatim, and the 401 LATCH ("the endpoint saw ~100k of
-  those an hour after 0.2.0 shipped, from clients that could never succeed").
-- THE FEED (the docs7 v0.501 pattern - port the capability, pin the deviations): server/app/coder/
-  magic21.py, ONE magic21 tool, five ops (list / usage / search / get / call); the wire stateless per
-  turn (three POSTs: initialize, the initialized notification, the call); the 401 latch process-wide;
-  no key answers locally with ZERO network; ONE attempt drop-don't-wait (20 s); the per-tenant
-  rolling-hour window counts OPS not POSTs; redaction before egress on every string leaf of
-  arguments (upstream WARNS in the skill, Hoola enforces); the STOP-LAW (ai_subscription_required =
-  stop, never retry through the legacy aliases or the CLI); voice never sees it; NO vault landing
-  (component code is a tool result, not a memory of her work).
-- THE SEED: mg-21st-ui.md (the 4,000 cap) - search-first over from-scratch, the two workflows, the
-  entitlement check BEFORE generate, the stop-law, free-tier honesty (2 installs/day, paid code
-  unlock ke baad), legacy names named honestly, secrets kabhi nahi, fe-ui-kit family laws.
-  skill_packs gains mg_files() + MG_STAMP + seed_magicpack (once-ever; _pack_seeders finds it by
-  name, no seed_all edit); config magicpack_enabled default ON; library 65 = 11 + 31 + 2 + 15 + 3 +
-  2 cs + 1 mg, SEVEN lanes.
-- THE ARCHIVE: upstream/21st-magic-mcp/ verbatim (ISC (c) 2026 21st.dev - LICENSE ships, PROVENANCE.md
-  records the commit + exclusions (.git only)); ZERO upstream code runs in Hoola.
-- Wiring: agent/tools.py mounts the ONE tool last (the docs7 shape), registry 541 -> 542 (count pins
-  healed in officehours / dhara / crawl with the +1 note); package-export law honored (magic21 on the
-  app/coder import list + __all__); config knobs coder_magic21 (OFF) / magic21_api_url / magic21_api_key
-  (BYOK) / coder_magic21_timeout_s / coder_magic21_max_per_hour / magicpack_enabled.
-- Tests: NEW test_v0512_hoola_magic21.py (34) - shape + registry + voice + package export + config
-  defaults + version pins; kill switch + coder master fail-closed with the network SEALED; no-key
-  local refusal (zero network); NOT_AUTHED verbatim (module constant AND the archive's index.ts); the
-  401 latch; the wire sequence (3 POSTs, the session echo, the notification without id); tools/list
-  entitlement awareness (generate_listed true AND false); op=call passthrough + legacy translation;
-  redaction before egress (flat AND nested leaves); the stop-law; the SSE fallback; empty body;
-  unreachable fail-closed; the courtesy window (the third op spends ZERO network); the mg lane
-  (counts, once-ever on an all-stamps tenant, hers-win, disabled, content pins); the archive
-  verbatim. All network through the mocked _http seam.
-- THE TWENTY-SIXTH COLLISION: the dev chain took 0.511.0 (HOOLA CS PACK) while this port sat built on
-  0fab4d87 - REBASE PROTOCOL: rebuilt on their fresh base 84b88c6b, both works kept, the version layer
-  moved coherently (0.511.0 -> 0.512.0), their cs lane + my mg lane side by side in seed_files'
-  exclusion tuple; the desk-total formulas carry BOTH terms; the seed-file total pin 64 -> 65; their
-  story-marker pins stay satisfied by the Previous chain (the HOOLA CORE / server/app/aep tokens ride
-  my chain).
-- Version ritual: APP_VERSION story (this entry is its marker source), pubspec 0.512.0+547, CLAUDE.md
-  current-version line healed, pins swept 0.511.0 -> 0.512.0 + +546 -> +547 (254 + 88 hits across 164
-  files, zero residual except deliberate history); console stamps untouched; Mera PC freeze respected:
-  nothing in server/app/pc/, desktop/ or lib/ touched; docs/HISTORY.md section added.
-- Deploy: no new pip packages (httpx already in). Server-only deploy, old APKs keep working. The flip
-  is one .env line (coder_magic21=1) + magic21_api_key on the VPS + the usual restart.
-- NOT VERIFIED (honest): the first real search against the live 21st.dev endpoint (needs a baked key
-  on the VPS - the kill switch is OFF by design), the first generate with AI access enabled, the
-  first paid-component unlock story, the SSE reply shape against the REAL endpoint.
-- Base: 84b88c6b (v0.511.0 HOOLA CS PACK). Previous: v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE,
-  v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS [full chains
-  in git history].
-## Task 38 — v0.520.0 HOOLA TRACE (owner: "DEPLOY AND GO BUILD P2 (HOOLA TRACE — tracers/run trees)")
+After the full READ of langgenius/dify @ a7752e4c52 (1.19.0 line, 887 MB, 15,838 files; modified-Apache 2.0 whose
+condition 1a bans multi-tenant use of the source — the house is multi-tenant by birth, so ZERO Dify code entered
+the tree; the READ also proved HOOLA already IS most of Dify: model gateway, cost ledger, RAG suite, MCP, HITL,
+workflow engine, breaker, zoo). The plan (download/DIFY_FOR_HOOLA_PLAN.md) named the three deltas `git grep`
+proved missing; this build poured them:
 
-Agent: main (Z.ai, the AEP train session)
-Task: Two directives in one line. DEPLOY first (ship what main had, verify live), then GO BUILD P2 —
-phase 2 of the HOOLA AEP plan (Task 22): the LangSmith layer self-hosted.
+- **LANE A — gyaan annotations** (new `gyaan/annotations.py`, the annotation-reply idea): her APPROVED jawabs
+  served BEFORE retrieval spends a token. `gyaan action=save_answer question=... text=...` (owner-only), the match
+  at the top of `gyaan_khojo`: normalized exact, else stdlib difflib fuzzy >= `gyaan_annotation_fuzzy` (0.92); a
+  hit = ONE source "Aapka approved jawab" with the save-date through the normal `[n]` citation numbering; a miss
+  never blocks. Laws in code: `norm.mask` redaction on save, <=200 pairs/tenant (`gyaan_annotation_max`), q<=500 /
+  a<=4000 chars, same normalized question replaces, answer_on/off, per-tenant sqlite, hits/last_hit_at counters.
+  5 actions on the existing gyaan tool — zero new tools.
+- **LANE B — DHARA ops-grade eyes** (the WorkflowRunSummary + PauseReason + node_version + retry ideas): every
+  finished run (done/failed/stopped) carries a summary {steps_total, steps_ran, parks, tries, wall_ms, fail_error,
+  cost{usd,calls,tok_in,tok_out,inr}} — the cost line from usage.run_meter (v0.476): execute_run wraps the run in
+  its own meter and binds feature="dhara"; typed pause_reason (sleeping | waiting_approval | approval_expired;
+  wake clears, expiry sets); the executed step-type version rides every steps_log row (`v`, default 1); 
+  `dhara_control action=retry` re-queues a failed/stopped run FROM ITS CURSOR (checkpoint law = a finished step
+  never runs twice — proven with a flaky tool), approval-expired honestly refused; idempotent ALTER TABLE added
+  summary + pause_reason so pre-0.512 dhara.db tenants keep working.
+- **LANE C — dhara_dsl** (the DSL idea; ONE new tool, registry 541 -> 542): export = a portable JSON envelope,
+  secrets-free by law (webhook token never rides — it lives hashed in its own column; values pass mask_ids);
+  import = the SAME hard validator as dhara_save, lands DISABLED, name-collision honest (+new_name), webhook
+  imports mint a NEW token shown once; size cap dhara_dsl_max_kb=64; roundtrip byte-stable modulo timestamps.
 
-Work Log:
-- DEPLOY done first: fetched origin — the dev chain had taken v0.511.0 HOOLA CS PACK (705cca3d) BUILT ON TOP of
-  my P1 HOOLA CORE (0fab4d87), and their deploy follow-up (84b88c6b) said vps-ops run #244 already took the whole
-  chain to the VPS. Dispatched a fresh vps-ops deploy anyway (the directive said DEPLOY): run 41876141774
-  SUCCESS, public healthz `{"ok":true,"app":"Hoola","version":"0.511.0"}` — P1 HOOLA CORE verified live on the
-  VPS. Working clone re-aligned to origin/main (the stale local main ref force-moved; P1 ancestry verified first).
-- Built the tracer layer (ZERO upstream code — the port law): NEW server/app/aep/tracers.py (~590 LOC):
-  Run = the run-tree node (id/name/run_type/inputs/outputs/error/parent_run_id/trace_id/child_ids/ms/status);
-  BaseCallbackHandler = the no-op on_* family; CallbackManager carries handlers + parent_run_id down the
-  config["callbacks"] channel — a span start returns the CHILD manager, which is how the tree assembles with
-  zero registry lookups; Span = the fire-point seam (created ONLY when the config carries callbacks — the P1
-  fast path stays byte-identical, the tracer import stays lazy); RunTreeTracer builds the tree and persists
-  FINISHED runs to sinks (the runs dict a ring that evicts finished roots oldest-first past 2000);
-  InMemoryRunStore thread-safe capped 500; astream_events = the event_stream v2 port (event dicts
-  on_chain_start/on_chat_model_start/on_llm_new_token/on_chain_stream/on_chain_end/on_chain_error/on_tool_*
-  with run_id + parent_ids + data.input/output/chunk; version pinned "v2" with an honest raise); global_tracer()
-  / GLOBAL_STORE = the process store the explorer reads; traced_invoke = the one-liner lanes use.
-- NEW server/app/aep/vault_sink.py — THE FLAG LAW made real: VaultRunSink lands finished runs as ordinary
-  vault observations typed 'aep_run' (no new tables; FTS5 search/dedup/curator see the rows); REDACTION BEFORE
-  STORAGE (strip_private + redact_secrets over the serialized row; aep_trace_redact a test seam, prod True);
-  fail-closed (every fault returns None — telemetry never breaks the run it watches); honest STATS counters
-  (saved / skipped_flag / skipped_error).
-- Fire points wired into the P1 substrate (all guarded by the no-callbacks fast path): runnable.py —
-  Sequence/Parallel/Lambda chain spans on invoke/ainvoke, stream/astream fire chain_stream per chunk and close
-  with the last chunk; models.py — BaseChatModel invoke/stream/astream chat_model spans with llm_new_token per
-  streamed chunk, BaseLLM llm spans; tools.py — tool spans named by the TOOL name (not the class). P1's 79
-  tests re-ran green unchanged except two guards healed (below).
-- Explorer: GET /api/aep/runs (limit, source=memory|vault) + GET /api/aep/runs/{run_id} (the nested tree;
-  a numeric id falls back to the vault row) — require_key + the aep_trace flag fail-closed {"ok": false};
-  /api/agent/stats grew the honest aep_trace block (enabled/store/saved/skipped).
-- Config: aep_trace default OFF (bake on the VPS, then flip), aep_trace_redact True. Pre-built the trace_flip
-  vps-ops job (the coder_flip/docs7_flip one-boolean shape: idempotent .env upsert, restart --kill-timeout
-  12000, wait_up health gate, effective value printed from a fresh process). Mem restart pin 9 -> 10 (the
-  test_v0208 pin moved with it). Registry rides their 542 (the magic21 tool took 541 -> 542 in v0.512; tracers are library + routes, no new tools); voice
-  untouched by construction (no tool surface, VOICE_TOOL_NAMES moot this phase).
-- Tests: NEW test_v0520_hoola_trace.py (39, zero network, the asyncio one-loop law): manager child propagation,
-  broken-handler swallow, callbacks_from_config shapes, chain/model/llm/tool/tool-error spans, stream closes,
-  tree nesting (parallel children), trace_id shared across an invocation, Run node shape, dumps_safe on messages
-  + junk, astream_events full sequence + parent wiring + bare-model shape + version guard + error surfaced
-  without hanging, store ring cap, tracer ring eviction, global tracer + reset, vault sink flag-off noop /
-  flag-on 'aep_run' row / redaction-before-storage (a secret lands ***redacted***) / the redact seam honestly
-  off / fail-closed / attach idempotent, routes fail-closed + memory shapes + vault source + the agent-stats
-  block, the inertness probe re-run, the package-export law, the trace_flip job shape, the restart pin 10,
-  the version pins, no new registry tools. BUGS the suite caught: (a) astream over a sequence iterated the
-  sync _stream_bare with async for (TypeError) — the bare stream is sync; (b) get_settings is lru_cached
-  house-wide — a flag test that setenv's MUST cache_clear or the previous test's cached instance answers
-  (the docs7 lesson, now written into the suite as _clear_settings_cache); (c) the P1 guards healed per
-  precedent: test_no_config_reads_in_aep now exempts vault_sink.py (the P2 flag lane, lazy imports only —
-  the inertness probe still proves the fresh-interpreter import), test_main_story_markers moved to the
-  newest story (the house precedent).
-- Version ritual: APP_VERSION story (the full P2 story, exactly-one hit), pubspec 0.520.0+549, CLAUDE.md
-  healed, mechanical pin sweep 0.511.0 -> 0.520.0 + +546 -> +547 across 166 test files (259 bare + 91
-  full-string hits) zero residual outside the deliberate (v0.511) history comment; console stamps stay
-  0.487.0 x21 (the dev's convention); docs7 SERVER_VERSION twin untouched (the v0.501 birth-mark).
-- Sweeps: trace 39/39 + core 79/79 one run; docs7 26 + cspack 10 + dhara 35 = 71 green; coder 24 + selfteach
-  24 + curator 28 + swarm 17 = 93 green; home 24 + frames 14 + officehours 38 = 76 green; mem 13 green
-  (the restart pin 10 + version). Recycled-sandbox venv gaps restored from requirements.txt again
-  (sqlalchemy/anthropic/google-genai).
-
-Stage Summary:
-- P2 DONE: the AEP train has its nervous system — chains/models/tools emit the tree, the vault keeps the
-  runs (one flip away), the explorer reads them. The train continues: P3 GRAPH (StateGraph engine) -> P4
-  AGENT (create_agent) -> P5 the 24-middlewares -> P6 RETRIEVE -> P7 HUB -> P8 the 100% parity audit.
-  Deploy is one dispatch (healthz should say 0.520.0); the trace_flip job is pre-built and dispatch-ready
-  when the owner wants runs persisting. Rollback = one flip; no schema migration (aep_run rows are
-  ordinary observations).
+Tests: NEW test_v0512_dify_hoola.py (41, the v0512 name is the built-on-0.512 birthmark): annotations (16) + engine summaries/pauses/versions/retry (15) + DSL
+(10) incl. the gyaan_khojo short-circuit proven by a search counter at ZERO, the cost-meter wiring via a probe
+handler, and the retry zero-double-steps proof. Sweeps: 0.511.0 -> 0.512.0 (268) + +546 -> +547 (94) across 168
+files, zero residual; registry count pins 541 -> 542 healed in test_v0488_scrape_crawl_jobs +
+test_v0495_officehours + test_v0502_dhara (family map grew dhara_dsl). Config: dhara_summaries_enabled,
+dhara_dsl_enabled, dhara_dsl_max_kb, gyaan_annotation_enabled/fuzzy/max — all additive, all defaulted ON, zero
+new pip (difflib is stdlib), zero new keys, zero new outbound. prompts.py grew the DHARA + Gyaan bullets; 
+admit.py dhara keys grew the DSL words. Server-only deploy, old APKs keep working. NOT VERIFIED (honest): the
+first real annotation save on the VPS, the first cross-tenant DSL file, the first retry after a real failure.

@@ -1,4 +1,4 @@
-"""HOOLA AEP run persistence - the vault sink (v0.520.0 HOOLA TRACE).
+"""HOOLA AEP run persistence - the vault sink (v0.521.0 HOOLA TRACE).
 
 The tracers module is pure library code; THIS is where the flag law lives. A finished
 run lands as an ordinary vault observation typed 'aep_run' (the docs7 law: no new

@@ -101,6 +101,13 @@ def _con(tenant_id: str) -> sqlite3.Connection:
                 "status TEXT, cursor INTEGER DEFAULT 0, context TEXT DEFAULT '{}', steps_log TEXT DEFAULT '[]', "
                 "error TEXT, tries INTEGER DEFAULT 0, next_wake_at REAL, started_at REAL, missed INTEGER DEFAULT 0, "
                 "created_at REAL, updated_at REAL)")
+    # v0.512: ops-grade eyes on the runs — a computed summary at every honest end + a typed pause reason.
+    # Idempotent ALTERs so tenants whose dhara.db predates v0.512 keep working untouched.
+    for _col in ("summary TEXT", "pause_reason TEXT"):
+        try:
+            con.execute(f"ALTER TABLE runs ADD COLUMN {_col}")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     con.execute("CREATE INDEX IF NOT EXISTS idx_runs_wf ON runs (workflow_id, created_at)")
     return con
 
@@ -132,6 +139,10 @@ def _run_row(r: sqlite3.Row | None) -> dict[str, Any] | None:
         d["steps_log"] = json.loads(d.get("steps_log") or "[]")
     except Exception:
         d["steps_log"] = []
+    try:
+        d["summary"] = json.loads(d["summary"]) if d.get("summary") else None
+    except Exception:
+        d["summary"] = None
     return d
 
 
@@ -440,14 +451,52 @@ def _cmp(left: Any, op: str, right: Any) -> bool:
     return False
 
 
+# ---------------------------------------------------------------- summaries (v0.512, the Dify WorkflowRunSummary idea)
+
+def _summary(run: dict, steps_total: int, err: str, acc: dict | None = None) -> dict[str, Any]:
+    """The one honest paragraph about a finished run: what it did, where it stopped, what it cost.
+    The cost line comes from usage.run_meter (v0.476) — whatever model calls the run's steps made."""
+    logs = run.get("steps_log") or []
+    s: dict[str, Any] = {"steps_total": int(steps_total), "steps_ran": int(run.get("cursor") or 0),
+                         "parks": sum(1 for e in logs if e.get("status") in ("sleeping", "waiting_approval")),
+                         "tries": int(run.get("tries") or 0),
+                         "wall_ms": int((time.time() - float(run.get("started_at") or time.time())) * 1000)}
+    if err:
+        s["fail_error"] = str(err)[:200]
+    cost = {"usd": round(float((acc or {}).get("usd") or 0.0), 5), "calls": int((acc or {}).get("calls") or 0),
+            "tok_in": int((acc or {}).get("tok_in") or 0), "tok_out": int((acc or {}).get("tok_out") or 0)}
+    if cost["calls"]:
+        try:
+            from .. import usage as U
+            cost["inr"] = round(cost["usd"] * U.usd_inr(), 2)
+        except Exception:
+            pass
+    s["cost"] = cost
+    return s
+
+
+def _finish(tenant_id: str, run_id: str, run: dict, steps_total: int, status: str, err: str, acc: dict | None = None,
+            **extra) -> None:
+    """One honest end: status + summary written together (the fail path never loses its log — the v0.502 lesson)."""
+    from ..config import get_settings
+    s = get_settings()
+    fields: dict[str, Any] = {"status": status, "pause_reason": None, **extra}
+    if getattr(s, "dhara_summaries_enabled", True):
+        fields["summary"] = json.dumps(_summary(run, steps_total, err, acc), ensure_ascii=False)
+    update_run(tenant_id, run_id, **fields)
+
+
 # --------------------------------------------------------------------------- engine
 
 def _flat_steps(steps: list) -> list[dict]:
     return [s for s in steps if isinstance(s, dict)]
 
 
-def _log_step(run: dict, step_id: str, typ: str, status: str, ms: int, output: Any = None, error: str = "") -> None:
+def _log_step(run: dict, step_id: str, typ: str, status: str, ms: int, output: Any = None, error: str = "",
+              version: int | None = None) -> None:
     entry = {"id": step_id, "type": typ, "status": status, "ms": ms, "at": time.strftime("%H:%M:%S")}
+    if version is not None:            # v0.512: the step-type version that REALLY executed (Dify's node_version idea)
+        entry["v"] = int(version)
     if error:
         entry["error"] = error[:400]
     if output is not None:
@@ -462,7 +511,7 @@ def _log_step(run: dict, step_id: str, typ: str, status: str, ms: int, output: A
 def _save_checkpoint(tenant_id: str, run: dict) -> None:
     update_run(tenant_id, run["id"], cursor=run["cursor"], context=run["context"],
                steps_log=run["steps_log"], status=run["status"], error=run.get("error") or "",
-               next_wake_at=run.get("next_wake_at"))
+               next_wake_at=run.get("next_wake_at"), pause_reason=run.get("pause_reason"))
 
 
 def _notify(conv: str, text: str) -> None:
@@ -616,9 +665,29 @@ async def _http_step(tenant_id: str, step: dict, ctx: dict) -> dict:
 
 
 async def execute_run(tenant_id: str, run_id: str) -> None:
-    """The whole run, from its checkpoint. Runs as a background task; the tick claims first."""
+    """The whole run, from its checkpoint. Runs as a background task; the tick claims first.
+    v0.512: the run carries its OWN cost meter (usage.run_meter, the v0.476 run-scoped shape) and
+    binds feature="dhara" in the usage ledger, so its model calls are visible per run and per day."""
     from ..config import get_settings
+    from .. import usage
     s = get_settings()
+    key = f"{tenant_id}:{run_id}"
+    _RUNNING.add(key)
+    acc: dict = {}
+    try:
+        usage.bind(tenant=tenant_id, feature="dhara")
+        with usage.run_meter(acc):
+            await _execute_run(tenant_id, run_id, s, acc)
+    except Exception as e:  # the lane never breaks the worker
+        try:
+            update_run(tenant_id, run_id, status="failed", error=f"{type(e).__name__}: {e}"[:800])
+        except Exception:
+            pass
+    finally:
+        _RUNNING.discard(key)
+
+
+async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
     key = f"{tenant_id}:{run_id}"
     _RUNNING.add(key)
     try:
@@ -627,13 +696,14 @@ async def execute_run(tenant_id: str, run_id: str) -> None:
             return
         wf = get_workflow(tenant_id, wf_id=run["workflow_id"])
         if wf is None:
-            update_run(tenant_id, run_id, status="failed", error="workflow delete/gone")
+            _finish(tenant_id, run_id, run, 0, "failed", "workflow delete/gone", error="workflow delete/gone")
             return
         ctx = run["context"]
         ctx.setdefault("vars", {})
         ctx.setdefault("steps", {})
         run["cursor"] = int(run.get("cursor") or 0)
         run["status"] = "running"
+        run["pause_reason"] = None
         run.setdefault("steps_log", [])
         if not run.get("started_at"):
             update_run(tenant_id, run_id, started_at=time.time())
@@ -653,22 +723,25 @@ async def execute_run(tenant_id: str, run_id: str) -> None:
             ok, out, serr = await _exec_one(tenant_id, conv, step, ctx, run_id)
             ms = int((time.time() - t0) * 1000)
             if serr == "__PARK__":
-                _log_step(run, step["id"], step["type"], "sleeping", ms, output=out)
+                _log_step(run, step["id"], step["type"], "sleeping", ms, output=out, version=int(step.get("v") or 1))
                 run["status"] = "sleeping"
+                run["pause_reason"] = "sleeping"          # v0.512: the typed pause reason (Dify's PauseReason idea)
                 run["next_wake_at"] = ctx.get("_run", {}).get("next_wake_at")
                 run["cursor"] += 1  # the wait IS the step doing its job; the wake resumes AFTER it
                 _save_checkpoint(tenant_id, run)
                 return
             if serr == "__APPROVE__":
-                _log_step(run, step["id"], step["type"], "waiting_approval", ms)
+                _log_step(run, step["id"], step["type"], "waiting_approval", ms, version=int(step.get("v") or 1))
                 run["status"] = "waiting_approval"
+                run["pause_reason"] = "waiting_approval"  # v0.512: typed, not implied
                 _save_checkpoint(tenant_id, run)
                 hrs = int(getattr(s, "dhara_approval_hours", 24))
                 _notify(conv, f'DHARA "{wf["name"]}" (run {run_id}) ruki hai: {str(step.get("question") or "aage badhun?")} '
                               f'Chat mein "haan" likhiye (ya rokna ho to "rok do"); {hrs} ghante ke andar.')
                 return
             _log_step(run, step["id"], step["type"], "ok" if ok else "error", ms,
-                      output=(out if ok and out is not None else None), error="" if ok else serr)
+                      output=(out if ok and out is not None else None), error="" if ok else serr,
+                      version=int(step.get("v") or 1))
             if ok:
                 run["cursor"] += 1
             elif step.get("soft"):
@@ -681,14 +754,14 @@ async def execute_run(tenant_id: str, run_id: str) -> None:
                 await asyncio.sleep(polite_s)
         if run["cursor"] >= len(steps) and not err:
             _save_checkpoint(tenant_id, run)
-            update_run(tenant_id, run_id, status="done", error="")
+            _finish(tenant_id, run_id, run, len(steps), "done", "", acc)
             _notify(conv, f'DHARA "{wf["name"]}" poora ho gaya ({len(steps)} steps, run {run_id}).'
                     f'{" (missed schedule se) " if run.get("missed") else ""}')
         else:
             run["status"] = "failed"
             run["error"] = err
-            update_run(tenant_id, run_id, status="failed", error=err[:800],
-                       steps_log=run["steps_log"], cursor=run["cursor"], context=run["context"])
+            _save_checkpoint(tenant_id, run)
+            _finish(tenant_id, run_id, run, len(steps), "failed", err, acc, error=err[:800])
             _notify(conv, f'DHARA "{wf["name"]}" ruk gaya: {err[:300]}')
     except Exception as e:  # the lane never breaks the worker
         try:
@@ -795,13 +868,13 @@ async def tick() -> int:
             # wake sleepers whose time came (park them back to queued; the claim below starts them)
             con = _con(tenant)
             try:
-                con.execute("UPDATE runs SET status = 'queued', next_wake_at = NULL, updated_at = ? "
+                con.execute("UPDATE runs SET status = 'queued', next_wake_at = NULL, pause_reason = NULL, updated_at = ? "
                             "WHERE status = 'sleeping' AND next_wake_at IS NOT NULL AND next_wake_at <= ?",
                             (time.time(), time.time()))
                 # expire approvals that waited too long
                 cut = time.time() - int(getattr(s, "dhara_approval_hours", 24)) * 3600
-                con.execute("UPDATE runs SET status = 'failed', error = 'approval ka intezaar khatam "
-                            "(dhara_approval_hours paar)', updated_at = ? "
+                con.execute("UPDATE runs SET status = 'failed', pause_reason = 'approval_expired', "
+                            "error = 'approval ka intezaar khatam (dhara_approval_hours paar)', updated_at = ? "
                             "WHERE status = 'waiting_approval' AND updated_at < ?", (time.time(), cut))
                 con.commit()
             finally:
@@ -965,6 +1038,8 @@ async def dhara_runs(ctx: Ctx, run_id="", workflow_id="", limit=8, **_):
             raise ToolError("Yeh run_id nahi mila")
         return _masked({"run_id": r["id"], "workflow": r["wf_name"], "status": r["status"],
                 "cursor": r["cursor"], "error": r.get("error") or "",
+                "pause_reason": r.get("pause_reason") or "",
+                "summary": r.get("summary"),
                 "steps_log": r["steps_log"][-40:],
                 "note": ("Abhi chal raha hai — thodi der baad phir dekhein"
                          if r["status"] in ("queued", "running") else "")})
@@ -975,6 +1050,7 @@ async def dhara_runs(ctx: Ctx, run_id="", workflow_id="", limit=8, **_):
     return _masked({"count": len(rows), "runs": [
         {"run_id": x["id"], "workflow": x["wf_name"], "status": x["status"], "steps_done": x["cursor"],
          "steps_logged": x["steps_log"], "missed": bool(x.get("missed")), "error": (x.get("error") or "")[:150],
+         "pause_reason": x.get("pause_reason") or "", "summary": x.get("summary"),
          "age_s": int(time.time() - float(x["created_at"]))} for x in rows]})
 
 
@@ -998,6 +1074,9 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
         if r["status"] in ("done", "failed", "stopped"):
             return {"run_id": r["id"], "status": r["status"], "note": "Yeh run pehle hi ruk chuka tha"}
         update_run(ctx.tenant_id, r["id"], status="stopped", error="uski Malika ne rokna kaha")
+        wf = get_workflow(ctx.tenant_id, wf_id=r["workflow_id"])
+        _finish(ctx.tenant_id, r["id"], r, len(wf["steps"]) if wf else 0, "stopped", "uski Malika ne rokna kaha",
+                error="uski Malika ne rokna kaha")
         return {"run_id": r["id"], "status": "stopped", "note": "Run ke beech mein ruk gaya — jo steps ho chuke hain woh log mein hain"}
     if act == "approve":
         r = get_run(ctx.tenant_id, str(run_id)) if run_id else None
@@ -1009,12 +1088,37 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
         # would hit the same gate and park forever (the resume executes from the checkpoint).
         r["steps_log"].append({"id": str(r["cursor"]), "type": "approval", "status": "approved", "at": time.strftime("%H:%M:%S")})
         update_run(ctx.tenant_id, r["id"], status="queued", tries=0,
-                   cursor=int(r["cursor"]) + 1, steps_log=r["steps_log"])
+                   cursor=int(r["cursor"]) + 1, steps_log=r["steps_log"], pause_reason=None)
         t = asyncio.ensure_future(execute_run(ctx.tenant_id, r["id"]))
         _TASKS.add(t)
         t.add_done_callback(lambda _t: _TASKS.discard(_t))
         return {"run_id": r["id"], "status": "queued", "note": "Uski haan mil gayi — run wahin se aage badha"}
-    raise ToolError("action: enable | disable | stop | approve")
+    if act == "retry":
+        # v0.512 (the Dify node-retry idea): a failed/stopped run re-queues FROM ITS CURSOR — the
+        # checkpoint law makes this safe by construction: a finished step never runs twice.
+        r = get_run(ctx.tenant_id, str(run_id)) if run_id else None
+        if r is None:
+            wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
+            r = latest_run(ctx.tenant_id, wf["id"]) if wf else None
+        if r is None:
+            raise ToolError("retry ke liye run_id (ya workflow ka naam) dein")
+        if r["status"] not in ("failed", "stopped"):
+            return {"run_id": r["id"], "status": r["status"],
+                    "note": "retry sirf ruke hue (failed / stopped) run par chalta hai"}
+        if (r.get("pause_reason") or "") == "approval_expired":
+            return {"run_id": r["id"], "status": r["status"], "ok": False,
+                    "note": "approval ka time nikal gaya tha — gate ke aage dobara approve kiye bina nahi badhte; "
+                            "workflow ko dhara_run se nayi run mein chalayein"}
+        r["steps_log"].append({"id": str(r["cursor"]), "type": "retry", "status": "retry",
+                               "at": time.strftime("%H:%M:%S")})
+        update_run(ctx.tenant_id, r["id"], status="queued", tries=0, error="", pause_reason=None,
+                   steps_log=r["steps_log"])
+        t = asyncio.ensure_future(execute_run(ctx.tenant_id, r["id"]))
+        _TASKS.add(t)
+        t.add_done_callback(lambda _t: _TASKS.discard(_t))
+        return {"run_id": r["id"], "status": "queued",
+                "note": "Wahin se chalu (checkpoint) — jo steps ho chuke hain woh dobara nahi chalenge"}
+    raise ToolError("action: enable | disable | stop | approve | retry")
 
 
 async def dhara_list(ctx: Ctx, **_):
@@ -1030,6 +1134,95 @@ async def dhara_list(ctx: Ctx, **_):
         out.append(_fmt_wf(wf, last))
     return {"count": len(out), "workflows": out,
             "note": ("Naya banane ke liye dhara_save use karein" if out else "Abhi koi workflow nahi — pehla dhara_save se banao")}
+
+
+# --------------------------------------------------------------------------- DSL (v0.512, the Dify DSL idea)
+
+_DSL_VERSION = 1
+
+
+def _scrub_for_export(obj: Any) -> Any:
+    """The export law: what leaves the tenant carries NO secrets — ids masked, identifiers masked;
+    runtime outputs were never stored in steps (args only), and the webhook token never rides
+    (it lives sha256-hashed in its own column, which the envelope never includes)."""
+    return _masked(obj)
+
+
+def dsl_export(tenant_id: str, wf: dict) -> dict[str, Any]:
+    env = {"dhara_dsl": _DSL_VERSION, "source": "hoola-dhara",
+           "name": wf["name"], "description": wf.get("description") or "",
+           "trigger": wf["trigger_kind"], "trigger_spec": wf.get("trigger_spec") or {},
+           "steps": _scrub_for_export(wf.get("steps") or []),
+           "exported_at": time.strftime("%Y-%m-%dT%H:%M:%S")}
+    return env
+
+
+async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = "", dsl=None, new_name: str = "", **_):
+    """export (workflow -> a portable JSON envelope, secrets-free) | import (the SAME hard validator,
+    lands disabled, she enables it). Backup, migrate between tenants, share a proven recipe."""
+    from ..config import get_settings
+    s = get_settings()
+    if not getattr(s, "dhara_enabled", True) or not getattr(s, "dhara_dsl_enabled", True):
+        raise ToolError("DHARA DSL is server par band hai (dhara_dsl_enabled=false)")
+    max_kb = int(getattr(s, "dhara_dsl_max_kb", 64) or 64)
+    if str(action).lower() == "export":
+        wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
+        if wf is None:
+            raise ToolError("Yeh naam ka workflow nahi mila — dhara_list se dekhein")
+        env = dsl_export(ctx.tenant_id, wf)
+        raw = json.dumps(env, ensure_ascii=False)
+        if len(raw.encode()) > max_kb * 1024:
+            raise ToolError(f"Export bohot bada hai ({len(raw.encode()) // 1024} KB; cap {max_kb} KB) — "
+                            "workflow chhote hisso mein rakhein")
+        return {"ok": True, "dsl": env, "bytes": len(raw.encode()),
+                "note": "Yeh file sambhal kar rakhein — isme uske workflow ke steps hain, RAAZ nahi "
+                        "(webhook ka token kabhi export mein nahi jaata). Dusre tenant mein lene ke liye: "
+                        "dhara_dsl action=import dsl=<yehi envelope>"}
+    if str(action).lower() == "import":
+        if isinstance(dsl, str):
+            try:
+                dsl = json.loads(dsl)
+            except Exception:
+                raise ToolError("dsl ek JSON object (ya uska JSON string) hona chahiye")
+        if not isinstance(dsl, dict) or dsl.get("dhara_dsl") != _DSL_VERSION:
+            raise ToolError(f"Yeh DHARA DSL file nahi lagti (dhara_dsl={_DSL_VERSION} chahiye)")
+        raw = json.dumps(dsl, ensure_ascii=False)
+        if len(raw.encode()) > max_kb * 1024:
+            raise ToolError(f"DSL file bohot badi hai (cap {max_kb} KB)")
+        nm = str(new_name or dsl.get("name") or "").strip().lower().replace(" ", "_")
+        if not nm or not _PATH_RE.match(nm):
+            raise ToolError("Workflow ka naam lowercase_with_underscores dein")
+        kind = str(dsl.get("trigger") or "manual").lower()
+        if kind not in ("manual", "schedule", "webhook"):
+            raise ToolError("trigger manual | schedule | webhook (v1)")
+        spec = dict(dsl.get("trigger_spec") or {})
+        if kind == "webhook":
+            spec = {}   # a new token is minted here and shown ONCE in this reply
+        if kind == "schedule" and not (spec.get("every_hours") or spec.get("at")):
+            raise ToolError("schedule trigger ko every_hours ya at ['HH:MM', ...] chahiye")
+        if get_workflow(ctx.tenant_id, name=nm) is not None:
+            return {"ok": False, "already_exists": True, "existing": nm,
+                    "note": f"'{nm}' naam ka workflow pehle se hai — doosre naam se laane ke liye "
+                            f"new_name='{nm}_2' dein (ya pehle uska naam badlein)"}
+        norm_steps = validate_steps(dsl.get("steps"))   # THE SAME hard validator as dhara_save
+        wf, _created = save_workflow(ctx.tenant_id, nm, str(dsl.get("description") or "")[:500], kind, spec,
+                                     norm_steps, str(ctx.conversation_id or ""))
+        set_enabled(ctx.tenant_id, wf["id"], False)      # imported lands BAND — she reads, she enables
+        if kind == "schedule":
+            con = _con(ctx.tenant_id)
+            try:
+                con.execute("UPDATE workflows SET next_due_at = ? WHERE id = ?", (next_due(wf), wf["id"]))
+                con.commit()
+            finally:
+                con.close()
+        out = _fmt_wf(get_workflow(ctx.tenant_id, wf_id=wf["id"]))
+        out["ok"] = True
+        out["note"] = "Import ho gaya lekin BAND hai — steps dekh kar dhara_control action=enable se chalu karein"
+        if kind == "webhook":
+            out["webhook_note"] = ("Naya webhook token (sirf ek baar dikhega): "
+                                   + webhook_token_reveal(ctx.tenant_id, wf["id"]))
+        return out
+    raise ToolError("action: export | import")
 
 
 DHARA_TOOLS = [
@@ -1068,24 +1261,41 @@ DHARA_TOOLS = [
     {"name": "dhara_control", "description": (
         "Turn a workflow's trigger on/off, stop a run, or relay HER haan (v0.502). action=approve run_id=... when "
         "she answered a waiting approval step in chat ('haan') — the run resumes from the same step. action=stop "
-        "lands between steps; finished steps stay in the log. Never approve without her word."),
+        "lands between steps; finished steps stay in the log. action=retry (v0.512) re-runs a failed/stopped run "
+        "FROM its checkpoint — finished steps never run twice; an approval-expired run is honestly refused. "
+        "Never approve without her word."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["enable", "disable", "stop", "approve"]},
+         "action": {"type": "string", "enum": ["enable", "disable", "stop", "approve", "retry"]},
          "name": {"type": "string", "description": "Workflow name (enable/disable)"},
          "workflow_id": {"type": "string"},
-         "run_id": {"type": "string", "description": "For stop / approve"}},
+         "run_id": {"type": "string", "description": "For stop / approve / retry"}},
          "required": ["action"]}},
     {"name": "dhara_list", "description": (
         "Her workflows — the mini-board (v0.502): name, trigger, enabled, step count, next schedule due, last run's "
         "status and error. Use before building (kya pehle se hai) and when she asks 'mere workflows kaise hain'."),
      "input_schema": {"type": "object", "properties": {}, "required": []}},
+    {"name": "dhara_dsl", "description": (
+        "Export or import her WORKFLOWS as portable files (v0.512, the Dify DSL idea). action=export name=... gives a "
+        "JSON envelope of the whole workflow — secrets-free by law (the webhook token never rides, values pass the "
+        "house mask); keep it as a backup, share it, or move a proven workflow to another of her spaces with "
+        "action=import dsl=<envelope> (new_name= to rename). Import runs the SAME hard validator as dhara_save and "
+        "lands DISABLED — she reads the steps, then enables it herself. A webhook workflow gets a NEW token on import, "
+        "shown once."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["export", "import"]},
+         "name": {"type": "string", "description": "export: the workflow's name (or workflow_id)"},
+         "workflow_id": {"type": "string"},
+         "dsl": {"type": "object", "description": "import: the envelope (a dhara_dsl=1 JSON object or its JSON string)"},
+         "new_name": {"type": "string", "description": "import under a different name"}},
+         "required": ["action"]}},
 ]
 
 DHARA_LABELS = {"dhara_save": "Workflow bana/updat kar raha hoon",
                 "dhara_run": "Workflow abhi chala raha hoon",
                 "dhara_runs": "Runs ka haal dekh raha hoon",
                 "dhara_control": "Workflow control kar raha hoon",
-                "dhara_list": "Workflows ki tafteesh kar raha hoon"}
+                "dhara_list": "Workflows ki tafteesh kar raha hoon",
+                "dhara_dsl": "Workflow file le raha hoon"}
 
 DHARA_HANDLERS = {"dhara_save": dhara_save, "dhara_run": dhara_run, "dhara_runs": dhara_runs,
-                  "dhara_control": dhara_control, "dhara_list": dhara_list}
+                  "dhara_control": dhara_control, "dhara_list": dhara_list, "dhara_dsl": dhara_dsl}

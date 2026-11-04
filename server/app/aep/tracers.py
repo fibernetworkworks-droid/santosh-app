@@ -1,4 +1,4 @@
-"""HOOLA AEP tracers - the LangSmith layer self-hosted (v0.520.0 HOOLA TRACE, P2 of
+"""HOOLA AEP tracers - the LangSmith layer self-hosted (v0.521.0 HOOLA TRACE, P2 of
 the AEP plan). The langchain-core callbacks + tracers + event-stream idea and the
 LangSmith run-tree idea hand-built (upstream reference: callbacks/manager.py
 CallbackManager + BaseCallbackHandler, tracers/base.py BaseTracer, tracers/

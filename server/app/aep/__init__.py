@@ -20,7 +20,7 @@ from P2 where tracers and agents actually run):
 - history    : BaseChatMessageHistory + InMemoryChatMessageHistory
 - stores     : BaseStore + InMemoryStore + InMemoryByteStore
 - serializable: the lc-shaped to_json seed (P7 HUB builds the loader on it)
-- tracers    : (P2 v0.520.0 HOOLA TRACE) CallbackManager + handlers, Run/run tree,
+- tracers    : (P2 v0.521.0 HOOLA TRACE) CallbackManager + handlers, Run/run tree,
                RunTreeTracer, InMemoryRunStore, astream_events v2, the Span fire seam
 - vault_sink : (P2) the flag-gated run persistence - runs land as vault observations
                typed 'aep_run', redacted before storage (aep_trace, default OFF)

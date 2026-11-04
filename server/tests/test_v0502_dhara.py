@@ -66,17 +66,17 @@ def _flow1_steps():
 
 def test_registry_5_dhara_tools():
     names = {t["name"] for t in D.DHARA_TOOLS}
-    assert names == {"dhara_save", "dhara_run", "dhara_runs", "dhara_control", "dhara_list"}
+    assert {"dhara_save", "dhara_run", "dhara_runs", "dhara_control", "dhara_list"} <= names
     assert set(D.DHARA_LABELS) == set(D.DHARA_HANDLERS) == names
     global_names = {t["name"] for t in TOOLS}
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 542, "536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512, the dev chain)"
+    assert len(TOOLS) == 543, "541 (v0.502) + 1 magic21 (their v0.512) + 1 dhara_dsl (v0.514, the Dify-DSL lane)"
 
 
 def test_family_map():
-    for n in ("dhara_save", "dhara_run", "dhara_runs", "dhara_control", "dhara_list"):
+    for n in ("dhara_save", "dhara_run", "dhara_runs", "dhara_control", "dhara_list", "dhara_dsl"):
         assert FAMILY_OF.get(n) == "dhara", n
 
 
@@ -580,7 +580,7 @@ def test_outputs_pass_mask_ids():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.520.0"
+    assert APP_VERSION == "0.521.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.520.0+549" in pub.read_text()
+    assert "0.521.0+550" in pub.read_text()

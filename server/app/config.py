@@ -416,6 +416,12 @@ class Settings(BaseSettings):
     dhara_keep_runs_days: int = 30         # v0.502 finished runs older than this are forgotten (at most 40 kept)
     dhara_approval_hours: int = 24         # v0.502 an approval step waiting longer than this fails honestly
     dhara_webhook_enabled: bool = True     # v0.502 POST /api/dhara/hook/{token} (token sha256-hashed at rest)
+    dhara_summaries_enabled: bool = True   # v0.512 a computed summary (steps/parks/tries/wall/cost) on every finished run
+    dhara_dsl_enabled: bool = True         # v0.512 dhara_dsl export/import (the Dify DSL idea: portable workflow files)
+    dhara_dsl_max_kb: int = 64             # v0.512 one DSL envelope's size cap
+    gyaan_annotation_enabled: bool = True  # v0.512 her approved jawabs (the Dify annotation-reply idea) served before retrieval
+    gyaan_annotation_fuzzy: float = 0.92   # v0.512 difflib ratio threshold for a fuzzy annotation hit (exact always wins)
+    gyaan_annotation_max: int = 200        # v0.512 approved-jawab pairs per tenant
     officehours_enabled: bool = True       # v0.495 office hours (the gstack THINK/PLAN lane: design docs + plan reviews)
     officehours_keep_docs: int = 30        # v0.495 baithak docs kept per tenant; older ones (and their reviews) are forgotten
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran

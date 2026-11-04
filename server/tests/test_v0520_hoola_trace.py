@@ -1,4 +1,4 @@
-"""v0.520.0 HOOLA TRACE - the LangSmith layer self-hosted, P2 of the HOOLA AEP plan
+"""v0.521.0 HOOLA TRACE - the LangSmith layer self-hosted, P2 of the HOOLA AEP plan
 (owner: 'DEPLOY AND GO BUILD P2 (HOOLA TRACE - tracers/run trees)' after the deploy
 verified vps-ops run 41876141774 success + healthz 0.511.0 - P1 HOOLA CORE rode the
 CS-pack chain to the VPS live). The callbacks/tracers/event-stream idea and the
@@ -651,10 +651,10 @@ def test_flags_default_off_and_redact_on():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.520.0"
-    assert "0.520.0+549" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.521.0"
+    assert "0.521.0+550" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.520.0"')
+    assert line.startswith('APP_VERSION = "0.521.0"')
     assert "HOOLA TRACE" in line and "astream_events" in line and "aep_run" in line
 
 

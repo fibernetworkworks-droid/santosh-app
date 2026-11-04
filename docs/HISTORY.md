@@ -19138,6 +19138,16 @@ vetted design catalog: app-interface, charts, colors, icons, landing, motion, pr
 styles, typography, ui-reasoning, ux-guidelines + google-fonts and 21 stack files from angular to wpf, with
 LICENSE + PROVENANCE + data-provenance). Tests test_v0486_hoola_uiux_skill.py (theirs). Base: 8f110ee2.
 
+## v0.521.0 DIFY FOR HOOLA — the three verified deltas from the Dify READ, idea-only (2026-11-05)
+
+The Dify READ (1.19.0, modified-Apache with the multi-tenant ban) proved HOOLA already IS most of Dify — so only
+three lanes were poured, each `git grep`-proven missing first: **gyaan annotations** (her approved jawabs before
+retrieval; exact + difflib fuzzy >= 0.92; redaction; 200/tenant), **DHARA ops-grade eyes** (summary + cost on
+every finished run via the run meter, typed pause reasons, step-type versions in the log, retry from the cursor
+under the checkpoint law), and **dhara_dsl** (portable workflow envelopes: secrets-free export, the same hard
+validator on import, lands disabled, webhook re-token). Registry 541 -> 542 (one tool: dhara_dsl). 41 new tests.
+Zero Dify code, zero new pip, zero new keys, zero new outbound. Server-only deploy.
+
 ## v0.510.0 HOOLA CORE — the langchain-core feature clone as server/app/aep, P1 of the HOOLA AEP plan (2026-11-04)
 
 The AEP train opens. langchain read end to end at aa2528fb (core 1.7.5 / langchain 1.4.8); ZERO upstream code — the

@@ -459,9 +459,9 @@ def test_spec_rides_the_ext_payload():
 
 def test_versions():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.520.0"
+    assert APP_VERSION == "0.521.0"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.520.0+549" in pubspec
+    assert "version: 0.521.0+550" in pubspec
     import santosh_desktop
     assert santosh_desktop.__version__ == "1.9.0"          # desktop changed this release (ext + --ask)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))

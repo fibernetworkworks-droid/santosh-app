@@ -46,8 +46,9 @@ def quiet_bus(bz):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.520.0"
-    assert "0.520.0+549" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.521.0"
+    assert "0.521.0+550" in (REPO / "pubspec.yaml").read_text()
+
 
 def test_queue_bound_and_drop_oldest(quiet_bus):
     from app import events
@@ -256,7 +257,7 @@ def test_vps_ops_restarts_carry_kill_timeout():
                                                         # + hf_setup (v0.471.0 HOOLA FRAMES) + lab_setup (v0.461.0)
                                                         # + coder_flip (v0.480.0 Phase D - the owner's FLIP)
                                                         # + docs7_flip (v0.510.0 - the Context7 flip slot)
-                                                        # + trace_flip (v0.520.0 HOOLA TRACE - the AEP run persistence flip)
+                                                        # + trace_flip (v0.521.0 HOOLA TRACE - the AEP run persistence flip)
     for ln in restarts:
         assert "--kill-timeout 12000" in ln, ln         # default 1600 ms was the SIGKILL inside the wait
 
