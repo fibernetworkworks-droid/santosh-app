@@ -997,3 +997,36 @@ releases). Server-only — no desktop file, no new binary, no APK; the PC freeze
   the voice budget; not mine, not fixed here.
 - **Deploy**: bake `HOME_CONTROL=1` (+ URL/token) on the VPS, then the normal vps-ops deploy. Console stamps stay
   0.475.0 x20 (server-only release, the v0.476 precedent); story pin moved to the v0.479 story.
+
+## v0.483.0 FIRECRAWL CORE — our own Firecrawl, house-sized, on the Scrapling lane (owner: "CAN WE BUILD OUR OWN FIRECRAWL FOR HOOLA" -> "BUILD")
+
+Design-only descent from the end-to-end Firecrawl engine read (engine waterfall, /map, /extract, index cache): ZERO
+Firecrawl code — the engine is AGPL-3.0 and never enters this tree; everything is built on the BSD-3 Scrapling lane
+inside `agent/scrape_tools.py` (5 v0.474 tools -> 8). FOUR IDEAS:
+
+- **scrape** — THE one door with the auto-waterfall: fast curl_cffi HTTP first; on a block signature (401/403/429,
+  challenge titles like "Just a moment", or a SMALL body (<2500 chars) carrying a challenge fingerprint — the size
+  gate keeps a long article that merely mentions captcha from ever escalating) it escalates BY ITSELF to the stealth
+  browser when `scrape_stealth_enabled` is on. The agent no longer picks scrape_page vs scrape_stealth manually.
+  stealth=never is HTTP-only; stealth=always goes straight to the browser (still gated, semaphore(1), MEM-CURE RAM
+  discipline). Block with a 200 answer is served with a `block_note`; a block that survives stealth is an honest
+  ToolError.
+- **scrape_map** — links-only discovery (the /map shape): fetches max 8 pages, harvests SAME-SITE urls (cap 200,
+  include-regex, robots respected + skipped counter, 0.3 s politeness), returns just the url list. The cheap "is
+  site par ka kahan hai" pass before scrape_extract.
+- **per-tenant page cache + max_age** — the index-engine idea: `data/scraping/<tenant>/cache.db` (raw sqlite3),
+  page-level markdown+text stored write-through on EVERY successful page read, served BEFORE the fetch (zero
+  outbound when fresh); `scrape_cache_enabled=True` + `scrape_cache_max_age=1800`; LRU cap 300 rows; max_age 0 =
+  always fresh, None = never read (scrape_page keeps legacy behaviour); css/include_links bypass the read (they
+  need the live DOM); the cache never breaks a scrape.
+- **scrape_extract_json** — schema -> JSON rows through ONE capped brain call (the /extract idea on the house
+  brain): page read (markdown, 14k cap), schema rides in the prompt, the coder-observer pakka pattern (cheap brain
+  first, Claude fallback), max_tokens 2000, rows cap 50, loose JSON parse (direct -> fenced block anywhere ->
+  balanced run) with honest refusal otherwise.
+
+- **Tests**: `test_v0481_scrape_firecrawl.py` 28 (8-tool registry pin, block detection + the long-article
+  false-positive guard, waterfall incl. never/always/busy-semaphore, cache roundtrip/isolation/expiry/kill-switch/
+  LRU/write-through->serve->css-bypass/default-read, map same-host/BFS/include/cap/robots/SSRF, extract_json
+  fenced/balanced/garbage/50-cap/SSRF, version). v0474 suite green beside it (its registry pin grew to 8).
+- **Deploy**: no new pip packages; the usual vps-ops ritual. Console stamps stay 0.475.0 x20 (server-only, the
+  v0.476/v0.480 precedent); pins ->0.481.0(+526) in 151 version-pin suites.

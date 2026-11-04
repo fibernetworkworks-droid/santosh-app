@@ -1,4 +1,4 @@
-"""v0.481.0 HOOLA LAUNCHER - Win+R se 'hoola', the W2a MVP of the Platforms plan (owner:
+"""v0.483.0 HOOLA LAUNCHER - Win+R se 'hoola', the W2a MVP of the Platforms plan (owner:
 'W2 - LAUNCHER --- START A WORK'; W1 smart home v0.479.0 already live).
 
 What shipped (each test pins one promise):
@@ -242,6 +242,6 @@ def test_win_r_keys_still_blocked(opc):
 def test_versions(opc):
     operator, _ = opc
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.482.0"
+    assert APP_VERSION == "0.483.0"
     pubspec = (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
-    assert "version: 0.482.0+527" in pubspec
+    assert "version: 0.483.0+528" in pubspec

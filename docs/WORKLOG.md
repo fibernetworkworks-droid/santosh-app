@@ -641,3 +641,50 @@ Work Log:
 
 Stage Summary:
 - v0.481.0 HOOLA LAUNCHER (W2a): Win+R 'hoola' on her PC, behind the PC-control switch + an approval card, user-level registry only. Deploy: server (vps-ops deploy) + the build-desktop workflow publishes SantoshDesktop.exe 1.7.0 on desktop/** (she installs the new exe from the desktop-latest release, then asks Hoola 'Win+R se hoola khulwao'). Next: W2b PowerToys Run plugin (C# IPlugin, Alt+Space 'hoola'), W3 browser extension, W4 flutter pass; the tools lane still awaits its own START.
+
+---
+## Task 24 — v0.482.0 FIRECRAWL CORE (owner: "CAN WE BUILD OUR OWN FIRECRAWL FOR HOOLA" -> "BUILD")
+Date: 2026-11-03 | Branch firecrawl-v0481 off origin/main v0.480.0; MID-BUILD the dev took 0.481.0 (HOOLA LAUNCHER, collision #13 -
+same pubspec +526, same pins sweep, even the same Task 23) - REBASE PROTOCOL: committed, rebased on 09a1a673,
+re-versioned to 0.482.0, both works kept. The pin suites merged clean (identical 0.480->0.481 replacements); three
+real conflicts (main.py story chain, frames story pin, this Task number) resolved dev-wins-then-mine-on-top.
+
+What shipped (agent/scrape_tools.py, 5 -> 8 tools; ZERO Firecrawl code - design only, the engine is AGPL-3.0):
+1. `scrape` - the one door with the auto-waterfall (fast HTTP -> self-escalation to stealth on 401/403/429 or challenge
+   signature; stealth=auto|never|always; cache-aware; semaphore(1) kept; honest refusals name the exact setting).
+2. `scrape_map` - links-only discovery (max 8 pages fetched, same-host urls cap 200, include-regex, robots + skipped
+   counter, politeness pauses).
+3. Per-tenant page cache + max_age (data/scraping/<tenant>/cache.db, write-through on every 2xx page read, read BEFORE
+   the fetch, LRU 300, scrape_cache_enabled/scrape_cache_max_age settings, css/include_links bypass, best-effort
+   everywhere).
+4. `scrape_extract_json` - schema -> JSON rows, ONE capped brain call (cheap-brain-first pakka pattern, 14k text cap,
+   2k max_tokens, 50 rows cap, loose-JSON parser with honest refusal).
+
+Journey: baseline re-verified after the sandbox recycle (requirements reinstalled; APP_VERSION 0.480.0, 516 tools,
+v0474 suite 27/27). Build found + fixed three real bugs of mine during bring-up: (a) the escalation guard let
+stealth=never still escalate (fixed: escalate = always OR (auto AND blocked)); (b) the scrape_page cache read sat
+AFTER the fetch so an offline fetch never reached the cache (fixed: read before fetch, same as the new door);
+(c) the loose-JSON parser missed fenced blocks that appear mid-prose (fixed: fenced-block-anywhere pass). One test
+regex was mine-wrong (/product/ does not match /products/) - fixed. Cross-test cache pollution killed the first
+suite run (write-through rows leaked between tests through the shared tenant) - killed with an autouse clean-state
+fixture. The sandbox display phantom ate brackets in sed output again - py_compile/pytest remained the only truth.
+
+Tests: NEW test_v0481_scrape_firecrawl.py (28) - registry 8-tool pin, block detection (status/title/script +
+long-article false-positive guard), waterfall (clean-no-escalation, escalate-when-enabled, honest-refusal,
+stealth-still-blocked, never=HTTP-only, always-needs-setting, semaphore-busy, SSRF), cache (roundtrip + tenant
+isolation, expiry + None/0 gates, kill switch, LRU 300, write-through -> cache serve -> css bypass -> default-read
+-> max_age=0 fresh), map (same-host only, BFS walks, include regex, cap, robots skip, SSRF), extract_json (fenced,
+balanced + schema-in-prompt, garbage refused, 50-cap, SSRF), version pin. test_v0474_scrapling.py registry pin
+grew to the 8-name set; 27/27 still green.
+
+Version ritual 0.481.0: APP_VERSION story (full FIRECRAWL CORE story prepended to the chain), pubspec 0.481.0+526,
+pins ->0.481.0(+526) in 151 suites (idempotent batch), console stamps stay 0.475.0 x20 (server-only, the
+v0.476/v0.480 precedent), prompts.py Scraping bullet rewritten around the new doors. Mera PC freeze respected;
+desktop untouched - server-only deploy, old APKs keep working. VPS: no new pip packages; the usual ritual.
+
+Stage Summary:
+- HOOLA now HAS its own Firecrawl-shaped lane: one self-escalating door, a cheap map, a per-tenant cache that makes
+  repeat pulls free, and schema-driven JSON extraction on the house brain - all in-process, all house-guarded
+  (SSRF/robots/mask_ids/caps), no separate service, no AGPL.
+- Phase 2 (crawl JOBS: sqlite queue + worker tick + status/results tools, the Firecrawl /crawl at scale) and Phase 3
+  (change tracking, monitors-lite) stay queued in the workspace worklog Task 14-c.

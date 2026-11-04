@@ -391,6 +391,8 @@ class Settings(BaseSettings):
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     scrape_respect_robots: bool = True     # v0.477 scrape tools refuse paths the site's robots.txt disallows for bots
     scrape_stealth_enabled: bool = False   # v0.477 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
+    scrape_cache_enabled: bool = True      # v0.481 serve repeat scrapes from the per-tenant page cache within max_age
+    scrape_cache_max_age: int = 1800       # v0.481 default seconds a cached page stays fresh for the scrape tool (0 = always fresh)
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_backchannel: bool = True         # v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)

@@ -18473,3 +18473,40 @@ Owner: "GO R9". Part of the plan the document calls optional, built because it i
 - Tests: `test_v0480_research_watch.py` (33). First run: a bug (every=0 became weekly because 0 is falsy; now clamps to daily) and a fixture mistake (the scripted note hard-coded the old figure, so a changed page left no verified finding to compare - the play now follows the page's value); the end-to-end wake test then found the link-rule problem above.
 - NOT VERIFIED: never run live - no watch has ever fired in production; the 0.6 overlap, the 300-rupee month cap and the 3-failure pause are judgement; a vendor engine on a schedule has only been run against fakes. NOT BUILT: a console / phone screen for watches (list via the tool or `GET /api/research/watches`); per-watch quiet hours; delivery of the change message by anything other than the chat.
 
+
+## v0.483.0 FIRECRAWL CORE (2026-11-03) — our own Firecrawl for Hoola, house-sized
+
+Owner: "CAN WE BUILD OUR OWN FIRECRAWL FOR HOOLA" -> "BUILD". Preceded by an end-to-end read of github.com/firecrawl/firecrawl
+(engine waterfall with snipe-abort, AddFeatureError engine-set mutation, NuQ, /map, /extract, index engine with maxAge,
+ZDR/US-only/Exchange) - ONLY the design was taken; the engine is AGPL-3.0 and never enters this tree. Everything lives in
+`agent/scrape_tools.py` beside the five v0.474 tools (5 -> 8), on the BSD-3 Scrapling lane, no new pip packages.
+
+### The four ideas
+
+- `scrape` (the auto-waterfall door): fast HTTP first; block detection = 401/403/429, challenge TITLES ("just a moment",
+  "attention required", "access denied", "unusual traffic", "are you a robot", "verify you are human", "bot verification"),
+  or challenge SCRIPT fingerprints ("challenge-platform", "cf-browser-verification", "cf_chl_opt", "enable javascript and
+  cookies to continue") gated on a SMALL (<2500 char) body so a long article that merely mentions captcha never escalates.
+  On a block with stealth enabled: one stealth attempt (semaphore(1), ms-timeout discipline). stealth=never = HTTP-only;
+  stealth=always = direct browser (still needs the setting). Escalated-but-still-blocked = honest ToolError; blocked-marker
+  with a 200 body = served with block_note. When stealth is disabled the refusal names the exact setting to flip.
+- `scrape_map`: at most 8 pages fetched, same-host urls harvested (seed included), cap 200, include-regex, robots gate with
+  skipped counter, 0.3 s politeness, javascript/mailto/tel/# fragments dropped. Note: it returns DISCOVERED links; the
+  follow-up scrape_extract re-gates robots itself.
+- Page cache: `data/scraping/<tenant>/cache.db`, table page_cache(url PK, fetched_at, status, title, markdown, text),
+  write-through on every 2xx page read (both formats, 60k caps), read BEFORE the fetch, LRU cap 300 (delete beyond
+  OFFSET), settings scrape_cache_enabled / scrape_cache_max_age=1800. max_age None = never read (scrape_page legacy),
+  0 = always fresh; the scrape door defaults to the setting. css/include_links bypass (live DOM needed). Read falls back
+  to the other stored format when one is empty (markdownify-missing servers still serve).
+- `scrape_extract_json`: fetch -> markdown (14k cap) -> ONE brain call (cheap first, Claude fallback - the coder-observer
+  pattern; max_tokens 2000) -> loose JSON (direct, fenced block anywhere, first balanced run) -> rows cap 50. Honest
+  ToolError when the brain returns no JSON, pointing at scrape_extract/scrape_page alternatives.
+
+### Sweeps + known reds
+
+- `test_v0481_scrape_firecrawl.py` 28 green (offline: fetches are local Responses, robots prefilled, brain stubbed);
+  `test_v0474_scrapling.py` 27 green beside it (registry pin grew 5 -> 8 names). One pytest process per suite.
+- Version ritual 0.481.0: pubspec 0.481.0+526, APP_VERSION story, pins ->0.481.0(+526) in 151 suites (idempotent batch,
+  second run = 0 residual), console stamps stay 0.475.0 x20 (server-only release, the v0.476/v0.480 precedent).
+- The scrapling-10-reds class noted by the v0.480 sweep is sandbox-environment-only (missing scrapling/playwright stack
+  in that recycled box); this sandbox has the stack and runs the lane green.
