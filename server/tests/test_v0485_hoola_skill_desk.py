@@ -1,4 +1,4 @@
-"""v0.485.0 HOOLA SKILL DESK - the skills platform (owner: "NOW LETS WORK ON SKILLS FOR HOOLA"
+"""v0.488.0 HOOLA SKILL DESK - the skills platform (owner: "NOW LETS WORK ON SKILLS FOR HOOLA"
 + "MAKE IT VERY POWERFULL BIGGER THEN HOW CLAUDE HANDDLE SKILLS").
 
 What this suite pins, piece by piece:
@@ -553,7 +553,7 @@ def test_package_exports_skill_packs(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.485.0"' in main and "HOOLA SKILL DESK" in main
+    assert 'APP_VERSION = "0.488.0"' in main and "HOOLA SKILL DESK" in main
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.485.0+530" in pub
+    assert "version: 0.488.0+533" in pub
     assert store._SCHEMA_VERSION == 3

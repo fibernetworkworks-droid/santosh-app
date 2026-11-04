@@ -1,4 +1,4 @@
-"""v0.487.0 BYOX SKILL PACK tests.
+"""v0.488.0 BYOX SKILL PACK tests.
 
 Covers:
 - Registry completeness (31 categories, TUTORIALS dict)
@@ -283,4 +283,4 @@ def test_tutorials_total_count():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.487.0"
+    assert APP_VERSION == "0.488.0"

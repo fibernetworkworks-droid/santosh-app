@@ -739,3 +739,36 @@ Date: 2026-11-04
 Branch: claude/loving-goldberg-ywnzsq
 Version: v0.487.0
 Summary: BYOX FULL DATASET — all 415 tutorials from 31 categories with language filtering. Added TUTORIALS dict to byox/__init__.py, tutorial_count on every category, language= param in get_guide() / byox_guide tool. 22 sandbox tests pass. Server-only deploy.
+## Task 25 — v0.488.0 CRAWL JOBS (owner: "PHASE 2 END TO END"; SEVENTEENTH COLLISION - dev took 0.486.0 + 0.487.0 (BYOX x2) while this built, rebuilt on their fresh base fdc7c402)
+
+Phase 2 of our own Firecrawl, on the v0.483 FIRECRAWL CORE lane (live on the VPS, healthz verified 0.483.0):
+the crawl JOBS queue. NEW `server/app/agent/crawl_jobs.py` + 3 tools (registry 523 -> 526):
+- `crawl_start` - queues a per-tenant job in `data/scraping/<tenant>/crawl.db` (crawl_jobs + crawl_pages,
+  the scrape lane's own sqlite; NOT the main db - the research lane keeps SQLAlchemy, this lane keeps raw
+  sqlite beside elements.db/cache.db). Same-seed dedupe honest (`already_running`), seed SSRF-guarded +
+  robots-checked at queue time, max_pages clamp 50.
+- `worker.scrape_crawl_jobs` (~20 s self-throttle, the research tick shape) -> `crawl_jobs.tick()`: candidates
+  = queued jobs + running jobs whose heartbeat went stale (scrape_crawl_stale_s=180); claim = ONE conditional
+  UPDATE (tries+1, `tries < scrape_crawl_tries`, exhausted = failed with an honest error); the runner is a
+  checkpointed polite same-site BFS - HTTP ONLY (a browser never launches in the background lane; a blocked
+  page is recorded with its reason and the crawl moves on), robots per url (skipped counter), SSRF per url,
+  the frontier (queue+seen) written back after EVERY page (a pm2 restart resumes FROM THE CHECKPOINT, a
+  finished page is never fetched twice), write-through into the v0.481 page cache (the crawl warms the scrape
+  door).
+- `crawl_status` (no job_id = latest; check/stop; stop lands between pages - the page in the air finishes,
+  nothing after it starts) and `crawl_results` (paginated listings cap 8k, `url=` one full page 20k, works
+  mid-crawl, mask_ids applied).
+- config: scrape_crawl_enabled / max_pages(20) / max_running(1) / stale_s(180) / tries(3) / keep_days(7).
+- prompts.py Scraping bullet grew the background-crawl sentence.
+Tests: NEW `server/tests/test_v0488_scrape_crawl_jobs.py` (26) - offline: fetches monkeypatched to local
+scrapling Responses, robots gate patched, politeness 0. Covers registry 526, start gates + dedupe, candidates
+(stale-only, tenant isolation), claim tries->failed, the runner (BFS + cache warm + no double fetch, include
+regex, same-host only, max_pages budget, robots skips, blocked page + stealth-never, fetch failures never kill
+the crawl, stop between pages, stalled resume from checkpoint, tick+drain on ONE loop, max_running, disabled
+setting, forget-old caps), tools (status/stop, results pagination + url= + tenant isolation + mask_ids).
+Found by its own tests: a second asyncio.run(drain()) cannot await the first run's task (loop close cancels
+it; the job lands honestly back in 'queued' - tests tick+drain in ONE flow; production never affected);
+crawl_start's dedupe needed an internal _created flag to say 'new' vs 'already there'.
+Sweeps: crawl-jobs 26 + scrape-firecrawl 28 + scrapling 27 + coder 24 = 105/105, one pytest process per suite;
+pins ->0.488.0(+533) on the rebased base; console stamps stay 0.487.0 (dev's console changed, mine did not).
+Version ritual: pubspec 0.488.0+533, APP_VERSION story, CLAUDE.md one line, HISTORY.md section.

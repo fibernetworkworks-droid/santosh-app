@@ -32,8 +32,11 @@ def test_approval_card_layout():
     css = _read("v2.css")
     tail = css[css.index("v0.223 R3: the conversation"):]
     for rule in ("#app .chead{", "#app .cd.ask{", "#app .cd .kvg{", "#app .decrow{", "#app .slidec .knob{",
-                 "#app #composer .stopb{", "#app .mh>.av{"):
+                 "#app #composer .stopb{"):
         assert rule in tail, rule
+    # Healed at v0.486.0 (red on pristine main since the console changed): the avatar-margin rule moved
+    # BEFORE the R3 marker (compact form, no '#app ' prefix) - asserted on the whole file now.
+    assert ".mh>.av{" in css, "the avatar-margin rule must exist in the console css"
     assert css.count("{") == css.count("}")
 
 
@@ -57,10 +60,11 @@ def test_chat_chrome_speaks_english():
                   "['kaam','Tools'],['main','Account']", "Reply to ${AV}"):
         assert label in js, label
     # the slash menu still runs every command
-    assert len(re.findall(r"^\s*\['\w+', '[^']+', '[^']+', \(\) =>", js, re.M)) == 13   # v0.243 + appearance / light / dark / system, v0.250 + incognito
+    # Healed at v0.486.0 (red on pristine main): v0.485 SKILL DESK added the ['skills' command - 14 now.
+    assert len(re.findall(r"^\s*\['\w+', '[^']+', '[^']+', \(\) =>", js, re.M)) == 14   # v0.243 + appearance / light / dark / system, v0.250 + incognito, v0.485 + skills
 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.486.0"
-    assert "0.485.0+530" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.488.0"
+    assert "0.488.0+533" in (ROOT / "pubspec.yaml").read_text()

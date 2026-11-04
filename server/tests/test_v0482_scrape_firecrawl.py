@@ -1,4 +1,4 @@
-"""v0.485.0 FIRECRAWL CORE - our own Firecrawl, house-sized, on the v0.474 Scrapling lane.
+"""v0.488.0 FIRECRAWL CORE - our own Firecrawl, house-sized, on the v0.474 Scrapling lane.
 
 Owner: "CAN WE BUILD OUR OWN FIRECRAWL FOR HOOLA" -> "BUILD".
 
@@ -424,7 +424,7 @@ def test_extract_json_ssrf(monkeypatch):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.486.0"
+    assert APP_VERSION == "0.488.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.485.0+530" in pub.read_text()
+    assert "0.488.0+533" in pub.read_text()
