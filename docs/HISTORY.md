@@ -18813,126 +18813,117 @@ NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet,
 next push (CI-only) - her first right-click "Hoola ko bhejiye" after deploy is the live test. Deploy: server via the usual
 vps-ops ritual; desktop 1.9.0 exe publishes via build-desktop. Next in the plan: W4 (the flutter pass).
 
-++ b/docs/HISTORY.md
+---
 
-## v0.491.0 CRAWL JOBS — the background crawl lane (owner: "PHASE 2 END TO END"; NINETEENTH COLLISION (re-ship of the v0.488.0 branch build; dev took 0.489.0 + 0.490.0 while it sat unpushed, rebuilt on 1eea1356) - the dev's chain took 0.486.0 BYOX SKILL PACK and 0.487.0+532 BYOX full dataset while this built, REBASE PROTOCOL respected, rebuilt on their fresh base fdc7c402, both BYOX works kept beside the crawl lane)
+# v0.494.0 EQUAL POWER — the call gets native eyes on every suite, the phone can type into a call, and a test holds all three surfaces equal forever (4 Nov 2026; NINETEENTH COLLISION — re-versioned 0.491.0 -> 0.494.0: the dev's parallel chain took 0.491.0 (CRAWL JOBS), 0.492.0 (BYOX FEED) and 0.493.0 (THE FLUTTER PASS, their W4 — the curated pubspec upgrade) while EQUAL POWER sat unpushed; REBASE PROTOCOL respected, rebuilt on their fresh base 8e3339fe, all four works kept, the version layer moved coherently on top)
 
-Phase 2 of our own Firecrawl, end to end, on the v0.483 FIRECRAWL CORE lane (which is LIVE on the VPS -
-healthz 0.483.0 verified from the outside before this built). Design borrowed from Firecrawl's /crawl +
-NuQ queue + checkpointed crawler; ZERO Firecrawl code (the engine is AGPL-3.0, never enters this tree).
+(Version note: this section shipped as v0.491.0 and was re-versioned to v0.494.0 at the push — the dev's chain
+had taken 0.491/0.492/0.493 in the meantime; the version layer (pubspec 0.494.0+538, APP_VERSION, the 85
+full-string + 155 assert pins, console untouched) moved coherently on top of their base; pins re-verified green.)
 
-### 1. The queue (per-tenant, the scrape lane's own sqlite)
+The owner: "GIVE EQUAL POWER TO ALL --- WIRE ALL AI FUNCTIONALITIES, TOOLS, SKILLS ETC TO ALL THUS CALL SECTION CAN
+WORK PROPERLY. FIND THE DIFFRENCE". The difference was found first (a full surface audit, report kept outside the
+repo): mobile chat and web console chat share ONE brain by construction — both POST the identical
+`/api/conversations/{id}/messages` (`lib/api.dart:516`, `static/console/v2.js:759` → `main.py` post_message) into the
+same `turn_inbox.run_owned` → `agent/santosh.py run_turn` and the same ~500-tool registry; there is NO server branch
+on client type. Their differences are client-side only (the console renders most of the phone's 404 event kinds
+through one generic read-only card; no mailbox UI; no per-app Google connects; `upi_result` unhandled; goal
+stop / compact / bootstrap missing; `/api/coder/dreams` an orphan route). The VOICE CALL was the unequal surface ON
+PURPOSE: `VOICE_TOOL_NAMES` lists 368 tools but exactly 200 are fenced into `VOICE_VIA_KAAM` and only ~111 were ever
+declared to Gemini Live, because 280 tools (~395 KB, ~110k tokens) filled the live model's context before she said a
+word (v0.149) and sessions died. The learned walls stay: `VOICE_TOOL_BUDGET` 150k chars, ≤170 specs.
 
-NEW `server/app/agent/crawl_jobs.py`. Jobs live in `data/scraping/<tenant>/crawl.db` (tables `crawl_jobs`
-+ `crawl_pages`) - beside `elements.db` and `cache.db`, NOT in the main db: the research lane keeps
-SQLAlchemy on the main db, this lane keeps raw sqlite like the rest of the scrape lane, and the worker
-discovers tenants by globbing `data/scraping/*/crawl.db`.
+### W1 — declare the heads, delegate the bodies (server/app/voice.py)
+- NEW suite heads declared: WhatsApp campaigns `create_campaign` / `get_campaign_status` / `control_campaign` /
+  `check_template_status` (a call ALWAYS sends `auto_send=False`; `confirm_send` and the template tools stay fenced;
+  the SEND itself still waits for her card tap — the money/bulk rule is untouched); Ghar Home Assistant all five
+  `home_link` / `home_devices` / `home_on` / `home_off` / `home_state` (v0.479 had NO voice declaration and NO phone
+  screen); the suite READ heads unfenced `form_find` / `form_responses` / `slides_find` / `slides_read` /
+  `notebook_open` / `notebook_ask` / `photos_pick` / `photos_picked` / `doc_create`; plus `scrape_page` (public
+  pages only), `research_status`, `skill_manage` (read/list to follow one, create/update on her ask).
+- NEW `VOICE_HEADS` set: the STATE readers (`X_dekho`) of the 30 main desks — darzi, chai, office, gst, payroll,
+  vakil, seo, thok, telecall, seva, helpdesk, shikayat, service_desk, dev, drivers, fleet, courier, warehouse,
+  lekhak, paisa, audit, bima, brand, ads, front_office, society, travel, customs, kalam, product — are DECLARED even
+  though the desk's base (and so its CHANGES: new order, status moves, prices, rules) stays fenced. `via_kaam()`
+  returns False for a head; `_tool_specs()` includes them; `_execute()` dispatches them directly; `call_route()` says
+  "declared". `registered()` docstring updated (~130 declared now).
+- The `seo_dekho` duplicate in `VOICE_TOOL_NAMES` (line 75, listed twice since v0.38x) is gone.
+- PERSONA updated so the model knows its new eyes: the desk paragraph now says the readers are ON the call and the
+  changes go to santosh_kaam; the campaign line says create/status direct, send by card, `auto_send=False` on a call;
+  the Drive/Sheets/Forms/Slides/Photos/Notebook line names the declared heads; a new Ghar line carries the safety
+  band (AC only 20–28°, speaker ≤90%, geyser/fridge/washer never); a new line covers scrape/research/skills.
 
-- `crawl_start(url, max_pages=20, include=None)` - seed SSRF-guarded + robots-checked AT QUEUE TIME (a bad
-  seed is refused before anything runs), max_pages clamped to 50, an already queued/running job for the SAME
-  seed is returned as-is with an honest `already_running` (an internal `_created` flag says new vs existing).
-- `crawl_status(job_id="", action="check"|"stop")` - no job_id = the latest job of the tenant; returns
-  status (queued/running/done/failed/stopped), fetched vs budget, queue_left, errors, skipped_by_robots,
-  last_block, age. `stop` lands BETWEEN pages: the page in the air finishes, nothing after it starts,
-  fetched pages stay readable; idempotent.
-- `crawl_results(job_id="", offset=0, limit=5, url="")` - paginated listings (markdown capped 8k/page,
-  max 10 a call) of whatever is STORED so far - works while the crawl still runs; `url=` serves ONE full
-  page (20k). Outputs pass `mask_ids` like every tool.
+### W2 — first-class doors (voice.py)
+- Her MCP servers on a call: cap `min(25, …)` → `min(40, …)` of `mcp_native_tools` — the chat default was always 40;
+  the call now matches.
+- The SETUP ladder (1007-refusal self-heal) sacrifices her MCP tools THIRD instead of FIRST:
+  `("mcp", "vocab", "langcodes", …)` → `("vocab", "langcodes", "mcp", "compression", "core_tools", "no_tools")`. The
+  persisted gentle three (SETUP_SOFT_MAX=3) are exactly {vocab, langcodes, mcp} — still gentle, so the v0.211 rule
+  (heavy losses never persisted) still holds, and test_v0211's `SETUP_STEPS[3:] == ("compression", "core_tools",
+  "no_tools")` pin still passes. Stored step numbers from before this change mean one step off for ≤7 days
+  (self-heals; `_setup_key` changes anyway because the tool list changed).
+- Looked at raising `voice_tool_wait_s` 12 → 20 and decided AGAINST: the 12 s delegate wait is a tuned UX number
+  (was 25, v0.86), kaamwatch already narrates progress mid-delegation, and the wall that actually mattered was
+  declarations — fixed in W1.
 
-### 2. The runner (checkpointed polite BFS, HTTP only)
+### W3 — type into the call (lib/live_voice.dart, lib/call_session.dart, lib/ui/live_voice_screen.dart)
+The server has accepted `{"type":"text"}` mid-call since always (it lands as a user turn; `hold` even leaves hold on
+"typed") — but no client could send it, so the repair ladder's only answer was "chat mein likhiye" (hang up). Now:
+`LiveVoice.sendText()` (the WS JSON, same shape as sendFiles), `CallSession.sendText()` (falls back to `app.send` —
+chat — when the socket is gone, with an honest fileNote), and a calm type bar in the call screen: a "Call mein
+likhiye (spelling, address, theek-karo)" door that opens a field + send + close (hidden while she is on hold).
+Her first typed spelling is the live test.
 
-`worker.scrape_crawl_jobs` (self-throttled ~20 s, the `research_jobs` shape) -> `crawl_jobs.tick()`:
+### W6 — the equal-power gate (server/tests/test_v0491_equal_power.py, NEW, 5 tests)
+1. `test_every_voice_listed_tool_exists`: `VOICE_TOOL_NAMES ∪ VOICE_VIA_KAAM ∪ VOICE_HEADS` must all exist in the
+   registry (`TOOLS` + `HANDLERS` + `VOICE_SPECS`) — a rename can never leave a dead name in the voice lists again.
+2. `test_equal_power_heads_are_declared_on_a_call`: the EQUAL_POWER_HEADS (campaigns, Ghar, suite reads,
+   scrape/research/skills, all 30 desk readers) stay listed, stay un-fenced, keep their specs.
+3. `test_desk_changes_stay_fenced_only_readers_are_declared`: the desk bases and the write suite heads stay on
+   santosh_kaam — the card tap remains the gate.
+4. `test_money_and_secret_guards_stay_up`: `confirm_send` never declared; the persona line "Money / UPI / bank-OTP /
+   password cards are NEVER approved by voice" stays; the `auto_send=False on a call` pin stays; `haan_karo`'s
+   description still says non-money; the SETUP ladder's persisted three stay gentle.
+5. `test_equal_power_cards_render_on_both_clients`: bazar_approval / operator_ask / goal / artifact / campaign /
+   studio_approval / employee_ask / email_draft must render on the phone (lib/state.dart) AND the web console
+   (static/console/*.js); ask_form / upi_result / pg_write / photos_pick pinned phone-side (their console renderers
+   are the W4 pass, listed honestly as phone-only today).
+`test_v149_voice_slim` updated to the new contract: darzi/society/app_banao/hoola_deal/form_create/slides_create
+still fenced; darzi_dekho/gst_dekho/photos_pick/form_find/notebook_ask/create_campaign/home_on/skill_manage now
+declared. Both suites green locally with the full import chain; `_tool_specs()` builds well inside the budget.
 
-- candidates = queued jobs + running jobs whose heartbeat (`updated_at`) went stale
-  (`scrape_crawl_stale_s=180`) - the v0.475 research-runner stall-recovery idea.
-- claim = ONE conditional UPDATE (`tries+1 ... WHERE tries < scrape_crawl_tries`); tries exhausted = the
-  job is failed with an honest error (`tries bhar gaye`), never silently dropped.
-- the runner: HTTP ONLY - `st._fetch` (curl_cffi) and nothing else; a browser NEVER launches in the
-  background lane (MEM-CURE RAM discipline; stealth stays the foreground doors' business). A blocked page
-  (401/403/429 or a challenge signature via `st._blocked`) is recorded with its block reason, counted in
-  `errors` + `last_block`, and the crawl moves on. robots.txt is checked per url (skipped counter), the
-  SSRF guard per url, politeness sleeps between fetches.
-- CHECKPOINT after EVERY page: the frontier (queue + seen + counters) is written back into the job row, so
-  a pm2 restart or a crash resumes FROM THE CHECKPOINT - a finished page is never fetched twice. A task
-  cancelled at shutdown honestly requeues the job with a note.
-- every successful page write-throughs into the v0.481 per-tenant PAGE cache (`st._cache_put_page`) - the
-  crawl warms the scrape door, so later `scrape` calls serve those pages with zero outbound.
-- caps: `_CRAWL_PAGES_CAP=50` per job, `_PAGE_CHARS=20_000` stored per page, `_QUEUE_CAP=500` frontier,
-  `_KEEP_JOBS=10` finished jobs per tenant, `scrape_crawl_keep_days=7` then forgotten.
-- config: `scrape_crawl_enabled=True`, `scrape_crawl_max_pages=20`, `scrape_crawl_max_running=1` (global,
-  politeness first), `scrape_crawl_stale_s=180`, `scrape_crawl_tries=3`, `scrape_crawl_keep_days=7`.
+Version 0.491.0 (pubspec 0.491.0+535; APP_VERSION story updated; all 158 test version pins bumped to 0.491.0/+535;
+desktop pins untouched 1.9.0; console stamps stay 0.485.0 x21 — the console is untouched this version). Mera PC
+freeze respected: nothing in `server/app/pc/`, `desktop/` or `lib/ui/pc_screen.dart` touched.
 
-### 3. Wiring + routing
+NOT VERIFIED (honest): no live Gemini call has answered the new declared list yet — the first real call on the VPS
+is the test; if the bigger declared list ever trips a 1007, the SETUP ladder now burns vocab/langcodes before MCP
+(which is the intended order). The Dart type bar compiles first on CI (flutter analyze annotations). W4 (console
+card parity: ask_form/upi_result/pg_write/photos_pick renderers, mailbox UI, Google per-app connects, goal
+stop/compact/bootstrap, the SAPNE page for `/api/coder/dreams`) and W5 (phone: edit/retry/branch/feedback, Skill
+Desk screen, Ghar screen) are the NEXT versions of this plan. Deploy: the usual vps-ops ritual.
 
-- `agent/tools.py`: `TOOLS.extend(CRAWL_TOOLS)` beside the scrape block (registry 526 -> 529).
-- `worker.py`: `await scrape_crawl_jobs()` in `tick()` after `research_jobs()`.
-- `prompts.py`: the Scraping bullet grew the background-crawl sentence (MANY pages across turns ->
-  crawl_start / crawl_status / crawl_results).
+### The verification sweep (same day, before the commit)
 
-### 4. Tests + the two bugs they caught
+The build was re-verified end to end before committing, and the sweep caught four things - three test contracts and
+ONE REAL BUG:
 
-NEW `server/tests/test_v0488_scrape_crawl_jobs.py` (26), all offline (fetches monkeypatched to local
-scrapling Responses, robots gate patched, politeness 0): registry 526; start gates (queue/clamp/dedupe/
-SSRF/robots/disabled); candidates (queued + stale-only + tenant isolation); claim (tries then failed);
-the runner (BFS + page-cache warm-through + no double fetch; include regex + same-host only; max_pages
-budget stops with the frontier left; robots skips counted; a blocked page recorded while stealth is NEVER
-tried; fetch failures never kill the crawl; stop between pages; stalled resume from checkpoint with ZERO
-refetch; tick spawn + drain; max_running respected; disabled setting; forget-old caps); the tools (status
-fields + idempotent stop; results pagination + url= full page + listing cap + tenant isolation + mask_ids
-with a Verhoeff-valid sample); version pin.
+- **The version ritual was half-done**: the 155 `APP_VERSION ==` asserts were bumped but the 85 full-string pubspec
+  pins still said `0.490.0+534` - completed to `0.491.0+535`, zero residual (the v0.490 ritual shape: 85 full-string
+  + 155 assert suites).
+- **REAL BUG - the SETUP ladder's MCP skip**: the refusal-climb shortcut (`if self._safe == 0 and not mcp_defs:
+  self._safe = 1`) assumed MCP led the ladder. On the v0.491 order (vocab, langcodes, mcp, ...) a call with no MCP
+  tools declared would have burned vocab AND langcodes in one hop - skipping two quality rungs to reach a rung that
+  drops nothing. Generalized: the climb now skips the mcp rung wherever it sits (`SETUP_STEPS[self._safe - 1] ==
+  "mcp" and not mcp_defs`), so one refusal = one real rung. `test_v150_voice_heal` updated to the new ladder shape
+  (one refusal in a no-MCP env: step 1, `without == ["vocab"]`).
+- `test_v0230_voice_phase3` `test_tool_diet`: the v0.230-era cap (110 specs / 60k chars) was obsolete the moment
+  v0.491 widened the declared set on purpose - moved to the sanctioned v0.149 limits (170 specs / the 150k budget),
+  which `test_v149` already enforces against the real mechanism.
+- `test_v0479_home` `test_voice_never_declares_home_tools`: v0.479's contract, deliberately reversed by v0.491 -
+  flipped to `test_voice_declares_home_tools_v0491` (all five declared, never fenced, the Ghar safety line pinned).
 
-Bugs found by the suite during bring-up: (a) in tests, a SECOND `asyncio.run(cj.drain())` cannot await the
-first run's spawned task - the loop close cancels it and the cancel handler honestly requeues the job; the
-tests now tick+drain in ONE asyncio flow (production was never affected: the worker loop persists across
-ticks). (b) `crawl_start`'s same-seed dedupe could not say "new" vs "already there" - `create_job` now
-carries an internal `_created` flag. (c) the mask_ids test sample needed a Verhoeff-valid Aadhaar - the
-masker is precise by design.
-
-Sweeps (one pytest process per suite): crawl-jobs 26 + scrape-firecrawl 28 + scrapling 27 + coder 24 =
-105/105. Pins ->0.488.0(+533) swept on the rebased base (155 suites + 75 slipped full-string pins normalized);
-console stamps stay 0.487.0 (the console changed in the DEV chain, not here; the v0179/r1 guards re-pointed
-to the maintained 0.487.0 convention, the frames count-line re-aligned). Version 0.488.0: pubspec 0.491.0+535, APP_VERSION story, CLAUDE.md one line,
-docs/WORKLOG.md Task 25. Mera PC freeze respected; desktop untouched - server-only deploy, old APKs keep
-working. VPS deploy: no new pip packages (the usual ritual: checkout tag + cp -r server/app + pm2 restart
-+ healthz grep 0.488.0).
-
-## v0.492.0 BYOX FEED — every BYOX skill actually reaches Hoola (owner: "IS ALL BYOX FEED TO HOOLA AI" -> "PERFECT"; re-versioned 0.488.0 -> 0.492.0, the dev chain took 0.488-0.491, REBASE PROTOCOL respected)
-
-Found by checking, not assuming:
-(1) `skill_packs.seed()` is once-ever per tenant, so the 31 `byox-*.md` skills never reached a tenant already stamped with the 10 starters.
-(2) 15 of the 31 files had a description over the store's 60-char lint, so even a fresh tenant got only 16 of 31 (the old file-format test never checked that length). Those desk "seed-reds" the v0.491 note called pre-existing were this.
-(3) The family keywords were English-only: "mujhe database khud se banana sikhao" matched nothing.
-(4) The v0.491.0 merge had DROPPED the `/api/byox/categories` and `/api/byox/guide/{slug}` routes from `main.py` (the tools, data and skill files were intact). Restored, and the guide route now takes `language=`.
-- `skill_packs.seed_files()` = the 10 starters only; new `byox_files()` (31) + `seed_byox(tenant)` with its OWN stamp `skills:byox:<tenant>`, create-if-missing (hers win), gated by `byox_enabled` + the seed switch; the desk route calls it after `seed()`.
-- 15 descriptions shortened to <= 60; the file test enforces it. `admit.py` byox family: Hinglish / Hindi phrases. `tool_asks.py`: 8 BYOX asks, router card 171/171 in view, 0 wrong family.
-- Tests: NEW `test_v0492_byox_feed.py` (8); v0486 route tests rewritten (the old ones used a fixture key that does not exist); pins ->0.492.0+536.
-- NOT VERIFIED: the live brain's first pick on the 8 new asks (`python -m app.quality tools --live`). Skills reach a tenant when the Skills desk is first opened (existing seed() behaviour). Console stamps stay 0.487.0 (server-only).
-
-# v0.493.0 — THE FLUTTER PASS (W4, 2026-11-04; TWENTIETH COLLISION — re-versioned 0.491.0 -> 0.493.0: the dev's chain re-shipped 0.491.0 (CRAWL JOBS, their NINETEENTH) and took 0.492.0 (BYOX FEED) while W4 sat unpushed; REBASE PROTOCOL respected, rebuilt on 59b8ec36, all three works kept)
-
-Owner: "push + deploy, phir W4 (flutter pass)". W4 of the Platforms plan = the awesome-flutter
-resource pass: read the curated list, upgrade the pubspec to what the project can actually run.
-Ceiling: Dart 3.5.4 (CI Flutter 3.24.5).
-
-## Adopted (11)
-http ^1.6.0; shared_preferences ^2.5.3; google_fonts ^6.3.0; speech_to_text ^6.6.2→^7.4.0;
-url_launcher ^6.3.1; webview_flutter ^4.10.0;
-video_player ^2.9.5; path_provider ^2.1.5; flutter_lints ^4.0.0→^5.0.0; flutter_launcher_icons ^0.14.4.
-ZERO Dart code changes (changelog + call-site grep verified).
-
-## Deferred (blocker named)
-flutter_local_notifications 18/19 (compileSdk 35 + AGP) · android_intent_plus 6.x (AGP 8.12 /
-Gradle 8.13 / Kotlin 2.2) · file_picker 9–11 (API churn, 32 call sites) · flutter_timezone 4/5
-(Java-17-only / TimezoneInfo API break) · image_picker 1.2+, google_fonts 7–9, flutter_lints 6,
-speech_to_text 7.5, webview_flutter 4.11+, video_player 2.10+ (Dart >3.5.4) · timezone 0.10+
-(own <3.0.0 constraint; 0.11 needs ^3.10).
-
-## Curated shortlist (future UI pass, needs local flutter)
-cached_network_image · flutter_svg · dio · riverpod.
-
-Sweeps: version layer 0.491.0+535 in 85 full-string + 155 assert suites (zero residual); the APK
-compile is the CI check. NOT VERIFIED: no flutter in the sandbox - the constraints' SDK ceilings
-were verified against pub.dev, not compiled.
-
-### v0.493.0 fix (no version bump): /api/coder/* returned 500 live
-`coder/service.py` awaited `require_key(request)` in every route, but `main.require_key` is a plain function (`TypeError: object NoneType can't be used in 'await' expression`). The tests passed an async stand-in (`_nok`), so nothing caught it; the Skills desk (and with it the BYOX seeding) never worked live. `make_router` now accepts a sync or async key check. New test `test_coder_routes_work_with_the_real_sync_require_key` runs the real router with a plain function. Found by the owner's healthz check of v0.492.0 (HTTP 500 on GET /api/coder/skills). Unrelated, pre-existing red: `test_v0473_hoola_coder.py::test_coder_routes_mounted` (`r.path` on a Mount).
+Final local numbers: `_tool_specs()` = 164 specs / 89,782 chars (89,799 escaped) of the 150,000 budget - 162 tools
+declared directly (was ~111), 40% budget headroom left; `seo_dekho` exactly once. Suites green locally: v0491 (5),
+v149 (2), v150/v01851/v01853 heal, v0211 (29), v0219, v0225, v0230, v0232, v0241, v0245, v0264, v0302, v0187,
+v0479 (24), console r1, workspace, launcher, v0481.

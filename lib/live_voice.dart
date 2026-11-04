@@ -334,6 +334,21 @@ class LiveVoice {
     }
   }
 
+  /// v0.491 EQUAL POWER: she can TYPE into the call too (a spelling, an address, a repair the voice ladder
+  /// kept getting wrong) - the server has taken {"type":"text"} since always; the client just never sent it.
+  /// Returns false when the socket is gone (the UI keeps the text so she can try again).
+  bool sendText(String text) {
+    final t = text.trim();
+    final ws = _ws;
+    if (t.isEmpty || ws == null) return false;
+    try {
+      ws.add(jsonEncode({'type': 'text', 'text': t}));
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   void setMuted(bool m) {
     muted = m;
     try {

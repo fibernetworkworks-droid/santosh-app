@@ -294,6 +294,20 @@ class CallSession extends ChangeNotifier {
     _setFileNote(failed.isEmpty ? '📎 File ${app.aName} tak pahunch gayi' : failed.join('\n'), seconds: failed.isEmpty ? 6 : 12);
   }
 
+  /// v0.491 EQUAL POWER: she can TYPE into the call (a spelling, an address, a repair the voice ladder kept
+  /// getting wrong) - the server takes {"type":"text"} and answers in the same call. If the call socket is gone,
+  /// the words fall back to chat so they are never lost.
+  Future<void> sendText(String text) async {
+    final t = text.trim();
+    if (t.isEmpty || !inCall) return;
+    if (_call?.sendText(t) ?? false) {
+      _setFileNote('✍️ ${app.aName} ko likh diya', seconds: 4);
+    } else {
+      await app.send(t);
+      _setFileNote('Call ka connection nahi tha, aapki baat chat mein bhej di', seconds: 8);
+    }
+  }
+
   void _onClosed(String? reason) {
     _tick?.cancel();
     if (inCall && reason != null && reason.isNotEmpty) note = 'Call band ho gayi: $reason';

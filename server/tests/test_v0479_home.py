@@ -15,7 +15,7 @@ What this suite pins:
 (6) THE REST CLIENT: states / state_one / switch against a fake HA (httpx.MockTransport) - domain-native
     services (cover open/close, scene turn_on, button press), the settle re-read, honest failure lines.
 (7) AUDIT: every attempt (success or refusal) lands in home_audit; recent_audit reads it back.
-(8) VERSION: APP_VERSION 0.479.0, pubspec 0.493.0+537.
+(8) VERSION: APP_VERSION 0.479.0, pubspec 0.494.0+538.
 """
 import asyncio
 
@@ -161,10 +161,15 @@ def test_family_router_admits_home_words():
     assert "home" not in miss, miss
 
 
-def test_voice_never_declares_home_tools():
+def test_voice_declares_home_tools_v0491():
+    """v0.479 kept Ghar voice-less (test_voice_never_declares_home_tools); v0.491 EQUAL POWER declares all five on a
+    call. The real-world guard is unchanged: the HOME_CONTROL gate below still refuses controls when it is off, and
+    the persona carries the Ghar safety line (AC 20-28, speaker <=90, geyser / fridge / washer never)."""
     from app import voice
     for n in ("home_link", "home_devices", "home_on", "home_off", "home_state"):
-        assert n not in voice.VOICE_TOOL_NAMES
+        assert n in voice.VOICE_TOOL_NAMES
+        assert not voice.via_kaam(n), f"{n} must stay directly callable on a call"
+    assert "geyser / fridge / washer never" in voice.PERSONA
 
 
 # ---------------------------------------------------------------- (2) the HOME gate
@@ -355,10 +360,10 @@ def test_audit_trail_readback(fakeha):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.493.0"
+    assert APP_VERSION == "0.494.0"
 
 
 def test_pubspec_version():
     import pathlib
     root = pathlib.Path(__file__).resolve().parents[2]
-    assert "0.493.0+537" in (root / "pubspec.yaml").read_text()
+    assert "0.494.0+538" in (root / "pubspec.yaml").read_text()
