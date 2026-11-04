@@ -486,6 +486,12 @@ class Settings(BaseSettings):
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)
     coder_curator_max_pairs: int = 20      # pending pairs the brain arbitrates per tenant per run
     coder_curator_max_merges: int = 10     # merges per run; the rest stays pending (soft merges, revivable)
+
+    # --- Hoola SAPNE (v0.484): the NIGHTLY curator (OpenClaw's dreaming sweep ported) ---
+    coder_dreams: bool = False             # the light+deep consolidation passes (bake on the VPS, then flip)
+    coder_dreams_light_hours: int = 26     # the nightly window (26h catches the slow clock)
+    coder_dreams_deep_days: int = 7        # the weekly window (deep subsumes light when both due)
+    coder_dreams_max_writes: int = 4       # max curated rows ONE pass may write or rewrite
     coder_dedup_min_docs: int = 10         # the Tier-1 scan's corpus gate (IDF on 3 documents is astrology)
 
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---

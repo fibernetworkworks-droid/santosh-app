@@ -558,6 +558,7 @@ async def coder_jobs() -> None:
             return
         await coder.observer.tick(get_settings())
         await coder.curator.tick(get_settings())   # v0.480: the weekly consolidation, due-gated
+        await coder.dreams.tick(get_settings())    # v0.484 SAPNE: the nightly curator, due-gated
     except Exception:
         log.exception("coder tick failed")
 

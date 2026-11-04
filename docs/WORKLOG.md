@@ -688,3 +688,22 @@ Stage Summary:
   (SSRF/robots/mask_ids/caps), no separate service, no AGPL.
 - Phase 2 (crawl JOBS: sqlite queue + worker tick + status/results tools, the Firecrawl /crawl at scale) and Phase 3
   (change tracking, monitors-lite) stay queued in the workspace worklog Task 14-c.
+
+---
+Task ID: 25 (HOOLA SAPNE - MOAT PLAN Phase 1 -> v0.484.0; built as 0.479.0, re-versioned on the FIFTEENTH collision)
+Agent: main (Z.ai, MOAT plan session)
+Task: Owner: "USE THIS 2 REPO --- MOAT AND PREPARE PERFECT POWERFULL HOOLA AI PLAN FIRST" (OpenClaw @ b3487e66 + mattpocock/skills @ 4ae2317 cloned and read first) -> plan docs/HOOLA_AI_MOAT_PLAN.md prepared FIRST (6 phases, commodity-vs-moat, not-ported list with rules) -> simple-English Phase 1 explainer -> owner: "GO".
+
+Work Log:
+- Phase 1 = SAPNE built server-only: coder/dreams.py (LIGHT nightly 26h + DEEP weekly 7d, <=4 curated rows/pass, deep rewrite with mandatory preimage), store.py +2 additive tables (dreams_state, obs_preimages) + helpers (_preimage_sql shared by obs_update_curated/obs_restore_preimage), prompts.py dreams_system/dreams_user (STABLE prefix, same <observation> XML), config.py coder_dreams default OFF (+light_hours/deep_days/max_writes), worker.coder_jobs awaits dreams.tick, service.py GET /api/coder/dreams, coder/__init__ exports dreams.
+- Safety pins: tenant conv bucket dreams-<tenant> (cross-tenant dedup impossible), tenant privacy gate (latest_prompt_private_for_tenant), usage gate, no self-recursion (input excludes actor='dreams'), empty window books the run, one consolidation per tick max, digest file + .pre file preimage.
+- BUG caught by own suite: obs_update_curated called obs_preimage inside an open write transaction -> "cannot start a transaction within a transaction"; fixed with the shared _preimage_sql(c,...) inner helper. The suite then pinned the honest contract: TWO preimages exist after an explicit snapshot + a rewrite.
+- FIFTEENTH COLLISION at push: the dev's parallel chain had taken 0.479.0 (Smart Home W1), 0.480.0 (their HOOLA CURATOR - weekly Tier-1 dedup arbitration + soft revivable merges + skill promotion), 0.481.0 (Launcher), 0.482.0 (research merge), 0.483.0 (Firecrawl Core). REBASE PROTOCOL: rebuilt on their fresh base f9bf4db6 - their store gained superseded_by (schema v2), so dreams' window queries filter superseded_by=0 and obs_update_curated refuses superseded rows; their curator.tick sits beside dreams.tick in coder_jobs; both curators kept, complementary not duplicate. Suite renamed test_v0479 -> test_v0484.
+- Stale-guard heals on the fresh base: test_v0179 + test_v0221 cache-buster guards were STILL red on pristine main (they demand ?v=APP_VERSION while the maintained v0475 precedent pins stamps at the last console change, now 0.482.0) - both now pin ONE coherent app stamp (0.482.0) + the vendor exception, matching test_v0475.
+- Version layer on their base: pubspec 0.484.0+529, APP_VERSION story with the collision preamble, equality pins ->0.484.0, full-string +528->+529, story pins moved (v0475/v0480/v0481/v0482), console stamps stay 0.482.0 x20 (console unchanged).
+- Tests on the rebased base: dreams 19 + their curator 28 + coder 24 = 71 green; selfteach 24 + swarm 17 + v0475 + v0179 + v0221 + routines = 70 green. Dashboard/live_features reds = the documented Playwright-cache env class (stash-proven class, untouched).
+
+Stage Summary:
+- v0.484.0 SAPNE ready on their base: the vault COMPOUNDS - capture (v0.473) -> dreaming (this) -> dedup arbitration (their v0.480 curator) -> skills (v0.477) -> programs (MOAT Phase 3 next). Kill switch coder_dreams default OFF: bake on the VPS, then flip, digest at GET /api/coder/dreams.
+- NOT verified: consolidation quality on real tenant data (needs the VPS bake + her flip; the digest is where she judges it); the combined dreams+curator brain cost on a real tenant count.
+- Next: MOAT Phase 2 v0.485.0 KAARKHANA (skill workshop: revisions, undo, 30-day auto-archive, diet) - on her GO.

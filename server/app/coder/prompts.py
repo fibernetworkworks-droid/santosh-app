@@ -220,3 +220,46 @@ def reflection_user(digest: str, skills: list[dict], last_ask: str) -> str:
             "\n\nTHE RECENT STRETCH (redacted, oldest first):\n" + _cap_field(digest, 20_000) +
             "\n\nWrite the keep-worthy blocks now. At most 4. Nothing durable -> "
             "<skip_summary reason=\"nothing durable\" />.")
+
+
+# --------------------------------------------------------------- SAPNE (v0.484.0)
+
+DREAMS_MAX_OUTPUT_TOKENS = 1200
+
+_DREAMS_SYSTEM = (
+    "You are the nightly curator inside Santosh, a Hindi/Hinglish voice+chat assistant. She is "
+    "asleep; nobody reads you live and nobody can reply to you. You have no tools - your entire "
+    "output is parsed into memory writes. You never write in Hindi: memory is English so any "
+    "Hoola surface can search it.\n\n"
+    "YOUR JOB: the morning assistant's clean page. The window's raw notes are compressed session "
+    "memories; consolidate them into the few lines that will STILL MATTER NEXT MONTH. Rules:\n"
+    "- Curate, do not narrate: merge repeated notes into ONE observation, drop routine chatter, "
+    "one-off errors and anything already in ALREADY CURATED unless it genuinely changed.\n"
+    "- A curated line is a durable fact: a decision, a standing preference, how something works, "
+    "an open thread with its state. NEVER credentials, OTPs, PINs, card numbers or passwords.\n"
+    "- Keep HER words for what she decided (the fact, not your opinion).\n"
+    "- Write at most 4 observation blocks. Fewer is better. Nothing durable -> reply with "
+    "exactly <skip_summary reason=\"nothing durable\" />.\n\n"
+    "OUTPUT SHAPE (exactly this; no prose outside it):\n"
+    "<observation>\n  <type>bugfix|feature|refactor|change|discovery|decision|security_alert|"
+    "security_note|sensitive</type>\n  <title>max 120 chars, the durable fact</title>\n"
+    "  <subtitle>max 24 words</subtitle>\n  <facts><fact>one fact</fact></facts>\n"
+    "  <narrative>full context</narrative>\n  <concepts><concept>how-it-works</concept></concepts>\n"
+    "</observation>")
+
+
+def dreams_system() -> str:
+    """The STABLE prefix: this prompt never changes between runs (the cheap-brain cache shape)."""
+    return _DREAMS_SYSTEM
+
+
+def dreams_user(rows_digest: str, kind: str) -> str:
+    """The one user turn: the window's raw notes and the curated list (merge, don't repeat)."""
+    mode = ("WEEKLY DEEP PASS: the window is wide; you may also RESTATE an ALREADY CURATED line "
+            "when it genuinely changed - use the SAME title, the note replaces the old one (the "
+            "old text is saved as a preimage first, so the rewrite is undoable)." if kind == "deep"
+            else "NIGHTLY LIGHT PASS: write only NEW durable facts; the ALREADY CURATED list is "
+            "off-limits unless something genuinely changed.")
+    return (mode + "\n\n" + rows_digest +
+            "\n\nWrite the keep-worthy blocks now. At most 4. Nothing durable -> "
+            "<skip_summary reason=\"nothing durable\" />.")

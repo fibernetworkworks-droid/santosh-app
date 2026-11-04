@@ -18510,3 +18510,76 @@ ZDR/US-only/Exchange) - ONLY the design was taken; the engine is AGPL-3.0 and ne
   second run = 0 residual), console stamps stay 0.475.0 x20 (server-only release, the v0.476/v0.480 precedent).
 - The scrapling-10-reds class noted by the v0.480 sweep is sandbox-environment-only (missing scrapling/playwright stack
   in that recycled box); this sandbox has the stack and runs the lane green.
+
+## v0.484.0 HOOLA SAPNE — the NIGHTLY curator (OpenClaw's dreaming sweep ported; MOAT PLAN Phase 1)
+
+Owner: "USE THIS 2 REPO --- MOAT AND PREPARE PERFECT POWERFULL HOOLA AI PLAN FIRST" (OpenClaw @ b3487e66 +
+mattpocock/skills @ 4ae2317 read in full first) -> plan written FIRST (docs/HOOLA_AI_MOAT_PLAN.md, six phases,
+commodity-vs-moat, not-ported list with the rule that forbids each) -> simple-English Phase 1 explainer -> "GO".
+
+**FIFTEENTH COLLISION, re-versioned 0.479.0 -> 0.484.0**: the dev's parallel chain took 0.479.0 (Smart Home W1),
+0.480.0 (their HOOLA CURATOR), 0.481.0 (Launcher), 0.482.0 (research merge) and 0.483.0 (Firecrawl Core) while
+this built. REBASE PROTOCOL respected: rebuilt on their fresh base f9bf4db6, both curators kept and COMPLEMENTARY
+— the v0.480 curator merges near-duplicate ROWS (Tier-1 arbitration, soft revivable merges); SAPNE distills TIME
+WINDOWS into new curated memory (the dreaming half). Neither needs the other; both ride the same vault.
+
+### What ships (server-only; no Flutter, no desktop, no PC files)
+
+- NEW `server/app/coder/dreams.py`: two consolidation passes per tenant. **LIGHT** nightly (window
+  `coder_dreams_light_hours`=26h - catches the slow clock): the window's raw session observations become at most
+  `coder_dreams_max_writes`=4 curated memory rows. **DEEP** weekly (`coder_dreams_deep_days`=7, subsumes light when
+  both are due): may also REWRITE existing LIVE curated rows whose normalized title it restates - each rewrite
+  stores the EXACT preimage first, so every consolidation is undoable. Curated rows ride `store.store_observation`
+  (actor=`dreams`) - the dedup ladder, the primer, `yaad_khojo` and the three-layer search reach them with zero new
+  plumbing; the Tier-0 normalized-title merge means a restated fact REINFORCES the old row instead of duplicating.
+- OpenClaw's safeguards, ported (the deviations are pinned decisions):
+  - **Preimages**: `obs_preimages` table (`obs_preimage` / `_preimage_sql` shared by `obs_update_curated` /
+    `obs_restore_preimage` = the undo line). File level too: every digest rewrite saves the previous text as
+    `dreams.md.pre` beside it.
+  - **Reviewable**: every run appends a dated section to `<coder_dir>/dreams/<tenant>/dreams.md`; GET
+    `/api/coder/dreams` returns the digest + per-pass state + stats (loopback-keyed like every house router).
+  - **Privacy**: the observer's per-conv rule lifted one level - `latest_prompt_private_for_tenant` skips the whole
+    pass when the tenant's most recent prompt was `<private>`; private turns never produced vault rows anyway.
+  - **No self-recursion**: the input digest NEVER includes `actor='dreams'` rows; the curator has no tools.
+  - **v0.480 respected**: dreams never reads superseded rows (`superseded_by=0` in both window queries) and never
+    rewrites a superseded row - a soft-merged memory is absorbed history, not raw material.
+  - **One brain call per pass**: the same cheap path as the observer/nudge/curator (`observer._call_brain`), STABLE
+    `prompts.dreams_system` prefix (cache shape), the SAME `<observation>` XML `parser.parse_observations` already
+    knows - no new output format. Usage gate `usage.allowed(tenant, "coder")` first.
+  - **Quiet by law**: candidates = one indexed `DISTINCT tenant` query over rows newer than the light window; an
+    empty window books the run and moves on; at most ONE consolidation per worker tick (a thousand tenants cost at
+    most one brain call per tick). Tenant conv bucket `dreams-<tenant>` keeps the `(conv, content_hash)` dedup pair
+    from ever meeting another tenant's row.
+- `store.py`: additive `dreams_state` + `obs_preimages` tables (CREATE IF NOT EXISTS - old vaults self-heal at
+  `ensure()`, no migration) + the SAPNE helpers. `worker.coder_jobs` awaits `dreams.tick` beside the curator's.
+- `config.py`: `coder_dreams` (default OFF - bake on the VPS, then flip) + `coder_dreams_light_hours` /
+  `coder_dreams_deep_days` / `coder_dreams_max_writes`.
+
+### Tests
+
+`server/tests/test_v0484_hoola_dreams.py` (19): state clock round-trip, preimage save/restore exact-text round-trip
+(two undo lines: the explicit one + the rewrite's mandatory one), candidates exclude dreams-only tenants, kill
+switches (default OFF + coder_enabled), light pass writes curated rows through the funnel, budget cap (6 blocks -> 4),
+empty window books the run without a brain call, private-window skip, usage gate, deep rewrite keeps id + preimage,
+failed update falls through to a reinforce, digest append + `.pre` file, two tenants never share a curated row, light
+throttle, deep-wins-when-both-due, worker awaits dreams.tick, the route (on + off), version 0.484.0.
+
+### Sweeps
+
+- On the rebased base: dreams 19 + their curator 28 + coder 24 = 71 green; selfteach 24 + swarm 17 + v0475 + v0179 +
+  v0221 + routines = 70 green. The dashboard / live_features reds are the documented Playwright-cache env class.
+- **Stale-guard heals** (both stash-proven red on pristine main since the v0.476 stamps precedent):
+  `test_v0179_search` + `test_v0221_console_r1` cache-buster guards now pin the maintained convention (ONE coherent
+  app stamp at the last console change, 0.482.0; vendor qrcode.js 1.4.4 excepted) instead of demanding v=APP_VERSION.
+- Version ritual 0.484.0: pubspec 0.484.0+529, APP_VERSION story (double-collision preamble), equality pins
+  ->0.484.0, full-string pubspec pins +528 -> +529, story pins (v0475/v0480/v0481/v0482 suites) moved to the
+  newest-story convention. Console stamps stay 0.482.0 x20 (console unchanged by this release).
+- Mera PC freeze respected; desktop untouched; server-only deploy - old APKs keep working.
+
+### Not verified (said plainly)
+
+- Consolidation QUALITY on real tenant data (the prompts are shape-correct, 19 pins, but no live cheap-brain run has
+  curated a real night yet). The dreams digest is exactly where she judges it.
+- The 26h/7d cadence is assumed right; `coder_dreams_light_hours` / `coder_dreams_deep_days` retune without a deploy.
+- The dreams + curator passes run BESIDE each other; their combined brain cost (light nightly + curator weekly) is
+  bounded but unobserved on a real tenant count - watch `GET /api/coder/stats` after the flip.

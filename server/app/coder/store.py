@@ -91,6 +91,21 @@ _SCHEMA = [
     """CREATE TABLE IF NOT EXISTS token_df (
         tenant TEXT NOT NULL, token TEXT NOT NULL, df INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (tenant, token))""",
+    # v0.484 HOOLA SAPNE: two additive tables (house law: CREATE IF NOT EXISTS, old vaults
+    # self-heal at ensure(); no migration, no destructive step).
+    # one row per (tenant, kind): the last time the curator ran that pass for her
+    """CREATE TABLE IF NOT EXISTS dreams_state (
+        tenant TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('light','deep')),
+        last_epoch INTEGER NOT NULL DEFAULT 0, runs INTEGER NOT NULL DEFAULT 0,
+        PRIMARY KEY (tenant, kind))""",
+    # the exact prior text of every observation row the deep pass rewrote (the undo line)
+    """CREATE TABLE IF NOT EXISTS obs_preimages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, obs_id INTEGER NOT NULL, why TEXT NOT NULL DEFAULT '',
+        pre_type TEXT NOT NULL DEFAULT '', pre_title TEXT NOT NULL DEFAULT '',
+        pre_subtitle TEXT NOT NULL DEFAULT '', pre_facts TEXT NOT NULL DEFAULT '[]',
+        pre_narrative TEXT NOT NULL DEFAULT '', pre_concepts TEXT NOT NULL DEFAULT '[]',
+        at TEXT NOT NULL, at_epoch INTEGER NOT NULL)""",
+    """CREATE INDEX IF NOT EXISTS idx_preimage_obs ON obs_preimages(obs_id)""",
 ]
 
 # External-content FTS5 kept in sync by triggers; created only when the probe passes.
@@ -676,3 +691,160 @@ def stats() -> dict:
     return {"observations": n_obs, "summaries": n_sum, "sessions": n_sessions, "tool_uses": n_tools,
             "discovery_tokens": disc, "pending_dedup_candidates": cand, "skills": int(n_skills),
             **nudge_counts(), "curator": curator_counts(), "fts": bool(_fts_ok)}
+
+
+# ---------------------------------------------------------------- SAPNE (v0.484.0)
+
+def dreams_state_get(tenant: str, kind: str) -> dict:
+    """The nightly curator's per-tenant clock: when did this pass last run (epoch 0 = never)."""
+    ensure()
+    with db() as c:
+        r = c.execute("SELECT last_epoch, runs FROM dreams_state WHERE tenant=? AND kind=?",
+                      (tenant, kind)).fetchone()
+        return {"last_epoch": int(r["last_epoch"]) if r else 0,
+                "runs": int(r["runs"]) if r else 0}
+
+
+def dreams_state_set(tenant: str, kind: str, epoch: int) -> None:
+    ensure()
+    with db(write=True) as c:
+        c.execute("INSERT INTO dreams_state(tenant, kind, last_epoch, runs) VALUES (?,?,?,1) "
+                  "ON CONFLICT(tenant, kind) DO UPDATE SET last_epoch=excluded.last_epoch, "
+                  "runs=runs+1", (tenant, kind, int(epoch)))
+
+
+def tenants_with_rows_since(since_epoch: int) -> list[str]:
+    """Tenants whose vault got NEW raw material inside the window (the only ones a pass can
+    possibly consolidate). A quiet tenant is never queried again until she talks."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT DISTINCT tenant FROM observations WHERE created_epoch >= ? "
+                         "AND actor != 'dreams'", (int(since_epoch),)).fetchall()
+    return [r["tenant"] for r in rows]
+
+
+def observations_since(tenant: str, since_epoch: int, limit: int = 40) -> list[dict]:
+    """The raw material for one pass: this tenant's own LIVE rows (a curator-merged row is
+    absorbed history - dreams never reads superseded ones), oldest first, the curator's OWN
+    past output excluded (it must never re-read itself into recursion)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT * FROM observations WHERE tenant=? AND created_epoch >= ? "
+                         "AND actor != 'dreams' AND superseded_by=0 "
+                         "ORDER BY created_epoch ASC, id ASC LIMIT ?",
+                         (tenant, int(since_epoch), int(limit))).fetchall()
+    return [dict(r) for r in rows]
+
+
+def curated_recent(tenant: str, limit: int = 12) -> list[dict]:
+    """The tenant's recent LIVE curated rows (actor='dreams') - shown so the pass MERGES into
+    the existing memory instead of writing the same fact again (the ladder reinforces those)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT id, title, subtitle, narrative FROM observations WHERE tenant=? "
+                         "AND actor='dreams' AND superseded_by=0 "
+                         "ORDER BY created_epoch DESC, id DESC LIMIT ?",
+                         (tenant, int(limit))).fetchall()
+    return [dict(r) for r in rows]
+
+
+def _preimage_sql(c, obs_id: int, why: str, now: str, ep: int) -> bool:
+    """The shared undo-write: reads the row AS IT IS NOW inside the CALLER's transaction and
+    snapshots it into obs_preimages. Callers without an open transaction use obs_preimage()."""
+    r = c.execute("SELECT type, title, subtitle, facts, narrative, concepts FROM observations "
+                  "WHERE id=?", (int(obs_id),)).fetchone()
+    if r is None:
+        return False
+    c.execute("INSERT INTO obs_preimages(obs_id, why, pre_type, pre_title, pre_subtitle, "
+              "pre_facts, pre_narrative, pre_concepts, at, at_epoch) VALUES (?,?,?,?,?,?,?,?,?,?)",
+              (int(obs_id), (why or "")[:300], r["type"], r["title"], r["subtitle"],
+               r["facts"], r["narrative"], r["concepts"], now, ep))
+    return True
+
+
+def obs_preimage(obs_id: int, why: str) -> bool:
+    """Snapshot the row EXACTLY as it is now into obs_preimages (the undo line). False if the
+    row does not exist - a preimage of nothing is a lie."""
+    ensure()
+    now, ep = time.strftime("%Y-%m-%dT%H:%M:%S%z"), int(time.time())
+    with db(write=True) as c:
+        return _preimage_sql(c, obs_id, why, now, ep)
+
+
+def obs_update_curated(obs_id: int, obs: dict, why: str) -> int | None:
+    """The deep pass's only write onto an EXISTING row: preimage first, then the fields, and
+    only a LIVE row can be rewritten (a superseded row is absorbed history - refuse). FTS5 has
+    no update trigger on observations, so the external-content delete+insert pair keeps the
+    index honest."""
+    ensure()
+    now, ep = time.strftime("%Y-%m-%dT%H:%M:%S%z"), int(time.time())
+    with db(write=True) as c:
+        r = c.execute("SELECT tenant, title_norm_key, superseded_by FROM observations WHERE id=?",
+                      (int(obs_id),)).fetchone()
+        if r is None or r["superseded_by"]:
+            return None
+        if not _preimage_sql(c, int(obs_id), why, now, ep):
+            return None
+        title = (obs.get("title") or "").strip() or None
+        if title is None:
+            return None
+        nk = title_norm_key(r["tenant"], title)
+        c.execute(
+            "INSERT INTO obs_fts(obs_fts, rowid, title, subtitle, narrative, facts, concepts) "
+            "SELECT 'delete', id, title, subtitle, narrative, facts, concepts FROM observations "
+            "WHERE id=?", (int(obs_id),))
+        c.execute("UPDATE observations SET title=?, subtitle=?, facts=?, narrative=?, concepts=?, "
+                  "title_norm_key=? WHERE id=?",
+                  (title, (obs.get("subtitle") or "")[:300],
+                   json.dumps(obs.get("facts") or [], ensure_ascii=False),
+                   (obs.get("narrative") or "")[:8000],
+                   json.dumps(obs.get("concepts") or [], ensure_ascii=False),
+                   nk, int(obs_id)))
+        c.execute(
+            "INSERT INTO obs_fts(rowid, title, subtitle, narrative, facts, concepts) "
+            "SELECT id, title, subtitle, narrative, facts, concepts FROM observations WHERE id=?",
+            (int(obs_id),))
+        return int(obs_id)
+
+
+def obs_preimages_for(obs_id: int) -> list[dict]:
+    """Every saved before-state of one row, newest first (the undo list)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT * FROM obs_preimages WHERE obs_id=? ORDER BY id DESC",
+                         (int(obs_id),)).fetchall()
+    return [dict(r) for r in rows]
+
+
+def obs_restore_preimage(preimage_id: int) -> int | None:
+    """Undo: put the preimage's fields back onto the row. Returns the obs id, None if missing."""
+    ensure()
+    with db(write=True) as c:
+        p = c.execute("SELECT * FROM obs_preimages WHERE id=?", (int(preimage_id),)).fetchone()
+        if p is None:
+            return None
+        c.execute(
+            "INSERT INTO obs_fts(obs_fts, rowid, title, subtitle, narrative, facts, concepts) "
+            "SELECT 'delete', id, title, subtitle, narrative, facts, concepts FROM observations "
+            "WHERE id=?", (int(p["obs_id"]),))
+        c.execute("UPDATE observations SET type=?, title=?, subtitle=?, facts=?, narrative=?, "
+                  "concepts=? WHERE id=?",
+                  (p["pre_type"], p["pre_title"], p["pre_subtitle"], p["pre_facts"],
+                   p["pre_narrative"], p["pre_concepts"], int(p["obs_id"])))
+        c.execute(
+            "INSERT INTO obs_fts(rowid, title, subtitle, narrative, facts, concepts) "
+            "SELECT id, title, subtitle, narrative, facts, concepts FROM observations WHERE id=?",
+            (int(p["obs_id"]),))
+        c.execute("DELETE FROM obs_preimages WHERE id=?", (int(preimage_id),))
+        return int(p["obs_id"])
+
+
+def latest_prompt_private_for_tenant(tenant: str) -> bool:
+    """The tenant-level privacy gate (the observer's per-conv rule, lifted one level): the MOST
+    RECENT prompt across the tenant's sessions is private -> the nightly pass skips the whole
+    tenant. prompts carries no epoch, so 'most recent' = the highest rowid in the tenant's convs."""
+    ensure()
+    with db() as c:
+        r = c.execute("SELECT p.private FROM prompts p JOIN sessions s ON s.conv = p.conv "
+                      "WHERE s.tenant=? ORDER BY p.id DESC LIMIT 1", (tenant,)).fetchone()
+        return bool(r["private"]) if r is not None else False

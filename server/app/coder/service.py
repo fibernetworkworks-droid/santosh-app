@@ -105,6 +105,21 @@ def make_router(require_key, current_tenant) -> APIRouter:
         await require_key(request)
         return store.stats()
 
+    @r.get("/dreams")
+    async def dreams_route(request: Request):
+        """v0.484 SAPNE: the tenant's dreams digest - everything the nightly curator did, in the
+        open (the file's previous version sits beside it as dreams.md.pre, the undo line)."""
+        await require_key(request)
+        from . import dreams
+        from ..config import get_settings
+        st = get_settings()
+        if not getattr(st, "coder_dreams", False):
+            return {"digest": "", "note": "dreams are switched off (coder_dreams)", "stats": dreams.stats()}
+        return {"digest": dreams.read_digest(current_tenant(request)),
+                "state": {k: store.dreams_state_get(current_tenant(request), k)
+                          for k in ("light", "deep")},
+                "stats": dreams.stats()}
+
     @r.get("/curator")
     async def curator_route(request: Request):
         """The curator's ledger (v0.480): its own stats, the vault's pending pile, whether a run is due."""

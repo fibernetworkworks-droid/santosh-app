@@ -6,8 +6,12 @@ fork (the self-teaching loop between turns) and matched-skill primer injection.
 v0.478 HOOLA SWARM adds delegate_task: bounded parallel child agents on the same funnel.
 v0.480 HOOLA CURATOR adds the weekly consolidation: the Tier-1 scan finally wired, one
 cheap-brain arbitration of the pending pairs (soft, revivable merges), recurring memories
-promoted to skills through the same funnel."""
-from . import capture, curator, dedup, delegate, inject, modes, nudge, observer, parser, \
+promoted to skills through the same funnel.
+v0.484 HOOLA SAPNE adds the NIGHTLY curator: the window's raw observations distilled into
+curated memory rows (light 26h + deep 7d rewrite with mandatory preimages), OpenClaw's
+dreaming sweep ported - the vault that captures starts to COMPOUND. Beside, never instead:
+the v0.480 curator merges near-duplicates, SAPNE distills time windows."""
+from . import capture, curator, dedup, delegate, dreams, inject, modes, nudge, observer, parser, \
     prompts, redact, search, skills_store, skills_tool, spool, store
 
 # v0.478 FIX (caught by the swarm funnel-capture test): the agent funnel calls
@@ -20,7 +24,7 @@ from . import capture, curator, dedup, delegate, inject, modes, nudge, observer,
 # coder.curator.tick on the package path too - curator rides the import list above.
 from .capture import save_memory, session_ended, session_started, tool_observed, turn_prompt
 
-__all__ = ["capture", "curator", "dedup", "delegate", "inject", "modes", "nudge", "observer",
-           "parser", "prompts", "redact", "search", "skills_store", "skills_tool", "spool",
-           "store", "save_memory", "session_ended", "session_started", "tool_observed",
+__all__ = ["capture", "curator", "dedup", "delegate", "dreams", "inject", "modes", "nudge",
+           "observer", "parser", "prompts", "redact", "search", "skills_store", "skills_tool",
+           "spool", "store", "save_memory", "session_ended", "session_started", "tool_observed",
            "turn_prompt"]
