@@ -18916,7 +18916,7 @@ Ceiling: Dart 3.5.4 (CI Flutter 3.24.5).
 
 ## Adopted (11)
 http ^1.6.0; shared_preferences ^2.5.3; google_fonts ^6.3.0; speech_to_text ^6.6.2→^7.4.0;
-flutter_tts 4.0.2→4.2.5 (exact pin kept); url_launcher ^6.3.1; webview_flutter ^4.10.0;
+url_launcher ^6.3.1; webview_flutter ^4.10.0;
 video_player ^2.9.5; path_provider ^2.1.5; flutter_lints ^4.0.0→^5.0.0; flutter_launcher_icons ^0.14.4.
 ZERO Dart code changes (changelog + call-site grep verified).
 

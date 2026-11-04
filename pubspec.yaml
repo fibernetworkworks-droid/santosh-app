@@ -13,7 +13,8 @@ dependencies:
   # ceiling; every constraint verified against pub.dev). Deferred majors + exact blockers:
   # flutter_local_notifications 18/19 need compileSdk 35 + a newer AGP; android_intent_plus 6.x
   # forces AGP 8.12/Gradle 8.13/Kotlin 2.2; file_picker 9-11 churn the API over 32 call sites;
-  # flutter_timezone 5.x breaks the API for a localized name we never read; image_picker 1.2+ /
+  # flutter_timezone 5.x breaks the API for a localized name we never read; flutter_tts 4.2.x
+  # demanded Android SDK 36 (the CI APK build caught it - reverted, 4.0.2 stays); image_picker 1.2+ /
   # timezone 0.10+ / google_fonts 7+ / flutter_lints 6 / speech_to_text 7.5 all need Dart >3.5.4.
   http: ^1.6.0
   shared_preferences: ^2.5.3
@@ -23,7 +24,7 @@ dependencies:
   flutter_timezone: ^3.0.1
   android_intent_plus: ^5.1.0
   speech_to_text: ^7.4.0
-  flutter_tts: 4.2.5
+  flutter_tts: 4.0.2
   url_launcher: ^6.3.1
   file_picker: ^8.1.2
   webview_flutter: ^4.10.0
