@@ -424,7 +424,7 @@ def test_extract_json_ssrf(monkeypatch):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.513.0"
+    assert APP_VERSION == "0.520.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.513.0+548" in pub.read_text()
+    assert "0.520.0+549" in pub.read_text()

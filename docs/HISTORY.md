@@ -14,6 +14,24 @@ word in chat — relayed via `dhara_control approve` — moves it past the gate.
 actor="routine": the house's own actor gates are the safety n8n never had. Registry 536 -> 541
 (dhara_save / dhara_run / dhara_runs / dhara_control / dhara_list). Tests: test_v0502_dhara.py (35).
 
+## v0.520.0 HOOLA TRACE — the LangSmith layer self-hosted, P2 of the HOOLA AEP plan (5 Nov 2026)
+
+The callbacks/tracers/event-stream idea and the LangSmith run-tree idea hand-built as
+`server/app/aep/tracers.py` + `vault_sink.py` after the deploy verified P1 HOOLA CORE live on the VPS
+(vps-ops run 41876141774, healthz 0.511.0). CallbackManager carries handlers + parent_run_id down the
+`config["callbacks"]` channel — a span start returns the CHILD manager, so the tree assembles with zero
+registry lookups; Span is the fire-point seam (created only when callbacks ride the config — the P1 fast
+path stays byte-identical). RunTreeTracer builds the run tree and persists FINISHED runs to sinks;
+astream_events is the event_stream v2 port (run_id + parent_ids + data.input/output/chunk, version pinned
+"v2"). THE FLAG LAW made real: `aep_trace` default OFF gates the VaultRunSink — finished runs land as
+ordinary vault observations typed `aep_run` (redaction BEFORE storage, fail-closed, honest counters), the
+pre-built `trace_flip` vps-ops job flips it, rollback is one flip, no schema migration. Explorer:
+`/api/aep/runs` (+ `source=vault`) and `/api/aep/runs/{run_id}` (the nested tree), `/api/agent/stats`
+grew the aep_trace block. Registry rides their 542 (the magic21 tool moved 541 -> 542 in v0.512); voice untouched by construction. Tests:
+test_v0520_hoola_trace.py (39) + the P1 core suite re-run green. Bugs the suite caught: async-for over the
+sync bare stream; the lru_cached get_settings vs flag setenv (cache_clear law). Version 0.520.0
+(pubspec 0.520.0+549), pins swept 0.511.0 -> 0.520.0 across 166 files; restart pin 9 -> 10.
+
 ## v0.511.0 HOOLA CS PACK — the zoo radar + the operator loop's dialogue patterns (4 Nov 2026)
 
 The awesome Computer Science read turned into two fed skills (owner: "Computer Science (38) — 

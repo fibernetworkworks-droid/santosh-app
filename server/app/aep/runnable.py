@@ -140,6 +140,15 @@ def _coerce(other: Any) -> Runnable:
     return RunnablePassthrough()
 
 
+def _span_start(cfg: dict, obj: Any, run_type: str, inputs: Any):
+    """The P2 fire seam: None unless the config carries callbacks (the no-callback
+    fast path stays byte-identical to P1 and the tracer import stays lazy)."""
+    if not cfg.get("callbacks"):
+        return None
+    from .tracers import Span
+    return Span.start(cfg, obj, run_type, inputs)
+
+
 class RunnableSerializable(Serializable, Runnable[Input, Output]):
     """A Runnable that also serializes (the upstream RunnableSerializable)."""
 
@@ -166,22 +175,47 @@ class RunnableSequence(RunnableSerializable[Input, Output]):
     def steps(self) -> list[Runnable]:
         return [self.first, *self.middle, self.last]
 
-    def invoke(self, input: Input, config: RunnableConfig | None = None) -> Output:  # noqa: A002,A003
-        cfg = ensure_config(config)
+    def _invoke_bare(self, input: Input, cfg: RunnableConfig) -> Output:  # noqa: A002,A003
         out: Any = input
         for step in self.steps:
             out = step.invoke(out, {**cfg})
         return out  # type: ignore[return-value]
 
+    def invoke(self, input: Input, config: RunnableConfig | None = None) -> Output:  # noqa: A002,A003
+        cfg = ensure_config(config)
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            return self._invoke_bare(input, cfg)
+        try:
+            out = self._invoke_bare(input, span.child_cfg)
+        except Exception as e:  # noqa: BLE001 - re-raised after the error event
+            span.error(e)
+            raise
+        span.end(out)
+        return out
+
+    def _ainvoke_bare(self, input: Input, cfg: RunnableConfig) -> Output:  # noqa: A002,A003
+        async def _run() -> Output:
+            out: Any = input
+            for step in self.steps:
+                out = await step.ainvoke(out, {**cfg})
+            return out  # type: ignore[return-value]
+        return _run()
+
     async def ainvoke(self, input: Input, config: RunnableConfig | None = None) -> Output:  # noqa: A002,A003
         cfg = ensure_config(config)
-        out: Any = input
-        for step in self.steps:
-            out = await step.ainvoke(out, {**cfg})
-        return out  # type: ignore[return-value]
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            return await self._ainvoke_bare(input, cfg)
+        try:
+            out = await self._ainvoke_bare(input, span.child_cfg)
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(out)
+        return out
 
-    def stream(self, input: Input, config: RunnableConfig | None = None):  # noqa: A002,A003
-        cfg = ensure_config(config)
+    def _stream_bare(self, input: Input, cfg: RunnableConfig):  # noqa: A002,A003
         # pure-sync chain: each step streams over the previous step's chunks
         def _chain(gen, step):
             for acc in gen:
@@ -190,6 +224,41 @@ class RunnableSequence(RunnableSerializable[Input, Output]):
         for step in self.middle + [self.last]:
             gen = _chain(gen, step)
         yield from gen
+
+    def stream(self, input: Input, config: RunnableConfig | None = None):  # noqa: A002,A003
+        cfg = ensure_config(config)
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            yield from self._stream_bare(input, cfg)
+            return
+        last: Any = None
+        try:
+            for chunk in self._stream_bare(input, span.child_cfg):
+                last = chunk
+                span.token(chunk)
+                yield chunk
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(last)   # streaming close carries the last chunk (the v2 shape)
+
+    async def astream(self, input: Input, config: RunnableConfig | None = None):  # noqa: A002,A003
+        cfg = ensure_config(config)
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            async for chunk in super().astream(input, cfg):
+                yield chunk
+            return
+        last: Any = None
+        try:
+            for chunk in self._stream_bare(input, span.child_cfg):   # the bare stream is sync
+                last = chunk
+                span.token(chunk)
+                yield chunk
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(last)
 
     def get_input_schema(self, config: RunnableConfig | None = None) -> dict[str, Any]:
         return self.first.get_input_schema(config)
@@ -221,8 +290,7 @@ class RunnableParallel(RunnableSerializable[Input, dict[str, Any]]):
         coerced = {k: _coerce(v) for k, v in {**(steps or {}), **kwargs}.items()}
         super().__init__(steps=coerced)
 
-    def invoke(self, input: Input, config: RunnableConfig | None = None) -> dict[str, Any]:  # noqa: A002,A003
-        cfg = ensure_config(config)
+    def _invoke_bare(self, input: Input, cfg: RunnableConfig) -> dict[str, Any]:  # noqa: A002,A003
         if not self.steps:
             return {}
         if len(self.steps) == 1:
@@ -232,10 +300,34 @@ class RunnableParallel(RunnableSerializable[Input, dict[str, Any]]):
             futures = {k: pool.submit(v.invoke, input, {**cfg}) for k, v in self.steps.items()}
             return {k: f.result() for k, f in futures.items()}
 
+    def invoke(self, input: Input, config: RunnableConfig | None = None) -> dict[str, Any]:  # noqa: A002,A003
+        cfg = ensure_config(config)
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            return self._invoke_bare(input, cfg)
+        try:
+            out = self._invoke_bare(input, span.child_cfg)
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(out)
+        return out
+
     async def ainvoke(self, input: Input, config: RunnableConfig | None = None) -> dict[str, Any]:  # noqa: A002,A003
         cfg = ensure_config(config)
-        values = await asyncio.gather(*(v.ainvoke(input, {**cfg}) for v in self.steps.values()))
-        return dict(zip(self.steps.keys(), values))
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            values = await asyncio.gather(*(v.ainvoke(input, {**cfg}) for v in self.steps.values()))
+            return dict(zip(self.steps.keys(), values))
+        try:
+            values = await asyncio.gather(*(v.ainvoke(input, {**span.child_cfg})
+                                            for v in self.steps.values()))
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        out = dict(zip(self.steps.keys(), values))
+        span.end(out)
+        return out
 
 
 class RunnableLambda(Runnable[Input, Output]):
@@ -272,15 +364,41 @@ class RunnableLambda(Runnable[Input, Output]):
             pass
         return {"title": self.get_name(), "type": "object"}
 
-    def invoke(self, input: Input, config: RunnableConfig | None = None) -> Output:  # noqa: A002,A003
+    def _invoke_bare(self, input: Input, cfg: RunnableConfig) -> Output:  # noqa: A002,A003
         if getattr(self.fn, "_aep_async_only", False):
             raise TypeError("RunnableLambda(fn) is async-only; use ainvoke")
         return self.fn(input)
 
+    def invoke(self, input: Input, config: RunnableConfig | None = None) -> Output:  # noqa: A002,A003
+        cfg = ensure_config(config)
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            return self._invoke_bare(input, cfg)
+        try:
+            out = self._invoke_bare(input, span.child_cfg)
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(out)
+        return out
+
     async def ainvoke(self, input: Input, config: RunnableConfig | None = None) -> Output:  # noqa: A002,A003
-        if self.afn is not None:
-            return await self.afn(input)
-        return await asyncio.to_thread(self.fn, input)
+        cfg = ensure_config(config)
+        span = _span_start(cfg, self, "chain", input)
+        if span is None:
+            if self.afn is not None:
+                return await self.afn(input)
+            return await asyncio.to_thread(self.fn, input)
+        try:
+            if self.afn is not None:
+                out = await self.afn(input)
+            else:
+                out = await asyncio.to_thread(self.fn, input)
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(out)
+        return out
 
 
 def _async_only(afn):

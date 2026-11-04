@@ -12,7 +12,7 @@ written per step, resume after a simulated death runs no step twice), the tick (
 missed-once, sleeper wake, approval expiry, tries exhausted = failed honestly, keep-runs forget),
 the webhook (202 + {{vars.body}}, bad token 401, throttle 429, disabled 401, kill switch 503), the
 tools' shapes (save/update honesty, list board, runs pagination), tenant isolation, mask_ids, the
-registry pin (541) and the version pin.
+registry pin (542, the magic21 tool rode in v0.512) and the version pin.
 """
 import asyncio
 import hashlib
@@ -72,7 +72,7 @@ def test_registry_5_dhara_tools():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 542, "536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512)"
+    assert len(TOOLS) == 542, "536 (v0.501, docs7 in) + 5 dhara tools + 1 magic21 (v0.512, the dev chain)"
 
 
 def test_family_map():
@@ -580,7 +580,7 @@ def test_outputs_pass_mask_ids():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.513.0"
+    assert APP_VERSION == "0.520.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.513.0+548" in pub.read_text()
+    assert "0.520.0+549" in pub.read_text()

@@ -20,6 +20,10 @@ from P2 where tracers and agents actually run):
 - history    : BaseChatMessageHistory + InMemoryChatMessageHistory
 - stores     : BaseStore + InMemoryStore + InMemoryByteStore
 - serializable: the lc-shaped to_json seed (P7 HUB builds the loader on it)
+- tracers    : (P2 v0.520.0 HOOLA TRACE) CallbackManager + handlers, Run/run tree,
+               RunTreeTracer, InMemoryRunStore, astream_events v2, the Span fire seam
+- vault_sink : (P2) the flag-gated run persistence - runs land as vault observations
+               typed 'aep_run', redacted before storage (aep_trace, default OFF)
 
 P2 (HOOLA TRACE) adds tracers/run trees; P3 (HOOLA GRAPH) the state-graph engine;
 P4 (HOOLA AGENT) create_agent; P5 the 24-middleware framework; P6 retrieval;
@@ -36,6 +40,8 @@ from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, exten
     serializable,
     stores,
     tools,
+    tracers,
+    vault_sink,
 )
 from .history import BaseChatMessageHistory, InMemoryChatMessageHistory, get_buffer_string
 from .messages import (
@@ -109,6 +115,24 @@ from .runnable import (
 from .serializable import Serializable
 from .stores import BaseStore, InMemoryByteStore, InMemoryStore, InvalidKeyException
 from .tools import BaseTool, InjectedToolArg, StructuredTool, ToolException, tool, tool_call
+from .tracers import (
+    RUN_TYPES,
+    BaseCallbackHandler,
+    CallbackManager,
+    InMemoryRunStore,
+    Run,
+    RunSink,
+    RunTreeTracer,
+    Span,
+    astream_events,
+    callbacks_from_config,
+    dumps_safe,
+    global_tracer,
+    reset_global,
+    traced_invoke,
+)
+from .vault_sink import STATS as TRACE_STATS
+from .vault_sink import VaultRunSink, attach_vault_sink, trace_enabled, vault_run_by_id, vault_runs
 
 __all__ = [
     "CONTENT_BLOCK_TYPES", "REMOVE_ALL_MESSAGES",
@@ -144,4 +168,10 @@ __all__ = [
     "BaseChatMessageHistory", "InMemoryChatMessageHistory", "get_buffer_string",
     "BaseStore", "InMemoryStore", "InMemoryByteStore", "InvalidKeyException",
     "Serializable",
+    # P2 tracers (HOOLA TRACE)
+    "RUN_TYPES", "BaseCallbackHandler", "CallbackManager", "Span", "Run",
+    "RunSink", "RunTreeTracer", "InMemoryRunStore", "astream_events",
+    "callbacks_from_config", "dumps_safe", "global_tracer", "reset_global",
+    "traced_invoke", "VaultRunSink", "attach_vault_sink", "trace_enabled",
+    "vault_runs", "vault_run_by_id", "TRACE_STATS",
 ]

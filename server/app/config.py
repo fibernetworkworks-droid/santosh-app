@@ -557,6 +557,11 @@ class Settings(BaseSettings):
     coder_magic21_max_per_hour: int = 12   # per-tenant rolling-hour window over OPS (the three wire POSTs are the bridge's own business)
     magicpack_enabled: bool = True         # the mg- seed (the 21st.dev UI skill) seeds on first open under its own stamp (default ON)
 
+    # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
+    aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
+    aep_trace_redact: bool = True          # redaction before storage (strip_private + redact_secrets); a test seam, prod keeps True
+
+
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""
     email_password: str = ""                # app password (Gmail/Outlook/Zoho "app password")

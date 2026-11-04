@@ -1171,3 +1171,75 @@ Previous: v0.510.0 HOOLA CORE, v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0
 - Base: 84b88c6b (v0.511.0 HOOLA CS PACK). Previous: v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE,
   v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS [full chains
   in git history].
+## Task 38 — v0.520.0 HOOLA TRACE (owner: "DEPLOY AND GO BUILD P2 (HOOLA TRACE — tracers/run trees)")
+
+Agent: main (Z.ai, the AEP train session)
+Task: Two directives in one line. DEPLOY first (ship what main had, verify live), then GO BUILD P2 —
+phase 2 of the HOOLA AEP plan (Task 22): the LangSmith layer self-hosted.
+
+Work Log:
+- DEPLOY done first: fetched origin — the dev chain had taken v0.511.0 HOOLA CS PACK (705cca3d) BUILT ON TOP of
+  my P1 HOOLA CORE (0fab4d87), and their deploy follow-up (84b88c6b) said vps-ops run #244 already took the whole
+  chain to the VPS. Dispatched a fresh vps-ops deploy anyway (the directive said DEPLOY): run 41876141774
+  SUCCESS, public healthz `{"ok":true,"app":"Hoola","version":"0.511.0"}` — P1 HOOLA CORE verified live on the
+  VPS. Working clone re-aligned to origin/main (the stale local main ref force-moved; P1 ancestry verified first).
+- Built the tracer layer (ZERO upstream code — the port law): NEW server/app/aep/tracers.py (~590 LOC):
+  Run = the run-tree node (id/name/run_type/inputs/outputs/error/parent_run_id/trace_id/child_ids/ms/status);
+  BaseCallbackHandler = the no-op on_* family; CallbackManager carries handlers + parent_run_id down the
+  config["callbacks"] channel — a span start returns the CHILD manager, which is how the tree assembles with
+  zero registry lookups; Span = the fire-point seam (created ONLY when the config carries callbacks — the P1
+  fast path stays byte-identical, the tracer import stays lazy); RunTreeTracer builds the tree and persists
+  FINISHED runs to sinks (the runs dict a ring that evicts finished roots oldest-first past 2000);
+  InMemoryRunStore thread-safe capped 500; astream_events = the event_stream v2 port (event dicts
+  on_chain_start/on_chat_model_start/on_llm_new_token/on_chain_stream/on_chain_end/on_chain_error/on_tool_*
+  with run_id + parent_ids + data.input/output/chunk; version pinned "v2" with an honest raise); global_tracer()
+  / GLOBAL_STORE = the process store the explorer reads; traced_invoke = the one-liner lanes use.
+- NEW server/app/aep/vault_sink.py — THE FLAG LAW made real: VaultRunSink lands finished runs as ordinary
+  vault observations typed 'aep_run' (no new tables; FTS5 search/dedup/curator see the rows); REDACTION BEFORE
+  STORAGE (strip_private + redact_secrets over the serialized row; aep_trace_redact a test seam, prod True);
+  fail-closed (every fault returns None — telemetry never breaks the run it watches); honest STATS counters
+  (saved / skipped_flag / skipped_error).
+- Fire points wired into the P1 substrate (all guarded by the no-callbacks fast path): runnable.py —
+  Sequence/Parallel/Lambda chain spans on invoke/ainvoke, stream/astream fire chain_stream per chunk and close
+  with the last chunk; models.py — BaseChatModel invoke/stream/astream chat_model spans with llm_new_token per
+  streamed chunk, BaseLLM llm spans; tools.py — tool spans named by the TOOL name (not the class). P1's 79
+  tests re-ran green unchanged except two guards healed (below).
+- Explorer: GET /api/aep/runs (limit, source=memory|vault) + GET /api/aep/runs/{run_id} (the nested tree;
+  a numeric id falls back to the vault row) — require_key + the aep_trace flag fail-closed {"ok": false};
+  /api/agent/stats grew the honest aep_trace block (enabled/store/saved/skipped).
+- Config: aep_trace default OFF (bake on the VPS, then flip), aep_trace_redact True. Pre-built the trace_flip
+  vps-ops job (the coder_flip/docs7_flip one-boolean shape: idempotent .env upsert, restart --kill-timeout
+  12000, wait_up health gate, effective value printed from a fresh process). Mem restart pin 9 -> 10 (the
+  test_v0208 pin moved with it). Registry rides their 542 (the magic21 tool took 541 -> 542 in v0.512; tracers are library + routes, no new tools); voice
+  untouched by construction (no tool surface, VOICE_TOOL_NAMES moot this phase).
+- Tests: NEW test_v0520_hoola_trace.py (39, zero network, the asyncio one-loop law): manager child propagation,
+  broken-handler swallow, callbacks_from_config shapes, chain/model/llm/tool/tool-error spans, stream closes,
+  tree nesting (parallel children), trace_id shared across an invocation, Run node shape, dumps_safe on messages
+  + junk, astream_events full sequence + parent wiring + bare-model shape + version guard + error surfaced
+  without hanging, store ring cap, tracer ring eviction, global tracer + reset, vault sink flag-off noop /
+  flag-on 'aep_run' row / redaction-before-storage (a secret lands ***redacted***) / the redact seam honestly
+  off / fail-closed / attach idempotent, routes fail-closed + memory shapes + vault source + the agent-stats
+  block, the inertness probe re-run, the package-export law, the trace_flip job shape, the restart pin 10,
+  the version pins, no new registry tools. BUGS the suite caught: (a) astream over a sequence iterated the
+  sync _stream_bare with async for (TypeError) — the bare stream is sync; (b) get_settings is lru_cached
+  house-wide — a flag test that setenv's MUST cache_clear or the previous test's cached instance answers
+  (the docs7 lesson, now written into the suite as _clear_settings_cache); (c) the P1 guards healed per
+  precedent: test_no_config_reads_in_aep now exempts vault_sink.py (the P2 flag lane, lazy imports only —
+  the inertness probe still proves the fresh-interpreter import), test_main_story_markers moved to the
+  newest story (the house precedent).
+- Version ritual: APP_VERSION story (the full P2 story, exactly-one hit), pubspec 0.520.0+549, CLAUDE.md
+  healed, mechanical pin sweep 0.511.0 -> 0.520.0 + +546 -> +547 across 166 test files (259 bare + 91
+  full-string hits) zero residual outside the deliberate (v0.511) history comment; console stamps stay
+  0.487.0 x21 (the dev's convention); docs7 SERVER_VERSION twin untouched (the v0.501 birth-mark).
+- Sweeps: trace 39/39 + core 79/79 one run; docs7 26 + cspack 10 + dhara 35 = 71 green; coder 24 + selfteach
+  24 + curator 28 + swarm 17 = 93 green; home 24 + frames 14 + officehours 38 = 76 green; mem 13 green
+  (the restart pin 10 + version). Recycled-sandbox venv gaps restored from requirements.txt again
+  (sqlalchemy/anthropic/google-genai).
+
+Stage Summary:
+- P2 DONE: the AEP train has its nervous system — chains/models/tools emit the tree, the vault keeps the
+  runs (one flip away), the explorer reads them. The train continues: P3 GRAPH (StateGraph engine) -> P4
+  AGENT (create_agent) -> P5 the 24-middlewares -> P6 RETRIEVE -> P7 HUB -> P8 the 100% parity audit.
+  Deploy is one dispatch (healthz should say 0.520.0); the trace_flip job is pre-built and dispatch-ready
+  when the owner wants runs persisting. Rollback = one flip; no schema migration (aep_run rows are
+  ordinary observations).

@@ -27,6 +27,14 @@ from .messages import AIMessage, AIMessageChunk, BaseMessage, HumanMessage, Syst
 from .runnable import Runnable, RunnableConfig, RunnableSerializable, ensure_config
 from .prompts import PromptValue
 
+
+def _span_start(cfg: dict, obj: Any, run_type: str, inputs: Any):
+    """The P2 fire seam (lazy import, zero cost when no callbacks ride the config)."""
+    if not (cfg or {}).get("callbacks"):
+        return None
+    from .tracers import Span
+    return Span.start(cfg, obj, run_type, inputs)
+
 class UsageMetadata(TypedDict, total=False):
     input_tokens: int
     output_tokens: int
@@ -215,7 +223,15 @@ class BaseLLM(_SerializableBase, Runnable[str, str]):
                *, stop: list[str] | None = None, **kwargs: Any) -> str:
         cfg = ensure_config(config)
         kwargs = {**cfg.get("kwargs", {}), **kwargs}
-        result = self._generate_with_cache(input, stop, **kwargs)
+        span = _span_start(cfg, self, "llm", input)
+        try:
+            result = self._generate_with_cache(input, stop, **kwargs)
+        except Exception as e:  # noqa: BLE001
+            if span is not None:
+                span.error(e)
+            raise
+        if span is not None:
+            span.end(result.generations[0][0].text)
         return result.generations[0][0].text
 
     async def ainvoke(self, input: str, config: RunnableConfig | None = None,  # noqa: A002,A003
@@ -304,8 +320,17 @@ class BaseChatModel(_SerializableBase, Runnable[Any, AIMessage]):
         cfg = ensure_config(config)
         kwargs = {**cfg.get("kwargs", {}), **kwargs}
         messages = _convert_to_messages(input)
-        result = self._generate_with_cache(messages, stop, **kwargs)
-        return result.generations[0].message
+        span = _span_start(cfg, self, "chat_model", messages)
+        try:
+            result = self._generate_with_cache(messages, stop, **kwargs)
+        except Exception as e:  # noqa: BLE001
+            if span is not None:
+                span.error(e)
+            raise
+        out = result.generations[0].message
+        if span is not None:
+            span.end(out)
+        return out
 
     async def ainvoke(self, input: str | list[Any] | PromptValue,  # noqa: A002,A003
                       config: RunnableConfig | None = None,
@@ -318,13 +343,42 @@ class BaseChatModel(_SerializableBase, Runnable[Any, AIMessage]):
         cfg = ensure_config(config)
         kwargs = {**cfg.get("kwargs", {}), **kwargs}
         messages = _convert_to_messages(input)
-        yield from self._stream(messages, stop=stop, **kwargs)
+        span = _span_start(cfg, self, "chat_model", messages)
+        if span is None:
+            yield from self._stream(messages, stop=stop, **kwargs)
+            return
+        last: AIMessageChunk | None = None
+        try:
+            for chunk in self._stream(messages, stop=stop, **kwargs):
+                last = chunk
+                span.token(chunk)
+                yield chunk
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(last)   # streaming close carries the last chunk (the v2 shape)
 
     async def astream(self, input: str | list[Any] | PromptValue,  # noqa: A002,A003
                       config: RunnableConfig | None = None,
                       *, stop: list[str] | None = None, **kwargs: Any):
-        for chunk in self.stream(input, config, stop=stop, **kwargs):
-            yield chunk
+        cfg = ensure_config(config)
+        kwargs = {**cfg.get("kwargs", {}), **kwargs}
+        messages = _convert_to_messages(input)
+        span = _span_start(cfg, self, "chat_model", messages)
+        if span is None:
+            for chunk in self._stream(messages, stop=stop, **kwargs):
+                yield chunk
+            return
+        last: AIMessageChunk | None = None
+        try:
+            for chunk in self._stream(messages, stop=stop, **kwargs):
+                last = chunk
+                span.token(chunk)
+                yield chunk
+        except Exception as e:  # noqa: BLE001
+            span.error(e)
+            raise
+        span.end(last)
 
     # -- declarative surface -------------------------------------------------
 

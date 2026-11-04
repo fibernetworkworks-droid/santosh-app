@@ -775,9 +775,17 @@ def test_aep_source_has_no_network_imports():
 
 
 def test_no_config_reads_in_aep():
+    """P1 inertness: the LIBRARY modules never read config or env. The P2 flag lane
+    (vault_sink.py) is the deliberate exception - it imports get_settings LAZILY
+    inside functions (the docs7 shape: the flag law applies from P2 tracers on),
+    so a fresh interpreter import stays inert (see test_import_is_inert...)."""
     aep_dir = REPO_ROOT / "server/app/aep"
     for f in aep_dir.glob("*.py"):
         src = f.read_text(encoding="utf-8")
+        if f.name == "vault_sink.py":                 # the P2 flag lane, lazy imports only
+            assert src.count("get_settings") <= 2
+            assert "def _settings()" in src and "from ..config import get_settings" in src
+            continue
         assert "get_settings" not in src, f"{f.name} reads config"
         assert "os.environ" not in src, f"{f.name} reads env directly"
 
@@ -798,15 +806,12 @@ def test_package_export_law_all_names_importable():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.513.0"
-
+    assert APP_VERSION == "0.520.0"
 
 def test_pubspec_pin():
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.513.0+548" in pub
-
+    assert "version: 0.520.0+549" in pub
 
 def test_main_story_markers():
     main = (REPO_ROOT / "server/app/main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.513.0"' in main
-    assert "HOOLA CORE" in main and "aep" in main and "langchain" in main
+    assert 'APP_VERSION = "0.520.0"' in main

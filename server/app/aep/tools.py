@@ -139,7 +139,7 @@ class BaseTool(RunnableSerializable[Any, Any]):
             return raw
         raise ToolException(f"Unsupported tool input type: {type(raw).__name__}")
 
-    def invoke(self, input: Any, config: RunnableConfig | None = None) -> Any:  # noqa: A002,A003
+    def _invoke_bare(self, input: Any) -> Any:  # noqa: A002,A003
         parsed = self._parse_input(input)
         as_tool_call = isinstance(input, dict) and (
             input.get("type") == "tool_call" or ("name" in input and "args" in input and "id" in input)
@@ -165,6 +165,21 @@ class BaseTool(RunnableSerializable[Any, Any]):
         if self.response_format == "content_and_artifact" and isinstance(result, tuple):
             return result[0]
         return result
+
+    def invoke(self, input: Any, config: RunnableConfig | None = None) -> Any:  # noqa: A002,A003
+        from .runnable import ensure_config as _ensure
+        cfg = _ensure(config)
+        if not cfg.get("callbacks"):
+            return self._invoke_bare(input)
+        from .tracers import Span
+        span = Span.start(cfg, self, "tool", input)
+        try:
+            out = self._invoke_bare(input)
+        except Exception as e:  # noqa: BLE001 - re-raised after the error event
+            span.error(e)
+            raise
+        span.end(out)
+        return out
 
     async def ainvoke(self, input: Any, config: RunnableConfig | None = None) -> Any:  # noqa: A002,A003
         import asyncio

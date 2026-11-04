@@ -27,6 +27,8 @@ on:
           - ack_refresh
           - deploy
           - rollback_stable
+          - trace_flip
+          - trace_flip
           - pc_deploy
           - pc_pair
           - pc_logs
@@ -583,6 +585,19 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_docs7 =\", get_settings().coder_docs7)"' ;;
+              trace_flip)
+                # v0.520.0 HOOLA TRACE - the owner's flip slot for the run persistence + explorer:
+                # AEP_TRACE=true in $CORE/.env, the same reviewed one-boolean shape as
+                # coder_flip/docs7_flip (the code default stays OFF and the tests pin it - the
+                # deployment opts in here, not in config.py). Idempotent upsert, restart, health,
+                # then the EFFECTIVE value printed back from a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^AEP_TRACE=" $CORE/.env; then sed -i "s#^AEP_TRACE=.*#AEP_TRACE=true#" $CORE/.env; else printf "AEP_TRACE=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^AEP_TRACE=true$" $CORE/.env && echo "== AEP_TRACE=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective aep_trace =\", get_settings().aep_trace)"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
