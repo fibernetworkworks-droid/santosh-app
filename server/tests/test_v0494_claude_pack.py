@@ -25,8 +25,9 @@ UPSTREAM_SHA = {      # sha256 of the upstream SKILL.md with trailing newlines s
     "frontend-design": "c3d0d3ea592ad4f01215009a7ebcf7b7d948f568c15dd77e24ff7172c8643f2b",
     "canvas-design": "a1f288079624402f30682753c1d43920b6664785698d21d3e7aa197450a6448b",
     "webapp-testing": "51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2",
+    "mcp-builder": "3b2ace9cadc148da1ed15d6458f81a1dea38c4df6fa4aee25a4f77ddc243dd08",
 }
-HOOLA_ORIGINAL = {"coauthor-docs"}          # written by Newtika, no upstream text, no LICENSE.txt needed
+HOOLA_ORIGINAL = {"coauthor-docs", "skill-maker"}          # written by Newtika, no upstream text, no LICENSE.txt needed
 ALL = set(UPSTREAM_SHA) | HOOLA_ORIGINAL
 MARK = "<!-- HOOLA NOTE:"
 
@@ -57,9 +58,10 @@ def test_pack_contents_and_licences():
     for name in UPSTREAM_SHA:
         lic = (d[name] / "LICENSE.txt").read_text(encoding="utf-8")
         assert "Apache License" in lic and "Version 2.0" in lic, name
-    assert not (d["coauthor-docs"] / "LICENSE.txt").exists()
-    txt = (d["coauthor-docs"] / "SKILL.md").read_text(encoding="utf-8")
-    assert "Hoola original" in txt and "contains no text from any third-party skill" in txt
+    for orig in HOOLA_ORIGINAL:
+        assert not (d[orig] / "LICENSE.txt").exists()
+        txt = (d[orig] / "SKILL.md").read_text(encoding="utf-8")
+        assert "Hoola original" in txt and "contains no text from any third-party skill" in txt, orig
 
 
 @pytest.mark.parametrize("name", sorted(UPSTREAM_SHA))
@@ -80,6 +82,8 @@ def test_resources_shipped():
     assert (d["internal-comms"] / "examples" / "3p-updates.md").is_file()
     assert (d["theme-factory"] / "themes" / "ocean-depths.md").is_file()
     assert (d["webapp-testing"] / "scripts" / "with_server.py").is_file()
+    assert (d["mcp-builder"] / "reference" / "python_mcp_server.md").is_file()
+    assert (d["mcp-builder"] / "scripts" / "evaluation.py").is_file()
     assert not (d["canvas-design"] / "canvas-fonts").exists()            # 5.5 MB of binary Latin fonts: not shipped
     assert (d["theme-factory"] / "theme-showcase.pdf").is_file()
     assert len(list((d["theme-factory"] / "themes").glob("*.md"))) == 10
@@ -93,7 +97,7 @@ def test_seed_claude_once_ever_as_imported_folders(desk):
     assert skill_packs.seed_claude(T) == {"claude_seeded": 0}                       # exactly-once
     rows = {s["name"]: s for s in skills_store.listing(T)}
     assert set(rows) == ALL
-    assert all(r.get("folder") for n, r in rows.items() if n != "coauthor-docs")     # coauthor-docs = one file
+    assert all(r.get("folder") for n, r in rows.items() if n not in HOOLA_ORIGINAL)  # originals = one file
     raw = open(skills_store.raw_path(T, "theme-factory"), encoding="utf-8").read()
     assert "imported: true" in raw and "license:" in raw and "when_to_use:" in raw
     r = skills_store.read(T, "theme-factory")
@@ -154,6 +158,10 @@ ASKS = [
     ("meri website ke button aur form test karo, console errors dekho", "webapp-testing"),
     ("help me write a proposal document step by step", "coauthor-docs"),
     ("ek spec document likhna hai saath mein, outline se shuru karein", "coauthor-docs"),
+    ("build an MCP server in python for my crm api", "mcp-builder"),
+    ("mere service ke liye MCP server banana hai, FastMCP se tools likhne hain", "mcp-builder"),
+    ("i repeat this task every month, make it a reusable skill", "skill-maker"),
+    ("ye kaam baar baar karti hoon, iska skill banao aur sudharo", "skill-maker"),
 ]
 NEGATIVE = [        # unrelated asks: none of the three pack skills may ride the injected top 2
     "mera GST invoice banao for Sharma traders",
@@ -191,3 +199,35 @@ def test_injected_block_stays_inside_budget(desk):
         blk = inject.skills_block(T, a, compact=True)
         assert len(blk) <= inject.SKILLS_COMPACT_BUDGET
         assert re.search(r"^- [a-z0-9-]+: ", blk, re.M)
+
+
+# ---------------------------------------------------------------- P4: mcp-builder + skill-maker
+
+def test_mcp_builder_reference_files_readable_and_note_honest(desk):
+    skill_packs.seed_claude(T)
+    r = skills_store.read(T, "mcp-builder")
+    assert "reference/mcp_best_practices.md" in r["files"] and "scripts/evaluation.py" in r["files"]
+    bp = skills_store.read_file(T, "mcp-builder", "reference/mcp_best_practices.md")
+    assert len(bp["content"]) > 1000
+    big = skills_store.read_file(T, "mcp-builder", "reference/node_mcp_server_v2.md")
+    assert big["content"]                                                       # the longest guide still opens
+    assert "code likha hai, abhi chalaya nahi" in r["body"]                    # never claims a test it did not run
+    assert "bazar_find" in r["body"] and "scrape_page" in r["body"]
+
+
+def test_skill_maker_respects_the_store_limits(desk):
+    skill_packs.seed_claude(T)
+    r = skills_store.read(T, "skill-maker")
+    for needle in ("60 characters", "4,000 characters", "Save only after her yes", "Dry-run"):
+        assert needle in r["body"], needle
+    assert "not proof that the skill works" in r["body"]                      # no fake test claim
+
+
+def test_skill_maker_advice_is_enforced_by_the_real_store(desk):
+    """The limits the skill teaches are the limits skill_manage really enforces."""
+    ok = skills_store.apply(T, [{"action": "create", "name": "monthly-gst-prep",
+                                 "description": "Prepare the monthly GST filing pack",
+                                 "body": "Use when: gst filing, GST ka hisaab\n1. collect invoices"}])
+    assert ok.get("ok"), ok
+    bad = skills_store.apply(T, [{"action": "create", "name": "x-y", "description": "d" * 61, "body": "b"}])
+    assert "error" in bad and "60" in bad["error"]

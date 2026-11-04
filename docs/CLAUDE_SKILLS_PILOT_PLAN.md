@@ -97,3 +97,13 @@ safest skills. Exit per wave: store tests green, card numbers printed, nothing i
   says plainly they are not run), and coauthor-docs (Hoola ORIGINAL: upstream doc-coauthoring has no licence file).
   Pack = 6 skills, desk = 47. Retrieval card 16/16 right skill in the injected top 2, 0/4 unrelated asks pull one in.
   Still open: font licences only matter if fonts are ever vendored; script execution (S3) not started.
+- 4 Nov 2026 P4 DONE: mcp-builder (upstream, with its 5 reference guides and scripts/ stored for reading only; the
+  Hoola note says "written, not run", points to Bazar before building, scrape_page instead of WebFetch) and
+  skill-maker (Hoola ORIGINAL replacement for skill-creator: interview, draft inside the 60/4,000 limits, dry-run on
+  sample asks, save only after her yes, tune from the desk numbers; it says plainly the dry-run is reasoning, not a
+  test suite). Pack = 8 skills (5 upstream + mcp-builder = 6 upstream, 2 originals), desk = 49.
+  Retrieval card 20/20 right skill in the injected top 2. The card caught a real false positive: skill-maker's own
+  example words (gst, sharma, invoice) pulled it into GST asks; fixed by neutral examples. FTS is an OR of words, so
+  common Hinglish verbs (banao, likho) in a when_to_use line widen matches: keep trigger lines to distinctive nouns.
+  Still open: P5 live card (does a model really follow them), S3 script running, S4 wider candidate selection,
+  seeding on first chat turn, version bump.
