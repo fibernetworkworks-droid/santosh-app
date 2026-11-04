@@ -1,11 +1,11 @@
-"""v0.486.0 BYOX guide functions — list, fetch, plan.
+"""v0.487.0 BYOX guide functions — list, fetch, plan.
 
 Three pure functions called by the byox agent tools; no I/O, no side effects.
 """
 from __future__ import annotations
 import difflib
 
-from . import CATEGORIES, SLUGS
+from . import CATEGORIES, SLUGS, TUTORIALS
 
 
 def list_categories(q: str = "") -> list[dict]:
@@ -20,15 +20,17 @@ def list_categories(q: str = "") -> list[dict]:
             "display_name": cat["display_name"],
             "description": cat["description"],
             "best_languages": cat["best_languages"],
+            "tutorial_count": cat.get("tutorial_count", 0),
         })
     return out
 
 
-def get_guide(slug_or_name: str, level: str = "standard") -> dict:
+def get_guide(slug_or_name: str, level: str = "standard", language: str = "") -> dict:
     """Return a full guide dict for a category.
 
     slug_or_name: exact slug, display_name substring, or fuzzy match.
     level: 'quick' (phases + reference only) | 'standard' (all fields) | 'deep' (all + tips).
+    language: optional filter — only return tutorials in this language (case-insensitive).
     """
     key = _resolve(slug_or_name)
     if key is None:
@@ -36,6 +38,16 @@ def get_guide(slug_or_name: str, level: str = "standard") -> dict:
         return {"error": f"Category {slug_or_name!r} not found.",
                 "suggestions": close}
     cat = CATEGORIES[key]
+    all_tutorials = TUTORIALS.get(key, [])
+    lang_filter = (language or "").strip().lower()
+    if lang_filter:
+        filtered = [t for t in all_tutorials if t["lang"].lower() == lang_filter]
+        tutorials_out = filtered if filtered else all_tutorials
+        lang_note = None if filtered else f"No tutorials found for language {language!r}; showing all languages."
+    else:
+        tutorials_out = all_tutorials
+        lang_note = None
+
     base: dict = {
         "slug": cat["slug"],
         "display_name": cat["display_name"],
@@ -44,10 +56,20 @@ def get_guide(slug_or_name: str, level: str = "standard") -> dict:
         "best_languages": cat["best_languages"],
         "phases": cat["phases"],
         "reference_url": cat["reference_url"],
+        "tutorial_count": cat.get("tutorial_count", len(all_tutorials)),
+        "tutorials": tutorials_out,
     }
+    if lang_note:
+        base["language_note"] = lang_note
     if level == "quick":
-        return {"slug": cat["slug"], "display_name": cat["display_name"],
-                "phases": cat["phases"], "reference_url": cat["reference_url"]}
+        return {
+            "slug": cat["slug"],
+            "display_name": cat["display_name"],
+            "phases": cat["phases"],
+            "reference_url": cat["reference_url"],
+            "tutorial_count": base["tutorial_count"],
+            "tutorials": tutorials_out,
+        }
     if level == "deep":
         base["deep_tips"] = _deep_tips(cat)
     return base
@@ -101,6 +123,7 @@ def plan_learning(want: str, background: str = "", time_weeks: int = 4) -> dict:
             "goal": cat["phases"][0],
             "milestone": cat["phases"][-1],
             "reference_url": cat["reference_url"],
+            "tutorial_count": cat.get("tutorial_count", len(TUTORIALS.get(slug, []))),
         })
 
     return {

@@ -18674,3 +18674,20 @@ Owner: "Read https://github.com/codecrafters-io/build-your-own-x — build the u
 - Console stamps stay at 0.485.0 (server-only release, no console change — v0.479/v0.483 precedent)
 - Mera PC freeze respected; desktop untouched; server-only deploy, old APKs keep working
 
+
+## v0.487.0 BYOX FULL DATASET — 415 tutorials, language filtering (2026-11-04)
+
+Owner: "YES BUILD IT WITH ALL 389 LINKS" (actual count: 415 tutorials across 31 categories from github.com/codecrafters-io/build-your-own-x).
+
+### What changed
+- `server/app/byox/__init__.py` — added `TUTORIALS: dict[str, list[dict]]` (415 entries, 31 slugs); each entry has `lang`, `title`, `url`, `video` fields; a post-import loop stamps `tutorial_count` onto every CATEGORIES entry.
+- `server/app/byox/guide.py` — `get_guide()` gains `language=""` param: filters `tutorials` list to matching language (case-insensitive); if no match, returns all with `language_note`; returns `tutorials` and `tutorial_count` in every response level; `list_categories()` now includes `tutorial_count`; `plan_learning()` includes `tutorial_count` per project step.
+- `server/app/agent/byox_tools.py` — `byox_guide` tool schema gains `language` property; handler passes it through.
+- `server/tests/test_v0486_byox.py` — updated to v0.487.0; added tests: `test_get_guide_tutorials_count_matches`, `test_get_guide_language_filter`, `test_get_guide_language_filter_no_match_returns_all`, `test_byox_guide_tool_has_language_param`, `test_tutorials_dict_has_31_keys`, `test_tutorials_total_count`.
+
+### Numbers
+- 415 tutorials total (71 web-server, 60 misc-systems, 41 programming-language, 34 game, 21 blockchain…)
+- 22/30 runnable tests pass in sandbox (8 fail on sqlalchemy/pydantic_settings not installed — same as v0.486)
+- pubspec 0.486.0+531 → 0.487.0+532
+- Console stamps updated 0.485.0 × 21 → 0.487.0 × 21
+- Mera PC freeze respected; desktop untouched; server-only deploy, old APKs keep working

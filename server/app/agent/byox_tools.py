@@ -1,4 +1,4 @@
-"""v0.486.0 BYOX tools — Build-Your-Own-X skill pack.
+"""v0.487.0 BYOX tools — Build-Your-Own-X skill pack.
 
 Three tools:
   byox_list   list all 31 BYOX categories, optionally filtered
@@ -38,7 +38,8 @@ BYOX_TOOLS = [
             "Use when the user picks a specific project to build (e.g. 'build a git clone', "
             "'how do I build a database from scratch'). "
             "level='quick' returns phases only; level='standard' (default) returns everything; "
-            "level='deep' adds practitioner tips."
+            "level='deep' adds practitioner tips. "
+            "language= filters tutorials to that language (e.g. 'Python', 'Rust', 'Go')."
         ),
         "input_schema": {
             "type": "object",
@@ -51,6 +52,10 @@ BYOX_TOOLS = [
                     "type": "string",
                     "enum": ["quick", "standard", "deep"],
                     "description": "Detail level (default: standard)",
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Optional language filter, e.g. 'Python', 'Rust', 'Go', 'JavaScript'",
                 },
             },
             "required": ["slug_or_name"],
@@ -111,7 +116,8 @@ async def _handle_byox_list(ctx) -> dict:
 async def _handle_byox_guide(ctx) -> dict:
     slug_or_name = ctx.get("slug_or_name", "") or ""
     level = ctx.get("level", "standard") or "standard"
-    return get_guide(slug_or_name, level=level)
+    language = ctx.get("language", "") or ""
+    return get_guide(slug_or_name, level=level, language=language)
 
 
 async def _handle_byox_plan(ctx) -> dict:

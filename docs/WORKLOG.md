@@ -733,3 +733,9 @@ Date: 2026-11-04
 Branch: claude/loving-goldberg-ywnzsq
 Version: v0.486.0
 Summary: BYOX SKILL PACK — Build-Your-Own-X 31 categories, seed default on. New: server/app/byox/ (registry + guide functions), agent/byox_tools.py (3 tools), 31 SKILL.md seed files, admit byox family, /api/byox/* routes, byox_enabled config (default ON). 26 tests (17 pass in sandbox, 9 need server deps). Server-only deploy.
+
+Task ID: byox-full-dataset-v0487
+Date: 2026-11-04
+Branch: claude/loving-goldberg-ywnzsq
+Version: v0.487.0
+Summary: BYOX FULL DATASET — all 415 tutorials from 31 categories with language filtering. Added TUTORIALS dict to byox/__init__.py, tutorial_count on every category, language= param in get_guide() / byox_guide tool. 22 sandbox tests pass. Server-only deploy.

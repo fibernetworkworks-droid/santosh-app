@@ -1,12 +1,13 @@
-"""v0.486.0 BYOX SKILL PACK tests.
+"""v0.487.0 BYOX SKILL PACK tests.
 
 Covers:
-- Registry completeness (31 categories)
-- guide.list_categories: unfiltered, filtered, no match
+- Registry completeness (31 categories, TUTORIALS dict)
+- guide.list_categories: unfiltered, filtered, no match, tutorial_count
 - guide.get_guide: exact slug, display_name substring, fuzzy, missing
 - guide.get_guide levels: quick, standard, deep
-- guide.plan_learning: basic, with background, time_weeks
-- byox_tools: tool registration (3 tools), labels, handlers exist
+- guide.get_guide language filtering
+- guide.plan_learning: basic, with background, time_weeks, tutorial_count
+- byox_tools: tool registration (3 tools), labels, handlers exist, language param
 - tools.py BYOX tools registered in TOOLS, HANDLERS, TOOL_LABELS
 - admit.py byox family keywords
 - config byox_enabled default
@@ -30,13 +31,14 @@ def test_registry_has_31_categories():
 def test_every_category_has_required_fields():
     from app.byox import CATEGORIES
     required = {"slug", "display_name", "description", "core_concepts",
-                "best_languages", "phases", "reference_url"}
+                "best_languages", "phases", "reference_url", "tutorial_count"}
     for slug, cat in CATEGORIES.items():
         assert required <= cat.keys(), f"{slug} missing fields"
         assert cat["slug"] == slug
         assert len(cat["phases"]) >= 4
         assert len(cat["core_concepts"]) >= 3
         assert cat["reference_url"].startswith("http")
+        assert isinstance(cat["tutorial_count"], int) and cat["tutorial_count"] >= 0
 
 
 def test_all_slugs_byox_prefixed():
@@ -53,6 +55,7 @@ def test_list_all_categories():
     assert len(cats) == 31
     for c in cats:
         assert "slug" in c and "display_name" in c
+        assert "tutorial_count" in c and isinstance(c["tutorial_count"], int)
 
 
 def test_list_filter_by_keyword():
@@ -76,6 +79,31 @@ def test_get_guide_exact_slug():
     assert g["slug"] == "byox-git"
     assert "phases" in g and len(g["phases"]) >= 4
     assert "core_concepts" in g
+    assert "tutorials" in g and isinstance(g["tutorials"], list)
+    assert g["tutorial_count"] > 0
+
+
+def test_get_guide_tutorials_count_matches():
+    from app.byox import TUTORIALS
+    from app.byox.guide import get_guide
+    g = get_guide("byox-web-server")
+    assert len(g["tutorials"]) == len(TUTORIALS.get("byox-web-server", []))
+
+
+def test_get_guide_language_filter():
+    from app.byox.guide import get_guide
+    g = get_guide("byox-git", language="Python")
+    assert all(t["lang"] == "Python" for t in g["tutorials"])
+    assert len(g["tutorials"]) > 0
+
+
+def test_get_guide_language_filter_no_match_returns_all():
+    from app.byox.guide import get_guide
+    from app.byox import TUTORIALS
+    g = get_guide("byox-git", language="COBOL")
+    # falls back to all tutorials + language_note
+    assert "language_note" in g
+    assert len(g["tutorials"]) == len(TUTORIALS.get("byox-git", []))
 
 
 def test_get_guide_display_name_substring():
@@ -120,6 +148,7 @@ def test_plan_learning_basic():
     assert len(plan["projects"]) >= 1
     for proj in plan["projects"]:
         assert "slug" in proj and "reference_url" in proj
+        assert "tutorial_count" in proj and isinstance(proj["tutorial_count"], int)
 
 
 def test_plan_learning_with_background():
@@ -144,6 +173,12 @@ def test_byox_tools_exports():
     assert names == {"byox_list", "byox_guide", "byox_plan"}
     assert set(BYOX_LABELS.keys()) == names
     assert set(BYOX_HANDLERS.keys()) == names
+
+
+def test_byox_guide_tool_has_language_param():
+    from app.agent.byox_tools import BYOX_TOOLS
+    guide_tool = next(t for t in BYOX_TOOLS if t["name"] == "byox_guide")
+    assert "language" in guide_tool["input_schema"]["properties"]
 
 
 def test_byox_tools_registered_in_tools_py():
@@ -232,6 +267,20 @@ def test_byox_guide_route(client):
 
 # ---------------------------------------------------------------- version
 
+def test_tutorials_dict_has_31_keys():
+    from app.byox import TUTORIALS, SLUGS
+    # every slug that exists should be in TUTORIALS (at least the major ones)
+    assert len(TUTORIALS) == 31
+    for slug in SLUGS:
+        assert slug in TUTORIALS, f"TUTORIALS missing {slug}"
+
+
+def test_tutorials_total_count():
+    from app.byox import TUTORIALS
+    total = sum(len(v) for v in TUTORIALS.values())
+    assert total >= 400  # 415 expected
+
+
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.486.0"
+    assert APP_VERSION == "0.487.0"
