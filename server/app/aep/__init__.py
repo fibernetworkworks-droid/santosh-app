@@ -24,9 +24,12 @@ from P2 where tracers and agents actually run):
                RunTreeTracer, InMemoryRunStore, astream_events v2, the Span fire seam
 - vault_sink : (P2) the flag-gated run persistence - runs land as vault observations
                typed 'aep_run', redacted before storage (aep_trace, default OFF)
+- graph      : (P3 v0.530.0 HOOLA GRAPH) the state-graph engine - StateGraph
+               (nodes/edges/conditional, fan-out + join barriers), add_messages +
+               AgentState, interrupt/Command park-and-resume, MemorySaver +
+               SqliteSaver checkpointers, store wiring
 
-P2 (HOOLA TRACE) adds tracers/run trees; P3 (HOOLA GRAPH) the state-graph engine;
-P4 (HOOLA AGENT) create_agent; P5 the 24-middleware framework; P6 retrieval;
+P3 (HOOLA GRAPH) is the state-graph engine; P4 (HOOLA AGENT) create_agent; P5 the 24-middleware framework; P6 retrieval;
 P7 the hub/loader/conformance suite.
 """
 from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, extended)
@@ -36,12 +39,29 @@ from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, exten
     parsers,
     prompts,
     parsers as _parsers_mod,
+    graph,
     runnable,
     serializable,
     stores,
     tools,
     tracers,
     vault_sink,
+)
+from .graph import (
+    INTERRUPT_KEY,
+    END,
+    START,
+    AgentState,
+    BaseCheckpointSaver,
+    Command,
+    CompiledStateGraph,
+    GraphInterrupt,
+    GraphRecursionError,
+    MemorySaver,
+    SqliteSaver,
+    StateGraph,
+    add_messages,
+    interrupt,
 )
 from .history import BaseChatMessageHistory, InMemoryChatMessageHistory, get_buffer_string
 from .messages import (
@@ -174,4 +194,9 @@ __all__ = [
     "callbacks_from_config", "dumps_safe", "global_tracer", "reset_global",
     "traced_invoke", "VaultRunSink", "attach_vault_sink", "trace_enabled",
     "vault_runs", "vault_run_by_id", "TRACE_STATS",
+    # P3 graph (HOOLA GRAPH)
+    "START", "END", "INTERRUPT_KEY", "AgentState", "add_messages",
+    "BaseCheckpointSaver", "MemorySaver", "SqliteSaver",
+    "Command", "CompiledStateGraph", "GraphInterrupt", "GraphRecursionError",
+    "StateGraph", "interrupt",
 ]

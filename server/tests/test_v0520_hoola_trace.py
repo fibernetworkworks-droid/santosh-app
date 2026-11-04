@@ -651,11 +651,15 @@ def test_flags_default_off_and_redact_on():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.523.0"
-    assert "0.523.0+552" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.530.0"
+    assert "0.530.0+553" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.523.0"')
-    assert "HOOLA TRACE" in line and "astream_events" in line and "aep_run" in line
+    assert line.startswith('APP_VERSION = "0.530.0"')
+    # the story-token pin rides the NEWEST story (the newest-story precedent);
+    # the v0.520 story tokens live in git history - the v0.530 story carries
+    # the P3 markers AND names the trace layer it sits on
+    assert "HOOLA GRAPH" in line and "StateGraph" in line and "interrupt" in line
+    assert "HOOLA TRACE" in line   # the Previous chain keeps the P2 name
 
 
 def test_no_new_registry_tools():

@@ -2,6 +2,26 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.530.0 HOOLA GRAPH — the state-graph engine, P3 of the HOOLA AEP plan (5 Nov 2026)
+
+The langgraph idea hand-built as `server/app/aep/graph.py` (zero upstream code). StateGraph
+compiles a TypedDict state schema + nodes + edges + conditional edges into a
+CompiledStateGraph that is itself a Runnable (it composes with `|`). Channels:
+last-value-wins for plain keys, `Annotated[T, reducer]` merges through the reducer
+(operator.add works; `add_messages` is the messages reducer), first-ever values seed the
+channel. The walk runs super-steps — every node sees the same pre-step state, static
+multi-edges fan out, a join node waits for ALL its parents (the barrier), routing is
+additive (routers + static edges both fire), recursion_limit 25 with an honest
+GraphRecursionError. `interrupt(value)` parks the graph (checkpointed, the state carries
+`__interrupt__`); `Command(resume=...)` re-enters — the node re-runs from its top, answered
+slots replay in call order, open slots re-park with earlier answers preserved.
+Checkpointers: MemorySaver (thread-safe ring) and SqliteSaver (stdlib sqlite3 WAL, or the
+vault's sqlalchemy Engine used lazily) — a checkpoint after EVERY super-step, invoke(None)
+resumes the stored walk (the crash path). Tracer seam: one root chain span named
+StateGraph per invocation, one chain span per node named by the node — the P2 run tree
+nests the walk with a single trace_id. Registry stays 542 (library module — no tools, no
+routes, no flag; the inertness law re-proven). Tests: test_v0530_hoola_graph.py (42).
+
 ## v0.502.0 DHARA — her workflows (4 Nov 2026)
 
 The n8n idea, house-sized, END TO END (owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END" after the
