@@ -92,3 +92,8 @@ safest skills. Exit per wave: store tests green, card numbers printed, nothing i
   like BYOX). Upstream text pinned unchanged by hash; Hoola note + Hinglish when_to_use added. Retrieval card in
   tests: 10/10 asks find the right skill in the injected top 2 (English + Hinglish) on a 44-skill tenant, 0/4
   unrelated asks pull a pack skill in. NOT measured: a live model actually following the skills (needs the P5 live card).
+- 4 Nov 2026 P3 DONE: canvas-design (upstream, WITHOUT canvas-fonts: 5.5 MB of Latin-only binary fonts the model
+  cannot read, one copy per tenant), webapp-testing (upstream; its scripts are stored for reading only, the Hoola note
+  says plainly they are not run), and coauthor-docs (Hoola ORIGINAL: upstream doc-coauthoring has no licence file).
+  Pack = 6 skills, desk = 47. Retrieval card 16/16 right skill in the injected top 2, 0/4 unrelated asks pull one in.
+  Still open: font licences only matter if fonts are ever vendored; script execution (S3) not started.

@@ -1,5 +1,6 @@
-"""CLAUDE SKILLS P2 - the first three Anthropic example skills (Apache 2.0) shipped as a seed pack:
-internal-comms, theme-factory, frontend-design.
+"""CLAUDE SKILLS P2+P3 - Anthropic example skills (Apache 2.0) shipped as a seed pack: internal-comms,
+theme-factory, frontend-design (P2), canvas-design, webapp-testing (P3), plus one Hoola original,
+coauthor-docs (the upstream doc-coauthoring has no licence, so it is NOT copied).
 
 Pins: (1) the upstream text is UNCHANGED (hash of everything above the Hoola note, minus the one
 added when_to_use line) and each skill keeps its LICENSE.txt; (2) the Hoola note + modification
@@ -22,7 +23,11 @@ UPSTREAM_SHA = {      # sha256 of the upstream SKILL.md with trailing newlines s
     "internal-comms": "6c5721a4357fd5a6aacef9cf1f8cc197425a0f0d5c9e341b3449448e6d307679",
     "theme-factory": "366ee55d92407128fd5f05871d9a6135bfe6fad2146ec2652edf99fc0b0d177b",
     "frontend-design": "c3d0d3ea592ad4f01215009a7ebcf7b7d948f568c15dd77e24ff7172c8643f2b",
+    "canvas-design": "a1f288079624402f30682753c1d43920b6664785698d21d3e7aa197450a6448b",
+    "webapp-testing": "51b7349e77ec63b7744a6f63647e7566a0b4d2e301121cc10e8c2113af6556a2",
 }
+HOOLA_ORIGINAL = {"coauthor-docs"}          # written by Newtika, no upstream text, no LICENSE.txt needed
+ALL = set(UPSTREAM_SHA) | HOOLA_ORIGINAL
 MARK = "<!-- HOOLA NOTE:"
 
 
@@ -46,12 +51,15 @@ def _dirs():
 
 # ---------------------------------------------------------------- (1)+(2) files
 
-def test_pack_has_three_skills_with_licence():
+def test_pack_contents_and_licences():
     d = _dirs()
-    assert set(d) == set(UPSTREAM_SHA)
-    for name, p in d.items():
-        lic = (p / "LICENSE.txt").read_text(encoding="utf-8")
+    assert set(d) == ALL
+    for name in UPSTREAM_SHA:
+        lic = (d[name] / "LICENSE.txt").read_text(encoding="utf-8")
         assert "Apache License" in lic and "Version 2.0" in lic, name
+    assert not (d["coauthor-docs"] / "LICENSE.txt").exists()
+    txt = (d["coauthor-docs"] / "SKILL.md").read_text(encoding="utf-8")
+    assert "Hoola original" in txt and "contains no text from any third-party skill" in txt
 
 
 @pytest.mark.parametrize("name", sorted(UPSTREAM_SHA))
@@ -71,6 +79,8 @@ def test_resources_shipped():
     d = _dirs()
     assert (d["internal-comms"] / "examples" / "3p-updates.md").is_file()
     assert (d["theme-factory"] / "themes" / "ocean-depths.md").is_file()
+    assert (d["webapp-testing"] / "scripts" / "with_server.py").is_file()
+    assert not (d["canvas-design"] / "canvas-fonts").exists()            # 5.5 MB of binary Latin fonts: not shipped
     assert (d["theme-factory"] / "theme-showcase.pdf").is_file()
     assert len(list((d["theme-factory"] / "themes").glob("*.md"))) == 10
 
@@ -79,10 +89,11 @@ def test_resources_shipped():
 
 def test_seed_claude_once_ever_as_imported_folders(desk):
     res = skill_packs.seed_claude(T)
-    assert res == {"claude_seeded": 3}
+    assert res == {"claude_seeded": len(ALL)}
     assert skill_packs.seed_claude(T) == {"claude_seeded": 0}                       # exactly-once
     rows = {s["name"]: s for s in skills_store.listing(T)}
-    assert set(rows) == set(UPSTREAM_SHA) and all(r.get("folder") for r in rows.values())
+    assert set(rows) == ALL
+    assert all(r.get("folder") for n, r in rows.items() if n != "coauthor-docs")     # coauthor-docs = one file
     raw = open(skills_store.raw_path(T, "theme-factory"), encoding="utf-8").read()
     assert "imported: true" in raw and "license:" in raw and "when_to_use:" in raw
     r = skills_store.read(T, "theme-factory")
@@ -103,7 +114,7 @@ def test_read_file_reaches_examples_and_themes(desk):
 def test_never_over_her_skill_and_switch_off(desk):
     skills_store.create(T, "internal-comms", "My own", "my own words")
     res = skill_packs.seed_claude(T)
-    assert res == {"claude_seeded": 2}
+    assert res == {"claude_seeded": len(ALL) - 1}
     assert skills_store.read(T, "internal-comms")["body"] == "my own words"
     desk.setenv("CLAUDE_SKILLS_ENABLED", "false")
     from app.config import get_settings
@@ -137,6 +148,12 @@ ASKS = [
     ("design a landing page with distinctive typography", "frontend-design"),
     ("website ka design banao, typography aur layout sundar chahiye", "frontend-design"),
     ("build a dashboard UI that does not look templated", "frontend-design"),
+    ("create a poster as a pdf with a design philosophy", "canvas-design"),
+    ("ek poster banao diwali ke liye, art jaisa design", "canvas-design"),
+    ("test my web app with playwright and take a screenshot", "webapp-testing"),
+    ("meri website ke button aur form test karo, console errors dekho", "webapp-testing"),
+    ("help me write a proposal document step by step", "coauthor-docs"),
+    ("ek spec document likhna hai saath mein, outline se shuru karein", "coauthor-docs"),
 ]
 NEGATIVE = [        # unrelated asks: none of the three pack skills may ride the injected top 2
     "mera GST invoice banao for Sharma traders",
@@ -154,7 +171,7 @@ def _full_tenant():
 
 def test_retrieval_card_right_skill_in_top2(desk):
     _full_tenant()
-    assert len(skills_store.listing(T)) == 10 + 31 + 3
+    assert len(skills_store.listing(T)) == 10 + 31 + len(ALL)
     miss = [(a, w, [r["name"] for r in inject._matched(T, a)]) for a, w in ASKS
             if w not in [r["name"] for r in inject._matched(T, a)]]
     assert not miss, f"right skill missing from top 2: {miss}"
@@ -162,7 +179,7 @@ def test_retrieval_card_right_skill_in_top2(desk):
 
 def test_retrieval_card_unrelated_asks_do_not_pull_pack_in(desk):
     _full_tenant()
-    pack = set(UPSTREAM_SHA)
+    pack = ALL
     pulled = [(a, [r["name"] for r in inject._matched(T, a)]) for a in NEGATIVE
               if pack & {r["name"] for r in inject._matched(T, a)}]
     assert not pulled, f"pack skill pulled in by an unrelated ask: {pulled}"

@@ -138,12 +138,14 @@ the map shows their attribution: © OpenFreeMap, © OpenMapTiles, data © OpenSt
 ## Anthropic example skills (Apache License 2.0)
 
 Shipped (v0.494, `server/app/coder/skillpack/claude/`): **internal-comms**, **theme-factory**, **frontend-design**,
+**canvas-design** (without its canvas-fonts folder, which is not shipped), **webapp-testing**,
 from https://github.com/anthropics/skills (commit ca45fc49), Copyright Anthropic, PBC, licensed under the Apache
 License, Version 2.0. Each folder keeps its own LICENSE.txt. Changes by Newtika for Hoola (marked in each SKILL.md
 under "Hoola note"): one added `when_to_use` frontmatter line and an appended Hoola section; the original text is
 otherwise unchanged and pinned by a hash test. No Anthropic trademarks are used beyond naming the origin.
 
-Planned (not yet shipped): webapp-testing, canvas-design, mcp-builder, skill-creator, under the same licence.
+Also in that folder: **coauthor-docs**, a Hoola original (the upstream doc-coauthoring has no licence file, so none
+of its text is used). Planned (not yet shipped): mcp-builder, skill-creator, under the same licence.
 Licence verdicts: `docs/research/skills/licences.md`.
 
 ## Mermaid (diagram drawing for the Architecture Desk, v0.413)
