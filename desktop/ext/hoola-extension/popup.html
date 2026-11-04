@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="hi">
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 320px; margin: 0; font-family: "Segoe UI", system-ui, sans-serif; background: #F6F4FF; color: #1B1030; }
+  header { padding: 12px 14px 8px; }
+  header h1 { font-size: 15px; margin: 0 0 2px; }
+  header p { font-size: 11px; margin: 0; color: #5B5675; }
+  main { padding: 0 14px 12px; }
+  textarea { width: 100%; box-sizing: border-box; height: 56px; resize: vertical; border: 1px solid #E4E0F5;
+             border-radius: 8px; padding: 8px; font: 12px/1.4 "Segoe UI", sans-serif; background: #FFF; }
+  .row { display: flex; gap: 6px; margin-top: 8px; }
+  button { flex: 1; border: 0; border-radius: 8px; padding: 9px 10px; font: 600 12px "Segoe UI", sans-serif;
+           cursor: pointer; background: #FF9A3C; color: #1B1030; }
+  button.ghost { background: #FFF; border: 1px solid #E4E0F5; font-weight: 500; }
+  #state { font-size: 11px; margin-top: 8px; min-height: 15px; color: #5B5675; }
+  #replies { margin-top: 10px; border-top: 1px solid #E4E0F5; padding-top: 8px; }
+  .reply { font-size: 11px; line-height: 1.45; background: #FFF; border: 1px solid #E4E0F5; border-radius: 8px;
+           padding: 7px 9px; margin-top: 6px; white-space: pre-wrap; word-break: break-word; }
+  .reply b { color: #0E9F6E; }
+  footer { padding: 8px 14px 12px; font-size: 11px; }
+  footer a { color: #5B5675; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Hoola</h1>
+  <p id="pairline">Jud raha hai…</p>
+</header>
+<main>
+  <textarea id="ask" placeholder="Hoola se kya poochhna hai? (khali chhoda to sirf page jaayega)"></textarea>
+  <div class="row">
+    <button id="sendpage">Yeh page bhejiye</button>
+    <button id="sendask" class="ghost">Sirf sawaal</button>
+  </div>
+  <div id="state"></div>
+  <div id="replies"></div>
+</main>
+<footer>
+  <a href="#" id="console">Conversation kholiye</a> · <a href="#" id="opts">Options / pairing</a>
+</footer>
+<script src="popup.js"></script>
+</body>
+</html>

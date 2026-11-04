@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import __version__, axtree, app_paths, browser, extract, pt_run
+from . import __version__, axtree, app_paths, browser, ext_install, extract, pt_run
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
@@ -361,6 +361,23 @@ class Actions:
             self.log("PowerToys Run plugin 'hoola' hata diya")
         else:
             self.log("PowerToys Run plugin nahi laga")
+        return out
+
+    # ---------------- v1.9.0 W3 BROWSER EXTENSION (the 'send page to Hoola' door) --------
+    # W3 of the Platforms plan: the MV3 extension rides INSIDE the exe (ext_payload) and lands
+    # in Hoola's own %LOCALAPPDATA% folder - chrome://extensions 'Load unpacked' picks it from
+    # there (the honest off-store path; no browser policy, no registry, nothing auto-starts).
+    # Same gate as every control action; on=false files hata deta hai (the browser Remove is hers).
+    def do_ext(self, on: bool = True, **_) -> dict[str, Any]:
+        r"""v1.9 browser extension files jodo/hatao (user-level %LOCALAPPDATA%\Hoola)."""
+        self._control_on()
+        out = ext_install.set_enabled(bool(on))
+        if out.get("ok") and on:
+            self.log("Browser extension files lag gayi (chrome://extensions > Load unpacked)")
+        elif out.get("ok"):
+            self.log("Browser extension files hata di")
+        else:
+            self.log("Browser extension nahi lagi: " + str(out.get("message", ""))[:80])
         return out
 
     def do_status(self, **_) -> dict[str, Any]:

@@ -1,14 +1,14 @@
 {
-    "ID": "162E72D3C1D7464E865293A276993A7B",
-    "ActionKeyword": "hoola",
-    "IsGlobal": false,
-    "Name": "Hoola",
-    "Author": "Hoola",
-    "Version": "1.8.0",
-    "Language": "csharp",
-    "Website": "https://github.com/fibernetworkworks-droid/santosh-app",
-    "ExecuteFileName": "Community.PowerToys.Run.Plugin.Hoola.dll",
-    "IcoPathDark": "Images\\hoola.dark.png",
-    "IcoPathLight": "Images\\hoola.light.png",
-    "DynamicLoading": false
+  "ID": "162E72D3C1D7464E865293A276993A7B",
+  "ActionKeyword": "hoola",
+  "IsGlobal": false,
+  "Name": "Hoola",
+  "Author": "Hoola",
+  "Version": "1.9.0",
+  "Language": "csharp",
+  "Website": "https://github.com/fibernetworkworks-droid/santosh-app",
+  "ExecuteFileName": "Community.PowerToys.Run.Plugin.Hoola.dll",
+  "IcoPathDark": "Images\\hoola.dark.png",
+  "IcoPathLight": "Images\\hoola.light.png",
+  "DynamicLoading": false
 }

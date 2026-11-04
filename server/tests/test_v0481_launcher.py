@@ -150,7 +150,7 @@ def test_do_app_paths_is_control_gated():
 
 def test_desktop_version_bumped():
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.8.0"
+    assert santosh_desktop.__version__ == "1.9.0"
 
 
 # ---------------------------------------------------------------- the server side (FakePC, v0185 style)
@@ -242,6 +242,6 @@ def test_win_r_keys_still_blocked(opc):
 def test_versions(opc):
     operator, _ = opc
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.489.0"
+    assert APP_VERSION == "0.490.0"
     pubspec = (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
-    assert "version: 0.489.0+533" in pubspec
+    assert "version: 0.490.0+534" in pubspec

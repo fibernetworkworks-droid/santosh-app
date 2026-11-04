@@ -1,6 +1,9 @@
 // W2b of the Platforms plan: the PowerToys Run door for Hoola.
 // Alt+Space, type 'hoola', Enter - Hoola Desktop opens.
-// The launch goes through the SAME user-level App Paths alias the Win+R MVP (W2a) created
+// W3 of the Platforms plan: type 'hoola <sawaal>' and the sawaal rides the PC->Hoola TEXT LANE -
+// the plugin hands the words to Hoola Desktop with --ask, the desktop sends them into her
+// conversation (POST /api/pc/quickask with its own paired token) and Hoola answers there.
+// The launch still goes through the SAME user-level App Paths alias the Win+R MVP (W2a) created
 // (HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\hoola.exe), so this PC has
 // exactly ONE launch truth and nothing else to configure. If the alias is missing the
 // plugin says so instead of guessing paths - the desktop app owns that switch.
@@ -45,10 +48,12 @@ namespace Community.PowerToys.Run.Plugin.Hoola
                 {
                     QueryTextDisplay = q,
                     IcoPath = IconPath,
-                    Title = q.Length == 0 ? "Hoola Desktop kholo" : $"Hoola: {q}",
-                    SubTitle = "Hoola Desktop khulta hai - kaam wahan se, phone par Hoola ke saath",
+                    Title = q.Length == 0 ? "Hoola Desktop kholo" : $"Hoola se poochho: {q}",
+                    SubTitle = q.Length == 0
+                        ? "Hoola Desktop khulta hai - kaam wahan se, phone par Hoola ke saath"
+                        : "Sawaal Hoola ki conversation mein jaata hai - jawab phone / console par",
                     Score = 100,
-                    Action = _ => Launch(),
+                    Action = _ => q.Length == 0 ? Launch() : LaunchAsk(q),
                 },
             };
         }
@@ -77,6 +82,39 @@ namespace Community.PowerToys.Run.Plugin.Hoola
                 return false;
             }
         }
+
+        /// <summary>W3 text lane: hand the typed sawaal to Hoola Desktop with --ask; the desktop
+        /// sends it into her conversation through the quick-ask lane (its own paired token).</summary>
+        private bool LaunchAsk(string ask)
+        {
+            var exe = AliasExe();
+            if (exe is null)
+            {
+                Log.Warn("App Paths alias 'hoola.exe' not found for --ask", GetType());
+                Context?.API.ShowMsg("Hoola",
+                    "Pehle Hoola Desktop khologiye aur 'Win+R alias' on kijiye - wahi 'hoola' alias " +
+                    "PowerToys Run ka raasta bhi hai.");
+                return false;
+            }
+            try
+            {
+                Process.Start(new ProcessStartInfo(exe)
+                {
+                    UseShellExecute = true,
+                    Arguments = "--ask " + QuoteArg(ask),
+                });
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log.Exception("Ask launch failed", e, GetType());
+                Context?.API.ShowMsg("Hoola", $"Sawaal nahi bheja ja saka: {e.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>Windows command-line quoting: wrap in quotes, double the embedded ones.</summary>
+        internal static string QuoteArg(string arg) => '"' + arg.Replace("\"", "\"\"") + '"';
 
         /// <summary>The full SantoshDesktop.exe path from the W2a alias, or null when it is not set.</summary>
         internal static string? AliasExe()

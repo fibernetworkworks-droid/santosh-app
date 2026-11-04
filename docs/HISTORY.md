@@ -18761,3 +18761,54 @@ Owner: "W2b - PowerToys Run plugin". The Platforms plan's W2 full step: the 'hoo
   conversation needs a new server surface (the desktop bridge is a job channel only today); W3's "send page to
   Hoola" builds exactly that lane and both doors will ride it. NOT VERIFIED: the dotnet compile runs for the
   first time on the next push; the plugin has not yet been loaded by a real PowerToys.
+
+---
+
+# v0.490.0 — HOOLA WEB EXTENSION (W3, 2026-11-04; EIGHTEENTH COLLISION — re-versioned 0.487.0 -> 0.490.0: the dev's parallel chain took 0.486.0 (BYOX SKILL PACK) + 0.487.0 (BYOX FULL DATASET) + 0.488.0 (CRAWL JOBS) while W2b+W3 sat unpushed; REBASE PROTOCOL respected, rebuilt on W2b's 0.489.0 rebase of fdc7c402, all five works kept)
+
+Owner: "W3 (web extension)". The Platforms plan's W3 step: the MV3 'send page to Hoola' browser extension + the PC→Hoola
+TEXT LANE the v0.486 W2b release had explicitly named for it ("both doors will ride it" - kept). Built on branch w3-webext,
+which sits on the REBASED W2b (713e2a1c, v0.486.0 on the dev's e2a57481 base - the SEVENTEENTH-COLLISION story lives in the
+v0.486 entry and Task 25).
+
+THE LANE (`server/app/quicklane.py`, NEW - the surface the whole W-line was missing; the desktop bridge was a job channel
+only): POST /api/pc/quickask - a PAIRED device (the SAME spc_ token the bridge holds; the extension pairs through the SAME
+/api/pc/pair 6-digit flow and shows on her Mera PC list) sends {text?, url?, title?, selection?, client_id?}; the server
+composes ONE honest Hinglish user message (title + link, her selection quoted, her ask or the honest default) and rides the
+SAME turn pipeline the phone's POST /messages uses (convs.mark + bus.publish + turn_inbox.accept + run_owned) - Hoola answers
+in her conversation with every tool she already has, and reads the page with her OWN v0.483 scrape lane (this lane never
+fetches anything itself). GET /api/pc/quickask/messages reads the last display rows back for the asker. Guards: device-token
+auth (401 on revoked), the conversation must belong to the device's tenant, 30/hour/device rate cap, client_id dedup.
+Mounted beside the PC block with ONE include_router - no frozen endpoint, setting or behaviour touched (exception recorded
+in CLAUDE.md's freeze block, the W2b precedent).
+
+THE EXTENSION (`desktop/ext/hoola-extension`, MV3 Chrome/Edge/Brave): service worker + popup (pair line, ask box, page send,
+last replies, console link) + the right-click "Hoola ko bhejiye" + Ctrl+Shift+H; activeTab+scripting selection capture
+(chrome:// pages honestly skip); pairing in Options with the phone's 6-digit code, a custom server asks its host permission
+first; no eval, no remote code; version rides the desktop (1.9.0). THE RIDE: build-desktop.yml stages desktop/ext_payload/
+and the spec walks it INSIDE SantoshDesktop.exe (%TEMP%\_MEIxxxx\ext); the release ships Hoola-Chrome-extension.zip. THE
+INSTALLER (`ext_install.py`, the pt_run.py twin): copies ONLY Hoola's own folder to %LOCALAPPDATA%\Hoola\chrome-extension
+(user-level, no admin, NO browser policy, nothing auto-starts), whole-folder replace = upgrade, MV3 checked, calm undo,
+honest errors; the window's "Browser extension" card installs on HER click and names the 3 steps. Desktop 1.9.0 do_ext
+behind the SAME _control_on() switch.
+
+THE DOORS RIDE IT: Main.cs 'hoola <sawaal>' -> "Hoola se poochho: <sawaal>" -> the alias target launched with --ask
+(quoted; the W2a alias launch truth and the plugin ID unchanged; plugin 1.9.0); the desktop's single-instance lock port now
+RECEIVES ASK: lines (second instance hands over, the running window sends through its events queue - the W2b pattern); the
+window's own ask box; desktop quickask.py (paired token, client_id always, honest dicts). SERVER: pc operator ext tool
+(ONE-TIME SETUP, ask_approval PEHLE - "Hoola extension lagao") + _do/_say/_desktop_says; win+r still BLOCKED_KEYS.
+
+Tests: NEW test_v0487_webext.py (30): lane (page/ask/compose/422s/bad-url, device auth incl. revoked, tenant-checked
+read-back, dedup, rate cap, the no-pc-settings pin), extension (manifest MV3 + version-rides-desktop + no-remote-code +
+pairing), installer (fake-%LOCALAPPDATA% round trips, neighbours untouched, upgrade, calm undo, honest missing/bad/MV2
+payload, non-Windows), desktop (MockTransport honest dicts, --ask handover pins, window wiring pins, do_ext gate), Main.cs
+ask door, operator (spec/_do/_say/_desktop_says, win+r blocked), CI/spec pins, versions. Sweeps green: webext 30 + ptrun 33
++ launcher 16 + frames 14 + v0179/r1 12 + dreams/desk/curator 88 + routines 3 + pc kinds/bridge 20 + home/coder/ax 83;
+test_pc_operator 3 reds STASH-PROVEN on the committed W2b tree AND WORKTREE-PROVEN on pristine main (pre-existing, the
+sandbox's async/env class, untouched). Version ritual 0.487.0 (ritual_0487.py): pubspec 0.487.0+532, pins →0.487.0(+532)
+in 84 full-string + 153 assert suites (zero residual), desktop/plugin pins 1.8.0→1.9.0, story pins → the v0.487 story,
+console stamps stay 0.485.0 x21. Mera PC freeze respected.
+
+NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet, and the C# ask-door compiles first on the
+next push (CI-only) - her first right-click "Hoola ko bhejiye" after deploy is the live test. Deploy: server via the usual
+vps-ops ritual; desktop 1.9.0 exe publishes via build-desktop. Next in the plan: W4 (the flutter pass).

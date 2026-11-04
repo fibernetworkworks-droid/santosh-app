@@ -3,10 +3,11 @@ from __future__ import annotations
 
 import platform
 import queue
+import threading
 import time
 from pathlib import Path
 
-from . import __version__, autostart, pt_run, quickkey
+from . import __version__, autostart, ext_install, pt_run, quickask, quickkey
 from .actions import Actions
 from .bridge import Bridge, Reindexer, pair
 from .config import Config, app_dir, load, save
@@ -16,7 +17,7 @@ INK, MUTED, BG, PANEL, ACCENT, OK, BAD = "#1B1030", "#5B5675", "#F6F4FF", "#FFFF
 
 
 class App:
-    def __init__(self, background: bool = False):
+    def __init__(self, background: bool = False, ask: str | None = None, lock=None):
         import tkinter as tk
         from tkinter import ttk
         self.tk, self.ttk = tk, ttk
@@ -34,11 +35,16 @@ class App:
         # thread-safe bridge from the hotkey thread to the Tk main loop); do_pt_run can start/stop it
         self.quickkey: quickkey.QuickKey | None = None
         self.actions.set_hotkey = self._set_quickkey
+        # v1.9.0 W3: the lock port also RECEIVES quick-asks from the second instance (the
+        # PowerToys Run 'hoola <sawaal>' door lands here when the desktop already runs)
+        self._lock = lock
+        if lock is not None:
+            threading.Thread(target=self._accept_asks, name="santosh-askport", daemon=True).start()
 
         self.root = tk.Tk()
         self.root.title("Hoola Desktop")
-        self.root.geometry("560x640")
-        self.root.minsize(480, 520)
+        self.root.geometry("560x680")
+        self.root.minsize(480, 560)
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self.root.iconify)  # keep running; Quit button exits
         style = ttk.Style()
@@ -54,8 +60,34 @@ class App:
         self.reindex.start()
         self.root.after(200, self._pump)
         self._start_quickkey_silently()
+        if ask:
+            self.events.put(("ask", ask))     # the door that started us: send once the loop breathes
         if background and self.cfg.paired:
             self.root.after(300, self.root.iconify)
+
+    def _accept_asks(self) -> None:
+        """The lock port's second job: ASK:<text> lines from second instances (the --ask doors).
+        Socket reads stay on this daemon thread; the Tk main loop only ever sees queue items."""
+        import socket
+        while True:
+            try:
+                c, _ = self._lock.accept()
+            except OSError:
+                return
+            try:
+                c.settimeout(2)
+                buf = b""
+                while len(buf) < 8200:
+                    part = c.recv(4096)
+                    if not part:
+                        break
+                    buf += part
+                c.close()
+            except OSError:
+                continue
+            line = buf.decode("utf-8", "ignore").strip()
+            if line.startswith("ASK:") and len(line) > 4:
+                self.events.put(("ask", line[4:].strip()[:8000]))
 
     # ---------------- UI ----------------
     def _build(self) -> None:
@@ -120,6 +152,7 @@ class App:
     def _main(self) -> None:
         tk, ttk = self.tk, self.ttk
         from tkinter import filedialog
+        self._ask_card()
         f = self._card("Hoola kaun se folder dekh sakta hai")
         tk.Label(f, text="Sirf yahi folder. Baaki PC Hoola ko nahi dikhta. Phone se aayi files 'Santosh Inbox' mein aati hain.",
                  bg=PANEL, fg=MUTED, wraplength=490, justify="left").pack(anchor="w", padx=12)
@@ -175,6 +208,7 @@ class App:
         if autostart.supported():
             ttk.Checkbutton(s, text="Windows ke saath shuru karein", variable=auto,
                             command=lambda: autostart.set_enabled(auto.get())).pack(anchor="w", padx=12)
+        self._ext_card()
         tally = self.actions.tally_status()
         tk.Label(s, text=("TallyPrime: juda hua (" + ", ".join(tally.get("companies") or [])[:80] + ")") if tally.get("available")
                  else "TallyPrime: nahi mila. Tally kholiye aur Help > Settings > Connectivity > 'TallyPrime acts as Server' on kijiye (port 9000).",
@@ -225,6 +259,71 @@ class App:
             return {"on": False, "registered": False, "message": f"{quickkey.KEY_NAME} hotkey hata di."}
         return {"on": False, "registered": False, "message": f"{quickkey.KEY_NAME} pehle se off hai."}
 
+    # ---------------- v1.9.0 W3: the PC -> Hoola text lane (the doors' quick-ask) ----------------
+    def _send_ask(self, text: str) -> None:
+        """One honest send on a worker thread (the Tk loop never blocks on the network); the
+        answer lives in her conversation - the log names it, the extension popup reads it back."""
+        self.root.deiconify()
+        self.root.lift()
+        text = (text or "").strip()
+        if not text:
+            return
+        self._log(f"Aapka sawaal Hoola ko ja raha hai: {text[:80]}")
+
+        def work() -> None:
+            out = quickask.send(self.cfg, text=text)
+            if out.get("ok"):
+                self.events.put(("log", "Bhej diya - Hoola jawab conversation mein de rahi hai "
+                                         "(phone / console par dikhega)."))
+            else:
+                self.events.put(("log", "Sawaal nahi bheja: " + str(out.get("message", ""))))
+        threading.Thread(target=work, name="santosh-ask", daemon=True).start()
+
+    def _ask_card(self) -> None:
+        """The window's own door: type here, Enter ya Bhejiye - the same lane as PowerToys Run."""
+        tk, ttk = self.tk, self.ttk
+        f = self._card("Hoola se poochhiye (is PC se)")
+        var = tk.StringVar()
+        ent = ttk.Entry(f, textvariable=var, width=52)
+        ent.pack(anchor="w", padx=12, pady=(6, 2))
+
+        def go() -> None:
+            t = var.get().strip()
+            if t:
+                var.set("")
+                self._send_ask(t)
+        ent.bind("<Return>", lambda _e: go())
+        row = tk.Frame(f, bg=PANEL)
+        row.pack(anchor="w", padx=12, pady=(0, 10))
+        ttk.Button(row, text="Bhejiye", command=go).pack(side="left")
+        tk.Label(row, text="Yahi sawaal PowerToys Run se bhi: Alt+Space, 'hoola <sawaal>'",
+                 bg=PANEL, fg=MUTED, font=("Segoe UI", 8)).pack(side="left", padx=8)
+
+    def _ext_card(self) -> None:
+        """The browser extension card: the W3 'send page to Hoola' door for her browser.
+        Nothing installs by itself - the install runs on her click (the pt_run discipline)."""
+        tk, ttk = self.tk, self.ttk
+        f = self._card("Browser extension (page Hoola ko bhejiye)")
+        if ext_install.installed():
+            tk.Label(f, text="Chrome/Edge mein laga hua hai: page par right-click > 'Hoola ko bhejiye', "
+                             "ya extension ka shortcut. Pairing extension ke Options mein hoti hai "
+                             "(phone ka 6 anko ka code).",
+                     bg=PANEL, fg=OK, wraplength=490, justify="left").pack(anchor="w", padx=12, pady=(4, 6))
+            row = tk.Frame(f, bg=PANEL)
+            row.pack(anchor="w", padx=12, pady=(0, 10))
+            ttk.Button(row, text="Folder kholiye", command=lambda: ext_install.open_folder()).pack(side="left")
+            ttk.Button(row, text="Hataiye", command=lambda: (ext_install.set_enabled(False), self._render())).pack(side="left", padx=6)
+        else:
+            tk.Label(f, text="Chrome/Edge se koi bhi page Hoola ki conversation mein bhejiye - "
+                             "right-click ya extension ka shortcut. Hoola page apne scrape tools se padhti hai.",
+                     bg=PANEL, fg=MUTED, wraplength=490, justify="left").pack(anchor="w", padx=12, pady=(4, 6))
+
+            def install() -> None:
+                out = ext_install.set_enabled(True)
+                self._log(out.get("message", ""))
+                self._render()
+            ttk.Button(f, text="Files lagaiye (Load unpacked ke liye)", command=install).pack(anchor="w", padx=12, pady=(0, 10))
+
     def _log(self, m: str) -> None:
         box = getattr(self, "logbox", None)
         if box is None or not box.winfo_exists():
@@ -252,6 +351,10 @@ class App:
                     self.root.deiconify()
                     self.root.lift()
                     self.root.focus_force()
+                elif kind == "ask":
+                    # W3 text lane: a door (PowerToys Run 'hoola <sawaal>', the second-instance
+                    # handover, the window's own box) sends her words into the conversation
+                    self._send_ask(v)
                 elif kind == "control":
                     self._show_banner(v)
         except queue.Empty:

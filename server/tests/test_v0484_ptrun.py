@@ -388,10 +388,10 @@ def test_win_r_keys_still_blocked(opc):
 def test_versions(opc):
     operator, _ = opc
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.489.0"
+    assert APP_VERSION == "0.490.0"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.489.0+533" in pubspec
+    assert "version: 0.490.0+534" in pubspec
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.8.0"          # desktop changed this release (do_pt_run)
+    assert santosh_desktop.__version__ == "1.9.0"          # desktop changed this release (do_pt_run)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))
-    assert meta["Version"] == "1.8.0"                      # plugin version rides the desktop
+    assert meta["Version"] == "1.9.0"                      # plugin version rides the desktop

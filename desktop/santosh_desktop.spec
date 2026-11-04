@@ -24,6 +24,17 @@ import os
 # Dev machines without the payload build the exe exactly as before.
 _ptrun = os.path.join(SPECPATH, "ptrun_payload")
 datas = []
+# v1.9.0 W3: the browser extension payload (manifest.json + background.js + popup/options +
+# icons) is staged by build-desktop.yml at desktop/ext_payload/ and rides inside the exe
+# (extracted to %TEMP%\_MEIxxxx\ext) so ext_install.py can copy it to
+# %LOCALAPPDATA%\Hoola\chrome-extension for chrome://extensions 'Load unpacked'.
+_ext = os.path.join(SPECPATH, "ext_payload")
+if os.path.isdir(_ext):
+    for _root, _dirs, _files in os.walk(_ext):
+        for _f in _files:
+            _p = os.path.join(_root, _f)
+            _rel = os.path.relpath(_p, _ext)
+            datas.append((_p, os.path.join("ext", os.path.dirname(_rel)) if os.path.dirname(_rel) else "ext"))
 if os.path.isdir(os.path.join(_ptrun, "Images")):
     for _f in os.listdir(_ptrun):
         _p = os.path.join(_ptrun, _f)

@@ -36,6 +36,19 @@ jobs:
           cp "$OUT/plugin.json" desktop/ptrun_payload/
           cp "$OUT"/Images/*.png desktop/ptrun_payload/Images/
           ls -la desktop/ptrun_payload desktop/ptrun_payload/Images
+      - name: Stage browser extension payload (v1.9.0 W3)
+        shell: bash
+        run: |
+          # The MV3 'Hoola' extension (desktop/ext/hoola-extension) - the 'send page to Hoola'
+          # door. No build needed (plain JS), staged whole so the spec rides it INSIDE
+          # SantoshDesktop.exe (extracted to %TEMP%\_MEIxxxx\ext) and ext_install.py copies it
+          # to %LOCALAPPDATA%\Hoola\chrome-extension for chrome://extensions 'Load unpacked'.
+          rm -rf desktop/ext_payload
+          cp -r desktop/ext/hoola-extension desktop/ext_payload
+          test -f desktop/ext_payload/manifest.json || { echo "manifest missing"; exit 1; }
+          test -f desktop/ext_payload/background.js || { echo "background.js missing"; exit 1; }
+          test -d desktop/ext_payload/icons || { echo "icons missing"; exit 1; }
+          ls -la desktop/ext_payload
       - name: Install
         working-directory: desktop
         run: |
@@ -83,10 +96,11 @@ jobs:
           # v1.8.0 W2b: the plugin payload also ships as a standalone zip (manual install = extract
           # into %LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins, then restart PowerToys)
           (cd desktop/ptrun_payload && zip -r ../dist/Hoola-PowerToysRun-plugin.zip .)
+          (cd desktop/ext_payload && zip -r ../dist/Hoola-Chrome-extension.zip .)
           gh release delete desktop-latest --yes --cleanup-tag || true
-          gh release create desktop-latest desktop/dist/SantoshDesktop.exe desktop/dist/agent-desktop*.exe desktop/dist/Hoola-PowerToysRun-plugin.zip \
+          gh release create desktop-latest desktop/dist/SantoshDesktop.exe desktop/dist/agent-desktop*.exe desktop/dist/Hoola-PowerToysRun-plugin.zip desktop/dist/Hoola-Chrome-extension.zip \
             --title "Santosh Desktop (Windows)" --latest=false \
             --notes "Connects your office PC to Santosh on your phone. Download: https://github.com/${{ github.repository }}/releases/download/desktop-latest/SantoshDesktop.exe
           ALSO download agent-desktop.exe (and any agent-desktop-windows-*.exe helper) into the SAME folder as SantoshDesktop.exe - it enables semantic desktop mode (v1.6.0: Hoola reads Excel / Word / Tally by real UI elements, not pixel guesses).
-          Have PowerToys? The SantoshDesktop.exe now carries the 'hoola' PowerToys Run plugin (v1.8.0) - just ask Hoola ('Hoola ko PowerToys Run se khulwao') or extract Hoola-PowerToysRun-plugin.zip into %LOCALAPPDATA%\\Microsoft\\PowerToys\\PowerToys Run\\Plugins and restart PowerToys. No PowerToys? Ctrl+Alt+H brings the Hoola Desktop window up.
+          Have PowerToys? The SantoshDesktop.exe now carries the 'hoola' PowerToys Run plugin (v1.8.0) - just ask Hoola ('Hoola ko PowerToys Run se khulwao') or extract Hoola-PowerToysRun-plugin.zip into %LOCALAPPDATA%\\Microsoft\\PowerToys\\PowerToys Run\\Plugins and restart PowerToys. No PowerToys? Ctrl+Alt+H brings the Hoola Desktop window up. The 'send page to Hoola' browser extension (v1.9.0 W3) rides inside the exe (Hoola Desktop > 'Browser extension' card) or extract Hoola-Chrome-extension.zip, then chrome://extensions > Developer mode > Load unpacked.
           Verify your download: size ${SIZE} bytes, sha256 ${SHA} (SantoshDesktop.exe), ${ADSIZE} bytes (agent-desktop.exe). If the exe shows \"Failed to extract ...\", the download was cut short or antivirus interfered - re-download and compare the size (see desktop/README.md)."

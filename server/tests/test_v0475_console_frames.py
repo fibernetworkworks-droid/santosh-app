@@ -104,25 +104,25 @@ def test_panel_knows_mp4_is_video():
 # ---------- Version layer ----------
 
 def test_console_stamps_0_4_8_5():
-    # v0.485 HOOLA SKILL DESK (rebased tree): the console itself changed (skills.js + the
-    # Skills view + the account-menu entry), so every stamp moved 0.482.0 -> 0.485.0
-    # (21 = the 20 originals + the new skills.js tag); later server-only releases leave it
+    # Healed on the v0.490 rebase: the dev chain's BYOX releases changed the console on main
+    # (v0.485 SKILL DESK skills.js + v0.487 language select), so every stamp moved 0.482.0
+    # -> 0.487.0 (21 = the 20 originals + the new skills.js tag); server-only releases leave it
     s = src(V2)
-    assert s.count('v=0.485.0') == 21, f"expected 21 stamps, got {s.count('v=0.485.0')}"
+    assert s.count('v=0.487.0') == 21, f"expected 21 stamps, got {s.count('v=0.487.0')}"
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
-    assert 'console/skills.js?v=0.485.0' in s and 'id="v-skills"' in s
+    assert 'console/skills.js?v=0.487.0' in s and 'id="v-skills"' in s
 
 
 def test_app_version_story():
     main = (ROOT / 'app/main.py').read_text(encoding='utf-8')
-    assert 'APP_VERSION = "0.489.0"' in main
+    assert 'APP_VERSION = "0.490.0"' in main
     # story pin moved to the v0.479 story (the v0.476 precedent: the newest release's story
     # carries the marker; the older stories live in git history)
-    assert 'POWERTOYS RUN' in main and 'ONE launch truth' in main
+    assert 'WEB EXTENSION' in main and 'send page to Hoola' in main
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.489.0+533' in pub
+    assert 'version: 0.490.0+534' in pub
