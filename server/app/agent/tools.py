@@ -1097,6 +1097,21 @@ TOOL_LABELS.update(BYOX_LABELS)
 HANDLERS.update(BYOX_HANDLERS)
 del _seen
 
+
+# v0.501 HOOLA CONTEXT7: ONE docs7 tool (the coder/docs7 surface) - the upstash/context7 port:
+# resolve a library NAME to its Context7 ID (/org/project), then pull up-to-date, version-
+# specific docs into the turn. Every successful fetch lands in the vault as a docs7 observation
+# (FTS5 -> search/primer/dedup/curator all see it); the vault answers repeats within the TTL
+# with zero network; queries pass strip_private + redact_secrets BEFORE they leave the box;
+# one attempt, drop-don't-wait (20 s ceiling); voice never sees it (the VOICE_TOOL_NAMES
+# allowlist - a 20 s network stall has no place in a live call), coder_docs7 gates the handler.
+from ..coder.docs7 import DOCS7_HANDLERS, DOCS7_LABELS, DOCS7_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in DOCS7_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(DOCS7_LABELS)
+HANDLERS.update(DOCS7_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 

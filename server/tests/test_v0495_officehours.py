@@ -63,7 +63,7 @@ def _doc(did, **kw):
 
 def test_registry_531_and_wired():
     names = {t["name"] for t in TOOLS}
-    assert len(TOOLS) == 535, "531 (v0.495 office hours) + 3 code-graph tools (v0.496) + 1 uiux_design (v0.497)"
+    assert len(TOOLS) == 536, "531 (v0.495 office hours) + 3 code-graph tools (v0.496) + 1 uiux_design (v0.497) + 1 docs7 (v0.501)"
     assert {"officehours", "officehours_dekho"} <= names
     assert {"officehours", "officehours_dekho"} <= set(HANDLERS)
     assert "officehours" in TOOL_LABELS and "officehours_dekho" in TOOL_LABELS
@@ -73,11 +73,11 @@ def test_registry_531_and_wired():
 def test_story_and_prompts_pins():
     from app import main as main_mod
     from app.agent import prompts
-    assert main_mod.APP_VERSION == "0.500.0"
+    assert main_mod.APP_VERSION == "0.501.0"
     story = (Path(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1])[:20000]
     # story pin rides the NEWEST release's story (the v0.476 precedent); the OFFICE HOURS
     # story tokens live in git history (the v0.497 chain moved them here from v0.479)
-    assert "FE PACK" in story and "fe-frames-templates" in story
+    assert "HOOLA CONTEXT7" in story and "docs7" in story   # the newest-story precedent (the v0.501 story carries the marker)
     ptxt = Path(prompts.__file__).read_text()
     assert "OFFICE HOURS (v0.495" in ptxt and "eng HAMESHA aakhri" in ptxt
     assert "`officehours` action=start" in ptxt

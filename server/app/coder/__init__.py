@@ -13,9 +13,12 @@ tap as the only gate out of a tenant.
 v0.484 HOOLA SAPNE adds the NIGHTLY curator: the window's raw observations distilled into
 curated memory rows (light 26h + deep 7d rewrite with mandatory preimages), OpenClaw's
 dreaming sweep ported - the vault that captures starts to COMPOUND. Beside, never instead:
-the v0.480 curator merges near-duplicates, SAPNE distills time windows."""
-from . import capture, curator, dedup, delegate, dreams, inject, modes, nudge, observer, parser, \
-    prompts, redact, search, skill_packs, skills_store, skills_tool, spool, store
+the v0.480 curator merges near-duplicates, SAPNE distills time windows.v0.501 HOOLA CONTEXT7 adds docs7: the upstash/context7 port - resolve a library to its
+Context7 ID, pull up-to-date docs into the turn, land every fetch in the vault (the vault
+IS the cache); queries redacted before egress.
+"""
+from . import capture, curator, dedup, delegate, docs7, dreams, inject, modes, nudge, observer, \
+    parser, prompts, redact, search, skill_packs, skills_store, skills_tool, spool, store
 
 # v0.478 FIX (caught by the swarm funnel-capture test): the agent funnel calls
 # coder.tool_observed / coder.turn_prompt / coder.session_started / coder.session_ended /
@@ -27,7 +30,7 @@ from . import capture, curator, dedup, delegate, dreams, inject, modes, nudge, o
 # coder.curator.tick on the package path too - curator rides the import list above.
 from .capture import save_memory, session_ended, session_started, tool_observed, turn_prompt
 
-__all__ = ["capture", "curator", "dedup", "delegate", "dreams", "inject", "modes", "nudge",
-           "observer", "parser", "prompts", "redact", "search", "skill_packs", "skills_store",
-           "skills_tool", "spool", "store", "save_memory", "session_ended", "session_started",
-           "tool_observed", "turn_prompt"]
+__all__ = ["capture", "curator", "dedup", "delegate", "docs7", "dreams", "inject", "modes",
+           "nudge", "observer", "parser", "prompts", "redact", "search", "skill_packs",
+           "skills_store", "skills_tool", "spool", "store", "save_memory", "session_ended",
+           "session_started", "tool_observed", "turn_prompt"]

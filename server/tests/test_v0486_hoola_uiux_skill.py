@@ -16,7 +16,7 @@ What this suite pins, piece by piece:
     caps), the seed library is now 59 across four lanes (11 starters + 31 byox +
     15 superpowers + 2 prog, v0.499), it feeds create-if-missing like the rest, and a design
     ask SURFACES it through the normal injection (shown marked).
-(4) VERSION: APP_VERSION 0.500.0 + the story, pubspec 0.500.0+543 (re-versioned six
+(4) VERSION: APP_VERSION 0.501.0 + the story, pubspec 0.501.0+543 (re-versioned six
     times while this sat local-only: BYOX pair 0.486.0+0.487.0, CRAWL JOBS 0.488.0,
     POWERTOYS RUN + WEB EXTENSION 0.489.0+0.490.0, crawl reland + BYOX FEED + FLUTTER
     PASS 0.491.0+0.492.0+0.493.0, EQUAL POWER took 0.494.0 and our UIUX moved 0.495.0
@@ -234,6 +234,6 @@ def test_seed_feeds_and_matches(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.500.0"' in main and "UIUX PRO MAX" in main
+    assert 'APP_VERSION = "0.501.0"' in main and "UIUX PRO MAX" in main
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.500.0+543" in pub
+    assert "version: 0.501.0+543" in pub

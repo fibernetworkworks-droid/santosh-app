@@ -527,6 +527,14 @@ class Settings(BaseSettings):
     coder_dreams_max_writes: int = 4       # max curated rows ONE pass may write or rewrite
     coder_dedup_min_docs: int = 10         # the Tier-1 scan's corpus gate (IDF on 3 documents is astrology)
 
+    # --- Hoola Context7 (v0.501): up-to-date library docs into the context, the upstash/context7 port ---
+    coder_docs7: bool = False              # the docs7 tool (outbound network: bake on the VPS, then flip)
+    context7_api_url: str = "https://context7.com/api"  # upstream default (constants.ts:14; env-overridable there)
+    context7_api_key: str = ""             # optional Bearer (ctx7sk-...); empty = anonymous rate limits; never in chat
+    coder_docs7_timeout_s: int = 20        # upstream ceiling 60s (p99.9 ~3.2s); a voice box drops, not waits
+    coder_docs7_max_per_hour: int = 12     # the <=3-per-question law, enforceable locally (upstream 429s server-side)
+    coder_docs7_ttl_hours: int = 168       # the vault IS the cache: a week before the same query re-fetches
+
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""
     email_password: str = ""                # app password (Gmail/Outlook/Zoho "app password")

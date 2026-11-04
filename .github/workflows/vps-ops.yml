@@ -61,6 +61,7 @@ on:
           - zoo_check
           - engine_attach
           - coder_flip
+          - docs7_flip
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -569,6 +570,19 @@ jobs:
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
                 echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
                 echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_nudge =\", get_settings().coder_nudge)"' ;;
+              docs7_flip)
+                # v0.501.0 - the owner's flip slot for the Context7 surface: CODER_DOCS7=true in
+                # $CORE/.env, the same reviewed one-boolean shape as coder_flip (the code default
+                # stays OFF and the tests pin it - the deployment opts in here, not in config.py).
+                # Idempotent upsert, restart, health, then the EFFECTIVE value printed back from
+                # a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^CODER_DOCS7=" $CORE/.env; then sed -i "s#^CODER_DOCS7=.*#CODER_DOCS7=true#" $CORE/.env; else printf "CODER_DOCS7=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^CODER_DOCS7=true$" $CORE/.env && echo "== CODER_DOCS7=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_docs7 =\", get_settings().coder_docs7)"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh
