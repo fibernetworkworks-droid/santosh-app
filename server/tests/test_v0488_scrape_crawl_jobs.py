@@ -110,7 +110,7 @@ def test_registry_3_crawl_tools():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 531, "529 (v0.494, EQUAL POWER on) + 2 office-hours tools"
+    assert len(TOOLS) == 534, "529 (v0.494, EQUAL POWER on) + 2 office-hours (v0.495) + 3 code-graph (v0.496)"
 
 
 # ---------------------------------------------------------------- crawl_start / the queue
