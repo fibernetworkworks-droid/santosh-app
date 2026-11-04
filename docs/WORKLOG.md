@@ -974,3 +974,58 @@ Work Log:
 
 Stage Summary:
 - v0.501.0 HOOLA CONTEXT7 shipped at 94c0d679: Santosh pulls up-to-date, version-specific library docs mid-conversation (the hallucinated-API fix), and every fetch becomes memory she can search, prime with, dedup and consolidate. Deploy = the vps-ops deploy dispatch (healthz should say 0.501.0), then the owner's docs7_flip dispatch when ready (CONTEXT7_API_KEY optional in the VPS .env for higher rate limits - the zoo pattern, never in chat). Rollback = one flip; NO schema migration (docs7 rows are ordinary observations typed 'docs7'). Previous: v0.500.0 FE PACK, v0.499.0 SUPERPOWERS, v0.498.0 UIUX PRO MAX [full chain in git history].
+
+## Task 33 — v0.502.0 DHARA (owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END ---- MAKE A PERFECT PLAN" -> "BUILD END TO END")
+
+- The READ first (house law): n8n v2.47.0 read end to end (404 MB, 33,263 files, 710 .node.ts; fair-code Sustainable
+  Use License) — ZERO n8n code enters this tree (license + house); the IDEA is rebuilt house-sized. The plan the owner
+  approved by ordering the build: DHARA (धारा, the stream) — her workflows.
+- THE LANE (new server/app/agent/dhara_tools.py beside crawl_jobs; registry 536 -> 541, five tools dhara_save /
+  dhara_run / dhara_runs / dhara_control / dhara_list): per-tenant data/dhara/<tenant>/dhara.db (workflows + runs).
+  THE AGENT IS THE CANVAS: she describes the recurring job once, dhara_save validates the graph HARD and stores it —
+  9 step types: tool (ANY registered tool with its args — the 5-tool registry is the node library, every future tool
+  auto-joins), code (the pylab sandbox), condition (left/op/right + then/else; eq/ne/gt/lt/contains/empty), loop
+  (items + body, cap 50), wait (duration_s / until HH:MM IST), notify (cap 5/run), approval (parks the run), set,
+  http (SSRF-guarded GET/POST through the scrape lane's guard). Expressions {{steps.id.output.f}} / {{vars.x}} /
+  {{item}} / {{now}} — a safe dotted-path resolver, NEVER eval(); injection-shaped paths dig to None.
+- TRIGGERS: manual (dhara_run) | schedule (every_hours + at["HH:MM"] IST; next_due computed at save and advanced on
+  fire — missed-while-down fires ONCE with missed=true, never a burst) | webhook (POST /api/dhara/hook/{token}: token
+  minted at save, shown ONCE, stored sha256-hashed; body lands as vars.body; one run per 6 s per workflow; 401 on
+  unknown token or disabled workflow; 503 on dhara_webhook_enabled=False).
+- THE ENGINE (worker.dhara_jobs tick, the v0.491 crawl-jobs shape): enqueues due schedules, wakes sleepers, claims
+  queued AND stalled runs (heartbeat > dhara_stale_s=180) with ONE conditional UPDATE (tries+1, dhara_tries=3,
+  exhausted = failed honestly), CHECKPOINT after EVERY top-level step (cursor + context + steps_log -> a pm2 restart
+  resumes mid-run, a finished step NEVER runs twice; condition/loop bodies are atomic units), wall clock
+  dhara_run_timeout_s=600, max 1 running per tenant, finished runs forgotten after 30 days (40 kept). Two honest
+  parks: sleeping (auto-wake) and waiting_approval (NEVER auto-resumes: her haan in chat, relayed by the agent via
+  dhara_control action=approve run_id=..., moves the cursor PAST the gate; expires after dhara_approval_hours=24 as
+  failed honestly). THE SAFETY NET n8n DOES NOT HAVE: tool steps run with Ctx(actor="routine") — the house actor
+  gates stand, money/messages/files still need HER the house way; soft:true records a step error and continues,
+  default fail-fast with the exact step + error in the log; outputs pass mask_ids.
+- prompts.py grew the DHARA bullet (before LAMBA KAAM); admit.py grew tight dhara keys (workflow / automation /
+  apne aap chal / webhook... — "kaam" alone stays with kaam, "reminder" with life).
+- Tests: NEW test_v0502_dhara.py (35, all green): registry pin 541 + family map, save validation (11 refusal shapes),
+  resolver (typed dig, mixed text, deep dicts/lists, injection -> None, cmp ops), engine (done-flow with checkpoint
+  fields, else branch, loop/item/iterations, real-registry tool step as routine, unknown tool honest fail, soft vs
+  fail-fast, wall-clock cap), approval park -> approve -> resume PAST the gate + non-waiting honest, stop between
+  steps (idempotent, finished steps stay), wait park -> tick wake, notify cap, CHECKPOINT RESUME (a killed run
+  resumes with zero steps twice), scheduled fire-once + advance + no-burst, missed flag, IST next_due math, tries
+  exhausted, approval expiry, forget-old, webhook (202 + vars.body + 401 + 429 + disabled 401 + kill switch 503),
+  runs shapes + pagination, the list board, enable/disable roundtrip, disabled flag honest, tenant isolation,
+  mask_ids, version pin.
+- BUGS THE SUITE CAUGHT (fixed in the same session): (a) dhara_control approve did not move the cursor past the
+  approval step — the resumed run hit the SAME gate and parked forever (approve = cursor+1 + an approved log row);
+  (b) the wait step parked WITHOUT advancing the cursor — the tick's wake re-ran the same wait and re-parked (same
+  loop class; wait = the step doing its job, park advances); (c) a FAILED run lost its steps_log + cursor (the log
+  is the whole point — the fail path now checkpoints everything); (d) update_run force-stamped updated_at, so the
+  approval-expiry and forget-old sweeps could never see an old row (setdefault: an explicit updated_at wins);
+  (e) the first smoke crossed two asyncio.run loops — the DOCUMENTED v0.488 env class, tests run one loop.
+- Version 0.502.0 (APP_VERSION story, pubspec 0.502.0+544); CLAUDE.md current-version line (healed to 0.502 — the
+  dev chain's v0.501 left it at v0.500.0); pins swept 0.501.0 -> 0.502.0 (165 files) + +543 -> +544 (88) + count pins
+  536 -> 541 (2 suites) zero residual; story pins (test_v0475 + test_v0495_officehours) moved to the v0.502 story
+  (the newest-story precedent); console stamps untouched (the console last changed in the dev chain).
+- Server-only deploy, old APKs keep working (the approval surface is her chat word — no new cards, no client change).
+  NOT VERIFIED (honest): the first real webhook from the internet, the first her-haan resume on the VPS, the first
+  scheduled wake after a pm2 restart — live tests, named in the story. Deploy: no new pip packages; the usual ritual
+  (checkout main + cp -r server/app + pm2 restart santosh --update-env + healthz grep 0.502.0).
+- Previous: v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS, v0.498.0 HOOLA UIUX PRO MAX.

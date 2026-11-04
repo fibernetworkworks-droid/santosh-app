@@ -200,6 +200,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",
                     "product idea", "business idea", "idea pe soch", "shuru karne se pehle",
                     "officehours_dekho"),
+    # v0.502 DHARA (her workflows, the n8n lane): recurring-automation words. Tight keys - "kaam"
+    # alone is the kaam lane, "reminder" is life; only workflow-shaped asks open dhara.
+    "dhara": ("workflow", "workflows", "dhara", "automation", "automate", "auto chalu", "apne aap chal",
+              "roz ka automatic", "har din automatic", "jab bhi", "webhook", "dhara_list", "dhara_save",
+              "dhara_run", "dhara_runs", "dhara_control"),
     "brand": ("brand", "branding"),
     "ads": ("ads", "advertis", "meta ad", "google ad", "campaign chalao"),
     "seo": ("seo", "google rank", "search rank"),

@@ -357,6 +357,7 @@ async def tick() -> None:
     await team_jobs()
     await research_jobs()
     await scrape_crawl_jobs()
+    await dhara_jobs()
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
@@ -525,6 +526,24 @@ async def research_jobs() -> None:
 
 
 _crawl_last = 0.0
+
+
+_dhara_last = 0.0
+
+
+async def dhara_jobs() -> None:
+    """v0.502 DHARA: due scheduled workflows enqueue, slept runs wake, queued/stalled runs claim from
+    their checkpoint, old finished runs are forgotten (the crawl-jobs tick shape, on the dhara lane)."""
+    global _dhara_last
+    import time
+    if time.time() - _dhara_last < 20:
+        return
+    _dhara_last = time.time()
+    try:
+        from .agent import dhara_tools
+        await dhara_tools.tick()
+    except Exception:
+        log.exception("dhara tick failed")
 
 
 async def scrape_crawl_jobs() -> None:

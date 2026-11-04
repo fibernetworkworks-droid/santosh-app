@@ -339,6 +339,12 @@ TOOLS.extend(CRAWL_TOOLS)
 TOOL_LABELS.update(CRAWL_LABELS)
 HANDLERS.update(CRAWL_HANDLERS)
 
+from .dhara_tools import DHARA_HANDLERS, DHARA_LABELS, DHARA_TOOLS  # noqa: E402  v0.502 DHARA - her workflows (the n8n lane)
+
+TOOLS.extend(DHARA_TOOLS)
+TOOL_LABELS.update(DHARA_LABELS)
+HANDLERS.update(DHARA_HANDLERS)
+
 from .officehours_tools import OFFICEHOURS_HANDLERS, OFFICEHOURS_LABELS, OFFICEHOURS_TOOLS  # noqa: E402  v0.495 office hours (the gstack THINK/PLAN lane)
 
 TOOLS.extend(OFFICEHOURS_TOOLS)

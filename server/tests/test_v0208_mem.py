@@ -46,8 +46,8 @@ def quiet_bus(bz):
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.501.0"
-    assert "0.501.0+543" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.502.0"
+    assert "0.502.0+544" in (REPO / "pubspec.yaml").read_text()
 
 
 def test_queue_bound_and_drop_oldest(quiet_bus):
@@ -256,7 +256,7 @@ def test_vps_ops_restarts_carry_kill_timeout():
     # the count moved in their infra commit without this pin moving (pre-existing red on their base)
                                                         # + hf_setup (v0.471.0 HOOLA FRAMES) + lab_setup (v0.461.0)
                                                         # + coder_flip (v0.480.0 Phase D - the owner's FLIP)
-                                                        # + docs7_flip (v0.501.0 - the Context7 flip slot)
+                                                        # + docs7_flip (v0.502.0 - the Context7 flip slot)
     for ln in restarts:
         assert "--kill-timeout 12000" in ln, ln         # default 1600 ms was the SIGKILL inside the wait
 

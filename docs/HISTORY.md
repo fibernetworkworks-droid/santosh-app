@@ -2,6 +2,18 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.502.0 DHARA — her workflows (4 Nov 2026)
+
+The n8n idea, house-sized, END TO END (owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END" after the
+full READ of n8n v2.47.0; zero n8n code — fair-code license). The agent is the canvas: she describes a
+recurring job once, `dhara_save` validates and stores the workflow graph (9 step types — tool / code /
+condition / loop / wait / notify / approval / set / http), triggers fire it (manual / schedule IST /
+webhook with a one-time token), the worker tick runs it with a checkpoint after every step (a pm2
+restart resumes mid-run, no step runs twice), and a mid-flow `approval` step parks the run until HER
+word in chat — relayed via `dhara_control approve` — moves it past the gate. Tool steps run as
+actor="routine": the house's own actor gates are the safety n8n never had. Registry 536 -> 541
+(dhara_save / dhara_run / dhara_runs / dhara_control / dhara_list). Tests: test_v0502_dhara.py (35).
+
 ## 🔒 FROZEN BY OWNER — MERA PC / PC OPERATOR / SANTOSH DESKTOP (25 Oct 2026)
 The owner froze ALL Mera PC code and its AI side. DO NOT touch, edit, refactor, "improve", reformat
 or upgrade any of these until the owner EXPLICITLY asks in chat:

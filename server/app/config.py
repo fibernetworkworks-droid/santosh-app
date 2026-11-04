@@ -406,6 +406,16 @@ class Settings(BaseSettings):
     graphify_max_files: int = 8000         # v0.496 files unpacked per repo
     graphify_keep_repos: int = 5           # v0.496 mapped repos kept per tenant, oldest dropped
     scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
+    dhara_enabled: bool = True             # v0.502 DHARA - her workflows (the n8n lane: save/run/schedule/webhook)
+    dhara_max_steps: int = 40              # v0.502 top-level steps per workflow (dhara_save clamps)
+    dhara_loop_max: int = 50               # v0.502 iterations per loop step
+    dhara_run_timeout_s: int = 600         # v0.502 one run's wall clock cap
+    dhara_max_running: int = 1             # v0.502 runs executing at once, per tenant (politeness first)
+    dhara_stale_s: int = 180               # v0.502 a running run without a write this long is resumed from its checkpoint
+    dhara_tries: int = 3                   # v0.502 a run is started at most this many times before it is failed
+    dhara_keep_runs_days: int = 30         # v0.502 finished runs older than this are forgotten (at most 40 kept)
+    dhara_approval_hours: int = 24         # v0.502 an approval step waiting longer than this fails honestly
+    dhara_webhook_enabled: bool = True     # v0.502 POST /api/dhara/hook/{token} (token sha256-hashed at rest)
     officehours_enabled: bool = True       # v0.495 office hours (the gstack THINK/PLAN lane: design docs + plan reviews)
     officehours_keep_docs: int = 30        # v0.495 baithak docs kept per tenant; older ones (and their reviews) are forgotten
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
