@@ -911,12 +911,12 @@ Stage Summary:
 - The PROG PACK is built and fed: two behavior skills in the seed platform, own stamp, every tenant gets them on the next skills-desk open. Honest NOT VERIFIED: the FTS match is tested, the first real VPS ask is the live proof. NOT TOUCHED: Mera PC (the script lane skill only WRITES files + names the existing gated doors).
 
 ---
-Task ID: 31 (FE PACK -> v0.498.0 - the awesome Front-End (85) read turned into three fed skills: HyperFrames template packs + campaign email templates + the UI kit tokens; fresh base 8f110ee2, no collision - 0.498.0 was free on tags)
+Task ID: 31 (FE PACK -> v0.500.0 - the awesome Front-End (85) read turned into three fed skills: HyperFrames template packs + campaign email templates + the UI kit tokens; TWENTY-THIRD COLLISION re-version 0.498.0 -> 0.500.0: the dev's chain took 0.498.0 UIUX PRO MAX + 0.499.0 SUPERPOWERS while this sat unpushed, rebased on their e90e60f1, both lanes kept, their sp wiring restored by hand)
 Agent: main (continuation session)
 Task: owner: "Front-End (85) - awesome-charting + web-animation + CSS frameworks -> HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly into the campaigns engine. Design-systems list -> Hoola's own UI kit consistency. NOW WORK ON IT MAKE THE SKILL. FEED THIS TO HOOLA"
 
 Work Log:
-- Fresh state check: origin/main had moved 7c1e5139 -> 8f110ee2 with THREE dev-chain versions we did not
+- Fresh state check: origin/main had moved 7c1e5139 -> 8f110ee2 (then, at push time, e90e60f1) with dev-chain versions we did not
   ship (0.495.0 OFFICE HOURS, 0.496.0 CODE GRAPH, 0.497.0 PROG PACK) - the Programming Languages (77) ask
   from the previous turn was already delivered by the dev chain as v0.497.0 (prog-library-registry +
   prog-windows-script-lane, fed, tested, live per healthz). No new collision to reconcile: our FE PACK is
@@ -947,8 +947,8 @@ Work Log:
   ui-kit REAL-token pins CROSS-CHECKED against lib/ui/glass.dart itself (a wrong hex in the skill can
   never pass again), injection FTS match on three Hinglish asks; test_v0485 desk-route live count
   43 -> 46 healed.
-- Ritual 0.498.0 (scripts/ritual_0498.py): APP_VERSION story line-wise (exactly-one hit), pubspec
-  0.498.0+542, 87 full-string + 163 assert pin occurrences swept across 162 py files, zero residual
+- Ritual 0.498.0 then the TWENTY-THIRD COLLISION re-version 0.500.0 (scripts/ritual_0498.py + ritual_0500.py): APP_VERSION story line-wise (exactly-one hit), pubspec
+  0.500.0+542, 87 full-string + 163 assert pin occurrences swept across 162 py files, zero residual
   outside the story's Previous chain; story pins (test_v0475:118/128, test_v0480:517, test_v0485:556)
   now ride the v0.498 story.
 - Docs: CLAUDE.md one-liner + current-version line + the v0.498 section; HISTORY section; WORKLOG Task 31.

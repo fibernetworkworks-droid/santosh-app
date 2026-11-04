@@ -1,4 +1,4 @@
-"""v0.499.0 HOOLA SUPERPOWERS: the obra/superpowers process pack (15 sp-* seeds, MIT)
+"""v0.500.0 HOOLA SUPERPOWERS: the obra/superpowers process pack (15 sp-* seeds, MIT)
 reaches already-seeded tenants via its OWN once-ever stamp - the v0.492 BYOX lesson,
 third lane. The verbatim archive (LICENSE + skills/** complete, byte-verified at feed
 time) rides under skillpack/upstream/obra-superpowers and never seeds."""
@@ -99,7 +99,7 @@ def test_desk_route_returns_all_four_lanes(desk):
     got = TestClient(app).get("/api/coder/skills")
     assert got.status_code == 200
     names = [s["name"] for s in got.json()["skills"]]
-    assert len(names) == 59                       # 11 starters + 31 byox + 15 sp + 2 prog, one first open
+    assert len(names) == 62                       # 11 starters + 31 byox + 15 sp + 2 prog + 3 fe, one first open
     assert len([n for n in names if n.startswith("sp-")]) == 15
     assert len([n for n in names if n.startswith("byox-")]) == 31
 
@@ -134,4 +134,4 @@ def test_seeds_carry_upstream_words_not_the_scripts():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.499.0"
+    assert APP_VERSION == "0.500.0"

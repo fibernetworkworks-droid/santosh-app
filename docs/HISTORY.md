@@ -19013,7 +19013,7 @@ rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re
 Previous: v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS, v0.494.0 EQUAL POWER, v0.493.0 THE
 FLUTTER PASS, v0.492.0 BYOX FEED, v0.491.0 CRAWL JOBS [full chains in git history].
 
-## v0.498.0 FE PACK — the HyperFrames template packs + the campaign email templates + the UI kit tokens, fed to every tenant (2026-11-04)
+## v0.500.0 FE PACK — the HyperFrames template packs + the campaign email templates + the UI kit tokens, fed to every tenant (2026-11-04; TWENTY-THIRD COLLISION re-version 0.498.0 -> 0.500.0 - the dev's chain took 0.498.0 UIUX PRO MAX + 0.499.0 SUPERPOWERS while this sat unpushed, rebased on their e90e60f1, both lanes kept, their sp wiring restored by hand from their commit)
 
 Owner ask (the awesome Front-End (85) read): "awesome-charting + web-animation + CSS frameworks ->
 HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly
@@ -19062,7 +19062,7 @@ tenant, hers-win, FEPACK_ENABLED=false, the desk-route source pin, the lint gate
 (check-before-render + determinism + safe margins + doors), email content (email_draft markdown +
 email_bulk card + NEVER), ui-kit content (the REAL hex tokens cross-checked against lib/ui/glass.dart
 itself), injection FTS match on Hinglish asks; the desk-route live counts 43 -> 46 (10+31+2+3) healed
-in test_v0485. Version 0.498.0 (pubspec 0.498.0+542; full-string + assert pin files swept zero
+in test_v0485. Version 0.500.0 (pubspec 0.500.0+542; full-string + assert pin files swept zero
 residual - the story's Previous chain keeps history; desktop 1.9.0 untouched, console stamps
 untouched). Mera PC freeze respected: nothing in server/app/pc/, desktop/ or lib/ touched - the pack
 only NAMES existing doors and tokens. NOT VERIFIED (honest): the first real 'reels ke liye chart video
@@ -19070,3 +19070,23 @@ banao' ask on the VPS is the live proof; the pack lands in a tenant only when th
 opened (the feed's own design). Deploy: the usual vps-ops ritual.
 Previous: v0.497.0 PROG PACK, v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS, v0.494.0 EQUAL POWER,
 v0.493.0 THE FLUTTER PASS, v0.492.0 BYOX FEED, v0.491.0 CRAWL JOBS [full chains in git history].
+
+## v0.499.0 HOOLA SUPERPOWERS (the dev chain's ship, entry re-added by hand from commit e90e60f1 after the -X theirs rebase clobbered their docs) — the obra/superpowers v7.0.2 methodology (Jesse Vincent, MIT - LICENSE ships verbatim) fed to Hoola as the fourth seed lane (2026-11-04)
+
+skill_packs gains sp_files() + SP_STAMP "skills:sp:<tenant>" + seed_sp(tenant) (once-ever, the v0.492 BYOX
+pattern), config sp_enabled default ON; FIFTEEN distilled seeds skillpack/sp-*.md (brainstorming,
+diagnosing-superpowers, dispatching-parallel-agents, executing-plans, finishing-a-development-branch,
+receiving-code-review, requesting-code-review, subagent-driven-development, systematic-debugging,
+test-driven-development, using-git-worktrees, ...) under the 4,000-char cap keeping the iron laws (no
+production code without a failing test first / no fixes without root cause / no completion claims without
+fresh verification evidence); upstream rides VERBATIM under skillpack/upstream/obra-superpowers/ (all 15
+skills, references, prompts, templates, scripts, .claude-plugin manifests + PROVENANCE.md recording
+exclusions); seed library now 59 = 11 starters (uiux-pro-max.md joins the starter lane) + 31 byox + 15 sp
++ 2 prog across FOUR lanes. Tests test_v0495_hoola_superpowers.py (their 10). Base: 8f110ee2.
+
+## v0.498.0 HOOLA UIUX PRO MAX (the dev chain's ship, entry re-added by hand from commit e90e60f1) — the uiux_design tool grounds UI/UX answers in a curated corpus instead of taste (2026-11-04)
+
+server/app/coder/uiux_tool.py (the uiux_design tool, registry 534 -> 535) + server/app/coder/uiux/ (the
+vetted design catalog: app-interface, charts, colors, icons, landing, motion, products, react-performance,
+styles, typography, ui-reasoning, ux-guidelines + google-fonts and 21 stack files from angular to wpf, with
+LICENSE + PROVENANCE + data-provenance). Tests test_v0486_hoola_uiux_skill.py (theirs). Base: 8f110ee2.

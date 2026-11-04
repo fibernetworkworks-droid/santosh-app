@@ -1,4 +1,4 @@
-"""v0.498.0 FE PACK: the awesome Front-End read turned into three fed skills - the
+"""v0.500.0 FE PACK: the awesome Front-End read turned into three fed skills - the
 HyperFrames template packs (charts + motion assembled, check cheap before render),
 the campaign email templates (proven structures, her facts only), and the Hoola UI
 kit tokens (every surface one Night Glass family). Own once-ever stamp, the v0.492
@@ -27,7 +27,7 @@ def desk(env, monkeypatch, tmp_path):
 
 def test_seed_files_exclude_fe_and_fe_files_are_3():
     from app.coder import skill_packs
-    assert len(skill_packs.seed_files()) == 10          # the starter library is untouched
+    assert len(skill_packs.seed_files()) == 11          # the starter lane (their uiux-pro-max rides it)
     assert len(skill_packs.byox_files()) == 31          # the BYOX pack is untouched
     assert len(skill_packs.prog_files()) == 2           # the PROG pack is untouched
     fe = skill_packs.fe_files()
