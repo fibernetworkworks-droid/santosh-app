@@ -80,4 +80,4 @@ def test_card_has_byox_asks_and_set_is_valid():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.492.0"
+    assert APP_VERSION == "0.493.0"

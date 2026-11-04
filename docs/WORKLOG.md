@@ -803,6 +803,9 @@ Stage Summary:
 - v0.490.0 HOOLA WEB EXTENSION on w3-webext: 'send page to Hoola' is real, and the W2b promise is kept - the PT Run door ('hoola <sawaal>') and the window's ask box ride the SAME text lane into her conversation. Deploy = the usual vps-ops ritual for the server; the desktop 1.9.0 exe publishes via build-desktop (desktop/** trigger).
 - Next in the Platforms plan: W4 (the flutter pass). The tools lane still awaits its own START.
 
+---
+++ b/docs/WORKLOG.md
+
 ## Task 27 — v0.491.0 CRAWL JOBS (owner: "PHASE 2 END TO END"; NINETEENTH COLLISION re-ship - the branch sat built+tagged v0.488.0-b1450 while dev took 0.489.0 PowerToys Run + 0.490.0 web extension; rebuilt on their fresh base 1eea1356X x2) while this built, rebuilt on their fresh base fdc7c402)
 
 Phase 2 of our own Firecrawl, on the v0.483 FIRECRAWL CORE lane (live on the VPS, healthz verified 0.483.0):
@@ -840,3 +843,26 @@ Version ritual: pubspec 0.491.0+535, APP_VERSION story, CLAUDE.md one line, HIST
 
 Task ID: byox-feed-0.492.0
 Summary: BYOX skills reach already-seeded tenants (own stamp); 15 over-long descriptions fixed (only 16/31 were being created); Hinglish/Hindi routing; 8 card asks; /api/byox/* routes restored after v0.491 dropped them. Server-only, PC freeze untouched.
+
+Task ID: 29 (THE FLUTTER PASS - W4 -> v0.493.0; TWENTIETH COLLISION rebase: re-versioned 0.491.0 -> 0.493.0 - the dev's chain re-shipped 0.491.0 (CRAWL JOBS, their NINETEENTH) and took 0.492.0 (BYOX FEED) while W4 sat unpushed, rebuilt on 59b8ec36)
+Agent: main (Z.ai, W3/W4 session)
+Task: Owner: "push + deploy, phir W4 (flutter pass)" - W4 of the Platforms plan: the curated pubspec upgrade (maintenance).
+
+Work Log:
+- State check first: fresh worktree w4-flutter from origin/main a0226923 (the W3 deploy + the two
+  build-desktop CI fixes); no new collisions - v0.491.0 free on tags.
+- Read the W4 spec from the Platforms plan notes ("awesome-flutter resource pass = curated pubspec
+  upgrade (maintenance)"). The android/ folder is CI-generated (tool/patch_android.py), so gradle
+  facts come from there: minSdk 23, desugaring 2.1.4, compileSdk = the Flutter 3.24.5 default.
+- Audited all 17 pubspec deps against pub.dev's version API with the Dart 3.5.4 ceiling
+  (scripts/w4_pubspec_audit.py): 11 constraints adopted, 6 stay, every deferred major named with
+  its exact blocker (compileSdk 35, AGP 8.12, Dart >3.5.4, API churn over 32 call sites).
+- Changelogs read for every adopted major (shared_preferences 2.4/2.5, speech_to_text 7.0,
+  flutter_tts 4.1-4.2): API-compatible at our call sites - grep-verified (6 listen() sites,
+  6 getInstance() sites), ZERO Dart code changes.
+- Ritual 0.491.0 line-wise (scripts/ritual_0491.py): APP_VERSION story, pins 0.490.0+534 ->
+  0.491.0+535 (85 full-string + 155 assert suites), story pins + the frames markers -> the v0.491
+  story, CLAUDE.md one-liners + the v0.491 section, WORKLOG Task 27, HISTORY section. Also fixed
+  the stale "- v0.487 HOOLA WEB EXTENSION" current-state line (-> v0.490, missed in the 0.490 ritual).
+- NOT VERIFIED (honest): the APK compile runs first on the CI push (no flutter in the sandbox);
+  if a constraint lies about its SDK ceiling the build fails and the constraint reverts.

@@ -18813,6 +18813,8 @@ NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet,
 next push (CI-only) - her first right-click "Hoola ko bhejiye" after deploy is the live test. Deploy: server via the usual
 vps-ops ritual; desktop 1.9.0 exe publishes via build-desktop. Next in the plan: W4 (the flutter pass).
 
+++ b/docs/HISTORY.md
+
 ## v0.491.0 CRAWL JOBS — the background crawl lane (owner: "PHASE 2 END TO END"; NINETEENTH COLLISION (re-ship of the v0.488.0 branch build; dev took 0.489.0 + 0.490.0 while it sat unpushed, rebuilt on 1eea1356) - the dev's chain took 0.486.0 BYOX SKILL PACK and 0.487.0+532 BYOX full dataset while this built, REBASE PROTOCOL respected, rebuilt on their fresh base fdc7c402, both BYOX works kept beside the crawl lane)
 
 Phase 2 of our own Firecrawl, end to end, on the v0.483 FIRECRAWL CORE lane (which is LIVE on the VPS -
@@ -18905,3 +18907,29 @@ Found by checking, not assuming:
 - 15 descriptions shortened to <= 60; the file test enforces it. `admit.py` byox family: Hinglish / Hindi phrases. `tool_asks.py`: 8 BYOX asks, router card 171/171 in view, 0 wrong family.
 - Tests: NEW `test_v0492_byox_feed.py` (8); v0486 route tests rewritten (the old ones used a fixture key that does not exist); pins ->0.492.0+536.
 - NOT VERIFIED: the live brain's first pick on the 8 new asks (`python -m app.quality tools --live`). Skills reach a tenant when the Skills desk is first opened (existing seed() behaviour). Console stamps stay 0.487.0 (server-only).
+
+# v0.493.0 — THE FLUTTER PASS (W4, 2026-11-04; TWENTIETH COLLISION — re-versioned 0.491.0 -> 0.493.0: the dev's chain re-shipped 0.491.0 (CRAWL JOBS, their NINETEENTH) and took 0.492.0 (BYOX FEED) while W4 sat unpushed; REBASE PROTOCOL respected, rebuilt on 59b8ec36, all three works kept)
+
+Owner: "push + deploy, phir W4 (flutter pass)". W4 of the Platforms plan = the awesome-flutter
+resource pass: read the curated list, upgrade the pubspec to what the project can actually run.
+Ceiling: Dart 3.5.4 (CI Flutter 3.24.5).
+
+## Adopted (11)
+http ^1.6.0; shared_preferences ^2.5.3; google_fonts ^6.3.0; speech_to_text ^6.6.2→^7.4.0;
+flutter_tts 4.0.2→4.2.5 (exact pin kept); url_launcher ^6.3.1; webview_flutter ^4.10.0;
+video_player ^2.9.5; path_provider ^2.1.5; flutter_lints ^4.0.0→^5.0.0; flutter_launcher_icons ^0.14.4.
+ZERO Dart code changes (changelog + call-site grep verified).
+
+## Deferred (blocker named)
+flutter_local_notifications 18/19 (compileSdk 35 + AGP) · android_intent_plus 6.x (AGP 8.12 /
+Gradle 8.13 / Kotlin 2.2) · file_picker 9–11 (API churn, 32 call sites) · flutter_timezone 4/5
+(Java-17-only / TimezoneInfo API break) · image_picker 1.2+, google_fonts 7–9, flutter_lints 6,
+speech_to_text 7.5, webview_flutter 4.11+, video_player 2.10+ (Dart >3.5.4) · timezone 0.10+
+(own <3.0.0 constraint; 0.11 needs ^3.10).
+
+## Curated shortlist (future UI pass, needs local flutter)
+cached_network_image · flutter_svg · dio · riverpod.
+
+Sweeps: version layer 0.491.0+535 in 85 full-string + 155 assert suites (zero residual); the APK
+compile is the CI check. NOT VERIFIED: no flutter in the sandbox - the constraints' SDK ceilings
+were verified against pub.dev, not compiled.
