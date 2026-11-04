@@ -1832,3 +1832,86 @@ def tick(now_: datetime | None = None) -> dict:
         except Exception:
             log.exception("sitesup tick failed for %s", tenant)
     return out
+
+
+# ---------------------------------------------------------------- v0.512.0 Wave 1: the voice-first daily log (#70) + variance (#64)
+def voice_log(tenant: str, site: str = "", day: str = "", activities: list | None = None, rows: list | None = None,
+              mat_rows: list | None = None, snags: list | None = None, tb_row: dict | None = None,
+              note: str = "", by: str = "", actor: str = "owner") -> dict:
+    """One spoken evening, many records: the supervisor's words already shaped into rows (the brain's job),
+    written through the SAME service functions the typed path uses - so every rule, card and mirror holds.
+
+    activities [{activity, qty, note, delay}] -> progress(); rows [{contractor, trade, count, hours}] -> attendance();
+    material [{item, qty, kind, unit, supplier, challan}] -> material(); snags [{text, location, trade, due}] -> snag();
+    toolbox {topic, people} -> toolbox(). Returns one combined summary + the five questions still missing."""
+    if not str(site or "").strip():
+        raise SiteError("Site bataiye.")
+    acts = [a for a in (activities or []) if isinstance(a, dict) and (str(a.get("activity", "")).strip() and a.get("qty") is not None)]
+    atts = [r for r in (rows or []) if isinstance(r, dict) and (r.get("count") or r.get("worker"))]
+    mats = [m for m in (mat_rows or []) if isinstance(m, dict) and str(m.get("item", "")).strip() and m.get("qty") is not None]
+    sngs = [n for n in (snags or []) if isinstance(n, dict) and str(n.get("text", "")).strip()]
+    tb = tb_row if isinstance(tb_row, dict) else None
+    if not any((acts, atts, mats, sngs, tb, note)):
+        raise SiteError("Roznama khaali hai - kaam / hazari / maal / snag, kuch bhi boliye.")
+    parts: list[str] = []
+    warnings: list[str] = []
+    for a in acts:
+        r = progress(tenant, site, str(a.get("activity")), a.get("qty"), day, str(a.get("note", "")),
+                     str(a.get("delay", "")), None, None, actor)
+        parts.append(r.get("say") or f"{a.get('activity')}: {a.get('qty')}")
+    for r_ in atts:
+        one = {k: r_[k] for k in ("contractor", "trade", "count", "hours", "worker", "gender") if r_.get(k) is not None}
+        r = attendance(tenant, site, None, day, actor, **one)
+        parts.append(r.get("say") or "hazari likhi")
+        if r.get("warnings"):
+            warnings += list(r["warnings"])
+    for m in mats:
+        r = material(tenant, site, str(m.get("item")), m.get("qty"), str(m.get("kind") or "in"), str(m.get("unit", "")),
+                     str(m.get("supplier", "")), str(m.get("challan", "")), "", True, str(m.get("note", "")), day, "", actor)
+        parts.append(r.get("say") or f"{m.get('item')}: {m.get('qty')}")
+    for n in sngs:
+        r = snag(tenant, site, str(n.get("text")), str(n.get("location", "")), str(n.get("trade", "")),
+                 str(n.get("contractor", "")), str(n.get("due", "")), actor)
+        parts.append(r.get("say") or "snag likhi")
+    if tb and str(tb.get("topic", "")).strip():
+        r = toolbox(tenant, site, str(tb.get("topic")), tb.get("people"), str(by or ""), "", day, actor)
+        parts.append(r.get("say") or "toolbox talk likhi")
+    d = _date(day, today(tenant))
+    missing: list[str] = []
+    if not acts:
+        missing.append("aaj ka kaam (activity + maatra)")
+    if not atts:
+        missing.append("hazari (kaun thekedar, kitne log)")
+    if not mats and not sngs:
+        missing.append("maal / snag (koi aaya ya kami?)")
+    say = (f"Roznama {d.strftime('%d %b')} ({site}): " + " | ".join(parts[:6]) + ("..." if len(parts) > 6 else "")
+           + (" Dhyaan: " + " ".join(str(w) for w in warnings[:2]) if warnings else ""))
+    if missing:
+        say += f" Abhi baki: {', '.join(missing)}."
+    return {"day": d.isoformat(), "parts": parts, "missing": missing, "warnings": warnings, "say": say}
+
+
+def progress_variance(tenant: str, site: str = "") -> dict:
+    """#64 physical % by activity: planned qty vs done (progress rows), variance flagged when behind more
+    than her behind_pct - the site engineer reads it, the DPR prints it. Determined arithmetic only."""
+    with _LOCK, session() as s:
+        st = _site(s, tenant, site)
+        cfg = _st(s, tenant)
+        behind_pct = cfg.behind_pct if cfg.behind_pct else 10.0
+        out: list[dict] = []
+        for a in s.scalars(select(SsActivity).where(SsActivity.site_id == st.id)).all():
+            done = sum(p.qty for p in s.scalars(select(SsProgress).where(SsProgress.activity_id == a.id)).all())
+            planned = a.qty or 0.0
+            pct = round(done * 100 / planned, 1) if planned else None
+            behind = bool(pct is not None and (100 - pct) > behind_pct)
+            out.append({"activity": a.name, "code": a.code, "unit": a.unit, "planned": planned, "done": round(done, 3),
+                        "pct": pct, "behind": behind, "finish": a.finish})
+        st_name = st.name
+    out.sort(key=lambda x: -(x["pct"] if x["pct"] is not None else -1))
+    behind = [x for x in out if x["behind"]]
+    say = (f"{st_name}: {len(out)} activity. "
+           + "; ".join(f"{x['activity'][:28]} {x['pct']:g}%" if x["pct"] is not None else f"{x['activity'][:28]} (plan khali)" for x in out[:5])
+           + ("..." if len(out) > 5 else ""))
+    if behind:
+        say += f" PEECHHE ({behind_pct:g}%+ se): " + ", ".join(x["activity"][:24] for x in behind[:4]) + "."
+    return {"activities": out, "behind": len(behind), "say": say}

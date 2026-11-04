@@ -955,6 +955,10 @@ def init_db(url: str | None = None):
     from . import callrating as _callrating  # noqa: F401
     from . import yaad as _yaad  # noqa: F401  (v0.108 summaries + memory index)
     from . import docdesk as _docdesk  # noqa: F401  (v0.108 document desk + Sheet Milaan)
+    from .construction import models as _construction_models  # noqa: F401  (v0.512 Construction Wave 1:
+        # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
+        # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
+        # stays without its table)
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables

@@ -19181,3 +19181,75 @@ upstream repo rides VERBATIM under skillpack/upstream/21st-magic-mcp/ (ISC (c) 2
 healed). Tests test_v0512_hoola_magic21.py (34), all network through the mocked _http seam. TWENTY-SIXTH
 COLLISION: rebuilt on the dev chain's fresh base 84b88c6b (v0.511.0 HOOLA CS PACK), re-versioned
 0.511.0 → 0.512.0, both works kept. Base: 84b88c6b.
+
+## v0.522.0 CONSTRUCTION WAVE 1 — the Construction & Real Estate AI employees: records and money end to end (2026-11-04)
+Owner: "WAVE 1 - RECORDS AND MONEY (TIER A, BUILDERS PAY FOR IT AT ONCE): 61, 62, 64, 67, 70, 71, 75, 78, 85, 87, 88, 90, 91,
+92, 98 - EXTEND THE EXISTING THEKA SAHAYAK / SITE SUPERVISOR -------- END TO END", on the plan shipped this week at
+`docs/CONSTRUCTION_EMPLOYEE_PLAN.md`, built on her register now transcribed into the tree at
+`docs/research/building_industry/07_ai_employees_register.md` (123 AI Employees, 15 fields, tier A/B/C + the human gate; from
+the six sourced reports in the same folder - 276 jobs). THE LAW, riding every tool (`construction/gates.py` + the prompt
+block): PREPARE, never CERTIFY - tier C acts (sign, certify, file, approve, accept work, release payment, decide entitlement)
+refuse with the name of the human who does them; every number carries its formula trail; money never moves without her tap.
+
+THE PACKAGE `server/app/construction/` (models registered in db.init_db on day one, the v0.190.1 lesson):
+- `register.py` - all 123 rows as data (id, name, field, tier, the human who decides, wave) + helpers + WAVE1_HOME mapping
+  register #s to the desk that owns each in Hoola. Waves per the register: 1 = 15 rows, 2 = 29, 3 = 23, later = 56. (76 and 97
+  ride Wave-1 desks as parts of them but stay untagged in the register - the owner's list is verbatim.)
+- `gates.py` - 27 tier-C refusals (`tier_c_check`: broad, order-free keyword match on lowercased text; false refusal costs one
+  clarifying sentence, a missed one costs a forged certificate) + the LAW line. Guard rides every const tool action.
+- `statepacks/` - the state-pack law: rules as DATA with clause + source + checked_on + refresh_by; `maharashtra.json` v0
+  carries the DETERMINED rows (GST works contract 18% from 22 Sep 2025, CGST s.51 TDS 2% > Rs 2.5 lakh, Sec 393(1) TDS
+  1%/2%/20% no-PAN, BOCW cess 1% (Code on Social Security 2020, in force 21 Nov 2025) - cross-cited to theka/rules.py's v0.117
+  research - and RERA escrow 70% s.4(2)(l)(D)); the loader validates schema and refuses a STALE pack with a message instead of
+  answering; minimum wages deliberately NOT parked as numbers (they move; her CLabourWage rows carry the source).
+- `store.py` (#61) - lots with min-max, GRN with challan/invoice, issues (waste written off separately), over-issue refused,
+  reconciliation (received vs issued vs on-hand vs wastage %) with DOBARA MANGWAO reorder alerts.
+- `labour.py` (#85/#87/#90) - muster rolls (site/day/contractor/trade/present/absent/OT), licence + BOCW/EPF/ESIC renewal
+  calendar (30-day morning view), wage rates WITH their source (Hoola never supplies a minimum wage from memory), wage-audit
+  working paper (workers x days x rate + OT 1.5x hourly, trail {rate_row, source, ot_rule}), wage_paid records AFTER her
+  payment, cess_tds from the pack (a stale pack refuses).
+- `books.py` (#91) - project-wise book entries (heads labour/material/hire/subcontract/approval/misc/receipt), in/out/balance,
+  unsettled dues, vendor ageing (0-30/31-60/60+) and settle-after-payment. Khata PATTERN from net/khata.py.
+- `customer.py` (#92/#97/#98) - milestone demand DRAFT, the demand-letter PDF (her facts, her interest clause, the signer line
+  empty), demand_send OWNER ONLY, receipts (cumulative -> part -> paid), handover checklist per unit (ready when all items
+  done, handed when keys recorded), DLP tickets with the window arithmetic (possession + agreement months; a closed window says
+  warranty-only), vendor dispatch recorded after it happens.
+- `quality.py` (#75/#76/#78) - ITPs with HOLD points + approve-on-record, NCRs with severity/close-out, material-test lots
+  (the lab result goes in AS REPORTED; verdict pending until a human says it), IS 456 cl 16.1/Table 11 cube-acceptance DRAFT
+  for M20+ (mean >= fck+4, individual >= fck-4; below M20 the sigma route is REFUSED, never guessed), punch list over sitesup
+  snags (never duplicated), the QA morning (open NCRs, pending verdicts, retests due).
+- `meetings.py` (#67) - OAC/site/coord/client/weekly meetings, minutes as said, action items chased late-first (closed on
+  her/PM word), minutes PDF.
+
+THE HUB: `CONST_GROUP = "Construction & Real Estate"` + five hireable employees (`const_store` Saaman, `const_labour` Mazdoor
+Desk, `const_customer` Grahak Desk, `const_quality` Gunvatta, `const_meet` Baithak) with pitches, does and never-lists; the
+already-live Makaan suite (sitesup / theka / propagent) predates the Hub and keeps its own surfaces.
+
+EXTENSIONS OF THE LIVE DESKS: `sitesup action=voice_log` - the VOICE-FIRST daily log (#70/#64): the spoken evening shaped into
+rows by the brain, written through the SAME service paths (progress / attendance / material / snag / toolbox) so every rule,
+card and Theka mirror holds; returns the summary + the five questions still missing. `sitesup_dekho what=variance` - physical
+% by activity with her behind_pct flagging. `theka action=sub` gains rate_basis (naap kaisa), `sub_advance` (advance RECORD,
+paisa hers), `sub_bill advance_recover` (oldest advances recovered first, partial recovery reduces the row and says so),
+`wage_calc` (the wage working paper with the trail), `theka_dekho what=sub`. RA bills (#88) already lived in theka with the
+full deductions chain - trail noted, nothing rebuilt.
+
+VOICE: the 10 const tools join VOICE_VIA_KAAM (heavy desks ride santosh_kaam, never declared to the live call). Prompt block
+added (the construction law + which tool for which ask).
+
+Tests: NEW `tests/test_v0512_construction_w1.py` (26, the v0512 name is the built-on-0.512 birthmark) - register counts/waves,
+gate hits and legit passes, pack schema/staleness/citations, store GRN-issue-reconcile-reorder, labour muster/licence/
+wage-audit-source/cess-TDS, books/ageing/settle, demand->letter->owner-only-send->receipts->paid, handover/DLP window (open and
+KHATAM), ITP/NCR, test-lot human verdict, cube draft + the M15 sigma refusal, punch over snags, meetings chase, voice_log
+through the service paths + the missing questions, variance behind-flag, theka advances recovered oldest-first + partial +
+wage_calc trail, registry 553, tool dispatch end to end, VOICE_VIA_KAAM + Hub rows + version pins. Registry 543 -> 553 (my 10
+const tools; their magic21/dhara_dsl untouched).
+
+THE THIRTY-FIRST COLLISION: this sat built through FOUR dev ships (v0.512.0 HOOLA 21ST took the number, v0.513.0 BD PACK,
+v0.520.0 HOOLA TRACE, v0.521.0 DIFY) while the owner kept the Wave-1 lane moving - REBASE PROTOCOL: the push rejected, the
+rebase hit 173 version-layer conflicts (both chains swept the same pins), resolved on the documented shape: their fresh base
+0650e7ad kept whole (magic21 + dhara_dsl + TRACE + DIFY all in), my construction package rode in clean, the version layer
+re-applied coherently 0.521.0 -> 0.522.0 + +550 -> +551, both works kept, count-pin notes carry every bump. Server-only deploy
+(old APKs keep working); console untouched (desks open from chat and the Hub shows the hire cards; console desk views are a
+later version). NOT VERIFIED live: the first real site evening on voice, the first RA-bill week, the first demand letter - her
+pilot (one contractor, one project, Maharashtra) is the test. Mera PC freeze respected: nothing in server/app/pc/, desktop/
+or lib/ touched.

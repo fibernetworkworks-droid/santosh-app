@@ -764,6 +764,25 @@ TOOLS.extend(THEKA_TOOLS)
 TOOL_LABELS.update(THEKA_LABELS)
 HANDLERS.update(THEKA_HANDLERS)
 
+# v0.512 Construction & Real Estate Wave 1 (register docs/research/building_industry/07 - the tier gate in
+# construction/gates.py rides every tool: PREPARE, never CERTIFY; tier C refusals carry the human's name).
+# Store (#61), Labour+wages+cess (#85/#87/#90), Customer money+handover+DLP (#92/#97/#98), Quality ITP/NCR/
+# test lots + punch (#75/#76/#78), Meeting secretary (#67). Sitesup voice_log (#64/#70) and theka
+# sub rate-basis + advances + wage calc (#62/#71) ride the existing tools; RA bills (#88) already lived.
+from .const_store_tools import STORE_HANDLERS, STORE_LABELS, STORE_TOOLS  # noqa: E402
+from .const_labour_tools import LABOUR_HANDLERS, LABOUR_LABELS, LABOUR_TOOLS  # noqa: E402
+from .const_customer_tools import CUSTOMER_HANDLERS, CUSTOMER_LABELS, CUSTOMER_TOOLS  # noqa: E402
+from .const_quality_tools import QUALITY_HANDLERS, QUALITY_LABELS, QUALITY_TOOLS  # noqa: E402
+from .const_meet_tools import MEET_HANDLERS, MEET_LABELS, MEET_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
+                   (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
+                   (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+
 # v0.118 Brand Sahayak (brand designer: kit from her logo, posters in every size, final artwork only on her tap)
 from .brand_tools import BRAND_HANDLERS, BRAND_LABELS, BRAND_TOOLS  # noqa: E402
 
