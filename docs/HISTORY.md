@@ -18927,3 +18927,56 @@ Final local numbers: `_tool_specs()` = 164 specs / 89,782 chars (89,799 escaped)
 declared directly (was ~111), 40% budget headroom left; `seo_dekho` exactly once. Suites green locally: v0491 (5),
 v149 (2), v150/v01851/v01853 heal, v0211 (29), v0219, v0225, v0230, v0232, v0241, v0245, v0264, v0302, v0187,
 v0479 (24), console r1, workspace, launcher, v0481.
+
+## v0.495.0 OFFICE HOURS — our own gstack, the THINK/PLAN lane (2026-11-04)
+
+Owner: "BUILD" — the follow-through of "https://github.com/garrytan/gstack.git --- NOW READ THIS REPO
+FIRST". gstack (Garry Tan, YC) turns a coding agent into a virtual engineering team: /office-hours
+writes a design doc (six forcing questions, reframed ask, premises challenged, 3-4 options with
+effort, recommendation = the narrowest wedge), four plan reviews amend it (ceo / design / devex / eng
+— eng always last, on the final amended plan), and only then is anything built. The house had the
+hands all along (qa, devops, appreview, kaam_plan); this ships the head. Zero gstack code — their
+side is all Markdown prompts; the idea crossed the boundary, nothing else did.
+
+The lane (`agent/officehours_tools.py`, registry 529 -> 531: officehours / officehours_dekho):
+per-tenant sqlite `data/officehours/<tenant>/officehours.db` (office_docs + office_reviews). One tool,
+five actions (the kaam_plan shape): start opens a baithak and stores the SIX forcing questions (real
+pain with a specific example — not hypothetical; who does it today and what it costs; the first
+visible change when fixed; today's jugaad; the smallest self-useful wedge; kill criteria) — the agent
+asks them ONE at a time and pushes back on the framing. An already-open baithak for the same topic
+returns the SAME doc (already_open, no duplicate). doc writes the design doc: reframe, capabilities
+(max 7), premises challenged + her answers (max 7), 3-4 options with honest effort (hours | day | days
+| week | weeks; unknown clamps to days), recommendation (the narrowest wedge — gstack's "ship the
+narrowest wedge, learn from real usage"). review appends a lens row (ceo | design | devex | eng,
+findings + changes, append-only); the eng lens is what flips status to reviewed (eng reviews the FINAL
+amended plan), and a review on a draft with no doc is refused — never review a plan that is not
+written down. decide records HER decision in her words (required; Hoola never decides) + optional
+next_step. stop closes. dekho reads: list (latest baithaks: topic / status / wedge), doc (the full
+design doc + review count), reviews (every lens row); no id = the latest. Status line: draft -> doc ->
+reviewed -> decided | stopped. Caps everywhere, newest 30 docs kept per tenant
+(officehours_keep_docs=30, older docs + their reviews forgotten on write), officehours_enabled=True.
+
+House rules kept: the thinking is the agent's (the brain), the tool stores structure and enforces caps
+(how kaam_plan stores plans, how qa stores cases); NOTHING auto-runs off a doc — the wedge and
+next_step are advisory text; turning them into work happens on later turns through the existing doors
+with her Haan (the one rule gstack cannot have: Hoola never starts building by itself). The
+officehours family admits on tight big-idea keys only (office hours / baithak / design doc / plan
+review / naya idea...): "idea" or "plan" alone would have loaded it on every second turn. prompts.py
+grew the OFFICE HOURS bullet placed BEFORE the LAMBA KAAM bullet — think before plan.
+
+Tests: test_v0495_officehours.py (30) green — registry 531, the six questions, dedupe, clamps, the
+four lenses, eng-last flip, review-on-draft refusal, decide/stop closure, dekho list/doc/reviews,
+tenant isolation, disabled switch, forget-old 30, nothing-autoruns advisory pin, story + prompts
+pins. Sweep: v0488 26 (registry pin 529 -> 531), v0491 5, v0187 15, launcher 16, v0479 24, v0482 28,
+v149 2, v150 6, v0211 29, v0230 11, v0492 9, v0484 19 — all green; test_v0400 5 reds WORKTREE-PROVEN
+on pristine origin/main (playwright binary + site lane: the sandbox environment class). Pins: 86
+full-string + the bare APP_VERSION asserts -> 0.495.0+539, zero residual (one 0.494.0 remains on
+purpose: the story's Previous line). Console untouched (stamps stay 0.485.0); desktop untouched
+(server-only deploy, old APKs keep working); Mera PC freeze respected.
+
+NOT VERIFIED (honest): the first real baithak in her chat is the live test; the voice lane does not
+declare officehours yet — calls reach it via santosh_kaam like every desk's changes.
+
+Deploy: no new pip packages; the usual vps-ops ritual (checkout tag, cp -r server/app, pm2 restart,
+healthz grep 0.495.0). Previous: v0.494.0 EQUAL POWER, v0.493.0 THE FLUTTER PASS, v0.492.0 BYOX FEED,
+v0.491.0 CRAWL JOBS.

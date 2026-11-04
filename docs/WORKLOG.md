@@ -866,3 +866,66 @@ Work Log:
   the stale "- v0.487 HOOLA WEB EXTENSION" current-state line (-> v0.490, missed in the 0.490 ritual).
 - NOT VERIFIED (honest): the APK compile runs first on the CI push (no flutter in the sandbox);
   if a constraint lies about its SDK ceiling the build fails and the constraint reverts.
+
+## Task 28 — v0.495.0 OFFICE HOURS (owner: "BUILD", straight after "NOW READ THIS REPO FIRST" on github.com/garrytan/gstack) (2026-11-04)
+
+Task: read Garry Tan's gstack first, then build our own. gstack = the open-source software factory:
+/office-hours reframes the ask into a design doc, four plan reviews (CEO / design / devex / eng) amend
+it, only then anything is built. The house already had the hands (qa, devops, appreview, kaam_plan);
+it never had the HEAD - the structured think/plan step that decides what is WORTH building.
+
+Work Log:
+- Read gstack end to end in the fresh clone: README (the sprint table), DESIGN.md, ETHOS.md (boil the
+  ocean / search before building), SKILL.md preamble protocol, ship + review + office-hours SKILL.md
+  shapes (981/984/683 lines). What transfers to a chat agent: the office-hours design doc + the review
+  lenses + "eng always last" + "recommendation = the narrowest wedge" + "decide is hers". What cannot:
+  the rest is Markdown prompts for a coding agent on a repo - zero gstack code enters this tree.
+- State check first: origin/main had moved AGAIN - v0.494.0 EQUAL POWER (7c1e5139) landed on top of
+  our v0.491.0 while this was being planned (our own crawl-jobs story re-versioned by the equal-power
+  build's NINETEENTH COLLISION). Branch office-hours-v0495 cut on 7c1e5139; v0.495.0 free on tags
+  (latest v0.494.0-b1473), b1474 next.
+- Built agent/officehours_tools.py (the house shape of kaam_plan + crawl_jobs): per-tenant sqlite
+  data/officehours/<tenant>/officehours.db (office_docs + office_reviews); officehours (start | doc |
+  review | decide | stop) + officehours_dekho (list | doc | reviews); SIX_QUESTIONS stored at start
+  and asked one at a time; same-topic-while-open dedupes honestly (already_open); caps everywhere
+  (topic 200, texts 2k, capabilities 7, premises 7, options 4 with effort enum clamp to days, findings
+  12, verdict 60); status line draft -> doc -> reviewed (eng lens flips it; review on a doc-less draft
+  refused) -> decided | stopped; keep newest 30 docs per tenant (config officehours_keep_docs, forget
+  on write); decide requires HER words.
+- Wiring: tools.py extend (registry 529 -> 531); config.py officehours_enabled=True +
+  officehours_keep_docs=30 beside the scrape_crawl block; admit.py EXTRA_KEYS "officehours" family
+  (tight keys: office hours / baithak / design doc / plan review / naya idea / product idea / business
+  idea / idea pe soch / shuru karne se pehle / officehours_dekho - "idea"/"plan" alone would load it
+  every second turn); prompts.py OFFICE HOURS bullet BEFORE the LAMBA KAAM bullet (think before plan);
+  NOTHING auto-runs off a doc - the wedge/next_step is advisory text, real work rides the existing
+  doors with her Haan (the house rule gstack cannot have: Hoola never starts building by itself).
+- Version layer: APP_VERSION story (v0.495.0 OFFICE HOURS), pubspec 0.494.0+538 -> 0.495.0+539, pins
+  swept by xargs-sed: 86 full-string 0.494.0+538 -> 0.495.0+539 + every bare assert APP_VERSION ==
+  "0.494.0" -> "0.495.0", zero residual (the one 0.494.0 left in server/ is the story's Previous:
+  line - history stays); test_v0488's registry pin 529 -> 531 ("529 (v0.494, EQUAL POWER on) + 2
+  office-hours tools"). NOTE: the first sweep attempt through a while-read loop silently did nothing
+  (persistent-shell quirk) - the verify step caught it (86 residual) and the xargs form worked; sweep
+  without verify is not a sweep.
+- Tests: NEW tests/test_v0495_officehours.py (30): registry 531 + family + labels; story + prompts
+  pins; six questions; start dedupe/clamps; doc caps + effort clamp; doc on missing/decided refused;
+  review on draft refused; ceo keeps status doc; eng flips to reviewed; bad lens refused; findings
+  capped 12; review after decided refused; decide records her words / requires words / twice refused;
+  stop; dekho list (latest first, empty honest) / doc / reviews (newest first) / default-latest /
+  unknown-what; actions without any baithak refused; tenant isolation; disabled switch; forget-old 30
+  (time monkeypatched); nothing-autoruns advisory pin. First run 15 failed with "tuple indices must be
+  integers" - _con() did not set row_factory=sqlite3.Row (start_doc set its own; the four other store
+  functions read rows by name) - fixed once at _con, 30/30 green.
+- Suite sweep (one pytest process each): v0495 30 + v0488 26 (registry pin swept) + v0491 5 + v0187
+  15 + v0481 launcher 16 + v0479 24 + v0482 28 + v149 2 + v150 6 + v0211 29 + v0230 11 + v0492 9 +
+  v0484 19 = all green. test_v0400 5 failed / 3 passed - WORKTREE-PROVEN on pristine origin/main
+  7c1e5139 in a clean worktree: identical 5/3 (playwright chromium binary missing in the sandbox +
+  the site-lane SiteError class) - pre-existing environment class, untouched by this diff.
+- Docs: CLAUDE.md current-state v0.495 line + Current version line (ritual tail kept); WORKLOG Task
+  28; HISTORY section. Mera PC freeze respected: nothing in server/app/pc/, desktop/ or
+  lib/ui/pc_screen.dart touched; console untouched (stamps stay 0.485.0).
+- NOT VERIFIED (honest): the first real baithak in her chat is the live test; the voice lane does not
+  declare officehours yet (calls reach it via santosh_kaam, same as every desk's changes - declaring
+  heads would touch the fresh v0.494 surface without its owner asking).
+
+Deploy: no new pip packages; the usual vps-ops ritual (checkout tag, cp -r server/app, pm2 restart,
+healthz grep 0.495.0).
