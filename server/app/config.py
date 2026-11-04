@@ -393,6 +393,12 @@ class Settings(BaseSettings):
     scrape_stealth_enabled: bool = False   # v0.477 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
     scrape_cache_enabled: bool = True      # v0.481 serve repeat scrapes from the per-tenant page cache within max_age
     scrape_cache_max_age: int = 1800       # v0.481 default seconds a cached page stays fresh for the scrape tool (0 = always fresh)
+    scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)
+    scrape_crawl_max_pages: int = 20       # v0.486 default page budget per crawl job (crawl_start clamps to 50)
+    scrape_crawl_max_running: int = 1      # v0.486 crawl jobs running at once, globally (HTTP-only, politeness first)
+    scrape_crawl_stale_s: int = 180        # v0.486 a running crawl without a heartbeat this long is resumed from its checkpoint
+    scrape_crawl_tries: int = 3            # v0.486 a crawl job is started at most this many times before it is failed
+    scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_backchannel: bool = True         # v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)

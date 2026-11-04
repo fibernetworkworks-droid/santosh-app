@@ -802,3 +802,38 @@ Work Log:
 Stage Summary:
 - v0.490.0 HOOLA WEB EXTENSION on w3-webext: 'send page to Hoola' is real, and the W2b promise is kept - the PT Run door ('hoola <sawaal>') and the window's ask box ride the SAME text lane into her conversation. Deploy = the usual vps-ops ritual for the server; the desktop 1.9.0 exe publishes via build-desktop (desktop/** trigger).
 - Next in the Platforms plan: W4 (the flutter pass). The tools lane still awaits its own START.
+
+## Task 27 — v0.491.0 CRAWL JOBS (owner: "PHASE 2 END TO END"; NINETEENTH COLLISION re-ship - the branch sat built+tagged v0.488.0-b1450 while dev took 0.489.0 PowerToys Run + 0.490.0 web extension; rebuilt on their fresh base 1eea1356X x2) while this built, rebuilt on their fresh base fdc7c402)
+
+Phase 2 of our own Firecrawl, on the v0.483 FIRECRAWL CORE lane (live on the VPS, healthz verified 0.483.0):
+the crawl JOBS queue. NEW `server/app/agent/crawl_jobs.py` + 3 tools (registry 526 -> 529):
+- `crawl_start` - queues a per-tenant job in `data/scraping/<tenant>/crawl.db` (crawl_jobs + crawl_pages,
+  the scrape lane's own sqlite; NOT the main db - the research lane keeps SQLAlchemy, this lane keeps raw
+  sqlite beside elements.db/cache.db). Same-seed dedupe honest (`already_running`), seed SSRF-guarded +
+  robots-checked at queue time, max_pages clamp 50.
+- `worker.scrape_crawl_jobs` (~20 s self-throttle, the research tick shape) -> `crawl_jobs.tick()`: candidates
+  = queued jobs + running jobs whose heartbeat went stale (scrape_crawl_stale_s=180); claim = ONE conditional
+  UPDATE (tries+1, `tries < scrape_crawl_tries`, exhausted = failed with an honest error); the runner is a
+  checkpointed polite same-site BFS - HTTP ONLY (a browser never launches in the background lane; a blocked
+  page is recorded with its reason and the crawl moves on), robots per url (skipped counter), SSRF per url,
+  the frontier (queue+seen) written back after EVERY page (a pm2 restart resumes FROM THE CHECKPOINT, a
+  finished page is never fetched twice), write-through into the v0.481 page cache (the crawl warms the scrape
+  door).
+- `crawl_status` (no job_id = latest; check/stop; stop lands between pages - the page in the air finishes,
+  nothing after it starts) and `crawl_results` (paginated listings cap 8k, `url=` one full page 20k, works
+  mid-crawl, mask_ids applied).
+- config: scrape_crawl_enabled / max_pages(20) / max_running(1) / stale_s(180) / tries(3) / keep_days(7).
+- prompts.py Scraping bullet grew the background-crawl sentence.
+Tests: NEW `server/tests/test_v0488_scrape_crawl_jobs.py` (26) - offline: fetches monkeypatched to local
+scrapling Responses, robots gate patched, politeness 0. Covers registry 529, start gates + dedupe, candidates
+(stale-only, tenant isolation), claim tries->failed, the runner (BFS + cache warm + no double fetch, include
+regex, same-host only, max_pages budget, robots skips, blocked page + stealth-never, fetch failures never kill
+the crawl, stop between pages, stalled resume from checkpoint, tick+drain on ONE loop, max_running, disabled
+setting, forget-old caps), tools (status/stop, results pagination + url= + tenant isolation + mask_ids).
+Found by its own tests: a second asyncio.run(drain()) cannot await the first run's task (loop close cancels
+it; the job lands honestly back in 'queued' - tests tick+drain in ONE flow; production never affected);
+crawl_start's dedupe needed an internal _created flag to say 'new' vs 'already there'.
+Sweeps on the v0.490 base: crawl-jobs 26 + scrape-firecrawl 28 + scrapling 27 + frames 14 + v0179 7 = 102/102, one pytest process per suite;
+pins ->0.491.0(+535) on the rebased base; console stamps stay 0.487.0 (dev's console changed, mine did not).
+Version ritual: pubspec 0.491.0+535, APP_VERSION story, CLAUDE.md one line, HISTORY.md section.
+- Re-ship notes: the stray data/scraping/tenantabd/cache.db test artifact the v0.488 branch build accidentally committed is dropped; this deploy also carries the dev's v0.489/v0.490 server side (PowerToys lane + quickask lane).
