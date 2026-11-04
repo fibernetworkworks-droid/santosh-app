@@ -18812,3 +18812,84 @@ console stamps stay 0.485.0 x21. Mera PC freeze respected.
 NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet, and the C# ask-door compiles first on the
 next push (CI-only) - her first right-click "Hoola ko bhejiye" after deploy is the live test. Deploy: server via the usual
 vps-ops ritual; desktop 1.9.0 exe publishes via build-desktop. Next in the plan: W4 (the flutter pass).
+
+## v0.491.0 CRAWL JOBS — the background crawl lane (owner: "PHASE 2 END TO END"; NINETEENTH COLLISION (re-ship of the v0.488.0 branch build; dev took 0.489.0 + 0.490.0 while it sat unpushed, rebuilt on 1eea1356) - the dev's chain took 0.486.0 BYOX SKILL PACK and 0.487.0+532 BYOX full dataset while this built, REBASE PROTOCOL respected, rebuilt on their fresh base fdc7c402, both BYOX works kept beside the crawl lane)
+
+Phase 2 of our own Firecrawl, end to end, on the v0.483 FIRECRAWL CORE lane (which is LIVE on the VPS -
+healthz 0.483.0 verified from the outside before this built). Design borrowed from Firecrawl's /crawl +
+NuQ queue + checkpointed crawler; ZERO Firecrawl code (the engine is AGPL-3.0, never enters this tree).
+
+### 1. The queue (per-tenant, the scrape lane's own sqlite)
+
+NEW `server/app/agent/crawl_jobs.py`. Jobs live in `data/scraping/<tenant>/crawl.db` (tables `crawl_jobs`
++ `crawl_pages`) - beside `elements.db` and `cache.db`, NOT in the main db: the research lane keeps
+SQLAlchemy on the main db, this lane keeps raw sqlite like the rest of the scrape lane, and the worker
+discovers tenants by globbing `data/scraping/*/crawl.db`.
+
+- `crawl_start(url, max_pages=20, include=None)` - seed SSRF-guarded + robots-checked AT QUEUE TIME (a bad
+  seed is refused before anything runs), max_pages clamped to 50, an already queued/running job for the SAME
+  seed is returned as-is with an honest `already_running` (an internal `_created` flag says new vs existing).
+- `crawl_status(job_id="", action="check"|"stop")` - no job_id = the latest job of the tenant; returns
+  status (queued/running/done/failed/stopped), fetched vs budget, queue_left, errors, skipped_by_robots,
+  last_block, age. `stop` lands BETWEEN pages: the page in the air finishes, nothing after it starts,
+  fetched pages stay readable; idempotent.
+- `crawl_results(job_id="", offset=0, limit=5, url="")` - paginated listings (markdown capped 8k/page,
+  max 10 a call) of whatever is STORED so far - works while the crawl still runs; `url=` serves ONE full
+  page (20k). Outputs pass `mask_ids` like every tool.
+
+### 2. The runner (checkpointed polite BFS, HTTP only)
+
+`worker.scrape_crawl_jobs` (self-throttled ~20 s, the `research_jobs` shape) -> `crawl_jobs.tick()`:
+
+- candidates = queued jobs + running jobs whose heartbeat (`updated_at`) went stale
+  (`scrape_crawl_stale_s=180`) - the v0.475 research-runner stall-recovery idea.
+- claim = ONE conditional UPDATE (`tries+1 ... WHERE tries < scrape_crawl_tries`); tries exhausted = the
+  job is failed with an honest error (`tries bhar gaye`), never silently dropped.
+- the runner: HTTP ONLY - `st._fetch` (curl_cffi) and nothing else; a browser NEVER launches in the
+  background lane (MEM-CURE RAM discipline; stealth stays the foreground doors' business). A blocked page
+  (401/403/429 or a challenge signature via `st._blocked`) is recorded with its block reason, counted in
+  `errors` + `last_block`, and the crawl moves on. robots.txt is checked per url (skipped counter), the
+  SSRF guard per url, politeness sleeps between fetches.
+- CHECKPOINT after EVERY page: the frontier (queue + seen + counters) is written back into the job row, so
+  a pm2 restart or a crash resumes FROM THE CHECKPOINT - a finished page is never fetched twice. A task
+  cancelled at shutdown honestly requeues the job with a note.
+- every successful page write-throughs into the v0.481 per-tenant PAGE cache (`st._cache_put_page`) - the
+  crawl warms the scrape door, so later `scrape` calls serve those pages with zero outbound.
+- caps: `_CRAWL_PAGES_CAP=50` per job, `_PAGE_CHARS=20_000` stored per page, `_QUEUE_CAP=500` frontier,
+  `_KEEP_JOBS=10` finished jobs per tenant, `scrape_crawl_keep_days=7` then forgotten.
+- config: `scrape_crawl_enabled=True`, `scrape_crawl_max_pages=20`, `scrape_crawl_max_running=1` (global,
+  politeness first), `scrape_crawl_stale_s=180`, `scrape_crawl_tries=3`, `scrape_crawl_keep_days=7`.
+
+### 3. Wiring + routing
+
+- `agent/tools.py`: `TOOLS.extend(CRAWL_TOOLS)` beside the scrape block (registry 526 -> 529).
+- `worker.py`: `await scrape_crawl_jobs()` in `tick()` after `research_jobs()`.
+- `prompts.py`: the Scraping bullet grew the background-crawl sentence (MANY pages across turns ->
+  crawl_start / crawl_status / crawl_results).
+
+### 4. Tests + the two bugs they caught
+
+NEW `server/tests/test_v0488_scrape_crawl_jobs.py` (26), all offline (fetches monkeypatched to local
+scrapling Responses, robots gate patched, politeness 0): registry 526; start gates (queue/clamp/dedupe/
+SSRF/robots/disabled); candidates (queued + stale-only + tenant isolation); claim (tries then failed);
+the runner (BFS + page-cache warm-through + no double fetch; include regex + same-host only; max_pages
+budget stops with the frontier left; robots skips counted; a blocked page recorded while stealth is NEVER
+tried; fetch failures never kill the crawl; stop between pages; stalled resume from checkpoint with ZERO
+refetch; tick spawn + drain; max_running respected; disabled setting; forget-old caps); the tools (status
+fields + idempotent stop; results pagination + url= full page + listing cap + tenant isolation + mask_ids
+with a Verhoeff-valid sample); version pin.
+
+Bugs found by the suite during bring-up: (a) in tests, a SECOND `asyncio.run(cj.drain())` cannot await the
+first run's spawned task - the loop close cancels it and the cancel handler honestly requeues the job; the
+tests now tick+drain in ONE asyncio flow (production was never affected: the worker loop persists across
+ticks). (b) `crawl_start`'s same-seed dedupe could not say "new" vs "already there" - `create_job` now
+carries an internal `_created` flag. (c) the mask_ids test sample needed a Verhoeff-valid Aadhaar - the
+masker is precise by design.
+
+Sweeps (one pytest process per suite): crawl-jobs 26 + scrape-firecrawl 28 + scrapling 27 + coder 24 =
+105/105. Pins ->0.488.0(+533) swept on the rebased base (155 suites + 75 slipped full-string pins normalized);
+console stamps stay 0.487.0 (the console changed in the DEV chain, not here; the v0179/r1 guards re-pointed
+to the maintained 0.487.0 convention, the frames count-line re-aligned). Version 0.488.0: pubspec 0.491.0+535, APP_VERSION story, CLAUDE.md one line,
+docs/WORKLOG.md Task 25. Mera PC freeze respected; desktop untouched - server-only deploy, old APKs keep
+working. VPS deploy: no new pip packages (the usual ritual: checkout tag + cp -r server/app + pm2 restart
++ healthz grep 0.488.0).

@@ -333,6 +333,12 @@ TOOLS.extend(SCRAPE_TOOLS)
 TOOL_LABELS.update(SCRAPE_LABELS)
 HANDLERS.update(SCRAPE_HANDLERS)
 
+from .crawl_jobs import CRAWL_HANDLERS, CRAWL_LABELS, CRAWL_TOOLS  # noqa: E402  v0.486 background crawl lane
+
+TOOLS.extend(CRAWL_TOOLS)
+TOOL_LABELS.update(CRAWL_LABELS)
+HANDLERS.update(CRAWL_HANDLERS)
+
 from .army_tools import ARMY_HANDLERS, ARMY_LABELS, ARMY_TOOLS  # noqa: E402
 
 TOOLS.extend(ARMY_TOOLS)

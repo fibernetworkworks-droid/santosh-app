@@ -356,6 +356,7 @@ async def tick() -> None:
     await inbox_jobs()
     await team_jobs()
     await research_jobs()
+    await scrape_crawl_jobs()
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
@@ -521,6 +522,25 @@ async def research_jobs() -> None:
         await watch.tick()                              # v0.480 R9: watched topics that are due
     except Exception:
         log.exception("research tick failed")
+
+
+_crawl_last = 0.0
+
+
+async def scrape_crawl_jobs() -> None:
+    """v0.486 CRAWL JOBS: queued background crawls start, a stalled one is picked up again from its
+    checkpoint, old finished ones are forgotten (the research tick shape, on the scrape lane's own
+    per-tenant crawl.db queue)."""
+    global _crawl_last
+    import time
+    if time.time() - _crawl_last < 20:
+        return
+    _crawl_last = time.time()
+    try:
+        from .agent import crawl_jobs
+        await crawl_jobs.tick()
+    except Exception:
+        log.exception("scrape crawl tick failed")
 
 
 _el_last = 0.0
