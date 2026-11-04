@@ -1029,3 +1029,45 @@ Stage Summary:
   scheduled wake after a pm2 restart — live tests, named in the story. Deploy: no new pip packages; the usual ritual
   (checkout main + cp -r server/app + pm2 restart santosh --update-env + healthz grep 0.502.0).
 - Previous: v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS, v0.498.0 HOOLA UIUX PRO MAX.
+
+## Task 34 — v0.510.0 HOOLA CORE (owner: "GO BUILD P1" after "PLAN FOR HOOLA AI AGENT ENGINEERING PLATFORM SYSTEM ALL 100 % LANGCHAIN CLONE AND FEATURES")
+
+- The READ first (house law): github.com/langchain-ai/langchain read end to end at aa2528fb (core 1.7.5 / langchain
+  1.4.8; 365 core files 136k LOC; runnables/base.py:134 Runnable, chat_models.py:325 BaseChatModel, content.py 17
+  content blocks, agents/factory.py:824 create_agent + 24 middlewares, typesafe classifier at HEAD). ZERO langchain
+  code enters this tree; the FEATURE SURFACE is cloned by hand.
+- THE SUBSTRATE (new server/app/aep/, 9 modules, ~2.2k LOC, inert library): messages (BaseMessage family + the 17
+  content blocks + AIMessageChunk '+' merge + dict round trip + RemoveMessage), runnable (invoke/batch/stream + '|'
+  composition, RunnableSequence/Parallel/Lambda/Binding/Passthrough, with_retry + with_fallbacks hand-rolled),
+  tools (BaseTool/StructuredTool/@tool - schema from type hints + the docstring Args section, InjectedToolArg
+  excluded from the model-facing tool_call_schema, tool_call in -> ToolMessage out), models (BaseChatModel + BaseLLM
+  contracts - the _generate + _llm_type subclass surface, InMemoryCache, InMemoryRateLimiter token bucket,
+  ModelProfile living-row hook, FakeList fakes), prompts (PromptTemplate + ChatPromptTemplate + MessagesPlaceholder
+  + partials), parsers (Str / Json fenced-tolerant / Pydantic), history (BaseChatMessageHistory), stores
+  (tuple-key InMemoryStore + InMemoryByteStore), serializable (the lc-shaped to_json seed for the P7 loader).
+- INERTNESS LAW (the P1 kill-switch note): a fresh interpreter imports app.aep with ZERO threads, ZERO env reads,
+  ZERO files created; the source carries no network imports and no get_settings - nothing executes unless called,
+  so no flag is needed; the flag law applies from P2 (HOOLA TRACE tracers) on. The AEP train: P1 CORE (this) -> P2
+  TRACE -> P3 GRAPH -> P4 AGENT (create_agent) -> P5 the 24-middlewares (nudge/curator/delegate/skills-primer
+  collapse into hooks) -> P6 RETRIEVE (vectors + index() dedup) -> P7 HUB (init_chat_model router, MCP client,
+  loader, conformance suites) -> P8 the 100% parity audit.
+- Tests: NEW test_v0510_hoola_core.py (79): the sections above + INERTNESS probes + the package-export law
+  (app.aep __all__ all importable) + APP_VERSION/pubspec pins; no network (async paths ride asyncio.run, the
+  documented one-loop law). Sweeps: core 314/314 one run (79 core + dhara 35 + docs7 26 + curator 28 + selfteach 24
+  + coder 24 + swarm 17 + home 24 + frames 14 + officehours + mem). Bugs the suite caught: (a) ChatMessage role->
+  type mapping lost the type field on the super() call; (b) ToolCall TypedDict required index/extras and rejected
+  every merged chunk (core now required, index/extras optional - the upstream shape); (c) BaseLLM.generate
+  double-nested generations; (d) RunnableSequence.stream tried an async handoff in a sync generator (pure-sync
+  chunk chaining now); (e) pydantic needed a __get_pydantic_core_schema__ any-schema hook on Runnable so
+  Runnable-typed fields (sequence steps, parallel children, bindings) validate.
+- Version ritual: APP_VERSION story (this entry is its marker source), pubspec 0.510.0+545, CLAUDE.md current-version
+  line healed, pins swept 0.502.0 -> 0.510.0 (174 bare + 92 full-string hits across 169 files, zero residual except
+  deliberate history), story pins (test_v0475 + test_v0495_officehours) moved to the v0.510 story (the
+  newest-story precedent); console stamps untouched; registry stays 541 (no agent tool added - aep is library, not
+  a lane); no vps-ops job (nothing to flip); mem restart pin untouched; Mera PC freeze respected (nothing in
+  server/app/pc/, desktop/ or lib/ touched); docs/HISTORY.md section added.
+- Server-only deploy, old APKs keep working. Deploy ritual: checkout main + cp -r server/app + pm2 restart santosh
+  --update-env + healthz grep 0.510.0. NOT VERIFIED (honest): the first voice turn riding a composed aep chain -
+  nothing composes yet by design (P1 is the substrate; the agent loop arrives in P3/P4).
+- Previous: v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS, v0.498.0 HOOLA
+  UIUX PRO MAX [full chains in git history].

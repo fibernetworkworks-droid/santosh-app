@@ -19102,3 +19102,14 @@ server/app/coder/uiux_tool.py (the uiux_design tool, registry 534 -> 535) + serv
 vetted design catalog: app-interface, charts, colors, icons, landing, motion, products, react-performance,
 styles, typography, ui-reasoning, ux-guidelines + google-fonts and 21 stack files from angular to wpf, with
 LICENSE + PROVENANCE + data-provenance). Tests test_v0486_hoola_uiux_skill.py (theirs). Base: 8f110ee2.
+
+## v0.510.0 HOOLA CORE — the langchain-core feature clone as server/app/aep, P1 of the HOOLA AEP plan (2026-11-04)
+
+The AEP train opens. langchain read end to end at aa2528fb (core 1.7.5 / langchain 1.4.8); ZERO upstream code — the
+feature surface is hand-built: messages (BaseMessage + the 17 content blocks + chunk merge), runnable (invoke/batch/
+stream + `|` composition with Sequence/Parallel/Lambda/Binding/Passthrough, hand-rolled with_retry/with_fallbacks),
+tools (BaseTool/StructuredTool/@tool with hint+docstring schemas and InjectedToolArg), models (BaseChatModel/BaseLLM
+contracts, InMemoryCache, InMemoryRateLimiter, ModelProfile, FakeList fakes), prompts, parsers, history, stores,
+serializable. Inert library — no network, no threads, no config reads, no kill switch (nothing executes unless
+called); the flag law applies from P2 on. Tests test_v0510_hoola_core.py (79) + core sweep 314/314. P2 TRACE is next;
+then P3 GRAPH, P4 AGENT, P5 the 24-middlewares, P6 RETRIEVE, P7 HUB, P8 the parity audit.

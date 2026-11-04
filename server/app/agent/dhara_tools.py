@@ -1,4 +1,4 @@
-"""v0.502.0 DHARA — her workflows (धारा, the stream): the n8n idea, house-sized, end to end.
+"""v0.510.0 DHARA — her workflows (धारा, the stream): the n8n idea, house-sized, end to end.
 
 Owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END" after the full READ of github.com/n8n-io/n8n
 (v2.47.0, fair-code). ZERO n8n code exists here (the Sustainable Use License forbids it and the

@@ -1,4 +1,4 @@
-"""v0.502.0 HOOLA CONTEXT7 - the upstash/context7 port (owner: 'FEED CONTEXT7 TO HOOLA'). The
+"""v0.510.0 HOOLA CONTEXT7 - the upstash/context7 port (owner: 'FEED CONTEXT7 TO HOOLA'). The
 repo was read end-to-end first (upstash/context7 @ 193e4bb, @upstash/context7-mcp v4.5.0);
 this suite pins the port against upstream's own file:line facts:
 
@@ -136,8 +136,8 @@ def test_config_defaults(env):
 
 def test_version(env):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.502.0"
-    assert "version: 0.502.0+544" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.510.0"
+    assert "version: 0.510.0+545" in (REPO_ROOT / "pubspec.yaml").read_text()
 
 
 # ------------------------------------------------------------------ (2) resolve formatting

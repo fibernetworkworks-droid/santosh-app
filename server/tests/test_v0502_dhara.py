@@ -1,4 +1,4 @@
-"""v0.502.0 DHARA - her workflows (the n8n idea, house-sized, end to end).
+"""v0.510.0 DHARA - her workflows (the n8n idea, house-sized, end to end).
 
 Owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END" (after the full READ of n8n v2.47.0; zero n8n
 code - the fair-code license keeps it out of this tree, the idea is rebuilt on house rails).
@@ -580,7 +580,7 @@ def test_outputs_pass_mask_ids():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.502.0"
+    assert APP_VERSION == "0.510.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.502.0+544" in pub.read_text()
+    assert "0.510.0+545" in pub.read_text()
