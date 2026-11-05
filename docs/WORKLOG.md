@@ -1549,3 +1549,13 @@ Work Log:
 - Version ritual v0.580.0 (the rebase re-run): APP_VERSION story, pubspec 0.580.0+595, CLAUDE.md healed, console stamps 22x, pins swept 0.569.0 -> 0.570.0 / +592 -> +593 across 187 test files, WORKLOG Task 27 + HISTORY.md v0.570.0 section.
 Stage Summary:
 - P6 DONE: the AEP train has its retrieval layer. Train: P7 HUB -> P8 the 100% parity audit. Deploy is the owner's dispatch (server-only: checkout main + cp -r server/app + pm2 restart santosh --update-env; healthz should say 0.570.0).
+
+---
+Task ID: 50 — v0.582.0 SASTI JAANCH (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "TESTING IS VERY COSTY" -> "SHIFT TO HAIKU AND TEST ON IT".
+Work Log:
+- quality --model / QUALITY_MODEL moves every Claude setting for the card process; vps-ops *_haiku jobs; status job not red.
+- NEW test_v0582_sasti_jaanch.py (4).
+Stage Summary:
+- v0.582.0 server + workflow only. Owner runs deploy, then tool_card_haiku / hard_card_haiku / long_card_try_haiku.

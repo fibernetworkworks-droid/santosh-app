@@ -20788,3 +20788,15 @@ rang 4, dukaan paisa / plus + abhi abhi 26, suraksha gates 9, site 6.
 Opus has authored an LMS spec yet (the scripted spec stands in for it); the video player was not opened in a real browser
 here. The salon half (per-salon staff, per-stylist slots under a lock, booking payments with per-salon payouts) is the
 next release.
+
+## v0.582.0 SASTI JAANCH — the quality cards on Haiku 5.5 (owner: "TESTING IS VERY COSTY" -> "SHIFT TO HAIKU AND TEST ON IT")
+
+`app/quality/__main__.test_model`: `--model haiku|sonnet|opus|<id>` or `QUALITY_MODEL` sets every Claude model setting a
+card turn can reach (`_CLAUDE_FIELDS`: anthropic / agent_hard / hard_check / hard_judge / quick / dev_loop / site /
+site_edit / app / cad / motion / blender / notebook / studio_plan / doc / game) in THAT process's environment and clears the
+settings cache - the live server is a different process and keeps its models. vps-ops: `tool_card_haiku`,
+`hard_card_haiku`, `long_card_try_haiku` (one `case` strips the suffix and exports QUALITY_MODEL into the job script, so the
+detached long card inherits it); `long_card_status` no longer exits red when no run log exists. Prices (usage.py):
+Haiku 5.5 $0.10 / $0.50 per M tokens vs Sonnet 5.5 $2 / $10 and Opus 5.5 $4 / $20. A Haiku card proves the PIPES (request
+accepted by the API, tools found, jobs reach their end state); it does NOT measure the production model's answer quality.
+Tests: test_v0582_sasti_jaanch.py (4) incl. a hard ask on a Haiku card where every model call is Haiku (no Opus).
