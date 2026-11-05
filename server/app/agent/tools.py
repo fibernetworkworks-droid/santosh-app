@@ -1364,4 +1364,10 @@ for _n, _v in list(globals().items()):
             if isinstance(_t, dict) and _t.get("name"):
                 FAMILY_OF.setdefault(_t["name"], _fam)
 
+# v0.559 SAHI GINTI: two modules both export CONTRACTS_TOOLS, so the construction pair (const_contracts /
+# const_contracts_dekho) lost its family to the later import and rode on EVERY turn, "namaste" included.
+from . import const_contracts_tools as _cct   # noqa: E402
+for _t in _cct.CONTRACTS_TOOLS:
+    FAMILY_OF.setdefault(_t["name"], "contracts")
+
 

@@ -29,6 +29,9 @@ VOICE_BUDGET = 10_000
 COMPACT_BUDGET = 1_600
 SKILLS_VOICE_BUDGET = 1_200      # v0.477 the matched-skills carve-out inside the coder block
 SKILLS_COMPACT_BUDGET = 400
+SKILLS_INDEX_BUDGET = 3_000      # v0.559 the always-on list of ALL her skills (name + one line), chat and call
+INDEX_DESC_MAX = 64
+NAMES_BUDGET = 1_600             # v0.559 the names-only tail: every skill past the described ones is still named
 HEADER = "CODER MEMORY (what was built here before; never ask her to repeat it):"
 
 
@@ -69,20 +72,58 @@ def _matched(tenant: str, query: str, limit: int = 4) -> list[dict]:
     return rows[:2]
 
 
+def skills_index(tenant: str, exclude=(), budget: int = SKILLS_INDEX_BUDGET) -> str:
+    """v0.559 SKILL KI SOOCHI - Claude's level 1: every skill she has is NAMED with one short line on every turn, so
+    the MODEL decides when one applies (before, only a skill whose words matched her ask was ever seen). The body
+    still loads only on `skill_manage read`. Recently used first; a '+N more' tail past the budget."""
+    if not _skills_enabled():
+        return ""
+    try:
+        rows = [r for r in store.skill_index(tenant) if r["name"] not in set(exclude)]
+    except Exception:
+        return ""
+    if not rows:
+        return ""
+    head = ("ALL HER SKILLS (name: what it is for). If one fits this work, skill_manage read <name> first and "
+            "follow it:")
+    lines, used = [], len(head)
+    for i, r in enumerate(rows):
+        d = " ".join(str(r.get("description") or "").split())
+        if len(d) > INDEX_DESC_MAX:
+            d = d[:INDEX_DESC_MAX - 3].rstrip() + "..."
+        line = f"- {r['name']}: {d}" if d else f"- {r['name']}"
+        if used + len(line) + 1 > budget:
+            rest = [x["name"] for x in rows[i:]]        # past the described budget: still NAMED, every one
+            tail, n = "Also: ", 0
+            for nm in rest:
+                if len(tail) + len(nm) + 2 > NAMES_BUDGET:
+                    break
+                tail += ("" if n == 0 else ", ") + nm
+                n += 1
+            if n < len(rest):
+                tail += f" (+{len(rest) - n} more: skill_manage list)"
+            lines.append(tail)
+            break
+        lines.append(line)
+        used += len(line) + 1
+    return head + "\n" + "\n".join(lines)
+
+
 def admit_tool(adm, tenant: str, query: str) -> bool:
     """v0.494 REACHABILITY: the matched-skills line tells the model to `skill_manage read` the skill,
     but skill_manage lives in the non-core `skill` family, so on an ordinary turn the model could not
     call it (only via a tool_search detour). When a skill matches this ask, admit that ONE tool for the
     turn - no match, no extra tool, no extra prompt weight. Returns True when it was admitted."""
-    if adm is None or not query or not _skills_enabled():
+    if adm is None or not _skills_enabled():
         return False
-    try:
-        if not _matched(tenant, query):
-            return False
+    try:   # v0.559 every skill is listed on every turn now, so skill_manage must be callable whenever she has one
+        has = bool((query and _matched(tenant, query)) or store.skill_index(tenant))
     except Exception:
         return False
+    if not has:
+        return False
     adm.extra.add("skill_manage")
-    adm.why = {**getattr(adm, "why", {}), "skill_manage": "matched skill"}
+    adm.why = {**getattr(adm, "why", {}), "skill_manage": "her skills"}
     return True
 
 
@@ -225,7 +266,15 @@ def turn_block(tenant: str, conv: str, query: str = "") -> str:
         from ..config import get_settings
         if not getattr(get_settings(), "coder_enabled", True):
             return ""
-        return primer(tenant, conv=None, compact=True, query=query)
+        out = primer(tenant, conv=None, compact=True, query=query)
+        try:   # v0.559 the always-on list of all her skills rides beside the matched ones (own budget)
+            seen = [r["name"] for r in _matched(tenant, query)] if query else []
+            idx = skills_index(tenant, exclude=seen)
+        except Exception:
+            idx = ""
+        if idx:
+            out = (out + "\n" + idx) if out else idx
+        return out
     except Exception:
         return ""
 
@@ -271,7 +320,11 @@ def voice_block(tenant: str, conv: str, query: str = "") -> str:
             return ""
         q = query or _recent_asks(conv)
         out = primer(tenant, conv=conv, compact=False, query=q)
-        if "LEARNED SKILLS" not in out:
+        seen = [r["name"] for r in _matched(tenant, q)] if q else []
+        idx = skills_index(tenant, exclude=seen)          # v0.559 every skill named, like chat
+        if idx:
+            out = (out + "\n" + idx) if out else idx
+        elif "LEARNED SKILLS" not in out:
             names = skill_names_line(tenant)
             if names:
                 out = (out + "\n" + names) if out else names
