@@ -83,7 +83,7 @@ def test_statepack_rera_rows(cst):
     assert SP.value(pack, "rera_ca_audit_months") == 6
     r = SP.row(pack, "rera_ca_audit_months")
     assert "s.4(2)(l)(D)" in r["source"] and r["checked_on"] and "six months" in r["clause"]
-    assert len(pack["rows"]) == 6
+    assert len(pack["rows"]) == 7        # v0.555: rera_carpet_tolerance_pct joined the pack
 
 
 # ---------------------------------------------------------------- C8: the IS 1200 library + the trail law
@@ -359,7 +359,7 @@ def test_registry_566_and_dispatch(env):
               "const_rera_dekho", "const_contracts", "const_contracts_dekho", "const_tender",
               "const_tender_dekho", "const_drawqa", "const_drawqa_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 569, "556 (their chain) + 12 construction Wave 2"
+    assert len(TOOLS) == 580, "556 (their chain) + 12 construction Wave 2 + 1 reach (v0.559 REACH MANCH)"
 
 
 def test_qs_tool_end_to_end(env):
@@ -440,6 +440,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.559.0"
-    assert 'APP_VERSION = "0.559.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.559.0+582" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.561.0"
+    assert 'APP_VERSION = "0.561.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.561.0+584" in (REPO / "pubspec.yaml").read_text()

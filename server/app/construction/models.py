@@ -683,3 +683,469 @@ class CQualToolbox(Base):
     attendees: Mapped[int] = mapped_column(Integer, default=0)
     note: Mapped[str] = mapped_column(String(300), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --------------------------------------------------------- #18-21 BIM / Information desk (C11, Wave 3)
+class CBimModel(Base):
+    """One parsed IFC model (STEP text in, honest counts out). The parse keeps WHAT IT READ - schema,
+    entity classes, spaces, storeys - and says which things it did not read (rotation, exact geometry)."""
+    __tablename__ = "cbim_models"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbm"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    name: Mapped[str] = mapped_column(String(200), default="")
+    schema_: Mapped[str] = mapped_column(String(20), default="")          # IFC4 / IFC2X3 / ""
+    entities: Mapped[int] = mapped_column(Integer, default=0)
+    stats: Mapped[str] = mapped_column(Text, default="{}")                # counts by class, spaces, storeys
+    health: Mapped[str] = mapped_column(Text, default="{}")               # the model-health gaps
+    elements: Mapped[int] = mapped_column(Integer, default=0)             # rows stored in cbim_elements
+    file_ref: Mapped[str] = mapped_column(String(160), default="")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CBimElement(Base):
+    """One spatial element as READ from the model: guid, IFC class, name, storey chain, its own
+    declared quantities (IfcElementQuantity - the model's numbers, never Hoola's), and the world
+    placement point where the file carries one (axis-aligned; rotation is ignored, said out loud)."""
+    __tablename__ = "cbim_elements"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbel"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    model_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    guid: Mapped[str] = mapped_column(String(40), index=True, default="")
+    ifc_class: Mapped[str] = mapped_column(String(60), index=True, default="")
+    name: Mapped[str] = mapped_column(String(200), default="")
+    storey: Mapped[str] = mapped_column(String(120), default="")
+    qty: Mapped[str] = mapped_column(Text, default="{}")                  # {Length/Width/Height/Volume/Area: value}
+    world: Mapped[str] = mapped_column(Text, default="{}")                # {x,y,z} or {} when absent
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CBimCde(Base):
+    """CDE & document controller (#19): one file's life in the common data environment - ISO 19650
+    status codes (wip / shared / published / archived are HER states), revisions, superseded copies."""
+    __tablename__ = "cbim_cde"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    code: Mapped[str] = mapped_column(String(80), index=True, default="")
+    title: Mapped[str] = mapped_column(String(200), default="")
+    rev: Mapped[str] = mapped_column(String(20), default="")
+    status: Mapped[str] = mapped_column(String(16), default="wip", index=True)   # wip | shared | published | archived
+    superseded_by: Mapped[str] = mapped_column(String(40), default="")
+    file_ref: Mapped[str] = mapped_column(String(160), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CBimTransmit(Base):
+    """Transmittal: what went to whom, which codes, which day - the audit trail of the CDE."""
+    __tablename__ = "cbim_transmittals"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbt"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    to_whom: Mapped[str] = mapped_column(String(160), default="")
+    codes: Mapped[str] = mapped_column(Text, default="[]")                # [code, ...]
+    day: Mapped[str] = mapped_column(String(10), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CBimClash(Base):
+    """Clash candidate (#20): two elements whose read boxes overlap with the clearance margin - the
+    verdict (accept / rework / ignore) is the BIM coordinator's word, recorded; BCF export rides out."""
+    __tablename__ = "cbim_clashes"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbcl"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    model_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    a_guid: Mapped[str] = mapped_column(String(40), default="")
+    b_guid: Mapped[str] = mapped_column(String(40), default="")
+    trade_a: Mapped[str] = mapped_column(String(60), default="")
+    trade_b: Mapped[str] = mapped_column(String(60), default="")
+    group_key: Mapped[str] = mapped_column(String(120), default="")       # "wall x duct" style pair label
+    overlap: Mapped[str] = mapped_column(Text, default="{}")              # the overlap box dims
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)  # open | assigned | resolved | accepted
+    by: Mapped[str] = mapped_column(String(120), default="")
+    bcf_ref: Mapped[str] = mapped_column(String(160), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CBimLink4d(Base):
+    """4D mapping (#21): her activity mapped to a class / storey slice of the model, with dates -
+    Hoola keeps the mapping and reports the model quantities per activity; it never builds the CPM."""
+    __tablename__ = "cbim_links4d"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbl4"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    model_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    activity: Mapped[str] = mapped_column(String(160), default="")
+    match_kind: Mapped[str] = mapped_column(String(16), default="class")  # class | storey | name
+    match_value: Mapped[str] = mapped_column(String(120), default="")
+    start: Mapped[str] = mapped_column(String(10), default="")
+    finish: Mapped[str] = mapped_column(String(10), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CBimTakeoff(Base):
+    """5D take-off rows (#21): the model's OWN quantity (IfcQuantity*) with its GUID as the trail -
+    the only arithmetic is qty x rate when she feeds a rate with its source; recompute re-reads."""
+    __tablename__ = "cbim_takeoffs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbto"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    model_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    guid: Mapped[str] = mapped_column(String(40), default="")
+    ifc_class: Mapped[str] = mapped_column(String(60), default="")
+    name: Mapped[str] = mapped_column(String(200), default="")
+    qty: Mapped[float] = mapped_column(Float, default=0.0)
+    unit: Mapped[str] = mapped_column(String(12), default="")
+    source_ref: Mapped[str] = mapped_column(String(160), default="")      # 'IFC IfcQuantityVolume of <guid>'
+    rate: Mapped[float] = mapped_column(Float, default=0.0)
+    rate_source: Mapped[str] = mapped_column(String(160), default="")
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --------------------------------------------------------- #10-12 Pre-design desk (C12, Wave 3)
+class CpdRule(Base):
+    """Pre-design rule rows as DATA: her sourced limits (clause + source REQUIRED) beside the national
+    pack rows - fire travel distances, MEP norms, anything the desk must check against."""
+    __tablename__ = "cpd_rules"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cpdr"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    family: Mapped[str] = mapped_column(String(20), index=True, default="")   # ll | unit | span | fire | mep | other
+    rule_id: Mapped[str] = mapped_column(String(60), index=True, default="")
+    text: Mapped[str] = mapped_column(String(300), default="")
+    value: Mapped[float] = mapped_column(Float, default=0.0)
+    direction: Mapped[str] = mapped_column(String(10), default="max")     # min | max
+    unit: Mapped[str] = mapped_column(String(20), default="")
+    clause: Mapped[str] = mapped_column(String(160), default="")
+    source: Mapped[str] = mapped_column(String(200), default="")
+    checked_on: Mapped[str] = mapped_column(String(10), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CpdCalc(Base):
+    """One pre-design computation, inputs and trail together - load take-down, column size, beam
+    depth, MEP estimates, fire demand. Every row says PRELIMINARY; the design sign is the engineer's."""
+    __tablename__ = "cpd_calcs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cpdc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(30), index=True, default="")   # slab_load | column_load | column_size |
+                                                            # beam_depth | elec | water | hvac | fire_demand
+    name: Mapped[str] = mapped_column(String(160), default="")
+    inputs: Mapped[str] = mapped_column(Text, default="{}")
+    result: Mapped[str] = mapped_column(Text, default="{}")
+    is_ref: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --------------------------------------------------------- #22-24,26 Survey & measurement desk (C13, Wave 3)
+class CsurJob(Base):
+    """One survey job: a set of points from coordinates pasted or LandXML read - what came in is said
+    on the tin; the certification is the licensed surveyor's."""
+    __tablename__ = "csur_jobs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("csj"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    name: Mapped[str] = mapped_column(String(160), default="")
+    source_kind: Mapped[str] = mapped_column(String(16), default="coords")  # coords | landxml
+    points: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CsurPoint(Base):
+    """One survey point: id, E/N/Z as fed (metres)."""
+    __tablename__ = "csur_points"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("csp"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    job_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    pid: Mapped[str] = mapped_column(String(40), index=True, default="")
+    x: Mapped[float] = mapped_column(Float, default=0.0)
+    y: Mapped[float] = mapped_column(Float, default=0.0)
+    z: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CsurCalc(Base):
+    """One survey computation with its trail: traverse closure, shoelace area, boundary vs record,
+    grid volumes, scan deviations - arithmetic for the survey lead, never the certificate."""
+    __tablename__ = "csur_calcs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("csc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(20), index=True, default="")   # traverse | area | boundary | volume | deviation
+    name: Mapped[str] = mapped_column(String(160), default="")
+    inputs: Mapped[str] = mapped_column(Text, default="{}")
+    result: Mapped[str] = mapped_column(Text, default="{}")
+    is_ref: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CsurCarpet(Base):
+    """RERA carpet-area statement (#26): the unit, HER wall policy (recorded, not assumed), the
+    declared area with its source; the certificate stays with the project architect / CE."""
+    __tablename__ = "csur_carpets"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("csca"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    unit_no: Mapped[str] = mapped_column(String(60), index=True, default="")
+    wall_policy: Mapped[str] = mapped_column(String(200), default="")      # her word on internal walls
+    declared_m2: Mapped[float] = mapped_column(Float, default=0.0)
+    declared_source: Mapped[str] = mapped_column(String(160), default="")
+    computed_m2: Mapped[float] = mapped_column(Float, default=0.0)
+    diff_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    verdict: Mapped[str] = mapped_column(String(20), default="pending")    # pending | within | exceeds
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CsurCarpetRoom(Base):
+    """One room of the carpet statement: length x breadth as read off the plan by a human."""
+    __tablename__ = "csur_carpet_rooms"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cscr"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    carpet_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    room: Mapped[str] = mapped_column(String(80), default="")
+    length_m: Mapped[float] = mapped_column(Float, default=0.0)
+    breadth_m: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --------------------------------------------------------- #47 Delay analysis desk (C13, Wave 3)
+class CdelProg(Base):
+    """Programme rows as DATA: baseline (with HER criticality marks - Hoola never computes the CPM)
+    or as-built actuals; the working paper compares, the entitlement stays with counsel."""
+    __tablename__ = "cdel_progs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cdp"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(16), index=True, default="")   # baseline | asbuilt
+    rows: Mapped[str] = mapped_column(Text, default="[]")                  # [{activity, start, finish, critical?}]
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CdelWindow(Base):
+    """Analysis window: her date range (delay windows are chosen by the analyst, not code)."""
+    __tablename__ = "cdel_windows"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cdw"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    label: Mapped[str] = mapped_column(String(80), default="")
+    start: Mapped[str] = mapped_column(String(10), default="")
+    finish: Mapped[str] = mapped_column(String(10), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CdelNotice(Base):
+    """Notice-compliance arithmetic: event date, notice date, the contract's window - in/late, cited."""
+    __tablename__ = "cdel_notices"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cdn"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    event: Mapped[str] = mapped_column(String(200), default="")
+    event_date: Mapped[str] = mapped_column(String(10), default="")
+    notice_date: Mapped[str] = mapped_column(String(10), default="")
+    notice_days: Mapped[int] = mapped_column(Integer, default=0)
+    contract_ref: Mapped[str] = mapped_column(String(160), default="")
+    taken_days: Mapped[int] = mapped_column(Integer, default=0)
+    verdict: Mapped[str] = mapped_column(String(12), default="")           # in-window | late
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --------------------------------------------------------- #104,110-118 Green & performance desk (C15, Wave 3)
+class CgrMeter(Base):
+    """Meter reading (#104): one row per reading, as fed."""
+    __tablename__ = "cgr_meters"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgm"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    site: Mapped[str] = mapped_column(String(160), index=True, default="")
+    meter: Mapped[str] = mapped_column(String(60), default="")
+    day: Mapped[str] = mapped_column(String(10), index=True, default="")
+    kwh: Mapped[float] = mapped_column(Float, default=0.0)
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrTariff(Base):
+    """Her tariff as DATA: slab rows from HER bill (source required), not a remembered rate."""
+    __tablename__ = "cgr_tariffs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgt"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    name: Mapped[str] = mapped_column(String(80), index=True, default="")
+    rows: Mapped[str] = mapped_column(Text, default="[]")                  # [{from_kwh, to_kwh, rate, fixed_rs}]
+    source: Mapped[str] = mapped_column(String(160), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrEcbcRule(Base):
+    """ECBC / daylight / performance rule rows as DATA: clause + source REQUIRED (like drawqa's
+    bye-law rows); the check verdict is arithmetic, the assessor decides."""
+    __tablename__ = "cgr_ecbc_rules"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cger"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    family: Mapped[str] = mapped_column(String(20), index=True, default="")   # ecbc | daylight | benchmark | other
+    rule_id: Mapped[str] = mapped_column(String(60), index=True, default="")
+    text: Mapped[str] = mapped_column(String(300), default="")
+    value: Mapped[float] = mapped_column(Float, default=0.0)
+    direction: Mapped[str] = mapped_column(String(10), default="max")      # min | max
+    unit: Mapped[str] = mapped_column(String(20), default="")
+    clause: Mapped[str] = mapped_column(String(160), default="")
+    source: Mapped[str] = mapped_column(String(200), default="")
+    checked_on: Mapped[str] = mapped_column(String(10), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrCheck(Base):
+    """Declared vs limit on the performance desk: the verdict is ARITHMETIC; ECBC assessor / physicist
+    own the outcome (tier B)."""
+    __tablename__ = "cgr_checks"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgck"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    rule_id: Mapped[str] = mapped_column(String(60), index=True, default="")
+    declared: Mapped[float] = mapped_column(Float, default=0.0)
+    limit_value: Mapped[float] = mapped_column(Float, default=0.0)
+    unit: Mapped[str] = mapped_column(String(20), default="")
+    verdict: Mapped[str] = mapped_column(String(16), default="pending")    # pending | ok | breach
+    checked_on: Mapped[str] = mapped_column(String(10), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrCarbon(Base):
+    """Embodied carbon row (#114): quantity x EPD factor - the factor's source is REQUIRED (an EPD or
+    an LCA database, named); the hot-spot list is a working paper, the assessor decides."""
+    __tablename__ = "cgr_carbon"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgcb"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    material: Mapped[str] = mapped_column(String(120), index=True, default="")
+    qty: Mapped[float] = mapped_column(Float, default=0.0)
+    unit: Mapped[str] = mapped_column(String(12), default="")
+    factor_kgco2e: Mapped[float] = mapped_column(Float, default=0.0)
+    factor_source: Mapped[str] = mapped_column(String(200), default="")
+    kgco2e: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrCredit(Base):
+    """Green-rating credit tracker (#110): IGBC / GRIHA / LEED rows with HER points claimed and the
+    evidence reference; the score is a sum, the rating belongs to the assessor."""
+    __tablename__ = "cgr_credits"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgcr"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    rating: Mapped[str] = mapped_column(String(20), index=True, default="")   # IGBC | GRIHA | LEED
+    credit: Mapped[str] = mapped_column(String(80), default="")
+    points_available: Mapped[float] = mapped_column(Float, default=0.0)
+    points_claimed: Mapped[float] = mapped_column(Float, default=0.0)
+    evidence_ref: Mapped[str] = mapped_column(String(160), default="")
+    status: Mapped[str] = mapped_column(String(16), default="claimed")     # planned | claimed | denied
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrCx(Base):
+    """Commissioning item (#116): system, test, the functional test SCRIPT steps, the season it
+    belongs to; the sign-off is the Cx authority's (tier C refusal rides the gate)."""
+    __tablename__ = "cgr_cx"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgcx"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    system: Mapped[str] = mapped_column(String(120), index=True, default="")
+    test: Mapped[str] = mapped_column(String(200), default="")
+    steps: Mapped[str] = mapped_column(Text, default="[]")
+    season: Mapped[str] = mapped_column(String(20), default="")            # first | seasonal
+    status: Mapped[str] = mapped_column(String(16), default="planned")     # planned | done | failed
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrCxIssue(Base):
+    """One issue off a commissioning test: severity, note, status - the log the Cx authority reviews."""
+    __tablename__ = "cgr_cx_issues"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgcxi"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    cx_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    severity: Mapped[str] = mapped_column(String(12), default="minor")     # minor | major | critical
+    note: Mapped[str] = mapped_column(String(300), default="")
+    status: Mapped[str] = mapped_column(String(16), default="open")        # open | closed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrTc(Base):
+    """T&C record (#117): the certificate as the agency reported it, as-installed vs design value
+    with the tolerance arithmetic - ok / exceeds is a number, acceptance is the T&C engineer's."""
+    __tablename__ = "cgr_tc"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgtc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    system: Mapped[str] = mapped_column(String(120), index=True, default="")
+    cert_no: Mapped[str] = mapped_column(String(80), default="")
+    agency: Mapped[str] = mapped_column(String(160), default="")
+    tested_on: Mapped[str] = mapped_column(String(10), default="")
+    as_installed: Mapped[float] = mapped_column(Float, default=0.0)
+    design: Mapped[float] = mapped_column(Float, default=0.0)
+    tolerance_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    unit: Mapped[str] = mapped_column(String(20), default="")
+    dev_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    verdict: Mapped[str] = mapped_column(String(12), default="pending")    # pending | ok | exceeds
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CgrMv(Base):
+    """M&V job (#118): baseline and reporting-period rows (driver + kwh as fed), the IPMVP option
+    SHE names; the baseline model is the least-squares line with its r2 - savings are the identity."""
+    __tablename__ = "cgr_mv"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgmv"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    option: Mapped[str] = mapped_column(String(20), default="")            # her IPMVP option letter
+    baseline: Mapped[str] = mapped_column(Text, default="[]")              # [{driver, kwh}]
+    report: Mapped[str] = mapped_column(Text, default="[]")                # [{driver, kwh}]
+    result: Mapped[str] = mapped_column(Text, default="{}")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --------------------------------------------------------- #82 Incident investigation (C13, rides quality)
+class CQualIncident(Base):
+    """Incident investigation (#82): the record of what happened, the timeline and the whys as DATA;
+    the ROOT CAUSE and findings are the safety head's word, recorded with the name."""
+    __tablename__ = "cqual_incidents"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cqi"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    site: Mapped[str] = mapped_column(String(160), index=True, default="")
+    day: Mapped[str] = mapped_column(String(10), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(20), default="")              # near_miss | injury | property | environmental
+    severity: Mapped[str] = mapped_column(String(12), default="minor")     # minor | major | critical
+    description: Mapped[str] = mapped_column(String(500), default="")
+    reported_by: Mapped[str] = mapped_column(String(120), default="")
+    root_cause: Mapped[str] = mapped_column(String(300), default="")
+    findings_by: Mapped[str] = mapped_column(String(120), default="")      # the safety head's name
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)  # open | closed
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CQualIncRow(Base):
+    """One row of the investigation: timeline event, witness note, a 5-why step, or a corrective
+    action with its owner and due date."""
+    __tablename__ = "cqual_inc_rows"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cqir"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    incident_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(12), index=True, default="")  # timeline | witness | why | action
+    at: Mapped[str] = mapped_column(String(10), default="")
+    text: Mapped[str] = mapped_column(String(300), default="")
+    answer: Mapped[str] = mapped_column(String(300), default="")
+    owner: Mapped[str] = mapped_column(String(120), default="")
+    due: Mapped[str] = mapped_column(String(10), default="")
+    status: Mapped[str] = mapped_column(String(16), default="")            # actions: open | done
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

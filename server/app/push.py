@@ -464,7 +464,7 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: {title}", str(p.get("say") or "")[:300])
     if kind == "site_live":
         return (f"{name}: website live!", str(p.get("say") or "")[:300])
-    if kind == "site_ops":                        # v0.559 her website: an error spike / slow pages / a backup that did not come back
+    if kind == "site_ops":                        # v0.561 her website: an error spike / slow pages / a backup that did not come back
         if not p.get("push"):
             return None
         title = {"errors": "website par galtiyan", "slow": "website dheemi", "backup": "backup jaanch fail"}.get(p.get("kind"), "website")

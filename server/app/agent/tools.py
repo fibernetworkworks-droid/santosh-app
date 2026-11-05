@@ -327,6 +327,12 @@ TOOLS.extend(WEB_TOOLS)
 TOOL_LABELS.update(WEB_LABELS)
 HANDLERS.update(WEB_HANDLERS)
 
+from .reach_tools import REACH_HANDLERS, REACH_LABELS, REACH_TOOLS  # noqa: E402  v0.559 REACH MANCH - the Agent-Reach discipline layer (envelope, ordered backends, health, status)
+
+TOOLS.extend(REACH_TOOLS)
+TOOL_LABELS.update(REACH_LABELS)
+HANDLERS.update(REACH_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)
@@ -786,12 +792,28 @@ from .const_contracts_tools import CONTRACTS_HANDLERS, CONTRACTS_LABELS, CONTRAC
 from .const_tender_tools import TENDER_HANDLERS, TENDER_LABELS, TENDER_TOOLS  # noqa: E402
 from .const_drawqa_tools import DRAWQA_HANDLERS, DRAWQA_LABELS, DRAWQA_TOOLS  # noqa: E402
 
+# v0.550 Construction Wave 3 (model-level & certificate-adjacent; plan §7 C11-C15): BIM/Information
+# desk (#18-21 - IFC read / BCF write / IDS subset / CDE / clash / 4D-5D), Pre-design (#10-12 -
+# load take-down, preliminary sizing, MEP estimates, fire rule checks), Survey & measurement
+# (#22-24,26 - traverse, shoelace, volumes, deviations, RERA carpet), Delay working papers (#47),
+# Green & performance (#104,110-118 - meters/ECBC/daylight/carbon/water/credits/Cx/T&C/M&V).
+# #82 incident investigation rides const_quality. Same law: open formats said on the tin, a named
+# licensee on every output, every rule row with clause + source, every number with its trail.
+from .const_bim_tools import BIM_HANDLERS, BIM_LABELS, BIM_TOOLS  # noqa: E402
+from .const_predesign_tools import PREDESIGN_HANDLERS, PREDESIGN_LABELS, PREDESIGN_TOOLS  # noqa: E402
+from .const_survey_tools import SURVEY_HANDLERS, SURVEY_LABELS, SURVEY_TOOLS  # noqa: E402
+from .const_delay_tools import DELAY_HANDLERS, DELAY_LABELS, DELAY_TOOLS  # noqa: E402
+from .const_green_tools import GREEN_HANDLERS, GREEN_LABELS, GREEN_TOOLS  # noqa: E402
+
 for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
                    (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
                    (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS),
                    (APPROVALS_TOOLS, APPROVALS_LABELS, APPROVALS_HANDLERS), (QS_TOOLS, QS_LABELS, QS_HANDLERS),
                    (RERA_TOOLS, RERA_LABELS, RERA_HANDLERS), (CONTRACTS_TOOLS, CONTRACTS_LABELS, CONTRACTS_HANDLERS),
-                   (TENDER_TOOLS, TENDER_LABELS, TENDER_HANDLERS), (DRAWQA_TOOLS, DRAWQA_LABELS, DRAWQA_HANDLERS)):
+                   (TENDER_TOOLS, TENDER_LABELS, TENDER_HANDLERS), (DRAWQA_TOOLS, DRAWQA_LABELS, DRAWQA_HANDLERS),
+                   (BIM_TOOLS, BIM_LABELS, BIM_HANDLERS), (PREDESIGN_TOOLS, PREDESIGN_LABELS, PREDESIGN_HANDLERS),
+                   (SURVEY_TOOLS, SURVEY_LABELS, SURVEY_HANDLERS), (DELAY_TOOLS, DELAY_LABELS, DELAY_HANDLERS),
+                   (GREEN_TOOLS, GREEN_LABELS, GREEN_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)

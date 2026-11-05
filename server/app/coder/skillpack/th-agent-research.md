@@ -17,7 +17,7 @@ THE VOCABULARY (catalog ki bhasha, Hoola ke real doors pe mapped):
   add_conditional_edges, fan-out/join barrier, interrupt/Command
   park-and-resume, MemorySaver/SqliteSaver checkpointers) + crew roles
   (crewAI port).
-- ACTION = registry tools (abhi 569) - ek action = ek tool call.
+- ACTION = registry tools (abhi 580) - ek action = ek tool call.
 
 THE PROBE (naye pattern ka imtihaan - chhota, fake tools, real shapes):
 1. Catalog se EK pattern uthao, source ke saath (paper/list ka naam).

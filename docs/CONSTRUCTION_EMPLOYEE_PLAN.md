@@ -190,14 +190,22 @@ Members: 9, 16, 28, 29, 35, 36, 37–39, 44–46, 52–56, 72, 73, 81, 93.
 
 ### Wave 3 — model-level and certificate-adjacent (open formats + a licensee on every output)
 
-Members: 18–21, 10–12, 22–24, 26, 47, 82, 104, 110–118. Built **only after** Wave 2 proves the packs and
-the trails, and only where a real customer hands us open formats:
+Members: 18–21, 10–12, 22–24, 26, 47, 82, 104, 110–118. **SHIPPED v0.550.0** (C11–C15) after Wave 2
+proved the packs and the trails. The register's 23 waved members are all homed (`register.py
+WAVE3_HOME`); the plan's earlier stragglers (#25 as-built, #27 GIS, #74 formwork, #77 setting-out,
+#109 digital twin) stay unwaved until she says.
 
 | Phase | Ships | The honest limit printed on every card |
 |---|---|---|
-| **C11** | BIM/CDE (18–21, 25, 109): IFC/BCF/IDS readers (ifcopenshell-class library, vendored), clash runs on open models, 4D/5D take-off from IFC, model health reports, COBie handover | *"Model-level check. A PDF was never a model."* |
-| **C12** | Pre-design assist (10–12, 74): load take-down + member sizing by IS tables, MEP load estimates + sizing tables, fire rule-hit checks (NBC part 4), formwork/scaffold planning drafts | *"Working paper for <the named engineer>. The stability certificate / Form A-B / striking approval is theirs."* |
-| **C13** | Survey & performance (22–24, 26, 47, 82, 104, 110–118): LandXML/E57/LAS processors, RERA carpet-area statements, delay-analysis working papers, incident-investigation packs, energy/LCA/Cx/M&V assistants on pylab | every result *"explained, not certified"* |
+| **C11** ✅ | BIM/Information desk `const_bim` (18–21): pure-Python IFC STEP reader (classes, GUIDs, declared quantities, placements), model health, ISO 19650 naming, CDE register + supersede + transmittals, clash candidates on declared axis-aligned extents (+ NOT-CHECKABLE counted), BCF 2.1 zip out, IDS subset check (entity + property facets; rest UNVERIFIED), 4D mapping + 5D rows on the model's own quantities (qty × rate only with a sourced rate) | *"Model-level check on the open formats only. A PDF was never a model."* |
+| **C12** ✅ | Pre-design desk `const_predesign` (10–12): IS 875 load take-down + IS 456 cl 39.3 preliminary sizing (50 mm module, rounding shown) + cl 23.2.1 depth route (spans > 10 m refused), MEP estimates on FED factors, fire rule rows (clause + source) → declared vs limit, fire demand arithmetic | *"PRELIMINARY working paper for <the named engineer>. The stability certificate / Form A-B is theirs."* |
+| **C13** ✅ | Survey desk `const_survey` (22–24, 26): coords + LandXML CgPoints, loop traverse closure, shoelace boundary vs the 7/12, grid cut/fill volumes (kept separate), CSV deviations with RMS (E57/LAS NOT parsed), RERA carpet statement under HER wall policy vs the MahaRERA 3% pack row, discrepancy pack sign EMPTY. Delay desk `const_delay` (47): baseline + as-built as DATA (criticality = HER marks, no CPM), windows, slip days, notice-compliance arithmetic, working paper for the forensic planner. #82 incident investigations ride `const_quality` (close needs the safety head's name; open actions block) | *every result "explained, not certified"* |
+| **C15** ✅ | Green & performance desk `const_green` (104, 110–118): meters + her bill's tariff slabs + EPI benchmark, ECBC/daylight sourced rows, the energy-model INPUT register (EnergyPlus not run), EPD carbon hot-spots (factor source required), CPHEEO water + RWH on her IMD station, green-credit tracker (a sum; the rating is the assessor's), Cx scripts + issue log, T&C tolerance arithmetic, M&V least-squares baseline (a, b, r2 printed) + the savings identity, her IPMVP option | *"Records + arithmetic; every certification refused."* |
+
+Shipped together with: the national `statepacks/india.json` (IS 875 / IS 456 / CPHEEO rows, cited;
+`rule_row(state, id)` reads the state pack first, both refuse when stale), two new tier-C gate rows
+("certify an area statement", "certify a survey"), 29 new tables, 10 new tools (registry 569 → 579),
+5 Hub hires, VOICE_VIA_KAAM, tests `test_v0550_construction_w3.py` (24).
 
 ## 8. The voice-first daily log (the wedge, designed now so C1 builds it once)
 

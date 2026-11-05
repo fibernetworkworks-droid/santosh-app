@@ -203,7 +203,7 @@ def report(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
     if views_prev and views < 0.6 * views_prev:
         tips.append("Pichhle mahine se visit kaafi kam; SEO sahayak se jaanch karwa sakte hain.")
     ops_ = None
-    try:                                         # v0.559 her visitors' errors + real-visit speed in the same note
+    try:                                         # v0.561 her visitors' errors + real-visit speed in the same note
         from . import ops as OPS
         ops_ = OPS.summary(r.id, days)
         if ops_["errors"] >= 50:

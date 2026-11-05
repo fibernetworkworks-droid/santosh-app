@@ -1,4 +1,4 @@
-"""v0.559 CHALTI WEBSITE (web Step 7 part 2 = W14 of docs/WEB_PLATFORM_PLAN.md): running her website, measured.
+"""v0.561 CHALTI WEBSITE (web Step 7 part 2 = W14 of docs/WEB_PLATFORM_PLAN.md): running her website, measured.
 
 What already existed and is NOT repeated here: page views counted by the server (care.py, no cookies, no IP kept), uptime
 from inside + outside with a `site_down` card after two misses (hosting.py), the dashboard (dash.py), the monthly care

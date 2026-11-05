@@ -360,7 +360,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         sr = r.pop("series")
         r["busiest_days"] = sorted(zip(sr["days"], sr["visits"]), key=lambda x: -x[1])[:5]
         return r
-    if what == "ops":                             # v0.559 CHALTI WEBSITE: errors, real speed, cost, backup restore test
+    if what == "ops":                             # v0.561 CHALTI WEBSITE: errors, real speed, cost, backup restore test
         from ..site import ops as OPS
         return OPS.owner_view(t, site, int(a.get("days") or 30))
     if what == "clients":

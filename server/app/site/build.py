@@ -751,7 +751,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         meta.append('<meta name="robots" content="noindex">')
     elif page.get("robots"):                         # v0.538 a thin / duplicate catalogue page: shown, not indexed
         meta.append(f'<meta name="robots" content="{esc(page["robots"])}">')
-    if site.get("ops_api") and not site.get("edit"):   # v0.559 where her visitors' errors + timings go (never on Edit)
+    if site.get("ops_api") and not site.get("edit"):   # v0.561 where her visitors' errors + timings go (never on Edit)
         meta.append(f'<meta name="hoola-ops" content="{esc(site["ops_api"])}">')
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
         meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}" '
@@ -936,7 +936,7 @@ def blog_post(site: dict[str, Any], idx: int, rel: str, pic, base_url: str, phot
 def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dict[str, Any]], photos: dict[str, dict],
              out: Path, base_url: str = "", form_endpoint: str = "") -> dict[str, Any]:
     """sections: key 'page__type' -> {html, css, js} (already sanitised). Writes the site; returns {files, bytes, problems}."""
-    if form_endpoint and "/api/site-forms/" in form_endpoint:   # v0.559 the beacon goes where her forms already post
+    if form_endpoint and "/api/site-forms/" in form_endpoint:   # v0.561 the beacon goes where her forms already post
         site.setdefault("ops_api", form_endpoint.replace("/api/site-forms/", "/api/site-ops/").rstrip("/") + "/beacon")
     if out.exists():
         shutil.rmtree(out)
