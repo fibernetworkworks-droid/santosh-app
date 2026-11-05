@@ -252,6 +252,16 @@ generates `.tscn` and animation resources from a declarative description it vali
 scene files freehand. Without this, every "bigger game" claim is false, and with it the Arena's scores have somewhere
 to climb.
 
+**SHIPPED in v0.538 (`server/app/gamedesk/scene.py`, tool `game_scenes`).** Exactly that pattern: the model writes a
+declarative spec, Hoola validates it in code and generates the `.tscn`; nodes come from a 44-type allowlist, properties
+from a property allowlist (an unknown key is dropped and named), and a scene may instance another scene of the same
+game, which is how content scales. One finding hardened the rule beyond the plan: measured in Godot 4.7.2, a
+`[sub_resource type="GDScript"]` embedded in a `.tscn` RUNS and reached `DirAccess` — so a model-written scene file
+would be a hole through `guard.py`. Script source is therefore refused in three independent places. Every scene is
+loaded in the real engine before she sees it, and since an unknown node type yields a silent placeholder rather than an
+error, the log's own trouble lines decide the verdict. Still not built: TileMaps (a TileSet plus atlas art is a second
+pipeline), 3D scenes, shaders.
+
 ### 5.3 Build the Game Arena (Moat 2)
 
 Transplant `site/arena.py` to games, with the parts that transfer and the parts that must be new:

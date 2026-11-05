@@ -806,12 +806,12 @@ def test_package_export_law_all_names_importable():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.537.0"
+    assert APP_VERSION == "0.538.0"
 
 
 def test_pubspec_pin():
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.537.0+560" in pub
+    assert "version: 0.538.0+561" in pub
 
 
 def test_main_story_markers():

@@ -120,13 +120,13 @@ def test_app_version_story():
     main = (ROOT / 'app/main.py').read_text(encoding='utf-8')
     from app.main import APP_VERSION
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
-    # story pin moved to the v0.537 story (the v0.476 precedent: the newest release's story carries the
+    # story pin moved to the v0.538 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'CRAWL BRAIN' in main and 'app/crawl' in main
+    assert 'SCENES AS CHECKED DATA' in main and 'gamedesk/scene.py' in main
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.537.0+560' in pub
+    assert 'version: 0.538.0+561' in pub
