@@ -487,7 +487,19 @@
     gauge_mean: { label: 'mean size', unit: 'm', needs: ['reading'], fn: function (r) { return mapMean(r, ['reading'], function (x) { return x[0]; }); } }
   };
 
-  var api = { K: K, CALCS: CALCS, varsOf: varsOf, paramsFor: paramsFor, assign: assign };
+  var TEXTBOOK = {};          // the checks run on the server; a pack may still carry its formulas here
+  // a kernel PACK adds physics without touching this file: packs/<name>.js calls HoolaKernels.register(...)
+  function register(pack) {
+    var i, k;
+    for (i = 0, k = Object.keys(pack.K || {}); i < k.length; i++) {
+      if (K[k[i]]) throw new Error('kernel ' + k[i] + ' is already taken');
+      K[k[i]] = pack.K[k[i]];
+    }
+    for (i = 0, k = Object.keys(pack.CALCS || {}); i < k.length; i++) CALCS[k[i]] = pack.CALCS[k[i]];
+    for (i = 0, k = Object.keys(pack.TEXTBOOK || {}); i < k.length; i++) TEXTBOOK[k[i]] = pack.TEXTBOOK[k[i]];
+    return true;
+  }
+  var api = { K: K, CALCS: CALCS, varsOf: varsOf, paramsFor: paramsFor, assign: assign, register: register, TEXTBOOK: TEXTBOOK };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   root.HoolaKernels = api;
 })(typeof window !== 'undefined' ? window : this);

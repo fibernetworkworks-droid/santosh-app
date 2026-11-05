@@ -163,8 +163,11 @@ def test_javascript_twin_gives_the_same_numbers(tmp_path):
     script = tmp_path / "twin.js"
     script.write_text(_TWIN)
     fx = _fixtures()
-    run = subprocess.run([NODE, str(script), str(STATIC / "kernels.js")], input=json.dumps(fx), capture_output=True,
-                         text=True, timeout=180)
+    merged = tmp_path / "kernels_all.js"
+    from app.prayog.api import _kernels_js
+    merged.write_text(_kernels_js(), encoding="utf-8")
+    run = subprocess.run([NODE, str(script), str(merged)], input=json.dumps(fx), capture_output=True,
+                         text=True, timeout=300)
     assert run.returncode == 0, run.stderr
     js = json.loads(run.stdout)
     assert len(js) == len(fx)
@@ -173,11 +176,26 @@ def test_javascript_twin_gives_the_same_numbers(tmp_path):
 
 
 def test_both_twins_know_the_same_kernels_and_calcs():
-    src = (STATIC / "kernels.js").read_text()
+    from app.prayog.api import _kernels_js
+    src = _kernels_js()                                  # kernels.js + every pack, as the lab page loads it
     for name in KN.KERNELS:
-        assert f"K.{name} = " in src, name
+        assert f"K.{name} = " in src or f"{name}:" in src, name
     for name in KN.CALCS:
-        assert f"    {name}: {{" in src, name
+        assert f"    {name}: {{" in src or f"{name}:" in src, name
+
+
+@needs_node
+def test_every_kernel_pack_parses_and_registers():
+    """A pack is new physics in its OWN file; both twins must carry the same kernel names."""
+    import subprocess as sp
+    packs = sorted((STATIC / "packs").glob("*.js")) if (STATIC / "packs").is_dir() else []
+    for f in packs:
+        r = sp.run([NODE, "--check", str(f)], capture_output=True, text=True)
+        assert r.returncode == 0, (f.name, r.stderr)
+    from app.prayog.api import _kernels_js
+    src = _kernels_js()
+    for name in KN.KERNELS:
+        assert name in src, f"kernel {name} has no JavaScript twin"
 
 
 @needs_node
