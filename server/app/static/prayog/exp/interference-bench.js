@@ -260,7 +260,7 @@ HoolaStudio.define('interference-bench', function (S) {
   }
   function moveTo(x) {
     if (S.hand.busy) return wait();
-    x = Math.max(WEDGE ? 0.0005 : -0.014, Math.min(WEDGE ? 0.029 : 0.014, roundLC(x)));
+    x = Math.max(WEDGE ? 0.0001 : -0.014, Math.min(WEDGE ? 0.029 : 0.014, roundLC(x)));
     var from = st.x;
     if (Math.abs(x - from) < 1e-9) { st.x = x; update(); return Promise.resolve(true); }
     function at(k) { return from + (x - from) * k; }
@@ -430,7 +430,7 @@ HoolaStudio.define('interference-bench', function (S) {
           + 'reading the scale each time. The slope of the reading against the fringe number is the fringe width.'
           : 'Run the cross-wire out to a ring on one side of the centre and read the scale; cross the centre to the '
           + 'same ring on the other side and read again. The difference is the diameter of that ring.');
-        u.slider('Move the carriage to', WEDGE ? 0.5 : -14, WEDGE ? 29 : 14, 0.001, function () { return st.xSet * 1000; },
+        u.slider('Move the carriage to', WEDGE ? 0.1 : -14, WEDGE ? 29 : 14, 0.001, function () { return st.xSet * 1000; },
           function (x) { st.xSet = x / 1000; }, 'mm', 3);
         u.row(u.button('Move the carriage', function () { moveTo(st.xSet); S.render(); }, true, S.hand.busy),
           u.button('Read the vernier', function () { readScale(); }, false, S.hand.busy));

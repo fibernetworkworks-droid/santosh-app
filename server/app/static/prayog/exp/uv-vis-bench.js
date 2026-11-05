@@ -233,11 +233,11 @@ HoolaStudio.define('uv-vis-bench', function (S) {
   }
 
   return {
-    camera: { pos: [-0.02, 0.8, 0.92], look: [-0.06, 0.1, -0.08] },
-    views: { spec: [[-0.14, 0.4, 0.3], [-0.16, 0.1, -0.12]], samp: [[-0.16, 0.28, 0.14], [-0.2, 0.15, -0.14]],
-      blank: [[-0.1, 0.26, 0.14], [-0.14, 0.15, -0.14]], screen: [[0.28, 0.3, 0.1], [0.28, 0.1, -0.2]],
+    camera: { pos: [0.0, 0.94, 1.14], look: [-0.02, 0.08, -0.06] },
+    views: { spec: [[-0.1, 0.56, 0.52], [-0.16, 0.08, -0.1]], samp: [[-0.12, 0.34, 0.22], [-0.14, 0.14, -0.13]],
+      blank: [[-0.06, 0.32, 0.2], [-0.1, 0.14, -0.13]], screen: [[0.3, 0.34, 0.16], [0.28, 0.1, -0.2]],
       rack: [[0.34, 0.24, 0.34], [0.34, 0.03, 0.16]],
-      bench: [[-0.02, 0.8, 0.92], [-0.06, 0.1, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      bench: [[0.0, 0.94, 1.14], [-0.02, 0.08, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'The free electrons of a gold sphere much smaller than the wavelength of light can be driven back and forth by the light\'s own field, and at one frequency they resonate. That surface plasmon resonance absorbs green light, which is why a gold colloid looks red, and both the position of the band and its height above the 450 nm absorbance grow with the size of the spheres.',
       formula: 'λ_spr = 512 + 6.53 e^(0.0216 d),   d = e^(3.00 A_spr/A₄₅₀ − 2.20)',

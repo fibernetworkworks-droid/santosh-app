@@ -144,6 +144,7 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
     };
   }
   var showV = lcd(-0.125, -0.02, 0.1, 0.034), showI = lcd(-0.125, 0.024, 0.1, 0.034);
+  showV('0.0', 'V'); showI('0.000', 'nA');   // the displays read before the first tick
   S.contact(0.5, 0.34, 0.26, -0.06, 0.55);
 
   // ================================================================ cables

@@ -4151,7 +4151,8 @@
       "time of flight"
      ],
      "conditions": [],
-     "kernel": "projectile"
+     "kernel": "projectile",
+     "built": "cp-projectile"
     },
     {
      "id": "py-oscillator-regimes",
@@ -4168,7 +4169,8 @@
       "critically damped",
       "overdamped"
      ],
-     "kernel": "damped-oscillator"
+     "kernel": "damped-oscillator",
+     "built": "cp-oscillator-regimes"
     },
     {
      "id": "py-legendre-recurrence",
@@ -4197,7 +4199,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "random-sampling"
+     "kernel": "random-sampling",
+     "built": "cp-random-clt"
     },
     {
      "id": "py-frame-transformations",
@@ -4248,7 +4251,8 @@
       "a definite integral"
      ],
      "conditions": [],
-     "kernel": "monte-carlo"
+     "kernel": "monte-carlo",
+     "built": "cp-monte-carlo-pi"
     },
     {
      "id": "taylor-series-truncation",
@@ -4265,7 +4269,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "series"
+     "kernel": "series",
+     "built": "cp-taylor-series"
     },
     {
      "id": "numerical-differentiation",
@@ -4281,7 +4286,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "finite-difference"
+     "kernel": "finite-difference",
+     "built": "cp-differentiation"
     },
     {
      "id": "velocity-from-position-data",
@@ -4293,7 +4299,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "finite-difference"
+     "kernel": "finite-difference",
+     "built": "cp-velocity-from-position"
     },
     {
      "id": "difference-tables",
@@ -4308,7 +4315,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "finite-difference"
+     "kernel": "finite-difference",
+     "built": "cp-difference-tables"
     },
     {
      "id": "root-finding",
@@ -4327,7 +4335,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "root-finding"
+     "kernel": "root-finding",
+     "built": "cp-root-finding"
     },
     {
      "id": "sinking-sphere-depth",
@@ -4339,7 +4348,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "root-finding"
+     "kernel": "root-finding",
+     "built": "cp-sphere-depth"
     },
     {
      "id": "transcendental-alpha-tan",
@@ -4351,7 +4361,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "root-finding"
+     "kernel": "root-finding",
+     "built": "cp-alpha-tan"
     },
     {
      "id": "nth-root",
@@ -4363,7 +4374,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "root-finding"
+     "kernel": "root-finding",
+     "built": "cp-nth-root"
     },
     {
      "id": "lagrange-interpolation",
@@ -4378,7 +4390,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "interpolation"
+     "kernel": "interpolation",
+     "built": "cp-lagrange-interpolation"
     },
     {
      "id": "position-from-acceleration",
@@ -4390,7 +4403,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "quadrature"
+     "kernel": "quadrature",
+     "built": "cp-position-from-acceleration"
     },
     {
      "id": "numerical-integration",
@@ -4410,7 +4424,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "quadrature"
+     "kernel": "quadrature",
+     "built": "cp-integration"
     },
     {
      "id": "integration-convergence",
@@ -4422,7 +4437,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "quadrature"
+     "kernel": "quadrature",
+     "built": "cp-integration-convergence"
     },
     {
      "id": "fourier-coefficients",
@@ -4463,7 +4479,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "quadrature"
+     "kernel": "quadrature",
+     "built": "cp-delta-sequences"
     },
     {
      "id": "kirchhoff-linear-system",
@@ -4513,7 +4530,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ode-solver"
+     "kernel": "ode-solver",
+     "built": "cp-first-order-ivp"
     },
     {
      "id": "ivp-error-comparison",
@@ -4525,7 +4543,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ode-solver"
+     "kernel": "ode-solver",
+     "built": "cp-ivp-error"
     },
     {
      "id": "second-order-ivp",
@@ -4547,7 +4566,8 @@
       "overdamped",
       "critically damped"
      ],
-     "kernel": "ode-solver"
+     "kernel": "ode-solver",
+     "built": "cp-second-order-ivp"
     },
     {
      "id": "forced-oscillator-resonance",
@@ -4559,7 +4579,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ode-solver"
+     "kernel": "ode-solver",
+     "built": "cp-forced-resonance"
     },
     {
      "id": "data-descriptive-statistics",
@@ -4571,7 +4592,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "statistics"
+     "kernel": "statistics",
+     "built": "cp-descriptive-statistics"
     },
     {
      "id": "error-propagation-covariance",
@@ -4583,7 +4605,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "statistics"
+     "kernel": "statistics",
+     "built": "cp-error-propagation"
     },
     {
      "id": "special-functions",
@@ -4736,7 +4759,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "laplace-transform"
+     "kernel": "laplace-transform",
+     "built": "cp-laplace-lcr"
     },
     {
      "id": "schrodinger-hydrogen",
@@ -4820,7 +4844,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "statistics"
+     "kernel": "statistics",
+     "built": "cp-coin-toss"
     },
     {
      "id": "partition-function-levels",
@@ -4911,7 +4936,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ode-solver"
+     "kernel": "ode-solver",
+     "built": "cp-population-models"
     },
     {
      "id": "chemical-rate-equations",
@@ -4926,7 +4952,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ode-solver"
+     "kernel": "ode-solver",
+     "built": "cp-rate-equations"
     },
     {
      "id": "logistic-map-chaos",

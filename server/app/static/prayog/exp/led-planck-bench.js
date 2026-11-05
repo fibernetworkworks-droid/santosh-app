@@ -218,6 +218,7 @@ HoolaStudio.define('led-planck-bench', function (S) {
   S.addApparatus('ma', mA, 'Milliammeter (0–5 mA)', 'In series with the LED: the whole LED current goes through it.');
   S.addApparatus('dmm', dmm.group, 'Digital voltmeter', 'Across the LED alone, not across the resistor. It reads to a millivolt.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
+  dmm.show('0.000');   // the display reads before the first tick
   var hudL = S.hudCard('LED'), hudV = S.hudCard('Voltage across the LED'), hudI = S.hudCard('Current');
 
   // ================================================================ human actions

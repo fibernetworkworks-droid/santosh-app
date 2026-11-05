@@ -1,0 +1,55 @@
+{
+  "base": "grating-wavelength-spectrometer",
+  "rig": "spectrometer-bench",
+  "chapter": "Diffraction",
+  "variants": [
+    {
+      "key": "na-d",
+      "title": "Grating: wavelength of the sodium yellow line",
+      "sample": "Sodium lamp on the collimator slit",
+      "unknown": "the wavelength of the sodium D line",
+      "params": {
+        "lam": 5.893e-07
+      },
+      "source": {
+        "title": "NIST Atomic Spectra Database: sodium D lines 588.995 and 589.592 nm, mean 589.3 nm"
+      }
+    },
+    {
+      "key": "hg-violet",
+      "title": "Grating: wavelength of the violet mercury line",
+      "sample": "Mercury lamp, the violet line",
+      "unknown": "the wavelength of the violet mercury line",
+      "params": {
+        "lam": 4.35833e-07
+      },
+      "source": {
+        "title": "NIST Atomic Spectra Database: mercury line 435.833 nm"
+      }
+    },
+    {
+      "key": "hg-green",
+      "title": "Grating: wavelength of the green mercury line",
+      "sample": "Mercury lamp, the green line",
+      "unknown": "the wavelength of the green mercury line",
+      "params": {
+        "lam": 5.46074e-07
+      },
+      "source": {
+        "title": "NIST Atomic Spectra Database: mercury line 546.074 nm"
+      }
+    },
+    {
+      "key": "hg-yellow",
+      "title": "Grating: wavelength of the yellow mercury line",
+      "sample": "Mercury lamp, the brighter yellow line",
+      "unknown": "the wavelength of the yellow mercury line",
+      "params": {
+        "lam": 5.79066e-07
+      },
+      "source": {
+        "title": "NIST Atomic Spectra Database: mercury line 579.066 nm"
+      }
+    }
+  ]
+}

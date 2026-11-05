@@ -215,6 +215,7 @@ HoolaStudio.define('photoelectric-bench', function (S) {
     };
   }
   var showV = lcd(-0.1, -0.012, 0.085, 0.032), showI = lcd(-0.1, 0.03, 0.085, 0.032);
+  showV('0.00', 'V'); showI('0.00', 'nA');   // the displays read before the first tick
   var tpos = S.terminal([0.36 - 0.08, 0.0015, -0.1 + 0.12], 'red');
   var tneg = S.terminal([0.36 - 0.045, 0.0015, -0.1 + 0.12], 'black');
   S.contact(0.42, 0.3, 0.36, -0.1, 0.55);

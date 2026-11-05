@@ -283,8 +283,8 @@ HoolaStudio.define('comp-workstation', function (S) {
   // ---- the printed method card (A5, lying on the bench)
   var cardLines = SP.problem();
   var cardTex = S.canvasTex(840, 1188, function (x, w, h) {
-    x.fillStyle = '#fbf8f0'; x.fillRect(0, 0, w, h);
-    x.fillStyle = '#e4ddc9'; x.fillRect(0, 0, w, 170);
+    x.fillStyle = '#f2e9d2'; x.fillRect(0, 0, w, h);
+    x.fillStyle = '#d8ceb2'; x.fillRect(0, 0, w, 170);
     x.fillStyle = '#1f3a8a'; x.font = '700 58px "Public Sans", sans-serif'; x.fillText('METHOD CARD', 50, 84);
     x.fillStyle = '#3c4654'; x.font = '600 32px "Public Sans", sans-serif'; x.fillText('Computational Physics Laboratory', 50, 134);
     x.fillStyle = '#121418'; x.font = '700 46px "Public Sans", sans-serif';
@@ -313,9 +313,9 @@ HoolaStudio.define('comp-workstation', function (S) {
     return yy;      // the baseline of the last line, so the caller can carry on below it
   }
   var card = new T.Group(); card.position.set(-0.13, 0, 0.03); card.rotation.y = 0.05; S.scene.add(card);
-  var cardPad = S.mesh(new T.BoxGeometry(0.214, 0.002, 0.301), M.paper, false); cardPad.position.y = 0.001; card.add(cardPad);
+  // the sheet itself carries the print: a backing box only fought it for depth at a grazing angle
   var cardM = new T.Mesh(new T.PlaneGeometry(0.21, 0.297), new T.MeshStandardMaterial({ map: cardTex, roughness: 0.9 }));
-  cardM.rotation.x = -Math.PI / 2; cardM.position.y = 0.0032; card.add(cardM);      // clear of the pad: no z-fighting
+  cardM.rotation.x = -Math.PI / 2; cardM.position.y = 0.0022; card.add(cardM);
   S.contact(0.26, 0.35, -0.13, 0.03, 0.4);
 
   // ================================================================================= the screen

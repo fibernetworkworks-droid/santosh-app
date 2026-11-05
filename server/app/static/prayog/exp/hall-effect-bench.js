@@ -50,7 +50,7 @@ HoolaStudio.define('hall-effect-bench', function (S) {
 
   // ================================================================ the Hall probe board
   var probe = new T.Group(); S.scene.add(probe);
-  var PARK = new T.Vector3(-0.02, 0.02, 0.14), INGAP = new T.Vector3(-0.26, 0.14, 0.0);
+  var PARK = new T.Vector3(-0.02, 0.02, 0.14), INGAP = new T.Vector3(-0.26, 0.14, -0.14);   // the gap is at the magnet's own z
   var pcb = S.mesh(new T.BoxGeometry(0.018, 0.0025, 0.1), new T.MeshStandardMaterial({ color: 0x17572f, roughness: 0.6 }));
   probe.add(pcb);
   var xtal = S.mesh(new T.BoxGeometry(0.01, 0.0008, 0.016),
@@ -63,10 +63,10 @@ HoolaStudio.define('hall-effect-bench', function (S) {
   var handleP = S.mesh(new T.BoxGeometry(0.014, 0.004, 0.03), M.bakelite); handleP.position.set(0, 0.0015, 0.062);
   probe.add(handleP);
   probe.position.copy(PARK);
-  var gauss = new T.Group(); S.scene.add(gauss); gauss.position.set(-0.26, 0.14, -0.03);
+  var gauss = new T.Group(); S.scene.add(gauss); gauss.position.set(-0.26, 0.14, -0.17);
   var gprobe = S.mesh(new T.BoxGeometry(0.01, 0.002, 0.07), new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.6 }));
   gauss.add(gprobe);
-  var gtip = S.mesh(new T.BoxGeometry(0.008, 0.0015, 0.008), M.brass); gtip.position.set(0, 0.0012, -0.03);
+  var gtip = S.mesh(new T.BoxGeometry(0.008, 0.0015, 0.008), M.brass); gtip.position.set(0, 0.0012, 0.03);
   gauss.add(gtip);
 
   // ================================================================ the three boxes
@@ -112,12 +112,13 @@ HoolaStudio.define('hall-effect-bench', function (S) {
   var magSup = box(0.1, 0.14, -0.1, 'MAGNET POWER SUPPLY', '0 – 4 A  ·  sets the field in the gap', 0.22);
   var gaussm = box(0.32, -0.04, -0.4, 'DIGITAL GAUSSMETER', 'reads the field in the gap, in tesla', 0.2);
   var hallm = box(0.06, -0.26, 0.1, 'HALL VOLTMETER + CURRENT SOURCE', 'crystal current and Hall voltage', 0.24);
+  magSup.show('0.00', 'T set'); gaussm.show('0.000', 'T'); hallm.show('0.00', 'mV');   // read before the first tick
 
   S.wire([[-0.3, 0.03, -0.06], [-0.1, 0.012, 0.06], [0.06, 0.03, 0.1]], 'red');
   S.wire([[-0.22, 0.03, -0.06], [-0.06, 0.012, 0.1], [0.14, 0.03, 0.1]], 'black');
-  S.wire([[-0.26, 0.145, -0.05], [0.0, 0.016, -0.1], [0.28, 0.03, -0.08]], 'gold');
-  S.wire([[-0.25, 0.145, 0.02], [-0.02, 0.014, -0.12], [0.02, 0.03, -0.22]], 'blue');
-  S.wire([[-0.27, 0.145, 0.02], [-0.06, 0.012, -0.16], [0.1, 0.03, -0.22]], 'green');
+  S.wire([[-0.26, 0.145, -0.19], [0.0, 0.016, -0.12], [0.28, 0.03, -0.08]], 'gold');
+  S.wire([[-0.25, 0.145, -0.1], [-0.02, 0.014, -0.14], [0.02, 0.03, -0.22]], 'blue');
+  S.wire([[-0.27, 0.145, -0.1], [-0.06, 0.012, -0.18], [0.1, 0.03, -0.22]], 'green');
 
   S.addApparatus('mag', mag, 'Electromagnet', 'An iron yoke with two coils and flat pole pieces 40 mm apart. The field in the gap follows the coil current and is read by the gaussmeter, never assumed.');
   S.addApparatus('probe', probe, SAMPLE, 'A thin crystal with four soldered leads: two carry the current along it, two sit opposite each other across its width for the Hall voltage.');
@@ -200,11 +201,11 @@ HoolaStudio.define('hall-effect-bench', function (S) {
   }
 
   return {
-    camera: { pos: [-0.02, 0.8, 0.92], look: [-0.06, 0.1, -0.08] },
-    views: { mag: [[-0.2, 0.32, 0.18], [-0.26, 0.13, -0.14]], probe: [[-0.2, 0.22, 0.08], [-0.26, 0.14, -0.08]],
-      gauss: [[-0.2, 0.22, 0.04], [-0.26, 0.14, -0.04]], magSup: [[0.1, 0.26, 0.36], [0.1, 0.05, 0.14]],
+    camera: { pos: [-0.02, 0.92, 1.12], look: [-0.04, 0.09, -0.06] },
+    views: { mag: [[-0.12, 0.44, 0.3], [-0.26, 0.12, -0.14]], probe: [[-0.16, 0.3, 0.1], [-0.26, 0.13, -0.14]],
+      gauss: [[-0.14, 0.28, 0.06], [-0.26, 0.14, -0.16]], magSup: [[0.1, 0.26, 0.36], [0.1, 0.05, 0.14]],
       gaussm: [[0.34, 0.24, 0.18], [0.32, 0.05, -0.04]], hallm: [[0.06, 0.24, -0.04], [0.06, 0.05, -0.26]],
-      bench: [[-0.02, 0.8, 0.92], [-0.06, 0.1, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      bench: [[-0.02, 0.92, 1.12], [-0.04, 0.09, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'A current in a magnetic field has its carriers pushed sideways. They pile up on one face until the electric field they build up balances the magnetic force, and the voltage across the sample is the Hall voltage. Its SIZE gives the number of carriers; its SIGN says whether they are electrons or holes.',
       formula: 'V_H = I B / (n e t),   R_H = V_H t / (I B) = ± 1 / (n e)',

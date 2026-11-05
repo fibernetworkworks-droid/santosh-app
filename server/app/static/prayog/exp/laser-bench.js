@@ -56,6 +56,10 @@ HoolaStudio.define('laser-bench', function (S) {
     var x = K.spotX(P(), Math.abs(k));
     return x === null ? null : (k < 0 ? -x : x);
   }
+  function GratingScreen_theta1() {                     // where the first order of this disc or grating comes out
+    var th = K.orderTheta ? K.orderTheta(P(), 1) : null;
+    return th === null ? 0.4 : th;
+  }
   function orders() {
     var out = [{ k: 0, x: 0 }], k, x;
     for (k = 1; k <= (DSLIT ? 9 : 3); k++) {
@@ -274,7 +278,7 @@ HoolaStudio.define('laser-bench', function (S) {
   }
   function moveScreen(toM) {
     if (S.hand.busy) return wait();
-    toM = Math.max(CDM ? 0.2 : 0.4, Math.min(CDM ? 0.5 : 1.6, Math.round(toM * 1000) / 1000));
+    toM = Math.max(CDM ? 0.05 : 0.4, Math.min(CDM ? 0.5 : 1.6, Math.round(toM * 1000) / 1000));
     var from = st.D;
     if (Math.abs(toM - from) < 1e-6) return Promise.resolve(true);
     function at(k) { return from + (toM - from) * k; }
@@ -459,7 +463,7 @@ HoolaStudio.define('laser-bench', function (S) {
           : 'Run the cursor to an order on one side and read the scale, then to the same order on the other side. Half '
           + 'the distance between them is x for that order; the angle follows from x and the distance to the screen.');
         if (MULTI) {
-          u.slider('Move the screen to', CDM ? 20 : 60, CDM ? 50 : 160, 1, function () { return st.DSet * 100; }, function (x) { st.DSet = x / 100; }, 'cm', 0);
+          u.slider('Move the screen to', CDM ? 5 : 60, CDM ? 50 : 160, 1, function () { return st.DSet * 100; }, function (x) { st.DSet = x / 100; }, 'cm', 0);
           u.row(u.button('Move the screen', function () { moveScreen(st.DSet).then(function () { syncScreenView(); S.focus('screen'); S.render(); }); }, true, S.hand.busy));
         }
         u.slider('Move the cursor to', -150, 150, DSLIT ? 0.05 : 0.5, function () { return st.cSet * 1000; },
@@ -489,7 +493,8 @@ HoolaStudio.define('laser-bench', function (S) {
       auto: function () {
         var seq = Promise.resolve();
         if (MULTI) {
-          (DSLIT ? [1.0, 1.25, 1.5] : [0.25, 0.3, 0.35]).forEach(function (D) {
+          var th1 = GratingScreen_theta1(), dmax = Math.min(0.5, 0.86 * (HALF - 0.01) / Math.tan(th1));
+          (DSLIT ? [1.0, 1.25, 1.5] : [dmax * 0.7, dmax * 0.85, dmax]).forEach(function (D) {
             var kk = DSLIT ? 4 : 1;
             seq = seq.then(function () { return moveScreen(D); })
               .then(function () { return moveCursor(fringeAt(kk)); }).then(function () { record(); })

@@ -62,6 +62,7 @@ HoolaStudio.define('four-probe-bench', function (S) {
   ovenG.add(post);
   var tcM = S.mesh(new T.CylinderGeometry(0.0015, 0.0015, 0.08, 10), M.copper); tcM.position.set(0.03, 0.1, 0.02);
   ovenG.add(tcM);
+  var insideL = new T.PointLight(0xfff0d8, 0.5, 0.5); insideL.position.set(0, 0.1, 0.06); ovenG.add(insideL);
   var ovenLbl = S.label('FOUR-PROBE OVEN  ·  ' + TMIN + '–' + TMAX + ' K', { w: 0.14, ratio: 0.14, color: '#e8eaec' });
   ovenLbl.position.set(0, 0.03, OD / 2 + 0.007); ovenGLbl();
   function ovenGLbl() { ovenG.add(ovenLbl); }
@@ -110,6 +111,7 @@ HoolaStudio.define('four-probe-bench', function (S) {
   var csrc = instBox(0.0, 0.1, -0.1, 'CONSTANT CURRENT SOURCE', '0 – 10 mA  ·  holds the probe current steady', 0.22);
   var dvm = instBox(0.28, -0.06, -0.35, 'DIGITAL MILLIVOLTMETER', '4½ digit  ·  across the inner probes', 0.22);
   var ovc = instBox(-0.08, -0.26, 0.12, 'OVEN CONTROLLER', 'sets and holds the stage temperature', 0.2);
+  csrc.show('0.00', 'mA'); dvm.show('0.00', 'mV'); ovc.show('300', 'K');   // the displays read before the first tick
 
   S.wire([[-0.3, 0.14, -0.04], [-0.14, 0.03, 0.04], [-0.04, 0.03, 0.06]], 'red');
   S.wire([[-0.26, 0.14, -0.04], [-0.1, 0.028, 0.08], [0.04, 0.03, 0.06]], 'black');
@@ -188,11 +190,11 @@ HoolaStudio.define('four-probe-bench', function (S) {
   }
 
   return {
-    camera: { pos: [-0.04, 0.78, 0.86], look: [-0.08, 0.1, -0.08] },
+    camera: { pos: [-0.04, 0.92, 1.1], look: [-0.06, 0.08, -0.06] },
     views: { oven: [[-0.26, 0.34, 0.2], [-0.32, 0.1, -0.12]], probes: [[-0.26, 0.22, 0.04], [-0.32, 0.11, -0.12]],
       slice: [[-0.28, 0.18, 0.0], [-0.32, 0.085, -0.12]], csrc: [[0.0, 0.26, 0.32], [0.0, 0.05, 0.1]],
       dvm: [[0.3, 0.24, 0.16], [0.28, 0.05, -0.06]], ovc: [[-0.08, 0.24, -0.04], [-0.08, 0.05, -0.26]],
-      bench: [[-0.04, 0.78, 0.86], [-0.08, 0.1, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      bench: [[-0.04, 0.92, 1.1], [-0.06, 0.08, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'In an intrinsic semiconductor the number of free carriers goes as exp(−Eg/2kT), so heating the sample frees many more of them and the resistivity falls steeply. The four-probe method measures that resistivity without the contact resistance getting in the way: the current goes through the outer probes while the voltage is read between the inner two, which carry almost no current.',
       formula: 'ρ = π w V / (ln2 · I),   ln ρ = const + (Eg e / 2k)(1/T)',

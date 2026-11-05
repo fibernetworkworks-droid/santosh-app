@@ -167,6 +167,7 @@ HoolaStudio.define('gm-halflife-bench', function (S) {
     };
   }
   var showC = lcd(-0.115, 0.022, 0.11, 0.034, true), showT = lcd(-0.115, -0.022, 0.11, 0.034, false);
+  showC('0'); showT('0');   // the displays read before the first tick
   S.contact(0.46, 0.32, 0.3, -0.1, 0.55);
   S.wire([[-0.26, 0.03, 0.0], [0.0, 0.02, 0.0], [0.2, 0.02, -0.04]], 'black');
 
@@ -180,7 +181,7 @@ HoolaStudio.define('gm-halflife-bench', function (S) {
   S.addApparatus('tongs', tongs, 'Source tongs', 'Long tongs keep your hands away from the source: distance is the cheapest shielding there is.');
   S.addApparatus('unit', unit, 'Scaler-timer', 'The knob sets the tube voltage; START counts for the preset time and then stops by itself.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
-  var hudV = S.hudCard('Tube voltage'), hudC = S.hudCard('Counts'), hudR = S.hudCard('Count rate');
+  var hudV = S.hudCard('Clock'), hudC = S.hudCard('Counts'), hudR = S.hudCard('Count rate');
 
 
   // ---------------------------------------------------------------- the laboratory clock
@@ -316,10 +317,10 @@ HoolaStudio.define('gm-halflife-bench', function (S) {
 
   return {
     camera: { pos: [-0.02, 0.95, 1.16], look: [-0.03, 0.1, -0.06] },
-    views: { castle: [[-0.2, 0.36, 0.22], [-0.26, 0.1, -0.12]], tube: [[-0.16, 0.26, 0.08], [-0.26, 0.15, -0.09]],
+    views: { castle: [[-0.16, 0.46, 0.34], [-0.26, 0.09, -0.12]], tube: [[-0.16, 0.26, 0.08], [-0.26, 0.15, -0.09]],
       src: [[-0.18, 0.2, 0.06], [-0.26, 0.09, -0.09]], pot: [[0.06, 0.18, 0.3], [0.0, 0.02, 0.16]],
       clock: [[0.1, 0.24, 0.02], [0.1, 0.05, -0.26]], tongs: [[0.1, 0.2, 0.34], [0.1, 0.0, 0.2]],
-      unit: [[0.34, 0.32, 0.24], [0.3, 0.07, -0.1]],
+      unit: [[0.36, 0.42, 0.36], [0.3, 0.06, -0.1]],
       bench: [[-0.02, 0.95, 1.16], [-0.03, 0.1, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'Every nucleus of the same kind has the same chance of decaying in the next second, whatever has happened before. So the number left, and with it the activity, falls exponentially, and the time in which half of them have gone is the same at any point in the decay.',

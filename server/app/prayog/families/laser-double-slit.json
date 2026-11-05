@@ -1,0 +1,44 @@
+{
+  "base": "laser-double-slit",
+  "rig": "laser-bench",
+  "chapter": "Interference",
+  "variants": [
+    {
+      "key": "hene",
+      "title": "Double slit: wavelength of a helium-neon laser",
+      "sample": "Helium-neon laser, the red line",
+      "unknown": "the wavelength of the laser light",
+      "params": {
+        "lam": 6.328e-07
+      },
+      "source": {
+        "title": "He-Ne laser red line: 632.8 nm in air (632.991 nm in vacuum); NIST and ISO 11146"
+      }
+    },
+    {
+      "key": "green532",
+      "title": "Double slit: wavelength of a green laser pointer",
+      "sample": "Diode-pumped solid-state green laser (frequency-doubled Nd:YVO4)",
+      "unknown": "the wavelength of the laser light",
+      "params": {
+        "lam": 5.32e-07
+      },
+      "note": "A green pointer is an infrared laser at 1064 nm whose frequency is doubled, so its line is at exactly half that wavelength.",
+      "source": {
+        "title": "Frequency-doubled Nd:YVO4 / Nd:YAG at 1064.1 nm gives 532.05 nm (NIST / laser handbooks)"
+      }
+    },
+    {
+      "key": "red650",
+      "title": "Double slit: wavelength of a red diode laser",
+      "sample": "AlGaInP red laser diode module",
+      "unknown": "the wavelength of the laser light",
+      "params": {
+        "lam": 6.5e-07
+      },
+      "source": {
+        "title": "Red AlGaInP laser diode modules are specified at 650 nm nominal (IEC 60825-1 class 2 pointer modules)"
+      }
+    }
+  ]
+}

@@ -161,6 +161,7 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
     };
   }
   var showC = lcd(-0.115, 0.022, 0.11, 0.034, true), showT = lcd(-0.115, -0.022, 0.11, 0.034, false);
+  showC('0'); showT('0');   // the displays read before the first tick
   S.contact(0.46, 0.32, 0.3, -0.1, 0.55);
   S.wire([[-0.26, 0.03, 0.0], [0.0, 0.02, 0.0], [0.2, 0.02, -0.04]], 'black');
 
@@ -265,9 +266,9 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
 
   return {
     camera: { pos: [-0.02, 0.95, 1.16], look: [-0.03, 0.1, -0.06] },
-    views: { castle: [[-0.2, 0.36, 0.22], [-0.26, 0.1, -0.12]], tube: [[-0.16, 0.26, 0.08], [-0.26, 0.15, -0.09]],
+    views: { castle: [[-0.16, 0.46, 0.34], [-0.26, 0.09, -0.12]], tube: [[-0.16, 0.26, 0.08], [-0.26, 0.15, -0.09]],
       src: [[-0.18, 0.2, 0.06], [-0.26, 0.09, -0.09]], pot: [[0.06, 0.18, 0.3], [0.0, 0.02, 0.16]],
-      tongs: [[0.1, 0.2, 0.34], [0.1, 0.0, 0.2]], unit: [[0.34, 0.32, 0.24], [0.3, 0.07, -0.1]],
+      tongs: [[0.1, 0.2, 0.34], [0.1, 0.0, 0.2]], unit: [[0.36, 0.42, 0.36], [0.3, 0.06, -0.1]],
       bench: [[-0.02, 0.95, 1.16], [-0.03, 0.1, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'A Geiger-Muller tube only counts once its voltage is high enough for a single ion pair to set off a full avalanche. Above that starting voltage nearly every particle that enters is counted, so the rate hardly changes with voltage: that flat stretch is the plateau. Past its end the gas discharges continuously and the tube is destroyed.',
