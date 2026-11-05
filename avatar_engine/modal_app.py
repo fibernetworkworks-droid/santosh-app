@@ -70,7 +70,9 @@ p.write_text(s.replace(old, new))
 print("chatterbox repetition guard patched")
 """
 chatterbox_image = (_base.pip_install("chatterbox-tts==0.1.7", "soundfile", "huggingface_hub")
-                    .run_commands(f"python -c '{CB_PATCH}'").add_local_python_source("registry"))
+                    # one line: a build step is a single Dockerfile RUN, so the script travels base64-encoded
+                    .run_commands(f"echo {base64.b64encode(CB_PATCH.encode()).decode()} | base64 -d | python")
+                    .add_local_python_source("registry"))
 indicf5_image = (_base.pip_install("git+https://github.com/ai4bharat/IndicF5.git", "soundfile", "huggingface_hub")
                  # newest `datasets` needs pyarrow>=24, which needs NumPy 2; this stack is on NumPy 1.26 -> pin a matching pair
                  .pip_install("pyarrow==16.1.0", "datasets==2.21.0")

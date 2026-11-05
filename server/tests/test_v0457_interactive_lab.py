@@ -404,7 +404,7 @@ def test_voice_never_cut_off_mid_sentence_and_takes_judged_both_ways():
     assert m and "'" not in m.group(1)                       # it rides inside python -c '...'
     code = m.group(1)
     assert "assert s.count(old) == 1" in code and "self.complete and len(self.generated_tokens) >= 4" in code
-    assert 'run_commands(f"python -c \'{CB_PATCH}\'")' in MODAL_SRC
+    assert 'base64.b64encode(CB_PATCH.encode())' in MODAL_SRC and '| base64 -d | python' in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _take_off.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
     off = ns["_take_off"]
