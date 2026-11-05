@@ -20429,3 +20429,27 @@ consent register, rights register, release checklist, cards. What it lacked was 
   console or phone screen for the schedule yet (tool + API-free); Wave 2/3 of the register (script coverage, previs, consent registry as a shared
   foundation for generative employees, dubbing/subtitle project manager, sales/festival) are the next steps. NOT VERIFIED: no live run; the default
   hours-per-day assumptions are placeholders until a real 1st AD's numbers replace them.
+
+## FILM DESK SALES LAYER (unreleased, branch claude/youthful-bell-8grvr4; owner: "GO NEXT WAVE" after the production layer)
+
+Register `docs/research/film_industry/00_INDEX.md`: #84 festival strategy, #85 festival submission packager, #22/#86 rights and distribution windows,
+#21/#23 waterfall maths. On top of the production layer, same Film Desk, nothing replaced.
+
+- NEW `filmdesk/sales.py` (pure code, no model/network/DB). FESTIVAL TRACKER: an entry holds HER deadline, fee, category, premiere rule
+  (regional|national|international|world|none, else `unknown`), status, dates; bad input becomes blank/unknown, never a guess. View = days left,
+  deadline flags (due within 7 days / overdue while still `planned`), fees committed, a 12-line submission packet (4 lines derived from the film -
+  logline, script, runtime, language; the rest ticked by her), and a PREMIERE WARNING when a world/international-premiere festival comes after a
+  film that already screened elsewhere: worded as a warning "festival ka apna niyam padhiye", never a ruling. RELEASE WINDOWS: medium x territory
+  ('world' overlaps everything) x start/end (open-ended = never ends) x exclusive; conflicts = same medium, overlapping time AND territory, at least one
+  exclusive; HOLDBACKS are HER rules {after, before, days} (no defaults invented): `before` may not start sooner than `days` days after the START of
+  `after`; malformed rules are reported, not skipped. WATERFALL: gross -> her deductions in her order (fixed, percent of gross, percent of remaining,
+  optional cap, never more than what is left) -> investors recouped pari passu to invested x (1+premium) -> profit shares (must total 100, else NOT
+  split and said); the last line of each tier takes the rounding so the tiers add back to the gross to the paisa (`ties_to_gross`), investor shortfall shown.
+- Service: `festival_op` (add|update|remove|tick; the crew may keep it), `festival_view`, `window_op` (add|remove|holdbacks, OWNER ONLY), `windows_view`,
+  `waterfall_run` / `waterfall_view` (OWNER ONLY), all in the existing `plan` JSON column (no new table, no new column).
+- Tool: `film_desk` actions `festival`, `window`, `waterfall` (window + waterfall in `_OWNER_ONLY`); `film_desk_dekho` what=`festivals | windows | waterfall`.
+  No new tool: registry and voice budget unchanged (test_v0230_voice_phase3 green). Nothing is submitted, signed, sent or paid.
+- Tests: NEW `server/tests/test_film_sales_layer.py` (13); with the production layer (11) and the film desk suites: 60 passed, 1 skipped.
+- NOT DONE: version ritual (branch only); no console/phone screen; script coverage, previs, dubbing/subtitle project manager, royalty-by-guild tables, and
+  festival/market calendars as data are the next waves. Festival deadlines and market dates are deliberately NOT bundled: they change yearly and would be
+  invented data unless a maintained source feeds them.

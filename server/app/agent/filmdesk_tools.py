@@ -12,8 +12,8 @@ from .tools import Ctx, ToolError
 
 _ACTIONS = ["settings", "new", "update", "script", "script_set", "script_restore", "cast", "shots", "shot", "storyboard",
             "preview", "spend", "assemble", "person", "consent", "withdraw", "forget", "right", "rating", "cbfc", "tick",
-            "message", "release", "schedule", "callsheet", "budget_plan"]
-_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc", "budget_plan"}
+            "message", "release", "schedule", "callsheet", "budget_plan", "festival", "window", "waterfall"]
+_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc", "budget_plan", "window", "waterfall"}
 
 FILMDESK_TOOLS = [
     {"name": "film_desk", "description": (
@@ -35,7 +35,15 @@ FILMDESK_TOOLS = [
         "day-out-of-days. callsheet: day (shoot day number), call_time HH:MM, cast_calls {name: HH:MM}, location_address {place: "
         "address}, contacts {role: phone}, notes -> text + PDF; unknown details stay [blanks]; sending to cast is action=message "
         "(card). budget_plan*: rates {crew, cast, location, equipment, night_allowance, transport, food, post_per_screen_minute, "
-        "'extra:name'} in rupees per unit, ONLY her numbers; contingency_pct -> at-least total, heads without a rate listed as missing."),
+        "'extra:name'} in rupees per unit, ONLY her numbers; contingency_pct -> at-least total, heads without a rate listed as missing. SALES layer "
+        "(her facts only, nothing submitted or signed): festival: op add|update|remove|tick, entry (fs1), name, country, category, "
+        "deadline/event_date/submitted_on/screened_on YYYY-MM-DD, fee_inr, requires regional|national|international|world|none, status "
+        "planned|submitted|accepted|rejected|withdrawn|screened; tick: key logline|screener|poster|stills|trailer|bios|subtitles|... -> "
+        "days left, premiere-conflict warnings, packet checklist. window*: op add|remove|holdbacks, medium theatrical|festival|svod|"
+        "avod|tvod|tv|home_video|airline|educational|other, territory 'india, uae' or world, start, end, exclusive, licensee, fee_inr, "
+        "holdbacks [{after, before, days}] -> exclusivity overlaps + holdback violations. waterfall*: gross_inr, deductions [{name, kind "
+        "fixed_inr|percent_of_gross|percent_of_remaining, value, cap_inr}], investors [{name, invested_inr, premium_pct}], shares "
+        "[{name, pct}] (sum 100) -> tiers that add back to the gross."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "project": {"type": "string"}, "title": {"type": "string"},
          "logline": {"type": "string"}, "format": {"type": "string"}, "language": {"type": "string"},
@@ -63,12 +71,19 @@ FILMDESK_TOOLS = [
          "blocked_dates": {"type": "array", "items": {"type": "string"}}, "unavailable": {"type": "object"},
          "call_time": {"type": "string"}, "cast_calls": {"type": "object"}, "location_address": {"type": "object"},
          "contacts": {"type": "object"}, "day": {"type": "integer"}, "rates": {"type": "object"},
-         "contingency_pct": {"type": "number"}},
+         "contingency_pct": {"type": "number"}, "op": {"type": "string"}, "entry": {"type": "string"},
+         "requires": {"type": "string"}, "status": {"type": "string"}, "deadline": {"type": "string"},
+         "event_date": {"type": "string"}, "submitted_on": {"type": "string"}, "screened_on": {"type": "string"},
+         "country": {"type": "string"}, "medium": {"type": "string"}, "territory": {"type": "string"}, "start": {"type": "string"},
+         "end": {"type": "string"}, "exclusive": {"type": "boolean"}, "licensee": {"type": "string"},
+         "holdbacks": {"type": "array", "items": {"type": "object"}}, "gross_inr": {"type": "number"},
+         "deductions": {"type": "array", "items": {"type": "object"}}, "investors": {"type": "array", "items": {"type": "object"}},
+         "shares": {"type": "array", "items": {"type": "object"}}},
          "required": ["action"]}},
     {"name": "film_desk_dekho", "description": (
         "Read the film desk (nothing changes). what=day | projects | project (project) | script | shots | budget (studio "
         "estimate per shot in rupees) | release (checklist + blockers + AI disclosure line) | people | person (person) | "
-        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day)."),
+        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day) | festivals | windows | waterfall."),
      "input_schema": {"type": "object", "properties": {"what": {"type": "string"}, "project": {"type": "string"},
                                                        "person": {"type": "string"}, "status": {"type": "string"}},
                       "required": ["what"]}},
@@ -147,6 +162,15 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.plan_schedule(t, pr, actor, **{k: a[k] for k in keys if k in a})
     if action == "budget_plan":
         return S.plan_budget(t, pr, a.get("rates"), a.get("contingency_pct"), actor)
+    if action == "festival":
+        keys = ("entry", "name", "country", "category", "deadline", "event_date", "fee_inr", "requires", "status", "submitted_on",
+                "screened_on", "notes", "key", "done")
+        return S.festival_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "window":
+        keys = ("entry", "medium", "territory", "start", "end", "exclusive", "licensee", "fee_inr", "notes", "holdbacks")
+        return S.window_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "waterfall":
+        return S.waterfall_run(t, pr, a.get("gross_inr"), a.get("deductions"), a.get("investors"), a.get("shares"), actor)
     raise ToolError(f"action '{action}' nahi pehchana.")
 
 
@@ -211,6 +235,12 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return {"note": R.CBFC_NOTE}
     if what in ("schedule", "dood", "plan_budget", "callsheet"):
         return S.plan_view(t, pr, what, a.get("day"))
+    if what == "festivals":
+        return S.festival_view(t, pr)
+    if what == "windows":
+        return S.windows_view(t, pr)
+    if what == "waterfall":
+        return S.waterfall_view(t, pr)
     raise ToolError(f"what '{what}' nahi pehchana.")
 
 

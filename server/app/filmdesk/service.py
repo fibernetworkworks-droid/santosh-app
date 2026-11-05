@@ -35,6 +35,7 @@ from sqlalchemy import select
 from ..db import now, session
 from . import production as P
 from . import rules as R
+from . import sales as SL
 from .models import FilmAlert, FilmCard, FilmPerson, FilmProject, FilmRight, FilmSettings
 
 log = logging.getLogger("santosh.filmdesk")
@@ -1058,6 +1059,139 @@ def plan_budget(tenant: str, ref: str, rates: Any = None, contingency_pct: Any =
     return {"project": head, **out}
 
 
+# ---------------------------------------------------------------- sales layer (festival tracker / release windows / waterfall), see sales.py
+def _next_id(items: list[dict], prefix: str) -> int:
+    nums = [int(str(x.get("id", ""))[len(prefix):] or 0) for x in items if str(x.get("id", "")).startswith(prefix)
+            and str(x.get("id", ""))[len(prefix):].isdigit()]
+    return (max(nums) + 1) if nums else 1
+
+
+def festival_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | update | remove | tick one festival entry. Deadline, fee and premiere rule are HERS: nothing is looked up or guessed."""
+    op = (op or "add").lower()
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        fest = [x for x in pl.get("festivals", []) if isinstance(x, dict)]
+        eid = _s_str(f.get("entry"))
+        cur = next((x for x in fest if x["id"] == eid), None)
+        try:
+            if op == "add":
+                if len(fest) >= SL.FEST_MAX:
+                    raise FilmError(f"{SL.FEST_MAX} se zyada festival nahi.")
+                e = SL.norm_festival(f, _next_id(fest, "fs"))
+                fest.append(e)
+                what = f"Festival add: {e['name']}"
+            else:
+                if cur is None:
+                    raise FilmError("Kaunsa festival? (entry=fs1 jaisa id)")
+                if op == "remove":
+                    fest.remove(cur)
+                    what = f"Festival hata: {cur['name']}"
+                elif op == "tick":
+                    key = _s_str(f.get("key"))
+                    if key not in {r["key"] for r in SL.festival_packet({}, cur)}:
+                        raise FilmError("Yeh packet line nahi pehchani.")
+                    cur["ticks"][key] = f.get("done", True) is not False
+                    what = f"Festival packet: {cur['name']} - {key}"
+                elif op == "update":
+                    merged = {**cur, **{k: v for k, v in f.items() if k in ("name", "country", "category", "deadline", "event_date",
+                                                                           "fee_inr", "requires", "status", "submitted_on",
+                                                                           "screened_on", "notes")}}
+                    e = SL.norm_festival(merged, 0)
+                    e["id"], e["ticks"] = cur["id"], cur.get("ticks") or {}
+                    fest[fest.index(cur)] = e
+                    what = f"Festival badla: {e['name']}"
+                else:
+                    raise FilmError("op: add | update | remove | tick")
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        pl["festivals"] = fest
+        p.plan = _dump(pl)
+        _log(p, what, actor_name(tenant, actor))
+    return festival_view(tenant, ref) | {"say": what}
+
+
+def _s_str(v: Any) -> str:
+    return "" if v is None else str(v).strip()
+
+
+def festival_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        fest = [x for x in _j(p.plan, {}).get("festivals", []) if isinstance(x, dict)]
+        proj = {"scenes_n": len(_j(p.scenes, [])), "logline": p.logline, "runtime_s": p.runtime_s, "language": p.language}
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **SL.festival_view(fest, today(tenant), proj)}
+
+
+def window_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | remove a release window, or set the holdback rules. Owner only (these are rights/commercial commitments)."""
+    _need_owner(actor)
+    op = (op or "add").lower()
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        wins = [x for x in pl.get("windows", []) if isinstance(x, dict)]
+        try:
+            if op == "add":
+                if len(wins) >= SL.WINDOW_MAX:
+                    raise FilmError(f"{SL.WINDOW_MAX} se zyada window nahi.")
+                w = SL.norm_window(f, _next_id(wins, "w"))
+                wins.append(w)
+                what = f"Window add: {w['medium']} {w['start']}"
+            elif op == "remove":
+                cur = next((x for x in wins if x["id"] == _s_str(f.get("entry"))), None)
+                if cur is None:
+                    raise FilmError("Kaunsi window? (entry=w1 jaisa id)")
+                wins.remove(cur)
+                what = f"Window hata: {cur['id']}"
+            elif op == "holdbacks":
+                pl["holdbacks"] = [h for h in (f.get("holdbacks") or []) if isinstance(h, dict)][:20]
+                what = "Holdback niyam save"
+            else:
+                raise FilmError("op: add | remove | holdbacks")
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        pl["windows"] = wins
+        p.plan = _dump(pl)
+        _log(p, what, actor_name(tenant, actor))
+    return windows_view(tenant, ref) | {"say": what}
+
+
+def windows_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        head = {"number": p.number, "title": p.title}
+    wins = [x for x in pl.get("windows", []) if isinstance(x, dict)]
+    wins.sort(key=lambda w: (w["start"], w["medium"]))
+    return {"project": head, "windows": wins, "holdbacks": pl.get("holdbacks", []),
+            "check": SL.check_windows(wins, pl.get("holdbacks"))}
+
+
+def waterfall_run(tenant: str, ref: str, gross_inr: Any, deductions: Any = None, investors: Any = None, shares: Any = None,
+                  actor: str = "owner") -> dict:
+    """Owner only: it holds money numbers. The result is saved on the film (last calculation) and is a hisaab, not a statement."""
+    _need_owner(actor)
+    try:
+        out = SL.waterfall(gross_inr, deductions, investors, shares)
+    except ValueError as ex:
+        raise FilmError(str(ex)) from None
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        pl["waterfall"] = {"inputs": {"gross_inr": gross_inr, "deductions": deductions, "investors": investors, "shares": shares},
+                           "result": out}
+        p.plan = _dump(pl)
+        _log(p, f"Waterfall: gross ₹{out['gross_inr']:,.0f}", actor_name(tenant, actor))
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **out,
+            "say": f"₹{out['gross_inr']:,.0f} me se " + ("investor poora wapas" if out["investors_fully_recouped"] else
+                   "investor ka poora paisa nahi nikla" if out["investors_fully_recouped"] is False else "hisaab") +
+                   f"; baanta ja sakne wala ₹{out['net_after_recoup_inr']:,.0f}."}
+
+
 async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | None = None, variants: int = 1,
                 actor: str = "owner", conv: str = "") -> dict:
     """Ask the studio for paid shots: her film / month caps and consents are checked first; the studio then makes ITS price
@@ -1559,3 +1693,13 @@ def tick(when: datetime | None = None) -> dict:
         except Exception:
             log.exception("filmdesk tick failed for %s", tenant)
     return out
+
+
+def waterfall_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        w = _j(p.plan, {}).get("waterfall")
+        head = {"number": p.number, "title": p.title}
+    if not w:
+        raise FilmError("Waterfall abhi nahi bana (action=waterfall, sirf owner).")
+    return {"project": head, **w["result"]}
