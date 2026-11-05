@@ -3314,7 +3314,8 @@
       "Planck's constant and work function from stopping potential vs frequency"
      ],
      "conditions": [],
-     "kernel": "photoelectric"
+     "kernel": "photoelectric",
+     "built": "photoelectric-planck"
     },
     {
      "id": "vacuum-diode-work-function",
@@ -3345,7 +3346,8 @@
       "Planck's constant"
      ],
      "conditions": [],
-     "kernel": "pn-junction"
+     "kernel": "pn-junction",
+     "built": "led-planck-constant"
     },
     {
      "id": "hydrogen-balmer",
@@ -3360,7 +3362,8 @@
       "Rydberg constant"
      ],
      "conditions": [],
-     "kernel": "atomic-spectrum"
+     "kernel": "atomic-spectrum",
+     "built": "hydrogen-balmer-grating"
     },
     {
      "id": "mercury-ionisation-potential",
@@ -3533,7 +3536,8 @@
       "background radiation only",
       "sealed check source"
      ],
-     "kernel": "gm-counter"
+     "kernel": "gm-counter",
+     "built": "gm-plateau"
     },
     {
      "id": "counting-statistics",
@@ -3547,7 +3551,8 @@
       "Poisson / Gaussian fit to counts"
      ],
      "conditions": [],
-     "kernel": "gm-counter"
+     "kernel": "gm-counter",
+     "built": "gm-counting-statistics"
     },
     {
      "id": "beta-absorption",
@@ -3581,7 +3586,8 @@
       "half-value thickness"
      ],
      "conditions": [],
-     "kernel": "gm-absorption"
+     "kernel": "gm-absorption",
+     "built": "gamma-attenuation"
     },
     {
      "id": "background-radiation-survey",
@@ -3656,7 +3662,8 @@
       "half-life"
      ],
      "conditions": [],
-     "kernel": "decay-counting"
+     "kernel": "decay-counting",
+     "built": "short-half-life"
     },
     {
      "id": "srim-energy-loss",
@@ -3857,7 +3864,8 @@
       "resistivity vs temperature and band gap"
      ],
      "conditions": [],
-     "kernel": "four-probe"
+     "kernel": "four-probe",
+     "built": "four-probe-band-gap"
     },
     {
      "id": "hall-effect",
@@ -3973,7 +3981,8 @@
       "plasmon peak"
      ],
      "conditions": [],
-     "kernel": "nanoparticle-optics"
+     "kernel": "nanoparticle-optics",
+     "built": "gold-colloid-uv-vis"
     },
     {
      "id": "nano-size-colour",
@@ -3985,7 +3994,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "nanoparticle-optics"
+     "kernel": "nanoparticle-optics",
+     "built": "gold-colloid-uv-vis--d90"
     }
    ]
   },

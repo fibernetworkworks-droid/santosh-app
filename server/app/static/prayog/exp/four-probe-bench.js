@@ -24,18 +24,30 @@ HoolaStudio.define('four-probe-bench', function (S) {
   var ovenG = new T.Group(); S.scene.add(ovenG); ovenG.position.set(-0.32, 0, -0.12);
   var shellM = new T.MeshStandardMaterial({ color: 0x5a6069, roughness: 0.55, metalness: 0.45 });
   var OW = 0.22, OD = 0.2, OH = 0.17;
-  var shell = S.rounded(OW, OD, OH, 0.01, shellM); shell.rotation.x = -Math.PI / 2; shell.position.y = OH / 2 + 0.006;
-  ovenG.add(shell);
+  /* Panels with a real opening in the front, so the slice and the probes can be seen through the window. */
+  var WW = 0.1, WH = 0.07, WY = 0.09, TH = 0.007;
+  var shell = new T.Group(); ovenG.add(shell);
+  function panel(w, h, d, x, y, z) { var m = S.mesh(new T.BoxGeometry(w, h, d), shellM);
+    m.position.set(x, y, z); shell.add(m); return m; }
+  panel(OW, TH, OD, 0, TH / 2 + 0.006, 0);
+  panel(OW, OH, TH, 0, OH / 2 + 0.006, -OD / 2 + TH / 2);
+  panel(TH, OH, OD, -OW / 2 + TH / 2, OH / 2 + 0.006, 0);
+  panel(TH, OH, OD, OW / 2 - TH / 2, OH / 2 + 0.006, 0);
+  panel(OW, TH, OD, 0, OH + 0.006 - TH / 2, 0);
+  var FZP = OD / 2 - TH / 2;
+  panel((OW - WW) / 2, OH, TH, -(WW + (OW - WW) / 2) / 2, OH / 2 + 0.006, FZP);
+  panel((OW - WW) / 2, OH, TH, (WW + (OW - WW) / 2) / 2, OH / 2 + 0.006, FZP);
+  panel(WW, OH - (WY + WH / 2), TH, 0, (WY + WH / 2 + OH) / 2 + 0.006, FZP);
+  panel(WW, WY - WH / 2, TH, 0, (WY - WH / 2) / 2 + 0.006, FZP);
   [[-1, -1], [-1, 1], [1, -1], [1, 1]].forEach(function (f) {
     var ft = S.mesh(new T.CylinderGeometry(0.008, 0.009, 0.006, 16), M.rubber);
     ft.position.set(f[0] * (OW / 2 - 0.02), 0.003, f[1] * (OD / 2 - 0.02)); ovenG.add(ft);
   });
-  var winM = new T.MeshPhysicalMaterial({ color: 0xd4dbe1, roughness: 0.06, transmission: 0.8, thickness: 0.003,
-    transparent: true, opacity: 0.4 });
-  var window2 = S.mesh(new T.BoxGeometry(0.1, 0.07, 0.003), winM); window2.position.set(0, 0.09, OD / 2 + 0.006);
-  ovenG.add(window2);
-  var wFrame = S.mesh(new T.TorusGeometry(0.062, 0.0035, 8, 4), M.iron);
-  wFrame.position.set(0, 0.09, OD / 2 + 0.006); wFrame.rotation.z = Math.PI / 4; ovenG.add(wFrame);
+  var winM = new T.MeshStandardMaterial({ color: 0xdfe6ea, roughness: 0.08, transparent: true, opacity: 0.16 });
+  var window2 = S.mesh(new T.BoxGeometry(WW, WH, 0.0025), winM, false, false);
+  window2.position.set(0, WY + 0.006, OD / 2 - TH / 2); ovenG.add(window2);
+  var wFrame = S.mesh(new T.TorusGeometry(0.063, 0.0032, 8, 4), M.iron);
+  wFrame.position.set(0, WY + 0.006, OD / 2 + 0.001); wFrame.rotation.z = Math.PI / 4; ovenG.add(wFrame);
   var glowM = new T.MeshBasicMaterial({ color: 0xff5a1e, transparent: true, opacity: 0, depthWrite: false,
     blending: T.AdditiveBlending });
   var coil = S.mesh(new T.TorusGeometry(0.06, 0.004, 8, 32), glowM, false, false);
@@ -191,8 +203,8 @@ HoolaStudio.define('four-probe-bench', function (S) {
 
   return {
     camera: { pos: [-0.04, 0.92, 1.1], look: [-0.06, 0.08, -0.06] },
-    views: { oven: [[-0.26, 0.34, 0.2], [-0.32, 0.1, -0.12]], probes: [[-0.26, 0.22, 0.04], [-0.32, 0.11, -0.12]],
-      slice: [[-0.28, 0.18, 0.0], [-0.32, 0.085, -0.12]], csrc: [[0.0, 0.26, 0.32], [0.0, 0.05, 0.1]],
+    views: { oven: [[-0.3, 0.26, 0.3], [-0.32, 0.1, -0.12]], probes: [[-0.3, 0.2, 0.14], [-0.32, 0.1, -0.12]],
+      slice: [[-0.3, 0.16, 0.1], [-0.32, 0.085, -0.12]], csrc: [[0.0, 0.26, 0.32], [0.0, 0.05, 0.1]],
       dvm: [[0.3, 0.24, 0.16], [0.28, 0.05, -0.06]], ovc: [[-0.08, 0.24, -0.04], [-0.08, 0.05, -0.26]],
       bench: [[-0.04, 0.92, 1.1], [-0.06, 0.08, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {

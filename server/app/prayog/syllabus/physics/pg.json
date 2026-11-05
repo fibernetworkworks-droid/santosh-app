@@ -974,7 +974,8 @@
      "conditions": [
       "several oven temperatures (Hg)"
      ],
-     "kernel": "franck_hertz"
+     "kernel": "franck_hertz",
+     "built": "franck-hertz"
     }
    ]
   },
@@ -1179,7 +1180,8 @@
       "carrier type"
      ],
      "conditions": [],
-     "kernel": "hall"
+     "kernel": "hall",
+     "built": "hall-effect"
     },
     {
      "id": "hall-temperature",

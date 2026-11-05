@@ -55,12 +55,11 @@ HoolaStudio.define('ac-mains-frequency-sonometer', function (S) {
   var blur = new T.Mesh(new T.PlaneGeometry(1, 1), new T.MeshBasicMaterial({ map: blurTex, transparent: true, opacity: 0, depthWrite: false, side: T.DoubleSide })); S.scene.add(blur);
   // the horse-shoe magnet at the middle of the wire: its poles are on either side of the wire
   var mag = new T.Group(); S.scene.add(mag);
-  var arcM = S.mesh(new T.TorusGeometry(0.03, 0.009, 14, 32, Math.PI), new T.MeshStandardMaterial({ color: 0xb02a22, roughness: 0.4, metalness: 0.4 })); arcM.rotation.set(0, 0, 0); arcM.position.y = 0.055; mag.add(arcM);
-  [[-1, 0xd9dde2], [1, 0xd9dde2]].forEach(function (s) { var limb = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.04, 16), new T.MeshStandardMaterial({ color: 0xb02a22, roughness: 0.4, metalness: 0.4 })); limb.position.set(s[0] * 0.03, 0.035, 0); mag.add(limb);
-    var tip = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.014, 16), new T.MeshStandardMaterial({ color: s[1], roughness: 0.3, metalness: 0.9 })); tip.position.set(s[0] * 0.03, 0.008, 0); mag.add(tip); });
+  var magM = new T.MeshStandardMaterial({ color: 0xb02a22, roughness: 0.4, metalness: 0.4 });
+  var arcM = S.mesh(new T.TorusGeometry(0.02, 0.0075, 14, 32, Math.PI), magM); arcM.position.y = 0.045; mag.add(arcM);
+  [-1, 1].forEach(function (sg) { var limb = S.mesh(new T.CylinderGeometry(0.0075, 0.0075, 0.035, 16), magM); limb.position.set(sg * 0.02, 0.0275, 0); mag.add(limb);
+    var tip = S.mesh(new T.CylinderGeometry(0.0075, 0.0075, 0.016, 16), new T.MeshStandardMaterial({ color: 0xd9dde2, roughness: 0.3, metalness: 0.9 })); tip.position.set(sg * 0.02, 0.008, 0); mag.add(tip); });
   mag.rotation.y = Math.PI / 2;                                   // the poles on either side of the wire (in z)
-  mag.scale.set(0.4, 1, 0.4);
-  var ml = S.label('N', { w: 0.01, ratio: 1, color: '#ffffff', weight: 800 }); ml.position.set(0, 0.0825, 0); mag.add(ml);
   // hanger with slotted masses
   var HX = PX + PR, HOOKY = 0.245, HB = 0.066;
   var hanger = new T.Group(); hanger.position.set(HX, 0, BZ); S.scene.add(hanger);
@@ -116,7 +115,7 @@ HoolaStudio.define('ac-mains-frequency-sonometer', function (S) {
     var a = new T.Vector3(BX0 + 0.02, YTOP + 0.012, BZ), A = new T.Vector3(AX, WY, BZ), B = new T.Vector3(AX + st.l, WY, BZ), P = new T.Vector3(PX, WY + 0.0006, BZ), Pd = new T.Vector3(HX, WY - PR, BZ), H = new T.Vector3(HX, HOOKY + 0.006, BZ);
     seg(w0, a, A); seg(w2, B, P); seg(w3, Pd, H);
     brB.position.x = AX + st.l; blur.position.set(AX + st.l / 2, WY, BZ); blur.scale.x = st.l;
-    mag.position.set(AX + st.l / 2, WY - 0.0, BZ);
+    mag.position.set(AX + st.l / 2, WY - 0.008, BZ);
   }
   function vibrate(amp, ph) {
     var pts = [], i, x, y;

@@ -54,7 +54,7 @@ HoolaStudio.define('lissajous-figures', function (S) {
   var gx = generator(-0.42, 'AUDIO GENERATOR X', false), gy = generator(0.42, 'AUDIO GENERATOR Y', true);
   function drawGen(g, txt, sub) { var k = txt + sub; if (g.userData.last === k) return; g.userData.last = k;
     g.userData.tex.draw(function (x, w, h) { x.fillStyle = '#b9c4a7'; x.fillRect(0, 0, w, h); x.fillStyle = '#1b2116'; x.font = '700 40px "JetBrains Mono", monospace'; x.textAlign = 'right'; x.fillText(txt, w - 8, h - 24); x.font = '600 14px sans-serif'; x.textAlign = 'left'; x.fillText(sub, 8, 18); }); }
-  var wX = S.wire([[-0.5, 0.09, -0.06], [-0.3, 0.12, -0.02], [-0.1, 0.12, 0.0], [0.1 - 0.04 + 0.04, 0.125, CZ + 0.19]], 'red');
+  var wX = S.wire([[-0.5, 0.09, -0.06], [-0.32, 0.22, -0.02], [-0.12, 0.38, CZ + 0.2], [0.04, 0.38, CZ + 0.2], [0.1, 0.14, CZ + 0.19]], 'red');
   var wY = S.wire([[0.34, 0.09, -0.06], [0.25, 0.12, 0.0], [0.2, 0.13, 0.0], [0.14, 0.125, CZ + 0.19]], 'black');
   var watch = S.stopwatch([0.3, 0.035, 0.17], [-1.15, 0, -0.2]);
 
@@ -173,7 +173,7 @@ HoolaStudio.define('lissajous-figures', function (S) {
   }
 
   return {
-    camera: { pos: [0.1, 0.4, 1.15], look: [0.0, 0.14, -0.12] },
+    camera: { pos: [0.05, 0.42, 1.55], look: [0.0, 0.15, -0.12] },
     views: { cro: [[0.0, 0.26, 0.45], [-0.02, 0.16, CZ + 0.1]], genx: [[-0.35, 0.3, 0.3], [-0.42, 0.07, -0.1]], geny: [[0.35, 0.3, 0.3], [0.42, 0.07, -0.1]], sw: [[-0.5, 0.4, 0.5], [-1.1, 0.05, -0.2]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'Two perpendicular simple harmonic motions combine into a Lissajous figure. When the frequencies are in a ratio of small whole numbers the figure is closed and steady.',
       formula: PH ? 'sin φ = y0 / ymax' : 'fy / fx = (touches on the top edge) / (touches on the side edge)',

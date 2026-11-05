@@ -23,8 +23,21 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
   var oven = new T.Group(); S.scene.add(oven); oven.position.set(-0.4, 0, -0.14);
   var OW = 0.24, OD = 0.22, OH = 0.26;
   var shellM = new T.MeshStandardMaterial({ color: 0x51575f, roughness: 0.55, metalness: 0.45 });
-  var shell = S.rounded(OW, OD, OH, 0.012, shellM); shell.rotation.x = -Math.PI / 2; shell.position.y = OH / 2 + 0.004;
-  oven.add(shell);
+  /* The oven is built from real panels with a real opening in the front, so the tube can be seen through the
+     window instead of the window being a patch painted on a solid box. */
+  var WW = 0.13, WH = 0.15, WY = 0.14, TH = 0.008;
+  var shell = new T.Group(); oven.add(shell);
+  function panel(w, h, d, x, y, z) { var m = S.mesh(new T.BoxGeometry(w, h, d), shellM);
+    m.position.set(x, y, z); shell.add(m); return m; }
+  panel(OW, TH, OD, 0, TH / 2 + 0.004, 0);                                   // floor
+  panel(OW, OH, TH, 0, OH / 2 + 0.004, -OD / 2 + TH / 2);                    // back
+  panel(TH, OH, OD, -OW / 2 + TH / 2, OH / 2 + 0.004, 0);                    // left
+  panel(TH, OH, OD, OW / 2 - TH / 2, OH / 2 + 0.004, 0);                     // right
+  var FZP = OD / 2 - TH / 2;
+  panel((OW - WW) / 2, OH, TH, -(WW + (OW - WW) / 2) / 2, OH / 2 + 0.004, FZP);   // front, left of the window
+  panel((OW - WW) / 2, OH, TH, (WW + (OW - WW) / 2) / 2, OH / 2 + 0.004, FZP);    // front, right of the window
+  panel(WW, OH - (WY + WH / 2), TH, 0, (WY + WH / 2 + OH) / 2 + 0.004, FZP);      // front, above the window
+  panel(WW, WY - WH / 2, TH, 0, (WY - WH / 2) / 2 + 0.004, FZP);                  // front, below the window
   var lid = S.rounded(OW + 0.02, OD + 0.02, 0.016, 0.006, shellM); lid.rotation.x = -Math.PI / 2;
   lid.position.y = OH + 0.012; oven.add(lid);
   var handle = S.mesh(new T.TorusGeometry(0.022, 0.0035, 10, 24, Math.PI), M.chrome);
@@ -35,10 +48,10 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
   });
   var winM = new T.MeshStandardMaterial({ color: 0xdfe6ea, roughness: 0.08, metalness: 0.0,
     transparent: true, opacity: 0.16 });
-  var win = S.mesh(new T.BoxGeometry(0.13, 0.15, 0.004), winM); win.position.set(0, 0.14, OD / 2 + 0.004);
-  oven.add(win);
-  var frame = S.mesh(new T.TorusGeometry(0.085, 0.004, 8, 4), M.iron);
-  frame.position.set(0, 0.14, OD / 2 + 0.004); frame.rotation.z = Math.PI / 4; oven.add(frame);
+  var win = S.mesh(new T.BoxGeometry(WW, WH, 0.003), winM, false, false);
+  win.position.set(0, WY + 0.004, OD / 2 - TH / 2); oven.add(win);
+  var frame = S.mesh(new T.TorusGeometry(0.088, 0.004, 8, 4), M.iron);
+  frame.position.set(0, WY + 0.004, OD / 2 + 0.001); frame.rotation.z = Math.PI / 4; oven.add(frame);
   // the tube: cathode, grid, collector
   var tubeM = new T.MeshPhysicalMaterial({ color: 0xdfe5ea, roughness: 0.06, transmission: 0.7, thickness: 0.01,
     transparent: true, opacity: 0.4 });
@@ -240,7 +253,7 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
 
   return {
     camera: { pos: [-0.04, 1.0, 1.24], look: [-0.06, 0.13, -0.08] },
-    views: { oven: [[-0.22, 0.42, 0.36], [-0.4, 0.15, -0.14]], unit: [[0.3, 0.34, 0.3], [0.26, 0.08, -0.06]],
+    views: { oven: [[-0.22, 0.4, 0.46], [-0.4, 0.15, -0.14]], unit: [[0.3, 0.34, 0.3], [0.26, 0.08, -0.06]],
       bench: [[-0.04, 1.0, 1.24], [-0.06, 0.13, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'An atom can only take energy from an electron in the exact amount of one of its own jumps. Below the first excitation energy every collision is elastic and the current climbs with the accelerating voltage; the moment an electron has gained that energy it can lose all of it in one collision, arrives too slow to climb the retarding voltage, and the current falls. The pattern repeats, so the current peaks are one excitation potential apart.',

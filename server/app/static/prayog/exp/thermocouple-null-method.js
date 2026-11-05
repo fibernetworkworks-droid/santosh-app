@@ -186,7 +186,7 @@ HoolaStudio.define('thermocouple-null-method', function (S) {
     result: function (rows) {
       var f = curve(rows); if (!f) return null;
       if (AMP) { var Tn = f[2] !== 0 ? -f[1] / (2 * f[2]) : 0; return { label: 'Tn (neutral temperature)', value: Tn, unit: '°C', digits: 0, truth: -p.a / (2 * p.q), note: 'The highest point of the e–T parabola; e = ' + (f[0] * 1e6).toFixed(0) + ' + ' + (f[1] * 1e6).toFixed(2) + ' T ' + (f[2] < 0 ? '−' : '+') + ' ' + Math.abs(f[2] * 1e9).toFixed(1) + '×10⁻⁹ T² (µV).' }; }
-      return { label: 'dE/dT at 50 °C', value: f[1] + 100 * f[2], unit: 'V/K', digits: 7, truth: p.a + 100 * p.q, note: 'The slope of the fitted E–T curve at 50 °C (' + PAIR + ').' };
+      return { label: 'dE/dT at 50 °C', value: (f[1] + 100 * f[2]) * 1e6, unit: 'µV/K', digits: 2, truth: (p.a + 100 * p.q) * 1e6, note: 'The slope of the fitted E–T curve at 50 °C (' + PAIR + ').' };
     },
     tol: AMP ? 0.02 : 0.03,
     chips: ['Why keep the cold junction in ice?', AMP ? 'What is the neutral temperature?' : 'Why a potentiometer and not a voltmeter?', 'Why must the bath be steady?', 'Check my readings', 'Why is my slope different?'],

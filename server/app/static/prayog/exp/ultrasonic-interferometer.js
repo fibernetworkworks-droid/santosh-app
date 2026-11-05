@@ -68,6 +68,8 @@ HoolaStudio.define('ultrasonic-interferometer', function (S) {
   S.contact(0.34, 0.2, GX, GZ, 0.5);
   var cable = S.wire([[CX + 0.034, 0.02, CZ], [0.0, 0.05, -0.18], [GX - 0.18, 0.06, GZ + 0.05], [GX - 0.15, 0.08, GZ + 0.09]], 'black');
   var watch = S.stopwatch([0.3, 0.035, 0.17], [-1.15, 0, -0.2]);
+  function placeMic() { var yr = 0.0245 + 0.004 + st.x; refl.position.set(CX, yr, CZ); spindle.scale.y = (0.022 + CH + 0.012) - yr + 0.03; spindle.position.set(CX, yr + spindle.scale.y / 2, CZ); thimble.rotation.y = st.x * 1000 / 0.5 * Math.PI * 2; }
+  placeMic(); drawMic(0); drawCur('0.00 µA');
   var hudX = S.hudCard('Micrometer'), hudI = S.hudCard('Current'), hudN = S.hudCard('Maxima noted');
 
   S.addApparatus('cell', cell, 'Measuring cell', 'A steel cell with a 2 MHz quartz crystal at the bottom. The liquid fills the space between the crystal and a movable reflector.');
@@ -158,7 +160,7 @@ HoolaStudio.define('ultrasonic-interferometer', function (S) {
     tick: function (dt) {
       st.clock += dt; var c = st.on ? Inow() : 0; st.shown += (c - st.shown) * Math.min(1, dt * 8); gmeter.set(st.shown);
       drawMic(st.x); drawCur(st.on ? c.toFixed(2) + ' µA' : '0.00 µA');
-      var yr = 0.0245 + 0.004 + st.x; refl.position.set(CX, yr, CZ); spindle.scale.y = (0.022 + CH + 0.012) - yr + 0.03; spindle.position.set(CX, yr + spindle.scale.y / 2, CZ); thimble.rotation.y = st.x * 1000 / 0.5 * Math.PI * 2;
+      placeMic();
       hudX.set((st.x * 1000).toFixed(3) + ' mm'); hudI.set(st.on ? c.toFixed(1) + ' µA' : '—'); hudN.set(String(S.rows.length));
     },
   };

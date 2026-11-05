@@ -266,20 +266,22 @@ class FranckHertz:
     steeply the envelope rises - which is the quantity the experiment measures."""
 
     PARAMS = {"Vg": 0.0, "Ue": 4.9, "Vc": 1.5, "V0": 7.0, "Vmid": 20.0, "damp": 0.85,
-              "Iscale": 1.0e-9, "Ioff": 1.0e-11, "Vmax": 32.0, "Vt": 2.5}
+              "Iscale": 1.0e-9, "Ioff": 1.0e-11, "Vmax": 32.0, "Vt": 0.0}
     VARS = ["t", "I", "I_nA", "V", "n_peaks"]
 
     @staticmethod
     def current(v: float, p: dict) -> float:
         """`Vt` is the voltage below which no electron reaches the collector at all (it cannot climb the
-        retarding voltage), so the curve starts from nothing instead of showing a bump at the contact
-        potential. The factor is exponential, so it has died away long before the first peak and does not
-        move it."""
+        retarding voltage), so the curve starts from nothing instead of rising and falling before the first
+        real peak. Left at 0 it is taken half an excitation potential above the contact potential, which is
+        where the periodic term is at its minimum, so the curve climbs to the first peak without a bump. The
+        factor is exponential and has died away long before that peak, so it does not move it."""
         if v < 0:
             v = 0.0
-        if v <= p["Vt"]:
+        vt = p["Vt"] if p["Vt"] > 0 else p["Vc"] + 0.5 * p["Ue"]
+        if v <= vt:
             return p["Ioff"]
-        on = 1.0 - math.exp(-(v - p["Vt"]) / 0.5)
+        on = 1.0 - math.exp(-(v - vt) / 0.5)
         env = math.exp(_clamp((v - p["Vmid"]) / max(p["V0"], 1e-9), -60.0, 60.0))
         per = 1.0 + p["damp"] * math.cos(2 * PI * (v - p["Vc"]) / max(p["Ue"], 1e-9))
         return p["Ioff"] + p["Iscale"] * on * env * per / (1.0 + p["damp"])

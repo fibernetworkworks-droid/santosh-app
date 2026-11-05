@@ -79,7 +79,7 @@ HoolaStudio.define('platinum-resistance-thermometer', function (S) {
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here.');
   var bookLines = ['Aim: ' + (ALPHA ? 'to find the temperature coefficient α of a ' + ELEMENT + ' element.' : 'to calibrate a ' + ELEMENT + ' resistance device.'), OFF ? 'Off-balance bridge: R = Rref (1/2 + Vg/Vs) / (1/2 − Vg/Vs)' : 'Null method: decade box = probe resistance R',
     ALPHA ? 'α = (R100 − R0) / (100 R0)' : 'R = R0 (1 + A t + B t²); slope dR/dt at 50 °C'];
-  var hudT = S.hudCard('Bath'), hudR = S.hudCard('Probe R'), hudN = S.hudCard('Readings');
+  var hudT = S.hudCard('Bath'), hudR = S.hudCard(OFF ? 'Bridge output' : 'Decade box'), hudN = S.hudCard('Readings');
 
   // ---------- thermostat bath clock
   function runFor(sec) {
@@ -208,7 +208,7 @@ HoolaStudio.define('platinum-resistance-thermometer', function (S) {
       if (galv) galv.set(devNow());
       if (OFF) drawRead(st.conn ? (Vnow() * 1000).toFixed(2) + ' mV' : '0.00 mV', 'OUTPUT Vg');
       else drawRead(st.Rbox.toFixed(2) + ' Ω', 'DECADE BOX');
-      hudT.set(r1(sim.T).toFixed(1) + ' °C'); hudR.set(st.conn && st.loc !== 'air' ? R.toFixed(2) + ' Ω' : '—'); hudN.set(String(S.rows.length));
+      hudT.set(r1(sim.T).toFixed(1) + ' °C'); hudR.set(OFF ? (st.conn && st.loc !== 'air' ? (Vnow() * 1000).toFixed(2) + ' mV' : '—') : st.Rbox.toFixed(2) + ' Ω'); hudN.set(String(S.rows.length));
     },
   };
 });

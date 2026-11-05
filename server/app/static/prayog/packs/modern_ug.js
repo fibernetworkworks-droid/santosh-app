@@ -89,12 +89,13 @@
   // ------------------------------------------------------------------ Franck-Hertz tube
   var fhtube = {
     PARAMS: { Vg: 0.0, Ue: 4.9, Vc: 1.5, V0: 7.0, Vmid: 20.0, damp: 0.85, Iscale: 1.0e-9, Ioff: 1.0e-11,
-      Vmax: 32.0, Vt: 2.5 },
+      Vmax: 32.0, Vt: 0.0 },
     VARS: ['t', 'I', 'I_nA', 'V', 'n_peaks'],
     current: function (v, p) {
       if (v < 0) v = 0;
-      if (v <= p.Vt) return p.Ioff;
-      var on = 1 - Math.exp(-(v - p.Vt) / 0.5);
+      var vt = p.Vt > 0 ? p.Vt : p.Vc + 0.5 * p.Ue;
+      if (v <= vt) return p.Ioff;
+      var on = 1 - Math.exp(-(v - vt) / 0.5);
       var env = Math.exp(clamp((v - p.Vmid) / Math.max(p.V0, 1e-9), -60, 60));
       var per = 1 + p.damp * Math.cos(2 * PI * (v - p.Vc) / Math.max(p.Ue, 1e-9));
       return p.Ioff + p.Iscale * on * env * per / (1 + p.damp);

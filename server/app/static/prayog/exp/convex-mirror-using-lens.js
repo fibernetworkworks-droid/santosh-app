@@ -176,7 +176,7 @@ HoolaStudio.define('convex-mirror-using-lens', function (S) {
     litM.emissive.setRGB(st.lit ? 1.0 * f : 0, st.lit ? 0.72 * f : 0, st.lit ? 0.3 * f : 0); pinLamp.intensity = st.lit ? 0.02 : 0;
     VIEWS.screen[0][0] = xAt(st.sPos) - 0.26; VIEWS.screen[0][1] = AXY + 0.03; VIEWS.screen[0][2] = BZ + 0.3; VIEWS.screen[1][0] = xAt(st.sPos); VIEWS.screen[1][1] = AXY - 0.04; VIEWS.screen[1][2] = BZ;
     VIEWS.pin[0][0] = xAt(st.oPos) + 0.14; VIEWS.pin[1][0] = xAt(st.oPos);
-    VIEWS.elem[0][0] = xAt(st.in2 ? st.ePos : MIR + 8) + 0.14; VIEWS.elem[1][0] = xAt(st.in2 ? st.ePos : MIR + 8);
+    VIEWS.elem[0][0] = xAt(st.in2 ? st.ePos : MIR + 8) - 0.04; VIEWS.elem[1][0] = xAt(st.in2 ? st.ePos : MIR + 8) - 0.06;
     hudO.set(fmt1(st.oPos) + ' cm'); hudE.set(st.in2 ? fmt1(st.ePos) + ' cm' : 'out of the beam'); hudS.set(hudWord(v));
   }
 
@@ -287,7 +287,7 @@ HoolaStudio.define('convex-mirror-using-lens', function (S) {
   }
 
   var VIEWS = { bench: [[-0.05, 0.74, 1.72], [-0.05, 0.12, -0.2]], lens: [[MX + 0.1, AXY + 0.03, BZ + 0.16], [MX, AXY - 0.005, BZ]],
-    pin: [[0, AXY + 0.06, BZ + 0.22], [0, AXY, BZ]], elem: [[0, AXY + 0.05, BZ + 0.2], [0, AXY, BZ]], screen: [[0, AXY, BZ + 0.21], [0, AXY - 0.05, BZ]],
+    pin: [[0, AXY + 0.06, BZ + 0.22], [0, AXY, BZ]], elem: [[0, AXY + 0.06, BZ + 0.22], [0, AXY, BZ]], screen: [[0, AXY, BZ + 0.21], [0, AXY - 0.05, BZ]],
     lamp: [[xAt(MIR - 22) + 0.1, 0.14, BZ + 0.36], [xAt(MIR - 22), 0.03, BZ + 0.16]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] };
   VIEWS.mirror = VIEWS.elem; VIEWS.align = [[X0 - 0.1, AXY + 0.05, BZ + 0.03], [MX, AXY - 0.02, BZ]];
   update();
