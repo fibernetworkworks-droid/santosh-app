@@ -513,11 +513,16 @@ jobs:
                 echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.engineering check 2>&1 | tail -45' ;;
               lab_check)
                 # v0.456 PRAYOGSHALA: is the coding lab's Docker box real and SEALED on this VPS? Builds the base image
-                # if missing, then runs a passing test, a failing test, and three wall checks (no network, read-only
-                # root, non-root user). "GADBAD" / "KHATRA" anywhere in the output = do NOT turn dev_lab on.
+                # if missing (or REBUILDS it when the image is older than the code, v0.537), then runs a passing
+                # test, a failing test, three wall checks (no network, read-only root, non-root user), and the two
+                # v0.537 ones: a repo's own `pip install` works, and what it installs survives the snapshot commit.
+                # "GADBAD" / "KHATRA" anywhere in the output = the lab is not trustworthy, tell the developer.
                 echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab check 2>&1 | tail -40' ;;
               lab_try)
-                # v0.533 the lab on HER OWN repo, end to end: clone santosh-app, install its dependencies ONCE (network
+                # RUN lab_check (or lab_setup) FIRST after a deploy that bumps box.BASE_REV - the fixes live IN the
+                # image (v0.539 PEP 668 + commit-survives-setup, v0.542 Python 3.13), and lab_check now REBUILDS a
+                # stale image before it tests the walls. Repo snapshots are keyed on the base rev, so none is stale.
+                # v0.542 the lab on HER OWN repo, end to end: clone santosh-app, install its dependencies ONCE (network
                 # on, cached as an image snapshot), then run a small slice of the real suite with NO network. This is the
                 # same path a coding job takes, minus the model. First run installs deps (a few minutes); later runs reuse
                 # the snapshot. "PASS" here means the box can really run her code.
@@ -525,7 +530,7 @@ jobs:
               lab_setup)
                 # ... build (or rebuild) the base image on its own: python + node + jdk + git + ripgrep, ~2-4 minutes.
                 echo 'docker --version || echo "DOCKER NAHI HAI"'
-                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab setup 2>&1 | tail -25' ;;
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab setup --rebuild 2>&1 | tail -25' ;;
               lab_images)
                 echo 'cd $CORE && .venv/bin/python -m app.devlab images 2>&1 | tail -30'
                 echo 'docker system df 2>&1 | tail -6' ;;

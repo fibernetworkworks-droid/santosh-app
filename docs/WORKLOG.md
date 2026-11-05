@@ -1286,3 +1286,25 @@ Stage Summary:
   the trace_flip job stays pre-built and dispatch-ready. Rollback = one flip; no schema
   migration (checkpoints live in their own table / saver).
 
+
+Task ID: 37 — v0.539.0 PRAYOGSHALA SACH (built as 0.537.0; 5 Nov 2026)
+Owner: "LAB_TRY DONE, CHECK RESULT". vps-ops run 252 failed at stage=setup in 9 s with
+`error: externally-managed-environment`. Two defects fixed: (A) Debian's PEP 668 marker refused the repo's own
+declared pip install — removed once in the image, so a repo's real command runs unrewritten; (B) silent — the setup
+step had a read-only root AND a tmpfs over /home/lab, and docker commit keeps neither, so an install would have been
+discarded while the snapshot reported cached. Writability now derived from commit_to (no caller can unseal a check);
+check keeps read-only root + --network none with HOME in /tmp and PYTHONUSERBASE pointing at the committed
+/home/lab/.local. Image revision label + lab_check rebuilds a stale image; selftest proves pip install works and
+survives the commit. Healed, all red on pristine main from the v0.536 ritual: console stamp pins (0.487.0 ->
+0.536.0 x21), full-string pins `version: 0.535.0+558`, APP_VERSION story markers, registry count 554 -> 556.
+Her VPS must run lab_setup (rebuilds) before lab_try. No credentials in this entry.
+
+Task ID: 38 — v0.543.0 PRAYOGSHALA EK HI PYTHON (built as 0.542.0) (5 Nov 2026)
+Owner: "DEPLOY DONE, LAB_SETUP DONE, LAB_TRY DONE - CHECK RESULT". vps-ops run 257: the v0.539 fixes held — clone +
+dependency install + snapshot commit + a real no-network pytest, ~7 min (was 9 s). It then failed at import on
+app/notebook/render.py:517 (backslash in an f-string expression): PEP 701 allows it from Python 3.12, her server runs
+3.13, Debian 12's python3 is 3.11 — the box was a different language version than production. Fixed the BOX: base image
+python:3.13-slim-bookworm, apt python3-dev/venv/pip dropped; her code untouched (valid for her Python). Guards: the
+self-test compares box vs server Python and says GADBAD; snapshots keyed on the base revision so a stale 3.11 snapshot
+cannot be served on the new base. Image rev 2 -> 3; lab_check rebuilds. 45 green. lab_try still has never passed.
+No credentials in this entry.

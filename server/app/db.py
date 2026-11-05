@@ -772,6 +772,8 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import cms as _site_cms  # noqa: F401  (v0.538 her team: members, drafts, revisions)
+    from .site import catalog as _site_catalog  # noqa: F401  (v0.538 imported lists: products / doctors / properties)
     from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
@@ -819,6 +821,7 @@ def init_db(url: str | None = None):
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)
     from .ads import metaads as _metaads  # noqa: F401  (v0.417 Facebook / Instagram ads, Meta Marketing API)
+    from .seo import intel as _seo_intel  # noqa: F401  (v0.541 SEO INTEL: ranks, AI visibility, Maps grid, DataForSEO)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401

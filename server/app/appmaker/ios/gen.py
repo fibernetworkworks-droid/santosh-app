@@ -214,6 +214,7 @@ struct HoolaApp: App {
                     _ = await Updates.check()
                     Updates.schedule()
                     PushHub.start()                              // v0.368 instant notifications (when switched on)
+                    await Flags.shared.refresh()                 // v0.540 feature switches (the server decides)
                     #if DEBUG
                     if ProcessInfo.processInfo.arguments.contains("-hoola_e2e") { await E2e.run() }
                     #endif

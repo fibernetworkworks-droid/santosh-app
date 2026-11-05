@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import subprocess
 import tempfile
 import time
@@ -35,7 +36,10 @@ def _slug(repo: str) -> str:
 
 
 def image_for(repo: str, key: str) -> str:
-    return f"hoola-devlab:{_slug(repo)}-{key}"
+    """v0.542: the BASE revision rides in the tag. A snapshot is built ON the base image, so a base that changes
+    (a new Python, a new tool) must not be served stale dependencies built against the old one - which is exactly
+    what would have happened after the 3.11 -> 3.13 move: a cached snapshot, a fresh base, and the same failure."""
+    return f"hoola-devlab:{_slug(repo)}-r{box.BASE_REV}-{key}"
 
 
 def _git(argv: list[str], cwd: str, token: str, timeout: int) -> tuple[int, str]:
@@ -302,9 +306,12 @@ def selftest() -> list[str]:
     lines.append(f"docker: {'ok ' + str(av.get('docker')) if av['ok'] else 'NAHI - ' + av['why']}")
     if not av["ok"]:
         return lines
-    lines.append(f"base image {box.BASE_IMAGE}: {'bani hai' if av.get('base_built') else 'NAHI bani'}")
-    if not av.get("base_built"):
-        b = box.build_base()
+    lines.append(f"base image {box.BASE_IMAGE}: {'bani hai' if av.get('base_built') else 'NAHI bani'}"
+                 + (f" (rev {av.get('base_rev') or '1'}, chahiye {box.BASE_REV})" if av.get("base_built") else ""))
+    if av.get("base_stale"):
+        lines.append("  PURANI image hai - naye niyamon se dobara bana raha hoon")
+    if not av.get("base_built") or av.get("base_stale"):
+        b = box.build_base(nocache=bool(av.get("base_stale")))
         lines.append(f"  build: {'ok' if b['ok'] else 'FAIL - ' + b['why']} ({b.get('seconds')}s)")
         if not b["ok"]:
             lines += ["  " + x for x in b.get("out", "").splitlines()[-12:]]
@@ -322,12 +329,37 @@ def selftest() -> list[str]:
         shaped = out.shape(bad["out"], bad["rc"], "", bad["secs"], bad["timed_out"])
         lines.append(f"ek fail hone wala test: exit {bad['rc']} - " + ("ok, aur fail ka ant dikh raha hai"
                      if bad["rc"] != 0 and "assert" in shaped["shown"] else "GADBAD: fail pakda nahi gaya"))
+        # v0.542: the box must speak the SAME Python as her server, or a check fails on code that runs fine in
+        # production - which is exactly what her first working lab_try did (a 3.12+ f-string, SyntaxError on 3.11).
+        ver = box.run_in(box.BASE_IMAGE, work, "python3 -c \"import sys;print('%d.%d' % sys.version_info[:2])\"",
+                         timeout=60)
+        box_py = (ver["out"] or "").strip().splitlines()[-1].strip() if (ver["out"] or "").strip() else "?"
+        mine = "%d.%d" % sys.version_info[:2]
+        lines.append(f"box ka python {box_py}, server ka {mine}: "
+                     + ("ok (ek hi hai)" if box_py == mine else
+                        f"GADBAD - farak hai, uska code is box mein toot sakta hai (image rev {box.BASE_REV})"))
         net = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -c \"import socket;"
                          "socket.create_connection(('1.1.1.1',53),timeout=4)\"", timeout=60)
         lines.append("network band hai: " + ("ok (box bahar nahi pahunch saka)" if net["rc"] != 0
                      else "KHATRA - box ko internet mila, --network none kaam nahi kiya"))
         w = box.run_in(box.BASE_IMAGE, work, "touch /etc/hoola-should-fail 2>&1; echo rc=$?", timeout=60)
         lines.append("root filesystem read-only hai: " + ("ok" if "rc=0" not in w["out"] else "GADBAD - likh paya"))
+        # v0.537: her first live lab_try died here, not on any wall - Debian's PEP 668 marker refused the repo's own
+        # pip command. This proves a plain `pip install` works AND that what it installs survives the commit.
+        Path(work, "needs.txt").write_text("tabulate==0.9.0\n")
+        tag = box.BASE_IMAGE + "-selftest"
+        ins = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -m pip install -q -r needs.txt",
+                         timeout=300, network=True, commit_to=tag)
+        lines.append("repo ka apna `pip install` chalta hai: " + ("ok" if ins["rc"] == 0 else
+                     "GADBAD - " + ins["out"].strip()[-300:]))
+        if ins["rc"] == 0 and box.has_image(tag):
+            kept = box.run_in(tag, work, "cd /work; python3 -c \"import tabulate; print('mila', tabulate.__name__)\"",
+                              timeout=90)
+            lines.append("install snapshot mein bacha rehta hai: " + ("ok" if "mila" in kept["out"]
+                         else "GADBAD - commit ke baad gayab: " + kept["out"].strip()[-300:]))
+            box.forget(tag)
+        else:
+            lines.append("install snapshot mein bacha rehta hai: GADBAD - snapshot hi nahi bani")
         who = box.run_in(box.BASE_IMAGE, work, "id -u", timeout=60)
         lines.append(f"box ka user: {who['out'].strip()[:20]} " + ("(ok, root nahi)" if who["out"].strip() != "0"
                                                                   else "(GADBAD - root hai)"))

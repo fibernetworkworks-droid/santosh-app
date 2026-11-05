@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.538.0"   # v0.538.0 (built as 0.456.0) SCENES AS CHECKED DATA (owner: "GO WITH THE CEILING"; docs/GAME_MOAT_PLAN.md section 5.2). The 12-GDScript-file ceiling is lifted: a game may now have SCENES, and a scene is DATA Hoola checks, never text the model writes. Measured in Godot 4.7.2 before the design existed: a [sub_resource type="GDScript"] embedded in a .tscn RUNS and the embedded script reached DirAccess - which guard.py has banned in every .gd file since v0.370 - so a scene the model could write freehand would be a hole straight through the only thing protecting her games. Hence the rule: the model writes a declarative SPEC, server/app/gamedesk/scene.py validates it in code and GENERATES the .tscn; scripts attach only by FILENAME to a .gd file guard.py already checked; a spec carrying script source in any shape is refused; and the emitted text is re-scanned before it ships (three independent places, because the generator being the only writer must not be the only defence - guard.scene_problems scans the build path too). A spec may say: a tree of nodes from a 44-type allowlist (an unknown type does NOT error in Godot, it HANGS the load), typed properties from an allowlist too (an unknown key is DROPPED and NAMED, never guessed), an optional script, a collision shape, AnimationPlayer value tracks whose keys must go forward in time, and INSTANCES of another scene of the same game - one coin.tscn placed 200 times is data, not 200 scripts. Caps: 40 scenes, 300 nodes a scene, 2,000 a game, 400 KB, 12 animations, 120 keys a track; instancing loops refused; main.tscn reserved. PROVED, not claimed: verify() writes the generated scenes beside the guarded scripts and loads every one in the REAL engine headless with a quit timer, and two live findings shaped the verdict - a broken scene can HANG the load, so "never reached the end" is itself a failure, and an unknown node type does NOT make instantiate() fail (Godot logs "Cannot get class" / "A placeholder will be created instead" and hands back a plain Node in its place), so the log's own trouble signatures decide too: a placeholder is a silently broken game. The lane is game_scenes (list / propose / approve / reject): her words -> ai.scene_spec -> the checker -> the generator -> the real engine -> a draft she approves; a scene that did not load is saved as failed and cannot be approved; only APPROVED scenes enter a build (scene.for_game, on the version row), and the whole path is wrapped so a scene problem can never stop a build - an old game builds exactly as before. Live on Godot 4.7.2: a 25-node spec with a coin instanced 20 times instantiated to 65 live nodes with its idle animation present, PASS. NOT BUILT, said plainly: TileMaps (they need a TileSet and atlas art - that is a second pipeline), 3D scenes, shaders. NOT VERIFIED: no real game of hers has been rebuilt with scenes yet.
+APP_VERSION = "0.544.0"   # v0.544.0: CONSTRUCTION WAVE 2 - the file-builders and checkers (owner: 'Wave 2 - the file-builders and checkers: 9, 16, 28, 29, 35, 36, 37-39, 44-46, 52-56, 72, 73, 81, 93 - now work on it', on the plan at docs/CONSTRUCTION_EMPLOYEE_PLAN.md SS7 C7-C10, the register in-tree at docs/research/building_industry/07_ai_employees_register.md). THE LAW DEEPENS, NOT CHANGES: tier B joins tier A - every output names its licensee; PREPARE never CERTIFY (construction/gates.py: the delay-entitlement refusal now names commercial manager + advocate/counsel; the escrow gate widened from 'certify RERA escrow withdrawal' to 'certify escrow withdrawal' - the broad-match law, a missed catch costs a forged certificate); the pack cites or the tool refuses; every form pack and review pack leaves the signature line EMPTY. C7 APPROVALS OFFICE (const_approvals, #28-32,34,36): construction/approvals.py - one file per authority per purpose (building permission, fire NOC, CTE/CTO, OC/CC, utility liaison), the STARTER checklist is DATA (editable per file, says so on the tin), papers needed -> ready, the PACKET assembler indexes docs + gaps and lands a cover PDF via chatfiles (submission OWNER DSC / named licensee, said on every packet), the statutory calendar (#34) counts her dates late-first and an approved file's validity lands on it automatically. C8 QS DESK (const_qs, #37-39,41,49 + BBS #73): construction/is1200.py - the IS 1200 formula library as PURE FUNCTIONS, every return {qty, unit, formula, inputs, is_ref}: Part 1 earthwork LxBxD with lead/lift recorded, Part 2 concrete (openings <= 0.1 m2 never deducted), Part 3 brickwork (openings > 0.1 m2 deducted by thickness), Part 5 formwork contact area, Part 8 steel n x L x d^2/162 (the identity shown: pi/4 x d^2 x 7850) + BBS DRAFT rows, Part 12 plaster (<= 0.5 none, 0.5-3 half, > 3 full, jambs separate); an absent formula REFUSES with the menu - never improvises; qs.py stores the trail in cqs_takeoff and RECOMPUTE runs the stored inputs back through the same function - bit-for-bit or the difference is shouted; rate build-up refuses without a SOURCE (SOR item / quote), BOQ = takeoff x rate (the only rounding, round 2), abstract by head, cost controller budget vs committed vs actual, retention and price-variation/escalation are the contract's OWN numbers with the formula string - working paper, certification billing engineer ki. C9 RERA & ESCROW (const_rera, #35,93): construction/rera.py - project data pack (MahaRERA no, dates, escrow acct), quarterly update DRAFTS where the % is the PROMOTER's number (never computed), form data packs (Form 3/4/5 or any numbered form) that REQUIRE prepared_for (the named CA/architect/engineer) and sourced rows, the escrow ledger where a withdrawal without a certificate_ref REFUSES TO SAVE, reconcile() = receipts vs 70% reserve from the pack (RERA s.4(2)(l)(D), cited, stale pack refuses) + the CA-audit due (new pack row rera_ca_audit_months = 6, FY end + 6 months). C10 CONTRACTS + TENDER + DRAWING QA + EHS: construction/contracts.py (const_contracts, #44-46,51) - contract register with HER notice windows, obligations chased late-first, variation DRAFTS approved only with the CLIENT's name recorded, claims working papers carrying her entitlement matrix (event, clause, effect, evidence) + the notice-compliance arithmetic, entitlement itself stays with counsel; construction/tender.py (const_tender, #52-56,58) - tender watch with due countdown, bid/no-bid sheet = HER decision with HER factor rows, pre-qual dossier + bid price pack where EVERY row needs its source, vendor register with HER ratings; construction/drawqa.py (const_drawqa, #9,16) - drawing register (document-level, PDF/DWG-first, 'a PDF was never a model' on the card), bye-law rules as DATA requiring clause + source with a DIRECTION (min setbacks / max FAR - the min/max bug the smoke test caught), declared-vs-limit = ARITHMETIC (within/breach, margin shown), review pack PDF for the project architect with the sign line EMPTY; construction/quality.py extended (#81) - permit-to-work DRAFTS (issued only on the safety officer's NAMED word, tier C) + toolbox-talk records, expiring permits ride the quality morning. MODELS: 17 new tables in construction/models.py (capprov_*, cqs_*, crera_*, ccontr_*, ctend_*, cdraw_*, cqual_permits, cqual_toolbox), registered in db.init_db day one (the v0.190.1 lesson). TWELVE new tools: const_approvals(/_dekho), const_qs(/_dekho), const_rera(/_dekho), const_contracts(/_dekho), const_tender(/_dekho), const_drawqa(/_dekho) - registry 556 -> 568 (556 = their chain's base), all riding VOICE_VIA_KAAM (the voice law: heavy desks never declared to the live call). SIX Hub hires in CONST_GROUP Construction & Real Estate: const_approvals / const_qs / const_rera / const_contracts / const_tender / const_drawqa (pitches + does + never-lists; #72 pour records stay with const_quality + sitesup per WAVE2_HOME; #33 heritage/AAI/CRZ screener and #42,43,47,48,50,57,59,60 stay unwaved - honest in register.py). register.py gains WAVE2_HOME (all 29 rows mapped). Tests: NEW test_v0531_construction_w2.py (19: the wave-2 homes, the tier-C edges on the new desks, the RERA pack rows, the IS 1200 library incl. recompute-bit-for-bit + the BBS identity, the QS chain with the rate-arithmetic check, approvals checklist/packet/calendar, RERA withdraw-refusal + reconcile citing the pack + audit due 2027-09-30, contracts notice-compliance 11 days in-window + late-claim refused, tender bid-sheet + sourced packs, drawqa min/max directions + no-rule-no-check, EHS permits need the officer's name, registry 568 + dispatch end-to-end, VOICE_VIA_KAAM + Hub rows, version pins). REBASE PROTOCOL, the THIRTY-FOURTH collision: their dev chain shipped v0.531-0.543 while this lane was built - 176 version-layer conflicts, resolved on the documented shape: their fresh base f5edc054 kept whole (PRAYOGSHALA + NAKSHA + JAANCH + BADA CATALOGUE + CRAWL BRAIN + SEO INTEL all in), the construction package rode in clean, the version layer re-applied coherently 0.543.0/+566 -> 0.544.0/+567, registry-count pins 556 -> 568 across their 5 files + this file's 566 pin, docstring history untouched. Server-only deploy, old APKs keep working; console untouched; Mera PC freeze respected (pc/, desktop/, lib/ untouched). NOT VERIFIED live: the first permission file week, the first QS take-off against a real drawing, the first escrow reconcile against her bank - the Maharashtra pilot is the test. Previous: v0.543.0 PRAYOGSHALA EK HI PYTHON (theirs - her lab box cloned the repo, ran the real suite offline, and the f-string finding was the Python version, not her code), v0.542.0 NAKSHA (theirs, the architect, App Sahayak Pillar K - the LAST pillar), v0.540.0 JAANCH + DHEERE CHHODO (theirs, Pillar J - quality at scale), v0.538.0 BADA CATALOGUE + HOOLA CMS + load proof (theirs, web Step 6), v0.537.0 CRAWL BRAIN (theirs), v0.536.0 SEO INTEL (theirs, S1 + DataForSEO), v0.530.0 HOOLA GRAPH (theirs, P3 of the AEP plan - the StateGraph engine as server/app/aep/graph.py: add_node/add_edge/add_conditional_edges, super-steps with the join barrier, Annotated reducers + add_messages AgentState, interrupt()/Command(resume=...) park-and-resume, MemorySaver/SqliteSaver checkpointers, node spans under the root run) - P2/P3 ride the langchain-core P1 (server/app/aep, HOOLA CORE v0.510.0), v0.523.0 HOOLA CREW (theirs, the crewAI Inc port - role/goal/backstory agents over the delegate machinery, the ONE crew_run tool), v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE, v0.502.0 DHARA [full chains in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -6856,6 +6856,151 @@ def employees_settings(key: str, body: dict, tenant: str = Depends(current_tenan
     return _hire_call(hire.save_settings, tenant, key, **allowed)
 
 
+def _intel_call(fn, *a, **k):
+    from .seo import dfs, intel
+    try:
+        return fn(*a, **k)
+    except (intel.IntelError, dfs.DfsError) as e:
+        raise HTTPException(400, str(e))
+
+
+def _intel_bg(tenant: str, site: str, what: str, fn, *a, **k):
+    """Long intel jobs (AI answers, Maps grid, exact positions) run in the background; the result lands on the SEO desk feed."""
+    import threading
+    from .seo import intel
+
+    def go():
+        try:
+            r = fn(*a, **k)
+            text, level = str(r.get("say") or f"{what} done."), "info"
+        except Exception as e:   # noqa: BLE001
+            text, level = f"{what}: {e}", "warn"
+        try:
+            from .seo import desk
+            desk._event(tenant, intel._site(tenant, site)["id"], "run", level, text)
+        except Exception:   # noqa: BLE001
+            pass
+    threading.Thread(target=go, daemon=True).start()
+    return {"started": True, "say": f"{what} shuru - natija SEO desk par aayega."}
+
+
+@app.get("/api/seo/intel", dependencies=[Depends(require_key)])
+def seo_intel(site: str = "", tenant: str = Depends(current_tenant)):
+    """v0.542 SEO INTEL: tracked keywords, AI visibility, Maps grids, DataForSEO status + this month's spend."""
+    from .seo import intel
+    return _intel_call(intel.view, tenant, site)
+
+
+@app.post("/api/seo/intel/settings", dependencies=[Depends(require_key)])
+def seo_intel_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .seo import intel
+    b = dict(body or {})
+    return _intel_call(intel.save_settings, tenant, str(b.pop("site", "") or ""), **b)
+
+
+@app.post("/api/seo/intel/track", dependencies=[Depends(require_key)])
+def seo_intel_track(body: dict, tenant: str = Depends(current_tenant)):
+    """{keywords: [...], remove: false} - keywords she wants followed in Google (up to 100)."""
+    from .seo import intel
+    b = body or {}
+    kws = b.get("keywords") if isinstance(b.get("keywords"), list) else [x for x in str(b.get("keywords") or "").split("\n")]
+    fn = intel.untrack if b.get("remove") else intel.track
+    return _intel_call(fn, tenant, kws, str(b.get("site") or ""))
+
+
+@app.post("/api/seo/intel/ranks/{source}", dependencies=[Depends(require_key)])
+async def seo_intel_ranks(source: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """gsc = Search Console positions now (free) | serp = exact Google positions through DataForSEO (her key, costs)."""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if source == "gsc":
+        return await asyncio.to_thread(_intel_call, intel.pull_gsc, tenant, site, int(b.get("days") or 28))
+    if source == "serp":
+        kws = b.get("keywords") if isinstance(b.get("keywords"), list) else None
+        return _intel_bg(tenant, site, "Exact Google positions", intel.check_serp, tenant, site, kws)
+    raise HTTPException(404, "source: gsc | serp")
+
+
+@app.post("/api/seo/intel/ai/{action}", dependencies=[Depends(require_key)])
+async def seo_intel_ai(action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """prompts {prompts: [...]} | suggest | run {engines?} | prompt {id, active, remove}"""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if action == "prompts":
+        texts = b.get("prompts") if isinstance(b.get("prompts"), list) else str(b.get("prompts") or "").split("\n")
+        return _intel_call(intel.add_prompts, tenant, texts, site)
+    if action == "prompt":
+        return _intel_call(intel.set_prompt, tenant, str(b.get("id") or ""), b.get("active"), bool(b.get("remove")))
+    if action == "suggest":
+        return await asyncio.to_thread(_intel_call, intel.suggest_prompts, tenant, site)
+    if action == "run":
+        eng = b.get("engines") if isinstance(b.get("engines"), list) else None
+        _intel_call(intel.prompts, tenant, site)
+        return _intel_bg(tenant, site, "AI answers check", intel.run_ai, tenant, site, eng)
+    raise HTTPException(404, "action: prompts | prompt | suggest | run")
+
+
+@app.post("/api/seo/intel/maps/{action}", dependencies=[Depends(require_key)])
+async def seo_intel_maps(action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """find {query} -> her place on Google Maps | place {place} | grid {keyword, size, km}"""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if action == "find":
+        return await asyncio.to_thread(_intel_call, intel.find_place, tenant, site, str(b.get("query") or ""))
+    if action == "place":
+        return _intel_call(intel.choose_place, tenant, b.get("place") if isinstance(b.get("place"), dict) else {}, site)
+    if action == "grid":
+        return _intel_bg(tenant, site, "Maps grid", intel.run_grid, tenant, str(b.get("keyword") or ""), site,
+                         b.get("size"), b.get("km"))
+    raise HTTPException(404, "action: find | place | grid")
+
+
+@app.post("/api/seo/intel/dataforseo", dependencies=[Depends(require_key)])
+async def seo_intel_dfs_login(body: dict, tenant: str = Depends(current_tenant)):
+    """Her DataForSEO login + API password, typed in the app (never in chat): checked free, sealed, never returned."""
+    from .seo import dfs, intel
+    b = body or {}
+    sid = _intel_call(intel._site, tenant, str(b.get("site") or ""))["id"]
+    return await asyncio.to_thread(_intel_call, dfs.save_login, tenant, sid, str(b.get("login") or ""), str(b.get("password") or ""))
+
+
+@app.delete("/api/seo/intel/dataforseo", dependencies=[Depends(require_key)])
+def seo_intel_dfs_forget(site: str = "", tenant: str = Depends(current_tenant)):
+    from .seo import dfs, intel
+    return dfs.forget_login(tenant, _intel_call(intel._site, tenant, site)["id"])
+
+
+@app.post("/api/seo/intel/dfs/{what}", dependencies=[Depends(require_key)])
+async def seo_intel_dfs(what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """overview {domain} | competitors {domain} | gap {competitor} | backlinks {domain} - DataForSEO, her key, costs."""
+    from .seo import dfs, intel
+    b = body or {}
+    sv = _intel_call(intel._site, tenant, str(b.get("site") or ""))
+    dom = str(b.get("domain") or "") or sv["domain"]
+    calls = {"overview": lambda: dfs.domain_overview(tenant, sv["id"], dom),
+             "competitors": lambda: {"competitors": dfs.competitors(tenant, sv["id"], dom)},
+             "gap": lambda: dfs.gap(tenant, sv["id"], sv["domain"], str(b.get("competitor") or "")),
+             "backlinks": lambda: dfs.backlinks(tenant, sv["id"], dom)}
+    if what not in calls:
+        raise HTTPException(404, "what: overview | competitors | gap | backlinks")
+    if what == "gap" and not b.get("competitor"):
+        raise HTTPException(400, "Kis competitor se milaana hai? (domain)")
+    out = await asyncio.to_thread(_intel_call, calls[what])
+    return {**out, "spend": dfs.status(tenant, sv["id"])}
+
+
+@app.post("/api/seo/intel/keywords", dependencies=[Depends(require_key)])
+async def seo_intel_keywords(body: dict, tenant: str = Depends(current_tenant)):
+    """Keyword ideas with monthly searches: her Google Ads Keyword Planner (free, official) when linked, else DataForSEO."""
+    from .seo import intel
+    b = body or {}
+    seeds = b.get("seeds") if isinstance(b.get("seeds"), list) else [x.strip() for x in str(b.get("seeds") or "").split(",") if x.strip()]
+    return await asyncio.to_thread(_intel_call, intel.keyword_research, tenant, seeds, str(b.get("site") or ""))
+
+
 @app.post("/api/seo/onboard", dependencies=[Depends(require_key)])
 def seo_onboard(body: dict, tenant: str = Depends(current_tenant)):
     from .seo import desk
@@ -7218,10 +7363,22 @@ async def social_ytads_read(tenant: str = Depends(current_tenant)):
 
 @app.post("/api/social/ytads/drafts", dependencies=[Depends(require_key)])
 def social_ytads_new(body: dict, tenant: str = Depends(current_tenant)):
-    """A new YouTube ad draft from one of her videos {video_id, daily, days, final_url...} - stays in Hoola."""
+    """A new Google ad draft {kind: youtube (video_id) | search | pmax, daily, days, final_url...} - stays in Hoola (v0.425)."""
+    from .ads import gads
+    b = dict(body or {})
+    vid, kind = str(b.pop("video_id", "") or ""), str(b.pop("kind", "") or "youtube")
+    return _gads_call(gads.new_draft, tenant, vid, kind, **b)
+
+
+@app.post("/api/social/ytads/ideas", dependencies=[Depends(require_key)])
+async def social_ytads_ideas(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.425 Google Keyword Planner ideas {seeds: [...], url, cities: [...], lang} - read-only, nothing is created."""
     from .ads import gads
     b = body or {}
-    return _gads_call(gads.new_draft, tenant, str(b.get("video_id") or ""), **{k: v for k, v in b.items() if k != "video_id"})
+    seeds = b.get("seeds") if isinstance(b.get("seeds"), list) else []
+    cities = b.get("cities") if isinstance(b.get("cities"), list) else []
+    return await asyncio.to_thread(_gads_call, gads.keyword_ideas, tenant, seeds, str(b.get("url") or ""), cities,
+                                   str(b.get("lang") or "en"))
 
 
 @app.post("/api/social/ytads/drafts/{did}", dependencies=[Depends(require_key)])
@@ -10354,8 +10511,10 @@ async def app_api_me(app_key: str, request: Request):
     from .site import webapp as W
 
     def go():
-        _r, w = _be_app(app_key, request)
-        return {"me": W.view_member(w.m) if w.m else None}
+        r, w = _be_app(app_key, request)
+        from .appmaker import rollout as RO               # v0.540 this phone's feature switches, decided HERE
+        return {"me": W.view_member(w.m) if w.m else None,
+                "flags": RO.for_member(r, w.m.id if w.m else "")}
     return await asyncio.to_thread(_be_call, go)
 
 
@@ -12068,6 +12227,104 @@ async def apps_store_cert(ref: str, tenant: str = Depends(current_tenant)):
     except ST.StoreError:
         raise HTTPException(404, "not found")
     return Response(data, media_type="application/x-pem-file", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+# ---- v0.542 NAKSHA (App Sahayak Pillar K): her one line -> a spec -> the app, one module at a time.
+@app.get("/api/apps/{ref}/naksha", dependencies=[Depends(require_key)])
+async def apps_naksha(ref: str, tenant: str = Depends(current_tenant)):
+    """The whole plan with each module's state (waiting / approved / built / changed) and the changelog."""
+    from .appmaker import architect as AR
+    return await asyncio.to_thread(_be_owner_call, lambda: AR.card(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/naksha/{what}", dependencies=[Depends(require_key)])
+async def apps_naksha_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """plan {words} | answer {ask, said} | approve {module, hash} = HER TAP on one module | build {module} |
+    revise {words} = the change edits the spec and only the touched modules are rebuilt."""
+    from .appmaker import architect as AR
+    b = body or {}
+    r = _be_owner(tenant, ref)
+    if what == "plan":
+        return await asyncio.to_thread(_be_owner_call, lambda: AR.plan(r, str(b.get("words") or "")))
+    if what == "answer":
+        return await asyncio.to_thread(_be_owner_call,
+                                       lambda: AR.answer(r, str(b.get("ask") or ""), str(b.get("said") or "")))
+    if what == "approve":
+        return await asyncio.to_thread(_be_owner_call,
+                                       lambda: AR.approve(r, str(b.get("module") or ""), str(b.get("hash") or "")))
+    if what == "build":
+        return await asyncio.to_thread(_be_owner_call, lambda: AR.build(r, str(b.get("module") or "")))
+    if what == "revise":
+        return await asyncio.to_thread(_be_owner_call, lambda: AR.revise(r, str(b.get("words") or "")))
+    raise HTTPException(404, "unknown naksha action")
+
+
+# ---- v0.540 JAANCH (App Sahayak Pillar J): the app is proved, and a new version goes out a few users at a time.
+# NOTE the two path segments: a single-segment POST would be eaten by the /api/apps/{ref}/{action} catch-all above.
+@app.get("/api/apps/{ref}/jaanch", dependencies=[Depends(require_key)])
+async def apps_jaanch(ref: str, tenant: str = Depends(current_tenant)):
+    """Pillar J's card: scenario tests, rule checks, load, and what real phones reported (+ what was NOT checked)."""
+    from .appmaker import quality as QA
+    return await asyncio.to_thread(_be_owner_call, lambda: QA.card(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/jaanch/{what}", dependencies=[Depends(require_key)])
+async def apps_jaanch_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """stories {words} = Opus writes them | keep {hash} = her tap makes them the app's test set | run | cases |
+    rules | all | load {customers} (hundreds of accounts on the twin: asked for, never a side effect)."""
+    from .appmaker import quality as QA
+    b = body or {}
+    r = _be_owner(tenant, ref)
+    if what == "stories":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.draft(r, str(b.get("words") or "")))
+    if what == "keep":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.keep(r, str(b.get("hash") or "")))
+    if what == "run":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.run(r, base=str(b.get("base") or "")))
+    if what == "cases":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.rule_cases(r))
+    if what == "rules":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.rules_run(r))
+    if what == "all":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.run_all(r, base=str(b.get("base") or "")))
+    if what == "load":
+        return await asyncio.to_thread(_be_owner_call,
+                                       lambda: QA.load(r, int(b.get("customers") or 200), str(b.get("base") or "")))
+    raise HTTPException(404, "unknown jaanch action")
+
+
+@app.get("/api/apps/{ref}/rollout", dependencies=[Depends(require_key)])
+async def apps_rollout(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.540 the staged rollout on Play + her feature switches."""
+    from .appmaker import rollout as RO
+    return await asyncio.to_thread(_appd, RO.view, tenant, ref)
+
+
+@app.post("/api/apps/{ref}/rollout/{what}", dependencies=[Depends(require_key)])
+async def apps_rollout_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """flag {key, on, percent, label} | unflag {key} - instant, no build.
+    start {her_tap} | advance {her_tap} | halt {why} | rollback {her_tap} - Play's staged release (production = her tap)."""
+    from .appmaker import rollout as RO
+    b = body or {}
+    if what == "flag":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: RO.set_flag(
+            r, str(b.get("key") or ""), b.get("on") if isinstance(b.get("on"), bool) else None,
+            int(b["percent"]) if isinstance(b.get("percent"), (int, float)) else None, str(b.get("label") or "")))
+    if what == "unflag":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: RO.drop_flag(r, str(b.get("key") or "")))
+    if what == "start":
+        return await asyncio.to_thread(_appd, RO.start, tenant, ref, bool(b.get("her_tap")),
+                                       float(b.get("fraction") or RO.STAGES[0]))
+    if what == "advance":
+        return await asyncio.to_thread(_appd, RO.advance, tenant, ref, bool(b.get("her_tap")),
+                                       float(b.get("fraction") or 0))
+    if what == "halt":
+        return await asyncio.to_thread(_appd, RO.halt, tenant, ref, str(b.get("why") or ""))
+    if what == "rollback":
+        return await asyncio.to_thread(_appd, RO.rollback, tenant, ref, bool(b.get("her_tap")))
+    raise HTTPException(404, "unknown rollout action")
 
 
 @app.get("/api/apps/{ref}/crashes", dependencies=[Depends(require_key)])

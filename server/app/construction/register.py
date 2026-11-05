@@ -179,6 +179,21 @@ WAVE1_HOME: dict[int, str] = {
     97: "const_customer (handover)", 98: "const_customer (DLP)",
 }
 
+# register id -> where the work lives after Wave 2 (v0.531.0). 72 stays with the Wave-1 quality desk
+# (pour/cube ride sitesup); #33 heritage/AAI/CRZ screener and #42,43,47,48,50,57,59,60 stay unwaved.
+WAVE2_HOME: dict[int, str] = {
+    9: "const_drawqa (bye-law rules)", 16: "const_drawqa (review pack)", 28: "const_approvals",
+    29: "const_approvals (packet)", 30: "const_approvals (fire NOC)", 31: "const_approvals (EC/CTE-CTO)",
+    32: "const_approvals (utility)", 34: "const_approvals (statutory calendar)", 35: "const_rera",
+    36: "const_approvals (OC/CC packet)", 37: "const_qs (takeoff)", 38: "const_qs (rates)", 39: "const_qs (BOQ)",
+    41: "const_qs (cost control)", 44: "const_contracts", 45: "const_contracts (variations)",
+    46: "const_contracts (claims)", 49: "const_qs (retention/PV)", 51: "const_contracts (insurance/bonds)",
+    52: "const_tender", 53: "const_tender (packs)", 54: "const_tender (price pack)",
+    55: "const_tender (prequal)", 56: "const_tender (procurement rows)", 58: "const_tender (vendors)",
+    72: "const_quality + sitesup (pour records, Wave 1)", 73: "const_qs (BBS draft)",
+    81: "const_quality (EHS permits & toolbox)", 93: "const_rera (escrow)",
+}
+
 
 def get(eid: int) -> dict | None:
     for r in ROWS:

@@ -23,6 +23,10 @@
     {"rule_id": "rera_escrow_pct", "value": 70.0,
      "clause": "70% of the receipts for a project into a designated account, withdrawable against certified progress",
      "source": "Real Estate (Regulation and Development) Act 2016, s.4(2)(l)(D); MahaRERA the state authority",
+     "checked_on": "2026-11-05"},
+    {"rule_id": "rera_ca_audit_months", "value": 6,
+     "clause": "the designated-account statements audited by a chartered accountant within six months after the end of every financial year, and published",
+     "source": "Real Estate (Regulation and Development) Act 2016, s.4(2)(l)(D) proviso; MahaRERA the state authority",
      "checked_on": "2026-11-05"}
   ]
 }
