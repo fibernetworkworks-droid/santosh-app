@@ -79,8 +79,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `gbp_locations/numbers`, `solar_check`, `maps_snap`, `ownmap_import/pin/list/near/delete`; price list default
   **india**; `MapsPlaceCache` still exactly the six licence-permitted columns (place_id, lat, lng, latlng_at, query,
   first_seen - no name / address / phone / rating, which would be a ToS 3.2.3(b) breach); `LATLNG_TTL` 30 days;
-  `/api/maps/usage` registered. Live checks today: healthz **0.520.0**, `maps` in features, `/api/maps/usage`
-  answers **401** (deployed and key-protected, not missing).
+  `/api/maps/usage` registered. **126 maps tests run green on it** (0 failed): the 11 maps suites
+  (`test_v0449_maps_paisa`, `v0463_maps_nearest`, `v0463_fleet_nearest`, `v0464_maps_address`, `v0465_route_plan`,
+  `v0466_maps_links`, `v0467_gbp_read`, `v0468_ownmap`, `v0469_solar_roads`, `v0470_maps_card`, `test_maps`).
+  Live checks today: healthz **0.520.0**, `maps` in features, `/api/maps/usage` answers **401** (deployed and
+  key-protected, not missing).
   **THE ONE THING THAT CHANGED SINCE 3 NOV, and it matters:** `maps` appearing in the live features list is gated on
   `maps.configured()`, i.e. **GOOGLE_MAPS_API_KEY IS SET on the VPS**. So the live MAPS card is NOT blocked on a key
   any more - it is blocked only on someone starting it (`vps-ops > maps_card`, or `python -m app.quality maps --live`).
