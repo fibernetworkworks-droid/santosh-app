@@ -21,6 +21,8 @@ import secrets
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
+import logging
+
 from sqlalchemy import DateTime, Integer, String, Text, func, select, update
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -85,6 +87,7 @@ class SiteShopOrder(Base):
     coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)      # v0.446 the code used
     pay_id: Mapped[str | None] = mapped_column(String(40), nullable=True)      # v0.446 her gateway payment (app_payment.id)
     inv_row: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.452 the hidden app row that holds the GST numbers
+    cid: Mapped[str | None] = mapped_column(String(40), nullable=True)         # v0.538 the checkout's own id: a retry = the same order
 
 
 _TABLES_OK = False
@@ -103,6 +106,14 @@ def ensure_tables() -> None:
             _db._add_missing_columns(eng)
         except Exception:                               # noqa: BLE001
             pass
+        from sqlalchemy import text as _t               # v0.538 one number and one checkout id per order, enforced by the db
+        for sql in ("CREATE UNIQUE INDEX IF NOT EXISTS ux_shop_order_num ON site_shop_orders (site_id, number)",
+                    "CREATE UNIQUE INDEX IF NOT EXISTS ux_shop_order_cid ON site_shop_orders (site_id, cid)"):
+            try:
+                with eng.begin() as c:
+                    c.execute(_t(sql))
+            except Exception:                           # noqa: BLE001 - old duplicate numbers: the retry below still helps
+                log.warning("shop index not made: %s", sql[:60])
         _TABLES_OK = True
 
 
@@ -161,7 +172,7 @@ def upsert_products(site_id: str, items: list[dict[str, Any]]) -> dict[str, int]
     added = changed = 0
     with session() as s:
         have = {p.slug: p for p in s.scalars(select(SiteShopProduct).where(SiteShopProduct.site_id == site_id)).all()}
-        for it in items[:MAX_PRODUCTS]:
+        for it in items[:max_products()]:
             if not isinstance(it, dict):
                 continue
             title = _tidy(it.get("title"), 120)
@@ -172,8 +183,8 @@ def upsert_products(site_id: str, items: list[dict[str, Any]]) -> dict[str, int]
             if p is None:
                 if not title or it.get("price") in (None, ""):
                     continue
-                if len(have) >= MAX_PRODUCTS:
-                    raise ShopError(f"Ek dukaan mein {MAX_PRODUCTS} products tak.")
+                if len(have) >= max_products():
+                    raise ShopError(f"Ek dukaan mein {max_products()} products tak.")
                 p = SiteShopProduct(site_id=site_id, slug=slug, title=title, price=paise(it["price"]))
                 s.add(p)
                 have[slug] = p
@@ -240,12 +251,55 @@ def _rate(key: str, n: int, per: int) -> None:
         raise ShopError(str(e), 429)
 
 
-def _number(s, site_id: str) -> str:
+def _number(s, site_id: str, attempt: int = 0) -> str:
     n = s.scalar(select(func.count()).select_from(SiteShopOrder).where(SiteShopOrder.site_id == site_id)) or 0
-    return f"O-{1001 + n}"
+    return f"O-{1001 + n + attempt}"
+
+
+def _st():
+    from ..config import get_settings
+    return get_settings()
+
+
+def max_products() -> int:
+    return max(MAX_PRODUCTS, int(getattr(_st(), "site_shop_max_products", 20000) or MAX_PRODUCTS))
+
+
+class _SameCheckout(Exception):
+    pass
+
+
+def _again(site_id: str, cid: str, cfg: dict[str, Any]) -> dict[str, Any] | None:
+    """v0.538 the same checkout sent twice (a slow network, a double tap): the first order, never a second one."""
+    if not cid:
+        return None
+    with session() as s:
+        o = s.scalar(select(SiteShopOrder).where(SiteShopOrder.site_id == site_id, SiteShopOrder.cid == cid))
+        if o is None:
+            return None
+        out = {**public_view(o), "again": True}
+        total, method = o.total, o.method
+    if method == "upi" and cfg.get("upi"):
+        from . import live as LV
+        link = LV.upi_link(cfg["upi"], cfg.get("shop_name") or "Shop", f"{total / 100:.2f}", f"Order {out['number']}")
+        out["pay"] = {"vpa": cfg["upi"], "link": link, "qr": LV.qr_data_uri(link), "amount": rupees(total)}
+    return out
+
+
+log = logging.getLogger("santosh.site.shop")
 
 
 def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any], ip: str = "") -> dict[str, Any]:
+    try:
+        return _place(site_id, tenant_id, cfg, body, ip)
+    except _SameCheckout:                                 # v0.538 a twin of this checkout landed first: that one order
+        got = _again(site_id, re.sub(r"[^A-Za-z0-9_-]", "", str(body.get("cid") or ""))[:40], cfg)
+        if got is None:
+            raise ShopError("Order abhi nahi ho paya; ek baar phir dabaiye.", 503)
+        return got
+
+
+def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any], ip: str = "") -> dict[str, Any]:
     """A visitor's checkout. Everything money-related is computed HERE from her products; returns the order and how to pay."""
     ensure_tables()
     if not cfg.get("on"):
@@ -253,8 +307,12 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
     if str(body.get("website") or "").strip():                         # honeypot
         raise ShopError("Order nahi ho paya.")
     iph = hashlib.sha256(f"{ip}|{site_id}".encode()).hexdigest()[:24]
-    _rate(f"order:{iph}", 12, 600)
-    _rate(f"order-site:{site_id}", 300, 86400)
+    cid = re.sub(r"[^A-Za-z0-9_-]", "", str(body.get("cid") or ""))[:40]
+    seen = _again(site_id, cid, cfg)
+    if seen is not None:
+        return seen
+    _rate(f"order:{iph}", int(getattr(_st(), "site_shop_ip_cap", 12) or 12), 600)
+    _rate(f"order-site:{site_id}", int(getattr(_st(), "site_shop_day_cap", 300) or 300), 86400)
     name = _tidy(body.get("name"), 120)
     phone = re.sub(r"\D", "", str(body.get("phone") or ""))[-10:]
     method = str(body.get("method") or "upi")
@@ -319,14 +377,29 @@ def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any
                     from . import shoppay as SP
                     SP.give_back(site_id, code, phone)
                 raise ShopError(f"{prods[sg].title}: abhi-abhi khatam ho gaya; cart dobara dekhiye.", 409)
-        o = SiteShopOrder(site_id=site_id, tenant_id=tenant_id, number=_number(s, site_id), token=secrets.token_urlsafe(16),
+        o = SiteShopOrder(site_id=site_id, tenant_id=tenant_id, number="", token=secrets.token_urlsafe(16), cid=cid or None,
                           name=name, phone=phone, address="Dukaan se le jayenge" if pickup else address,
                           pincode="" if pickup else pin, note=_tidy(body.get("note"), 400), items=json.dumps(lines, ensure_ascii=False),
                           subtotal=sub, delivery=delivery, total=total, method=method, ip_hash=iph,
                           discount=off or None, coupon=code or None,
                           history=json.dumps([{"at": _iso(), "to": "new"}] + ([{"at": _iso(), "note": cnote}] if cnote else [])))
-        s.add(o)
-        s.flush()
+        from sqlalchemy.exc import IntegrityError
+        for attempt in range(60):                     # v0.538 two checkouts at once never share an order number
+            o.number = _number(s, site_id, attempt)
+            try:
+                with s.begin_nested():
+                    s.add(o)
+                    s.flush()
+                break
+            except IntegrityError:
+                if cid and s.scalar(select(func.count()).select_from(SiteShopOrder).where(
+                        SiteShopOrder.site_id == site_id, SiteShopOrder.cid == cid)):
+                    if code:
+                        from . import shoppay as SP
+                        SP.give_back(site_id, code, phone)
+                    raise _SameCheckout()               # the other copy won: this one's stock goes back (rollback)
+        else:
+            raise ShopError("Order abhi nahi ho paya; ek baar phir dabaiye.", 503)
         out = public_view(o)
         start_view = {"id": o.id, "number": o.number, "name": name, "phone": phone, "total_paise": total}
     if cnote:

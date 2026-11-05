@@ -1232,7 +1232,7 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/employees/$key/$action', body: {}) as Map);
   Future<Map<String, dynamic>> employeeSettings(String key, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/employees/$key/settings', body: body) as Map);
-  // v0.536 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO (her own login typed only here)
+  // v0.541 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO (her own login typed only here)
   Future<Map<String, dynamic>> seoIntel() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/seo/intel', timeout: const Duration(seconds: 45)) as Map);
   Future<Map<String, dynamic>> seoIntelPost(String path, Map<String, dynamic> body) async =>

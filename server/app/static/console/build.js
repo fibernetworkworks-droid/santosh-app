@@ -919,6 +919,74 @@ window.HoolaBuild = function (C) {
       }));
     };
     try { drawSign(await api('GET', base(o) + '/sign')); } catch (er) { sgbox.remove(); }
+    // v0.540 JAANCH (Pillar J): the scenario tests, the rule checks, what real phones reported, and the staged rollout
+    const jnbox = document.createElement('section'); jnbox.className = 'stcol stjaanch'; box.appendChild(jnbox);
+    const againJaanch = async () => {
+      try { drawJaanch(await api('GET', base(o) + '/jaanch'), await api('GET', base(o) + '/rollout').catch(() => null)); }
+      catch (er) { toast(er.message, true); }
+    };
+    const drawJaanch = (j, ro) => {
+      const last = j.last_run || {}, ru = j.rules || {}, fd = j.field || {}, rl = (ro && ro.rollout) || {}, fl = L(ro && ro.flags);
+      const pct = Math.round((Number(rl.fraction) || 0) * 100);
+      jnbox.innerHTML = `<h4>Jaanch <span>${Number(j.scenarios) || 0} stor${j.scenarios === 1 ? 'y' : 'ies'}${last.fail ? ' · ' + last.fail + ' failing' : ''}</span></h4>
+        <p class="stnote">Your app is PROVED, not hoped for. Hoola writes a test for each user story, then plays it against a throwaway copy of your app - sign up, order, and check that another customer is REFUSED. Your real app and your customers' data are never touched.</p>
+        ${last.at ? `<p class="stnote">Last run ${esc(S(last.at).slice(0, 16).replace('T', ' '))} · <b>${Number(last.pass) || 0}/${Number(last.total) || 0} passed</b>${last.fail ? ' · ' + last.fail + ' failed' : ''}${last.not_run ? ' · ' + last.not_run + ' could not run' : ''}<br>${esc(S(last.says))}</p>` : '<p class="stempty">Never run.</p>'}
+        ${L(last.failed).length ? `<ul class="stlines">${L(last.failed).map(x => `<li><b>${esc(S(x.story))}</b>: ${esc(S(x.why))}</li>`).join('')}</ul>` : ''}
+        <div class="row"><button class="btn" type="button" data-jn="stories">Write the tests</button><button class="btn go" type="button" data-jn="run">Run them</button><button class="btn" type="button" data-jn="rules">Check the rules</button></div>
+        <div data-jnout></div>
+        <p class="stnote">Brain: ${Number(ru.rules) || 0} rules, ${Number(ru.formulas) || 0} formulas, ${Number(ru.functions) || 0} functions · ${Number(ru.cases) || 0} test cases.</p>
+        <h5>From real phones</h5>
+        <p class="stnote">${esc(S(fd.says))}${Number(fd.anrs) ? ' An ANR means the app froze instead of closing - a different fault, and the stores count it separately.' : ''}</p>
+        ${L(fd.top).length ? `<ul class="stlines">${L(fd.top).map(x => `<li><b>${esc(S(x.kind))}</b> ×${Number(x.count) || 0} · ${esc(S(x.what))}${L(x.screens).length ? ' · ' + esc(L(x.screens).join(', ')) : ''}</li>`).join('')}</ul>` : ''}
+        ${L(j.not_checked).length ? `<p class="stnote">Not checked yet: ${esc(L(j.not_checked).join('; '))}.</p>` : ''}
+        <h5>Going out slowly</h5>
+        <p class="stnote">A new version reaches 5% of your users first, then 20, 50, 100 - each step your tap. If something is wrong, Stop it within minutes. Play cannot take a version off phones that already have it; stopping holds back everyone else, and Send the old one back makes the previous build their next update.</p>
+        ${rl.version_code ? `<p class="stnote">v${esc(S(rl.version_name || rl.version_code))} · <b>${rl.status === 'halted' ? 'STOPPED' : pct + '% of users'}</b>${rl.rolled_back_from ? ' (sent back from v' + esc(S(rl.rolled_back_from)) + ')' : ''}</p>` : '<p class="stempty">No staged rollout running.</p>'}
+        <div class="row">${rl.version_code && rl.status === 'inProgress' ? '<button class="btn go" type="button" data-ro="advance">Give it to more users</button><button class="btn" type="button" data-ro="halt">Stop</button>' : ''}${(ro && ro.can_rollback) ? '<button class="btn" type="button" data-ro="rollback">Send the old one back</button>' : ''}</div>
+        <h5>Feature switches</h5>
+        <p class="stnote">Turn a feature off without a new build - the only change that reaches every phone in minutes.</p>
+        <ul class="stlines">${fl.map(f => `<li><label class="stchk"><input type="checkbox" data-flag="${esc(S(f.key))}"${f.on ? ' checked' : ''}> <b>${esc(S(f.label || f.key))}</b></label> <span class="stnote">${Number(f.percent) < 100 ? Number(f.percent) + '% of users' : 'everyone'}</span></li>`).join('')}</ul>
+        <form class="stapp jnflag" autocomplete="off"><div class="row"><input name="key" placeholder="new_checkout" maxlength="40"><button class="btn" type="submit">Add a switch</button></div></form>`;
+      const out = jnbox.querySelector('[data-jnout]');
+      jnbox.querySelectorAll('[data-jn]').forEach(b => b.addEventListener('click', async () => {
+        out.textContent = b.dataset.jn === 'stories' ? 'Writing…' : 'Running…';
+        try {
+          const v = await api('POST', base(o) + '/jaanch/' + b.dataset.jn, {});
+          if (b.dataset.jn === 'stories') {
+            out.innerHTML = `<p class="stnote">${L(v.scenarios).length} stories written${L(v.errors).length ? ' · ' + L(v.errors).length + ' problems' : ''}</p>
+              <ul class="stlines">${L(v.scenarios).map(x => `<li>${esc(S(x.story))} <span class="stnote">${L(x.steps).length} steps</span></li>`).join('')}${L(v.errors).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul>
+              ${L(v.errors).length ? '' : `<div class="row"><button class="btn go" type="button" data-jnkeep="${esc(S(v.hash))}">Use these tests</button></div>`}`;
+            const k = out.querySelector('[data-jnkeep]');
+            if (k) k.addEventListener('click', async () => {
+              try { await api('POST', base(o) + '/jaanch/keep', {hash: k.dataset.jnkeep}); toast('Saved. Every run uses these.'); againJaanch(); }
+              catch (er) { toast(er.message, true); }
+            });
+          } else {
+            out.innerHTML = `<p class="stnote">${esc(S(v.says || ''))}</p>` +
+              (L(v.rows).length ? `<ul class="stlines">${L(v.rows).filter(x => x.state !== 'pass').map(x => `<li><b>${esc(S(x.state))}</b> ${esc(S(x.what))}: ${esc(S(x.why))}</li>`).join('')}</ul>` : '');
+          }
+        } catch (er) { out.textContent = er.message; }
+      }));
+      jnbox.querySelectorAll('[data-ro]').forEach(b => b.addEventListener('click', async () => {
+        const what = b.dataset.ro;
+        if (what !== 'halt' && !confirm(what === 'advance' ? 'Give this version to more of your users?' : 'Send the previous build back to everyone?')) return;
+        try { toast((await api('POST', base(o) + '/rollout/' + what, {her_tap: true})).says || 'Done'); againJaanch(); }
+        catch (er) { toast(er.message, true); }
+      }));
+      jnbox.querySelectorAll('[data-flag]').forEach(c => c.addEventListener('change', async () => {
+        try { await api('POST', base(o) + '/rollout/flag', {key: c.dataset.flag, on: c.checked}); toast(c.checked ? 'On, for every phone, now.' : 'Off, for every phone, now.'); }
+        catch (er) { toast(er.message, true); c.checked = !c.checked; }
+      }));
+      jnbox.querySelector('.jnflag').addEventListener('submit', async e => {
+        e.preventDefault();
+        const k = e.target.key.value.trim();
+        if (!k) return;
+        try { await api('POST', base(o) + '/rollout/flag', {key: k}); againJaanch(); }
+        catch (er) { toast(er.message, true); }
+      });
+    };
+    try { drawJaanch(await api('GET', base(o) + '/jaanch'), await api('GET', base(o) + '/rollout').catch(() => null)); }
+    catch (er) { jnbox.remove(); }
     // v0.435 PARIVAAR: the apps on this business (customer / delivery partner / partner shop / staff) + partners + web admin
     const fmbox = document.createElement('section'); fmbox.className = 'stcol stfam'; box.appendChild(fmbox);
     const drawFam = fm => {
@@ -1925,6 +1993,8 @@ window.HoolaBuild = function (C) {
     });
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
     if (info.linked) auditBox(o, box);
+    catalogBox(o, box);
+    teamBox(o, box);
     if (info.linked) liveBox(o, box, M(info.linked), S(info.site_id), S(info.api));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
@@ -2053,6 +2123,107 @@ window.HoolaBuild = function (C) {
       const th = e.target.closest('li[data-th]');
       if (th && e.target.closest('[data-rep]')) { const inp = th.querySelector('input'), v = inp.value.trim(); if (!v) return;
         try { await api('POST', A + '/chat/' + encodeURIComponent(th.dataset.th), {text: v, her_tap: true}); toast('Sent.'); reload(); } catch (er) { toast(er.message, true); } }
+    };
+  }
+
+  /* v0.538 HOOLA CMS: her team (writers / editors / publishers) works at /cms/<site>/ with their own login; here she
+     invites, changes roles, removes, and acts on any draft herself (approve / send back / publish / restore). */
+  async function teamBox(o, box) {
+    let v; try { v = await api('GET', base(o) + '/cms'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    const open = L(v.drafts).filter(d => !['published', 'withdrawn'].includes(S(d.status)));
+    sec.innerHTML = `<h4>Team <span>${L(v.team).length} people · ${open.length} open draft(s)</span></h4>
+      <p class="stnote">Writers write drafts, editors approve or send back (never their own), publishers publish now or at a time. They work at <code>/cms/${esc(S(v.site_id))}/</code> with their own login - not your Hoola login.</p>
+      ${L(v.team).length ? `<ul class="stmems">${L(v.team).map(m => `<li data-m="${esc(S(m.id))}"><span>${esc(S(m.name))} · ${esc(S(m.email))}${m.status === 'invited' ? ' · invited' : ''}</span>
+        <span><select aria-label="Role">${['writer', 'editor', 'publisher'].map(r => `<option${r === S(m.role) ? ' selected' : ''}>${r}</option>`).join('')}</select> <button class="btn soft" type="button" data-rm>Remove</button></span></li>`).join('')}</ul>` : ''}
+      <form class="stapp" data-t="inv" autocomplete="off"><div class="row"><label><span>Email</span><input name="email" type="email" required></label><label><span>Name</span><input name="name"></label>
+        <label><span>Role</span><select name="role"><option>writer</option><option>editor</option><option>publisher</option></select></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Invite (one-time link)</button></div></form><div class="stinv"></div>
+      ${open.length ? `<h4 style="margin-top:12px">Open drafts</h4><ul class="stmems">${open.map(d => `<li data-d="${esc(S(d.id))}"><span>${esc(S(d.title))} · ${esc(S(d.status))} · ${esc(S(d.author_name))}</span>
+        <span>${d.status === 'review' ? '<button class="btn soft" type="button" data-mv="approved">Approve</button> <button class="btn soft" type="button" data-mv="returned">Send back</button>' : ''}
+        ${d.status === 'approved' ? '<button class="btn go" type="button" data-mv="published">Publish now</button>' : ''}</span></li>`).join('')}</ul>` : ''}
+      ${L(v.history).length ? `<h4 style="margin-top:12px">History</h4><div class="sttbl"><table><thead><tr><th>When</th><th>What</th><th>Who</th><th></th></tr></thead><tbody>${L(v.history).map(x => `<tr data-r="${esc(S(x.id))}"><td>${esc(new Date(S(x.at)).toLocaleString())}</td><td>${esc(S(x.kind))} ${esc(S(x.target))} · ${esc(S(x.summary))}${x.action === 'restore' ? ' (restored)' : ''}</td><td>${esc(S(x.by))}</td><td><button class="btn soft" type="button" data-rs>Bring back before</button></td></tr>`).join('')}</tbody></table></div>` : ''}`;
+    box.appendChild(sec);
+    const reload = () => { sec.remove(); teamBox(o, box); };
+    const f = sec.querySelector('[data-t=inv]');
+    f.onsubmit = async e => {
+      e.preventDefault();
+      try { const r = await api('POST', base(o) + '/cms/invite', {email: f.email.value.trim(), name: f.name.value.trim(), role: f.role.value});
+        sec.querySelector('.stinv').innerHTML = `<p class="stnote">Share this link with them (works once, ${N(r.expires_days)} days): <code>${esc(S(r.link))}</code></p>`; }
+      catch (er) { toast(er.message, true); }
+    };
+    sec.onchange = async e => {
+      const s2 = e.target.closest('select'), li = e.target.closest('li[data-m]'); if (!s2 || !li) return;
+      try { await api('POST', base(o) + '/cms/team/' + encodeURIComponent(li.dataset.m), {role: s2.value}); toast('Role changed; they log in again.'); } catch (er) { toast(er.message, true); }
+    };
+    sec.onclick = async e => {
+      const li = e.target.closest('li[data-m]');
+      if (li && e.target.closest('[data-rm]')) { if (!confirm('Remove this person? Their logins end now; their drafts stay.')) return;
+        try { await api('POST', base(o) + '/cms/team/' + encodeURIComponent(li.dataset.m), {remove: true}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const mv = e.target.closest('[data-mv]'), dl = e.target.closest('li[data-d]');
+      if (mv && dl) { const to = mv.dataset.mv; const note = to === 'returned' ? (prompt('What should change?') || '') : '';
+        if (to === 'published' && !confirm('Publish this on the website now?')) return;
+        try { await api('POST', base(o) + '/cms/drafts/' + encodeURIComponent(dl.dataset.d) + '/move', {to, note}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const tr = e.target.closest('tr[data-r]');
+      if (tr && e.target.closest('[data-rs]')) { if (!confirm('Put back what was there before this change?')) return;
+        try { await api('POST', base(o) + '/cms/history/' + encodeURIComponent(tr.dataset.r) + '/restore'); reload(); } catch (er) { toast(er.message, true); } }
+    };
+  }
+
+  /* v0.538 BADA CATALOGUE: her products / doctors / properties from her file, Google Sheet or a dataset -> pages by code.
+     Preview first (nothing written, every count + rejected row shown), then her Apply tap writes it. */
+  async function catalogBox(o, box) {
+    let v; try { v = await api('GET', base(o) + '/catalog'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    const im = M(v.images);
+    sec.innerHTML = `<h4>Catalogue <span>${L(v.lists).length} list(s) · up to ${N(M(v.limits).rows).toLocaleString()} rows each</span></h4>
+      <p class="stnote">Products, doctors, properties, courses… from your CSV / Excel file, Google Sheet or a dataset. Each row becomes a page (made by code, no AI cost), with listing pages, filters and sitemaps. Pages with almost nothing of their own, or copies of another row, are shown but not sent to Google.</p>
+      ${L(v.lists).length ? `<div class="sttbl"><table><thead><tr><th>List</th><th>Live</th><th>Good</th><th>Thin</th><th>Copies</th><th>Photos</th><th>Filters</th><th></th></tr></thead><tbody>${L(v.lists).map(c => { const k = M(c.counts); return `<tr data-cl="${esc(S(c.coll))}"><td>${esc(S(c.label))}<br><small>/${esc(S(c.coll))}/</small></td><td>${N(k.live)}</td><td>${N(k.ok)}</td><td>${N(k.thin)}</td><td>${N(k.dup)}</td><td>${N(k.photos)}${k.photos_todo ? ' (+' + N(k.photos_todo) + ' waiting)' : ''}</td><td>${esc(L(c.filters).join(', '))}</td><td><button class="btn soft" type="button" data-rm>Remove</button></td></tr>`; }).join('')}</tbody></table></div>` : ''}
+      ${im.running ? `<p class="stnote">Making photos: ${N(im.done)} / ${N(im.todo)}…</p>` : (L(v.lists).some(c => N(M(c.counts).photos_todo)) ? '<div class="acts"><button class="btn soft" type="button" data-img>Fetch waiting photos</button></div>' : '')}
+      <form class="stapp" data-cat="file" autocomplete="off"><div class="row">
+        <label><span>List address</span><input name="coll" placeholder="products" required pattern="[a-zA-Z0-9-]+"></label>
+        <label><span>Name on the site</span><input name="label" placeholder="Products"></label>
+        <label><span>File (CSV / Excel)</span><input name="file" type="file" accept=".csv,.tsv,.xlsx,.json,text/csv"></label>
+        <label><span>…or Google Sheet link / name</span><input name="sheet" placeholder="https://docs.google.com/spreadsheets/…"></label>
+        <label><span>…or dataset id</span><input name="dataset" placeholder="ds_…"></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Preview (nothing is written)</button></div></form>
+      <div class="stcatp"></div>`;
+    box.appendChild(sec);
+    const reload = () => { sec.remove(); catalogBox(o, box); };
+    const f = sec.querySelector('[data-cat=file]'), pv = sec.querySelector('.stcatp');
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const b = f.querySelector('button'); b.disabled = true; pv.innerHTML = '<p class="stnote">Reading…</p>';
+      try {
+        let p;
+        if (f.file.files[0]) {
+          const fd = new FormData(); fd.append('file', f.file.files[0]); fd.append('coll', f.coll.value.trim()); fd.append('label', f.label.value.trim());
+          p = await api('POST', base(o) + '/catalog/preview', undefined, {form: fd});
+        } else {
+          p = await api('POST', base(o) + '/catalog/preview', {coll: f.coll.value.trim(), label: f.label.value.trim(), sheet: f.sheet.value.trim(), dataset: f.dataset.value.trim()});
+        }
+        const mp = M(p.mapping);
+        pv.innerHTML = `<div class="stdraft"><b>${N(p.items).toLocaleString()} items ready</b> - ${N(p.new)} new, ${N(p.changed)} changed, ${N(p.same)} same, ${N(p.rejected)} rows left out · ${N(p.thin)} thin, ${N(p.dup)} copies · ${N(p.photos)} photos
+          <div class="bln faint">Name: ${esc(S(mp.title))} · Key: ${esc(S(mp.key))} · Price: ${esc(S(mp.price) || '-')} · Photo: ${esc(S(mp.image) || '-')} · Filters: ${esc(L(mp.filters).join(', ') || '-')}</div>
+          ${L(p.rejected_rows).slice(0, 8).map(x => `<div class="badc bln">Row ${N(x.row)}: ${esc(S(x.why))}</div>`).join('')}
+          ${L(p.sample).length ? `<div class="sttbl"><table><thead><tr><th>Page</th><th>Address</th><th>Price</th></tr></thead><tbody>${L(p.sample).map(x => `<tr><td>${esc(S(x.title))}</td><td>${esc(S(x.address))}</td><td>${esc(S(x.price))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+          <div class="acts"><label><input type="checkbox" data-rep> Hide items that are not in this file (${N(p.hidden_if_replace)})</label>
+          <button class="btn go" type="button" data-apply>Apply</button></div></div>`;
+        pv.querySelector('[data-apply]').onclick = async ev => {
+          ev.target.disabled = true;
+          try { const r = await api('POST', base(o) + '/catalog/apply', {hash: S(p.hash), replace: pv.querySelector('[data-rep]').checked}); toast(S(r.say) || 'Saved.'); reload(); }
+          catch (er) { toast(er.message, true); ev.target.disabled = false; }
+        };
+      } catch (er) { pv.innerHTML = ''; toast(er.message, true); }
+      finally { b.disabled = false; }
+    };
+    sec.onclick = async e => {
+      if (e.target.closest('[data-img]')) { try { await api('POST', base(o) + '/catalog/images'); toast('Photos are being made.'); reload(); } catch (er) { toast(er.message, true); } return; }
+      const tr = e.target.closest('tr[data-cl]');
+      if (tr && e.target.closest('[data-rm]')) {
+        if (!confirm('Take this list off the website? Its rows are kept (hidden) and come back on the next import.')) return;
+        try { await api('DELETE', base(o) + '/catalog/' + encodeURIComponent(tr.dataset.cl)); reload(); } catch (er) { toast(er.message, true); }
+      }
     };
   }
 

@@ -268,3 +268,74 @@ def test_this_repo_declares_its_own_commands_and_never_asks():
     got = spec.discover([".hoola/lab.json", "server/requirements.txt"], {".hoola/lab.json": json.dumps(d)})
     assert got["test"] == d["test"] and got["setup"] == d["setup"] and got["confirm"] is False
     assert spec.refuse_reason(d["test"]) == "" and spec.refuse_reason(d["setup"]) == ""
+
+
+# ---------------------------------------------------------------- v0.537 what her first live lab_try found
+def test_setup_may_keep_what_it_writes_and_a_check_still_cannot():
+    """The silent half of the v0.537 bug. `docker commit` keeps neither a read-only root nor a tmpfs, so the old
+    walls threw every installed dependency away while reporting the snapshot cached - fast and wrong."""
+    s = box._limits(network=True, writable=True)
+    assert "--read-only" not in s                              # ... or the install cannot land anywhere
+    assert not any(x.startswith("/home/lab:") for x in s)      # ... and nothing masks where it lands
+    assert s[s.index("--user") + 1] == "1000:1000"             # every other wall stands
+    assert s[s.index("--cap-drop") + 1] == "ALL" and s[s.index("--security-opt") + 1] == "no-new-privileges"
+    assert s[s.index("--memory") + 1] == box.MEM and s[s.index("--pids-limit") + 1] == box.PIDS
+    c = box._limits(network=False)
+    assert "--read-only" in c and c[c.index("--network") + 1] == "none"
+    assert not any(x.startswith("/home/lab") for x in c)       # the committed dependencies stay VISIBLE at check time
+    assert f"HOME={box.CHECK_HOME}" in c and box.CHECK_HOME.startswith("/tmp/")   # ... with a writable home in the tmpfs
+    assert f"HOME={box.SETUP_HOME}" in s
+    assert f"PYTHONUSERBASE={box.USER_BASE}" in c              # ... and `pip --user` packages are still importable
+    assert any(x.startswith(f"PATH={box.USER_BASE}/bin:") for x in c)
+
+
+def test_no_caller_can_unseal_a_check(monkeypatch):
+    """Writability is derived from commit_to, never asked for: there is no flag that makes a check writable."""
+    import inspect
+    assert "writable" not in inspect.signature(box.run_in).parameters
+    seen: dict = {}
+    monkeypatch.setattr(box, "docker", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(box, "_run", lambda argv, timeout, cwd="": (seen.setdefault("argv", argv), (0, "", 0.1))[1])
+    box.run_in("img", ".", "pytest -q", network=False)
+    assert "--read-only" in seen["argv"] and "none" in seen["argv"]
+    assert 'mkdir -p "$HOME"' in seen["argv"][-1] and seen["argv"][-1].endswith("pytest -q")
+
+
+def test_the_image_lets_a_repo_run_its_own_pip_command():
+    """What spoke on 5 Nov: `error: externally-managed-environment`. A container IS the virtual environment, so the
+    PEP 668 marker comes off once in the image - Hoola never rewrites a repo's declared command to get around it."""
+    t = box.DOCKERFILE_TEXT
+    assert "rm -f /usr/lib/python3*/EXTERNALLY-MANAGED" in t
+    assert "--break-system-packages" not in t                   # ... so no command here needs the escape hatch
+    assert "/home/lab/.local/bin" in t and "chown -R lab:lab /work /home/lab" in t
+    import json
+    from pathlib import Path
+    d = json.loads((Path(__file__).resolve().parents[2] / ".hoola" / "lab.json").read_text("utf-8"))
+    assert "--break-system-packages" not in d["setup"] and "--user" not in d["setup"]
+
+
+def test_a_stale_image_is_named_and_rebuilt_not_used_quietly(monkeypatch):
+    """Her VPS already held the pre-v0.537 image, and nothing in the old code could have told her so."""
+    monkeypatch.setattr(box, "docker", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(box, "_run", lambda argv, timeout, cwd="": (
+        (0, "29.8.1", 0.1) if "version" in argv else
+        (0, "abc123", 0.1) if "images" in argv else
+        (0, "1", 0.1) if "inspect" in argv else (0, "", 0.1)))
+    av = box.available()
+    assert av["ok"] is True and av["base_built"] is True
+    assert av["base_stale"] is True and av["base_rev"] == "1" and av["base_rev_wanted"] == box.BASE_REV
+    assert "purani" in av["why"] and "--rebuild" in av["why"]
+    assert f'LABEL hoola.devlab.rev="{box.BASE_REV}"' in box.DOCKERFILE_TEXT
+    built = []
+    monkeypatch.setattr(box, "build_base", lambda nocache=False: built.append(nocache) or {"ok": False, "why": "x"})
+    lines = service.selftest()
+    assert built == [True]                                        # a stale image is rebuilt from scratch, not reused
+    assert any("PURANI" in ln for ln in lines)
+
+
+def test_the_selftest_proves_an_install_survives_the_commit():
+    """The two stages that would have caught v0.537 before she ever ran it."""
+    src = (Path(service.__file__).read_text("utf-8") if hasattr(service, "__file__") else "")
+    assert "repo ka apna `pip install` chalta hai" in src and "install snapshot mein bacha rehta hai" in src
+    assert "commit_to=tag" in src and "network=True" in src       # the real road: install with the net, then commit
+    assert "import tabulate" in src                               # ... and ask the committed image for it back

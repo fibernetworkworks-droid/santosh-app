@@ -29,6 +29,11 @@ SITE_TOOLS = [
         "online shop: cart, checkout, UPI to HER UPI ID or cash on delivery; only HER prices, never invented. Customers pay in "
         "their own UPI app; YOU never mark money received - action=shop_order + site + number (O-1001) + to (confirmed | packed "
         "| shipped | delivered | cancelled) only on her word (confirmed = she saw the money). website_dekho what=orders. "
+        "CATALOGUE (v0.538, 100s-10,000s of products / doctors / properties from HER data): action=catalog + site + coll "
+        "(the list address: products / doctors / flats) + sheet (her Google Sheet link / name, + tab) OR dataset (a ds_ id "
+        "from data_fetch / an ERP read) -> a PREVIEW only (new / changed / rejected rows, thin + duplicate pages, the column "
+        "mapping); nothing is written - SHE taps Apply on the console's Catalogue card (a file she has goes there too). "
+        "Never type thousands of items into action=change. "
         "action=change: site + instruction (her words: 'hero mein meri photo', 'rang halka', 'price list hatao', 'Hindi "
         "version') -> only those parts are rebuilt, new version. action=photo: site + file_id (+ about: 'shop front', "
         "'owner'). action=undo: her last own-hand edit (words / link / photo / colours she changed in the preview's Edit "
@@ -73,7 +78,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -98,6 +103,9 @@ SITE_TOOLS = [
          "private": {"type": "boolean"}, "staff": {"type": "string"},
          "spec": {"type": "string", "description": "architect spec card number (A-0007) or id"},
          "hash": {"type": "string", "description": "the card / draft hash she said haan to"},
+         "coll": {"type": "string", "description": "catalogue: the list address (products / doctors / flats)"},
+         "sheet": {"type": "string", "description": "catalogue: her Google Sheet link / name"}, "tab": {"type": "string"},
+         "dataset": {"type": "string", "description": "catalogue: a dataset id (ds_...)"},
          "modules": {"type": "array", "items": {"type": "string", "enum": ["pages", "users", "data", "logic", "features"]}}},
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
@@ -145,6 +153,21 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return {k: v.get(k) for k in ("settings", "upi", "summary", "say")} | {"products": len(v.get("products") or [])}
     if action == "shop_order":
         return S.shop_move(t, site, str(a.get("number") or ""), str(a.get("to") or ""))
+    if action == "catalog":                       # v0.538 a preview only; her Apply tap writes it (console Catalogue card)
+        from ..site import catalog as CAT
+        try:
+            if a.get("sheet"):
+                rows = CAT.from_sheet(t, str(a["sheet"]), str(a.get("tab") or "") or None)
+            elif a.get("dataset"):
+                rows = CAT.from_dataset(t, str(a["dataset"]))
+            else:
+                return {"error": "Google Sheet (sheet) ya dataset id chahiye; file ho to console > Website > App & data > Catalogue mein daaliye."}
+            v = CAT.preview(t, site, str(a.get("coll") or ""), rows, None, str(a.get("name") or ""), "", "chat")
+        except CAT.CatalogError as e:
+            return {"error": str(e)}
+        return {k: v.get(k) for k in ("coll", "items", "new", "changed", "same", "rejected", "thin", "dup", "photos", "mapping")} | {
+            "rejected_rows": v["rejected_rows"][:5],
+            "say": v["say"] + " Apply: console > Website > App & data > Catalogue (aapka tap). Phir nayi version banegi."}
     if action == "grow":
         v = S.grow(t, site, int(a.get("page_count") or 0), str(a.get("instruction") or a.get("brief") or ""))
         return {k: v.get(k) for k in ("id", "number", "status", "mapping", "say")}

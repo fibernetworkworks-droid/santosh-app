@@ -657,7 +657,7 @@ def daily(tenant: str, sid: str) -> dict[str, Any]:
                 if latest.get("ga4") and not b.get("ga4"):
                     b["ga4"] = latest["ga4"]
                 d.baseline = json.dumps(b, ensure_ascii=False)
-    try:                                       # v0.536 SEO INTEL: her tracked keywords' Search Console positions + 5-place drops
+    try:                                       # v0.541 SEO INTEL: her tracked keywords' Search Console positions + 5-place drops
         from . import intel
         iv = intel.daily(tenant, sid)
         for line in iv.get("alerts") or []:
@@ -699,7 +699,7 @@ def weekly(tenant: str, sid: str) -> dict[str, Any]:
         _save_shot(sid, "desktop", S.pagespeed(tenant, sid, strategy="desktop").get("shot"))
     except S.SeoError:
         pass
-    try:                                       # v0.536 SEO INTEL: AI answers, Maps grids, exact positions - only what she switched on
+    try:                                       # v0.541 SEO INTEL: AI answers, Maps grids, exact positions - only what she switched on
         from . import intel
         iv = intel.weekly(tenant, sid)
         out["intel"] = iv

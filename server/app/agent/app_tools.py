@@ -130,14 +130,14 @@ APP_TOOLS = [
         "restaurant, seller) / staff -> its own plan card next (same accounts, orders, rules; nothing copied); partner + pdo "
         "approve|refuse|remove decides a partner's application (ONLY on her words; a shop needs shop=<which shop row>). Partners "
         "apply from their own app; a rider sees only ready jobs + his own, a shop only its own orders, never a customer's phone. "
-        "The web admin link for her staff is in app_dekho what=family. "
+        "The web admin link for her staff is in app_dekho what=family. jaanch step=stories|keep|run|cases|rules|all|load = v0.540 Pillar J: Opus writes scenario tests from her user stories (a closed set of verbs, checked against her real lists - it cannot invent a field), her tap keeps them, and `run` PLAYS them over HTTP against a throwaway twin of her app (never her live data): sign-up, order, read as another customer (which must be REFUSED), status, rating. rules = every rule / formula / function through the real engine. load = hundreds of customers at once. flag key=<name> on=true|false percent=<n> = a feature switch that turns something off with NO new build (the only rollback that works in minutes); flag with no key lists them. rollout = the Play staged release (read it; start / advance / rollback are her tap in the app, halt is allowed here when something is going wrong). "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
                                                  "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
                                                  "logic", "logic_switch", "approval", "logic_run",
                                                  "data_safety", "backup_now", "limits", "own_db", "family", "login",
-                                                 "security_check"]},
+                                                 "security_check", "jaanch", "flag", "rollout"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -157,6 +157,11 @@ APP_TOOLS = [
          "approval": {"type": "string", "description": "action=approval: the approval id"},
          "decision": {"type": "string", "enum": ["approve", "reject"], "description": "action=approval: her decision"},
          "job": {"type": "string", "description": "action=logic_run: the timed job (schedule) name"},
+         "step": {"type": "string", "description": "action=jaanch: stories|keep|run|cases|rules|all|load (default all); "
+                                                   "action=rollout: start|advance|halt|rollback"},
+         "key": {"type": "string", "description": "action=flag: the switch's name (a-z, _)"},
+         "percent": {"type": "integer", "description": "action=flag: give it to this % of users (default 100)"},
+         "customers": {"type": "integer", "description": "action=jaanch step=load: how many at once (default 200)"},
          "at": {"type": "string", "description": "action=data_safety: a moment YYYY-MM-DDTHH:MM (IST) to preview a restore to"},
          "limits": {"type": "object", "description": "action=limits: {rows, files_mb, writes_day}"},
          "variants": {"type": "array", "items": {"type": "object"}, "description": "action=variants: [{name, price}]"},
@@ -201,12 +206,12 @@ APP_TOOLS = [
         "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
         "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
         "the special thing) and ask which one; then app_banao action=new idea=<id>." " data (app; coll = one list: its rows, newest first - the real orders / bookings / requests her app's users made, with status) | "
-        "members (app: the app's accounts with their role). logic (app: v0.382 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps)."),
+        "members (app: the app's accounts with their role). logic (app: v0.382 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps). jaanch (app: v0.540 Pillar J - the scenario tests written from her user stories and what the last run said, the rule / formula checks, the load test, and the crashes AND ANRs real phones reported; `not_checked` names what has never been run - read this before telling her an app is ready). rollout (app: the Play staged release - which version is at what % of users, and her feature switches, which turn a feature off with no new build)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
                                              "data", "members", "crashes", "store", "ios", "appstore", "logic", "family",
-                                             "login"]},
+                                             "login", "jaanch", "rollout"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -445,6 +450,61 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError(str(e))
         return {k: v.get(k) for k in ("at", "platform", "build", "pass", "warn", "fail", "not_checked", "ok", "blocks")} | \
             {"rows": [{kk: x.get(kk) for kk in ("gate", "check", "state", "say")} for x in v["rows"]]}
+    if action == "jaanch":                    # v0.540 JAANCH (Pillar J): prove the app, do not hope
+        from ..appmaker import backend as BE
+        from ..appmaker import quality as QA
+        from ..site import webapp as W
+        step = str(a.get("step") or "all").strip().lower()
+        try:
+            r = BE.by_key_or_ref(t, ref)
+            if step == "stories":
+                return QA.draft(r, str(a.get("instruction") or ""))
+            if step == "keep":
+                return QA.keep(r, str(a.get("hash") or ""))
+            if step == "run":
+                return {k: v for k, v in QA.run(r).items() if k != "stories"}
+            if step == "cases":
+                return QA.rule_cases(r)
+            if step == "rules":
+                return {k: v for k, v in QA.rules_run(r).items() if k != "rows"}
+            if step == "load":
+                return QA.load(r, int(a.get("customers") or 200))
+            out = QA.run_all(r)
+            return {"ok": out["ok"], "says": out["says"],
+                    "scenarios": {k: out["scenarios"].get(k) for k in ("ran", "pass", "fail", "not_run", "total", "says")},
+                    "rules": {k: out["rules"].get(k) for k in ("ran", "pass", "fail", "covered", "total", "says")},
+                    "field": out["field"].get("says")}
+        except W.AppError as e:
+            raise ToolError(str(e))
+    if action == "flag":                      # v0.540 a feature switch: instant, no build, no review
+        from ..appmaker import backend as BE
+        from ..appmaker import rollout as RO
+        from ..site import webapp as W
+        try:
+            r = BE.by_key_or_ref(t, ref)
+            key = str(a.get("key") or "").strip()
+            if not key:
+                return {"flags": RO.flags(r)}
+            if str(a.get("step") or "") == "remove":
+                return RO.drop_flag(r, key)
+            return RO.set_flag(r, key, a.get("on") if isinstance(a.get("on"), bool) else None,
+                               int(a["percent"]) if isinstance(a.get("percent"), int) else None,
+                               str(a.get("instruction") or ""))
+        except W.AppError as e:
+            raise ToolError(str(e))
+    if action == "rollout":                   # v0.540 Play staged release: 5 % -> 20 -> 50 -> 100, halt, rollback
+        from ..appmaker import rollout as RO
+        from ..site import webapp as W
+        step = str(a.get("step") or "").strip().lower()
+        try:
+            if step in ("start", "advance", "rollback"):
+                raise ToolError("Production par bhejna / badhana / wapas lena aapka tap hai - app ke Rollout card se "
+                                "kijiye. Main yahan sirf haal bata sakti hoon (aur zaroorat ho to rollout ROK sakti hoon).")
+            if step == "halt":
+                return RO.halt(t, ref, str(a.get("instruction") or ""))
+            return RO.view(t, ref)
+        except W.AppError as e:
+            raise ToolError(str(e))
     if action == "family":                    # v0.435 PARIVAAR: more apps on the same data + partner decisions
         from ..appmaker import backend as BE
         from ..appmaker import family as FA
@@ -656,6 +716,21 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         b = I.browse(q, str(a.get("field") or ""), str(a.get("goal") or ""), str(a.get("aud") or ""), int(a.get("offset") or 0), 12)
         b["items"] = [{k: x[k] for k in ("id", "name", "special")} for x in b.get("items", [])]
         return b
+    if what == "jaanch":                      # v0.540 Pillar J: what has really been proved about this app
+        from ..appmaker import backend as BE
+        from ..appmaker import quality as QA
+        from ..site import webapp as W
+        try:
+            return QA.card(BE.by_key_or_ref(t, str(a.get("app") or "")))
+        except W.AppError as e:
+            raise ToolError(str(e))
+    if what == "rollout":                     # v0.540 the staged release + her feature switches
+        from ..appmaker import rollout as RO
+        from ..site import webapp as W
+        try:
+            return RO.view(t, str(a.get("app") or ""))
+        except W.AppError as e:
+            raise ToolError(str(e))
     if what == "design_system":
         from ..appmaker import colors as CL
         from ..appmaker import designsys as DS

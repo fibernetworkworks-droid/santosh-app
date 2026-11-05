@@ -15,7 +15,7 @@ on:
         description: What to run
         type: choice
         default: smoke
-        options: [setup, prefetch, smoke, face, bench, streams, e2e, studio, deploy, down]
+        options: [setup, prefetch, smoke, face, bench, streams, e2e, studio, voices, deploy, down]
       gpu:
         description: GPU for this run (T4 is cheapest, L4 is the free-credit default, A10G / L40S are faster)
         type: choice
@@ -99,6 +99,11 @@ jobs:
         working-directory: avatar_engine
         run: modal run modal_app.py::studio_card
 
+      - name: Voice card - the same Hindi lines through every voice we may ship, scored by how clearly whisper hears them
+        if: inputs.job == 'voices'
+        working-directory: avatar_engine
+        run: modal run modal_app.py::voice_card
+
       - name: Deploy the engine endpoint
         if: inputs.job == 'deploy'
         working-directory: avatar_engine
@@ -112,7 +117,7 @@ jobs:
         run: modal app stop hoola-lab
 
       - name: Keep the clips and the timing report
-        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams' || inputs.job == 'e2e' || inputs.job == 'studio') && always()
+        if: (inputs.job == 'smoke' || inputs.job == 'face' || inputs.job == 'bench' || inputs.job == 'streams' || inputs.job == 'e2e' || inputs.job == 'studio' || inputs.job == 'voices') && always()
         uses: actions/upload-artifact@v4
         with:
           name: lab-output-${{ inputs.gpu }}

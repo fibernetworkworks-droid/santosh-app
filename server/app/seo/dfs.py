@@ -1,4 +1,4 @@
-"""v0.536 SEO INTEL - DataForSEO, the paid data the official Google APIs do not give: competitor domains, the keywords a
+"""v0.541 SEO INTEL - DataForSEO, the paid data the official Google APIs do not give: competitor domains, the keywords a
 site ranks for, keyword gaps, backlinks / referring domains and exact Google positions (owner: "GO S1 + DATAFORSEO").
 
 Why this is allowed, said plainly: Google gives no API for another site's rankings or for anyone's backlinks, and Hoola

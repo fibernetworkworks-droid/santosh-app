@@ -1,4 +1,4 @@
-"""v0.536 SEO INTEL (owner: "GO S1 + DATAFORSEO", after reading every-app/open-seo, MIT - ideas and the brand-matching
+"""v0.541 SEO INTEL (owner: "GO S1 + DATAFORSEO", after reading every-app/open-seo, MIT - ideas and the brand-matching
 approach adapted, code our own; THIRD_PARTY_NOTICES.md). Four things the SEO desk could not see before:
 
   RANKS      the keywords SHE chooses to track (up to 100). Every day Google Search Console's own numbers for exactly those

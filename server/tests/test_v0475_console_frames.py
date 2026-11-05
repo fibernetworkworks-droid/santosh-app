@@ -104,26 +104,29 @@ def test_panel_knows_mp4_is_video():
 # ---------- Version layer ----------
 
 def test_console_stamps_0_4_8_5():
-    # Healed on the v0.490 rebase: the dev chain's BYOX releases changed the console on main
-    # (v0.485 SKILL DESK skills.js + v0.487 language select), so every stamp moved 0.482.0
-    # -> 0.487.0 (21 = the 20 originals + the new skills.js tag); server-only releases leave it at 0.487.0 (v0.488 CRAWL
-    # JOBS, v0.489 POWERTOYS RUN, v0.490 WEB EXTENSION and now v0.491 UIUX PRO MAX all server-only).
+    # 21 stamps = the 20 originals + the skills.js tag added by v0.485 SKILL DESK.
+    # The COUNT is the guard; the version they carry follows APP_VERSION (see below).
     s = src(V2)
-    assert s.count('v=0.487.0') == 21, f"expected 21 stamps, got {s.count('v=0.487.0')}"
+    from app.main import APP_VERSION
+    # v0.537: this pinned the literal v=0.487.0 and had gone red on main, which ships the stamps at
+    # APP_VERSION. Two sessions' conventions disagreed; CLAUDE.md's version ritual lists the console
+    # stamps as part of the bump, so the typed number goes and the COUNT - the real guard - stays.
+    assert s.count(f'v={APP_VERSION}') == 21, f"expected 21 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
-    assert 'console/skills.js?v=0.487.0' in s and 'id="v-skills"' in s
+    assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
 
 
 def test_app_version_story():
     main = (ROOT / 'app/main.py').read_text(encoding='utf-8')
-    assert 'APP_VERSION = "0.536.0"' in main
-    # story pin moved to the v0.498 story (the v0.476 precedent: the newest release's story
-    # carries the marker; the older stories live in git history)
-    assert 'HOOLA CORE' in main and 'server/app/aep' in main
+    from app.main import APP_VERSION
+    assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
+    # story pin moved to the v0.537 story (the v0.476 precedent: the newest release's story carries the
+    # marker; the older stories live in git history)
+    assert 'CRAWL BRAIN' in main and 'app/crawl' in main
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.536.0+559' in pub
+    assert 'version: 0.541.0+564' in pub

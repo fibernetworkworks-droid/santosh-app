@@ -1357,6 +1357,66 @@ def _mp4_concat(clips: list) -> bytes:
     return data
 
 
+def _chars(text: str) -> int:
+    """Letters only (no spaces / punctuation) - how much was SAID, comparable between the script and what whisper heard."""
+    return sum(1 for c in text if c.isalnum() or "\u0900" <= c <= "\u097f")
+
+
+def _trim_point(words: list, script: str, duration: float) -> float | None:
+    """Where the script's speech ends, from whisper's words [{w, start, end}].
+
+    Measured on studio runs 35-36: the voice says the line, then babbles on ("yah ek tasveer se bana video hai" in 1.6 s,
+    then nonsense to 6.7 s). The cut goes after the heard word where the letters said so far come closest to the script's
+    letters - babble only ever ADDS letters - preferring, within +-30 %, the word followed by the longest pause (babble
+    starts after a breath). None = nothing worth cutting (under 0.4 s of tail)."""
+    if not words:
+        return None
+    target = max(1, _chars(script))
+    acc, cands = 0, []
+    for i, w in enumerate(words):
+        acc += _chars(str(w.get("w") or ""))
+        if abs(acc - target) <= 0.3 * target:
+            gap = (words[i + 1]["start"] - w["end"]) if i + 1 < len(words) else 99.0
+            cands.append((gap, -abs(acc - target), i))
+    if cands:
+        i = max(cands)[2]
+    else:   # nothing near the script's length: the closest point overall
+        acc, best = 0, (None, 0)
+        for j, w in enumerate(words):
+            acc += _chars(str(w.get("w") or ""))
+            if best[0] is None or abs(acc - target) < best[0]:
+                best = (abs(acc - target), j)
+        i = best[1]
+    cut = float(words[i]["end"]) + 0.25
+    return round(cut, 2) if duration - cut > 0.4 else None
+
+
+def _cut_wav(wav: bytes, seconds: float, fade_s: float = 0.08) -> bytes:
+    """The first `seconds` of a PCM WAV, with a short fade so the cut never clicks (stdlib only)."""
+    import array
+    import io
+    import wave
+    with wave.open(io.BytesIO(wav), "rb") as r:
+        ch, width, rate = r.getnchannels(), r.getsampwidth(), r.getframerate()
+        frames = r.readframes(min(r.getnframes(), int(seconds * rate)))
+    if width == 2:
+        a = array.array("h", frames)
+        n = min(len(a) // ch, int(fade_s * rate))
+        for k in range(n):
+            g = k / n                     # k counts back from the last sample: 0 at the very end, 1 at the fade's start
+            for c in range(ch):
+                idx = len(a) - (k + 1) * ch + c
+                a[idx] = int(a[idx] * g)
+        frames = a.tobytes()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as o:
+        o.setnchannels(ch)
+        o.setsampwidth(width)
+        o.setframerate(rate)
+        o.writeframes(frames)
+    return buf.getvalue()
+
+
 @app.cls(image=hear_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=900, cpu=4, memory=4096)
 class Hear:
     """Speech to text (faster-whisper small, MIT code + MIT weights, CPU int8): what was said, in which language, and when."""
@@ -1376,6 +1436,7 @@ class Hear:
         wav = f"/tmp/{uuid.uuid4().hex}_16k.wav"
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "16000", wav], check=True)
         segs, info = self.model.transcribe(wav, language=(lang or None), word_timestamps=True, vad_filter=True)
+        loud_end = self._loud_end(wav)
         out = []
         for sg in segs:
             # float(): faster-whisper hands back numpy floats, and the studio image that receives this has no numpy
@@ -1383,7 +1444,35 @@ class Hear:
                         "words": [{"w": str(w.word).strip(), "start": round(float(w.start), 2), "end": round(float(w.end), 2)}
                                   for w in (sg.words or [])]})
         return {"language": str(info.language), "language_probability": round(float(info.language_probability), 2),
-                "duration": round(float(info.duration), 2), "segments": out, "load_s": self.load_s}
+                "duration": round(float(info.duration), 2), "loud_end": loud_end, "segments": out, "load_s": self.load_s}
+
+    @staticmethod
+    def _loud_end(wav16k: str) -> float:
+        """The last moment there is real sound (20 ms frames above 3 % of the peak) - silence after it is not babble."""
+        from faster_whisper.audio import decode_audio
+        import numpy as np
+        a = decode_audio(wav16k, sampling_rate=16000)
+        if not len(a):
+            return 0.0
+        f = 320
+        n = len(a) // f
+        rms = np.sqrt((a[: n * f].reshape(n, f) ** 2).mean(axis=1)) if n else np.zeros(1)
+        loud = np.nonzero(rms > 0.03 * float(np.abs(a).max() or 1.0))[0]
+        return round(float((loud[-1] + 1) * f / 16000), 2) if len(loud) else 0.0
+
+    @modal.method()
+    def trim(self, wav: bytes, script: str, lang: str = "hi") -> dict:
+        """Cut a voice take right after the script's last word (see _trim_point). Untouched when nothing runs past it."""
+        src = _tmp(wav, ".wav")
+        w16 = f"/tmp/{uuid.uuid4().hex}_16k.wav"
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-ac", "1", "-ar", "16000", w16], check=True)
+        segs, info = self.model.transcribe(w16, language=(lang or None), word_timestamps=True, vad_filter=False)
+        words = [{"w": str(x.word).strip(), "start": float(x.start), "end": float(x.end)} for sg in segs for x in (sg.words or [])]
+        cut = _trim_point(words, script, float(info.duration))
+        heard = " ".join(x["w"] for x in words)
+        if cut is None:
+            return {"wav": wav, "cut_s": None, "duration": round(float(info.duration), 2), "heard": heard}
+        return {"wav": _cut_wav(wav, cut), "cut_s": cut, "duration": round(float(info.duration), 2), "heard": heard}
 
 
 def _speak_chunks(text: str, lang: str, voice_id: str, first_words: int = 14) -> tuple:
@@ -1394,6 +1483,15 @@ def _speak_chunks(text: str, lang: str, voice_id: str, first_words: int = 14) ->
     voice = Chatterbox()
     calls = [voice.speak.spawn(c, lang, None, voice_id) for c in chunks]
     wavs = [c.get(timeout=300)["wav"] for c in calls]
+    # The ears cut each take right after its last scripted word (the voice babbles past its text - runs 35-36).
+    # A failed trim keeps the take as it is: a long tail is better than a lost sentence.
+    ear = Hear()
+    trims = [ear.trim.spawn(w, c, lang) for w, c in zip(wavs, chunks)]
+    for i, t in enumerate(trims):
+        try:
+            wavs[i] = t.get(timeout=180)["wav"]
+        except Exception:
+            pass
     cues, t = [], 0.0
     for c, w in zip(chunks, wavs):
         d = _wav_seconds(w)
@@ -1511,6 +1609,104 @@ def _sample_photo() -> bytes:
         return f.read()
 
 
+# ================================================================ VOICE CARD - which voice says Hindi most clearly
+VOICE_CARD_LINES = [
+    "नमस्ते, मैं आपकी शिक्षक हूँ।",
+    "आज हम गति के बारे में सीखेंगे।",
+    "गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।",
+    "प्रकाश संश्लेषण में पौधे सूरज की रोशनी से अपना भोजन बनाते हैं।",
+    "इस आयत का क्षेत्रफल लंबाई गुणा चौड़ाई होता है।",
+    "वैज्ञानिक प्रयोग करके अपने विचारों की जाँच करते हैं।",
+    "यह एक तस्वीर से बना वीडियो है।",
+    "बहुत बढ़िया, आपका उत्तर बिल्कुल सही है।",
+]
+
+
+def _norm_hi(text: str) -> str:
+    """Letters only, one spelling: nukta dropped (ज़ = ज), chandrabindu = anusvara, punctuation and spaces gone. Whisper
+    and the script disagree on exactly these marks all the time, and they are not what a listener hears as wrong."""
+    import unicodedata
+    t = unicodedata.normalize("NFC", text or "")
+    t = t.replace("\u093c", "").replace("\u0901", "\u0902")
+    for a, b in (("क़", "क"), ("ख़", "ख"), ("ग़", "ग"), ("ज़", "ज"), ("ड़", "ड"), ("ढ़", "ढ"), ("फ़", "फ"), ("य़", "य")):
+        t = t.replace(a, b)
+    return "".join(c for c in t if c.isalnum() or "\u0900" <= c <= "\u097f").replace("\u0964", "")
+
+
+def _cer(ref: str, hyp: str) -> float:
+    """Character error rate after _norm_hi: edits needed to turn what was heard into the script, per script letter."""
+    r, h = _norm_hi(ref), _norm_hi(hyp)
+    if not r:
+        return 0.0 if not h else 1.0
+    prev = list(range(len(h) + 1))
+    for i, rc in enumerate(r, 1):
+        cur = [i] + [0] * len(h)
+        for j, hc in enumerate(h, 1):
+            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (rc != hc))
+        prev = cur
+    return round(prev[-1] / len(r), 3)
+
+
+@app.local_entrypoint()
+def voice_card():
+    """The same Hindi teaching lines through every voice we may ship, heard back by whisper. Score = character error
+    rate (letters whisper heard wrong, after the marks it always disagrees on are evened out) - lower is clearer. Whisper
+    itself makes mistakes in Hindi, so read it as a COMPARISON between voices, not an absolute grade; the WAVs are saved
+    beside the report for real ears. lab_out/REPORT_voices.txt + voice_<engine>_<n>.wav"""
+    os.makedirs("lab_out", exist_ok=True)
+    lines_out = [f"GPU {GPU}  Hoola voice card - {len(VOICE_CARD_LINES)} Hindi lines per voice, heard back by whisper (small)"]
+
+    def note(text: str) -> None:
+        lines_out.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_voices.txt", "w") as f:
+            f.write("\n".join(lines_out) + "\n")
+
+    engines = [
+        ("chatterbox", lambda t: Chatterbox().speak.spawn(t, "hi")),
+        ("parler_female", lambda t: IndicParler().speak.spawn(t, "hi", "A warm female teacher speaks clearly at a moderate "
+                                                                       "pace in a quiet room; the recording is very clear and close.")),
+        ("parler_male", lambda t: IndicParler().speak.spawn(t, "hi", "A calm male teacher speaks clearly at a moderate "
+                                                                     "pace in a quiet room; the recording is very clear and close.")),
+    ]
+    ear = Hear()
+    summary = []
+    for name, start in engines:
+        cers, tails, rtf = [], [], []
+        try:
+            outs = [start(t).get(timeout=900) for t in VOICE_CARD_LINES]   # one after another: ONE warm container, not 8 cold ones
+        except Exception as e:
+            note(f"{name:<14} FAILED to speak: {type(e).__name__}: {str(e)[:200]}")
+            continue
+        for i, (text, o) in enumerate(zip(VOICE_CARD_LINES, outs), 1):
+            with open(f"lab_out/voice_{name}_{i}.wav", "wb") as f:
+                f.write(o["wav"])
+            secs = _wav_seconds(o["wav"])
+            try:
+                h = ear.transcribe.spawn(o["wav"], "hi").get(timeout=600)
+            except Exception as e:
+                note(f"   {name} line {i}: could not listen ({type(e).__name__})")
+                continue
+            heard = " ".join(sg["text"] for sg in h["segments"])
+            words = [w for sg in h["segments"] for w in sg["words"]]
+            last = words[-1]["end"] if words else 0.0
+            tail = max(0.0, float(h.get("loud_end") or secs) - last)
+            c = _cer(text, heard)
+            cers.append(c)
+            tails.append(tail)
+            if secs:
+                rtf.append(float(o.get("synth_s") or 0) / secs)
+            note(f"   {name:<14} {i}: CER {c:.2f}  {secs:4.1f}s  tail {tail:3.1f}s | {heard[:90]}")
+        if cers:
+            avg = sum(cers) / len(cers)
+            summary.append((avg, name, max(tails or [0]), sum(rtf) / len(rtf) if rtf else 0))
+            note(f"{name:<14} mean CER {avg:.3f}  worst tail {max(tails or [0]):.1f}s  make time {summary[-1][3]:.2f}x speech")
+    summary.sort()
+    note("RANKING (clearest first - then LISTEN to the WAVs; the ear decides):")
+    for avg, name, tail, r in summary:
+        note(f"   {name:<14} CER {avg:.3f}  worst tail {tail:.1f}s  {r:.2f}x real time")
+
+
 @app.function(image=face_image, timeout=300)
 def _sample_talking() -> bytes:
     """MuseTalk's sample face with its sample speech laid under it - a stand-in for 'a video of a person speaking'."""
@@ -1573,8 +1769,9 @@ def studio_card():
         words = [w for sg in h["segments"] for w in sg["words"]]
         end = words[-1]["end"] if words else 0.0
         sw, hw, dur = len(script.split()), len(words), float(h["duration"])
-        ok = bool(words) and hw <= sw * 1.3 + 1 and dur - end <= 1.5
-        note(f"   ears {name}: script {sw} words, heard {hw}, last word ends {end:.1f}s of {dur:.1f}s -> "
+        loud = float(h.get("loud_end") or dur)
+        ok = bool(words) and hw <= sw * 1.3 + 1 and loud - end <= 0.8
+        note(f"   ears {name}: script {sw} words, heard {hw}, last word ends {end:.1f}s, sound ends {loud:.1f}s of {dur:.1f}s -> "
              f"{'CLEAN' if ok else 'EXTRA SPEECH / BABBLE'} | " + " ".join(sg["text"] for sg in h["segments"])[:160])
         results[f"{name} (ears)"] = ok
 

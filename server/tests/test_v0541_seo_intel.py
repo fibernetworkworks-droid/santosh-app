@@ -1,4 +1,4 @@
-"""v0.536 SEO INTEL: tracked keywords from Search Console (+ exact positions via DataForSEO), AI visibility through the
+"""v0.541 SEO INTEL: tracked keywords from Search Console (+ exact positions via DataForSEO), AI visibility through the
 OpenAI / Gemini / Perplexity APIs, the Google Maps grid (Places API, ids only per point), DataForSEO competitors / gap /
 backlinks with her sealed login and a monthly ceiling. Every vendor is a mock transport."""
 import base64

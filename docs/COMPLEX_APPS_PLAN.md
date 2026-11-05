@@ -147,6 +147,15 @@ Not built: Google sign-in on iPhone (needs the GoogleSignIn SDK), passkeys, magi
   OWASP MASVS checklist; a failing gate blocks the store upload.
 
 ### J. Quality at scale — Phase 61
+**Status: BUILT in v0.540.0 JAANCH + DHEERE CHHODO** (`server/app/appmaker/quality.py` + `rollout.py`, kits
+`Flags.kt` / `Flags.swift`) — scenario tests per user story written as checked DATA and PLAYED over HTTP against a
+real server on a hidden twin of her app (a `must: refused` step is the privacy test: a refusal that does not happen
+is a failure); every rule / formula / function through the real engine both ways with coverage named; load on the
+twin; ANRs captured at all for the first time and told apart from crashes; Play staged rollout 5 → 20 → 50 → 100 with
+halt and rollback; server-side feature flags (the only rollback that works in minutes).
+Not built: iOS phased release (Android only), scenarios for payments / live tracking / chat, and a gate that BLOCKS a
+store upload on a failed run (the verdict is written, nothing reads it yet).
+**The checkpoint is NOT met:** this pillar ends on "all proof apps green" and no proof app exists.
 - From the spec, Opus writes scenario tests per user story ("customer orders, rider picks, customer rates") that run
   end to end against a real test server on both platforms; unit tests for every rule / function; load tests for
   big apps; ANR / crash monitoring; staged rollouts (5% → 100%), feature flags, instant rollback.

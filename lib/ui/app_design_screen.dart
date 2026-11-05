@@ -20,6 +20,7 @@ import 'app_pay.dart';
 import 'app_connect.dart';
 import 'app_components.dart';
 import 'app_family.dart';
+import 'app_jaanch.dart';
 import 'app_login.dart';
 import 'app_android.dart';
 import 'app_ios.dart';
@@ -857,6 +858,8 @@ class _AppDesignPageState extends State<AppDesignPage> {
             Glass(child: AppFamilyPanel(app: app, id: widget.id)),         // v0.435 PARIVAAR: apps on this data + partners
             const SizedBox(height: 10),
             Glass(child: AppLoginPanel(app: app, id: widget.id)),          // v0.455 SURAKSHIT LOGIN + security gates
+            const SizedBox(height: 10),
+            Glass(child: AppJaanchPanel(app: app, id: widget.id)),         // v0.540 JAANCH: proof, crashes, rollout
             const SizedBox(height: 10),
             Glass(child: StorePanel(app: app, id: widget.id)),
             const SizedBox(height: 10),

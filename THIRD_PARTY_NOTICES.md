@@ -166,14 +166,24 @@ distribute, sublicense, and/or sell copies of the Software, and to permit person
 do so, subject to the following conditions: The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
 
-## OpenSEO (ideas for SEO intel, v0.536)
+## crawl4ai (ideas only, no code) — v0.537 CRAWL BRAIN
 
-https://github.com/every-app/open-seo - MIT License, Copyright (c) 2026 Ben Senescu. Hoola's `server/app/seo/intel.py` and
-`seo/dfs.py` follow its feature set (rank tracking, AI visibility, local grid, DataForSEO competitor / backlink data) and its
-approach to matching brand mentions in AI answers (whole words, Unicode-equivalent text, URLs and e-mails not counted).
-The code is written fresh in Python; no OpenSEO source file is copied. Permission is hereby granted, free of charge, to any
-person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software
-without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
-and/or sell copies of the Software, subject to the following conditions: The above copyright notice and this permission
-notice shall be included in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT
-WARRANTY OF ANY KIND.
+Source read: https://github.com/unclecode/crawl4ai @ v0.9.5 (commit cae74b2), Apache-2.0.
+
+**No crawl4ai code is in this tree.** `server/app/crawl/` re-implements published algorithms from their
+formulas: a confidence-weighted stopping rule, a boilerplate-pruning content filter, best-first frontier
+scoring, sitemap/Common-Crawl URL seeding, data-vs-layout table scoring, chunking strategies, anti-bot
+block fingerprinting, proxy rotation, and a step script compiled to JavaScript.
+
+That is not only house style (the "port law" that built `app/aep`, `app/crew`, `app/dhara`). crawl4ai
+vendors a fork of **html2text** at `crawl4ai/html2text/` declaring upstream's own release `2024.2.26`,
+carrying no copyright line and no licence header — and **upstream html2text is distributed under the
+GPLv3** ("Originally written by Aaron Swartz. This code is distributed under the GPLv3", plus a GNU GPL v3
+`COPYING`). Both `markdown_generation_strategy.py` and `utils.py` import that fork, so every
+page-to-markdown conversion in the library runs through GPL'd code inside an Apache-2.0 repository.
+`server/app/agent/crawl_jobs.py` already keeps Firecrawl's AGPL engine out of this tree for the same
+reason.
+
+Two of crawl4ai's capabilities were deliberately **not** reproduced, and `server/app/crawl/__init__.py`
+records why: mining robots.txt `Disallow:` entries as a URL-discovery source, and minting rotating
+residential proxies from a commercial provider's API.

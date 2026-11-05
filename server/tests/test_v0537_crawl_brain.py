@@ -1,4 +1,4 @@
-"""v0.533 CRAWL BRAIN — the crawl4ai ideas, hand-built (the port law).
+"""v0.537 CRAWL BRAIN — the crawl4ai ideas, hand-built (the port law).
 
 Owner read unclecode/crawl4ai and said "give this all to hoola ai". Zero upstream code: crawl4ai vendors a
 fork of html2text, which upstream distributes under the GPLv3 with no header in the vendored copy, and

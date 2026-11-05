@@ -699,6 +699,9 @@ def _build(r: GameProject, holder: dict) -> None:
     errors = [] if ok else (checks[-1]["errors"] if checks else ["kuch nahi bana"])
     ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "task": task, "base": (_good(r)[-1]["n"] if _good(r) else 0),
            "src": _src_hash(vdir / "proj"), "bible": bib[1] if bib else 0,
+           # v0.455 PROVENANCE: the model(s) that wrote THIS build's code, so the store disclosure is a fact she can
+           # read off rather than a guess. Empty when nothing was asked (a data-only rebuild writes no new code).
+           "models": ai.used(),
            "assets": sorted(((ast or ("", {}))[1]).keys()), "packs": sorted(pk), "notes": notes, "fixed": fixed, "checks": checks[-4:],
            "errors": errors[:6], "files": sorted(files), "shots": play.get("shots", []) if ok else [],
            "warnings": play.get("warnings", []),

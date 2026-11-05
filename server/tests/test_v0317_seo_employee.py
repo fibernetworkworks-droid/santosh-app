@@ -274,7 +274,7 @@ def test_monthly_report_pdf_is_made_and_delivered(seo):
 def test_api_hire_onboard_desk(seo, monkeypatch):
     from app.main import app
     from app.seo import desk
-    # the desk's background start runs inline here; patched on the desk's own reference only (v0.536), because swapping
+    # the desk's background start runs inline here; patched on the desk's own reference only (v0.541), because swapping
     # the GLOBAL threading.Thread broke the test client's start-up whenever its thread pool needed a new worker
     import types
     monkeypatch.setattr(desk, "threading", types.SimpleNamespace(Thread=lambda target, args=(), kwargs=None, daemon=None: type(

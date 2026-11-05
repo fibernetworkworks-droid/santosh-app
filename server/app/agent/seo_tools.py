@@ -25,7 +25,7 @@ SEO_TOOLS = [
         "v0.317 HIRED SEO EMPLOYEE (only when she hired it in Employees): action=report_pdf (the monthly PDF report now), "
         "action=roadmap (rebuild the 90-day plan draft), action=plan_item: item_id, status planned|doing|waiting_her|done|skipped, "
         "action=indexnow (her IndexNow key file; once she puts it on the site, changed pages go to Bing / IndexNow weekly). "
-        "v0.536 SEARCH INTEL: action=track: keywords [what people search] (remove=true to stop) -> followed daily from Search "
+        "v0.541 SEARCH INTEL: action=track: keywords [what people search] (remove=true to stop) -> followed daily from Search "
         "Console; action=rank_check: keywords (optional) -> exact Google position + top 3 via DataForSEO (her key, costs, runs in "
         "the background); action=keyword_ideas: keywords [seed words] -> monthly searches (Google Keyword Planner if her Google Ads "
         "is linked, else DataForSEO); action=ai_prompts: prompts [questions customers ask ChatGPT / Gemini] (add); action="
@@ -61,7 +61,7 @@ SEO_TOOLS = [
         "desk (v0.317 the hired SEO Employee: KPIs vs baseline, 90-day plan board, alerts, schedule; says if not hired) | "
         "health (v0.319 last audit: health score in 7 parts with critical/high/medium/low counts, E-E-A-T signals, local "
         "score, which AI search / training bots robots.txt lets in) | changes (what changed on her pages since the last audit) | "
-        "updates (Google's confirmed core / spam updates, to explain a rise or drop) | ranks (v0.536 her tracked keywords: "
+        "updates (Google's confirmed core / spam updates, to explain a rise or drop) | ranks (v0.541 her tracked keywords: "
         "Search Console position + 7-day move + exact Google check) | ai (AI answers: % named / cited per engine, competitors "
         "named, sites cited instead, per question) | maps (her Maps grids: top-3 points, average rank, who leads) | intel "
         "(everything + this month's spend and DataForSEO status)."),

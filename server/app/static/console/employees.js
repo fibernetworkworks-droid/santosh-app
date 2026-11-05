@@ -274,7 +274,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) desk(el); }, 10000);
   }
 
-  // ------------------------------------------------------------ v0.536 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO
+  // ------------------------------------------------------------ v0.541 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO
   const ENG = {openai: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity'};
   const cell = r => r == null ? 'var(--line)' : r <= 3 ? 'var(--ok)' : r <= 10 ? 'var(--warn)' : 'var(--bad)';
   async function intel(el) {
@@ -1231,7 +1231,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   let GS_ROLE_SID = '';        // ... for this Studio project ('' = her own, no project)
   async function game(el) {
     clearTimeout(GTIMER);
-    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
+    if (GS_ROLE) return ({runtime: gsRuntime, liveops: gsLiveops, big: gsBig, arena: gsArena, prov: gsProv, world: gsWorld, physics: gsPhysics, audio: gsAudio, haptics: gsHaptics, net: gsNet, xr: gsXr, sim: gsSim, twin: gsTwin, vfx: gsVfx}[GS_ROLE] || gsWorld)(el);
     if (GS_OPEN) return gsBoard(el, GS_OPEN);
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Game Desk</h2></div><div class="empty">Loading…</div>';
     let d, sp = {projects: []};
@@ -1938,6 +1938,53 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       extra: x => { const q = (x.report || {}).queue; return q ? `<p class="em-small">${num(q.frames)} frames · ${num(q.requeued)} re-queued · farm ${num(q.wall_hours)} h · ${esc(Object.entries(q.cost_inr || {}).map(([s, c]) => s + ' Rs ' + c).join(' · '))}</p>` : ''; }});
   }
 
+  // ---------------------------------------------------------------- v0.455 Provenance (what shipped, and what is yours)
+  async function gsProv(el) {
+    clearTimeout(GTIMER);
+    const sid = GS_ROLE_SID;
+    let d;
+    try { d = await api('GET', `/api/gamedesk/provenance/${encodeURIComponent(sid)}`); } catch (e) { toast(e.message, true); return roleBack(el); }
+    const a = d.assets, h = d.human, sv = d.steam, c = d.code;
+    const rows = (list, why) => list.map(x => `<tr><td>${esc(x.key)}</td><td class="em-small">${esc(x.kind)}</td><td class="em-small">${esc(x.model || x.how)}</td>
+      <td class="em-small">${esc((x.at || '').slice(0, 10))}</td><td>${x.cost_inr ? '₹' + num(x.cost_inr) : '-'}</td></tr>`).join('')
+      || `<tr><td colspan="5" class="muted em-small">${esc(why)}</td></tr>`;
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="pvBack">← Board</button><h2>Where it came from</h2></div>
+      <p class="muted em-small">${esc(d.how_to_read_it)}</p>
+      <section class="tile gl"><h3>The store answer (a draft — you sign it)</h3>
+        <p class="em-small"><b>AI content that ships and players see:</b> ${tag(sv.pre_generated.answer === 'Yes' ? '' : 'ok', sv.pre_generated.answer)}</p>
+        <pre class="gs-sum rt-cfg">${esc(sv.pre_generated.draft)}</pre>
+        <p class="em-small"><b>Content the game generates while running:</b> ${tag('ok', sv.live_generated.answer)} <span class="muted">${esc(sv.live_generated.draft)}</span></p>
+        ${(sv.judgement_calls || []).map(j => `<div class="tile lo-row"><b>Your call: ${esc(j.item)}</b><div class="em-small">${esc(j.fact)}</div>
+          <div class="em-small">• ${esc(j.one_reading)}</div><div class="em-small">• ${esc(j.other_reading)}</div>
+          <div class="em-small"><b>${esc(j.who_decides)}</b></div></div>`).join('')}
+        ${(sv.unknowns || []).map(u => `<div class="badc em-small">${esc(u)}</div>`).join('')}
+        <p class="muted em-small">${esc(sv.you_sign_it)}</p>
+        <p class="em-small"><b>Store line:</b> ${esc(d.disclosure.line)}${d.disclosure.fab_tag ? ` <span class="muted">(Fab tag: ${esc(d.disclosure.fab_tag)})</span>` : ''}</p></section>
+      <section class="tile gl"><h3>What is in the game</h3>
+        <div class="ph-grid"><div><b>${num(a.counts.generative)}</b><div class="muted em-small">a model made</div></div>
+          <div><b>${num(a.counts.procedural)}</b><div class="muted em-small">code made</div></div>
+          <div><b>${num(a.counts.hers)}</b><div class="muted em-small">your own files</div></div>
+          <div><b>${num(a.counts.made_but_never_approved)}</b><div class="muted em-small">made, never approved</div></div></div>
+        <p class="em-small"><b>A model made these — these are what a store survey asks about</b></p>
+        <table class="ph-tbl"><thead><tr><th>Asset</th><th>Kind</th><th>Model</th><th>When</th><th>Cost</th></tr></thead><tbody>${rows(a.generative, 'None.')}</tbody></table>
+        <p class="em-small"><b>Code made these — not AI</b> <span class="muted">${esc(a.procedural_warning)}</span></p>
+        <table class="ph-tbl"><thead><tr><th>Asset</th><th>Kind</th><th>How</th><th>When</th><th>Cost</th></tr></thead><tbody>${rows(a.procedural, 'None.')}</tbody></table>
+        ${a.hers.length ? `<p class="em-small"><b>Your own files</b></p><table class="ph-tbl"><tbody>${rows(a.hers, '')}</tbody></table>` : ''}
+        ${a.unknown.length ? `<div class="badc em-small">${num(a.unknown.length)} asset(s) have a source Hoola cannot classify — open them before you answer a survey.</div>` : ''}</section>
+      <section class="tile gl"><h3>The code</h3>
+        <p class="em-small">Live version ${num(c.live_version)} · ${c.models_live_build.length ? esc(c.models_live_build.join(', ')) : '<span class="muted">no model recorded</span>'} · ${num(c.files)} files</p>
+        <p class="muted em-small">${esc(c.note)}</p></section>
+      <section class="tile gl"><h3>What you did — the part that may be yours</h3>
+        <div class="ph-grid"><div><b>${num(h.counts.decisions)}</b><div class="muted em-small">decisions</div></div>
+          <div><b>${num(h.counts.versions_chosen)}</b><div class="muted em-small">versions you picked</div></div>
+          <div><b>${num(h.counts.rejected)}</b><div class="muted em-small">you rejected</div></div>
+          <div><b>${num(h.counts.uploaded)}</b><div class="muted em-small">your own files</div></div></div>
+        ${h.thin_warning ? `<div class="badc em-small">${esc(h.thin_warning)}</div>` : ''}
+        <p class="muted em-small">${esc(h.why_it_matters)}</p>
+        <ul class="em-small">${(h.decisions_she_made || []).slice(0, 10).map(x => `<li>${esc(x.text)}${x.why ? ` — <span class="muted">${esc(x.why)}</span>` : ''}</li>`).join('')}</ul></section>`;
+    el.querySelector('#pvBack').addEventListener('click', () => roleBack(el));
+  }
+
   // ---------------------------------------------------------------- v0.447 Game Arena (numbers, not claims)
   let GAR_OPEN = '';
   async function gsArena(el) {
@@ -2218,6 +2265,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <button class="btn soft" type="button" id="gsSimBtn">Simulator</button>
         <button class="btn soft" type="button" id="gsRtBtn">Runtime & editor</button>
         <button class="btn soft" type="button" id="gsLoBtn">Live ops</button>
+        <button class="btn soft" type="button" id="gsPvBtn">Where it came from</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
         <button class="btn soft" type="button" id="gsAst">Assets${(p.assets || {}).count ? ' · ' + num(p.assets.in_game) + ' in game' : ''}${(p.assets || {}).waiting_ok ? ' · ' + num(p.assets.waiting_ok) + ' for your OK' : ''}${(p.assets || {}).priced ? ' · ₹' + num(p.assets.priced) + ' card' : ''}</button></div>
       <p class="muted em-sub">${esc(p.goal || '')}</p>
@@ -2277,6 +2325,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     el.querySelector('#gsSimBtn').addEventListener('click', () => { GS_ROLE = 'sim'; GS_ROLE_SID = id; gsSim(el); });
     el.querySelector('#gsRtBtn').addEventListener('click', () => { GS_ROLE = 'runtime'; GS_ROLE_SID = id; gsRuntime(el); });
     el.querySelector('#gsLoBtn').addEventListener('click', () => { GS_ROLE = 'liveops'; GS_ROLE_SID = id; gsLiveops(el); });
+    el.querySelector('#gsPvBtn').addEventListener('click', () => { GS_ROLE = 'prov'; GS_ROLE_SID = id; gsProv(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
       const title = el.querySelector('#gsT').value.trim();
       if (title.length < 3) { toast('Write the task in one line.', true); return; }

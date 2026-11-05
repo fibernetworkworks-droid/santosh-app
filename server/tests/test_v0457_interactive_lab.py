@@ -241,7 +241,7 @@ def test_e2e_bench_wired():
     import re
     import struct
     wf = open("../.github/workflows/interactive-lab.yml").read()
-    assert "bench_e2e" in wf and "e2e, studio, deploy" in wf
+    assert "bench_e2e" in wf and "e2e, studio, voices, deploy" in wf
     assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
@@ -423,3 +423,74 @@ def test_studio_card_has_ears():
     assert "def heard(" in card and "Hear().transcribe.spawn(" in card and "EXTRA SPEECH / BABBLE" in card
     for n in ("r1", "r2", "r3", "r5", "r6", "r7"):
         assert f'heard("' in card and f", {n}, " in card
+
+
+def _trim_ns():
+    ns: dict = {}
+    for fn in ("_chars", "_trim_point", "_cut_wav"):
+        exec(re.search(rf"def {fn}\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    return ns
+
+
+def _w(pairs):
+    return [{"w": w, "start": a, "end": b} for w, a, b in pairs]
+
+
+def test_ears_cut_the_babble_measured_on_run_36():
+    """Whisper's real words from studio run 36: the line, a pause, then babble. The cut lands after the line."""
+    ns = _trim_ns()
+    photo = _w([("यहाई", 0.0, 0.4), ("एक", 0.4, 0.5), ("तस्वीशे", 0.5, 0.9), ("बना", 0.9, 1.1), ("वीडियो", 1.1, 1.4), ("है.", 1.4, 1.6),
+                ("हमारे", 3.8, 4.3), ("अदर", 4.3, 4.6), ("अपने", 4.6, 5.0), ("अद", 5.0, 5.2), ("कर", 5.2, 5.4), ("सबसे", 5.4, 5.7),
+                ("तुमी", 5.7, 6.0), ("इस्तात", 6.0, 6.4), ("की", 6.4, 6.6), ("है.", 6.6, 6.7)])
+    assert ns["_trim_point"](photo, "यह एक तस्वीर से बना वीडियो है।", 7.0) == 1.85
+    dub = _w([("या", 0.0, 0.3), ("वही", 0.3, 0.5), ("वेक्ति", 0.5, 0.9), ("है,", 0.9, 1.1), ("अब", 1.4, 1.6), ("हिन्दी", 1.6, 1.8),
+              ("में", 1.8, 2.0), ("बोड़", 2.0, 2.2), ("रहा", 2.2, 2.4), ("है.", 2.4, 2.5)])
+    assert ns["_trim_point"](dub, "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", 7.0) == 2.75    # silent-ish mumble tail
+    clean = _w([("नमस्ते", 0.0, 0.5), ("आरो", 0.5, 0.9), ("आपकी", 1.1, 1.5), ("कक्षा", 1.5, 2.0), ("कल", 2.0, 2.2), ("सुबह", 2.2, 2.5),
+                ("दस", 2.5, 2.6), ("बजे", 2.6, 2.8), ("है", 2.8, 2.9)])
+    assert ns["_trim_point"](clean, "नमस्ते आरव, आपकी कक्षा कल सुबह दस बजे है।", 3.2) is None          # nothing worth cutting
+    assert ns["_trim_point"]([], "x", 5.0) is None
+
+
+def test_cut_wav_keeps_the_head_and_fades():
+    import io
+    import struct
+    import wave
+    ns = _trim_ns()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as o:
+        o.setnchannels(1)
+        o.setsampwidth(2)
+        o.setframerate(24000)
+        o.writeframes(struct.pack("<h", 10000) * 24000 * 3)
+    out = ns["_cut_wav"](buf.getvalue(), 1.5)
+    with wave.open(io.BytesIO(out), "rb") as r:
+        assert r.getnframes() == 36000 and r.getframerate() == 24000
+        last = struct.unpack("<h", r.readframes(36000)[-2:])[0]
+    assert abs(last) < 1000                                   # faded, no click
+
+
+def test_studio_voice_goes_through_the_ears():
+    sc = MODAL_SRC[MODAL_SRC.index("def _speak_chunks"):MODAL_SRC.index("def studio_job")]
+    assert "ear.trim.spawn(w, c, lang)" in sc and "except Exception" in sc     # fail-open: a long tail beats a lost sentence
+    hear = MODAL_SRC[MODAL_SRC.index("class Hear:"):MODAL_SRC.index("def _speak_chunks")]
+    assert "def trim(self, wav: bytes, script: str" in hear and '"loud_end": loud_end' in hear
+    assert "loud - end <= 0.8" in MODAL_SRC                   # ears judge real sound after the last word, not silence
+
+
+def test_voice_card_scores_clarity_fairly():
+    ns: dict = {}
+    for fn in ("_norm_hi", "_cer"):
+        exec(re.search(rf"def {fn}\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    cer = ns["_cer"]
+    assert cer("गति का मतलब", "गति का मतलब।") == 0.0                 # punctuation / spaces never count
+    assert cer("चीज़ जगह तेज़ी", "चीज जगह तेजी") == 0.0                  # nukta: whisper drops it, a listener does not mind
+    assert cer("मैं हूँ", "में हूं") < 0.2                                   # chandrabindu = anusvara
+    assert cer("आज हम गति के बारे में", "आज हम ददी के बारे में") > 0.05     # the real mistake whisper keeps hearing
+    assert cer("गति", "") == 1.0
+    card = MODAL_SRC[MODAL_SRC.index("def voice_card"):]
+    assert "IndicParler().speak.spawn" in card and "Chatterbox().speak.spawn" in card
+    assert ".get(timeout=900) for t in VOICE_CARD_LINES" in card                # one warm container per voice, not 8 cold
+    assert "indicf5" not in card                                                # lab_only voices are not candidates to ship
+    wf = WORKFLOW
+    assert "modal run modal_app.py::voice_card" in wf and "inputs.job == 'voices') && always()" in wf
