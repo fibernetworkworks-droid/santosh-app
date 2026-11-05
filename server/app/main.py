@@ -9313,6 +9313,297 @@ def _shop_owner(fn, *a):
         raise HTTPException(e.code, str(e))
 
 
+# ---- v0.538 HOOLA CMS (web Step 6 part 2, W8): her team - writers / editors / publishers - drafts, review, schedule, history
+def _cms_call(fn):
+    from .site import cms as CM
+    from .site import webapp as W
+    try:
+        return JSONResponse(fn(), headers={**_SITE_APP_CORS, "Cache-Control": "no-store"})
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    except CM.CmsError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+
+
+def _cms_site(site_id: str) -> str:
+    from .site import service as S
+    from .site import webapp as W
+    from .site.models import Site
+    from .db import session as _s
+    with _s() as s:
+        if s.get(Site, site_id) is None:
+            raise W.AppError("not found", 404)
+    return site_id
+
+
+def _cms_who(site_id: str, request: Request):
+    from .site import cms as CM
+    _cms_site(site_id)
+    return CM.who(site_id, _site_tok(request))
+
+
+@app.get("/cms/{site_id}/", response_class=HTMLResponse)
+async def cms_page(site_id: str):
+    """Her team's own page (works without her Hoola login): invite / login, drafts, page texts, review, publish, history."""
+    page = (STATIC / "cms" / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(page.replace("__SITE__", re.sub(r"[^A-Za-z0-9_-]", "", site_id)),
+                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex", "X-Frame-Options": "DENY",
+                                 "Referrer-Policy": "no-referrer",          # the invite link never leaks in a Referer
+                                 "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+                                                            "connect-src 'self'; img-src 'self' data:; base-uri 'none'; "
+                                                            "form-action 'none'; frame-ancestors 'none'"})
+
+
+@app.post("/api/site-cms/{site_id}/accept")
+async def site_cms_accept(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.accept(_cms_site(site_id), str(b.get("invite") or ""),
+                                                                str(b.get("password") or ""), str(b.get("name") or "")))
+
+
+@app.post("/api/site-cms/{site_id}/login")
+async def site_cms_login(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.login(_cms_site(site_id), str(b.get("email") or ""),
+                                                               str(b.get("password") or ""), _ip(request)))
+
+
+@app.get("/api/site-cms/{site_id}/home")
+async def site_cms_home(site_id: str, request: Request, status: str = ""):
+    """Me + the pages + the drafts I may see + the blog's posts (to edit one)."""
+    from .site import blog as BL
+    from .site import cms as CM
+
+    def go():
+        w = _cms_who(site_id, request)
+        return {"me": CM._me(w.m), "pages": CM.pages(site_id), "drafts": CM.drafts(site_id, w, status),
+                "posts": [{"slug": p["slug"], "title": p["title"], "status": p["status"]} for p in BL.posts(site_id)]}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/page/{slug:path}")
+async def site_cms_page_texts(site_id: str, slug: str, request: Request):
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        return {"texts": CM.page_texts(site_id, slug)}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/post/{slug}")
+async def site_cms_post(site_id: str, slug: str, request: Request):
+    from .site import blog as BL
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        p = next((x for x in BL.posts(site_id) if x["slug"] == slug), None)
+        if p is None:
+            raise CM.CmsError("Post nahi mila.", 404)
+        return {"post": {k: p.get(k) for k in ("slug", "title", "body", "excerpt", "category", "status")}}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/drafts/{did}")
+async def site_cms_draft(site_id: str, did: str, request: Request):
+    from .site import cms as CM
+    return await asyncio.to_thread(_cms_call, lambda: CM.draft(site_id, _cms_who(site_id, request), did))
+
+
+@app.post("/api/site-cms/{site_id}/drafts")
+async def site_cms_draft_new(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.save(site_id, _cms_who(site_id, request), b))
+
+
+@app.put("/api/site-cms/{site_id}/drafts/{did}")
+async def site_cms_draft_save(site_id: str, did: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.save(site_id, _cms_who(site_id, request), b, did))
+
+
+@app.post("/api/site-cms/{site_id}/drafts/{did}/move")
+async def site_cms_draft_move(site_id: str, did: str, request: Request):
+    """{to: review | approved | returned | published | scheduled | withdrawn, note?, when?}"""
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.move(site_id, _cms_who(site_id, request), did, str(b.get("to") or ""),
+                                                              str(b.get("note") or ""), str(b.get("when") or "")))
+
+
+@app.get("/api/site-cms/{site_id}/history")
+async def site_cms_history(site_id: str, request: Request, kind: str = "", target: str = ""):
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        return {"history": CM.history(site_id, kind, target)}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.post("/api/site-cms/{site_id}/history/{rid}/restore")
+async def site_cms_restore(site_id: str, rid: str, request: Request):
+    from .site import cms as CM
+    return await asyncio.to_thread(_cms_call, lambda: CM.restore(site_id, rid, _cms_who(site_id, request)))
+
+
+def _cms_owner(tenant: str, ref: str):
+    from .site import catalog as CAT
+    return CAT._site(tenant, ref).id
+
+
+@app.get("/api/sites/{ref}/cms", dependencies=[Depends(require_key)])
+async def sites_cms(ref: str, tenant: str = Depends(current_tenant)):
+    """Her view: the team, every draft, the history."""
+    from .site import cms as CM
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        w = CM.Who(owner=True, site_id=sid)
+        return {"team": CM.team(sid), "drafts": CM.drafts(sid, w), "history": CM.history(sid)[:40], "site_id": sid}
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/cms/invite", dependencies=[Depends(require_key)])
+async def sites_cms_invite(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {email, name, role}: a one-time invite link to share (7 days)."""
+    from .site import cms as CM
+    b = body or {}
+    base = (get_settings().public_base_url or "").rstrip("/")
+    return await asyncio.to_thread(_cat_call, lambda: CM.invite(_cms_owner(tenant, ref), str(b.get("email") or ""),
+                                                                 str(b.get("name") or ""), str(b.get("role") or "writer"), base))
+
+
+@app.post("/api/sites/{ref}/cms/team/{mid}", dependencies=[Depends(require_key)])
+async def sites_cms_member(ref: str, mid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import cms as CM
+    b = body or {}
+    return await asyncio.to_thread(_cat_call, lambda: CM.set_member(_cms_owner(tenant, ref), mid, str(b.get("role") or ""),
+                                                                     bool(b.get("remove"))))
+
+
+@app.post("/api/sites/{ref}/cms/drafts/{did}/move", dependencies=[Depends(require_key)])
+async def sites_cms_move(ref: str, did: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her own tap on a team draft: approve / send back / publish now / schedule."""
+    from .site import cms as CM
+    b = body or {}
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        return CM.move(sid, CM.Who(owner=True, site_id=sid), did, str(b.get("to") or ""), str(b.get("note") or ""), str(b.get("when") or ""))
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/cms/history/{rid}/restore", dependencies=[Depends(require_key)])
+async def sites_cms_restore(ref: str, rid: str, tenant: str = Depends(current_tenant)):
+    from .site import cms as CM
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        return CM.restore(sid, rid, CM.Who(owner=True, site_id=sid))
+    return await asyncio.to_thread(_cat_call, go)
+
+
+# ---- v0.534 BADA CATALOGUE (web Step 6, W8): her products / doctors / properties from her file / Sheet / dataset -> pages
+def _cat_call(fn, *a, **kw):
+    from .site import catalog as CAT
+    from .site import service as S
+    from .site import webapp as W
+    try:
+        return fn(*a, **kw)
+    except CAT.CatalogError as e:
+        raise HTTPException(e.code, str(e))
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+    except W.AppError as e:                          # v0.534 the team CMS / webapp refusals carry their code
+        raise HTTPException(e.code, str(e))
+    except Exception as e:                           # her Sheet not joined / not found: said plainly
+        if type(e).__name__ in ("NotConnected", "SheetError", "DataError"):
+            raise HTTPException(400, str(e))
+        raise
+
+
+@app.get("/api/sites/{ref}/catalog", dependencies=[Depends(require_key)])
+async def sites_catalog(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import catalog as CAT
+    return await asyncio.to_thread(_cat_call, CAT.lists, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/catalog/preview", dependencies=[Depends(require_key)])
+async def sites_catalog_preview(ref: str, request: Request, tenant: str = Depends(current_tenant)):
+    """A file (multipart: file, coll, label, item_label, mapping JSON) or JSON {coll, sheet, tab | dataset, mapping}.
+    Nothing is written: the answer says what WOULD happen; her Apply tap (with its hash) writes it."""
+    from .site import catalog as CAT
+    ctype = request.headers.get("content-type", "")
+    if ctype.startswith("multipart/"):
+        form = await request.form()
+        up = form.get("file")
+        if up is None or not hasattr(up, "read"):
+            raise HTTPException(400, "File chuniye (CSV / Excel).")
+        raw = await up.read()
+        b = {k: str(form.get(k) or "") for k in ("coll", "label", "item_label", "mapping")}
+        try:
+            mapping = json.loads(b["mapping"]) if b["mapping"] else None
+        except ValueError:
+            mapping = None
+
+        def go():
+            rows = CAT.parse_file(raw, getattr(up, "filename", "") or "")
+            return CAT.preview(tenant, ref, b["coll"], rows, mapping, b["label"], b["item_label"], "file")
+        return await asyncio.to_thread(_cat_call, go)
+    b = await _json_body(request)
+
+    def go2():
+        if b.get("sheet"):
+            rows, src = CAT.from_sheet(tenant, str(b["sheet"]), str(b.get("tab") or "") or None), "sheet"
+        elif b.get("dataset"):
+            rows, src = CAT.from_dataset(tenant, str(b["dataset"])), "dataset"
+        else:
+            raise CAT.CatalogError("File, Google Sheet ya dataset - koi ek chahiye.")
+        return CAT.preview(tenant, ref, str(b.get("coll") or ""), rows, b.get("mapping") if isinstance(b.get("mapping"), dict) else None,
+                           str(b.get("label") or ""), str(b.get("item_label") or ""), src)
+    return await asyncio.to_thread(_cat_call, go2)
+
+
+@app.post("/api/sites/{ref}/catalog/apply", dependencies=[Depends(require_key)])
+async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {hash, replace?}: the preview she saw is written (replace = items not in the file are hidden, never deleted)."""
+    from .site import catalog as CAT
+    from .site import service as S
+    b = body or {}
+
+    def go():
+        out = CAT.apply(tenant, ref, str(b.get("hash") or ""), bool(b.get("replace")))
+        r = CAT._site(tenant, ref)
+        if r.version:                                # her tap: the next checked version carries the pages (going live = her launch)
+            S._after_edit(S._load(r.id), f"catalogue: {out['coll']}")
+            out["say"] = out["say"].split(" Website ki")[0] + " Nayi version ban rahi hai (jaanch ke baad); live karna aapke tap se."
+        return out
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/catalog/images", dependencies=[Depends(require_key)])
+async def sites_catalog_images(ref: str, tenant: str = Depends(current_tenant)):
+    """Fetch + resize the photos not made yet (resumes; runs in the background)."""
+    from .site import catalog as CAT
+
+    def go():
+        r = CAT._site(tenant, ref)
+        CAT.start_images(r.id)
+        return CAT.lists(tenant, ref)
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.delete("/api/sites/{ref}/catalog/{coll}", dependencies=[Depends(require_key)])
+async def sites_catalog_remove(ref: str, coll: str, tenant: str = Depends(current_tenant)):
+    from .site import catalog as CAT
+    return await asyncio.to_thread(_cat_call, CAT.remove, tenant, ref, coll)
+
 @app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
 async def sites_payments_connect(ref: str, tenant: str = Depends(current_tenant)):
     """v0.446 her website's online payments live on its app project: link it, then the app pay routes take her keys."""
