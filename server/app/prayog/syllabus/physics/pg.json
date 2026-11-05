@@ -3917,7 +3917,8 @@
       "error estimate"
      ],
      "conditions": [],
-     "kernel": "numerics"
+     "kernel": "numerics",
+     "built": "cr-interpolation"
     },
     {
      "id": "finite-difference-pde",
@@ -3938,7 +3939,8 @@
       "stability limit"
      ],
      "conditions": [],
-     "kernel": "fd_pde"
+     "kernel": "fd_pde",
+     "built": "cr-finite-difference-pde"
     },
     {
      "id": "finite-element-intro",
@@ -3954,7 +3956,8 @@
       "solution vs mesh size"
      ],
      "conditions": [],
-     "kernel": "fem1d"
+     "kernel": "fem1d",
+     "built": "cr-finite-element-intro"
     },
     {
      "id": "least-squares-fit",
@@ -3974,7 +3977,8 @@
       "chi-square"
      ],
      "conditions": [],
-     "kernel": "fit"
+     "kernel": "fit",
+     "built": "cr-least-squares-fit"
     },
     {
      "id": "maximum-likelihood",
@@ -3992,7 +3996,8 @@
       "goodness of fit"
      ],
      "conditions": [],
-     "kernel": "fit"
+     "kernel": "fit",
+     "built": "cr-maximum-likelihood"
     },
     {
      "id": "random-deviates",
@@ -4013,7 +4018,8 @@
       "histogram vs target"
      ],
      "conditions": [],
-     "kernel": "mc"
+     "kernel": "mc",
+     "built": "cr-random-deviates"
     },
     {
      "id": "random-walk",
@@ -4032,7 +4038,8 @@
       "2D",
       "3D"
      ],
-     "kernel": "random_walk"
+     "kernel": "random_walk",
+     "built": "cr-random-walk"
     },
     {
      "id": "mc-decay-chain",
@@ -4050,7 +4057,8 @@
       "secular equilibrium"
      ],
      "conditions": [],
-     "kernel": "decay"
+     "kernel": "decay",
+     "built": "cr-mc-decay-chain"
     },
     {
      "id": "mc-two-level-spin",
@@ -4065,7 +4073,8 @@
       "specific heat"
      ],
      "conditions": [],
-     "kernel": "ising"
+     "kernel": "ising",
+     "built": "cr-mc-two-level-spin"
     },
     {
      "id": "mc-ising-msc",
@@ -4085,7 +4094,8 @@
       "1D lattice",
       "2D lattice"
      ],
-     "kernel": "ising"
+     "kernel": "ising",
+     "built": "cr-mc-ising"
     },
     {
      "id": "mc-integration",
@@ -4104,7 +4114,8 @@
       "error vs N"
      ],
      "conditions": [],
-     "kernel": "mc"
+     "kernel": "mc",
+     "built": "cr-mc-integration"
     },
     {
      "id": "mc-scattering-toy",
@@ -4118,7 +4129,8 @@
       "angular distribution"
      ],
      "conditions": [],
-     "kernel": "mc"
+     "kernel": "mc",
+     "built": "cr-mc-scattering"
     },
     {
      "id": "polynomial-roots",
@@ -4137,7 +4149,8 @@
       "convergence"
      ],
      "conditions": [],
-     "kernel": "numerics"
+     "kernel": "numerics",
+     "built": "cr-polynomial-roots"
     },
     {
      "id": "dft-band-structure",

@@ -22,9 +22,20 @@
     if (!make) throw new Error('No studio module for ' + (lab.rig || lab.id));
     root.innerHTML = '';
     var S = toolkit(root, lab);
-    var exp = make(S);
-    S.exp = exp;
-    workflow(S, lab, exp);
+    try {
+      var exp = make(S);
+      S.exp = exp;
+      workflow(S, lab, exp);
+    } catch (err) {                                  // a rig that throws must not leave a render loop running on an empty scene
+      S.dead = true;
+      window.__studioError = String((err && err.message) || err);
+      console.error(err);
+      root.innerHTML = '';
+      var m = el('p', 'err', 'This experiment could not start: ' + window.__studioError);
+      m.style.cssText = 'padding:16px;color:#b42318';
+      root.appendChild(m);
+      throw err;
+    }
     window.__studio = S;
     return S;
   }
@@ -533,6 +544,7 @@
     window.addEventListener('resize', resize); S.resize = resize; setTimeout(resize, 0);
     var prev = performance.now();
     function frame(now) {
+      if (S.dead) return;                            // stopped: do not render or reschedule
       var dt = Math.min(0.05, (now - prev) / 1000); prev = now;
       for (var i = tweens.length - 1; i >= 0; i--) { var tw = tweens[i], k = Math.min(1, (now - tw.t0) / tw.ms); tw.fn(ease(k)); if (k >= 1) { tweens.splice(i, 1); tw.res(); } }
       if (!S.fast) try { if (S.exp && S.exp.tick) S.exp.tick(dt); } catch (err) { if (!S._tickErr) { S._tickErr = 1; console.error(err); S.say('Something went wrong in the simulation: ' + err.message); } }

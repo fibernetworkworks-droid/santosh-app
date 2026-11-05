@@ -29,7 +29,10 @@ const only = process.argv.slice(3);
     let out;
     try {
       await page.goto(`${base}/static/prayog/lab.html?id=${id}&test=1`);
-      await page.waitForFunction(() => window.__studio && window.__studio.steps, null, { timeout: +(process.env.LOAD_MS || 300000) });
+      // a rig that throws on start sets window.__studioError: fail at once with its message instead of waiting out the budget
+      await page.waitForFunction(() => window.__studioError || (window.__studio && window.__studio.steps), null, { timeout: +(process.env.LOAD_MS || 300000) });
+      const startErr = await page.evaluate(() => window.__studioError || '');
+      if (startErr) throw new Error('rig failed to start: ' + startErr);
       if (process.env.SHOTS) await page.screenshot({ path: `${process.env.SHOTS}/${id}-0.png` });
       out = await page.evaluate(async () => {
         const S = window.__studio, log = [];

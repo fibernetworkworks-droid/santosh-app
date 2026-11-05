@@ -191,3 +191,12 @@ def test_no_revoked_row_counts_and_no_claim_points_at_a_lab_that_does_not_open()
         for ch in d["chapters"]:
             for st in ch["setups"]:
                 assert not (st["id"] in revoked and st.get("built")), f"revoked row counted: {st['id']}"
+
+
+def test_a_rig_that_throws_on_start_stops_its_render_loop_and_the_walker_fails_fast():
+    """A rig that threw during start used to leave the render loop running on an empty scene (a browser pinned at 360 %
+    CPU) while the walker waited out its whole budget. start() now marks the studio dead and reports the error."""
+    js = (STATIC / "studio" / "studio.js").read_text()
+    assert "S.dead = true" in js and "if (S.dead) return;" in js and "window.__studioError" in js
+    walk = (Path(__file__).resolve().parent.parent / "tools" / "prayog_walk.js").read_text()
+    assert "window.__studioError" in walk and "rig failed to start" in walk
