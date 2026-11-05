@@ -19273,3 +19273,69 @@ re-applied coherently 0.521.0 -> 0.522.0 + +550 -> +551, both works kept, count-
 later version). NOT VERIFIED live: the first real site evening on voice, the first RA-bill week, the first demand letter - her
 pilot (one contractor, one project, Maharashtra) is the test. Mera PC freeze respected: nothing in server/app/pc/, desktop/
 or lib/ touched.
+
+## v0.531.0 PRAYOGSHALA step 2 — the coding lab wired into the loop
+
+Owner: *"GO STEP 2."* v0.456 built the sealed Docker box and **nothing called it** — which, by this repo's own hard-won
+rule (*"a module's tests passing says it works, never that anything calls it"*), means it did not work yet. This is the
+caller.
+
+**`devsahayak/lab.py`** — one workspace per coding task. `LAB.for_task()` checks the switch (`dev_lab`), that Docker
+answers, and that a command is **declared** (her word / `.hoola/lab.json` / the repo's rules / its CI / a language
+default); a command Hoola merely *read* keeps the lab **shut for that task** with the reason logged, because the rule
+from v0.456 stands — nothing Hoola read runs without her tap. One clone is made and reused for every check in the task
+(the **persistent workspace** the research ranked first for long multi-file work), and deleted in a `finally`.
+
+**Two loop tools**, offered only when the lab is usable:
+- **`run_check`** runs her command on the code **as it is right now**: `overlay = dict(ws.current)` writes every
+  in-memory edit — including brand-new files — over the checkout before the container starts. Without that the lab
+  would only ever test code that is already pushed, which is the whole problem it exists to solve. Optional
+  `only` narrows the run to one test file **when that can be done honestly** (`spec.one_file`: the language's own
+  one-file form, or a trailing path for pytest/jest/go/cargo-style commands) and says so when it cannot, because
+  appending a path to an arbitrary command is how a check silently tests nothing.
+- **`grep_log`** searches the last run's full output (regex or substring, ±context, capped) instead of re-running.
+
+**The duty is stated, not offered** (`loop.lab_block`): write the failing test, run it with `only` and **see it fail
+on the unfixed code** — that failure is the proof — then fix and run again until it passes; if the new test passes
+*before* the fix, the test is wrong and proves nothing; run once with everything in place before `done`; and if a
+check cannot run, say exactly that in `risk` instead of inventing a result or retrying for ever. A setup failure
+answers with **"Do not retry"** in those words, carrying the installer's own output.
+
+**The bug proof moved from her CI to here.** `_lab_proof()` runs the test files alone (must FAIL) then the whole change
+(must PASS), in seconds, and a conclusive verdict **replaces the deliberate red commit v0.447 pushed to her branch** —
+one clean commit instead of a red-then-green pair. Verdicts: `proven_local`, `not_proven_local` (the test passes
+without the fix, so it proves nothing — said on her card and written into the PR), `still_failing` (her check fails
+*with* the change), `odd`, `checked_local` / `check_failed_local` for work with no test to split. The v0.447 CI proof
+is untouched and still runs wherever the lab cannot answer, and the local verdict rides into the gate's card via
+`say_tail` so it survives on a repo with no CI.
+
+**The plan's acceptance criteria are executed.** `Lab.done_when()` runs up to two of v0.451's `done_when` lines that
+are real commands and reports **VERIFIED / FAILED / not performed** with the evidence — ECC's verification-loop rule
+instead of taking the model's word. All of it goes into the PR (`_lab_pr_note` → `### Checked in the lab`) and into
+**v0.445's own review** as `<lab_evidence>` with *"this was MEASURED, not claimed; if it says her check fails or the
+test proves nothing, that is a real problem with this PR — say so."*
+
+**Two real bugs the new tests found**, both the same class: `devlab.safe_rel` and `spec.one_file` normalised a path
+*before* judging it, so `.lstrip("./")` turned `"../../etc/passwd"` into `"etc/passwd"` and it passed the `..` check.
+Both now judge the RAW string first. An overlay path that is absolute, contains `..`, or touches `.git/` is refused
+**by name** (the result lists what it refused), never silently dropped.
+
+**Caps:** 12 checks a task, `dev_lab_timeout` 600s each, the snapshot built on the first check (so a task that never
+runs one costs a clone and nothing more).
+
+**Files:** new `server/app/devsahayak/lab.py`; `devlab/service.py` (`safe_rel`, `write_overlay`, `open_workspace`,
+`run_on`, `close_workspace`), `devlab/spec.py` (`one_file`); `devsahayak/loop.py` (`LAB_TOOLS`, `lab_block`,
+`_lab_tool`, `run(lab=)`, `out["checks"]`); `devsahayak/service.py` (`_lab_proof`, `_lab_note`, `_lab_pr_note`,
+`LOCAL_SAY`, `LOCAL_PR`, the lab in `_work` and `_round`, `push` choosing local-or-CI proof, the own review's
+evidence). Tests `server/tests/test_v0531_lab_loop.py` (15) + the v0.456 suite (19): the shut lab giving the loop no
+tools, `for_task` never raising, the tools appearing with the duty text, **a check running on the edits and not the
+base** (including a new file), a failing check coming back with its END and the log hint, a setup failure telling it
+to stop, the run cap, grep before any check, the local proof replacing the red commit (asserted: **one** commit on the
+branch), a test that passes without the fix being said plainly, done_when verdicts, the own review seeing the
+evidence, an overlay refusing to escape the checkout, honest one-file narrowing, and one clone + one snapshot across
+two checks. 102 pass across every Developer Sahayak suite.
+
+**NOT VERIFIED:** `dev_lab` is still **False**, and `lab_check` has not been run on her VPS, so no container in this
+version has ever started. Every lab path here is tested through a scripted `FakeLab` or monkeypatched `box` calls.
+The order she should take: run **`lab_check`**, read it for `GADBAD` / `KHATRA`, then turn `dev_lab` on and give
+Developer Sahayak one real bug.
