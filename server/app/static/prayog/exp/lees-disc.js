@@ -148,7 +148,7 @@ HoolaStudio.define('lees-disc', function (S) {
   function setSpeed(v) { st.speed = v; S.render(); }
 
   return {
-    camera: { pos: [0.28, 0.4, 0.85], look: [0.05, 0.2, -0.2] },
+    camera: { pos: [0.05, 0.45, 1.35], look: [-0.02, 0.17, -0.22] },
     views: { stand: [[0.1, 0.4, 0.55], [CX - 0.1, 0.3, CZ]], discB: [[0.1, 0.28, 0.2], [CX, YB, CZ]], sample: [[0.12, 0.3, 0.2], [CX, SY, CZ]], chest: [[0.12, 0.35, 0.22], [CX, CY0, CZ]],
       th1: [[0.3, 0.35, 0.3], [CX + 0.15, CY0, CZ]], th2: [[0.3, 0.3, 0.3], [CX + 0.15, YB, CZ]], boiler: [[-0.4, 0.3, 0.3], [BX, 0.1, BZ]], mat: [[0.55, 0.25, 0.25], [0.5, 0.03, -0.1]],
       sw: [[-0.5, 0.4, 0.5], [-1.1, 0.05, -0.2]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },

@@ -79,13 +79,13 @@ HoolaStudio.define('thermocouple-null-method', function (S) {
     S.contact(WL + 0.14, 0.16, X0 + WL / 2, PZ, 0.5);
   } else {
     ampBox = new T.Group(); S.scene.add(ampBox);
-    var ab = S.rounded(0.22, 0.09, 0.14, 0.01, new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.5 })); ab.rotation.x = -Math.PI / 2; ab.position.set(-0.05, 0.045, PZ); ampBox.add(ab);
+    var ab = S.rounded(0.22, 0.14, 0.09, 0.01, new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.5 })); ab.rotation.x = -Math.PI / 2; ab.position.set(-0.05, 0.045, PZ); ampBox.add(ab);
     var al = S.label('OP-AMP AMPLIFIER  G = ' + Math.round(p.G), { w: 0.16, ratio: 0.12, color: '#e8e8e8', bg: '#2b2f36' }); al.rotation.x = -Math.PI / 2; al.position.set(-0.05, 0.0905, PZ); ampBox.add(al);
     [-0.1, -0.075].forEach(function (dx) { var tm = S.terminal([-0.05 + dx, 0.09, PZ + 0.05], dx < -0.09 ? 'red' : 'black'); ampBox.add(tm); });
     var tout = S.terminal([0.0, 0.09, PZ + 0.05], 'red'); ampBox.add(tout);
     S.contact(0.28, 0.2, -0.05, PZ, 0.5);
     dvm = new T.Group(); S.scene.add(dvm);
-    var db = S.rounded(0.2, 0.08, 0.1, 0.008, new T.MeshStandardMaterial({ color: 0xeceae3, roughness: 0.5 })); db.rotation.x = -Math.PI / 2; db.position.set(0.3, 0.04, PZ); dvm.add(db);
+    var db = S.rounded(0.2, 0.1, 0.08, 0.008, new T.MeshStandardMaterial({ color: 0xeceae3, roughness: 0.5 })); db.rotation.x = -Math.PI / 2; db.position.set(0.3, 0.04, PZ); dvm.add(db);
     dvmTex = S.liveTex(512, 160); var dm = new T.Mesh(new T.PlaneGeometry(0.15, 0.047), new T.MeshBasicMaterial({ map: dvmTex })); dm.rotation.x = -Math.PI / 2; dm.position.set(0.3, 0.0805, PZ + 0.0); dvm.add(dm);
     S.contact(0.26, 0.15, 0.3, PZ, 0.5);
   }

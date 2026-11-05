@@ -42,7 +42,7 @@ HoolaStudio.define('lissajous-figures', function (S) {
   // ---------- two audio generators with a frequency dial and a display
   function generator(x, name, unknown) {
     var g = new T.Group(); S.scene.add(g);
-    var b = S.rounded(0.2, 0.1, 0.16, 0.01, new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.5 })); b.rotation.x = -Math.PI / 2; b.position.set(x, 0.05, -0.12); g.add(b);
+    var b = S.rounded(0.2, 0.16, 0.1, 0.01, new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.5 })); b.rotation.x = -Math.PI / 2; b.position.set(x, 0.05, -0.12); g.add(b);
     var tex = S.liveTex(256, 80), disp = new T.Mesh(new T.PlaneGeometry(0.085, 0.0266), new T.MeshBasicMaterial({ map: tex })); disp.rotation.x = -0.9; disp.position.set(x - 0.045, 0.098, -0.06); g.add(disp);
     var dial = S.mesh(new T.CylinderGeometry(0.028, 0.028, 0.02, 36), M.chrome); dial.position.set(x + 0.055, 0.108, -0.1); g.add(dial);
     var mark = S.mesh(new T.BoxGeometry(0.003, 0.004, 0.022), M.red); mark.position.set(0, 0.012, -0.012); dial.add(mark);

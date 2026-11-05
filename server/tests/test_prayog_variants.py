@@ -144,3 +144,24 @@ def test_shipped_syllabus_files_are_valid():
                 if st.get("built"):
                     assert S.get(st["built"]), st["built"]
     count.totals(docs)
+
+
+def test_no_kernel_pack_or_lab_pack_is_silently_left_out():
+    """A kernel-name collision makes the loader skip a WHOLE pack with only a log line, so one worker's pack can
+    silently erase another's. Every pack module on disk must have loaded, and every lab builder must have produced a lab."""
+    import pkgutil
+
+    from app.prayog import kernels as KN, labs as L, packs as P, service as S
+
+    on_disk = sorted(m.name for m in pkgutil.iter_modules(P.__path__))
+    assert sorted(KN.PACKS) == on_disk, f"kernel packs left out: {sorted(set(on_disk) - set(KN.PACKS))}"
+    S.labs.cache_clear()
+    built = {b.__name__ for b in S._all_builders()}
+    served = len(S.labs())
+    assert served == len(S._all_builders()), f"{len(S._all_builders()) - served} lab builder(s) produced no lab (checker refused)"
+    assert built
+    lab_mods = sorted(m.name for m in pkgutil.iter_modules(L.__path__))
+    assert lab_mods                                   # and the lab packs themselves all imported (a bad one is only logged)
+    import importlib
+    for m in lab_mods:
+        importlib.import_module(f"{L.__name__}.{m}")

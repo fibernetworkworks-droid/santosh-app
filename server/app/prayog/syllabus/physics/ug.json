@@ -1037,7 +1037,8 @@
       "angle of the prism"
      ],
      "conditions": [],
-     "kernel": "spectrometer-prism"
+     "kernel": "spectrometer-prism",
+     "built": "spectrometer-prism-angle"
     },
     {
      "id": "prism-refractive-index",
@@ -1054,7 +1055,8 @@
       "refractive index"
      ],
      "conditions": [],
-     "kernel": "spectrometer-prism"
+     "kernel": "spectrometer-prism",
+     "built": "prism-index-spectrometer"
     },
     {
      "id": "prism-dispersion-cauchy",
@@ -1069,7 +1071,8 @@
       "Cauchy constants"
      ],
      "conditions": [],
-     "kernel": "spectrometer-prism"
+     "kernel": "spectrometer-prism",
+     "built": "prism-dispersive-power"
     },
     {
      "id": "tir-gaussian-eyepiece",
@@ -1142,7 +1145,8 @@
       "refractive index of a liquid"
      ],
      "conditions": [],
-     "kernel": "interference-rings"
+     "kernel": "interference-rings",
+     "built": "newtons-rings"
     },
     {
      "id": "fresnel-biprism",
@@ -1176,7 +1180,8 @@
       "thickness"
      ],
      "conditions": [],
-     "kernel": "interference-wedge"
+     "kernel": "interference-wedge",
+     "built": "air-wedge-thickness"
     },
     {
      "id": "michelson-wavelength",
@@ -1257,7 +1262,8 @@
       "wavelength"
      ],
      "conditions": [],
-     "kernel": "interference-double-slit"
+     "kernel": "interference-double-slit",
+     "built": "laser-double-slit"
     }
    ]
   },
@@ -1279,7 +1285,8 @@
       "wavelength"
      ],
      "conditions": [],
-     "kernel": "diffraction-grating"
+     "kernel": "diffraction-grating",
+     "built": "grating-wavelength-spectrometer"
     },
     {
      "id": "grating-dispersive-resolving",
@@ -1294,7 +1301,8 @@
       "resolving power"
      ],
      "conditions": [],
-     "kernel": "diffraction-grating"
+     "kernel": "diffraction-grating",
+     "built": "grating-resolving-power"
     },
     {
      "id": "laser-single-slit",
@@ -1315,7 +1323,8 @@
       "slit or wire width"
      ],
      "conditions": [],
-     "kernel": "diffraction-single-slit"
+     "kernel": "diffraction-single-slit",
+     "built": "single-slit-diffraction"
     },
     {
      "id": "laser-grating-spread",
@@ -1330,7 +1339,8 @@
       "angular spread"
      ],
      "conditions": [],
-     "kernel": "diffraction-grating"
+     "kernel": "diffraction-grating",
+     "built": "laser-grating-wavelength"
     },
     {
      "id": "cd-grating-spacing",
@@ -1347,7 +1357,8 @@
       "track spacing"
      ],
      "conditions": [],
-     "kernel": "diffraction-reflection-grating"
+     "kernel": "diffraction-reflection-grating",
+     "built": "cd-track-spacing"
     },
     {
      "id": "lycopodium-particle-size",
@@ -1416,7 +1427,8 @@
       "concentration of an unknown solution"
      ],
      "conditions": [],
-     "kernel": "optical-rotation"
+     "kernel": "optical-rotation",
+     "built": "polarimeter-sugar"
     },
     {
      "id": "babinet-compensator",

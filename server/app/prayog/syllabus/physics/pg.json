@@ -234,7 +234,8 @@
       "acceptance angle"
      ],
      "conditions": [],
-     "kernel": "fibre_na"
+     "kernel": "fibre_na",
+     "built": "fibre-numerical-aperture"
     },
     {
      "id": "fibre-bending-loss",
@@ -291,7 +292,8 @@
       "extinction ratio"
      ],
      "conditions": [],
-     "kernel": "malus"
+     "kernel": "malus",
+     "built": "polaroid-polarisation"
     },
     {
      "id": "brewster-angle",
@@ -310,7 +312,8 @@
       "refractive index"
      ],
      "conditions": [],
-     "kernel": "brewster"
+     "kernel": "brewster",
+     "built": "brewster-angle"
     },
     {
      "id": "elliptical-polarisation",
