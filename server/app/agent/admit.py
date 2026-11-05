@@ -422,7 +422,7 @@ class AdmitSet:
 
     def specs(self) -> list[dict]:
         """The tool list for the model: tool_search first, then the admitted specs in the registry's own order."""
-        out = [dict(TOOL_SEARCH)]
+        out = [search_spec()]
         for t in TOOLS:
             if self._seen(t["name"]):
                 out.append(t)
@@ -438,6 +438,21 @@ TOOL_SEARCH = {
         "need": {"type": "string", "description": "What the job needs, e.g. 'send an email', 'sheet update', 'gst'"}},
         "required": ["need"]},
 }
+
+_SPEC: dict = {}
+
+
+def search_spec() -> dict:
+    """v0.563 tool_search with the families named (Anthropic's tool-search advice: say which categories exist so the
+    model knows what it can search for). Built once from the registry, so it is byte-stable across turns (cache)."""
+    if not _SPEC:
+        fams = sorted({f for f in FAMILY_OF.values() if f})
+        _SPEC.update(TOOL_SEARCH)
+        _SPEC["description"] = (TOOL_SEARCH["description"] + f" Every Hoola tool can be found here ({len(TOOLS)} in "
+                                f"{len(fams)} families: " + ", ".join(fams) + "). Search by what the job needs or by "
+                                "a tool's exact name; the tools found load for you to call next.")
+    return dict(_SPEC)
+
 
 _LABEL = "Tools dhoondh raha hoon"
 
@@ -709,6 +724,30 @@ async def tool_search(ctx, need: str = "", **_):
                 hits.add(fam)
             elif any(_hit(w, fam) or w == fam for w in words):
                 hits.add(fam)
+    if adm is not None and getattr(ctx, "native_search", False):
+        # v0.563 CLAUDE KA AUZAAR: on a Claude turn every tool is already declared (deferred). The answer is
+        # tool_reference blocks - the API loads those definitions - and the request's tool list never changes.
+        # The families still count as opened (the PC gate in pick.py reads them; the next turn keeps them sticky).
+        from . import toolsearch as _ts
+        had = set(adm.families)
+        if hits:
+            adm.admit_families(hits)
+        try:
+            from .prompts import guide_for
+            g = guide_for(hits - had, had)
+            if g:   # the family's working guide, delivered beside the result (the system prompt stays as it was)
+                getattr(ctx, "native_guides", None) is None and setattr(ctx, "native_guides", [])
+                ctx.native_guides.append(g)
+        except Exception:
+            log.debug("native guide lookup failed", exc_info=True)
+        names = _ts.find(need, hits)
+        STATS["tool_search"] += 1
+        refs = _ts.answer(names, set(getattr(ctx, "native_loaded", ()) or ()))
+        log.info("tool_search (native) %s -> %s", ",".join(sorted(hits)), ",".join(names[:8]))
+        if refs:
+            return {"tool_references": refs, "found": names}
+        if names:
+            return {"admitted": [], "note": "Yeh tools pehle se dikh rahe hain: " + ", ".join(names[:20])}
     if not hits:
         return {"admitted": [], "note": ("Is naam se koi parivar nahi mila. Kaam ka verb batao (mail, calendar, "
                                          "sheet, video, photo, pc, gst...) ya seedha tool ka naam.")}

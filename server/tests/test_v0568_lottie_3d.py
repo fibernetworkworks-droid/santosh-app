@@ -1,4 +1,4 @@
-"""v0.566 LOTTIE + 3D HERO on her website: lottie-web's LIGHT player (MIT, SVG, no eval) and a three.js r187 bundle (MIT)
+"""v0.568 LOTTIE + 3D HERO on her website: lottie-web's LIGHT player (MIT, SVG, no eval) and a three.js r187 bundle (MIT)
 served from the site itself and loaded only on pages that use them; built-in animations in the site's own colours, her own
 Lottie files checked before they are kept, five house 3D scenes chosen by name, every library seen by the OSV gate."""
 import http.server
@@ -16,7 +16,7 @@ ASSETS = Path(__file__).resolve().parents[1] / "app" / "site" / "assets"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.566.0"
+    assert APP_VERSION == "0.568.0"
 
 
 def test_the_vendored_libraries_are_what_they_say():

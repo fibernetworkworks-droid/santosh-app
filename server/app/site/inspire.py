@@ -1,4 +1,4 @@
-"""v0.565 KOI BHI DESIGN (web Step 7 part 3 = W9 of docs/WEB_PLATFORM_PLAN.md): her website starts from HER design.
+"""v0.567 KOI BHI DESIGN (web Step 7 part 3 = W9 of docs/WEB_PLATFORM_PLAN.md): her website starts from HER design.
 
 Three ways in, one result - a DESIGN REFERENCE (Hoola's own words for a visual system, never someone's files):
 - a SCREENSHOT she sends (any website or picture she likes): the colours are MEASURED from the pixels (Pillow), the style,

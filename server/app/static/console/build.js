@@ -2243,7 +2243,7 @@ window.HoolaBuild = function (C) {
 
   /* v0.538 HOOLA CMS: her team (writers / editors / publishers) works at /cms/<site>/ with their own login; here she
      invites, changes roles, removes, and acts on any draft herself (approve / send back / publish / restore). */
-  // ---------------------------------------------------------------- v0.565 KOI BHI DESIGN: start from HER design
+  // ---------------------------------------------------------------- v0.567 KOI BHI DESIGN: start from HER design
   async function designBox(o, box) {
     let fg = {}; try { fg = await api('GET', '/api/site-design/figma'); } catch (er) { return; }
     const sec = document.createElement('section'); sec.className = 'stlogic stdesign';

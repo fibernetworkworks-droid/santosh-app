@@ -101,7 +101,7 @@ def tokens(style: str, palette: str, brand: dict[str, str] | None = None, overri
         return out
     primary_text, accent_text = text_safe(pal["primary"]), text_safe(pal["accent"])
     fonts = T.FONTS.get(st["fonts"]) or T.FONTS["poppins_mukta"]
-    if (overrides or {}).get("fonts") in T.FONTS:     # v0.565 her design's type, mapped to a pair Hoola ships
+    if (overrides or {}).get("fonts") in T.FONTS:     # v0.567 her design's type, mapped to a pair Hoola ships
         fonts = T.FONTS[overrides["fonts"]]
     radius = int((overrides or {}).get("radius", st["radius"]) or 0)
     return {"style": style, "palette": palette, "bg": pal["bg"], "surface": pal["surface"], "ink": pal["ink"],
@@ -1023,7 +1023,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     cols = {c["key"]: c for c in SM.collections(plan)}
     tpls = {p["slug"]: p for p in plan.get("pages", []) if p.get("template_of")}
 
-    from . import lottie as LT                   # v0.566 animations (built-ins + hers) and the 3D hero
+    from . import lottie as LT                   # v0.568 animations (built-ins + hers) and the 3D hero
     rich: dict[str, Any] = {"lottie": set(), "three": False, "avail": set(LT.BUILTINS) | set(LT.hers(src_root))}
 
     def render(slug: str, secs: list[dict[str, Any]], rel: str, key_slug: str = "", item: dict[str, Any] | None = None,
@@ -1045,7 +1045,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             h, mmiss = MD.expand(h, src_root, out, rel)
             if mmiss:
                 problems.append(f"{key}: file not found: {', '.join(mmiss)}")
-            if "data-hoola-lottie" in h:         # v0.566 an animation by name -> the file this page loads
+            if "data-hoola-lottie" in h:         # v0.568 an animation by name -> the file this page loads
                 h, lused, lprob0 = LT.expand(h, rel, rich["avail"])
                 rich["lottie"] |= lused
                 problems.extend(f"{key}: {x}" for x in lprob0)
@@ -1161,7 +1161,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                        (base_url.rstrip("/") + "/" + alt["lang"]) if base_url else "", form_endpoint)
         problems += [f'{alt["lang"]}: {x}' for x in res["problems"]]
         files += res["pages"]
-    if rich["lottie"]:                       # v0.566 only the animations used, and the player only when one is
+    if rich["lottie"]:                       # v0.568 only the animations used, and the player only when one is
         LT.write(out, rich["lottie"], src_root)
         (out / "assets" / "vendor").mkdir(parents=True, exist_ok=True)
         shutil.copy(ASSETS / "vendor" / "lottie_light.min.js", out / "assets" / "vendor" / "lottie_light.min.js")

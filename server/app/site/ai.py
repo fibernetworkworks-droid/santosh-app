@@ -286,11 +286,11 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
     checkboxes / radios / <option> with data-add="AMOUNT", and <output data-calc-out>; or data-hoola-calc="emi" with
     inputs name="amount", name="rate" (yearly %), name="months" and outputs data-calc-out (EMI), data-calc-total,
     data-calc-interest. Rates and amounts ONLY from FACTS / her words (a loan EMI calculator needs no prices of hers).
-  * Quiz (v0.565, "which product / course / plan is right for me"): <form data-hoola-quiz><fieldset data-q><legend>Question</legend>
+  * Quiz (v0.567, "which product / course / plan is right for me"): <form data-hoola-quiz><fieldset data-q><legend>Question</legend>
     <label><input type="radio" name="q1" data-result="basic"> Answer</label>...</fieldset>... <p data-quiz-msg></p>
     <button class="btn btn-primary" type="submit">See my answer</button><div data-result-panel="basic">...result + a link /
     button to the matching product or her enquiry form...</div>...</form>. Results are HER own products / courses / plans only.
-  * Configurator (v0.565, choose options -> price + "send this choice"): <form data-hoola-config data-base="0" data-whatsapp="91XXXXXXXXXX">
+  * Configurator (v0.567, choose options -> price + "send this choice"): <form data-hoola-config data-base="0" data-whatsapp="91XXXXXXXXXX">
     <fieldset><legend>Size</legend><label><input type="radio" name="size" data-add="0" data-label="1 kg" data-show="big"> 1 kg</label>...
     </fieldset> ... <img data-config-show="big" ...> (shown only when that choice is picked) <span data-config-summary></span>
     <output data-calc-out></output><button class="btn btn-primary" type="submit">Send this choice</button></form>.
@@ -299,19 +299,19 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   * Comparison tool (v0.565): <div data-hoola-compare-table><button type="button" data-compare-diff aria-pressed="false">Show
     differences only</button> <button type="button" data-compare-col="1">Plan A</button>...<table>...</table></div>
     (first column = the feature, one column per option of HERS).
-- LOTTIE ANIMATIONS (v0.566, Hoola plays them; never write your own animation script): <div data-hoola-lottie="NAME"
+- LOTTIE ANIMATIONS (v0.568, Hoola plays them; never write your own animation script): <div data-hoola-lottie="NAME"
   data-loop="false" aria-hidden="true"></div> (size it inside your #SECTION_ID: width / aspect-ratio). Built-in NAMES, drawn
   in the site's own colours: pulse (live / open now / call us), check (done / booked / paid - use data-loop="false"),
   sparkle (new / offer / festive), scroll (scroll for more, under a hero), dots (working / loading), wave (hello /
   welcome). Her own animation files are listed with the photos when she has any. Decoration only: the words beside it
   carry the meaning; at most 2 a page.
-- 3D HERO (v0.566, Hoola draws it with three.js; never write WebGL / canvas code): <div data-hoola-3d="orb|knot|particles|
+- 3D HERO (v0.568, Hoola draws it with three.js; never write WebGL / canvas code): <div data-hoola-3d="orb|knot|particles|
   waves|blocks" aria-hidden="true"></div> = a slowly moving 3D scene in the site's own colours (orb = soft glossy shape,
   knot = elegant loop, particles = starfield / tech, waves = flowing grid, blocks = floating cubes). Use it ONLY in a hero
   or one feature band, at most ONE per page, behind or beside the words (the heading and buttons stay readable over it -
   put them in their own layer with the scene as a background: position the 3D div absolutely inside a relative wrapper).
   It shows a soft colour glow where 3D is not available, and one still frame for visitors who turn off motion.
-- SCROLL-DRIVEN MOTION (v0.565, CSS only, off under reduced motion and in browsers without scroll timelines): data-m="scrub"
+- SCROLL-DRIVEN MOTION (v0.567, CSS only, off under reduced motion and in browsers without scroll timelines): data-m="scrub"
   (rises in as it scrolls into view), data-m="scrub-x" (slides in from the left), data-m="scrub-scale" (grows in). Use on
   big images / stats / step lists, at most 3 per page; the content is fully visible without it.
 - CHARTS (v0.357): write a plain table and Hoola draws it (inline SVG in the site's colours, tooltip, keyboard, the

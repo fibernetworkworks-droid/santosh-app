@@ -1,4 +1,4 @@
-"""v0.566 LOTTIE on her website: small vector animations played by lottie-web's LIGHT player (MIT, SVG renderer only, no
+"""v0.568 LOTTIE on her website: small vector animations played by lottie-web's LIGHT player (MIT, SVG renderer only, no
 expressions -> no eval, so the site's CSP stays `script-src 'self'`), loaded only on pages that use one.
 
 Two sources:

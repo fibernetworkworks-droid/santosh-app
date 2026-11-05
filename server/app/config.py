@@ -360,6 +360,7 @@ class Settings(BaseSettings):
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
+    tool_search_native: bool = True   # v0.563 CLAUDE KA AUZAAR: every tool declared, the rest deferred + tool_reference search
     engine_thinking: str = "adaptive"      # v0.560 EK DARWAZA: adaptive | off for every specialist engine through agent/door.py
     cad_model: str = "claude-opus-5-5"      # v0.560 CAD engine's model (was written into engineering/ai.py)
     motion_model: str = ""                 # v0.560 Hoola Motion's HTML plans ('' = anthropic_model, as before)

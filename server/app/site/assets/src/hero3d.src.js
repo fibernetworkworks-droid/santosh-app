@@ -1,4 +1,4 @@
-/* Hoola 3D hero (v0.566, MIT, Newtika). A few house scenes drawn with three.js - the section only NAMES one:
+/* Hoola 3D hero (v0.568, MIT, Newtika). A few house scenes drawn with three.js - the section only NAMES one:
    <div data-hoola-3d="orb|knot|particles|waves|blocks" aria-hidden="true"></div>
    Colours come from the site's own CSS variables (--c-primary, --c-accent, --c-bg). Renders only while on screen, one still
    frame under prefers-reduced-motion, paused in a hidden tab, pixel ratio capped at 2, and if WebGL is missing the element

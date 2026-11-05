@@ -1,4 +1,4 @@
-"""v0.565 KOI BHI DESIGN (web Step 7 part 3 = W9): her website starts from HER design - a screenshot (colours measured,
+"""v0.567 KOI BHI DESIGN (web Step 7 part 3 = W9): her website starts from HER design - a screenshot (colours measured,
 design read), her Figma file (her token, sealed), or her OWN old website (ownership proven first) -> a preview -> her tap
 -> look 1 is hers in Hoola's kit; plus rich pieces (quiz, configurator, comparison, scroll-driven motion)."""
 import io
@@ -14,7 +14,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.566.0"
+    assert APP_VERSION == "0.568.0"
 
 
 def _png(blocks, size=(400, 300)):

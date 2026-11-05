@@ -392,7 +392,7 @@
       run();
     });
   }
-  /* v0.565 KOI BHI DESIGN rich pieces (attributes only; the answers and options are on the page with JS off too) */
+  /* v0.567 KOI BHI DESIGN rich pieces (attributes only; the answers and options are on the page with JS off too) */
   function quizzes() {          // <form data-hoola-quiz>: radios carry data-result="key"; most picks -> [data-result-panel="key"]
     $$('form[data-hoola-quiz]').forEach(function (f) {
       var panels = $$('[data-result-panel]', f);
@@ -473,7 +473,7 @@
       });
     });
   }
-  /* v0.566 LOTTIE: [data-hoola-lottie] plays an animation from the site's own files (light player, SVG, no eval).
+  /* v0.568 LOTTIE: [data-hoola-lottie] plays an animation from the site's own files (light player, SVG, no eval).
      Hoola's built-ins carry two placeholder colours that become the site's --c-primary / --c-accent here. */
   function rgb01(css) {
     var c = d.createElement('canvas').getContext('2d'); if (!c) return null;

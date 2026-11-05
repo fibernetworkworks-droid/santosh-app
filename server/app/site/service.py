@@ -1094,7 +1094,7 @@ def _photos_line(r: Site) -> str:
 
 
 def _lottie_line(r: Site) -> str:
-    """v0.566 her own Lottie files, so a section can use them by name."""
+    """v0.568 her own Lottie files, so a section can use them by name."""
     from . import lottie as LT
     mine = LT.hers(B.src_dir(r.tenant_id, r.id))
     return ("\nHER ANIMATIONS (use with data-hoola-lottie): " + ", ".join(mine)) if mine else ""
@@ -1253,7 +1253,7 @@ def _make_looks(r: Site) -> None:
     labels = [T.label_of(s) for s in more]
     briefs = [L.brief(r.field, r.goal, st) for st in styles]
     from . import inspire as IN
-    mine = IN.look_zero(facts)                 # v0.565 KOI BHI DESIGN: look 1 = her own design (screenshot / Figma / her old site)
+    mine = IN.look_zero(facts)                 # v0.567 KOI BHI DESIGN: look 1 = her own design (screenshot / Figma / her old site)
     if mine:
         styles = [mine["style"]] + [s for s in styles if s != mine["style"]][:2]
         briefs = [L.brief(r.field, r.goal, st) for st in styles]
@@ -2037,7 +2037,7 @@ def resume(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def add_lottie(tenant: str, ref: str, data: bytes | None = None, file_id: str = "", name: str = "") -> dict:
-    """v0.566 her own Lottie animation (JSON), checked and kept with the site's files; sections use it by name."""
+    """v0.568 her own Lottie animation (JSON), checked and kept with the site's files; sections use it by name."""
     from . import lottie as LT
     if file_id and not data:
         from ..mailbox import service as ms
