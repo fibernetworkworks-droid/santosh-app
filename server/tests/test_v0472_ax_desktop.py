@@ -390,4 +390,4 @@ def test_axtree_is_stdlib_only():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.558.0"
+    assert APP_VERSION == "0.559.0"

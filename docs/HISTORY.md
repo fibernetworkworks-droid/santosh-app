@@ -20402,3 +20402,25 @@ FIXED in `server/app/agent/santosh.py`:
 Tests: NEW `test_v0558_sahi_kamra.py` (3); routing / goal / routine / admission suites 204 passed; the 4 reds
 (test_v091 x3 - a stale fake `think()` signature - and test_v0311 hello-size) are red on the committed tree too.
 NOT VERIFIED live: the next morning routine on the VPS is the first real one with the smaller tool set.
+
+## v0.559.0 REACH MANCH - the Agent-Reach discipline layer over the internet stack (owner: "MAKE A HOOLA AGENT REACH FEATURE, DEVLOPE END TO END")
+
+Agent-Reach (Panniantong/Agent-Reach, v1.6.1, MIT) was read end to end and archived at download/AGENT_REACH_READ.md;
+its three borrowable ideas are ported IDEA-ONLY (zero upstream code, zero new pip, zero new keys): ONE envelope
+{schema_version, ok, tool, action, backend, items, meta{elapsed_ms, attempts, content_scope, completeness_verified:false},
+error{code, message, hint}}; an error taxonomy whose hints are instructions to the MODEL ("never retry in a loop",
+"respect retry_after_seconds", "never dodge a pause by switching backends") with FINAL_CODES where another backend
+cannot help; ordered backends with memory. The doors are the house's own (web.open_website with its SSRF guard,
+web.google_search via Gemini grounding, web.parallel_search free) - reach composes, never duplicates, and adds no
+egress of its own. NEW server/app/agent/reach_tools.py + the `reach` tool (registry 569 -> 570): read (house fetch ->
+Parallel free fetch), search (Google -> Parallel free), channels (the doors + arguments), status (which door is
+paused, what cooled down, the tenant budget left - the doctor surface no house tool had; Hoola's own health stays
+hoola_jaanch). A failing backend pauses (TIMEOUT 60 s / UPSTREAM_BROKEN 120 s / NEED_SETUP 60 s, expires); a confirmed
+rate limit cools the whole channel 1 h - GLOBAL by design (the egress IP is shared, so a platform pause is too) while
+the budget is per-tenant (reach_per_tenant_per_min, 0 = off). Tests: NEW test_v0559_reach_manch.py (45, zero network;
+a hard guard fails loudly if a test reaches a real door). Bugs the suite caught: (1) a backend returning EMPTY rows
+was treated as success - now UPSTREAM_BROKEN and the next door gets its chance (the Agent-Reach law: empty is no
+rows, never one fake row); (2) the search limit was trusted to backends - now clamped in the dispatcher (the envelope
+is the contract). Version 0.559.0 (APP_VERSION story, pubspec 0.559.0+582, pins swept 0.558.0 -> 0.559.0 / +581 ->
++582 / 569 -> 570 across the suites, zero residual; 'reach' joins CORE_FAMILIES + EXTRA_KEYS; server-only, old APKs
+keep working; Mera PC freeze respected).

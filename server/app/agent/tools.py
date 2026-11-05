@@ -327,6 +327,12 @@ TOOLS.extend(WEB_TOOLS)
 TOOL_LABELS.update(WEB_LABELS)
 HANDLERS.update(WEB_HANDLERS)
 
+from .reach_tools import REACH_HANDLERS, REACH_LABELS, REACH_TOOLS  # noqa: E402  v0.559 REACH MANCH - the Agent-Reach discipline layer (envelope, ordered backends, health, status)
+
+TOOLS.extend(REACH_TOOLS)
+TOOL_LABELS.update(REACH_LABELS)
+HANDLERS.update(REACH_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)

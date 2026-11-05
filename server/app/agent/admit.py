@@ -40,6 +40,7 @@ CORE_FAMILIES = frozenset({
     "goal",       # kaam_plan: long jobs
     "bazar",      # the gateway to MCP servers + everything not built in
     "web",        # google_search / web_sources / open_website / browse_web
+    "reach",      # v0.559 REACH MANCH: the fallback door when a web tool fails + status/channels introspection
     "gyaan",      # her knowledge base
     "procedure",  # seekhe hue kaam
     "google",     # google_status (the one-line Google fix)
@@ -100,6 +101,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # v0.245 "pc" is not keyword-admitted any more: _pc_wanted() decides (v0.271: only her PC / Hoola's PC named)
     "operator": ("computer operator", "operator"),
     "jaanch": ("jaanch", "test karo"),
+    # v0.559 REACH MANCH: core family anyway; these words keep it admitted if core ever shrinks ('kya kharab hai'
+    # stays with jaanch - Hoola's own health - reach answers only about the internet doors)
+    "reach": ("reach", "reach manch", "website nahi khul", "site nahi khul", "nahi khul raha", "internet check",
+              "backends", "kaun sa door", "web status"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
     "mshop": ("mobile shop", "sim card", "phone repair", "phone shop"),
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",
