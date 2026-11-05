@@ -20816,3 +20816,13 @@ The three producer layers shipped in v0.563 (production, sales, delivery) had no
 - **Tests**: `test_film_coverage_previs_royalty.py` (13: counts, labelled flags, the double spelling, theme counts are not a rating, previs timeline / flags / monotony, a term without a source refused, exact statement with threshold / cap / window / unknown net, service flow, owner-only, tool schema, API routes) + `test_film_producer_screens.py` (5: every path the console and phone call exists on the server, the console page wired and stamped, the rules drawn (hints, source clause, "rate nahi di", no verdict), the phone page reachable, the hub entry hireable). Broad console / hub sweeps: the only reds are the pre-existing ones on origin/main (type-sweep, crisp-text, console_r1 / r3), proven on a clean worktree of main.
 - **NOT verified**: the Dart file has never been compiled (CI first); no real script has been through coverage on the VPS; the heuristics (talky run, first shot wide, unfilmable word list, theme words) are judgement, not measured; royalty maths is only as right as the terms typed in.
 
+
+## v0.584.0 SAHI PAIMANA — the FRESH tool card made fair
+
+Her live Haiku cards (vps-ops 276 / 279, 5 Nov): hard_card_haiku RIGHT 9/9, pylab 8/9 (equation solved without it), self-check
+9/9, 0 errors, median 11.5 s - the first real turns through v0.565's deferred-tool request after the v0.571 schema fix, so
+the API accepts it. tool_card_haiku 25/26 with the same miss Sonnet had that morning: fresh15 "Is page ko padh ke 5 points
+mein batao: <wikipedia>" -> scrape_page, card wanted open_website. The card (v0.331) predates scrape_page (v0.474) / reach
+(v0.559); reading one public page with them is right. `tool_asks.FRESH` row now lists open_website / scrape_page / reach as
+exact tools; "scrape" deliberately not listed (it is a family name too and would admit scrape_site / scrape_stealth...).
+No Hoola behaviour changed.

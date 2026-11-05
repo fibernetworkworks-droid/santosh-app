@@ -1559,3 +1559,12 @@ Work Log:
 - NEW test_v0582_sasti_jaanch.py (4).
 Stage Summary:
 - v0.582.0 server + workflow only. Owner runs deploy, then tool_card_haiku / hard_card_haiku / long_card_try_haiku.
+
+---
+Task ID: 51 — v0.584.0 SAHI PAIMANA (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "YES" to accepting scrape_page on the one tool-card miss.
+Work Log:
+- Read her Haiku card runs (hard 9/9, tools 25/26, long card try started); fresh15 accepts open_website / scrape_page / reach.
+Stage Summary:
+- v0.584.0 server-only (quality card). Deploy, then tool_card_haiku should read 26/26.

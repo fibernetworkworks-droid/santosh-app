@@ -270,7 +270,10 @@ FRESH: list[tuple] = [   # (text, families-or-tools[, {"also": first steps that 
     # v0.337 a fair card: the complaint ask names no customer and no complaint, so ONE real question is right too
     ("customer ki complaint register karo", ("shikayat",), {"ask_ok": True}),
     ("Aaj sone ka rate kya hai?", ("google_search", "web_sources")),
-    ("Is page ko padh ke 5 points mein batao: https://en.wikipedia.org/wiki/Diwali", ("open_website",)),
+    # v0.584 a fair card: written before the v0.474 / v0.483 page readers existed - reading ONE public page is equally
+    # right with scrape_page (faster, cheaper than a browser) or reach read; Sonnet AND Haiku both picked scrape_page
+    ("Is page ko padh ke 5 points mein batao: https://en.wikipedia.org/wiki/Diwali",
+     ("open_website", "scrape_page", "reach")),   # exact readers only ("scrape" is also a whole family's name)
     ("ABC Traders ke liye 3 items ka quotation PDF bana do: Chair 2500 x 10, Table 6000 x 2", ("doc_studio",)),
     ("GitHub ke top 50 Python repositories ki list ka PDF bana do", ("data_fetch", "api_call", "doc_studio")),
     ("Maine pichhle hafte kis vendor ke baare mein baat ki thi?", ("haal_ki_chats", "yaad_khojo")),
