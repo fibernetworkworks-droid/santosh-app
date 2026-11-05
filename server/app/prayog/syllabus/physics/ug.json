@@ -76,7 +76,8 @@
       "area and volume with propagated uncertainty"
      ],
      "conditions": [],
-     "kernel": "measure-length"
+     "kernel": "measure-length",
+     "built": "travelling-microscope"
     },
     {
      "id": "random-error-study",
@@ -94,7 +95,8 @@
       "histogram compared with a Gaussian"
      ],
      "conditions": [],
-     "kernel": "stats-random-error"
+     "kernel": "stats-random-error",
+     "built": "random-errors"
     },
     {
      "id": "least-squares-graph",
@@ -647,7 +649,8 @@
       "coefficient of viscosity"
      ],
      "conditions": [],
-     "kernel": "falling-ball"
+     "kernel": "falling-ball",
+     "built": "terminal-velocity"
     },
     {
      "id": "capillary-rise-surface-tension",

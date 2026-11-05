@@ -331,7 +331,7 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
 
       { id: 'curve', title: 'Counting curve', view: 'unit', render: function (u) {
           u.h2('Count for ' + st.t + ' s at each voltage');
-          u.p('Raise the E.H.T. in steps of ' + VSTEP + ' V. At each step press START, let the preset time run out, and write down the count. Note the voltage at which counts first appear.');
+          u.p('Raise the E.H.T. in steps of ' + VSTEP + ' V while the tube is still silent - that is where the starting voltage is found - and in larger steps once the plateau is reached. At each step press START, let the preset time run out, and write down the count.');
           var tg = { v: Math.min(VMAX, st.V + VSTEP) };
           u.slider('Set the E.H.T. to', VMIN, VMAX, VSTEP, function () { return tg.v; }, function (v) { tg.v = v; }, 'V', 0);
           u.row(u.button('Turn the knob', function () { turnTo(tg.v); }, true, S.hand.busy),
@@ -348,8 +348,11 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
         ok: function () { return S.rows.length >= 8 && S.rows.some(function (r) { return r.N === 0; })
           && S.rows.some(function (r) { return r.N > 0; }); },
         auto: function () {
+          /* 10 V steps while the tube is still coming on (that is where the starting voltage is found),
+             20 V steps along the plateau. */
           var vs = [], v;
-          for (v = VMIN; v <= 700; v += 20) vs.push(v);
+          for (v = VMIN; v <= 420; v += 10) vs.push(v);
+          for (v = 440; v <= 700; v += 20) vs.push(v);
           return vs.reduce(function (pr, vv) {
             return pr.then(function () { return turnTo(vv); }).then(function () { return count(); })
               .then(function () { record(); });
