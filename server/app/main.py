@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.534.0"   # v0.534.0 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed, owner: "GO STEP 6"; checkpoint "5,000-product marketplace, load test passed"). Her products / doctors / properties come from HER data - a CSV or Excel file, her Google Sheet, or a dataset Hoola already holds - and become pages BY CODE: a preview first (columns mapped, new / changed / same / rejected rows with the reason, thin and duplicate pages counted, nothing written), then her Apply tap; re-importing the same file changes nothing and no item address ever moves; replace hides, never deletes. Every item gets its page (her designed template or a code-made one with photo, price, details and links to its own family), listings of 48 with numbered pages, a filter bar (search, her filter columns with counts, price, sort) on the static site from one compact index per list, split sitemaps (an index + at most 45,000 addresses a file) and a quality gate (thin / copy pages shown but noindex, a copy points its canonical at the original, both left out of the sitemaps). Photos are fetched once (public https hosts only, size + pixel caps) and resized once to AVIF / WebP / JPEG with width and height. W10: every text file is pre-compressed (nginx gzip_static), cache headers let a CDN keep serving, every page is checked against the 100 KB HTML budget and layout shift is now flagged. Measured: 5,000 products = 5,111 pages built in about 5 seconds, every page under 100 KB. The shop: up to 20,000 products, a seller column links products to HER approved sellers, a retried checkout (same id) is ONE order and parallel checkouts never share an order number (a unique index + retry; before this two checkouts at the same moment could both get O-1001). The load proof (2,000 visitors + 600 buyers, every 4th checkout sent twice, 4 workers on Postgres) runs in CI. Previous: v0.532.0 PRAYOGSHALA fix - the lab could not have built its image on her VPS. The deploy copies `server/app` only, so `deploy/devlab/Dockerfile` does not exist beside the running code and `build_base` would have answered "Dockerfile nahi mili" on the very first lab_check - a feature that passes 35 tests in the sandbox and cannot work where it runs. The Dockerfile text now lives in `box.DOCKERFILE_TEXT` (raw string, line continuations intact) and a build writes it into a temp folder, so it works from any path; deploy/devlab/Dockerfile stays as the readable copy and a test asserts the two are byte-identical, plus one that builds with the disk copy deliberately missing. Found by reading her own `~/santosh_app` prompt against the deploy path, not by a test. Previous: v0.531.0 PRAYOGSHALA step 2 - the coding lab wired in (owner: "GO STEP 2"). v0.456 built the sealed Docker box and NOTHING called it, which by this repo's own rule means it did not work yet. This is the caller. `devsahayak/lab.py` opens ONE clone per coding task (reused for every check in it, deleted at the end) and the loop gains two tools: `run_check` runs HER declared command on the code as it is RIGHT NOW - every in-memory edit written over the checkout, so a check tests the work and not the base commit - and `grep_log` asks that run's full output a second question instead of re-running it. The system block states it as a duty, not an option: write the failing test, SEE it fail on the unfixed code, fix, run again until it passes, run once before done, and if a check cannot run say so in risk instead of inventing a result or retrying for ever (a setup failure says "Do not retry" in those words). The v0.447 bug proof is now measured HERE in seconds (`_lab_proof`: the test files alone must FAIL, the whole change must PASS) and a conclusive local verdict REPLACES the deliberate red commit on her branch - one clean commit instead of a red-then-green pair, with the evidence (command, source, both runs' seconds) written into the PR and the verdict said on her card; proven_local / not_proven_local (the test passes without the fix, so it proves nothing - said plainly) / still_failing / odd / checked_local, and the CI proof stays exactly as it was wherever the lab cannot answer. The v0.451 plan's done_when lines are RUN where they are real commands and reported VERIFIED / FAILED / not performed with their output, and v0.445's own review is handed that evidence with "this was MEASURED, not claimed". Caps: 12 checks a task. Two path-escape bugs were found by the new tests and fixed (`safe_rel` and `one_file` both normalised before judging, so "../../etc/passwd" became "etc/passwd"). Everything stays behind `dev_lab`, still OFF until `lab_check` passes on her VPS. Previous: v0.530.0: HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main as a51ea087 - the trace-layer deploy stays the owner's call, healthz still says 0.511.0 on the VPS). The langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code (the port law): StateGraph (add_node/add_edge/add_conditional_edges/set_entry_point/compile - duplicates, reserved names and unknown endpoints refused at BUILD time, no-node/no-entry/bad-path-map refused at compile; plain channels last-value-wins, Annotated[T, reducer] channels merge through the reducer - operator.add works, add_messages is the messages reducer; a FIRST-EVER value seeds the channel because operator.add has no identity for a missing left side) + the walk (super-steps; every node sees the SAME pre-step state; several static edges from one node fan out; a node with several inbound edges joins only after ALL its parents ran - the barrier; routing is ADDITIVE, routers + static edges both fire; routers see the POST-node state; dict path_map maps by answer, list path_map maps by index (the upstream law); recursion_limit default 25 with an honest GraphRecursionError; None updates are no-ops; non-dict node returns refused; fn(state) and fn(state, config) both accepted; async nodes run natively in ainvoke and via asyncio.run in sync invoke when no loop is running) + AgentState (messages Annotated[list, add_messages] - the P4 create_agent substrate; add_messages: append, replace-by-id, RemoveMessage drops one id, REMOVE_ALL_MESSAGES clears, dicts coerce back, strings become HumanMessages) + interrupts (interrupt(value) PARKS the graph - the state is checkpointed, invoke returns the state carrying __interrupt__, nothing after the interrupt runs; Command(resume=...) re-enters - the node re-runs FROM ITS TOP, answered slots replay in call order, open slots re-park with the earlier answers preserved; parking without a checkpointer refuses honestly; interrupt() outside a node refuses) + checkpointers (BaseCheckpointSaver; MemorySaver thread-safe capped ring; SqliteSaver stdlib sqlite3 WAL - a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a checkpoint lands after EVERY super-step; get_state/update_state with as_node re-deriving next; invoke(None) resumes the stored walk - the crash path, the dhara lesson; Command.update_only/goto_nodes reshape a stored walk) + the tracer seam (CompiledStateGraph is a Runnable - composes with |; every invocation fires a ROOT chain span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays run-free) + store wiring (compile(store=...) rides config['store'] into every node - the P1 stores are the cross-thread memory). Registry rides their 554 (the construction wave's ten tools took 543 -> 553, the crew_run tool took 553 -> 554; the graph is a library - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep with zero threads/env/files; checkpointers write only when a compiled graph with one actually runs). Voice untouched by construction; mem restart pin untouched (no new vps-ops job); console stamps stay 0.487.0 (the dev's convention); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected (nothing in server/app/pc/, desktop/ or lib/ touched). Tests: NEW test_v0530_hoola_graph.py (42, zero network, the asyncio one-loop law): builder validation, reducer channels + seeding, linear/conditional/diamond walks + the join barrier, additive routing + END-from-router, recursion limit default + configurable, two-arg config + store wiring, add_messages + AgentState accumulation, MemorySaver caps/threads/delete, checkpoint-per-step + get_state + update_state + invoke(None) crash-resume + Command reshapes, SqliteSaver round-trip across instances + the engine shape + thread isolation, interrupt refusal/park shape/resume/two-interrupt chain/stream park/async park, node spans named by the node nested under the root span, the inertness probe, the package-export law, no-registry-tools, the version pins. Bugs the smoke caught: parallel fan-out updates must fold SEQUENTIALLY through the reducer (a merge-by-setdefault dropped the second writer's write); _node_config swallowed 1-arg async fns into a sync lambda (the walk saw a coroutine object, not a dict); the engine-path SqliteSaver never created its table; parking without a checkpointer was silent (now the honest RuntimeError); dict path_maps fell through to positional-index lookups (a router returning END would misroute). Version 0.530.0 (APP_VERSION story, pubspec 0.530.0+553, CLAUDE.md healed, pins swept 0.520.0/0.522.0 -> 0.530.0 + +549/+551/+552 -> +553 across the test files zero residual outside deliberate history). TWO COLLISIONS in one build: the THIRTY-SECOND (0.521.0 DIFY + 0.522.0 CONSTRUCTION WAVE 1, registry 543 -> 553, +551) and the THIRTY-THIRD (0.523.0 HOOLA CREW, the crewAI port, registry 553 -> 554, +552) - REBASE PROTOCOL twice: rebuilt on their fresh bases f561f047 then 1db3e577, both works kept each time, the version layer moved coherently on top (0.530.0 stays the newest story). AEP train: P4 AGENT (create_agent on the graph) next. Previous: v0.523.0 HOOLA CREW, v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE (the langchain-core P1), v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7 [full chain in git history].
+APP_VERSION = "0.534.0"   # v0.534.0 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed, owner: "GO STEP 6"; checkpoint "5,000-product marketplace, load test passed"). Her products / doctors / properties come from HER data - a CSV or Excel file, her Google Sheet, or a dataset Hoola already holds - and become pages BY CODE: a preview first (columns mapped, new / changed / same / rejected rows with the reason, thin and duplicate pages counted, nothing written), then her Apply tap; re-importing the same file changes nothing and no item address ever moves; replace hides, never deletes. Every item gets its page (her designed template or a code-made one with photo, price, details and links to its own family), listings of 48 with numbered pages, a filter bar (search, her filter columns with counts, price, sort) on the static site from one compact index per list, split sitemaps (an index + at most 45,000 addresses a file) and a quality gate (thin / copy pages shown but noindex, a copy points its canonical at the original, both left out of the sitemaps). Photos are fetched once (public https hosts only, size + pixel caps) and resized once to AVIF / WebP / JPEG with width and height. W10: every text file is pre-compressed (nginx gzip_static), cache headers let a CDN keep serving, every page is checked against the 100 KB HTML budget and layout shift is now flagged. Measured: 5,000 products = 5,111 pages built in about 5 seconds, every page under 100 KB. The shop: up to 20,000 products, a seller column links products to HER approved sellers, a retried checkout (same id) is ONE order and parallel checkouts never share an order number (a unique index + retry; before this two checkouts at the same moment could both get O-1001). The load proof (2,000 visitors + 600 buyers, every 4th checkout sent twice, 4 workers on Postgres) runs in CI. PART 2 HOOLA CMS: her team works on her site at /cms/<site>/ with their OWN login (a one-time invite link, only its hash kept; removal ends every login at once): writers write drafts (a blog post, an edit of a live post, or new words / links for a page - only what her Edit mode can change), editors approve or send back with a note (never their own draft), publishers publish now or at a time (the worker publishes it); a page text that changed after the draft was written is named, never silently overwritten; every publish and restore is a revision with what was there before, and a publisher brings any of them back. Her console: Team (invite, roles, remove, act on any draft, history). Previous: v0.532.0 PRAYOGSHALA fix - the lab could not have built its image on her VPS. The deploy copies `server/app` only, so `deploy/devlab/Dockerfile` does not exist beside the running code and `build_base` would have answered "Dockerfile nahi mili" on the very first lab_check - a feature that passes 35 tests in the sandbox and cannot work where it runs. The Dockerfile text now lives in `box.DOCKERFILE_TEXT` (raw string, line continuations intact) and a build writes it into a temp folder, so it works from any path; deploy/devlab/Dockerfile stays as the readable copy and a test asserts the two are byte-identical, plus one that builds with the disk copy deliberately missing. Found by reading her own `~/santosh_app` prompt against the deploy path, not by a test. Previous: v0.531.0 PRAYOGSHALA step 2 - the coding lab wired in (owner: "GO STEP 2"). v0.456 built the sealed Docker box and NOTHING called it, which by this repo's own rule means it did not work yet. This is the caller. `devsahayak/lab.py` opens ONE clone per coding task (reused for every check in it, deleted at the end) and the loop gains two tools: `run_check` runs HER declared command on the code as it is RIGHT NOW - every in-memory edit written over the checkout, so a check tests the work and not the base commit - and `grep_log` asks that run's full output a second question instead of re-running it. The system block states it as a duty, not an option: write the failing test, SEE it fail on the unfixed code, fix, run again until it passes, run once before done, and if a check cannot run say so in risk instead of inventing a result or retrying for ever (a setup failure says "Do not retry" in those words). The v0.447 bug proof is now measured HERE in seconds (`_lab_proof`: the test files alone must FAIL, the whole change must PASS) and a conclusive local verdict REPLACES the deliberate red commit on her branch - one clean commit instead of a red-then-green pair, with the evidence (command, source, both runs' seconds) written into the PR and the verdict said on her card; proven_local / not_proven_local (the test passes without the fix, so it proves nothing - said plainly) / still_failing / odd / checked_local, and the CI proof stays exactly as it was wherever the lab cannot answer. The v0.451 plan's done_when lines are RUN where they are real commands and reported VERIFIED / FAILED / not performed with their output, and v0.445's own review is handed that evidence with "this was MEASURED, not claimed". Caps: 12 checks a task. Two path-escape bugs were found by the new tests and fixed (`safe_rel` and `one_file` both normalised before judging, so "../../etc/passwd" became "etc/passwd"). Everything stays behind `dev_lab`, still OFF until `lab_check` passes on her VPS. Previous: v0.530.0: HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main as a51ea087 - the trace-layer deploy stays the owner's call, healthz still says 0.511.0 on the VPS). The langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code (the port law): StateGraph (add_node/add_edge/add_conditional_edges/set_entry_point/compile - duplicates, reserved names and unknown endpoints refused at BUILD time, no-node/no-entry/bad-path-map refused at compile; plain channels last-value-wins, Annotated[T, reducer] channels merge through the reducer - operator.add works, add_messages is the messages reducer; a FIRST-EVER value seeds the channel because operator.add has no identity for a missing left side) + the walk (super-steps; every node sees the SAME pre-step state; several static edges from one node fan out; a node with several inbound edges joins only after ALL its parents ran - the barrier; routing is ADDITIVE, routers + static edges both fire; routers see the POST-node state; dict path_map maps by answer, list path_map maps by index (the upstream law); recursion_limit default 25 with an honest GraphRecursionError; None updates are no-ops; non-dict node returns refused; fn(state) and fn(state, config) both accepted; async nodes run natively in ainvoke and via asyncio.run in sync invoke when no loop is running) + AgentState (messages Annotated[list, add_messages] - the P4 create_agent substrate; add_messages: append, replace-by-id, RemoveMessage drops one id, REMOVE_ALL_MESSAGES clears, dicts coerce back, strings become HumanMessages) + interrupts (interrupt(value) PARKS the graph - the state is checkpointed, invoke returns the state carrying __interrupt__, nothing after the interrupt runs; Command(resume=...) re-enters - the node re-runs FROM ITS TOP, answered slots replay in call order, open slots re-park with the earlier answers preserved; parking without a checkpointer refuses honestly; interrupt() outside a node refuses) + checkpointers (BaseCheckpointSaver; MemorySaver thread-safe capped ring; SqliteSaver stdlib sqlite3 WAL - a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a checkpoint lands after EVERY super-step; get_state/update_state with as_node re-deriving next; invoke(None) resumes the stored walk - the crash path, the dhara lesson; Command.update_only/goto_nodes reshape a stored walk) + the tracer seam (CompiledStateGraph is a Runnable - composes with |; every invocation fires a ROOT chain span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays run-free) + store wiring (compile(store=...) rides config['store'] into every node - the P1 stores are the cross-thread memory). Registry rides their 554 (the construction wave's ten tools took 543 -> 553, the crew_run tool took 553 -> 554; the graph is a library - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep with zero threads/env/files; checkpointers write only when a compiled graph with one actually runs). Voice untouched by construction; mem restart pin untouched (no new vps-ops job); console stamps stay 0.487.0 (the dev's convention); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected (nothing in server/app/pc/, desktop/ or lib/ touched). Tests: NEW test_v0530_hoola_graph.py (42, zero network, the asyncio one-loop law): builder validation, reducer channels + seeding, linear/conditional/diamond walks + the join barrier, additive routing + END-from-router, recursion limit default + configurable, two-arg config + store wiring, add_messages + AgentState accumulation, MemorySaver caps/threads/delete, checkpoint-per-step + get_state + update_state + invoke(None) crash-resume + Command reshapes, SqliteSaver round-trip across instances + the engine shape + thread isolation, interrupt refusal/park shape/resume/two-interrupt chain/stream park/async park, node spans named by the node nested under the root span, the inertness probe, the package-export law, no-registry-tools, the version pins. Bugs the smoke caught: parallel fan-out updates must fold SEQUENTIALLY through the reducer (a merge-by-setdefault dropped the second writer's write); _node_config swallowed 1-arg async fns into a sync lambda (the walk saw a coroutine object, not a dict); the engine-path SqliteSaver never created its table; parking without a checkpointer was silent (now the honest RuntimeError); dict path_maps fell through to positional-index lookups (a router returning END would misroute). Version 0.530.0 (APP_VERSION story, pubspec 0.530.0+553, CLAUDE.md healed, pins swept 0.520.0/0.522.0 -> 0.530.0 + +549/+551/+552 -> +553 across the test files zero residual outside deliberate history). TWO COLLISIONS in one build: the THIRTY-SECOND (0.521.0 DIFY + 0.522.0 CONSTRUCTION WAVE 1, registry 543 -> 553, +551) and the THIRTY-THIRD (0.523.0 HOOLA CREW, the crewAI port, registry 553 -> 554, +552) - REBASE PROTOCOL twice: rebuilt on their fresh bases f561f047 then 1db3e577, both works kept each time, the version layer moved coherently on top (0.530.0 stays the newest story). AEP train: P4 AGENT (create_agent on the graph) next. Previous: v0.523.0 HOOLA CREW, v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE (the langchain-core P1), v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7 [full chain in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -9131,16 +9131,215 @@ def _shop_owner(fn, *a):
         raise HTTPException(e.code, str(e))
 
 
+# ---- v0.534 HOOLA CMS (web Step 6 part 2, W8): her team - writers / editors / publishers - drafts, review, schedule, history
+def _cms_call(fn):
+    from .site import cms as CM
+    from .site import webapp as W
+    try:
+        return JSONResponse(fn(), headers={**_SITE_APP_CORS, "Cache-Control": "no-store"})
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    except CM.CmsError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+
+
+def _cms_site(site_id: str) -> str:
+    from .site import service as S
+    from .site import webapp as W
+    from .site.models import Site
+    from .db import session as _s
+    with _s() as s:
+        if s.get(Site, site_id) is None:
+            raise W.AppError("not found", 404)
+    return site_id
+
+
+def _cms_who(site_id: str, request: Request):
+    from .site import cms as CM
+    _cms_site(site_id)
+    return CM.who(site_id, _site_tok(request))
+
+
+@app.get("/cms/{site_id}/", response_class=HTMLResponse)
+async def cms_page(site_id: str):
+    """Her team's own page (works without her Hoola login): invite / login, drafts, page texts, review, publish, history."""
+    page = (STATIC / "cms" / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(page.replace("__SITE__", re.sub(r"[^A-Za-z0-9_-]", "", site_id)),
+                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex", "X-Frame-Options": "DENY",
+                                 "Referrer-Policy": "no-referrer",          # the invite link never leaks in a Referer
+                                 "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+                                                            "connect-src 'self'; img-src 'self' data:; base-uri 'none'; "
+                                                            "form-action 'none'; frame-ancestors 'none'"})
+
+
+@app.post("/api/site-cms/{site_id}/accept")
+async def site_cms_accept(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.accept(_cms_site(site_id), str(b.get("invite") or ""),
+                                                                str(b.get("password") or ""), str(b.get("name") or "")))
+
+
+@app.post("/api/site-cms/{site_id}/login")
+async def site_cms_login(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.login(_cms_site(site_id), str(b.get("email") or ""),
+                                                               str(b.get("password") or ""), _ip(request)))
+
+
+@app.get("/api/site-cms/{site_id}/home")
+async def site_cms_home(site_id: str, request: Request, status: str = ""):
+    """Me + the pages + the drafts I may see + the blog's posts (to edit one)."""
+    from .site import blog as BL
+    from .site import cms as CM
+
+    def go():
+        w = _cms_who(site_id, request)
+        return {"me": CM._me(w.m), "pages": CM.pages(site_id), "drafts": CM.drafts(site_id, w, status),
+                "posts": [{"slug": p["slug"], "title": p["title"], "status": p["status"]} for p in BL.posts(site_id)]}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/page/{slug:path}")
+async def site_cms_page_texts(site_id: str, slug: str, request: Request):
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        return {"texts": CM.page_texts(site_id, slug)}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/post/{slug}")
+async def site_cms_post(site_id: str, slug: str, request: Request):
+    from .site import blog as BL
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        p = next((x for x in BL.posts(site_id) if x["slug"] == slug), None)
+        if p is None:
+            raise CM.CmsError("Post nahi mila.", 404)
+        return {"post": {k: p.get(k) for k in ("slug", "title", "body", "excerpt", "category", "status")}}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/drafts/{did}")
+async def site_cms_draft(site_id: str, did: str, request: Request):
+    from .site import cms as CM
+    return await asyncio.to_thread(_cms_call, lambda: CM.draft(site_id, _cms_who(site_id, request), did))
+
+
+@app.post("/api/site-cms/{site_id}/drafts")
+async def site_cms_draft_new(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.save(site_id, _cms_who(site_id, request), b))
+
+
+@app.put("/api/site-cms/{site_id}/drafts/{did}")
+async def site_cms_draft_save(site_id: str, did: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.save(site_id, _cms_who(site_id, request), b, did))
+
+
+@app.post("/api/site-cms/{site_id}/drafts/{did}/move")
+async def site_cms_draft_move(site_id: str, did: str, request: Request):
+    """{to: review | approved | returned | published | scheduled | withdrawn, note?, when?}"""
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.move(site_id, _cms_who(site_id, request), did, str(b.get("to") or ""),
+                                                              str(b.get("note") or ""), str(b.get("when") or "")))
+
+
+@app.get("/api/site-cms/{site_id}/history")
+async def site_cms_history(site_id: str, request: Request, kind: str = "", target: str = ""):
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        return {"history": CM.history(site_id, kind, target)}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.post("/api/site-cms/{site_id}/history/{rid}/restore")
+async def site_cms_restore(site_id: str, rid: str, request: Request):
+    from .site import cms as CM
+    return await asyncio.to_thread(_cms_call, lambda: CM.restore(site_id, rid, _cms_who(site_id, request)))
+
+
+def _cms_owner(tenant: str, ref: str):
+    from .site import catalog as CAT
+    return CAT._site(tenant, ref).id
+
+
+@app.get("/api/sites/{ref}/cms", dependencies=[Depends(require_key)])
+async def sites_cms(ref: str, tenant: str = Depends(current_tenant)):
+    """Her view: the team, every draft, the history."""
+    from .site import cms as CM
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        w = CM.Who(owner=True, site_id=sid)
+        return {"team": CM.team(sid), "drafts": CM.drafts(sid, w), "history": CM.history(sid)[:40], "site_id": sid}
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/cms/invite", dependencies=[Depends(require_key)])
+async def sites_cms_invite(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {email, name, role}: a one-time invite link to share (7 days)."""
+    from .site import cms as CM
+    b = body or {}
+    base = (get_settings().public_base_url or "").rstrip("/")
+    return await asyncio.to_thread(_cat_call, lambda: CM.invite(_cms_owner(tenant, ref), str(b.get("email") or ""),
+                                                                 str(b.get("name") or ""), str(b.get("role") or "writer"), base))
+
+
+@app.post("/api/sites/{ref}/cms/team/{mid}", dependencies=[Depends(require_key)])
+async def sites_cms_member(ref: str, mid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import cms as CM
+    b = body or {}
+    return await asyncio.to_thread(_cat_call, lambda: CM.set_member(_cms_owner(tenant, ref), mid, str(b.get("role") or ""),
+                                                                     bool(b.get("remove"))))
+
+
+@app.post("/api/sites/{ref}/cms/drafts/{did}/move", dependencies=[Depends(require_key)])
+async def sites_cms_move(ref: str, did: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her own tap on a team draft: approve / send back / publish now / schedule."""
+    from .site import cms as CM
+    b = body or {}
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        return CM.move(sid, CM.Who(owner=True, site_id=sid), did, str(b.get("to") or ""), str(b.get("note") or ""), str(b.get("when") or ""))
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/cms/history/{rid}/restore", dependencies=[Depends(require_key)])
+async def sites_cms_restore(ref: str, rid: str, tenant: str = Depends(current_tenant)):
+    from .site import cms as CM
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        return CM.restore(sid, rid, CM.Who(owner=True, site_id=sid))
+    return await asyncio.to_thread(_cat_call, go)
+
+
 # ---- v0.534 BADA CATALOGUE (web Step 6, W8): her products / doctors / properties from her file / Sheet / dataset -> pages
 def _cat_call(fn, *a, **kw):
     from .site import catalog as CAT
     from .site import service as S
+    from .site import webapp as W
     try:
         return fn(*a, **kw)
     except CAT.CatalogError as e:
         raise HTTPException(e.code, str(e))
     except S.SiteError as e:
         raise HTTPException(400, str(e))
+    except W.AppError as e:                          # v0.534 the team CMS / webapp refusals carry their code
+        raise HTTPException(e.code, str(e))
     except Exception as e:                           # her Sheet not joined / not found: said plainly
         if type(e).__name__ in ("NotConnected", "SheetError", "DataError"):
             raise HTTPException(400, str(e))
@@ -9193,8 +9392,17 @@ async def sites_catalog_preview(ref: str, request: Request, tenant: str = Depend
 async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """Her tap {hash, replace?}: the preview she saw is written (replace = items not in the file are hidden, never deleted)."""
     from .site import catalog as CAT
+    from .site import service as S
     b = body or {}
-    return await asyncio.to_thread(_cat_call, CAT.apply, tenant, ref, str(b.get("hash") or ""), bool(b.get("replace")))
+
+    def go():
+        out = CAT.apply(tenant, ref, str(b.get("hash") or ""), bool(b.get("replace")))
+        r = CAT._site(tenant, ref)
+        if r.version:                                # her tap: the next checked version carries the pages (going live = her launch)
+            S._after_edit(S._load(r.id), f"catalogue: {out['coll']}")
+            out["say"] = out["say"].split(" Website ki")[0] + " Nayi version ban rahi hai (jaanch ke baad); live karna aapke tap se."
+        return out
+    return await asyncio.to_thread(_cat_call, go)
 
 
 @app.post("/api/sites/{ref}/catalog/images", dependencies=[Depends(require_key)])

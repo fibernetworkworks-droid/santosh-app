@@ -19393,5 +19393,19 @@ Owner: "GO STEP 6". New `site/catalog.py`, `site/speed.py`, `site/loadtest.py`, 
   300 visitors / 150 buyers): passed, 105 orders, 37 retried pairs each ONE order. CI `app-load.yml` runs it at 2,000 / 600
   with 4 workers on Postgres.
 - CHAT: `website action=catalog` + coll + sheet / dataset = a PREVIEW only; Apply stays her tap (console Catalogue card).
-- Tests `tests/test_v0534_bada_catalogue.py`. NOT in this part (Step 6 part 2): the team CMS (editors, drafts, review,
-  scheduled publish, history), Cloudflare setup on her domain, per-site Postgres for big data.
+- Tests `tests/test_v0534_bada_catalogue.py`.
+- PART 2 HOOLA CMS (`site/cms.py`, `static/cms/index.html`, console `teamBox`): tables `site_cms_member` (email, role
+  writer | editor | publisher, PBKDF2 password, invite hash + 7-day expiry, gen, status invited | active | removed),
+  `site_cms_draft` (post: title / markdown / excerpt / category / target = a live post's slug or new; page: ops
+  [{key, e, op text | link, value, was}] = only the elements `edit.tag` numbers, checked against `page_texts`), and
+  `site_cms_rev` (before / after JSON, who, publish | restore). Team login = an HMAC token "cms|" (12 h, the member's gen:
+  removal or a role change ends it); `/api/site-cms/<site>/...` accept / login / home / page/<slug> / post/<slug> /
+  drafts / move / history / restore; her side `/api/sites/<ref>/cms*`. States draft -> review -> approved | returned (with
+  a note) -> published | scheduled (worker `cms.tick` beside blog_tick); an editor never approves their own draft, only an
+  approved draft is published (her own tap may publish any). Publish: a post through `blog.put` / the live post updated in
+  place; a page's ops applied to the CURRENT section html, an element whose text / link changed since the draft is skipped
+  and named (all skipped = 409, nothing written); then `_blog_rebuild(live=True)` (new checked version, live when her
+  address showed the version before). Restore = what was before, as a new revision (a revision that CREATED a post hides it).
+  The team page: CSP (no outside anything), no-referrer (the invite never leaks), noindex, frame-ancestors none.
+  Tests `tests/test_v0534_hoola_cms.py`. NOT built: 2-step login for the team, photo upload by the team (they pick from
+  her site photos only via her), Cloudflare setup on her domain, per-site Postgres for big data.

@@ -1926,6 +1926,7 @@ window.HoolaBuild = function (C) {
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
     if (info.linked) auditBox(o, box);
     catalogBox(o, box);
+    teamBox(o, box);
     if (info.linked) liveBox(o, box, M(info.linked), S(info.site_id), S(info.api));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
@@ -2054,6 +2055,50 @@ window.HoolaBuild = function (C) {
       const th = e.target.closest('li[data-th]');
       if (th && e.target.closest('[data-rep]')) { const inp = th.querySelector('input'), v = inp.value.trim(); if (!v) return;
         try { await api('POST', A + '/chat/' + encodeURIComponent(th.dataset.th), {text: v, her_tap: true}); toast('Sent.'); reload(); } catch (er) { toast(er.message, true); } }
+    };
+  }
+
+  /* v0.534 HOOLA CMS: her team (writers / editors / publishers) works at /cms/<site>/ with their own login; here she
+     invites, changes roles, removes, and acts on any draft herself (approve / send back / publish / restore). */
+  async function teamBox(o, box) {
+    let v; try { v = await api('GET', base(o) + '/cms'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    const open = L(v.drafts).filter(d => !['published', 'withdrawn'].includes(S(d.status)));
+    sec.innerHTML = `<h4>Team <span>${L(v.team).length} people · ${open.length} open draft(s)</span></h4>
+      <p class="stnote">Writers write drafts, editors approve or send back (never their own), publishers publish now or at a time. They work at <code>/cms/${esc(S(v.site_id))}/</code> with their own login - not your Hoola login.</p>
+      ${L(v.team).length ? `<ul class="stmems">${L(v.team).map(m => `<li data-m="${esc(S(m.id))}"><span>${esc(S(m.name))} · ${esc(S(m.email))}${m.status === 'invited' ? ' · invited' : ''}</span>
+        <span><select aria-label="Role">${['writer', 'editor', 'publisher'].map(r => `<option${r === S(m.role) ? ' selected' : ''}>${r}</option>`).join('')}</select> <button class="btn soft" type="button" data-rm>Remove</button></span></li>`).join('')}</ul>` : ''}
+      <form class="stapp" data-t="inv" autocomplete="off"><div class="row"><label><span>Email</span><input name="email" type="email" required></label><label><span>Name</span><input name="name"></label>
+        <label><span>Role</span><select name="role"><option>writer</option><option>editor</option><option>publisher</option></select></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Invite (one-time link)</button></div></form><div class="stinv"></div>
+      ${open.length ? `<h4 style="margin-top:12px">Open drafts</h4><ul class="stmems">${open.map(d => `<li data-d="${esc(S(d.id))}"><span>${esc(S(d.title))} · ${esc(S(d.status))} · ${esc(S(d.author_name))}</span>
+        <span>${d.status === 'review' ? '<button class="btn soft" type="button" data-mv="approved">Approve</button> <button class="btn soft" type="button" data-mv="returned">Send back</button>' : ''}
+        ${d.status === 'approved' ? '<button class="btn go" type="button" data-mv="published">Publish now</button>' : ''}</span></li>`).join('')}</ul>` : ''}
+      ${L(v.history).length ? `<h4 style="margin-top:12px">History</h4><div class="sttbl"><table><thead><tr><th>When</th><th>What</th><th>Who</th><th></th></tr></thead><tbody>${L(v.history).map(x => `<tr data-r="${esc(S(x.id))}"><td>${esc(new Date(S(x.at)).toLocaleString())}</td><td>${esc(S(x.kind))} ${esc(S(x.target))} · ${esc(S(x.summary))}${x.action === 'restore' ? ' (restored)' : ''}</td><td>${esc(S(x.by))}</td><td><button class="btn soft" type="button" data-rs>Bring back before</button></td></tr>`).join('')}</tbody></table></div>` : ''}`;
+    box.appendChild(sec);
+    const reload = () => { sec.remove(); teamBox(o, box); };
+    const f = sec.querySelector('[data-t=inv]');
+    f.onsubmit = async e => {
+      e.preventDefault();
+      try { const r = await api('POST', base(o) + '/cms/invite', {email: f.email.value.trim(), name: f.name.value.trim(), role: f.role.value});
+        sec.querySelector('.stinv').innerHTML = `<p class="stnote">Share this link with them (works once, ${N(r.expires_days)} days): <code>${esc(S(r.link))}</code></p>`; }
+      catch (er) { toast(er.message, true); }
+    };
+    sec.onchange = async e => {
+      const s2 = e.target.closest('select'), li = e.target.closest('li[data-m]'); if (!s2 || !li) return;
+      try { await api('POST', base(o) + '/cms/team/' + encodeURIComponent(li.dataset.m), {role: s2.value}); toast('Role changed; they log in again.'); } catch (er) { toast(er.message, true); }
+    };
+    sec.onclick = async e => {
+      const li = e.target.closest('li[data-m]');
+      if (li && e.target.closest('[data-rm]')) { if (!confirm('Remove this person? Their logins end now; their drafts stay.')) return;
+        try { await api('POST', base(o) + '/cms/team/' + encodeURIComponent(li.dataset.m), {remove: true}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const mv = e.target.closest('[data-mv]'), dl = e.target.closest('li[data-d]');
+      if (mv && dl) { const to = mv.dataset.mv; const note = to === 'returned' ? (prompt('What should change?') || '') : '';
+        if (to === 'published' && !confirm('Publish this on the website now?')) return;
+        try { await api('POST', base(o) + '/cms/drafts/' + encodeURIComponent(dl.dataset.d) + '/move', {to, note}); reload(); } catch (er) { toast(er.message, true); } return; }
+      const tr = e.target.closest('tr[data-r]');
+      if (tr && e.target.closest('[data-rs]')) { if (!confirm('Put back what was there before this change?')) return;
+        try { await api('POST', base(o) + '/cms/history/' + encodeURIComponent(tr.dataset.r) + '/restore'); reload(); } catch (er) { toast(er.message, true); } }
     };
   }
 
