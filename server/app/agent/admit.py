@@ -626,6 +626,9 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
         if "research" in set(FAMILY_OF.values()) and (_hard.research_wanted(text) or "research_status" in str(text) or "research_watch" in str(text)):
             adm.admit_families(["research"])
             adm.why = {**adm.why, "research": "research ask"}
+            if "team" in set(FAMILY_OF.values()):     # v0.559 team left the core: deep research still gets its crew
+                adm.admit_families(["team"])
+                adm.why.setdefault("team", "research ask")
     except Exception:               # noqa: BLE001 - routing never fails a turn
         pass
     STATS["turns"] += 1
