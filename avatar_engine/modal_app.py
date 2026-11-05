@@ -54,20 +54,25 @@ secret = modal.Secret.from_name("hoola-lab")
 
 # ---------------------------------------------------------------- images (one per clashing stack)
 _base = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "git").env(HF_ENV)
-# Chatterbox 0.1.7 stops a sentence the moment ANY two identical speech tokens come in a row (its own comment says "3x";
-# the code checks 2, and the "only after the text is spoken" condition is commented out) - a held vowel is two identical
-# tokens, so words were cut off mid-sentence ("Detected 2x repetition ... forcing EOS" in the studio card log). Patched at
-# build time to what the comment meant: 4 in a row, and only once the whole text has been spoken. Build fails if the
-# line it patches ever changes.
+# Chatterbox 0.1.7's end-of-speech guard, read from its source and measured on the studio card (runs 33-35):
+# (1) it ended a sentence the moment ANY two identical speech tokens came in a row - its own comment says "3x", and the
+#     "only once the text is spoken" condition is commented out - so held vowels cut words off;
+# (2) with that loosened (run 35), the voice spoke the sentence and then BABBLED 3-5 s of non-words after it (whisper heard
+#     "aaj hum baat karenge gati ki" in 1.4 s, then nonsense to 6.7 s). Nothing else in the guard catches that tail.
+# The patch restores the authors' intent - the repeat rule counts only AFTER the text is spoken - and adds a hard stop
+# 20 speech tokens (0.8 s, 25 a second) after the text is spoken. The build fails if either line it patches changes.
 CB_PATCH = r"""
 import importlib.util, pathlib
 p = pathlib.Path(importlib.util.find_spec("chatterbox").submodule_search_locations[0]) / "models/t3/inference/alignment_stream_analyzer.py"
 s = p.read_text()
-old = "len(self.generated_tokens) >= 3 and\n            len(set(self.generated_tokens[-2:])) == 1"
-new = "self.complete and len(self.generated_tokens) >= 4 and\n            len(set(self.generated_tokens[-4:])) == 1"
-assert s.count(old) == 1, "chatterbox repetition check changed - re-read it before patching"
-p.write_text(s.replace(old, new))
-print("chatterbox repetition guard patched")
+old1 = "len(self.generated_tokens) >= 3 and\n            len(set(self.generated_tokens[-2:])) == 1"
+new1 = "self.complete and len(self.generated_tokens) >= 3 and\n            len(set(self.generated_tokens[-2:])) == 1"
+old2 = "if long_tail or alignment_repetition or token_repetition:"
+new2 = "past_end = self.complete and self.completed_at is not None and (T - self.completed_at) > 20\n        if long_tail or alignment_repetition or token_repetition or past_end:"
+for o in (old1, old2):
+    assert s.count(o) == 1, "chatterbox end-of-speech guard changed - re-read it before patching"
+p.write_text(s.replace(old1, new1).replace(old2, new2))
+print("chatterbox end-of-speech guard patched")
 """
 chatterbox_image = (_base.pip_install("chatterbox-tts==0.1.7", "soundfile", "huggingface_hub")
                     # one line: a build step is a single Dockerfile RUN, so the script travels base64-encoded
@@ -201,11 +206,12 @@ class Chatterbox:
             ref_audio = self._voice_ref(voice_id)
         ref = _tmp(ref_audio, ".wav")
         t = time.time()
-        # Guard both ways. A line of N words should speak for about N x 0.45 s (Hindi). More than N x 1.0 s + 2.5 s is a
-        # runaway (one word once rambled for 12 s); less than N x 0.22 s means the voice stopped early and dropped words.
+        # Guard both ways. A line of N words should speak for about N x 0.45 s (Hindi). More than N x 0.8 s + 1.5 s is a
+        # runaway (one word once rambled for 12 s; run 35 spoke 5 words in 1.4 s then babbled to 6.7 s, which the old
+        # N x 1.0 + 2.5 let through); less than N x 0.22 s means the voice stopped early and dropped words.
         # Either one is made again (max 3 takes); the take closest to the normal length is kept.
         n = len(text.split())
-        limit, floor = n * 1.0 + 2.5, n * 0.22
+        limit, floor = n * 0.8 + 1.5, n * 0.22
         best, tries = None, 0
         for _ in range(3):
             tries += 1
@@ -1554,6 +1560,24 @@ def studio_card():
         results[name] = True
         return r
 
+    def heard(name: str, r: dict | None, fname: str, script: str) -> None:
+        """Ears for the card: the video's sound is transcribed (whisper) and compared with the script. Extra words or
+        sound running long after the last word = the voice babbled past its text (what run 35's clips did)."""
+        if not r or fname not in r.get("files", {}):
+            return
+        try:
+            h = Hear().transcribe.spawn(r["files"][fname], "hi").get(timeout=600)
+        except Exception as e:
+            note(f"   ears {name}: could not listen ({type(e).__name__}: {str(e)[:120]})")
+            return
+        words = [w for sg in h["segments"] for w in sg["words"]]
+        end = words[-1]["end"] if words else 0.0
+        sw, hw, dur = len(script.split()), len(words), float(h["duration"])
+        ok = bool(words) and hw <= sw * 1.3 + 1 and dur - end <= 1.5
+        note(f"   ears {name}: script {sw} words, heard {hw}, last word ends {end:.1f}s of {dur:.1f}s -> "
+             f"{'CLEAN' if ok else 'EXTRA SPEECH / BABBLE'} | " + " ".join(sg["text"] for sg in h["segments"])[:160])
+        results[f"{name} (ears)"] = ok
+
     consent = "signed:labtest0001"          # the lab uses MuseTalk's sample speaker; a real person's consent record is never faked
     text = "नमस्ते, मैं आपकी शिक्षक हूँ। आज हम गति के बारे में सीखेंगे। गति का मतलब है कि कोई चीज़ समय के साथ अपनी जगह कितनी तेज़ी से बदलती है।"
     try:
@@ -1563,14 +1587,14 @@ def studio_card():
     except Exception as e:
         note(f"face prepare FAILED: {type(e).__name__} {str(e)[:300]}")
         return
-    run("1 text to video", "video", {"avatar_id": "lab-live", "text": text, "lang": "hi"},
+    r1 = run("1 text to video", "video", {"avatar_id": "lab-live", "text": text, "lang": "hi"},
         {"video.mp4": "studio_1_text_to_video.mp4", "captions.vtt": "studio_1_captions.vtt"})
     run("2 photo avatar", "photo_face", {"avatar_id": "lab-photo", "photo": _sample_photo.remote(), "consent": "ai_generated"})
-    run("2b photo -> video", "video", {"avatar_id": "lab-photo", "text": "यह एक तस्वीर से बना वीडियो है।", "lang": "hi"},
+    r2 = run("2b photo -> video", "video", {"avatar_id": "lab-photo", "text": "यह एक तस्वीर से बना वीडियो है।", "lang": "hi"},
         {"video.mp4": "studio_2_photo_avatar.mp4"})
     audio = _sample_audio.remote()
     run("3 my voice (save)", "voice_save", {"voice_id": "lab-voice", "wav": audio, "consent": consent})
-    run("3b my voice -> video", "video", {"avatar_id": "lab-live", "voice_id": "lab-voice", "text": "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।", "lang": "hi"},
+    r3 = run("3b my voice -> video", "video", {"avatar_id": "lab-live", "voice_id": "lab-voice", "text": "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।", "lang": "hi"},
         {"video.mp4": "studio_3_my_voice.mp4"})
     try:
         studio_job.spawn("voice_save", {"voice_id": "lab-bad", "wav": audio, "consent": "ai_generated"}).get(timeout=300)
@@ -1583,14 +1607,21 @@ def studio_card():
     if r:
         note(f"   heard: language {r['info']['language']} ({r['info']['language_probability']}), {len(r['info']['segments'])} segments: "
              + " ".join(sg["text"] for sg in r["info"]["segments"])[:200])
-    run("5 dub (video translate)", "dub", {"video": _sample_talking.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
+    r5 = run("5 dub (video translate)", "dub", {"video": _sample_talking.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
         {"video.mp4": "studio_5_dub.mp4"})
-    run("6 podcast (2 hosts)", "podcast", {"lang": "hi", "hosts": {"a": {"avatar_id": "lab-live", "voice_id": ""}, "b": {"avatar_id": "lab-photo", "voice_id": "lab-voice"}},
+    r6 = run("6 podcast (2 hosts)", "podcast", {"lang": "hi", "hosts": {"a": {"avatar_id": "lab-live", "voice_id": ""}, "b": {"avatar_id": "lab-photo", "voice_id": "lab-voice"}},
         "lines": [{"host": "a", "text": "आज हम बात करेंगे गति की।"}, {"host": "b", "text": "गति यानी चाल और दिशा, है न?"}, {"host": "a", "text": "बिल्कुल सही।"}]},
         {"video.mp4": "studio_6_podcast.mp4", "captions.vtt": "studio_6_captions.vtt"})
-    run("7 one video, many names", "personalised", {"avatar_id": "lab-live", "lang": "hi", "template": "नमस्ते {name}, आपकी कक्षा कल सुबह दस बजे है।", "names": ["आरव", "सिया"]},
+    r7 = run("7 one video, many names", "personalised", {"avatar_id": "lab-live", "lang": "hi", "template": "नमस्ते {name}, आपकी कक्षा कल सुबह दस बजे है।", "names": ["आरव", "सिया"]},
         {"video_01.mp4": "studio_7_aarav.mp4", "video_02.mp4": "studio_7_siya.mp4"})
+    note("THE EARS - every video's sound against its script:")
+    heard("1", r1, "video.mp4", text)
+    heard("2b", r2, "video.mp4", "यह एक तस्वीर से बना वीडियो है।")
+    heard("3b", r3, "video.mp4", "यह मेरी अपनी आवाज़ में बोला गया वाक्य है।")
+    heard("5", r5, "video.mp4", "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।")
+    heard("6", r6, "video.mp4", "आज हम बात करेंगे गति की। गति यानी चाल और दिशा, है न? बिल्कुल सही।")
+    heard("7", r7, "video_01.mp4", "नमस्ते आरव, आपकी कक्षा कल सुबह दस बजे है।")
     ok = sum(1 for v in results.values() if v)
-    note(f"RESULT: {ok} of {len(results)} features passed")
+    note(f"RESULT: {ok} of {len(results)} checks passed")
     if ok < len(results):
         note("FAILED: " + ", ".join(k for k, v in results.items() if not v))

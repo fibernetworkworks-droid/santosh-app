@@ -403,7 +403,10 @@ def test_voice_never_cut_off_mid_sentence_and_takes_judged_both_ways():
     m = re.search(r'CB_PATCH = r"""(.*?)"""', MODAL_SRC, re.S)
     assert m and "'" not in m.group(1)                       # it rides inside python -c '...'
     code = m.group(1)
-    assert "assert s.count(old) == 1" in code and "self.complete and len(self.generated_tokens) >= 4" in code
+    # run 35: with the repeat rule loosened the voice babbled 3-5 s past its text -> repeat rule only after the text is
+    # spoken (the authors' commented-out intent) + a hard stop 20 tokens (0.8 s) after it
+    assert "assert s.count(o) == 1" in code and "self.complete and len(self.generated_tokens) >= 3" in code
+    assert "(T - self.completed_at) > 20" in code and "or past_end:" in code
     assert 'base64.b64encode(CB_PATCH.encode())' in MODAL_SRC and '| base64 -d | python' in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _take_off.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
@@ -411,3 +414,12 @@ def test_voice_never_cut_off_mid_sentence_and_takes_judged_both_ways():
     assert off(4.5, 10) < off(1.0, 10) and off(4.5, 10) < off(12.0, 10)
     speak = MODAL_SRC[MODAL_SRC.index("def speak(self, text: str, lang"):MODAL_SRC.index("@app.cls", MODAL_SRC.index("def speak(self, text: str, lang"))]
     assert "floor <= secs <= limit" in speak and '"cut_short": secs < floor' in speak
+    assert "limit, floor = n * 0.8 + 1.5, n * 0.22" in speak          # 5 words + 5 s of babble (6.7 s) is a runaway now
+
+
+def test_studio_card_has_ears():
+    """The card transcribes every video it made and compares it with the script - babble shows up as a failed row."""
+    card = MODAL_SRC[MODAL_SRC.index("def studio_card"):]
+    assert "def heard(" in card and "Hear().transcribe.spawn(" in card and "EXTRA SPEECH / BABBLE" in card
+    for n in ("r1", "r2", "r3", "r5", "r6", "r7"):
+        assert f'heard("' in card and f", {n}, " in card
