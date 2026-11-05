@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
     dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_spec_review: bool = True            # v0.402 ECC specialists in PR reviews; ON since the review card (same 8/8 caught, false alarms 8 -> 4, nits 3 -> 0)
-    dev_lab: bool = False                   # v0.456 PRAYOGSHALA: Hoola may run her declared checks in the Docker box. OFF until `python -m app.devlab check` passes on the VPS
+    dev_lab: bool = True                    # v0.533 PRAYOGSHALA ON: her VPS answered lab_check with every wall holding (docker 29.8.1, base image built, pass + fail caught, network blocked, read-only root, uid 1000)
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit

@@ -58,6 +58,7 @@ on:
           - cad_check
           - cad_setup
           - lab_check
+          - lab_try
           - lab_setup
           - lab_images
           - lab_prune
@@ -515,6 +516,12 @@ jobs:
                 # if missing, then runs a passing test, a failing test, and three wall checks (no network, read-only
                 # root, non-root user). "GADBAD" / "KHATRA" anywhere in the output = do NOT turn dev_lab on.
                 echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab check 2>&1 | tail -40' ;;
+              lab_try)
+                # v0.533 the lab on HER OWN repo, end to end: clone santosh-app, install its dependencies ONCE (network
+                # on, cached as an image snapshot), then run a small slice of the real suite with NO network. This is the
+                # same path a coding job takes, minus the model. First run installs deps (a few minutes); later runs reuse
+                # the snapshot. "PASS" here means the box can really run her code.
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab run --repo fibernetworkworks-droid/santosh-app --ref main --cmd "cd server && python3 -m pytest -q -p no:randomly tests/test_v0456_devlab.py tests/test_v0531_lab_loop.py" --timeout 900 2>&1 | tail -30' ;;
               lab_setup)
                 # ... build (or rebuild) the base image on its own: python + node + jdk + git + ripgrep, ~2-4 minutes.
                 echo 'docker --version || echo "DOCKER NAHI HAI"'

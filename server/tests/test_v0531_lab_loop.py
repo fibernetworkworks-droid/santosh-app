@@ -67,9 +67,19 @@ def _loop(monkeypatch, S, lab, turns):
 
 
 # ---------------------------------------------------------------- the switch, and the shut lab
-def test_the_lab_is_shut_until_she_turns_it_on():
-    r = LAB.ready(T)
-    assert r["ok"] is False and "dev_lab off" in r["why"] and "lab_check" in r["why"]
+def test_the_switch_and_the_box_are_two_separate_doors(monkeypatch):
+    """v0.533: the switch is ON now (her VPS answered lab_check with every wall holding), so `ready()` speaks about
+    the BOX. With the switch off it speaks about the switch. A shut lab always says which door is closed."""
+    from app.config import get_settings
+    assert get_settings().dev_lab is True
+    monkeypatch.setattr(get_settings(), "dev_lab", False, raising=False)
+    off = LAB.ready(T)
+    assert off["ok"] is False and "dev_lab off" in off["why"] and "lab_check" in off["why"]
+    monkeypatch.setattr(get_settings(), "dev_lab", True, raising=False)
+    from app.devlab import box
+    monkeypatch.setattr(box, "docker", lambda: "")
+    on = LAB.ready(T)
+    assert on["ok"] is False and "docker nahi hai" in on["why"]      # the honest reason, not the switch
 
 
 def test_a_shut_lab_gives_the_loop_no_tools_and_changes_nothing(dev, monkeypatch):  # noqa: F811

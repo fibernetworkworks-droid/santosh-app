@@ -19390,3 +19390,49 @@ the CAD desk had nothing. All it could say was `health()`, and that only reporte
   calculator kinds must answer with their real keys.
 - Run here: 32 live, 0 dead, 1 skipped (`--quick`) of 33.
 - Tests `test_v0458_cad_check.py` (10).
+
+## v0.535.0 PRAYOGSHALA ON — the lab is live, because her own VPS proved it
+
+She ran `lab_check` on the VPS and **every wall held**, pasted verbatim:
+
+```
+docker: ok 29.8.1
+base image hoola-devlab:base: NAHI bani
+  build: ok (146.1s)
+ek pass hone wala test: exit 0 (1.9s) - ok
+ek fail hone wala test: exit 1 - ok, aur fail ka ant dikh raha hai
+network band hai: ok (box bahar nahi pahunch saka)
+root filesystem read-only hai: ok
+box ka user: 1000 (ok, root nahi)
+lab images: 1 (hoola-devlab:base 1.54GB)
+```
+
+No `GADBAD`, no `KHATRA`. The box builds, runs her code, catches a failure with its END visible (the v0.456
+failure-first contract working on real output), cannot reach the network, cannot write to its own root, and is not
+root. So `dev_lab` flips to **True** and everything v0.531 wired becomes live: a coding job clones the repo once,
+writes its in-memory edits over that checkout, runs her declared check in seconds, proves a bug **red-then-green
+locally** instead of pushing a deliberate red commit, and **executes** the v0.451 plan's `done_when` lines.
+
+**`.hoola/lab.json` in this repo** — the one place a repo can declare its commands outright, so the lab needs no tap
+here: `setup` = `python3 -m pip install --user -r server/requirements.txt`, `test` = `cd server && python3 -m pytest
+-q -p no:randomly`, `timeout` 900. A test asserts the file parses through `spec.discover` with `confirm=False` and
+that neither command is refusable — so the repo's own declaration cannot rot.
+
+**vps-ops `lab_try`** runs that exact path on her own repo end to end: clone `santosh-app`, install its dependencies
+once with the network on (committed as a cached image snapshot), then a real slice of the suite with **no network**.
+It is the road a coding job takes, minus the model — the honest live proof that the box can run *her* code, not just
+a two-line fixture.
+
+**Disk, said plainly:** the base image is **1.54 GB** and every repo adds its own dependency snapshot on top.
+`lab_prune` keeps the newest 12 and never drops the base; `lab_images` shows what is there beside `docker system df`.
+
+**One test rewritten to the new truth:** `test_the_lab_is_shut_until_she_turns_it_on` asserted the switch-off reason,
+which is no longer what `ready()` says — it now speaks about the **box**. It became
+`test_the_switch_and_the_box_are_two_separate_doors`: switch off → the reason names `dev_lab` and `lab_check`; switch
+on with Docker absent → the reason names docker. A shut lab always says *which* door is closed.
+
+**92 pass** across every Developer Sahayak suite on this commit.
+
+**What is still unproven, and it is the only thing left:** no model has used the lab yet. `lab_try` proves the box
+runs her repo; the first real coding job proves Hoola *uses* it — the plan gate asking her Haan, `run_check` going red
+then green, the self-review reading the measured evidence, the PR carrying it. That job needs the Anthropic credit.
