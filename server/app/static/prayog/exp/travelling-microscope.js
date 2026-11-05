@@ -41,7 +41,7 @@ HoolaStudio.define('travelling-microscope', function (S) {
   });
   var rail = S.rounded(0.46, 0.07, 0.03, 0.004, new T.MeshStandardMaterial({ color: 0x4a5058, roughness: 0.4, metalness: 0.6 }));
   rail.position.set(0, RAILY, ZR); S.scene.add(rail);
-  var hscale = S.ruler(0.4, { title: 'MAIN SCALE · mm', labelEvery: 10, width: 0.03, thick: 0.004 });
+  var hscale = S.ruler(0.4, { title: 'MAIN SCALE · mm', labelEvery: 10, width: 0.03, thick: 0.004, pxPerMm: 2 });
   hscale.rotation.z = Math.PI / 2; hscale.position.set(0.2, RAILY + 0.016, ZR + 0.034); S.scene.add(hscale);
 
   var carriage = new T.Group(); S.scene.add(carriage);
@@ -57,12 +57,12 @@ HoolaStudio.define('travelling-microscope', function (S) {
   vFace.position.set(0, RAILY + 0.018, 0.0405); carriage.add(vFace);
   var pillar = S.rounded(0.045, 0.045, 0.26, 0.005, new T.MeshStandardMaterial({ color: 0x343a41, roughness: 0.5, metalness: 0.45 }));
   pillar.position.set(-0.05, RAILY + 0.16, 0); carriage.add(pillar);
-  var vscale = S.ruler(0.2, { title: 'VERTICAL · mm', labelEvery: 10, width: 0.022, thick: 0.003 });
+  var vscale = S.ruler(0.2, { title: 'VERTICAL · mm', labelEvery: 10, width: 0.022, thick: 0.003, pxPerMm: 2 });
   vscale.position.set(-0.05, RAILY + 0.04, 0.024); carriage.add(vscale);
   var tube = S.mesh(new T.CylinderGeometry(0.016, 0.016, 0.15, 24), M.black); tube.rotation.x = Math.PI / 2; tube.position.set(0.0, CARY, 0.035); carriage.add(tube);
   var eye = S.mesh(new T.CylinderGeometry(0.012, 0.013, 0.035, 20), new T.MeshStandardMaterial({ color: 0x17181a, roughness: 0.4 }));
   eye.rotation.x = Math.PI / 2; eye.position.set(0, CARY, 0.125); carriage.add(eye);
-  var obj = S.mesh(new T.CylinderGeometry(0.0095, 0.0095, 0.022, 20), M.chrome); obj.rotation.x = Math.PI / 2; obj.position.set(0, CARY, -0.048); carriage.add(obj);
+  var obj = S.mesh(new T.CylinderGeometry(0.0095, 0.0095, 0.022, 16), M.chrome); obj.rotation.x = Math.PI / 2; obj.position.set(0, CARY, -0.048); carriage.add(obj);
   var holder = S.mesh(new T.BoxGeometry(0.014, 0.075, 0.014), new T.MeshStandardMaterial({ color: 0x3d434a, roughness: 0.5 }));
   holder.position.set(0, CARY - 0.045, 0.01); carriage.add(holder);
   var screw = S.mesh(new T.CylinderGeometry(0.014, 0.014, 0.012, 24), M.brass); screw.rotation.z = Math.PI / 2; screw.position.set(-0.052, RAILY + 0.012, 0.012); carriage.add(screw);
@@ -76,10 +76,10 @@ HoolaStudio.define('travelling-microscope', function (S) {
   var specM = new T.MeshStandardMaterial({ color: OBJ.kind === 'plate' ? 0xcfe3e6 : 0xd3d8dd, roughness: OBJ.kind === 'plate' ? 0.05 : 0.2, metalness: OBJ.kind === 'plate' ? 0.0 : 0.95,
     transparent: OBJ.kind === 'plate', opacity: OBJ.kind === 'plate' ? 0.55 : 1 });
   var SIZE = Math.max(0.004, Math.min(0.06, p.L));
-  var spec = OBJ.kind === 'wire' ? S.mesh(new T.CylinderGeometry(Math.max(0.0006, SIZE / 2), Math.max(0.0006, SIZE / 2), 0.09, 18), specM)
+  var spec = OBJ.kind === 'wire' ? S.mesh(new T.CylinderGeometry(Math.max(0.0006, SIZE / 2), Math.max(0.0006, SIZE / 2), 0.09, 14), specM)
     : OBJ.kind === 'plate' ? S.mesh(new T.BoxGeometry(SIZE, 0.004, 0.05), specM)
-      : OBJ.kind === 'sphere' ? S.mesh(new T.SphereGeometry(SIZE / 2, 24, 16), specM)
-        : S.mesh(new T.CylinderGeometry(SIZE / 2, SIZE / 2, 0.006, 36), specM);
+      : OBJ.kind === 'sphere' ? S.mesh(new T.SphereGeometry(SIZE / 2, 18, 12), specM)
+        : S.mesh(new T.CylinderGeometry(SIZE / 2, SIZE / 2, 0.006, 28), specM);
   if (OBJ.kind === 'wire') spec.rotation.x = Math.PI / 2;
   spec.position.set(0, 0.0355 + (OBJ.kind === 'sphere' ? SIZE / 2 : OBJ.kind === 'wire' ? SIZE / 2 : 0.004), 0);
   stage.add(spec);

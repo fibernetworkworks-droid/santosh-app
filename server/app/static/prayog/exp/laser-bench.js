@@ -128,14 +128,14 @@ HoolaStudio.define('laser-bench', function (S) {
     }
   });
   var scaleM = new T.Mesh(new T.PlaneGeometry(HALF * 2, 0.016), new T.MeshStandardMaterial({ map: scaleTex, roughness: 0.6 }));
-  scaleM.rotation.y = -Math.PI / 2; scaleM.position.set(-0.0022, AXY - 0.062, 0); screen.add(scaleM);
+  scaleM.rotation.y = -Math.PI / 2 * SIGN; scaleM.position.set(-0.0045 * SIGN, AXY - 0.062, 0); screen.add(scaleM);
   var patTex = S.liveTex(1024, 256);
   var patM = new T.Mesh(new T.PlaneGeometry(HALF * 2, 0.08), new T.MeshBasicMaterial({ map: patTex, transparent: true, depthWrite: false, toneMapped: false }));
-  patM.rotation.y = -Math.PI / 2; patM.position.set(-0.0023, AXY, 0); patM.renderOrder = 5; screen.add(patM);
+  patM.rotation.y = -Math.PI / 2 * SIGN; patM.position.set(-0.0045 * SIGN, AXY, 0); patM.renderOrder = 5; screen.add(patM);
   var cursor = new T.Group(); screen.add(cursor);
-  var cBody = S.mesh(new T.BoxGeometry(0.006, 0.05, 0.016), M.bakelite); cBody.position.set(-0.005, AXY - 0.055, 0); cursor.add(cBody);
-  var cHair = S.mesh(new T.BoxGeometry(0.001, 0.07, 0.0006), M.red, false); cHair.position.set(-0.0062, AXY - 0.03, 0); cursor.add(cHair);
-  var cGrip = S.mesh(new T.CylinderGeometry(0.006, 0.006, 0.01, 14), M.chrome); cGrip.rotation.z = Math.PI / 2; cGrip.position.set(-0.012, AXY - 0.07, 0); cursor.add(cGrip);
+  var cBody = S.mesh(new T.BoxGeometry(0.006, 0.05, 0.016), M.bakelite); cBody.position.set(-0.006 * SIGN, AXY - 0.055, 0); cursor.add(cBody);
+  var cHair = S.mesh(new T.BoxGeometry(0.001, 0.07, 0.0006), M.red, false); cHair.position.set(-0.0075 * SIGN, AXY - 0.03, 0); cursor.add(cHair);
+  var cGrip = S.mesh(new T.CylinderGeometry(0.006, 0.006, 0.01, 14), M.chrome); cGrip.rotation.z = Math.PI / 2; cGrip.position.set(-0.014 * SIGN, AXY - 0.07, 0); cursor.add(cGrip);
 
   // the beams
   var beamM = new T.LineBasicMaterial({ color: beamColour(), transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false });
@@ -200,7 +200,7 @@ HoolaStudio.define('laser-bench', function (S) {
         g.addColorStop(0, 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',0)');
         g.addColorStop(0.5, 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',' + a.toFixed(3) + ')');
         g.addColorStop(1, 'rgba(' + col[0] + ',' + col[1] + ',' + col[2] + ',0)');
-        x.fillStyle = g; x.fillRect(w - 1 - i, 0, 1, h);
+        x.fillStyle = g; x.fillRect(SIGN > 0 ? w - 1 - i : i, 0, 1, h);
       }
     });
   }
@@ -326,13 +326,13 @@ HoolaStudio.define('laser-bench', function (S) {
   var VIEWS = {
     laser: [[X0 + 0.24, AXY + 0.2, BZ + 0.44], [X0 + 0.06, AXY, BZ]],
     slide: [[SLIDE_X + 0.28, AXY + 0.18, BZ + 0.42], [SLIDE_X + 0.02, AXY - 0.01, BZ]],
-    screen: [[SLIDE_X + SIGN * 0.4, AXY + 0.1, BZ + 0.66], [SLIDE_X + SIGN * 0.4, AXY - 0.01, BZ]],
+    screen: [[SLIDE_X + SIGN * 0.4, AXY + 0.05, BZ + 0.16], [SLIDE_X + SIGN * 0.4, AXY, BZ]],
     wide: [[0.05, 1.15, BZ + 2.45], [-0.02, 0.12, BZ]],
     book: [[-0.5, 0.46, 0.56], [-0.5, 0.0, 0.1]]
   };
   function syncScreenView() {
     var sx = scrX();
-    VIEWS.screen[0][0] = sx - 0.1 * SIGN; VIEWS.screen[1][0] = sx;
+    VIEWS.screen[0][0] = sx - 0.55 * SIGN; VIEWS.screen[1][0] = sx;
   }
   update(); syncScreenView();
 

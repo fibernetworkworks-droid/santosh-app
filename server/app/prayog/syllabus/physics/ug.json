@@ -170,7 +170,8 @@
       "work done against friction per rotation"
      ],
      "conditions": [],
-     "kernel": "flywheel"
+     "kernel": "flywheel",
+     "built": "flywheel-bench"
     },
     {
      "id": "inertia-table",
@@ -187,7 +188,8 @@
       "torsional constant of the suspension"
      ],
      "conditions": [],
-     "kernel": "torsion-oscillator"
+     "kernel": "torsion-oscillator",
+     "built": "inertia-table"
     },
     {
      "id": "free-fall-digital-timing",
@@ -204,7 +206,8 @@
       "velocity at a given height"
      ],
      "conditions": [],
-     "kernel": "free-fall"
+     "kernel": "free-fall",
+     "built": "free-fall-timer"
     },
     {
      "id": "incline-trolley-friction",
@@ -242,7 +245,8 @@
       "equal masses",
       "unequal masses"
      ],
-     "kernel": "collision-1d"
+     "kernel": "collision-1d",
+     "built": "air-track"
     },
     {
      "id": "collision-2d-virtual",
@@ -274,7 +278,8 @@
       "radius of gyration"
      ],
      "conditions": [],
-     "kernel": "compound-pendulum"
+     "kernel": "compound-pendulum",
+     "built": "bar-pendulum"
     },
     {
      "id": "bar-pendulum-shm-limit",
@@ -452,7 +457,8 @@
       "moment of inertia of the disc"
      ],
      "conditions": [],
-     "kernel": "torsion-oscillator"
+     "kernel": "torsion-oscillator",
+     "built": "torsional-pendulum"
     },
     {
      "id": "arduino-pendulum-photogate",
@@ -507,7 +513,8 @@
       "Young's modulus"
      ],
      "conditions": [],
-     "kernel": "elastic-wire"
+     "kernel": "elastic-wire",
+     "built": "searle-young-modulus"
     },
     {
      "id": "searle-elastic-constants",
@@ -560,7 +567,8 @@
       "modulus of rigidity"
      ],
      "conditions": [],
-     "kernel": "static-torsion"
+     "kernel": "static-torsion",
+     "built": "static-torsion"
     },
     {
      "id": "youngs-modulus-bending",
@@ -580,7 +588,8 @@
       "Young's modulus"
      ],
      "conditions": [],
-     "kernel": "beam-bending"
+     "kernel": "beam-bending",
+     "built": "uniform-bending"
     },
     {
      "id": "cantilever-youngs-modulus",
@@ -600,7 +609,8 @@
       "Young's modulus"
      ],
      "conditions": [],
-     "kernel": "beam-bending"
+     "kernel": "beam-bending",
+     "built": "metre-scale-depression"
     },
     {
      "id": "poiseuille-viscosity",
@@ -619,7 +629,8 @@
       "room temperature",
       "several bath temperatures"
      ],
-     "kernel": "capillary-flow"
+     "kernel": "capillary-flow",
+     "built": "poiseuille-flow"
     },
     {
      "id": "stokes-falling-ball",
@@ -674,7 +685,8 @@
       "room temperature",
       "several temperatures"
      ],
-     "kernel": "bubble-pressure"
+     "kernel": "bubble-pressure",
+     "built": "jaeger-bubble"
     }
    ]
   },
