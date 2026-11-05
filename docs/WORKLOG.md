@@ -1497,3 +1497,31 @@ Work Log:
   new behaviour. Reds seen are pre-existing on pristine main (Playwright, v0270 goal_rounds, ...).
 Stage Summary:
 - v0.562.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 48 — v0.565.0 CLAUDE KA AUZAAR (built as 0.563.0) (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "NOW MAKE CHOOSING TOOL AND SKILL SAME AS CLAUDE AI ---- EVEN FIND MORE".
+Work Log:
+- Read Anthropic's tool-search page; built agent/toolsearch.py (deferred tools, fixed list per turn, tool_reference
+  answers, BM25, refusal ladder, dangling-reference guard); cache / context / GLM paths made deferral-safe.
+- Skills: full descriptions on chat turns (9,000 chars), call unchanged.
+- NEW test_v0565_claude_ka_auzaar.py (10); v0221 / v0558 / v0193 moved to the new truth.
+Stage Summary:
+- v0.565.0 server-only. Deploy = owner's vps-ops dispatch. Not verified against the live API yet.
+
+---
+Task ID: 48 — v0.566.0 HOOLA MIDDLEWARE (the SECOND collision round: their v0.565 CLAUDE KA AUZAAR landed mid-push; re-based again, re-versioned 0.566.0) (5 Nov 2026)
+Agent: main (Z.ai, IM session)
+Task: the same owner directive - the push of Task 47 was rejected non-fast-forward.
+Work Log:
+- git fetch: ONE new commit - v0.565.0 CLAUDE KA AUZAAR (built as 0.563.0; the parallel sessions took
+  0.563 AND 0.564 - the wave is hot). P5 moved 0.565.0 -> 0.566.0.
+- Rebase round two: 4 conflicts (main.py / CLAUDE.md / docs x2 - pubspec and v2.html and the test
+  sweeps auto-merged: both sides made the identical mechanical moves). Theirs taken, the ritual
+  re-run as 0.566.0+589 (APP_VERSION story + the two-round collision note, stamps 22x, pins swept
+  0.565 -> 0.566 + +588 -> +589, the three newest-story pins re-healed).
+- AEP quint + the dev's suites re-verified on the final tree.
+Stage Summary:
+- P5 DONE at v0.566.0. Train: P6 RETRIEVE -> P7 HUB -> P8 the parity audit. Deploy = the owner's
+  dispatch (healthz should say 0.566.0).

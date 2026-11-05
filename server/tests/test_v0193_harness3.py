@@ -510,14 +510,14 @@ def test_admission_carries_the_team_family():
     names = {t["name"] for t in admit.plan_for("3 agents lagao research ke liye", s).specs()}
     assert {"deploy_agents", "agent_status", "session_log"} <= names
     core = {t["name"] for t in admit.plan_for("hello ji", s).specs()}
-    assert "deploy_agents" in core and "session_log" in core    # first-class: always visible
+    assert "deploy_agents" not in core and "session_log" not in core     # v0.559 the team opens on a big ask / her team words, not on "hello ji"
 
 
 # ---------------- version ----------------
 
 def test_version_and_config():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.564.0"
+    assert APP_VERSION == "0.569.0"
     s = get_settings()
     assert s.agent_team is True
     assert s.team_max_agents == 4

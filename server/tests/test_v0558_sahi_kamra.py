@@ -29,7 +29,7 @@ def test_a_big_ask_thinks_with_real_room_from_its_first_call(gz, monkeypatch):  
 def test_a_routine_carries_an_admitted_tool_set_not_the_whole_registry(gz, monkeypatch):  # noqa: F811
     from app.agent import tools
     kw = _run(monkeypatch, gz["conv"], "Subah ka briefing: aaj ke reminders aur mausam batao", actor="routine")
-    names = {t["name"] for t in kw["tools"]}
+    names = {t["name"] for t in kw["tools"] if not t.get("defer_loading")}   # v0.563 in view (the rest deferred)
     assert len(names) < 200 < len(tools.TOOLS), len(names)
     assert "tool_search" in names                                   # any other family is one call away
     assert kw["max_tokens"] == 2000 and not kw.get("thinking")
@@ -40,4 +40,4 @@ def test_simple_chat_and_wake_turns_are_unchanged(gz, monkeypatch):  # noqa: F81
     assert kw["model"] == "claude-sonnet-5-5" and kw["max_tokens"] == 2000 and not kw.get("thinking")
     kw = _run(monkeypatch, gz["conv"], "[Santosh worker update, not the user] Ek background kaam ka natija abhi aaya hai",
               actor="wake", save_user=False)
-    assert kw["max_tokens"] == 2000 and len(kw["tools"]) < 200
+    assert kw["max_tokens"] == 2000 and len([t for t in kw["tools"] if not t.get("defer_loading")]) < 200

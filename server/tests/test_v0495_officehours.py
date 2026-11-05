@@ -63,7 +63,7 @@ def _doc(did, **kw):
 
 def test_registry_531_and_wired():
     names = {t["name"] for t in TOOLS}
-    assert len(TOOLS) == 580, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH)"
+    assert len(TOOLS) == 581, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
     assert {"officehours", "officehours_dekho"} <= names
     assert {"officehours", "officehours_dekho"} <= set(HANDLERS)
     assert "officehours" in TOOL_LABELS and "officehours_dekho" in TOOL_LABELS
@@ -73,11 +73,11 @@ def test_registry_531_and_wired():
 def test_story_and_prompts_pins():
     from app import main as main_mod
     from app.agent import prompts
-    assert main_mod.APP_VERSION == "0.564.0"
+    assert main_mod.APP_VERSION == "0.569.0"
     story = (Path(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1])[:20000]
     # story pin rides the NEWEST release's story (the v0.476 precedent); the OFFICE HOURS
     # story tokens live in git history (the v0.497 chain moved them here from v0.479)
-    assert "HOOLA CORE" in story and "server/app/aep" in story   # the newest-story precedent (the v0.510 story carries the marker)
+    assert "HOOLA MIDDLEWARE" in story and "server/app/aep" in story   # the newest-story precedent (the newest story carries the marker)
     ptxt = Path(prompts.__file__).read_text()
     assert "OFFICE HOURS (v0.495" in ptxt and "eng HAMESHA aakhri" in ptxt
     assert "`officehours` action=start" in ptxt

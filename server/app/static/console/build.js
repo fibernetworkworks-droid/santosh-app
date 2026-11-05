@@ -2109,6 +2109,7 @@ window.HoolaBuild = function (C) {
     if (info.linked) auditBox(o, box);
     catalogBox(o, box);
     teamBox(o, box);
+    designBox(o, box);
     if (info.linked) liveBox(o, box, M(info.linked), S(info.site_id), S(info.api));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
@@ -2242,6 +2243,81 @@ window.HoolaBuild = function (C) {
 
   /* v0.538 HOOLA CMS: her team (writers / editors / publishers) works at /cms/<site>/ with their own login; here she
      invites, changes roles, removes, and acts on any draft herself (approve / send back / publish / restore). */
+  // ---------------------------------------------------------------- v0.567 KOI BHI DESIGN: start from HER design
+  async function designBox(o, box) {
+    let fg = {}; try { fg = await api('GET', '/api/site-design/figma'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic stdesign';
+    sec.innerHTML = `<h4>Start from your design <span>look 1 becomes yours</span></h4>
+      <p class="stnote">Send a screenshot of a design you like, your Figma file, or your OWN old website. Hoola reads the colours, type, corner shape and section order and makes look 1 in that design (built in Hoola's own kit - nothing is copied). A screenshot of someone else's site gives only a style, never their words, logo or photos.</p>
+      <form class="stapp" data-d="shot" autocomplete="off"><div class="row"><label><span>Screenshot (PNG / JPEG / WebP)</span><input name="file" type="file" accept="image/png,image/jpeg,image/webp" required></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Read this screenshot</button></div></form>
+      <form class="stapp" data-d="figma" autocomplete="off"><div class="row">
+        ${fg.linked ? `<p class="stnote">Figma token added (${esc(S(fg.hint))}). <button class="btn soft" type="button" data-fgx>Remove</button></p>` :
+          `<label><span>Figma personal access token (Figma > Settings > Security)</span><input name="tok" type="password" autocomplete="off" placeholder="figd_…"></label>`}
+        <label><span>Figma file link</span><input name="url" placeholder="https://www.figma.com/design/…"></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Read my Figma file</button></div></form>
+      <form class="stapp" data-d="site" autocomplete="off"><div class="row"><label><span>Your OWN old website</span><input name="url" placeholder="https://my-old-site.in" required></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Read my old site</button></div></form>
+      <form class="stapp" data-d="lottie" autocomplete="off"><div class="row">
+        <label><span>Your own animation (Lottie .json, up to 1.5 MB)</span><input name="file" type="file" accept=".json,application/json" required></label>
+        <label><span>Name for it</span><input name="name" placeholder="my-logo" pattern="[a-z][a-z0-9-]{1,39}" required></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Add animation</button></div>
+        <p class="stnote">Built in, no file needed: animations pulse, check, sparkle, scroll, dots, wave and 3D scenes orb, knot, particles, waves, blocks - ask for them in chat (e.g. "hero mein 3D orb lagao").</p></form>
+      <div class="stdpv" aria-live="polite"></div>`;
+    box.appendChild(sec);
+    const pv = sec.querySelector('.stdpv'), reload = () => { sec.remove(); designBox(o, box); };
+    sec.querySelector('[data-d=lottie]').onsubmit = async e => {
+      e.preventDefault(); const f = e.target, b = f.querySelector('[type=submit]'); b.disabled = true;
+      try { const fd = new FormData(); fd.append('file', f.file.files[0]); fd.append('name', f.elements.namedItem('name').value.trim());
+        const r = await api('POST', base(o) + '/lottie', undefined, {form: fd}); toast(S(r.say) || 'Added.'); f.reset(); }
+      catch (er) { toast(er.message, true); } finally { b.disabled = false; }
+    };
+    const post = async (body, form) => {
+      const headers = {}; if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
+      if (!form) headers['Content-Type'] = 'application/json';
+      const r = await fetch('/api/site-design/read', {method: 'POST', headers, body: form || JSON.stringify(body), credentials: 'omit', cache: 'no-store'});
+      let d = {}; try { d = await r.json(); } catch {}
+      return {ok: r.ok, d};
+    };
+    const show = res => {
+      const d = res.d;
+      if (!res.ok) {
+        const pr = M(d.proof);
+        pv.innerHTML = `<div class="stdraft"><b>${esc(S(d.detail) || 'Not read.')}</b>${pr.txt_value ? `<div class="bln">DNS TXT record: <code>${esc(S(pr.txt_name))}</code> = <code>${esc(S(pr.txt_value))}</code></div><div class="bln">or this tag in your home page &lt;head&gt;: <code>${esc(S(pr.meta))}</code></div><p class="stnote">Then read it again. This proves the site is yours; Hoola never rebuilds someone else's website.</p>` : ''}</div>`;
+        return;
+      }
+      const rf = M(d.ref), ov = M(rf.overrides), c = M(rf.content);
+      const sw = ['bg', 'surface', 'ink', 'primary', 'accent'].filter(k => ov[k]).map(k => `<span class="stsw" title="${esc(k)} ${esc(S(ov[k]))}" style="background:${esc(S(ov[k]))}"></span>`).join('');
+      pv.innerHTML = `<div class="stdraft"><b>${esc(S(rf.style_label))}</b> · ${esc(S(rf.head))} + ${esc(S(rf.body))} · corners ${N(rf.radius)}px · ${rf.dark ? 'dark' : 'light'}
+        <div class="stsws">${sw}</div>
+        ${L(rf.sections).length ? `<div class="bln faint">Sections: ${esc(L(rf.sections).join(' → '))}</div>` : ''}
+        ${rf.notes ? `<div class="bln faint">${esc(S(rf.notes))}</div>` : ''}
+        ${rf.source === 'site' ? `<div class="bln">From your site: ${esc(S(c.name))} · ${N(c.photos)} photos · ${L(c.services).length} services${c.phone ? ' · phone ' + esc(S(c.phone)) : ''}</div>` : ''}
+        <div class="bln faint">${esc(S(rf.read_by))}</div>
+        <div class="acts"><button class="btn go" type="button" data-use>Use this design for ${esc(S(o.name) || 'this website')}</button></div></div>`;
+      pv.querySelector('[data-use]').onclick = async ev => {
+        ev.target.disabled = true;
+        try { const r = await api('POST', '/api/site-design/use', {token: S(d.token), site: o.id}); toast(S(r.say) || 'Done.'); reload(); }
+        catch (er) { toast(er.message, true); ev.target.disabled = false; }
+      };
+    };
+    const run = async (f, fn) => {
+      const b = f.querySelector('[type=submit]'); b.disabled = true; pv.innerHTML = '<p class="stnote">Reading…</p>';
+      try { show(await fn()); } catch (er) { pv.innerHTML = ''; toast(er.message, true); } finally { b.disabled = false; }
+    };
+    sec.querySelector('[data-d=shot]').onsubmit = e => { e.preventDefault(); const f = e.target; run(f, () => { const fd = new FormData(); fd.append('file', f.file.files[0]); return post(null, fd); }); };
+    sec.querySelector('[data-d=site]').onsubmit = e => { e.preventDefault(); const f = e.target; run(f, () => post({source: 'site', url: f.url.value.trim()})); };
+    sec.querySelector('[data-d=figma]').onsubmit = e => {
+      e.preventDefault(); const f = e.target;
+      run(f, async () => {
+        if (f.tok && f.tok.value.trim()) { await api('PUT', '/api/site-design/figma', {token: f.tok.value.trim()}); f.tok.value = ''; }
+        return post({source: 'figma', url: f.url.value.trim()});
+      });
+    };
+    const fx = sec.querySelector('[data-fgx]');
+    if (fx) fx.onclick = async () => { try { await api('DELETE', '/api/site-design/figma'); reload(); } catch (er) { toast(er.message, true); } };
+  }
+
   async function teamBox(o, box) {
     let v; try { v = await api('GET', base(o) + '/cms'); } catch (er) { return; }
     const sec = document.createElement('section'); sec.className = 'stlogic';

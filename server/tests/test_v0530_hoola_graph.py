@@ -762,8 +762,10 @@ def test_no_config_reads_in_graph_module():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.564.0"
-    assert "0.564.0+587" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.569.0"
+    assert "0.569.0+592" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.564.0"')
-    assert "HOOLA GRAPH" in line and "StateGraph" in line and "interrupt" in line
+    assert line.startswith('APP_VERSION = "0.569.0"')
+    # story pin moved to the newest story (the newest-story precedent; the P3
+    # markers live in the Previous chain and git history)
+    assert "HOOLA MIDDLEWARE" in line and "jump_to" in line and "interrupt" in line

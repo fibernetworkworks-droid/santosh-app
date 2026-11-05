@@ -29,8 +29,9 @@ VOICE_BUDGET = 10_000
 COMPACT_BUDGET = 1_600
 SKILLS_VOICE_BUDGET = 1_200      # v0.477 the matched-skills carve-out inside the coder block
 SKILLS_COMPACT_BUDGET = 400
-SKILLS_INDEX_BUDGET = 3_000      # v0.559 the always-on list of ALL her skills (name + one line), chat and call
-INDEX_DESC_MAX = 64
+SKILLS_INDEX_BUDGET = 9_000      # v0.563 every skill's WHOLE description on a chat turn (Claude's level 1: all of them)
+VOICE_INDEX_BUDGET = 3_000       # a call keeps the v0.559 size (the live voice prompt is small on purpose)
+INDEX_DESC_MAX = 200              # v0.563 a skill's own description in full (the skill lint caps it at 60-200)
 NAMES_BUDGET = 1_600             # v0.559 the names-only tail: every skill past the described ones is still named
 HEADER = "CODER MEMORY (what was built here before; never ask her to repeat it):"
 
@@ -321,7 +322,7 @@ def voice_block(tenant: str, conv: str, query: str = "") -> str:
         q = query or _recent_asks(conv)
         out = primer(tenant, conv=conv, compact=False, query=q)
         seen = [r["name"] for r in _matched(tenant, q)] if q else []
-        idx = skills_index(tenant, exclude=seen)          # v0.559 every skill named, like chat
+        idx = skills_index(tenant, exclude=seen, budget=VOICE_INDEX_BUDGET)   # v0.559 every skill named, like chat
         if idx:
             out = (out + "\n" + idx) if out else idx
         elif "LEARNED SKILLS" not in out:

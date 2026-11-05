@@ -20573,3 +20573,127 @@ dashboard (dash.py), the monthly care note, the nightly backup (backup.py). New 
 - NOT VERIFIED live, said plainly: no visitor beacon has reached the VPS yet (her live sites get the beacon on their NEXT
   build / publish - the script and meta come with the build); the restore test needs `SITES_BACKUP_BUCKET` + keys in the
   VPS `.env` (backup is off without them, and the console says so).
+
+## v0.565.0 CLAUDE KA AUZAAR (built as 0.563.0; the parallel sessions took 0.563.0 and 0.564.0, all kept) — tools and skills chosen the way Claude chooses them (owner: "NOW MAKE CHOOSING TOOL AND SKILL SAME AS CLAUDE AI ---- EVEN FIND MORE")
+
+Read first: Anthropic's "Tool search tool" page (platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool).
+Claude's way: every tool is declared, rarely-used ones with `defer_loading: true` (known to the API, not in the model's
+context, not counted as input tokens, outside the cached prefix); a search returns `tool_reference` blocks and the API
+expands them into full definitions; the tool list never changes inside a conversation (a changed tool set rewrites the
+cache and invalidates preserved thinking). A custom search may return `tool_reference` blocks in a normal tool_result.
+
+What Hoola did before: a turn saw only its admitted families (~58 tools); `tool_search` ADDED a family to the request,
+which rewrote the tool list and the system prompt mid-turn.
+
+Built (`agent/toolsearch.py`):
+- `build(shown)`: the admitted tools in view (unchanged), every other registered tool deferred. Built ONCE per turn
+  (state["native_tools"]) on a Claude turn, never changed; `ctx.native_search` / `ctx.native_loaded` tell tool_search.
+- `tool_search` on a native turn: her family words + the exact tool name + `bm25()` over name / description / argument
+  names and descriptions (the fields Claude's own search reads) -> up to 25 `tool_reference` blocks (exact name, then
+  BM25 best, then the rest of the family); the family still counts as opened (pick.py's PC gate, sticky next turn);
+  the family's working guide (`prompts.guide_for`) rides as a text note beside the result instead of rewriting the
+  system prompt. `admit.search_spec()` names all families in the description (Anthropic's advice), byte-stable.
+- Guards: `cache.tools` puts the breakpoint on the last NON-deferred tool (a deferred one 400s); `context` counts
+  only tools in view; `fit_refs` turns a reference that cannot resolve (renamed tool, keep=False for a brain without
+  tool search) into a line of text so an old chat never 400s; GLM / OmniRoute get only loaded tools and no references;
+  `refused()` + `downgrade()` = the refusal ladder (same call without deferred tools, off for this process); an MCP
+  schema refusal rebuilds the list without MCP. Switch `tool_search_native` (default on).
+- Skills: chat turns carry every skill's whole description (SKILLS_INDEX_BUDGET 3,000 -> 9,000, INDEX_DESC_MAX 64 ->
+  200); a call keeps VOICE_INDEX_BUDGET 3,000.
+
+Measured offline: BM25 finds the right tool for English needs (merge pdf, government website form, weather, tally,
+Home Assistant, research...) 15/15 where the tool exists; raw Hinglish asks are a weak search input (90/101 of the
+card asks not in core view), which is why Hoola's keyword preload stays and search is the extra door, not a
+replacement. Tool card unchanged: 176/176 in view.
+
+Tests: test_v0565_claude_ka_auzaar.py (10) incl. a full turn where tool_search returns references and both model calls
+carry the identical tool list, and a refusing API getting the old shape. Updated to the new truth: test_v0221 (the
+guide rides beside the result, the system prompt stays), test_v0558 (counts tools in view), test_v0193 (team not in
+core since v0.559). NOT VERIFIED live: no real Claude call has carried deferred tools from Hoola yet; the first turn
+after deploy is the proof, and `toolsearch.NATIVE` counts turns / searches / refs / refusals.
+## v0.567.0 KOI BHI DESIGN (built as 0.565.0; web Step 7 part 3 = W9 of docs/WEB_PLATFORM_PLAN.md; owner: "GO")
+
+W9 asked for: custom components, rich pieces (3D / scroll-driven / Lottie / video background / before-after / configurators /
+quizzes / comparison tools) and design inputs (her screenshot, her Figma file, her OWN old website). Custom components
+(`custom_<name>`, v0.332), tabs / slider / filter / switch / calculators (v0.330), before-after (`[data-compare]`) and the motion
+runtime already existed and were not redone.
+
+**Design inputs - `server/app/site/inspire.py`.** Every input ends as ONE design reference in Hoola's words
+(`normalise`): style (one of the 10 house styles), font pair (one Hoola ships, with Devanagari), corner radius, light /
+dark, colour roles bg / surface / ink / primary / accent, section order (mapped onto Hoola's section types), notes in
+Hoola's own words, and (her own sources only) her content.
+1. Screenshot: colours MEASURED by Pillow (fast-octree, 16 colours on a 320 px copy; anti-aliased twins within distance 30
+   merged; anything under 1.5% of the picture dropped as an edge blend; brand colour = the LARGEST vivid area, accent = the
+   next one of a different hue). Opus vision reads only the visual system and is told never to copy text; the reference
+   keeps nothing it might have read (names, phones, slogans). No model -> the measured colours alone still make a look.
+2. Figma: her personal access token is typed in the console (PUT /api/site-design/figma), sealed with accounts.encrypt
+   (`site_figma_keys`), shown only as its last 4 characters, never in chat. GET /v1/files/{key}?depth=4: SOLID fills weighted
+   by area, the largest text style's family (-> font pair), the median corner radius, frame names (-> sections), and her
+   frames' words (her content). 401/403/404 are said plainly.
+3. Her OWN old website: ownership first - already one of her Hoola addresses or domains, else an HMAC token she puts in a TXT
+   record `_hoola-own.<domain>` or a `<meta name="hoola-own">` tag (only the home page is read before the proof). Then up to 12
+   same-site pages (robots.txt honoured, public addresses only via `appmaker.connect._guard_host`), her title / headings /
+   paragraphs / list items, phone / email / WhatsApp (from tel: / mailto: / wa.me links), address (the shortest element holding
+   a 6-digit PIN), About text (her About / story page first), services (headings of the inner pages), her photos (same site,
+   >= 300 px, no logo / icon / sprite files, max 12) and her CSS colours / font / corners.
+- `read` = a PREVIEW (kept 24 h under a token; nothing changes). `use` = her tap (owner-only, like choosing a look): the site's
+  facts get `design_ref`, her contact details fill only EMPTY facts, her photos are added, and the looks are made again with
+  LOOK 1 = hers ("Aapke design se": `service._make_looks` puts her style first, appends her reference to that look's brief and
+  builds its tokens from her colours / type / corners via `B.tokens(..., overrides)` - which now takes a `fonts` pair); the other
+  two looks stay Hoola's alternatives. No site named = a NEW site from her old site's / Figma file's own words. A site that is
+  building is refused until it is done. The copy guard still refuses "exactly like <their> site".
+- Routes: POST /api/site-design/read (multipart screenshot or JSON source=figma|site), POST /api/site-design/use,
+  GET / PUT / DELETE /api/site-design/figma. Console: Website > "Start from your design" (three forms, the ownership-proof
+  instructions on a 403, colour swatches, fonts, sections, "Use this design"). Tool: `website` action=design_from / design_use.
+
+**Rich pieces** (attributes only, in `assets/hoola-site.js` + CSS + the section writer's rules): quiz (`data-hoola-quiz`, most
+picks -> her matching product / course panel, every question must be answered), configurator (`data-hoola-config`: options with
+data-add / data-show, a summary, a total, "send this choice" to her WhatsApp when FACTS has it, else into her enquiry form),
+comparison tool (`data-hoola-compare-table`: differences only + highlight a column), scroll-driven motion (`data-m="scrub"` /
+`scrub-x` / `scrub-scale`: CSS `animation-timeline: view()`, only under `prefers-reduced-motion: no-preference` and where the
+browser supports it). None of the new forms post anywhere, so the safety gates' form rules are untouched.
+
+- Tests `test_v0565_koi_bhi_design.py` 11: measured roles (light + dark), type mapping, screenshot keeps no text + the
+  no-model fallback, Figma with the sealed token + 403 + forget, own-site proof (403 + nothing read) / meta / TXT + robots +
+  photo filter + contact / About / address, preview-then-tap makes look 1 hers with the other two kept, a new site from her old
+  site with her photo, routes + tool, and the quiz / configurator / comparison clicked in real Chromium.
+- NOT BUILT, said plainly: Lottie and a three.js 3D hero (no library vendored yet - the gates already know their version
+  banners for when they are); a video background piece. A screenshot gives a STYLE match, never a pixel copy.
+- NOT VERIFIED live: no real Figma file and no real old website has been read yet; the vision reading has only met test fakes.
+
+## v0.568.0 LOTTIE + 3D HERO (built as 0.566.0; owner: "Lottie animations and a 3D hero -- WORK ON IT")
+
+The two W9 pieces v0.565 listed as not built. Both are served from her own site (never a CDN: the site CSP stays
+`script-src 'self'`), and both load ONLY on pages that use them.
+
+**Lottie** (`server/app/site/lottie.py`, player `assets/vendor/lottie_light.min.js`):
+- lottie-web 5.13.0 LIGHT build (MIT): SVG renderer only, no expressions, so no `eval` / `new Function` (tested). A one-line
+  banner carries the version so the safety gate's OSV check finds it.
+- Six BUILT-IN animations made by code (pulse, check, sparkle, scroll, dots, wave), drawn in two placeholder colours
+  (#FF00FF, #00FFFF) that `hoola-site.js` swaps for the site's own `--c-primary` / `--c-accent` before playing - they always
+  match the chosen look. They pass the same checks as her files.
+- HER OWN Lottie JSON (`add_lottie`, POST /api/sites/{ref}/lottie, console "Add animation", `website action=animation`): must
+  have v / w / h / fr / ip / op / layers, <= 1.5 MB, 1-200 layers; image assets only embedded PNG / JPEG / WebP (a link to
+  another server is refused); expressions stripped and counted. Her names ride the section writer's photo line.
+- A section writes `<div data-hoola-lottie="check" data-loop="false">`; the build adds `data-src`, copies only the animations
+  used plus the player, and reports unknown names (the element is kept but hidden). Plays only while on screen; one still
+  frame (the end for a one-shot, 60% for a loop) under reduced motion; a failed load hides the empty box.
+
+**3D hero** (`assets/src/hero3d.src.js` -> `assets/vendor/three-hero.js`):
+- Five house scenes - orb (a soft, slowly breathing glossy shape), knot, particles, waves (flowing wire grid), blocks - written by
+  Hoola, bundled with the parts of three.js r187 (MIT) they import by esbuild: 541 KB, 139 KB gzipped (the gzip twin is served).
+  The file is deliberately NOT named `hoola-*`, because the library gate skips Hoola's own scripts and this one carries three.js.
+  Rebuild steps in `vendor/REBUILD.md`.
+- A section only NAMES a scene (`data-hoola-3d="orb"`); the writer is told never to write WebGL / canvas code and to use at most
+  one per page. Colours come from the site's CSS variables; renders only while on screen (IntersectionObserver), paused in a
+  hidden tab, pixel ratio <= 2, one frame under reduced motion, and where WebGL is missing the element keeps a soft
+  colour-glow background from the CSS (the words never depend on it). Default size is set in CSS before the script arrives
+  (no layout shift).
+- Measured in headless Chromium (software WebGL): all five scenes draw (600x400 shot: orb 2,596, knot 3,313, blocks 901 distinct
+  colours), no page errors.
+- `THIRD_PARTY_NOTICES.md` + both licences beside the files.
+- Tests `test_v0566_lottie_3d.py` 6: the vendored files are what they say (versions, no eval, size, licences), built-ins are real
+  Lottie, her file checks (expression stripped, outside image refused, size), a real built page in Chromium with motion on AND
+  off (animations play and are recoloured, the 3D canvas is drawn, only used files copied, other pages stay light, OSV gate sees
+  three 0.187.0 + lottie-web 5.13.0), routes + tool + writer rules.
+- NOT VERIFIED: a real phone's GPU (headless is software WebGL), and a real LottieFiles download of hers.

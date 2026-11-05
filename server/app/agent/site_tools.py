@@ -73,12 +73,23 @@ SITE_TOOLS = [
         "renewal price in rupees from the registry; action=domain_check + domains [list]; action=domain_buy + domain (+ "
         "auto_renew) = sends HER fingerprint card (no refunds; .in needs her own NIXI e-KYC on the registrar page); "
         "action=domain_kyc + domain when she says KYC is done. "
+        "HER OWN DESIGN (v0.565): action=design_from + source screenshot (file_id of the picture she sent) | figma (url of HER "
+        "Figma file; her Figma token is added only in the console, never in chat) | site (url of HER OWN old website; she proves "
+        "it is hers once with a TXT record or meta tag the answer gives) = a PREVIEW of the design (colours measured, type, "
+        "corners, section order; from her own site also her words, phone, photos) - nothing changes yet; action=design_use + "
+        "token (+ site; empty = a NEW site from her old site / Figma words) ONLY after she said haan to that preview: look 1 "
+        "becomes her design, the other two stay Hoola alternatives. A screenshot of someone else's site gives only a STYLE, "
+        "never their words / logo / photos; 'exactly like their site' stays refused. "
+        "ANIMATION / 3D (v0.568): action=animation + file_id (her Lottie .json file) + name = keep her own animation for "
+        "the site (checked; a link to another server or a file over 1.5 MB is refused); then action=change can put it on a "
+        "page by name. Built-in animations (pulse, check, sparkle, scroll, dots, wave) and 3D hero scenes (orb, knot, "
+        "particles, waves, blocks) need no file: ask for them with action=change (e.g. 'hero mein 3D orb lagao'). "
         "AFTER LAUNCH: action=care (+ days) = visits, enquiries, uptime, SSL / domain dates, what to improve; action=github (+ "
         "repo, private) = card to put the code in HER GitHub (her tap pushes). AGENCY: action=assign* + client / staff (staff "
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -95,6 +106,7 @@ SITE_TOOLS = [
          "languages": {"type": "array", "items": {"type": "string"}, "description": "extra language codes, max 4"},
          "slug": {"type": "string"}, "blog_action": {"type": "string", "enum": ["hide", "show", "cover"]}, "cover": {"type": "string"},
          "file": {"type": "string", "description": "code mode: one code file path (website_dekho what=code lists them)"},
+         "source": {"type": "string", "enum": ["", "screenshot", "figma", "site"]}, "url": {"type": "string"}, "token": {"type": "string"},
          "lead": {"type": "string"}, "yes": {"type": "boolean"}, "format": {"type": "string", "enum": ["zip", "react"]}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
@@ -121,8 +133,8 @@ SITE_TOOLS = [
 ]
 SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
-_NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok"}
-_TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok"}
+_NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok", "design_from", "design_use"}
+_TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok", "design_use"}
 
 
 def _owner(ctx: Ctx) -> bool:
@@ -153,6 +165,19 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return {k: v.get(k) for k in ("settings", "upi", "summary", "say")} | {"products": len(v.get("products") or [])}
     if action == "shop_order":
         return S.shop_move(t, site, str(a.get("number") or ""), str(a.get("to") or ""))
+    if action == "animation":                     # v0.568 her own Lottie file
+        return S.add_lottie(t, site, None, str(a.get("file_id") or ""), str(a.get("name") or ""))
+    if action in ("design_from", "design_use"):   # v0.567 KOI BHI DESIGN: her screenshot / Figma / own old site
+        from ..site import inspire as IN
+        try:
+            if action == "design_from":
+                out = IN.read(t, str(a.get("source") or ""), str(a.get("url") or ""), str(a.get("file_id") or ""))
+                out["ref"] = {k: v for k, v in out["ref"].items() if k != "content"} | {
+                    "content": {k: v for k, v in (out["ref"].get("content") or {}).items() if k != "texts"}}
+                return out
+            return IN.use(t, str(a.get("token") or ""), str(a.get("site") or ""), ctx.conversation_id or "", str(a.get("brief") or ""))
+        except IN.InspireError as e:
+            return {"error": str(e), **e.extra}
     if action == "catalog":                       # v0.538 a preview only; her Apply tap writes it (console Catalogue card)
         from ..site import catalog as CAT
         try:

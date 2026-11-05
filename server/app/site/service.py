@@ -1088,8 +1088,16 @@ def _lang_line(lang: str) -> str:
 def _photos_line(r: Site) -> str:
     ph = _j(r.photos, [])
     if not ph:
-        return "PHOTOS: none yet (draw with inline SVG; leave a clear spot where a real photo will go later)."
-    return "PHOTOS (use with data-hoola-img): " + "; ".join(f"{p['name']} = {p.get('about') or 'photo'}" for p in ph)
+        return "PHOTOS: none yet (draw with inline SVG; leave a clear spot where a real photo will go later)." + _lottie_line(r)
+    out = "PHOTOS (use with data-hoola-img): " + "; ".join(f"{p['name']} = {p.get('about') or 'photo'}" for p in ph)
+    return out + _lottie_line(r)
+
+
+def _lottie_line(r: Site) -> str:
+    """v0.568 her own Lottie files, so a section can use them by name."""
+    from . import lottie as LT
+    mine = LT.hers(B.src_dir(r.tenant_id, r.id))
+    return ("\nHER ANIMATIONS (use with data-hoola-lottie): " + ", ".join(mine)) if mine else ""
 
 
 def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], extra: str = "") -> str:
@@ -1244,7 +1252,15 @@ def _make_looks(r: Site) -> None:
     more = _look_sections(r)
     labels = [T.label_of(s) for s in more]
     briefs = [L.brief(r.field, r.goal, st) for st in styles]
+    from . import inspire as IN
+    mine = IN.look_zero(facts)                 # v0.567 KOI BHI DESIGN: look 1 = her own design (screenshot / Figma / her old site)
+    if mine:
+        styles = [mine["style"]] + [s for s in styles if s != mine["style"]][:2]
+        briefs = [L.brief(r.field, r.goal, st) for st in styles]
+        briefs[0] = {**briefs[0], "text": briefs[0]["text"] + IN.brief_note(mine)}
     toks = [B.tokens(st, br["palettes"][0], facts.get("brand_colors")) for st, br in zip(styles, briefs)]
+    if mine:
+        toks[0] = B.tokens(mine["style"], briefs[0]["palettes"][0], None, mine.get("overrides") or {})
     _work(r, "start", "3 looks soch raha hoon", f"{len(styles)} design ek saath")
 
     def dna_of(i: int, siblings: list) -> dict[str, Any] | None:
@@ -1315,7 +1331,8 @@ def _make_looks(r: Site) -> None:
             shots = rep["pages"].get("home", {}).get("shots", {})
         except C.CheckError as e:
             log.info("look screenshots skipped: %s", e)
-        return {"style": styles[i], "label": T.STYLES[styles[i]]["label"], "tokens": toks[i], "shots": shots, "dna": dnas[i]}
+        return {"style": styles[i], "label": "Aapke design se" if (mine and i == 0) else T.STYLES[styles[i]]["label"],
+                "tokens": toks[i], "shots": shots, "dna": dnas[i], "mine": bool(mine and i == 0)}
     with ThreadPoolExecutor(max_workers=len(styles), thread_name_prefix=f"look-{r.id[:6]}") as ex:
         looks = list(ex.map(_in_ctx(shoot), range(len(styles))))
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
@@ -2017,6 +2034,26 @@ def resume(tenant: str, ref: str) -> dict[str, Any]:
     else:
         _start(r.id, "looks")
     return view(_load(r.id), False)
+
+
+def add_lottie(tenant: str, ref: str, data: bytes | None = None, file_id: str = "", name: str = "") -> dict:
+    """v0.568 her own Lottie animation (JSON), checked and kept with the site's files; sections use it by name."""
+    from . import lottie as LT
+    if file_id and not data:
+        from ..mailbox import service as ms
+        try:
+            _n, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
+        except Exception as e:
+            raise SiteError(f"File {file_id} nahi mili: {e}")
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    try:
+        out = LT.store(B.src_dir(tenant, r.id), name, data or b"")
+    except LT.LottieError as e:
+        raise SiteError(str(e))
+    return {"ok": True, **out, "say": f"Animation '{out['name']}' rakh li ({out['seconds']} s). Kahan lagani hai bataiye "
+                                      f"(jaise 'hero mein {out['name']} animation lagao')."}
 
 
 def add_photo(tenant: str, ref: str, data: bytes | None = None, file_id: str = "", about: str = "", name: str = "") -> dict:

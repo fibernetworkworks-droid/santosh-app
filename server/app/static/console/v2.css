@@ -2917,3 +2917,7 @@ body.albon{overflow:hidden}
 .stgrade.good{color:var(--ok)}
 .stgrade.needs-work{color:var(--warn)}
 .stgrade.poor{color:var(--bad)}
+
+/* v0.567 KOI BHI DESIGN: her design's colours in the preview */
+.stsws{display:flex;gap:6px;margin:8px 0}
+.stsw{width:28px;height:28px;border-radius:8px;border:1px solid var(--hair);display:inline-block}
