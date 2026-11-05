@@ -166,8 +166,16 @@ def _longcard(argv: list[str]) -> int:
     if "--check" in argv:                     # free: the set is valid, nothing runs
         bad = LC.check_set()
         k = int(val("--k") or 3)
-        lo, hi = LC.estimate(len(ASKS) * k)
-        print(f"Long card set {LC.SET_V}: {len(ASKS)} asks, {len(ASKS) * k} runs at k={k} "
+        # v0.586 the line describes THIS run (--only / --limit / --k and the card's model), not the whole set:
+        # a 5-job Haiku try used to print the 75-run Sonnet price (Rs 4,500-16,500)
+        only = [x for x in val("--only").split(",") if x]
+        n = len([a for a in ASKS if not only or a["id"] in only][:int(val("--limit"))] if val("--limit")
+                else [a for a in ASKS if not only or a["id"] in only])
+        from ..config import get_settings
+        model = get_settings().anthropic_model
+        lo, hi = LC.estimate(n * k, model)
+        size = f"{n} of {len(ASKS)} asks" if n != len(ASKS) else f"{len(ASKS)} asks"
+        print(f"Long card set {LC.SET_V}: {size}, {n * k} runs at k={k} on {model} "
               f"(rough cost Rs {lo:,}-{hi:,}).")
         print("\n".join(f"  PROBLEM {b}" for b in bad) or "  set OK")
         return 1 if bad else 0

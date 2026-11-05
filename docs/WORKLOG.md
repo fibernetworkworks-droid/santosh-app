@@ -1568,3 +1568,7 @@ Work Log:
 - Read her Haiku card runs (hard 9/9, tools 25/26, long card try started); fresh15 accepts open_website / scrape_page / reach.
 Stage Summary:
 - v0.584.0 server-only (quality card). Deploy, then tool_card_haiku should read 26/26.
+
+---
+Task ID: v0.586.0 SAHI KHARCHA
+- Owner showed run #283's "Rs 4,500-16,500" line on a 5-job Haiku try; the --check line now prices the run that starts (asks, k, model). vps-ops passes $LC_ARGS. Tests 4.

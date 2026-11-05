@@ -20826,3 +20826,12 @@ mein batao: <wikipedia>" -> scrape_page, card wanted open_website. The card (v0.
 (v0.559); reading one public page with them is right. `tool_asks.FRESH` row now lists open_website / scrape_page / reach as
 exact tools; "scrape" deliberately not listed (it is a family name too and would admit scrape_site / scrape_stealth...).
 No Hoola behaviour changed.
+
+## v0.586.0 SAHI KHARCHA — the long card's price line tells the truth about the run that starts
+
+Her `long_card_try_haiku` run (#283) printed "25 asks, 75 runs at k=3 (rough cost Rs 4,500-16,500)" right before starting a
+5-job, k=1 trial on Haiku: `--check` ignored `--only` / `--limit` / `--k` (vps-ops never passed them) and priced every run at
+the Sonnet guess. Now `longcard.estimate(n, model)` scales the Sonnet per-run guess (Rs 60-220) by list price (Haiku 5.5
+1/20, Opus 5.5 2x), `--check` counts the asks the run will really take and names the model, and vps-ops passes `$LC_ARGS`
+to it. The try now reads "5 of 25 asks, 5 runs at k=1 on claude-haiku-5-5 (rough cost Rs 15-55)". Still a GUESS until a real
+card fills the per-run number. Nothing in Hoola itself changed. Tests: test_v0586_sahi_kharcha.py (4).
