@@ -1,0 +1,30 @@
+{
+ "base": "electromagnetic-induction",
+ "chapter": "Electromagnetic Induction",
+ "variants": [
+  {"key": "coil-100", "title": "Faraday: a 100-turn coil and a steel bar magnet", "sample": "Coil of 100 turns, radius 2 cm; steel bar magnet",
+   "unknown": "k = peak emf / speed for the 100-turn coil", "params": {"N": 100},
+   "note": "Half the turns of the standard coil: every turn adds the same emf, so k should be half as large.",
+   "source": {"title": "NCERT Physics Part I, Class XII, Ch 6 Electromagnetic Induction (emf = −N dΦ/dt)", "note": "Generic school coil; the turns are printed on its base."}},
+  {"key": "coil-500", "title": "Faraday: a 500-turn coil and a steel bar magnet", "sample": "Coil of 500 turns, radius 2 cm; steel bar magnet",
+   "unknown": "k = peak emf / speed for the 500-turn coil", "params": {"N": 500},
+   "note": "Two and a half times the turns of the standard coil, so two and a half times the emf at every speed.",
+   "source": {"title": "NCERT Physics Part I, Class XII, Ch 6 Electromagnetic Induction (emf = −N dΦ/dt)", "note": "Generic school coil; the turns are printed on its base."}},
+  {"key": "wide-coil", "title": "Faraday: a wider coil (radius 3 cm)", "sample": "Coil of 200 turns, radius 3 cm; steel bar magnet",
+   "unknown": "k = peak emf / speed for the 3 cm coil", "params": {"a": 0.03},
+   "note": "For a small magnet on the axis the peak emf falls as 1 / a²: the wider coil gives less than half the emf of the 2 cm coil.",
+   "source": {"title": "NCERT Physics Part I, Class XII, Ch 6 Electromagnetic Induction", "note": "Axial field of a dipole B = μ0 m / (2π z³) far away; the kernel uses the exact on-axis flux μ0 m a² / 2(a² + z²)^1.5 per turn."}},
+  {"key": "narrow-coil", "title": "Faraday: a narrower coil (radius 1.5 cm)", "sample": "Coil of 200 turns, radius 1.5 cm; steel bar magnet",
+   "unknown": "k = peak emf / speed for the 1.5 cm coil", "params": {"a": 0.015},
+   "note": "A narrow coil sits closer to the magnet: the peak emf grows as 1 / a², about 1.8 times that of the 2 cm coil.",
+   "source": {"title": "NCERT Physics Part I, Class XII, Ch 6 Electromagnetic Induction", "note": "The magnet (12 mm square) still passes through the narrower former."}},
+  {"key": "ferrite", "title": "Faraday: a ferrite (ceramic) bar magnet", "sample": "Coil of 200 turns, radius 2 cm; ferrite (ceramic) bar magnet",
+   "unknown": "k = peak emf / speed with the ferrite magnet", "params": {"m": 2.2},
+   "note": "A hard ferrite has remanence Br of about 0.39 T, so a 50 × 12 × 12 mm bar has a moment m ≈ Br V / μ0 ≈ 2.2 A·m².",
+   "source": {"title": "IEC 60404-8-1 magnetically hard materials: hard ferrite, Br about 0.38-0.40 T", "note": "m = Br V / μ0 with V = 7.2 cm³; a real bar works a little below Br."}},
+  {"key": "ndfeb", "title": "Faraday: a neodymium (NdFeB) bar magnet", "sample": "Coil of 200 turns, radius 2 cm; neodymium (NdFeB) bar magnet",
+   "unknown": "k = peak emf / speed with the NdFeB magnet", "params": {"m": 6.8},
+   "note": "Grade N35 NdFeB has Br of about 1.17-1.22 T, so a 50 × 12 × 12 mm bar has m ≈ 6.8 A·m²: about seven times the steel magnet, and the galvanometer needs a coarser range.",
+   "source": {"title": "IEC 60404-8-1 magnetically hard materials: NdFeB grade N35, Br about 1.17-1.22 T", "note": "m = Br V / μ0 with V = 7.2 cm³."}}
+ ]
+}

@@ -9,7 +9,12 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
   var MX = 0.2, MZ = -0.32, BASE_TOP = 0.034, PAPER_Y = BASE_TOP + 0.0004, WD = 0.06, OBJ_Z = MZ + 0.05;
   var Y_ZERO = PAPER_Y + WD + 0.06 - 0.05;                       // the main scale's zero: reading R (cm) = 100 (F + 0.05)
   var SLABS = [{ id: 'A', t: 0.02 }, { id: 'B', t: 0.03 }, { id: 'C', t: 0.04 }, { id: 'D', t: 0.05 }];
-  var SW = 0.07, SDp = 0.05;                                     // slab length (x) and width (z)
+  var SW = 0.07, SDp = 0.05;
+  var SAMPLE = ((S.lab.variant || {}).sample || '');
+  var MAT = /dense flint|sf10/i.test(SAMPLE) ? ['Dense flint glass', 0xd9d6a6, 'DENSE FLINT'] : /flint/i.test(SAMPLE) ? ['Flint glass', 0xe0dcae, 'FLINT GLASS'] :
+    /acrylic|pmma|perspex/i.test(SAMPLE) ? ['Acrylic (PMMA)', 0xb9dcef, 'ACRYLIC'] : /polycarbonate/i.test(SAMPLE) ? ['Polycarbonate', 0xc6d7ea, 'POLYCARBONATE'] :
+    /quartz|silica/i.test(SAMPLE) ? ['Fused quartz', 0xe6f2f4, 'FUSED QUARTZ'] : /crown|bk7/i.test(SAMPLE) ? ['Crown glass', 0x9fdcc6, 'CROWN GLASS'] : ['Glass', 0x9fdcc6, ''];
+  var GLASSY = /glass|quartz/i.test(MAT[0]);                                     // slab length (x) and width (z)
   var st = { eyeFocused: false, F: 0.012, slab: null, onMark: null, powder: false, R1: null, R2: null, R3: null, pick: 'A' };
 
   // ---------- the travelling microscope
@@ -72,7 +77,7 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
   // ---------- glass slabs on a cloth, and the lycopodium sprinkler
   var cloth = S.mesh(new T.BoxGeometry(0.4, 0.002, 0.11), new T.MeshStandardMaterial({ color: 0x2f5d87, roughness: 1 })); cloth.position.set(0.66, 0.001, -0.13); S.scene.add(cloth);
   var slabMat = new T.MeshPhysicalMaterial({ color: 0xf6fffc, roughness: 0, metalness: 0, transmission: 1, thickness: 0.03, ior: p.n, specularIntensity: 1,
-    attenuationColor: new T.Color(0x9fdcc6), attenuationDistance: 0.12, envMapIntensity: 1.2 });
+    attenuationColor: new T.Color(MAT[1]), attenuationDistance: 0.12, envMapIntensity: 1.2 });
   var edgeMat = new T.LineBasicMaterial({ color: 0x8fc8b6, transparent: true, opacity: 0.75 });
   SLABS.forEach(function (sl, i) { var g = new T.Group(); S.scene.add(g);
     var geo = new T.BoxGeometry(SW, sl.t, SDp); var m = S.mesh(geo, slabMat); m.position.y = sl.t / 2; m.renderOrder = 3; g.add(m);
@@ -80,6 +85,7 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
     sl.g = g; sl.home = new T.Vector3(0.5 + i * 0.1, 0.002, -0.14); g.position.copy(sl.home);
     var tag = S.label('Slab ' + sl.id, { w: 0.03, ratio: 0.32, color: '#1b2a6b', bg: '#f6f2e4', weight: 700 }); tag.rotation.x = -Math.PI / 2; tag.position.set(sl.home.x, 0.0024, -0.072); S.scene.add(tag);
     sl.sh = S.contact(SW + 0.03, SDp + 0.03, sl.home.x, sl.home.z, 0.35, 0.002); });
+  if (MAT[2]) { var mLab = S.label(MAT[2], { w: 0.07, ratio: 0.16, color: '#f6f2e4', bg: '#1b2a6b', weight: 700 }); mLab.rotation.x = -Math.PI / 2; mLab.position.set(0.66, 0.0012, -0.05); S.scene.add(mLab); }
   var grains = (function () { var n = 260, pos = new Float32Array(n * 3), i; for (i = 0; i < n; i++) { var rr = Math.sqrt(S.rnd()) * 0.016, a = S.rnd() * Math.PI * 2; pos[i * 3] = Math.cos(a) * rr; pos[i * 3 + 1] = 0.0004; pos[i * 3 + 2] = Math.sin(a) * rr * 0.8; }
     var gg = new T.BufferGeometry(); gg.setAttribute('position', new T.BufferAttribute(pos, 3));
     var pm = new T.Points(gg, new T.PointsMaterial({ color: 0xe9cf5a, size: 0.0011, sizeAttenuation: true })); pm.visible = false; S.scene.add(pm); return pm; })();
@@ -93,7 +99,7 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
   S.addApparatus('micro', micro, 'Travelling microscope', 'Moves up and down a pillar by a rack and pinion. Main scale 0.5 mm, vernier 50 divisions: least count 0.001 cm.');
   S.addApparatus('knob', knob, 'Focusing knob', 'Turn it to raise or lower the microscope until the object is sharp, with no parallax against the cross-wires.');
   S.addApparatus('mark', paper, 'Ink mark on paper', 'A fine cross drawn in ink: the object whose real and apparent depths you compare.');
-  S.addApparatus('slabs', cloth, 'Glass slabs A–D', 'Four slabs of the same glass, of different thicknesses. You measure each thickness with the microscope.');
+  S.addApparatus('slabs', cloth, (GLASSY ? MAT[0].replace('Glass', 'Glass') : MAT[0]) + ' slabs A–D', (SAMPLE ? SAMPLE + '. ' : '') + 'Four slabs of the same ' + (GLASSY ? MAT[0].toLowerCase().replace(/^glass$/, 'glass') : MAT[0].toLowerCase().replace(' (pmma)', ' (PMMA)')) + ', of different thicknesses. You measure each thickness with the microscope.');
   S.addApparatus('powder', shaker, 'Lycopodium powder', 'A fine yellow powder sprinkled on top of the slab, so the microscope can focus on the top surface.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
   var hudR = S.hudCard('Microscope reading'), hudF = S.hudCard('In focus'), hudN = S.hudCard('Slabs done');
@@ -224,7 +230,7 @@ HoolaStudio.define('glass-slab-apparent-depth', function (S) {
       formula: 'n = (R₃ − R₁) / (R₃ − R₂)', formulaNote: 'R₁: mark without the slab · R₂: mark seen through the slab · R₃: powder on top of the slab · real depth = R₃ − R₁, apparent depth = R₃ − R₂',
       more: ['Least count = value of one main-scale division / number of vernier divisions = 0.5 mm / 50 = 0.01 mm = 0.001 cm. Reading = main scale + vernier division in line × 0.001 cm.'],
       precautions: 'Focus the eyepiece on the cross-wires first. Move the microscope in one direction only (upwards) while taking a set of readings, to avoid backlash. Focus until there is no parallax between the image and the cross-wires. Use only a thin layer of powder.' },
-    book: { title: 'Expt. — Glass slab (travelling microscope)', lines: ['Aim: n of glass by real and apparent depth.', 'LC = 0.5 mm / 50 = 0.001 cm', 'R1: mark;  R2: mark through slab;', 'R3: powder on top of slab', 'n = (R3 − R1) / (R3 − R2)'],
+    book: { title: 'Expt. — Glass slab (travelling microscope)', lines: ['Aim: n of ' + (MAT[2] ? MAT[0].toLowerCase().replace(' (pmma)', ' (PMMA)') : 'glass') + ' by real and apparent depth.', 'LC = 0.5 mm / 50 = 0.001 cm', 'R1: mark;  R2: mark through slab;', 'R3: powder on top of slab', 'n = (R3 − R1) / (R3 − R2)'],
       columns: [{ label: 'Slab', get: function (r) { return r.slab; } }, { label: 'R1 (cm)', get: function (r) { return r.R1.toFixed(3); } }, { label: 'R2 (cm)', get: function (r) { return r.R2.toFixed(3); } },
         { label: 'R3 (cm)', get: function (r) { return r.R3.toFixed(3); } }, { label: 'Real', get: function (r) { return (r.R3 - r.R1).toFixed(3); } }, { label: 'App.', get: function (r) { return (r.R3 - r.R2).toFixed(3); } },
         { label: 'n', get: function (r) { return nFrom(r).toFixed(3); } }] },

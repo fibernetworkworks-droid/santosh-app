@@ -4,35 +4,62 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Hoola Prayogshala</title>
-<link rel="stylesheet" href="lab.css?v=0.441.0">
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32">
+<link rel="icon" href="/static/hoola-icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/static/hoola-apple-touch.png">
+<link rel="stylesheet" href="lab.css?v=0.458.0">
 </head>
 <body>
 <main class="cat">
   <h1>Prayogshala</h1>
   <p class="mut">Real practicals in 3D: turn the knobs, read the meters, fill the table. Every number comes from Hoola's simulation code.</p>
-  <input class="search" id="q" type="search" placeholder="Search labs: pendulum, lens, Ohm…" aria-label="Search labs">
+  <input class="search" id="q" type="search" placeholder="Search experiments: pendulum, copper wire, lens…" aria-label="Search labs">
   <div id="list"><p class="mut">Loading labs…</p></div>
 </main>
 <script>
 (function () {
-  var list = document.getElementById('list'), q = document.getElementById('q'), labs = [];
+  var list = document.getElementById('list'), q = document.getElementById('q'), bases = [], ask = 0, timer = 0;
+  var base = (new URLSearchParams(location.search).get('base') || '').replace(/[^a-z0-9-]/g, '');
   function el(t, c, x) { var e = document.createElement(t); if (c) e.className = c; if (x !== undefined) e.textContent = x; return e; }
-  function draw() {
-    var s = q.value.trim().toLowerCase(), groups = {};
-    labs.filter(function (l) { return !s || (l.title + ' ' + l.topic + ' ' + l.field + ' ' + l.level).toLowerCase().indexOf(s) >= 0; })
-      .forEach(function (l) { (groups[l.group] = groups[l.group] || []).push(l); });
+  function get(qs) { return fetch('/api/prayog/labs?' + qs).then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); }); }
+  function card(l, family) {
+    var n = l.n_variants || 0, a = el('a', 'card');
+    a.href = family && n ? '?base=' + encodeURIComponent(l.id) : 'lab.html?id=' + encodeURIComponent(l.id);
+    a.appendChild(el('b', '', l.title));
+    a.appendChild(el('span', '', [l.level, l.sample, family && n ? (n + 1) + ' experiments' : '', l.aim].filter(Boolean).join(' · ')));
+    return a;
+  }
+  function draw(rows, family, head) {
     list.innerHTML = '';
-    var keys = Object.keys(groups);
-    if (!keys.length) { list.appendChild(el('p', 'mut', 'No lab found.')); return; }
-    keys.forEach(function (g) {
+    if (head) list.appendChild(el('p', 'mut', head));
+    if (!rows.length) { list.appendChild(el('p', 'mut', 'No experiment found.')); return; }
+    var groups = {};
+    rows.forEach(function (l) { var g = family ? l.group : (l.chapter || l.group); (groups[g] = groups[g] || []).push(l); });
+    Object.keys(groups).forEach(function (g) {
       list.appendChild(el('h2', '', g)); var cards = el('div', 'cards');
-      groups[g].forEach(function (l) { var a = el('a', 'card'); a.href = 'lab.html?id=' + encodeURIComponent(l.id); a.appendChild(el('b', '', l.title)); a.appendChild(el('span', '', l.level + ' · ' + l.aim)); cards.appendChild(a); });
+      groups[g].forEach(function (l) { cards.appendChild(card(l, family)); });
       list.appendChild(cards);
     });
   }
-  fetch('/api/prayog/labs').then(function (r) { return r.json(); }).then(function (d) { labs = d.labs || []; draw(); })
-    .catch(function () { list.innerHTML = ''; list.appendChild(el('p', 'err', 'Labs did not load. Check the internet.')); });
-  q.addEventListener('input', draw);
+  function fail() { list.innerHTML = ''; list.appendChild(el('p', 'err', 'Labs did not load. Check the internet.')); }
+  function search() {
+    var s = q.value.trim(), my = ++ask;
+    if (!s) { if (base) return family(); return draw(bases, true); }
+    get('limit=80&q=' + encodeURIComponent(s) + (base ? '&base=' + base : '')).then(function (d) {
+      if (my === ask) draw(d.labs || [], false, d.total + ' found' + (d.total > (d.labs || []).length ? ' (first ' + d.labs.length + ' shown)' : ''));
+    }).catch(fail);
+  }
+  function family() {
+    get('limit=200&base=' + base).then(function (d) {
+      var t = (d.labs || [])[0];
+      if (t) document.querySelector('h1').textContent = t.title;
+      draw(d.labs || [], false, d.total + ' experiments on this set-up. ');
+      var back = el('a', '', '‹ All set-ups'); back.href = './'; list.insertBefore(back, list.firstChild);
+    }).catch(fail);
+  }
+  if (base) family();
+  else get('variants=false&limit=200').then(function (d) { bases = d.labs || []; draw(bases, true); }).catch(fail);
+  q.addEventListener('input', function () { clearTimeout(timer); timer = setTimeout(search, 200); });
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(function () {});
 })();
 </script>

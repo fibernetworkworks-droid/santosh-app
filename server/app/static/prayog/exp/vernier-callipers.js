@@ -18,7 +18,21 @@ HoolaStudio.define('vernier-callipers', function (S) {
   var KREAD = r6(K.measure(p).reading * 1000);                  // the kernel's corrected reading, mm
   var FONT = '"Public Sans", Arial, Helvetica, sans-serif';
   var X0 = -0.06, Z0 = -0.03;                                   // world position of the main-scale zero (fixed jaw face)
-  var OPEN = 32;                                                // jaw opening when "open", mm
+  var OPEN = Math.max(32, Math.ceil(DIA + 8));                 // jaw opening when "open", mm
+  // the object measured: from the variant's sample line (the brass sphere by default)
+  var SAMPLE = ((S.lab.variant || {}).sample || '');
+  var OB = (function () {
+    var sm = SAMPLE.toLowerCase(), o = { kind: 'sphere', noun: 'sphere', name: 'Brass sphere', mat: M.brass, dot: 0x5b3d12 };
+    if (/coin/.test(sm)) { var den = (SAMPLE.match(/₹\s*(\d+)/) || [])[1] || '1';
+      o = { kind: 'coin', noun: 'coin', name: '₹' + den + ' coin', den: den, thick: { '1': 1.45, '2': 1.5, '5': 1.7, '10': 1.9 }[den] || 1.6,
+        ring: /^(5|10)$/.test(den) ? 0xcfae55 : 0xc9ced2, core: den === '10' ? 0xc9ced2 : (den === '5' ? 0xcfae55 : 0xc9ced2) }; }
+    else if (/cylinder|rod/.test(sm)) o = { kind: 'cylinder', noun: 'cylinder', name: (/alumin/.test(sm) ? 'Aluminium' : /steel/.test(sm) ? 'Steel' : 'Brass') + ' cylinder',
+      mat: /alumin/.test(sm) ? M.alu : /steel/.test(sm) ? M.chrome : M.brass, H: 30, dot: 0x3a2a10 };
+    else if (/marble/.test(sm)) o = { kind: 'sphere', noun: 'marble', name: 'Glass marble', glass: true, dot: 0x1d6e8c };
+    else if (/ball bearing|steel ball/.test(sm)) o = { kind: 'sphere', noun: 'ball', name: 'Steel ball bearing', mat: M.chrome, dot: 0x40464c };
+    else if (/bob/.test(sm)) o = { kind: 'sphere', noun: 'bob', name: 'Brass pendulum bob', mat: M.brass, dot: 0x5b3d12, hook: true };
+    return o; })();
+  var NOUN = OB.noun;
 
   var st = { gap: 12.0, locked: false, sphere: 'tray', turned: 0, lcOk: false, zeroOk: false, tries: { lc: 0, zero: 0, read: 0 },
     inp: { lc: '', zero: '', msr: '', vsd: '' }, acting: false };
@@ -119,19 +133,45 @@ HoolaStudio.define('vernier-callipers', function (S) {
   var tray = S.rounded(0.07, 0.06, 0.009, 0.006, M.wood); tray.rotation.x = -Math.PI / 2; tray.position.set(TX, 0.0045, TZ); S.scene.add(tray);
   var felt = S.mesh(new T.PlaneGeometry(0.06, 0.05), new T.MeshStandardMaterial({ color: 0x24543d, roughness: 1 })); felt.rotation.x = -Math.PI / 2; felt.position.set(TX, TRAY_TOP + 0.0002, TZ); S.scene.add(felt);
   S.contact(0.1, 0.09, TX, TZ, 0.5);
-  var RS = DIA / 2000;                                         // sphere radius in m
+  var RS = DIA / 2000;                                         // object radius (half the measured width) in m
   var ball = new T.Group(); S.scene.add(ball);
-  var bm = S.mesh(new T.SphereGeometry(RS, 64, 48), M.brass); ball.add(bm);
-  var dot = S.mesh(new T.CircleGeometry(RS * 0.07, 16), new T.MeshStandardMaterial({ color: 0x5b3d12, roughness: 0.7 }));   // a tiny punch mark, so a turn shows
-  dot.position.set(0, RS * 0.62, RS * 0.785); dot.lookAt(0, RS * 1.24, RS * 1.57); ball.add(dot);
+  var spin = new T.Group(); ball.add(spin);                     // turned by the hand between readings
+  var HB = RS, HT = RS, ROT_TRAY = 0, ROT_JAW = 0;              // centre height on the bench (in the jaws) and on the tray; tilt about x
+  if (OB.kind === 'coin') {
+    var TH = OB.thick / 1000, FONTV = '"Public Sans", Arial, sans-serif';
+    var faceTex = S.canvasTex(256, 256, function (x, w, h) { var c = w / 2;
+      var gr = x.createRadialGradient(c * 0.8, c * 0.7, 10, c, c, c); var col = '#' + OB.core.toString(16).padStart(6, '0');
+      x.fillStyle = '#' + OB.ring.toString(16).padStart(6, '0'); x.beginPath(); x.arc(c, c, c, 0, 7); x.fill();
+      x.fillStyle = col; x.beginPath(); x.arc(c, c, OB.den === '10' ? c * 0.7 : c, 0, 7); x.fill();
+      gr.addColorStop(0, 'rgba(255,255,255,0.25)'); gr.addColorStop(1, 'rgba(0,0,0,0.12)'); x.fillStyle = gr; x.beginPath(); x.arc(c, c, c, 0, 7); x.fill();
+      x.strokeStyle = 'rgba(60,60,60,0.45)'; x.lineWidth = 4; x.beginPath(); x.arc(c, c, c - 10, 0, 7); x.stroke();
+      x.fillStyle = 'rgba(55,55,60,0.75)'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.font = '700 92px ' + FONTV; x.fillText('₹' + OB.den, c, c + 4); });
+    var edgeM = new T.MeshStandardMaterial({ color: OB.ring, roughness: 0.35, metalness: 0.9 }), faceM = new T.MeshStandardMaterial({ map: faceTex, roughness: 0.35, metalness: 0.75 });
+    var bm = S.mesh(new T.CylinderGeometry(RS, RS, TH, 64), [edgeM, faceM, faceM]); spin.add(bm);
+    HB = RS; HT = TH / 2; ROT_JAW = Math.PI / 2; ROT_TRAY = 0;   // lies flat on the felt, stands on its rim between the jaws
+  } else if (OB.kind === 'cylinder') {
+    var CH = OB.H / 1000;
+    var bm = S.mesh(new T.CylinderGeometry(RS, RS, CH, 64), OB.mat); spin.add(bm);
+    var dot = S.mesh(new T.CircleGeometry(RS * 0.12, 16), new T.MeshStandardMaterial({ color: OB.dot, roughness: 0.7 }));
+    dot.position.set(0, CH * 0.25, RS * 1.001); spin.add(dot);
+    HB = HT = CH / 2;
+  } else {
+    var bmat = OB.glass ? new T.MeshPhysicalMaterial({ color: 0xbfe6ef, roughness: 0.04, metalness: 0, transparent: true, opacity: 0.55, clearcoat: 1, envMapIntensity: 1.5 }) : OB.mat;
+    var bm = S.mesh(new T.SphereGeometry(RS, 64, 48), bmat); spin.add(bm);
+    if (OB.glass) { var swirl = S.mesh(new T.TorusGeometry(RS * 0.45, RS * 0.12, 10, 32, Math.PI * 1.4), new T.MeshStandardMaterial({ color: OB.dot, roughness: 0.4 })); swirl.rotation.set(0.6, 0.3, 0); spin.add(swirl); }
+    else { var dot = S.mesh(new T.CircleGeometry(RS * 0.07, 16), new T.MeshStandardMaterial({ color: OB.dot, roughness: 0.7 }));   // a tiny punch mark, so a turn shows
+      dot.position.set(0, RS * 0.62, RS * 0.785); dot.lookAt(0, RS * 1.24, RS * 1.57); spin.add(dot); }
+    if (OB.hook) { var hk = S.mesh(new T.TorusGeometry(RS * 0.16, RS * 0.035, 8, 20), M.brass); hk.position.y = RS * 1.1; spin.add(hk); }
+  }
   var ballShadow = S.contact(0.04, 0.04, TX, TZ, 0.5);
-  var TRAY_POS = new T.Vector3(TX - 0.01, TRAY_TOP + RS, TZ);
-  var JAW_POS = new T.Vector3(X0 + DIA / 2000, RS, Z0);
-  ball.position.copy(TRAY_POS);
+  var TRAY_POS = new T.Vector3(TX - 0.01, TRAY_TOP + HT, TZ);
+  var JAW_POS = new T.Vector3(X0 + DIA / 2000, HB, Z0);
+  function tilt(k) { ball.rotation.x = ROT_TRAY + (ROT_JAW - ROT_TRAY) * k; }   // 0 = as on the tray, 1 = as between the jaws
+  ball.position.copy(TRAY_POS); tilt(0);
 
   S.addApparatus('vc', G, 'Vernier callipers', 'Stainless steel, 0–150 mm. Main scale in mm; vernier of 10 divisions = 9 mm, so the least count is 0.1 mm.');
-  S.addApparatus('ball', ball, 'Brass sphere', 'The object to measure. Its true diameter is hidden: you find it.');
-  S.addApparatus('tray', tray, 'Felt tray', 'Keeps the sphere from rolling off the bench.');
+  S.addApparatus('ball', ball, OB.name, 'The object to measure. Its true diameter is hidden: you find it.');
+  S.addApparatus('tray', tray, 'Felt tray', 'Keeps the ' + NOUN + ' from rolling off the bench.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
 
   var hudLC = S.hudCard('Least count'), hudJ = S.hudCard('Jaws'), hudN = S.hudCard('Readings');
@@ -141,8 +181,9 @@ HoolaStudio.define('vernier-callipers', function (S) {
     SL.position.x = st.gap;
     wheel.rotation.y = -st.gap / 4.2;                          // the wheel rolls along the beam
     lockHead.rotation.y = st.locked ? 1.3 : 0;
-    ballShadow.position.set(ball.position.x, 0.0009 + (ball.position.y - RS > 0.004 ? TRAY_TOP : 0), ball.position.z);
-    var hgt = Math.max(0, ball.position.y - RS); ballShadow.material.opacity = Math.max(0.12, 0.5 - hgt * 6);
+    var low = ball.position.y - (Math.abs(ball.rotation.x - ROT_JAW) < 1e-6 ? HB : HT);
+    ballShadow.position.set(ball.position.x, 0.0009 + (low > 0.004 ? TRAY_TOP : 0), ball.position.z);
+    var hgt = Math.max(0, low); ballShadow.material.opacity = Math.max(0.12, 0.5 - hgt * 6);
   }
   function wpt(x, y, z) { G.updateMatrixWorld(true); return G.localToWorld(new T.Vector3(x, y, z)); }
   function wheelPt(gap) { return wpt(gap + 23, 35.7, 1.6); }
@@ -166,7 +207,7 @@ HoolaStudio.define('vernier-callipers', function (S) {
 
   function closeEmpty() {
     if (busy()) return Promise.resolve();
-    if (st.sphere === 'jaws') { S.say('Take the sphere out of the jaws first: the zero error is read with the jaws closed on nothing.'); return Promise.resolve(); }
+    if (st.sphere === 'jaws') { S.say('Take the ' + NOUN + ' out of the jaws first: the zero error is read with the jaws closed on nothing.'); return Promise.resolve(); }
     return run(function () { return unlock().then(function () { return slideTo(0, 1100); }).then(lock).then(function () {
       updViews(); S.focus('lens'); S.say('The jaws are closed and locked. Read the vernier: where is its zero, and which vernier line meets a main-scale line exactly?'); }); });
   }
@@ -177,14 +218,15 @@ HoolaStudio.define('vernier-callipers', function (S) {
   }
   function placeSphere() {
     if (busy()) return Promise.resolve();
-    if (st.sphere === 'jaws') { S.say('The sphere is already between the jaws.'); return Promise.resolve(); }
-    if (st.gap < DIA + 2) { S.say('Open the jaws first: the sphere will not fit between them.'); return Promise.resolve(); }
+    if (st.sphere === 'jaws') { S.say('The ' + NOUN + ' is already between the jaws.'); return Promise.resolve(); }
+    if (st.gap < DIA + 2) { S.say('Open the jaws first: the ' + NOUN + ' will not fit between them.'); return Promise.resolve(); }
     var a = TRAY_POS.clone(), p1 = TRAY_POS.clone().setY(0.05), p2 = JAW_POS.clone().setZ(Z0 + 0.05), p3 = JAW_POS.clone();
     function path(k) { var q = new T.Vector3(); if (k < 0.25) return q.lerpVectors(a, p1, k / 0.25); if (k < 0.72) return q.lerpVectors(p1, p2, (k - 0.25) / 0.47); return q.lerpVectors(p2, p3, (k - 0.72) / 0.28); }
     var front = new T.Vector3(0, 0, RS);
     return run(function () {
-      return S.hand.pinchMove(a.clone().add(front), function (k) { return path(k).add(front); }, function (k) { ball.position.copy(path(k)); place(); }, { mode: 'front', ms: 1900 })
-        .then(function () { ball.position.copy(JAW_POS); st.sphere = 'jaws'; place(); S.say('The sphere rests on the bench between the open jaws, touching the fixed jaw.'); }); });
+      return S.hand.pinchMove(a.clone().add(front), function (k) { return path(k).add(front); }, function (k) { ball.position.copy(path(k)); tilt(Math.min(1, Math.max(0, (k - 0.25) / 0.47))); place(); }, { mode: 'front', ms: 1900 })
+        .then(function () { ball.position.copy(JAW_POS); tilt(1); st.sphere = 'jaws'; place();
+          S.say(OB.kind === 'coin' ? 'The coin stands on its rim between the open jaws, touching the fixed jaw.' : 'The ' + NOUN + ' rests on the bench between the open jaws, touching the fixed jaw.'); }); });
   }
   function takeOut() {
     if (busy()) return Promise.resolve();
@@ -192,24 +234,25 @@ HoolaStudio.define('vernier-callipers', function (S) {
     var go = function () { var a = ball.position.clone(), p1 = a.clone().setZ(Z0 + 0.05), p2 = TRAY_POS.clone().setY(0.05), p3 = TRAY_POS.clone();
       function path(k) { var q = new T.Vector3(); if (k < 0.28) return q.lerpVectors(a, p1, k / 0.28); if (k < 0.75) return q.lerpVectors(p1, p2, (k - 0.28) / 0.47); return q.lerpVectors(p2, p3, (k - 0.75) / 0.25); }
       var front = new T.Vector3(0, 0, RS);
-      return S.hand.pinchMove(a.clone().add(front), function (k) { return path(k).add(front); }, function (k) { ball.position.copy(path(k)); place(); }, { mode: 'front', ms: 1700 })
-        .then(function () { ball.position.copy(TRAY_POS); st.sphere = 'tray'; place(); }); };
+      return S.hand.pinchMove(a.clone().add(front), function (k) { return path(k).add(front); }, function (k) { ball.position.copy(path(k)); tilt(1 - Math.min(1, Math.max(0, (k - 0.28) / 0.47))); place(); }, { mode: 'front', ms: 1700 })
+        .then(function () { ball.position.copy(TRAY_POS); tilt(0); st.sphere = 'tray'; place(); }); };
     return run(function () { return (st.gap < DIA + 2 ? unlock().then(function () { return slideTo(OPEN, 900); }) : Promise.resolve()).then(go); });
   }
   function turnSphere() {
     if (busy()) return Promise.resolve();
-    if (st.sphere !== 'jaws') { S.say('Put the sphere between the jaws first.'); return Promise.resolve(); }
-    if (st.gap < DIA + 2) { S.say('Open the jaws a little first, so the sphere can turn freely.'); return Promise.resolve(); }
-    var r0 = ball.rotation.clone(), fp = ball.position.clone().add(new T.Vector3(0, 0, RS));
-    return run(function () { return S.hand.pinchMove(fp, function () { return fp; }, function (k) { ball.rotation.set(r0.x + 1.1 * k, r0.y + 0.8 * k, r0.z); }, { mode: 'front', ms: 1100 })
-      .then(function () { st.turned++; st.inp.msr = ''; st.inp.vsd = ''; S.say('Sphere turned to a new position. Now close the jaws on it again.'); }); });
+    if (st.sphere !== 'jaws') { S.say('Put the ' + NOUN + ' between the jaws first.'); return Promise.resolve(); }
+    if (st.gap < DIA + 2) { S.say('Open the jaws a little first, so the ' + NOUN + ' can turn freely.'); return Promise.resolve(); }
+    var r0 = spin.rotation.clone(), fp = ball.position.clone().add(new T.Vector3(0, 0, OB.kind === 'coin' ? OB.thick / 2000 : RS));
+    function turnAt(k) { if (OB.kind === 'sphere') spin.rotation.set(r0.x + 1.1 * k, r0.y + 0.8 * k, r0.z); else spin.rotation.set(r0.x, r0.y + 1.1 * k, r0.z); }
+    return run(function () { return S.hand.pinchMove(fp, function () { return fp; }, turnAt, { mode: 'front', ms: 1100 })
+      .then(function () { st.turned++; st.inp.msr = ''; st.inp.vsd = ''; S.say((OB.kind === 'coin' ? 'Coin turned on its rim' : OB.kind === 'cylinder' ? 'Cylinder turned about its axis' : NOUN.charAt(0).toUpperCase() + NOUN.slice(1) + ' turned') + ' to a new position. Now close the jaws on it again.'); }); });
   }
   function closeOnSphere() {
     if (busy()) return Promise.resolve();
-    if (st.sphere !== 'jaws') { S.say('Place the sphere between the jaws first.'); return Promise.resolve(); }
-    if (jawState() === 'sphere') { S.say('The jaws are already closed on the sphere. Read the scales.'); return Promise.resolve(); }
+    if (st.sphere !== 'jaws') { S.say('Place the ' + NOUN + ' between the jaws first.'); return Promise.resolve(); }
+    if (jawState() === 'sphere') { S.say('The jaws are already closed on the ' + NOUN + '. Read the scales.'); return Promise.resolve(); }
     return run(function () { return unlock().then(function () { return slideTo(DIA, 1400); }).then(lock).then(function () {
-      updViews(); S.focus('scale'); S.say('The jaws touch the sphere gently and the screw is locked. Read the main scale and the vernier.'); }); });
+      updViews(); S.focus('scale'); S.say('The jaws touch the ' + NOUN + ' gently and the screw is locked. Read the main scale and the vernier.'); }); });
   }
 
   // ---------------------------------------------------------------- reading checks (the student types; hints, never the answer)
@@ -239,7 +282,7 @@ HoolaStudio.define('vernier-callipers', function (S) {
   function submitReading() {
     st.tries.read++;
     if (!st.zeroOk) { S.say('Find the zero error first (step 2).'); return false; }
-    if (jawState() !== 'sphere' || !st.locked) { S.say('Close the jaws on the sphere and lock them before you read.'); return false; }
+    if (jawState() !== 'sphere' || !st.locked) { S.say('Close the jaws on the ' + NOUN + ' and lock them before you read.'); return false; }
     var m = num(st.inp.msr), v = num(st.inp.vsd);
     if (!isFinite(m) || !isFinite(v)) { S.say('Type both: the main scale reading in mm, and the coinciding vernier division (a whole number).'); return false; }
     if (Math.round(v) !== v || v < 0 || v > 10) { S.say('The vernier division is a whole number from 0 to 9.'); return false; }
@@ -249,7 +292,7 @@ HoolaStudio.define('vernier-callipers', function (S) {
       if (!same(corr, KREAD)) console.warn('vernier: corrected reading', corr, 'differs from the kernel', KREAD);
       S.addRow({ msr: m, vsd: v, obs: obs, ze: ZR, corr: corr, pos: st.turned });
       st.inp.msr = ''; st.inp.vsd = ''; st.tries.read = 0;
-      S.say('Recorded: ' + m.toFixed(0) + ' mm + ' + v + ' × 0.1 mm = ' + obs.toFixed(1) + ' mm; corrected for zero error: ' + corr.toFixed(1) + ' mm.' + (S.rows.length < 3 ? ' Turn the sphere for the next reading.' : ''));
+      S.say('Recorded: ' + m.toFixed(0) + ' mm + ' + v + ' × 0.1 mm = ' + obs.toFixed(1) + ' mm; corrected for zero error: ' + corr.toFixed(1) + ' mm.' + (S.rows.length < 3 ? ' Turn the ' + NOUN + ' for the next reading.' : ''));
       S.render(); return true;
     }
     var msg = [];
@@ -288,8 +331,8 @@ HoolaStudio.define('vernier-callipers', function (S) {
       formula: 'D = MSR + VSD × LC − zero error', formulaNote: 'LC = 1 MSD − 1 VSD = 1 mm − 0.9 mm = 0.1 mm',
       more: ['MSR is the last main-scale mark (in mm) before the vernier zero. VSD is the number of the vernier line that coincides with a main-scale line.',
         'Zero error: close the jaws on nothing. If the vernier zero is to the right of the main zero, the error is positive (+n × LC); to the left, negative. The corrected reading = observed reading − zero error.'],
-      precautions: 'Close the jaws gently with the thumb wheel; do not squeeze the sphere. Lock the screw before reading. Look straight at the scales to avoid parallax. Take readings in different positions of the sphere and use the mean.' },
-    book: { title: 'Expt. — Vernier Callipers', lines: ['Aim: diameter of a brass sphere.', '1 MSD = 1 mm,  10 VSD = 9 MSD', 'LC = 1 MSD − 1 VSD = 0.1 mm', 'Zero error = ' + (st.zeroOk ? sgn(ZR) + ' mm' : '…'), 'D = MSR + VSD × LC − z.e.', 'Precautions: no parallax, gentle grip.'],
+      precautions: 'Close the jaws gently with the thumb wheel; do not squeeze the ' + NOUN + '. Lock the screw before reading. Look straight at the scales to avoid parallax. Take readings in different positions of the ' + NOUN + ' and use the mean.' },
+    book: { title: 'Expt. — Vernier Callipers', lines: ['Aim: diameter of a ' + OB.name.replace(/^[A-Z]/, function (c) { return c.toLowerCase(); }) + '.', '1 MSD = 1 mm,  10 VSD = 9 MSD', 'LC = 1 MSD − 1 VSD = 0.1 mm', 'Zero error = ' + (st.zeroOk ? sgn(ZR) + ' mm' : '…'), 'D = MSR + VSD × LC − z.e.', 'Precautions: no parallax, gentle grip.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }, { label: 'MSR (mm)', get: function (r) { return r.msr.toFixed(0); } },
         { label: 'VSD', get: function (r) { return String(r.vsd); } }, { label: 'Obs. (mm)', get: function (r) { return r.obs.toFixed(1); } },
         { label: 'z.e. (mm)', get: function (r) { return sgn(r.ze); } }, { label: 'D (mm)', get: function (r) { return r.corr.toFixed(1); } }] },
@@ -311,14 +354,14 @@ HoolaStudio.define('vernier-callipers', function (S) {
           var t1 = u.task('1. Least count', st.lcOk, st.lcOk ? 'LC = ' + LC.toFixed(1) + ' mm' : 'Look at the vernier: 10 of its divisions cover 9 mm of the main scale.');
           if (!st.lcOk) { t1.add(field('Least count', 'lc', 'mm', submitLC)); t1.add(u.button('Check', submitLC, true)); }
           var js = jawState(), closed = js === 'closed';
-          var t2 = u.task('2. Close the jaws on nothing', closed, closed ? 'Closed and locked. Now read the vernier.' : (st.sphere === 'jaws' ? 'The sphere is between the jaws: take it out first.' : 'The thumb pushes the wheel until the jaws touch.'));
-          if (st.sphere === 'jaws') t2.add(u.button('Take the sphere out', takeOut, false, st.acting));
+          var t2 = u.task('2. Close the jaws on nothing', closed, closed ? 'Closed and locked. Now read the vernier.' : (st.sphere === 'jaws' ? 'The ' + NOUN + ' is between the jaws: take it out first.' : 'The thumb pushes the wheel until the jaws touch.'));
+          if (st.sphere === 'jaws') t2.add(u.button('Take the ' + NOUN + ' out', takeOut, false, st.acting));
           t2.add(u.button(closed ? 'Closed' : 'Close the jaws', closeEmpty, !closed, closed || st.acting || st.sphere === 'jaws'));
           var t3 = u.task('3. Read the zero error', st.zeroOk, st.zeroOk ? 'Zero error = ' + sgn(ZR) + ' mm' : 'Which vernier line meets a main-scale line? Zero error = that division × LC, positive if the vernier zero is to the right.');
           if (!st.zeroOk) { t3.add(field('Zero error', 'zero', 'mm', submitZero)); t3.add(u.button('Check', submitZero, true, !closed || st.acting)); }
           viewRow(u);
           u.note('Look straight at the scales, not from the side: the lines must be judged without parallax.');
-          u.next('Next: measure the sphere', st.lcOk && st.zeroOk);
+          u.next('Next: measure the ' + NOUN, st.lcOk && st.zeroOk);
         },
         ok: function () { return st.lcOk && st.zeroOk; },
         auto: function () {
@@ -327,20 +370,20 @@ HoolaStudio.define('vernier-callipers', function (S) {
             st.inp.zero = String(ZR); submitZero();
           }); } },
       { id: 'measure', title: 'Measure', view: 'jaws', render: function (u) {
-          u.h2('Measure the sphere');
+          u.h2('Measure the ' + NOUN);
           var js = jawState(), n = S.rows.length, inJaws = st.sphere === 'jaws';
-          u.p('Reading ' + Math.min(n + 1, 3) + ' of 3. Take each reading with the sphere in a new position.');
+          u.p('Reading ' + Math.min(n + 1, 3) + ' of 3. Take each reading with the ' + NOUN + ' in a new position.');
           var placed = inJaws && (n === 0 || st.turned >= n);
           var tA = u.task('1. Open the jaws', js === 'open' || js === 'sphere', js === 'closed' ? 'Unlock the screw and slide the jaw back.' : 'Open.');
           tA.add(u.button('Open the jaws', openJaws, js === 'closed', js !== 'closed' || st.acting));
-          var tB = u.task(n === 0 || !inJaws ? '2. Place the sphere between the jaws' : '2. Turn the sphere to a new position', placed,
-            placed ? 'The sphere rests on the bench against the fixed jaw.' : (n > 0 && inJaws ? 'Open the jaws, then turn the sphere.' : 'Pick it up from the felt tray.'));
-          if (!inJaws) tB.add(u.button('Place the sphere', placeSphere, js !== 'closed' && !placed, js === 'closed' || st.acting));
-          else if (!placed) tB.add(u.button('Turn the sphere', turnSphere, js === 'open', js !== 'open' || st.acting));
-          var tC = u.task('3. Close the jaws on the sphere and lock', js === 'sphere' && st.locked, js === 'sphere' ? 'Touching gently, screw locked.' : 'The thumb wheel brings the jaw up to the sphere.');
-          tC.add(u.button('Close on the sphere', closeOnSphere, placed && js === 'open', !placed || js !== 'open' || st.acting));
+          var tB = u.task(n === 0 || !inJaws ? '2. Place the ' + NOUN + ' between the jaws' : '2. Turn the ' + NOUN + ' to a new position', placed,
+            placed ? 'The ' + NOUN + (OB.kind === 'coin' ? ' stands' : ' rests') + ' against the fixed jaw.' : (n > 0 && inJaws ? 'Open the jaws, then turn the ' + NOUN + '.' : 'Pick it up from the felt tray.'));
+          if (!inJaws) tB.add(u.button('Place the ' + NOUN, placeSphere, js !== 'closed' && !placed, js === 'closed' || st.acting));
+          else if (!placed) tB.add(u.button('Turn the ' + NOUN, turnSphere, js === 'open', js !== 'open' || st.acting));
+          var tC = u.task('3. Close the jaws on the ' + NOUN + ' and lock', js === 'sphere' && st.locked, js === 'sphere' ? 'Touching gently, screw locked.' : 'The thumb wheel brings the jaw up to the ' + NOUN + '.');
+          tC.add(u.button('Close on the ' + NOUN, closeOnSphere, placed && js === 'open', !placed || js !== 'open' || st.acting));
           var ready = js === 'sphere' && st.locked && placed;
-          var tD = u.task('4. Read and type', false, ready ? 'MSR = last mm mark before the vernier zero. VSD = the vernier line that coincides.' : (inJaws && !placed ? 'Recorded. Open the jaws and turn the sphere for another reading.' : 'Close the jaws on the sphere first.'));
+          var tD = u.task('4. Read and type', false, ready ? 'MSR = last mm mark before the vernier zero. VSD = the vernier line that coincides.' : (inJaws && !placed ? 'Recorded. Open the jaws and turn the ' + NOUN + ' for another reading.' : 'Close the jaws on the ' + NOUN + ' first.'));
           if (n < 3 || ready) { tD.add(field('Main scale reading (MSR)', 'msr', 'mm', submitReading)); tD.add(field('Coinciding vernier division (VSD)', 'vsd', '', submitReading));
             tD.add(u.button('Check and record', submitReading, true, !ready || st.acting)); }
           viewRow(u);
@@ -361,7 +404,7 @@ HoolaStudio.define('vernier-callipers', function (S) {
     tick: function () {
       updViews(); place();
       hudLC.set(st.lcOk ? LC.toFixed(1) + ' mm' : '?');
-      var js = jawState(); hudJ.set(js === 'sphere' ? (st.locked ? 'On sphere · locked' : 'On sphere') : js === 'closed' ? (st.locked ? 'Closed · locked' : 'Closed') : 'Open');
+      var js = jawState(); hudJ.set(js === 'sphere' ? (st.locked ? 'On ' + NOUN + ' · locked' : 'On ' + NOUN) : js === 'closed' ? (st.locked ? 'Closed · locked' : 'Closed') : 'Open');
       hudN.set(S.rows.length + ' of 3');
       // keep the record book's zero-error line current
       var zl = 'Zero error = ' + (st.zeroOk ? sgn(ZR) + ' mm' : '…'); var bk = S.exp && S.exp.book; if (bk && bk.lines[3] !== zl) { bk.lines[3] = zl; S.book.draw(); }

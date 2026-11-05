@@ -153,6 +153,19 @@ def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
 def _wake_text(r: KaamFollowup) -> str:
     """The wake turn's 'user' words: the job's own public status line + the instruction. The admission router reads
     these words too, so the tools the result talks about (mail, sheet, video...) are loaded for the follow-up."""
+    if r.kind == "research_watch" and r.state == "done":    # v0.480 R9: a watched topic CHANGED - a short message, from the diff
+        rid = r.key.split(":", 1)[-1]
+        return (f"[Santosh worker update, not the user] <research_change_due run=\"{rid}\">\nJis topic par nazar rakhi thi usme badlaav mila ({r.title}): {r.detail}\n"
+                f"Pehle research_watch tool se action=result, run_id={rid} lo - usme badlaav ka digest hai. Phir uski bhasha mein CHHOTA sandesh likho (3-8 lines): "
+                f"kya badla (pehle kya tha -> ab kya, kis period ka), kya naya mila, aur jo is baar nahi dikha (use 'nahi dikha' likho, 'badal gaya' nahi). Kaaran apne se mat jodo. "
+                f"Naye aankde [n] source ke saath; purana aankda bina [n] ke 'pehle' likh kar. Ant mein poochho: poori report chahiye (research_status result) ya watch rok dein.\n</research_change_due>")
+    if r.kind == "research_run" and r.state == "done":     # v0.475 R4: the report is WRITTEN here, from the dossier
+        rid = r.key.split(":", 1)[-1]
+        return (f"[Santosh worker update, not the user] <research_report_due run=\"{rid}\">\nResearch poora ho gaya ({r.title}): {r.detail}\n"
+                f"Ab uski REPORT likho: pehle research_status tool se action=result, id={rid} lo - usme dossier hai. Report sirf us dossier "
+                f"se likho (research_run dobara mat chalao): har number uske note ke source ke saath [n] aur date ke saath, jo confirm nahi hua "
+                f"woh alag section mein 'jo confirm nahi ho paya', aur sources ki list. Uski bhasha mein likho. Lamba ya file maangi ho to "
+                f"research_document tool se PDF / Word banao (uske liye apni final report `report` mein do) aur chat mein saar + file do.\n</research_report_due>")
     head = f"{r.label} {r.title}".strip()
     digest = f"Kaam: {head}\nNatija: {STATE_WORD.get(r.state, r.state)}"
     if r.detail:

@@ -366,3 +366,47 @@ def test_both_kits_and_both_generators(tmp_path):
     gb = (ROOT / "android/glogin/SignInGoogle.kt").read_text()
     assert "Ways.serverClientId" in gb and "Auth.nonce()" in gb             # the id + nonce come from the server
     assert "client_secret" not in gb and "clientSecret" not in gb           # native sign-in uses no secret at all
+
+
+def test_the_privacy_tick_is_asked_and_sent_on_every_screen_that_makes_an_account(droid_env):
+    """v0.462 fix. The server's rule is "if the app ASKED, the answer must be yes": the gate fires only when
+    `consent` is in the body and is not True, so an app that never asks keeps working. Both kits got that wrong in
+    opposite directions, and the CI e2e - which walks the password sign-up - is how it came out:
+
+      * Swift's signup ALWAYS sent consent, defaulting to FALSE, so in an app whose owner had turned the tick off
+        every sign-up was refused citing a box that was not on the screen;
+      * Kotlin's signup never sent it at all, so the tick the sign-in screen collected was dropped on the floor and
+        the consent was never recorded - worse than refusing, for a DPDP feature;
+      * and NEITHER account screen (Accounts.kt / Accounts.swift), which also creates accounts, asked at all.
+    """
+    c, aid, key, api = _setup(droid_env)
+
+    # the server: omitted is allowed (an app that does not ask), an explicit no is refused, a yes is recorded
+    assert c.post(f"{api}/signup", json={"email": "a@x.com", "password": "pass1234", "name": "A"}).status_code == 200
+    assert c.post(f"{api}/signup", json={"email": "b@x.com", "password": "pass1234", "name": "B",
+                                         "consent": False}).status_code == 400
+    tok = c.post(f"{api}/signup", json={"email": "d@x.com", "password": "pass1234", "name": "D",
+                                        "consent": True}).json()["token"]
+    sec = c.get(f"{api}/security", headers={"Authorization": f"Bearer {tok}"}).json()
+    assert sec["consent"]["via"] == "signup", sec
+
+    # the kits: no caller may send a bare false, and a screen that asks must send what it asked
+    ios = ROOT / "ios/template/Sources/Kit"
+    andk = ROOT / "android/template/app/src/main/java/hoola/kit"
+    sw = (ios / "Backend.swift").read_text()
+    assert "consent: Bool? = nil" in sw and 'if let consent { body["consent"] = consent }' in sw
+    assert "consent: Bool = false" not in sw, "back to sending an explicit no"
+    kt = (andk / "Backend.kt").read_text()
+    assert "consent: Boolean? = null" in kt and 'if (consent != null) body.put("consent", consent)' in kt
+    for f in ("SignIn.swift", "Accounts.swift"):
+        t = (ios / f).read_text()
+        assert "Ways.consentNeeded ? consent : nil" in t, f
+        assert "Toggle(Words.sgConsent" in t and "Ways.consentNeeded" in t, f
+    for f in ("SignIn.kt", "Accounts.kt"):
+        t = (andk / f).read_text()
+        assert 'if (Ways.consentNeeded) AppState.form["sg_consent"] == "1" else null' in t, f
+        assert "CheckRow(Strings.sgConsent" in t, f
+
+    # both device walks tick it, the way a real user does - this is the path CI runs
+    assert "consent: true" in (ios / "E2e.swift").read_text()
+    assert '"E2E Tester", true)' in (andk / "E2e.kt").read_text()

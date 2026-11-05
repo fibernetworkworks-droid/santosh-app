@@ -33,8 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.457.0"   # v0.457.0 PAST YIELD (the third hole in the CAD desk, after v0.450 buckling + gear teeth): fea.plastic = real elastic-plastic analysis - the load goes on in steps with the metal yielding for real (von Mises radial return at every integration point), equilibrium re-solved by modified Newton on ONE cached factorisation with Aitken extrapolation of the tail (the elastic stiffness under-corrects badly once a region goes soft: the residual crept down at 0.96 per round, so it never converged before - that is what the acceleration fixed), then the load is taken off elastically and whatever is left is the PERMANENT SET. Reports: where it first yields, the set after her load comes off, how much of the part has yielded, the load factor at which it runs away (plastic hinge: it moves 4x further per extra kilo than when elastic), the last load it clearly still carries, and a TEAR check - linear hardening would otherwise carry any load by stretching for ever, so a spot past the material's elongation (steel 15 %, cast iron 1 %) is reported as splitting, not bending. Measured against both textbook limit loads within ~20 % (a bar in tension 1.75 vs 2.0, a stubby cantilever 1.75 vs 1.5), said plainly in the module and the note. H.analyze('plastic', max_set_mm=...) -> too much permanent bend or collapse under her own load goes back to be redesigned. Previous: v0.456.0 PRAYOGSHALA - the coding lab, step 1: the box (owner answered the three questions from docs/CODING_HARNESS_PLAN.md: "Docker on the VPS -- YES, OWN AS WELL AS THIRD PARTY CLONEING FOR CHECKING, setup command + cached snapshot acceptable to maintain -- SAME AS CLAUDE CODE"). The research found that without a command that comes back pass or fail a coding agent only knows "looks done" and SHE is the test suite - which was exactly Hoola's position, because her repo's code never ran anywhere but her CI (minutes a round, three rounds). New `app/devlab`: (1) box.py = Docker with the only walls the research accepts - a CHECK runs with --network none, as uid 1000, --read-only root + tmpfs, --cap-drop ALL, no-new-privileges, memory / cpus / pids caps and a hard timeout, and NO secret of any kind in its environment; (2) spec.py = the command is DECLARED, never invented - her own word first, then `.hoola/lab.json`, then the repo's AGENTS.md / CLAUDE.md labelled lines, then its CI `run:` steps, then a language default, each answer carrying WHERE it came from, a command Hoola merely READ waiting for one tap, a sudo / docker / secret-bearing command refused and SAID instead of quietly swapped, and "nothing declared" meaning nothing runs; (3) service.py = clone her branch OUTSIDE the box with the token handed over through a deleted askpass file (never in argv, never in the config) then `rm -rf .git` so no credential and no remote can ever be inside, the dependency install run ONCE per lock-file hash with the network on and committed as a per-repo image snapshot (Codex's cached container, Jules's Run-and-Snapshot), then the check itself sealed; (4) out.py = failure-first output, correcting the contract Claude Code ships: a PASS is shown short because nobody debugs a pass, a FAIL keeps its END (the traceback is at the bottom) with the real byte count and a log file the model can `grep_log` for a second question. `python -m app.devlab check` proves the walls on the VPS (passing test, failing test, network blocked, root FS read-only, non-root user); vps-ops jobs lab_check / lab_setup / lab_images / lab_prune. Switch dev_lab stays OFF: nothing in the dev loop can reach the lab until she has seen lab_check pass. Previous: v0.455.0 (built as 0.442 / 0.446 / 0.453) SURAKSHIT LOGIN + SURAKSHA GATE (App Sahayak Pillar I, Phase 60; owner: "START PILLAR I"): the native apps get the login the website got in v0.434, on the SAME backend (one account for a website and its phone app, "sign out everywhere" ends both). Mobile OTP typed only into the app's own box (hashed, rate limited, never shown or logged); GOOGLE / APPLE verified ON THE SERVER - signature against the provider's own published keys, iss, aud must be one of HER PUBLIC client ids, exp, and a single-use server nonce (Apple's SHA-256 form too); a forged, re-aimed, expired or replayed token is refused, and native sign-in needs no provider secret at all. Sessions a member can end (an ended token dies at once, app side too), staff TOTP 2FA as step two of password and OTP login, her switch to make it compulsory, DPDP consent + "my data" in the app. Kits SignIn.kt / SignIn.swift (+ hoola_security screen, Credential Manager Google button only when she turns it on, Sign in with Apple entitlement only then too). SURAKSHA GATE (appmaker/gates.py): six gates read the REAL build - keys inside the app / APK, only permissions a feature needs and none from Play's restricted list, release settings (debuggable, backup, https, exported, v1+v2/v3 signature), library CVEs at OSV.dev (unreachable = NOT CHECKED, never a quiet pass), login rules (Apple where Google is offered, no password box outside the sign-in screen, in-app deletion) and data rules; a FAILING gate BLOCKS the Play upload and the App Store submit. Console Login & security box, phone panel, tool app_banao action=login / security_check. Previous: v0.454.0 (built as 0.447.0) TWO DEFECTS + THE GAME ARENA (owner: "START BOTH", after docs/GAME_MOAT_PLAN.md). (1) The money-game guard missed the test India's Online Gaming Act 2025 + Rules 2026 actually turn on - Rule 9's reward that is TRANSFERABLE / REDEEMABLE / MONETISABLE OUTSIDE the game: "a ludo game where players collect coins and withdraw them to UPI" passed the guard and got BUILT, and offering that is cognisable and non-bailable for whoever publishes it. service.MONEY_OUT + MONEY_OUT_FLAT now refuse it (21 phrasings tested, English + Hinglish, 0 false alarms on 10 legitimate games), and bible.money_out closes the other door (the economy block's words AND keys, every entity's text). (2) /mcp/gamedesk spoke only the dialect MCP REMOVED - the current revision 2026-07-28 has no `initialize`: the version rides in _meta / the MCP-Protocol-Version header and server/discover is MUST-implement, so a modern-only client (Claude Desktop, Cursor) failed outright; both eras now answer, with UnsupportedProtocolVersionError -32022. (3) THE GAME ARENA (gamedesk/arena.py, tool game_arena, console Game Desk > Game Arena, owner only): the QA farm proved a game RUNS, nothing proved it was worth playing - 500 fixed seeded briefs (20 genres x 25 Indian settings) so two Hoola versions are judged on exactly the same work, each built as the hidden tenant __gamearena__ then PLAYED by the QA bots (started, median fps, script errors, reached an ending, and RESPONDS = an input changed something the idle run never saw), originality measured as design-DNA distance from the closest other game of the run (Apple 4.3(b) rejects games indistinguishable from what exists, so it is a shippability number), an independent judge with its own rubric on the first thirty seconds, run-vs-run compare that says when a comparison is unfair, and blind duels against a rival's public web game played by the same bots. `fun` is always NOT ASSESSED, in those words. NOT VERIFIED: no real Arena run has been built yet, so there are no numbers for any Hoola version yet.
-
+APP_VERSION = "0.530.0"   # v0.530.0: HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main as a51ea087 - the trace-layer deploy stays the owner's call, healthz still says 0.511.0 on the VPS). The langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code (the port law): StateGraph (add_node/add_edge/add_conditional_edges/set_entry_point/compile - duplicates, reserved names and unknown endpoints refused at BUILD time, no-node/no-entry/bad-path-map refused at compile; plain channels last-value-wins, Annotated[T, reducer] channels merge through the reducer - operator.add works, add_messages is the messages reducer; a FIRST-EVER value seeds the channel because operator.add has no identity for a missing left side) + the walk (super-steps; every node sees the SAME pre-step state; several static edges from one node fan out; a node with several inbound edges joins only after ALL its parents ran - the barrier; routing is ADDITIVE, routers + static edges both fire; routers see the POST-node state; dict path_map maps by answer, list path_map maps by index (the upstream law); recursion_limit default 25 with an honest GraphRecursionError; None updates are no-ops; non-dict node returns refused; fn(state) and fn(state, config) both accepted; async nodes run natively in ainvoke and via asyncio.run in sync invoke when no loop is running) + AgentState (messages Annotated[list, add_messages] - the P4 create_agent substrate; add_messages: append, replace-by-id, RemoveMessage drops one id, REMOVE_ALL_MESSAGES clears, dicts coerce back, strings become HumanMessages) + interrupts (interrupt(value) PARKS the graph - the state is checkpointed, invoke returns the state carrying __interrupt__, nothing after the interrupt runs; Command(resume=...) re-enters - the node re-runs FROM ITS TOP, answered slots replay in call order, open slots re-park with the earlier answers preserved; parking without a checkpointer refuses honestly; interrupt() outside a node refuses) + checkpointers (BaseCheckpointSaver; MemorySaver thread-safe capped ring; SqliteSaver stdlib sqlite3 WAL - a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a checkpoint lands after EVERY super-step; get_state/update_state with as_node re-deriving next; invoke(None) resumes the stored walk - the crash path, the dhara lesson; Command.update_only/goto_nodes reshape a stored walk) + the tracer seam (CompiledStateGraph is a Runnable - composes with |; every invocation fires a ROOT chain span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays run-free) + store wiring (compile(store=...) rides config['store'] into every node - the P1 stores are the cross-thread memory). Registry rides their 554 (the construction wave's ten tools took 543 -> 553, the crew_run tool took 553 -> 554; the graph is a library - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep with zero threads/env/files; checkpointers write only when a compiled graph with one actually runs). Voice untouched by construction; mem restart pin untouched (no new vps-ops job); console stamps stay 0.487.0 (the dev's convention); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected (nothing in server/app/pc/, desktop/ or lib/ touched). Tests: NEW test_v0530_hoola_graph.py (42, zero network, the asyncio one-loop law): builder validation, reducer channels + seeding, linear/conditional/diamond walks + the join barrier, additive routing + END-from-router, recursion limit default + configurable, two-arg config + store wiring, add_messages + AgentState accumulation, MemorySaver caps/threads/delete, checkpoint-per-step + get_state + update_state + invoke(None) crash-resume + Command reshapes, SqliteSaver round-trip across instances + the engine shape + thread isolation, interrupt refusal/park shape/resume/two-interrupt chain/stream park/async park, node spans named by the node nested under the root span, the inertness probe, the package-export law, no-registry-tools, the version pins. Bugs the smoke caught: parallel fan-out updates must fold SEQUENTIALLY through the reducer (a merge-by-setdefault dropped the second writer's write); _node_config swallowed 1-arg async fns into a sync lambda (the walk saw a coroutine object, not a dict); the engine-path SqliteSaver never created its table; parking without a checkpointer was silent (now the honest RuntimeError); dict path_maps fell through to positional-index lookups (a router returning END would misroute). Version 0.530.0 (APP_VERSION story, pubspec 0.530.0+553, CLAUDE.md healed, pins swept 0.520.0/0.522.0 -> 0.530.0 + +549/+551/+552 -> +553 across the test files zero residual outside deliberate history). TWO COLLISIONS in one build: the THIRTY-SECOND (0.521.0 DIFY + 0.522.0 CONSTRUCTION WAVE 1, registry 543 -> 553, +551) and the THIRTY-THIRD (0.523.0 HOOLA CREW, the crewAI port, registry 553 -> 554, +552) - REBASE PROTOCOL twice: rebuilt on their fresh bases f561f047 then 1db3e577, both works kept each time, the version layer moved coherently on top (0.530.0 stays the newest story). AEP train: P4 AGENT (create_agent on the graph) next. Previous: v0.523.0 HOOLA CREW, v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE (the langchain-core P1), v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7 [full chain in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -497,6 +496,12 @@ def create_conversation(tenant: str = Depends(current_tenant), project_id: str =
     bus.publish(cid, "message", {"role": "assistant", "text": greeting, "source": "greeting"})
     from . import convs
     convs.mark(tenant, cid, "new")
+    if not incognito:   # v0.473 HOOLA CODER: a new chat opens a memory session - an INCOGNITO chat
+        try:            # never does (her own promise: "yahan ki baatein yaad mein nahi jayengi")
+            from . import coder
+            coder.session_started(tenant, cid, "chat")
+        except Exception:
+            pass
     return {"id": cid, "incognito": bool(incognito)}
 
 
@@ -1789,6 +1794,14 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
         _pc_err(e)
 
 
+# v0.487 W3 - the PC -> Hoola TEXT LANE (the quick-ask lane): a PAIRED device (the desktop, the
+# browser extension paired through the same /api/pc/pair flow) sends a typed ask / a page into her
+# conversation and reads the answer back. NEW surface beside the PC block - no existing PC endpoint,
+# setting or behaviour is touched (the Mera PC freeze stands; the owner's W3 ask named this lane).
+from .quicklane import router as quicklane_router               # noqa: E402
+app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
+
+
 @app.get("/api/voice/check", dependencies=[Depends(require_key)])
 async def voice_check(tenant: str = Depends(current_tenant)):
     """v0.150 Connect to Gemini Live the way her calls do and say which part it refuses (and heal it)."""
@@ -1812,6 +1825,15 @@ def voice_stats(tenant: str = Depends(current_tenant)):
 
 class VoiceEngineBody(BaseModel):
     engine: str
+
+
+@app.get("/api/maps/usage", dependencies=[Depends(require_key)])
+def maps_usage(tenant: str = Depends(current_tenant)):
+    """v0.449 PAISA PEHLE: today's Google Maps spend, the free allowance left this month, the daily cap and
+    how many calls it has refused. `assumed_tier` and `unsourced_skus` say where our price table is a guess
+    rather than a sourced rate, so a wrong estimate is visible instead of silent."""
+    from . import mapsbill
+    return mapsbill.usage(tenant)
 
 
 @app.get("/api/voice/engine", dependencies=[Depends(require_key)])
@@ -4988,6 +5010,8 @@ app.include_router(_notebook_router(require_key, current_tenant))
 from .quality.api import make_router as _quality_router  # noqa: E402
 
 app.include_router(_quality_router(require_key))
+from .interactive.api import router as _interactive_router
+app.include_router(_interactive_router(require_key, current_tenant))   # live-talk ticket (the engine key never reaches a browser)
 
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402
@@ -5033,11 +5057,13 @@ from .customs.api import make_router as _customs_router  # noqa: E402
 from .travel.api import make_router as _travel_router  # noqa: E402
 from .warehouse.api import make_router as _warehouse_router  # noqa: E402
 from .fleet.api import make_router as _fleet_router  # noqa: E402
+from .ownmap_api import make_router as _ownmap_router  # noqa: E402  (v0.468)
+from .research.api import make_router as _research_router  # noqa: E402  (v0.476 R5: research cost + runs)
 from .courier.api import make_router as _courier_router  # noqa: E402
 from .drivers.api import make_router as _drivers_router  # noqa: E402
 from .logistics.api import make_router as _logistics_router  # noqa: E402
 
-for _mk in (_customs_router, _travel_router, _warehouse_router, _fleet_router, _courier_router, _drivers_router, _logistics_router):
+for _mk in (_customs_router, _travel_router, _warehouse_router, _fleet_router, _ownmap_router, _research_router, _courier_router, _drivers_router, _logistics_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.144 Makaan suite: 6 Real estate & construction Sahayaks (all under /api/<mod>/*, key-protected; the ONLY public routes are
@@ -5130,6 +5156,25 @@ app.include_router(_pgdb_router(require_key, current_tenant))
 from .gyaan.api import make_router as _gyaan_router  # noqa: E402
 
 app.include_router(_gyaan_router(require_key, current_tenant))
+
+# v0.473 Hoola Coder (persistent session memory): /api/coder/*
+from .coder.service import make_router as _coder_router  # noqa: E402
+
+app.include_router(_coder_router(require_key, current_tenant))
+
+
+# v0.486.0 BYOX SKILL PACK: /api/byox/categories and /api/byox/guide/{slug} (restored v0.492.0: dropped by a merge)
+from .byox.guide import get_guide, list_categories as _byox_list  # noqa: E402
+
+
+@app.get("/api/byox/categories", dependencies=[Depends(require_key)])
+async def byox_categories(q: str = ""):
+    return {"categories": _byox_list(q)}
+
+
+@app.get("/api/byox/guide/{slug}", dependencies=[Depends(require_key)])
+async def byox_guide(slug: str, level: str = "standard", language: str = ""):
+    return get_guide(slug, level=level, language=language)
 
 
 @app.get("/auth/microsoft/callback")
@@ -5326,9 +5371,49 @@ def agent_stats():
     from .agent import pakka
     from . import callreceipt, scrub, web
     from .agent import santosh as _s
+    from .aep import vault_sink
+    from .aep.tracers import GLOBAL_STORE
     return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
             "pakka": dict(pakka.STATS), "halts": dict(_s.HALTS), "scrubbed": scrub.STATS["scrubbed"],
-            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS)}
+            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS),
+            # v0.520.0 HOOLA TRACE: the honest counters of the self-hosted LangSmith layer
+            "aep_trace": {"enabled": vault_sink.trace_enabled(), "store": len(GLOBAL_STORE),
+                          **{k: v for k, v in vault_sink.STATS.items()}}}
+
+
+# --- v0.520.0 HOOLA TRACE: the run-tree explorer (flag-gated, fail-closed) ---
+
+
+@app.get("/api/aep/runs", dependencies=[Depends(require_key)])
+def aep_runs(limit: int = 20, source: str = "memory", tenant: str = Depends(current_tenant)):
+    """Recent runs of the AEP tracer layer: the process ring (source=memory, default)
+    or the vault observations typed 'aep_run' (source=vault). aep_trace OFF = fail-closed."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    limit = max(1, min(int(limit), 200))
+    if source == "vault":
+        rows = vault_sink.vault_runs(tenant, limit)
+        return {"ok": True, "source": "vault", "count": len(rows), "runs": rows}
+    runs = [r.to_dict() for r in tracers.GLOBAL_STORE.recent(limit)]
+    return {"ok": True, "source": "memory", "count": len(runs),
+            "stats": dict(vault_sink.STATS), "runs": runs}
+
+
+@app.get("/api/aep/runs/{run_id}", dependencies=[Depends(require_key)])
+def aep_run_tree(run_id: str, tenant: str = Depends(current_tenant)):
+    """One run nested with its children - the run-tree explorer node. A numeric id
+    falls back to the vault row when the process ring does not have it."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    tree = tracers.global_tracer().tree(run_id)
+    if tree is not None:
+        return {"ok": True, "source": "memory", "run": tree}
+    obs = vault_sink.vault_run_by_id(tenant, int(run_id)) if run_id.isdigit() else None
+    if obs is None:
+        return {"ok": False, "error": "no such run"}
+    return {"ok": True, "source": "vault", "run": obs}
 
 
 class ShopOrderIn(BaseModel):
@@ -9092,6 +9177,202 @@ async def site_app_pay_subs(site_id: str, request: Request):
 @app.post("/api/site-app/{site_id}/pay/subs/{sid}/cancel")
 async def site_app_pay_cancel(site_id: str, sid: str, request: Request):
     return await _site_pub(site_id, "pay_cancel", request, sid=sid)
+
+
+# ---- v0.459 ABHI ABHI WEBSITE (web Step 5, W6 + W7): live channel, live chat, presence, clinic queue, browser notifications,
+# inbound webhooks - all on the website's linked app (site/livesite.py, appmaker/live.py, appmaker/baat.py, site/webpush.py).
+@app.get("/api/site-app/{site_id}/live")
+async def site_app_live(site_id: str, request: Request, colls: str = ""):
+    """The website's live stream for a signed-in member (Bearer token in the header; ?last=j<id> replays a reconnect)."""
+    from .appmaker import live as LV
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    tok = _site_tok(request)
+
+    def go():
+        p, w = AL.live_open(site_id, tok)
+        LV.admit(p, w)
+        return p, w
+    try:
+        p, w = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    last = request.headers.get("last-event-id") or request.query_params.get("last") or ""
+    member = w.m.id if w.m else ""
+    return StreamingResponse(LV.stream(p, w, tok, colls, last, gone=request.is_disconnected,
+                                       check=lambda: LS.still(site_id, p, tok, member)),
+                             media_type="text/event-stream",
+                             headers={**_SITE_APP_CORS, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/site-app/{site_id}/live/typing")
+async def site_app_live_typing(site_id: str, request: Request):
+    return await _site_pub(site_id, "typing", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/live/presence")
+async def site_app_live_presence(site_id: str, request: Request):
+    return await _site_pub(site_id, "presence", request)
+
+
+@app.get("/api/site-app/{site_id}/chat")
+async def site_app_chat(site_id: str, request: Request, member: str = ""):
+    """A member: her own thread. Staff: every thread (member= one thread)."""
+    if member:
+        return await _site_pub(site_id, "chat_thread", request, member=member)
+    if request.query_params.get("all"):
+        return await _site_pub(site_id, "chat_threads", request)
+    return await _site_pub(site_id, "chat_mine", request)
+
+
+@app.post("/api/site-app/{site_id}/chat")
+async def site_app_chat_write(site_id: str, request: Request):
+    return await _site_pub(site_id, "chat_write", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/chat/{member}")
+async def site_app_chat_reply(site_id: str, member: str, request: Request):
+    return await _site_pub(site_id, "chat_reply", request, await _json_body(request), member=member)
+
+
+@app.get("/api/site-app/{site_id}/push/key")
+async def site_app_push_key(site_id: str, request: Request):
+    return await _site_pub(site_id, "push_key", request)
+
+
+@app.post("/api/site-app/{site_id}/push/subscribe")
+async def site_app_push_sub(site_id: str, request: Request):
+    """Only after the visitor's own tap AND the browser's permission (consent: true)."""
+    return await _site_pub(site_id, "push_sub", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/push/unsubscribe")
+async def site_app_push_unsub(site_id: str, request: Request):
+    return await _site_pub(site_id, "push_unsub", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/queue")
+async def site_app_queue(site_id: str, request: Request, mine: int = 0, staff: int = 0):
+    """Public: the board (numbers only). mine=1: my token. staff=1: today's list with names (staff only)."""
+    return await _site_pub(site_id, "queue_mine" if mine else "queue_staff" if staff else "queue_board", request)
+
+
+@app.post("/api/site-app/{site_id}/queue/{step}")
+async def site_app_queue_step(site_id: str, step: str, request: Request):
+    ops = {"take": "queue_take", "add": "queue_add", "call": "queue_call", "mark": "queue_mark"}
+    if step not in ops:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404, headers=_SITE_APP_CORS)
+    return await _site_pub(site_id, ops[step], request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/queue/live")
+async def site_app_queue_live(site_id: str, request: Request):
+    """The public board as a stream (no login: numbers only), for the waiting-room TV and the site's own pages."""
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    ip = _ip(request)
+
+    def go():
+        p = AL.queue_project(site_id)
+        LS.board_admit(ip)
+        return p
+    try:
+        p = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    return StreamingResponse(LS.board_stream(p, ip, gone=request.is_disconnected), media_type="text/event-stream",
+                             headers={**_SITE_APP_CORS, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/site-app/{site_id}/queue/board", response_class=HTMLResponse)
+async def site_app_queue_board(site_id: str):
+    """A full-screen live board for the clinic's TV: now serving, next, how many wait. No names, no phones."""
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    try:
+        p = await asyncio.to_thread(AL.queue_project, site_id)
+        label = (await asyncio.to_thread(LS.cfg, p)).get("label") or "Queue"
+    except W.AppError:
+        return HTMLResponse("<!doctype html><title>Not found</title><p>Not found.</p>", status_code=404)
+    return HTMLResponse(LS.board_page(site_id, label), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+
+
+@app.post("/api/dhara/hook/{token}")
+async def dhara_hook(token: str, request: Request):
+    """v0.502 DHARA webhook trigger: her outside service calls the workflow in. The token is checked
+    sha256-hashed against the workflow row; the body lands as {{vars.body}}; the run is queued with a
+    checkpoint (the worker executes it). Rate: one run per 6 s per workflow (10/min ceiling)."""
+    from .agent import dhara_tools
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False, "error": "body bohot bada"}, status_code=413)
+    try:
+        body = json.loads(raw or b"{}")
+        if not isinstance(body, dict):
+            body = {"body": body}
+    except Exception:
+        body = {"raw": raw[:8000].decode("utf-8", "ignore")}
+    out = await asyncio.to_thread(dhara_tools.webhook_enqueue, token, body)
+    return JSONResponse({"ok": out["ok"], "run_id": out.get("run_id"), "workflow": out.get("workflow"),
+                         "error": out.get("error")}, status_code=int(out.get("status") or 500))
+
+
+@app.post("/api/site-app/{site_id}/hook/{key}")
+async def site_app_hook(site_id: str, key: str, request: Request):
+    """Her outside service tells the website's app something (signed with HER secret; the payload is data)."""
+    raw = (await request.body())[:1_000_000]
+    return await _site_pub(site_id, "hook", request, key=key, raw=raw, headers=dict(request.headers))
+
+
+# her own controls (console / phone): the queue of any of her apps or linked websites, by app id / number
+@app.get("/api/apps/{ref}/queue", dependencies=[Depends(require_key)])
+async def apps_queue(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import livesite as LS
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.staff_view(_be_data(tenant, ref), W.Who(owner=True)))
+
+
+@app.put("/api/apps/{ref}/queue", dependencies=[Depends(require_key)])
+async def apps_queue_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import livesite as LS
+    from .site import webapp as W
+
+    def go():
+        p = _be_data(tenant, ref)
+        LS.save_cfg(p, body or {})
+        return LS.staff_view(p, W.Who(owner=True))
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.post("/api/apps/{ref}/queue/{step}", dependencies=[Depends(require_key)])
+async def apps_queue_step(ref: str, step: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{name, phone} add · {token?} call (next) · {token, status} mark."""
+    from .site import livesite as LS
+    from .site import webapp as W
+    b, who = body or {}, W.Who(owner=True)
+
+    def go():
+        p = _be_data(tenant, ref)
+        if step == "add":
+            return LS.add(p, who, b)
+        if step == "call":
+            n = b.get("token")
+            return LS.call_next(p, who, int(n) if str(n or "").isdigit() else None)
+        if step == "mark":
+            return LS.mark(p, who, int(b.get("token") or 0), str(b.get("status") or ""))
+        raise W.AppError("not found", 404)
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.get("/api/apps/{ref}/push", dependencies=[Depends(require_key)])
+async def apps_push(ref: str, tenant: str = Depends(current_tenant)):
+    """How many browsers said yes to notifications on this app's website (never who)."""
+    from .appmaker import backend as BE
+    from .site import webpush as WP
+    return await asyncio.to_thread(_be_owner_call, lambda: WP.status(BE.bid(_be_data(tenant, ref))))
 
 
 def _pdf_resp(go):

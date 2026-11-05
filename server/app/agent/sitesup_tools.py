@@ -29,11 +29,14 @@ SITESUP_TOOLS = [
         "[N/mm2], sample, lab. action=snag: site, text, location, trade, contractor, due. action=snag_status: snag, status open|fixed|verified. "
         "action=photo: site, file_id, ref (snag / incident / pour id or number), stage. action=dpr: site, day, weather, tomorrow, remarks, "
         "to_phone -> DPR PDF + text, card for HER tap before it goes to the client. action=message: site, text, to_phone (card). "
-        "action=forget*: site (DPDP, after the site is done). * = owner only."),
+        "action=forget*: site (DPDP, after the site is done). action=voice_log (v0.512 Wave 1): ek shaam ka roznama - activities "
+        "[{activity, qty, note, delay}], rows [{contractor, trade, count, hours}] hazari, material [{item, qty, kind, unit, supplier, "
+        "challan}], snags [{text, location, trade, due}], toolbox {topic, people}, note - sab apne rows mein likhta hai (progress / "
+        "attendance / material / snag / toolbox) aur summary + jo poochhna baaki wapas deta hai. * = owner only."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["settings", "site", "plan", "progress", "attendance", "register", "register_file", "material",
                                                "indent", "indent_ordered", "toolbox", "checklist", "incident", "reported", "stop", "pour", "cube",
-                                               "snag", "snag_status", "photo", "dpr", "message", "forget"]},
+                                               "snag", "snag_status", "photo", "dpr", "message", "voice_log", "forget"]},
          "site": {"type": "string"}, "name": {"type": "string"}, "address": {"type": "string"}, "client": {"type": "string"},
          "client_phone": {"type": "string"}, "client_email": {"type": "string"}, "engineer": {"type": "string"}, "start": {"type": "string"},
          "finish": {"type": "string"}, "end": {"type": "string"}, "theka_project": {"type": "string"}, "status": {"type": "string"},
@@ -54,15 +57,18 @@ SITESUP_TOOLS = [
          "results": {"type": "array", "items": {"type": "number"}}, "sample": {"type": "integer"}, "lab": {"type": "string"},
          "location": {"type": "string"}, "trade": {"type": "string"}, "due": {"type": "string"}, "snag": {"type": "string"},
          "file_id": {"type": "string"}, "stage": {"type": "string"}, "weather": {"type": "string"}, "tomorrow": {"type": "string"},
-         "remarks": {"type": "string"}, "to_phone": {"type": "string"}},
+         "remarks": {"type": "string"}, "to_phone": {"type": "string"}, "activities": {"type": "array", "items": _OBJ},
+         "material": {"type": "array", "items": _OBJ}, "snags": {"type": "array", "items": _OBJ}, "toolbox": _OBJ,
+         "message": {"type": "string"}, "voice": {"type": "string"}},
          "required": ["action"]}},
     {"name": "sitesup_dekho", "description": (
         "Read the construction site (nothing changes). what=day (morning note: incidents to report, behind-plan work, material short, cube "
-        "tests, curing, cards waiting) | sites | site | activities (plan vs done) | lookahead (days) | labour (day) | register (start, end) | "
+        "tests, curing, cards waiting) | sites | site | activities (plan vs done) | variance (physical % by activity, behind flagged) | "
+        "lookahead (days) | labour (day) | register (start, end) | "
         "material (balance) | indents (status) | safety (kind talk|check|incident) | stops | pours | cubes_due | snags (status) | reports | "
         "form_xi (incident) | checklists | rules | settings."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["day", "sites", "site", "activities", "lookahead", "labour", "register", "material", "indents",
+         "what": {"type": "string", "enum": ["day", "sites", "site", "activities", "variance", "lookahead", "labour", "register", "material", "indents",
                                              "safety", "stops", "pours", "cubes_due", "snags", "reports", "form_xi", "checklists", "rules", "settings"]},
          "site": {"type": "string"}, "day": {"type": "string"}, "days": {"type": "integer"}, "start": {"type": "string"}, "end": {"type": "string"},
          "status": {"type": "string"}, "kind": {"type": "string"}, "incident": {"type": "string"}},
@@ -158,6 +164,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  _s(a.get("to_phone")), actor, conv)
         if action == "message":
             return S.message_request(t, site, _s(a.get("text")), _s(a.get("to_phone")), conv)
+        if action == "voice_log":
+            return S.voice_log(t, site, _s(a.get("day")), a.get("activities"), a.get("rows"), a.get("material"),
+                               a.get("snags"), a.get("toolbox"), _s(a.get("note")), _s(a.get("by")), actor)
         if action == "forget":
             return S.forget(t, site)
     except (S.SiteError, ValueError) as ex:
@@ -182,6 +191,8 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"activities": S.activities(t, site)}
         if what == "lookahead":
             return S.lookahead(t, site, a.get("days") or None)
+        if what == "variance":
+            return S.progress_variance(t, site)
         if what == "labour":
             return S.labour_day(t, site, _s(a.get("day")))
         if what == "register":

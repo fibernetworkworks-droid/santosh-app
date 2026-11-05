@@ -8,6 +8,7 @@ CREATED SEVERAL PDF ... NEED WORK ON IT), TEST 6: PASS BUT WORK CONTINUE ON PC A
 3. NO QUIET PC: a site that refuses Hoola's server (Amazon / Flipkart) was moved to HER PC by computer_operator
    where=auto. Now she is asked first (v0.271's rule: a PC only on her word).
 """
+import pytest
 import asyncio
 
 from tests.test_bazar import bz  # noqa: F401
@@ -18,6 +19,17 @@ T3 = ("Meri bakery ke liye ek poora marketing plan banao: competitors ka researc
 
 
 # ---------------------------------------------------------------- 1. the plan card for a big ask
+
+@pytest.fixture(autouse=True)
+def _no_plan_gate(monkeypatch):
+    """v0.472 R1: a big research ask now shows its plan and waits for her Haan. This file tests what happens AFTER
+    that (long-job mode / effort / plan card), so the gate steps aside; test_v0472_research_plan.py covers the gate."""
+    from app.agent import research_plan
+
+    async def _off(*a, **k):
+        return None
+    monkeypatch.setattr(research_plan, "gate", _off)
+
 def test_her_steps_are_read_off_her_words():
     from app.agent.santosh import _ask_steps
     goal, steps = _ask_steps(T3)

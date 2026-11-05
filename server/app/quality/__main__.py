@@ -5,6 +5,12 @@
      (v0.443 LONG CARD: 25 long jobs x k through the real loop, judged on the end state)
    | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
+   | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
+   | skills [--live] [--only id,id] [--limit N] [--kind pos|neg] [--label x]   (v0.494 SKILLS card: do imported skills reach the model)
+   | research [--live] [--judge] [--only id,id] [--limit N] [--kind topic|trap] [--label x]
+       | research verdict <id> right|wrong ["why"] [--engine X]   (v0.471 R0 RESEARCH card: report quality scored from its own evidence)
+       | research runoff --check | --status | --decide | --apply | --reset | --budget-inr N [--engines hoola,parallel,exa] [--only ids] [--limit N] [--k 1] [--judge]
+         (v0.478 R7: the card across the engines, scored the same way; --apply writes the winner as the default, only when she says so)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -29,6 +35,99 @@ def _tools(argv: list[str]) -> int:
     print("\n".join(T.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
+
+
+def _mapscard(argv: list[str]) -> int:
+    from . import mapscard as MC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    items = MC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    card = asyncio.run(MC.live_card(items)) if "--live" in argv else MC.free_card(items)
+    card = MC.save(card, val("--label"))
+    print("\n".join(MC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
+def _skillscard(argv: list[str]) -> int:
+    from . import skillscard as SC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    items = SC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    card = asyncio.run(SC.live_card(items)) if "--live" in argv else SC.free_card(items)
+    card = SC.save(card, val("--label"))
+    print("\n".join(SC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
+def _runoff(argv: list[str]) -> int:
+    from . import researchcard as RC
+    from . import runoffcard as RO
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    engines = [x for x in (val("--engines") or "hoola").split(",") if x]
+    if "--check" in argv:
+        print("\n".join(RO.check_lines(RO.check_free(engines, k=int(val("--k") or 1)))))
+        return 0
+    if "--reset" in argv:
+        print("default cleared - 'auto' now means Hoola's own engine" if RO.reset_default() else "no default was applied")
+        return 0
+    if "--status" in argv or "--decide" in argv or "--apply" in argv:
+        card = RO.latest()
+        if not card:
+            print("No run-off has been run yet.")
+            return 0
+        card["table"], card["decision"] = RO.rebuild(card)          # with her CURRENT verdicts
+        print("\n".join(RO.lines(card)))
+        if "--apply" in argv:
+            try:
+                d = RO.apply_default(card["decision"], card["file"])
+            except ValueError as e:
+                print("\nNOT APPLIED: " + str(e))
+                return 1
+            print(f"\nAPPLIED: the default research engine is now '{d['engine']}' (research_engine=auto). Undo with --reset.")
+        return 0
+    try:
+        budget = float(val("--budget-inr") or 0)
+    except ValueError:
+        budget = 0.0
+    items = RC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    try:
+        card = asyncio.run(RO.run_card(engines, items, budget, int(val("--k") or 1), progress=lambda s: print("  ..", s, flush=True)))
+    except ValueError as e:
+        print(str(e))
+        return 2
+    card = RO.save(card, val("--label"))
+    print("\n".join(RO.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
+def _researchcard(argv: list[str]) -> int:
+    from . import researchcard as RC
+    if argv and argv[0] == "runoff":                  # v0.478 R7
+        return _runoff(argv[1:])
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if argv and argv[0] == "verdict":       # HER verdict outranks every number on the card
+        if len(argv) < 3:
+            print('usage: python -m app.quality research verdict <ask id> right|wrong ["why"]')
+            return 2
+        try:
+            rest = argv[3:]
+            eng = ""
+            if "--engine" in rest:                      # v0.478 R7: her verdict on ONE engine's report
+                i = rest.index("--engine")
+                eng = rest[i + 1] if len(rest) > i + 1 else ""
+                rest = rest[:i] + rest[i + 2:]
+            print(RC.set_verdict(argv[1], argv[2], " ".join(rest), eng))
+        except ValueError as e:
+            print(str(e))
+            return 2
+        return 0
+    items = RC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    card = asyncio.run(RC.live_card(items, judge="--judge" in argv)) if "--live" in argv else RC.free_card(items)
+    card = RC.save(card, val("--label"))
+    print("\n".join(RC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 1 if card["kind"] == "free" and card["calibration_ok"] < len(card["calibration"]) else 0
 
 
 def _code(argv: list[str]) -> int:
@@ -105,6 +204,12 @@ def main(argv: list[str]) -> int:
             print("\n".join(sdk.setup()))
         print("\n".join(sdk.status()))
         return 0
+    if argv and argv[0] == "maps":          # v0.470 MAPS card (free; --live costs model calls + real Maps rupees)
+        return _mapscard(argv[1:])
+    if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
+        return _skillscard(argv[1:])
+    if argv and argv[0] == "research":      # v0.471 R0 RESEARCH card (free; --live costs model calls + web)
+        return _researchcard(argv[1:])
     if argv and argv[0] == "code":          # v0.360 coding card (model calls: ~12 Opus jobs)
         return _code(argv[1:])
     if argv and argv[0] == "tools":

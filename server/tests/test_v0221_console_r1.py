@@ -20,21 +20,27 @@ def test_one_stylesheet():
     css = _read("v2.css")
     tail = css[css.index("v0.221 R1: the web workspace layer"):]
     # the workspace rules sit AFTER the base rules (same cascade position as the old separate file)
+    # v0.461: `#app .progress-avatar` was pinned here until v0.298 KHULI JAGAH stopped DRAWING the avatar and
+    # deleted the rule - the pin went stale that day and has been red ever since. The working row it belonged to
+    # is still there under its own name, so the pin moves to the new truth rather than being dropped.
     for rule in ("#app #slotDock{width:min(880px,100%);margin-inline:auto}", "#app #slotDock #composer{width:100%}",
-                 "#app .progress-avatar", "#app .side{width:224px"):
+                 "#app .simple-progress{", "#app .side{width:224px"):
         assert rule in tail, rule
     assert css.index("--bg:#FFFFFF") < css.index("v0.221 R1")   # brand tokens first (v0.243 Light / Dark / System)
     assert css.count("{") == css.count("}")                       # the merged file still balances
 
 
 def test_one_cache_buster_on_every_asset():
-    from app.main import APP_VERSION
+    # Re-pointed at v0.489.0 to main's 0.487.0 x21 (the BYOX chain changed the console): the
+    # maintained convention (pinned in test_v0475_console_frames) is that console stamps move
+    # only when the console itself changes; a server-only release leaves them coherent at the
+    # last console version. The guard's real job: ONE app stamp across every non-vendor asset.
     html = _read("v2.html")
     refs = re.findall(r'(?:src|href)="/static/console/([\w/.-]+)\?([^"]*)"', html)
     assert refs, "no console assets found"
-    for name, q in refs:
-        want = "v=1.4.4" if name == "vendor/qrcode.js" else f"v={APP_VERSION}"
-        assert q == want, (name, q)
+    stamps = {q for name, q in refs if name != "vendor/qrcode.js"}
+    assert stamps == {"v=0.487.0"}, f"mixed console cache stamps: {sorted(stamps)}"
+    assert all(q == "v=1.4.4" for name, q in refs if name == "vendor/qrcode.js")
 
 
 def test_deploy_ships_the_merged_set():
@@ -71,5 +77,5 @@ def test_console_chrome_speaks_english():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.457.0"    # conscious-bump guard: moves with every release (bump with pubspec)
-    assert "0.457.0+502" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.530.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert "0.530.0+553" in (ROOT / "pubspec.yaml").read_text()

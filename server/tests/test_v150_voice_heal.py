@@ -146,7 +146,9 @@ def test_refused_setup_heals_step_by_step_and_is_remembered(env, monkeypatch):
             evs = read_events(ws, lambda e: e["type"] == "turn_done", limit=80)
             ws.send_text(json.dumps({"type": "end"}))
         # v0.221 3.8-live never gets enable_affective_dialog, so the heal's extra connect is gone: back to the
-        # v0.150 shape - the refused extra (vocab) is left out on the second connect, nothing else
+        # v0.150 shape - the refused extra (vocab) is left out on the second connect, nothing else.
+        # v0.491 the ladder is (vocab, langcodes, mcp, ...): a no-MCP test call climbs ONE rung per refusal
+        # (vocab first); the mcp rung is only ever skipped when the climb actually lands on it.
         assert len(configs) == 2
         assert all(cfg.enable_affective_dialog is None for cfg in configs)
         assert configs[0].input_audio_transcription.custom_vocabulary == ["Rameshwar", "Akot"]
@@ -154,7 +156,7 @@ def test_refused_setup_heals_step_by_step_and_is_remembered(env, monkeypatch):
         assert configs[1].input_audio_transcription.language_codes      # only the refused extra is left out
         assert configs[1].context_window_compression is not None
         assert evs[0]["type"] == "ready"
-        assert voice.SETUP["step"] == 2 and json.loads(open("data/voice_setup.json").read())["step"] == 2
+        assert voice.SETUP["step"] == 1 and json.loads(open("data/voice_setup.json").read())["step"] == 1
         # the next call starts straight from what worked: one connect, no refusal
         configs.clear()
         voice.SETUP["loaded"] = False
@@ -163,7 +165,7 @@ def test_refused_setup_heals_step_by_step_and_is_remembered(env, monkeypatch):
             ws.send_text(json.dumps({"type": "end"}))
         assert len(configs) == 1 and configs[0].input_audio_transcription.custom_vocabulary is None
         stats = c.get("/api/voice/stats").json()
-    assert stats["setup"]["without"] == ["mcp", "vocab"]
+    assert stats["setup"]["without"] == ["vocab"]   # v0.491: vocab is rung one; mcp moved to rung three
 
 
 def test_clean_vocab_and_core_tool_steps(env, monkeypatch):

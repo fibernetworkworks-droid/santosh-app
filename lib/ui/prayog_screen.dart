@@ -25,9 +25,12 @@ class PrayogScreen extends StatefulWidget {
 }
 
 class _PrayogScreenState extends State<PrayogScreen> {
-  List<Map<String, dynamic>>? _labs;
+  List<Map<String, dynamic>>? _labs;     // one row per set-up (its variants open from it)
+  List<Map<String, dynamic>>? _hits;     // server search over every experiment, variants included
+  int _total = 0;
   String _err = '';
   String _q = '';
+  int _ask = 0;
 
   @override
   void initState() {
@@ -37,10 +40,31 @@ class _PrayogScreenState extends State<PrayogScreen> {
 
   Future<void> _load() async {
     try {
-      final d = _map(await widget.app.api!.call('GET', '/api/prayog/labs'));
+      final d = _map(await widget.app.api!.call('GET', '/api/prayog/labs?variants=false&limit=200'));
       if (mounted) setState(() => _labs = _list(d['labs']));
     } catch (e) {
       if (mounted) setState(() => _err = 'Labs did not load: $e');
+    }
+  }
+
+  Future<void> _search(String v) async {
+    final q = v.trim();
+    final my = ++_ask;
+    setState(() => _q = q);
+    if (q.isEmpty) {
+      setState(() => _hits = null);
+      return;
+    }
+    try {
+      final d = _map(await widget.app.api!.call('GET', '/api/prayog/labs?limit=60&q=${Uri.encodeComponent(q)}'));
+      if (mounted && my == _ask) {
+        setState(() {
+          _hits = _list(d['labs']);
+          _total = (d['total'] as num?)?.toInt() ?? 0;
+        });
+      }
+    } catch (e) {
+      if (mounted && my == _ask) setState(() => _err = 'Search failed: $e');
     }
   }
 
@@ -49,15 +73,33 @@ class _PrayogScreenState extends State<PrayogScreen> {
     Navigator.of(context).push(MaterialPageRoute(builder: (_) => PrayogLabView(url: url, title: _s(lab['title']), token: widget.app.api!.apiKey)));
   }
 
+  void _family(Map<String, dynamic> lab) {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => _PrayogFamily(app: widget.app, base: lab, open: _open)));
+  }
+
+  Widget _tile(Map<String, dynamic> l, {bool family = true}) {
+    final n = (l['n_variants'] as num?)?.toInt() ?? 0;
+    final sample = _s(l['sample']);
+    final sub = [_s(l['level']), if (sample.isNotEmpty) sample, if (family && n > 0) '${n + 1} experiments', _s(l['aim'])]
+        .where((x) => x.isNotEmpty)
+        .join(' · ');
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.science_outlined, color: C.accent),
+        title: Text(_s(l['title']), style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(sub, maxLines: 2, overflow: TextOverflow.ellipsis),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => family && n > 0 ? _family(l) : _open(l),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final q = _q.toLowerCase();
-    final labs = (_labs ?? const <Map<String, dynamic>>[])
-        .where((l) => q.isEmpty || '${l['title']} ${l['topic']} ${l['group']} ${l['level']}'.toLowerCase().contains(q))
-        .toList();
+    final rows = _q.isEmpty ? (_labs ?? const <Map<String, dynamic>>[]) : (_hits ?? const <Map<String, dynamic>>[]);
     final groups = <String, List<Map<String, dynamic>>>{};
-    for (final l in labs) {
-      groups.putIfAbsent(_s(l['group']), () => []).add(l);
+    for (final l in rows) {
+      groups.putIfAbsent(_q.isEmpty ? _s(l['group']) : 'Results', () => []).add(l);
     }
     return Scaffold(
       appBar: AppBar(title: Text('${widget.app.aName} · Prayogshala')),
@@ -65,32 +107,79 @@ class _PrayogScreenState extends State<PrayogScreen> {
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.all(16), children: [
               Text('Real practicals in 3D: turn the knobs, read the meters, fill the table. Every reading comes from simulation code '
-                  'and is checked against the NCERT formula to within 1%.',
+                  'and is checked against the textbook formula.',
                   style: const TextStyle(color: C.muted, fontSize: 13.5)),
               const SizedBox(height: 12),
               TextField(
-                decoration: const InputDecoration(hintText: 'Search labs: pendulum, lens, Ohm…', prefixIcon: Icon(Icons.search_rounded)),
-                onChanged: (v) => setState(() => _q = v.trim()),
+                decoration: const InputDecoration(hintText: 'Search experiments: pendulum, copper wire, lens…', prefixIcon: Icon(Icons.search_rounded)),
+                onChanged: _search,
               ),
               if (_err.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 16), child: Text(_err, style: const TextStyle(color: C.bad))),
+              if (_q.isNotEmpty && _hits != null)
+                Padding(padding: const EdgeInsets.only(top: 12), child: Text('$_total found', style: const TextStyle(color: C.faint))),
               for (final g in groups.keys) ...[
                 Padding(
                   padding: const EdgeInsets.only(top: 18, bottom: 6),
                   child: Text(g, style: const TextStyle(color: C.faint, fontWeight: FontWeight.w600)),
                 ),
-                for (final l in groups[g]!)
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.science_outlined, color: C.accent),
-                      title: Text(_s(l['title']), style: const TextStyle(fontWeight: FontWeight.w600)),
-                      subtitle: Text('${_s(l['level'])} · ${_s(l['aim'])}', maxLines: 2, overflow: TextOverflow.ellipsis),
-                      trailing: const Icon(Icons.chevron_right_rounded),
-                      onTap: () => _open(l),
-                    ),
-                  ),
+                for (final l in groups[g]!) _tile(l, family: _q.isEmpty),
               ],
-              if (_labs != null && labs.isEmpty)
-                const Padding(padding: EdgeInsets.only(top: 16), child: Text('No lab found.', style: TextStyle(color: C.muted))),
+              if (rows.isEmpty && (_q.isEmpty ? _labs != null : _hits != null))
+                const Padding(padding: EdgeInsets.only(top: 16), child: Text('No experiment found.', style: TextStyle(color: C.muted))),
+            ]),
+    );
+  }
+}
+
+/// One set-up and all its experiments (other samples, methods, unknowns).
+class _PrayogFamily extends StatefulWidget {
+  const _PrayogFamily({required this.app, required this.base, required this.open});
+  final Santosh app;
+  final Map<String, dynamic> base;
+  final void Function(Map<String, dynamic>) open;
+  @override
+  State<_PrayogFamily> createState() => _PrayogFamilyState();
+}
+
+class _PrayogFamilyState extends State<_PrayogFamily> {
+  List<Map<String, dynamic>>? _rows;
+  String _err = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final id = Uri.encodeComponent(_s(widget.base['id']));
+      final d = _map(await widget.app.api!.call('GET', '/api/prayog/labs?limit=200&base=$id'));
+      if (mounted) setState(() => _rows = _list(d['labs']));
+    } catch (e) {
+      if (mounted) setState(() => _err = 'Experiments did not load: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text(_s(widget.base['title']))),
+      body: _rows == null && _err.isEmpty
+          ? const Center(child: CircularProgressIndicator())
+          : ListView(padding: const EdgeInsets.all(16), children: [
+              if (_err.isNotEmpty) Text(_err, style: const TextStyle(color: C.bad)),
+              for (final l in _rows ?? const <Map<String, dynamic>>[])
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.science_outlined, color: C.accent),
+                    title: Text(_s(l['title']), style: const TextStyle(fontWeight: FontWeight.w600)),
+                    subtitle: Text([_s(l['level']), _s(l['sample'])].where((x) => x.isNotEmpty).join(' · '),
+                        maxLines: 2, overflow: TextOverflow.ellipsis),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => widget.open(l),
+                  ),
+                ),
             ]),
     );
   }

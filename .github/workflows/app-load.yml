@@ -21,6 +21,8 @@ on:
       - "server/tests/test_v0424_jodo.py"
       - "server/tests/test_v0435_parivaar.py"
       - "server/tests/test_v0455_suraksha.py"
+      - "server/tests/test_v0455_sim_probe.py"
+      - "server/tests/test_v0462_logo.py"
       - "server/app/appmaker/sign.py"
       - "server/app/appmaker/gates.py"
       - "server/app/appmaker/family.py"
@@ -74,7 +76,7 @@ jobs:
           python -m pytest -q -p no:cacheprovider -n 4 tests/test_v0390_pakki_neev.py tests/test_v0382_dimaag.py \
             tests/test_v0357_stock.py tests/test_v0358_coupon.py tests/test_v0371_slot.py tests/test_v0359_khata.py \
             tests/test_v0355_gst_bill.py tests/test_v0352_kaam_baanto.py tests/test_v0314_app_backend.py \
-            tests/test_v0407_live.py tests/test_v0412_track.py tests/test_v0419_paisa.py tests/test_v0424_jodo.py tests/test_v0435_parivaar.py tests/test_v0455_suraksha.py
+            tests/test_v0407_live.py tests/test_v0412_track.py tests/test_v0419_paisa.py tests/test_v0424_jodo.py tests/test_v0435_parivaar.py tests/test_v0455_suraksha.py tests/test_v0455_sim_probe.py tests/test_v0462_logo.py
       - name: Her move - a SQLite Hoola database copied into a fresh Postgres, every count equal
         working-directory: server
         env:

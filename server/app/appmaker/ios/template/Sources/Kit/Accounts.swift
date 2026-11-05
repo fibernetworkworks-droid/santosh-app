@@ -12,6 +12,7 @@ struct AuthScreen: View {
     @State private var email = ""
     @State private var pass = ""
     @State private var who = ""
+    @State private var consent = false                  // v0.462 the privacy tick, where this app asks for one
     @ObservedObject private var router = Router.shared
 
     var body: some View {
@@ -20,13 +21,17 @@ struct AuthScreen: View {
             TextField(Words.email, text: $email).textFieldStyle(.roundedBorder).keyboardType(.emailAddress)
                 .textInputAutocapitalization(.never).textContentType(.emailAddress)
             SecureField(Words.password, text: $pass).textFieldStyle(.roundedBorder).textContentType(signup ? .newPassword : .password)
+            // v0.462 this screen creates accounts too, so where the app asks for the privacy tick it asks HERE as
+            // well - without it the account was made and the consent never recorded, which is worse than refusing.
+            if signup && Ways.consentNeeded { Toggle(Words.sgConsent, isOn: $consent).font(.subheadline) }
             if !err.isEmpty { Text(err).foregroundStyle(.red).font(.subheadline) }
             MainButton(text: busy ? Words.sending : (signup ? Words.createAccount : Words.signIn)) {
                 guard !busy else { return }
                 busy = true
                 err = ""
                 Task {
-                    let e = signup ? await Auth.shared.signup(email: email, password: pass, name: who)
+                    let e = signup ? await Auth.shared.signup(email: email, password: pass, name: who,
+                                                              consent: Ways.consentNeeded ? consent : nil)
                                    : await Auth.shared.login(email: email, password: pass)
                     busy = false
                     if let e = e { err = e } else { pass = ""; router.back() }

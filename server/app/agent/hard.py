@@ -24,7 +24,16 @@ _SIGNALS: list[tuple[re.Pattern, int, str]] = [
                 r"paper)|\b(?:market|industry|sector|competitor\w*|feasibility|landscape)\s+(?:study|research|analysis|"
                 r"report|overview|size|sizing|map)|\bdetailed\s+(?:report|study|analysis)|\b(?:with|ke\s+saath)\s+"
                 r"sources?|\bsources?\s+ke\s+saath|\bliterature\s+review|\bwhite\s*paper|\bstate\s+of\s+the\b|"
-                r"\btrends?\s+in\b|\b(?:pe|par|on)\s+(?:ek\s+)?(?:poori|detailed|in.?depth)?\s*report\b|शोध|रिसर्च",
+                r"\btrends?\s+in\b|\b(?:pe|par|on)\s+(?:ek\s+)?(?:poori|detailed|in.?depth)?\s*report\b|शोध|रिसर्च|"
+                # v0.472 R1: the R0 card found 11 of 20 real research asks NOT seen ("Research the cotton...", "Research
+                # India's...", "Compare ... date every price"). The VERB at the start of a sentence, "do / need research",
+                # and the phrases only a sourced report asks for. "meri research ki file kholo" stays a plain ask.
+                r"(?:^|[.!?\n]\s*)(?:please\s+|zara\s+)?research\s+(?!notes?\b|team\b|folder\b|files?\b|gate\b|lab\b|wing\b|dept\b|department\b|"
+                r"cent(?:re|er)\b|institute\b|tab\b|sheet\b)\S|"
+                r"\b(?:do|run|need|want|make|start)\s+(?:some\s+|a\s+|proper\s+)?research\b|"
+                r"\bresearch\s+(?:chahiye|karna|karni)\b|\bofficial\s+(?:sources?|guidance|documents?)\b|"
+                r"\bsources?\s+(?:and|aur)\s+dates?\b|\bdate\s+every\s+(?:price|point|figure|number)\b|"
+                r"\bown\s+pricing\s+page\b|\bcite\s+the\b",
                 re.I), 3, "research"),
     (re.compile(r"\banaly[sz]\w*|\bvishleshan|विश्लेषण|\bevaluat\w*|\bassess\w*|\bcritique|\binterpret\w*|"
                 r"\bjaanch\s*ke\s*batao|\bdeep\s*dive", re.I), 2, "analysis"),
@@ -214,13 +223,15 @@ RECIPE_CORE = """SOCH KA TAREEKA (this is a hard question - think it through lik
 
 RECIPE_KIND = {
     "research": "DEEP RESEARCH: (a) split the topic into 4-6 sub-questions that together answer her real question; "
-                "(b) gather - deploy_agents with one agent per independent sub-question (mode inline), plus "
-                "web_sources / google_search / open_website yourself; prefer primary sources (government, regulator, "
+                "(b) gather - call research_run with the question and the sub-questions (Hoola's own engine: it reads "
+                "the real pages in parallel and returns a dossier you write from; use its notes, never memory), and fall back to "
+                "deploy_agents with one agent per sub-question plus web_sources / google_search / open_website if it is "
+                "unavailable; prefer primary sources (government, regulator, "
                 "company filings and reports, MoSPI for Indian official numbers) over blogs; (c) every fact and number "
                 "carries its source as [n] with the date; the key numbers from two sources when you can, and say when "
                 "they disagree; (d) derived figures (growth, share, CAGR, totals) from pylab; (e) write: a 5-7 line "
                 "summary with the key numbers first, then findings by sub-question, what is still uncertain, and "
-                "'Sources: [n] title - link - date'; a PDF with doc_studio when she asked for a file or the report is "
+                "'Sources: [n] title - link - date'; a document with research_document (PDF / Word / workbook) when she asked for a file or the report is "
                 "long, the chat then carries the summary + the file. Never cite a link you did not get from a tool in "
                 "this work.",
     "calculation": "Calculation: write the formula in words, compute it in pylab, show the 2-4 inputs and the result; "

@@ -102,7 +102,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <div class="ae-stats">${stat(all.length, `roles in ${ds.length} departments`, '', 100, .08)}${stat(ready, 'ready to hire today', 'ok', all.length ? Math.round(ready / all.length * 100) : 0, .14)}${stat(all.length - ready, 'coming soon', 'warn', all.length ? Math.round((all.length - ready) / all.length * 100) : 0, .2)}${stat(team.length, 'on your team', 'pri', ready ? Math.round(team.length / ready * 100) : 0, .26)}</div>
       </header>
       <section class="ae-team ae-up" style="animation-delay:.16s" aria-labelledby="aeTeamH">
-        <div class="ae-row"><h3 id="aeTeamH">Your team</h3><span class="ae-mut">Each hired employee gets its own desk in the sidebar</span></div>
+        <div class="ae-row"><h3 id="aeTeamH">Your team</h3><span class="ae-mut">Open any employee's desk from here</span></div>
         ${team.length ? `<div class="ae-members">${team.map(e => { const d = deptOf(e.group); return `<button class="ae-member ae-pop ae-d-${d.id}" type="button" data-ae="role" data-key="${esc(e.key)}"><span class="ae-mono">${esc(ini(e.name))}<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i></span><span><b>${esc(e.name)}</b><small>${e.status === 'paused' ? 'Paused' : 'Working'} · ${esc((TRUST[e.trust] || TRUST.seekh)[0])}</small></span></button>`; }).join('')}</div>`
           : `<div class="ae-empty-team"><span class="ae-seats" aria-hidden="true"><i></i><i></i><i></i></span><p>No one hired yet. Open a department, pick a role and press Hire.</p>${ds[0] ? `<button class="btn soft ae-btn" type="button" data-ae="dept" data-id="${esc(ds[0].id)}">Start with ${esc(ds[0].name)}${arrow}</button>` : ''}</div>`}
       </section>
@@ -165,7 +165,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     if (!e.live) acts = '<button class="btn soft ae-wide-btn" type="button" disabled>Coming soon</button>';
     else if (!hired) acts = `<button class="ae-hire" type="button" data-ae="hire" data-key="${esc(e.key)}">Hire ${esc(short)}${arrow}</button>`;
     else acts = `<div class="ae-joined ${HS.burst === e.key ? 'ae-pop' : ''}"><span class="ae-tick">${tick.replace('<path', '<path class="ae-check" pathLength="1"')}${burst}</span>
-        <span><b>${esc(short)} ${e.status === 'paused' ? 'is paused' : HS.burst === e.key ? 'joined your team' : 'is on your team'}</b><small>${e.status === 'paused' ? 'No jobs run until you resume it.' : `Its desk is in the sidebar. Trust: ${esc(TRUST[lvl][0])}.`}</small></span></div>
+        <span><b>${esc(short)} ${e.status === 'paused' ? 'is paused' : HS.burst === e.key ? 'joined your team' : 'is on your team'}</b><small>${e.status === 'paused' ? 'No jobs run until you resume it.' : `Open its desk below. Trust: ${esc(TRUST[lvl][0])}.`}</small></span></div>
       <button class="ae-open" type="button" data-ae="open" data-key="${esc(e.key)}">Open desk${arrow}</button>
       <div class="ae-row2"><button class="btn soft" type="button" data-ae="${e.status === 'paused' ? 'resume' : 'pause'}" data-key="${esc(e.key)}">${e.status === 'paused' ? 'Resume' : 'Pause'}</button>
         <button class="btn soft em-leave" type="button" data-ae="leave" data-key="${esc(e.key)}">Let go</button></div>`;
@@ -229,7 +229,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     if (what === 'leave' && !confirm('Let go of this employee? Its jobs stop at once. Its history stays, read-only.')) return;
     try {
       await api('POST', `/api/employees/${encodeURIComponent(key)}/${what}`, what === 'hire' ? {trust: 'seekh'} : undefined);
-      toast(what === 'hire' ? 'Hired. Its desk is in the sidebar.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
+      toast(what === 'hire' ? 'Hired. Open its desk from here.' : what === 'leave' ? 'Let go. Its jobs have stopped.' : what === 'pause' ? 'Paused. No jobs run until you resume.' : 'Back at work.');
       HS.burst = what === 'hire' ? key : '';
     } catch (e) { toast(e.message, true); }
     await hub(HUB);

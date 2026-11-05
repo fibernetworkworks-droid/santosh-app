@@ -1,0 +1,5068 @@
+{
+ "level": "ug",
+ "sources": [
+  {
+   "id": "ugc-locf-physics-2019",
+   "title": "Learning Outcomes based Curriculum Framework (LOCF) for Undergraduate Programme B.Sc. (Physics) 2019, University Grants Commission",
+   "url": "https://www.ugc.ac.in/pdfnews/1884134_LOCF-Final_Physics-report.pdf",
+   "checked": true,
+   "note": "Fetched the 265-page PDF and read its text. Its core, DSE, SEC and GE practical lists are the same experiment lists as the DU 2019 LOCF syllabus (compared line by line; differences are wording only)."
+  },
+  {
+   "id": "du-locf-2019-hons-physics",
+   "title": "B.Sc. (Honours) Physics, Learning Outcomes based Curriculum Framework syllabus (with effect from 2019-20), Department of Physics and Astrophysics, University of Delhi",
+   "url": "https://physics.du.ac.in/pdfs/syll2019/BSc_hons_physics2019.pdf",
+   "checked": true,
+   "note": "Fetched the 234-page PDF and read the practical list of every core paper (C-I to C-XIV), the DSE, SEC and GE labs. Rows citing it name the paper and item number."
+  },
+  {
+   "id": "du-ugcf-2022-hons-physics",
+   "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi (22 July 2022)",
+   "url": "https://physics.du.ac.in/pdfs/BSc_syll/Hons-Physics-22July2022.pdf",
+   "checked": true,
+   "note": "Fetched the 158-page PDF and read the practical lists. It gives full practical lists for Semesters I-II (DSC 1-6) and the SEC / GE courses; Semester III+ DSC papers are titles only."
+  },
+  {
+   "id": "hnbgu-nep-fyup-physics-2026",
+   "title": "NEP-2020 Four-Year Undergraduate Programme: Revised Syllabus for B.Sc. (Physics), effective 2026-27, H.N.B. Garhwal University",
+   "url": "https://www.hnbgu.ac.in/sites/default/files/2026-06/Revised%20NEP%20%28FYUP%29%20B.Sc_.%20Physics%20Syllabus%20w.e.f.%202026-2027.pdf",
+   "checked": true,
+   "note": "Fetched the PDF and read its four practical lists (Mechanics and Properties of Matter, Electricity and Magnetism, Thermal Physics, Waves and Acoustics)."
+  },
+  {
+   "id": "gurugram-nep-physics-2024",
+   "title": "NEP and LOCF syllabus for B.Sc. Physics (Single Major), effective 2024-25, Department of Physics, Gurugram University",
+   "url": "https://gurugramuniversity.ac.in/NEP/doc2/Physics-B.Sc.%20with%20major%20in%20Physics%20(2024-25).pdf",
+   "checked": true,
+   "note": "Fetched the PDF and read its practical lists (Mechanics, Waves and Oscillations, Electricity and Magnetism, Elements of Modern Physics, Electronics-I)."
+  },
+  {
+   "id": "aicte-model-curriculum-ug-2018",
+   "title": "AICTE Model Curriculum for Undergraduate Degree Courses in Engineering and Technology, Volume I (2018)",
+   "url": "https://www.aicte-india.org/sites/default/files/Model_Curriculum/UG_Vol1.pdf",
+   "checked": false,
+   "note": "Could not fetch (aicte-india.org refused the connection / returned 503). Rows citing it come from knowledge of first-year engineering physics labs that follow this curriculum, not from the document text."
+  },
+  {
+   "id": "indu-prakash-practical-physics",
+   "title": "A Text Book of Practical Physics, Indu Prakash and Ramakrishna, Kitab Mahal",
+   "url": "",
+   "checked": false,
+   "note": "Not fetched (a book). It is listed as a laboratory reference in the DU syllabi above. Rows citing it are standard B.Sc set-ups written from knowledge of such manuals, used where the fetched syllabi do not list the set-up."
+  }
+ ],
+ "chapters": [
+  {
+   "name": "Measurement and error analysis",
+   "setups": [
+    {
+     "id": "instrument-least-count",
+     "title": "Least count and use of vernier callipers, screw gauge and travelling microscope",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, mandatory activity 1",
+     "kind": "activity",
+     "methods": [
+      "vernier callipers",
+      "screw gauge",
+      "travelling microscope"
+     ],
+     "samples": [
+      "cylinder",
+      "sphere",
+      "thin wire"
+     ],
+     "unknowns": [
+      "mean dimension with standard error",
+      "area and volume with propagated uncertainty"
+     ],
+     "conditions": [],
+     "kernel": "measure-length"
+    },
+    {
+     "id": "random-error-study",
+     "title": "Study of random errors in repeated observations",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-II Mechanics Lab, item 2",
+     "kind": "practical",
+     "methods": [
+      "repeated length readings near the least count",
+      "repeated stopwatch timings"
+     ],
+     "samples": [],
+     "unknowns": [
+      "standard deviation and standard error of the mean",
+      "histogram compared with a Gaussian"
+     ],
+     "conditions": [],
+     "kernel": "stats-random-error"
+    },
+    {
+     "id": "least-squares-graph",
+     "title": "Manual graph plotting and least-squares fit of a linearised relation",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, mandatory activity 3",
+     "kind": "activity",
+     "methods": [],
+     "samples": [
+      "load-extension data of a spring",
+      "length-period data of a pendulum"
+     ],
+     "unknowns": [
+      "slope and intercept with their uncertainties"
+     ],
+     "conditions": [],
+     "kernel": "stats-lsf"
+    },
+    {
+     "id": "sextant-height",
+     "title": "Height of a building / vertical distance with a sextant",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-II Mechanics Lab, item 3; DSC 2 (UGCF) item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "height of a building",
+      "vertical distance between two given points"
+     ],
+     "conditions": [],
+     "kernel": "sextant"
+    },
+    {
+     "id": "multimeter-use",
+     "title": "Using a multimeter",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC II Electricity and Magnetism practical, item 1; Gurugram University lab list item 2 (colour code and multimeter)",
+     "kind": "practical",
+     "methods": [
+      "digital multimeter",
+      "analog multimeter"
+     ],
+     "samples": [],
+     "unknowns": [
+      "resistance (and colour code check)",
+      "AC voltage",
+      "DC voltage",
+      "DC current",
+      "checking a fuse"
+     ],
+     "conditions": [],
+     "kernel": "multimeter"
+    }
+   ]
+  },
+  {
+   "name": "Mechanics",
+   "setups": [
+    {
+     "id": "flywheel-moment-of-inertia",
+     "title": "Moment of inertia of a flywheel",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "symmetric flywheel",
+      "asymmetric flywheel"
+     ],
+     "unknowns": [
+      "moment of inertia",
+      "work done against friction per rotation"
+     ],
+     "conditions": [],
+     "kernel": "flywheel"
+    },
+    {
+     "id": "inertia-table",
+     "title": "Moment of inertia of an irregular body with an inertia table",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC I Mechanics practical, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "irregular body"
+     ],
+     "unknowns": [
+      "moment of inertia",
+      "torsional constant of the suspension"
+     ],
+     "conditions": [],
+     "kernel": "torsion-oscillator"
+    },
+    {
+     "id": "free-fall-digital-timing",
+     "title": "g and velocity of a freely falling body by digital timing",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, item 4",
+     "kind": "practical",
+     "methods": [
+      "electromagnet release with photogates and digital timer"
+     ],
+     "samples": [],
+     "unknowns": [
+      "acceleration due to gravity",
+      "velocity at a given height"
+     ],
+     "conditions": [],
+     "kernel": "free-fall"
+    },
+    {
+     "id": "incline-trolley-friction",
+     "title": "Coefficients of sliding and rolling friction of a trolley on an inclined plane",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, item 7",
+     "kind": "practical",
+     "methods": [
+      "wheels locked (sliding)",
+      "wheels free (rolling)"
+     ],
+     "samples": [],
+     "unknowns": [
+      "coefficient of friction"
+     ],
+     "conditions": [],
+     "kernel": "incline-friction"
+    },
+    {
+     "id": "air-track-collisions",
+     "title": "Conservation of linear momentum in collisions on an air track",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, item 8",
+     "kind": "practical",
+     "methods": [
+      "elastic collision (spring bumpers)",
+      "inelastic collision (sticking)"
+     ],
+     "samples": [],
+     "unknowns": [
+      "momentum before and after",
+      "kinetic energy lost"
+     ],
+     "conditions": [
+      "equal masses",
+      "unequal masses"
+     ],
+     "kernel": "collision-1d"
+    },
+    {
+     "id": "collision-2d-virtual",
+     "title": "Two-dimensional elastic and inelastic collisions (virtual lab)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, suggested additional activity 1",
+     "kind": "computational",
+     "methods": [
+      "elastic",
+      "inelastic"
+     ],
+     "samples": [],
+     "unknowns": [
+      "momentum and energy conservation"
+     ],
+     "conditions": [],
+     "kernel": "collision-2d"
+    },
+    {
+     "id": "bar-pendulum-g",
+     "title": "g and radius of gyration with a bar (compound) pendulum",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-II Mechanics Lab, item 11; DSC 3 (UGCF) item 1b",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "acceleration due to gravity",
+      "radius of gyration"
+     ],
+     "conditions": [],
+     "kernel": "compound-pendulum"
+    },
+    {
+     "id": "bar-pendulum-shm-limit",
+     "title": "Limit of angular amplitude for SHM in a bar pendulum",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, item 1a",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "largest amplitude for which the SHM period holds"
+     ],
+     "conditions": [],
+     "kernel": "compound-pendulum"
+    },
+    {
+     "id": "bar-pendulum-damping",
+     "title": "Damped oscillations of a bar pendulum with dampers of different area",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, items 1c-1d",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "small damper vane",
+      "large damper vane"
+     ],
+     "unknowns": [
+      "damping coefficient",
+      "quality factor"
+     ],
+     "conditions": [],
+     "kernel": "damped-pendulum"
+    },
+    {
+     "id": "kater-pendulum",
+     "title": "g with Kater's reversible pendulum",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "acceleration due to gravity"
+     ],
+     "conditions": [
+      "T1 approximately equal to T2",
+      "T1 not equal to T2"
+     ],
+     "kernel": "kater-pendulum"
+    },
+    {
+     "id": "simple-pendulum-damping",
+     "title": "Damping coefficient, relaxation time and Q of a simple pendulum",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC V Waves and Acoustics practical, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "damping coefficient",
+      "relaxation time",
+      "quality factor"
+     ],
+     "conditions": [],
+     "kernel": "damped-pendulum"
+    },
+    {
+     "id": "spring-mass-static-dynamic",
+     "title": "Spring-mass system by static and dynamic methods",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, item 5a",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "spring constant",
+      "acceleration due to gravity",
+      "mass of the spring"
+     ],
+     "conditions": [],
+     "kernel": "spring-mass"
+    },
+    {
+     "id": "spring-rigidity-modulus",
+     "title": "Modulus of rigidity of the wire of a helical spring from its oscillations",
+     "src": "ugc-locf-physics-2019",
+     "ref": "Mechanics Lab: motion of a spring, part (c) modulus of rigidity",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "modulus of rigidity of the spring wire"
+     ],
+     "conditions": [],
+     "kernel": "spring-mass"
+    },
+    {
+     "id": "springs-series-parallel",
+     "title": "Spring constant of series and parallel combinations of two springs",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, item 5b",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "effective spring constant"
+     ],
+     "conditions": [
+      "series",
+      "parallel"
+     ],
+     "kernel": "spring-mass"
+    },
+    {
+     "id": "coupled-pendulums",
+     "title": "Normal modes and beats of coupled pendulums",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, item 6; DSE Applied Dynamics Lab item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "normal-mode frequencies",
+      "coupling coefficient",
+      "beat period"
+     ],
+     "conditions": [],
+     "kernel": "coupled-oscillator"
+    },
+    {
+     "id": "coupled-spring-oscillators",
+     "title": "Coupled spring oscillators, undamped and damped",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, items 2-3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "coupling coefficient",
+      "damping coefficient"
+     ],
+     "conditions": [
+      "undamped",
+      "damped"
+     ],
+     "kernel": "coupled-oscillator"
+    },
+    {
+     "id": "two-d-oscillation-momentum",
+     "title": "Conservation of momentum in two-dimensional oscillations",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC V Waves and Acoustics practical, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "momentum exchange between the two directions"
+     ],
+     "conditions": [],
+     "kernel": "oscillator-2d"
+    },
+    {
+     "id": "torsional-pendulum",
+     "title": "Rigidity modulus and moment of inertia with a torsional pendulum",
+     "src": "aicte-model-curriculum-ug-2018",
+     "ref": "first-year engineering physics lab (torsional pendulum)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "steel wire",
+      "brass wire"
+     ],
+     "unknowns": [
+      "modulus of rigidity",
+      "moment of inertia of the disc"
+     ],
+     "conditions": [],
+     "kernel": "torsion-oscillator"
+    },
+    {
+     "id": "arduino-pendulum-photogate",
+     "title": "Bar pendulum period with an Arduino photo-gate",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Introduction to Physical Computing Lab, project (ii)",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "period and g"
+     ],
+     "conditions": [],
+     "kernel": "compound-pendulum"
+    }
+   ]
+  },
+  {
+   "name": "Properties of matter: elasticity, viscosity, surface tension",
+   "setups": [
+    {
+     "id": "youngs-modulus-optical-lever",
+     "title": "Young's modulus of a wire by the optical lever method",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-II Mechanics Lab, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "steel",
+      "brass",
+      "copper"
+     ],
+     "unknowns": [
+      "Young's modulus"
+     ],
+     "conditions": [],
+     "kernel": "elastic-wire"
+    },
+    {
+     "id": "searle-youngs-modulus-wire",
+     "title": "Young's modulus of a wire with Searle's (two-wire, spirit level) apparatus",
+     "src": "indu-prakash-practical-physics",
+     "ref": "properties of matter: Searle's apparatus",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "steel",
+      "brass",
+      "copper"
+     ],
+     "unknowns": [
+      "Young's modulus"
+     ],
+     "conditions": [],
+     "kernel": "elastic-wire"
+    },
+    {
+     "id": "searle-elastic-constants",
+     "title": "Elastic constants of a wire by Searle's (two-bar) method",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-II Mechanics Lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "steel",
+      "brass"
+     ],
+     "unknowns": [
+      "Young's modulus",
+      "modulus of rigidity",
+      "Poisson's ratio"
+     ],
+     "conditions": [],
+     "kernel": "searle-bars"
+    },
+    {
+     "id": "maxwell-needle",
+     "title": "Modulus of rigidity of a wire with Maxwell's needle",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-II Mechanics Lab, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "steel",
+      "brass"
+     ],
+     "unknowns": [
+      "modulus of rigidity"
+     ],
+     "conditions": [],
+     "kernel": "torsion-oscillator"
+    },
+    {
+     "id": "static-torsion-rigidity",
+     "title": "Modulus of rigidity by the static (Barton's) method",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC I Mechanics and Properties of Matter practical, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "steel rod",
+      "brass rod"
+     ],
+     "unknowns": [
+      "modulus of rigidity"
+     ],
+     "conditions": [],
+     "kernel": "static-torsion"
+    },
+    {
+     "id": "youngs-modulus-bending",
+     "title": "Young's modulus by bending of a beam",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC I Mechanics and Properties of Matter practical, item 3",
+     "kind": "practical",
+     "methods": [
+      "non-uniform bending (central load)",
+      "uniform bending (loads at both ends)"
+     ],
+     "samples": [
+      "wooden metre scale",
+      "steel strip"
+     ],
+     "unknowns": [
+      "Young's modulus"
+     ],
+     "conditions": [],
+     "kernel": "beam-bending"
+    },
+    {
+     "id": "cantilever-youngs-modulus",
+     "title": "Young's modulus with a loaded cantilever",
+     "src": "indu-prakash-practical-physics",
+     "ref": "properties of matter: cantilever",
+     "kind": "practical",
+     "methods": [
+      "static depression with travelling microscope",
+      "oscillations of a loaded cantilever"
+     ],
+     "samples": [
+      "wooden metre scale",
+      "steel strip"
+     ],
+     "unknowns": [
+      "Young's modulus"
+     ],
+     "conditions": [],
+     "kernel": "beam-bending"
+    },
+    {
+     "id": "poiseuille-viscosity",
+     "title": "Coefficient of viscosity of water by capillary flow (Poiseuille)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 2 Mechanics practical, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water"
+     ],
+     "unknowns": [
+      "coefficient of viscosity"
+     ],
+     "conditions": [
+      "room temperature",
+      "several bath temperatures"
+     ],
+     "kernel": "capillary-flow"
+    },
+    {
+     "id": "stokes-falling-ball",
+     "title": "Viscosity of a liquid by Stokes' falling-ball method",
+     "src": "indu-prakash-practical-physics",
+     "ref": "properties of matter: Stokes' method",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "glycerine",
+      "castor oil"
+     ],
+     "unknowns": [
+      "coefficient of viscosity"
+     ],
+     "conditions": [],
+     "kernel": "falling-ball"
+    },
+    {
+     "id": "capillary-rise-surface-tension",
+     "title": "Surface tension by capillary rise",
+     "src": "indu-prakash-practical-physics",
+     "ref": "properties of matter: capillary rise",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water"
+     ],
+     "unknowns": [
+      "surface tension"
+     ],
+     "conditions": [
+      "room temperature",
+      "several temperatures"
+     ],
+     "kernel": "capillary-rise"
+    },
+    {
+     "id": "jaeger-surface-tension",
+     "title": "Surface tension and its variation with temperature by Jaeger's method",
+     "src": "indu-prakash-practical-physics",
+     "ref": "properties of matter: Jaeger's method",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water"
+     ],
+     "unknowns": [
+      "surface tension"
+     ],
+     "conditions": [
+      "room temperature",
+      "several temperatures"
+     ],
+     "kernel": "bubble-pressure"
+    }
+   ]
+  },
+  {
+   "name": "Oscillations, waves and acoustics",
+   "setups": [
+    {
+     "id": "melde-experiment",
+     "title": "Frequency of an electrically maintained tuning fork by Melde's experiment",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, item 7",
+     "kind": "practical",
+     "methods": [
+      "transverse arrangement",
+      "longitudinal arrangement"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency of the fork",
+      "verification of the lambda-squared vs T law"
+     ],
+     "conditions": [],
+     "kernel": "string-standing-wave"
+    },
+    {
+     "id": "sonometer-frequency",
+     "title": "Frequency of a tuning fork or AC mains with a sonometer",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC V Waves and Acoustics practical, item 6",
+     "kind": "practical",
+     "methods": [
+      "electrically maintained tuning fork",
+      "AC mains with electromagnet"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency"
+     ],
+     "conditions": [],
+     "kernel": "string-standing-wave"
+    },
+    {
+     "id": "lissajous-figures",
+     "title": "Superposition of two SHMs on a CRO: Lissajous figures",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 3 Waves and Oscillations practical, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "frequency ratio",
+      "phase difference"
+     ],
+     "conditions": [],
+     "kernel": "lissajous"
+    },
+    {
+     "id": "ultrasonic-interferometer",
+     "title": "Velocity of ultrasound and compressibility of liquids with an ultrasonic interferometer",
+     "src": "aicte-model-curriculum-ug-2018",
+     "ref": "engineering physics lab (ultrasonic interferometer); cf. HNBGU DSC V item 9 'wavelength of sound in a liquid medium'",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water",
+      "kerosene",
+      "glycerine solution"
+     ],
+     "unknowns": [
+      "velocity of ultrasound",
+      "adiabatic compressibility"
+     ],
+     "conditions": [],
+     "kernel": "ultrasonic-interferometer"
+    },
+    {
+     "id": "ultrasonic-grating",
+     "title": "Wavelength and velocity of ultrasound in a liquid by diffraction (ultrasonic grating)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "kerosene",
+      "xylene"
+     ],
+     "unknowns": [
+      "wavelength and velocity of ultrasound"
+     ],
+     "conditions": [],
+     "kernel": "acousto-optic-grating"
+    },
+    {
+     "id": "kundt-tube",
+     "title": "Speed of sound in a rod with Kundt's tube",
+     "src": "indu-prakash-practical-physics",
+     "ref": "sound: Kundt's dust tube",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "brass rod",
+      "steel rod",
+      "glass rod"
+     ],
+     "unknowns": [
+      "speed of sound in the rod",
+      "Young's modulus of the rod"
+     ],
+     "conditions": [],
+     "kernel": "kundt-tube"
+    },
+    {
+     "id": "harmonics-complex-wave",
+     "title": "Harmonics and their amplitudes in a complex wave on a CRO",
+     "src": "gurugram-nep-physics-2024",
+     "ref": "Elements of Modern Physics lab, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "square wave",
+      "triangular wave",
+      "clipped sine wave"
+     ],
+     "unknowns": [
+      "relative amplitudes of harmonics"
+     ],
+     "conditions": [],
+     "kernel": "fourier-harmonics"
+    },
+    {
+     "id": "microphone-frequency-response",
+     "title": "Frequency response of a microphone",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "frequency response"
+     ],
+     "conditions": [],
+     "kernel": "transducer-response"
+    }
+   ]
+  },
+  {
+   "name": "Heat and thermodynamics",
+   "setups": [
+    {
+     "id": "callender-barnes",
+     "title": "Mechanical equivalent of heat by Callender and Barne's constant-flow method",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VI Thermal Physics Lab, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water"
+     ],
+     "unknowns": [
+      "mechanical equivalent of heat J"
+     ],
+     "conditions": [],
+     "kernel": "constant-flow-calorimeter"
+    },
+    {
+     "id": "searle-thermal-conductivity",
+     "title": "Thermal conductivity of copper with Searle's apparatus",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VI Thermal Physics Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "copper"
+     ],
+     "unknowns": [
+      "thermal conductivity"
+     ],
+     "conditions": [],
+     "kernel": "heat-conduction-bar"
+    },
+    {
+     "id": "angstrom-conductivity",
+     "title": "Thermal conductivity of copper by Angstrom's method",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VI Thermal Physics Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "copper"
+     ],
+     "unknowns": [
+      "thermal diffusivity",
+      "thermal conductivity"
+     ],
+     "conditions": [],
+     "kernel": "heat-wave-bar"
+    },
+    {
+     "id": "lees-disc",
+     "title": "Thermal conductivity of a bad conductor by Lee and Charlton's disc",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "GE 12 Thermal Physics practical, item 5",
+     "kind": "practical",
+     "methods": [
+      "steam heating",
+      "electrical heating"
+     ],
+     "samples": [
+      "glass",
+      "ebonite",
+      "cardboard"
+     ],
+     "unknowns": [
+      "thermal conductivity"
+     ],
+     "conditions": [],
+     "kernel": "lees-disc"
+    },
+    {
+     "id": "platinum-resistance-thermometer",
+     "title": "Temperature coefficient of resistance with a platinum resistance thermometer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VI Thermal Physics Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "temperature coefficient of resistance"
+     ],
+     "conditions": [],
+     "kernel": "resistance-thermometer"
+    },
+    {
+     "id": "thermocouple-null-method",
+     "title": "Thermo-emf vs temperature difference of a thermocouple by a null method, and calibration",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VI Thermal Physics Lab, item 6",
+     "kind": "practical",
+     "methods": [
+      "potentiometer null method"
+     ],
+     "samples": [
+      "copper-constantan",
+      "iron-constantan"
+     ],
+     "unknowns": [
+      "thermo-emf vs temperature difference",
+      "calibration curve"
+     ],
+     "conditions": [],
+     "kernel": "thermocouple"
+    },
+    {
+     "id": "thermocouple-opamp",
+     "title": "Thermocouple calibration with an op-amp difference amplifier and neutral temperature",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VI Thermal Physics Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "calibration curve",
+      "neutral temperature"
+     ],
+     "conditions": [],
+     "kernel": "thermocouple"
+    },
+    {
+     "id": "rtd-calibration",
+     "title": "Calibration of a resistance temperature device",
+     "src": "ugc-locf-physics-2019",
+     "ref": "Thermal Physics lab: RTD by null method / off-balance bridge",
+     "kind": "practical",
+     "methods": [
+      "null method",
+      "off-balance bridge"
+     ],
+     "samples": [],
+     "unknowns": [
+      "calibration curve"
+     ],
+     "conditions": [],
+     "kernel": "resistance-thermometer"
+    },
+    {
+     "id": "cooling-curve-daq",
+     "title": "Cooling of a hot object recorded with a thermocouple and data acquisition",
+     "src": "hnbgu-nep-fyup-physics-2026",
+     "ref": "DSC III Thermal Physics practical, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "cooling constant (Newton's law of cooling)"
+     ],
+     "conditions": [],
+     "kernel": "newton-cooling"
+    },
+    {
+     "id": "specific-heat-by-cooling",
+     "title": "Specific heat of a liquid by the method of cooling",
+     "src": "indu-prakash-practical-physics",
+     "ref": "heat: method of cooling",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "kerosene",
+      "turpentine"
+     ],
+     "unknowns": [
+      "specific heat capacity"
+     ],
+     "conditions": [],
+     "kernel": "newton-cooling"
+    },
+    {
+     "id": "stefan-constant",
+     "title": "Stefan's law and Stefan's constant",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 11; GE Thermal Physics item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "Stefan's constant",
+      "exponent of T in radiated power"
+     ],
+     "conditions": [],
+     "kernel": "blackbody-radiator"
+    }
+   ]
+  },
+  {
+   "name": "Geometrical optics and the spectrometer",
+   "setups": [
+    {
+     "id": "spectrometer-schuster-prism-angle",
+     "title": "Spectrometer adjustment (Schuster's focusing) and angle of a prism",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "angle of the prism"
+     ],
+     "conditions": [],
+     "kernel": "spectrometer-prism"
+    },
+    {
+     "id": "prism-refractive-index",
+     "title": "Refractive index of a prism by minimum deviation (sodium light)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "solid glass prism",
+      "hollow prism filled with a liquid"
+     ],
+     "unknowns": [
+      "refractive index"
+     ],
+     "conditions": [],
+     "kernel": "spectrometer-prism"
+    },
+    {
+     "id": "prism-dispersion-cauchy",
+     "title": "Dispersive power and Cauchy constants of a prism (mercury light)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "dispersive power",
+      "Cauchy constants"
+     ],
+     "conditions": [],
+     "kernel": "spectrometer-prism"
+    },
+    {
+     "id": "tir-gaussian-eyepiece",
+     "title": "Refractive index by total internal reflection with a Gaussian eyepiece",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "glass",
+      "liquid"
+     ],
+     "unknowns": [
+      "refractive index"
+     ],
+     "conditions": [],
+     "kernel": "total-internal-reflection"
+    },
+    {
+     "id": "wollaston-air-film",
+     "title": "Refractive index of a liquid by total internal reflection (Wollaston's air film)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "water",
+      "kerosene"
+     ],
+     "unknowns": [
+      "refractive index"
+     ],
+     "conditions": [],
+     "kernel": "total-internal-reflection"
+    },
+    {
+     "id": "lens-combination-nodal-slide",
+     "title": "Focal length of a lens combination with a nodal slide",
+     "src": "indu-prakash-practical-physics",
+     "ref": "optics: nodal slide",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "equivalent focal length",
+      "positions of cardinal points"
+     ],
+     "conditions": [],
+     "kernel": "thick-lens"
+    }
+   ]
+  },
+  {
+   "name": "Interference",
+   "setups": [
+    {
+     "id": "newtons-rings",
+     "title": "Newton's rings",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "sodium lamp",
+      "mercury lamp (green line)"
+     ],
+     "unknowns": [
+      "wavelength",
+      "radius of curvature of the lens",
+      "refractive index of a liquid"
+     ],
+     "conditions": [],
+     "kernel": "interference-rings"
+    },
+    {
+     "id": "fresnel-biprism",
+     "title": "Fresnel's biprism",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "sodium lamp"
+     ],
+     "unknowns": [
+      "wavelength",
+      "thickness of a mica sheet"
+     ],
+     "conditions": [],
+     "kernel": "interference-biprism"
+    },
+    {
+     "id": "air-wedge",
+     "title": "Thickness of a thin paper or wire from wedge-film fringes",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "thin paper",
+      "thin wire"
+     ],
+     "unknowns": [
+      "thickness"
+     ],
+     "conditions": [],
+     "kernel": "interference-wedge"
+    },
+    {
+     "id": "michelson-wavelength",
+     "title": "Michelson interferometer: wavelength by fringe counting, refractive index of air",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 7; SEC Applied Optics Lab, holography and interferometry (b-d)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "sodium lamp",
+      "He-Ne laser"
+     ],
+     "unknowns": [
+      "wavelength",
+      "refractive index of air"
+     ],
+     "conditions": [],
+     "kernel": "interference-michelson"
+    },
+    {
+     "id": "michelson-sodium-doublet",
+     "title": "Wavelength separation of the sodium D lines with a Michelson interferometer",
+     "src": "indu-prakash-practical-physics",
+     "ref": "optics: Michelson interferometer, fringe visibility",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "separation of the sodium D lines"
+     ],
+     "conditions": [],
+     "kernel": "interference-michelson"
+    },
+    {
+     "id": "fabry-perot",
+     "title": "Fabry-Perot interferometer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, holography and interferometry (b)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "wavelength",
+      "finesse"
+     ],
+     "conditions": [],
+     "kernel": "interference-fabry-perot"
+    },
+    {
+     "id": "fourier-transform-spectroscopy",
+     "title": "Fourier transform spectroscopy with a Michelson interferometer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, Fourier transform spectroscopy",
+     "kind": "practical",
+     "methods": [
+      "measured interferogram",
+      "computer simulation"
+     ],
+     "samples": [],
+     "unknowns": [
+      "transmission of interference filters"
+     ],
+     "conditions": [],
+     "kernel": "interference-michelson"
+    },
+    {
+     "id": "laser-double-slit",
+     "title": "Wavelength of a laser by double-slit interference",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "GE 13 Modern Physics practical, item 11",
+     "kind": "practical",
+     "methods": [
+      "fringe positions on a screen",
+      "intensity profile with a photosensor"
+     ],
+     "samples": [],
+     "unknowns": [
+      "wavelength"
+     ],
+     "conditions": [],
+     "kernel": "interference-double-slit"
+    }
+   ]
+  },
+  {
+   "name": "Diffraction",
+   "setups": [
+    {
+     "id": "grating-wavelength",
+     "title": "Wavelength with a plane transmission grating (normal incidence)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 11",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "sodium lamp",
+      "mercury lamp spectral lines"
+     ],
+     "unknowns": [
+      "wavelength"
+     ],
+     "conditions": [],
+     "kernel": "diffraction-grating"
+    },
+    {
+     "id": "grating-dispersive-resolving",
+     "title": "Dispersive power and resolving power of a plane grating",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IV Waves and Optics Lab, item 12",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "dispersive power",
+      "resolving power"
+     ],
+     "conditions": [],
+     "kernel": "diffraction-grating"
+    },
+    {
+     "id": "laser-single-slit",
+     "title": "Single-slit (and thin-wire) diffraction of laser light",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "GE 13 Modern Physics practical, item 9; SEC Applied Optics Lab, lasers (b)",
+     "kind": "practical",
+     "methods": [
+      "fringe positions on a screen",
+      "intensity profile with a photosensor"
+     ],
+     "samples": [
+      "single slit",
+      "thin wire"
+     ],
+     "unknowns": [
+      "wavelength",
+      "slit or wire width"
+     ],
+     "conditions": [],
+     "kernel": "diffraction-single-slit"
+    },
+    {
+     "id": "laser-grating-spread",
+     "title": "Wavelength and angular spread of a He-Ne laser with a plane grating",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 13",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "wavelength",
+      "angular spread"
+     ],
+     "conditions": [],
+     "kernel": "diffraction-grating"
+    },
+    {
+     "id": "cd-grating-spacing",
+     "title": "Track spacing of a compact disc by laser reflection",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, lasers (a)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "CD",
+      "DVD"
+     ],
+     "unknowns": [
+      "track spacing"
+     ],
+     "conditions": [],
+     "kernel": "diffraction-reflection-grating"
+    },
+    {
+     "id": "lycopodium-particle-size",
+     "title": "Particle size of lycopodium powder by laser diffraction (corona)",
+     "src": "aicte-model-curriculum-ug-2018",
+     "ref": "engineering physics lab (laser: particle size)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mean particle size"
+     ],
+     "conditions": [],
+     "kernel": "diffraction-particles"
+    },
+    {
+     "id": "telescope-resolving-power",
+     "title": "Resolving power of a telescope",
+     "src": "indu-prakash-practical-physics",
+     "ref": "optics: resolving power",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "resolving power"
+     ],
+     "conditions": [],
+     "kernel": "resolution-aperture"
+    }
+   ]
+  },
+  {
+   "name": "Polarisation",
+   "setups": [
+    {
+     "id": "malus-law",
+     "title": "Malus's law and the polarisation direction of laser light",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 1; SEC Applied Optics Lab, lasers (c)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "laser",
+      "lamp with polariser"
+     ],
+     "unknowns": [
+      "verification of Malus's law",
+      "polarisation direction"
+     ],
+     "conditions": [],
+     "kernel": "polariser-analyser"
+    },
+    {
+     "id": "polarimeter-sugar",
+     "title": "Specific rotation of sugar solution with a polarimeter",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 2",
+     "kind": "practical",
+     "methods": [
+      "half-shade polarimeter",
+      "bi-quartz polarimeter"
+     ],
+     "samples": [],
+     "unknowns": [
+      "specific rotation",
+      "concentration of an unknown solution"
+     ],
+     "conditions": [],
+     "kernel": "optical-rotation"
+    },
+    {
+     "id": "babinet-compensator",
+     "title": "Analysis of elliptically polarised light with a Babinet compensator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "ellipticity and orientation"
+     ],
+     "conditions": [],
+     "kernel": "retarder-analysis"
+    },
+    {
+     "id": "brewster-angle",
+     "title": "Polarisation by reflection: Brewster's angle",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, items 10 and 14",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "polarising angle",
+      "refractive index of glass"
+     ],
+     "conditions": [],
+     "kernel": "fresnel-reflection"
+    }
+   ]
+  },
+  {
+   "name": "Lasers, fibre optics and applied optics",
+   "setups": [
+    {
+     "id": "fibre-numerical-aperture",
+     "title": "Numerical aperture of an optical fibre",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 13",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "plastic multimode fibre",
+      "glass multimode fibre"
+     ],
+     "unknowns": [
+      "numerical aperture"
+     ],
+     "conditions": [],
+     "kernel": "fibre-acceptance"
+    },
+    {
+     "id": "fibre-near-field-profile",
+     "title": "Near-field intensity profile and refractive-index profile of a fibre",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, fibre optics (b)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "refractive-index profile"
+     ],
+     "conditions": [],
+     "kernel": "fibre-modes"
+    },
+    {
+     "id": "fibre-bending-loss",
+     "title": "Bending loss in a multimode fibre",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, fibre optics (c)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "loss vs bend radius"
+     ],
+     "conditions": [],
+     "kernel": "fibre-loss"
+    },
+    {
+     "id": "fibre-splice-loss",
+     "title": "Power loss at a splice between two multimode fibres",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, fibre optics (d)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "splice loss"
+     ],
+     "conditions": [],
+     "kernel": "fibre-loss"
+    },
+    {
+     "id": "fibre-mode-field-diameter",
+     "title": "Mode field diameter of a single-mode fibre from its far field",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, fibre optics (e)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mode field diameter"
+     ],
+     "conditions": [],
+     "kernel": "fibre-modes"
+    },
+    {
+     "id": "laser-thermal-expansion-quartz",
+     "title": "Thermal expansion of quartz using a laser",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, lasers (d)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "coefficient of linear expansion"
+     ],
+     "conditions": [],
+     "kernel": "interference-michelson"
+    },
+    {
+     "id": "solid-state-laser-characteristics",
+     "title": "Characteristics of a solid-state (diode) laser",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, semiconductor sources (b)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "threshold current and slope efficiency"
+     ],
+     "conditions": [],
+     "kernel": "laser-diode"
+    },
+    {
+     "id": "fourier-optics-4f",
+     "title": "Fourier optics with a 4f system",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, Fourier optics (a-d)",
+     "kind": "practical",
+     "methods": [
+      "building the 4f system",
+      "spatial filtering",
+      "image addition and subtraction",
+      "image differentiation"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "fourier-optics"
+    },
+    {
+     "id": "holography",
+     "title": "Recording and reconstruction of a hologram",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, holography and interferometry (a)",
+     "kind": "practical",
+     "methods": [
+      "recording on a plate",
+      "computer simulation"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "holography"
+    }
+   ]
+  },
+  {
+   "name": "Electricity and magnetism",
+   "setups": [
+    {
+     "id": "ballistic-galvanometer",
+     "title": "Current sensitivity, charge sensitivity and critical damping resistance of a ballistic galvanometer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 11; DSC 5 (UGCF) items 1-2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "current sensitivity",
+      "charge sensitivity",
+      "critical damping resistance"
+     ],
+     "conditions": [],
+     "kernel": "ballistic-galvanometer"
+    },
+    {
+     "id": "high-resistance-leakage",
+     "title": "High resistance by the leakage method (ballistic galvanometer)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 12",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "high resistance"
+     ],
+     "conditions": [],
+     "kernel": "ballistic-galvanometer"
+    },
+    {
+     "id": "rayleigh-self-inductance",
+     "title": "Self-inductance of a coil by Rayleigh's method",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 13",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "self-inductance"
+     ],
+     "conditions": [],
+     "kernel": "ballistic-galvanometer"
+    },
+    {
+     "id": "mutual-inductance-absolute",
+     "title": "Mutual inductance of two coils by the absolute method",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 14",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mutual inductance"
+     ],
+     "conditions": [],
+     "kernel": "ballistic-galvanometer"
+    },
+    {
+     "id": "solenoid-field",
+     "title": "Field of a solenoid and its gradient dB/dx",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 5",
+     "kind": "practical",
+     "methods": [
+      "search coil",
+      "Hall-probe gaussmeter"
+     ],
+     "samples": [],
+     "unknowns": [
+      "field along the axis and dB/dx"
+     ],
+     "conditions": [],
+     "kernel": "solenoid-field"
+    },
+    {
+     "id": "potentiometer-low-resistance",
+     "title": "Low resistance with a potentiometer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "unknown low resistance"
+     ],
+     "conditions": [],
+     "kernel": "potentiometer"
+    },
+    {
+     "id": "carey-foster-bridge",
+     "title": "Low resistance with a Carey Foster bridge",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "unknown low resistance",
+      "resistance per unit length of the bridge wire"
+     ],
+     "conditions": [],
+     "kernel": "wheatstone-bridge"
+    },
+    {
+     "id": "faraday-lenz-arduino",
+     "title": "Faraday's and Lenz's laws with a magnet falling through a coil (Arduino)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 5 Electricity and Magnetism practical, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "induced emf vs time",
+      "dipole moment of the magnet"
+     ],
+     "conditions": [],
+     "kernel": "induction-falling-magnet"
+    },
+    {
+     "id": "galvanometer-conversion",
+     "title": "Making a voltmeter and an ammeter from a galvanometer",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 11 practical, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "series / shunt resistance and calibration"
+     ],
+     "conditions": [
+      "voltmeter",
+      "ammeter"
+     ],
+     "kernel": "meter-conversion"
+    },
+    {
+     "id": "constant-current-voltage-source",
+     "title": "Performance of a constant-current and a constant-voltage source",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 11 practical, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "output vs load"
+     ],
+     "conditions": [
+      "constant-current source",
+      "constant-voltage source"
+     ],
+     "kernel": "source-regulation"
+    },
+    {
+     "id": "bh-curve",
+     "title": "B-H curve and hysteresis loss of a ferromagnet",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 8; Gurugram E&M lab item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "soft iron",
+      "hard steel"
+     ],
+     "unknowns": [
+      "hysteresis loss",
+      "retentivity and coercivity"
+     ],
+     "conditions": [],
+     "kernel": "hysteresis"
+    },
+    {
+     "id": "earth-field-magnetometer",
+     "title": "Magnetic moment of a magnet and Earth's horizontal field with magnetometers",
+     "src": "indu-prakash-practical-physics",
+     "ref": "magnetism: deflection and vibration magnetometers",
+     "kind": "practical",
+     "methods": [
+      "deflection magnetometer (Tan A / Tan B)",
+      "vibration magnetometer"
+     ],
+     "samples": [],
+     "unknowns": [
+      "magnetic moment",
+      "horizontal component of Earth's field"
+     ],
+     "conditions": [],
+     "kernel": "magnetometer"
+    },
+    {
+     "id": "earth-inductor",
+     "title": "Angle of dip and Earth's field with an earth inductor",
+     "src": "indu-prakash-practical-physics",
+     "ref": "magnetism: earth inductor with ballistic galvanometer",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "angle of dip",
+      "horizontal and vertical components"
+     ],
+     "conditions": [],
+     "kernel": "ballistic-galvanometer"
+    },
+    {
+     "id": "pspice-circuits",
+     "title": "Circuit simulation with PSpice / NGspice",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Electrical Circuits and Network Skills Lab, item 5",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-sim"
+    }
+   ]
+  },
+  {
+   "name": "AC circuits and bridges",
+   "setups": [
+    {
+     "id": "de-sauty-bridge",
+     "title": "Comparison of capacitances with De Sauty's bridge",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "capacitance ratio"
+     ],
+     "conditions": [],
+     "kernel": "ac-bridge"
+    },
+    {
+     "id": "anderson-bridge",
+     "title": "Self-inductance with Anderson's bridge",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "self-inductance"
+     ],
+     "conditions": [],
+     "kernel": "ac-bridge"
+    },
+    {
+     "id": "owen-bridge",
+     "title": "Self-inductance with Owen's bridge",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 5 Electricity and Magnetism practical, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "self-inductance"
+     ],
+     "conditions": [],
+     "kernel": "ac-bridge"
+    },
+    {
+     "id": "lcr-universal-bridge",
+     "title": "R, L and C with an LCR / universal bridge",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "resistance",
+      "inductance",
+      "capacitance"
+     ],
+     "conditions": [],
+     "kernel": "ac-bridge"
+    },
+    {
+     "id": "q-meter",
+     "title": "Q of a coil and its frequency dependence with a Q-meter",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "Q vs frequency"
+     ],
+     "conditions": [],
+     "kernel": "q-meter"
+    },
+    {
+     "id": "series-lcr-resonance",
+     "title": "Series LCR resonance: resonant frequency, impedance, Q and bandwidth",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 9; DSC 6 (UGCF) items 8-9",
+     "kind": "practical",
+     "methods": [
+      "signal generator and AC meters",
+      "Arduino-recorded response curve"
+     ],
+     "samples": [],
+     "unknowns": [
+      "resonant frequency, Q and bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "lcr-resonance"
+    },
+    {
+     "id": "parallel-lcr-resonance",
+     "title": "Parallel LCR circuit: anti-resonant frequency and Q",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "anti-resonant frequency and Q"
+     ],
+     "conditions": [],
+     "kernel": "lcr-resonance"
+    },
+    {
+     "id": "series-rc-characteristics",
+     "title": "Characteristics of a series RC circuit",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 1; DSC 6 (UGCF) item 9a",
+     "kind": "practical",
+     "methods": [
+      "AC meters and CRO",
+      "Arduino"
+     ],
+     "samples": [],
+     "unknowns": [
+      "impedance and phase vs frequency"
+     ],
+     "conditions": [],
+     "kernel": "rc-circuit"
+    },
+    {
+     "id": "rc-rl-time-constant",
+     "title": "Time constant of RC and RL circuits",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 6 Electrical Circuit Analysis practical, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "RC circuit",
+      "RL circuit"
+     ],
+     "unknowns": [
+      "time constant"
+     ],
+     "conditions": [],
+     "kernel": "rc-transient"
+    },
+    {
+     "id": "rc-frequency-response",
+     "title": "Frequency response of RC filters",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 6 Electrical Circuit Analysis practical, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "low-pass RC",
+      "high-pass RC"
+     ],
+     "unknowns": [
+      "cut-off frequency"
+     ],
+     "conditions": [],
+     "kernel": "rc-circuit"
+    }
+   ]
+  },
+  {
+   "name": "Network theorems and electrical skills",
+   "setups": [
+    {
+     "id": "kirchhoff-laws",
+     "title": "Verification of Kirchhoff's laws",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 6 Electrical Circuit Analysis practical, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dc-network"
+    },
+    {
+     "id": "thevenin-norton",
+     "title": "Verification of Thevenin's and Norton's theorems",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-III Electricity and Magnetism Lab, item 6",
+     "kind": "practical",
+     "methods": [
+      "Thevenin",
+      "Norton"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dc-network"
+    },
+    {
+     "id": "superposition-theorem",
+     "title": "Verification of the superposition theorem",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 6 Electrical Circuit Analysis practical, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dc-network"
+    },
+    {
+     "id": "max-power-transfer",
+     "title": "Verification of the maximum power transfer theorem",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 6 Electrical Circuit Analysis practical, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dc-network"
+    },
+    {
+     "id": "transformer-step-up-down",
+     "title": "Step-up and step-down transformer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Electrical Circuits and Network Skills Lab, item 11",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "turns ratio and efficiency"
+     ],
+     "conditions": [
+      "step-up",
+      "step-down"
+     ],
+     "kernel": "transformer"
+    },
+    {
+     "id": "ac-dc-generator-demo",
+     "title": "Demonstration of AC and DC generators",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Electrical Circuits and Network Skills Lab, item 6",
+     "kind": "demonstration",
+     "methods": [
+      "AC generator",
+      "DC generator"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "generator"
+    },
+    {
+     "id": "motor-speed",
+     "title": "Speed of a DC motor",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Electrical Circuits and Network Skills Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "speed vs supply voltage"
+     ],
+     "conditions": [],
+     "kernel": "dc-motor"
+    },
+    {
+     "id": "switch-board-fuse",
+     "title": "Extension / switch board with fuse (MCB), switch, socket and indicator",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 11 practical, item 8",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "wiring"
+    },
+    {
+     "id": "coil-winding",
+     "title": "Winding a coil / transformer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Basic Instrumentation Skills Lab, item 6",
+     "kind": "activity",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "transformer"
+    }
+   ]
+  },
+  {
+   "name": "Electronic instrumentation and sensors",
+   "setups": [
+    {
+     "id": "cro-measurements",
+     "title": "Voltage, frequency, time period and phase with an oscilloscope",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 4; DSC 3 item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "DC and AC voltage",
+      "time period and frequency",
+      "phase difference"
+     ],
+     "conditions": [],
+     "kernel": "oscilloscope"
+    },
+    {
+     "id": "cro-rise-fall-delay",
+     "title": "Rise, fall and delay times with an oscilloscope",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "rise, fall and delay times"
+     ],
+     "conditions": [],
+     "kernel": "oscilloscope"
+    },
+    {
+     "id": "multimeter-loading",
+     "title": "Loading effect of a multimeter",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "measured vs true voltage"
+     ],
+     "conditions": [
+      "across a low resistance",
+      "across a high resistance"
+     ],
+     "kernel": "meter-loading"
+    },
+    {
+     "id": "multimeter-hf-limit",
+     "title": "Limits of a multimeter at high frequency",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "reading vs frequency"
+     ],
+     "conditions": [
+      "voltage",
+      "current"
+     ],
+     "kernel": "meter-bandwidth"
+    },
+    {
+     "id": "frequency-counter",
+     "title": "Time period, frequency and average period with a universal counter",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "counter"
+    },
+    {
+     "id": "distortion-factor-meter",
+     "title": "Distortion of an RF signal generator with a distortion factor meter",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 1 Basic of Instruments practical, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "distortion factor"
+     ],
+     "conditions": [],
+     "kernel": "distortion"
+    },
+    {
+     "id": "lvdt",
+     "title": "LVDT output characteristics and displacement measurement",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "output vs displacement"
+     ],
+     "conditions": [],
+     "kernel": "lvdt"
+    },
+    {
+     "id": "strain-gauge",
+     "title": "Strain with a strain gauge",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "strain"
+     ],
+     "conditions": [],
+     "kernel": "strain-gauge"
+    },
+    {
+     "id": "capacitive-level",
+     "title": "Liquid level with a capacitive transducer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "level"
+     ],
+     "conditions": [],
+     "kernel": "capacitive-sensor"
+    },
+    {
+     "id": "ultrasonic-distance",
+     "title": "Distance with an ultrasonic transducer",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "distance"
+     ],
+     "conditions": [],
+     "kernel": "ultrasonic-ranging"
+    },
+    {
+     "id": "thermostat-characteristics",
+     "title": "Characteristics and parameters of a thermostat",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "set point and hysteresis"
+     ],
+     "conditions": [],
+     "kernel": "thermostat"
+    },
+    {
+     "id": "temperature-sensor-calibration",
+     "title": "Calibration of temperature sensors",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "AD590",
+      "LM35",
+      "LM75",
+      "RTD"
+     ],
+     "unknowns": [
+      "calibration curve"
+     ],
+     "conditions": [],
+     "kernel": "temperature-sensor"
+    },
+    {
+     "id": "rotary-vacuum",
+     "title": "Creating a vacuum with a rotary pump and measuring the pressure",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "pressure vs pumping time"
+     ],
+     "conditions": [],
+     "kernel": "vacuum-pump"
+    },
+    {
+     "id": "cable-noise-pickup",
+     "title": "Noise pick-up in cables and the importance of grounding",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "co-axial",
+      "single-shielded",
+      "double-shielded",
+      "unshielded"
+     ],
+     "unknowns": [
+      "noise amplitude"
+     ],
+     "conditions": [],
+     "kernel": "noise-pickup"
+    },
+    {
+     "id": "sample-and-hold",
+     "title": "Sample-and-hold circuit",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "sample-hold"
+    },
+    {
+     "id": "clipper-clamper",
+     "title": "Clippers and clampers with junction diodes",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Experimental Techniques Lab, item 8",
+     "kind": "practical",
+     "methods": [
+      "clipper",
+      "clamper"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "diode-waveshaping"
+    }
+   ]
+  },
+  {
+   "name": "Analog electronics and devices",
+   "setups": [
+    {
+     "id": "pn-diode-vi",
+     "title": "V-I characteristics of a p-n junction diode",
+     "src": "ugc-locf-physics-2019",
+     "ref": "Digital, Analog and Instrumentation Lab: V-I characteristics of PN diode",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "silicon diode",
+      "germanium diode"
+     ],
+     "unknowns": [
+      "cut-in voltage and dynamic resistance"
+     ],
+     "conditions": [
+      "forward bias",
+      "reverse bias"
+     ],
+     "kernel": "pn-junction"
+    },
+    {
+     "id": "diode-boltzmann-constant",
+     "title": "Boltzmann constant from the V-I characteristic of a p-n diode",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 12; GE 11 (UGCF) Unit II 3a",
+     "kind": "practical",
+     "methods": [
+      "DC meters",
+      "Arduino"
+     ],
+     "samples": [],
+     "unknowns": [
+      "Boltzmann constant"
+     ],
+     "conditions": [],
+     "kernel": "pn-junction"
+    },
+    {
+     "id": "zener-regulator",
+     "title": "Zener diode characteristic and voltage regulator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 1; SEC 11 (UGCF) item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "breakdown characteristic",
+      "line regulation",
+      "load regulation"
+     ],
+     "conditions": [],
+     "kernel": "zener"
+    },
+    {
+     "id": "led-vi",
+     "title": "I-V characteristics of LEDs",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 11 practical, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "turn-on voltage"
+     ],
+     "conditions": [],
+     "kernel": "pn-junction"
+    },
+    {
+     "id": "solar-cell",
+     "title": "V-I and power curves of a solar cell: maximum power point, efficiency, fill factor",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 2; SEC 11 (UGCF) item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "maximum power point, efficiency and fill factor"
+     ],
+     "conditions": [],
+     "kernel": "solar-cell"
+    },
+    {
+     "id": "photodiode-intensity",
+     "title": "Photocurrent of a photodiode vs light intensity",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 11 practical, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "responsivity"
+     ],
+     "conditions": [],
+     "kernel": "photodiode"
+    },
+    {
+     "id": "ldr-characteristics",
+     "title": "Characteristics of an LDR",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, semiconductor sources and detectors (c)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "resistance vs illumination"
+     ],
+     "conditions": [],
+     "kernel": "photoconductor"
+    },
+    {
+     "id": "ir-sensor",
+     "title": "Characteristics of an IR sensor",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Applied Optics Lab, semiconductor sources and detectors (e)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "photodiode"
+    },
+    {
+     "id": "bjt-ce-characteristics",
+     "title": "Characteristics of a BJT in common-emitter configuration",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "input characteristics",
+      "output characteristics and current gain"
+     ],
+     "conditions": [],
+     "kernel": "bjt"
+    },
+    {
+     "id": "bjt-h-parameters",
+     "title": "h-parameters of a transistor",
+     "src": "gurugram-nep-physics-2024",
+     "ref": "Electronics-I lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "h-parameters"
+     ],
+     "conditions": [],
+     "kernel": "bjt"
+    },
+    {
+     "id": "bjt-biasing",
+     "title": "Biasing configurations of a BJT for class A operation",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 4",
+     "kind": "practical",
+     "methods": [
+      "fixed bias",
+      "collector-to-base bias",
+      "voltage-divider bias"
+     ],
+     "samples": [],
+     "unknowns": [
+      "operating point stability"
+     ],
+     "conditions": [],
+     "kernel": "bjt"
+    },
+    {
+     "id": "bjt-switch",
+     "title": "Transistor as a switch (NOT gate)",
+     "src": "ugc-locf-physics-2019",
+     "ref": "Digital, Analog and Instrumentation Lab: design a switch (NOT gate) using a transistor",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "bjt"
+    },
+    {
+     "id": "ce-amplifier",
+     "title": "CE amplifier of given gain with voltage-divider bias and its frequency response",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "mid-band gain and bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "bjt-amplifier"
+    },
+    {
+     "id": "rc-coupled-two-stage",
+     "title": "Frequency response of a two-stage RC-coupled amplifier",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "gain and bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "bjt-amplifier"
+    },
+    {
+     "id": "push-pull-amplifier",
+     "title": "Push-pull amplifier",
+     "src": "gurugram-nep-physics-2024",
+     "ref": "Electronics-I lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "output and crossover distortion"
+     ],
+     "conditions": [],
+     "kernel": "power-amplifier"
+    },
+    {
+     "id": "wien-bridge-oscillator",
+     "title": "Wien bridge oscillator with an op-amp",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "oscillation frequency"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "phase-shift-oscillator",
+     "title": "RC phase-shift oscillator with a BJT",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "oscillation frequency"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "colpitts-oscillator",
+     "title": "Colpitts oscillator",
+     "src": "ugc-locf-physics-2019",
+     "ref": "Digital, Analog and Instrumentation Lab: study the Colpitt's oscillator",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "oscillation frequency"
+     ],
+     "conditions": [],
+     "kernel": "oscillator"
+    },
+    {
+     "id": "transistor-astable",
+     "title": "Astable multivibrator with transistors",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Physics of Devices and Communication Lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "frequency and duty cycle"
+     ],
+     "conditions": [],
+     "kernel": "multivibrator"
+    },
+    {
+     "id": "dac-design",
+     "title": "Digital-to-analog converter of given specifications",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dac"
+    },
+    {
+     "id": "adc-ic",
+     "title": "Analog-to-digital converter IC",
+     "src": "ugc-locf-physics-2019",
+     "ref": "Digital, Analog and Instrumentation Lab: study the ADC IC",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "adc"
+    },
+    {
+     "id": "opamp-inverting-dc",
+     "title": "Inverting amplifier of given DC gain with an op-amp",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "741",
+      "351"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-amplifier-frequency-response",
+     "title": "Op-amp amplifiers and their frequency response",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 11",
+     "kind": "practical",
+     "methods": [
+      "inverting",
+      "non-inverting"
+     ],
+     "samples": [
+      "741",
+      "351"
+     ],
+     "unknowns": [
+      "gain-bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-adder",
+     "title": "Adding DC voltages with an op-amp",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 12a",
+     "kind": "practical",
+     "methods": [
+      "inverting",
+      "non-inverting"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-comparator",
+     "title": "Zero-crossing detector and comparator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 12b",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-difference-amplifier",
+     "title": "Precision difference amplifier with an op-amp",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 13",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "CMRR"
+     ],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-integrator",
+     "title": "Op-amp integrator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 14",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-differentiator",
+     "title": "Op-amp differentiator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 15",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "opamp"
+    },
+    {
+     "id": "opamp-analog-computer",
+     "title": "Op-amp circuit solving simultaneous and differential equations",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-X Analog Systems Lab, item 16",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "simultaneous equations",
+      "first-order differential equation",
+      "second-order differential equation"
+     ],
+     "conditions": [],
+     "kernel": "analog-computer"
+    },
+    {
+     "id": "active-filters",
+     "title": "Active filters of given specification",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Physics of Devices and Communication Lab, items 2-3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "low-pass",
+      "high-pass",
+      "band-pass",
+      "band-reject"
+     ],
+     "unknowns": [
+      "cut-off frequencies"
+     ],
+     "conditions": [],
+     "kernel": "active-filter"
+    },
+    {
+     "id": "rectifier-power-supply",
+     "title": "Rectifiers and filtered power supplies",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Electrical Circuits and Network Skills Lab, items 9-10; DSE Physics of Devices Lab item 1",
+     "kind": "practical",
+     "methods": [
+      "half-wave",
+      "full-wave (centre tap)",
+      "bridge"
+     ],
+     "samples": [],
+     "unknowns": [
+      "ripple factor and regulation"
+     ],
+     "conditions": [
+      "no filter",
+      "C filter",
+      "pi filter"
+     ],
+     "kernel": "rectifier"
+    },
+    {
+     "id": "regulated-supply-7805",
+     "title": "Regulated power supply (adapter) with a bridge rectifier and 7805",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 11 practical, item 7",
+     "kind": "project",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "line and load regulation"
+     ],
+     "conditions": [],
+     "kernel": "rectifier"
+    },
+    {
+     "id": "jfet-characteristics",
+     "title": "Output and transfer characteristics of a JFET",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Physics of Devices and Communication Lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "pinch-off voltage and transconductance"
+     ],
+     "conditions": [],
+     "kernel": "fet"
+    },
+    {
+     "id": "jfet-cs-amplifier",
+     "title": "Common-source JFET amplifier and its frequency response",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Physics of Devices and Communication Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "gain and bandwidth"
+     ],
+     "conditions": [],
+     "kernel": "fet"
+    },
+    {
+     "id": "mosfet-characteristics",
+     "title": "Output characteristics of a MOSFET",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Physics of Devices and Communication Lab, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "threshold voltage"
+     ],
+     "conditions": [],
+     "kernel": "fet"
+    },
+    {
+     "id": "ujt-relaxation-oscillator",
+     "title": "UJT characteristics and relaxation oscillator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Physics of Devices and Communication Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "intrinsic stand-off ratio",
+      "oscillation frequency"
+     ],
+     "conditions": [],
+     "kernel": "ujt"
+    },
+    {
+     "id": "tunnel-diode",
+     "title": "Tunnelling in a tunnel diode from its I-V characteristic",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "peak-to-valley ratio and negative resistance"
+     ],
+     "conditions": [],
+     "kernel": "tunnel-diode"
+    },
+    {
+     "id": "pll-ic",
+     "title": "Phase-locked loop IC: lock and capture range",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Physics of Devices and Communication Lab, item 11",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "lock range",
+      "capture range"
+     ],
+     "conditions": [],
+     "kernel": "pll"
+    },
+    {
+     "id": "timer-555",
+     "title": "555 timer as astable and monostable multivibrator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, items 8-9",
+     "kind": "practical",
+     "methods": [
+      "astable",
+      "monostable"
+     ],
+     "samples": [],
+     "unknowns": [
+      "frequency, duty cycle / pulse width"
+     ],
+     "conditions": [],
+     "kernel": "timer-555"
+    }
+   ]
+  },
+  {
+   "name": "Digital electronics, microprocessors and microcontrollers",
+   "setups": [
+    {
+     "id": "nand-universal-gates",
+     "title": "AND, OR, NOT and XOR gates from NAND gates",
+     "src": "ugc-locf-physics-2019",
+     "ref": "Digital, Analog and Instrumentation Lab: verify and design gates using NAND",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "logic-gates"
+    },
+    {
+     "id": "combinational-design",
+     "title": "Combinational logic from a truth table: Boolean expression to gates and minimisation",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section A item 1",
+     "kind": "practical",
+     "methods": [
+      "direct realisation",
+      "Karnaugh-map minimisation"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "logic-gates"
+    },
+    {
+     "id": "adders",
+     "title": "Half adder, full adder and 4-bit binary adder",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section A item 2",
+     "kind": "practical",
+     "methods": [
+      "half adder",
+      "full adder",
+      "4-bit adder"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "logic-arith"
+    },
+    {
+     "id": "subtractors",
+     "title": "Half subtractor, full subtractor and adder-subtractor",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section A item 3",
+     "kind": "practical",
+     "methods": [
+      "half subtractor",
+      "full subtractor",
+      "adder-subtractor"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "logic-arith"
+    },
+    {
+     "id": "flip-flops-nand",
+     "title": "RS, clocked RS, D and JK flip-flops from NAND gates",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section A item 4",
+     "kind": "practical",
+     "methods": [
+      "RS",
+      "clocked RS",
+      "D",
+      "JK"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "flip-flop"
+    },
+    {
+     "id": "jk-master-slave",
+     "title": "JK master-slave flip-flop with ICs",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section A item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "flip-flop"
+    },
+    {
+     "id": "counter-4bit",
+     "title": "4-bit counter with flip-flop ICs and its timing diagram",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section A item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "D flip-flop ICs",
+      "JK flip-flop ICs"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "counter-logic"
+    },
+    {
+     "id": "shift-register",
+     "title": "4-bit shift register",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section A item 7",
+     "kind": "practical",
+     "methods": [
+      "serial",
+      "parallel"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "shift-register"
+    },
+    {
+     "id": "microprocessor-8085",
+     "title": "8085 assembly programs on a trainer kit",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VII Digital Systems Lab, Section B items 1-9",
+     "kind": "practical",
+     "methods": [
+      "addition / subtraction, direct addressing",
+      "addition / subtraction, indirect addressing",
+      "multiplication by repeated addition",
+      "division by repeated subtraction",
+      "16-bit numbers",
+      "CALL and RETURN",
+      "block data handling",
+      "parity check"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "mpu-8085"
+    },
+    {
+     "id": "microcontroller-8051",
+     "title": "8051 microcontroller programs and interfacing",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Embedded Systems Lab, items 1-11",
+     "kind": "practical",
+     "methods": [
+      "number tests (prime, factorial)",
+      "port output to eight LEDs (binary counter)",
+      "timer-driven LEDs",
+      "accumulator rotation",
+      "seven-segment countdown and text",
+      "stepper motor control",
+      "temperature measurement"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "mcu-8051"
+    },
+    {
+     "id": "arduino-physical-computing",
+     "title": "Arduino basics: LED, switch, ADC, PWM, LCD and sensors",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Introduction to Physical Computing Lab, items 1-10; DSE Embedded Systems Lab item 12-16",
+     "kind": "practical",
+     "methods": [
+      "digital output (LED)",
+      "digital input (switch)",
+      "ADC reading",
+      "software and hardware PWM",
+      "seven-segment and LCD display",
+      "temperature sensor read-out",
+      "stepper motor speed with a potentiometer"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "arduino"
+    }
+   ]
+  },
+  {
+   "name": "Communication electronics and microwaves",
+   "setups": [
+    {
+     "id": "am-modulator",
+     "title": "Amplitude modulator with a transistor",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Communication System Lab, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "modulation index"
+     ],
+     "conditions": [],
+     "kernel": "am"
+    },
+    {
+     "id": "am-envelope-detector",
+     "title": "Envelope detector for AM demodulation",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Communication System Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "am"
+    },
+    {
+     "id": "fm-generator-detector",
+     "title": "FM generator and detector",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Communication System Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "fm"
+    },
+    {
+     "id": "am-fm-transmitter-receiver",
+     "title": "AM and FM transmitter-receiver",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Communication System Lab, items 4-5",
+     "kind": "practical",
+     "methods": [
+      "AM",
+      "FM"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "radio-link"
+    },
+    {
+     "id": "tdm",
+     "title": "Time division multiplexing",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Communication System Lab, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "tdm"
+    },
+    {
+     "id": "pulse-modulation",
+     "title": "Pulse modulation: PAM, PWM, PPM and PCM",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Communication System Lab, items 7-9; Physics of Devices Lab item 9",
+     "kind": "practical",
+     "methods": [
+      "PAM",
+      "PWM",
+      "PPM",
+      "PCM"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "pulse-modulation"
+    },
+    {
+     "id": "digital-modulation",
+     "title": "ASK, PSK and FSK modulators",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Communication System Lab, item 10",
+     "kind": "practical",
+     "methods": [
+      "ASK",
+      "PSK",
+      "FSK"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "digital-modulation"
+    },
+    {
+     "id": "dipole-antenna",
+     "title": "Angular radiation pattern of a simple dipole antenna",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "radiation pattern"
+     ],
+     "conditions": [],
+     "kernel": "antenna"
+    },
+    {
+     "id": "microwave-reflection-refraction",
+     "title": "Reflection and refraction of microwaves",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 6",
+     "kind": "practical",
+     "methods": [
+      "reflection",
+      "refraction"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "microwave-optics"
+    },
+    {
+     "id": "microwave-polarisation-interference",
+     "title": "Polarisation and double-slit interference of microwaves",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIII Electromagnetic Theory Lab, item 7",
+     "kind": "practical",
+     "methods": [
+      "polarisation",
+      "double-slit interference"
+     ],
+     "samples": [],
+     "unknowns": [
+      "wavelength"
+     ],
+     "conditions": [],
+     "kernel": "microwave-optics"
+    }
+   ]
+  },
+  {
+   "name": "Modern and atomic physics",
+   "setups": [
+    {
+     "id": "planck-blackbody",
+     "title": "Planck's constant from black-body radiation and a photodetector",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "Planck's constant"
+     ],
+     "conditions": [],
+     "kernel": "blackbody-radiator"
+    },
+    {
+     "id": "photoelectric-effect",
+     "title": "Photoelectric effect",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "photocurrent vs intensity and wavelength",
+      "Planck's constant and work function from stopping potential vs frequency"
+     ],
+     "conditions": [],
+     "kernel": "photoelectric"
+    },
+    {
+     "id": "vacuum-diode-work-function",
+     "title": "Work function of the filament of a directly heated vacuum diode",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "work function"
+     ],
+     "conditions": [],
+     "kernel": "thermionic"
+    },
+    {
+     "id": "led-planck-constant",
+     "title": "Planck's constant with LEDs of at least four colours",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 4; GE 11 (UGCF) Unit II 3b",
+     "kind": "practical",
+     "methods": [
+      "DC meters",
+      "Arduino"
+     ],
+     "samples": [],
+     "unknowns": [
+      "Planck's constant"
+     ],
+     "conditions": [],
+     "kernel": "pn-junction"
+    },
+    {
+     "id": "hydrogen-balmer",
+     "title": "Wavelength of the H-alpha line of hydrogen",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "H-alpha wavelength",
+      "Rydberg constant"
+     ],
+     "conditions": [],
+     "kernel": "atomic-spectrum"
+    },
+    {
+     "id": "mercury-ionisation-potential",
+     "title": "Ionisation potential of mercury",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "ionisation potential"
+     ],
+     "conditions": [],
+     "kernel": "gas-discharge"
+    },
+    {
+     "id": "franck-hertz",
+     "title": "Franck-Hertz experiment: quantised energy levels",
+     "src": "gurugram-nep-physics-2024",
+     "ref": "Elements of Modern Physics lab, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "argon tube",
+      "mercury tube"
+     ],
+     "unknowns": [
+      "first excitation potential"
+     ],
+     "conditions": [],
+     "kernel": "franck-hertz"
+    },
+    {
+     "id": "iodine-absorption",
+     "title": "Absorption lines in the spectrum of iodine vapour",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "band-head positions"
+     ],
+     "conditions": [],
+     "kernel": "molecular-spectrum"
+    },
+    {
+     "id": "e-by-m-focusing-bar-magnet",
+     "title": "e/m of the electron by magnetic focusing or bar magnet",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 8",
+     "kind": "practical",
+     "methods": [
+      "magnetic focusing",
+      "bar magnet method"
+     ],
+     "samples": [],
+     "unknowns": [
+      "e/m"
+     ],
+     "conditions": [],
+     "kernel": "electron-beam"
+    },
+    {
+     "id": "e-by-m-thomson",
+     "title": "e/m by Thomson's method (crossed fields)",
+     "src": "gurugram-nep-physics-2024",
+     "ref": "Electricity and Magnetism lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "e/m"
+     ],
+     "conditions": [],
+     "kernel": "electron-beam"
+    },
+    {
+     "id": "e-by-m-magnetron",
+     "title": "e/m by the magnetron method",
+     "src": "gurugram-nep-physics-2024",
+     "ref": "Elements of Modern Physics lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "e/m"
+     ],
+     "conditions": [],
+     "kernel": "magnetron"
+    },
+    {
+     "id": "millikan-oil-drop",
+     "title": "Millikan oil-drop experiment",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-IX Elements of Modern Physics Lab, item 9",
+     "kind": "practical",
+     "methods": [
+      "balancing (static) method",
+      "rise-and-fall (dynamic) method"
+     ],
+     "samples": [],
+     "unknowns": [
+      "charge of the electron"
+     ],
+     "conditions": [],
+     "kernel": "oil-drop"
+    },
+    {
+     "id": "zeeman-effect",
+     "title": "Zeeman effect",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XI Quantum Mechanics Lab, optional item 6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "splitting vs magnetic field (e/m)"
+     ],
+     "conditions": [],
+     "kernel": "zeeman"
+    },
+    {
+     "id": "electron-spin-resonance",
+     "title": "Electron spin resonance",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XI Quantum Mechanics Lab, optional item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "DPPH"
+     ],
+     "unknowns": [
+      "resonance field vs frequency (g-factor)"
+     ],
+     "conditions": [],
+     "kernel": "esr"
+    },
+    {
+     "id": "ccd-quantum-efficiency",
+     "title": "Quantum efficiency of a CCD",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XI Quantum Mechanics Lab, optional item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "quantum efficiency"
+     ],
+     "conditions": [],
+     "kernel": "photodetector-qe"
+    }
+   ]
+  },
+  {
+   "name": "Nuclear and radiation physics",
+   "setups": [
+    {
+     "id": "gm-plateau",
+     "title": "GM tube characteristics: operating voltage and plateau",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "operating voltage and plateau length"
+     ],
+     "conditions": [
+      "background radiation only",
+      "sealed check source"
+     ],
+     "kernel": "gm-counter"
+    },
+    {
+     "id": "counting-statistics",
+     "title": "Counting statistics with a GM counter",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "Poisson / Gaussian fit to counts"
+     ],
+     "conditions": [],
+     "kernel": "gm-counter"
+    },
+    {
+     "id": "beta-absorption",
+     "title": "Absorption of beta particles in aluminium",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 11",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "aluminium"
+     ],
+     "unknowns": [
+      "absorption coefficient",
+      "range"
+     ],
+     "conditions": [],
+     "kernel": "gm-absorption"
+    },
+    {
+     "id": "gamma-attenuation",
+     "title": "Gamma-ray attenuation in aluminium",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, items 12-13",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "aluminium"
+     ],
+     "unknowns": [
+      "attenuation coefficient",
+      "half-value thickness"
+     ],
+     "conditions": [],
+     "kernel": "gm-absorption"
+    },
+    {
+     "id": "background-radiation-survey",
+     "title": "Background radiation levels with a radiation meter",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "dose rate at different places"
+     ],
+     "conditions": [],
+     "kernel": "radiation-survey"
+    },
+    {
+     "id": "radioactivity-in-materials",
+     "title": "Radiation from routine materials with a GM counter",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "potassium salt"
+     ],
+     "unknowns": [
+      "count rate above background"
+     ],
+     "conditions": [],
+     "kernel": "gm-counter"
+    },
+    {
+     "id": "gamma-spectrum-identification",
+     "title": "Identifying sources from a gamma-ray energy spectrum",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Radiation Safety Lab, items 6 and 13",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "background radiation",
+      "thorium gas mantle"
+     ],
+     "unknowns": [
+      "gamma-line energies"
+     ],
+     "conditions": [],
+     "kernel": "gamma-spectrum"
+    },
+    {
+     "id": "alpha-spark-counter",
+     "title": "Alpha particles with a spark counter and half-life",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Radiation Safety Lab, item 12",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "half-life"
+     ],
+     "conditions": [],
+     "kernel": "decay-counting"
+    },
+    {
+     "id": "indium-half-life",
+     "title": "Half-life of indium",
+     "src": "gurugram-nep-physics-2024",
+     "ref": "Elements of Modern Physics lab, item 8",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "half-life"
+     ],
+     "conditions": [],
+     "kernel": "decay-counting"
+    },
+    {
+     "id": "srim-energy-loss",
+     "title": "Energy loss of ions in matter (SRIM / TRIM)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 1",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "water",
+      "carbon"
+     ],
+     "unknowns": [
+      "stopping power vs energy"
+     ],
+     "conditions": [],
+     "kernel": "ion-stopping"
+    },
+    {
+     "id": "srim-proton-range",
+     "title": "Range of protons in materials (SRIM / TRIM)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 2",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "carbon",
+      "silver",
+      "gold",
+      "lead"
+     ],
+     "unknowns": [
+      "range"
+     ],
+     "conditions": [],
+     "kernel": "ion-stopping"
+    },
+    {
+     "id": "srim-projectile-z",
+     "title": "Projectiles Z = 1 to 92 in one medium (SRIM)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 3",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "Mylar",
+      "carbon",
+      "water"
+     ],
+     "unknowns": [
+      "stopping power vs projectile Z"
+     ],
+     "conditions": [],
+     "kernel": "ion-stopping"
+    },
+    {
+     "id": "srim-bragg-curve",
+     "title": "Bragg curves of heavy ions on heavy targets (SRIM / TRIM)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 4",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "Bragg curve"
+     ],
+     "conditions": [],
+     "kernel": "ion-stopping"
+    },
+    {
+     "id": "xcom-attenuation",
+     "title": "X-ray and gamma-ray transmission through materials (NIST XCOM)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 10 Radiation Safety practical, item 5",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "Mylar",
+      "beryllium",
+      "carbon",
+      "aluminium",
+      "iron",
+      "heavy elements Z 47-92"
+     ],
+     "unknowns": [
+      "attenuation coefficient"
+     ],
+     "conditions": [
+      "X-rays",
+      "gamma rays"
+     ],
+     "kernel": "photon-attenuation"
+    }
+   ]
+  },
+  {
+   "name": "Solid state physics and materials",
+   "setups": [
+    {
+     "id": "quincke-susceptibility",
+     "title": "Susceptibility of a paramagnetic solution by Quincke's tube",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "ferric chloride solution",
+      "manganese sulphate solution"
+     ],
+     "unknowns": [
+      "magnetic susceptibility"
+     ],
+     "conditions": [],
+     "kernel": "quincke-tube"
+    },
+    {
+     "id": "gouy-susceptibility",
+     "title": "Magnetic susceptibility of solids",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "magnetic susceptibility"
+     ],
+     "conditions": [],
+     "kernel": "gouy-balance"
+    },
+    {
+     "id": "piezo-coupling",
+     "title": "Coupling coefficient of a piezoelectric crystal",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "electromechanical coupling coefficient"
+     ],
+     "conditions": [],
+     "kernel": "piezo"
+    },
+    {
+     "id": "dielectric-vs-frequency",
+     "title": "Dielectric response of materials with frequency",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "dielectric constant and loss vs frequency"
+     ],
+     "conditions": [],
+     "kernel": "dielectric"
+    },
+    {
+     "id": "surface-plasmon-resonance",
+     "title": "Surface plasmon resonance",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, items 5-6",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "complex dielectric constant and plasma frequency of the metal",
+      "refractive index of a dielectric layer"
+     ],
+     "conditions": [],
+     "kernel": "spr"
+    },
+    {
+     "id": "pe-hysteresis-ferroelectric",
+     "title": "P-E hysteresis loop of a ferroelectric crystal",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "remanent polarisation and coercive field"
+     ],
+     "conditions": [],
+     "kernel": "hysteresis"
+    },
+    {
+     "id": "four-probe-band-gap",
+     "title": "Resistivity of germanium vs temperature by the four-probe method, and band gap",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 9",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "germanium"
+     ],
+     "unknowns": [
+      "resistivity vs temperature and band gap"
+     ],
+     "conditions": [],
+     "kernel": "four-probe"
+    },
+    {
+     "id": "hall-effect",
+     "title": "Hall coefficient of a semiconductor",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 10",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "n-type germanium",
+      "p-type germanium"
+     ],
+     "unknowns": [
+      "Hall coefficient and carrier type",
+      "carrier concentration and mobility"
+     ],
+     "conditions": [],
+     "kernel": "hall-effect"
+    },
+    {
+     "id": "magnetoresistance",
+     "title": "Change in resistance of a semiconductor with magnetic field",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 12",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "magnetoresistance"
+     ],
+     "conditions": [],
+     "kernel": "magnetoresistance"
+    },
+    {
+     "id": "xrd-analysis",
+     "title": "Analysis of X-ray diffraction data",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XII Solid State Physics Lab, item 11",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "unit cell parameters",
+      "particle size (Scherrer)"
+     ],
+     "conditions": [],
+     "kernel": "xrd"
+    },
+    {
+     "id": "diode-band-gap",
+     "title": "Energy band gap of a semiconductor from a reverse-biased p-n junction",
+     "src": "aicte-model-curriculum-ug-2018",
+     "ref": "engineering physics lab (energy band gap)",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "band gap"
+     ],
+     "conditions": [],
+     "kernel": "pn-junction"
+    }
+   ]
+  },
+  {
+   "name": "Nanomaterials",
+   "setups": [
+    {
+     "id": "metal-nanoparticle-synthesis",
+     "title": "Chemical synthesis of metal nanoparticles and their optical study",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Nano Materials and Applications Lab, item 1",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "gold",
+      "silver"
+     ],
+     "unknowns": [
+      "absorption spectrum"
+     ],
+     "conditions": [],
+     "kernel": "nanoparticle-optics"
+    },
+    {
+     "id": "semiconductor-nanoparticle-xrd",
+     "title": "Synthesis of semiconductor nanoparticles and their XRD",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Nano Materials and Applications Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [
+      "CdS",
+      "ZnO",
+      "TiO2",
+      "Fe2O3"
+     ],
+     "unknowns": [
+      "crystallite size"
+     ],
+     "conditions": [],
+     "kernel": "xrd"
+    },
+    {
+     "id": "nanoparticle-plasmon-uv-vis",
+     "title": "Surface plasmon of metal nanoparticles by UV-visible spectrophotometry",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Nano Materials and Applications Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "plasmon peak"
+     ],
+     "conditions": [],
+     "kernel": "nanoparticle-optics"
+    },
+    {
+     "id": "nano-size-colour",
+     "title": "Effect of size on the colour of nanomaterials",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Nano Materials and Applications Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "nanoparticle-optics"
+    }
+   ]
+  },
+  {
+   "name": "Medical, energy and atmospheric physics",
+   "setups": [
+    {
+     "id": "bp-monitor-stethoscope",
+     "title": "Working of a manual blood-pressure monitor and stethoscope",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Medical Physics Lab, item 1",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "bp-monitor"
+    },
+    {
+     "id": "eye-testing",
+     "title": "Working of an optical eye-testing machine",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Medical Physics Lab, item 2",
+     "kind": "demonstration",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "eye-optics"
+    },
+    {
+     "id": "eye-defect-correction",
+     "title": "Correcting eye defects with lens combinations on an optical bench",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Medical Physics Lab, items 3-4",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "power of the correcting lens"
+     ],
+     "conditions": [
+      "myopia",
+      "hypermetropia"
+     ],
+     "kernel": "eye-optics"
+    },
+    {
+     "id": "tld-badge",
+     "title": "Thermoluminescent dosimeter badges",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Medical Physics Lab, item 5",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "dose"
+     ],
+     "conditions": [],
+     "kernel": "tld"
+    },
+    {
+     "id": "renewable-energy-modules",
+     "title": "Solar and wind energy training modules",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Renewable Energy and Energy Harvesting Lab, item 1",
+     "kind": "demonstration",
+     "methods": [
+      "solar module",
+      "wind module"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "energy-module"
+    },
+    {
+     "id": "piezo-harvesting",
+     "title": "Converting vibration to voltage with piezoelectric materials",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Renewable Energy and Energy Harvesting Lab, item 2",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "output voltage vs vibration"
+     ],
+     "conditions": [],
+     "kernel": "piezo"
+    },
+    {
+     "id": "thermoelectric-module",
+     "title": "Thermal energy to voltage with thermoelectric modules",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "SEC Renewable Energy and Energy Harvesting Lab, item 3",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "output voltage vs temperature difference"
+     ],
+     "conditions": [],
+     "kernel": "thermoelectric"
+    },
+    {
+     "id": "pm25-measurement",
+     "title": "PM2.5 measurement with compact instruments",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Atmospheric Physics Lab, item 7",
+     "kind": "practical",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "PM2.5 concentration"
+     ],
+     "conditions": [],
+     "kernel": "aerosol"
+    },
+    {
+     "id": "radiosonde-data",
+     "title": "Radiosonde data and atmospheric parameters",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Atmospheric Physics Lab, item 4",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "vertical profiles"
+     ],
+     "conditions": [],
+     "kernel": "atmos-data"
+    },
+    {
+     "id": "temperature-time-series",
+     "title": "Time-series analysis of long-term temperature over Indian cities",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Atmospheric Physics Lab, item 6",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "trend and seasonal cycle"
+     ],
+     "conditions": [],
+     "kernel": "time-series"
+    }
+   ]
+  },
+  {
+   "name": "Computational physics",
+   "setups": [
+    {
+     "id": "py-factorial-arrangements",
+     "title": "Factorial function and counting arrangements",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 1 (a)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "py-basics"
+    },
+    {
+     "id": "py-projectile",
+     "title": "Projectile trajectory: range, maximum height, time of flight",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 1 (c)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "range",
+      "maximum height",
+      "time of flight"
+     ],
+     "conditions": [],
+     "kernel": "projectile"
+    },
+    {
+     "id": "py-oscillator-regimes",
+     "title": "Displacement and velocity of undamped, under-, critically and over-damped oscillators",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 2 (a)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "undamped",
+      "underdamped",
+      "critically damped",
+      "overdamped"
+     ],
+     "kernel": "damped-oscillator"
+    },
+    {
+     "id": "py-legendre-recurrence",
+     "title": "Legendre polynomials from their recurrence relation",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 2 (b)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "special-functions"
+    },
+    {
+     "id": "py-random-distributions-clt",
+     "title": "Random numbers from distributions and the central limit theorem",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 2 (c)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "uniform",
+      "binomial",
+      "Poisson",
+      "Gaussian"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "random-sampling"
+    },
+    {
+     "id": "py-frame-transformations",
+     "title": "Galilean, Lorentz and rotation transformations of observables",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 2 (d)",
+     "kind": "computational",
+     "methods": [
+      "Galilean",
+      "Lorentz",
+      "rotation"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "transformations"
+    },
+    {
+     "id": "least-squares-fitting",
+     "title": "Least-squares fitting with parameter uncertainties",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 3; SEC 3 Numerical Techniques curve fitting; C-VIII weighted LSF",
+     "kind": "computational",
+     "methods": [
+      "linear",
+      "power law",
+      "exponential",
+      "polynomial"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "unweighted",
+      "weighted (known errors)"
+     ],
+     "kernel": "least-squares"
+    },
+    {
+     "id": "monte-carlo-pi",
+     "title": "Monte Carlo acceptance-rejection: value of pi and integrals",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 4 (a)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "value of pi",
+      "a definite integral"
+     ],
+     "conditions": [],
+     "kernel": "monte-carlo"
+    },
+    {
+     "id": "taylor-series-truncation",
+     "title": "Taylor-series approximation and truncation error",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 4 (b)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "exp(x)",
+      "sin(x)",
+      "cos(x)",
+      "ln(1+x)"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "series"
+    },
+    {
+     "id": "numerical-differentiation",
+     "title": "Numerical differentiation and round-off vs step size",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 5 (a-b)",
+     "kind": "computational",
+     "methods": [
+      "forward",
+      "backward",
+      "central difference"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "finite-difference"
+    },
+    {
+     "id": "velocity-from-position-data",
+     "title": "Velocity and acceleration from position data",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 1 Mathematical Physics I practical, Unit 5 (c)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "finite-difference"
+    },
+    {
+     "id": "difference-tables",
+     "title": "Forward and backward difference tables and derivatives from tabulated data",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 3 Numerical Techniques practical, interpolation and differentiation",
+     "kind": "computational",
+     "methods": [
+      "forward",
+      "backward"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "finite-difference"
+    },
+    {
+     "id": "root-finding",
+     "title": "Roots of equations",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 1; SEC 3 Numerical Techniques",
+     "kind": "computational",
+     "methods": [
+      "bisection",
+      "secant",
+      "Newton-Raphson"
+     ],
+     "samples": [
+      "algebraic equation",
+      "transcendental equation"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "root-finding"
+    },
+    {
+     "id": "sinking-sphere-depth",
+     "title": "Depth to which a floating sphere sinks",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 1 (a)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "root-finding"
+    },
+    {
+     "id": "transcendental-alpha-tan",
+     "title": "Solutions of alpha = tan(alpha)",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 1 (b)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "root-finding"
+    },
+    {
+     "id": "nth-root",
+     "title": "n-th root of a number to given significant digits",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 1 (c)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "root-finding"
+    },
+    {
+     "id": "lagrange-interpolation",
+     "title": "Lagrange interpolating polynomial",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 2",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "given data points",
+      "tabulated function"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "interpolation"
+    },
+    {
+     "id": "position-from-acceleration",
+     "title": "Position and velocity from acceleration data by integration",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 3 (a)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "quadrature"
+    },
+    {
+     "id": "numerical-integration",
+     "title": "Numerical integration rules",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 3 (b); SEC 3 Numerical Techniques integration",
+     "kind": "computational",
+     "methods": [
+      "trapezoidal",
+      "Simpson 1/3",
+      "Simpson 3/8",
+      "Gauss-Legendre"
+     ],
+     "samples": [
+      "ln(x) from its integral definition",
+      "a given definite integral"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "quadrature"
+    },
+    {
+     "id": "integration-convergence",
+     "title": "Convergence rates of composite trapezoidal, Simpson and Gauss quadrature",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 3 (c)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "quadrature"
+    },
+    {
+     "id": "fourier-coefficients",
+     "title": "Fourier coefficients of periodic functions",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 3 (d); C-VIII item 4",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "square wave",
+      "triangle wave",
+      "half-wave rectified",
+      "full-wave rectified"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "fourier-series"
+    },
+    {
+     "id": "legendre-orthogonality",
+     "title": "Orthogonality of Legendre polynomials",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 3 (e)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "special-functions"
+    },
+    {
+     "id": "dirac-delta-sequences",
+     "title": "Dirac delta function as a limit of sequences",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 3 (f); C-VIII item 3",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "quadrature"
+    },
+    {
+     "id": "kirchhoff-linear-system",
+     "title": "Mesh equations of a circuit by Gauss elimination and Gauss-Seidel",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 4 (a)",
+     "kind": "computational",
+     "methods": [
+      "Gauss elimination",
+      "Gauss-Seidel"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "linear-system"
+    },
+    {
+     "id": "coupled-spring-linear-system",
+     "title": "Coupled spring-mass system as a linear system",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 4 (b)",
+     "kind": "computational",
+     "methods": [
+      "Gauss elimination",
+      "Gauss-Seidel"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "linear-system"
+    },
+    {
+     "id": "first-order-ivp",
+     "title": "First-order initial value problems",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 5 (a)",
+     "kind": "computational",
+     "methods": [
+      "Euler",
+      "RK2",
+      "RK4"
+     ],
+     "samples": [
+      "radioactive decay",
+      "RC and LR circuits with DC source",
+      "Newton's law of cooling"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ode-solver"
+    },
+    {
+     "id": "ivp-error-comparison",
+     "title": "Errors of numerical ODE methods against a known solution",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 5 (b)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ode-solver"
+    },
+    {
+     "id": "second-order-ivp",
+     "title": "Second-order IVP: harmonic oscillator and LCR circuit",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 5 (c-d)",
+     "kind": "computational",
+     "methods": [
+      "Euler",
+      "Runge-Kutta"
+     ],
+     "samples": [
+      "mechanical oscillator",
+      "LCR circuit"
+     ],
+     "unknowns": [],
+     "conditions": [
+      "undamped",
+      "overdamped",
+      "critically damped"
+     ],
+     "kernel": "ode-solver"
+    },
+    {
+     "id": "forced-oscillator-resonance",
+     "title": "Forced oscillator and resonance",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "DSC 4 Mathematical Physics II practical, Unit 5 (e)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ode-solver"
+    },
+    {
+     "id": "data-descriptive-statistics",
+     "title": "Discrete and continuous distributions: mean, median and mode",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 9 Data Analysis and Statistical Methods, item 1",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "statistics"
+    },
+    {
+     "id": "error-propagation-covariance",
+     "title": "Error propagation in functions of two variables with covariance",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 9 Data Analysis and Statistical Methods, item 3",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "statistics"
+    },
+    {
+     "id": "special-functions",
+     "title": "Special functions and their recurrence relations",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 7 Introduction to Scilab Programming, special functions",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "Bessel",
+      "Legendre",
+      "Laguerre",
+      "Hermite"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "special-functions"
+    },
+    {
+     "id": "fourier-transform-functions",
+     "title": "Fourier transform of common functions",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 7 Introduction to Scilab Programming, Fourier analysis; C-VIII item 6",
+     "kind": "computational",
+     "methods": [
+      "discrete Fourier transform",
+      "fast Fourier transform"
+     ],
+     "samples": [
+      "square pulse",
+      "sine-cosine",
+      "Gaussian"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "fourier-transform"
+    },
+    {
+     "id": "vector-field-plots",
+     "title": "2D / 3D vector fields: gradient, divergence and curl",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 7 Introduction to Scilab Programming, plotting",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "vector-field"
+    },
+    {
+     "id": "wave-group-dispersion-plots",
+     "title": "Superposition of waves, wave groups and dispersion",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 7 Introduction to Scilab Programming, plotting",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "normal dispersion",
+      "anomalous dispersion"
+     ],
+     "kernel": "wave-superposition"
+    },
+    {
+     "id": "graphics-transformations",
+     "title": "Translation, reflection, shear and rotation of a drawn object",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 7 Introduction to Scilab Programming, graphics design",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "transformations"
+    },
+    {
+     "id": "xcos-circuits",
+     "title": "Xcos block simulation of waveforms and circuits",
+     "src": "du-ugcf-2022-hons-physics",
+     "ref": "SEC 7 Introduction to Scilab Programming, Scicos / Xcos",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "Lissajous figures and beats",
+      "RC, RL, LC and LCR circuits",
+      "diode circuits"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "circuit-sim"
+    },
+    {
+     "id": "bvp-ode",
+     "title": "Boundary value problems by finite difference and shooting",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VIII Mathematical Physics III Lab, item 1A",
+     "kind": "computational",
+     "methods": [
+      "finite difference",
+      "shooting"
+     ],
+     "samples": [
+      "y''+y=0",
+      "reaction-diffusion y''-y=0"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "bvp-solver"
+    },
+    {
+     "id": "pde-heat-wave-laplace",
+     "title": "Laplace, wave and heat equations by finite differences and Crank-Nicolson",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VIII Mathematical Physics III Lab, item 1B",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "Laplace equation",
+      "wave equation",
+      "heat equation"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "pde-solver"
+    },
+    {
+     "id": "gauss-quadrature-family",
+     "title": "Gauss-Legendre, Gauss-Laguerre and Gauss-Hermite quadrature",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VIII Mathematical Physics III Lab, items 2-3",
+     "kind": "computational",
+     "methods": [
+      "Gauss-Legendre",
+      "Gauss-Laguerre",
+      "Gauss-Hermite"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "quadrature"
+    },
+    {
+     "id": "laplace-lcr",
+     "title": "LCR circuit analysis with the Laplace transform",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-VIII Mathematical Physics III Lab, item 6(ii)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "laplace-transform"
+    },
+    {
+     "id": "schrodinger-hydrogen",
+     "title": "Radial Schrodinger equation: hydrogen atom ground and first excited states",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XI Quantum Mechanics Lab, item 1",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "energy eigenvalues and wavefunctions"
+     ],
+     "conditions": [],
+     "kernel": "schrodinger-radial"
+    },
+    {
+     "id": "schrodinger-screened-coulomb",
+     "title": "Radial Schrodinger equation: screened Coulomb potential",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XI Quantum Mechanics Lab, item 2",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "ground-state energy and wavefunction"
+     ],
+     "conditions": [],
+     "kernel": "schrodinger-radial"
+    },
+    {
+     "id": "schrodinger-anharmonic",
+     "title": "Radial Schrodinger equation: anharmonic oscillator",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XI Quantum Mechanics Lab, item 3",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "ground-state energy and wavefunction"
+     ],
+     "conditions": [],
+     "kernel": "schrodinger-radial"
+    },
+    {
+     "id": "schrodinger-morse",
+     "title": "Radial Schrodinger equation: Morse potential (H2 vibrations)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XI Quantum Mechanics Lab, item 4",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "lowest vibrational energy and wavefunction"
+     ],
+     "conditions": [],
+     "kernel": "schrodinger-radial"
+    },
+    {
+     "id": "lennard-jones-md",
+     "title": "Particles in a box with Lennard-Jones interactions",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIV Statistical Mechanics Lab, item 1",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [
+      "local number density and fluctuations",
+      "approach to equilibrium",
+      "velocity distribution vs Maxwell"
+     ],
+     "conditions": [],
+     "kernel": "molecular-dynamics"
+    },
+    {
+     "id": "coin-toss-macrostates",
+     "title": "Macrostate probabilities in coin tossing",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIV Statistical Mechanics Lab, item 2",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "statistics"
+    },
+    {
+     "id": "partition-function-levels",
+     "title": "Partition function, energy, heat capacity and entropy for few-level systems",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIV Statistical Mechanics Lab, item 3",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "Maxwell-Boltzmann",
+      "Fermi-Dirac",
+      "Bose-Einstein"
+     ],
+     "kernel": "partition-function"
+    },
+    {
+     "id": "maxwell-speed-distribution",
+     "title": "Maxwell speed distribution and its average, rms and most probable speeds",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIV Statistical Mechanics Lab, item 4",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "kinetic-theory"
+    },
+    {
+     "id": "specific-heat-models",
+     "title": "Specific heat of solids vs temperature",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIV Statistical Mechanics Lab, item 5",
+     "kind": "computational",
+     "methods": [
+      "Dulong-Petit",
+      "Einstein",
+      "Debye"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "specific-heat"
+    },
+    {
+     "id": "quantum-distributions-plot",
+     "title": "Maxwell-Boltzmann, Fermi-Dirac and Bose-Einstein distributions at different temperatures",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIV Statistical Mechanics Lab, items 6-7",
+     "kind": "computational",
+     "methods": [
+      "Maxwell-Boltzmann",
+      "Fermi-Dirac",
+      "Bose-Einstein"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "non-relativistic",
+      "relativistic"
+     ],
+     "kernel": "partition-function"
+    },
+    {
+     "id": "planck-law-comparison",
+     "title": "Planck's law compared with Rayleigh-Jeans and Wien laws",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "C-XIV Statistical Mechanics Lab, item 8",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "blackbody-radiator"
+    },
+    {
+     "id": "population-models",
+     "title": "Population models: exponential, logistic, competing species",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, item 4",
+     "kind": "computational",
+     "methods": [
+      "exponential",
+      "logistic",
+      "competing species"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ode-solver"
+    },
+    {
+     "id": "chemical-rate-equations",
+     "title": "Rate equations for chemical reactions: autocatalysis and bistability",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, item 5",
+     "kind": "computational",
+     "methods": [
+      "autocatalysis",
+      "bistability"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ode-solver"
+    },
+    {
+     "id": "logistic-map-chaos",
+     "title": "Period-doubling route to chaos in the logistic map",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, item 6(ii)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "iterated-map"
+    },
+    {
+     "id": "lorenz-attractor",
+     "title": "Attractors of the Lorenz equations",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, item 6(iii)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "ode-solver"
+    },
+    {
+     "id": "fractals",
+     "title": "Computational visualisation of fractals",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, items 6(iv-vi)",
+     "kind": "computational",
+     "methods": [
+      "deterministic",
+      "self-similar",
+      "fractals in nature"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "fractal"
+    },
+    {
+     "id": "flow-visualisation",
+     "title": "Flow visualisation: streamlines, pathlines and streaklines",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, item 6(vii)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "vector-field"
+    },
+    {
+     "id": "game-theory-examples",
+     "title": "Examples from game theory",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Applied Dynamics Lab, item 6(i)",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "game-theory"
+    },
+    {
+     "id": "dsp-sequences-convolution",
+     "title": "Discrete sequences and convolution sums",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Digital Signal Processing Lab, items 1-2",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dsp"
+    },
+    {
+     "id": "dsp-lti-difference-equation",
+     "title": "LTI system from a difference equation: response, poles and zeros",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Digital Signal Processing Lab, items 3-4",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dsp"
+    },
+    {
+     "id": "dsp-dft-zero-padding",
+     "title": "DFT of a sequence with zero padding",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Digital Signal Processing Lab, items 6-7",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [
+      "4-point",
+      "8-point",
+      "16-point"
+     ],
+     "kernel": "dsp"
+    },
+    {
+     "id": "dsp-filter-design",
+     "title": "Digital filter design (FIR by windowing)",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Digital Signal Processing Lab, items 5 and 8",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "dsp"
+    },
+    {
+     "id": "eigenvalue-power-method",
+     "title": "Largest and smallest eigenvalues by power and inverse power methods",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Advanced Mathematical Physics-I Lab, item 1",
+     "kind": "computational",
+     "methods": [
+      "power method",
+      "inverse power method"
+     ],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "linear-algebra"
+    },
+    {
+     "id": "principal-axes-inertia",
+     "title": "Principal axes of a moment of inertia tensor by diagonalisation",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Advanced Mathematical Physics-I Lab, item 3",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "linear-algebra"
+    },
+    {
+     "id": "geodesics",
+     "title": "Geodesics in Euclidean and curved spaces",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Advanced Mathematical Physics-I Lab, item 4",
+     "kind": "computational",
+     "methods": [],
+     "samples": [
+      "plane",
+      "surface of a sphere"
+     ],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "variational"
+    },
+    {
+     "id": "constrained-lagrangian",
+     "title": "Lagrangian mechanics with constraints",
+     "src": "du-locf-2019-hons-physics",
+     "ref": "DSE Advanced Mathematical Physics-I Lab, item 7",
+     "kind": "computational",
+     "methods": [],
+     "samples": [],
+     "unknowns": [],
+     "conditions": [],
+     "kernel": "variational"
+    }
+   ]
+  }
+ ]
+}

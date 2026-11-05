@@ -203,7 +203,7 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
             return W.stats(site_id, sch, w, int(kw.get("days") or 30))
         if op in ("approvals", "decide", "related", "fn", "otp_start", "otp_verify", "2fa_login", "sessions", "session_end",
                   "logout_all", "2fa_start", "2fa_confirm", "2fa_off", "export", "delete_me", "audit", "matrix", "upload",
-                  "pay_plans", "pay_subscribe", "pay_subs", "pay_cancel"):
+                  "pay_plans", "pay_subscribe", "pay_subs", "pay_cancel") or op in LIVE_OPS:
             raise W.AppError("Is website mein yeh abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
         raise W.AppError("not found", 404)
     from ..appmaker import backend as BE
@@ -213,6 +213,8 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
     if op == "schema":
         out = BE.public_schema(p)
         out["security"] = {"otp": bool(SEC.provider()), "consent": True}       # v0.434 what the login box may offer
+        from . import livesite as LS
+        out["live"] = {"queue": bool(LS.cfg(p).get("on")), "push": True}       # v0.459 live channel / chat / queue / push
         return out
     if op == "signup":                                   # v0.434 DPDP: the website's sign-up needs her tick
         # the new page script always sends the tick (true / false); a page built before v0.434 sends nothing - it still
@@ -264,7 +266,13 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
             return SEC.two_fa_off(site, w.m, str(body.get("code") or ""))
         if op == "export":
             return SEC.export(site, BE.schema(p), w.m)
-        return BE.delete_me(p, w)
+        out = BE.delete_me(p, w)
+        try:                                            # v0.459 her browsers' notification addresses go with her account
+            from . import webpush as WP
+            WP.forget_member(site, w.m.id)
+        except Exception:                               # noqa: BLE001
+            pass
+        return out
     if op == "audit":                                    # admin only (her own view is the console)
         if not (w.m and w.m.role == "admin"):
             raise W.AppError("Audit log sirf admin dekh sakte hain.", 403)
@@ -286,6 +294,8 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         if op == "pay_subs":
             return PY.my_subs(p, w)
         return PY.cancel_sub(p, w, str(kw.get("sid") or ""))
+    if op in LIVE_OPS:                                   # v0.459 live chat / presence / queue / browser notifications / hooks
+        return _live_op(site_id, p, w, op, body, ua, **{k: v for k, v in kw.items() if k != "ua"})
     if op == "rows":
         return {"rows": BE.rows(p, kw["key"], w)}
     if op == "create":
@@ -314,6 +324,81 @@ def call(site_id: str, op: str, token: str = "", body: dict[str, Any] | None = N
         args = body.get("args") if isinstance(body.get("args"), list) else []
         return LE.call_public(p, kw["name"], args, w)
     raise W.AppError("not found", 404)
+
+
+LIVE_OPS = ("chat_mine", "chat_write", "chat_threads", "chat_thread", "chat_reply", "typing", "presence", "push_key", "push_sub",
+            "push_unsub", "queue_board", "queue_mine", "queue_take", "queue_staff", "queue_add", "queue_call", "queue_mark", "hook")
+
+
+def _live_op(site_id: str, p, w: W.Who, op: str, body: dict[str, Any], ua: str, **kw) -> dict[str, Any]:
+    """v0.459 ABHI ABHI WEBSITE: the website's live features on its linked app (site/livesite.py, appmaker/baat.py)."""
+    from ..appmaker import backend as BE
+    from ..appmaker import baat as BT
+    from ..appmaker import live as LV
+    from . import livesite as LS
+    from . import webpush as WP
+    if op == "chat_mine":
+        return BT.mine(p, w)
+    if op == "chat_write":
+        return BT.write(p, w, str(body.get("text") or ""), str(body.get("order") or ""))
+    if op == "chat_threads":
+        return BT.threads(p, w)
+    if op == "chat_thread":
+        return BT.thread(p, w, str(kw.get("member") or ""))
+    if op == "chat_reply":                               # website staff (her own replies go through the console, her tap)
+        return BT.reply(p, w, str(kw.get("member") or ""), str(body.get("text") or ""), her_tap=False)
+    if op == "typing":
+        return LV.typing(p, w, str(body.get("thread") or ""))
+    if op == "presence":
+        return LV.online(p, w)
+    if op == "push_key":
+        return {"key": WP.public_key()}
+    if op == "push_sub":
+        return WP.subscribe(BE.bid(p), w, body, ua)
+    if op == "push_unsub":
+        return WP.unsubscribe(BE.bid(p), w, body)
+    if op == "queue_board":
+        return LS.board_cached(p)
+    if op == "queue_mine":
+        return LS.mine(p, w)
+    if op == "queue_take":
+        return LS.take(p, w, body)
+    if op == "queue_staff":
+        return LS.staff_view(p, w)
+    if op == "queue_add":
+        return LS.add(p, w, body)
+    if op == "queue_call":
+        n = body.get("token")
+        return LS.call_next(p, w, int(n) if str(n or "").isdigit() else None)
+    if op == "queue_mark":
+        try:
+            n = int(body.get("token"))
+        except (TypeError, ValueError):
+            raise W.AppError("Token number?", 400)
+        return LS.mark(p, w, n, str(body.get("status") or ""))
+    if op == "hook":                                     # her outside service calls the website's app (signed)
+        from ..appmaker import connect as CN
+        return CN.hook(p, str(kw.get("key") or ""), kw.get("headers") or {}, kw.get("raw") or b"")
+    raise W.AppError("not found", 404)
+
+
+def live_open(site_id: str, token: str):
+    """The live stream's door: (project, who) for a signed-in member of a linked website, or AppError."""
+    from . import service as S
+    r, _ = S.public_app(site_id)
+    p = project(r)
+    if p is None:
+        raise W.AppError("Is website mein live abhi nahi; pehle website ko app ke dimaag se jodiye.", 404)
+    return p, _who(site_id, p, token)
+
+
+def queue_project(site_id: str):
+    from . import service as S
+    r, _ = S.public_app(site_id)
+    p = project(r)
+    if p is None:
+        raise W.AppError("not found", 404)
+    return p
 
 
 def _role(w: W.Who, member_id: str, body: dict[str, Any], setter) -> dict[str, Any]:

@@ -1,0 +1,132 @@
+{
+ "base": "simple-pendulum",
+ "chapter": "Oscillations",
+ "variants": [
+  {
+   "key": "g-thiruvananthapuram",
+   "title": "Simple pendulum: g in Thiruvananthapuram",
+   "sample": "Brass bob in a school lab in Thiruvananthapuram (8.52° N, 10 m)",
+   "unknown": "the acceleration due to gravity g in Thiruvananthapuram",
+   "params": {
+    "g": 9.7814
+   },
+   "note": "Normal gravity at 8.52° N and 10 m above sea level is 9.7814 m/s². g grows towards the poles and falls with height.",
+   "source": {
+    "title": "WGS84 normal gravity (Somigliana closed formula, NIMA TR8350.2, 3rd ed., eq. 4-1) with the free-air correction -3.086e-6 h m/s² per metre of height",
+    "note": "Latitude and height of the city centre; local rock density and terrain are not included."
+   }
+  },
+  {
+   "key": "g-bengaluru",
+   "title": "Simple pendulum: g in Bengaluru",
+   "sample": "Brass bob in a school lab in Bengaluru (12.97° N, 920 m)",
+   "unknown": "the acceleration due to gravity g in Bengaluru",
+   "params": {
+    "g": 9.7801
+   },
+   "note": "Normal gravity at 12.97° N and 920 m above sea level is 9.7801 m/s². g grows towards the poles and falls with height.",
+   "source": {
+    "title": "WGS84 normal gravity (Somigliana closed formula, NIMA TR8350.2, 3rd ed., eq. 4-1) with the free-air correction -3.086e-6 h m/s² per metre of height",
+    "note": "Latitude and height of the city centre; local rock density and terrain are not included."
+   }
+  },
+  {
+   "key": "g-mumbai",
+   "title": "Simple pendulum: g in Mumbai",
+   "sample": "Brass bob in a school lab in Mumbai (19.08° N, 14 m)",
+   "unknown": "the acceleration due to gravity g in Mumbai",
+   "params": {
+    "g": 9.7858
+   },
+   "note": "Normal gravity at 19.08° N and 14 m above sea level is 9.7858 m/s². g grows towards the poles and falls with height.",
+   "source": {
+    "title": "WGS84 normal gravity (Somigliana closed formula, NIMA TR8350.2, 3rd ed., eq. 4-1) with the free-air correction -3.086e-6 h m/s² per metre of height",
+    "note": "Latitude and height of the city centre; local rock density and terrain are not included."
+   }
+  },
+  {
+   "key": "g-delhi",
+   "title": "Simple pendulum: g in New Delhi",
+   "sample": "Brass bob in a school lab in New Delhi (28.61° N, 216 m)",
+   "unknown": "the acceleration due to gravity g in New Delhi",
+   "params": {
+    "g": 9.7915
+   },
+   "note": "Normal gravity at 28.61° N and 216 m above sea level is 9.7915 m/s². g grows towards the poles and falls with height.",
+   "source": {
+    "title": "WGS84 normal gravity (Somigliana closed formula, NIMA TR8350.2, 3rd ed., eq. 4-1) with the free-air correction -3.086e-6 h m/s² per metre of height",
+    "note": "Latitude and height of the city centre; local rock density and terrain are not included."
+   }
+  },
+  {
+   "key": "g-srinagar",
+   "title": "Simple pendulum: g in Srinagar",
+   "sample": "Brass bob in a school lab in Srinagar (34.08° N, 1585 m)",
+   "unknown": "the acceleration due to gravity g in Srinagar",
+   "params": {
+    "g": 9.7917
+   },
+   "note": "Normal gravity at 34.08° N and 1585 m above sea level is 9.7917 m/s². g grows towards the poles and falls with height.",
+   "source": {
+    "title": "WGS84 normal gravity (Somigliana closed formula, NIMA TR8350.2, 3rd ed., eq. 4-1) with the free-air correction -3.086e-6 h m/s² per metre of height",
+    "note": "Latitude and height of the city centre; local rock density and terrain are not included."
+   }
+  },
+  {
+   "key": "g-leh",
+   "title": "Simple pendulum: g in Leh",
+   "sample": "Brass bob in a school lab in Leh (34.16° N, 3500 m)",
+   "unknown": "the acceleration due to gravity g in Leh",
+   "params": {
+    "g": 9.7858
+   },
+   "note": "Normal gravity at 34.16° N and 3500 m above sea level is 9.7858 m/s². g grows towards the poles and falls with height.",
+   "source": {
+    "title": "WGS84 normal gravity (Somigliana closed formula, NIMA TR8350.2, 3rd ed., eq. 4-1) with the free-air correction -3.086e-6 h m/s² per metre of height",
+    "note": "Latitude and height of the city centre; local rock density and terrain are not included."
+   }
+  },
+  {
+   "key": "steel-bob",
+   "title": "Simple pendulum: g with a steel bob",
+   "sample": "Steel bob, 2.00 cm diameter (about 33 g)",
+   "method": "Same lengths as with the brass bob: T does not depend on the mass of the bob.",
+   "unknown": "the acceleration due to gravity g",
+   "params": {
+    "g": 9.8
+   },
+   "note": "A 2.00 cm steel sphere has a mass of about 33 g (density 7850 kg/m³). Compare your T with the brass bob's: it is the same.",
+   "source": {
+    "title": "ASM / CRC: carbon steel 7.85 g/cm³"
+   }
+  },
+  {
+   "key": "aluminium-bob",
+   "title": "Simple pendulum: g with an aluminium bob",
+   "sample": "Aluminium bob, 2.00 cm diameter (about 11 g)",
+   "method": "Same lengths as with the brass bob: T does not depend on the mass of the bob.",
+   "unknown": "the acceleration due to gravity g",
+   "params": {
+    "g": 9.8
+   },
+   "note": "A 2.00 cm aluminium sphere has a mass of about 11 g (density 2700 kg/m³). Compare your T with the brass bob's: it is the same.",
+   "source": {
+    "title": "CRC Handbook: aluminium 2.70 g/cm³"
+   }
+  },
+  {
+   "key": "wooden-bob",
+   "title": "Simple pendulum: g with a wooden bob",
+   "sample": "Wooden (teak) bob, 2.00 cm diameter (about 3 g)",
+   "method": "Same lengths as with the brass bob: T does not depend on the mass of the bob.",
+   "unknown": "the acceleration due to gravity g",
+   "params": {
+    "g": 9.8
+   },
+   "note": "A 2.00 cm wooden sphere has a mass of about 3 g (density 650 kg/m³). Compare your T with the brass bob's: it is the same.",
+   "source": {
+    "title": "Forest Products Laboratory Wood Handbook: teak about 0.65 g/cm³ (air dry)"
+   }
+  }
+ ]
+}

@@ -1,0 +1,210 @@
+{
+ "base": "terminal-velocity",
+ "chapter": "Mechanical Properties of Fluids",
+ "variants": [
+  {
+   "key": "steel-gly20",
+   "title": "Stokes' law: η of glycerine (anhydrous) at 20 °C with steel balls",
+   "sample": "Steel balls in glycerine (anhydrous) at 20 °C",
+   "unknown": "the viscosity η of glycerine (anhydrous) at 20 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through glycerine (anhydrous) at 20 °C and find its viscosity η.",
+   "params": {
+    "eta": 1.412,
+    "sigma": 1261,
+    "rho": 7800
+   },
+   "note": "Ball density ρ = 7800 kg/m³, liquid density σ = 1261 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Segur & Oberstar, Ind. Eng. Chem. 43 (1951) 2117 (glycerol viscosity); Glycerine Producers' Association (1963) densities; CRC Handbook densities of solids",
+    "note": "Glycerol: η = 1.412 Pa·s at 20 °C, density 1261 kg/m³; steel ball bearings (density 7800 kg/m³)"
+   }
+  },
+  {
+   "key": "glass-gly20",
+   "title": "Stokes' law: η of glycerine (anhydrous) at 20 °C with glass balls",
+   "sample": "Glass balls in glycerine (anhydrous) at 20 °C",
+   "unknown": "the viscosity η of glycerine (anhydrous) at 20 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through glycerine (anhydrous) at 20 °C and find its viscosity η.",
+   "params": {
+    "eta": 1.412,
+    "sigma": 1261,
+    "rho": 2500
+   },
+   "note": "Ball density ρ = 2500 kg/m³, liquid density σ = 1261 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Segur & Oberstar, Ind. Eng. Chem. 43 (1951) 2117 (glycerol viscosity); Glycerine Producers' Association (1963) densities; CRC Handbook densities of solids",
+    "note": "Glycerol: η = 1.412 Pa·s at 20 °C, density 1261 kg/m³; soda-lime glass balls (density 2500 kg/m³)"
+   }
+  },
+  {
+   "key": "lead-gly20",
+   "title": "Stokes' law: η of glycerine (anhydrous) at 20 °C with lead balls",
+   "sample": "Lead balls in glycerine (anhydrous) at 20 °C",
+   "unknown": "the viscosity η of glycerine (anhydrous) at 20 °C",
+   "aim": "Measure the terminal velocity of lead balls falling through glycerine (anhydrous) at 20 °C and find its viscosity η.",
+   "params": {
+    "eta": 1.412,
+    "sigma": 1261,
+    "rho": 11340
+   },
+   "note": "Ball density ρ = 11340 kg/m³, liquid density σ = 1261 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Segur & Oberstar, Ind. Eng. Chem. 43 (1951) 2117 (glycerol viscosity); Glycerine Producers' Association (1963) densities; CRC Handbook densities of solids",
+    "note": "Glycerol: η = 1.412 Pa·s at 20 °C, density 1261 kg/m³; lead shot (density 11340 kg/m³)"
+   }
+  },
+  {
+   "key": "steel-gly30",
+   "title": "Stokes' law: η of glycerine (anhydrous) at 30 °C with steel balls",
+   "sample": "Steel balls in glycerine (anhydrous) at 30 °C",
+   "unknown": "the viscosity η of glycerine (anhydrous) at 30 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through glycerine (anhydrous) at 30 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.612,
+    "sigma": 1255,
+    "rho": 7800
+   },
+   "note": "Ball density ρ = 7800 kg/m³, liquid density σ = 1255 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Segur & Oberstar, Ind. Eng. Chem. 43 (1951) 2117 (glycerol viscosity); Glycerine Producers' Association (1963) densities; CRC Handbook densities of solids",
+    "note": "Glycerol: η = 0.612 Pa·s at 30 °C, density 1255 kg/m³; steel ball bearings (density 7800 kg/m³)"
+   }
+  },
+  {
+   "key": "glass-gly30",
+   "title": "Stokes' law: η of glycerine (anhydrous) at 30 °C with glass balls",
+   "sample": "Glass balls in glycerine (anhydrous) at 30 °C",
+   "unknown": "the viscosity η of glycerine (anhydrous) at 30 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through glycerine (anhydrous) at 30 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.612,
+    "sigma": 1255,
+    "rho": 2500
+   },
+   "note": "Ball density ρ = 2500 kg/m³, liquid density σ = 1255 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Segur & Oberstar, Ind. Eng. Chem. 43 (1951) 2117 (glycerol viscosity); Glycerine Producers' Association (1963) densities; CRC Handbook densities of solids",
+    "note": "Glycerol: η = 0.612 Pa·s at 30 °C, density 1255 kg/m³; soda-lime glass balls (density 2500 kg/m³)"
+   }
+  },
+  {
+   "key": "glass-gly90",
+   "title": "Stokes' law: η of 90 % glycerine in water (by mass) at 20 °C with glass balls",
+   "sample": "Glass balls in 90 % glycerine in water (by mass) at 20 °C",
+   "unknown": "the viscosity η of 90 % glycerine in water (by mass) at 20 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through 90 % glycerine in water (by mass) at 20 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.219,
+    "sigma": 1235,
+    "rho": 2500
+   },
+   "note": "Ball density ρ = 2500 kg/m³, liquid density σ = 1235 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Segur & Oberstar, Ind. Eng. Chem. 43 (1951) 2117 (glycerol-water viscosity); Glycerine Producers' Association (1963) densities; CRC Handbook densities of solids",
+    "note": "90 % w/w glycerol in water: η = 0.219 Pa·s at 20 °C, density 1235 kg/m³; soda-lime glass balls (density 2500 kg/m³)"
+   }
+  },
+  {
+   "key": "steel-castor20",
+   "title": "Stokes' law: η of castor oil at 20 °C with steel balls",
+   "sample": "Steel balls in castor oil at 20 °C",
+   "unknown": "the viscosity η of castor oil at 20 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through castor oil at 20 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.986,
+    "sigma": 961,
+    "rho": 7800
+   },
+   "note": "Ball density ρ = 7800 kg/m³, liquid density σ = 961 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL), 2.2.7 Viscosity of liquids; CRC Handbook densities of solids",
+    "note": "Castor oil: η = 0.986 Pa·s at 20 °C, density about 961 kg/m³; steel ball bearings (density 7800 kg/m³)"
+   }
+  },
+  {
+   "key": "glass-castor20",
+   "title": "Stokes' law: η of castor oil at 20 °C with glass balls",
+   "sample": "Glass balls in castor oil at 20 °C",
+   "unknown": "the viscosity η of castor oil at 20 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through castor oil at 20 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.986,
+    "sigma": 961,
+    "rho": 2500
+   },
+   "note": "Ball density ρ = 2500 kg/m³, liquid density σ = 961 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL), 2.2.7 Viscosity of liquids; CRC Handbook densities of solids",
+    "note": "Castor oil: η = 0.986 Pa·s at 20 °C, density about 961 kg/m³; soda-lime glass balls (density 2500 kg/m³)"
+   }
+  },
+  {
+   "key": "steel-castor30",
+   "title": "Stokes' law: η of castor oil at 30 °C with steel balls",
+   "sample": "Steel balls in castor oil at 30 °C",
+   "unknown": "the viscosity η of castor oil at 30 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through castor oil at 30 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.451,
+    "sigma": 955,
+    "rho": 7800
+   },
+   "note": "Ball density ρ = 7800 kg/m³, liquid density σ = 955 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL), 2.2.7 Viscosity of liquids; CRC Handbook densities of solids",
+    "note": "Castor oil: η = 0.451 Pa·s at 30 °C, density about 955 kg/m³; steel ball bearings (density 7800 kg/m³)"
+   }
+  },
+  {
+   "key": "lead-castor20",
+   "title": "Stokes' law: η of castor oil at 20 °C with lead balls",
+   "sample": "Lead balls in castor oil at 20 °C",
+   "unknown": "the viscosity η of castor oil at 20 °C",
+   "aim": "Measure the terminal velocity of lead balls falling through castor oil at 20 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.986,
+    "sigma": 961,
+    "rho": 11340
+   },
+   "note": "Ball density ρ = 11340 kg/m³, liquid density σ = 961 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Kaye & Laby, Tables of Physical and Chemical Constants (NPL), 2.2.7 Viscosity of liquids; CRC Handbook densities of solids",
+    "note": "Castor oil: η = 0.986 Pa·s at 20 °C, density about 961 kg/m³; lead shot (density 11340 kg/m³)"
+   }
+  },
+  {
+   "key": "steel-silicone",
+   "title": "Stokes' law: η of silicone oil 1000 cSt at 25 °C with steel balls",
+   "sample": "Steel balls in silicone oil 1000 cSt at 25 °C",
+   "unknown": "the viscosity η of silicone oil 1000 cSt at 25 °C",
+   "aim": "Measure the terminal velocity of steel balls falling through silicone oil 1000 cSt at 25 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.971,
+    "sigma": 971,
+    "rho": 7800
+   },
+   "note": "Ball density ρ = 7800 kg/m³, liquid density σ = 971 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Dow DOWSIL 200 Fluid product data (1000 cSt, specific gravity 0.971 at 25 °C); CRC Handbook densities of solids",
+    "note": "Polydimethylsiloxane fluid 1000 cSt at 25 °C, density 971 kg/m³, so η = ρν = 0.971 Pa·s; steel ball bearings (density 7800 kg/m³)"
+   }
+  },
+  {
+   "key": "glass-silicone",
+   "title": "Stokes' law: η of silicone oil 1000 cSt at 25 °C with glass balls",
+   "sample": "Glass balls in silicone oil 1000 cSt at 25 °C",
+   "unknown": "the viscosity η of silicone oil 1000 cSt at 25 °C",
+   "aim": "Measure the terminal velocity of glass balls falling through silicone oil 1000 cSt at 25 °C and find its viscosity η.",
+   "params": {
+    "eta": 0.971,
+    "sigma": 971,
+    "rho": 2500
+   },
+   "note": "Ball density ρ = 2500 kg/m³, liquid density σ = 971 kg/m³. Viscosity falls fast as the liquid warms, so note the temperature.",
+   "source": {
+    "title": "Dow DOWSIL 200 Fluid product data (1000 cSt, specific gravity 0.971 at 25 °C); CRC Handbook densities of solids",
+    "note": "Polydimethylsiloxane fluid 1000 cSt at 25 °C, density 971 kg/m³, so η = ρν = 0.971 Pa·s; soda-lime glass balls (density 2500 kg/m³)"
+   }
+  }
+ ]
+}

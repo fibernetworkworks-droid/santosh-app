@@ -10,6 +10,7 @@
 (function () {
   'use strict';
   var d = document, meta = d.querySelector('meta[name="hoola-app"]');
+  var SELF = (d.currentScript && d.currentScript.src) || '';
   if (!meta) return;
   var API = meta.getAttribute('content'), LANG = meta.getAttribute('data-lang') || 'en', KEY = 'hoola-app:' + API;
   var PRIVACY = meta.getAttribute('data-privacy') || '../privacy/';
@@ -29,7 +30,14 @@
     tfaconfirm: 'Confirm', tfaremove: 'Turn off', bad_email: 'Write a correct email.', bad_phone: 'Write a 10-digit mobile number.',
     bad_num: 'Write a number.', required: 'Please fill this.', maps: 'Open in Maps', file: 'File', yours: 'Yours', who: 'Who',
     when: 'When', what: 'What', create: 'Add', read: 'See', update: 'Change', staffset: 'Only staff set', staffsee: 'Only staff see',
-    nomatch: 'No match.', open: 'Open', sentto: 'Code sent to', resend: 'Send again', days: 'Days'};
+    nomatch: 'No match.', open: 'Open', sentto: 'Code sent to', resend: 'Send again', days: 'Days',
+    live: 'Live', online: 'online', staffon: 'Team online', msgs: 'Messages', chatus: 'Message us', typing: 'typing…',
+    write: 'Write a message', sendmsg: 'Send', queue: 'Queue', token: 'Your token', take: 'Take a token', ahead: 'ahead of you',
+    mins: 'min', nowserving: 'Now serving', nexts: 'Next', waitingn: 'waiting', callnext: 'Call next', walkin: 'Add a walk-in',
+    done: 'Done', skip: 'Did not come', back2: 'Back in line', yourturn: 'It is your turn now.', closed: 'The queue is closed.',
+    notify: 'Notifications on this browser', notifyon: 'Notify me', notifyoff: 'Stop notifications', notifyno: 'This browser cannot show notifications.',
+    notifyok: 'Notifications are on for this browser.', notifyblocked: 'Notifications are blocked in this browser settings.', unread: 'new',
+    nothread: 'No messages yet.'};
   var T = {
     en: EN,
     hinglish: {login: 'Login', signup: 'Naya account', otp: 'Mobile OTP', email: 'Email', pw: 'Password (8+ akshar)', name: 'Aapka naam',
@@ -47,7 +55,12 @@
       tfakey: 'Authenticator app ke liye key', tfaconfirm: 'Pakka karo', tfaremove: 'Band karo', bad_email: 'Sahi email likhiye.',
       bad_phone: '10 ank ka mobile number likhiye.', bad_num: 'Number likhiye.', required: 'Yeh bhariye.', maps: 'Maps mein kholo',
       yours: 'Aapke', who: 'Kaun', when: 'Kab', what: 'Kya', create: 'Daale', read: 'Dekhe', update: 'Badle', staffset: 'Sirf staff bhare',
-      staffsee: 'Sirf staff dekhe', nomatch: 'Kuch nahi mila.', open: 'Kholo', sentto: 'Code bheja', resend: 'Dobara bhejo', days: 'Din'},
+      staffsee: 'Sirf staff dekhe', nomatch: 'Kuch nahi mila.', open: 'Kholo', sentto: 'Code bheja', resend: 'Dobara bhejo', days: 'Din',
+      staffon: 'Team online', msgs: 'Baatein', chatus: 'Humein likhiye', write: 'Sandesh likhiye', sendmsg: 'Bhejo', token: 'Aapka token',
+      take: 'Token lijiye', ahead: 'aapse pehle', nowserving: 'Ab baari', nexts: 'Agle', waitingn: 'intezaar mein', callnext: 'Agla bulao',
+      walkin: 'Walk-in jodo', done: 'Ho gaya', skip: 'Nahi aaye', back2: 'Wapas line mein', yourturn: 'Aapki baari aa gayi.',
+      closed: 'Queue band hai.', notify: 'Is browser par notification', notifyon: 'Mujhe batao', notifyoff: 'Notification band',
+      notifyok: 'Is browser par notification chalu.', nothread: 'Abhi koi sandesh nahi.'},
     hi: {login: 'लॉगिन', signup: 'नया अकाउंट', otp: 'मोबाइल OTP', email: 'ईमेल', pw: 'पासवर्ड (8+ अक्षर)', name: 'आपका नाम', mobile: 'मोबाइल नंबर',
       code: '6 अंक का कोड', getcode: 'कोड भेजें', verify: 'पक्का करें', hi: 'नमस्ते', out: 'लॉगआउट', send: 'भेजिए', saved: 'सेव हो गया!',
       fail: 'सेव नहीं हुआ', need: 'पहले लॉगिन कीजिए।', empty: 'अभी कुछ नहीं।', edit: 'बदलें', del: 'हटाएँ', sure: 'यह एंट्री हटा दें?',
@@ -358,6 +371,8 @@
     if (area === 'staff' && schema.approvals) items.push(['approvals', t.approvals]);
     if (area === 'staff') items.push(['members', t.members], ['matrix', t.matrix]);
     if (area === 'staff' && admin_()) items.push(['audit', t.audit]);
+    if (schema.live) items.push(['chat', area === 'staff' ? t.msgs : t.chatus]);          // v0.459 live chat
+    if (schema.live && schema.live.queue) items.push(['queue', t.queue]);              // v0.459 clinic queue
     items.push(['me', t.account]);
     items.forEach(function (it) { nav.appendChild(el('a', {href: '#/' + area + '/' + it[0], 'data-r': it[0], text: it[1]})); });
     function route() {
@@ -380,12 +395,24 @@
         if (r[0] === 'matrix') return matrixView(main);
         if (r[0] === 'audit') return auditView(main);
         if (r[0] === 'me') return accountView(main);
+        if (r[0] === 'chat') return area === 'staff' ? (r[1] ? chatThread(main, decodeURIComponent(r[1]), go) : chatThreads(main, go)) : chatMine(main);
+        if (r[0] === 'queue') return area === 'staff' ? queueStaff(main) : queueMine(main);
         return homeView(main, area, go);
       } catch (er) { main.appendChild(el('p', {'class': 'muted', text: String(er.message || er)})); }
     }
     if (shell.bound) removeEventListener('hashchange', shell.bound);
     shell.bound = route; addEventListener('hashchange', route);
     route();
+    if (schema.live) {                                   // v0.459 the page redraws itself when the data changes
+      var dot = el('span', {'class': 'hs-live', 'aria-live': 'polite'}); nav.appendChild(dot); LIVE.dots.push(dot); paintDot();
+      LIVE.views.push(function () {
+        var busy = main.querySelector('form') && main.contains(d.activeElement);
+        var h = (location.hash || '').split('/');
+        if (busy || h[2] === 'chat' || /\/(new|edit)$/.test(location.hash || '')) return;
+        route();
+      });
+      liveStart();
+    }
   }
 
   function homeView(main, area, go) {
@@ -713,6 +740,7 @@
   // ---------------------------------------------------------------- My account: devices, 2-step, my data
   function accountView(main) {
     main.appendChild(el('h2', {text: t.account}));
+    if (schema.live) notifyBox(main);
     main.appendChild(el('p', {text: (me.name || '') + ' · ' + (me.email && me.email.indexOf('@phone.local') < 0 ? me.email : (me.phone || '')) + ' · ' + me.role}));
     var dev = el('section', {'class': 'hs-appx-rel'}, [el('h3', {text: t.devices})]); main.appendChild(dev);
     call('GET', '/sessions').then(function (j) {
@@ -805,8 +833,209 @@
     });
   }
 
+  // ---------------------------------------------------------------- v0.459 ABHI ABHI WEBSITE: live channel, chat, queue, push
+  var LIVE = {on: false, last: '', ctl: null, views: [], dots: [], online: {}, chat: null, typing: null, wait: 1000, timer: 0};
+  function paintDot() {
+    var staffOn = Object.keys(LIVE.online).filter(function (k) { return LIVE.online[k].staff; }).length;
+    LIVE.dots.forEach(function (x) { x.textContent = LIVE.on ? '● ' + t.live + (staffOn ? ' · ' + t.staffon + ': ' + staffOn : '') : ''; });
+  }
+  function onEvent(type, j) {
+    if (j && j.seq) LIVE.last = 'j' + j.seq;
+    if (type === 'row' || type === 'reset') {
+      clearTimeout(LIVE.timer);
+      LIVE.timer = setTimeout(function () { LIVE.views.forEach(function (f) { try { f(); } catch (e) {} }); lists(); }, 400);
+    } else if (type === 'chat' && LIVE.chat) LIVE.chat(j);
+    else if (type === 'typing' && LIVE.typing) LIVE.typing(j);
+    else if (type === 'presence') { if (j.online) LIVE.online[j.member] = j; else delete LIVE.online[j.member]; paintDot(); }
+  }
+  function liveStart() {
+    if (LIVE.ctl || !tok || !window.fetch || !window.ReadableStream || !window.TextDecoder) return;
+    var ctl = window.AbortController ? new AbortController() : null; LIVE.ctl = ctl || {};
+    fetch(API + '/live' + (LIVE.last ? '?last=' + encodeURIComponent(LIVE.last) : ''), {headers: {Authorization: 'Bearer ' + tok}, signal: ctl ? ctl.signal : undefined}).then(function (r) {
+      if (!r.ok || !r.body) { LIVE.ctl = null; if (r.status === 429) setTimeout(liveStart, 60000); return; }
+      LIVE.on = true; LIVE.wait = 1000; paintDot();
+      call('GET', '/live/presence').then(function (j) { (j.online || []).forEach(function (x) { LIVE.online[x.member] = x; }); paintDot(); }).catch(function () {});
+      var rd = r.body.getReader(), dec = new TextDecoder(), buf = '';
+      function pump() {
+        return rd.read().then(function (x) {
+          if (x.done) throw new Error('end');
+          buf += dec.decode(x.value, {stream: true});
+          var i;
+          while ((i = buf.indexOf('\n\n')) >= 0) {
+            var blk = buf.slice(0, i), ev = 'message', data = ''; buf = buf.slice(i + 2);
+            blk.split('\n').forEach(function (ln) { if (ln.indexOf('event: ') === 0) ev = ln.slice(7); else if (ln.indexOf('data: ') === 0) data += ln.slice(6); });
+            if (!data) continue;
+            var j; try { j = JSON.parse(data); } catch (e) { continue; }
+            if (ev === 'bye') { if (j.why === 'login') { LIVE.ctl = null; LIVE.on = false; paintDot(); return; } throw new Error('again'); }
+            onEvent(ev, j);
+          }
+          return pump();
+        });
+      }
+      return pump();
+    }).catch(function () {}).then(function () {
+      if (!LIVE.ctl) return;
+      LIVE.ctl = null; LIVE.on = false; paintDot();
+      setTimeout(liveStart, LIVE.wait); LIVE.wait = Math.min(30000, LIVE.wait * 2);
+    });
+  }
+  function bubbles(box, list) {
+    box.textContent = '';
+    if (!list.length) box.appendChild(el('p', {'class': 'muted', text: t.nothread}));
+    list.forEach(function (m) { addBubble(box, m); });
+  }
+  function addBubble(box, m) {
+    var e0 = box.querySelector('p.muted'); if (e0) e0.remove();
+    box.appendChild(el('div', {'class': 'hs-msg' + (m.staff ? ' hs-msg-staff' : ' hs-msg-me')}, [el('strong', {text: (m.name || '') + ' '}),
+      el('span', {text: m.text || ''}), el('small', {'class': 'muted', text: ' ' + (m.at ? new Date(m.at).toLocaleTimeString() : '')})]));
+    box.scrollTop = box.scrollHeight;
+  }
+  function composer(main, send, thread) {
+    var f = el('form', {'class': 'hs-chat-f', autocomplete: 'off'}), ta = el('textarea', {name: 'text', rows: '2', maxlength: '1000', 'aria-label': t.write, placeholder: t.write});
+    var typed = 0;
+    ta.addEventListener('input', function () { if (Date.now() - typed > 2500) { typed = Date.now(); call('POST', '/live/typing', {thread: thread || ''}).catch(function () {}); } });
+    f.appendChild(ta); f.appendChild(el('button', {type: 'submit', 'class': 'btn btn-primary', text: t.sendmsg}));
+    f.addEventListener('submit', function (e) {
+      e.preventDefault(); var v = ta.value.trim(); if (!v) return;
+      f.querySelector('button').disabled = true;
+      send(v).then(function () { ta.value = ''; }).catch(function (er) { alert(er.message); }).then(function () { f.querySelector('button').disabled = false; ta.focus(); });
+    });
+    main.appendChild(f);
+    return f;
+  }
+  function typingLine(main) {
+    var p = el('p', {'class': 'muted hs-typing', 'aria-live': 'polite'}); main.appendChild(p); var tm = 0;
+    LIVE.typing = function (j) { p.textContent = (j.name || '') + ' ' + t.typing; clearTimeout(tm); tm = setTimeout(function () { p.textContent = ''; }, 4000); };
+  }
+  function chatMine(main) {
+    main.appendChild(el('h2', {text: t.chatus}));
+    var box = el('div', {'class': 'hs-chat', role: 'log', 'aria-live': 'polite'}); main.appendChild(box); typingLine(main);
+    call('GET', '/chat').then(function (j) { bubbles(box, j.messages || []); }).catch(function (er) { box.textContent = er.message; });
+    LIVE.chat = function (m) { if (d.body.contains(box)) addBubble(box, m); };
+    composer(main, function (v) { return call('POST', '/chat', {text: v}).then(function (m) { if (!LIVE.on) addBubble(box, m); }); }, '');
+  }
+  function chatThreads(main, go) {
+    main.appendChild(el('h2', {text: t.msgs}));
+    var ul = el('ul', {'class': 'hs-threads'}); main.appendChild(ul);
+    call('GET', '/chat?all=1').then(function (j) {
+      if (!(j.threads || []).length) ul.appendChild(el('li', {'class': 'muted', text: t.nothread}));
+      (j.threads || []).forEach(function (th) {
+        ul.appendChild(el('li', {}, [el('a', {href: '#/staff/chat/' + encodeURIComponent(th.member), text: th.name + (th.unread ? ' (' + th.unread + ' ' + t.unread + ')' : '')}),
+          el('span', {'class': 'muted', text: ' ' + (th.last || '')})]));
+      });
+    }).catch(function (er) { ul.textContent = er.message; });
+    LIVE.chat = function () { if (d.body.contains(ul)) { main.textContent = ''; chatThreads(main, go); } };
+  }
+  function chatThread(main, member, go) {
+    main.appendChild(el('p', {}, [el('a', {href: '#/staff/chat', text: '← ' + t.msgs})]));
+    var box = el('div', {'class': 'hs-chat', role: 'log', 'aria-live': 'polite'}); main.appendChild(box); typingLine(main);
+    call('GET', '/chat?member=' + encodeURIComponent(member)).then(function (j) { bubbles(box, j.messages || []); }).catch(function (er) { box.textContent = er.message; });
+    LIVE.chat = function (m) { if (d.body.contains(box) && m.thread === member) addBubble(box, m); };
+    composer(main, function (v) { return call('POST', '/chat/' + encodeURIComponent(member), {text: v}).then(function (m) { if (!LIVE.on) addBubble(box, m); }); }, member);
+  }
+  function boardView(b) {
+    var w = el('div', {'class': 'card hs-queue-board'});
+    if (!b.on) { w.appendChild(el('p', {'class': 'muted', text: t.closed})); return w; }
+    w.appendChild(el('p', {'class': 'muted', text: b.label + ' · ' + t.nowserving}));
+    w.appendChild(el('p', {'class': 'hs-dash-big', text: b.now == null ? '–' : String(b.now)}));
+    w.appendChild(el('p', {}, [el('span', {'class': 'muted', text: t.nexts + ': '}), (b.next || []).join(', ') || '–']));
+    w.appendChild(el('p', {'class': 'muted', text: b.waiting + ' ' + t.waitingn + ' · ~' + b.min_each + ' ' + t.mins}));
+    return w;
+  }
+  function queueMine(main) {
+    main.appendChild(el('h2', {text: t.queue}));
+    var box = el('div'); main.appendChild(box);
+    Promise.all([call('GET', '/queue'), call('GET', '/queue?mine=1')]).then(function (x) {
+      var b = x[0], m = x[1]; box.textContent = '';
+      box.appendChild(boardView(b));
+      if (m.token) {
+        box.appendChild(el('div', {'class': 'card hs-queue-mine'}, [el('p', {'class': 'muted', text: t.token}), el('p', {'class': 'hs-dash-big', text: String(m.token)}),
+          el('p', {text: m.status === 'called' ? t.yourturn : (m.status === 'waiting' ? m.ahead + ' ' + t.ahead + ' · ~' + m.est_min + ' ' + t.mins : m.status)})]));
+      } else if (b.on && b.open && b.self_take) {
+        box.appendChild(btn(t.take, 'btn-primary', function (e) {
+          e.target.disabled = true;
+          call('POST', '/queue/take', {}).then(function () { main.textContent = ''; queueMine(main); }).catch(function (er) { e.target.disabled = false; alert(er.message); });
+        }));
+      }
+    }).catch(function (er) { box.textContent = er.message; });
+  }
+  function queueStaff(main) {
+    main.appendChild(el('h2', {text: t.queue}));
+    var box = el('div'); main.appendChild(box);
+    function redraw(j) {
+      box.textContent = '';
+      box.appendChild(boardView(j.board || {}));
+      var acts = el('div', {'class': 'btns'}); box.appendChild(acts);
+      acts.appendChild(btn(t.callnext, 'btn-primary', function (e) { e.target.disabled = true; call('POST', '/queue/call', {}).then(redraw).catch(function (er) { e.target.disabled = false; alert(er.message); }); }));
+      var f = el('form', {'class': 'hs-queue-add', autocomplete: 'off'}, [el('input', {name: 'name', placeholder: t.name, 'aria-label': t.name, required: true}),
+        el('input', {name: 'phone', placeholder: t.mobile, 'aria-label': t.mobile, inputmode: 'numeric', maxlength: '10'}), el('button', {type: 'submit', 'class': 'btn btn-ghost', text: t.walkin})]);
+      f.addEventListener('submit', function (e) { e.preventDefault(); call('POST', '/queue/add', {name: f.name.value, phone: f.phone.value}).then(redraw).catch(function (er) { alert(er.message); }); });
+      box.appendChild(f);
+      var tb = el('table', {'class': 'hs-tbl'}), tbody = el('tbody');
+      tb.appendChild(el('thead', {}, [el('tr', {}, [t.token, t.name, t.mobile, ''].map(function (h) { return el('th', {text: h}); }))])); tb.appendChild(tbody);
+      (j.tokens || []).forEach(function (k) {
+        var tr = el('tr', {'class': 'hs-q-' + k.status}, [el('td', {text: String(k.token)}), el('td', {text: k.name}), el('td', {text: k.phone || ''})]);
+        var td = el('td'); tr.appendChild(td);
+        if (k.status === 'waiting') td.appendChild(btn(t.callnext.split(' ')[0], 'btn-ghost', function () { call('POST', '/queue/call', {token: k.token}).then(redraw).catch(function (er) { alert(er.message); }); }));
+        if (k.status === 'called' || k.status === 'waiting') td.appendChild(btn(t.skip, 'btn-ghost', function () { call('POST', '/queue/mark', {token: k.token, status: 'skipped'}).then(redraw).catch(function (er) { alert(er.message); }); }));
+        if (k.status === 'skipped') td.appendChild(btn(t.back2, 'btn-ghost', function () { call('POST', '/queue/mark', {token: k.token, status: 'waiting'}).then(redraw).catch(function (er) { alert(er.message); }); }));
+        if (k.status === 'done') td.appendChild(el('span', {'class': 'muted', text: t.done}));
+        tbody.appendChild(tr);
+      });
+      box.appendChild(el('div', {'class': 'hs-tblwrap'}, [tb]));
+    }
+    call('GET', '/queue?staff=1').then(redraw).catch(function (er) { box.textContent = er.message; });
+  }
+  function queueBoards() {                              // [data-hoola-app="queue"] anywhere on the site: the public board, live
+    d.querySelectorAll('[data-hoola-app="queue"]').forEach(function (box) {
+      if (box.getAttribute('data-on')) return; box.setAttribute('data-on', '1');
+      var draw = function (b) { box.textContent = ''; box.appendChild(boardView(b)); };
+      if (window.EventSource) {
+        var es = new EventSource(API + '/queue/live');
+        es.addEventListener('board', function (e) { try { draw(JSON.parse(e.data)); } catch (er) {} });
+        es.addEventListener('bye', function () { es.close(); box.removeAttribute('data-on'); setTimeout(queueBoards, 500); });
+      } else call('GET', '/queue').then(draw).catch(function () {});
+    });
+  }
+  function b64key(s) {
+    var p = '='.repeat((4 - s.length % 4) % 4), raw = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')), out = new Uint8Array(raw.length);
+    for (var i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+    return out;
+  }
+  function notifyBox(main) {                           // asked ONLY on her tap; the browser asks its own question next
+    var sec = el('section', {'class': 'hs-appx-rel'}, [el('h3', {text: t.notify})]); main.appendChild(sec);
+    var p = el('p', {'class': 'muted', role: 'status'}); sec.appendChild(p);
+    if (!('serviceWorker' in navigator) || !window.PushManager || !window.Notification || !SELF) { p.textContent = t.notifyno; return; }
+    var swUrl = SELF.replace(/hoola-app\.js(\?.*)?$/, 'hoola-push-sw.js');
+    function current() { return navigator.serviceWorker.getRegistration(swUrl).then(function (r) { return r ? r.pushManager.getSubscription() : null; }); }
+    function draw(sub) {
+      sec.querySelectorAll('button').forEach(function (b) { b.remove(); });
+      if (Notification.permission === 'denied') { p.textContent = t.notifyblocked; return; }
+      p.textContent = sub ? t.notifyok : '';
+      sec.appendChild(sub ? btn(t.notifyoff, 'btn-ghost', function () {
+        call('POST', '/push/unsubscribe', {endpoint: sub.endpoint}).catch(function () {});
+        sub.unsubscribe().then(function () { draw(null); });
+      }) : btn(t.notifyon, 'btn-primary', function (e) {
+        e.target.disabled = true;
+        Notification.requestPermission().then(function (perm) {
+          if (perm !== 'granted') return draw(null);
+          return Promise.all([navigator.serviceWorker.register(swUrl), call('GET', '/push/key')]).then(function (x) {
+            return navigator.serviceWorker.ready.then(function () {
+              return x[0].pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64key(x[1].key)});
+            });
+          }).then(function (s2) {
+            var j = s2.toJSON();
+            return call('POST', '/push/subscribe', {endpoint: j.endpoint, keys: j.keys, consent: true}).then(function () { draw(s2); });
+          });
+        }).catch(function (er) { e.target.disabled = false; p.textContent = er.message; });
+      }));
+    }
+    current().then(draw).catch(function () { draw(null); });
+  }
+
   function all() {
-    REFS = {};
+    REFS = {}; LIVE.views = []; LIVE.dots = [];
+    queueBoards();
     d.querySelectorAll('[data-hoola-app="login"]').forEach(login);
     d.querySelectorAll('[data-hoola-app="shell"]').forEach(function (b) { shell(b, b.getAttribute('data-area') === 'staff' ? 'staff' : 'member'); });
     d.querySelectorAll('[data-hoola-app="form"]').forEach(form);

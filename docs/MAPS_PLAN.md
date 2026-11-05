@@ -176,23 +176,37 @@ real option and a commercial decision; it is not something code can route around
 
 ## 6. The cost trap, and the pattern that avoids it
 
-Billing rule, verbatim: ***"You are then billed at the highest SKU applicable to your request."***
-One Enterprise field bills the **whole** request at Enterprise — and the fields a useful result card wants are
-exactly the Enterprise ones: **phone, website, rating, review count, opening hours**.
-**Nearby Search has no cheap tier at all** — every field on it is Pro or above.
+Billing rule, verbatim: ***"You are then billed at the highest SKU applicable to your request."*** And the
+billable event is the **request**: each Places SKU's event is *"Successful request for &lt;tier&gt; fields"*,
+and *"The request is billed at the highest SKU applicable to the requested fields."* So the field mask picks
+the **tier** and the request is charged **once** - 20 places in one answer is **one** billable event, not
+twenty. (An earlier draft of this plan said twenty. It was wrong, and it made the saving below sound about
+20x bigger than it is.)
 
-**So the split goes in from the first line of code:**
-1. **List pass** — Text Search at **Essentials (IDs Only)** (free cap **Unlimited**) or Pro: ids, names,
-   addresses.
-2. **Details pass** — one `GET places/PLACE_ID` at **Enterprise**, only for the place she actually opens.
+The real trap is not the per-call price, which barely differs. It is **which free allowance gets burned**:
 
-Asking for phone and rating across a 20-row page bills 20 rows at Enterprise; asking on the one row she tapped
-bills one. Same screen, a twentyfold difference.
+| | India, USD/1,000 | free/month |
+|---|---|---|
+| Text Search / Nearby **Pro** (name, address, location, type) | 9.60 | **35,000** |
+| Text Search / Nearby **Enterprise** (adds phone, website, rating, hours) | 10.50 | **7,000** |
+| Place Details **Enterprise** (one place) | 6.00 | **7,000** |
 
-Ceilings to design around: **Nearby Search = circle only, radius ≤ 50 km, 20 results, no paging.**
+The Enterprise allowance is **five times scarcer**. So the split is about headroom, not unit price:
+
+1. **List pass at Pro** - every browse comes out of the 35,000 allowance.
+2. **Details pass at Enterprise** - only for the place she actually opens, out of the 7,000.
+
+**Said plainly, because it cuts both ways:** if she browses and does not open anything, the split is cheaper
+and sits five times further from ever paying. If she opens a place on *every* search, the split costs a little
+*more* than one rich search (9.60 + 6.00 against 10.50 per 1,000). Most searches end without opening one
+particular place, which is why Pro is the default - but it is a judgement, not a free lunch, and the first real
+month of her bill is what should settle it.
+
+**Nearby Search has no cheap tier at all** - every field on it is Pro or above - and `computeRouteMatrix` is
+the one SKU billed *"per ELEMENT returned from the request"*, so a 10x10 matrix is 100 billable events.
+
+Ceilings to design around: **Nearby Search = circle only, radius <= 50 km, 20 results, no paging.**
 **Text Search = 60 results across pages**, and it is the only one with an IDs-only tier.
-
----
 
 ## 7. The map card — and the correction to the first version of this plan
 
@@ -222,19 +236,25 @@ first costs nothing if she later wants B.
 
 ## 8. Build phases
 
+**Phases 1-3 SHIPPED as v0.460.0** on 2 Nov 2026 (built as 0.449; parallel sessions took that number).
+Details in `docs/HISTORY.md`. What landed differs from the plan in one place, said here so the plan is not
+read as the truth: `maps_search` KEPT its Enterprise field mask rather than moving to the cheap tier, so
+nothing she already had got worse - it is priced and capped now, and the cheap-list / details-on-open
+split applies to the NEW `maps_nearby` + `maps_place` pair instead.
+
 | Phase | What ships | Why here |
 |---|---|---|
-| **1 — PAISA PEHLE** | the priced / capped / cached client: per-call SKU price table, `MAPS_DAILY_INR` cap that **refuses** rather than overspends, a cache that stores **only `place_id` (kept) and lat/lng (30-day TTL, auto-deleted)**, and a usage line she can see | the only gap that can cost her money while she sleeps — and the cache's shape is now set by the terms, not guessed |
-| **2 — NAKSHA DIKHE** | the result card: rich place cards with attribution and distance, **no map** (Option A). Google map (Option B) behind a setting, off by default | the biggest visible gap, at zero licence risk and zero cost |
-| **3 — PAAS KYA HAI** | **requirement #2**: Nearby Search with the 50-type filters + Place Details on open, on the IDs-first/Details-on-open split; new tools `maps_nearby`, `maps_place` | her literal second ask, and the foundation of #3's replacement |
-| **4 — SABSE PAAS** | Routes **computeRouteMatrix** → "nearest of these N" as a first-class answer, into field_service / fleet / courier / helpdesk | the most asked geographic question in her business |
-| **5 — DIN KA RASTA** | **Route Optimization**: the day's stop order with time windows and capacity, as a card she approves | turns courier/logistics from a list into a plan; replaces v0.346's "nearest first" where it is wrong |
-| **6 — PATA PAKKA** | Autocomplete (session-billed), reverse geocoding, **Address Validation** with Indian address reality (landmark addresses, PIN checks) | stops a bad address becoming a failed delivery |
-| **7 — KAAGAZ PAR** | **Static Maps** in `docstudio` PDFs and WhatsApp, + **Street View Static** (check with the **free** metadata SKU before paying for an image) | a map in a document beats a link, and needs no app |
-| **8 — APNI DUKAAN** | **requirement #1, the real one**: Business Profile — reviews read + **drafted** replies, posts, photos, hours, Q&A, and the Performance numbers. **Every write is draft-plus-her-tap**, per the policy's *"prior specific and express consent"* | the richest half of her ask; starts the day the quota reads 300 QPM, so the application goes in at Phase 1 |
-| **9 — APNA NAKSHA** | **requirement #1, the other two parts**: her own pins and areas via the **Data layer** (`addGeoJson` from Hoola's own backend — her data never leaves her server), with the **Datasets API** as the Google-hosted alternative; **one-shot My Maps import** (Data Portability KMZ, or the KML/KMZ she exports herself); and **her saved lists imported from the Takeout file she downloads** | replaces My Maps properly, and better, since writing to My Maps has no route |
-| **10 — BAAKI SAB** | Solar, Elevation, Air Quality / Pollen, Roads snap-to-road, Time Zone | the remaining "all map tasks", once the daily ones work |
-| **11 — PROOF** | a maps card like the coding and tool cards: fixed geographic questions with known answers, scored, **and the rupees each answer cost** | the only honest way to claim it works and to see the bill |
+| **1 — PAISA PEHLE** ✅ DONE v0.460 | the priced / capped / cached client: per-call SKU price table, `MAPS_DAILY_INR` cap that **refuses** rather than overspends, a cache that stores **only `place_id` (kept) and lat/lng (30-day TTL, auto-deleted)**, and a usage line she can see | the only gap that can cost her money while she sleeps — and the cache's shape is now set by the terms, not guessed |
+| **2 — NAKSHA DIKHE** ✅ DONE v0.460 | the result card: rich place cards with attribution and distance, **no map** (Option A). Google map (Option B) behind a setting, off by default | the biggest visible gap, at zero licence risk and zero cost |
+| **3 — PAAS KYA HAI** ✅ DONE v0.460 | **requirement #2**: Nearby Search with the 50-type filters + Place Details on open, on the IDs-first/Details-on-open split; new tools `maps_nearby`, `maps_place` | her literal second ask, and the foundation of #3's replacement |
+| **4 — SABSE PAAS** ✅ TOOL DONE v0.463 (module wiring open) | Routes **computeRouteMatrix** → "nearest of these N" as a first-class answer, into field_service / fleet / courier / helpdesk | the most asked geographic question in her business |
+| **5 — DIN KA RASTA** ✅ DONE v0.465 (proposal only; needs her Cloud project + service account) | **Route Optimization**: the day's stop order with time windows and capacity, as a card she approves | turns courier/logistics from a list into a plan; replaces v0.346's "nearest first" where it is wrong |
+| **6 — PATA PAKKA** ✅ address check + reverse geocode DONE v0.464 (autocomplete open) | Autocomplete (session-billed), reverse geocoding, **Address Validation** with Indian address reality (landmark addresses, PIN checks) | stops a bad address becoming a failed delivery |
+| **7 — KAAGAZ PAR** ✅ DONE v0.466 **as LINKS, not pictures** | ~~Static Maps in PDFs / WhatsApp~~ **withdrawn**: a map or Street View image saved in a file is *"store, reshare, or rehost Google Maps Content"* (ToS 3.2.3(a)(i)) and the SST has no Static Maps / Street View Static section to permit it - `docs/research/maps/05_static_maps_licence.md`. Built instead: `maps_links` = view / directions / Street View link (offered only when the free metadata call says a panorama exists) | a link beats nothing in a document and is the lawful form |
+| **8 — APNI DUKAAN** 🟡 8a READ DONE v0.467 (locations + Performance numbers); reviews / posts / Q&A BLOCKED (v4 spec unreadable); writes + connect screen + Google approval open | **requirement #1, the real one**: Business Profile — reviews read + **drafted** replies, posts, photos, hours, Q&A, and the Performance numbers. **Every write is draft-plus-her-tap**, per the policy's *"prior specific and express consent"* | the richest half of her ask; starts the day the quota reads 300 QPM, so the application goes in at Phase 1 |
+| **9 — APNA NAKSHA** 🟡 IMPORT + STORE + QUERY DONE v0.468 (KML/KMZ + Takeout sniffer, `ownmap_*`, GeoJSON route); drawing UI, Datasets API, Data Portability NOT built | **requirement #1, the other two parts**: her own pins and areas via the **Data layer** (`addGeoJson` from Hoola's own backend — her data never leaves her server), with the **Datasets API** as the Google-hosted alternative; **one-shot My Maps import** (Data Portability KMZ, or the KML/KMZ she exports herself); and **her saved lists imported from the Takeout file she downloads** | replaces My Maps properly, and better, since writing to My Maps has no route |
+| **10 — BAAKI SAB** ✅ DONE v0.469 for what the terms allow: Solar + Roads built; Air Quality / Pollen (use-limited), Elevation, Time Zone deliberately NOT built - `docs/research/maps/06_phase10_terms.md` | Solar, Elevation, Air Quality / Pollen, Roads snap-to-road, Time Zone | the remaining "all map tasks", once the daily ones work |
+| **11 — PROOF** ✅ DONE v0.470 | the MAPS card (`python -m app.quality maps [--live]`, GET /api/quality/maps, vps-ops `maps_card`): 26 asks - 4 geo whose answer is ARITHMETIC from the coordinates the ask itself carries, 17 that score the TOOL, 5 that score a licence / money GUARD - plus every maps tool registered AND reachable, and the rupees per answer | the only honest way to claim it works and to see the bill |
 
 **Note on the saved-lists import (Phase 9).** There is no API, so the shape is: she exports "Saved" from
 takeout.google.com and hands Hoola the file. **Google does not document that file's format** - third-party
@@ -274,13 +294,37 @@ gives us is what settles it; nothing is designed against a guess.
 
 ---
 
-## 11. What I would do first if she just says "GO"
+## 11. Done, and what is next
 
-**Phases 1, 2 and 3 as one version** — the bill gets a cap and a terms-shaped cache, she finally sees results
-as proper cards, and "what's near here" works properly with the cheap/expensive split built in.
+**All eleven phases are addressed (3 Nov 2026), but "addressed" is not "verified" - read the two lists.**
 
-That is her requirement #2 delivered in full, requirement #3's replacement standing up, and it depends on **none
-of the decisions above except §10.2** — and even that one defaults safely to the free option.
+| Phase | State |
+|---|---|
+| 1 PAISA PEHLE, 2 NAKSHA DIKHE, 3 PAAS KYA HAI | built v0.460 |
+| 4 SABSE PAAS | built v0.463 (`maps_nearest`; fleet wired, courier has no choice to make) |
+| 5 DIN KA RASTA | built v0.465 (`maps_route_plan`, proposal only) - **needs her Cloud project + service account** |
+| 6 PATA PAKKA | built v0.464 (`maps_address_check`, `maps_pata`); Autocomplete deliberately not built (no typing surface) |
+| 7 KAAGAZ PAR | built v0.466 **as links** - the picture-in-a-PDF form is a licence breach (`05_static_maps_licence.md`) |
+| 8 APNI DUKAAN | **half**: read side v0.467 (`gbp_locations`, `gbp_numbers`). Reviews / posts / Q&A need the v4 spec, which is published nowhere reachable; writes need the approval below |
+| 9 APNA NAKSHA | built v0.468 (import once + query); the drawing surface, Datasets and Data Portability not built |
+| 10 BAAKI SAB | built v0.469 for what the terms allow (Solar, Roads); Air Quality / Pollen / Elevation / Time Zone deliberately not (`06_phase10_terms.md`) |
+| 11 PROOF | built v0.470 (the MAPS card) |
 
-**And on day one, in parallel: submit the Business Profile API application.** It is the long pole for
-requirement #1 and no amount of code shortens it.
+**What the card says today (free run, no Google, no model):** right tool in view 26/26, wrong family loaded 0,
+tools registered 20/20, reachable from a real ask 20/20, guards 5/5, and one of every answer would cost about
+Rs 23.67 at full rate (the dearest single answer is the nearest-of-N, because the route matrix bills per pair).
+
+**NOT MEASURED, and only she can unblock it:** no live card has ever run. It needs a real
+`GOOGLE_MAPS_API_KEY` on the VPS with the APIs enabled, and it spends real rupees and model calls. Until that run,
+nothing in Phases 4-10 has been answered by Google even once, and three things stay guesses: the Routes / matrix
+tier, the Route Optimization billing unit, and the Roads unit.
+
+**Still hers to do, in this order:**
+1. **Run the live card** (`vps-ops` > `maps_card`, or `python -m app.quality maps --live` on the VPS). That is the
+   first real Google answer and the first real bill; `/api/maps/usage` then settles the three assumed rates.
+2. **Submit the Business Profile API application** - the long pole for Phase 8's other half (profile verified 60+
+   days, a website on it, an Organization account). Until the quota reads 300 QPM nothing there can work.
+3. **Decide the two open switches:** the `business.manage` scope on her Google sign-in (a sensitive scope on the
+   shared consent screen - her call), and whether a LIVE Google map may be drawn on a page (Dynamic Maps, billed
+   per load) for Phase 9's own-pins surface and Phase 2's Option B.
+4. **Phase 5 credentials** if she wants the day's stop order: a Cloud project id + a service-account file.

@@ -1,0 +1,19 @@
+{
+  "base": "glass-slab-apparent-depth",
+  "chapter": "Ray Optics and Optical Instruments",
+  "variants": [
+    {"key": "crown-bk7", "title": "Travelling microscope: refractive index of crown glass slabs", "sample": "Crown glass (BK7) slabs", "unknown": "the refractive index n of crown glass",
+     "params": {"n": 1.5168}, "source": {"title": "SCHOTT optical glass data sheet N-BK7: nd = 1.5168 (587.6 nm); refractiveindex.info"}},
+    {"key": "flint-f2", "title": "Travelling microscope: refractive index of flint glass slabs", "sample": "Flint glass (F2) slabs", "unknown": "the refractive index n of flint glass",
+     "params": {"n": 1.62004}, "source": {"title": "SCHOTT optical glass data sheet F2: nd = 1.62004 (587.6 nm); refractiveindex.info"}},
+    {"key": "dense-flint", "title": "Travelling microscope: refractive index of dense flint glass slabs", "sample": "Dense flint glass (SF10) slabs", "unknown": "the refractive index n of dense flint glass",
+     "params": {"n": 1.72825}, "note": "The denser the glass, the higher the mark seems to rise.",
+     "source": {"title": "SCHOTT optical glass data sheet N-SF10: nd = 1.72825 (587.6 nm); refractiveindex.info"}},
+    {"key": "acrylic", "title": "Travelling microscope: refractive index of acrylic (Perspex) blocks", "sample": "Clear acrylic (PMMA, Perspex) blocks", "unknown": "the refractive index n of acrylic",
+     "params": {"n": 1.4905}, "source": {"title": "PMMA refractive index 1.4905 at 589 nm (refractiveindex.info, Szczurowski data)"}},
+    {"key": "polycarbonate", "title": "Travelling microscope: refractive index of polycarbonate blocks", "sample": "Clear polycarbonate blocks", "unknown": "the refractive index n of polycarbonate",
+     "params": {"n": 1.5855}, "source": {"title": "Polycarbonate refractive index 1.5855 at 589 nm (refractiveindex.info, Sultanova et al. 2009)"}},
+    {"key": "fused-quartz", "title": "Travelling microscope: refractive index of fused quartz slabs", "sample": "Fused quartz (fused silica) slabs", "unknown": "the refractive index n of fused quartz",
+     "params": {"n": 1.4585}, "source": {"title": "I. H. Malitson, J. Opt. Soc. Am. 55, 1205 (1965): fused silica n = 1.4585 at 589.3 nm; refractiveindex.info"}}
+  ]
+}

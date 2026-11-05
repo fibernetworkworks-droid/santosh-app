@@ -225,6 +225,12 @@ def send(r: AppProject, members: list[str], title: str, body: str, ref: str = ""
 
 def later(r: AppProject, members: list[str], title: str, body: str, ref: str = "") -> None:
     """Fire and forget on Hoola's push pool (an order write never waits for Google / Apple)."""
+    try:                                                      # v0.459 the same news to a website member's browser (her yes)
+        from ..site import webpush as WP
+        from . import backend as BE
+        WP.later(BE.bid(r), [m for m in members or [] if m and m != "owner"], title, body, "/", ref)
+    except Exception:                                         # noqa: BLE001
+        log.debug("web push", exc_info=True)
     if not members or not ((configured() and state(r).get("configs")) or ios_on(r)):
         return
     try:
