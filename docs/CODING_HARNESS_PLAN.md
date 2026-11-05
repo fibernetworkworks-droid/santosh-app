@@ -278,3 +278,27 @@ and so should we); and copying Claude Code's failure truncation exactly (§1.5 �
 **Honest summary.** H1, H2, H4 and H7 close the part of the gap that is about the harness, cost little, and are
 measurable this week. H3 is the part that separates "writes good PRs" from "works like Claude Code", and it is a real
 engineering project with a real security decision attached. The research does not support building H3 first.
+
+---
+
+## ANSWERED + BUILT (5 Nov 2026)
+
+**Her answers to the three open questions above:** *"Docker on the VPS -- YES, OWN AS WELL AS THIRD PARTY CLONEING
+FOR CHECKING, setup command + cached snapshot acceptable to maintain -- SAME AS CLAUDE CODE."* So H3 is unblocked and
+third-party repos are in scope — which is sound only because nothing of hers is inside the box (no token, no `.git`,
+no secrets, no network on a check).
+
+**v0.456 — H3 step 1, the box.** `app/devlab`: `box.py` (the walls), `spec.py` (the command is declared, never
+invented), `service.py` (clone outside, snapshot once per lock-file hash, sealed check), `out.py` (failure-first
+output + a greppable log). Proof on her VPS: `python -m app.devlab check` / vps-ops `lab_check`.
+
+**v0.531 — H3 step 2, the caller.** `devsahayak/lab.py` + `run_check` / `grep_log` in the coding loop; the bug proof
+measured locally (red-then-green in seconds) instead of pushing a deliberate red commit; the plan's `done_when` lines
+RUN; the lab's evidence handed to the own review and written into the PR. One clone per task, reused — the persistent
+workspace this document ranked first for long multi-file work.
+
+**Still not built from this plan:** H1 (the loop's own tool-output shaping — the lab has it, `ws.run` results do not),
+H2 (no context management in the coding loop: `messages` still grows unbounded, and SWE-agent's last-5-observations
+finding says that costs quality as well as crashes), H4 (the tree-sitter repo map), H5 (progress notes + a JSON
+feature list + the session-start ritual), H7 (pass@3 and a debugging card set). **H2 is the next one worth doing**:
+it is cheap, it needs no execution, and the ablation table says it is worth real points.

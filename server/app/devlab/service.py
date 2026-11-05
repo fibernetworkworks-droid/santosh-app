@@ -208,6 +208,93 @@ def check(repo: str, ref: str = "", token: str = "", cmd: str = "", hers: dict[s
             shutil.rmtree(work, ignore_errors=True)
 
 
+# ---------------------------------------------------------------- v0.531 step 2: one workspace per task, reused
+def safe_rel(path: str) -> str:
+    """A repo-relative path we are willing to write. Anything else is refused by name, never silently dropped."""
+    raw = (path or "").strip().replace("\\", "/")
+    if not raw or raw.startswith("/") or ".." in raw.split("/") or len(raw) > 400:
+        return ""
+    p = raw.removeprefix("./")
+    if not p or p.startswith(".git/") or p == ".git":
+        return ""
+    return p
+
+
+def write_overlay(work: str, overlay: dict[str, str]) -> dict[str, Any]:
+    """Put the task's EDITED files on top of the checkout, so a check runs on the code as it is NOW - not on the base
+    commit. Without this the lab would only ever test code that is already pushed, which is the whole problem."""
+    wrote, bad = [], []
+    for path, text in (overlay or {}).items():
+        rel = safe_rel(path)
+        if not rel:
+            bad.append(path)
+            continue
+        f = Path(work) / rel
+        try:
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_text(text if isinstance(text, str) else str(text), "utf-8")
+            os.chmod(f, 0o666)
+            wrote.append(rel)
+        except OSError as e:
+            bad.append(f"{rel} ({e})")
+    return {"wrote": sorted(wrote), "refused": bad[:5]}
+
+
+def open_workspace(repo: str, ref: str = "", token: str = "", hers: dict[str, str] | None = None,
+                   cmd: str = "") -> dict[str, Any]:
+    """Clone ONCE for a whole task and keep the folder: a persistent workspace is what every product that runs code
+    has and a GitHub-API-only agent does not (docs/CODING_HARNESS_PLAN.md 4). The dependency snapshot is built on the
+    FIRST check, not here, so opening a workspace for a task that never runs one costs a clone and nothing more."""
+    av = box.available()
+    if not av["ok"]:
+        return {"ok": False, "stage": "box", "why": av["why"]}
+    m = materialize(repo, ref, token)
+    if not m["ok"]:
+        return {"ok": False, "stage": "clone", "why": m["why"]}
+    sp = spec_for(m["dir"], m["paths"], hers)
+    want = spec._clean(cmd) or sp["test"]
+    bad = spec.refuse_reason(want) if want else ""
+    return {"ok": True, "dir": m["dir"], "paths": m["paths"], "spec": sp, "repo": repo, "ref": ref,
+            "cmd": "" if bad else want, "source": "aap" if cmd else sp["source"],
+            "confirm": bool(want) and not cmd and sp.get("confirm") and not (hers or {}).get("ok"),
+            "why": bad or sp["why"], "image": "", "runs": 0}
+
+
+def run_on(ws: dict[str, Any], cmd: str = "", overlay: dict[str, str] | None = None, timeout: int = 0,
+           label: str = "") -> dict[str, Any]:
+    """One check on an open workspace, with the task's edits written in first. The snapshot is built (or reused) here."""
+    if not ws.get("ok"):
+        return {"ok": False, "stage": "box", "why": ws.get("why") or "lab khula nahi"}
+    run_cmd = spec._clean(cmd) or ws.get("cmd") or ""
+    if not run_cmd:
+        return {"ok": False, "stage": "command", "why": ws.get("why") or "koi command declare nahi hui"}
+    bad = spec.refuse_reason(run_cmd)
+    if bad:
+        return {"ok": False, "stage": "command", "why": bad}
+    ov = write_overlay(ws["dir"], overlay or {})
+    if not ws.get("image"):
+        snap = snapshot(ws["repo"], ws["dir"], ws["spec"]["setup"], ws["spec"]["deps_key"])
+        if not snap["ok"]:
+            return {"ok": False, "stage": "setup", "why": snap["why"], "out": snap.get("out", "")[-4000:]}
+        ws["image"], ws["setup_seconds"], ws["snapshot_cached"] = snap["image"], snap["seconds"], snap["cached"]
+    lim = int(timeout or ws["spec"].get("timeout") or box.CHECK_TIMEOUT)
+    r = box.run_in(ws["image"], ws["dir"], f"set -o pipefail; cd {box.WORK}; {run_cmd}", timeout=lim, network=False)
+    ws["runs"] = int(ws.get("runs") or 0) + 1
+    logp = out.write_log(_log_folder(), f"{_slug(ws['repo'])}-{label or 'check'}-{int(time.time())}", r["out"])
+    res = out.shape(r["out"], r["rc"], logp, r["secs"], r["timed_out"])
+    res.update({"stage": "check", "cmd": run_cmd, "files_written": len(ov["wrote"]), "refused_paths": ov["refused"],
+                "say": out.say(res, run_cmd), "run": ws["runs"]})
+    ws["last_log"] = logp
+    return res
+
+
+def close_workspace(ws: dict[str, Any]) -> None:
+    d = (ws or {}).get("dir") or ""
+    if d:
+        shutil.rmtree(d, ignore_errors=True)
+        ws["dir"] = ""
+
+
 def selftest() -> list[str]:
     """`python -m app.devlab check` - does the box work on THIS machine, end to end, with no repo of hers involved?"""
     lines = []

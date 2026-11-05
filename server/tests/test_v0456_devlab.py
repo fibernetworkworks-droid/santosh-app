@@ -219,3 +219,31 @@ def test_the_real_box_is_sealed():
         print(line)
     lines = "\n".join(service.selftest())
     assert "GADBAD" not in lines and "KHATRA" not in lines
+
+
+# ---------------------------------------------------------------- v0.532 the image must be buildable where the code RUNS
+def test_the_dockerfile_travels_with_the_code():
+    """The VPS deploy copies `server/app` only, so a Dockerfile sitting in deploy/ is NOT next to the running code.
+    The text is embedded; the file on disk is the readable copy and must stay identical."""
+    from pathlib import Path
+    disk = Path(__file__).resolve().parents[2] / "deploy" / "devlab" / "Dockerfile"
+    assert disk.is_file() and box.DOCKERFILE_TEXT == disk.read_text("utf-8")
+    assert "FROM debian:12-slim" in box.DOCKERFILE_TEXT and "USER lab" in box.DOCKERFILE_TEXT
+    assert "\\\n" in box.DOCKERFILE_TEXT                     # the line continuations survived the embedding
+
+
+def test_a_build_writes_the_dockerfile_itself(monkeypatch, tmp_path):
+    seen = {}
+
+    def fake(argv, timeout, cwd=""):
+        seen["argv"] = list(argv)
+        from pathlib import Path
+        i = argv.index("-f")
+        seen["text"] = Path(argv[i + 1]).read_text("utf-8")
+        return 0, "built", 3.0
+    monkeypatch.setattr(box, "docker", lambda: "/usr/bin/docker")
+    monkeypatch.setattr(box, "_run", fake)
+    monkeypatch.setattr(box, "DOCKERFILE", tmp_path / "nope" / "Dockerfile")   # the disk copy is NOT there
+    r = box.build_base()
+    assert r["ok"] and r["image"] == box.BASE_IMAGE
+    assert seen["text"] == box.DOCKERFILE_TEXT and "--no-cache" not in seen["argv"]
