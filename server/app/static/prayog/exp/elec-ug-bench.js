@@ -547,7 +547,7 @@ HoolaStudio.define('elec-ug-bench', function (S) {
     var pf = new T.Mesh(new T.PlaneGeometry(0.128, 0.165), new T.MeshStandardMaterial({ map: plate, roughness: 0.5 }));
     pf.position.set(0, 0, 0.0005); face.add(pf);
     var scr = new T.Mesh(new T.PlaneGeometry(0.1, 0.041), new T.MeshBasicMaterial({ map: lcd, toneMapped: false }));
-    scr.position.set(0, 0.052, 0.0012); face.add(scr);
+    scr.position.set(0, 0.052, 0.0032); face.add(scr);
     var bezl = S.mesh(new T.BoxGeometry(0.108, 0.048, 0.002), new T.MeshStandardMaterial({ color: 0x15171b, roughness: 0.5 }), false);
     bezl.position.set(0, 0.052, 0.0002); face.add(bezl);
     var dialG = new T.Group(); dialG.position.set(0, -0.0045, 0.0015); face.add(dialG);
@@ -676,7 +676,7 @@ HoolaStudio.define('elec-ug-bench', function (S) {
       bb: [[0.0, 0.4, 0.36], [0.0, 0.01, -0.04]], comp: [[0.07, 0.12, 0.09], [0.04, 0.015, -0.02]],
       res: [[-0.08, 0.14, 0.1], [-0.08, 0.015, -0.05]], pot: [[0.18, 0.15, 0.12], [0.15, 0.02, -0.03]],
       dm1: [[-0.25, 0.17, -0.14], [-0.26, 0.05, -0.3]], dm2: [[0.1, 0.17, -0.17], [0.1, 0.05, -0.32]],
-      bench: [[0.08, 0.46, 0.7], [0.0, 0.03, -0.18]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
+      bench: [[0.1, 0.6, 0.95], [0.02, 0.03, -0.18]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
     },
     theory: {
       principle: S.lab.theory,

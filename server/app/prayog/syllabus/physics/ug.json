@@ -1808,7 +1808,8 @@
       "capacitance ratio"
      ],
      "conditions": [],
-     "kernel": "ac-bridge"
+     "kernel": "ac-bridge",
+     "built": "de-sauty-bridge"
     },
     {
      "id": "anderson-bridge",
@@ -1836,7 +1837,8 @@
       "self-inductance"
      ],
      "conditions": [],
-     "kernel": "ac-bridge"
+     "kernel": "ac-bridge",
+     "built": "owen-bridge"
     },
     {
      "id": "lcr-universal-bridge",
@@ -1883,7 +1885,8 @@
       "resonant frequency, Q and bandwidth"
      ],
      "conditions": [],
-     "kernel": "lcr-resonance"
+     "kernel": "lcr-resonance",
+     "built": "series-lcr-resonance"
     },
     {
      "id": "parallel-lcr-resonance",
@@ -1897,7 +1900,8 @@
       "anti-resonant frequency and Q"
      ],
      "conditions": [],
-     "kernel": "lcr-resonance"
+     "kernel": "lcr-resonance",
+     "built": "parallel-lcr-resonance"
     },
     {
      "id": "series-rc-characteristics",
@@ -1914,7 +1918,8 @@
       "impedance and phase vs frequency"
      ],
      "conditions": [],
-     "kernel": "rc-circuit"
+     "kernel": "rc-circuit",
+     "built": "series-rc-characteristics"
     },
     {
      "id": "rc-rl-time-constant",
@@ -1948,7 +1953,8 @@
       "cut-off frequency"
      ],
      "conditions": [],
-     "kernel": "rc-circuit"
+     "kernel": "rc-circuit",
+     "built": "rc-frequency-response"
     }
    ]
   },
@@ -1965,7 +1971,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dc-network"
+     "kernel": "dc-network",
+     "built": "kirchhoff-laws"
     },
     {
      "id": "thevenin-norton",
@@ -1980,7 +1987,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dc-network"
+     "kernel": "dc-network",
+     "built": "thevenin-norton"
     },
     {
      "id": "superposition-theorem",
@@ -1992,7 +2000,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dc-network"
+     "kernel": "dc-network",
+     "built": "superposition-theorem"
     },
     {
      "id": "max-power-transfer",
@@ -2004,7 +2013,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "dc-network"
+     "kernel": "dc-network",
+     "built": "max-power-transfer"
     },
     {
      "id": "transformer-step-up-down",
@@ -2376,7 +2386,8 @@
       "load regulation"
      ],
      "conditions": [],
-     "kernel": "zener"
+     "kernel": "zener",
+     "built": "zener-shunt-regulator"
     },
     {
      "id": "led-vi",
@@ -2404,7 +2415,8 @@
       "maximum power point, efficiency and fill factor"
      ],
      "conditions": [],
-     "kernel": "solar-cell"
+     "kernel": "solar-cell",
+     "built": "solar-cell-characteristic"
     },
     {
      "id": "photodiode-intensity",
@@ -2459,7 +2471,8 @@
       "output characteristics and current gain"
      ],
      "conditions": [],
-     "kernel": "bjt"
+     "kernel": "bjt",
+     "built": "bjt-ce-current-gain"
     },
     {
      "id": "bjt-h-parameters",
@@ -2640,7 +2653,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "opamp-inverting-amplifier"
     },
     {
      "id": "opamp-amplifier-frequency-response",
@@ -2675,7 +2689,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "opamp-summing-amplifier"
     },
     {
      "id": "opamp-comparator",
@@ -2782,7 +2797,8 @@
       "C filter",
       "pi filter"
      ],
-     "kernel": "rectifier"
+     "kernel": "rectifier",
+     "built": "rectifier-filter-supply"
     },
     {
      "id": "regulated-supply-7805",
@@ -2810,7 +2826,8 @@
       "pinch-off voltage and transconductance"
      ],
      "conditions": [],
-     "kernel": "fet"
+     "kernel": "fet",
+     "built": "jfet-transfer-characteristic"
     },
     {
      "id": "jfet-cs-amplifier",
@@ -2838,7 +2855,8 @@
       "threshold voltage"
      ],
      "conditions": [],
-     "kernel": "fet"
+     "kernel": "fet",
+     "built": "mosfet-transfer-characteristic"
     },
     {
      "id": "ujt-relaxation-oscillator",
@@ -2916,7 +2934,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "logic-gates"
+     "kernel": "logic-gates",
+     "built": "nand-universal-gates"
     },
     {
      "id": "combinational-design",
@@ -2947,7 +2966,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "logic-arith"
+     "kernel": "logic-arith",
+     "built": "nand-binary-adders"
     },
     {
      "id": "subtractors",
@@ -2963,7 +2983,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "logic-arith"
+     "kernel": "logic-arith",
+     "built": "nand-binary-subtractors"
     },
     {
      "id": "flip-flops-nand",

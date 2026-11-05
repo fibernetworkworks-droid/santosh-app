@@ -34,9 +34,7 @@ HoolaStudio.define('uniform-bending', function (S) {
   function delta() { return sim.d; }
   var TOT = L() + 2 * A() + 0.06;
 
-  var tableTop = S.rounded(Math.min(1.9, TOT + 0.2), 0.3, 0.02, 0.006, M.darkWood);
-  tableTop.rotation.x = -Math.PI / 2; tableTop.position.set(0, 0.01, ZB); S.scene.add(tableTop);
-  S.contact(Math.min(2.0, TOT + 0.26), 0.36, 0, ZB, 0.5);
+  S.contact(Math.min(2.0, TOT + 0.26), 0.34, 0, ZB, 0.45);
 
   var knives = [];
   [-1, 1].forEach(function (s) {
@@ -44,7 +42,7 @@ HoolaStudio.define('uniform-bending', function (S) {
     var blk = S.rounded(0.05, KE_H - 0.02, 0.075, 0.004, M.iron); blk.position.y = (KE_H - 0.02) / 2 + 0.02; g.add(blk);
     var wedge = S.mesh(new T.ConeGeometry(0.012, 0.022, 4), new T.MeshStandardMaterial({ color: 0xd7dbe0, roughness: 0.08, metalness: 1 }));
     wedge.rotation.y = Math.PI / 4; wedge.position.y = KE_H - 0.001; wedge.scale.z = 3.2; g.add(wedge);
-    g.position.set(s * L() / 2, 0.02, ZB);
+    g.position.set(s * L() / 2, 0.0, ZB);
     knives.push(g);
   });
 
@@ -82,30 +80,30 @@ HoolaStudio.define('uniform-bending', function (S) {
   });
 
   // the travelling microscope
-  var MX = 0.16, MZ = 0.12;
+  var MX = 0.02, MZ = 0.15;
   var micro = new T.Group(); S.scene.add(micro);
   var mbase = S.rounded(0.14, 0.12, 0.022, 0.006, new T.MeshStandardMaterial({ color: 0x343a41, roughness: 0.55, metalness: 0.4 }));
   mbase.rotation.x = -Math.PI / 2; mbase.position.y = 0.011; micro.add(mbase);
   var mpill = S.rounded(0.04, 0.04, 0.32, 0.005, new T.MeshStandardMaterial({ color: 0x343a41, roughness: 0.5, metalness: 0.45 }));
-  mpill.position.set(0, 0.18, 0); micro.add(mpill);
+  mpill.position.set(0.06, 0.18, 0); micro.add(mpill);
   var mscale = S.ruler(0.26, { title: 'VERTICAL · mm', labelEvery: 10, width: 0.022, thick: 0.003 });
-  mscale.position.set(0, 0.04, 0.021); micro.add(mscale);
+  mscale.position.set(0.06, 0.04, 0.021); micro.add(mscale);
   var mcar = new T.Group(); micro.add(mcar);
   var mbody = S.rounded(0.05, 0.05, 0.05, 0.005, new T.MeshStandardMaterial({ color: 0x3d434a, roughness: 0.45, metalness: 0.55 }));
   mcar.add(mbody);
-  var mvern = S.rounded(0.02, 0.03, 0.004, 0.002, M.brass); mvern.position.set(0, 0, 0.027); mcar.add(mvern);
-  var mtube = S.mesh(new T.CylinderGeometry(0.014, 0.014, 0.13, 22), M.black); mtube.rotation.z = Math.PI / 2; mtube.position.set(-0.08, 0, 0); mcar.add(mtube);
+  var mvern = S.rounded(0.02, 0.03, 0.004, 0.002, M.brass); mvern.position.set(0.04, 0, 0.022); mcar.add(mvern);
+  var mtube = S.mesh(new T.CylinderGeometry(0.014, 0.014, 0.14, 22), M.black); mtube.rotation.x = Math.PI / 2; mtube.position.set(0, 0, -0.085); mcar.add(mtube);
   var meye = S.mesh(new T.CylinderGeometry(0.011, 0.012, 0.03, 18), new T.MeshStandardMaterial({ color: 0x17181a, roughness: 0.4 }));
-  meye.rotation.z = Math.PI / 2; meye.position.set(0.0, 0, 0); mcar.add(meye);
-  var mscrew = S.mesh(new T.CylinderGeometry(0.012, 0.012, 0.01, 20), M.brass); mscrew.rotation.z = Math.PI / 2; mscrew.position.set(0.034, -0.03, 0); mcar.add(mscrew);
-  mcar.position.set(0, BY + p.d + 0.03, 0);
+  meye.rotation.x = Math.PI / 2; meye.position.set(0, 0, 0.035); mcar.add(meye);
+  var mscrew = S.mesh(new T.CylinderGeometry(0.012, 0.012, 0.01, 20), M.brass); mscrew.rotation.z = Math.PI / 2; mscrew.position.set(0.075, -0.03, 0); mcar.add(mscrew);
+  mcar.position.set(0, BY + p.d + 0.03, 0.0);
   micro.position.set(MX, 0, MZ); S.contact(0.18, 0.16, MX, MZ, 0.45);
 
   // the instrument box on the bench
-  var kit = S.rounded(0.22, 0.12, 0.045, 0.006, M.darkWood); kit.position.set(-0.5, 0.023, 0.1); S.scene.add(kit);
+  var kit = S.rounded(0.22, 0.12, 0.045, 0.006, M.darkWood); kit.position.set(0.58, 0.023, 0.1); S.scene.add(kit);
   var kitL = S.label('VERNIER · SCREW GAUGE · WEIGHTS', { w: 0.19, ratio: 0.09, color: '#3b2a10', bg: '#f3ecd6' });
-  kitL.rotation.x = -Math.PI / 2; kitL.position.set(-0.5, 0.046, 0.1); S.scene.add(kitL);
-  S.contact(0.26, 0.16, -0.5, 0.1, 0.4);
+  kitL.rotation.x = -Math.PI / 2; kitL.position.set(0.58, 0.046, 0.1); S.scene.add(kitL);
+  S.contact(0.26, 0.16, 0.58, 0.1, 0.4);
 
   S.addApparatus('beam', beam, BEAM.name.charAt(0).toUpperCase() + BEAM.name.slice(1) + ' beam',
     'Breadth b = ' + (p.b * 100).toFixed(2) + ' cm, depth d = ' + (p.d * 1000).toFixed(2) + ' mm. d comes in cubed, so it is the measurement to be careful with.');
@@ -178,14 +176,14 @@ HoolaStudio.define('uniform-bending', function (S) {
   bend();
 
   var EXP = {
-    camera: { pos: [0.42, 0.5, 0.95], look: [0.0, 0.1, -0.1] },
+    camera: { pos: [0.6, 0.66, 1.35], look: [0.0, 0.11, -0.09] },
     views: {
-      setup: [[0.4, 0.48, 0.92], [0.0, 0.1, -0.1]],
-      beam: [[0.3, 0.34, 0.55], [0.0, 0.12, -0.1]],
-      knife: [[-0.18, 0.28, 0.3], [-L() / 2, 0.1, -0.12]],
-      hang: [[-0.3, 0.3, 0.46], [-(L() / 2 + A()), 0.04, -0.12]],
-      micro: [[0.42, 0.33, 0.5], [MX - 0.02, 0.17, 0.0]],
-      pin: [[0.2, 0.25, 0.32], [0.0, 0.14, -0.06]],
+      setup: [[0.58, 0.64, 1.3], [0.0, 0.11, -0.09] ],
+      beam: [[0.34, 0.4, 0.72], [0.0, 0.12, -0.1]],
+      knife: [[-0.2, 0.3, 0.42], [-L() / 2, 0.09, -0.12]],
+      hang: [[-0.3, 0.32, 0.55], [-(L() / 2 + A()), 0.05, -0.12]],
+      micro: [[0.34, 0.33, 0.56], [MX + 0.02, 0.16, 0.0]],
+      pin: [[0.17, 0.22, 0.3], [0.0, 0.14, -0.08]],
       book: [[-0.34, 0.5, 0.56], [-0.5, 0.0, 0.08]]
     },
     theory: {

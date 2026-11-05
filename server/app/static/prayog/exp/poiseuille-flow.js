@@ -27,7 +27,7 @@ HoolaStudio.define('poiseuille-flow', function (S) {
   var sim = K.init(p), ready = false;
 
   // ---------- geometry. The capillary's axis is at y = CAPY; the reservoir's water surface sits hh above it.
-  var CAPY = 0.14, CAPX0 = -0.16, CAPL = 0.3, ZC = -0.14, TKX = -0.42, TKR = 0.055, TKH = 0.17;
+  var CAPY = 0.14, CAPX0 = -0.16, CAPL = 0.3, ZC = -0.14, TKX = -0.42, TKR = 0.055, TKH = 0.11, TKW = 0.062;
   var stand = new T.Group(); S.scene.add(stand);
   var sbase = S.rounded(0.26, 0.17, 0.024, 0.008, M.iron); sbase.rotation.x = -Math.PI / 2; sbase.position.set(TKX - 0.02, 0.012, ZC - 0.07); stand.add(sbase);
   var srod = S.mesh(new T.CylinderGeometry(0.0075, 0.0085, 0.78, 20), M.chrome); srod.position.set(TKX - 0.09, 0.41, ZC - 0.07); stand.add(srod);
@@ -44,13 +44,13 @@ HoolaStudio.define('poiseuille-flow', function (S) {
   var tprof = [[0, 0], [TKR, 0], [TKR, TKH], [TKR - 0.0025, TKH], [TKR - 0.0025, 0.0025], [0, 0.0025]].map(function (q) { return new T.Vector2(q[0], q[1]); });
   var tw = new T.Mesh(new T.LatheGeometry(tprof, 40), glassM); tw.renderOrder = 4; tank.add(tw);
   var liqM = new T.MeshStandardMaterial({ color: LIQ.c, roughness: 0.06, transparent: true, opacity: 0.5, depthWrite: false, side: T.DoubleSide });
-  var tliq = S.mesh(new T.CylinderGeometry(TKR - 0.004, TKR - 0.004, 0.115, 36), liqM, false); tliq.position.y = 0.06; tank.add(tliq);
+  var tliq = S.mesh(new T.CylinderGeometry(TKR - 0.004, TKR - 0.004, TKW - 0.004, 36), liqM, false); tliq.position.y = (TKW + 0.002) / 2; tank.add(tliq);
   var tsurf = new T.Mesh(new T.CircleGeometry(TKR - 0.004, 36), new T.MeshStandardMaterial({ color: LIQ.c, roughness: 0.03, transparent: true, opacity: 0.65, depthWrite: false }));
-  tsurf.rotation.x = -Math.PI / 2; tsurf.position.y = 0.1175; tank.add(tsurf);
-  var over = S.mesh(new T.CylinderGeometry(0.0045, 0.0045, 0.08, 14), glassM, false); over.rotation.z = 1.15; over.position.set(TKR + 0.02, 0.125, 0); tank.add(over);
+  tsurf.rotation.x = -Math.PI / 2; tsurf.position.y = TKW; tank.add(tsurf);
+  var over = S.mesh(new T.CylinderGeometry(0.0045, 0.0045, 0.08, 14), glassM, false); over.rotation.z = 1.15; over.position.set(TKR + 0.02, TKW + 0.012, 0); tank.add(over);
   var feed = S.mesh(new T.CylinderGeometry(0.004, 0.004, 0.09, 12), glassM, false); feed.position.set(-0.02, TKH + 0.04, 0); tank.add(feed);
   var tLab = S.label('CONSTANT HEAD', { w: 0.07, ratio: 0.16, color: '#3b2a10', bg: '#f3ecd6' });
-  tLab.position.set(0, 0.03, TKR + 0.002); tank.add(tLab);
+  tLab.position.set(0, TKW + 0.03, TKR + 0.002); tank.add(tLab);
 
   var tubeM = new T.MeshStandardMaterial({ color: 0x3f4248, roughness: 0.85 });
   var downTube = S.mesh(new T.CylinderGeometry(0.0055, 0.0055, 1, 12), tubeM, false); S.scene.add(downTube);

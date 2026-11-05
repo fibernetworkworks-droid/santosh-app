@@ -78,7 +78,7 @@ HoolaStudio.define('bar-pendulum', function (S) {
   var teye = S.mesh(new T.CylinderGeometry(0.012, 0.012, 0.03, 18), M.blackPlastic || M.black); teye.rotation.x = Math.PI / 2; teye.position.set(0, 0.5, 0.095); tele.add(teye);
   tele.position.set(XP + 0.26, 0, 0.1); S.contact(0.14, 0.13, XP + 0.26, 0.1, 0.5);
 
-  var watch = S.stopwatch([XP - 0.46, 0.035, 0.12], [-1.15, 0.25, -0.1]);
+  var watch = S.stopwatch([XP + 0.44, 0.035, 0.14], [-1.15, -0.35, -0.1]);
 
   S.addApparatus('pillar', pillar, 'Pillar and bracket', 'The knife edge must rest on something quite rigid: a support that gives way absorbs part of the swing.');
   S.addApparatus('knife', knife, 'Knife edge', 'A hardened steel wedge. The bar rests on it through one of its holes, and that line is the axis of suspension.');
@@ -179,14 +179,14 @@ HoolaStudio.define('bar-pendulum', function (S) {
   applyHole(st.hi);
 
   var EXP = {
-    camera: { pos: [0.8, 0.8, 1.5], look: [0.0, 0.6, -0.2] },
+    camera: { pos: [1.15, 1.05, 2.15], look: [0.02, 0.58, -0.16] },
     views: {
-      setup: [[0.78, 0.78, 1.45], [0.0, 0.6, -0.2]],
-      knife: [[0.3, 1.2, 0.5], [XP - 0.03, 1.08, -0.22]],
-      ruler: [[0.3, 0.8, 0.6], [XP - 0.08, 0.72, -0.22]],
-      bar: [[0.5, 0.65, 0.95], [XP, 0.62, -0.2]],
-      tele: [[0.5, 0.6, 0.7], [XP + 0.2, 0.5, 0.02]],
-      sw: [[-0.1, 0.4, 0.5], [XP - 0.42, 0.1, 0.06]],
+      setup: [[1.1, 1.0, 2.1], [0.02, 0.58, -0.16]],
+      knife: [[0.45, 1.3, 0.7], [XP - 0.02, 1.08, -0.22]],
+      ruler: [[0.62, 0.9, 1.2], [XP - 0.06, 0.75, -0.2]],
+      bar: [[0.9, 0.78, 1.65], [XP, 0.6, -0.18]],
+      tele: [[0.62, 0.68, 0.85], [XP + 0.22, 0.5, 0.04]],
+      sw: [[0.75, 0.42, 0.6], [XP + 0.4, 0.09, 0.08]],
       book: [[-0.34, 0.5, 0.56], [-0.5, 0.0, 0.08]]
     },
     theory: {

@@ -39,7 +39,7 @@ HENE = {"title": "He-Ne laser red line 632.8 nm (vacuum wavelength 632.991 nm; I
 BK7 = {"title": "SCHOTT N-BK7 data sheet: nF = 1.52238 (486.13 nm), nd = 1.51680, nC = 1.51432 (656.27 nm); "
                 "the two-term Cauchy constants here are fitted to that nF and nC"}
 GRAT15 = {"title": "Plane transmission grating ruled 15 000 lines per inch, so d = 25.4 mm / 15 000 = 1.6933 um"}
-GRAT600 = {"title": "Plane transmission grating ruled 600 lines per mm, so d = 1.6667 um"}
+GRAT300 = {"title": "Plane transmission grating ruled 300 lines per mm, so d = 3.3333 um"}
 CD = {"title": "ECMA-130 (Compact Disc Read Only Memory): track pitch 1.6 um"}
 POF = {"title": "Step-index plastic optical fibre: PMMA core n1 = 1.492, fluorinated polymer cladding n2 = 1.402, "
                 "so NA = 0.51 (Mitsubishi Eska and Toray PFU data sheets)"}
@@ -574,14 +574,14 @@ def laser_grating() -> dict:
         topic="Diffraction", chapter="Diffraction",
         aim="Send a laser beam through a plane grating, measure where the orders land on a screen, and find the "
             "wavelength and the angular spread of the laser.",
-        kernel="gratingscreen", params={"lam": 6.328e-7, "d": 1.6666667e-6, "D": 0.5}, autorun=True,
+        kernel="gratingscreen", params={"lam": 6.328e-7, "d": 3.3333333e-6, "a": 1.6666667e-6, "D": 0.4}, autorun=True,
         camera={"pos": [0.3, 0.4, 1.0], "look": [0.1, 0.05, 0.0]}, floor=-0.2,
         bodies=[
             _bench(w=1.6),
             B("laser", "cylinder", name="Laser", info="Clamped at bench height, beam along the bench.", r=0.016,
               h=0.12, pos=[-0.6, 0.05, 0], rot=[0, 0, 1.5708], color="#2b2f36"),
             B("holder", "box", name="Grating holder", size=[0.01, 0.07, 0.05], pos=[-0.3, 0.06, 0], color="black"),
-            B("grat", "box", name="Plane transmission grating", info="600 rulings to the millimetre, square to the "
+            B("grat", "box", name="Plane transmission grating", info="300 rulings to the millimetre, square to the "
               "beam.", size=[0.002, 0.03, 0.03], pos=[-0.3, 0.07, 0], color="glass", opacity=0.5),
             B("beam", "cylinder", name="Laser beam", r=0.0008, h=0.28, pos=[-0.45, 0.05, 0], rot=[0, 0, 1.5708],
               color="red", opacity=0.6, illustrative=True),
@@ -595,8 +595,8 @@ def laser_grating() -> dict:
         knobs=[knob("lam", "This laser (its wavelength is hidden)", "lam", 400, 700, 0.1, 632.8, "nm", 1e-9,
                     hidden=True),
                knob("m", "Order measured", "m", 1, 2, 1, 1),
-               knob("D", "Grating to screen", "D", 0.2, 1.2, 0.01, 0.5, "m"),
-               knob("d", "Grating spacing", "d", 1.0, 3.5, 0.0001, 1.6666667, "µm", 1e-6)],
+               knob("D", "Grating to screen", "D", 0.2, 1.2, 0.01, 0.4, "m"),
+               knob("d", "Grating spacing", "d", 1.0, 4.5, 0.0001, 3.3333333, "µm", 1e-6)],
         instruments=[inst("xm", "readout", "Distance of this order from the centre", "xm", k=100, unit="cm", lc=0.1,
                           digits=3),
                      inst("th", "readout", "Angle of diffraction", "theta", k=R2D, unit="°", digits=2)],
@@ -620,15 +620,15 @@ def laser_grating() -> dict:
         safety="Laser safety: the beam stays horizontal at bench level, never at eye height. A grating sends several "
                "bright orders out at once, so check where every order goes before you lean over the bench, and never "
                "look back along the beam or at its reflection.",
-        questions=[{"q": "With 600 lines per mm and a red laser, the first order comes out at about",
-                    "options": ["22 degrees", "2 degrees", "60 degrees"], "answer": 0,
-                    "why": "sin(theta) = 632.8 nm / 1667 nm = 0.38, so theta is about 22 degrees."},
+        questions=[{"q": "With 300 lines per mm and a red laser, the first order comes out at about",
+                    "options": ["11 degrees", "2 degrees", "60 degrees"], "answer": 0,
+                    "why": "sin(theta) = 632.8 nm / 3333 nm = 0.19, so theta is about 11 degrees."},
                    {"q": "Why must x be turned into an angle before using the grating equation?",
                     "options": ["Because the orders are at large angles, where x is not proportional to theta",
                                 "Because the screen is white", "It need not be"], "answer": 0,
-                    "why": "x = D tan(theta); the small-angle shortcut fails badly at 22 degrees."}],
-        sources=[DU, GRAT600, HENE, SIM],
-        check={"params": {"lam": 6.328e-7, "d": 1.6666667e-6, "D": 0.5, "m": 1.0}, "reading": "xm",
+                    "why": "x = D tan(theta); the small-angle shortcut fails badly beyond a few degrees."}],
+        sources=[DU, GRAT300, HENE, SIM],
+        check={"params": {"lam": 6.328e-7, "d": 3.3333333e-6, "D": 0.4, "m": 1.0}, "reading": "xm",
                "textbook": "gscreen_x"},
     )
 
@@ -702,7 +702,7 @@ def cd_track_spacing() -> dict:
 
 def fibre_numerical_aperture() -> dict:
     return lab(
-        id="fibre-numerical-aperture", rig="laser-bench",
+        id="fibre-numerical-aperture", rig="fibre-bench",
         title="Numerical aperture of an optical fibre", group=GRP, level=LVL,
         topic="Lasers, fibre optics and applied optics", chapter="Lasers, fibre optics and applied optics",
         aim="Measure the patch of light that comes out of the far end of a multimode fibre at several distances and "

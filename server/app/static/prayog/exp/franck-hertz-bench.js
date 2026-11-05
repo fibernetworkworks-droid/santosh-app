@@ -197,13 +197,15 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
   function huntPeak() {
     if (busy()) return Promise.resolve(false);
     if (!st.warm) { S.say('Switch the heater on and let the tube warm up first.'); return Promise.resolve(false); }
-    var v = st.V, best = v, bi = curAt(v), stepped = 0;
-    while (v + VSTEP <= VMAX && stepped < 400) {
-      v = rnd(v + VSTEP, 2); stepped++;
-      var ii = curAt(v);
-      if (ii >= bi) { bi = ii; best = v; } else if (stepped > 1 && v - best > 3 * VSTEP) break;
+    /* Step the knob up: through the dip first if the knob is already on a peak, then on to the top of the
+       next rise, and stop the moment the display starts to fall again. */
+    var v = st.V, prev = curAt(v), rising = false, best = -1, ii;
+    while (v + VSTEP <= VMAX) {
+      v = rnd(v + VSTEP, 2); ii = curAt(v);
+      if (ii > prev) { rising = true; } else if (rising) { best = rnd(v - VSTEP, 2); break; }
+      prev = ii;
     }
-    if (best <= st.V + 1e-9 || best >= VMAX - 1e-9) {
+    if (best < 0) {
       S.say('No further peak above ' + readV().toFixed(1) + ' V within the tube\'s safe range.');
       return Promise.resolve(false);
     }

@@ -1,0 +1,25 @@
+{
+ "base": "short-half-life",
+ "rig": "gm-halflife-bench",
+ "chapter": "Nuclear and radiation physics",
+ "variants": [
+  {"key": "in116m", "title": "Half-life of indium-116m",
+   "sample": "Indium foil activated in a neutron howitzer (In-116m)",
+   "unknown": "the half-life of indium-116m",
+   "params": {"T": 3257.4, "tc": 120.0},
+   "note": "A thin indium foil is activated by slow neutrons and counted as it decays. Its half-life of about 54 minutes is long enough to take many readings and short enough to finish in one laboratory session.",
+   "source": {"title": "NNDC / IAEA evaluated nuclear data: In-116m half-life 54.29 min"}},
+  {"key": "ba137m", "title": "Half-life of barium-137m",
+   "sample": "Barium-137m eluted from a caesium-137 generator",
+   "unknown": "the half-life of barium-137m",
+   "params": {"T": 153.12, "tc": 30.0},
+   "note": "The isotope generator holds Cs-137, which decays to the excited state Ba-137m; a few drops of eluent wash the barium out and it decays with a half-life of about two and a half minutes, so the whole run takes a quarter of an hour.",
+   "source": {"title": "NNDC / IAEA evaluated nuclear data: Ba-137m half-life 2.552 min, 661.7 keV gamma"}},
+  {"key": "pa234m", "title": "Half-life of protactinium-234m",
+   "sample": "Protactinium-234m separated from a uranyl salt solution",
+   "unknown": "the half-life of protactinium-234m",
+   "params": {"T": 69.54, "tc": 15.0},
+   "note": "The classic school version: protactinium is shaken out of a uranyl nitrate solution into a solvent layer and counted through the bottle. Its half-life is just over a minute, so the counts have to be short and quick.",
+   "source": {"title": "NNDC / IAEA evaluated nuclear data: Pa-234m half-life 1.159 min"}}
+ ]
+}

@@ -34,7 +34,7 @@ HoolaStudio.define('free-fall-timer', function (S) {
   var mcoil = S.mesh(new T.CylinderGeometry(0.019, 0.019, 0.016, 20), new T.MeshStandardMaterial({ color: 0xb06a32, roughness: 0.5, metalness: 0.7 }));
   mcoil.position.y = 0.006; mag.add(mcoil);
   mag.position.set(XC, MAGY, ZC);
-  var lead = S.wire([[XC, MAGY + 0.02, ZC], [XC + 0.18, 0.6, ZC - 0.02], [XC + 0.3, 0.08, 0.04]], 'red');
+  var lead = S.wire([[XC, MAGY + 0.02, ZC], [XC - 0.19, MAGY - 0.02, ZC - 0.012], [XC - 0.19, 0.3, ZC - 0.012], [XC + 0.28, 0.07, 0.05]], 'red');
 
   var ball = S.mesh(new T.SphereGeometry(BALLR, 26, 18), new T.MeshStandardMaterial({ color: 0xd7dbe0, roughness: 0.08, metalness: 1 }));
   S.scene.add(ball);
@@ -140,12 +140,12 @@ HoolaStudio.define('free-fall-timer', function (S) {
   placePad(); drawLcd('0.0000');
 
   var EXP = {
-    camera: { pos: [0.9, 0.95, 1.5], look: [-0.02, 0.62, -0.18] },
+    camera: { pos: [1.15, 1.2, 2.3], look: [-0.04, 0.6, -0.18] },
     views: {
-      setup: [[0.88, 0.92, 1.45], [-0.02, 0.62, -0.18]],
-      mag: [[0.34, 1.32, 0.52], [XC - 0.02, 1.2, -0.2]],
-      pad: [[0.36, 0.4, 0.6], [XC, 0.3, -0.18]],
-      ruler: [[0.5, 0.75, 0.95], [XC - 0.1, 0.65, -0.18]],
+      setup: [[1.1, 1.15, 2.25], [-0.04, 0.6, -0.18]],
+      mag: [[0.42, 1.36, 0.72], [XC - 0.02, 1.19, -0.2]],
+      pad: [[0.46, 0.5, 0.85], [XC, 0.34, -0.18]],
+      ruler: [[0.78, 0.86, 1.5], [XC - 0.08, 0.64, -0.18]],
       tim: [[0.55, 0.38, 0.52], [XC + 0.3, 0.07, 0.04]],
       book: [[-0.34, 0.5, 0.56], [-0.5, 0.0, 0.08]]
     },

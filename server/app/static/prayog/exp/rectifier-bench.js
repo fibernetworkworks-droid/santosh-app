@@ -224,7 +224,7 @@ HoolaStudio.define('rectifier-bench', function (S) {
   var dpf = new T.Mesh(new T.PlaneGeometry(0.128, 0.165), new T.MeshStandardMaterial({ map: dplate, roughness: 0.5 }));
   dpf.position.set(0, 0, 0.0005); dface.add(dpf);
   var dscr = new T.Mesh(new T.PlaneGeometry(0.1, 0.041), new T.MeshBasicMaterial({ map: lcd, toneMapped: false }));
-  dscr.position.set(0, 0.052, 0.0012); dface.add(dscr);
+  dscr.position.set(0, 0.052, 0.0032); dface.add(dscr);
   var dbez = S.mesh(new T.BoxGeometry(0.108, 0.048, 0.002), new T.MeshStandardMaterial({ color: 0x15171b, roughness: 0.5 }), false);
   dbez.position.set(0, 0.052, 0.0002); dface.add(dbez);
   var fsw = new T.Group(); fsw.position.set(0, -0.004, 0.0015); dface.add(fsw);
@@ -280,9 +280,9 @@ HoolaStudio.define('rectifier-bench', function (S) {
   croFas.position.set(0, CH / 2 + 0.004, CFZ - 0.002); cro.add(croFas);
   var scrTex = S.liveTex(900, 700);
   var scr = new T.Mesh(new T.PlaneGeometry(0.17, 0.132), new T.MeshBasicMaterial({ map: scrTex, toneMapped: false }));
-  scr.position.set(-0.044, CH / 2 + 0.008, CFZ + 0.0012); cro.add(scr);
+  scr.position.set(-0.044, CH / 2 + 0.008, CFZ + 0.0038); cro.add(scr);
   var scrBez = S.mesh(new T.BoxGeometry(0.182, 0.144, 0.003), new T.MeshStandardMaterial({ color: 0x15171b, roughness: 0.5 }), false);
-  scrBez.position.set(-0.044, CH / 2 + 0.008, CFZ + 0.0002); cro.add(scrBez);
+  scrBez.position.set(-0.044, CH / 2 + 0.008, CFZ + 0.0012); cro.add(scrBez);
   [[0.062, -0.024], [0.062, -0.058]].forEach(function (c) {
     var k = S.mesh(new T.CylinderGeometry(0.013, 0.014, 0.012, 26), new T.MeshStandardMaterial({ color: 0x1b1d22, roughness: 0.45 }));
     k.rotation.x = Math.PI / 2; k.position.set(c[0], CH / 2 + 0.004 + c[1], CFZ + 0.006); cro.add(k);
@@ -410,8 +410,8 @@ HoolaStudio.define('rectifier-bench', function (S) {
     views: {
       tx: [[-0.34, 0.24, 0.0], [-0.4, 0.08, -0.24]], bb: [[0.0, 0.34, 0.3], [0.0, 0.01, -0.03]],
       cap: [[0.1, 0.1, 0.06], [0.1, 0.02, -0.05]], load: [[0.2, 0.16, 0.1], [0.19, 0.03, -0.01]],
-      dmm: [[-0.21, 0.17, -0.17], [-0.22, 0.05, -0.33]], cro: [[0.28, 0.26, -0.05], [0.3, 0.12, -0.37]],
-      bench: [[0.1, 0.5, 0.74], [0.02, 0.04, -0.22]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
+      dmm: [[-0.21, 0.17, -0.17], [-0.22, 0.05, -0.33]], cro: [[0.255, 0.33, 0.0], [0.225, 0.112, -0.268]],
+      bench: [[0.08, 0.6, 0.95], [0.02, 0.04, -0.2]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
     },
     theory: {
       principle: 'A rectifier turns alternating current into one-way current, but not into a steady voltage. ' +
@@ -474,9 +474,11 @@ HoolaStudio.define('rectifier-bench', function (S) {
       ? 'With the capacitor in the circuit the output sits close to the peak and the ripple is a small saw-tooth, ' +
         'so the ripple factor is a fraction of a per cent. Load the supply more heavily and the capacitor ' +
         'discharges further between peaks: the DC level droops and the ripple grows, which is what your table shows.'
-      : 'With no filter the ripple is enormous: a half-wave output is about 1.21 times its own DC level in ripple ' +
-        'and a full-wave one about 0.48, because what is left after averaging a rectified sine is most of the ' +
-        'waveform. That is why no real supply is used without a filter.',
+      : 'With no filter the ripple is enormous. For ideal diodes the textbook figures are 1.21 for half-wave and ' +
+        '0.48 for full-wave; on this bench each conducting diode takes its 0.7 V off the output, which lowers the ' +
+        'DC level more than it lowers the ripple, so the measured factor comes out a little above those. Either ' +
+        'way, what is left after averaging a rectified sine is most of the waveform, which is why no real supply ' +
+        'is used without a filter.',
     chips: ['Why does the capacitor cut the ripple?', 'What is the DC output here?',
       'Why is a true-RMS meter needed?', 'What happens with a heavier load?', 'Check my readings'],
     viva: [['The ripple factor of a supply is', ['the RMS of the ripple divided by the DC level',

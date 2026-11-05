@@ -93,11 +93,11 @@ HoolaStudio.define('torsional-pendulum', function (S) {
   rfoot.position.set(RX, RTOP - RLEN + 0.01, RZ); S.scene.add(rfoot); S.contact(0.13, 0.12, RX, RZ, 0.5);
   function cmAt(y) { return (RTOP - y) * 100; }
 
-  var watch = S.stopwatch([XW + 0.34, 0.035, 0.11], [-1.15, -0.2, -0.12]);
-  var kit = S.rounded(0.21, 0.13, 0.05, 0.008, M.darkWood); kit.position.set(XW - 0.42, 0.025, 0.09); S.scene.add(kit);
-  S.contact(0.25, 0.17, XW - 0.42, 0.09, 0.4);
+  var watch = S.stopwatch([XW + 0.3, 0.035, 0.16], [-1.15, -0.25, -0.12]);
+  var kit = S.rounded(0.21, 0.13, 0.05, 0.008, M.darkWood); kit.position.set(XW + 0.56, 0.025, 0.05); S.scene.add(kit);
+  S.contact(0.25, 0.17, XW + 0.56, 0.05, 0.4);
   var kitL = S.label('SPARE  WIRES  ·  SCREW  GAUGE', { w: 0.165, ratio: 0.1, color: '#3b2a10', bg: '#f3ecd6' });
-  kitL.rotation.x = -Math.PI / 2; kitL.position.set(XW - 0.42, 0.051, 0.09); S.scene.add(kitL);
+  kitL.rotation.x = -Math.PI / 2; kitL.position.set(XW + 0.56, 0.051, 0.05); S.scene.add(kitL);
 
   S.addApparatus('pillar', pillar, 'Rigid bracket and pillar', 'The wire must hang from something that cannot itself twist, or part of the twist is lost in the support.');
   S.addApparatus('wire', wire, WIRE.name.charAt(0).toUpperCase() + WIRE.name.slice(1) + ' suspension wire',
@@ -199,10 +199,10 @@ HoolaStudio.define('torsional-pendulum', function (S) {
     views: {
       setup: [[1.0, 1.1, 1.9], [-0.02, 0.66, -0.2]],
       wire: [[0.42, 1.34, 0.6], [XW - 0.04, 1.26, -0.2]],
-      ruler: [[0.72, 0.95, 1.1], [XW - 0.06, 0.74, -0.2]],
+      ruler: [[0.95, 0.95, 1.6], [XW - 0.05, 0.7, -0.2]],
       body: [[0.42, 0.62, 0.62], [XW, 0.34, -0.18]],
       ptr: [[0.2, 0.44, 0.34], [XW, 0.3, -0.12]],
-      sw: [[0.32, 0.42, 0.54], [XW + 0.28, 0.1, 0.05]],
+      sw: [[0.66, 0.42, 0.6], [XW + 0.28, 0.08, 0.1]],
       book: [[-0.34, 0.5, 0.56], [-0.5, 0.0, 0.08]]
     },
     theory: {
@@ -279,7 +279,7 @@ HoolaStudio.define('torsional-pendulum', function (S) {
             .add(u.button('Read', function () { S.focus('wire'); readChuck(0); }, st.read[0] === null, st.read[0] !== null));
           u.task('2. Read the lower chuck', st.read[1] !== null, st.read[1] !== null ? st.read[1].toFixed(1) + ' cm' : 'Not read yet')
             .add(u.button('Read', function () { S.focus('body'); readChuck(1); }, st.read[1] === null, st.read[1] !== null));
-          if (lengthOk()) u.formula('L = ' + st.read[0].toFixed(1) + ' − ' + st.read[1].toFixed(1) + ' = ' + lengthCm().toFixed(1) + ' cm');
+          if (lengthOk()) u.formula('L = ' + st.read[1].toFixed(1) + ' − ' + st.read[0].toFixed(1) + ' = ' + lengthCm().toFixed(1) + ' cm');
           u.next('Next: twist and time', lengthOk());
         },
         ok: function () { return lengthOk(); },

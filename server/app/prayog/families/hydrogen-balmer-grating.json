@@ -1,0 +1,28 @@
+{
+ "base": "hydrogen-balmer-grating",
+ "rig": "grating-spectrometer",
+ "chapter": "Modern and atomic physics",
+ "variants": [
+  {"key": "g300", "title": "Balmer lines with a 300 lines/mm grating",
+   "sample": "Hydrogen discharge tube, 300 lines/mm replica grating",
+   "method": "first order, coarse grating",
+   "unknown": "the Rydberg constant of hydrogen",
+   "params": {"Nl": 300000.0, "order": 1.0},
+   "note": "A coarse grating throws the lines out at smaller angles, so all four Balmer lines are easy to find - but each angle is read less accurately.",
+   "source": {"title": "Standard laboratory replica transmission gratings: 300, 600 and 1200 rulings per millimetre"}},
+  {"key": "g1200", "title": "Balmer lines with a 1200 lines/mm grating",
+   "sample": "Hydrogen discharge tube, 1200 lines/mm replica grating",
+   "method": "first order, fine grating",
+   "unknown": "the Rydberg constant of hydrogen",
+   "params": {"Nl": 1200000.0, "order": 1.0},
+   "note": "A fine grating spreads the spectrum much further, so the angles are large and the reading is more accurate. Beyond sin θ = 1 a line is not diffracted at all, which sets the limit on how fine a grating may be used.",
+   "source": {"title": "Standard laboratory replica transmission gratings: 300, 600 and 1200 rulings per millimetre"}},
+  {"key": "order2", "title": "Balmer lines in the second order",
+   "sample": "Hydrogen discharge tube, 600 lines/mm grating, second order",
+   "method": "second order spectrum",
+   "unknown": "the Rydberg constant of hydrogen",
+   "params": {"Nl": 600000.0, "order": 2.0},
+   "note": "The same grating in its second order throws each line out to roughly twice the angle, so the same vernier reads the wavelength more precisely. The second order is fainter, and the faintest Balmer line may be hard to see.",
+   "source": {"title": "Standard laboratory replica transmission gratings: 300, 600 and 1200 rulings per millimetre"}}
+ ]
+}

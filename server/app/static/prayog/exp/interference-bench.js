@@ -82,10 +82,10 @@ HoolaStudio.define('interference-bench', function (S) {
   var cKnob = S.mesh(new T.CylinderGeometry(0.011, 0.011, 0.012, 20), M.bakelite);
   cKnob.rotation.z = Math.PI / 2; cKnob.position.set(0.037, 0.047, -0.112); car.add(cKnob);
   var pillar = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.24, 24), M.chrome); pillar.position.set(0, 0.17, -0.112); car.add(pillar);
-  var armB = S.mesh(new T.BoxGeometry(0.02, 0.026, 0.09), M.alu); armB.position.set(0, 0.2, -0.07); car.add(armB);
+  var armB = S.mesh(new T.BoxGeometry(0.02, 0.026, 0.118), M.alu); armB.position.set(0, 0.2, -0.056); car.add(armB);
   var fineK = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.01, 18), M.bakelite);
   fineK.rotation.z = Math.PI / 2; fineK.position.set(0.018, 0.2, -0.112); car.add(fineK);
-  var tube = new T.Group(); tube.position.set(0, 0, -0.032); car.add(tube);
+  var tube = new T.Group(); car.add(tube);                  // the tube hangs over the film
   var tBody = S.mesh(new T.CylinderGeometry(0.016, 0.016, 0.1, 28), M.blackPlastic); tBody.position.y = 0.24; tube.add(tBody);
   var tDraw = S.mesh(new T.CylinderGeometry(0.0135, 0.0135, 0.05, 24), M.alu); tDraw.position.y = 0.305; tube.add(tDraw);
   var tEye = S.mesh(new T.CylinderGeometry(0.0125, 0.0145, 0.028, 22), M.bakelite); tEye.position.y = 0.338; tube.add(tEye);
@@ -145,7 +145,9 @@ HoolaStudio.define('interference-bench', function (S) {
 
   // the glass plate at 45 degrees and the lamp
   var p45 = new T.Group(); p45.position.set(CX, 0.085, CZ); S.scene.add(p45);
-  var gl45 = S.mesh(new T.BoxGeometry(0.05, 0.0015, 0.05), glassM); gl45.rotation.z = Math.PI / 4; gl45.renderOrder = 2; p45.add(gl45);
+  var gl45M = new T.MeshPhysicalMaterial({ color: 0xd8ecf0, roughness: 0.03, metalness: 0, transparent: true,
+    opacity: 0.22, depthWrite: false, clearcoat: 1, envMapIntensity: 1.2, side: T.DoubleSide });
+  var gl45 = S.mesh(new T.BoxGeometry(0.05, 0.0015, 0.05), gl45M); gl45.rotation.z = Math.PI / 4; gl45.renderOrder = 2; p45.add(gl45);
   var hold45 = S.mesh(new T.BoxGeometry(0.006, 0.05, 0.008), M.black); hold45.position.set(-0.03, -0.004, 0.026); p45.add(hold45);
   var stem45 = S.mesh(new T.CylinderGeometry(0.004, 0.004, 0.09, 14), M.chrome); stem45.position.set(-0.03, -0.045, 0.026); p45.add(stem45);
   var foot45 = S.mesh(new T.CylinderGeometry(0.022, 0.024, 0.008, 20), M.iron); foot45.position.set(-0.03, -0.086, 0.026); p45.add(foot45);
@@ -318,7 +320,7 @@ HoolaStudio.define('interference-bench', function (S) {
   }
 
   var VIEWS = {
-    micro: [[CX + 0.3, 0.42, CZ + 0.34], [CX, 0.16, CZ - 0.08]],
+    micro: [[CX + 0.36, 0.5, CZ + 0.52], [CX, 0.15, CZ - 0.04]],
     film: [[CX + 0.1, 0.17, CZ + 0.2], [CX, 0.05, CZ]],
     p45: [[CX + 0.16, 0.2, CZ + 0.28], [CX, 0.085, CZ]],
     lamp: [[CX - 0.08, 0.22, CZ + 0.3], [CX - 0.2, 0.07, CZ]],

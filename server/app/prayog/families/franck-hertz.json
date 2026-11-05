@@ -1,0 +1,25 @@
+{
+ "base": "franck-hertz",
+ "rig": "franck-hertz-bench",
+ "chapter": "Modern and atomic physics",
+ "variants": [
+  {"key": "mercury", "title": "Franck-Hertz experiment with a mercury tube",
+   "sample": "Mercury vapour tube in a thermostatted oven",
+   "unknown": "the first excitation potential of mercury",
+   "params": {"Ue": 4.887, "Vc": 1.5, "Vmax": 32.0, "Vmid": 20.0, "V0": 7.0},
+   "note": "The classic tube of Franck and Hertz. The oven holds the mercury at about 180 degrees Celsius so that the vapour is thick enough for the dips to be deep.",
+   "source": {"title": "NIST Atomic Spectra Database: mercury 6s6p 3P1 level at 4.887 eV (the 253.7 nm resonance line)"}},
+  {"key": "neon", "title": "Franck-Hertz experiment with a neon tube",
+   "sample": "Neon tube (no oven needed)",
+   "unknown": "the excitation potential of neon seen in this tube",
+   "params": {"Ue": 18.7, "Vc": 2.0, "Vmax": 80.0, "Vmid": 50.0, "V0": 18.0, "damp": 0.8},
+   "note": "A neon tube needs no oven, and the layers of orange glow between the grid and the cathode can be seen with the eye. Its dips come about 18.7 V apart: not neon's lowest excited states at 16.6-16.9 eV, but the 2p levels at 18.4-19.0 eV, which the electrons excite far more readily.",
+   "source": {"title": "NIST Atomic Spectra Database: neon 2p5 3p levels at 18.38-18.97 eV, above the 2p5 3s levels at 16.62-16.85 eV"}},
+  {"key": "argon", "title": "Franck-Hertz experiment with an argon tube",
+   "sample": "Argon tube",
+   "unknown": "the first excitation potential of argon",
+   "params": {"Ue": 11.6, "Vc": 1.8, "Vmax": 60.0, "Vmid": 35.0, "V0": 12.0},
+   "note": "Argon's lowest excited states lie close together just above 11.5 eV, so the dips come about 11.6 V apart.",
+   "source": {"title": "NIST Atomic Spectra Database: argon 3p5 4s levels at 11.55-11.83 eV"}}
+ ]
+}

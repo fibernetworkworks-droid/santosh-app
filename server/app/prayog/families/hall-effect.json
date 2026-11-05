@@ -1,0 +1,25 @@
+{
+ "base": "hall-effect",
+ "rig": "hall-effect-bench",
+ "chapter": "Solid state physics and materials",
+ "variants": [
+  {"key": "n-ge", "title": "Hall effect in n-type germanium",
+   "sample": "n-type germanium crystal (carrier number set by its doping, not a material constant)",
+   "unknown": "the Hall coefficient, carrier type and carrier number of an n-type crystal",
+   "params": {"n21": 2.0, "sg": -1.0, "rho": 0.02},
+   "note": "The Hall voltage comes out negative: the carriers are electrons. The carrier number belongs to this particular doped crystal; what IS a property of germanium is the electron mobility, about 0.39 m2/Vs at 300 K, which the Hall coefficient and the resistivity together give back.",
+   "source": {"title": "CRC Handbook of Chemistry and Physics / S. M. Sze, Physics of Semiconductor Devices: germanium electron mobility 0.39 m2/Vs and hole mobility 0.19 m2/Vs at 300 K"}},
+  {"key": "p-ge", "title": "Hall effect in p-type germanium",
+   "sample": "p-type germanium crystal (carrier number set by its doping, not a material constant)",
+   "unknown": "the Hall coefficient, carrier type and carrier number of a p-type crystal",
+   "params": {"n21": 1.2, "sg": 1.0, "rho": 0.027},
+   "note": "The same apparatus, the same field, the same current - and the Hall voltage comes out with the opposite sign. That sign is the whole point: the carriers here are holes. The resistivity and the Hall coefficient together give a mobility near germanium's hole value of 0.19 m2/Vs.",
+   "source": {"title": "CRC Handbook of Chemistry and Physics / S. M. Sze, Physics of Semiconductor Devices: germanium electron mobility 0.39 m2/Vs and hole mobility 0.19 m2/Vs at 300 K"}},
+  {"key": "lightly-doped", "title": "Hall effect in lightly doped germanium",
+   "sample": "Lightly doped n-type germanium (carrier number set by its doping, not a material constant)",
+   "unknown": "the Hall coefficient and carrier number of a lightly doped crystal",
+   "params": {"n21": 0.2, "sg": -1.0, "rho": 0.2},
+   "note": "Ten times fewer carriers, so ten times the Hall voltage for the same current and field: the Hall coefficient is 1/(ne), which is why the effect is used to measure carrier numbers and why metals, packed with electrons, show almost no Hall voltage at all.",
+   "source": {"title": "CRC Handbook of Chemistry and Physics / S. M. Sze, Physics of Semiconductor Devices: germanium electron mobility 0.39 m2/Vs and hole mobility 0.19 m2/Vs at 300 K"}}
+ ]
+}

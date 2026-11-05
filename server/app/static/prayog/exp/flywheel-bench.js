@@ -42,10 +42,11 @@ HoolaStudio.define('flywheel-bench', function (S) {
   // the wheel itself: rim, web, four spokes, hub and the chalk mark
   var wheel = new T.Group(); S.scene.add(wheel);
   var ironM = new T.MeshStandardMaterial({ color: 0x4b5159, roughness: 0.6, metalness: 0.5 });
-  var rim = S.mesh(new T.CylinderGeometry(RW, RW, 0.028, 56), ironM); rim.rotation.x = Math.PI / 2; wheel.add(rim);
-  var web = S.mesh(new T.CylinderGeometry(RW - 0.022, RW - 0.022, 0.009, 48), ironM); web.rotation.x = Math.PI / 2; wheel.add(web);
+  var rim = S.mesh(new T.TorusGeometry(RW - 0.016, 0.016, 14, 56), ironM); wheel.add(rim);
+  var rimFace = S.mesh(new T.CylinderGeometry(RW, RW - 0.03, 0.03, 56, 1, true), ironM, false); rimFace.rotation.x = Math.PI / 2; wheel.add(rimFace);
+  var web = S.mesh(new T.CylinderGeometry(0.055, 0.055, 0.009, 36), ironM); web.rotation.x = Math.PI / 2; wheel.add(web);
   for (var k = 0; k < 4; k++) {
-    var sp = S.mesh(new T.BoxGeometry(0.016, 2 * RW - 0.02, 0.016), ironM);
+    var sp = S.mesh(new T.BoxGeometry(0.015, 2 * RW - 0.05, 0.015), ironM);
     sp.rotation.z = k * Math.PI / 4; wheel.add(sp);
   }
   var hub = S.mesh(new T.CylinderGeometry(0.038, 0.038, 0.05, 24), ironM); hub.rotation.x = Math.PI / 2; wheel.add(hub);
@@ -73,7 +74,7 @@ HoolaStudio.define('flywheel-bench', function (S) {
   var tfoot = S.rounded(0.08, 0.07, 0.03, 0.008, M.darkWood); tfoot.rotation.x = -Math.PI / 2;
   tfoot.position.set(TX, TTOP - TAPE + 0.015, TZ); S.scene.add(tfoot); S.contact(0.12, 0.11, TX, TZ, 0.5);
 
-  var watch = S.stopwatch([XW - 0.42, 0.035, 0.1], [-1.15, 0.3, -0.1]);
+  var watch = S.stopwatch([XW + 0.5, 0.035, 0.12], [-1.15, -0.4, -0.1]);
   var vern = S.rounded(0.16, 0.05, 0.016, 0.004, M.chrome); vern.position.set(XW + 0.36, 0.012, 0.08); S.scene.add(vern);
   var vernL = S.label('VERNIER CALLIPER · LC 0.01 cm', { w: 0.15, ratio: 0.1, color: '#2b3138', bg: '#eef1f4' });
   vernL.rotation.x = -Math.PI / 2; vernL.position.set(XW + 0.36, 0.021, 0.08); S.scene.add(vernL);
@@ -109,7 +110,7 @@ HoolaStudio.define('flywheel-bench', function (S) {
     return Promise.resolve();
   }
   function readAxle() {
-    st.axleRead = Math.round(RA * 2 * 10000) / 100;                 // the diameter in mm, to the calliper's least count
+    st.axleRead = Math.round(RA * 2 * 100000) / 100;                // the diameter in mm, to the calliper's least count
     S.say('Axle diameter ' + st.axleRead.toFixed(2) + ' mm, so r = ' + (RA * 1000).toFixed(2) + ' mm.');
     if (ready) S.render();
   }
@@ -181,12 +182,12 @@ HoolaStudio.define('flywheel-bench', function (S) {
     camera: { pos: [0.85, 0.95, 1.5], look: [0.0, 0.45, -0.2] },
     views: {
       setup: [[0.82, 0.92, 1.45], [0.0, 0.45, -0.2]],
-      wheel: [[0.4, 0.85, 0.75], [XW, YW, -0.2]],
-      axle: [[0.26, 0.68, 0.42], [XW + 0.02, YW - 0.02, -0.14]],
+      wheel: [[0.58, 0.88, 1.0], [XW, YW - 0.02, -0.14]],
+      axle: [[0.46, 0.72, 0.78], [XW + 0.04, YW - 0.06, -0.1]],
       hang: [[0.4, 0.42, 0.78], [XW + 0.06, 0.28, -0.18]],
       tape: [[0.36, 0.45, 0.72], [XW + 0.08, 0.33, -0.18]],
       vern: [[0.5, 0.35, 0.52], [XW + 0.34, 0.03, 0.06]],
-      sw: [[-0.1, 0.4, 0.5], [XW - 0.38, 0.08, 0.05]],
+      sw: [[0.82, 0.42, 0.56], [XW + 0.46, 0.08, 0.07]],
       book: [[-0.34, 0.5, 0.56], [-0.5, 0.0, 0.08]]
     },
     theory: {
@@ -324,7 +325,7 @@ HoolaStudio.define('flywheel-bench', function (S) {
     cord.scale.y = Math.max(0.001, yAx - yTop - 0.02);
     cord.position.set(XW + RA, (yAx + yTop + 0.02) / 2, ZW + 0.07);
     hudS.set(v.rpm.toFixed(0) + ' rev/min');
-    hudD.set((drop * 100).toFixed(1) + ' cm');
+    hudD.set(st.running || st.wound ? (drop * 100).toFixed(1) + ' cm' : '\u2014');
     hudR.set(String(st.rot));
   }
   pose();

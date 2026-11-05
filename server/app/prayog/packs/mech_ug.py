@@ -189,12 +189,14 @@ def _fly_state(p: dict, t: float) -> tuple[float, float, int]:
     return phi + om0 * td - 0.5 * a2 * td * td, om0 - a2 * td, 1
 
 
-def _fly_I_one(p: dict, t1: float, N: float) -> float:
-    """The working formula: I = m (2 g h − v²) r² / (v² (1 + n/N)), with h = 2πnr and v = 2φr/t₁."""
-    phi = _fly_phi(p)
+def _fly_I_one(p: dict, m: float, n: float, t1: float, N: float) -> float:
+    """The working formula: I = m (2 g h − v²) r² / (v² (1 + n/N)), with h = 2πnr and v = 2φr/t₁.
+
+    The falling mass and the number of turns are read from the ROW, so a table of runs at different loads works."""
+    phi = 2 * PI * n
     h = p["ra"] * phi
     v = 2 * phi * p["ra"] / t1
-    return p["m"] * (2 * p["g"] * h - v * v) * p["ra"] * p["ra"] / (v * v * (1 + p["n"] / N))
+    return m * (2 * p["g"] * h - v * v) * p["ra"] * p["ra"] / (v * v * (1 + n / N))
 
 
 class Flywheel:
@@ -559,9 +561,9 @@ CALCS = {
     "stat_eta": {"label": "η (modulus of rigidity)", "unit": "Pa", "needs": ["m", "theta"],
                  "fn": lambda rows, p: _mean([4 * m * p["g"] * p["a"] * p["Lr"] / (PI * p["rr"] ** 4 * th)
                                               for m, th in _rows(rows, "m", "theta") if th > 0])},
-    "fly_I": {"label": "I (moment of inertia)", "unit": "kg·m²", "needs": ["t1", "N"],
-              "fn": lambda rows, p: _mean([_fly_I_one(p, t1, N)
-                                           for t1, N in _rows(rows, "t1", "N") if t1 > 0 and N > 0])},
+    "fly_I": {"label": "I (moment of inertia)", "unit": "kg·m²", "needs": ["m", "n", "t1", "N"],
+              "fn": lambda rows, p: _mean([_fly_I_one(p, m, n, t1, N)
+                                           for m, n, t1, N in _rows(rows, "m", "n", "t1", "N") if t1 > 0 and N > 0])},
     "bar_g": {"label": "g (acceleration due to gravity)", "unit": "m/s²", "needs": ["h", "T"],
               "fn": lambda rows, p: _mean([4 * PI * PI * (p["Lb"] * p["Lb"] / 12 + h * h) / (T * T * h)
                                            for h, T in _rows(rows, "h", "T") if T > 0 and h > 0])},

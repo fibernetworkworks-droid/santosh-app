@@ -96,10 +96,10 @@ HoolaStudio.define('static-torsion', function (S) {
     return { z: pz, cordTop: cordTop, cordDown: cordDown, pan: pan, discs: discs, pulley: pul };
   });
 
-  var kit = S.rounded(0.22, 0.12, 0.045, 0.006, M.darkWood); kit.position.set(-0.46, 0.023, 0.1); S.scene.add(kit);
+  var kit = S.rounded(0.22, 0.12, 0.045, 0.006, M.darkWood); kit.position.set(0.16, 0.023, 0.17); S.scene.add(kit);
   var kitL = S.label('WEIGHT BOX · SCREW GAUGE', { w: 0.18, ratio: 0.1, color: '#3b2a10', bg: '#f3ecd6' });
-  kitL.rotation.x = -Math.PI / 2; kitL.position.set(-0.46, 0.046, 0.1); S.scene.add(kitL);
-  S.contact(0.26, 0.16, -0.46, 0.1, 0.4);
+  kitL.rotation.x = -Math.PI / 2; kitL.position.set(0.16, 0.046, 0.17); S.scene.add(kitL);
+  S.contact(0.26, 0.16, 0.16, 0.17, 0.4);
 
   S.addApparatus('rod', rod, ROD.name.charAt(0).toUpperCase() + ROD.name.slice(1) + ' rod',
     'Radius r = ' + (p.rr * 1000).toFixed(2) + ' mm. It comes into the answer as r⁴, so measure it with a screw gauge at several places.');
@@ -161,13 +161,13 @@ HoolaStudio.define('static-torsion', function (S) {
   function loadsDone() { var o = {}; S.rows.forEach(function (r) { o[r.m.toFixed(2)] = 1; }); return Object.keys(o).length; }
 
   var EXP = {
-    camera: { pos: [0.55, 0.52, 0.92], look: [0.02, 0.1, -0.1] },
+    camera: { pos: [0.85, 0.66, 1.35], look: [0.06, 0.11, -0.1] },
     views: {
-      setup: [[0.52, 0.5, 0.9], [0.02, 0.1, -0.1]],
-      dial: [[0.62, 0.26, 0.34], [WX + 0.02, 0.11, -0.12]],
+      setup: [[0.82, 0.64, 1.3], [0.06, 0.11, -0.1]],
+      dial: [[0.66, 0.32, 0.46], [WX + 0.02, 0.11, -0.12]],
       wheel: [[0.5, 0.3, 0.4], [WX, 0.11, -0.12]],
-      rod: [[0.0, 0.34, 0.48], [-0.05, 0.11, -0.12]],
-      pan: [[0.58, 0.22, 0.42], [PUX, 0.05, -0.12]],
+      rod: [[0.05, 0.38, 0.62], [-0.05, 0.11, -0.12]],
+      pan: [[0.72, 0.3, 0.52], [PUX, 0.06, -0.12]],
       chuck: [[-0.2, 0.3, 0.36], [RODX0 - 0.04, 0.1, -0.12]],
       book: [[-0.34, 0.5, 0.56], [-0.5, 0.0, 0.08]]
     },

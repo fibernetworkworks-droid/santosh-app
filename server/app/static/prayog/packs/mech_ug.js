@@ -90,9 +90,9 @@
     if (td >= tstop) return [phi + om0 * tstop - 0.5 * a2 * tstop * tstop, 0, 2];
     return [phi + om0 * td - 0.5 * a2 * td * td, om0 - a2 * td, 1];
   }
-  function flyIOne(p, t1, N) {
-    var phi = flyPhi(p), h = p.ra * phi, v = 2 * phi * p.ra / t1;
-    return p.m * (2 * p.g * h - v * v) * p.ra * p.ra / (v * v * (1 + p.n / N));
+  function flyIOne(p, m, n, t1, N) {
+    var phi = 2 * PI * n, h = p.ra * phi, v = 2 * phi * p.ra / t1;
+    return m * (2 * p.g * h - v * v) * p.ra * p.ra / (v * v * (1 + n / N));
   }
   var Flywheel = {
     PARAMS: { I: 0.012, m: 0.5, ra: 0.012, n: 8.0, tf: 0.012, g: 9.8 },
@@ -268,8 +268,8 @@
         fn: function (r, p) { return mapMean(r, ['Lw', 'T'], function (x) { return p.eta * Math.pow(p.rw, 4) * x[1] * x[1] / (8 * PI * x[0]); }, function (x) { return x[0] > 0; }); } },
       stat_eta: { label: 'η (modulus of rigidity)', unit: 'Pa', needs: ['m', 'theta'],
         fn: function (r, p) { return mapMean(r, ['m', 'theta'], function (x) { return 4 * x[0] * p.g * p.a * p.Lr / (PI * Math.pow(p.rr, 4) * x[1]); }, function (x) { return x[1] > 0; }); } },
-      fly_I: { label: 'I (moment of inertia)', unit: 'kg·m²', needs: ['t1', 'N'],
-        fn: function (r, p) { return mapMean(r, ['t1', 'N'], function (x) { return flyIOne(p, x[0], x[1]); }, function (x) { return x[0] > 0 && x[1] > 0; }); } },
+      fly_I: { label: 'I (moment of inertia)', unit: 'kg·m²', needs: ['m', 'n', 't1', 'N'],
+        fn: function (r, p) { return mapMean(r, ['m', 'n', 't1', 'N'], function (x) { return flyIOne(p, x[0], x[1], x[2], x[3]); }, function (x) { return x[2] > 0 && x[3] > 0; }); } },
       bar_g: { label: 'g (acceleration due to gravity)', unit: 'm/s²', needs: ['h', 'T'],
         fn: function (r, p) { return mapMean(r, ['h', 'T'], function (x) { return 4 * PI * PI * (p.Lb * p.Lb / 12 + x[0] * x[0]) / (x[1] * x[1] * x[0]); }, function (x) { return x[1] > 0 && x[0] > 0; }); } },
       pois_eta: { label: 'η (coefficient of viscosity)', unit: 'Pa·s', needs: ['hh', 'Q'],
