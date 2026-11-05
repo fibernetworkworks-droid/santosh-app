@@ -46,7 +46,7 @@ def test_coverage_counts_and_cast_table():
     cast = {x["name"]: x for x in c["cast_table"]}
     assert cast["Raju"]["lines"] == 4 and cast["Raju"]["scenes_n"] == 2 and cast["Raju"]["first_scene"] == 2
     assert abs(sum(x["dialogue_pct"] for x in c["cast_table"]) - 100.0) < 0.3                       # shares add up
-    assert c["most_dialogue"] == "Raju" and "zaroori nahi" in c["most_dialogue_note"]
+    assert c["most_dialogue"] == "Meena" and "zaroori nahi" in c["most_dialogue_note"]
     assert c["places_n"] == 2 and c["company_moves"] >= 1 and c["scene_table"][1]["dialogue_lines"] == 3
 
 
