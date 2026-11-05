@@ -12,8 +12,8 @@ from .tools import Ctx, ToolError
 
 _ACTIONS = ["settings", "new", "update", "script", "script_set", "script_restore", "cast", "shots", "shot", "storyboard",
             "preview", "spend", "assemble", "person", "consent", "withdraw", "forget", "right", "rating", "cbfc", "tick",
-            "message", "release", "schedule", "callsheet", "budget_plan", "festival", "window", "waterfall", "deliverable", "localise"]
-_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc", "budget_plan", "window", "waterfall"}
+            "message", "release", "schedule", "callsheet", "budget_plan", "festival", "window", "waterfall", "deliverable", "localise", "royalty"]
+_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc", "budget_plan", "window", "waterfall", "royalty"}
 
 FILMDESK_TOOLS = [
     {"name": "film_desk", "description": (
@@ -48,7 +48,11 @@ FILMDESK_TOOLS = [
         "accepted|waived, notes; starter: kind festival|ott|theatrical|tv adds a STARTING list of item names (the buyer's own spec is final). "
         "localise: op add|update|remove, entry (l1), language, kind subtitles|dub|both, dub_mode human|ai_voice, voice_person (P-001, an AI voice "
         "is flagged unless that person's recorded consent covers ai_voice), vendor, due, status todo|translating|recording|qc|delivered|"
-        "accepted|blocked, qa_rounds, notes."),
+        "accepted|blocked, qa_rounds, notes. SCRIPT COVERAGE + PREVIS are read-only (film_desk_dekho what=coverage|previs: counts and heuristic "
+        "flags, never a reader's verdict). ROYALTY*: op add|update|remove|receipt|unreceipt, entry (gt1 / rc1), party, role writer|director|actor|composer|"
+        "lyricist|singer|musician|editor|cinematographer|other, guild, basis flat_inr|percent_of_gross|percent_of_net|per_unit, rate, threshold_inr, cap_inr, "
+        "floor_inr, applies_to [medium], start, end, SOURCE (the contract clause: REQUIRED, there is no built-in guild rate table); receipt: medium, "
+        "amount_inr, net_inr, units, period, payer -> what each party is due under HER terms (a calculation to check against the contract)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "project": {"type": "string"}, "title": {"type": "string"},
          "logline": {"type": "string"}, "format": {"type": "string"}, "language": {"type": "string"},
@@ -85,12 +89,15 @@ FILMDESK_TOOLS = [
          "deductions": {"type": "array", "items": {"type": "object"}}, "investors": {"type": "array", "items": {"type": "object"}},
          "shares": {"type": "array", "items": {"type": "object"}}, "label": {"type": "string"}, "buyer": {"type": "string"},
          "due": {"type": "string"}, "dub_mode": {"type": "string"}, "voice_person": {"type": "string"}, "vendor": {"type": "string"},
-         "qa_rounds": {"type": "integer"}},
+         "qa_rounds": {"type": "integer"}, "party": {"type": "string"}, "basis": {"type": "string"},
+         "rate": {"type": "number"}, "threshold_inr": {"type": "number"}, "cap_inr": {"type": "number"}, "floor_inr": {"type": "number"},
+         "applies_to": {"type": "array", "items": {"type": "string"}}, "source": {"type": "string"}, "guild": {"type": "string"},
+         "amount_inr": {"type": "number"}, "net_inr": {"type": "number"}, "units": {"type": "number"}, "payer": {"type": "string"}},
          "required": ["action"]}},
     {"name": "film_desk_dekho", "description": (
         "Read the film desk (nothing changes). what=day | projects | project (project) | script | shots | budget (studio "
         "estimate per shot in rupees) | release (checklist + blockers + AI disclosure line) | people | person (person) | "
-        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day) | festivals | windows | waterfall | deliverables | localisation."),
+        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day) | festivals | windows | waterfall | deliverables | localisation | coverage | previs | royalties."),
      "input_schema": {"type": "object", "properties": {"what": {"type": "string"}, "project": {"type": "string"},
                                                        "person": {"type": "string"}, "status": {"type": "string"}},
                       "required": ["what"]}},
@@ -182,6 +189,10 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action == "localise":
         keys = ("entry", "language", "kind", "dub_mode", "voice_person", "vendor", "due", "status", "qa_rounds", "notes")
         return S.localise_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "royalty":
+        keys = ("entry", "party", "role", "guild", "basis", "rate", "threshold_inr", "cap_inr", "floor_inr", "applies_to", "start", "end",
+                "source", "notes", "medium", "amount_inr", "net_inr", "units", "period", "payer")
+        return S.royalty_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
     if action == "waterfall":
         return S.waterfall_run(t, pr, a.get("gross_inr"), a.get("deductions"), a.get("investors"), a.get("shares"), actor)
     raise ToolError(f"action '{action}' nahi pehchana.")
@@ -258,6 +269,14 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.deliverables_view(t, pr)
     if what == "localisation":
         return S.localisation_view(t, pr)
+    if what == "coverage":
+        return S.coverage_view(t, pr)
+    if what == "previs":
+        return S.previs_view(t, pr)
+    if what == "royalties":
+        if not _owner(ctx):
+            raise ToolError("Sirf owner.")
+        return S.royalties_view(t, pr)
     raise ToolError(f"what '{what}' nahi pehchana.")
 
 

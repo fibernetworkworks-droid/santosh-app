@@ -46,6 +46,7 @@ def ensure_table() -> None:
 
 TRUST = ("seekh", "saathi", "bharosa")
 
+FILM_GROUP = "Film, Media & Entertainment"   # v0.565 the Film Desk employee
 GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
 SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.410 the Architecture Desk employees' heading
 EDU_GROUP = "Education, Research & Lab"   # v0.453 the Shiksha suite + Prayogshala in the Hub (one Education Desk)
@@ -120,6 +121,20 @@ CATALOG: dict[str, dict[str, Any]] = {
               "pitch": "Layout scripts and design-rule checks on GDS files (KLayout)."},
     "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
              "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
+    # v0.565 FILM DESK producer layers (script coverage, previs, schedule, budget, festivals, windows, deliverables, royalties)
+    "film": {"name": "AI Film Producer", "live": True, "icon": "game", "group": FILM_GROUP,
+             "pitch": "A film producer's coworker: script facts, shot-list checks, shooting schedule, rate-card budget, festivals, release windows, deliverables and royalty sums.",
+             "does": ["Reads your script and counts it: scenes, characters, who speaks how much, places, night scenes, and flags worth a second look",
+                      "Checks the shot list: timing, missing cameras, scenes with no shot, speech that cannot fit its shot",
+                      "Plans the shoot: days grouped by place, day-out-of-days, call sheet with blanks for what only you know",
+                      "Budget from YOUR rate card only; festival deadlines, release windows and holdbacks from YOUR facts",
+                      "Deliverables and subtitle / dub tracker; an AI voice is held unless that person's recorded consent covers it",
+                      "Royalty sums from the terms you type in from your contract, exact to the paisa"],
+             "needs": ["A film (title and logline) and your script, or let Hoola write a first one from your words"],
+             "never": ["Invent a rate, fee, deadline, holdback or guild table: every number is yours, with its source",
+                       "Give a reader's verdict (pass / consider / recommend) or a rating",
+                       "Send, submit, sign or pay anything: messages and release are cards for your tap",
+                       "Use a real person's face or voice without their recorded consent"]},
     # v0.379 GAME DESK (docs/GAME_DESK_PLAN.md): one shared desk, a pack per role; Phase 1 = the Game Developer
     "game_dev": {"name": "Game Developer", "live": True, "icon": "game", "group": GAME_GROUP,
                  "pitch": "Makes original games from your words with Godot 4, tests them itself and gives you a link to play on any phone.",
