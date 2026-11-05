@@ -140,7 +140,7 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "magic21" in tools.HANDLERS and "magic21" in tools.TOOL_LABELS
     assert any(t["name"] == "magic21" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 581, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(tools.TOOLS) == 582, "541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_voice_absence(env):

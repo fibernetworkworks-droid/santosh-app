@@ -46,6 +46,7 @@ def ensure_table() -> None:
 
 TRUST = ("seekh", "saathi", "bharosa")
 
+FIN_GROUP = "Finance & Banking"   # v0.585 the consumer money-safety employee
 FILM_GROUP = "Film, Media & Entertainment"   # v0.565 the Film Desk employee
 GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
 SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.410 the Architecture Desk employees' heading
@@ -121,6 +122,20 @@ CATALOG: dict[str, dict[str, Any]] = {
               "pitch": "Layout scripts and design-rule checks on GDS files (KLayout)."},
     "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
              "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
+    # v0.585 PAISA SAHAYAK (register docs/research/banking_finance_industry, Wave 1 consumer slice: #1-3, 5-8)
+    "paisa_sahayak": {"name": "Paisa Sahayak (money safety)", "live": True, "icon": "receipt", "group": FIN_GROUP,
+                      "pitch": "On your side with money: reads a loan's real cost, finds hidden bank charges, warns about scams, and drafts the complaint. It calculates and explains; you decide and you tap.",
+                      "does": ["Loan reader: EMI, every fee, the money you actually receive and the true yearly rate (APR); a 'flat rate' turned into its real rate; offers side by side",
+                               "Part-payment check: interest saved against the prepayment charge you typed in",
+                               "Debt planner: snowball vs avalanche vs minimums, and what happens if income drops",
+                               "Statement reader: every fee-like line by kind, GST check, double debits, subscriptions, month by month spending",
+                               "Scam shield: paste a message or what a caller said; it names the scam, shows the words that gave it away, checks the link without opening it",
+                               "UPI safety coach and a complaint letter with an evidence list and the escalation steps (you send it)"],
+                      "needs": ["Your loan offer numbers, or a CSV / Excel statement, or the message you doubt"],
+                      "never": ["Ask for or keep your PIN, OTP, CVV, card number or password",
+                                "Move money, place an order, or recommend a lender or a product",
+                                "Give personalised investment, tax or legal advice, or promise a loan or a score",
+                                "Store your statement: it reads it, answers, and forgets"]},
     # v0.565 FILM DESK producer layers (script coverage, previs, schedule, budget, festivals, windows, deliverables, royalties)
     "film": {"name": "AI Film Producer", "live": True, "icon": "game", "group": FILM_GROUP,
              "pitch": "A film producer's coworker: script facts, shot-list checks, shooting schedule, rate-card budget, festivals, release windows, deliverables and royalty sums.",

@@ -34,6 +34,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
      desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
     {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
      desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
+    {g: 'Finance & Banking', id: 'fin', name: 'Finance & Banking', art: 'biz',   // v0.585
+     desc: 'Money safety for people: a loan\'s real cost, hidden charges, scam warnings, complaint letters. It explains and calculates; it never moves money or asks for a PIN or OTP.'},
     {g: 'Film, Media & Entertainment', id: 'film', name: 'Film, Media & Entertainment', art: 'biz',   // v0.565
      desc: 'A producer\'s coworker: script facts, shot checks, schedule, budget from your rate card, festivals, windows, deliverables, royalties. Nothing is sent or paid without your tap.'},
     {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453

@@ -233,7 +233,7 @@ def test_registry_580_and_schemas(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho",
               "const_survey", "const_survey_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 581, "581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
+    assert len(TOOLS) == 582, "581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
     by_name = {t["name"]: t for t in TOOLS}
     for n in ("const_bim", "const_survey", "const_predesign"):
         assert by_name[n]["input_schema"]["properties"]["action"]["enum"], n

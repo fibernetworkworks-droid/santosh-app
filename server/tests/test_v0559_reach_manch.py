@@ -405,7 +405,7 @@ def test_the_tool_is_registered_in_the_house():
     assert names.count("reach") == 1
     assert "reach" in tools.HANDLERS and "reach" in tools.TOOL_LABELS
     assert tools.FAMILY_OF["reach"] == "reach"                      # REACH_TOOLS -> the "reach" family
-    assert len(tools.TOOLS) == 581, ("569 (v0.558) + 1 reach (v0.559 REACH MANCH: the Agent-Reach "
+    assert len(tools.TOOLS) == 582, ("569 (v0.558) + 1 reach (v0.559 REACH MANCH: the Agent-Reach "
                                      "discipline layer - one envelope, ordered backends, health memory, "
                                      "channel cooldown, tenant budget, status/channels) + 1 speckit (v0.569 SPEC SUTRA)")
     assert "reach" in admit.CORE_FAMILIES                           # always visible: the fallback door

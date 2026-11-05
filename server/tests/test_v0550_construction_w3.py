@@ -535,7 +535,7 @@ def test_registry_579_and_dispatch(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho", "const_survey",
               "const_survey_dekho", "const_delay", "const_delay_dekho", "const_green", "const_green_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 581, "570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 582, "570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_bim_tool_end_to_end(env):

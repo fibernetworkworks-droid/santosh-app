@@ -357,6 +357,12 @@ TOOLS.extend(DHARA_TOOLS)
 TOOL_LABELS.update(DHARA_LABELS)
 HANDLERS.update(DHARA_HANDLERS)
 
+from .finguard_tools import FINGUARD_HANDLERS, FINGUARD_LABELS, FINGUARD_TOOLS  # noqa: E402  v0.585 Paisa Sahayak (consumer finance protection)
+
+TOOLS.extend(FINGUARD_TOOLS)
+TOOL_LABELS.update(FINGUARD_LABELS)
+HANDLERS.update(FINGUARD_HANDLERS)
+
 from .officehours_tools import OFFICEHOURS_HANDLERS, OFFICEHOURS_LABELS, OFFICEHOURS_TOOLS  # noqa: E402  v0.495 office hours (the gstack THINK/PLAN lane)
 
 TOOLS.extend(OFFICEHOURS_TOOLS)

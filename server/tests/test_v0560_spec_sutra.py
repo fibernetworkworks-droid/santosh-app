@@ -453,7 +453,7 @@ def test_the_tool_is_registered_in_the_house():
     assert names.count("speckit") == 1
     assert "speckit" in tools.HANDLERS and "speckit" in tools.TOOL_LABELS
     assert tools.FAMILY_OF["speckit"] == "speckit"
-    assert len(tools.TOOLS) == 581, ("580 (the dev chain on the merged tree, their v0.568.0 fef8a44ea) + 1 speckit "
+    assert len(tools.TOOLS) == 582, ("580 (the dev chain on the merged tree, their v0.568.0 fef8a44ea) + 1 speckit "
                                      "(v0.569 SPEC SUTRA: the spec-kit ladder - constitution/specify/clarify/plan/"
                                      "tasks/analyze/converge/list, append-only converge, computed verdict, "
                                      "per-tenant sqlite)")
