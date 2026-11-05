@@ -191,3 +191,119 @@ def test_the_authority_weight_is_deliberately_absent():
     assert not hasattr(c, "w_authority")
     assert abs(c.w_relevance + c.w_novelty - 1.0) < 1e-9
     assert abs(c.w_relevance / c.w_novelty - 5.0 / 3.0) < 1e-9
+
+
+# ---------------------------------------------------------------- item 5: tables as data
+from app.crawl import blocked as BL      # noqa: E402
+from app.crawl import chunks as CH       # noqa: E402
+from app.crawl import tables as TB       # noqa: E402
+
+PRICES = """<table class="price-table"><caption>Cement prices, Akola</caption>
+<thead><tr><th>Brand</th><th>Size</th><th>Old price</th><th>New price</th></tr></thead>
+<tbody>
+<tr><td rowspan="2">UltraTech</td><td>50 kg</td><td>380</td><td>410</td></tr>
+<tr><td>25 kg</td><td>200</td><td>215</td></tr>
+<tr><td>ACC</td><td>50 kg</td><td>370</td><td>395</td></tr>
+</tbody></table>"""
+
+
+def test_a_rowspan_does_not_misalign_every_later_row():
+    """The commonest way a scraped table is quietly wrong: without a carry map, a rowspan shifts each
+    following row one column left and the numbers end up under the wrong heading."""
+    t = TB.extract(PRICES)[0]
+    assert t.headers == ["Brand", "Size", "Old price", "New price"]
+    assert t.rows[1] == ["UltraTech", "25 kg", "200", "215"]
+    assert t.as_dicts()[1]["Brand"] == "UltraTech" and t.as_dicts()[1]["New price"] == "215"
+
+
+def test_the_caption_and_csv_survive():
+    t = TB.extract(PRICES)[0]
+    assert t.caption == "Cement prices, Akola"
+    assert t.as_csv().splitlines()[0] == "Brand,Size,Old price,New price"
+    assert t.numeric_share > 0.5
+
+
+def test_layout_tables_are_refused_not_returned_weakly():
+    for html in ('<table class="layout-wrapper" role="presentation"><tr><td><img src="l.png"></td><td>Menu</td></tr></table>',
+                 '<table class="grid"><tr><td><table><tr><td>inner</td></tr></table></td><td>x</td></tr></table>',
+                 '<table><tr><td>one</td></tr><tr><td>two</td></tr><tr><td>three</td></tr></table>'):
+        assert TB.extract(html) == []
+
+
+def test_tables_bad_input_never_raises():
+    assert TB.extract("") == [] and TB.extract("<table>") == []
+
+
+# ---------------------------------------------------------------- item 6: chunking
+def test_sentences_do_not_break_on_abbreviations_or_rupees():
+    got = CH.sentences("Dr. Patil runs the clinic. Cement costs Rs. 380 per bag. He opens at 9 a.m. daily.")
+    assert len(got) == 3 and got[1] == "Cement costs Rs. 380 per bag."
+
+
+def test_a_danda_ends_a_hindi_sentence():
+    assert len(CH.sentences("Yeh sahi hai। Aage chaliye।")) == 2
+
+
+def test_sliding_windows_overlap_so_a_straddling_fact_survives():
+    txt = " ".join(f"w{i}" for i in range(500))
+    w = CH.chunk(txt, "sliding", n=200, step=150)
+    assert len(w) >= 3 and w[0].split()[-1] in w[1].split()
+
+
+def test_topic_segmentation_splits_when_the_subject_changes():
+    doc = ("Cement prices in Akola rose this week. The cement rate per bag moved up ten rupees.\n\n"
+           "Separately, the municipal water supply schedule changes from Monday. Water comes at 6 am.")
+    out = CH.chunk(doc, "topic")
+    assert len(out) == 2 and "cement" in out[0].lower() and "water" in out[1].lower()
+
+
+def test_no_strategy_loses_text():
+    doc = "Para one about cement.\n\nPara two about water supply.\n\nPara three about tankers."
+    for how in ("identity", "regex", "sentence", "fixed_words", "topic"):
+        assert len(" ".join(CH.chunk(doc, how)).split()) == len(doc.split()), how
+
+
+def test_an_unknown_strategy_refuses_honestly():
+    import pytest
+    with pytest.raises(ValueError):
+        CH.chunk("x", "magic")
+
+
+# ---------------------------------------------------------------- item 7: blocked, by vendor
+def test_vendor_fingerprints_are_named():
+    for html, want in [
+        ('<html><script>window.__cf_chl_f_tk="x"</script></html>', "Cloudflare"),
+        ('<html><script src="https://captcha-delivery.com/x.js"></script></html>', "DataDome"),
+        ('<html><body>Reference #18.abcd1234</body></html>', "Akamai"),
+        ('<html><script>window._pxAppId="PXa"</script></html>', "PerimeterX"),
+        ('<html><body>_Incapsula_Resource</body></html>', "Imperva"),
+        ('<html><body>KPSDK.scriptStart</body></html>', "Kasada"),
+    ]:
+        got = BL.why_blocked(html, 200) or ""
+        assert want.lower() in got.lower(), (want, got)
+
+
+def test_a_tier1_fingerprint_fires_at_any_page_size():
+    big = "<html><body>" + ("filler text here. " * 2000) + '<script>__cf_chl_f_tk="x"</script></body></html>'
+    assert BL.why_blocked(big, 200) == "Cloudflare challenge"
+
+
+def test_a_real_article_about_bot_detection_is_not_a_block():
+    """The bug this pins: tier 2 gated on HTML bytes, so a 5 KB article explaining Cloudflare's challenge
+    page was flagged on the words 'bot detection'. It gates on VISIBLE TEXT now."""
+    art = ("<html><head><title>How Cloudflare bot detection works</title></head><body><article>"
+           + ("Cloudflare uses a challenge page that says checking your browser before access. " * 60)
+           + "We explain access denied pages and captcha walls. </article></body></html>")
+    assert BL.why_blocked(art, 200) is None
+    assert BL._visible_len(art) > BL.SMALL_TEXT
+
+
+def test_short_challenge_pages_are_still_caught():
+    assert BL.why_blocked('<html><head><title>Attention Required</title></head><body><p>x</p></body></html>', 200)
+    assert BL.why_blocked('<html><body><p>Please wait while we verify you are human.</p></body></html>', 200)
+
+
+def test_block_statuses_and_empty_shells():
+    assert BL.why_blocked("<html><body>slow down</body></html>", 429) == "HTTP 429"
+    assert "empty shell" in (BL.why_blocked('<html><body><script src="/a.js"></script></body></html>', 200) or "")
+    assert BL.is_blocked("<html><body>" + ("a real page. " * 500) + "</body></html>", 200) is False

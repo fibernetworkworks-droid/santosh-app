@@ -15,9 +15,15 @@ What lives here (every module is pure computation — no network, no browser, no
              BM25 filter that keeps only the blocks answering her question.
   enough.py  Item 1 — when to STOP: confidence = 0.4 coverage + 0.3 consistency + 0.3 saturation, plus
              link ranking on relevance + novelty.
+  tables.py  Item 5 — a <table> as DATA: colspan/rowspan expanded into a dense grid, and a scorer that
+             tells a data table from a layout table (handing a layout table to the Data Desk is worse
+             than returning nothing).
+  chunks.py  Item 6 — six chunking strategies for page text (identity/regex/sentence/fixed/sliding/topic).
+  blocked.py Item 7 — tell a block from a page BY VENDOR (Cloudflare, Akamai, PerimeterX, DataDome,
+             Imperva, Sucuri, Kasada, AWS WAF), in three tiers, plus the empty-shell check.
 
 The inertness law: importing app.crawl starts no thread, opens no socket and writes no file.
 """
-from . import bm25, enough, prune  # noqa: F401  (the package-export law, v0.478)
+from . import blocked, bm25, chunks, enough, prune, tables  # noqa: F401  (the package-export law, v0.478)
 
-__all__ = ["bm25", "enough", "prune"]
+__all__ = ["blocked", "bm25", "chunks", "enough", "prune", "tables"]
