@@ -1,0 +1,46 @@
+{
+ "base": "potentiometer-compare-emf",
+ "rig": "potentiometer-board",
+ "chapter": "Current Electricity",
+ "variants": [
+  {
+   "key": "weston",
+   "title": "Potentiometer: a Leclanché cell against a Weston standard cell",
+   "sample": "Weston cadmium standard cell",
+   "unknown": "the emf of the standard cell from the two balancing lengths",
+   "params": {
+    "Ec2": 1.0186
+   },
+   "note": "The Weston cadmium cell is the laboratory standard of emf: 1.01865 V at 20 degrees Celsius. It must never be asked for more than a microampere, which is why a potentiometer, drawing no current at balance, is the only proper way to measure it.",
+   "source": {
+    "title": "Weston cadmium standard cell: 1.01865 V at 20 degrees Celsius (international standard of electromotive force)"
+   }
+  },
+  {
+   "key": "leadacid",
+   "title": "Potentiometer: a Leclanché cell against a lead-acid cell",
+   "sample": "Lead-acid (accumulator) cell",
+   "unknown": "the emf of the lead-acid cell",
+   "params": {
+    "Ec2": 2.0
+   },
+   "note": "A single lead-acid cell gives about 2 V, more than the Leclanche cell, so this time the second balancing length is the longer one.",
+   "source": {
+    "title": "NCERT Physics Textbook Class XII, Chapter 3: a secondary (lead-acid) cell has an emf of about 2 V"
+   }
+  },
+  {
+   "key": "nicd",
+   "title": "Potentiometer: a Leclanché cell against a nickel-cadmium cell",
+   "sample": "Nickel-cadmium rechargeable cell",
+   "unknown": "the emf of the nickel-cadmium cell",
+   "params": {
+    "Ec2": 1.2
+   },
+   "note": "A nickel-cadmium cell is sold as a 1.2 V cell, against the 1.5 V of a dry Leclanche cell: the potentiometer shows that difference as a difference of balancing lengths.",
+   "source": {
+    "title": "Nickel-cadmium secondary cell: nominal cell voltage 1.2 V (IEC 61951-1 cell designation)"
+   }
+  }
+ ]
+}

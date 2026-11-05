@@ -38,7 +38,7 @@ def test_catalogue_has_22_physics_labs_all_checked():
         r = lsl.run_check(lab)
         assert r["ok"], (lab["id"], r)
         assert r["error"] <= 0.01
-    assert len(S.labs()) == 22                     # nothing silently left out
+    assert len(S.labs()) == len(S._all_builders())   # every catalogue lab AND every lab pack, nothing silently left out
 
 
 def test_ncert_checks_compare_against_independent_formulas():
@@ -130,17 +130,32 @@ def _fixtures():
     fx.append({"kernel": "lens", "params": {"u": 0.12}, "steps": 1, "dt": 0.1})              # virtual image
     fx.append({"kernel": "prism", "params": {"i": 0.3}, "steps": 1, "dt": 0.1})              # total internal reflection
     fx.append({"kernel": "gauge", "params": {"kind": 1.0, "L": 0.00137, "ze": 0.00002}, "steps": 1, "dt": 0.1})
+    known = {"pendulum_g": "pendulum", "spring_k_static": "spring", "spring_k_shm": "spring", "incline_mu": "incline",
+             "stokes_eta": "stokes", "cooling_k": "cooling", "boyle_pv": "boyle", "mix_c": "mixtures", "res_v": "resonance",
+             "sono_mu": "sonometer", "mirror_f": "mirror", "lens_f": "lens", "prism_n": "prism", "slab_n": "slab",
+             "induct_ratio": "induction", "gauge_mean": "gauge"}
     for name, spec in KN.CALCS.items():
         rows = [{k: 0.3 + 0.1 * i + 0.01 * j for j, k in enumerate(spec["needs"])} for i in range(3)]
         if name == "pot_r":
             rows = [{"k2": 0, "l": 0.4}, {"k2": 1, "l": 0.35}]
-        fx.append({"calc": name, "kernel": "circuit" if name in ("ohm_R", "bridge_S", "pot_r", "diode_knee", "rc_tau") else
-                   {"pendulum_g": "pendulum", "spring_k_static": "spring", "spring_k_shm": "spring", "incline_mu": "incline",
-                    "stokes_eta": "stokes", "cooling_k": "cooling", "boyle_pv": "boyle", "mix_c": "mixtures", "res_v": "resonance",
-                    "sono_mu": "sonometer", "mirror_f": "mirror", "lens_f": "lens", "prism_n": "prism", "slab_n": "slab",
-                    "induct_ratio": "induction", "gauge_mean": "gauge"}[name],
-                   "params": {"Rb": 10.0} if name == "pot_r" else {}, "rows": rows})
+        if name in ("ohm_R", "bridge_S", "pot_r", "diode_knee", "rc_tau"):
+            kern = "circuit"
+        elif name in known:
+            kern = known[name]
+        else:                                        # a kernel PACK's calc: the first kernel whose params feed it
+            kern = next((k for k in sorted(KN.KERNELS) if _runs(name, rows, k)), None)
+            if kern is None:
+                continue                             # needs params no kernel has: its own pack's tests cover it
+        fx.append({"calc": name, "kernel": kern, "params": {"Rb": 10.0} if name == "pot_r" else {}, "rows": rows})
     return fx
+
+
+def _runs(calc: str, rows: list, kernel: str) -> bool:
+    try:
+        KN.calc(calc, rows, KN.params_for(kernel, {}))
+        return True
+    except Exception:                                # noqa: BLE001 - the calc needs other params
+        return False
 
 
 def _python(f):
@@ -255,7 +270,7 @@ def test_a_lab_that_fails_its_ncert_check_is_left_out(monkeypatch):
     monkeypatch.setattr(catalog, "BUILDERS", catalog.BUILDERS + (broken,))
     S.labs.cache_clear()
     try:
-        assert "broken-pendulum" not in S.labs() and len(S.labs()) == 22
+        assert "broken-pendulum" not in S.labs() and len(S.labs()) == len(S._all_builders()) - 1
     finally:
         S.labs.cache_clear()
 
@@ -317,7 +332,7 @@ def _client():
 def test_routes_are_public_read_only():
     c = _client()
     d = c.get("/api/prayog/labs", params={"variants": False}).json()
-    assert len(d["labs"]) == 22 and "simulation" in d["note"]     # the 22 set-ups; their variants page separately
+    assert len(d["labs"]) == len(S.labs()) and "simulation" in d["note"]   # every set-up; their variants page separately
     assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]} == {"convex-lens"}
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"

@@ -1,0 +1,51 @@
+{
+ "base": "transistor-ce-characteristics",
+ "rig": "semiconductor-board",
+ "chapter": "Semiconductor Electronics",
+ "variants": [
+  {
+   "key": "bc547a",
+   "title": "Common emitter: a BC547A transistor",
+   "sample": "BC547A n-p-n transistor",
+   "unknown": "the current gain of a BC547A",
+   "params": {
+    "beta": 165.0
+   },
+   "note": "The datasheet sorts BC547 by gain group: group A is 110 to 220. The middle of that group, 165, is the gain used here; a real BC547A can be anywhere inside the group, which is exactly why the gain has to be measured.",
+   "source": {
+    "title": "NXP BC546/BC547/BC548 datasheet: hFE group A = 110 to 220 at Ic = 2 mA, Vce = 5 V"
+   }
+  },
+  {
+   "key": "bc547b",
+   "title": "Common emitter: a BC547B transistor",
+   "sample": "BC547B n-p-n transistor",
+   "unknown": "the current gain of a BC547B",
+   "params": {
+    "beta": 325.0
+   },
+   "note": "Group B of the BC547 is 200 to 450; the middle of that group, 325, is the gain used here.",
+   "source": {
+    "title": "NXP BC546/BC547/BC548 datasheet: hFE group B = 200 to 450 at Ic = 2 mA, Vce = 5 V"
+   }
+  },
+  {
+   "key": "bc547c",
+   "title": "Common emitter: a BC547C transistor",
+   "sample": "BC547C n-p-n transistor",
+   "unknown": "the current gain of a BC547C",
+   "params": {
+    "beta": 610.0
+   },
+   "note": "Group C of the BC547 is 420 to 800; the middle of that group, 610, is the gain used here. Such a high gain means the base current must be kept very small.",
+   "source": {
+    "title": "NXP BC546/BC547/BC548 datasheet: hFE group C = 420 to 800 at Ic = 2 mA, Vce = 5 V"
+   },
+   "check": {
+    "params": {
+     "Vbb": 1.0
+    }
+   }
+  }
+ ]
+}

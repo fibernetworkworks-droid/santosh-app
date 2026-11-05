@@ -244,7 +244,7 @@ HoolaStudio.define('school-convex-lens-images', function (S) {
     lamp.intensity = st.lit ? 0.02 * f : 0;
   });
 
-  var VIEWS = { bench: [[0.0, 0.5, 0.95], [0.0, 0.14, BZ]], lens: [[LX + 0.16, AXY + 0.05, BZ + 0.2], [LX, AXY, BZ]],
+  var VIEWS = { bench: [[0.04, 0.78, 1.5], [0.0, 0.1, BZ]], lens: [[LX + 0.16, AXY + 0.05, BZ + 0.2], [LX, AXY, BZ]],
     candle: [[0, AXY + 0.05, BZ + 0.2], [0, AXY, BZ]], screen: [[0, AXY, BZ + 0.2], [0, AXY - 0.04, BZ]],
     along: [[X0 + LEN + 0.24, AXY + 0.14, BZ + 0.12], [LX, AXY - 0.02, BZ]],
     book: [[-0.4, 0.44, 0.5], [-0.5, 0.0, 0.08]] };
@@ -256,7 +256,7 @@ HoolaStudio.define('school-convex-lens-images', function (S) {
   }
 
   return {
-    camera: { pos: [0.12, 0.58, 1.1], look: [0.0, 0.12, BZ - 0.06] },
+    camera: { pos: [0.06, 0.82, 1.6], look: [0.0, 0.1, BZ] },
     views: VIEWS,
     theory: { principle: 'A convex lens bends the light from each point of the object back together again. Where the rays meet, a real inverted image forms, and a white screen held exactly there shows it sharply. Light from a very distant object arrives almost parallel, so it meets at the focus: that image distance is the focal length itself.',
       formula: '1/v + 1/u = 1/f',

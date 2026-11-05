@@ -28,8 +28,12 @@ def main(argv: list[str]) -> int:
     claims: dict[str, str] = {}
     for f in sorted(claims_dir.glob("*.json")):
         try:
-            for k, v in json.loads(f.read_text(encoding="utf-8")).items():
-                claims[str(k)] = str(v)
+            doc = json.loads(f.read_text(encoding="utf-8"))
+            # a flat {set-up: lab} map, or a report whose "built" / "claims" key holds it
+            for src in ([doc] + [doc[k] for k in ("built", "claims", "mapping") if isinstance(doc.get(k), dict)]):
+                for k, v in src.items():
+                    if isinstance(v, str):
+                        claims[str(k)] = v
         except Exception as e:                       # noqa: BLE001
             print(f"  ! {f.name} unreadable: {e}")
     print(f"{len(claims)} claim(s) from {claims_dir}")

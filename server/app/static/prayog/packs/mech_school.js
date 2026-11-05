@@ -97,8 +97,22 @@
     }
   };
 
+  // ---------------------------------------------------------------------- Newton's third law
+  function tension(p) { return p.X / (1 / p.k1 + 1 / p.k2); }
+  var TwoSprings = {
+    PARAMS: { X: 0.02, k1: 200.0, k2: 300.0 }, VARS: ['T', 'A', 'B', 'x1', 'x2'],
+    init: function () { return { t: 0 }; },
+    step: function (s, p, dt) { s.t += dt; },
+    view: function (s, p) { var T = tension(p); return { T: T, A: T, B: T, x1: T / p.k1, x2: T / p.k2 }; },
+    measure: function (p) {
+      var lo = 0, hi = 1.0e4, i, mid;
+      for (i = 0; i < 60; i++) { mid = (lo + hi) / 2; if (mid / p.k1 + mid / p.k2 > p.X) hi = mid; else lo = mid; }
+      return { T: hi, A: hi, B: hi, x1: hi / p.k1, x2: hi / p.k2 };
+    }
+  };
+
   HK.register({
-    K: { track: Track, pullblock: PullBlock, buoy: Buoy, sucker: Sucker },
+    K: { track: Track, pullblock: PullBlock, buoy: Buoy, sucker: Sucker, twospring: TwoSprings },
     CALCS: {},
     TEXTBOOK: {
       track_t: function (p) {
@@ -108,7 +122,8 @@
       friction_Pmin: function (p) { return p.mu * (p.m + p.load) * p.g; },
       arch_loss: function (p) { return p.rho_l * p.g * p.V; },
       solid_rho: function (p) { return p.rho_s; },
-      sucker_F: function (p) { return (p.Patm - p.Pin) * PI * p.d * p.d / 4; }
+      sucker_F: function (p) { return (p.Patm - p.Pin) * PI * p.d * p.d / 4; },
+      third_law_T: function (p) { return p.k1 * p.k2 / (p.k1 + p.k2) * p.X; }
     }
   });
 })(typeof window !== 'undefined' ? window : this);

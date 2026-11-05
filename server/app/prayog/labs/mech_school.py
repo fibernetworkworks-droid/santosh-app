@@ -267,7 +267,7 @@ def solid_density() -> dict:
         group="Physics · Mechanics", level="Class IX", topic="Gravitation and Floatation",
         chapter="Gravitation and Floatation", rig="archimedes-balance",
         aim="Find the mass of a solid on a spring balance and its volume by displacement, and work out its density.",
-        kernel="buoy", params={"rho_s": 2700.0, "rho_l": 998.0, "V": 5.0e-5, "g": 9.8, "frac": 0.0, "Acyl": 1.264e-3},
+        kernel="buoy", params={"rho_s": 2700.0, "rho_l": 998.0, "V": 4.82e-5, "g": 9.8, "frac": 0.0, "Acyl": 1.264e-3},
         camera={"pos": [0.0, 0.45, 0.65], "look": [-0.1, 0.16, -0.02]}, floor=-0.02,
         bodies=_buoy_bodies("Metal cylinder", "The solid whose density you are finding. It sinks in water.",
                             "Water", "water", True),
@@ -347,5 +347,58 @@ def sucker_pressure() -> dict:
     )
 
 
+# ======================================================================================= Newton's third law
+def third_law() -> dict:
+    """NCERT Class IX laboratory manual: two spring balances hooked together read the same force."""
+    return lab(
+        id="third-law-balances", title="Third law of motion with two spring balances",
+        group="Physics · Mechanics", level="Class IX", topic="Force and Laws of Motion",
+        chapter="Force and Laws of Motion",
+        aim="Hook two spring balances together, pull one of them and show that both read the same force.",
+        kernel="twospring", params={"X": 0.02, "k1": 200.0, "k2": 300.0},
+        camera={"pos": [0.2, 0.4, 0.6], "look": [-0.12, 0.1, -0.06]}, floor=-0.02,
+        bodies=[
+            B("bench", "box", name="Laboratory table", size=[1.0, 0.02, 0.45], pos=[0, -0.01, 0], color="wood", cut=False),
+            B("base", "box", name="Clamp stand base", size=[0.2, 0.022, 0.16], pos=[-0.46, 0.011, -0.06], color="#2b3138"),
+            B("post", "cylinder", name="Clamp stand rod", r=0.008, h=0.26, pos=[-0.5, 0.13, -0.06], color="steel"),
+            B("fix", "torus", name="Fixed hook", info="A rigid support. Balance A is hooked to it, so it cannot move.",
+              r=0.008, tube=0.002, pos=[-0.47, 0.1, -0.06], color="steel"),
+            B("balA", "box", name="Spring balance A (0-5 N)", info="Least count 0.05 N. Hooked to the fixed support.",
+              size=[0.19, 0.032, 0.03], pos=[-0.355, 0.1, -0.06], color="#2b2f36"),
+            B("scaleA", "scale", name="Scale of balance A (N)", length=0.17, spacing=0.0085, major=5, labels=True,
+              label_step=5, tick=0.008, font=0.012, pos=[-0.44, 0.117, -0.045], rot=[0, 0, -1.5708]),
+            B("balB", "box", name="Spring balance B (0-10 N)", info="Least count 0.1 N. The hand pulls its ring.",
+              size=[0.19, 0.032, 0.03], pos=[-0.125, 0.1, -0.06], color="#2b2f36"),
+            B("scaleB", "scale", name="Scale of balance B (N)", length=0.17, spacing=0.0085, major=5, labels=True,
+              label_step=5, tick=0.008, font=0.012, pos=[-0.21, 0.117, -0.045], rot=[0, 0, -1.5708]),
+            B("join", "torus", name="Joining hook", info="Balance B's hook is put through balance A's ring.",
+              r=0.009, tube=0.0025, pos=[-0.24, 0.1, -0.06], color="steel"),
+            B("ring", "torus", name="Pull ring", info="The hand pulls here, horizontally.", r=0.013, tube=0.003,
+              pos=[-0.015, 0.1, -0.06], color="steel"),
+        ],
+        knobs=[knob("X", "How hard the hand pulls", "X", 0.002, 0.04, 0.001, 0.02, "m"),
+               knob("k1", "Stiffness of balance A", "k1", 100.0, 400.0, 10.0, 200.0, "N/m", hidden=True),
+               knob("k2", "Stiffness of balance B", "k2", 100.0, 400.0, 10.0, 300.0, "N/m", hidden=True)],
+        steps=["Hook balance A to the fixed support on the clamp stand.",
+               "Put balance B's hook through balance A's ring, so the two hang in a line.",
+               "Pull balance B's ring steadily and horizontally, and hold it still.",
+               "Read both balances at the same moment and write both readings down.",
+               "Repeat for three more pulls, then plot B's reading against A's reading."],
+        theory="When the hand pulls balance B, balance B pulls balance A and balance A pulls balance B back with an "
+               "equal and opposite force. The two balances therefore always show the same reading, however hard the "
+               "pull. This is Newton's third law: to every action there is an equal and opposite reaction. A graph of "
+               "B's reading against A's reading is a straight line through the origin with slope 1.",
+        safety="Pull steadily and never beyond the full scale of either balance, or the spring is damaged.",
+        questions=[{"q": "Which balance shows the larger reading?",
+                    "options": ["Both show the same", "The one the hand pulls", "The one on the support"],
+                    "answer": 0, "why": "Action and reaction are equal in size, so the two readings are the same."},
+                   {"q": "If the hand pulls twice as hard, the two readings",
+                    "options": ["both double and stay equal", "stay the same", "become different"], "answer": 0,
+                    "why": "The tension is the same all along, whatever its size."}],
+        sources=[LABMAN9, NCERT9, SIM],
+        check={"params": {"X": 0.02}, "reading": "B", "textbook": "third_law_T"},
+    )
+
+
 BUILDERS = (motion_track, distance_time_graph, friction_pull, friction_lubricant,
-            archimedes_balance, solid_density, sucker_pressure)
+            archimedes_balance, solid_density, sucker_pressure, third_law)

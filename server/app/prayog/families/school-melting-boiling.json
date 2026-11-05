@@ -1,0 +1,15 @@
+{"base": "school-melting-boiling", "rig": "school-heat-bench", "chapter": "Heat",
+ "variants": [
+   {"key": "melting-ice", "title": "Melting point of ice", "sample": "Ice and water in the beaker",
+    "method": "warm a beaker of crushed ice gently and follow the thermometer",
+    "unknown": "the temperature at which ice melts",
+    "params": {"T0": 0.0, "Tp": 0.0, "Q0": 33400.0, "P": 300.0, "lc": 0.5},
+    "note": "100 g of ice needs 33.4 kJ to melt. While it melts, the mixture holds at 0 °C however gently it is warmed.",
+    "source": {"title": "CRC Handbook of Chemistry and Physics, enthalpy of fusion of water (334 kJ/kg at 0 °C, 101.325 kPa)"}},
+   {"key": "boiling-80kpa", "title": "Boiling point of water on a high hill", "sample": "Water at a pressure of 80 kPa",
+    "method": "boil water where the air pressure is lower, about 2,000 m above sea level",
+    "unknown": "the temperature at which water boils under 80 kPa",
+    "params": {"Tp": 93.5, "Q0": 90000.0},
+    "note": "Water boils when its vapour pressure equals the pressure above it, so lower pressure means a lower boiling point: 93.5 °C at 80 kPa instead of 100 °C at sea level.",
+    "source": {"title": "Steam tables (IAPWS-IF97): saturation temperature of water at 80 kPa is 93.5 °C"}}
+ ]}

@@ -1,0 +1,20 @@
+{"base": "school-length-ruler", "rig": "school-measuring-bench", "chapter": "Measurement",
+ "variants": [
+   {"key": "a4-long", "title": "Measuring the long side of an A4 sheet",
+    "sample": "A sheet of A4 paper, long side", "method": "metre scale, least count 1 mm",
+    "unknown": "the length of the long side",
+    "params": {"L": 0.297},
+    "note": "A4 paper is 210 mm by 297 mm, so a correct measurement must come to 29.7 cm.",
+    "source": {"title": "ISO 216: A4 paper is 210 mm × 297 mm"}},
+   {"key": "a4-short", "title": "Measuring the short side of an A4 sheet",
+    "sample": "A sheet of A4 paper, short side", "method": "metre scale, least count 1 mm",
+    "unknown": "the length of the short side",
+    "params": {"L": 0.21},
+    "source": {"title": "ISO 216: A4 paper is 210 mm × 297 mm"}},
+   {"key": "plastic-scale", "title": "Measuring a 30 cm plastic scale",
+    "sample": "A plastic scale marked 30 cm", "method": "metre scale, least count 1 mm",
+    "unknown": "whether the scale is really 30.0 cm long",
+    "params": {"L": 0.3},
+    "note": "Measuring one scale with another is a good check that both are marked correctly.",
+    "source": {"title": "Curiosity, Science Textbook for Class VI, NCERT - Measurement of Length and Motion"}}
+ ]}

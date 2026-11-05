@@ -160,14 +160,16 @@ HoolaStudio.define('potentiometer-board', function (S) {
       return { group: g, apply: apply2, head: head, tA: post(-0.095, 0.016, 0.02), t1: post(0.01, 0.016, 0.065), t2: post(0.04, 0.016, 0.065) };
     })();
     // the two cells under test: a Leclanche cell and a Daniell cell, in their glass jars
+    var SECOND = (S.lab.variant || {}).sample || 'Daniell cell';
     cells = [{ x: 0.22, z: -0.02, name: 'Leclanché cell', emf: p.Ec, rod: 0x2a2a2c, liq: 0xcfd8c8 },
-      { x: 0.22, z: 0.14, name: 'Daniell cell', emf: p.Ec2, rod: 0xc8764a, liq: 0x7fb6e0 }].map(function (c) {
+      { x: 0.22, z: 0.14, name: SECOND, emf: p.Ec2, rod: /lead|accumulator/i.test(SECOND) ? 0x6b6f74 : /weston|cadmium/i.test(SECOND) ? 0xb9bec4 : 0xc8764a,
+        liq: /lead|accumulator/i.test(SECOND) ? 0xd8d4c6 : /weston|cadmium/i.test(SECOND) ? 0xe3e6ea : 0x7fb6e0 }].map(function (c) {
       var jar = S.beaker(0.035, 0.08, [c.x, 0, c.z], c.liq, 0.6);
       var rod = S.mesh(new T.CylinderGeometry(0.005, 0.005, 0.11, 16), new T.MeshStandardMaterial({ color: c.rod, roughness: 0.4, metalness: 0.6 }));
       rod.position.set(c.x - 0.012, 0.062, c.z); S.scene.add(rod);
       var zn = S.mesh(new T.BoxGeometry(0.008, 0.09, 0.02), new T.MeshStandardMaterial({ color: 0xb9bec4, roughness: 0.5, metalness: 0.7 }));
       zn.position.set(c.x + 0.014, 0.055, c.z); S.scene.add(zn);
-      var lb = S.label(c.name, { w: 0.08, ratio: 0.16, px: 512, color: '#2b2f36' }); lb.rotation.x = -Math.PI / 2;
+      var lb = S.label(c.name, { w: 0.1, ratio: Math.min(0.16, 1.9 / (c.name.length + 2)), px: 512, color: '#2b2f36' }); lb.rotation.x = -Math.PI / 2;
       lb.position.set(c.x, 0.0012, c.z + 0.045); S.scene.add(lb);
       S.contact(0.1, 0.1, c.x, c.z, 0.4);
       return { jar: jar, pos: new T.Vector3(c.x, 0.11, c.z), name: c.name };
@@ -405,8 +407,8 @@ HoolaStudio.define('potentiometer-board', function (S) {
   ];
 
   return {
-    camera: { pos: [0.0, 0.92, 0.6], look: [0.0, 0.02, -0.34] },
-    views: { bench: [[0.0, 0.92, 0.6], [0.0, 0.02, -0.34]], jockey: [[0.0, 0.5, 0.06], [0.0, 0.02, -0.36]],
+    camera: { pos: [0.0, 1.42, 1.18], look: [0.0, 0.02, -0.3] },
+    views: { bench: [[0.0, 1.3, 1.08], [0.0, 0.02, -0.32]], jockey: [[0.0, 0.56, 0.1], [0.0, 0.02, -0.36]],
       gal: [[-0.42, 0.3, 0.28], [-0.42, 0.06, -0.04]], vm: [[-0.42, 0.3, 0.28], [-0.42, 0.06, -0.04]],
       twk: [[-0.04, 0.26, 0.3], [-0.04, 0.02, 0.04]], cells: [[0.22, 0.3, 0.42], [0.22, 0.05, 0.06]],
       drv: [[-0.46, 0.34, -0.3], [-0.46, 0.05, -0.7]], rheo: [[0.02, 0.32, -0.3], [0.02, 0.05, -0.68]],

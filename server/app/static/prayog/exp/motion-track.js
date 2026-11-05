@@ -12,7 +12,7 @@ HoolaStudio.define('motion-track', function (S) {
   var vs = (S.lab.variant || {}).sample || '';
 
   // ---------- geometry. The track is built in its own frame: local x runs -TL..0, and the RIGHT end is the pivot.
-  var TL = 1.1, TW = 0.11, TH = 0.014, X0 = -1.05, SPAN = 1.0;   // X0 = the zero mark, SPAN = the printed metre
+  var TL = 1.1, TW = 0.11, TH = 0.014, X0 = -1.0, SPAN = 0.95, CM = 95;   // X0 = the zero mark, SPAN / CM = the printed scale
   var PX = 0.55, PY = 0.052, PZ = -0.2;                          // the pivot, in world space
   var BL = 0.095, BH = 0.042, BW = 0.07;                         // the body on the track
   var RISE = ACC ? TL * (p.acc / 9.8 + 0.02) : 0;                // lift of the far end (slope + rolling friction)
@@ -29,12 +29,12 @@ HoolaStudio.define('motion-track', function (S) {
   [-1, 1].forEach(function (sg) {                                // the guide rails that make the groove
     var r = S.rounded(TL, 0.012, 0.009, 0.003, M.darkWood); r.position.set(-TL / 2, 0.006, sg * (TW / 2 - 0.006)); track.add(r);
   });
-  var scaleTex = S.canvasTex(4096, 128, function (x, w, h) {
+  var scaleTex = S.canvasTex(2048, 128, function (x, w, h) {
     x.fillStyle = '#f2ecd9'; x.fillRect(0, 0, w, h);
     x.fillStyle = '#17181a'; x.font = '700 42px "Public Sans", sans-serif'; x.textAlign = 'center';
-    for (var i = 0; i <= 100; i++) {
-      var px = 20 + i / 100 * (w - 40), big = i % 10 === 0, mid = i % 5 === 0;
-      x.fillRect(px - (big ? 1.7 : 0.9), 0, big ? 3.4 : 1.8, big ? 54 : mid ? 38 : 24);
+    for (var i = 0; i <= CM; i++) {
+      var px = 20 + i / CM * (w - 40), big = i % 10 === 0, mid = i % 5 === 0;
+      x.fillRect(px - (big ? 3 : 1.6), 0, big ? 6 : 3.2, big ? 54 : mid ? 38 : 24);
       if (big) x.fillText(String(i), px, 104);
     }
     x.textAlign = 'left'; x.font = '600 32px "Public Sans", sans-serif'; x.fillStyle = '#6b4a14'; x.fillText('cm', 8, 104);
@@ -227,7 +227,7 @@ HoolaStudio.define('motion-track', function (S) {
     book: {
       at: [-0.58, 0.1, 0.1],
       title: ACC ? 'Expt. — Distance-time graph of an accelerating trolley' : 'Expt. — Speed of a body in uniform motion',
-      lines: ['Aim: ' + S.lab.aim, 'Track 1.1 m, printed scale 0–100 cm, zero at the starting line.',
+      lines: ['Aim: ' + S.lab.aim, 'Track 1.1 m, printed scale 0–' + CM + ' cm, zero at the starting line.',
         'Stopwatch least count 0.01 s.',
         ACC ? 's = ½ a t²   so   a = 2 × slope of (s against t²)' : 'v = s / t   so   v = slope of (s against t)',
         'Precautions: release without a push; eye straight above the mark.'],
@@ -279,7 +279,7 @@ HoolaStudio.define('motion-track', function (S) {
           u.row(u.button(ACC ? 'Put the block under the far end' : 'Switch the motor on', function () { setUp(); }, true, S.hand.busy || st.set));
           u.task('Track ready', st.set, st.set ? (ACC ? 'far end lifted ' + Math.round(RISE * 1000) + ' mm' : 'motor running') : 'not ready yet');
           u.live(function () { return 'Body at ' + (sim.s * 100).toFixed(1) + ' cm · ' + (st.set ? 'ready' : 'not ready'); });
-          u.note('The printed scale reads 0 at the starting line and 100 cm at the far end. Read it to 1 mm.');
+          u.note('The printed scale reads 0 at the starting line and ' + CM + ' cm at the far end. Read it to 1 mm.');
           u.next('Next: time the runs', st.set && !S.hand.busy);
         },
         ok: function () { return st.set; },

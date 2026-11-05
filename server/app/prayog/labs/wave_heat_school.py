@@ -153,7 +153,7 @@ def length_curve() -> dict:
 # =============================================================================================== HEAT
 def _heat_bodies(liquid_name: str) -> list[dict]:
     return [
-        B("stand", "box", name="Stand base", size=[0.3, 0.02, 0.2], pos=[0, -0.07, 0], color="iron" if False else "#2b2f36"),
+        B("stand", "box", name="Stand base", size=[0.3, 0.02, 0.2], pos=[0, -0.07, 0], color="#2b2f36"),
         B("tripod", "cylinder", name="Tripod stand", r=0.055, h=0.01, open=True, pos=[0, -0.05, 0], color="#2b2f36"),
         B("gauze", "box", name="Wire gauze", size=[0.11, 0.002, 0.11], pos=[0, -0.045, 0], color="#9aa3ad"),
         B("beaker", "cylinder", name="Beaker", r=0.055, h=0.13, open=True, pos=[0, 0.02, 0], color="glass", opacity=0.3),
@@ -368,3 +368,116 @@ def spoons() -> dict:
 
 
 BUILDERS = (length_nonstandard, length_ruler, length_curve, thermometer_read, melting_boiling, conduction_rod, spoons)
+
+
+# =============================================================================================== SOUND
+S8 = {"title": "Science, Textbook for Class VIII, NCERT - Sound"}
+S9 = {"title": "Science, Textbook for Class IX, NCERT - Sound"}
+L9W = {"title": "Laboratory Manual Science, Class IX, NCERT - velocity of a pulse propagated through a stretched string / slinky"}
+
+
+def _slinky_bodies() -> list[dict]:
+    out = [
+        B("tableb", "box", name="Long bench", size=[2.0, 0.02, 0.4], pos=[0, -0.01, 0], color="wood", cut=False),
+        B("clampL", "box", name="Clamp holding the far end", size=[0.04, 0.09, 0.05], pos=[-0.9, 0.04, 0], color="#2b2f36"),
+        B("clampR", "box", name="Clamp holding the near end", size=[0.04, 0.09, 0.05], pos=[0.9, 0.04, 0], color="#2b2f36"),
+        B("slinky", "rope", name="Stretched slinky", info="A soft steel spring stretched between the clamps.",
+          a=[-0.88, 0.06, 0], b=[0.88, 0.06, 0], r=0.004, color="steel"),
+        B("mark", "box", name="Mark on the slinky", size=[0.006, 0.02, 0.02], pos=[0, 0.06, 0], color="red",
+          bind={"x": {"var": "x", "k": 1.0, "c": -0.9}}),
+        B("tape", "scale", name="Tape along the bench (cm)", length=1.8, spacing=0.01, major=10, labels=True,
+          label_step=20, tick=0.008, font=0.016, pos=[-0.9, 0.012, 0.1]),
+    ]
+    return out
+
+
+def slinky_waves() -> dict:
+    return lab(
+        id="school-slinky-waves", rig="school-slinky-bench",
+        title="Longitudinal and transverse waves on a slinky", group="Physics · Sound", level="Class IX",
+        topic="Sound", chapter="Sound",
+        aim="Send a push along a stretched slinky and a shake across it: see the two kinds of wave, and time the pulse in each.",
+        kernel="wave_pulse", params={"Tn": 1.2, "mu": 0.119, "Lspan": 1.8, "nrefl": 8.0, "mode": 0.0},
+        speed=1, speeds=[0.25, 0.5, 1],
+        camera={"pos": [0.3, 0.75, 1.5], "look": [0, 0.05, 0]}, floor=-0.02,
+        bodies=_slinky_bodies(),
+        knobs=[knob("mode", "Kind of pulse (0 = push along, 1 = shake across)", "mode", 0, 1, 1, 0, ""),
+               knob("Tn", "How hard it is stretched (tension)", "Tn", 0.4, 4, 0.1, 1.2, "N"),
+               knob("mu", "This slinky (mass per metre hidden)", "mu", 0.05, 0.3, 0.001, 0.119, "kg/m", hidden=True),
+               knob("n", "Lengths to time", "nrefl", 2, 12, 1, 8, "")],
+        instruments=[inst("x", "readout", "Pulse is this far from the near end", "x", k=100, unit="cm", digits=1),
+                     inst("sw", "stopwatch", "Stopwatch"),
+                     inst("gr", "graph", "Pulse position along the slinky", "x", k=100, xlabel="t (s)")],
+        table={"columns": [col("n", "Lengths travelled", "manual", ""), col("t", "Time taken", "manual", "s", digits=2),
+                           col("reading", "Speed = n L ÷ t", "manual", "m/s", digits=2)],
+               "calc": "gauge_mean", "rows_min": 2, "result_unit": "m/s", "result_digits": 2,
+               "hint": "Time the same number of lengths for a push and for a shake: the speed comes out the same."},
+        steps=["Stretch the slinky between the clamps and measure the span on the tape.",
+               "Push one end sharply along the slinky and let go: a squeeze runs along it and comes back.",
+               "Shake one end sideways instead: a hump runs along it and comes back.",
+               "Time the pulse over several lengths for each kind and work out its speed."],
+        theory="In a longitudinal wave the coils move along the same line as the wave, so the slinky shows a "
+               "squeeze travelling. In a transverse wave the coils move across the line of travel, so the slinky "
+               "shows a hump travelling. Sound in air is longitudinal. Both kinds travel along the same slinky at "
+               "the same speed, v = √(T/μ), because the speed depends on the tension T and the mass per metre μ, "
+               "not on how the pulse was made.",
+        safety="Keep the slinky on the bench and hold both ends: a stretched slinky that is let go flies back and "
+               "can hurt someone or tangle itself.",
+        tour=[{"say": "A slinky stretched between two clamps along the bench, with a tape beside it."},
+              {"set": {"mode": 1}, "say": "Shaken sideways, the slinky shows a hump travelling: a transverse wave."},
+              {"set": {"mode": 0}, "say": "Pushed along, it shows a squeeze travelling: a longitudinal wave, like sound in air."}],
+        questions=[{"q": "In a longitudinal wave the coils move", "options": ["Along the line of travel",
+                    "Across the line of travel", "In circles"], "answer": 0,
+                    "why": "The squeeze and the movement of the coils are along the same line."},
+                   {"q": "Sound in air is", "options": ["Longitudinal", "Transverse", "Neither"], "answer": 0,
+                    "why": "Air is squeezed and stretched along the direction the sound travels."}],
+        sources=[S9, L9W, SIM],
+        check={"params": {}, "reading": "v_meas", "textbook": "wave_v"},
+    )
+
+
+def pulse_speed() -> dict:
+    return lab(
+        id="school-pulse-speed", rig="school-slinky-bench",
+        title="Speed of a pulse along a stretched slinky", group="Physics · Sound", level="Class IX",
+        topic="Sound", chapter="Sound",
+        aim="Time a pulse over several lengths of a stretched slinky and work out its speed; stretch it harder and see the speed rise.",
+        kernel="wave_pulse", params={"Tn": 1.2, "mu": 0.119, "Lspan": 1.8, "nrefl": 8.0, "mode": 1.0},
+        speed=1, speeds=[0.25, 0.5, 1],
+        camera={"pos": [0.3, 0.75, 1.5], "look": [0, 0.05, 0]}, floor=-0.02,
+        bodies=_slinky_bodies(),
+        knobs=[knob("Tn", "How hard it is stretched (tension)", "Tn", 0.4, 4, 0.1, 1.2, "N",
+                    hint="Stretch it harder and the pulse travels faster: v = √(T/μ)."),
+               knob("mu", "This slinky (mass per metre hidden)", "mu", 0.05, 0.3, 0.001, 0.119, "kg/m", hidden=True),
+               knob("n", "Lengths to time", "nrefl", 2, 12, 1, 8, ""),
+               knob("mode", "Kind of pulse (0 = push along, 1 = shake across)", "mode", 0, 1, 1, 1, "")],
+        instruments=[inst("x", "readout", "Pulse is this far from the near end", "x", k=100, unit="cm", digits=1),
+                     inst("sw", "stopwatch", "Stopwatch"),
+                     inst("gr", "graph", "Pulse position along the slinky", "x", k=100, xlabel="t (s)")],
+        table={"columns": [col("n", "Lengths travelled", "manual", ""), col("t", "Time taken", "manual", "s", digits=2),
+                           col("reading", "Speed = n L ÷ t", "manual", "m/s", digits=2)],
+               "calc": "gauge_mean", "rows_min": 2, "result_unit": "m/s", "result_digits": 2,
+               "hint": "Time the same number of lengths twice and average, so one slip of the thumb does not spoil the answer."},
+        steps=["Measure the span L between the clamps on the tape.",
+               "Give one end a sharp sideways flick and start the stopwatch at that moment.",
+               "Count the lengths the pulse travels, there and back, and stop the watch after the agreed number.",
+               "Speed = (lengths × L) ÷ time. Repeat, then stretch it harder and do it again."],
+        theory="A pulse on a stretched slinky travels at v = √(T/μ), where T is the tension and μ the mass of one "
+               "metre of the slinky. It turns back at a fixed end, so a long run can be timed by counting the "
+               "lengths it covers there and back. The pulse keeps its shape and its speed; only its height falls.",
+        safety="Keep the slinky on the bench and hold both ends. Never let a stretched slinky go.",
+        tour=[{"say": "A slinky stretched between clamps, with a tape to measure the span."},
+              {"set": {"Tn": 3.5}, "say": "Stretched harder, the pulse runs noticeably faster: v grows as the square root of the tension."},
+              {"set": {"Tn": 1.2}, "say": "Back to the first stretch. Time several lengths and work out the speed."}],
+        questions=[{"q": "If the tension is made four times larger, the speed of the pulse is",
+                    "options": ["Twice as large", "Four times as large", "Unchanged"], "answer": 0,
+                    "why": "v = √(T/μ), and √4 = 2."},
+                   {"q": "A heavier slinky of the same length, at the same tension, carries the pulse",
+                    "options": ["More slowly", "Faster", "At the same speed"], "answer": 0,
+                    "why": "A larger μ makes √(T/μ) smaller."}],
+        sources=[L9W, S9, S8, SIM],
+        check={"params": {}, "reading": "v_meas", "textbook": "wave_v"},
+    )
+
+
+BUILDERS = BUILDERS + (slinky_waves, pulse_speed)

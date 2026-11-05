@@ -731,7 +731,7 @@ def _es_bodies() -> list[dict]:
 
 def rubbing() -> dict:
     return lab(
-        id="charging-by-rubbing-6-10", title="Charging by rubbing: attraction and repulsion",
+        id="charging-by-rubbing-6-10", rig="static-electricity", title="Charging by rubbing: attraction and repulsion",
         group="Physics · Electricity", level="Class VIII", topic="Some Natural Phenomena",
         chapter="Static Electricity",
         aim="Charge two pith balls from a rubbed polythene rod and measure how far apart they hang.",
@@ -765,7 +765,7 @@ def rubbing() -> dict:
 
 def electroscope() -> dict:
     return lab(
-        id="jar-electroscope", title="A jar electroscope", group="Physics · Electricity", level="Class VIII",
+        id="jar-electroscope", rig="static-electricity", title="A jar electroscope", group="Physics · Electricity", level="Class VIII",
         topic="Some Natural Phenomena", chapter="Static Electricity",
         aim="Build an electroscope from a jar and two foil strips and use the gap between them to detect charge.",
         kernel="estatic", params={"q": 5.8e-10, "Lth": 0.06, "mass": 1.2e-5, "g": 9.8, "charged": 0.0},

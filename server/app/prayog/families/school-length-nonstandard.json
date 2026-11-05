@@ -1,0 +1,19 @@
+{"base": "school-length-nonstandard", "rig": "school-measuring-bench", "chapter": "Measurement",
+ "variants": [
+   {"key": "short-cloth", "title": "Measuring a short cloth with body units",
+    "sample": "A strip of cloth (true length unknown to the student)",
+    "method": "hand span, cubit and foot step", "unknown": "the length of the cloth in each unit",
+    "params": {"L": 0.88},
+    "note": "A shorter cloth comes to fewer units of every kind, but the last part of a unit has to be estimated more carefully.",
+    "source": {"title": "Science, Textbook for Class VI, NCERT - Motion and Measurement of Distances (hand span, cubit and foot step are not standard units)"}},
+   {"key": "bench", "title": "Measuring the length of the bench with body units",
+    "sample": "The laboratory bench (true length unknown to the student)",
+    "method": "hand span, cubit and foot step", "unknown": "the length of the bench in each unit",
+    "params": {"L": 1.32},
+    "source": {"title": "Science, Textbook for Class VI, NCERT - Motion and Measurement of Distances"}},
+   {"key": "long-cloth", "title": "Measuring a long cloth with body units",
+    "sample": "A long strip of cloth (true length unknown to the student)",
+    "method": "hand span, cubit and foot step", "unknown": "the length of the cloth in each unit",
+    "params": {"L": 1.65},
+    "source": {"title": "Science, Textbook for Class VI, NCERT - Motion and Measurement of Distances"}}
+ ]}

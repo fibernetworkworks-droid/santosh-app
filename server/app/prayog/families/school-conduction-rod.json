@@ -1,0 +1,22 @@
+{"base": "school-conduction-rod", "rig": "school-conduction-bench", "chapter": "Heat",
+ "grid": {"title": "Conduction along {metal}",
+   "unknown": "how hot the rod is 25 cm from the heated end",
+   "axes": {"metal": [
+     {"key": "copper", "label": "a copper rod", "sample": "Copper rod",
+      "params": {"k": 401, "alpha": 0.000117},
+      "source": {"title": "CRC Handbook of Chemistry and Physics, thermal conductivity of the elements (copper 401 W/(m·K) at 300 K)", "note": "diffusivity k/(rho c) from 8960 kg/m3, 385 J/(kg·K)"}},
+     {"key": "aluminium", "label": "an aluminium rod", "sample": "Aluminium rod",
+      "params": {"k": 237, "alpha": 0.0000979},
+      "source": {"title": "CRC Handbook of Chemistry and Physics, thermal conductivity of the elements (aluminium 237 W/(m·K) at 300 K)", "note": "diffusivity from 2700 kg/m3, 897 J/(kg·K)"}},
+     {"key": "iron", "label": "an iron rod", "sample": "Iron rod",
+      "params": {"k": 80.4, "alpha": 0.0000227},
+      "note": "Iron carries heat well, but only a fifth as well as copper: the far pins take much longer to fall.",
+      "source": {"title": "CRC Handbook of Chemistry and Physics, thermal conductivity of the elements (iron 80.4 W/(m·K) at 300 K)", "note": "diffusivity from 7874 kg/m3, 449 J/(kg·K)"}},
+     {"key": "brass", "label": "a brass rod", "sample": "Brass rod (70 Cu / 30 Zn)",
+      "params": {"k": 109, "alpha": 0.0000336},
+      "source": {"title": "CRC Handbook of Chemistry and Physics, thermal conductivity of alloys (cartridge brass 109 W/(m·K))", "note": "diffusivity from 8530 kg/m3, 380 J/(kg·K)"}},
+     {"key": "glass", "label": "a glass rod", "sample": "Soda-lime glass rod",
+      "params": {"k": 1.05, "alpha": 0.0000005},
+      "note": "Not one pin falls: glass hardly carries heat at all.",
+      "source": {"title": "CRC Handbook of Chemistry and Physics, thermal conductivity of common materials (soda-lime glass 1.05 W/(m·K))", "note": "diffusivity from 2500 kg/m3, 840 J/(kg·K)"}}
+   ]}}}

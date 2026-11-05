@@ -41,12 +41,12 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
   }
 
   // ---------- the wooden base board every piece is screwed to
-  var plank = S.rounded(1.5, 0.78, 0.014, 0.01, M.wood); plank.rotation.x = -Math.PI / 2; plank.position.set(-0.05, 0.007, -0.27); S.scene.add(plank);
-  S.contact(1.56, 0.84, -0.05, -0.27, 0.45);
+  var plank = S.rounded(1.32, 0.58, 0.014, 0.01, M.wood); plank.rotation.x = -Math.PI / 2; plank.position.set(0.0, 0.007, -0.28); S.scene.add(plank);
+  S.contact(1.38, 0.64, 0.0, -0.28, 0.45);
   var BY = 0.014;                                   // everything stands on the plank
 
   // ---------- cell holder with NCELL dry cells (1.5 V each)
-  var CH = [-0.6, -0.14], CW = 0.062 * NCELL + 0.03;
+  var CH = [-0.52, -0.16], CW = 0.062 * NCELL + 0.03;
   var holder = new T.Group(); S.scene.add(holder); holder.position.set(CH[0], BY, CH[1]);
   holder.add((function () { var b = S.rounded(CW, 0.09, 0.016, 0.004, M.darkWood); b.rotation.x = -Math.PI / 2; b.position.y = 0.008; return b; })());
   var cells = [];
@@ -68,7 +68,7 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
   S.contact(CW + 0.1, 0.16, CH[0], CH[1], 0.4);
 
   // ---------- the switch: a plug key, or two drawing pins and a safety pin
-  var KP = [-0.3, -0.06];
+  var KP = [-0.24, -0.1];
   var key = null, plug = null, pinBase = null, pinArm = null;
   if (PINSW) {
     pinBase = new T.Group(); S.scene.add(pinBase); pinBase.position.set(KP[0], BY, KP[1]);
@@ -118,14 +118,14 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
 
   // ---------- ammeter in series, voltmeter across the bulb (not in the tester: a metal sample drops almost nothing)
   var am = S.meter({ min: 0, max: AMAX, ticks: AMAX === 0.5 ? 5 : AMAX === 1 ? 10 : AMAX === 1.5 ? 6 : AMAX === 2 ? 4 : 6,
-    unit: 'A', symbol: 'A', caption: 'DC AMMETER 0–' + fmtN(AMAX) + ' A', pos: [-0.02, BY, -0.33] });
+    unit: 'A', symbol: 'A', caption: 'DC AMMETER 0–' + fmtN(AMAX) + ' A', pos: [-0.02, BY, -0.4] });
   var vm = TESTER ? null : S.meter({ min: 0, max: VMAX, ticks: VMAX === 1 ? 10 : VMAX === 3 ? 6 : 5, unit: 'V', symbol: 'V',
-    caption: 'DC VOLTMETER 0–' + fmtN(VMAX) + ' V', pos: [0.4, BY, -0.62] });
+    caption: 'DC VOLTMETER 0–' + fmtN(VMAX) + ' V', pos: [0.34, BY, -0.54] });
   var amP = { at: wpt(am, 0.035, 0.07, -0.03) }, amM = { at: wpt(am, -0.035, 0.07, -0.03) };
   var vmP = vm ? { at: wpt(vm, 0.035, 0.07, -0.03) } : null, vmM = vm ? { at: wpt(vm, -0.035, 0.07, -0.03) } : null;
 
   // ---------- the torch bulb in a bakelite screw holder
-  var BP = [0.42, -0.12];
+  var BP = [0.3, -0.14];
   var lampG = new T.Group(); S.scene.add(lampG); lampG.position.set(BP[0], BY, BP[1]);
   var hbase = S.rounded(0.075, 0.075, 0.018, 0.005, M.darkWood); hbase.rotation.x = -Math.PI / 2; hbase.position.y = 0.009; lampG.add(hbase);
   var hcup = S.mesh(new T.CylinderGeometry(0.019, 0.022, 0.026, 28), M.bakelite); hcup.position.y = 0.031; lampG.add(hcup);
@@ -136,14 +136,14 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
   var filM = new T.MeshStandardMaterial({ color: 0x5a4a2a, emissive: new T.Color(0, 0, 0), roughness: 0.4, metalness: 0.8 });
   var fil = S.mesh(new T.TorusGeometry(0.0035, 0.0006, 6, 14, Math.PI), filM, false); fil.position.y = 0.071; fil.rotation.x = Math.PI / 2; lampG.add(fil);
   [-1, 1].forEach(function (s) { var w = S.mesh(new T.CylinderGeometry(0.0004, 0.0004, 0.011, 6), M.steel, false); w.position.set(s * 0.0035, 0.0655, 0); lampG.add(w); });
-  var halo = new T.PointLight(0xffe4a8, 0, 0.5); halo.position.set(0, 0.072, 0); lampG.add(halo);
+  var halo = new T.PointLight(0xffe4a8, 0, 0.22); halo.position.set(0, 0.072, 0); lampG.add(halo);
   var bLbl = S.label('1.5 V  TORCH BULB', { w: 0.07, ratio: 0.13, color: '#f3ead2', bg: '#2b2b2b', px: 768 });
   bLbl.rotation.x = -Math.PI / 2; bLbl.position.set(0, 0.0185, 0.05); lampG.add(bLbl);
   S.contact(0.13, 0.13, BP[0], BP[1], 0.45);
   var bP = post(BP[0] - 0.03, BY, BP[1] - 0.03, 'red'), bM = post(BP[0] + 0.03, BY, BP[1] - 0.03, 'black');
 
   // ---------- the tester: two probes on a stand and the sample between them
-  var probeL = null, probeR = null, sampleG = null, SAMPOS = [0.62, -0.3];
+  var probeL = null, probeR = null, sampleG = null, SAMPOS = [0.54, -0.3];
   if (TESTER) {
     var pr = new T.Group(); S.scene.add(pr); pr.position.set(SAMPOS[0], BY, SAMPOS[1]);
     var prb = S.rounded(0.14, 0.1, 0.012, 0.004, M.darkWood); prb.rotation.x = -Math.PI / 2; prb.position.y = 0.006; pr.add(prb);
@@ -177,12 +177,12 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
   if (TESTER) {
     lead(amM.at, bP.at, 'yellow', [[-0.1, -0.42], [0.3, -0.36]]);
     lead(bM.at, tP.at, 'yellow', [[0.5, -0.2], [0.56, -0.26]]);
-    lead(tM.at, cellM.at, 'black', [[0.68, -0.52], [0.1, -0.66], [-0.66, -0.5], [-0.68, -0.3]]);
+    lead(tM.at, cellM.at, 'black', [[0.6, -0.46], [0.1, -0.52], [-0.52, -0.46], [-0.58, -0.3]]);
   } else {
     lead(amM.at, bP.at, 'yellow', [[0.08, -0.3], [0.3, -0.26]]);
-    lead(bM.at, cellM.at, 'black', [[0.5, -0.46], [0.0, -0.6], [-0.66, -0.46], [-0.68, -0.26]]);
-    lead(vmP.at, bP.at, 'red', [[0.44, -0.56], [0.42, -0.3]]);
-    lead(vmM.at, bM.at, 'black', [[0.36, -0.56], [0.46, -0.28]]);
+    lead(bM.at, cellM.at, 'black', [[0.44, -0.44], [0.0, -0.5], [-0.52, -0.44], [-0.58, -0.3]]);
+    lead(vmP.at, bP.at, 'red', [[0.4, -0.48], [0.32, -0.3]]);
+    lead(vmM.at, bM.at, 'black', [[0.28, -0.48], [0.36, -0.28]]);
   }
 
   S.addApparatus('cells', holder, NCELL > 1 ? NCELL + ' dry cells (1.5 V each)' : 'Dry cell (1.5 V)',
@@ -335,11 +335,11 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
     } });
 
   return {
-    camera: { pos: [0.0, 1.15, 1.05], look: [-0.02, 0.0, -0.3] },
-    views: { cells: [[-0.5, 0.3, 0.1], [-0.6, 0.03, -0.14]], key: [[-0.26, 0.26, 0.14], [-0.3, 0.03, -0.06]],
-      am: [[-0.02, 0.3, -0.04], [-0.02, 0.04, -0.34]], bulb: [[0.42, 0.26, 0.14], [0.42, 0.06, -0.12]],
-      vm: [[0.42, 0.32, -0.3], [0.4, 0.04, -0.63]], tester: [[0.62, 0.26, 0.0], [0.62, 0.04, -0.3]],
-      circuit: [[0.0, 1.15, 1.05], [-0.02, 0.0, -0.3]], work: [[0.1, 0.8, 0.6], [0.04, 0.0, -0.32]],
+    camera: { pos: [0.0, 1.26, 0.52], look: [0.0, 0.0, -0.26] },
+    views: { cells: [[-0.44, 0.26, 0.08], [-0.52, 0.03, -0.16]], key: [[-0.2, 0.22, 0.1], [-0.24, 0.03, -0.1]],
+      am: [[-0.02, 0.26, -0.1], [-0.02, 0.04, -0.4]], bulb: [[0.3, 0.22, 0.08], [0.3, 0.06, -0.14]],
+      vm: [[0.34, 0.26, -0.26], [0.34, 0.04, -0.55]], tester: [[0.54, 0.22, -0.06], [0.54, 0.04, -0.3]],
+      circuit: [[0.0, 1.26, 0.52], [0.0, 0.0, -0.26]], work: [[0.04, 0.86, 0.3], [0.03, 0.0, -0.3]],
       book: [[-0.5, 0.45, 0.6], [-0.5, 0.0, 0.08]] },
     theory: TESTER ? {
       principle: 'A circuit tester is a cell and a bulb with a gap in the loop. Whatever you put in the gap becomes part of the circuit. '
@@ -410,7 +410,7 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
       var g = glow();
       filM.emissive.setRGB(1.0 * g, 0.72 * g, 0.34 * g);
       filM.color.setRGB(0.35 + 0.5 * g, 0.29 + 0.4 * g, 0.16 + 0.2 * g);
-      halo.intensity = g * 0.5;
+      halo.intensity = g * 0.2;
       hudI.set(fI(I()) + ' A');
       hudV.set(vm ? fV(Vb()) + ' V' : (g > 0.25 ? 'Bright' : g > 0.02 ? 'Dim' : 'Dark'));
       hudK.set(st.key ? 'Closed' : 'Open');

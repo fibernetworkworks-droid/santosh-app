@@ -216,9 +216,48 @@ class Sucker:
         return {"F_off": hi, "A": PI * p["d"] * p["d"] / 4}
 
 
+# ------------------------------------------------------------------------------------------------ Newton's third law
+class TwoSprings:
+    """Two spring balances hooked in series: a clamp holds the first, the hand pulls the second.
+
+    The two springs carry the SAME tension T (Newton's third law: what the second balance pulls the first with, the
+    first pulls the second back with), and the two stretches add up to the pull X: T/k1 + T/k2 = X."""
+
+    PARAMS = {"X": 0.02, "k1": 200.0, "k2": 300.0}
+    VARS = ["T", "A", "B", "x1", "x2"]
+
+    @staticmethod
+    def init(p, cfg=None):
+        return {"t": 0.0}
+
+    @staticmethod
+    def step(s, p, dt, cfg=None):
+        s["t"] += dt
+
+    @staticmethod
+    def _tension(p):
+        return p["X"] / (1.0 / p["k1"] + 1.0 / p["k2"])
+
+    @staticmethod
+    def view(s, p, cfg=None):
+        T = TwoSprings._tension(p)
+        return {"T": T, "A": T, "B": T, "x1": T / p["k1"], "x2": T / p["k2"]}
+
+    @staticmethod
+    def measure(p, cfg=None):
+        lo, hi = 0.0, 1.0e4
+        for _ in range(60):                      # the tension at which the two stretches add up to the pull
+            mid = (lo + hi) / 2
+            if mid / p["k1"] + mid / p["k2"] > p["X"]:
+                hi = mid
+            else:
+                lo = mid
+        return {"T": hi, "A": hi, "B": hi, "x1": hi / p["k1"], "x2": hi / p["k2"]}
+
+
 # ------------------------------------------------------------------------------------------------ registration
-KERNELS = {"track": Track, "pullblock": PullBlock, "buoy": Buoy, "sucker": Sucker}
-FAMILY = {"track": "mech", "pullblock": "mech", "buoy": "mech", "sucker": "mech"}
+KERNELS = {"track": Track, "pullblock": PullBlock, "buoy": Buoy, "sucker": Sucker, "twospring": TwoSprings}
+FAMILY = {"track": "mech", "pullblock": "mech", "buoy": "mech", "sucker": "mech", "twospring": "mech"}
 TEXTBOOK = {
     # s = u t + 1/2 a t^2 solved for t
     "track_t": lambda p: (min(p["mark"], p["len"]) / p["u"] if abs(p["acc"]) < 1e-12 else
@@ -227,5 +266,6 @@ TEXTBOOK = {
     "arch_loss": lambda p: p["rho_l"] * p["g"] * p["V"],
     "solid_rho": lambda p: p["rho_s"],
     "sucker_F": lambda p: (p["Patm"] - p["Pin"]) * PI * p["d"] * p["d"] / 4,
+    "third_law_T": lambda p: p["k1"] * p["k2"] / (p["k1"] + p["k2"]) * p["X"],
 }
 CALCS: dict = {}

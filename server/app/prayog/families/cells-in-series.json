@@ -1,0 +1,13 @@
+{"base": "cells-in-series", "rig": "school-bulb-circuit", "chapter": "Electricity",
+ "variants": [
+  {"key": "one-cell", "title": "One cell driving the bulb", "method": "a single dry cell",
+   "sample": "One R6 zinc-carbon dry cell", "unknown": "the current one cell can drive",
+   "params": {"Eb": 1.5, "rint": 0.6, "ncell": 1},
+   "note": "The nominal emf of a zinc-carbon cell is 1.5 V. The internal resistance is this cell's own and is not a published constant.",
+   "source": {"title": "IEC 60086-1, Primary batteries: nominal voltage of a zinc-carbon (R6) cell, 1.5 V"}},
+  {"key": "three-cells", "title": "Three cells in series", "method": "three cells joined + to -",
+   "sample": "Three R6 zinc-carbon dry cells in series", "unknown": "how the current grows with the number of cells",
+   "params": {"Eb": 4.5, "rint": 1.8, "ncell": 3},
+   "note": "Three 1.5 V cells in series give 4.5 V, and their internal resistances add as well, so the current grows but not quite three times.",
+   "source": {"title": "IEC 60086-1, Primary batteries: nominal voltage of a zinc-carbon (R6) cell, 1.5 V"}}
+ ]}

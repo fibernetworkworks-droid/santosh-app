@@ -45,11 +45,20 @@ def _pot_drop(p: dict) -> float:
     return p["E0"] * p["Rw"] * p["lj"] / (p["Rh"] + p["Rw"])
 
 
+def _bridge_comb_x(p: dict) -> float:
+    """What is in the right gap of the metre bridge, from the three link keys: R1 alone (ka), R2 alone (kb), the two
+    in parallel (both), or the two in series (the link key `ser`)."""
+    r1, r2 = p["R1"], p["R2"]
+    if p["ser"] >= 0.5:
+        return r1 + r2
+    if p["ka"] >= 0.5 and p["kb"] >= 0.5:
+        return r1 * r2 / (r1 + r2)
+    return r1 if p["ka"] >= 0.5 else r2
+
+
 def _bridge_comb_l(p: dict) -> float:
-    """Metre bridge with a combination in the right gap: the balancing length, as a fraction from end A.
-    Series: X = R1 + R2; parallel: X = R1 R2 / (R1 + R2); l / (100 - l) = R / X."""
-    x = p["R1"] + p["R2"] if p["par"] < 0.5 else p["R1"] * p["R2"] / (p["R1"] + p["R2"])
-    return p["Rk"] / (p["Rk"] + x)
+    """Metre bridge, balancing length as a fraction from end A: R / X = l / (100 - l)."""
+    return p["Rk"] / (p["Rk"] + _bridge_comb_x(p))
 
 
 # ============================================================================================ Zener diode

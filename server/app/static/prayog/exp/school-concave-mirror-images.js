@@ -284,7 +284,7 @@ HoolaStudio.define('school-concave-mirror-images', function (S) {
   }
 
   return {
-    camera: { pos: [0.1, 0.56, 1.05], look: [-0.04, 0.12, BZ - 0.06] },
+    camera: { pos: [0.08, 0.72, 1.36], look: [-0.02, 0.1, BZ] },
     views: VIEWS,
     theory: { principle: 'A concave mirror brings the light from an object together again. Where the reflected rays meet, a real inverted image forms, and a white screen held exactly there shows it sharply. Rays from a very distant object arrive almost parallel, so they meet at the focus: that image distance is the focal length itself.',
       formula: '1/v + 1/u = 1/f,  f = R/2',

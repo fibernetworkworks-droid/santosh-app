@@ -14,7 +14,13 @@
   function galv_amm_ig(p) { return p.Eb * p.Sht / ((p.Rl + p.Ram) * (p.Rg + p.Sht) + p.Rg * p.Sht); }
   function pot_balance(p) { return p.Ec * (p.Rh + p.Rw) / (p.Rw * p.E0); }
   function pot_drop(p) { return p.E0 * p.Rw * p.lj / (p.Rh + p.Rw); }
-  function bridge_comb_l(p) { var x = p.par < 0.5 ? p.R1 + p.R2 : p.R1 * p.R2 / (p.R1 + p.R2); return p.Rk / (p.Rk + x); }
+  function bridge_comb_x(p) {
+    var r1 = p.R1, r2 = p.R2;
+    if (p.ser >= 0.5) return r1 + r2;
+    if (p.ka >= 0.5 && p.kb >= 0.5) return r1 * r2 / (r1 + r2);
+    return p.ka >= 0.5 ? r1 : r2;
+  }
+  function bridge_comb_l(p) { return p.Rk / (p.Rk + bridge_comb_x(p)); }
 
   // ------------------------------------------------------------------ Zener diode
   var zener = {

@@ -22,11 +22,11 @@ HoolaStudio.define('current-magnetism', function (S) {
     p.mur = CORE ? (st.core ? MUR0 : 1.0) : MUR0;
     var v = KC.view(sim, p);
     Ical = Math.abs(v.I); B = v.B;
-    needle = st.probeIn || !COMPASS ? v.theta : 0;
+    needle = v.theta;                                    // the compass is always on the card; only the Hall probe can be out
   }
-  function Imax() { return Math.abs(p.Eb) / RS_MIN; }
+  var I0 = Math.abs(p.Eb) / RS0;                         // the current the set-up is designed for
   function pick(list, need) { for (var i = 0; i < list.length; i++) if (list[i] >= need - 1e-9) return list[i]; return list[list.length - 1]; }
-  var AMAX = pick([0.5, 1, 1.5, 2, 3, 5], Imax() * 1.2), ARES = AMAX / 100;
+  var AMAX = pick([0.5, 1, 1.5, 2, 3, 5], I0 * 1.25), ARES = AMAX / 100;
   function fI(v) { return (Math.round(v / ARES) * ARES).toFixed(2); }
   function fmtN(v, d) { return String(+v.toFixed(d === undefined ? 2 : d)); }
   // what the instruments can really resolve
@@ -51,7 +51,7 @@ HoolaStudio.define('current-magnetism', function (S) {
   }
 
   // ---------- supply, key, rheostat, ammeter (the same series circuit for every lab)
-  var PB = [-0.66, -0.12];
+  var PB = [-0.62, -0.21];
   var pb = S.powerBox([PB[0], 0, PB[1]], 'DC SUPPLY');
   var pbV = S.label(fmtN(p.Eb, 1) + ' V DC', { w: 0.05, ratio: 0.3, color: '#f2f2f2' });
   pbV.position.set(PB[0] + 0.045, 0.034, PB[1] + 0.0405); S.scene.add(pbV);
@@ -158,15 +158,16 @@ HoolaStudio.define('current-magnetism', function (S) {
     var fmr = new T.MeshStandardMaterial({ color: 0xf1e7cc, roughness: 0.45, side: T.DoubleSide });
     var ring = S.mesh(new T.TorusGeometry(A, 0.006, 10, 60), fmr); ring.position.set(WX, 0.0145 + A + 0.012, WZ); src.add(ring);
     var stalk = S.mesh(new T.CylinderGeometry(0.006, 0.008, A + 0.012, 14), M.bakelite); stalk.position.set(WX, 0.0145 + (A + 0.012) / 2, WZ); src.add(stalk);
+    // the turns wind round the coil's axis, which points along z (the probe comes in along it)
     var hel = new T.Curve(); hel.getPoint = function (t, tgt) {
-      var a = t * NT * Math.PI * 2, off = (t - 0.5) * 0.004 * NT;
-      return (tgt || new T.Vector3()).set(off, Math.cos(a) * (A + 0.0068), Math.sin(a) * (A + 0.0068));
+      var a = t * NT * Math.PI * 2, off = (t - 0.5) * 0.0035 * NT;
+      return (tgt || new T.Vector3()).set(Math.cos(a) * (A + 0.0068), Math.sin(a) * (A + 0.0068), off);
     };
     var wind = S.mesh(new T.TubeGeometry(hel, NT * 28, 0.0011, 6, false), cu); wind.position.set(WX, 0.0145 + A + 0.012, WZ); src.add(wind);
-    srcP = post(WX + 0.06, 0.0145, WZ + 0.1, 'red'); srcM = post(WX - 0.06, 0.0145, WZ + 0.1, 'black');
+    srcP = post(WX + 0.08, 0.0145, WZ + 0.05, 'red'); srcM = post(WX - 0.08, 0.0145, WZ + 0.05, 'black');
     [[-1, srcM], [1, srcP]].forEach(function (q) {
-      src.add(S.mesh(new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(WX + q[0] * 0.004 * NT / 2, 0.0145 + A + 0.012 - (A + 0.0068), WZ),
-        new T.Vector3(WX + q[0] * 0.03, 0.03, WZ + 0.05), new T.Vector3(q[1].at.x, 0.016, q[1].at.z)]), 20, 0.0011, 6, false), cu));
+      src.add(S.mesh(new T.TubeGeometry(new T.CatmullRomCurve3([new T.Vector3(WX, 0.0145 + 0.012 - 0.0068, WZ + q[0] * 0.0035 * NT / 2),
+        new T.Vector3(WX + q[0] * 0.04, 0.03, WZ + 0.02), new T.Vector3(q[1].at.x, 0.016, q[1].at.z)]), 20, 0.0011, 6, false), cu));
     });
   } else {
     var LS = CORE ? p.Lsol : Math.min(0.34, p.Lsol), AS = Math.max(0.006, p.a);
@@ -226,7 +227,7 @@ HoolaStudio.define('current-magnetism', function (S) {
   comp.position.set(WX, 0.0145, WZ);
   if (!COMPASS) comp.position.set(WX - 0.15, 0.0145, WZ + 0.11);               // parked beside the stage
 
-  var tm = new T.Group(); S.scene.add(tm); tm.position.set(0.74, 0, -0.56); tm.rotation.y = -0.35;
+  var tm = new T.Group(); S.scene.add(tm); tm.position.set(0.66, 0, -0.52); tm.rotation.y = -0.35;
   var tface = new T.Group(); tface.rotation.x = -Math.PI / 2; tface.position.y = 0.018; tm.add(tface);
   tface.add(S.rounded(0.1, 0.15, 0.034, 0.01, new T.MeshStandardMaterial({ color: 0x2f3338, roughness: 0.6 })));
   var tTex = S.canvasTex(560, 840, function (x, w, h) {
@@ -257,7 +258,7 @@ HoolaStudio.define('current-magnetism', function (S) {
   var zeroBtn = S.mesh(new T.CylinderGeometry(0.006, 0.006, 0.003, 20), new T.MeshStandardMaterial({ color: 0xf0b928, roughness: 0.5 }));
   zeroBtn.rotation.x = Math.PI / 2; zeroBtn.position.set(-0.024, 0.0105, 0.0185); tface.add(zeroBtn);
   var holdBtn = S.mesh(new T.CylinderGeometry(0.006, 0.006, 0.003, 20), M.grey); holdBtn.rotation.x = Math.PI / 2; holdBtn.position.set(0.024, 0.0105, 0.0185); tface.add(holdBtn);
-  S.contact(0.16, 0.2, 0.74, -0.56, 0.5);
+  S.contact(0.16, 0.2, 0.66, -0.52, 0.5);
   // the Hall probe: a thin wand on a lead, slid into the coil / solenoid
   var probe = new T.Group(); S.scene.add(probe);
   var wand = S.mesh(new T.BoxGeometry(0.004, 0.0022, 0.1), new T.MeshStandardMaterial({ color: 0x1f2227, roughness: 0.5 })); wand.position.z = -0.05; probe.add(wand);
@@ -281,14 +282,14 @@ HoolaStudio.define('current-magnetism', function (S) {
         S.render();
       });
   }
-  S.wire([[0.74 - 0.03, 0.03, -0.49], [0.6, 0.02, -0.4], [WX + 0.12, 0.02, WZ + 0.22], [probe.position.x + 0.004, 0.028, probe.position.z + 0.055]], 'black');
+  S.wire([[0.63, 0.03, -0.45], [0.54, 0.02, -0.38], [WX + 0.12, 0.02, WZ + 0.22], [probe.position.x + 0.004, 0.028, probe.position.z + 0.055]], 'black');
 
   // ---------- the leads
-  lead(pbPlus.at, kL.at, 'red', [[-0.6, -0.2], [-0.5, -0.1]]);
+  lead(pbPlus.at, kL.at, 'red', [[-0.56, -0.26], [-0.48, -0.12]]);
   lead(kR.at, rhA.at, 'red', [[-0.34, -0.1], [-0.3, 0.0]]);
   lead(rhC.at, srcP.at, 'yellow', [[0.04, 0.04], [0.2, 0.06]]);
   lead(srcM.at, amP.at, 'yellow', [[0.08, -0.3], [-0.3, -0.36]]);
-  lead(amM.at, pbMinus.at, 'black', [[-0.58, -0.44], [-0.72, -0.3]]);
+  lead(amM.at, pbMinus.at, 'black', [[-0.58, -0.46], [-0.68, -0.34]]);
 
   S.addApparatus('pb', pb, 'DC supply (' + fmtN(p.Eb, 1) + ' V)', 'A low-voltage supply. Everything here runs on cells or this box: never on the mains.');
   S.addApparatus('key', key, 'Plug key K', 'Closes the circuit. Keep it open between readings so the wire stays cool.');
@@ -331,12 +332,13 @@ HoolaStudio.define('current-magnetism', function (S) {
     if (!CORE) return Promise.resolve();
     if (S.hand.busy) { S.say('Wait for the hand to finish.'); return Promise.resolve(); }
     if (!!on === st.core) return Promise.resolve();
-    var g = src.userData.nail, tp = src.userData.tip, x0 = g.position.x, dx = on ? 0 : 0.17;
-    return S.hand.pinchMove(new T.Vector3(x0 + 0.06, g.position.y + 0.01, g.position.z),
-      function (k) { return new T.Vector3(x0 + 0.06 + (st.core ? 1 : -1) * 0, g.position.y + 0.01, g.position.z); },
-      function (k) { var x = on ? (x0 + (0.17 * (1 - k)) * 0 + 0.17 * (1 - k)) : x0 + 0.17 * k; g.position.x = WX + (x - WX); tp.position.x = g.position.x + p.Lsol / 2 + 0.022; },
+    var g = src.userData.nail, tp = src.userData.tip, x0 = g.position.x, x1 = WX + (on ? 0 : 0.17);
+    function tipAt(x) { return new T.Vector3(x + p.Lsol / 2 + 0.03, g.position.y + 0.012, g.position.z); }
+    return S.hand.pinchMove(tipAt(x0),
+      function (k) { return tipAt(x0 + (x1 - x0) * k); },
+      function (k) { g.position.x = x0 + (x1 - x0) * k; tp.position.x = g.position.x + p.Lsol / 2 + 0.022; },
       { ms: 800, mode: 'top' }).then(function () {
-        g.position.x = WX + (on ? 0 : 0.17); tp.position.x = g.position.x + p.Lsol / 2 + 0.022;
+        g.position.x = x1; tp.position.x = g.position.x + p.Lsol / 2 + 0.022;
         st.core = !!on; solve();
         S.say(on ? 'The iron nail is pushed back into the coil: the field jumps up.' : 'The nail is drawn out: only the coil’s own field is left.');
         S.render();
@@ -395,9 +397,9 @@ HoolaStudio.define('current-magnetism', function (S) {
   function done() { return S.rows.length >= NEED && !pending(); }
 
   // the currents the walk-through uses: spread over the rheostat, never above the meter's range
-  function plan() {
-    var out = [], iMax = Math.min(Math.abs(p.Eb) / RS_MIN, AMAX * 0.75), n = NEED;
-    for (var k = 0; k < n; k++) { var ii = iMax * (1 - 0.16 * k); out.push(Math.abs(p.Eb) / ii); }
+  function plan() {                                       // the rheostat only ever cuts the current down from I0
+    var out = [], k;
+    for (k = 0; k < NEED; k++) out.push(Math.min(RS_MAX, RS0 / (1 - 0.15 * k)));
     return out;
   }
 
@@ -491,12 +493,12 @@ HoolaStudio.define('current-magnetism', function (S) {
 
   var TRUTH = CORE ? MUR0 : perAmp(D0, CORE ? MUR0 : p.mur);
   return {
-    camera: { pos: [0.08, 1.0, 0.95], look: [0.06, 0.0, -0.3] },
-    views: { pb: [[-0.52, 0.34, 0.06], [-0.66, 0.04, -0.14]], key: [[-0.38, 0.26, 0.14], [-0.42, 0.02, -0.05]],
+    camera: { pos: [0.04, 1.42, 0.56], look: [0.04, 0.0, -0.24] },
+    views: { pb: [[-0.5, 0.34, -0.02], [-0.62, 0.04, -0.22]], key: [[-0.38, 0.26, 0.14], [-0.42, 0.02, -0.05]],
       rh: [[-0.12, 0.3, 0.2], [-0.14, 0.04, 0.0]], am: [[-0.44, 0.3, -0.16], [-0.44, 0.04, -0.45]],
       src: [[0.36, 0.3, 0.04], [0.36, 0.04, -0.26]], comp: [[WX + 0.02, 0.17, WZ + 0.14], [WX, 0.015, WZ]],
-      tm: [[0.7, 0.3, -0.26], [0.74, 0.02, -0.56]],
-      circuit: [[0.08, 1.0, 0.95], [0.06, 0.0, -0.3]], work: [[0.24, 0.62, 0.42], [0.22, 0.02, -0.28]],
+      tm: [[0.62, 0.3, -0.22], [0.66, 0.02, -0.52]],
+      circuit: [[0.04, 1.42, 0.56], [0.04, 0.0, -0.24]], work: [[0.22, 0.8, 0.3], [0.22, 0.02, -0.28]],
       book: [[-0.5, 0.45, 0.6], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: KIND === 'wire'

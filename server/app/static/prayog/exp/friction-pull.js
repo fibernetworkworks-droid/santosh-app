@@ -42,7 +42,7 @@ HoolaStudio.define('friction-pull', function (S) {
   var CL = 0.19, ROD0 = 0.022, THR = 0.055;                         // balance case, hook rod, thread
   var BY = ST + BH / 2;                                             // the block's centre height
 
-  var sheet = S.rounded(SL, ST, SW, 0.004, new T.MeshStandardMaterial({ color: FACE.c, roughness: FACE.r, metalness: FACE.m }));
+  var sheet = S.rounded(SL, SW, ST, 0.004, new T.MeshStandardMaterial({ color: FACE.c, roughness: FACE.r, metalness: FACE.m }));
   sheet.rotation.x = -Math.PI / 2; sheet.position.set(SX, ST / 2, SZ); S.scene.add(sheet);
   S.contact(SL + 0.08, SW + 0.08, SX, SZ, 0.5);
   if (OILED) {                                                      // a thin film of oil, and the oil can beside it
@@ -74,7 +74,7 @@ HoolaStudio.define('friction-pull', function (S) {
   // the slotted weights: three on the stand, lifted one at a time on to the block
   var STAND = new T.Vector3(0.52, 0, 0.06);
   var post = S.mesh(new T.CylinderGeometry(0.006, 0.006, 0.12, 16), M.chrome); post.position.set(STAND.x, 0.06, STAND.z); S.scene.add(post);
-  var foot = S.rounded(0.13, 0.012, 0.11, 0.004, M.iron); foot.rotation.x = -Math.PI / 2; foot.position.set(STAND.x, 0.006, STAND.z); S.scene.add(foot);
+  var foot = S.rounded(0.13, 0.11, 0.012, 0.004, M.iron); foot.rotation.x = -Math.PI / 2; foot.position.set(STAND.x, 0.006, STAND.z); S.scene.add(foot);
   S.contact(0.2, 0.18, STAND.x, STAND.z, 0.5);
   var WR = 0.034, WT = 0.016;
   var W = [0, 1, 2].map(function (i) {
