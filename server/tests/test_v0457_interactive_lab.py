@@ -241,7 +241,7 @@ def test_e2e_bench_wired():
     import re
     import struct
     wf = open("../.github/workflows/interactive-lab.yml").read()
-    assert "bench_e2e" in wf and "e2e, studio, voices, deploy" in wf
+    assert "bench_e2e" in wf and "e2e, studio, voices, voice_tune, deploy" in wf
     assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
@@ -283,7 +283,7 @@ def test_live_socket_and_student_page():
     body = src[src.index("async def live_socket"):src.index('api.websocket("/live")')]
     assert 'hello.get("key")' in body and "compare_digest" in body          # key in the first message, never in the address
     assert "AVATAR_ID.match(avatar)" in body and "MAX_TEXT" in body          # same guards as the other doors
-    assert "asyncio.create_task(voice.speak.remote.aio" in body              # every chunk's voice starts at once
+    assert "asyncio.create_task(voiced(k, c))" in body and "voice.speak.remote.aio(c, lang)" in body   # every chunk's voice starts at once
     assert "async for b in face.stream.remote_gen.aio" in body               # read to the end: cancelling restarts a container
     assert ".cancel()" not in body                                           # voice calls are never cancelled
     assert "the live talk stopped" in body and "str(e)" not in body.split("say(type=\"error\", msg=\"the live")[1][:80]   # no internals to the browser
@@ -493,4 +493,35 @@ def test_voice_card_scores_clarity_fairly():
     assert ".get(timeout=900) for t in VOICE_CARD_LINES" in card                # one warm container per voice, not 8 cold
     assert "indicf5" not in card                                                # lab_only voices are not candidates to ship
     wf = WORKFLOW
-    assert "modal run modal_app.py::voice_card" in wf and "inputs.job == 'voices') && always()" in wf
+    assert "modal run modal_app.py::voice_card" in wf and "inputs.job == 'voices' || inputs.job == 'voice_tune') && always()" in wf
+
+
+def test_voice_knobs_are_clamped_and_only_known_ones():
+    ns: dict = {}
+    exec(re.search(r"VOICE_SETTINGS: dict = .*?\n_KNOB_RANGE = .*?\n", MODAL_SRC, re.S).group(0), ns)
+    exec(re.search(r"def _voice_knobs\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    k = ns["_voice_knobs"]
+    assert k(None) == {}                                                  # her pick = the model's own defaults
+    assert k({"temperature": 5, "cfg_weight": -1, "exaggeration": 0.7}) == {"temperature": 1.0, "cfg_weight": 0.2, "exaggeration": 0.7}
+    assert k({"top_p": 0.1, "audio_prompt_path": "/etc/passwd", "temperature": "x"}) == {}   # unknown / bad never reach generate
+    speak = MODAL_SRC[MODAL_SRC.index("def speak(self, text: str, lang: str = \"hi\""):]
+    assert "**knobs, **(" in speak[:2500]
+
+
+def test_live_talk_trims_every_chunk_but_the_first():
+    sock = MODAL_SRC[MODAL_SRC.index("async def live_socket"):MODAL_SRC.index("live_socket.__annotations__")]
+    assert "if k == 0:\n                    return r" in sock                       # the face starts at once
+    assert "ear.trim.remote.aio(r[\"wav\"], c, lang)" in sock
+    assert "asyncio.wait({cut}, timeout=LIVE_TRIM_WAIT)" in sock and "cut.cancel" not in sock   # never cancelled
+    assert "voiced(k, c)) for k, c in enumerate(chunks)" in sock
+    hear = MODAL_SRC[MODAL_SRC.index("@app.cls(image=hear_image"):MODAL_SRC.index("class Hear:")]
+    assert "min_containers=WARM" in hear and "gpu=" not in hear
+
+
+def test_voice_tune_card():
+    card = MODAL_SRC[MODAL_SRC.index("def voice_tune"):]
+    assert 'voice.speak.spawn(text, "hi", None, "", knobs)' in card and "for take in (1, 2)" in card
+    assert 'tune_{name}.wav' in card and "RAN ON" in card
+    tunes = MODAL_SRC[MODAL_SRC.index("VOICE_TUNES = ["):MODAL_SRC.index("@app.local_entrypoint()\ndef voice_tune")]
+    assert '("default", {})' in tunes                                          # what she liked is always in the race
+    assert "modal run modal_app.py::voice_tune" in WORKFLOW

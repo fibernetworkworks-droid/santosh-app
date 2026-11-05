@@ -37,6 +37,7 @@ APP = "hoola-lab"
 GPU = os.environ.get("HOOLA_LAB_GPU", "L4")          # L4 is in Modal's free monthly credit range; A10G / L40S for speed tests
 WARM = int(os.environ.get("HOOLA_LAB_WARM", "0"))      # containers kept running (0 = scale to zero); 1 = a teacher mid-lesson never meets a cold start
 VOICE_WARM = int(os.environ.get("HOOLA_LAB_VOICES", "3" if WARM else "0"))   # voice containers kept warm (one per early chunk: two chunks sharing a card each ran ~30 % slower): chunks 2, 3... are made at the SAME time as chunk 1 on the others
+LIVE_TRIM_WAIT = 6.0                                 # seconds a live chunk may wait for the ears before it goes as it is
 IDLE = 120                                          # seconds an idle container lives (credit saver)
 MODELS_DIR = "/models"
 HF_ENV = {"HF_HOME": f"{MODELS_DIR}/hf", "HF_HUB_ENABLE_HF_TRANSFER": "0"}
@@ -130,6 +131,26 @@ def _wav_bytes(wav, sr: int) -> bytes:
     return buf.getvalue()
 
 
+# The owner chose Chatterbox by ear (5 Nov 2026). These are its sampling settings for EVERY take (Studio + live); empty =
+# the model's own defaults (exaggeration 0.5, cfg_weight 0.5, temperature 0.8), which is what she heard and liked. The
+# voice_tune card measures other settings; one she picks by ear goes here and nowhere else.
+VOICE_SETTINGS: dict = {}
+_KNOB_RANGE = {"exaggeration": (0.25, 1.0), "cfg_weight": (0.2, 0.8), "temperature": (0.4, 1.0)}
+
+
+def _voice_knobs(settings: dict | None) -> dict:
+    """Only the three known Chatterbox knobs, each clamped to a range that still speaks sensibly; anything else dropped."""
+    out = {}
+    for k, v in {**VOICE_SETTINGS, **(settings or {})}.items():
+        if k in _KNOB_RANGE:
+            try:
+                lo, hi = _KNOB_RANGE[k]
+                out[k] = round(min(hi, max(lo, float(v))), 2)
+            except (TypeError, ValueError):
+                pass
+    return out
+
+
 def _take_off(secs: float, words: int) -> float:
     """How far a voice take is from the normal length of `words` Hindi words (about 0.45 s a word)."""
     return abs(secs - max(0.6, words * 0.45))
@@ -199,7 +220,9 @@ class Chatterbox:
             return f.read()
 
     @modal.method()
-    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, voice_id: str = "", **_) -> dict:
+    def speak(self, text: str, lang: str = "hi", ref_audio: bytes | None = None, voice_id: str = "",
+              settings: dict | None = None, **_) -> dict:
+        knobs = _voice_knobs(settings)
         if voice_id:
             if not AVATAR_ID.match(voice_id):
                 raise ValueError("bad voice_id")
@@ -215,7 +238,7 @@ class Chatterbox:
         best, tries = None, 0
         for _ in range(3):
             tries += 1
-            w = self.model.generate(text, language_id=lang, **({"audio_prompt_path": ref} if ref else {}))
+            w = self.model.generate(text, language_id=lang, **knobs, **({"audio_prompt_path": ref} if ref else {}))
             peak = float(w.abs().max()) or 1.0                       # cut the silent tail the sampler leaves after the last word (keep 0.2 s)
             loud = (w.abs() > 0.02 * peak).nonzero()
             if loud.numel():
@@ -228,7 +251,7 @@ class Chatterbox:
         wav, secs = best
         out = _wav_bytes(wav, self.model.sr)
         return {"wav": out, "sr": self.model.sr, "synth_s": round(time.time() - t, 2), "load_s": self.load_s,
-                "tries": tries, "runaway": secs > limit, "cut_short": secs < floor}
+                "tries": tries, "runaway": secs > limit, "cut_short": secs < floor, "knobs": knobs}
 
 
 @app.cls(gpu=GPU, image=indicf5_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600)
@@ -872,8 +895,25 @@ def web():
             chunks = split_speech(text)
             lang = str(hello.get("lang") or "hi")[:5]
             await say(type="start", fps=25, chunks=len(chunks))
-            voice, face = Chatterbox(), Live()
-            tasks = [asyncio.create_task(voice.speak.remote.aio(c, lang)) for c in chunks]
+            voice, face, ear = Chatterbox(), Live(), Hear()
+
+            async def voiced(k: int, c: str) -> dict:
+                """The voice for one chunk. Chunks after the first go through the ears (cut right after the last
+                scripted word - the voice can babble past its text); they are made while earlier chunks play, so the
+                cut costs no waiting. The FIRST chunk is never held: the face must start talking at once. A trim that
+                is slow or fails keeps the take as it is (a long tail beats a lost sentence), and it is never
+                cancelled - cancelling a Modal call restarts its container."""
+                r = await voice.speak.remote.aio(c, lang)
+                if k == 0:
+                    return r
+                cut = asyncio.ensure_future(ear.trim.remote.aio(r["wav"], c, lang))
+                done, _ = await asyncio.wait({cut}, timeout=LIVE_TRIM_WAIT)
+                if cut in done and not cut.exception():
+                    return {**r, "wav": cut.result()["wav"], "cut_s": cut.result().get("cut_s")}
+                cut.add_done_callback(lambda f: f.exception())
+                return r
+
+            tasks = [asyncio.create_task(voiced(k, c)) for k, c in enumerate(chunks)]
             for k, t in enumerate(tasks):
                 r = await asyncio.wait_for(t, 180)
                 await push(2, k, 0, r["wav"])
@@ -1417,7 +1457,8 @@ def _cut_wav(wav: bytes, seconds: float, fade_s: float = 0.08) -> bytes:
     return buf.getvalue()
 
 
-@app.cls(image=hear_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=900, cpu=4, memory=4096)
+@app.cls(image=hear_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=900, cpu=4, memory=4096,
+         min_containers=WARM)          # CPU only (no GPU bill); warm with the live engine so the live trim never waits on a cold start
 class Hear:
     """Speech to text (faster-whisper small, MIT code + MIT weights, CPU int8): what was said, in which language, and when."""
 
@@ -1705,6 +1746,70 @@ def voice_card():
     note("RANKING (clearest first - then LISTEN to the WAVs; the ear decides):")
     for avg, name, tail, r in summary:
         note(f"   {name:<14} CER {avg:.3f}  worst tail {tail:.1f}s  {r:.2f}x real time")
+
+
+VOICE_TUNES = [                       # name, settings - the first is what she heard and liked (the model's own defaults)
+    ("default", {}),
+    ("calm", {"temperature": 0.6}),
+    ("careful", {"cfg_weight": 0.3}),
+    ("careful_calm", {"cfg_weight": 0.3, "temperature": 0.6}),
+    ("firm_calm", {"cfg_weight": 0.7, "temperature": 0.6}),
+    ("lively_careful", {"exaggeration": 0.7, "cfg_weight": 0.3}),
+]
+
+
+@app.local_entrypoint()
+def voice_tune():
+    """Chatterbox (her choice) under a few sampling settings, the same 8 Hindi lines TWICE each (sampling is random, one
+    take is noise), heard back by whisper. Per setting: character error rate (clearer = lower), babble (takes whose sound
+    runs on > 0.8 s past the last word, or that the length guard had to remake), pace. lab_out/REPORT_tune.txt +
+    tune_<setting>.wav (three teaching lines joined) for her ears - the card ranks, her ear picks, and the pick goes
+    into VOICE_SETTINGS."""
+    os.makedirs("lab_out", exist_ok=True)
+    out_lines = [f"GPU {GPU}  Chatterbox tuning card - {len(VOICE_CARD_LINES)} Hindi lines x 2 takes per setting"]
+
+    def note(text: str) -> None:
+        out_lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_tune.txt", "w") as f:
+            f.write("\n".join(out_lines) + "\n")
+
+    voice, ear = Chatterbox(), Hear()
+    board = []
+    for name, knobs in VOICE_TUNES:
+        cers, babble, secs_all, words_all, listen = [], 0, 0.0, 0, []
+        for take in (1, 2):
+            for i, text in enumerate(VOICE_CARD_LINES, 1):
+                try:
+                    o = voice.speak.spawn(text, "hi", None, "", knobs).get(timeout=600)
+                    h = ear.transcribe.spawn(o["wav"], "hi").get(timeout=600)
+                except Exception as e:
+                    note(f"   {name} take {take} line {i}: FAILED {type(e).__name__}: {str(e)[:160]}")
+                    continue
+                heard = " ".join(sg["text"] for sg in h["segments"])
+                words = [w for sg in h["segments"] for w in sg["words"]]
+                last = words[-1]["end"] if words else 0.0
+                ran_on = float(h.get("loud_end") or 0) - last > 0.8 or (o.get("tries") or 1) > 1
+                babble += 1 if ran_on else 0
+                c = _cer(text, heard)
+                cers.append(c)
+                secs_all += _wav_seconds(o["wav"])
+                words_all += len(text.split())
+                if take == 1 and i in (2, 3, 4):
+                    listen.append(o["wav"])
+                note(f"   {name:<15} t{take} {i}: CER {c:.2f}{'  RAN ON' if ran_on else ''} | {heard[:80]}")
+        if listen:
+            with open(f"lab_out/tune_{name}.wav", "wb") as f:
+                f.write(_wav_concat(listen, gap_s=0.6))
+        if cers:
+            avg = sum(cers) / len(cers)
+            pace = words_all / secs_all if secs_all else 0
+            board.append((avg, babble, name, knobs, pace, len(cers)))
+            note(f"{name:<15} {json.dumps(knobs)}  mean CER {avg:.3f}  ran on {babble}/{len(cers)}  pace {pace:.1f} words/s")
+    board.sort(key=lambda b: (b[0] + 0.02 * b[1]))
+    note("RANKING (clearest first; each ran-on take costs 0.02 - then LISTEN to tune_<name>.wav, the ear picks):")
+    for avg, bab, name, knobs, pace, n in board:
+        note(f"   {name:<15} CER {avg:.3f}  ran on {bab}/{n}  {pace:.1f} words/s  {json.dumps(knobs)}")
 
 
 @app.function(image=face_image, timeout=300)
