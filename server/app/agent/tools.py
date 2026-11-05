@@ -339,6 +339,18 @@ TOOLS.extend(SPECKIT_TOOLS)
 TOOL_LABELS.update(SPECKIT_LABELS)
 HANDLERS.update(SPECKIT_HANDLERS)
 
+from .sandarbh_tools import (  # noqa: E402  v0.586 SANDARBH MANCH - the T1 reference family (modelcontextprotocol/servers, MIT, IDEA-ONLY): the confined tenant workspace (the filesystem role) + the knowledge-graph memory (the memory role), backend-only
+    KGMEMORY_HANDLERS, KGMEMORY_LABELS, KGMEMORY_TOOLS,
+    WORKSPACE_HANDLERS, WORKSPACE_LABELS, WORKSPACE_TOOLS,
+)
+
+TOOLS.extend(WORKSPACE_TOOLS)
+TOOL_LABELS.update(WORKSPACE_LABELS)
+HANDLERS.update(WORKSPACE_HANDLERS)
+TOOLS.extend(KGMEMORY_TOOLS)
+TOOL_LABELS.update(KGMEMORY_LABELS)
+HANDLERS.update(KGMEMORY_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)

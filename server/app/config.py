@@ -328,6 +328,12 @@ class Settings(BaseSettings):
                                            # cooldowns stay GLOBAL - the egress IP is shared, so a platform pause is too
     speckit_enabled: bool = True           # v0.560 SPEC SUTRA: the spec-driven ladder (the `speckit` tool, the
                                            # github/spec-kit idea); per-tenant store data/speckit/<tenant>/speckit.db
+    workspace_enabled: bool = True         # v0.586 SANDARBH MANCH: the T1 reference filesystem role (the `workspace`
+                                           # tool, the modelcontextprotocol/servers idea) - per-tenant sandbox
+                                           # data/workspace/<tenant>/; off stops WRITES, reads stay answerable
+    kgmemory_enabled: bool = True          # v0.586 SANDARBH MANCH: the T1 reference memory role (the `kgmemory`
+                                           # tool, the knowledge-graph idea) - per-tenant store
+                                           # data/kgmemory/<tenant>/kg.db; off stops WRITES, reads stay answerable
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)

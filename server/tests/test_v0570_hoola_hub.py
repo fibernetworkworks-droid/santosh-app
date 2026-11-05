@@ -1,4 +1,4 @@
-"""v0.589.0 HOOLA HUB - the hub/loader/conformance layer, P7 of the AEP plan
+"""v0.590.0 HOOLA HUB - the hub/loader/conformance layer, P7 of the AEP plan
 (the name keeps the first-build number, the v0.566 middleware precedent).
 
 The langchain hub FEATURE SURFACE hand-built as app/aep/{hub,load,mcp,
@@ -760,8 +760,8 @@ def test_version_pins():
     from pathlib import Path
     from app.main import APP_VERSION
     root = Path(__file__).resolve().parents[2]
-    assert APP_VERSION == "0.589.0"
-    assert "0.589.0+604" in (root / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.590.0"
+    assert "0.590.0+605" in (root / "pubspec.yaml").read_text()
     # the newest-story keyword pins, inherited from the P6 graph suite
     line = (root / "server" / "app" / "main.py").read_text().splitlines()[35]
     assert "HOOLA HUB" in line and "init_chat_model" in line

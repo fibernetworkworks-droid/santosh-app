@@ -117,6 +117,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "speckit": ("speckit", "spec sutra", "spec driven", "spec-driven", "sdd", "user story", "acceptance criteria",
                 "user stories", "traceability", "constitution", "naksha banao", "spec banao", "spec likho",
                 "spec likh", "requirements doc", "requirement list", "converge loop", "convergence"),
+    # v0.586 SANDARBH MANCH: two work lanes (backend-only, the hoola AI's own desks - the T1 reference
+    # family). Bare "file" stays with product's file tools; these are the agent-owns-it shapes.
+    "workspace": ("workspace", "meri files", "file banao", "file likho", "file padho", "file kholo",
+                  "file save karo", "folder banao", "folder dikhao", "file dikhao", "directory tree",
+                  "apni file", "workspac"),
+    "kgmemory": ("kgmemory", "knowledge graph", "graph memory", "kg memory", "long term memory",
+                 "long-term memory", "entity banao", "relation banao", "yaad graph", "memory graph"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
     "mshop": ("mobile shop", "sim card", "phone repair", "phone shop"),
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",
