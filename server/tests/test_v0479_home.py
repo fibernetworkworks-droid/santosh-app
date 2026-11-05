@@ -15,7 +15,7 @@ What this suite pins:
 (6) THE REST CLIENT: states / state_one / switch against a fake HA (httpx.MockTransport) - domain-native
     services (cover open/close, scene turn_on, button press), the settle re-read, honest failure lines.
 (7) AUDIT: every attempt (success or refusal) lands in home_audit; recent_audit reads it back.
-(8) VERSION: APP_VERSION 0.479.0, pubspec 0.534.0+557.
+(8) VERSION: APP_VERSION 0.479.0, pubspec 0.535.0+558.
 """
 import asyncio
 

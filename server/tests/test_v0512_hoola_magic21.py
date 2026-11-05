@@ -184,7 +184,7 @@ def test_version(env):
     # rides the NEWEST story - now the v0.530 HOOLA GRAPH story
     assert "HOOLA GRAPH" in story and "StateGraph" in story and "interrupt" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.534.0+557" in pub
+    assert "version: 0.535.0+558" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches
