@@ -1,26 +1,63 @@
 {
-  "base": "limiting-friction",
-  "chapter": "Laws of Motion",
-  "variants": [
-    {"key": "lubricated-metal", "title": "Limiting friction: metal faces with a film of oil",
-     "sample": "Block faced with metal on a metal-faced plank, lubricated", "method": "Pan and pulley, weights added to the block",
-     "unknown": "the coefficient of limiting friction between the two faces", "params": {"mu": 0.15},
-     "note": "Metal on metal, lubricated: the handbook value of the static coefficient is 0.15. A thin film of oil keeps the two surfaces apart and cuts friction several times over.",
-     "source": {"title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), metal on metal (lubricated)"}},
-    {"key": "waxed-wood-snow", "title": "Limiting friction: waxed wood on wet snow",
-     "sample": "Waxed wooden block on a tray of wet snow", "method": "Pan and pulley, weights added to the block",
-     "unknown": "the coefficient of limiting friction between wax and wet snow", "params": {"mu": 0.14},
-     "note": "Waxed wood on wet snow: static coefficient 0.14. This is why skis are waxed.",
-     "source": {"title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), waxed wood on wet snow"}},
-    {"key": "ice-ice", "title": "Limiting friction: ice on ice",
-     "sample": "Block of ice on a sheet of ice", "method": "Pan and pulley, weights added to the block",
-     "unknown": "the coefficient of limiting friction between ice and ice", "params": {"mu": 0.1},
-     "note": "Ice on ice: static coefficient 0.1, one of the smallest for ordinary solids.",
-     "source": {"title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), ice on ice"}},
-    {"key": "teflon-teflon", "title": "Limiting friction: Teflon on Teflon",
-     "sample": "Block faced with Teflon on a Teflon-faced plank", "method": "Pan and pulley, weights added to the block",
-     "unknown": "the coefficient of limiting friction between two Teflon faces", "params": {"mu": 0.04},
-     "note": "Teflon on Teflon: static coefficient 0.04, about as small as any pair of dry solids.",
-     "source": {"title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), Teflon on Teflon"}}
-  ]
+ "base": "limiting-friction",
+ "chapter": "Laws of Motion",
+ "variants": [
+  {
+   "key": "lubricated-metal",
+   "title": "Limiting friction: metal faces with a film of oil",
+   "sample": "Block faced with metal on a metal-faced plank, lubricated",
+   "method": "Pan and pulley, weights added to the block",
+   "unknown": "the coefficient of limiting friction between the two faces",
+   "params": {
+    "mu": 0.15
+   },
+   "note": "Metal on metal, lubricated: the handbook value of the static coefficient is 0.15. A thin film of oil keeps the two surfaces apart and cuts friction several times over.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), metal on metal (lubricated)"
+   }
+  },
+  {
+   "key": "waxed-wood-snow",
+   "title": "Limiting friction: waxed wood on wet snow",
+   "sample": "Waxed wooden block on a tray of wet snow",
+   "method": "Pan and pulley, weights added to the block",
+   "unknown": "the coefficient of limiting friction between wax and wet snow",
+   "params": {
+    "mu": 0.14
+   },
+   "note": "Waxed wood on wet snow: static coefficient 0.14. This is why skis are waxed.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), waxed wood on wet snow"
+   }
+  },
+  {
+   "key": "ice-ice",
+   "title": "Limiting friction: ice on ice",
+   "sample": "Block of ice on a sheet of ice",
+   "method": "Pan and pulley, weights added to the block",
+   "unknown": "the coefficient of limiting friction between ice and ice",
+   "params": {
+    "mu": 0.1
+   },
+   "note": "Ice on ice: static coefficient 0.1, one of the smallest for ordinary solids.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), ice on ice"
+   }
+  },
+  {
+   "key": "teflon-teflon",
+   "title": "Limiting friction: Teflon on Teflon",
+   "sample": "Block faced with Teflon on a Teflon-faced plank, 1 kg",
+   "method": "Pan and pulley, weights added to the block",
+   "unknown": "the coefficient of limiting friction between two Teflon faces",
+   "params": {
+    "mu": 0.04,
+    "m": 1.0
+   },
+   "note": "Teflon on Teflon: static coefficient 0.04, about as small as any pair of dry solids. A 1 kg block is used, because with so little friction a lighter block would be dragged along by the empty pan.",
+   "source": {
+    "title": "Serway & Jewett, Physics for Scientists and Engineers, Table 5.1: approximate coefficients of friction (static), Teflon on Teflon"
+   }
+  }
+ ]
 }

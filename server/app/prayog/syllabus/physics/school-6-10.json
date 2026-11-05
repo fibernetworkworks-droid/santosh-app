@@ -1160,7 +1160,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ohm"
+     "kernel": "ohm",
+     "built": "resistance-factors"
     },
     {
      "id": "series-resistors",

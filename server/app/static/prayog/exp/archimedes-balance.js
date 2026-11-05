@@ -299,15 +299,15 @@ HoolaStudio.define('archimedes-balance', function (S) {
   // ---------- workflow
   var IMM = [0.25, 0.5, 0.75, 1.0];
   var EXP = {
-    camera: DENS ? { pos: [0.52, 0.82, 1.05], look: [0.0, 0.3, -0.08] } : { pos: [0.34, 0.62, 0.78], look: [-0.02, 0.26, -0.08] },
+    camera: DENS ? { pos: [0.52, 0.82, 1.05], look: [0.0, 0.3, -0.08] } : { pos: [0.44, 0.72, 0.92], look: [-0.02, 0.22, -0.08] },
     views: {
       stand: [[0.1, 0.6, 0.5], [-0.2, 0.34, -0.1]],
       balance: [[0.16, 0.55, 0.36], [0.01, 0.42, -0.1]],
       solid: [[0.16, 0.26, 0.3], [0.01, 0.12, -0.1]],
       vessel: DENS ? [[0.3, 0.4, 0.55], [0.01, 0.13, -0.1]] : [[0.2, 0.3, 0.38], [0.01, 0.1, -0.1]],
       beaker: [[0.34, 0.26, 0.32], [0.3, 0.04, 0.08]],
-      air: DENS ? [[0.46, 0.72, 0.9], [0.0, 0.3, -0.08]] : [[0.24, 0.5, 0.52], [0.0, 0.3, -0.09]],
-      dip: DENS ? [[0.4, 0.56, 0.72], [0.02, 0.17, -0.08]] : [[0.24, 0.36, 0.46], [0.01, 0.16, -0.09]],
+      air: DENS ? [[0.46, 0.72, 0.9], [0.0, 0.3, -0.08]] : [[0.36, 0.62, 0.72], [0.0, 0.22, -0.09]],
+      dip: DENS ? [[0.4, 0.56, 0.72], [0.02, 0.17, -0.08]] : [[0.32, 0.48, 0.62], [0.01, 0.13, -0.09]],
       book: [[-0.56, 0.46, 0.54], [-0.64, 0.0, 0.1]]
     },
     theory: {
@@ -339,7 +339,7 @@ HoolaStudio.define('archimedes-balance', function (S) {
       lines: ['Aim: ' + S.lab.aim,
         'Solid: ' + solidName + ', ' + Math.round(SOLID_D * 1000) + ' mm × ' + (HS * 1000).toFixed(1) + ' mm, V = ' + (p.V * 1e6).toFixed(1) + ' cm³',
         'Spring balance 0–' + FULLB + ' N, least count ' + LCB.toFixed(2) + ' N; g = 9.8 m/s²',
-        DENS ? 'ρ = m / V,  m = W / g,  V = V₂ − V₁' : 'U = W − W′ = ρ g V_sub',
+        DENS ? 'ρ = m / V,  m = W / g,  V = V₂ − V₁' : 'U = W − W′ = ρ g V (under the surface)',
         'Precautions: the solid must not touch the vessel; read the meniscus at eye level.'],
       columns: DENS
         ? [{ label: 'S.No', get: function (r, i) { return i + 1; } },
@@ -349,7 +349,7 @@ HoolaStudio.define('archimedes-balance', function (S) {
           { label: 'V (mL)', get: function (r) { return (r.V * 1e6).toFixed(0); } }]
         : [{ label: 'S.No', get: function (r, i) { return i + 1; } },
           { label: 'depth (mm)', get: function (r) { return (r.d * 1000).toFixed(0); } },
-          { label: 'V_sub (cm³)', get: function (r) { return (r.Vs * 1e6).toFixed(1); } },
+          { label: 'V under (cm³)', get: function (r) { return (r.Vs * 1e6).toFixed(1); } },
           { label: 'W′ (N)', get: function (r) { return r.Wp.toFixed(2); } },
           { label: 'U = W − W′ (N)', get: function (r) { return r.U.toFixed(2); } }]
     },
@@ -383,7 +383,7 @@ HoolaStudio.define('archimedes-balance', function (S) {
       : [['The loss in weight of an immersed solid equals', ['the weight of the liquid displaced', 'its own weight', 'the weight of the jar'], 0,
         'That is Archimedes\' principle.'],
       ['Immersing the solid deeper makes the upthrust', ['larger, until it is fully under', 'smaller', 'unchanged'], 0,
-        'U = ρ g V_submerged, and the submerged volume grows until the solid is completely under.']],
+        'U = ρ g × the volume under the surface, and that volume grows until the solid is completely under.']],
     askState: function () {
       return { experiment: DENS ? 'density of a solid' : 'Archimedes\' principle', solid: solidName, liquid: LIQ_NAME,
         sample: vs, solid_volume_cm3: +(p.V * 1e6).toFixed(1), weight_in_air_N: st.Wair,

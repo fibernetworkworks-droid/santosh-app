@@ -336,9 +336,9 @@ def _client():
 
 def test_routes_are_public_read_only():
     c = _client()
-    d = c.get("/api/prayog/labs", params={"variants": False}).json()
+    d = c.get("/api/prayog/labs", params={"variants": False, "limit": 200}).json()   # the route pages at 100 by design
     assert len(d["labs"]) == len(S.labs()) and "simulation" in d["note"]   # every set-up; their variants page separately
-    hits = {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]}
+    hits = {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False, "limit": 200}).json()["labs"]}
     assert "convex-lens" in hits and all("lens" in h for h in hits)     # the search finds the lens labs and nothing else
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"

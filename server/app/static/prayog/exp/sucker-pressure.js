@@ -207,7 +207,7 @@ HoolaStudio.define('sucker-pressure', function (S) {
       principle: 'When a rubber sucker is pressed on a smooth plate the air under it is driven out, so the pressure '
         + 'inside falls almost to nothing while the atmosphere still presses on the outside. The plate then holds the '
         + 'sucker down with a force equal to the pressure of the air times the area of the sucker\'s face.',
-      formula: 'F = (P_atm − P_in) × A,   A = π d² / 4',
+      formula: 'F = (P outside − P inside) × A,   A = π d² / 4',
       formulaNote: 'so the slope of the force against area graph is the pressure of the air',
       more: ['One sucker on its own cannot give the pressure reliably, because its diameter is small and hard to '
         + 'measure. Four suckers of different size give four points, and the straight line through them is far '

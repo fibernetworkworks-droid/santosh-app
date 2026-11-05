@@ -52,8 +52,9 @@ HoolaStudio.define('school-conduction-bench', function (S) {
     lamp.add(function () { var w = S.mesh(new T.CylinderGeometry(0.0035, 0.0035, 0.01, 10), new T.MeshStandardMaterial({ color: 0x3a3a38, roughness: 1 })); w.position.y = 0.064; return w; }());
     var llab = S.label('SPIRIT LAMP', { w: 0.042, ratio: 0.2, color: '#5a3b16' }); llab.position.set(0, 0.026, 0.0305); lamp.add(llab);
     var flameTex = S.canvasTex(128, 256, function (x, w, h) {
-      var g = x.createRadialGradient(w / 2, h * 0.7, 4, w / 2, h * 0.62, h * 0.45);
-      g.addColorStop(0, 'rgba(255,246,205,.95)'); g.addColorStop(0.35, 'rgba(255,176,60,.75)'); g.addColorStop(1, 'rgba(255,120,20,0)');
+      var g = x.createRadialGradient(w / 2, h * 0.7, 3, w / 2, h * 0.66, h * 0.34);
+      g.addColorStop(0, 'rgba(255,248,214,.98)'); g.addColorStop(0.3, 'rgba(255,176,60,.6)');
+      g.addColorStop(0.7, 'rgba(255,130,25,.12)'); g.addColorStop(1, 'rgba(255,120,20,0)');
       x.fillStyle = g; x.fillRect(0, 0, w, h);
     });
     flame = new T.Mesh(new T.PlaneGeometry(0.055, 0.09), new T.MeshBasicMaterial({ map: flameTex, transparent: true, depthWrite: false, depthTest: false, toneMapped: false }));
