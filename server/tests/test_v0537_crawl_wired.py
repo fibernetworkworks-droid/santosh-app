@@ -1,4 +1,4 @@
-"""v0.533 CRAWL BRAIN — the WIRING. Are the ten modules actually REACHED?
+"""v0.537 CRAWL BRAIN — the WIRING. Are the ten modules actually REACHED?
 
 This file exists because of the v0.389 lesson, written into CLAUDE.md as a rule: a module's tests passing
 says it works, never that anything calls it - `sfmeta.py` shipped with 7 green tests and zero callers. The

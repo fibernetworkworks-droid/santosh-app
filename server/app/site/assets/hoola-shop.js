@@ -178,9 +178,10 @@
     var sub = el('button', 'btn btn-primary', 'Order bhejiye'); sub.type = 'submit';
     f.appendChild(sub); f.appendChild(msg); panel.appendChild(f);
     if (!ways.length) { sub.disabled = true; msg.textContent = 'Online order abhi band hai; dukaan ko call kijiye.'; }
+    var cid = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10);   // v0.538 a retry = the same order
     f.addEventListener('submit', function (e) {
       e.preventDefault(); if (!f.reportValidity()) return;
-      var fd = new FormData(f), body = {items: Object.keys(cart).map(function (s) { return {slug: s, qty: cart[s]}; })};
+      var fd = new FormData(f), body = {cid: cid, items: Object.keys(cart).map(function (s) { return {slug: s, qty: cart[s]}; })};
       ['name', 'phone', 'address', 'pincode', 'note', 'method', 'website', 'coupon'].forEach(function (k) { body[k] = fd.get(k) || ''; });
       body.pickup = !!(pick && pick.checked);
       sub.disabled = true; msg.textContent = 'Bhej rahe hain...';

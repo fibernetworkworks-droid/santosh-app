@@ -329,6 +329,9 @@ class Settings(BaseSettings):
     site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
+    site_shop_max_products: int = 20000    # v0.538 BADA CATALOGUE: products one website shop may hold (was 500)
+    site_shop_day_cap: int = 300           # orders a website shop takes in a day (spam guard; a big shop raises it)
+    site_shop_ip_cap: int = 12             # orders from one address in 10 minutes
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
     site_sms_provider: str = ""            # v0.434 website phone-OTP login: "" off | msg91 (DLT registered, her account)
     msg91_authkey: str = ""                # v0.434 MSG91 auth key (VPS .env only)
@@ -391,12 +394,12 @@ class Settings(BaseSettings):
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     scrape_respect_robots: bool = True     # v0.477 scrape tools refuse paths the site's robots.txt disallows for bots
     scrape_stealth_enabled: bool = False   # v0.477 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
-    # v0.533 CRAWL BRAIN (the crawl4ai ideas, hand-built). Every one is OFF or neutral by default.
-    scrape_proxies: str = ""               # v0.533 comma list: ip:port[:user:pass] | url | DIRECT. Empty = fetch direct, as before
-    scrape_proxy_max_fails: int = 3        # v0.533 failures before a proxy is rested
-    scrape_proxy_rest_s: int = 300         # v0.533 how long a failing proxy rests
-    scrape_clean_default: bool = False     # v0.533 prune boilerplate on EVERY scrape_page (she can also ask per call)
-    scrape_crawl_question_mode: str = "best"   # v0.533 frontier mode when a crawl job carries a question: best | bfs
+    # v0.537 CRAWL BRAIN (the crawl4ai ideas, hand-built). Every one is OFF or neutral by default.
+    scrape_proxies: str = ""               # v0.537 comma list: ip:port[:user:pass] | url | DIRECT. Empty = fetch direct, as before
+    scrape_proxy_max_fails: int = 3        # v0.537 failures before a proxy is rested
+    scrape_proxy_rest_s: int = 300         # v0.537 how long a failing proxy rests
+    scrape_clean_default: bool = False     # v0.537 prune boilerplate on EVERY scrape_page (she can also ask per call)
+    scrape_crawl_question_mode: str = "best"   # v0.537 frontier mode when a crawl job carries a question: best | bfs
     scrape_cache_enabled: bool = True      # v0.481 serve repeat scrapes from the per-tenant page cache within max_age
     scrape_cache_max_age: int = 1800       # v0.481 default seconds a cached page stays fresh for the scrape tool (0 = always fresh)
     scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)

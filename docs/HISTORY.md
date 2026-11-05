@@ -19490,3 +19490,322 @@ legal question into a declarable fact", for two reasons that land on the same mi
 - NOT VERIFIED: no real store survey has been filled from this, and it is not legal advice. The classification is only
   as good as the `source` each asset kind declares; an asset whose source Hoola cannot place is NAMED rather than
   guessed at, which is the honest failure.
+
+---
+
+## v0.537.0 — CRAWL BRAIN: the crawl4ai ideas, hand-built and wired
+
+Owner read `github.com/unclecode/crawl4ai`, asked **"NOW TELL ME WHAT CRAWL4AI CAN DO THAT HOOLA CANNOT"**,
+then **"give this all to hoola ai"** and **"GO WIRE IT ALL"**.
+
+### Why none of its code is here
+
+`crawl4ai/html2text/` is a **vendored fork of html2text** declaring upstream's own release `2024.2.26`,
+with **no copyright line and no licence header**. Upstream html2text is **GPLv3** — *"Originally written by
+Aaron Swartz. This code is distributed under the GPLv3"*, with a GNU GPL v3 `COPYING`. Both
+`markdown_generation_strategy.py` and `utils.py` import that fork, so **every page-to-markdown conversion in
+that library runs through GPL'd code inside an Apache-2.0 repo.** `agent/crawl_jobs.py` already keeps
+Firecrawl's AGPL engine out of this tree for the same reason. So the published algorithms were
+re-implemented from their formulas and measured. Credited in `THIRD_PARTY_NOTICES.md`.
+
+### The eight things it could do that Hoola could not
+
+| | New module | What Hoola had |
+|---|---|---|
+| 1 | `enough.py` | FIFO crawl, stops on a page cap, never because it has the answer |
+| 2 | `prune.py` | markdown, but no pruning — nav/banners/ads spent the 24k budget |
+| 3 | `frontier.py` | `queue.pop(0)` + a same-host check |
+| 4 | `seed.py` | `scrape_map` fetching 8 pages for links |
+| 5 | `tables.py` | nothing — tables arrived flattened |
+| 6 | `chunks.py` | chunking elsewhere, none for page text |
+| 7 | `blocked.py` | block detection + stealth escalation, but no vendor names |
+| 8 | `proxies.py`, `steps.py` | no proxy support; clicks driven turn-by-turn |
+
+**Item 1 is the one that matters.** `confidence = 0.4 coverage + 0.3 consistency + 0.3 saturation`, stop at
+0.70. On four pages that answer a question it **stops at page 3 instead of spending 20**; on irrelevant
+pages it never claims "enough" and exits as *"stalled: three pages moved confidence by +0.029"*.
+
+**Item 2, measured:** on a realistic page it keeps **57% of the text** and loses the cookie banner, nav,
+sidebar, advert and footer, while keeping the phone number and the content.
+
+### Wired, because modules nothing calls are the v0.389 trap
+
+`scrape_page` gained `clean` / `about` / `chunk`; `scrape_map` gained `sources="sitemap[,common_crawl]"` and
+`newer_than`; **new tool `scrape_tables`** (registry 554 → 555); `crawl_start` gained `question` (frontier +
+stopping rule — without a question the crawl behaves byte-for-byte as before); `_blocked` delegates to the
+vendor tiers after its own checks pass; `_fetch` rotates proxies behind the new `scrape_proxies` setting;
+`scrape_stealth` takes a `steps` script.
+
+`test_every_crawl_module_has_a_caller_outside_its_own_package` encodes CLAUDE.md's rule as an assertion —
+and **caught `chunks`, `proxies` and `steps` with no caller at all.** Built, tested, dead.
+
+### Ten bugs found by measurement, not reading
+
+1. **BM25's idf collapses when every page agrees**, so coverage scored *lower* the better the pages matched
+   — four pages stating the same GST rate stalled at 0.633 and would have spent the whole budget.
+2. Consistency used **Jaccard**, which divides by the union, so pages agreeing on every fact but differing
+   in length scored ~0.33 for ever. Overlap coefficient now.
+3. The chrome signal was **10% of the score**, so a wordy cookie banner *and* a promo advert both survived.
+   A hard gate now; a content word in the attribute vetoes it.
+4. Tier-2 block detection gated on **HTML bytes**, so a 5 KB article about Cloudflare was flagged as a
+   challenge on the words "bot detection". It gates on **visible text** now.
+5. Comment stripping cut at the first `#`, so `TYPE "#q" "cement"` became `TYPE "` — **every CSS id selector
+   broke.**
+6. A selector carrying a quote was silently **truncated** rather than refused.
+7. `json.dumps` does not escape `/`, so a value containing `</script>` would have closed the tag.
+8. The steps script went into the `scrape` waterfall, which has no such variables in scope — a **NameError
+   on every auto-mode scrape**.
+9. `get_settings` is imported per-function in `scrape_tools`, so two new uses were NameErrors.
+10. An off-topic link could outrank an on-topic one on **novelty alone**.
+
+### Deliberately not built
+
+Recorded in `app/crawl/__init__.py` so a later session cannot "complete" them by accident:
+
+- **robots.txt `Disallow`-mining as a URL-discovery source.** crawl4ai's `DomainMapper` offers it — reading
+  the file where an operator wrote down what they do not want crawled, and using it as a map. Hoola reads
+  robots.txt to **obey** it; `scrape_respect_robots` stays `True`.
+- **Minting rotating residential proxies** from a provider API (`set_nstproxy`). Whether Hoola pays to get
+  through a site that said no is the owner's call, not a default.
+- **Upstream's `authority` link weight**, which is 0.2 of its score and hard-coded to 1.0 with the real
+  calculation commented out — a fifth of that ranking is inert. The two live weights are renormalised to sum
+  to 1.0, keeping their exact 5:3 ratio, and a test pins that.
+- **An `EVAL` verb** in the step DSL. A DSL that can run arbitrary JS is just JS with extra steps.
+
+### Also worth knowing about crawl4ai itself
+
+- `crawlers/amazon_product/crawler.py` **returns a hard-coded string** — `{"product": {"name": "Test Amazon
+  Product"}}` for any URL — while advertising `version 1.2.0`, `tested_on: ["amazon.com"]`.
+- `cloud_notice.py` prints a promotional banner on first crawler start and again whenever a page is detected
+  as blocked. No telemetry, no HTTP, print only; kill switch `CRAWL4AI_NO_CLOUD_NOTICE=1`.
+- **No CI runs its test suite** — 2,016 test functions, and the only automated gate on push is a
+  Docker-security subset.
+- `check_robots_txt` **defaults to `False`**.
+
+### Files
+
+New: `server/app/crawl/` (10 modules), `server/tests/test_v0537_crawl_brain.py` (54),
+`server/tests/test_v0537_crawl_wired.py` (15).
+Changed: `agent/scrape_tools.py`, `agent/crawl_jobs.py`, `config.py` (5 settings, all neutral by default),
+`THIRD_PARTY_NOTICES.md`, and `test_v0474_scrapling.py::test_registry_wired` (a conscious bump for the new
+tool, which is what that pin is for).
+
+**Not verified:** no live site has been crawled with any of this — the tests drive mocked fetches, and
+`scrapling` is not installed in the sandbox so the existing lane's own suite is red there on untouched code
+too (16 failures reproduced on the pre-change tree). The first real crawl with a `question` is what will
+show whether the stopping rule fires where it should on live pages.
+
+## v0.538.0 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed; checkpoint "5,000-product marketplace, load test passed")
+Owner: "GO STEP 6". New `site/catalog.py`, `site/speed.py`, `site/loadtest.py`, `site/assets/hoola-catalog.js`.
+- IMPORT: CSV / TSV / Excel / JSON file (25 MB, 50,000 rows, 60 columns), her Google Sheet (`sheets.service.resolve/load`, her
+  own Google login) or a dataset (`datasets.load`: data_fetch, an ERP read saved as data). `guess_mapping` = title / key (SKU /
+  ID / code, else the title) / price (incl. rent / fees) / photo / description / stock / seller + up to 6 filter columns
+  (2-60 distinct values, filled >= 50 %); her mapping overrides, a wrong column is named. `preview` writes NOTHING (pending
+  JSON keyed by a hash): new / changed / same / rejected with row + reason, thin + duplicate counts, sample addresses.
+  `apply(hash, replace)` = her tap; items matched on their key, an item's address never moves once given, replace HIDES.
+  Tables `site_catalog` (one list: label + spec) and `site_catalog_item` (key, slug, data, img, img_meta, q, dup_of, live).
+- QUALITY GATE: duplicate = same content signature as an earlier item (title + every value) -> noindex,follow + canonical to
+  the original; thin = under 20 words and no photo -> noindex,follow; both shown to visitors, both out of the sitemaps.
+- PAGES BY CODE (`catalog.write` from `build.assemble`): item page = her designed template for that list (plan page
+  `<list>-item`) else a code-made page (photo, price, description, details, "More: <filter> <value>" family links) + the
+  shop's Add to cart; listings of 48 with numbered pages (`/<list>/page/N/`), page 1 = her designed page for the list when
+  the plan has one; the filter bar (search, filter columns with counts, price min / max, sort) runs on the static site from
+  `assets/catalog/<list>.json` (rows [slug, title, price, price text, 320 px photo, filter indexes]) fetched on first touch,
+  URL keeps the filter; split sitemaps (`sitemap.xml` = index, `sitemap-pages.xml`, `sitemap-<list>-<n>.xml` <= 45,000).
+  Alternate languages carry no catalogue (her first language only). `shop_grid` points to the lists instead of 5,000 cards.
+- PHOTOS: her uploaded photo by name or an https address, fetched ONCE (`connect._guard_host` = no private / internal
+  address, image content-type, 10 MB, 40 MP), `photo_set(widths=320/640/1024)` AVIF + WebP + JPEG, cached by content hash in
+  `catalog_img/`, hard-linked into each build; one photo run per site at a time; console "Fetch waiting photos" resumes.
+- W10 SPEED: `speed.precompress` (gzip level 9, mtime 0, every text file >= 1 KB, not in her ZIP), nginx `gzip_static on` +
+  `stale-while-revalidate` cache headers (a CDN keeps serving), `speed.budget` = every page vs 100 KB HTML (warnings with
+  the page), checks flag CLS > 0.1 and open each list's page 1 + 2 + two items in the browser (`checks.catalog_slugs`).
+  Measured in the test: 5,000 products -> 5,111 pages built in ~4-5 s, largest page well under 100 KB.
+- SHOP: products up to `site_shop_max_products` (20,000); `site_shop_day_cap` / `site_shop_ip_cap` settings; a seller column
+  links products to HER approved sellers (unknown / unapproved = stays hers); FIXED two defects the load proof was written
+  to catch: order numbers were count+1 (two checkouts at the same moment could both be O-1001) -> unique index (site_id,
+  number) + savepoint retry; a retried checkout made a second order -> `cid` per checkout (hoola-shop.js) + unique index
+  (site_id, cid), the twin returns the first order (stock taken once, coupon given back).
+- LOAD PROOF (`loadtest.run` + `verify`): visitors read listing / item pages / the index from the built files, buyers check out
+  through the API from many addresses, 40 % on one product with 25 left, every 4th checkout sent twice at once; verify = no
+  lost / double order, unique numbers, stock never < 0 and equal to what orders took, no 500. Local (SQLite, 2 workers,
+  300 visitors / 150 buyers): passed, 105 orders, 37 retried pairs each ONE order. CI `app-load.yml` runs it at 2,000 / 600
+  with 4 workers on Postgres.
+- CHAT: `website action=catalog` + coll + sheet / dataset = a PREVIEW only; Apply stays her tap (console Catalogue card).
+- Tests `tests/test_v0534_bada_catalogue.py`.
+- PART 2 HOOLA CMS (`site/cms.py`, `static/cms/index.html`, console `teamBox`): tables `site_cms_member` (email, role
+  writer | editor | publisher, PBKDF2 password, invite hash + 7-day expiry, gen, status invited | active | removed),
+  `site_cms_draft` (post: title / markdown / excerpt / category / target = a live post's slug or new; page: ops
+  [{key, e, op text | link, value, was}] = only the elements `edit.tag` numbers, checked against `page_texts`), and
+  `site_cms_rev` (before / after JSON, who, publish | restore). Team login = an HMAC token "cms|" (12 h, the member's gen:
+  removal or a role change ends it); `/api/site-cms/<site>/...` accept / login / home / page/<slug> / post/<slug> /
+  drafts / move / history / restore; her side `/api/sites/<ref>/cms*`. States draft -> review -> approved | returned (with
+  a note) -> published | scheduled (worker `cms.tick` beside blog_tick); an editor never approves their own draft, only an
+  approved draft is published (her own tap may publish any). Publish: a post through `blog.put` / the live post updated in
+  place; a page's ops applied to the CURRENT section html, an element whose text / link changed since the draft is skipped
+  and named (all skipped = 409, nothing written); then `_blog_rebuild(live=True)` (new checked version, live when her
+  address showed the version before). Restore = what was before, as a new revision (a revision that CREATED a post hides it).
+  The team page: CSP (no outside anything), no-referrer (the invite never leaks), noindex, frame-ancestors none.
+  Tests `tests/test_v0534_hoola_cms.py`. NOT built: 2-step login for the team, photo upload by the team (they pick from
+  her site photos only via her), Cloudflare setup on her domain, per-site Postgres for big data.
+
+## v0.539.0 PRAYOGSHALA SACH — the lab could not install anything, and her own first live run said so (owner: "LAB_TRY DONE, CHECK RESULT")
+
+`lab_try` (vps-ops run 252, 5 Nov 2026) came back in nine seconds:
+
+```
+setup command poori nahi hui
+  stage: setup
+---- setup output
+error: externally-managed-environment
+× This environment is externally managed
+```
+
+**Defect A, the one that spoke.** Debian marks its system Python *externally managed* (PEP 668), so **any** `pip
+install` without `--break-system-packages` is refused — which is every Python repo's own declared command, not just
+ours. The image already used that escape hatch for its own pytest install, which is exactly why nobody noticed it
+would bite the repo's command. A container **is** the virtual environment, so the marker now comes off once in the
+image (`rm -f /usr/lib/python3*/EXTERNALLY-MANAGED`) and a repo's real command runs unrewritten. The alternative —
+Hoola silently rewriting her declared command — would have made the lab lie about what it ran.
+
+**Defect B, the silent one behind it, which would have bitten next.** The setup step ran with `--read-only` root
+**and** `--tmpfs /home/lab`, and `docker commit` keeps **neither** a read-only layer's writes nor a tmpfs. So even
+had pip been allowed, every installed dependency would have been thrown away, the snapshot tag would still have been
+created and reported `snapshot_cached: true`, and every later check would have failed on missing imports — fast,
+cached and wrong, the worst shape a failure can take. There was no location in that container where an install could
+survive.
+
+**The fix, one coherent change in `devlab/box.py`:**
+- `_limits(network, writable)` — `writable` is true for the **setup** step alone, and only because a sealed step
+  cannot leave anything behind. It drops `--read-only` and the `/home/lab` tmpfs; every other wall stands (uid 1000,
+  `--cap-drop ALL`, `no-new-privileges`, memory / cpu / pids caps, and no secret can ride in).
+- **Writability is DERIVED from `commit_to` and cannot be asked for** — `run_in` has no `writable` parameter, so no
+  caller can unseal a check by passing a flag. A test pins the signature.
+- A CHECK keeps read-only root and `--network none`, and `/home/lab` is **no longer masked** by a tmpfs — that
+  masking is what threw the snapshot away. `HOME=/tmp/home` (inside the one tmpfs) gives a writable home,
+  `PYTHONUSERBASE=/home/lab/.local` + that dir on `PATH` keep a `pip --user` repo importable, and `run_in` creates
+  `$HOME` before the command.
+- The image carries `LABEL hoola.devlab.rev`, `box.base_rev()` reads it with `docker image inspect` (no container),
+  and `available()` reports `base_stale` with the fix in her words. `lab_check` now **rebuilds from scratch** when
+  the image is older than the code reading it instead of using it quietly — her VPS is holding the pre-v0.539 image
+  right now. `python -m app.devlab setup --rebuild`, and vps-ops `lab_setup` passes it.
+- `.hoola/lab.json` setup is now the plain `python3 -m pip install --no-warn-script-location -r
+  server/requirements.txt` — the command any reader would write.
+
+**The self-test grew the two stages that would have caught all of this before she ran it**: a repo's own
+`pip install` really works with the network on, and what it installs **is still there after the commit** (installs
+`tabulate`, commits, then asks the committed image to import it, then forgets the throwaway tag). Both say GADBAD
+with the real output when they fail.
+
+Tests: `test_v0456_devlab.py` +4 (setup-may-keep / check-still-cannot with every wall asserted by name, no-caller-can-
+unseal, the image lets a repo run its own pip command, a stale image is named and rebuilt not used quietly) and the
+new selftest stages pinned by source. 90 green across the lab and Developer Sahayak suites
+(`test_v0456_devlab`, `test_v0531_lab_loop`, `test_v0445_khud_review`, `test_v0447_saboot`, `test_v0451_plan_pehle`,
+`test_v0371_poochh_lo`, `test_v0377_dekh_ke_review`, `test_tech_devsahayak`, `test_v0351_pakka_saboot`,
+`test_routines`).
+
+Healed on the way, all RED on pristine `origin/main` before this change (the v0.536 ritual missed two pin forms):
+the console stamp pins in `test_v0179_search` / `test_v0221_console_r1` / `test_v0475_console_frames` still read
+0.487.0 while main's console carries 0.536.0 x21, and thirteen suites pinned the full string
+`version: 0.535.0+558` / `APP_VERSION = "0.535.0"`.
+
+Version 0.537.0 (pubspec 0.539.0+562, pins swept across 169 + 13 suites; console stamps stay at main's 0.536.0 x21 —
+server-only release). Mera PC freeze respected: nothing in `server/app/pc/`, `desktop/` or `lib/` touched.
+
+**Her VPS must run `lab_setup` (it now rebuilds) before `lab_try`** — the image on it is the old one.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has never passed. The two defects above are fixed and unit-tested,
+but the only thing that proves the box can run her code is the run itself, and no model has used the lab yet.
+
+**RULE recorded:** a step whose output must survive cannot be sealed the same way as a step whose output must not.
+`docker commit` keeps neither a read-only layer nor a tmpfs — a cache that is written where it cannot persist reports
+success and serves nothing.
+## v0.540.0 (built as 0.531.0) JAANCH + DHEERE CHHODO — App Sahayak Pillar J, Phase 61 (5 Nov 2026)
+
+Owner: "START PILLAR J". Pillars A–I made her apps do more. This is the first answer to *is it actually all right*
+that is not her using the app and finding out.
+
+### 1. Scenario tests, per user story
+
+Opus writes them as **data**, not prose: a closed set of eight verbs (`signup`, `create`, `read`, `open`, `set`,
+`assign`, `rate`, `fn`), each naming a real list, field, status or role of HER app. `quality.check()` refuses
+anything the app has not got — an invented list, an invented field, an unknown verb, an actor who never signed up —
+so the model cannot write a test for an app that does not exist. Then `run()` **plays** each story over HTTP against
+a real server: sign up, create, read the list as somebody else, change status, assign, rate.
+
+Any step may carry `must: refused`. **That is the privacy test, and it is the reason this exists**: a refusal that
+does NOT happen is reported as a failure. "Another customer opens her order" is one line of a scenario and the
+difference between a shop app and a data leak.
+
+A story stops at its first broken step (the rest is noise), and a step that could not run is `not_run` — never a
+pass. The verdict counts only what really ran.
+
+### 2. The twin — her live app is never the test fixture
+
+A scenario makes accounts and writes rows. `twin()` makes a hidden copy of the app — same lists, same brain, its
+**own** app_key and its own data space — and every run wipes it first. It is never built, never published, never in
+her app list. `wipe()` refuses outright if it is handed anything but a twin, and a test proves a row in her real app
+survives a wipe of the twin.
+
+### 3. Every rule and formula, through the real engine
+
+Each rule gets a case that must pass and a case that must be refused, and the **engine** decides (`check_rules`,
+`compute`) — not the case author. A rule whose "bad" case sails through is reported as a failure: *"galat row bhi
+chal gayi - yeh rule kisi ko rokta hi nahi"*. v0.382's own function tests are folded in rather than rewritten.
+Coverage is counted and the uncovered rules are **named**, because a suite that quietly skips things is worse than
+none.
+
+Found by these tests, in this module's own code: `n = int(case.get("n") or -1)` threw away rule number **0** — the
+first rule of every app — silently, for ever. A check that only ever reports "nothing to do" reports nothing.
+
+### 4. Load, on the twin
+
+v0.390's load engine pointed at the twin: hundreds of customers at once, p50 / p95, the error codes, the oversell
+check. Asked for explicitly — it makes hundreds of accounts, so it is never a side effect of "check my app".
+
+### 5. ANRs — a fault the generated apps could not report at all
+
+The generated apps only ever caught JVM crashes, so an app that **froze** reported nothing: the user saw a dead
+screen and the owner saw silence. `CrashGuard.readExitReasons()` now reads Android's own exit records (API 30+) for
+ANRs and native crashes — faults no Java handler can ever see — and the screen is kept on disk so a record read on
+the *next* start still knows where the user was. The server keeps the `kind`, groups an ANR separately from a crash
+with the same trace, and says it in her words: *"JAM ho gayi (ANR - screen hil hi nahi rahi thi)"*. Two defects that
+look alike in a list are two defects nobody fixes.
+
+### 6. Staged rollout — and the honest sentence about it
+
+A production release goes to 5 % of users, then 20, 50, 100, **each step her tap** (production is public; v0.330's
+rule stands). `halt` needs no tap, because stopping damage should not wait for anyone. `rollback` puts the previous
+build back, and says the true thing rather than the comfortable one: **Play cannot take a version off the phones
+that already have it** — stopping holds back everyone else, and the old build becomes those phones' next update.
+
+### 7. Feature flags — the only rollback that works in minutes
+
+A switch on the SERVER, in the app's schema, read on the phone's next call: no build, no review, no download.
+Anything risky ships behind one. Who gets a half-rolled-out feature is decided **on the server** by a stable hash of
+the member id, so a user never flips between on and off, one user's answer cannot change another's, and the app
+cannot award itself a feature it was not given. An unknown switch reads OFF.
+
+### What is where
+
+`server/app/appmaker/quality.py` (the four checks + the twin + the card), `rollout.py` (staged release + flags),
+kits `Flags.kt` / `Flags.swift`, `CrashGuard.kt`; routes `/api/apps/{ref}/jaanch[/{what}]` and
+`/api/apps/{ref}/rollout[/{what}]` (two segments — v0.455's lesson about the `{action}` catch-all, with a test);
+tool `app_banao action=jaanch|flag|rollout` + `app_dekho what=jaanch|rollout`; console **Jaanch** box; phone
+`lib/ui/app_jaanch.dart`. Tests `server/tests/test_v0540_jaanch.py` (16), in `app-load.yml`.
+
+The tool can read the rollout and can `halt` it, and is refused `start` / `advance` / `rollback` — Hoola does not
+push a build to her users; she does.
+
+### Also fixed on the way
+
+The console cache stamps had been frozen at `0.487.0` since v0.485, which two tests had been failing about ever
+since (`set(app) == {APP_VERSION}`). They follow APP_VERSION again, and the count those tests pin moved 20 → 21,
+which is what v0.485 made true when it added `skills.js`.
+
+### Not built, said plainly
+
+Staged rollout is **Android only** — App Store Connect has phased release, and it is not wired here. The scenario
+runner speaks the app-api, so payments, live tracking and chat are not covered by a story yet. `run_all` writes a
+gate verdict but **nothing blocks a store upload on it** (v0.455's security gates do block); wiring that is a
+decision about her workflow, not a line of code. And the checkpoint this pillar is supposed to end on — *all proof
+apps green* — is **not met**: no proof app exists, and none of this has run against one.

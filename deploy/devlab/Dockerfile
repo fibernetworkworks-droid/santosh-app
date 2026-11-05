@@ -4,6 +4,10 @@
 # and a CHECK runs with --network none (only the one-time SETUP step gets the network, the way Codex does it).
 FROM debian:12-slim
 
+# v0.537: the walls and this image are one thing - bump BASE_REV whenever the image must be rebuilt, and
+# `lab_check` can then tell her that the image on her VPS is older than the code reading it.
+LABEL hoola.devlab.rev="2"
+
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 NODE_OPTIONS=--max-old-space-size=1536 HOME=/home/lab
 
@@ -15,10 +19,18 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       sqlite3 ripgrep jq unzip \
  && rm -rf /var/lib/apt/lists/*
 
-# pytest / ruff for Python repos that declare no dev dependencies of their own
-RUN python3 -m pip install --break-system-packages --no-cache-dir pytest pytest-timeout ruff
+# v0.537: Debian marks its Python "externally managed" (PEP 668), so a repo's own declared
+# `pip install -r requirements.txt` dies with error: externally-managed-environment - which is exactly what
+# her first live lab_try hit. A container IS the virtual environment, so the marker comes off here, once, and
+# every repo's real command works without Hoola rewriting it.
+RUN rm -f /usr/lib/python3*/EXTERNALLY-MANAGED
 
-RUN useradd -m -u 1000 -s /bin/bash lab && mkdir -p /work && chown lab:lab /work
+# pytest / ruff for Python repos that declare no dev dependencies of their own
+RUN python3 -m pip install --no-cache-dir pytest pytest-timeout ruff
+
+RUN useradd -m -u 1000 -s /bin/bash lab \
+ && mkdir -p /work /home/lab/.local/bin \
+ && chown -R lab:lab /work /home/lab
 USER lab
 WORKDIR /work
 CMD ["bash", "-lc", "echo hoola-devlab ready; python3 -V; node -v"]
