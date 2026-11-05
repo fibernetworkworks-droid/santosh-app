@@ -112,7 +112,7 @@ HoolaStudio.define('digital-trainer', function (S) {
     x.font = '700 34px "Public Sans", sans-serif';
     x.fillText('INPUT SWITCHES', X(-0.17), Y(0.105));
     INS.forEach(function (k, i) { x.fillStyle = '#f1efe8'; x.font = '700 36px "Public Sans", sans-serif';
-      x.fillText(k === 'Cin' ? (GATES ? 'C' : (FN === 3 || FN === 4 ? 'B_in' : 'C_in')) : k, X(SWX[i]), Y(0.025)); });
+      x.fillText(k === 'Cin' ? (FN === 3 || FN === 4 ? 'B_in' : 'C_in') : k === 'An' ? 'A (4 bit)' : k === 'Bn' ? 'B (4 bit)' : k, X(SWX[i]), Y(0.025)); });
     x.font = '700 34px "Public Sans", sans-serif'; x.fillStyle = '#f1efe8';
     x.fillText('OUTPUT LAMPS', X(0.2), Y(0.105));
     OUTS.forEach(function (o, i) { x.font = '700 36px "Public Sans", sans-serif'; x.fillText(o[1], X(LEDX[i]), Y(0.025)); });
@@ -279,7 +279,7 @@ HoolaStudio.define('digital-trainer', function (S) {
     for (i = 0; i < S.rows.length; i++) if (S.rows[i].ri === found) { S.say('Row ' + (found + 1) + ' is already in your record book.'); return; }
     var v = live(), row = { ri: found };
     INS.forEach(function (k) { row[k] = st.inp[k]; });
-    OUTS.forEach(function (o) { row[o[0]] = bit(v[o[0]]) === v[o[0]] ? v[o[0]] : v[o[0]]; });
+    OUTS.forEach(function (o) { row[o[0]] = v[o[0]]; });
     row.val = valueOf(v);
     row.want = wanted(COMBOS[found]);
     S.addRow(row);
@@ -324,7 +324,8 @@ HoolaStudio.define('digital-trainer', function (S) {
         'Precautions: wire with the power off; check the supply pins first.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } }]
         .concat(INS.map(function (k) {
-          return { label: k === 'Cin' ? (FN === 3 || FN === 4 ? 'B_in' : 'C_in') : k, get: function (r) { return String(r[k]); } };
+          return { label: k === 'Cin' ? (FN === 3 || FN === 4 ? 'B_in' : 'C_in') : k === 'An' ? 'A' : k === 'Bn' ? 'B' : k,
+            get: function (r) { return String(r[k]); } };
         }))
         .concat(OUTS.map(function (o) { return { label: o[1], get: function (r) { return String(r[o[0]]); } }; }))
         .concat(GATES ? [] : [{ label: 'value', get: function (r) { return String(r.val); } },

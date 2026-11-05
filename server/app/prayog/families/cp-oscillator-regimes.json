@@ -82,5 +82,6 @@
    },
    "note": "gamma = 3 is above omega0 = 2, so it creeps back as a sum of two exponentials."
   }
- ]
+ ],
+ "rig": "comp-workstation"
 }

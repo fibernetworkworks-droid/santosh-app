@@ -58,5 +58,6 @@
    },
    "note": "Anti-correlated errors partly cancel in the product: the uncertainty is smaller."
   }
- ]
+ ],
+ "rig": "comp-workstation"
 }
