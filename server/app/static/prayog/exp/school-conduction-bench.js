@@ -41,8 +41,8 @@ HoolaStudio.define('school-conduction-bench', function (S) {
   if (MODE === 'rod') {
     var rod = S.mesh(new T.CylinderGeometry(p.d / 2, p.d / 2, p.Lr, 28), rodM);
     rod.rotation.z = Math.PI / 2; rod.position.set(X0 + p.Lr / 2, ROD_Y, BZ); sample.add(rod);
-    var slab = S.label(SAMPLE.toUpperCase(), { w: 0.07, ratio: 0.16, color: '#f3e8d2' });
-    slab.position.set(X0 + p.Lr / 2, ROD_Y + 0.035, BZ + 0.002); sample.add(slab);
+    var slab = S.label(SAMPLE.toUpperCase(), { w: 0.08, ratio: 0.14, color: '#e8dcc0' });
+    slab.rotation.x = -Math.PI / 2; slab.position.set(X0 + p.Lr / 2, 0.0012, BZ + 0.12); sample.add(slab);
     // a clamp stand holds the cool end; the hot end is free over the lamp
     var stand = S.stand({ x: X0 + p.Lr + 0.19, z: BZ - 0.12, h: 0.42, armY: ROD_Y, armLen: 0.14 });
     // the spirit lamp under the hot end
@@ -86,8 +86,8 @@ HoolaStudio.define('school-conduction-bench', function (S) {
     handle.rotation.z = -TILT; sample.add(handle);
     var bowl = S.mesh(new T.SphereGeometry(0.02, 20, 14), rodM);
     bowl.scale.set(1, 0.4, 0.7); bowl.position.set(SBX - Math.sin(TILT) * 0.02, 0.05, BZ); sample.add(bowl);
-    var slab2 = S.label(SAMPLE.toUpperCase(), { w: 0.08, ratio: 0.16, color: '#f3e8d2' });
-    slab2.position.set(SBX + 0.1, 0.23, BZ - 0.01); sample.add(slab2);
+    var slab2 = S.label(SAMPLE.toUpperCase(), { w: 0.085, ratio: 0.14, color: '#e8dcc0' });
+    slab2.rotation.x = -Math.PI / 2; slab2.position.set(SBX, 0.0012, BZ + 0.1); sample.add(slab2);
     butter = S.mesh(new T.SphereGeometry(0.007, 14, 10), new T.MeshStandardMaterial({ color: 0xf5dd8a, roughness: 0.6 }));
     butter.position.set(SBX + Math.sin(TILT) * p.Lr, 0.062 + Math.cos(TILT) * p.Lr, BZ); sample.add(butter);
     var bl2 = S.label('BUTTER', { w: 0.032, ratio: 0.26, color: '#8a6a22' });
@@ -230,7 +230,7 @@ HoolaStudio.define('school-conduction-bench', function (S) {
   function atPoint() { for (var i = 0; i < S.rows.length; i++) if (Math.abs(S.rows[i].x - Math.round(p.xm * 100) / 100) < 1e-6) return S.rows[i]; return null; }
 
   return {
-    camera: MODE === 'rod' ? { pos: [0.3, 0.6, 0.95], look: [-0.1, 0.12, -0.08] } : { pos: [0.26, 0.42, 0.66], look: [-0.04, 0.12, -0.07] },
+    camera: MODE === 'rod' ? { pos: [0.3, 0.6, 0.95], look: [-0.1, 0.12, -0.08] } : { pos: [0.28, 0.4, 0.62], look: [-0.02, 0.1, -0.07] },
     views: { sample: MODE === 'rod' ? [[0.1, 0.42, 0.62], [-0.14, 0.14, -0.1]] : [[0.16, 0.38, 0.52], [-0.16, 0.16, -0.1]],
       lamp: [[-0.08, 0.26, 0.34], [X0, 0.08, BZ]], pins: [[0.0, 0.3, 0.4], [-0.16, 0.12, -0.1]],
       beaker: [[0.06, 0.3, 0.4], [-0.1, 0.08, BZ]], butter: [[0.04, 0.42, 0.42], [-0.08, 0.2, -0.1]],

@@ -1171,7 +1171,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ohm"
+     "kernel": "ohm",
+     "built": "series-resistors"
     },
     {
      "id": "parallel-resistors",
@@ -1183,7 +1184,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ohm"
+     "kernel": "ohm",
+     "built": "parallel-resistors"
     }
    ]
   },
@@ -1246,7 +1248,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet"
+     "kernel": "magnet",
+     "built": "like-unlike-poles"
     },
     {
      "id": "make-a-magnet-stroking",
@@ -1273,7 +1276,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet-field"
+     "kernel": "magnet-field",
+     "built": "field-lines-bar-magnet"
     }
    ]
   },
@@ -1321,7 +1325,8 @@
      "conditions": [
       "current reversed"
      ],
-     "kernel": "magnet-field"
+     "kernel": "magnet-field",
+     "built": "field-straight-conductor"
     },
     {
      "id": "field-circular-loop",

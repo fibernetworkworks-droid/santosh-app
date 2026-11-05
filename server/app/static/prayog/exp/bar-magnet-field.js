@@ -14,7 +14,7 @@ HoolaStudio.define('bar-magnet-field', function (S) {
   var NOSC = 20;                                            // oscillations timed in one trial (long swings: fewer)
   var sim = KB.init(p), theta = p.theta0, prevTh = p.theta0;
   var st = { d: D0, df: DF0, target: D0, targetF: DF0, aligned: false, zero: false, running: false,
-    osc: 0, strokes: 0, released: false, lastT: 0, trials: 0, tanB: false };
+    osc: 0, started: false, strokes: 0, released: false, lastT: 0, trials: 0, tanB: false };
   function solve() { p.dnp = st.d; p.d = st.df; }
   function Beq(d) { var q = p.m / LB, r = Math.sqrt(HALF * HALF + d * d); return MU0 * q * LB / (4 * Math.PI * r * r * r); }
   function force(d) { return KB.force(p, d); }
@@ -240,10 +240,10 @@ HoolaStudio.define('bar-magnet-field', function (S) {
   function startSwing() {
     if (st.running) { S.say('A set of oscillations is already being timed.'); return Promise.resolve(); }
     if (STROKE && !st.released) { S.say('Hang the stroked strip in the stirrup first.'); return Promise.resolve(); }
-    sim = KB.init(p); theta = p.theta0; prevTh = p.theta0; st.osc = 0; watch.t = 0;
+    sim = KB.init(p); theta = p.theta0; prevTh = p.theta0; st.osc = 0; st.started = false; watch.t = 0;
     return S.hand.tap(watch.start).then(function () {
       st.running = true; watch.on = true;
-      S.say('The magnet is turned a little way and let go, and the stopwatch is started as it passes the middle. Counting ' + NOSC + ' oscillations.');
+      S.say('The magnet is turned a little way and let go. The stopwatch is started as it swings through the middle, and ' + NOSC + ' oscillations are counted from there.');
       S.render();
     });
   }
@@ -498,7 +498,10 @@ HoolaStudio.define('bar-magnet-field', function (S) {
         if (st.running) {
           KB.step(sim, p, dt);
           theta = sim.y[0];
-          if (prevTh > 0 && theta <= 0) { st.osc++; if (st.osc >= NOSC) { st.running = false; watch.on = false; st.lastT = watch.t; } }
+          if (prevTh > 0 && theta <= 0) {                 // it is passing the middle one way
+            if (!st.started) { st.started = true; watch.t = 0; }     // the watch is started here, not at the release
+            else if (++st.osc >= NOSC) { st.running = false; watch.on = false; st.lastT = watch.t; }
+          }
           prevTh = theta;
         }
         if (stirrup) stirrup.rotation.y = theta;

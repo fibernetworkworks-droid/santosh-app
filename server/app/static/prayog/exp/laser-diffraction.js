@@ -60,7 +60,9 @@ HoolaStudio.define('laser-diffraction', function (S) {
   var cline = S.mesh(new T.BoxGeometry(0.001, SH, 0.0008), new T.MeshBasicMaterial({ color: 0x101014 })); cline.position.set(-0.004, 0.112, 0); carr.add(cline);
   var cknob = S.mesh(new T.CylinderGeometry(0.005, 0.005, 0.006, 16), M.blackPlastic); cknob.rotation.x = Math.PI / 2; cknob.position.set(-0.014, 0.082, 0); carr.add(cknob);
   var sShadow = S.contact(0.12, 0.12, 0, BZ, 0.45);
-  function placeScreen(D) { screen.position.set(XL + D, 0, BZ); sShadow.position.x = XL + D; }
+  function placeScreen(D) { screen.position.set(XL + D, 0, BZ); sShadow.position.x = XL + D; updScreenView(); }
+  // the screen slides along the bench, so the view that looks at its lit face has to follow it
+  function updScreenView() { var x = XL + st.D; if (S.views) S.views.screen = [[x - 0.26, 0.28, BZ + 0.3], [x, 0.112, BZ]]; }
   function placeCursor(x) { carr.position.set(0, 0, x); }
   placeScreen(st.D); placeCursor(0);
 
@@ -197,7 +199,7 @@ HoolaStudio.define('laser-diffraction', function (S) {
   return {
     camera: { pos: [-0.15, 1.02, 1.0], look: [-0.15, 0.08, -0.24] },
     views: { bench: [[-0.15, 0.96, 0.94], [-0.15, 0.08, -0.24]],
-      screen: [[-0.14, 0.2, 0.06], [0.24, 0.112, -0.26]],
+      screen: [[XL + p.D - 0.26, 0.28, BZ + 0.3], [XL + p.D, 0.112, BZ]],
       slit: [[XL - 0.12, 0.17, -0.02], [XL, 0.105, -0.26]],
       laser: [[XL - 0.3, 0.2, 0.0], [XL - 0.14, 0.1, -0.26]],
       book: [[-0.5, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
@@ -289,6 +291,7 @@ HoolaStudio.define('laser-diffraction', function (S) {
           return sweep().then(function () { return setD(0.9); }).then(sweep);
         } },
     ],
+    ready: function () { updScreenView(); },
     tick: function () {
       drawPattern();
       hudA.set(Math.round(st.D * 100) + ' cm');

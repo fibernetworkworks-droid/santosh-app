@@ -751,7 +751,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "meter-bridge"
+     "kernel": "meter-bridge",
+     "built": "metre-bridge-combination"
     },
     {
      "id": "potentiometer-compare-emf",
@@ -765,7 +766,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "potentiometer"
+     "kernel": "potentiometer",
+     "built": "potentiometer-compare-emf"
     },
     {
      "id": "potentiometer-internal-resistance",
@@ -792,7 +794,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "potentiometer"
+     "kernel": "potentiometer",
+     "built": "potential-drop-with-length"
     },
     {
      "id": "galvanometer-half-deflection",
@@ -807,7 +810,8 @@
       "figure of merit"
      ],
      "conditions": [],
-     "kernel": "galvanometer"
+     "kernel": "galvanometer",
+     "built": "galvanometer-half-deflection"
     },
     {
      "id": "galvanometer-to-voltmeter",
@@ -819,7 +823,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "galvanometer"
+     "kernel": "galvanometer",
+     "built": "galvanometer-to-voltmeter"
     },
     {
      "id": "galvanometer-to-ammeter",
@@ -831,7 +836,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "galvanometer"
+     "kernel": "galvanometer",
+     "built": "galvanometer-to-ammeter"
     },
     {
      "id": "multimeter-measurements",
@@ -1123,7 +1129,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "diffraction"
+     "kernel": "diffraction",
+     "built": "single-slit-diffraction"
     },
     {
      "id": "polaroid-polarisation",
@@ -1135,7 +1142,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "polarisation"
+     "kernel": "polarisation",
+     "built": "polaroid-polarisation"
     }
    ]
   },
@@ -1168,7 +1176,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "zener"
+     "kernel": "zener",
+     "built": "zener-characteristic"
     },
     {
      "id": "transistor-ce-characteristics",
@@ -1186,7 +1195,8 @@
       "voltage gain"
      ],
      "conditions": [],
-     "kernel": "transistor"
+     "kernel": "transistor",
+     "built": "transistor-ce-characteristics"
     },
     {
      "id": "identify-components",
@@ -1225,7 +1235,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ldr"
+     "kernel": "ldr",
+     "built": "ldr-light-intensity"
     }
    ]
   }
