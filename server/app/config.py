@@ -697,6 +697,10 @@ class Settings(BaseSettings):
     route_opt_sa_file: str = ""             # ... and OAuth (cloud-platform scope) from a service-account JSON on the VPS, NOT the Maps API key
     maps_opt_max_stops: int = 40            # stops in one plan (each is a billed shipment); Google's own sync limit was not read
     maps_cache: bool = True                 # reuse the licence-permitted place_id + 30-day lat/lng instead of re-billing
+    # v0.540.0 LEADS NEEV: the caps the leads engine refuses AT PLAN TIME (docs/LEADS_PLAN.md section 12 asked
+    # once: 5,000 rows/run and 20,000 rows/day per tenant are the first numbers, changeable here, refused early)
+    leads_max_rows_per_run: int = 5000      # a run planning more rows than this is REFUSED with the cap named
+    leads_max_rows_per_day: int = 20000     # per tenant per UTC day, counted from the kept-rows ledger (lead_cap_days)
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
     wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech

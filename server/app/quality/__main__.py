@@ -6,6 +6,7 @@
    | code [--set 1|2|3] [--only id,id] [--limit N] [--kind fix] [--spec] [--label "..."]
    | review [--modes old,new] [--k 1] [--only id,id] [--label x]   (v0.402 PR review card: ECC specialists vs old)
    | maps [--live] [--only id,id] [--limit N] [--kind geo|tool|rule] [--label x]   (v0.470 MAPS card: proof + rupees)
+   | leads [--live] [--only id,id] [--limit N] [--kind tool|rule] [--label x]   (v0.540 LEADS card: reachability + walls)
    | skills [--live] [--only id,id] [--limit N] [--kind pos|neg] [--label x]   (v0.494 SKILLS card: do imported skills reach the model)
    | research [--live] [--judge] [--only id,id] [--limit N] [--kind topic|trap] [--label x]
        | research verdict <id> right|wrong ["why"] [--engine X]   (v0.471 R0 RESEARCH card: report quality scored from its own evidence)
@@ -44,6 +45,17 @@ def _mapscard(argv: list[str]) -> int:
     card = asyncio.run(MC.live_card(items)) if "--live" in argv else MC.free_card(items)
     card = MC.save(card, val("--label"))
     print("\n".join(MC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0
+
+
+def _leadscard(argv: list[str]) -> int:
+    from . import leadscard as LC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    items = LC.pick(only=val("--only"), limit=int(val("--limit") or 0), kind=val("--kind"))
+    card = asyncio.run(LC.live_card(items)) if "--live" in argv else LC.free_card(items)
+    card = LC.save(card, val("--label"))
+    print("\n".join(LC.lines(card)))
     print(f"\n  saved: {card['file']}")
     return 0
 
@@ -206,6 +218,8 @@ def main(argv: list[str]) -> int:
         return 0
     if argv and argv[0] == "maps":          # v0.470 MAPS card (free; --live costs model calls + real Maps rupees)
         return _mapscard(argv[1:])
+    if argv and argv[0] == "leads":         # v0.540 LEADS card (free = reachability + the walls; --live = real turns)
+        return _leadscard(argv[1:])
     if argv and argv[0] == "skills":        # v0.494 SKILLS card (free = reachability; --live = a real model's turns)
         return _skillscard(argv[1:])
     if argv and argv[0] == "research":      # v0.471 R0 RESEARCH card (free; --live costs model calls + web)

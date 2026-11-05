@@ -1,4 +1,9 @@
-"""Import leads from CSV or Excel and normalise Indian phone numbers for WhatsApp."""
+"""Import leads from CSV or Excel and normalise Indian phone numbers for WhatsApp.
+
+v0.540.0: moved verbatim from app/leads.py into this package (the LEADS engine needed the `leads` name;
+the package shadows the old module, so the code moved INSIDE and app/leads/__init__.py re-exports the same
+names - `from .leads import import_leads` keeps working in campaigns.py, chatfiles.py, main.py, telecall).
+"""
 from __future__ import annotations
 
 import csv
@@ -6,7 +11,7 @@ import io
 import re
 from dataclasses import dataclass, field
 
-from .db import Lead, LeadList, session
+from ..db import Lead, LeadList, session
 
 NAME_KEYS = ["name", "naam", "customer name", "customer", "full name", "contact name", "client"]
 PHONE_KEYS = ["whatsapp", "mobile", "phone", "number", "contact", "mob", "cell"]

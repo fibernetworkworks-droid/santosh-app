@@ -358,4 +358,4 @@ def test_stats_carry_the_new_clips():
 
 
 def test_version():
-    assert APP_VERSION == "0.539.0"
+    assert APP_VERSION == "0.540.0"

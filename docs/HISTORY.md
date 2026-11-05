@@ -2,6 +2,62 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.540.0 LEADS NEEV — the lead generation engine's foundation, P0 of docs/LEADS_PLAN.md (5 Nov 2026)
+
+Owner asked on 5 Nov 2026: "NOW A LEAD GENERATION ENGINE HOOLA AI EMPLOYEE ---- SCRAPER IN BACK END
+---- PLAN FIRST", read three repos the same day (gosom/google-maps-scraper MIT-Go ideas-to-port,
+omkarcloud/google-maps-scraper closed-engine ideas-only, our own tree), got the plan
+(docs/LEADS_PLAN.md), and said "P0 BUILD". This version is P0: the NAAP (plan-time caps) + the
+STORE + her data (the L0 lane). The scrape lane itself is deliberately NOT in this version — it is
+P3 behind a per-tenant opt-in that is OFF until she turns it on, and the CLAUDE.md rule-text
+amendment rides that P3 commit; what IS here is the boundary written down so no session completes
+the scrape lane by accident.
+
+NEW `server/app/leads/` package: `models.py` — `lead_runs` (the persisted run: ask, place, lanes,
+the PLAN JSON, status PLANNED/RUNNING/PAUSED/DONE/REFUSED/ABORTED, counters found/kept/duped/
+refused, bill, the run's own provenance), `lead_contacts` (one BUSINESS one row: key_type+key_value
+— kgmid > cid > place_id > normalised name+address hash > phone_e164 — with a per-tenant unique
+index; provenance as ROW COLUMNS source_lane/source_url/parser_version/fetched_at; rating and
+review COUNT as facts, never review text; opt_out flag), `lead_outreach` (the outreach LEDGER —
+written when SHE taps, never by the engine), `lead_cap_days` (the per-tenant per-day kept-rows
+ledger that survives leads_forget), `lead_list_refs` (the thread from a campaign-list copy back to
+its source row); registered in db.init_db on day one AND self-healing via ensure_tables() (the
+v0.190.1 lesson). `importer.py` — the old `app/leads.py` moved INSIDE the package verbatim (the
+package shadows the module), `__init__.py` re-exports import_leads / normalize_phone / SAMPLE_PREFIX
+so campaigns.py, chatfiles.py, main.py and telecall keep their imports untouched. `rules.py` — the
+LANES ladder (HER_DATA / REGISTRY / OFFICIAL_API / SCRAPE / VENDOR), LANE_BUILT = {"HER_DATA"} for
+P0, unbuilt lanes REFUSED BY NAME with the phase that builds them (no stub, no pretending), the
+one-question default, EMAIL_GRADES pakka/sadak_tak/galat named now, and STORE_BOUNDARY (business
+FACTS only) written where a later session would look. `service.py` — the plan card FIRST, the
+PROVENANCE GATE on add_row (no source, no row; the export re-checks and REFUSES naming the count),
+run_her_data with dedup and idempotent re-runs, campaign_list (the ONLY hand-off: phone rows only,
+consent pre-filled False per row, the ledger written — sending stays the campaign desk's consent
+machinery), forget (the DPO duty; the day's cap ledger survives erasure), set_opt_out,
+record_outreach for the desks. `api.py` — key-protected /api/leads/*: overview (NEVER + caps +
+store boundary), /runs/her-data (lane refused 400), /runs, /rows, /export, /campaign-list,
+/opt-out, /forget.
+
+NEW `server/app/leadscap.py` — the mapsbill pattern ported: LeadsCapped raised AT PLAN TIME with
+the cap and the number in the sentence (a 50,000-row ask is refused before row one, never truncated
+at row 4,999); per-run 5,000 and per-day 20,000 rows/tenant from config (`leads_max_rows_per_run`,
+`leads_max_rows_per_day`), would_exceed() for the plan card, record() after the run. NEW
+`agent/leads_tools.py` — five tools (leads_run = plan-then-execute with the caps in the card,
+leads_status, leads_list, leads_export = csv | campaign_list, leads_forget), every description
+carries the never-sends wall, customer conversations refused; wired into the registry (556 -> 561),
+family "leads" in admit.EXTRA_KEYS with FINDING words (the campaign family keeps its own "leads"
+key — both may ride one turn and the model picks). Employee: duty leads_work (prefix leads_), role
+leads_sahayak under Business & Sales, preset leads_desk — the desk opens from the AI Employees hub
+(v0.456 law, no new sidebar row). NEW `quality/leadscard.py` + `lead_asks.py` — `python -m
+app.quality leads`: the free card checks IN CODE that the five tools are registered AND reachable
+from real asks and that the walls REALLY stand (the cap fired for real on a 50,000-row ask, an
+unbuilt lane refused with P3, the provenance gate, consent=False hand-off, opt-out honoured, and
+the service module contains NO sending machinery — no httpx, no smtplib, no whatsapp); the live
+card runs one real turn per ask on __quality__, scored in code.
+
+Tests: test_v0540_leads_store.py (18) + test_v0540_leads_card.py (7), all offline. Registry pins
+bumped to 561. NOT VERIFIED, said plainly: no live run yet — the flow is tested offline and her
+first real her-data run through leads_run is what confirms it. Previous: v0.539.0 PRAYOGSHALA SACH.
+
 ## v0.530.0 HOOLA GRAPH — the state-graph engine, P3 of the HOOLA AEP plan (5 Nov 2026)
 
 The langgraph idea hand-built as `server/app/aep/graph.py` (zero upstream code). StateGraph
