@@ -1,4 +1,4 @@
-"""v0.533 CRAWL BRAIN — the crawl4ai ideas, hand-built for Hoola (the port law).
+"""v0.537 CRAWL BRAIN — the crawl4ai ideas, hand-built for Hoola (the port law).
 
 Owner read github.com/unclecode/crawl4ai and said "give this all to hoola ai". None of its code is here,
 and that is not only house style: crawl4ai vendors a fork of html2text (declaring upstream's own release
