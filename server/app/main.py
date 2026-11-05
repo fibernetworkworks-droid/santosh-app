@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.545.0"   # v0.545.0 (built as 0.456.0) SCENES AS CHECKED DATA (owner: "GO WITH THE CEILING"; docs/GAME_MOAT_PLAN.md section 5.2). The 12-GDScript-file ceiling is lifted: a game may now have SCENES, and a scene is DATA Hoola checks, never text the model writes. Measured in Godot 4.7.2 before the design existed: a [sub_resource type="GDScript"] embedded in a .tscn RUNS and the embedded script reached DirAccess - which guard.py has banned in every .gd file since v0.370 - so a scene the model could write freehand would be a hole straight through the only thing protecting her games. Hence the rule: the model writes a declarative SPEC, server/app/gamedesk/scene.py validates it in code and GENERATES the .tscn; scripts attach only by FILENAME to a .gd file guard.py already checked; a spec carrying script source in any shape is refused; and the emitted text is re-scanned before it ships (three independent places, because the generator being the only writer must not be the only defence - guard.scene_problems scans the build path too). A spec may say: a tree of nodes from a 44-type allowlist (an unknown type does NOT error in Godot, it HANGS the load), typed properties from an allowlist too (an unknown key is DROPPED and NAMED, never guessed), an optional script, a collision shape, AnimationPlayer value tracks whose keys must go forward in time, and INSTANCES of another scene of the same game - one coin.tscn placed 200 times is data, not 200 scripts. Caps: 40 scenes, 300 nodes a scene, 2,000 a game, 400 KB, 12 animations, 120 keys a track; instancing loops refused; main.tscn reserved. PROVED, not claimed: verify() writes the generated scenes beside the guarded scripts and loads every one in the REAL engine headless with a quit timer, and two live findings shaped the verdict - a broken scene can HANG the load, so "never reached the end" is itself a failure, and an unknown node type does NOT make instantiate() fail (Godot logs "Cannot get class" / "A placeholder will be created instead" and hands back a plain Node in its place), so the log's own trouble signatures decide too: a placeholder is a silently broken game. The lane is game_scenes (list / propose / approve / reject): her words -> ai.scene_spec -> the checker -> the generator -> the real engine -> a draft she approves; a scene that did not load is saved as failed and cannot be approved; only APPROVED scenes enter a build (scene.for_game, on the version row), and the whole path is wrapped so a scene problem can never stop a build - an old game builds exactly as before. Live on Godot 4.7.2: a 25-node spec with a coin instanced 20 times instantiated to 65 live nodes with its idle animation present, PASS. NOT BUILT, said plainly: TileMaps (they need a TileSet and atlas art - that is a second pipeline), 3D scenes, shaders. NOT VERIFIED: no real game of hers has been rebuilt with scenes yet.
+APP_VERSION = "0.546.0"   # v0.546.0 CHALTA KAAM (built as 0.543.0) - App Sahayak PILLAR L (owner: "START PILLAR L"), the LAST pillar of docs/COMPLEX_APPS_PLAN.md and the only one about the time nobody is watching. Pillars A-K build and prove an app; none of them tells her a month later that it is slower than it was, that one call in twenty is failing, or that it has quietly cost Rs 900. MEASURED, NOT ESTIMATED: latency + errors come from the app's own requests through ONE middleware over all ~80 /api/app-api/ routes (nothing to remember to switch on, and a telemetry failure never reaches the answer - a test throws inside it and the request still returns 200); cost comes from the real usage.run_meter wrapped around the four jobs that actually spend her money (Android build, logic draft, naksha, jaanch stories). WHAT IS NOT PRICED IS COUNTED AND SAID: push / SMS / connector calls are counted and reported as 'not priced' until she tells Hoola what her provider charges - the mapsbill rule, because a zero she believes is worse than a blank she can fill. HONEST ABOUT BANDS: latency is kept as fixed-bin histograms per hour so four workers merge without a lock fight and a fortnight is a few KB, so p50 / p95 are ESTIMATED FROM BINS and the card says so. AN ALERT IS A RULE: five, each arithmetic over HER OWN history with a stated threshold (>=5 % of calls failing with at least 20 calls; twice her own average latency and over 400 ms; crashes / ANRs open in two days; storage or rows over 90 %; this month at twice the average of the three before), each reaching her chat ONCE A DAY per kind, and Pillar J's test twin never alerted about. THE ESTIMATE BEFORE A BIG JOB: kharcha answers with the MEDIAN of what that job cost HER last times and what the month stands at; under two runs it says 'naapa nahi gaya' - a made-up rupee figure is not an answer, and a different job's history is never borrowed. appmaker/ops.py, the _app_ops middleware, a worker slot (flush each minute, alerts in her 9 am), routes /api/apps/<ref>/ops[/<what>], tool app_dekho what=chaal + app_banao action=kharcha, console 'How it's running', phone app_ops.dart. Not built: storage rupees (the VPS bill is one number, not per app), an alert for falling USE (that may be the market, not a fault), phone-side latency (this is the backend's). EVERY PILLAR A-L IS NOW BUILT - and the plan's own gate is STILL unmet: no proof app has ever been built and used on a real phone, which Phase 0 asked for before any pillar started. Previous: v0.545.0 (built as 0.456.0) SCENES AS CHECKED DATA (owner: "GO WITH THE CEILING"; docs/GAME_MOAT_PLAN.md section 5.2). The 12-GDScript-file ceiling is lifted: a game may now have SCENES, and a scene is DATA Hoola checks, never text the model writes. Measured in Godot 4.7.2 before the design existed: a [sub_resource type="GDScript"] embedded in a .tscn RUNS and the embedded script reached DirAccess - which guard.py has banned in every .gd file since v0.370 - so a scene the model could write freehand would be a hole straight through the only thing protecting her games. Hence the rule: the model writes a declarative SPEC, server/app/gamedesk/scene.py validates it in code and GENERATES the .tscn; scripts attach only by FILENAME to a .gd file guard.py already checked; a spec carrying script source in any shape is refused; and the emitted text is re-scanned before it ships (three independent places, because the generator being the only writer must not be the only defence - guard.scene_problems scans the build path too). A spec may say: a tree of nodes from a 44-type allowlist (an unknown type does NOT error in Godot, it HANGS the load), typed properties from an allowlist too (an unknown key is DROPPED and NAMED, never guessed), an optional script, a collision shape, AnimationPlayer value tracks whose keys must go forward in time, and INSTANCES of another scene of the same game - one coin.tscn placed 200 times is data, not 200 scripts. Caps: 40 scenes, 300 nodes a scene, 2,000 a game, 400 KB, 12 animations, 120 keys a track; instancing loops refused; main.tscn reserved. PROVED, not claimed: verify() writes the generated scenes beside the guarded scripts and loads every one in the REAL engine headless with a quit timer, and two live findings shaped the verdict - a broken scene can HANG the load, so "never reached the end" is itself a failure, and an unknown node type does NOT make instantiate() fail (Godot logs "Cannot get class" / "A placeholder will be created instead" and hands back a plain Node in its place), so the log's own trouble signatures decide too: a placeholder is a silently broken game. The lane is game_scenes (list / propose / approve / reject): her words -> ai.scene_spec -> the checker -> the generator -> the real engine -> a draft she approves; a scene that did not load is saved as failed and cannot be approved; only APPROVED scenes enter a build (scene.for_game, on the version row), and the whole path is wrapped so a scene problem can never stop a build - an old game builds exactly as before. Live on Godot 4.7.2: a 25-node spec with a coin instanced 20 times instantiated to 65 live nodes with its idle animation present, PASS. NOT BUILT, said plainly: TileMaps (they need a TileSet and atlas art - that is a second pipeline), 3D scenes, shaders. NOT VERIFIED: no real game of hers has been rebuilt with scenes yet.
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -169,6 +169,31 @@ async def _hosted_sites(request: Request, call_next):
                 # every non-GET fell through, e.g. POST https://her-domain/api/console/login answered)
                 return Response(content=b"not found", status_code=404, media_type="text/plain")
     return await call_next(request)
+
+
+@app.middleware("http")
+async def _app_ops(request: Request, call_next):
+    """v0.546 CHALTA KAAM (Pillar L): how fast her app's own backend answers, and what fails.
+
+    One funnel for all ~80 /api/app-api/ routes: the real thing on every call, nothing to remember to switch on.
+    A telemetry failure never touches the answer - the request is served either way.
+    """
+    path = request.url.path
+    if not path.startswith("/api/app-api/"):
+        return await call_next(request)
+    t0 = time.monotonic()
+    status = 500
+    try:
+        res = await call_next(request)
+        status = res.status_code
+        return res
+    finally:
+        try:
+            from .appmaker import ops as OPS
+            parts = path.split("/")
+            OPS.seen(parts[3] if len(parts) > 3 else "", (time.monotonic() - t0) * 1000, status, path)
+        except Exception:                                   # noqa: BLE001
+            pass
 
 
 @app.middleware("http")
@@ -12227,6 +12252,32 @@ async def apps_store_cert(ref: str, tenant: str = Depends(current_tenant)):
     except ST.StoreError:
         raise HTTPException(404, "not found")
     return Response(data, media_type="application/x-pem-file", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+# ---- v0.546 CHALTA KAAM (App Sahayak Pillar L): the app AFTER it ships - use, speed, failures, cost, alerts.
+@app.get("/api/apps/{ref}/ops", dependencies=[Depends(require_key)])
+async def apps_ops(ref: str, days: int = 14, tenant: str = Depends(current_tenant)):
+    """Users, orders, errors, latency (estimated from bins), 30-day cost, crashes + ANRs, limits, open alerts."""
+    from .appmaker import ops as OPS
+    return await asyncio.to_thread(_be_owner_call,
+                                   lambda: OPS.dashboard(_be_owner(tenant, ref), max(1, min(days, 90))))
+
+
+@app.post("/api/apps/{ref}/ops/{what}", dependencies=[Depends(require_key)])
+async def apps_ops_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """estimate {job} = what the next big job cost HER last times | alerts = run the rules now (her chat gets one
+    line per kind per day) | flush = write out what the workers measured."""
+    from .appmaker import ops as OPS
+    b = body or {}
+    if what == "estimate":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: OPS.estimate(r, str(b.get("job") or "build")))
+    if what == "alerts":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: OPS.watch(r))
+    if what == "flush":
+        return await asyncio.to_thread(_be_owner_call, lambda: (OPS.flush(), {"ok": True})[1])
+    raise HTTPException(404, "unknown ops action")
 
 
 # ---- v0.542 NAKSHA (App Sahayak Pillar K): her one line -> a spec -> the app, one module at a time.

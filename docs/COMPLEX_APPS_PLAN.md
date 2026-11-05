@@ -176,6 +176,13 @@ Not built: the generated proof walk covers one list per module (richer journeys 
   touched parts; every build has a plain changelog.
 
 ### L. Operations — continuous
+**Status: BUILT in v0.546.0 CHALTA KAAM** (`server/app/appmaker/ops.py`) — latency + errors measured by one
+middleware over every `/api/app-api/` call; cost from the real `usage.run_meter` on the four jobs that spend her
+money, with unpriced kinds counted and SAID rather than zeroed; p50 / p95 estimated from mergeable bins and labelled
+as bands; five alert rules over her own history, one line per kind per day into her chat (the Pillar J twin skipped);
+and `kharcha` = the median of what a big job cost HER last times, or an honest "not measured".
+Not built: storage rupees (the VPS bill is one number, not per app), an alert for falling USE (that may be the
+market, not a fault), and phone-side latency (this is the backend's).
 - Per-app dashboard: users, orders, errors, latency, costs; alerts to her chat; monthly cost estimate before big jobs.
 
 ## Proof apps (each must pass on real phones before the next pillar is called done)

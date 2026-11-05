@@ -302,7 +302,9 @@ def draft(r: AppProject, words: str = "", ask: Callable | None = None) -> dict[s
     ask = ask or (lambda system, prompt: AI.ask_json(system, prompt, 8000))
     sch, spec = BE.schema(r), _spec(r)
     prompt = _prompt(r, words)
-    out = ask(AUTHOR_SYSTEM, prompt)
+    from . import ops as OPS                                # v0.546 writing the tests is a model job too
+    with OPS.meter(r, note="jaanch"):
+        out = ask(AUTHOR_SYSTEM, prompt)
     if not isinstance(out, dict):
         raise W.AppError("Jaanch ki kahaniyan nahi bani; dobara koshish kijiye.", 502)
     got = check(out, sch, spec)

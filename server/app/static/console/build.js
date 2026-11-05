@@ -919,6 +919,34 @@ window.HoolaBuild = function (C) {
       }));
     };
     try { drawSign(await api('GET', base(o) + '/sign')); } catch (er) { sgbox.remove(); }
+    // v0.546 CHALTA KAAM (Pillar L): the app AFTER it ships - use, speed, failures, cost, alerts
+    const opbox = document.createElement('section'); opbox.className = 'stcol stops'; box.appendChild(opbox);
+    const drawOps = op => {
+      const tr = op.traffic || {}, cs = op.cost || {}, fd = op.field || {}, pe = op.people || {}, al = L(op.alerts);
+      opbox.innerHTML = `<h4>How it's running <span>${Number(tr.calls) || 0} calls · ${Number(tr.error_percent) || 0}% failing</span></h4>
+        <p class="stnote">After an app ships, this is the part nobody watches: how many people use it, how fast its own backend answers, what is failing, and what it costs you. Every number here is measured from your app's real requests - none of it is an estimate except the speed bands, which are read off counters rather than stored per call.</p>
+        ${al.length ? `<ul class="stlines">${al.map(a => `<li><b>${a.level === 'bad' ? 'Problem' : 'Watch'}</b> · ${esc(S(a.say))}</li>`).join('')}</ul>` : ''}
+        <div class="tw"><table><tbody>
+          <tr><td>People</td><td><b>${Number(pe.accounts) || 0}</b> accounts · ${Number(pe.rows) || 0} rows${pe.orders ? ' · ' + pe.orders + ' orders' : ''}</td></tr>
+          <tr><td>Speed</td><td>${tr.calls ? `half under <b>${esc(S(tr.p50))}</b>, 95% under <b>${esc(S(tr.p95))}</b> · slowest ${Number(tr.slowest_ms) || 0}ms` : 'no calls yet'}</td></tr>
+          <tr><td>Failing</td><td>${Number(tr.errors) || 0} of ${Number(tr.calls) || 0}${tr.calls ? ' (' + tr.error_percent + '%)' : ''}</td></tr>
+          <tr><td>From phones</td><td>${esc(S(fd.says))}</td></tr>
+          <tr><td>Cost (30 days)</td><td><b>Rs ${Number(cs.inr || 0).toFixed(2)}</b>${L(cs.not_priced).length ? ' · not priced yet: ' + esc(L(cs.not_priced).join(', ')) : ''}</td></tr>
+        </tbody></table></div>
+        ${L(cs.by_kind).length ? `<ul class="stlines">${L(cs.by_kind).map(b => `<li>${esc(S(b.label))}: ${b.priced ? 'Rs ' + Number(b.inr).toFixed(2) : Number(b.count) + ' calls, price not set'}</li>`).join('')}</ul>` : ''}
+        ${L(op.not_measured).length ? `<p class="stnote">Not measured yet: ${esc(L(op.not_measured).join('; '))}.</p>` : ''}
+        <h5>Before a big job</h5>
+        <p class="stnote">What it cost YOU last times - never a number from a table.</p>
+        <div class="row">${['build', 'ios', 'logic', 'naksha', 'jaanch'].map(j => `<button class="btn" type="button" data-opest="${j}">${j}</button>`).join('')}</div>
+        <div data-opout></div>`;
+      const out = opbox.querySelector('[data-opout]');
+      opbox.querySelectorAll('[data-opest]').forEach(b => b.addEventListener('click', async () => {
+        out.textContent = '…';
+        try { out.textContent = S((await api('POST', base(o) + '/ops/estimate', {job: b.dataset.opest})).says); }
+        catch (er) { out.textContent = er.message; }
+      }));
+    };
+    try { drawOps(await api('GET', base(o) + '/ops')); } catch (er) { opbox.remove(); }
     // v0.542 NAKSHA (Pillar K): her one line as a plan, approved and built ONE MODULE AT A TIME
     const nkbox = document.createElement('section'); nkbox.className = 'stcol stnaksha'; box.appendChild(nkbox);
     const againNaksha = async () => { try { drawNaksha(await api('GET', base(o) + '/naksha')); } catch (er) { toast(er.message, true); } };

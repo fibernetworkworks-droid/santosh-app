@@ -344,13 +344,16 @@ def plan(r: AppProject, words: str = "", ask: Callable | None = None) -> dict[st
     ask = ask or (lambda system, prompt: AI.ask_json(system, prompt, 9000))
     have = {c["key"] for c in (BE.schema(r).get("collections") or [])}
     prompt = _prompt(r, words, saved(r) or None)
-    out = ask(AUTHOR_SYSTEM, prompt)
+    from . import ops as OPS                                # v0.546 the naksha is a model job: metered onto this app
+    with OPS.meter(r, note="naksha"):
+        out = ask(AUTHOR_SYSTEM, prompt)
     if not isinstance(out, dict):
         raise W.AppError("Naksha nahi bana; dobara koshish kijiye.", 502)
     got = check(out, have)
     if got["errors"]:
         STATS["refused"] += 1
-        fixed = ask(AUTHOR_SYSTEM, prompt + "\n\n" + REPAIR.format(errors="\n".join(got["errors"][:25])))
+        with OPS.meter(r, note="naksha"):
+            fixed = ask(AUTHOR_SYSTEM, prompt + "\n\n" + REPAIR.format(errors="\n".join(got["errors"][:25])))
         if isinstance(fixed, dict):
             got2 = check(fixed, have)
             if len(got2["errors"]) <= len(got["errors"]):

@@ -236,4 +236,4 @@ def test_version_layer():
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
     assert 'APP_VERSION = "0.545.0"' in main and "UIUX PRO MAX" in main
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.545.0+568" in pub
+    assert "version: 0.546.0+569" in pub

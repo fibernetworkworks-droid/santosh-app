@@ -20061,3 +20061,58 @@ propose/approve/reject/view/for_game); `ai.py` (SCENE prompt + `scene_spec`, the
 Tests: NEW `tests/test_v0456_scenes.py` (12) — the 16 checker refusals including all three script-smuggling shapes,
 instancing (expanded node count, loops, unknown scene), animation tracks, caps, the generated `.tscn` shape, the real
 engine run, and a planted broken scene that must FAIL.
+## v0.543.0 CHALTA KAAM — the app after it ships, App Sahayak Pillar L (5 Nov 2026)
+
+Owner: "START PILLAR L". The last line of `docs/COMPLEX_APPS_PLAN.md`, and the only pillar about the time nobody is
+watching. Pillars A–K build and prove an app. None of them tells her, a month later, that her app is slower than it
+was, that one call in twenty is failing, or that it has quietly cost Rs 900.
+
+### Measured, not estimated
+
+**Latency and errors** come from the app's own requests through ONE middleware on `/api/app-api/` — every call of
+all ~80 routes, with no switch anyone has to remember. A telemetry failure never reaches the answer (a test throws
+inside it and the request still returns 200).
+
+**Cost** comes from `usage.run_meter`, the same ledger Hoola bills everything else with, wrapped around the four
+jobs that actually spend her money: the Android build, the logic draft, the naksha, the jaanch stories. The rupees
+are what her model calls really cost — not a table.
+
+### What is not priced is counted and said
+
+Push, SMS and connector calls are counted and reported as **not priced** until she tells Hoola what her provider
+charges. The mapsbill / research-bill rule, because **a zero she believes is worse than a blank she can fill**.
+
+### Latency is honest about being bands
+
+Fixed-bin histograms per hour, so four worker processes merge their counts without a lock fight and a fortnight of
+traffic is a few KB. p50 / p95 are therefore **estimated from bins** and the card says so. A precise-looking number
+nobody can reproduce is worse than an honest band.
+
+### An alert is a rule, not a feeling
+
+Five, each arithmetic over **her own history** with a stated threshold: ≥5 % of calls failing (and at least 20 calls,
+because 1-in-3 of three calls is noise); twice her own average latency and over 400 ms; crashes or ANRs open in the
+last two days; storage or rows over 90 %; this month's cost at twice the monthly average of the three before it.
+Each reaches her chat **once a day per kind** — an alert that cries every hour is one she turns off. Pillar J's test
+twin is skipped: she is never told about her own test copy.
+
+### The estimate before a big job
+
+`kharcha job=build` answers with the **median of what that job cost HER last times** and what the month stands at.
+With fewer than two runs it says *"naapa nahi gaya"* — a made-up rupee figure is not an answer, and a different
+job's history is never borrowed.
+
+### What is where
+
+`server/app/appmaker/ops.py`; the `_app_ops` middleware in `main.py`; a worker slot (`app_ops_jobs`, flush every
+minute, alerts once in her 9 am); routes `/api/apps/{ref}/ops[/{what}]`; tool `app_dekho what=chaal` +
+`app_banao action=kharcha`; console **How it's running** box; phone `lib/ui/app_ops.dart`. Tests
+`server/tests/test_v0546_ops.py` (16), in `app-load.yml`.
+
+### Not built, said plainly
+
+Storage rupees are not priced (the VPS bill is one number for everything, not per app). There is no alert for a
+drop in USE — falling orders may be the market, not a fault, and guessing would be noise. Latency is the backend's,
+not the phone's: a slow screen on a weak network looks fine here. And this is the **last pillar** of the plan —
+A to L are now all built, which makes the plan's own gate the only thing left in it: **no proof app has ever been
+built and used on a real phone**, which Phase 0 asked for before any pillar started.
