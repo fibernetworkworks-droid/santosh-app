@@ -1,0 +1,33 @@
+{
+ "base": "sn-cro-measure",
+ "rig": "sn-scope-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "c-4n7",
+   "title": "Oscilloscope: phase of an RC network with a 4.7 nF capacitor",
+   "sample": "Unknown capacitor from the E6 series (4.7 nF)",
+   "unknown": "the capacitor, from the phase on the scope",
+   "params": {
+    "C": 4.7e-09
+   },
+   "note": "4.7 nF is a standard E6 value; the scope's phase reading gives it back through tan(phi) = 2 pi f R C.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 4.7 nF"
+   }
+  },
+  {
+   "key": "c-47n",
+   "title": "Oscilloscope: phase of an RC network with a 47 nF capacitor",
+   "sample": "Unknown capacitor from the E6 series (47 nF)",
+   "unknown": "the capacitor, from the phase on the scope",
+   "params": {
+    "C": 4.7e-08
+   },
+   "note": "A tenfold larger capacitor makes the phase lag set in at a tenth of the frequency.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 47 nF"
+   }
+  }
+ ]
+}

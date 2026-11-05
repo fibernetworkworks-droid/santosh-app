@@ -1,0 +1,50 @@
+{
+ "base": "cr-mc-scattering",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "hard-sphere-backward",
+   "title": "Hard-sphere scattering: the backward fraction",
+   "sample": "hard sphere, a = 1",
+   "unknown": "fraction scattered beyond 90 degrees",
+   "params": {
+    "what": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Isotropic scattering: exactly one half."
+  },
+  {
+   "key": "rutherford-60",
+   "title": "Rutherford scattering beyond 60 degrees",
+   "sample": "Coulomb field, d = 1, beam radius 1.75",
+   "unknown": "cross-section for theta > 60 degrees",
+   "params": {
+    "cas": 1,
+    "R": 1.75
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "rutherford-30",
+   "title": "Rutherford scattering beyond 30 degrees",
+   "sample": "Coulomb field, d = 1, beam radius 2.2",
+   "unknown": "cross-section for theta > 30 degrees",
+   "params": {
+    "cas": 1,
+    "R": 2.2,
+    "thmin": 0.5235987755982988
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

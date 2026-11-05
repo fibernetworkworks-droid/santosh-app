@@ -1,0 +1,102 @@
+{
+ "base": "cr-finite-difference-pde",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "heat-crank-nicolson",
+   "title": "Heat equation by the Crank-Nicolson scheme",
+   "sample": "triangular start, diffusivity 0.1",
+   "unknown": "u(0.3, 0.5)",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Implicit and second order in time."
+  },
+  {
+   "key": "heat-explicit-edge",
+   "title": "Heat equation, explicit, r just below the limit",
+   "sample": "triangular start, r = 0.49",
+   "unknown": "u(0.3, 0.5)",
+   "params": {
+    "r": 0.49
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "r = 0.49 is stable; r = 0.51 is not."
+  },
+  {
+   "key": "heat-explicit-unstable",
+   "title": "Heat equation with r = 0.6: explicit blows up, implicit does not",
+   "sample": "triangular start, r = 0.6",
+   "unknown": "u(0.3, 0.5)",
+   "params": {
+    "r": 0.6,
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Switch to the explicit method: rounding errors grow by |1 - 4r| every step."
+  },
+  {
+   "key": "wave-leapfrog",
+   "title": "Wave equation on a plucked string, explicit leapfrog",
+   "sample": "plucked string, c = 1, nu = 0.8",
+   "unknown": "u(0.3, 0.7)",
+   "params": {
+    "cas": 1,
+    "c": 1.0,
+    "tend": 0.7,
+    "r": 0.8
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Courant number below 1."
+  },
+  {
+   "key": "wave-newmark",
+   "title": "Wave equation on a plucked string, implicit scheme",
+   "sample": "plucked string, c = 1, nu = 0.8",
+   "unknown": "u(0.3, 0.7)",
+   "params": {
+    "cas": 1,
+    "method": 1,
+    "c": 1.0,
+    "tend": 0.7,
+    "r": 0.8
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Unconditionally stable."
+  },
+  {
+   "key": "wave-courant-one",
+   "title": "Wave equation at Courant number 1: the leapfrog is exact",
+   "sample": "plucked string, nu = 1",
+   "unknown": "u(0.3, 0.7)",
+   "params": {
+    "cas": 1,
+    "c": 1.0,
+    "tend": 0.7,
+    "r": 1.0
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "At nu = 1 a wave moves exactly one cell per step, so the only error is rounding."
+  }
+ ]
+}

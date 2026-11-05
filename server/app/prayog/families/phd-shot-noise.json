@@ -1,0 +1,25 @@
+{
+ "base": "phd-shot-noise",
+ "rig": "phd-noise-bench",
+ "chapter": "Signal recovery and noise",
+ "variants": [
+  {
+   "key": "vacuum-photodiode",
+   "title": "Shot noise of a vacuum photodiode (nanoamp currents)",
+   "sample": "Vacuum photodiode, photocurrents up to 2 microamperes, 100 megohm feedback",
+   "unknown": "electron charge",
+   "note": "A vacuum photodiode gives microamp photocurrents, so the amplifier needs a 100 megohm feedback resistor and a narrower 2 kHz band. The seven currents are a thousand times smaller than in the base experiment.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "Rf": 100000000.0,
+    "df": 2000.0,
+    "Iscale": 0.001,
+    "n": 40000.0,
+    "seed": 19.0
+   }
+  }
+ ]
+}

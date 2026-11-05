@@ -1,0 +1,84 @@
+{
+ "base": "cr-n-body",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "kepler-rk4",
+   "title": "Kepler orbit by Runge-Kutta 4",
+   "sample": "e = 0.5, a = 1, GM = 1",
+   "unknown": "orbital period",
+   "params": {
+    "method": 2
+   },
+   "source": {
+    "title": "Kepler's third law T = 2 pi sqrt(a^3/GM)",
+    "note": "units GM = 1, a = 1"
+   },
+   "check": {
+    "params": {
+     "n": 100
+    }
+   }
+  },
+  {
+   "key": "kepler-euler-cromer",
+   "title": "Kepler orbit by the Euler-Cromer method",
+   "sample": "e = 0.5, a = 1, GM = 1",
+   "unknown": "orbital period",
+   "params": {
+    "method": 0
+   },
+   "source": {
+    "title": "Kepler's third law T = 2 pi sqrt(a^3/GM)",
+    "note": "units GM = 1, a = 1"
+   },
+   "note": "Only first order: the period error halves when the step halves.",
+   "check": {
+    "params": {
+     "n": 800
+    }
+   }
+  },
+  {
+   "key": "kepler-eccentric-rk4",
+   "title": "Kepler orbit of eccentricity 0.8 by Runge-Kutta 4",
+   "sample": "e = 0.8, a = 1, GM = 1",
+   "unknown": "orbital period",
+   "params": {
+    "ecc": 0.8,
+    "method": 2
+   },
+   "source": {
+    "title": "Kepler's third law T = 2 pi sqrt(a^3/GM)",
+    "note": "units GM = 1, a = 1"
+   },
+   "note": "Switch to velocity Verlet: a fixed step is coarse near pericentre, so the error is much larger.",
+   "check": {
+    "params": {
+     "n": 200
+    }
+   }
+  },
+  {
+   "key": "cluster-virial",
+   "title": "Sixteen-star cluster: the virial theorem",
+   "sample": "16 equal stars, softened gravity",
+   "unknown": "time-averaged 2K/|W|",
+   "params": {
+    "cas": 1,
+    "tend": 40.0
+   },
+   "source": {
+    "title": "Virial theorem 2<K> + <W> = 0 for bounded motion",
+    "note": "a finite-time average: the scatter from seed to seed is about 1 %"
+   },
+   "note": "A finite run only approximates the infinite-time average.",
+   "check": {
+    "params": {
+     "n": 800
+    }
+   }
+  }
+ ]
+}

@@ -1,0 +1,46 @@
+{
+ "base": "sn-strain-gauge",
+ "rig": "sn-sensor-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "half-bridge",
+   "title": "Strain gauge on a steel cantilever: half bridge",
+   "sample": "Steel cantilever, tension and compression gauges in a half bridge",
+   "unknown": "the strain and an unknown weight with a half bridge",
+   "params": {
+    "nb": 2.0
+   },
+   "note": "With a gauge on the top face (tension) and one on the bottom (compression) the bridge output is twice that of a single gauge, and the temperature effects cancel.",
+   "source": {
+    "title": "Strain gauge bridge configurations: Hoffmann, An Introduction to Measurements using Strain Gauges (HBM)"
+   }
+  },
+  {
+   "key": "full-bridge",
+   "title": "Strain gauge on a steel cantilever: full bridge",
+   "sample": "Steel cantilever, four gauges in a full bridge",
+   "unknown": "the strain and an unknown weight with a full bridge",
+   "params": {
+    "nb": 4.0
+   },
+   "note": "Four active gauges give four times the single-gauge output and cancel temperature drift, which is why load cells use them.",
+   "source": {
+    "title": "Strain gauge bridge configurations: Hoffmann, An Introduction to Measurements using Strain Gauges (HBM)"
+   }
+  },
+  {
+   "key": "aluminium",
+   "title": "Strain gauge on an aluminium cantilever: quarter bridge",
+   "sample": "Aluminium 6061-T6 cantilever, E = 68.9 GPa, quarter bridge",
+   "unknown": "the strain and an unknown weight on a softer beam",
+   "params": {
+    "E": 68900000000.0
+   },
+   "note": "Aluminium is about three times less stiff than steel, so the same load gives about three times the strain and output.",
+   "source": {
+    "title": "Young's modulus of aluminium alloy 6061-T6: 68.9 GPa (MatWeb / ASM handbook value)"
+   }
+  }
+ ]
+}

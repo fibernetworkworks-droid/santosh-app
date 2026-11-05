@@ -1,0 +1,53 @@
+{
+ "base": "sn-temp-sensor",
+ "rig": "sn-sensor-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "lm35",
+   "title": "Temperature sensor calibration: LM35 against a reference",
+   "sample": "LM35 analogue temperature sensor, 10 mV per degC",
+   "unknown": "the calibration slope of the LM35 and an unknown bath temperature",
+   "params": {
+    "dev": 1,
+    "ge": 0.004,
+    "off": 0.3
+   },
+   "note": "The LM35 gives 10.0 mV per degree Celsius with its zero at 0 degC. The 0.4 % gain error and 0.3 degC offset of this specimen are simulation settings inside the datasheet's accuracy limit; the unsourced values are the specimen's, not the datasheet's.",
+   "source": {
+    "title": "Texas Instruments LM35 datasheet (SNIS159): output scale factor +10.0 mV per degC"
+   }
+  },
+  {
+   "key": "lm75",
+   "title": "Temperature sensor calibration: LM75B digital sensor",
+   "sample": "LM75B digital temperature sensor, 11-bit, 0.125 degC per LSB",
+   "unknown": "the calibration of the LM75B and an unknown bath temperature",
+   "params": {
+    "dev": 2,
+    "ge": 0.002,
+    "off": 0.5
+   },
+   "note": "The LM75B reports temperature as an 11-bit number in steps of 0.125 degC. The 0.5 degC offset and 0.2 % gain error are simulation settings inside the datasheet's accuracy limit (unsourced / illustrative values).",
+   "source": {
+    "title": "NXP LM75B datasheet: 11-bit temperature data, resolution 0.125 degC"
+   }
+  },
+  {
+   "key": "pt100",
+   "title": "Temperature sensor calibration: Pt100 platinum resistance",
+   "sample": "Pt100 platinum resistance thermometer, R0 = 100 ohm, A = 3.9083e-3, B = -5.775e-7",
+   "unknown": "the sensitivity of the Pt100 and an unknown bath temperature",
+   "params": {
+    "dev": 3,
+    "ge": 0.0004,
+    "off": 0.2,
+    "R0": 100.0
+   },
+   "note": "Resistance follows R = R0 (1 + A t + B t^2) for t at or above 0 degC, so a straight line through 20 to 80 degC has the mean slope. The 0.04 % gain error and 0.2 degC offset of this specimen are simulation settings (illustrative).",
+   "source": {
+    "title": "IEC 60751: industrial platinum resistance thermometers, R(t) = R0 (1 + A t + B t^2) with A = 3.9083e-3 and B = -5.775e-7"
+   }
+  }
+ ]
+}

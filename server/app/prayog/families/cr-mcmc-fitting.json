@@ -1,0 +1,55 @@
+{
+ "base": "cr-mcmc-fitting",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "decay-lifetime",
+   "title": "MCMC fit of a decay curve: the lifetime",
+   "sample": "A exp(-t/tau), A = 3, tau = 1.5, noise 0.3",
+   "unknown": "posterior mean of tau",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "transit-depth",
+   "title": "MCMC fit of a transit light curve: the depth",
+   "sample": "dip of depth 1 %, noise 0.3 %",
+   "unknown": "posterior mean of the depth",
+   "params": {
+    "cas": 2,
+    "sig": 0.003
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "The model is linear in the depth, so the posterior is exactly Gaussian."
+  },
+  {
+   "key": "transit-width",
+   "title": "MCMC fit of a transit light curve: the posterior width",
+   "sample": "dip of depth 1 %, noise 0.3 %",
+   "unknown": "posterior width of the depth",
+   "params": {
+    "cas": 2,
+    "sig": 0.003,
+    "what": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "check": {
+    "params": {
+     "n": 60000
+    }
+   }
+  }
+ ]
+}

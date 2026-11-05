@@ -1,0 +1,33 @@
+{
+ "base": "sn-ultrasonic-ranging",
+ "rig": "sn-sensor-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "cold-5c",
+   "title": "Ultrasonic ranging in a cold room at 5 degC",
+   "sample": "Air at 5 degC",
+   "unknown": "the distance of an unknown target in cold air",
+   "params": {
+    "T": 5.0
+   },
+   "note": "Sound is slower in cold air, c = 331.3 sqrt(1 + 5/273.15) = 334.2 m/s, so the same distance gives a longer echo time.",
+   "source": {
+    "title": "Speed of sound in air c = 331.3 sqrt(1 + T/273.15) m/s (ideal-gas relation, standard textbook)"
+   }
+  },
+  {
+   "key": "hot-35c",
+   "title": "Ultrasonic ranging on a hot day at 35 degC",
+   "sample": "Air at 35 degC",
+   "unknown": "the distance of an unknown target in warm air",
+   "params": {
+    "T": 35.0
+   },
+   "note": "Sound is faster in warm air, c = 331.3 sqrt(1 + 35/273.15) = 352.2 m/s; the same line calibrates the instrument for the day's temperature.",
+   "source": {
+    "title": "Speed of sound in air c = 331.3 sqrt(1 + T/273.15) m/s (ideal-gas relation, standard textbook)"
+   }
+  }
+ ]
+}

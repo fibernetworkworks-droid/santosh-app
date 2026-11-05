@@ -1,0 +1,37 @@
+{
+ "base": "phd-heralded-antibunching",
+ "rig": "phd-photon-bench",
+ "chapter": "Interferometry, quantum optics and photon statistics",
+ "variants": [
+  {
+   "key": "low-pump",
+   "title": "Heralded photons at low pump power",
+   "sample": "Heralded source, pump power low: 0.5 % of heralds hold two photons",
+   "unknown": "anticorrelation parameter alpha",
+   "note": "The chance of a second pair rises with pump power. At a quarter of the base pump the double-pair fraction is 0.5 % and alpha is about 0.01.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "q": 0.005,
+    "seed": 31.0
+   }
+  },
+  {
+   "key": "high-pump",
+   "title": "Heralded photons at high pump power",
+   "sample": "Heralded source, pump power high: 5 % of heralds hold two photons",
+   "unknown": "anticorrelation parameter alpha",
+   "note": "Doubling and a half the base pump raises the double-pair fraction to 5 %: alpha climbs towards 0.1, still below 1.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "q": 0.05,
+    "seed": 33.0
+   }
+  }
+ ]
+}

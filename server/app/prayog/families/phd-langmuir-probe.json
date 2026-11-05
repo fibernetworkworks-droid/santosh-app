@@ -1,0 +1,61 @@
+{
+ "base": "phd-langmuir-probe",
+ "rig": "phd-plasma-bench",
+ "chapter": "Plasma diagnostics",
+ "variants": [
+  {
+   "key": "low-pressure",
+   "title": "Langmuir probe in the argon discharge at low pressure",
+   "sample": "Argon DC glow discharge, about 3 Pa",
+   "method": "single, double and emissive probes",
+   "unknown": "electron temperature, density and potentials",
+   "note": "At low pressure the electrons are hotter and the plasma thinner. Te = 4.2 eV, ne = 5 x 10^15 per cubic metre, Vp = 10 V are the lab's own numbers for this condition.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "Te": 4.2,
+    "ne": 5000000000000000.0,
+    "Vp": 10.0,
+    "seed": 43.0
+   }
+  },
+  {
+   "key": "high-pressure",
+   "title": "Langmuir probe in the argon discharge at high pressure",
+   "sample": "Argon DC glow discharge, about 30 Pa",
+   "method": "single, double and emissive probes",
+   "unknown": "electron temperature, density and potentials",
+   "note": "At higher pressure the electrons lose more energy in collisions and are cooler. Te = 1.8 eV, ne = 2 x 10^16 per cubic metre, Vp = 6 V are the lab's own numbers for this condition.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "Te": 1.8,
+    "ne": 2e+16,
+    "Vp": 6.0,
+    "seed": 47.0
+   }
+  },
+  {
+   "key": "high-power",
+   "title": "Langmuir probe in the argon discharge at higher power",
+   "sample": "Argon DC glow discharge, about 10 Pa, more discharge current",
+   "method": "single, double and emissive probes",
+   "unknown": "electron temperature, density and potentials",
+   "note": "More discharge current makes more plasma at the same temperature: ne = 4 x 10^16 per cubic metre, Te = 3.2 eV, Vp = 9 V are the lab's own numbers.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "Te": 3.2,
+    "ne": 4e+16,
+    "Vp": 9.0,
+    "seed": 53.0
+   }
+  }
+ ]
+}

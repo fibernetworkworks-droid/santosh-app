@@ -1,0 +1,47 @@
+{
+ "base": "phd-lockin-detection",
+ "rig": "phd-noise-bench",
+ "chapter": "Signal recovery and noise",
+ "variants": [
+  {
+   "key": "ac-bridge",
+   "title": "Lock-in: imbalance signal of an AC bridge",
+   "sample": "AC bridge imbalance at 400 Hz",
+   "method": "dual phase (X, Y, R, theta)",
+   "unknown": "signal amplitude and phase",
+   "note": "A bridge near balance gives a small signal almost in quadrature with the drive, at 400 Hz. Single and dual phase work as in the base experiment. Amplitude, phase and noise density are the lab's own.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "A": 1.2e-05,
+    "f": 400.0,
+    "phi": -62.0,
+    "en": 1.5e-07,
+    "tc": 3.0,
+    "seed": 8.0
+   }
+  },
+  {
+   "key": "dim-light",
+   "title": "Lock-in: a dim chopped photodiode signal",
+   "sample": "Chopped photodiode signal, dim light (a fifth of the base signal)",
+   "method": "single phase and dual phase",
+   "unknown": "signal amplitude and SNR against time constant",
+   "note": "A fifth of the light on the same photodiode: the signal is smaller than the noise at every time constant here, so only the longest ones recover it cleanly.",
+   "source": {
+    "title": "Illustrative design values",
+    "note": "set by the lab for this condition; not taken from a named instrument's datasheet"
+   },
+   "params": {
+    "A": 6e-06,
+    "f": 137.0,
+    "phi": 20.0,
+    "en": 7e-08,
+    "tc": 3.0,
+    "seed": 12.0
+   }
+  }
+ ]
+}

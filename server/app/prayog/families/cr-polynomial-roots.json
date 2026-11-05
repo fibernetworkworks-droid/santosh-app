@@ -1,0 +1,127 @@
+{
+ "base": "cr-polynomial-roots",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "cubic-newton",
+   "title": "Roots of x^3 - 6x^2 + 11x - 6 by Newton-Raphson",
+   "sample": "cubic with roots 1, 2, 3",
+   "unknown": "the root near 3",
+   "params": {
+    "method": 1
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "cubic-secant",
+   "title": "Roots of x^3 - 6x^2 + 11x - 6 by the secant method",
+   "sample": "cubic with roots 1, 2, 3",
+   "unknown": "the root near 3",
+   "params": {
+    "method": 2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "wallis-bisection",
+   "title": "Wallis's cubic x^3 - 2x - 5 by bisection",
+   "sample": "x^3 - 2x - 5 = 0",
+   "unknown": "the real root",
+   "params": {
+    "cas": 1,
+    "xa": 2.0,
+    "xb": 3.0,
+    "x0": 3.0,
+    "x1": 2.5,
+    "gx0": 1.0,
+    "gx1": 3.2
+   },
+   "source": {
+    "title": "Cardano's formula for the real root of x^3 + px + q = 0",
+    "note": "the reference root is computed by Cardano's closed form"
+   }
+  },
+  {
+   "key": "wallis-newton",
+   "title": "Wallis's cubic x^3 - 2x - 5 by Newton-Raphson",
+   "sample": "x^3 - 2x - 5 = 0",
+   "unknown": "the real root",
+   "params": {
+    "cas": 1,
+    "method": 1,
+    "xa": 2.0,
+    "xb": 3.0,
+    "x0": 3.0,
+    "x1": 2.5,
+    "gx0": 1.0,
+    "gx1": 3.2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  },
+  {
+   "key": "double-root-newton",
+   "title": "A double root x^3 - 3x + 2 by plain Newton-Raphson",
+   "sample": "(x - 1)^2 (x + 2) = 0",
+   "unknown": "the double root x = 1",
+   "params": {
+    "cas": 2,
+    "x0": 2.0,
+    "x1": 1.8,
+    "gx0": -2.5,
+    "gx1": 2.2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Convergence is only linear."
+  },
+  {
+   "key": "double-root-modified",
+   "title": "A double root by modified Newton (multiplicity 2)",
+   "sample": "(x - 1)^2 (x + 2) = 0",
+   "unknown": "the double root x = 1",
+   "params": {
+    "cas": 2,
+    "method": 1,
+    "x0": 2.0,
+    "x1": 1.8,
+    "gx0": -2.5,
+    "gx1": 2.2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   },
+   "note": "Multiplying the step by the multiplicity restores quadratic convergence."
+  },
+  {
+   "key": "double-root-secant",
+   "title": "A double root x^3 - 3x + 2 by the secant method",
+   "sample": "(x - 1)^2 (x + 2) = 0",
+   "unknown": "the double root x = 1",
+   "params": {
+    "cas": 2,
+    "method": 2,
+    "x0": 2.0,
+    "x1": 1.8,
+    "gx0": -2.5,
+    "gx1": 2.2
+   },
+   "source": {
+    "title": "Model problem: no physical constant is used",
+    "note": "every number is a parameter of the exercise and is stated on the method card"
+   }
+  }
+ ]
+}

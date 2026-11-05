@@ -1,0 +1,22 @@
+{
+ "base": "cr-ising-binder",
+ "rig": "comp3-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "wolff-fine",
+   "title": "Binder cumulant crossing, Wolff, a finer temperature grid",
+   "sample": "L = 8 and 16, 8 temperatures",
+   "unknown": "crossing temperature",
+   "params": {
+    "Tlo": 2.15,
+    "Thi": 2.4,
+    "nT": 8.0
+   },
+   "source": {
+    "title": "L. Onsager, Phys. Rev. 65, 117 (1944); C. N. Yang, Phys. Rev. 85, 808 (1952)",
+    "note": "exact 2-D Ising energy and magnetisation; cited, not re-fetched"
+   }
+  }
+ ]
+}

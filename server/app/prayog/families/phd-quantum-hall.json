@@ -1,0 +1,35 @@
+{
+ "base": "phd-quantum-hall",
+ "chapter": "Quantum transport",
+ "rig": "phd-transport-bench",
+ "variants": [
+  {
+   "key": "n-2e15",
+   "title": "Quantum Hall plateaus, 2DEG of 2.0e15 per m^2 (simulated)",
+   "sample": "GaAs/AlGaAs-type 2DEG, n = 2.0e15 m^-2 (simulated, illustrative)",
+   "method": "B sweep, R_xy and R_xx together",
+   "unknown": "h/e^2 from the plateaus, carrier density",
+   "params": {
+    "n": 2000000000000000.0
+   },
+   "note": "nu = 1 falls at 8.3 T, so the whole sequence of plateaus from i = 1 is inside the 12 T range.",
+   "source": {
+    "title": "K. von Klitzing, G. Dorda and M. Pepper, Phys. Rev. Lett. 45, 494 (1980); density chosen for the lab (unsourced / illustrative)"
+   }
+  },
+  {
+   "key": "n-1p5e15",
+   "title": "Quantum Hall plateaus, 2DEG of 1.5e15 per m^2 (simulated)",
+   "sample": "GaAs/AlGaAs-type 2DEG, n = 1.5e15 m^-2 (simulated, illustrative)",
+   "method": "B sweep, R_xy and R_xx together",
+   "unknown": "h/e^2 from the plateaus, carrier density",
+   "params": {
+    "n": 1500000000000000.0
+   },
+   "note": "A lower density moves every plateau to lower field: nu = 1 is at 6.2 T.",
+   "source": {
+    "title": "K. von Klitzing, G. Dorda and M. Pepper, Phys. Rev. Lett. 45, 494 (1980); density chosen for the lab (unsourced / illustrative)"
+   }
+  }
+ ]
+}

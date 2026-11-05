@@ -1,0 +1,38 @@
+{
+ "base": "cq-pde-laplace",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "heat",
+   "title": "Heat equation by FTCS, BTCS and Crank-Nicolson",
+   "sample": "Rod with u(x,0) = sin(pi x), ends at 0, alpha = 1 (dimensionless)",
+   "unknown": "the temperature at the middle at the end time",
+   "params": {
+    "cas": 1,
+    "method": 2,
+    "T": 0.1
+   },
+   "source": {
+    "title": "W. H. Press et al., Numerical Recipes, chapter on partial differential equations",
+    "note": "relaxation and the stability limit of explicit schemes"
+   }
+  },
+  {
+   "key": "wave",
+   "title": "Wave equation on a fixed string by the leapfrog scheme",
+   "sample": "String fixed at both ends, u(x,0) = sin(pi x), speed 1 (dimensionless)",
+   "unknown": "the displacement at the middle at the end time",
+   "params": {
+    "cas": 2,
+    "method": 0,
+    "T": 0.4,
+    "nu": 0.8
+   },
+   "source": {
+    "title": "W. H. Press et al., Numerical Recipes, chapter on partial differential equations",
+    "note": "relaxation and the stability limit of explicit schemes"
+   }
+  }
+ ]
+}

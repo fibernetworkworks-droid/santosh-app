@@ -1,0 +1,33 @@
+{
+ "base": "sn-ce-amplifier",
+ "rig": "sn-scope-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "bc547c",
+   "title": "CE amplifier with a BC547C transistor: gain and frequency response",
+   "sample": "BC547C n-p-n transistor (hFE group C, 420 to 800)",
+   "unknown": "the mid-band gain and half-power frequencies",
+   "params": {
+    "beta": 420.0
+   },
+   "note": "The same circuit with a higher-gain transistor: the bias hardly moves with beta, so the mid-band gain changes only a little. The lower limit of the group's hFE range is used.",
+   "source": {
+    "title": "ON Semiconductor BC546/BC547/BC548 datasheet, hFE classification (group C: 420-800 at I_C = 2 mA, V_CE = 5 V)"
+   }
+  },
+  {
+   "key": "two-stage",
+   "title": "Frequency response of a two-stage RC-coupled amplifier",
+   "sample": "Two identical BC547B stages, RC coupled",
+   "unknown": "the gain and bandwidth of two RC-coupled stages",
+   "params": {
+    "stages": 2.0
+   },
+   "note": "Two identical stages in cascade multiply the gain (about 80 dB here) and narrow the bandwidth, because each stage's corner contributes; the input is 0.2 mV for that reason.",
+   "source": {
+    "title": "Sedra and Smith, Microelectronic Circuits: cascaded common-emitter amplifiers and RC coupling"
+   }
+  }
+ ]
+}

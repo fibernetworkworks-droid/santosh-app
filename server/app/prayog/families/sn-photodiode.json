@@ -1,0 +1,21 @@
+{
+ "base": "sn-photodiode",
+ "rig": "sn-sensor-bench",
+ "chapter": "Electronic instrumentation and sensors",
+ "variants": [
+  {
+   "key": "ir-940nm",
+   "title": "Characteristics of an IR sensor: infrared photodiode and a 940 nm LED",
+   "sample": "Silicon photodiode with an infrared 940 nm LED",
+   "unknown": "the responsivity of the sensor at 940 nm",
+   "params": {
+    "lam": 9.4e-07
+   },
+   "note": "A 940 nm infrared LED is the usual source for remote-control and proximity sensors, and silicon is more responsive at 940 nm than at 660 nm. Quantum efficiency, chip area and LED intensity are the same illustrative values as the red experiment.",
+   "source": {
+    "title": "940 nm is the standard peak wavelength of infrared remote-control LEDs; R = eta lambda q / (h c)",
+    "note": "Quantum efficiency 0.8, chip area 7.5 mm^2 and radiant intensity 130 mW/sr are illustrative (unsourced)"
+   }
+  }
+ ]
+}

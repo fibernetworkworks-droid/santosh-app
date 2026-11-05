@@ -1,0 +1,20 @@
+{
+ "base": "cq-bvp-ode",
+ "rig": "comp2-workstation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "reaction-diffusion",
+   "title": "Boundary value problem: reaction-diffusion y'' - y = 0",
+   "sample": "y'' - y = 0 with y(0) = 0 and y(L) = 1",
+   "unknown": "y at the middle of the interval",
+   "params": {
+    "cas": 1
+   },
+   "source": {
+    "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, Department of Physics and Astrophysics, University of Delhi",
+    "note": "the practical list names these problems and methods"
+   }
+  }
+ ]
+}
