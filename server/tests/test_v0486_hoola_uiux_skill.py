@@ -214,7 +214,7 @@ def test_seed_skill_lints():
 def test_all_seed_files_lint():
     seed_dir = os.path.join(os.path.dirname(uiux_tool.__file__), "skillpack")
     files = sorted(f for f in os.listdir(seed_dir) if f.endswith(".md"))
-    assert len(files) == 68   # 11 starters + 31 byox + 15 superpowers + 2 prog + 3 fe + 2 cs + 1 mg + 2 bd + 1 cr (v0.514); upstream/ archive is a subdir, listdir never sees it
+    assert len(files) == 70   # 11 starters + 31 byox + 15 superpowers + 2 prog + 3 fe + 2 cs + 1 mg + 2 bd + 1 cr + 2 th (v0.547); upstream/ archive is a subdir, listdir never sees it
     for f in files:
         name, desc, body = parse_skill(open(os.path.join(seed_dir, f), encoding="utf-8").read())
         validate(desc, body)
@@ -234,6 +234,6 @@ def test_seed_feeds_and_matches(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.545.0"' in main and "UIUX PRO MAX" in main
+    assert 'APP_VERSION = "0.547.0"' in main and "UIUX PRO MAX" in main
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.546.0+569" in pub
+    assert "version: 0.547.0+570" in pub

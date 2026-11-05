@@ -201,7 +201,7 @@ def _error_text(status: int, body: str, has_key: bool) -> str:
 
 def _headers() -> dict:
     h = {"X-Context7-Source": "hoola-coder",                # the mcp-server twin (encryption.ts:59)
-         "X-Context7-Server-Version": "0.523.0"}           # SERVER_VERSION twin
+         "X-Context7-Server-Version": "0.547.0"}           # SERVER_VERSION twin
     key = str(_cfg("context7_api_key", "") or "")
     if key:
         h["Authorization"] = f"Bearer {key}"
