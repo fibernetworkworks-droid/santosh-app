@@ -118,10 +118,10 @@ HoolaStudio.define('phd-transport-bench', function (S) {
         var qq = q(tog), xs = [], ys = [], y2 = [], i, fl = [], cl = [], cur = null, pl = [], rxx0, R1, n_est = [], marks = [], ok;
         for (i = 0; i < N; i++) { xs.push(1 + 11 * i / (N - 1)); ys.push(KN.rxy(qq, xs[i])); y2.push(KN.rxx(qq, xs[i])); }
         for (i = 0; i < N; i++) {
-          ok = i > 1 && i < N - 2 && Math.abs(ys[i + 2] - ys[i - 2]) < 4e-4 * ys[i];
+          ok = i > 1 && i < N - 2 && Math.abs(ys[i + 2] - ys[i - 2]) < 1e-3 * ys[i];
           if (ok) { if (!cur) { cur = []; cl.push(cur); } cur.push(i); } else cur = null;
         }
-        cl.forEach(function (c) { if (c.length >= 8) pl.push({ B: xs[c[Math.floor(c.length / 2)]], R: ys[c[Math.floor(c.length / 2)]] }); });
+        cl.forEach(function (c) { if (c.length >= 6) pl.push({ B: xs[c[Math.floor(c.length / 2)]], R: ys[c[Math.floor(c.length / 2)]] }); });
         pl.sort(function (a, b) { return b.B - a.B; });
         R1 = pl.length ? pl[0].R : 0;
         pl.forEach(function (d) { d.i = Math.max(1, Math.round(R1 / d.R)); marks.push([d.B, d.R / 1000]); n_est.push(d.i * QE * d.B / H0); });

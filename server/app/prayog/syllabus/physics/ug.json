@@ -2141,7 +2141,8 @@
       "phase difference"
      ],
      "conditions": [],
-     "kernel": "oscilloscope"
+     "kernel": "oscilloscope",
+     "built": "sn-cro-measure"
     },
     {
      "id": "cro-rise-fall-delay",
@@ -2155,7 +2156,8 @@
       "rise, fall and delay times"
      ],
      "conditions": [],
-     "kernel": "oscilloscope"
+     "kernel": "oscilloscope",
+     "built": "sn-cro-pulse"
     },
     {
      "id": "multimeter-loading",
@@ -2172,7 +2174,8 @@
       "across a low resistance",
       "across a high resistance"
      ],
-     "kernel": "meter-loading"
+     "kernel": "meter-loading",
+     "built": "sn-meter-loading"
     },
     {
      "id": "multimeter-hf-limit",
@@ -2189,7 +2192,8 @@
       "voltage",
       "current"
      ],
-     "kernel": "meter-bandwidth"
+     "kernel": "meter-bandwidth",
+     "built": "sn-meter-bandwidth"
     },
     {
      "id": "frequency-counter",
@@ -2229,7 +2233,8 @@
       "output vs displacement"
      ],
      "conditions": [],
-     "kernel": "lvdt"
+     "kernel": "lvdt",
+     "built": "sn-lvdt"
     },
     {
      "id": "strain-gauge",
@@ -2243,7 +2248,8 @@
       "strain"
      ],
      "conditions": [],
-     "kernel": "strain-gauge"
+     "kernel": "strain-gauge",
+     "built": "sn-strain-gauge"
     },
     {
      "id": "capacitive-level",
@@ -2257,7 +2263,8 @@
       "level"
      ],
      "conditions": [],
-     "kernel": "capacitive-sensor"
+     "kernel": "capacitive-sensor",
+     "built": "sn-capacitive-level"
     },
     {
      "id": "ultrasonic-distance",
@@ -2271,7 +2278,8 @@
       "distance"
      ],
      "conditions": [],
-     "kernel": "ultrasonic-ranging"
+     "kernel": "ultrasonic-ranging",
+     "built": "sn-ultrasonic-ranging"
     },
     {
      "id": "thermostat-characteristics",
@@ -2304,7 +2312,8 @@
       "calibration curve"
      ],
      "conditions": [],
-     "kernel": "temperature-sensor"
+     "kernel": "temperature-sensor",
+     "built": "sn-temp-sensor"
     },
     {
      "id": "rotary-vacuum",
@@ -2318,7 +2327,8 @@
       "pressure vs pumping time"
      ],
      "conditions": [],
-     "kernel": "vacuum-pump"
+     "kernel": "vacuum-pump",
+     "built": "sn-rotary-vacuum"
     },
     {
      "id": "cable-noise-pickup",
@@ -2364,7 +2374,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "diode-waveshaping"
+     "kernel": "diode-waveshaping",
+     "built": "sn-waveshaper"
     }
    ]
   },
@@ -2466,7 +2477,8 @@
       "responsivity"
      ],
      "conditions": [],
-     "kernel": "photodiode"
+     "kernel": "photodiode",
+     "built": "sn-photodiode"
     },
     {
      "id": "ldr-characteristics",
@@ -2493,7 +2505,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "photodiode"
+     "kernel": "photodiode",
+     "built": "sn-photodiode--ir-940nm"
     },
     {
      "id": "bjt-ce-characteristics",
@@ -2541,7 +2554,8 @@
       "operating point stability"
      ],
      "conditions": [],
-     "kernel": "bjt"
+     "kernel": "bjt",
+     "built": "sn-bjt-biasing"
     },
     {
      "id": "bjt-switch",
@@ -2567,7 +2581,8 @@
       "mid-band gain and bandwidth"
      ],
      "conditions": [],
-     "kernel": "bjt-amplifier"
+     "kernel": "bjt-amplifier",
+     "built": "sn-ce-amplifier"
     },
     {
      "id": "rc-coupled-two-stage",
@@ -2581,7 +2596,8 @@
       "gain and bandwidth"
      ],
      "conditions": [],
-     "kernel": "bjt-amplifier"
+     "kernel": "bjt-amplifier",
+     "built": "sn-ce-amplifier--two-stage"
     },
     {
      "id": "push-pull-amplifier",
@@ -2609,7 +2625,8 @@
       "oscillation frequency"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "sn-wien-oscillator"
     },
     {
      "id": "phase-shift-oscillator",
@@ -2623,7 +2640,8 @@
       "oscillation frequency"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "sn-phase-shift-oscillator"
     },
     {
      "id": "colpitts-oscillator",
@@ -2637,7 +2655,8 @@
       "oscillation frequency"
      ],
      "conditions": [],
-     "kernel": "oscillator"
+     "kernel": "oscillator",
+     "built": "sn-colpitts-oscillator"
     },
     {
      "id": "transistor-astable",
@@ -2651,7 +2670,8 @@
       "frequency and duty cycle"
      ],
      "conditions": [],
-     "kernel": "multivibrator"
+     "kernel": "multivibrator",
+     "built": "sn-transistor-astable"
     },
     {
      "id": "dac-design",
@@ -2739,7 +2759,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "sn-opamp-comparator"
     },
     {
      "id": "opamp-difference-amplifier",
@@ -2765,7 +2786,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "sn-opamp-integrator"
     },
     {
      "id": "opamp-differentiator",
@@ -2777,7 +2799,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "opamp"
+     "kernel": "opamp",
+     "built": "sn-opamp-differentiator"
     },
     {
      "id": "opamp-analog-computer",
@@ -2908,7 +2931,8 @@
       "oscillation frequency"
      ],
      "conditions": [],
-     "kernel": "ujt"
+     "kernel": "ujt",
+     "built": "sn-ujt-oscillator"
     },
     {
      "id": "tunnel-diode",
@@ -2954,7 +2978,8 @@
       "frequency, duty cycle / pulse width"
      ],
      "conditions": [],
-     "kernel": "timer-555"
+     "kernel": "timer-555",
+     "built": "sn-timer-555"
     }
    ]
   },
@@ -3164,7 +3189,8 @@
       "modulation index"
      ],
      "conditions": [],
-     "kernel": "am"
+     "kernel": "am",
+     "built": "sn-am-modulation"
     },
     {
      "id": "am-envelope-detector",
@@ -3188,7 +3214,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "fm"
+     "kernel": "fm",
+     "built": "sn-fm-modulation"
     },
     {
      "id": "am-fm-transmitter-receiver",
@@ -3262,7 +3289,8 @@
       "radiation pattern"
      ],
      "conditions": [],
-     "kernel": "antenna"
+     "kernel": "antenna",
+     "built": "sn-dipole-antenna"
     },
     {
      "id": "microwave-reflection-refraction",
@@ -4218,7 +4246,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "special-functions"
+     "kernel": "special-functions",
+     "built": "cq-legendre-recurrence"
     },
     {
      "id": "py-random-distributions-clt",
@@ -4272,7 +4301,8 @@
       "unweighted",
       "weighted (known errors)"
      ],
-     "kernel": "least-squares"
+     "kernel": "least-squares",
+     "built": "cq-least-squares"
     },
     {
      "id": "monte-carlo-pi",
@@ -4491,7 +4521,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "fourier-series"
+     "kernel": "fourier-series",
+     "built": "cq-fourier-coefficients"
     },
     {
      "id": "legendre-orthogonality",
@@ -4503,7 +4534,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "special-functions"
+     "kernel": "special-functions",
+     "built": "cq-legendre-orthogonality"
     },
     {
      "id": "dirac-delta-sequences",
@@ -4531,7 +4563,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "linear-system"
+     "kernel": "linear-system",
+     "built": "cq-kirchhoff-linear-system"
     },
     {
      "id": "coupled-spring-linear-system",
@@ -4546,7 +4579,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "linear-system"
+     "kernel": "linear-system",
+     "built": "cq-coupled-springs"
     },
     {
      "id": "first-order-ivp",
@@ -4659,7 +4693,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "special-functions"
+     "kernel": "special-functions",
+     "built": "cq-special-functions"
     },
     {
      "id": "fourier-transform-functions",
@@ -4678,7 +4713,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "fourier-transform"
+     "kernel": "fourier-transform",
+     "built": "cq-fourier-transform"
     },
     {
      "id": "vector-field-plots",
@@ -4751,7 +4787,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "bvp-solver"
+     "kernel": "bvp-solver",
+     "built": "cq-bvp-ode"
     },
     {
      "id": "pde-heat-wave-laplace",
@@ -4767,7 +4804,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "pde-solver"
+     "kernel": "pde-solver",
+     "built": "cq-pde-laplace"
     },
     {
      "id": "gauss-quadrature-family",
@@ -4783,7 +4821,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "quadrature"
+     "kernel": "quadrature",
+     "built": "cq-gauss-quadrature"
     },
     {
      "id": "laplace-lcr",
@@ -4810,7 +4849,8 @@
       "energy eigenvalues and wavefunctions"
      ],
      "conditions": [],
-     "kernel": "schrodinger-radial"
+     "kernel": "schrodinger-radial",
+     "built": "cq-schrodinger-hydrogen"
     },
     {
      "id": "schrodinger-screened-coulomb",
@@ -4824,7 +4864,8 @@
       "ground-state energy and wavefunction"
      ],
      "conditions": [],
-     "kernel": "schrodinger-radial"
+     "kernel": "schrodinger-radial",
+     "built": "cq-schrodinger-screened"
     },
     {
      "id": "schrodinger-anharmonic",
@@ -4852,7 +4893,8 @@
       "lowest vibrational energy and wavefunction"
      ],
      "conditions": [],
-     "kernel": "schrodinger-radial"
+     "kernel": "schrodinger-radial",
+     "built": "cq-schrodinger-morse"
     },
     {
      "id": "lennard-jones-md",
@@ -4956,7 +4998,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "blackbody-radiator"
+     "kernel": "blackbody-radiator",
+     "built": "cq-planck-law"
     },
     {
      "id": "population-models",
@@ -5001,7 +5044,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "iterated-map"
+     "kernel": "iterated-map",
+     "built": "cq-logistic-map"
     },
     {
      "id": "lorenz-attractor",
@@ -5013,7 +5057,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ode-solver"
+     "kernel": "ode-solver",
+     "built": "cq-lorenz-attractor"
     },
     {
      "id": "fractals",
@@ -5093,7 +5138,8 @@
       "8-point",
       "16-point"
      ],
-     "kernel": "dsp"
+     "kernel": "dsp",
+     "built": "cq-dft-zero-padding"
     },
     {
      "id": "dsp-filter-design",
@@ -5120,7 +5166,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "linear-algebra"
+     "kernel": "linear-algebra",
+     "built": "cq-eigenvalue-power"
     },
     {
      "id": "principal-axes-inertia",
@@ -5132,7 +5179,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "linear-algebra"
+     "kernel": "linear-algebra",
+     "built": "cq-principal-axes"
     },
     {
      "id": "geodesics",

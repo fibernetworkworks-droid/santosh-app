@@ -428,7 +428,8 @@ HoolaStudio.define('comp2-workstation', function (S) {
       }
       x.fillStyle = '#132231'; x.fillRect(0, 0, W, 56);
       x.fillStyle = '#dce7f4'; x.font = '600 28px "Public Sans", sans-serif'; x.textBaseline = 'middle';
-      x.fillText(SP.title + '   ·   ' + METHODS[st.mi], 20, 29);
+      x.font = '600 ' + (SP.title.length > 34 ? 23 : 28) + 'px "Public Sans", sans-serif';
+      x.fillText(SP.title + (METHODS.length > 1 ? '   ·   ' + METHODS[st.mi] : ''), 20, 29);
       x.fillStyle = '#7fe3a1'; x.font = '600 22px "JetBrains Mono", monospace'; x.textAlign = 'right';
       x.fillText(SP.nlabel + ' = ' + NS[st.ni], W - 20, 29); x.textAlign = 'left';
       // ---- plot panel
@@ -458,7 +459,7 @@ HoolaStudio.define('comp2-workstation', function (S) {
         var gx = x0 + (x1 - x0) * i / 4, gy = y0 + (y1 - y0) * i / 4;
         x.beginPath(); x.moveTo(X(gx), Y(y0)); x.lineTo(X(gx), Y(y1)); x.stroke();
         x.beginPath(); x.moveTo(X(x0), Y(gy)); x.lineTo(X(x1), Y(gy)); x.stroke();
-        x.textAlign = 'center';
+        x.textAlign = i === 4 ? 'right' : 'center';
         x.fillText(LOGX ? fmt(Math.pow(10, gx), gx < 3 ? 1 : 0) : fmt(gx, 2), X(gx), H - P.b + 26);
         x.textAlign = 'right'; x.fillText(fmt(gy, 2), P.l - 10, Y(gy) + 7);
       }
