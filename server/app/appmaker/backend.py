@@ -326,6 +326,11 @@ def public_schema(r: AppProject) -> dict[str, Any]:
     tr = _track_public(r)                                                 # v0.412 NAKSHA LIVE
     if tr:
         out["track"] = tr
+    try:                                                                  # v0.540 JAANCH: feature switches (no login yet)
+        from . import rollout as RO
+        out["flags"] = RO.for_member(r, "")
+    except Exception:                                                     # noqa: BLE001
+        log.debug("flags public", exc_info=True)
     try:                                                                  # v0.455 SURAKSHIT LOGIN: the login box's ways
         from . import sign as SG
         out["sign"] = SG.public(r)
@@ -1262,6 +1267,11 @@ def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
     if not trace.strip():
         raise W.AppError("empty crash")
     sig, exc, frames = _crash_sig(trace)
+    # v0.540 JAANCH: an ANR is NOT a crash - the app did not die, it stopped answering, and Play counts it
+    # separately against the app. Two defects that look alike in a list are two defects nobody fixes.
+    kind = str(body.get("kind") or "crash").strip().lower()
+    kind = kind if kind in ("crash", "anr", "native") else "crash"
+    sig = (kind[:3] + sig)[:40] if kind != "crash" else sig
     screen = re.sub(r"[^a-z0-9_]", "", str(body.get("screen") or "").lower())[:49]
     ver = re.sub(r"[^0-9A-Za-z.\-]", "", str(body.get("ver") or ""))[:20]
     f = _crash_file(r)
@@ -1275,9 +1285,10 @@ def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
                 for k, _v in sorted(data.items(), key=lambda kv: kv[1].get("last", ""))[:len(data) - CRASH_KEEP + 1]:
                     data.pop(k, None)
             x = data[sig] = {"id": sig, "exception": exc, "frames": frames, "sample": trace, "count": 0, "first": now().isoformat(),
-                             "screens": [], "versions": [], "devices": [], "status": "new"}
+                             "screens": [], "versions": [], "devices": [], "status": "new", "kind": kind}
         x["count"] += 1
         x["last"] = now().isoformat()
+        x.setdefault("kind", kind)
         for k, v, n in (("screens", screen, 10), ("versions", ver, 10),
                         ("devices", f"{str(body.get('model') or '')[:40]} / "            # v0.332 iPhones report too
                         + (f"iOS {(re.search(r'\d+(?:\.\d+)*', str(body.get('ios'))) or [''])[0][:8]}" if body.get("ios")
@@ -1293,7 +1304,9 @@ def crash(r: AppProject, body: dict[str, Any], ip: str = "") -> dict[str, Any]:
         where = f" ({screen} screen)" if screen else ""
         try:
             from .android.service import _note
-            _note(r, f"{r.name or 'Aapki app'} ({r.number}) ek user ke phone pe band ho gayi{where}: {exc.split(':')[0][:80]}"
+            _note(r, f"{r.name or 'Aapki app'} ({r.number}) ek user ke phone pe "
+                     + ("JAM ho gayi (ANR - screen hil hi nahi rahi thi)" if kind == "anr" else "band ho gayi")
+                     + f"{where}: {exc.split(':')[0][:80]}"
                      + (" - fix wali build mein bhi" if came_back else "") + ". Kahiye 'crash theek karo' - Hoola us screen ko asli "
                      "crash dekh kar dobara likhegi aur nayi build banayegi.")
         except Exception:                               # noqa: BLE001

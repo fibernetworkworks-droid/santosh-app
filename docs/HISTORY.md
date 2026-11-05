@@ -19719,3 +19719,93 @@ but the only thing that proves the box can run her code is the run itself, and n
 **RULE recorded:** a step whose output must survive cannot be sealed the same way as a step whose output must not.
 `docker commit` keeps neither a read-only layer nor a tmpfs — a cache that is written where it cannot persist reports
 success and serves nothing.
+## v0.540.0 (built as 0.531.0) JAANCH + DHEERE CHHODO — App Sahayak Pillar J, Phase 61 (5 Nov 2026)
+
+Owner: "START PILLAR J". Pillars A–I made her apps do more. This is the first answer to *is it actually all right*
+that is not her using the app and finding out.
+
+### 1. Scenario tests, per user story
+
+Opus writes them as **data**, not prose: a closed set of eight verbs (`signup`, `create`, `read`, `open`, `set`,
+`assign`, `rate`, `fn`), each naming a real list, field, status or role of HER app. `quality.check()` refuses
+anything the app has not got — an invented list, an invented field, an unknown verb, an actor who never signed up —
+so the model cannot write a test for an app that does not exist. Then `run()` **plays** each story over HTTP against
+a real server: sign up, create, read the list as somebody else, change status, assign, rate.
+
+Any step may carry `must: refused`. **That is the privacy test, and it is the reason this exists**: a refusal that
+does NOT happen is reported as a failure. "Another customer opens her order" is one line of a scenario and the
+difference between a shop app and a data leak.
+
+A story stops at its first broken step (the rest is noise), and a step that could not run is `not_run` — never a
+pass. The verdict counts only what really ran.
+
+### 2. The twin — her live app is never the test fixture
+
+A scenario makes accounts and writes rows. `twin()` makes a hidden copy of the app — same lists, same brain, its
+**own** app_key and its own data space — and every run wipes it first. It is never built, never published, never in
+her app list. `wipe()` refuses outright if it is handed anything but a twin, and a test proves a row in her real app
+survives a wipe of the twin.
+
+### 3. Every rule and formula, through the real engine
+
+Each rule gets a case that must pass and a case that must be refused, and the **engine** decides (`check_rules`,
+`compute`) — not the case author. A rule whose "bad" case sails through is reported as a failure: *"galat row bhi
+chal gayi - yeh rule kisi ko rokta hi nahi"*. v0.382's own function tests are folded in rather than rewritten.
+Coverage is counted and the uncovered rules are **named**, because a suite that quietly skips things is worse than
+none.
+
+Found by these tests, in this module's own code: `n = int(case.get("n") or -1)` threw away rule number **0** — the
+first rule of every app — silently, for ever. A check that only ever reports "nothing to do" reports nothing.
+
+### 4. Load, on the twin
+
+v0.390's load engine pointed at the twin: hundreds of customers at once, p50 / p95, the error codes, the oversell
+check. Asked for explicitly — it makes hundreds of accounts, so it is never a side effect of "check my app".
+
+### 5. ANRs — a fault the generated apps could not report at all
+
+The generated apps only ever caught JVM crashes, so an app that **froze** reported nothing: the user saw a dead
+screen and the owner saw silence. `CrashGuard.readExitReasons()` now reads Android's own exit records (API 30+) for
+ANRs and native crashes — faults no Java handler can ever see — and the screen is kept on disk so a record read on
+the *next* start still knows where the user was. The server keeps the `kind`, groups an ANR separately from a crash
+with the same trace, and says it in her words: *"JAM ho gayi (ANR - screen hil hi nahi rahi thi)"*. Two defects that
+look alike in a list are two defects nobody fixes.
+
+### 6. Staged rollout — and the honest sentence about it
+
+A production release goes to 5 % of users, then 20, 50, 100, **each step her tap** (production is public; v0.330's
+rule stands). `halt` needs no tap, because stopping damage should not wait for anyone. `rollback` puts the previous
+build back, and says the true thing rather than the comfortable one: **Play cannot take a version off the phones
+that already have it** — stopping holds back everyone else, and the old build becomes those phones' next update.
+
+### 7. Feature flags — the only rollback that works in minutes
+
+A switch on the SERVER, in the app's schema, read on the phone's next call: no build, no review, no download.
+Anything risky ships behind one. Who gets a half-rolled-out feature is decided **on the server** by a stable hash of
+the member id, so a user never flips between on and off, one user's answer cannot change another's, and the app
+cannot award itself a feature it was not given. An unknown switch reads OFF.
+
+### What is where
+
+`server/app/appmaker/quality.py` (the four checks + the twin + the card), `rollout.py` (staged release + flags),
+kits `Flags.kt` / `Flags.swift`, `CrashGuard.kt`; routes `/api/apps/{ref}/jaanch[/{what}]` and
+`/api/apps/{ref}/rollout[/{what}]` (two segments — v0.455's lesson about the `{action}` catch-all, with a test);
+tool `app_banao action=jaanch|flag|rollout` + `app_dekho what=jaanch|rollout`; console **Jaanch** box; phone
+`lib/ui/app_jaanch.dart`. Tests `server/tests/test_v0540_jaanch.py` (16), in `app-load.yml`.
+
+The tool can read the rollout and can `halt` it, and is refused `start` / `advance` / `rollback` — Hoola does not
+push a build to her users; she does.
+
+### Also fixed on the way
+
+The console cache stamps had been frozen at `0.487.0` since v0.485, which two tests had been failing about ever
+since (`set(app) == {APP_VERSION}`). They follow APP_VERSION again, and the count those tests pin moved 20 → 21,
+which is what v0.485 made true when it added `skills.js`.
+
+### Not built, said plainly
+
+Staged rollout is **Android only** — App Store Connect has phased release, and it is not wired here. The scenario
+runner speaks the app-api, so payments, live tracking and chat are not covered by a story yet. `run_all` writes a
+gate verdict but **nothing blocks a store upload on it** (v0.455's security gates do block); wiring that is a
+decision about her workflow, not a line of code. And the checkpoint this pillar is supposed to end on — *all proof
+apps green* — is **not met**: no proof app exists, and none of this has run against one.
