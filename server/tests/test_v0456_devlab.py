@@ -247,3 +247,24 @@ def test_a_build_writes_the_dockerfile_itself(monkeypatch, tmp_path):
     r = box.build_base()
     assert r["ok"] and r["image"] == box.BASE_IMAGE
     assert seen["text"] == box.DOCKERFILE_TEXT and "--no-cache" not in seen["argv"]
+
+
+# ---------------------------------------------------------------- v0.533 the switch is ON, and this repo declares its own
+def test_the_lab_is_on_now_that_her_walls_held():
+    from app.config import get_settings
+    assert get_settings().dev_lab is True            # lab_check on her VPS: every wall held, 5 Nov 2026
+    assert get_settings().dev_lab_timeout >= 300 and get_settings().dev_lab_keep >= 4
+
+
+def test_this_repo_declares_its_own_commands_and_never_asks():
+    """`.hoola/lab.json` is the one place a repo can state this outright - so the lab needs no tap on OUR repo."""
+    import json
+    from pathlib import Path
+    p = Path(__file__).resolve().parents[2] / ".hoola" / "lab.json"
+    assert p.is_file()
+    d = json.loads(p.read_text("utf-8"))
+    assert d["test"] == "cd server && python3 -m pytest -q -p no:randomly"
+    assert "server/requirements.txt" in d["setup"] and d["timeout"] >= 600
+    got = spec.discover([".hoola/lab.json", "server/requirements.txt"], {".hoola/lab.json": json.dumps(d)})
+    assert got["test"] == d["test"] and got["setup"] == d["setup"] and got["confirm"] is False
+    assert spec.refuse_reason(d["test"]) == "" and spec.refuse_reason(d["setup"]) == ""

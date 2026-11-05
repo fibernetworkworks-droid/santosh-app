@@ -456,13 +456,22 @@ def kid_game(design: str) -> bool:
     return bool(KIDS.search(design or ""))
 
 
+UNDER_18 = ("India's DPDP Act section 9(3) forbids tracking, behavioural monitoring and targeted advertising for ANYONE "
+            "UNDER 18 - the reading is that no consent unlocks it, and exposure runs to Rs 200 crore. 'Child' means "
+            "under 18, not under 13, so a game that any teenager may play is covered. That is why telemetry here is OFF "
+            "by default, is refused outright for a game made for children, asks each player before it sends anything, "
+            "and never carries a device id or an advertising profile. THE ONE NARROW EXCEPTION is an educational "
+            "institution monitoring for its own educational activities or the safety of its enrolled children - a "
+            "school's own lab, not a published game.")
+
 def settings(tenant: str, ref: str) -> dict[str, Any]:
     st = _studio(tenant, ref)
     rt = dict(st.runtime or {})
     g = _game(tenant, st.game_id)
     return {"on": bool(rt.get("on", True)), "telemetry": bool(rt.get("telemetry", False)), "kids": kid_game(g.design),
             "tests": list(rt.get("tests") or [])[-10:], "studio_id": st.id, "game_id": st.game_id,
-            "telemetry_url": (G.play_url(g.token) + "t") if g.token else ""}
+            "telemetry_url": (G.play_url(g.token) + "t") if g.token else "",
+            "under_18": UNDER_18}
 
 
 def set_runtime(tenant: str, ref: str, on: bool | None = None, telemetry: bool | None = None) -> dict[str, Any]:

@@ -19356,3 +19356,137 @@ disk copy deliberately missing and checks the text handed to `docker build` is t
 
 **Rule for this repo:** a path built from `__file__` must be checked against `~/apps/santosh-core`, where the code
 actually runs, not only against the repo layout. Anything outside `server/app` is not deployed.
+## v0.534.0 CAD DESK KI JAANCH (built as 0.531) - is the CAD engineer alive on HER server? (5 Nov 2026)
+Owner: "IS ALL CAD AI WORK DONE". The honest answer was no - the code was done, the proof on her own machine was
+not. Every other desk can be asked from the VPS (game_check, architect_check, lab_check, auth_check, mospi_check);
+the CAD desk had nothing. All it could say was `health()`, and that only reported whether THREE libraries imported.
+
+- `app/engineering/selfcheck.py` + `python -m app.engineering <check|libs|health>` + vps-ops **cad_check** /
+  **cad_setup**. The check does not import libraries and call that proof: it BUILDS three real parts through the
+  same sandbox a real job goes through, runs the studies on them, and prints one line per stage - `live` with the
+  number it measured, or `DEAD` with the reason. 33 stages: 9 libraries (each naming what she loses without it),
+  the box's python + network isolation, a bracket (bbox, volume, faces, STEP/STL/GLB/3MF/DXF, H.expect, DFM,
+  hidden-line views), stress, buckling, past yield, G-code, the gear pair (real hobbed root + ISO 6336 bending /
+  pitting / contact ratio), the mechanism (joints, ranges, URDF/SDF/MJCF/SRDF checks), the MuJoCo move (hardest
+  worked motor, cam shaft torque, loop gap), friction, cam contact (spring / Hertz / jam), the cam designed from
+  the motion, the dimensioned drawing PDF, the charts, all nine hand calculations, the agent's tools and the
+  designer's guide. No model is called, so a run is free; ~80 s with `--quick`, ~3-5 min full.
+- SOFT vs HARD: `mujoco`, `matplotlib` and `pyamg` fail QUIETLY - the part still builds and the answer just stops
+  carrying the motion numbers, the charts or the fast solver. Those report WEAK, not DEAD, and the verdict says
+  "chalega, but degraded". A missing cadquery or scikit-fem is DEAD and the run exits non-zero.
+- `service.health()` now names every library, which are missing, which losses are quiet, and one `ok`; the desk's
+  own route `/api/eng/projects` carries it, the way the game / blender / architect desks already did.
+- WHY IT EXISTS: this has already bitten her once. Every test here was green while her own server answered
+  `fea false` - the stress engine was simply not installed. `mujoco`, `matplotlib` and `reportlab` can each do the
+  same thing silently, and three of them were installed by hand in a deploy command.
+- WHAT ITS FIRST RUN FOUND, in itself: two of its three DEAD stages were the CHECK's own mistakes - its script
+  called `H.hole(plate, 10, (20,0), depth=None)` when `H.hole(m, kind)` returns a DIAMETER (the guide was right),
+  and it read `clearance_min_um` / `load_factor` when calc returns `clearance_mm` / `load_factor_C`. The third was
+  a weak test, not a defect: every joint in its machine turned about the VERTICAL axis, so gravity never loaded
+  anything and the cam shaft honestly came back at 0.0 N·m. The machine now swings an arm about a horizontal axis
+  against gravity with a payload (0.99 N·m at 509 deg/s), and the line reports the hardest-worked motor plus the
+  cam torque instead of row 0. A false alarm is worse than no check, so all three are pinned by tests:
+  `guard.check` must accept its own scripts, the bracket must really build with H.expect PASSING, and all nine
+  calculator kinds must answer with their real keys.
+- Run here: 32 live, 0 dead, 1 skipped (`--quick`) of 33.
+- Tests `test_v0458_cad_check.py` (10).
+
+## v0.535.0 PRAYOGSHALA ON — the lab is live, because her own VPS proved it
+
+She ran `lab_check` on the VPS and **every wall held**, pasted verbatim:
+
+```
+docker: ok 29.8.1
+base image hoola-devlab:base: NAHI bani
+  build: ok (146.1s)
+ek pass hone wala test: exit 0 (1.9s) - ok
+ek fail hone wala test: exit 1 - ok, aur fail ka ant dikh raha hai
+network band hai: ok (box bahar nahi pahunch saka)
+root filesystem read-only hai: ok
+box ka user: 1000 (ok, root nahi)
+lab images: 1 (hoola-devlab:base 1.54GB)
+```
+
+No `GADBAD`, no `KHATRA`. The box builds, runs her code, catches a failure with its END visible (the v0.456
+failure-first contract working on real output), cannot reach the network, cannot write to its own root, and is not
+root. So `dev_lab` flips to **True** and everything v0.531 wired becomes live: a coding job clones the repo once,
+writes its in-memory edits over that checkout, runs her declared check in seconds, proves a bug **red-then-green
+locally** instead of pushing a deliberate red commit, and **executes** the v0.451 plan's `done_when` lines.
+
+**`.hoola/lab.json` in this repo** — the one place a repo can declare its commands outright, so the lab needs no tap
+here: `setup` = `python3 -m pip install --user -r server/requirements.txt`, `test` = `cd server && python3 -m pytest
+-q -p no:randomly`, `timeout` 900. A test asserts the file parses through `spec.discover` with `confirm=False` and
+that neither command is refusable — so the repo's own declaration cannot rot.
+
+**vps-ops `lab_try`** runs that exact path on her own repo end to end: clone `santosh-app`, install its dependencies
+once with the network on (committed as a cached image snapshot), then a real slice of the suite with **no network**.
+It is the road a coding job takes, minus the model — the honest live proof that the box can run *her* code, not just
+a two-line fixture.
+
+**Disk, said plainly:** the base image is **1.54 GB** and every repo adds its own dependency snapshot on top.
+`lab_prune` keeps the newest 12 and never drops the base; `lab_images` shows what is there beside `docker system df`.
+
+**One test rewritten to the new truth:** `test_the_lab_is_shut_until_she_turns_it_on` asserted the switch-off reason,
+which is no longer what `ready()` says — it now speaks about the **box**. It became
+`test_the_switch_and_the_box_are_two_separate_doors`: switch off → the reason names `dev_lab` and `lab_check`; switch
+on with Docker absent → the reason names docker. A shut lab always says *which* door is closed.
+
+**92 pass** across every Developer Sahayak suite on this commit.
+
+**What is still unproven, and it is the only thing left:** no model has used the lab yet. `lab_try` proves the box
+runs her repo; the first real coding job proves Hoola *uses* it — the plan gate asking her Haan, `run_check` going red
+then green, the self-review reading the measured evidence, the PR carrying it. That job needs the Anthropic credit.
+
+
+
+## v0.536.0 (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026
+Owner: "CONTINUE TO OUR MOAT GAME WORK". The last two "fix first" items of the moat plan. New
+`server/app/gamedesk/provenance.py`, tool `game_provenance`, console Game Desk > "Where it came from".
+
+### Why it was the highest-leverage item left
+The moat research named provenance "the single highest-leverage thing to build, because it converts an unanswerable
+legal question into a declarable fact", for two reasons that land on the same missing record:
+1. **The stores ask, and SHE signs.** Steam's Content Survey asks the publisher to declare "any kind of content that
+   ships with your game and is consumed by players" made with AI, and separately whether the game generates content
+   WHILE RUNNING (that one carries a guardrails obligation). Unity's Asset Store wants the same disclosure; Fab wants a
+   `CreatedWithAI` tag. Completing Steam's survey is HER promise to Valve, checked in pre-release review - and she
+   could not make it honestly, because nothing recorded which model made which file.
+2. **AI output may not be hers at all.** USCO Jan 2025 Part 2: prompt-only output is not copyrightable. India's
+   Copyright Act s.2(d)(vi) asks for the human who "causes the work to be created", and the Copyright Office rejected
+   an AI as author in 2026. So a game made mostly of generated assets may have little in it she can enforce. What IS
+   protectable is human creative selection, arrangement and modification - every one of which Hoola was ALREADY
+   recording (her approvals, her rejections, her uploads, the decisions log with `by="her"`) and had never collected.
+
+### What was added
+- **The model is written down.** `ai.py` gains a thread-local record (`_mark` / `used()`): `ask` and `ask_with_images`
+  mark the model that actually answered, and a FALLBACK to the cheap brain is named as one, because it is a different
+  model. Thread-local because builds run in parallel, and `used()` clears, so a caller records exactly its own call.
+  `service.py` writes `models` onto each build's version row. A build from before this says so instead of guessing.
+- **Three things that are never merged**, because merging them would put a false statement on her survey:
+  GENERATIVE (photogen / lyria / tts - what a store asks about), CODE-MADE (a sound from `sfx.py`'s preset + seed, a
+  Blender-scripted mesh - arithmetic, no model), and HER OWN uploaded files (hers, and her copyright). The
+  classification is read from `assets.KINDS[kind]["source"]` as declared in code, never from a prompt.
+- **Only what ships counts.** The record follows `approved`, not `created`: an asset made and never approved is in no
+  build, so it is on no survey, and the count of those is printed.
+- **Live-generated = a plain No**, as a fact: the game calls no model while it runs (HoolaRuntime talks only to its own
+  play-link host and the play page's CSP allows nothing else), so Valve's guardrails obligation does not apply.
+- **The judgement call is printed, not decided.** The game's own GDScript: Valve's Jan 2026 rewrite exempts AI dev
+  tools such as code assistants and code is not "consumed by players" the way art is - but a game whose code a model
+  wrote start to finish is not plainly that case. BOTH readings are shown and the answer is "You do. Hoola will not
+  answer this one for you." Nothing anywhere claims the declaration is correct (a test greps for that).
+- **The human record** collects her decisions, the asset versions she chose between, what she rejected, what she
+  uploaded and the tasks she asked for - with a THIN WARNING when there are fewer than five such acts, because then
+  there may be little in the game that is protectable. Creating the project is itself logged as her act, correctly.
+- **The under-18 rule, said out loud** (`runtime.UNDER_18`, in `runtime.settings` and the live-ops dashboard): DPDP
+  s.9(3) forbids tracking, behavioural monitoring and targeted advertising for ANYONE UNDER 18, no consent unlocks it,
+  exposure to Rs 200 crore, and "child" means under 18 not under 13 - which is WHY telemetry is off by default, refused
+  for a children's game, asked per player and never carries a device id. The one narrow exception is named: an
+  educational institution monitoring for its own educational activities or the safety of enrolled children.
+- Routes: GET /api/gamedesk/provenance/{sid} and /steam. Tool actions: sheet / steam / disclosure / human.
+- Tests: `server/tests/test_v0455_provenance.py` (9), each pinning a way the record could lie - thread isolation and
+  the named fallback, code-made never counted as generated, an unclassifiable source named not guessed, her own file
+  counted as neither, made-but-never-approved off the survey, the judgement call carrying both readings, and no claim
+  of correctness anywhere in the output.
+- NOT VERIFIED: no real store survey has been filled from this, and it is not legal advice. The classification is only
+  as good as the `source` each asset kind declares; an asset whose source Hoola cannot place is NAMED rather than
+  guessed at, which is the honest failure.

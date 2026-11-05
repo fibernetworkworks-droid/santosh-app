@@ -379,4 +379,4 @@ def test_stats_carry_skills_and_nudge(sk, nud, monkeypatch):
 
 def test_version_stamp(sk):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.532.0"
+    assert APP_VERSION == "0.536.0"

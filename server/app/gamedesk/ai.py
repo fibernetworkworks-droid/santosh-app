@@ -5,6 +5,7 @@ Tests replace `ask`."""
 from __future__ import annotations
 
 import logging
+import threading
 import re
 import time
 
@@ -26,6 +27,35 @@ def _client():
     return _CLIENT
 
 
+# v0.455 PROVENANCE: which model actually answered. Steam's Content Survey, Unity's Asset Store and Fab all put the
+# disclosure on whoever publishes, and she cannot declare what nobody wrote down. Thread-local because builds run in
+# parallel; `used()` reads and clears, so a caller records exactly its own call. A FALLBACK to the cheap brain is a
+# different model and is named as one - that is the whole point.
+_SEEN = threading.local()
+
+
+def _mark(name: str) -> None:
+    try:
+        got = getattr(_SEEN, "models", None)
+        if got is None:
+            got = _SEEN.models = []
+        if name and name not in got:
+            got.append(name)
+    except Exception:                                   # noqa: BLE001  (provenance must never break a build)
+        pass
+
+
+def used(clear: bool = True) -> list[str]:
+    """The model(s) that answered on this thread since the last read. Never raises."""
+    try:
+        got = list(getattr(_SEEN, "models", None) or [])
+        if clear:
+            _SEEN.models = []
+        return got
+    except Exception:                                   # noqa: BLE001
+        return []
+
+
 def ask(system: str, prompt: str, max_tokens: int = 16000) -> str:
     st = get_settings()
     if st.anthropic_api_key:
@@ -35,6 +65,7 @@ def ask(system: str, prompt: str, max_tokens: int = 16000) -> str:
                 try:
                     msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
                                                     messages=[{"role": "user", "content": prompt}])
+                    _mark(model)
                     return "".join(getattr(b, "text", "") for b in msg.content)
                 except Exception as e:
                     last = e
@@ -43,7 +74,9 @@ def ask(system: str, prompt: str, max_tokens: int = 16000) -> str:
         log.warning("game: Claude unavailable, trying the cheap brain: %s", last)
     from ..net.ai import llm
     try:
-        return llm(system, prompt, min(max_tokens, 8000), timeout=300)
+        out = llm(system, prompt, min(max_tokens, 8000), timeout=300)
+        _mark("fallback: the cheap brain, not Claude")
+        return out
     except Exception as e:
         raise AiError(f"Model nahi mila: {e}")
 
@@ -262,6 +295,7 @@ def ask_with_images(system: str, text: str, images: list[bytes], max_tokens: int
             try:
                 msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
                                                 messages=[{"role": "user", "content": content}])
+                _mark(model)
                 return "".join(getattr(b, "text", "") for b in msg.content)
             except Exception as e:
                 log.info("game review model %s failed: %s", model, e)
