@@ -24,7 +24,7 @@ def _client():
     global _CLIENT
     if _CLIENT is None:
         from anthropic import Anthropic
-        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=240, max_retries=2)
+        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=600, max_retries=2)   # v0.560 thinking needs room
     return _CLIENT
 
 
@@ -33,7 +33,8 @@ def _img_block(data: bytes) -> dict[str, Any]:
     return {"type": "image", "source": {"type": "base64", "media_type": mt, "data": base64.b64encode(data).decode()}}
 
 
-def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens: int = 12000) -> str:
+def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens: int = 12000,
+        job: str = "blender") -> str:
     st = get_settings()
     content: list[dict[str, Any]] = [_img_block(b) for b in (images or [])[:3]] + [{"type": "text", "text": prompt}]
     if st.anthropic_api_key:
@@ -41,8 +42,9 @@ def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens:
         for model in dict.fromkeys([getattr(st, "blender_model", "") or "claude-opus-5-5", st.anthropic_model]):
             for attempt in range(2):
                 try:
-                    msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
-                                                    messages=[{"role": "user", "content": content}])
+                    from ..agent import door   # v0.560 EK DARWAZA
+                    msg = door.create(_client(), door.shape(job, model, max_tokens, system,
+                                                            [{"role": "user", "content": content}]))
                     return "".join(getattr(b, "text", "") for b in msg.content)
                 except Exception as e:
                     last = e
@@ -134,7 +136,8 @@ def change(brief: str, code: str, words: str, photo_names: list[str], print_read
 
 
 def look(brief: str, png: bytes) -> dict[str, Any]:
-    raw = ask(LOOK_SYSTEM, f"HER ASK: {brief}\nDoes the render match? JSON only.", [png], max_tokens=600)
+    raw = ask(LOOK_SYSTEM, f"HER ASK: {brief}\nDoes the render match? JSON only.", [png], max_tokens=600,
+              job="blender_look")
     m = re.search(r"\{.*\}", raw or "", re.S)
     try:
         v = json.loads(m.group(0)) if m else {}

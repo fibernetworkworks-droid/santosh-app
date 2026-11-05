@@ -116,9 +116,10 @@ def _claude_html(prompt: str) -> str:
     st = get_settings()
     if st.anthropic_api_key:
         import anthropic
-        client = anthropic.Anthropic(api_key=st.anthropic_api_key, timeout=240)
-        msg = client.messages.create(model=st.anthropic_model, max_tokens=16000,
-                                     messages=[{"role": "user", "content": prompt}])
+        client = anthropic.Anthropic(api_key=st.anthropic_api_key, timeout=600)
+        from ..agent import door   # v0.560 EK DARWAZA
+        msg = door.create(client, door.shape("motion", door.model_for("motion_model", st.anthropic_model), 16000, "",
+                                             [{"role": "user", "content": prompt}]))
         return "".join(getattr(b, "text", "") for b in msg.content)
     if st.gemini_api_key:
         from google import genai
