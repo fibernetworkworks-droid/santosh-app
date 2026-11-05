@@ -49,6 +49,8 @@ on:
           - auth_check
           - review_card
           - fix_card_spec
+          - cad_check
+          - cad_setup
           - lab_check
           - lab_setup
           - lab_images
@@ -426,6 +428,21 @@ jobs:
                 echo 'if grep -qE "^API_KEY=.+" $CORE/.env 2>/dev/null; then echo "API_KEY in .env: set"; else echo "API_KEY in .env: MISSING or empty"; fi'
                 echo 'for u in http://172.18.0.1:8077 http://127.0.0.1:8077; do c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 $u/api/me); [ "$c" != "000" ] && { echo "Live: $u/api/me with no login -> $c (401 = locked, 200 = OPEN)"; break; }; done'
                 echo 'c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 https://hoola.ainewtika.com/api/me); echo "Public: https://hoola.ainewtika.com/api/me with no login -> $c"' ;;
+              cad_check)
+                # v0.458 IS THE CAD ENGINEER ALIVE HERE? Builds real parts in the box on THIS server and runs every
+                # stage on them - geometry + files out, her own numbers, DFM, hidden-line views, stress, buckling,
+                # past yield, G-code, the real hobbed gear root + ISO 6336 duty, the mechanism with its robot files,
+                # the MuJoCo move with friction, cam contact, the drawing PDF, the charts, the hand calculations and
+                # whether the agent can reach the desk at all. No model is called, so it costs nothing.
+                # "DEAD" / "GADBAD" = that piece of what Hoola tells her about a design is NOT running. ~3-6 min.
+                echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.engineering check 2>&1 | tail -45' ;;
+              cad_setup)
+                # ... install / upgrade every CAD library into the venv, then run the check. cadquery is a ~100 MB
+                # wheel, so the first run is slow. Nothing here touches her data.
+                echo 'set -e'
+                echo 'cd $CORE && .venv/bin/pip install -q --upgrade "cadquery>=2.4,<3" "scikit-fem>=10,<13" "pyamg>=5,<6" "mujoco>=3,<4" "matplotlib>=3.9" "reportlab>=4.0" 2>&1 | tail -12'
+                echo 'cd $CORE && .venv/bin/python -m app.engineering libs 2>&1 | tail -12'
+                echo 'cd $CORE && timeout 1500 .venv/bin/python -m app.engineering check 2>&1 | tail -45' ;;
               lab_check)
                 # v0.456 PRAYOGSHALA: is the coding lab's Docker box real and SEALED on this VPS? Builds the base image
                 # if missing, then runs a passing test, a failing test, and three wall checks (no network, read-only
