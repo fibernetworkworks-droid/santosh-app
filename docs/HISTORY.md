@@ -20158,3 +20158,9 @@ Console: the build card shows "Safety gates: n passed - warnings - failed - not 
 own reason; profession laws; OSV fail + not_checked; launch blocked; Turnstile box / CSP / server check; the failing
 section is named and fed to the fix round. NOT VERIFIED (honest): no live Turnstile key yet; the profession checks are
 word rules (a careful human still reads her claims) - they catch the common breach, not every one.
+ALSO IN v0.549.0, found by this version's regression run: the v0.538 catalogue + team CMS ROUTES were missing from
+main.py - a merge before v0.538 shipped dropped the whole block (catalog preview / apply / images / remove, /cms/<site>/,
+/api/site-cms/*, /api/sites/<ref>/cms*), so on the live server the catalogue import and her team's CMS answered 404 while
+their modules, tables and worker tick were all there. Restored from the commit that wrote them; catalogue + CMS suites
+green again. RULE (again): a module's tests passing in one commit says nothing about the merged tree - run the feature's
+suite on the MERGED commit before shipping.
