@@ -821,6 +821,7 @@ def init_db(url: str | None = None):
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)
     from .ads import metaads as _metaads  # noqa: F401  (v0.417 Facebook / Instagram ads, Meta Marketing API)
+    from .seo import intel as _seo_intel  # noqa: F401  (v0.541 SEO INTEL: ranks, AI visibility, Maps grid, DataForSEO)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401

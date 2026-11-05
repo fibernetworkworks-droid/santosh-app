@@ -1,6 +1,6 @@
 {
-  "_what": "v0.533 the coding lab's declared commands for THIS repo (app/devlab reads this file first after her own word). Hoola runs the `test` command inside a sealed Docker box - no network, non-root, read-only root - on the code AS IT IS during a coding job, so a fix is proved instead of claimed. Change a command here and the lab follows it; delete the file and the lab falls back to reading AGENTS.md / CLAUDE.md / the CI workflow, and asks before using anything it merely read.",
-  "setup": "python3 -m pip install --user --no-warn-script-location -r server/requirements.txt",
+  "_what": "v0.537 the coding lab's declared commands for THIS repo (app/devlab reads this file first after her own word). Hoola runs the `test` command inside a sealed Docker box - no network, non-root, read-only root - on the code AS IT IS during a coding job, so a fix is proved instead of claimed. Change a command here and the lab follows it; delete the file and the lab falls back to reading AGENTS.md / CLAUDE.md / the CI workflow, and asks before using anything it merely read.",
+  "setup": "python3 -m pip install --no-warn-script-location -r server/requirements.txt",
   "test": "cd server && python3 -m pytest -q -p no:randomly",
   "timeout": 900
 }

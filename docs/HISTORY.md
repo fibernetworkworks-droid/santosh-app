@@ -19647,3 +19647,238 @@ Owner: "GO STEP 6". New `site/catalog.py`, `site/speed.py`, `site/loadtest.py`, 
   The team page: CSP (no outside anything), no-referrer (the invite never leaks), noindex, frame-ancestors none.
   Tests `tests/test_v0534_hoola_cms.py`. NOT built: 2-step login for the team, photo upload by the team (they pick from
   her site photos only via her), Cloudflare setup on her domain, per-site Postgres for big data.
+
+## v0.539.0 PRAYOGSHALA SACH — the lab could not install anything, and her own first live run said so (owner: "LAB_TRY DONE, CHECK RESULT")
+
+`lab_try` (vps-ops run 252, 5 Nov 2026) came back in nine seconds:
+
+```
+setup command poori nahi hui
+  stage: setup
+---- setup output
+error: externally-managed-environment
+× This environment is externally managed
+```
+
+**Defect A, the one that spoke.** Debian marks its system Python *externally managed* (PEP 668), so **any** `pip
+install` without `--break-system-packages` is refused — which is every Python repo's own declared command, not just
+ours. The image already used that escape hatch for its own pytest install, which is exactly why nobody noticed it
+would bite the repo's command. A container **is** the virtual environment, so the marker now comes off once in the
+image (`rm -f /usr/lib/python3*/EXTERNALLY-MANAGED`) and a repo's real command runs unrewritten. The alternative —
+Hoola silently rewriting her declared command — would have made the lab lie about what it ran.
+
+**Defect B, the silent one behind it, which would have bitten next.** The setup step ran with `--read-only` root
+**and** `--tmpfs /home/lab`, and `docker commit` keeps **neither** a read-only layer's writes nor a tmpfs. So even
+had pip been allowed, every installed dependency would have been thrown away, the snapshot tag would still have been
+created and reported `snapshot_cached: true`, and every later check would have failed on missing imports — fast,
+cached and wrong, the worst shape a failure can take. There was no location in that container where an install could
+survive.
+
+**The fix, one coherent change in `devlab/box.py`:**
+- `_limits(network, writable)` — `writable` is true for the **setup** step alone, and only because a sealed step
+  cannot leave anything behind. It drops `--read-only` and the `/home/lab` tmpfs; every other wall stands (uid 1000,
+  `--cap-drop ALL`, `no-new-privileges`, memory / cpu / pids caps, and no secret can ride in).
+- **Writability is DERIVED from `commit_to` and cannot be asked for** — `run_in` has no `writable` parameter, so no
+  caller can unseal a check by passing a flag. A test pins the signature.
+- A CHECK keeps read-only root and `--network none`, and `/home/lab` is **no longer masked** by a tmpfs — that
+  masking is what threw the snapshot away. `HOME=/tmp/home` (inside the one tmpfs) gives a writable home,
+  `PYTHONUSERBASE=/home/lab/.local` + that dir on `PATH` keep a `pip --user` repo importable, and `run_in` creates
+  `$HOME` before the command.
+- The image carries `LABEL hoola.devlab.rev`, `box.base_rev()` reads it with `docker image inspect` (no container),
+  and `available()` reports `base_stale` with the fix in her words. `lab_check` now **rebuilds from scratch** when
+  the image is older than the code reading it instead of using it quietly — her VPS is holding the pre-v0.539 image
+  right now. `python -m app.devlab setup --rebuild`, and vps-ops `lab_setup` passes it.
+- `.hoola/lab.json` setup is now the plain `python3 -m pip install --no-warn-script-location -r
+  server/requirements.txt` — the command any reader would write.
+
+**The self-test grew the two stages that would have caught all of this before she ran it**: a repo's own
+`pip install` really works with the network on, and what it installs **is still there after the commit** (installs
+`tabulate`, commits, then asks the committed image to import it, then forgets the throwaway tag). Both say GADBAD
+with the real output when they fail.
+
+Tests: `test_v0456_devlab.py` +4 (setup-may-keep / check-still-cannot with every wall asserted by name, no-caller-can-
+unseal, the image lets a repo run its own pip command, a stale image is named and rebuilt not used quietly) and the
+new selftest stages pinned by source. 90 green across the lab and Developer Sahayak suites
+(`test_v0456_devlab`, `test_v0531_lab_loop`, `test_v0445_khud_review`, `test_v0447_saboot`, `test_v0451_plan_pehle`,
+`test_v0371_poochh_lo`, `test_v0377_dekh_ke_review`, `test_tech_devsahayak`, `test_v0351_pakka_saboot`,
+`test_routines`).
+
+Healed on the way, all RED on pristine `origin/main` before this change (the v0.536 ritual missed two pin forms):
+the console stamp pins in `test_v0179_search` / `test_v0221_console_r1` / `test_v0475_console_frames` still read
+0.487.0 while main's console carries 0.536.0 x21, and thirteen suites pinned the full string
+`version: 0.535.0+558` / `APP_VERSION = "0.535.0"`.
+
+Version 0.537.0 (pubspec 0.539.0+562, pins swept across 169 + 13 suites; console stamps stay at main's 0.536.0 x21 —
+server-only release). Mera PC freeze respected: nothing in `server/app/pc/`, `desktop/` or `lib/` touched.
+
+**Her VPS must run `lab_setup` (it now rebuilds) before `lab_try`** — the image on it is the old one.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has never passed. The two defects above are fixed and unit-tested,
+but the only thing that proves the box can run her code is the run itself, and no model has used the lab yet.
+
+**RULE recorded:** a step whose output must survive cannot be sealed the same way as a step whose output must not.
+`docker commit` keeps neither a read-only layer nor a tmpfs — a cache that is written where it cannot persist reports
+success and serves nothing.
+## v0.540.0 (built as 0.531.0) JAANCH + DHEERE CHHODO — App Sahayak Pillar J, Phase 61 (5 Nov 2026)
+
+Owner: "START PILLAR J". Pillars A–I made her apps do more. This is the first answer to *is it actually all right*
+that is not her using the app and finding out.
+
+### 1. Scenario tests, per user story
+
+Opus writes them as **data**, not prose: a closed set of eight verbs (`signup`, `create`, `read`, `open`, `set`,
+`assign`, `rate`, `fn`), each naming a real list, field, status or role of HER app. `quality.check()` refuses
+anything the app has not got — an invented list, an invented field, an unknown verb, an actor who never signed up —
+so the model cannot write a test for an app that does not exist. Then `run()` **plays** each story over HTTP against
+a real server: sign up, create, read the list as somebody else, change status, assign, rate.
+
+Any step may carry `must: refused`. **That is the privacy test, and it is the reason this exists**: a refusal that
+does NOT happen is reported as a failure. "Another customer opens her order" is one line of a scenario and the
+difference between a shop app and a data leak.
+
+A story stops at its first broken step (the rest is noise), and a step that could not run is `not_run` — never a
+pass. The verdict counts only what really ran.
+
+### 2. The twin — her live app is never the test fixture
+
+A scenario makes accounts and writes rows. `twin()` makes a hidden copy of the app — same lists, same brain, its
+**own** app_key and its own data space — and every run wipes it first. It is never built, never published, never in
+her app list. `wipe()` refuses outright if it is handed anything but a twin, and a test proves a row in her real app
+survives a wipe of the twin.
+
+### 3. Every rule and formula, through the real engine
+
+Each rule gets a case that must pass and a case that must be refused, and the **engine** decides (`check_rules`,
+`compute`) — not the case author. A rule whose "bad" case sails through is reported as a failure: *"galat row bhi
+chal gayi - yeh rule kisi ko rokta hi nahi"*. v0.382's own function tests are folded in rather than rewritten.
+Coverage is counted and the uncovered rules are **named**, because a suite that quietly skips things is worse than
+none.
+
+Found by these tests, in this module's own code: `n = int(case.get("n") or -1)` threw away rule number **0** — the
+first rule of every app — silently, for ever. A check that only ever reports "nothing to do" reports nothing.
+
+### 4. Load, on the twin
+
+v0.390's load engine pointed at the twin: hundreds of customers at once, p50 / p95, the error codes, the oversell
+check. Asked for explicitly — it makes hundreds of accounts, so it is never a side effect of "check my app".
+
+### 5. ANRs — a fault the generated apps could not report at all
+
+The generated apps only ever caught JVM crashes, so an app that **froze** reported nothing: the user saw a dead
+screen and the owner saw silence. `CrashGuard.readExitReasons()` now reads Android's own exit records (API 30+) for
+ANRs and native crashes — faults no Java handler can ever see — and the screen is kept on disk so a record read on
+the *next* start still knows where the user was. The server keeps the `kind`, groups an ANR separately from a crash
+with the same trace, and says it in her words: *"JAM ho gayi (ANR - screen hil hi nahi rahi thi)"*. Two defects that
+look alike in a list are two defects nobody fixes.
+
+### 6. Staged rollout — and the honest sentence about it
+
+A production release goes to 5 % of users, then 20, 50, 100, **each step her tap** (production is public; v0.330's
+rule stands). `halt` needs no tap, because stopping damage should not wait for anyone. `rollback` puts the previous
+build back, and says the true thing rather than the comfortable one: **Play cannot take a version off the phones
+that already have it** — stopping holds back everyone else, and the old build becomes those phones' next update.
+
+### 7. Feature flags — the only rollback that works in minutes
+
+A switch on the SERVER, in the app's schema, read on the phone's next call: no build, no review, no download.
+Anything risky ships behind one. Who gets a half-rolled-out feature is decided **on the server** by a stable hash of
+the member id, so a user never flips between on and off, one user's answer cannot change another's, and the app
+cannot award itself a feature it was not given. An unknown switch reads OFF.
+
+### What is where
+
+`server/app/appmaker/quality.py` (the four checks + the twin + the card), `rollout.py` (staged release + flags),
+kits `Flags.kt` / `Flags.swift`, `CrashGuard.kt`; routes `/api/apps/{ref}/jaanch[/{what}]` and
+`/api/apps/{ref}/rollout[/{what}]` (two segments — v0.455's lesson about the `{action}` catch-all, with a test);
+tool `app_banao action=jaanch|flag|rollout` + `app_dekho what=jaanch|rollout`; console **Jaanch** box; phone
+`lib/ui/app_jaanch.dart`. Tests `server/tests/test_v0540_jaanch.py` (16), in `app-load.yml`.
+
+The tool can read the rollout and can `halt` it, and is refused `start` / `advance` / `rollback` — Hoola does not
+push a build to her users; she does.
+
+### Also fixed on the way
+
+The console cache stamps had been frozen at `0.487.0` since v0.485, which two tests had been failing about ever
+since (`set(app) == {APP_VERSION}`). They follow APP_VERSION again, and the count those tests pin moved 20 → 21,
+which is what v0.485 made true when it added `skills.js`.
+
+### Not built, said plainly
+
+Staged rollout is **Android only** — App Store Connect has phased release, and it is not wired here. The scenario
+runner speaks the app-api, so payments, live tracking and chat are not covered by a story yet. `run_all` writes a
+gate verdict but **nothing blocks a store upload on it** (v0.455's security gates do block); wiring that is a
+decision about her workflow, not a line of code. And the checkpoint this pillar is supposed to end on — *all proof
+apps green* — is **not met**: no proof app exists, and none of this has run against one.
+## v0.541.0 GOOGLE ADS 2 (ad plan A2, built as 0.425) - 2 Nov 2026 (shipped with SEO INTEL)
+Owner: "GO A2" (from the India ad-market report: A1 Meta one-tap, A2 Google beyond YouTube).
+- **Why:** v0.401 used her Google Ads link only for YouTube (Demand Gen). Search and Performance Max are what Indian
+  shops actually buy on Google, and both need nothing new from Newtika: same OAuth, same Cloud project access (Basic).
+- **Search** (`ads/gads.py`, kind `search`): keywords (phrase match, 1-20), not-these words (campaign negatives, broad),
+  responsive search ad (3-15 headlines of 30, 2-4 descriptions of 90, path1/path2 of 15), cities -> geo targets on the
+  campaign + languages, Maximize clicks (`targetSpend`), Google Search + search partners, no Display.
+  `keyword_ideas` = KeywordPlanIdeaService.GenerateKeywordIdeas (keywordSeed / urlSeed / both, her geo targets, Google
+  Search network): avg monthly searches, competition, low/high top-of-page bid; read-only, free.
+- **Performance Max** (kind `pmax`): budget (not shared), campaign PAUSED with `maximizeConversions`,
+  `brandGuidelinesEnabled: false` (business name + logo on the asset group), places + languages, ONE asset group with
+  text assets (headlines 3-5 x 30, long headline 90, descriptions 2-5 x 90 with one <= 60, business name 25) and image
+  assets: logo + each of her photos centre-cut by Hoola to 1200x628 (1.91:1) and 1200x1200 (Pillow, JPEG) - all in one
+  Mutate (Google requires campaign + asset group together); every asset op comes before the asset-group link that uses it.
+  A missing conversion goal is translated to a plain "Google Ads > Goals > Conversions" line. Local campaigns were folded
+  into Performance Max by Google in 2022, so Maps reach comes through here (Business Profile linked once in Google Ads).
+- **Places:** `geo_targets` = geoTargetConstants:suggest (India); empty = all India; a name Google does not know is
+  NAMED in the error, never silently dropped.
+- **Read:** every campaign type (VIDEO, DEMAND_GEN, SEARCH, PERFORMANCE_MAX, DISPLAY, not REMOVED) by day into the Ads
+  desk, plus `search_term_view` summed over the window as term rows (`google_search_terms.csv`), so the desk's existing
+  "terms spending with no result" leak works on live data.
+- New GAdsDraft columns (nullable defaults): kind, keywords, negatives, paths, cities, images. Old drafts = youtube.
+- Routes: POST /api/social/ytads/drafts takes `kind`; new POST /api/social/ytads/ideas.
+- Tool: `ads` action=google_draft (owner only; draft only) + google_ideas (read-only).
+- UI: console Social Desk tile is now "Google ads" (New Search / New Performance Max / New YouTube, per-kind forms,
+  "Keyword ideas from Google" table with Add, photo upload for PMax, Type column in the read table); phone "Google ads"
+  screen gets the two new buttons, an Edit sheet for every kind, photo + logo pickers.
+- Tests: `server/tests/test_v0425_google_ads2.py` (5) + the v0.401 suite unchanged.
+- NOT VERIFIED against a live Google Ads account; field names follow Google's v26 REST and its AddPerformanceMaxCampaign /
+  AddResponsiveSearchAd / GenerateKeywordIdeas examples. The first real Check will confirm or correct them.
+
+## v0.541.0 SEO INTEL (S1 + DataForSEO, built as 0.536) - 5 Nov 2026
+Owner: "https://github.com/every-app/open-seo --- read this repo first", then "GO S1 + DATAFORSEO". OpenSEO (MIT) = an open
+Semrush / Ahrefs alternative whose data is DataForSEO; Hoola already had the audit / Search Console / speed half, so S1 is
+the four things it could not see. Credit in THIRD_PARTY_NOTICES.md (ideas + matching approach; code written fresh).
+- **RANKS** (`seo/intel.py`): SeoTrack (<=100 keywords a site) + SeoRank (day, source gsc | serp). `pull_gsc` = Search
+  Console searchAnalytics with dims date/query/page and an RE2 `includingRegex` filter (20 keywords a call), position
+  weighted by impressions, best page kept. `ranks_view` = latest position, 7-day move (+ = up), 7-day clicks, 30-day
+  history, last exact check. `rank_alerts` = a drop of 5+ places -> desk alert (daily job). `check_serp` = DataForSEO
+  organic live advanced (India 2356, mobile, depth 100): her exact position + the top 3 domains.
+- **AI VISIBILITY**: SeoAiPrompt (<=25) + SeoAiAnswer (run stamp, engine, mentioned, cited, rank, brands, citations,
+  excerpt). Engines through their OWN APIs, each only when its key is set: OpenAI Responses + `web_search` tool
+  (`SEO_AI_OPENAI_MODEL` gpt-5-mini), Gemini generateContent + `google_search` grounding (grounding links redirect, so the
+  site comes from the chunk title), Perplexity chat/completions `sonar` (search_results / citations). `mention_at` = whole
+  word, NFKD accent-folded, case-folded, URLs / e-mails blanked (length kept). Her names = business name, domain, domain
+  stem (>= 4 letters), extra brand names; competitors = the desk's list. Per answer: named, order among brands, her site
+  cited, other cited domains. Priced `SEO_AI_CALL_INR` (2) per answer, refused BEFORE the run when it would pass her
+  monthly ceiling (`SEO_AI_MONTH_INR` 300, per site). `suggest_prompts` = 10 customer questions from the model, any that
+  name her dropped. Weekly when `ai_weekly`.
+- **MAPS GRID**: Places API (New) `places:searchText` - `find_place` (name + city, id/name/address/location) -> she picks
+  her shop once; `run_grid` = 3x3 / 5x5 / 7x7 points `spacing_km` apart, each a locationBias circle search with field mask
+  `places.id` ONLY (Google lists IDs-only Text Search as no-charge), rank = her id's place in the 20; one named search at
+  the shop for "who leads". SeoGrid keeps points / found / average / top-3 count; view shows the previous run to compare.
+  Up to 5 grid keywords re-run weekly.
+- **DATAFORSEO** (`seo/dfs.py`): her login + API password typed in the app only, checked with the free
+  `/v3/appendix/user_data` (balance shown), sealed (accounts.encrypt), masked, never returned; Newtika's shared login only
+  with `DATAFORSEO_SHARED=true`. `call` refuses BEFORE a call when the month's spend reached her ceiling
+  (`DATAFORSEO_MONTH_USD` 5, per site), then adds the cost DataForSEO itself reports (top-level `cost`). Plain messages for
+  401, no balance (40200) and "needs their subscription" (40204 - the Backlinks API). Reads: domain_rank_overview,
+  ranked_keywords, competitors_domain, gap (their top-20 keywords where she is missing / below 20, by volume),
+  backlinks summary + referring_domains, serp organic, keyword_ideas (fallback when Google Ads is not linked).
+- `keyword_research` = Google Ads Keyword Planner (official, free, v0.536 A2) first, DataForSEO second.
+- Desk hooks: daily -> pull_gsc + drop alerts; weekly -> AI run / grids / exact checks only where she switched them on;
+  each result line on the desk feed. Routes `/api/seo/intel*` (long jobs run in the background and report to the feed).
+  Tools: `seo` actions track, rank_check, keyword_ideas, ai_prompts, ai_suggest, ai_run, maps_grid, competitors,
+  backlinks, gap, domain; `seo_dekho` what=ranks / ai / maps / intel.
+- UI: console SEO Desk tile "Search intel" (keyword table + move arrows + exact check, AI KPIs per engine + per-question
+  named / cited table + "sites the AI cites instead", Maps grid as coloured cells + leaders, DataForSEO join form /
+  ceiling / competitors / gap / backlinks tables); phone SEO desk -> `SearchIntelScreen`.
+- Config: PERPLEXITY_API_KEY, SEO_AI_* models / price / ceiling, DATAFORSEO_LOGIN / PASSWORD / SHARED / MONTH_USD.
+- Tests: `server/tests/test_v0541_seo_intel.py` (7).
+- NOT VERIFIED against live OpenAI / Gemini / Perplexity / Places / DataForSEO accounts: request + response shapes follow
+  each vendor's docs. API answers can differ from what a person sees in the consumer apps - the screen says so.

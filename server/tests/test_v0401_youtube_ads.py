@@ -266,6 +266,6 @@ def test_console_phone_privacy_wired():
     js = (root / "server/app/static/console/employees.js").read_text()
     assert "/api/social/ytads" in js and "Check with Google (free)" in js and "Create in Google (paused)" in js and "data-ytact" in js
     dart = (root / "lib/ui/employees_screen.dart").read_text()
-    assert "class YtAdsScreen" in dart and "Start this YouTube ad?" in dart
+    assert "class YtAdsScreen" in dart and "Start this Google ad?" in dart      # v0.425: one screen for YouTube / Search / PMax
     pv = (root / "server/app/static/privacy.html").read_text()
     assert "Google Ads (YouTube ads)" in pv and "always PAUSED" in pv

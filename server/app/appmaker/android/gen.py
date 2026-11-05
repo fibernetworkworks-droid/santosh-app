@@ -298,6 +298,8 @@ import hoola.kit.Db
 import hoola.kit.E2e
 import hoola.kit.Updates
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import hoola.kit.Flags
 import hoola.kit.AppShell
 import hoola.kit.ConsentScreen
 import hoola.kit.HoolaTheme
@@ -332,6 +334,9 @@ class MainActivity : ComponentActivity() {{
         PushHook.start(this)                                       // v0.367 instant notifications (when switched on)
         Inbox.unread.value = Inbox.count(this)          // v0.340 the unread count on the inbox button
         CrashGuard.sendPending(this)
+        CrashGuard.readExitReasons(this, BuildConfig.VERSION_NAME)   // v0.540 ANRs + native crashes
+        Flags.load(this)                                           // v0.540 feature switches (server decides)
+        Db.scope.launch {{ Flags.refresh(this@MainActivity) }}
         val seen = Store.get(this, "onboarded") == "1"
         // Debug builds only (Hoola's own checks open every screen and take its picture); release builds ignore it.
         val jump = if (BuildConfig.DEBUG) intent?.getStringExtra("hoola_screen")?.takeIf {{ it in AppScreens.ids }} else null

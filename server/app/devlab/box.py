@@ -34,6 +34,10 @@ DOCKERFILE_TEXT = r"""# v0.456 PRAYOGSHALA (the coding lab) - the base image eve
 # and a CHECK runs with --network none (only the one-time SETUP step gets the network, the way Codex does it).
 FROM debian:12-slim
 
+# v0.537: the walls and this image are one thing - bump BASE_REV whenever the image must be rebuilt, and
+# `lab_check` can then tell her that the image on her VPS is older than the code reading it.
+LABEL hoola.devlab.rev="2"
+
 ENV DEBIAN_FRONTEND=noninteractive LANG=C.UTF-8 PIP_NO_CACHE_DIR=1 PIP_DISABLE_PIP_VERSION_CHECK=1 \
     PYTHONDONTWRITEBYTECODE=1 NODE_OPTIONS=--max-old-space-size=1536 HOME=/home/lab
 
@@ -45,22 +49,34 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       sqlite3 ripgrep jq unzip \
  && rm -rf /var/lib/apt/lists/*
 
-# pytest / ruff for Python repos that declare no dev dependencies of their own
-RUN python3 -m pip install --break-system-packages --no-cache-dir pytest pytest-timeout ruff
+# v0.537: Debian marks its Python "externally managed" (PEP 668), so a repo's own declared
+# `pip install -r requirements.txt` dies with error: externally-managed-environment - which is exactly what
+# her first live lab_try hit. A container IS the virtual environment, so the marker comes off here, once, and
+# every repo's real command works without Hoola rewriting it.
+RUN rm -f /usr/lib/python3*/EXTERNALLY-MANAGED
 
-RUN useradd -m -u 1000 -s /bin/bash lab && mkdir -p /work && chown lab:lab /work
+# pytest / ruff for Python repos that declare no dev dependencies of their own
+RUN python3 -m pip install --no-cache-dir pytest pytest-timeout ruff
+
+RUN useradd -m -u 1000 -s /bin/bash lab \
+ && mkdir -p /work /home/lab/.local/bin \
+ && chown -R lab:lab /work /home/lab
 USER lab
 WORKDIR /work
 CMD ["bash", "-lc", "echo hoola-devlab ready; python3 -V; node -v"]
 """
 DOCKERFILE = Path(__file__).resolve().parents[3] / "deploy" / "devlab" / "Dockerfile"
 
+BASE_REV = "2"                # bump with any image change; lab_check compares it with what is built
 CHECK_TIMEOUT = 600          # seconds a check may run (her setting may lower it)
 SETUP_TIMEOUT = 1200         # ... and a one-time dependency install
 MEM = "2g"
 CPUS = "2"
 PIDS = "512"
 WORK = "/work"
+SETUP_HOME = "/home/lab"     # the setup step writes here and docker commit keeps it
+CHECK_HOME = "/tmp/home"     # a check writes here (inside the one tmpfs) so /home/lab stays visible, not masked
+USER_BASE = "/home/lab/.local"   # `pip install --user` at setup time; found at check time through PYTHONUSERBASE
 
 
 def _run(argv: list[str], timeout: int, cwd: str = "") -> tuple[int, str, float]:
@@ -94,8 +110,28 @@ def available() -> dict[str, Any]:
         return {"ok": False, "why": "docker daemon jawab nahi de raha: " + txt.strip()[:300]}
     ver = txt.strip().splitlines()[-1][:40] if txt.strip() else "?"
     rc2, imgs, _ = _run([d, "images", "-q", BASE_IMAGE], 25)
-    return {"ok": True, "docker": ver, "base_image": BASE_IMAGE, "base_built": bool(imgs.strip()),
-            "why": "" if imgs.strip() else f"base image abhi bani nahi - `python -m app.devlab setup` chalaiye."}
+    built = bool(imgs.strip())
+    rev = base_rev() if built else ""
+    stale = built and rev != BASE_REV
+    why = ""
+    if not built:
+        why = "base image abhi bani nahi - `python -m app.devlab setup` chalaiye."
+    elif stale:
+        why = (f"base image purani hai (rev {rev or '1'}, chahiye {BASE_REV}) - `python -m app.devlab setup "
+               "--rebuild` chalaiye, warna purane niyam chalte rahenge.")
+    return {"ok": True, "docker": ver, "base_image": BASE_IMAGE, "base_built": built,
+            "base_rev": rev, "base_rev_wanted": BASE_REV, "base_stale": stale, "why": why}
+
+
+def base_rev() -> str:
+    """Which revision of the image is actually built here? Read from the image's own label - no container needed."""
+    d = docker()
+    if not d:
+        return ""
+    rc, out_, _ = _run([d, "image", "inspect", BASE_IMAGE, "--format",
+                        "{{index .Config.Labels \"hoola.devlab.rev\"}}"], 25)
+    txt = (out_ or "").strip().splitlines()[-1].strip() if (out_ or "").strip() else ""
+    return "" if rc != 0 or txt in ("<no value>", "<nil>") else txt[:12]
 
 
 def build_base(nocache: bool = False) -> dict[str, Any]:
@@ -115,14 +151,26 @@ def build_base(nocache: bool = False) -> dict[str, Any]:
             "why": "" if rc == 0 else "base image nahi bani (log dekhiye)"}
 
 
-def _limits(network: bool) -> list[str]:
-    """The walls. Nothing here is negotiable by the repo's own code."""
+def _limits(network: bool, writable: bool = False) -> list[str]:
+    """The walls. Nothing here is negotiable by the repo's own code.
+
+    `writable` is true for the SETUP step alone, and only because a sealed step cannot leave anything behind: the
+    dependency install has to land in the container's own filesystem for `docker commit` to keep it. v0.537 found
+    that the hard way - the old walls gave setup a read-only root AND a tmpfs over /home/lab, and docker commit
+    keeps neither, so an install that succeeded was thrown away and every later check failed on missing imports
+    with the snapshot tag already cached. A CHECK keeps every wall: read-only root, no network, and a writable
+    HOME inside /tmp instead of a tmpfs that would MASK the installed dependencies."""
+    home = SETUP_HOME if writable else CHECK_HOME
     args = ["--rm", "--user", "1000:1000", "--workdir", WORK,
             "--cap-drop", "ALL", "--security-opt", "no-new-privileges",
             "--memory", MEM, "--memory-swap", MEM, "--cpus", CPUS, "--pids-limit", PIDS,
-            "--read-only", "--tmpfs", "/tmp:rw,exec,size=1g", "--tmpfs", "/home/lab:rw,exec,size=512m",
-            "--env", "HOME=/home/lab", "--env", "LANG=C.UTF-8", "--env", "CI=1",
+            "--tmpfs", "/tmp:rw,exec,size=1g",
+            "--env", f"HOME={home}", "--env", f"PYTHONUSERBASE={USER_BASE}",
+            "--env", f"PATH={USER_BASE}/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+            "--env", "LANG=C.UTF-8", "--env", "CI=1",
             "--env", "PYTHONDONTWRITEBYTECODE=1", "--env", "HOOLA_LAB=1"]
+    if not writable:
+        args.insert(1, "--read-only")
     args += ["--network", "bridge"] if network else ["--network", "none"]
     return args
 
@@ -138,8 +186,11 @@ def run_in(image: str, files_dir: str, command: str, timeout: int = CHECK_TIMEOU
         return {"rc": 127, "out": "docker nahi hai", "secs": 0.0, "timed_out": False}
     name = f"hoola-lab-{os.getpid()}-{int(time.time() * 1000) % 1_000_000}"
     keep = bool(commit_to)
-    args = [d, "run", "--name", name] + [a for a in _limits(network) if not (keep and a == "--rm")]
-    args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw", image, "bash", "-lc", command]
+    # Writability is DERIVED from commit_to and cannot be asked for: the only reason to let a container keep what it
+    # writes is that we are about to commit it. No caller can unseal a check by passing a flag.
+    args = [d, "run", "--name", name] + [a for a in _limits(network, writable=keep) if not (keep and a == "--rm")]
+    shell = f'mkdir -p "$HOME" 2>/dev/null || true; {command}'
+    args += ["-v", f"{os.path.abspath(files_dir)}:{WORK}:rw", image, "bash", "-lc", shell]
     rc, txt, secs = _run(args, timeout + 30)
     timed_out = rc == 124 or f"[timed out after {timeout + 30}s]" in txt
     if timed_out:

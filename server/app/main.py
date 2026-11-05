@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.538.0"   # v0.538.0 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed, owner: "GO STEP 6"; checkpoint "5,000-product marketplace, load test passed"). Her products / doctors / properties come from HER data - a CSV or Excel file, her Google Sheet, or a dataset Hoola already holds - and become pages BY CODE: a preview first (columns mapped, new / changed / same / rejected rows with the reason, thin and duplicate pages counted, nothing written), then her Apply tap; re-importing the same file changes nothing and no item address ever moves; replace hides, never deletes. Every item gets its page (her designed template or a code-made one with photo, price, details and links to its own family), listings of 48 with numbered pages, a filter bar (search, her filter columns with counts, price, sort) on the static site from one compact index per list, split sitemaps (an index + at most 45,000 addresses a file) and a quality gate (thin / copy pages shown but noindex, a copy points its canonical at the original, both left out of the sitemaps). Photos are fetched once (public https hosts only, size + pixel caps) and resized once to AVIF / WebP / JPEG with width and height. W10: every text file is pre-compressed (nginx gzip_static), cache headers let a CDN keep serving, every page is checked against the 100 KB HTML budget and layout shift is now flagged. Measured: 5,000 products = 5,111 pages built in about 5 seconds, every page under 100 KB. The shop: up to 20,000 products, a seller column links products to HER approved sellers, a retried checkout (same id) is ONE order and parallel checkouts never share an order number (a unique index + retry; before this two checkouts at the same moment could both get O-1001). The load proof (2,000 visitors + 600 buyers, every 4th checkout sent twice, 4 workers on Postgres) runs in CI. PART 2 HOOLA CMS: her team works on her site at /cms/<site>/ with their OWN login (a one-time invite link, only its hash kept; removal ends every login at once): writers write drafts (a blog post, an edit of a live post, or new words / links for a page - only what her Edit mode can change), editors approve or send back with a note (never their own draft), publishers publish now or at a time (the worker publishes it); a page text that changed after the draft was written is named, never silently overwritten; every publish and restore is a revision with what was there before, and a publisher brings any of them back. Her console: Team (invite, roles, remove, act on any draft, history). Previous: v0.537.0 CRAWL BRAIN - the crawl4ai ideas, hand-built and WIRED (owner read github.com/unclecode/crawl4ai, asked what it can do that Hoola cannot, then "GIVE THIS ALL TO HOOLA AI" and "GO WIRE IT ALL"). ZERO upstream code (the port law), and here that is a LICENCE matter as well as house style: crawl4ai vendors a fork of html2text declaring upstream's own release 2024.2.26 with no copyright line and no licence header, upstream html2text is distributed under the GPLv3, and both markdown_generation_strategy.py and utils.py import it - so every page-to-markdown conversion in that library runs through GPL'd code inside an Apache-2.0 repo. agent/crawl_jobs.py already keeps Firecrawl's AGPL engine out of this tree for exactly that reason, so the published ALGORITHMS were re-implemented from their formulas and measured. NEW app/crawl/ (10 modules, no network except seed.py, no threads on import): bm25.py (BM25 Okapi by hand, so no rank_bm25 dependency; idf floored so a term in every document scores ~0; English stop list only because Hinglish carries the question). enough.py = KNOW WHEN IT HAS READ ENOUGH - confidence = 0.4 coverage + 0.3 consistency + 0.3 saturation, stop at 0.70: on pages that answer it stops at page 3 instead of spending 20, and on irrelevant pages it never claims "enough" and exits as "stalled". prune.py = WHAT TO CUT - one bottom-up pass folds each node's text/link/tag counts from its children (O(nodes)), five weighted signals plus a HARD chrome gate; on a realistic page it keeps 57% of the text and loses the cookie banner, nav, sidebar, advert and footer while keeping the phone number. frontier.py = BEST-FIRST instead of FIFO (priority queue, five URL scorers with their parts exposed, five filters that RECORD why they refused, and a bounded Bloom membership filter - the live crawl keeps `seen` as a list in its JSON checkpoint). seed.py = FIND URLS WITHOUT FETCHING PAGES (robots.txt -> Sitemap: -> sitemap XML, following indexes and .xml.gz, plus the Common Crawl index; scrape_map fetches 8 pages today). tables.py = TABLES AS DATA (colspan/rowspan expanded through a carry map so a rowspan cannot shift every later row one column left, and a scorer that refuses layout tables). chunks.py = six chunking strategies for page text. blocked.py = BLOCKS BY VENDOR (Cloudflare, Akamai, PerimeterX, DataDome, Imperva, Sucuri, Kasada, AWS WAF) in three tiers plus an empty-shell check. proxies.py = rotation as POLICY (round-robin, DIRECT sentinel, sticky sessions, failure resting, credentials never in anything printable). steps.py = a six-verb script compiled to JS, closed command set (NO EVAL - a DSL that can run arbitrary JS is just JS with extra steps), selectors emitted as JSON literals with < and > escaped, and a COMPILE-TIME refusal to type into a password / OTP / PIN / CVV / card field. WIRED, because modules nothing calls are the v0.389 trap: scrape_page gains clean / about / chunk, scrape_map gains sources="sitemap[,common_crawl]" + newer_than, NEW TOOL scrape_tables (registry 554 -> 555), crawl_start gains `question` (frontier + stopping rule; without a question the crawl behaves byte-for-byte as before), _blocked delegates to the vendor tiers after its own checks pass, _fetch rotates proxies behind the new scrape_proxies setting, scrape_stealth takes a steps script. test_every_crawl_module_has_a_caller_outside_its_own_package encodes CLAUDE.md's rule as an assertion and CAUGHT chunks / proxies / steps with no caller at all - built, tested and dead. TEN bugs found by measurement, not reading: BM25 idf collapses when every page agrees so coverage scored LOWER the better the pages matched (four pages stating the same GST rate stalled at 0.633 and would have spent the whole budget); consistency used Jaccard so pages agreeing on every fact but differing in length scored ~0.33 for ever; the chrome signal was 10% of the score so a wordy cookie banner and a promo advert both survived; tier-2 block detection gated on HTML bytes so a 5 KB article about Cloudflare was flagged as a challenge (it gates on VISIBLE text now); comment stripping cut at the first # so TYPE "#q" became TYPE " and every CSS id selector broke; a selector carrying a quote was silently TRUNCATED rather than refused; json.dumps does not escape / so a value with </script> would have closed the tag; the steps script went into the `scrape` waterfall which has no such variables in scope - a NameError on every auto-mode scrape; get_settings is imported per-function in scrape_tools so two new uses were NameErrors; and an off-topic link could outrank an on-topic one on novelty alone. DELIBERATELY NOT BUILT, recorded in app/crawl/__init__.py so a later session cannot "complete" them by accident: robots.txt Disallow-mining as a URL-discovery source (crawl4ai's DomainMapper offers it - reading the file where an operator wrote what they do not want crawled and using it as a map; Hoola reads robots.txt to OBEY it and scrape_respect_robots stays True), and minting rotating residential proxies from a provider API. Also not copied: upstream's authority link weight, which is 0.2 of its score and hard-coded to 1.0 with the real calculation commented out, so a fifth of that ranking is inert - the two live weights are renormalised to sum to 1.0, keeping their 5:3 ratio. Every default neutral: scrape_proxies empty, scrape_clean_default false, robots untouched. Tests: NEW test_v0533_crawl_brain.py (54, the algorithms) + test_v0533_crawl_wired.py (15, reachability through the real handlers with a mocked fetch) = 69, zero network. test_v0474_scrapling.py::test_registry_wired bumped for the new tool - a conscious bump, which is what that pin is for. Previous: v0.536.0 v0.536.0 (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (owner: "CONTINUE TO OUR MOAT GAME WORK"; the last two "fix first" items of docs/GAME_MOAT_PLAN.md, section 5.1). Where every shipped piece of a game came from, recorded WHEN IT HAPPENED and never worked out afterwards by a model: ai.py marks the model that actually answered (thread-local, so parallel builds never mix, and a fallback to the cheap brain is NAMED as the different model it is), service.py writes it onto each build's version row, and gamedesk/provenance.py assembles the sheet. THREE THINGS NEVER MERGED, because merging them would put a false statement on her Steam survey: GENERATED assets (photogen / lyria / tts - what a store actually asks about), CODE-MADE assets (a sound from sfx.py's preset + seed, a Blender-scripted mesh - arithmetic, no model), and HER OWN uploaded files (hers, and her copyright). Only APPROVED assets ship, so only those are counted and the made-but-never-approved count is printed. Steam's live-generated question is a plain No as a FACT (the game calls no model while it runs; the play page's CSP allows nothing but its own host). The game's own GDScript is printed as HER judgement call with BOTH readings (Valve's Jan 2026 rewrite exempts coding assistants, but a game whose code a model wrote start to finish is not plainly that case) and the answer is "You do. Hoola will not answer this one for you." The HUMAN RECORD (her decisions, the asset versions she chose between, what she rejected, what she uploaded, the tasks she asked for) is collected because under the US position (prompt-only output is not copyrightable) and the Indian one (s.2(d)(vi) + the 2026 rejection of an AI as author) that is the only part of the game that may be protectable - with a thin warning under five such acts. Nothing anywhere claims the declaration is correct or gives legal advice: she signs it. And runtime.UNDER_18 states DPDP s.9(3) wherever telemetry is offered (no tracking, behavioural monitoring or targeted ads for ANYONE under 18, no consent unlocks it, Rs 200 crore, child = under 18 not under 13), which is WHY telemetry is off by default, refused for a children's game and asked per player - with the one narrow exception named: an educational institution monitoring for its own educational activities or the safety of enrolled children. NOT VERIFIED: no real store survey has been filled from this, and it is not legal advice.
+APP_VERSION = "0.541.0"   # v0.541.0 SEO INTEL + GOOGLE ADS 2 (built as 0.536). SEO INTEL (owner: "GO S1 + DATAFORSEO" after reading every-app/open-seo, MIT): the SEO desk now sees what Google, Maps and AI assistants show her customers - (1) RANKS: keywords she follows (100), Search Console's own positions daily (RE2 regex filter, avg weighted by impressions, best page), 7-day move, a 5-place drop = desk alert; exact Google position + top 3 through DataForSEO; (2) AI VISIBILITY: her questions (or 10 suggested that never name her) asked to ChatGPT (OpenAI Responses + web_search), Gemini (google_search grounding) and Perplexity (Sonar) through their OWN APIs - named or not (whole-word, accent-folded, URLs never count), her order among brands, her site cited, the sites cited instead, competitors named; priced per answer against her monthly ceiling, weekly; (3) MAPS GRID: Places API (New) Text Search from a 3x3 / 5x5 / 7x7 grid around her shop asking only for place ids, her rank at each point, who leads at the shop; (4) DATAFORSEO: her own sealed login (checked free, never returned), domain overview, competitors, ranked keywords, keyword gap, backlinks + referring domains, keyword ideas fallback - every call costed from DataForSEO's own reported price against her monthly USD ceiling. seo/intel.py + seo/dfs.py, /api/seo/intel*, tool seo (track / rank_check / keyword_ideas / ai_* / maps_grid / competitors / backlinks / gap / domain) + seo_dekho (ranks / ai / maps / intel), desk daily + weekly hooks, console SEO Desk "Search intel" tile + phone SearchIntelScreen. NOT VERIFIED against live vendor accounts. GOOGLE ADS 2 (built as 0.425) (ad plan A2; owner: "GO A2"): the Google Ads link that made YouTube ads (v0.401) now makes the two campaigns an Indian shop actually buys - Search (keywords + Google Keyword Planner ideas for HER cities: monthly searches, competition, top-of-page bid range; not-these words as campaign negatives; responsive search ad 3-15 x 30 / 2-4 x 90 / two paths; Maximize clicks on Google Search + partners) and Performance Max (one asset group over Search / YouTube / Display / Discover / Gmail / Maps; her photo cut by Hoola to Google's 1.91:1 + 1:1 shapes at 1200 px, logo, texts; Maximize conversions - a missing conversion goal is said plainly; Local campaigns were folded into PMax by Google in 2022). Cities -> geoTargetConstants:suggest (an unknown place is named, never dropped). Same rails: draft in Hoola -> validateOnly check -> Create PAUSED -> Start only on confirm -> paused after its days. The read covers every campaign type and Search's search terms go to the Ads desk as term rows (its money-leak check already finds terms spending with no result). Tool ads action=google_draft / google_ideas; console + phone "Google ads". NOT VERIFIED against a live account. Previous: v0.540.0 (built as 0.531.0) JAANCH + DHEERE CHHODO - App Sahayak PILLAR J (Phase 61, quality at scale; owner: "START PILLAR J"): scenario tests per user story written by Opus as DATA (a closed set of 8 verbs, every list / field / status / role checked in CODE against her real app) and PLAYED over HTTP against a real server - a step marked must:refused is the PRIVACY test and a refusal that does not happen is a FAILURE; the TWIN (a hidden copy of her app with its own key and data space, wiped before every run - her live data is never a fixture, and a wipe aimed at the real app is refused in code); every rule / formula / function through the REAL engine both ways (a rule nobody can break is a failure; coverage counted and the uncovered ones NAMED; v0.382's function tests folded in); load on the twin; ANRs reported AT ALL for the first time (the generated apps caught only JVM crashes, so a frozen app reported nothing - CrashGuard now reads Android's own exit records and the server tells an ANR apart from a crash); Play staged rollout 5 -> 20 -> 50 -> 100 (each step her tap, halt needs none, and rollback says plainly that Play cannot take a version off phones that already have it); feature flags on the SERVER = the only rollback that works in minutes, with who-gets-it decided server-side by a stable hash. appmaker/quality.py + rollout.py, kits Flags.kt/.swift, tool app_banao action=jaanch|flag|rollout (the tool may read and halt, never start / advance / rollback). NOT met: this pillar's own checkpoint, a proof app, still does not exist. Previous: v0.540.0 PRAYOGSHALA SACH (built as 0.537.0) - the lab could not install anything, and her own first live run said so. `lab_try` on her VPS died in nine seconds with `error: externally-managed-environment`: Debian marks its Python externally managed (PEP 668), so the repo's own declared `pip install -r requirements.txt` is refused outright - and that is every Python repo, not just ours. A container IS the virtual environment, so the marker now comes off once in the image and a repo's real command runs unrewritten. Reading that failure found the WORSE bug behind it, the silent one: the setup step ran with a read-only root AND a tmpfs over /home/lab, and `docker commit` keeps neither - so even had pip been allowed, every installed dependency would have been thrown away while the snapshot tag was reported CACHED, and every later check would have failed on missing imports, fast and wrong. Writability is now DERIVED from the commit (no caller can ask for it, so no check can be unsealed): the one-time setup keeps what it writes, a check keeps every wall - read-only root, --network none, uid 1000, caps dropped - with a writable HOME inside /tmp instead of a tmpfs that would MASK the installed dependencies, and PYTHONUSERBASE so a `pip --user` repo stays importable too. The image carries a revision label, so `lab_check` now tells her when the image on her VPS is older than the code reading it and rebuilds it from scratch instead of using it quietly - her box is holding the pre-v0.540 image right now. And the self-test grew the two stages that would have caught all of this before she ever ran it: a repo's own `pip install` really works with the network on, and what it installs is still there after the commit. 90 tests green across the lab and Developer Sahayak suites. Her VPS must run `lab_setup` (it now rebuilds) before `lab_try`. Still unproven: no model has used the lab yet. Previous: v0.538.0 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed, owner: "GO STEP 6"; checkpoint "5,000-product marketplace, load test passed"). Her products / doctors / properties come from HER data - a CSV or Excel file, her Google Sheet, or a dataset Hoola already holds - and become pages BY CODE: a preview first (columns mapped, new / changed / same / rejected rows with the reason, thin and duplicate pages counted, nothing written), then her Apply tap; re-importing the same file changes nothing and no item address ever moves; replace hides, never deletes. Every item gets its page (her designed template or a code-made one with photo, price, details and links to its own family), listings of 48 with numbered pages, a filter bar (search, her filter columns with counts, price, sort) on the static site from one compact index per list, split sitemaps (an index + at most 45,000 addresses a file) and a quality gate (thin / copy pages shown but noindex, a copy points its canonical at the original, both left out of the sitemaps). Photos are fetched once (public https hosts only, size + pixel caps) and resized once to AVIF / WebP / JPEG with width and height. W10: every text file is pre-compressed (nginx gzip_static), cache headers let a CDN keep serving, every page is checked against the 100 KB HTML budget and layout shift is now flagged. Measured: 5,000 products = 5,111 pages built in about 5 seconds, every page under 100 KB. The shop: up to 20,000 products, a seller column links products to HER approved sellers, a retried checkout (same id) is ONE order and parallel checkouts never share an order number (a unique index + retry; before this two checkouts at the same moment could both get O-1001). The load proof (2,000 visitors + 600 buyers, every 4th checkout sent twice, 4 workers on Postgres) runs in CI. PART 2 HOOLA CMS: her team works on her site at /cms/<site>/ with their OWN login (a one-time invite link, only its hash kept; removal ends every login at once): writers write drafts (a blog post, an edit of a live post, or new words / links for a page - only what her Edit mode can change), editors approve or send back with a note (never their own draft), publishers publish now or at a time (the worker publishes it); a page text that changed after the draft was written is named, never silently overwritten; every publish and restore is a revision with what was there before, and a publisher brings any of them back. Her console: Team (invite, roles, remove, act on any draft, history). Previous: v0.537.0 CRAWL BRAIN - the crawl4ai ideas, hand-built and WIRED (owner read github.com/unclecode/crawl4ai, asked what it can do that Hoola cannot, then "GIVE THIS ALL TO HOOLA AI" and "GO WIRE IT ALL"). ZERO upstream code (the port law), and here that is a LICENCE matter as well as house style: crawl4ai vendors a fork of html2text declaring upstream's own release 2024.2.26 with no copyright line and no licence header, upstream html2text is distributed under the GPLv3, and both markdown_generation_strategy.py and utils.py import it - so every page-to-markdown conversion in that library runs through GPL'd code inside an Apache-2.0 repo. agent/crawl_jobs.py already keeps Firecrawl's AGPL engine out of this tree for exactly that reason, so the published ALGORITHMS were re-implemented from their formulas and measured. NEW app/crawl/ (10 modules, no network except seed.py, no threads on import): bm25.py (BM25 Okapi by hand, so no rank_bm25 dependency; idf floored so a term in every document scores ~0; English stop list only because Hinglish carries the question). enough.py = KNOW WHEN IT HAS READ ENOUGH - confidence = 0.4 coverage + 0.3 consistency + 0.3 saturation, stop at 0.70: on pages that answer it stops at page 3 instead of spending 20, and on irrelevant pages it never claims "enough" and exits as "stalled". prune.py = WHAT TO CUT - one bottom-up pass folds each node's text/link/tag counts from its children (O(nodes)), five weighted signals plus a HARD chrome gate; on a realistic page it keeps 57% of the text and loses the cookie banner, nav, sidebar, advert and footer while keeping the phone number. frontier.py = BEST-FIRST instead of FIFO (priority queue, five URL scorers with their parts exposed, five filters that RECORD why they refused, and a bounded Bloom membership filter - the live crawl keeps `seen` as a list in its JSON checkpoint). seed.py = FIND URLS WITHOUT FETCHING PAGES (robots.txt -> Sitemap: -> sitemap XML, following indexes and .xml.gz, plus the Common Crawl index; scrape_map fetches 8 pages today). tables.py = TABLES AS DATA (colspan/rowspan expanded through a carry map so a rowspan cannot shift every later row one column left, and a scorer that refuses layout tables). chunks.py = six chunking strategies for page text. blocked.py = BLOCKS BY VENDOR (Cloudflare, Akamai, PerimeterX, DataDome, Imperva, Sucuri, Kasada, AWS WAF) in three tiers plus an empty-shell check. proxies.py = rotation as POLICY (round-robin, DIRECT sentinel, sticky sessions, failure resting, credentials never in anything printable). steps.py = a six-verb script compiled to JS, closed command set (NO EVAL - a DSL that can run arbitrary JS is just JS with extra steps), selectors emitted as JSON literals with < and > escaped, and a COMPILE-TIME refusal to type into a password / OTP / PIN / CVV / card field. WIRED, because modules nothing calls are the v0.389 trap: scrape_page gains clean / about / chunk, scrape_map gains sources="sitemap[,common_crawl]" + newer_than, NEW TOOL scrape_tables (registry 554 -> 555), crawl_start gains `question` (frontier + stopping rule; without a question the crawl behaves byte-for-byte as before), _blocked delegates to the vendor tiers after its own checks pass, _fetch rotates proxies behind the new scrape_proxies setting, scrape_stealth takes a steps script. test_every_crawl_module_has_a_caller_outside_its_own_package encodes CLAUDE.md's rule as an assertion and CAUGHT chunks / proxies / steps with no caller at all - built, tested and dead. TEN bugs found by measurement, not reading: BM25 idf collapses when every page agrees so coverage scored LOWER the better the pages matched (four pages stating the same GST rate stalled at 0.633 and would have spent the whole budget); consistency used Jaccard so pages agreeing on every fact but differing in length scored ~0.33 for ever; the chrome signal was 10% of the score so a wordy cookie banner and a promo advert both survived; tier-2 block detection gated on HTML bytes so a 5 KB article about Cloudflare was flagged as a challenge (it gates on VISIBLE text now); comment stripping cut at the first # so TYPE "#q" became TYPE " and every CSS id selector broke; a selector carrying a quote was silently TRUNCATED rather than refused; json.dumps does not escape / so a value with </script> would have closed the tag; the steps script went into the `scrape` waterfall which has no such variables in scope - a NameError on every auto-mode scrape; get_settings is imported per-function in scrape_tools so two new uses were NameErrors; and an off-topic link could outrank an on-topic one on novelty alone. DELIBERATELY NOT BUILT, recorded in app/crawl/__init__.py so a later session cannot "complete" them by accident: robots.txt Disallow-mining as a URL-discovery source (crawl4ai's DomainMapper offers it - reading the file where an operator wrote what they do not want crawled and using it as a map; Hoola reads robots.txt to OBEY it and scrape_respect_robots stays True), and minting rotating residential proxies from a provider API. Also not copied: upstream's authority link weight, which is 0.2 of its score and hard-coded to 1.0 with the real calculation commented out, so a fifth of that ranking is inert - the two live weights are renormalised to sum to 1.0, keeping their 5:3 ratio. Every default neutral: scrape_proxies empty, scrape_clean_default false, robots untouched. Tests: NEW test_v0533_crawl_brain.py (54, the algorithms) + test_v0533_crawl_wired.py (15, reachability through the real handlers with a mocked fetch) = 69, zero network. test_v0474_scrapling.py::test_registry_wired bumped for the new tool - a conscious bump, which is what that pin is for. Previous: v0.536.0 v0.536.0 (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (owner: "CONTINUE TO OUR MOAT GAME WORK"; the last two "fix first" items of docs/GAME_MOAT_PLAN.md, section 5.1). Where every shipped piece of a game came from, recorded WHEN IT HAPPENED and never worked out afterwards by a model: ai.py marks the model that actually answered (thread-local, so parallel builds never mix, and a fallback to the cheap brain is NAMED as the different model it is), service.py writes it onto each build's version row, and gamedesk/provenance.py assembles the sheet. THREE THINGS NEVER MERGED, because merging them would put a false statement on her Steam survey: GENERATED assets (photogen / lyria / tts - what a store actually asks about), CODE-MADE assets (a sound from sfx.py's preset + seed, a Blender-scripted mesh - arithmetic, no model), and HER OWN uploaded files (hers, and her copyright). Only APPROVED assets ship, so only those are counted and the made-but-never-approved count is printed. Steam's live-generated question is a plain No as a FACT (the game calls no model while it runs; the play page's CSP allows nothing but its own host). The game's own GDScript is printed as HER judgement call with BOTH readings (Valve's Jan 2026 rewrite exempts coding assistants, but a game whose code a model wrote start to finish is not plainly that case) and the answer is "You do. Hoola will not answer this one for you." The HUMAN RECORD (her decisions, the asset versions she chose between, what she rejected, what she uploaded, the tasks she asked for) is collected because under the US position (prompt-only output is not copyrightable) and the Indian one (s.2(d)(vi) + the 2026 rejection of an AI as author) that is the only part of the game that may be protectable - with a thin warning under five such acts. Nothing anywhere claims the declaration is correct or gives legal advice: she signs it. And runtime.UNDER_18 states DPDP s.9(3) wherever telemetry is offered (no tracking, behavioural monitoring or targeted ads for ANYONE under 18, no consent unlocks it, Rs 200 crore, child = under 18 not under 13), which is WHY telemetry is off by default, refused for a children's game and asked per player - with the one narrow exception named: an educational institution monitoring for its own educational activities or the safety of enrolled children. NOT VERIFIED: no real store survey has been filled from this, and it is not legal advice. The chain this rides on: v0.538.0 BADA CATALOGUE + HOOLA CMS, v0.536.0 PROVENANCE, v0.530.0 HOOLA GRAPH (the state-graph engine as server/app/aep/graph.py: StateGraph nodes and edges, fan-out and join barriers, interrupt / Command park-and-resume, MemorySaver / SqliteSaver), v0.523.0 HOOLA CREW (the crewAI port: role/goal/backstory agents, sequential and hierarchical crews, the one crew_run tool), v0.520.0 HOOLA TRACE (the LangSmith layer self-hosted), v0.510.0 HOOLA CORE (the langchain-core feature clone as server/app/aep - messages / runnables / tools / models / prompts / parsers / history / stores).
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -6856,6 +6856,151 @@ def employees_settings(key: str, body: dict, tenant: str = Depends(current_tenan
     return _hire_call(hire.save_settings, tenant, key, **allowed)
 
 
+def _intel_call(fn, *a, **k):
+    from .seo import dfs, intel
+    try:
+        return fn(*a, **k)
+    except (intel.IntelError, dfs.DfsError) as e:
+        raise HTTPException(400, str(e))
+
+
+def _intel_bg(tenant: str, site: str, what: str, fn, *a, **k):
+    """Long intel jobs (AI answers, Maps grid, exact positions) run in the background; the result lands on the SEO desk feed."""
+    import threading
+    from .seo import intel
+
+    def go():
+        try:
+            r = fn(*a, **k)
+            text, level = str(r.get("say") or f"{what} done."), "info"
+        except Exception as e:   # noqa: BLE001
+            text, level = f"{what}: {e}", "warn"
+        try:
+            from .seo import desk
+            desk._event(tenant, intel._site(tenant, site)["id"], "run", level, text)
+        except Exception:   # noqa: BLE001
+            pass
+    threading.Thread(target=go, daemon=True).start()
+    return {"started": True, "say": f"{what} shuru - natija SEO desk par aayega."}
+
+
+@app.get("/api/seo/intel", dependencies=[Depends(require_key)])
+def seo_intel(site: str = "", tenant: str = Depends(current_tenant)):
+    """v0.541 SEO INTEL: tracked keywords, AI visibility, Maps grids, DataForSEO status + this month's spend."""
+    from .seo import intel
+    return _intel_call(intel.view, tenant, site)
+
+
+@app.post("/api/seo/intel/settings", dependencies=[Depends(require_key)])
+def seo_intel_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .seo import intel
+    b = dict(body or {})
+    return _intel_call(intel.save_settings, tenant, str(b.pop("site", "") or ""), **b)
+
+
+@app.post("/api/seo/intel/track", dependencies=[Depends(require_key)])
+def seo_intel_track(body: dict, tenant: str = Depends(current_tenant)):
+    """{keywords: [...], remove: false} - keywords she wants followed in Google (up to 100)."""
+    from .seo import intel
+    b = body or {}
+    kws = b.get("keywords") if isinstance(b.get("keywords"), list) else [x for x in str(b.get("keywords") or "").split("\n")]
+    fn = intel.untrack if b.get("remove") else intel.track
+    return _intel_call(fn, tenant, kws, str(b.get("site") or ""))
+
+
+@app.post("/api/seo/intel/ranks/{source}", dependencies=[Depends(require_key)])
+async def seo_intel_ranks(source: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """gsc = Search Console positions now (free) | serp = exact Google positions through DataForSEO (her key, costs)."""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if source == "gsc":
+        return await asyncio.to_thread(_intel_call, intel.pull_gsc, tenant, site, int(b.get("days") or 28))
+    if source == "serp":
+        kws = b.get("keywords") if isinstance(b.get("keywords"), list) else None
+        return _intel_bg(tenant, site, "Exact Google positions", intel.check_serp, tenant, site, kws)
+    raise HTTPException(404, "source: gsc | serp")
+
+
+@app.post("/api/seo/intel/ai/{action}", dependencies=[Depends(require_key)])
+async def seo_intel_ai(action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """prompts {prompts: [...]} | suggest | run {engines?} | prompt {id, active, remove}"""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if action == "prompts":
+        texts = b.get("prompts") if isinstance(b.get("prompts"), list) else str(b.get("prompts") or "").split("\n")
+        return _intel_call(intel.add_prompts, tenant, texts, site)
+    if action == "prompt":
+        return _intel_call(intel.set_prompt, tenant, str(b.get("id") or ""), b.get("active"), bool(b.get("remove")))
+    if action == "suggest":
+        return await asyncio.to_thread(_intel_call, intel.suggest_prompts, tenant, site)
+    if action == "run":
+        eng = b.get("engines") if isinstance(b.get("engines"), list) else None
+        _intel_call(intel.prompts, tenant, site)
+        return _intel_bg(tenant, site, "AI answers check", intel.run_ai, tenant, site, eng)
+    raise HTTPException(404, "action: prompts | prompt | suggest | run")
+
+
+@app.post("/api/seo/intel/maps/{action}", dependencies=[Depends(require_key)])
+async def seo_intel_maps(action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """find {query} -> her place on Google Maps | place {place} | grid {keyword, size, km}"""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if action == "find":
+        return await asyncio.to_thread(_intel_call, intel.find_place, tenant, site, str(b.get("query") or ""))
+    if action == "place":
+        return _intel_call(intel.choose_place, tenant, b.get("place") if isinstance(b.get("place"), dict) else {}, site)
+    if action == "grid":
+        return _intel_bg(tenant, site, "Maps grid", intel.run_grid, tenant, str(b.get("keyword") or ""), site,
+                         b.get("size"), b.get("km"))
+    raise HTTPException(404, "action: find | place | grid")
+
+
+@app.post("/api/seo/intel/dataforseo", dependencies=[Depends(require_key)])
+async def seo_intel_dfs_login(body: dict, tenant: str = Depends(current_tenant)):
+    """Her DataForSEO login + API password, typed in the app (never in chat): checked free, sealed, never returned."""
+    from .seo import dfs, intel
+    b = body or {}
+    sid = _intel_call(intel._site, tenant, str(b.get("site") or ""))["id"]
+    return await asyncio.to_thread(_intel_call, dfs.save_login, tenant, sid, str(b.get("login") or ""), str(b.get("password") or ""))
+
+
+@app.delete("/api/seo/intel/dataforseo", dependencies=[Depends(require_key)])
+def seo_intel_dfs_forget(site: str = "", tenant: str = Depends(current_tenant)):
+    from .seo import dfs, intel
+    return dfs.forget_login(tenant, _intel_call(intel._site, tenant, site)["id"])
+
+
+@app.post("/api/seo/intel/dfs/{what}", dependencies=[Depends(require_key)])
+async def seo_intel_dfs(what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """overview {domain} | competitors {domain} | gap {competitor} | backlinks {domain} - DataForSEO, her key, costs."""
+    from .seo import dfs, intel
+    b = body or {}
+    sv = _intel_call(intel._site, tenant, str(b.get("site") or ""))
+    dom = str(b.get("domain") or "") or sv["domain"]
+    calls = {"overview": lambda: dfs.domain_overview(tenant, sv["id"], dom),
+             "competitors": lambda: {"competitors": dfs.competitors(tenant, sv["id"], dom)},
+             "gap": lambda: dfs.gap(tenant, sv["id"], sv["domain"], str(b.get("competitor") or "")),
+             "backlinks": lambda: dfs.backlinks(tenant, sv["id"], dom)}
+    if what not in calls:
+        raise HTTPException(404, "what: overview | competitors | gap | backlinks")
+    if what == "gap" and not b.get("competitor"):
+        raise HTTPException(400, "Kis competitor se milaana hai? (domain)")
+    out = await asyncio.to_thread(_intel_call, calls[what])
+    return {**out, "spend": dfs.status(tenant, sv["id"])}
+
+
+@app.post("/api/seo/intel/keywords", dependencies=[Depends(require_key)])
+async def seo_intel_keywords(body: dict, tenant: str = Depends(current_tenant)):
+    """Keyword ideas with monthly searches: her Google Ads Keyword Planner (free, official) when linked, else DataForSEO."""
+    from .seo import intel
+    b = body or {}
+    seeds = b.get("seeds") if isinstance(b.get("seeds"), list) else [x.strip() for x in str(b.get("seeds") or "").split(",") if x.strip()]
+    return await asyncio.to_thread(_intel_call, intel.keyword_research, tenant, seeds, str(b.get("site") or ""))
+
+
 @app.post("/api/seo/onboard", dependencies=[Depends(require_key)])
 def seo_onboard(body: dict, tenant: str = Depends(current_tenant)):
     from .seo import desk
@@ -7218,10 +7363,22 @@ async def social_ytads_read(tenant: str = Depends(current_tenant)):
 
 @app.post("/api/social/ytads/drafts", dependencies=[Depends(require_key)])
 def social_ytads_new(body: dict, tenant: str = Depends(current_tenant)):
-    """A new YouTube ad draft from one of her videos {video_id, daily, days, final_url...} - stays in Hoola."""
+    """A new Google ad draft {kind: youtube (video_id) | search | pmax, daily, days, final_url...} - stays in Hoola (v0.425)."""
+    from .ads import gads
+    b = dict(body or {})
+    vid, kind = str(b.pop("video_id", "") or ""), str(b.pop("kind", "") or "youtube")
+    return _gads_call(gads.new_draft, tenant, vid, kind, **b)
+
+
+@app.post("/api/social/ytads/ideas", dependencies=[Depends(require_key)])
+async def social_ytads_ideas(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.425 Google Keyword Planner ideas {seeds: [...], url, cities: [...], lang} - read-only, nothing is created."""
     from .ads import gads
     b = body or {}
-    return _gads_call(gads.new_draft, tenant, str(b.get("video_id") or ""), **{k: v for k, v in b.items() if k != "video_id"})
+    seeds = b.get("seeds") if isinstance(b.get("seeds"), list) else []
+    cities = b.get("cities") if isinstance(b.get("cities"), list) else []
+    return await asyncio.to_thread(_gads_call, gads.keyword_ideas, tenant, seeds, str(b.get("url") or ""), cities,
+                                   str(b.get("lang") or "en"))
 
 
 @app.post("/api/social/ytads/drafts/{did}", dependencies=[Depends(require_key)])
@@ -10354,8 +10511,10 @@ async def app_api_me(app_key: str, request: Request):
     from .site import webapp as W
 
     def go():
-        _r, w = _be_app(app_key, request)
-        return {"me": W.view_member(w.m) if w.m else None}
+        r, w = _be_app(app_key, request)
+        from .appmaker import rollout as RO               # v0.540 this phone's feature switches, decided HERE
+        return {"me": W.view_member(w.m) if w.m else None,
+                "flags": RO.for_member(r, w.m.id if w.m else "")}
     return await asyncio.to_thread(_be_call, go)
 
 
@@ -12068,6 +12227,74 @@ async def apps_store_cert(ref: str, tenant: str = Depends(current_tenant)):
     except ST.StoreError:
         raise HTTPException(404, "not found")
     return Response(data, media_type="application/x-pem-file", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+# ---- v0.540 JAANCH (App Sahayak Pillar J): the app is proved, and a new version goes out a few users at a time.
+# NOTE the two path segments: a single-segment POST would be eaten by the /api/apps/{ref}/{action} catch-all above.
+@app.get("/api/apps/{ref}/jaanch", dependencies=[Depends(require_key)])
+async def apps_jaanch(ref: str, tenant: str = Depends(current_tenant)):
+    """Pillar J's card: scenario tests, rule checks, load, and what real phones reported (+ what was NOT checked)."""
+    from .appmaker import quality as QA
+    return await asyncio.to_thread(_be_owner_call, lambda: QA.card(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/jaanch/{what}", dependencies=[Depends(require_key)])
+async def apps_jaanch_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """stories {words} = Opus writes them | keep {hash} = her tap makes them the app's test set | run | cases |
+    rules | all | load {customers} (hundreds of accounts on the twin: asked for, never a side effect)."""
+    from .appmaker import quality as QA
+    b = body or {}
+    r = _be_owner(tenant, ref)
+    if what == "stories":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.draft(r, str(b.get("words") or "")))
+    if what == "keep":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.keep(r, str(b.get("hash") or "")))
+    if what == "run":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.run(r, base=str(b.get("base") or "")))
+    if what == "cases":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.rule_cases(r))
+    if what == "rules":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.rules_run(r))
+    if what == "all":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.run_all(r, base=str(b.get("base") or "")))
+    if what == "load":
+        return await asyncio.to_thread(_be_owner_call,
+                                       lambda: QA.load(r, int(b.get("customers") or 200), str(b.get("base") or "")))
+    raise HTTPException(404, "unknown jaanch action")
+
+
+@app.get("/api/apps/{ref}/rollout", dependencies=[Depends(require_key)])
+async def apps_rollout(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.540 the staged rollout on Play + her feature switches."""
+    from .appmaker import rollout as RO
+    return await asyncio.to_thread(_appd, RO.view, tenant, ref)
+
+
+@app.post("/api/apps/{ref}/rollout/{what}", dependencies=[Depends(require_key)])
+async def apps_rollout_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """flag {key, on, percent, label} | unflag {key} - instant, no build.
+    start {her_tap} | advance {her_tap} | halt {why} | rollback {her_tap} - Play's staged release (production = her tap)."""
+    from .appmaker import rollout as RO
+    b = body or {}
+    if what == "flag":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: RO.set_flag(
+            r, str(b.get("key") or ""), b.get("on") if isinstance(b.get("on"), bool) else None,
+            int(b["percent"]) if isinstance(b.get("percent"), (int, float)) else None, str(b.get("label") or "")))
+    if what == "unflag":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: RO.drop_flag(r, str(b.get("key") or "")))
+    if what == "start":
+        return await asyncio.to_thread(_appd, RO.start, tenant, ref, bool(b.get("her_tap")),
+                                       float(b.get("fraction") or RO.STAGES[0]))
+    if what == "advance":
+        return await asyncio.to_thread(_appd, RO.advance, tenant, ref, bool(b.get("her_tap")),
+                                       float(b.get("fraction") or 0))
+    if what == "halt":
+        return await asyncio.to_thread(_appd, RO.halt, tenant, ref, str(b.get("why") or ""))
+    if what == "rollback":
+        return await asyncio.to_thread(_appd, RO.rollback, tenant, ref, bool(b.get("her_tap")))
+    raise HTTPException(404, "unknown rollout action")
 
 
 @app.get("/api/apps/{ref}/crashes", dependencies=[Depends(require_key)])

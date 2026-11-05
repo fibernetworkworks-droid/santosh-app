@@ -241,7 +241,7 @@ def test_e2e_bench_wired():
     import re
     import struct
     wf = open("../.github/workflows/interactive-lab.yml").read()
-    assert "bench_e2e" in wf and "e2e, studio, deploy" in wf
+    assert "bench_e2e" in wf and "e2e, studio, voices, deploy" in wf
     assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
@@ -476,3 +476,21 @@ def test_studio_voice_goes_through_the_ears():
     hear = MODAL_SRC[MODAL_SRC.index("class Hear:"):MODAL_SRC.index("def _speak_chunks")]
     assert "def trim(self, wav: bytes, script: str" in hear and '"loud_end": loud_end' in hear
     assert "loud - end <= 0.8" in MODAL_SRC                   # ears judge real sound after the last word, not silence
+
+
+def test_voice_card_scores_clarity_fairly():
+    ns: dict = {}
+    for fn in ("_norm_hi", "_cer"):
+        exec(re.search(rf"def {fn}\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    cer = ns["_cer"]
+    assert cer("गति का मतलब", "गति का मतलब।") == 0.0                 # punctuation / spaces never count
+    assert cer("चीज़ जगह तेज़ी", "चीज जगह तेजी") == 0.0                  # nukta: whisper drops it, a listener does not mind
+    assert cer("मैं हूँ", "में हूं") < 0.2                                   # chandrabindu = anusvara
+    assert cer("आज हम गति के बारे में", "आज हम ददी के बारे में") > 0.05     # the real mistake whisper keeps hearing
+    assert cer("गति", "") == 1.0
+    card = MODAL_SRC[MODAL_SRC.index("def voice_card"):]
+    assert "IndicParler().speak.spawn" in card and "Chatterbox().speak.spawn" in card
+    assert ".get(timeout=900) for t in VOICE_CARD_LINES" in card                # one warm container per voice, not 8 cold
+    assert "indicf5" not in card                                                # lab_only voices are not candidates to ship
+    wf = WORKFLOW
+    assert "modal run modal_app.py::voice_card" in wf and "inputs.job == 'voices') && always()" in wf

@@ -919,6 +919,74 @@ window.HoolaBuild = function (C) {
       }));
     };
     try { drawSign(await api('GET', base(o) + '/sign')); } catch (er) { sgbox.remove(); }
+    // v0.540 JAANCH (Pillar J): the scenario tests, the rule checks, what real phones reported, and the staged rollout
+    const jnbox = document.createElement('section'); jnbox.className = 'stcol stjaanch'; box.appendChild(jnbox);
+    const againJaanch = async () => {
+      try { drawJaanch(await api('GET', base(o) + '/jaanch'), await api('GET', base(o) + '/rollout').catch(() => null)); }
+      catch (er) { toast(er.message, true); }
+    };
+    const drawJaanch = (j, ro) => {
+      const last = j.last_run || {}, ru = j.rules || {}, fd = j.field || {}, rl = (ro && ro.rollout) || {}, fl = L(ro && ro.flags);
+      const pct = Math.round((Number(rl.fraction) || 0) * 100);
+      jnbox.innerHTML = `<h4>Jaanch <span>${Number(j.scenarios) || 0} stor${j.scenarios === 1 ? 'y' : 'ies'}${last.fail ? ' · ' + last.fail + ' failing' : ''}</span></h4>
+        <p class="stnote">Your app is PROVED, not hoped for. Hoola writes a test for each user story, then plays it against a throwaway copy of your app - sign up, order, and check that another customer is REFUSED. Your real app and your customers' data are never touched.</p>
+        ${last.at ? `<p class="stnote">Last run ${esc(S(last.at).slice(0, 16).replace('T', ' '))} · <b>${Number(last.pass) || 0}/${Number(last.total) || 0} passed</b>${last.fail ? ' · ' + last.fail + ' failed' : ''}${last.not_run ? ' · ' + last.not_run + ' could not run' : ''}<br>${esc(S(last.says))}</p>` : '<p class="stempty">Never run.</p>'}
+        ${L(last.failed).length ? `<ul class="stlines">${L(last.failed).map(x => `<li><b>${esc(S(x.story))}</b>: ${esc(S(x.why))}</li>`).join('')}</ul>` : ''}
+        <div class="row"><button class="btn" type="button" data-jn="stories">Write the tests</button><button class="btn go" type="button" data-jn="run">Run them</button><button class="btn" type="button" data-jn="rules">Check the rules</button></div>
+        <div data-jnout></div>
+        <p class="stnote">Brain: ${Number(ru.rules) || 0} rules, ${Number(ru.formulas) || 0} formulas, ${Number(ru.functions) || 0} functions · ${Number(ru.cases) || 0} test cases.</p>
+        <h5>From real phones</h5>
+        <p class="stnote">${esc(S(fd.says))}${Number(fd.anrs) ? ' An ANR means the app froze instead of closing - a different fault, and the stores count it separately.' : ''}</p>
+        ${L(fd.top).length ? `<ul class="stlines">${L(fd.top).map(x => `<li><b>${esc(S(x.kind))}</b> ×${Number(x.count) || 0} · ${esc(S(x.what))}${L(x.screens).length ? ' · ' + esc(L(x.screens).join(', ')) : ''}</li>`).join('')}</ul>` : ''}
+        ${L(j.not_checked).length ? `<p class="stnote">Not checked yet: ${esc(L(j.not_checked).join('; '))}.</p>` : ''}
+        <h5>Going out slowly</h5>
+        <p class="stnote">A new version reaches 5% of your users first, then 20, 50, 100 - each step your tap. If something is wrong, Stop it within minutes. Play cannot take a version off phones that already have it; stopping holds back everyone else, and Send the old one back makes the previous build their next update.</p>
+        ${rl.version_code ? `<p class="stnote">v${esc(S(rl.version_name || rl.version_code))} · <b>${rl.status === 'halted' ? 'STOPPED' : pct + '% of users'}</b>${rl.rolled_back_from ? ' (sent back from v' + esc(S(rl.rolled_back_from)) + ')' : ''}</p>` : '<p class="stempty">No staged rollout running.</p>'}
+        <div class="row">${rl.version_code && rl.status === 'inProgress' ? '<button class="btn go" type="button" data-ro="advance">Give it to more users</button><button class="btn" type="button" data-ro="halt">Stop</button>' : ''}${(ro && ro.can_rollback) ? '<button class="btn" type="button" data-ro="rollback">Send the old one back</button>' : ''}</div>
+        <h5>Feature switches</h5>
+        <p class="stnote">Turn a feature off without a new build - the only change that reaches every phone in minutes.</p>
+        <ul class="stlines">${fl.map(f => `<li><label class="stchk"><input type="checkbox" data-flag="${esc(S(f.key))}"${f.on ? ' checked' : ''}> <b>${esc(S(f.label || f.key))}</b></label> <span class="stnote">${Number(f.percent) < 100 ? Number(f.percent) + '% of users' : 'everyone'}</span></li>`).join('')}</ul>
+        <form class="stapp jnflag" autocomplete="off"><div class="row"><input name="key" placeholder="new_checkout" maxlength="40"><button class="btn" type="submit">Add a switch</button></div></form>`;
+      const out = jnbox.querySelector('[data-jnout]');
+      jnbox.querySelectorAll('[data-jn]').forEach(b => b.addEventListener('click', async () => {
+        out.textContent = b.dataset.jn === 'stories' ? 'Writing…' : 'Running…';
+        try {
+          const v = await api('POST', base(o) + '/jaanch/' + b.dataset.jn, {});
+          if (b.dataset.jn === 'stories') {
+            out.innerHTML = `<p class="stnote">${L(v.scenarios).length} stories written${L(v.errors).length ? ' · ' + L(v.errors).length + ' problems' : ''}</p>
+              <ul class="stlines">${L(v.scenarios).map(x => `<li>${esc(S(x.story))} <span class="stnote">${L(x.steps).length} steps</span></li>`).join('')}${L(v.errors).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul>
+              ${L(v.errors).length ? '' : `<div class="row"><button class="btn go" type="button" data-jnkeep="${esc(S(v.hash))}">Use these tests</button></div>`}`;
+            const k = out.querySelector('[data-jnkeep]');
+            if (k) k.addEventListener('click', async () => {
+              try { await api('POST', base(o) + '/jaanch/keep', {hash: k.dataset.jnkeep}); toast('Saved. Every run uses these.'); againJaanch(); }
+              catch (er) { toast(er.message, true); }
+            });
+          } else {
+            out.innerHTML = `<p class="stnote">${esc(S(v.says || ''))}</p>` +
+              (L(v.rows).length ? `<ul class="stlines">${L(v.rows).filter(x => x.state !== 'pass').map(x => `<li><b>${esc(S(x.state))}</b> ${esc(S(x.what))}: ${esc(S(x.why))}</li>`).join('')}</ul>` : '');
+          }
+        } catch (er) { out.textContent = er.message; }
+      }));
+      jnbox.querySelectorAll('[data-ro]').forEach(b => b.addEventListener('click', async () => {
+        const what = b.dataset.ro;
+        if (what !== 'halt' && !confirm(what === 'advance' ? 'Give this version to more of your users?' : 'Send the previous build back to everyone?')) return;
+        try { toast((await api('POST', base(o) + '/rollout/' + what, {her_tap: true})).says || 'Done'); againJaanch(); }
+        catch (er) { toast(er.message, true); }
+      }));
+      jnbox.querySelectorAll('[data-flag]').forEach(c => c.addEventListener('change', async () => {
+        try { await api('POST', base(o) + '/rollout/flag', {key: c.dataset.flag, on: c.checked}); toast(c.checked ? 'On, for every phone, now.' : 'Off, for every phone, now.'); }
+        catch (er) { toast(er.message, true); c.checked = !c.checked; }
+      }));
+      jnbox.querySelector('.jnflag').addEventListener('submit', async e => {
+        e.preventDefault();
+        const k = e.target.key.value.trim();
+        if (!k) return;
+        try { await api('POST', base(o) + '/rollout/flag', {key: k}); againJaanch(); }
+        catch (er) { toast(er.message, true); }
+      });
+    };
+    try { drawJaanch(await api('GET', base(o) + '/jaanch'), await api('GET', base(o) + '/rollout').catch(() => null)); }
+    catch (er) { jnbox.remove(); }
     // v0.435 PARIVAAR: the apps on this business (customer / delivery partner / partner shop / staff) + partners + web admin
     const fmbox = document.createElement('section'); fmbox.className = 'stcol stfam'; box.appendChild(fmbox);
     const drawFam = fm => {

@@ -1153,8 +1153,11 @@ class Api {
   Future<String> socialYtAdsConnect() async => (await _send('GET', '/api/social/ytads/connect'))['url'] as String;
   Future<Map<String, dynamic>> socialYtAdsAccount(String id) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/account', body: {'customer_id': id}) as Map);
-  Future<Map<String, dynamic>> socialYtAdsNew(String videoId) async =>
-      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId}) as Map);
+  Future<Map<String, dynamic>> socialYtAdsNew(String videoId, {String kind = 'youtube'}) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts', body: {'video_id': videoId, 'kind': kind}) as Map);
+  // v0.425 Google Search + Performance Max drafts share the YouTube ads routes
+  Future<Map<String, dynamic>> socialYtAdsEdit(String id, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id', body: body) as Map);
   Future<Map<String, dynamic>> socialYtAdsAct(String id, String action, {bool confirm = false}) async =>
       Map<String, dynamic>.from(await _send('POST', '/api/social/ytads/drafts/$id/$action', body: {'confirm': confirm},
           timeout: const Duration(seconds: 90)) as Map);
@@ -1229,6 +1232,13 @@ class Api {
       Map<String, dynamic>.from(await _send('POST', '/api/employees/$key/$action', body: {}) as Map);
   Future<Map<String, dynamic>> employeeSettings(String key, Map<String, dynamic> body) async =>
       Map<String, dynamic>.from(await _send('PUT', '/api/employees/$key/settings', body: body) as Map);
+  // v0.541 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO (her own login typed only here)
+  Future<Map<String, dynamic>> seoIntel() async =>
+      Map<String, dynamic>.from(await _send('GET', '/api/seo/intel', timeout: const Duration(seconds: 45)) as Map);
+  Future<Map<String, dynamic>> seoIntelPost(String path, Map<String, dynamic> body) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/seo/intel/$path', body: body, timeout: const Duration(seconds: 120)) as Map);
+  Future<Map<String, dynamic>> seoIntelForget() async =>
+      Map<String, dynamic>.from(await _send('DELETE', '/api/seo/intel/dataforseo') as Map);
   Future<Map<String, dynamic>> seoDesk() async =>
       Map<String, dynamic>.from(await _send('GET', '/api/seo/desk', timeout: const Duration(seconds: 45)) as Map);
   Future<Map<String, dynamic>> seoOnboard(Map<String, dynamic> body) async =>
