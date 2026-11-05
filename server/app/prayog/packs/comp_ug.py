@@ -525,9 +525,354 @@ class CpApprox:
         return {"val": s["val"], "exact": s["exact"], "err": s["err"], "nused": s["nused"]}
 
 
+
+# ============================================================================================ second-order IVP
+def _ode2_rates(p: dict) -> tuple[float, float]:
+    """(gamma, omega0) of  m x" + c x' + k x = F cos(wf t)."""
+    return p["cc"] / (2 * p["mm"]), math.sqrt(p["kk"] / p["mm"])
+
+
+def _ode2_exact(t: float, p: dict) -> float:
+    """The closed-form free motion for x(0) = x0, v(0) = 0, in whichever damping regime the numbers give."""
+    g, w0 = _ode2_rates(p)
+    x0 = p["x0"]
+    if g <= 1e-12 * max(w0, 1.0):
+        return x0 * math.cos(w0 * t)
+    if abs(g - w0) <= 1e-8 * w0:                       # critically damped
+        return x0 * math.exp(-g * t) * (1 + g * t)
+    if g < w0:                                         # underdamped
+        wd = math.sqrt(w0 * w0 - g * g)
+        return x0 * math.exp(-g * t) * (math.cos(wd * t) + (g / wd) * math.sin(wd * t))
+    rt = math.sqrt(g * g - w0 * w0)                    # overdamped
+    rp, rm = -g + rt, -g - rt
+    A = -x0 * rm / (rp - rm)
+    B = x0 * rp / (rp - rm)
+    return A * math.exp(rp * t) + B * math.exp(rm * t)
+
+
+def _ode2_amp(p: dict) -> float:
+    """Steady-state amplitude of the driven oscillator: (F/m) / sqrt((w0^2 - w^2)^2 + (2 g w)^2)."""
+    g, w0 = _ode2_rates(p)
+    w = p["wf"]
+    return (p["FF"] / p["mm"]) / math.sqrt((w0 * w0 - w * w) ** 2 + (2 * g * w) ** 2)
+
+
+def _ode2_truth(p: dict) -> float:
+    return _ode2_amp(p) if _i(p["cas"]) == 1 else _ode2_exact(p["tmax"], p)
+
+
+class CpOde2:
+    """m x" + c x' + k x = F cos(wt) - the mechanical oscillator and, with m -> L, c -> R, k -> 1/C, the LCR
+    circuit. Free motion is compared with the closed form of its own damping regime; the driven case is compared
+    with the resonance formula for the steady-state amplitude."""
+
+    PARAMS = {"cas": 0.0, "method": 2.0, "n": 200.0, "mm": 1.0, "cc": 0.0, "kk": 4.0, "FF": 0.0, "wf": 1.0,
+              "x0": 0.1, "tmax": 10.0}
+    VARS = ["t", "val", "exact", "err", "nused", "cx", "ce", "cy", "px", "py"]
+
+    @staticmethod
+    def init(p, cfg=None):
+        cas, meth = _i(p["cas"]), _i(p["method"])
+        n = max(2, _i(p["n"]))
+        h = p["tmax"] / n
+        m, c, k, F, wf = p["mm"], p["cc"], p["kk"], p["FF"], p["wf"]
+        f = lambda t, y: [y[1], (F * math.cos(wf * t) - c * y[1] - k * y[0]) / m]   # noqa: E731
+        y = [p["x0"], 0.0]
+        t = 0.0
+        px, py = [0.0], [y[0]]
+        for _ in range(n):
+            if meth == 0:
+                d = f(t, y)
+                y = [y[0] + h * d[0], y[1] + h * d[1]]
+            elif meth == 1:
+                k1 = f(t, y)
+                k2 = f(t + h, [y[0] + h * k1[0], y[1] + h * k1[1]])
+                y = [y[0] + h * 0.5 * (k1[0] + k2[0]), y[1] + h * 0.5 * (k1[1] + k2[1])]
+            else:
+                k1 = f(t, y)
+                k2 = f(t + h / 2, [y[0] + h / 2 * k1[0], y[1] + h / 2 * k1[1]])
+                k3 = f(t + h / 2, [y[0] + h / 2 * k2[0], y[1] + h / 2 * k2[1]])
+                k4 = f(t + h, [y[0] + h * k3[0], y[1] + h * k3[1]])
+                y = [y[0] + h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]),
+                     y[1] + h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])]
+            t += h
+            px.append(t)
+            py.append(y[0])
+        if cas == 1:                                   # the driven amplitude, from the last fifth of the run
+            t0 = p["tmax"] * 0.8
+            amp = 0.0
+            for i in range(len(px)):
+                if px[i] >= t0 and abs(py[i]) > amp:
+                    amp = abs(py[i])
+            val, exact = amp, _ode2_amp(p)
+            ce = [_ode2_amp(p) for _ in range(61)]
+        else:
+            val, exact = y[0], _ode2_exact(p["tmax"], p)
+            ce = None
+        cx = _grid(0.0, p["tmax"], 60)
+        if ce is None:
+            ce = [_ode2_exact(z, p) for z in cx]
+        return {"t": 0.0, "val": val, "exact": exact, "err": _err(val, exact), "nused": float(n),
+                "cx": cx, "ce": ce, "cy": list(py), "px": list(px), "py": list(py)}
+
+    @staticmethod
+    def step(s, p, dt, cfg=None):
+        s["t"] += dt
+
+    @staticmethod
+    def view(s, p, cfg=None):
+        return dict(s)
+
+    @staticmethod
+    def measure(p, cfg=None):
+        s = CpOde2.init(p)
+        return {"val": s["val"], "exact": s["exact"], "err": s["err"], "nused": s["nused"]}
+
+
+# ============================================================================================ Monte Carlo
+_LCG_M = 2147483647
+
+
+def _lcg(seed: float) -> list[float]:
+    """Lehmer generator (minimal standard, 16807): one mutable slot, so both languages step it identically."""
+    s = _i(seed) % _LCG_M
+    return [float(s if s > 0 else 1)]
+
+
+def _u(st: list[float]) -> float:
+    st[0] = (st[0] * 16807.0) % _LCG_M
+    return st[0] / _LCG_M
+
+
+def _gauss2(st: list[float]) -> tuple[float, float]:
+    """One Box-Muller pair from two uniforms."""
+    u1 = _u(st)
+    u2 = _u(st)
+    r = math.sqrt(-2.0 * math.log(u1 if u1 > 1e-300 else 1e-300))
+    return r * math.cos(2 * PI * u2), r * math.sin(2 * PI * u2)
+
+
+def _binom(m: int, kk: int) -> float:
+    """C(m, k) / 2^m - the exact macrostate probability of k heads in m tosses."""
+    c = 1.0
+    for i in range(1, kk + 1):
+        c = c * (m - kk + i) / i
+    return c / math.pow(2.0, m)
+
+
+def _mc_exact(p: dict) -> float:
+    cas = _i(p["cas"])
+    if cas == 1:
+        return math.e - 1.0
+    if cas == 2:
+        return 0.5
+    if cas == 3:
+        return _binom(_i(p["mtoss"]), _i(p["khead"]))
+    if cas == 4:
+        return 1.0 / math.sqrt(12.0 * _i(p["mtoss"]))
+    if cas == 5:
+        return 1.0 / p["rate"]
+    if cas == 6:
+        sx, sy, rho = p["sx"], p["sy"], p["rho"]
+        x0, y0 = p["mx"], p["my"]
+        return math.sqrt(y0 * y0 * sx * sx + x0 * x0 * sy * sy + 2 * x0 * y0 * rho * sx * sy)
+    return PI
+
+
+def _mc_run(p: dict, N: int, marks: list[int]) -> tuple[float, list[float]]:
+    """The estimate from N samples, and the running estimate at each mark (for the screen)."""
+    cas = _i(p["cas"])
+    st = _lcg(p["seed"])
+    hit = 0.0
+    tot = 0.0
+    sq = 0.0
+    out = []
+    mi = 0
+    m = max(1, _i(p["mtoss"]))
+    kk = _i(p["khead"])
+    for i in range(1, N + 1):
+        if cas == 0:
+            x, y = _u(st), _u(st)
+            if x * x + y * y <= 1.0:
+                hit += 1
+            est = 4.0 * hit / i
+        elif cas == 1:
+            tot += math.exp(_u(st))
+            est = tot / i
+        elif cas == 2:
+            tot += _u(st)
+            est = tot / i
+        elif cas == 3:
+            h = 0
+            for _ in range(m):
+                if _u(st) < 0.5:
+                    h += 1
+            if h == kk:
+                hit += 1
+            est = hit / i
+        elif cas == 4:                                 # the central limit theorem: the spread of the mean of m
+            g = 0.0
+            for _ in range(m):
+                g += _u(st)
+            g = g / m
+            tot += g
+            sq += g * g
+            v = sq / i - (tot / i) * (tot / i)
+            est = math.sqrt(v if v > 0 else 0.0)
+        elif cas == 5:                                 # exponential waiting times by the inverse transform
+            tot += -math.log(_u(st)) / p["rate"]
+            est = tot / i
+        else:                                          # error propagation: the spread of f = x y
+            z1, z2 = _gauss2(st)
+            xx = p["mx"] + p["sx"] * z1
+            yy = p["my"] + p["sy"] * (p["rho"] * z1 + math.sqrt(1 - p["rho"] * p["rho"]) * z2)
+            fv = xx * yy
+            tot += fv
+            sq += fv * fv
+            v = sq / i - (tot / i) * (tot / i)
+            est = math.sqrt(v if v > 0 else 0.0)
+        while mi < len(marks) and marks[mi] == i:
+            out.append(est)
+            mi += 1
+    while len(out) < len(marks):
+        out.append(est if N > 0 else 0.0)
+    return est, out
+
+
+def _mc_marks(N: int) -> list[int]:
+    """60 sample counts spread logarithmically up to N: the screen's running-estimate curve."""
+    out = []
+    for i in range(1, 61):
+        v = _i(math.pow(float(N), i / 60.0))
+        if v < 1:
+            v = 1
+        if not out or v > out[-1]:
+            out.append(v)
+    return out
+
+
+class CpMonteCarlo:
+    """Monte Carlo and sampling statistics with a seeded Lehmer generator: pi by acceptance-rejection, an integral
+    by the sample mean, coin-toss macrostates, the central limit theorem, an exponential population mean, and the
+    error-propagation formula checked against the scatter of a function of two correlated variables.
+    The error falls as 1/sqrt(N) - which is the real lesson, and is measurable here."""
+
+    PARAMS = {"cas": 0.0, "method": 0.0, "n": 4000.0, "seed": 12345.0, "mtoss": 10.0, "khead": 5.0,
+              "rate": 0.5, "mx": 4.0, "my": 2.5, "sx": 0.08, "sy": 0.05, "rho": 0.0}
+    VARS = ["t", "val", "exact", "err", "nused", "cx", "ce", "cy", "px", "py"]
+
+    @staticmethod
+    def init(p, cfg=None):
+        N = max(10, _i(p["n"]))
+        marks = _mc_marks(N)
+        val, run = _mc_run(p, N, marks)
+        exact = _mc_exact(p)
+        cx = [float(x) for x in marks]
+        return {"t": 0.0, "val": val, "exact": exact, "err": _err(val, exact), "nused": float(N),
+                "cx": cx, "ce": [exact for _ in cx], "cy": list(run), "px": [cx[-1]], "py": [val]}
+
+    @staticmethod
+    def step(s, p, dt, cfg=None):
+        s["t"] += dt
+
+    @staticmethod
+    def view(s, p, cfg=None):
+        return dict(s)
+
+    @staticmethod
+    def measure(p, cfg=None):
+        s = CpMonteCarlo.init(p)
+        return {"val": s["val"], "exact": s["exact"], "err": s["err"], "nused": s["nused"]}
+
+
+# ============================================================================================ projectile
+def _proj_exact(p: dict) -> float:
+    cas = _i(p["cas"])
+    u, th, g = p["u"], p["th"], p["g"]
+    if cas == 1:
+        return u * u * math.sin(th) * math.sin(th) / (2 * g)
+    if cas == 2:
+        return 2 * u * math.sin(th) / g
+    return u * u * math.sin(2 * th) / g
+
+
+class CpProjectile:
+    """A projectile integrated step by step: the range, the greatest height and the time of flight come out of the
+    trajectory (with the landing point found by interpolating the last step), and each is compared with the
+    textbook formula for motion under gravity alone."""
+
+    PARAMS = {"cas": 0.0, "method": 2.0, "n": 100.0, "u": 30.0, "th": 0.7854, "g": 9.8}
+    VARS = ["t", "val", "exact", "err", "nused", "cx", "ce", "cy", "px", "py", "tflight", "hmax", "range_m"]
+
+    @staticmethod
+    def init(p, cfg=None):
+        cas, meth = _i(p["cas"]), _i(p["method"])
+        n = max(4, _i(p["n"]))
+        u, th, g = p["u"], p["th"], p["g"]
+        tend = 2 * u * math.sin(th) / g
+        h = (tend * 1.2) / n                           # the grid is laid over a fifth more than the flight needs
+        f = lambda y: [y[2], y[3], 0.0, -g]            # noqa: E731 - state is [x, y, vx, vy]
+        y = [0.0, 0.0, u * math.cos(th), u * math.sin(th)]
+        px, py = [0.0], [0.0]
+        hmax = 0.0
+        tf = 0.0
+        rng = 0.0
+        t = 0.0
+        for _ in range(n):
+            prev = list(y)
+            if meth == 0:
+                d = f(y)
+                y = [y[i] + h * d[i] for i in range(4)]
+            elif meth == 1:
+                k1 = f(y)
+                k2 = f([y[i] + h * k1[i] for i in range(4)])
+                y = [y[i] + h * 0.5 * (k1[i] + k2[i]) for i in range(4)]
+            else:
+                k1 = f(y)
+                k2 = f([y[i] + h / 2 * k1[i] for i in range(4)])
+                k3 = f([y[i] + h / 2 * k2[i] for i in range(4)])
+                k4 = f([y[i] + h * k3[i] for i in range(4)])
+                y = [y[i] + h / 6 * (k1[i] + 2 * k2[i] + 2 * k3[i] + k4[i]) for i in range(4)]
+            t += h
+            if y[1] > hmax:
+                hmax = y[1]
+            if prev[1] >= 0 > y[1] and tf == 0.0:      # landing: interpolate the step that crosses the ground
+                fr = prev[1] / (prev[1] - y[1])
+                tf = t - h + fr * h
+                rng = prev[0] + fr * (y[0] - prev[0])
+            if tf == 0.0 or len(px) < 2:
+                px.append(y[0])
+                py.append(y[1])
+        if tf == 0.0:                                  # never came down inside the grid: report what there is
+            tf = t
+            rng = y[0]
+        val = [rng, hmax, tf][cas] if cas in (0, 1, 2) else rng
+        exact = _proj_exact(p)
+        R = _proj_exact({**p, "cas": 0.0})
+        cx = _grid(0.0, R, 60)
+        ce = [z * math.tan(th) - g * z * z / (2 * u * u * math.cos(th) * math.cos(th)) for z in cx]
+        return {"t": 0.0, "val": val, "exact": exact, "err": _err(val, exact), "nused": float(n),
+                "cx": cx, "ce": ce, "cy": [], "px": list(px), "py": list(py),
+                "tflight": tf, "hmax": hmax, "range_m": rng}
+
+    @staticmethod
+    def step(s, p, dt, cfg=None):
+        s["t"] += dt
+
+    @staticmethod
+    def view(s, p, cfg=None):
+        return dict(s)
+
+    @staticmethod
+    def measure(p, cfg=None):
+        s = CpProjectile.init(p)
+        return {"val": s["val"], "exact": s["exact"], "err": s["err"], "nused": s["nused"]}
+
+
 KERNELS: dict[str, Any] = {"cp_root": CpRoot, "cp_quad": CpQuad, "cp_ode1": CpOde1, "cp_diff": CpDiff,
-                           "cp_approx": CpApprox}
-FAMILY = {"cp_root": "comp", "cp_quad": "comp", "cp_ode1": "comp", "cp_diff": "comp", "cp_approx": "comp"}
+                           "cp_approx": CpApprox, "cp_ode2": CpOde2, "cp_mc": CpMonteCarlo, "cp_proj": CpProjectile}
+FAMILY = {"cp_root": "comp", "cp_quad": "comp", "cp_ode1": "comp", "cp_diff": "comp", "cp_approx": "comp",
+          "cp_ode2": "comp", "cp_mc": "comp", "cp_proj": "comp"}
 
 TEXTBOOK = {
     "cp_root_x": _root_exact,
@@ -535,6 +880,9 @@ TEXTBOOK = {
     "cp_ode1_y": lambda p: _ode1_exact(_i(p["cas"]), p["tmax"], p),
     "cp_diff_d": _fd_exact,
     "cp_approx_f": lambda p: _ap_f(_i(p["cas"]), p["x"]),
+    "cp_ode2_x": _ode2_truth,
+    "cp_mc_v": _mc_exact,
+    "cp_proj_v": _proj_exact,
 }
 
 

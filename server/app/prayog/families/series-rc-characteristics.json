@@ -1,0 +1,118 @@
+{
+ "base": "series-rc-characteristics",
+ "chapter": "AC circuits and bridges",
+ "variants": [
+  {
+   "key": "c001-r47",
+   "title": "Series RC circuit: 0.01 µF with 4.7 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 1e-08,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "c001-r10",
+   "title": "Series RC circuit: 0.01 µF with 10 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 10 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 10 kΩ",
+   "params": {
+    "C": 1e-08,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "c0022-r47",
+   "title": "Series RC circuit: 0.022 µF with 4.7 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 2.2e-08,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "c0022-r10",
+   "title": "Series RC circuit: 0.022 µF with 10 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 10 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 10 kΩ",
+   "params": {
+    "C": 2.2e-08,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "c0047-r47",
+   "title": "Series RC circuit: 0.047 µF with 4.7 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 4.7e-08,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "c0047-r10",
+   "title": "Series RC circuit: 0.047 µF with 10 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 10 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 10 kΩ",
+   "params": {
+    "C": 4.7e-08,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "c01-r47",
+   "title": "Series RC circuit: 0.1 µF with 4.7 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 4.7 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 4.7 kΩ",
+   "params": {
+    "C": 1e-07,
+    "R": 4700.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  },
+  {
+   "key": "c01-r10",
+   "title": "Series RC circuit: 0.1 µF with 10 kΩ",
+   "sample": "An unmarked capacitor with a decade resistance box at 10 kΩ",
+   "unknown": "the capacitance, from the frequency at which the reactance equals 10 kΩ",
+   "params": {
+    "C": 1e-07,
+    "R": 10000.0
+   },
+   "source": {
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
+    "note": "the decade boxes are set to standard preferred values"
+   }
+  }
+ ]
+}

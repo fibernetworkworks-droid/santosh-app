@@ -23,7 +23,7 @@ HoolaStudio.define('static-electricity', function (S) {
   S.contact(1.06, 0.56, 0.0, -0.22, 0.45);
 
   // ---------- the charged pair: pith balls on threads, or the foil strips of an electroscope
-  var HX = LEAF ? 0.02 : -0.06, HZ = -0.26, TOPY = LEAF ? 0.2 : 0.46;
+  var HX = LEAF ? 0.02 : -0.06, HZ = -0.26, TOPY = LEAF ? 0.17 : 0.46;
   var threadM = new T.MeshStandardMaterial({ color: 0xe8e2d2, roughness: 0.9 });
   var foilM = new T.MeshStandardMaterial({ color: 0xd7d9dc, roughness: 0.35, metalness: 0.75, side: T.DoubleSide });
   var pithM = new T.MeshStandardMaterial({ color: 0xf4f1e6, roughness: 0.9 });
@@ -35,15 +35,15 @@ HoolaStudio.define('static-electricity', function (S) {
     hookBar.rotation.x = Math.PI / 2; hookBar.position.set(HX, TOPY + 0.025, HZ); S.scene.add(hookBar);
   } else {
     jarG = new T.Group(); S.scene.add(jarG); jarG.position.set(HX, 0.014, HZ);
-    var glass = S.mesh(new T.CylinderGeometry(0.075, 0.075, 0.2, 40, 1, true), M.glass, false); glass.position.y = 0.1; jarG.add(glass);
-    var jbot = S.mesh(new T.CylinderGeometry(0.075, 0.075, 0.004, 40), M.glass, false); jbot.position.y = 0.002; jarG.add(jbot);
-    var lidM = S.rounded(0.18, 0.18, 0.008, 0.004, new T.MeshStandardMaterial({ color: 0xa9804c, roughness: 0.8 }));
-    lidM.rotation.x = -Math.PI / 2; lidM.position.y = 0.204; jarG.add(lidM);
-    var rodW = S.mesh(new T.CylinderGeometry(0.0016, 0.0016, 0.1, 12), M.copper); rodW.position.y = 0.212; jarG.add(rodW);
-    var disc = S.mesh(new T.CylinderGeometry(0.026, 0.026, 0.0025, 32), M.brass); disc.position.y = 0.262; jarG.add(disc);
+    var glass = S.mesh(new T.CylinderGeometry(0.05, 0.05, 0.17, 40, 1, true), M.glass, false); glass.position.y = 0.085; jarG.add(glass);
+    var jbot = S.mesh(new T.CylinderGeometry(0.05, 0.05, 0.004, 40), M.glass, false); jbot.position.y = 0.002; jarG.add(jbot);
+    var lidM = S.rounded(0.125, 0.125, 0.007, 0.004, new T.MeshStandardMaterial({ color: 0xa9804c, roughness: 0.85 }));
+    lidM.rotation.x = -Math.PI / 2; lidM.position.y = 0.174; jarG.add(lidM);
+    var rodW = S.mesh(new T.CylinderGeometry(0.0016, 0.0016, 0.08, 12), M.copper); rodW.position.y = 0.19; jarG.add(rodW);
+    var disc = S.mesh(new T.CylinderGeometry(0.022, 0.022, 0.0025, 32), M.brass); disc.position.y = 0.228; jarG.add(disc);
     jarG.userData.disc = disc;
-    var hookI = S.mesh(new T.TorusGeometry(0.004, 0.0009, 8, 16), M.copper); hookI.rotation.x = Math.PI / 2; hookI.position.y = 0.2; jarG.add(hookI);
-    S.contact(0.2, 0.2, HX, HZ, 0.4);
+    var hookI = S.mesh(new T.TorusGeometry(0.004, 0.0009, 8, 16), M.copper); hookI.rotation.x = Math.PI / 2; hookI.position.y = 0.17; jarG.add(hookI);
+    S.contact(0.14, 0.14, HX, HZ, 0.4);
   }
   [-1, 1].forEach(function (s) {
     var g = new T.Group(); S.scene.add(g);
@@ -73,6 +73,15 @@ HoolaStudio.define('static-electricity', function (S) {
   var ruler = S.ruler(LEAF ? 0.1 : 0.2, { pxPerMm: 6, labelEvery: 10, width: 0.022, title: 'cm' });
   ruler.position.set(HX - (LEAF ? 0.05 : 0.1), TOPY - p.Lth * SCALE - 0.012, HZ - 0.03);
   ruler.rotation.z = -Math.PI / 2;
+  // the scale is clamped to a small stand behind the pair, not held in mid-air
+  var rpost = S.mesh(new T.CylinderGeometry(0.004, 0.005, 1, 14), M.chrome); S.scene.add(rpost);
+  var rfoot = S.rounded(0.07, 0.05, 0.01, 0.003, M.iron); rfoot.rotation.x = -Math.PI / 2; rfoot.position.set(HX - (LEAF ? 0.06 : 0.12), 0.019, HZ - 0.05); S.scene.add(rfoot);
+  function placeRuler() {
+    var y = TOPY - p.Lth * SCALE - 0.012;
+    ruler.position.y = y;
+    rpost.scale.y = Math.max(0.02, y - 0.014); rpost.position.set(HX - (LEAF ? 0.06 : 0.12), (y - 0.014) / 2 + 0.014, HZ - 0.05);
+  }
+  placeRuler();
 
   // ---------- the polythene rod and the woollen duster
   var RODX = 0.42, RODZ = -0.08;
@@ -157,7 +166,7 @@ HoolaStudio.define('static-electricity', function (S) {
       function (k) { st.L = a + (L - a) * k; solve(); place(); }, { ms: 800, mode: 'top' })
       .then(function () {
         st.L = L; solve(); place();
-        ruler.position.y = TOPY - p.Lth * SCALE - 0.012;
+        placeRuler();
         S.say(LEAF ? 'Another centimetre of each strip is folded over the hook: the hanging length is now ' + (L * 100).toFixed(1) + ' cm.'
           : 'The threads are shortened to ' + (L * 100).toFixed(1) + ' cm.');
         S.render();
@@ -178,13 +187,13 @@ HoolaStudio.define('static-electricity', function (S) {
   function lens() { var out = [], step = (LMAX - LMIN) / 3; for (var k = 0; k < 4; k++) out.push(Math.round((LMIN + k * step) * 1000) / 1000); return out; }
 
   return {
-    camera: { pos: [0.08, LEAF ? 0.42 : 0.6, 0.55], look: [HX, LEAF ? 0.18 : 0.3, HZ] },
-    views: { balls: [[HX + 0.12, TOPY - 0.08, HZ + 0.3], [HX, TOPY - p.Lth * SCALE, HZ]],
-      jar: [[HX + 0.12, 0.3, HZ + 0.34], [HX, 0.16, HZ]],
-      rod: [[RODX - 0.02, 0.2, RODZ + 0.2], [RODX, 0.02, RODZ]],
-      duster: [[RODX, 0.2, RODZ + 0.02], [RODX - 0.02, 0.02, RODZ - 0.16]],
-      ruler: [[HX + 0.1, TOPY - 0.1, HZ + 0.22], [HX, TOPY - p.Lth * SCALE, HZ]],
-      work: [[HX + 0.14, LEAF ? 0.34 : 0.5, HZ + 0.42], [HX, LEAF ? 0.16 : TOPY - 0.12, HZ]],
+    camera: { pos: [0.14, LEAF ? 0.5 : 0.82, LEAF ? 0.62 : 0.84], look: [HX - 0.05, LEAF ? 0.12 : 0.26, HZ] },
+    views: { balls: [[HX + 0.3, TOPY - 0.02, HZ + 0.72], [HX, TOPY - 0.2, HZ]],
+      jar: [[HX + 0.26, 0.42, HZ + 0.64], [HX, 0.12, HZ]],
+      rod: [[RODX - 0.04, 0.3, RODZ + 0.4], [RODX, 0.02, RODZ - 0.04]],
+      duster: [[RODX + 0.04, 0.3, RODZ + 0.2], [RODX - 0.02, 0.02, RODZ - 0.16]],
+      ruler: [[HX + 0.22, TOPY - 0.04, HZ + 0.5], [HX, TOPY - p.Lth * SCALE, HZ]],
+      work: [[HX + 0.26, LEAF ? 0.44 : 0.62, HZ + (LEAF ? 0.68 : 0.78)], [HX - 0.02, LEAF ? 0.12 : TOPY - 0.18, HZ]],
       book: [[-0.5, 0.45, 0.6], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'Rubbing does not make charge: it moves electrons from one surface to the other. Polythene rubbed with wool takes electrons and is left '

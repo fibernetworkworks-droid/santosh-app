@@ -1,0 +1,74 @@
+{
+ "base": "cp-population-models",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Population model: {model} {method}",
+  "unknown": "the population at the end of the run",
+  "axes": {
+   "model": [
+    {
+     "key": "logistic",
+     "label": "logistic growth to a carrying capacity",
+     "sample": "Logistic: r = 0.5, K = 1000, N0 = 10",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "y0": 10.0,
+      "rr": 0.5,
+      "Kk": 1000.0,
+      "tmax": 20.0
+     }
+    },
+    {
+     "key": "exponential",
+     "label": "unchecked exponential growth",
+     "sample": "Exponential: r = 0.18, N0 = 50 (lam negative = growth)",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 0,
+      "y0": 50.0,
+      "lam": -0.18,
+      "tmax": 15.0
+     }
+    },
+    {
+     "key": "slowlog",
+     "label": "logistic growth with a small rate",
+     "sample": "Logistic: r = 0.12, K = 5000, N0 = 200",
+     "source": {
+      "title": "B.Sc. (Honours) Physics LOCF syllabus 2019-20, University of Delhi"
+     },
+     "params": {
+      "cas": 3,
+      "y0": 200.0,
+      "rr": 0.12,
+      "Kk": 5000.0,
+      "tmax": 40.0
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "rk4",
+     "label": "by RK4",
+     "method": "Runge-Kutta 4, fourth order",
+     "params": {
+      "method": 2
+     }
+    },
+    {
+     "key": "rk2",
+     "label": "by RK2 (Heun)",
+     "method": "Runge-Kutta 2 (Heun), second order",
+     "params": {
+      "method": 1
+     }
+    }
+   ]
+  }
+ }
+}

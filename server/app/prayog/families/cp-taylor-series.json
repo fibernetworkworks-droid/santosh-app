@@ -1,0 +1,119 @@
+{
+ "base": "cp-taylor-series",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "exp1",
+   "title": "Taylor series: e^x at x = 1",
+   "sample": "exp(x) about 0, at x = 1",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "unknown": "the value of e^1 from the series",
+   "params": {
+    "cas": 0,
+    "x": 1.0,
+    "xa": 0.0,
+    "xb": 2.0
+   }
+  },
+  {
+   "key": "exp2",
+   "title": "Taylor series: e^x at x = 2",
+   "sample": "exp(x) about 0, at x = 2",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "unknown": "the value of e^2 from the series",
+   "params": {
+    "cas": 0,
+    "x": 2.0,
+    "xa": 0.0,
+    "xb": 2.5
+   }
+  },
+  {
+   "key": "sin1",
+   "title": "Taylor series: sin x at x = 1 rad",
+   "sample": "sin(x) about 0, at x = 1",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "unknown": "the value of sin 1 from the series",
+   "params": {
+    "cas": 1,
+    "x": 1.0,
+    "xa": 0.0,
+    "xb": 3.1416
+   }
+  },
+  {
+   "key": "sinpi3",
+   "title": "Taylor series: sin x at x = pi/3",
+   "sample": "sin(x) about 0, at x = 1.0472",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "unknown": "the value of sin(pi/3) from the series",
+   "params": {
+    "cas": 1,
+    "x": 1.04719755,
+    "xa": 0.0,
+    "xb": 3.1416
+   }
+  },
+  {
+   "key": "cos1",
+   "title": "Taylor series: cos x at x = 1 rad",
+   "sample": "cos(x) about 0, at x = 1",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "unknown": "the value of cos 1 from the series",
+   "params": {
+    "cas": 2,
+    "x": 1.0,
+    "xa": 0.0,
+    "xb": 3.1416
+   }
+  },
+  {
+   "key": "ln05",
+   "title": "Taylor series: ln(1 + x) at x = 0.5",
+   "sample": "ln(1+x) about 0, at x = 0.5",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "unknown": "the value of ln 1.5 from the series",
+   "params": {
+    "cas": 3,
+    "x": 0.5,
+    "xa": 0.0,
+    "xb": 0.9
+   },
+   "note": "The series for ln(1+x) converges only as x^n / n, so it needs far more terms than the exponential."
+  },
+  {
+   "key": "ln025",
+   "title": "Taylor series: ln(1 + x) at x = 0.25",
+   "sample": "ln(1+x) about 0, at x = 0.25",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "unknown": "the value of ln 1.25 from the series",
+   "params": {
+    "cas": 3,
+    "x": 0.25,
+    "xa": 0.0,
+    "xb": 0.5
+   }
+  }
+ ]
+}

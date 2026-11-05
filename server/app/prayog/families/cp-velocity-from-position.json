@@ -1,0 +1,68 @@
+{
+ "base": "cp-velocity-from-position",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Velocity from the record: {motion} {method}",
+  "unknown": "the velocity at the chosen instant",
+  "axes": {
+   "motion": [
+    {
+     "key": "pendulum",
+     "label": "a 1 m pendulum",
+     "sample": "x = 5 cm sin(wt), w = sqrt(g/L) = 3.1305 rad/s for L = 1.00 m",
+     "source": {
+      "title": "NCERT Physics Textbook Class XI, Oscillations"
+     },
+     "params": {
+      "cas": 0,
+      "A": 0.05,
+      "w": 3.1305,
+      "x": 0.35,
+      "h0": 0.4
+     }
+    },
+    {
+     "key": "spring",
+     "label": "a 0.5 kg mass on a spring",
+     "sample": "x = 4 cm sin(wt), w = sqrt(k/m) = 6.3246 rad/s for k = 20 N/m, m = 0.50 kg",
+     "source": {
+      "title": "NCERT Physics Textbook Class XI, Oscillations"
+     },
+     "params": {
+      "cas": 0,
+      "A": 0.04,
+      "w": 6.3246,
+      "x": 0.18,
+      "h0": 0.2
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "ctr",
+     "label": "by the central difference",
+     "method": "Central difference, second order",
+     "params": {
+      "method": 2
+     }
+    },
+    {
+     "key": "fwd",
+     "label": "by forward differences",
+     "method": "Forward difference, first order",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "five",
+     "label": "by the five-point formula",
+     "method": "Five-point formula, fourth order",
+     "params": {
+      "method": 3
+     }
+    }
+   ]
+  }
+ }
+}

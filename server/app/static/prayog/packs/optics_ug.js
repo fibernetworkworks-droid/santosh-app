@@ -341,7 +341,7 @@
   };
 
   H.register({
-    K: { spectrometer: Spectrometer, grating: Grating, newtonrings: NewtonRings, airwedge: AirWedge,
+    K: { spectrometer: Spectrometer, planegrating: Grating, newtonrings: NewtonRings, airwedge: AirWedge,
       doubleslit: DoubleSlit, gratingscreen: GratingScreen, fibrecone: FibreCone, fresnelrefl: FresnelRefl,
       polarimeter: Polarimeter },
     TEXTBOOK: {

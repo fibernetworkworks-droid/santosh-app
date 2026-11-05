@@ -1,0 +1,72 @@
+{
+ "base": "cp-sphere-depth",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Floating sphere: how deep a sphere of {mat} sinks, {method}",
+  "unknown": "the depth d to which the sphere sinks",
+  "axes": {
+   "mat": [
+    {
+     "key": "ice",
+     "label": "ice",
+     "sample": "Ice sphere, relative density 0.917",
+     "source": {
+      "title": "CRC Handbook of Chemistry and Physics, density of solids"
+     },
+     "params": {
+      "s": 0.917,
+      "R": 0.05,
+      "xa": 0.0,
+      "xb": 0.1,
+      "x0": 0.075,
+      "x1": 0.09
+     },
+     "note": "Ice at 0 °C has a density of 0.917 g/cm3, so an ice ball floats with about 92 % of its volume under water."
+    },
+    {
+     "key": "cork",
+     "label": "cork",
+     "sample": "Cork sphere, relative density 0.24",
+     "source": {
+      "title": "CRC Handbook of Chemistry and Physics, density of solids"
+     },
+     "params": {
+      "s": 0.24,
+      "R": 0.05,
+      "xa": 0.0,
+      "xb": 0.1,
+      "x0": 0.035,
+      "x1": 0.08
+     },
+     "note": "Cork has a density near 0.24 g/cm3, so the sphere rides high and the cubic has its root well below R."
+    }
+   ],
+   "method": [
+    {
+     "key": "bisect",
+     "label": "by bisection",
+     "method": "Bisection on a sign-changing bracket",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "newton",
+     "label": "by Newton-Raphson",
+     "method": "Newton-Raphson from a starting guess",
+     "params": {
+      "method": 1
+     }
+    },
+    {
+     "key": "secant",
+     "label": "by the secant method",
+     "method": "Secant method through two guesses",
+     "params": {
+      "method": 2
+     }
+    }
+   ]
+  }
+ }
+}

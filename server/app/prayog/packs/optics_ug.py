@@ -652,7 +652,7 @@ def _polari_rot(p) -> float:
 
 # ================================================================================================ registration
 KERNELS: dict[str, Any] = {
-    "spectrometer": Spectrometer, "grating": Grating, "newtonrings": NewtonRings, "airwedge": AirWedge,
+    "spectrometer": Spectrometer, "planegrating": Grating, "newtonrings": NewtonRings, "airwedge": AirWedge,
     "doubleslit": DoubleSlit, "gratingscreen": GratingScreen, "fibrecone": FibreCone,
     "fresnelrefl": FresnelRefl, "polarimeter": Polarimeter,
 }

@@ -1,0 +1,67 @@
+{
+ "base": "cp-ivp-error",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Order of {method} on {prob}",
+  "unknown": "the order p of the method",
+  "axes": {
+   "prob": [
+    {
+     "key": "cool",
+     "label": "the cooling equation",
+     "sample": "Cooling: k = 0.02 /s, Ts = 30 C",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 2,
+      "y0": 90.0,
+      "Ts": 30.0,
+      "kk": 0.02,
+      "tmax": 120.0
+     }
+    },
+    {
+     "key": "decay",
+     "label": "radioactive decay",
+     "sample": "Decay with lam = 0.1 per unit time",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 0,
+      "y0": 100.0,
+      "lam": 0.1,
+      "tmax": 20.0
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "euler",
+     "label": "Euler's method",
+     "method": "Euler, first order",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "rk2",
+     "label": "RK2 (Heun)",
+     "method": "Runge-Kutta 2 (Heun), second order",
+     "params": {
+      "method": 1
+     }
+    },
+    {
+     "key": "rk4",
+     "label": "RK4",
+     "method": "Runge-Kutta 4, fourth order",
+     "params": {
+      "method": 2
+     }
+    }
+   ]
+  }
+ }
+}

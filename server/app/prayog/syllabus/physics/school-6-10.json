@@ -1100,7 +1100,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "joule-heating"
+     "kernel": "joule-heating",
+     "built": "heating-effect-wire"
     },
     {
      "id": "liquid-conductivity-tester",
@@ -1239,7 +1240,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet"
+     "kernel": "magnet",
+     "built": "suspended-magnet-direction"
     },
     {
      "id": "like-unlike-poles",
@@ -1264,7 +1266,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "magnet"
+     "kernel": "magnet",
+     "built": "make-a-magnet-stroking"
     },
     {
      "id": "field-lines-bar-magnet",
@@ -1408,7 +1411,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "electrostatics"
+     "kernel": "electrostatics",
+     "built": "charging-by-rubbing-6-10"
     },
     {
      "id": "jar-electroscope",
@@ -1420,7 +1424,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "electrostatics"
+     "kernel": "electrostatics",
+     "built": "jar-electroscope"
     }
    ]
   }

@@ -1,0 +1,101 @@
+{
+ "base": "cp-first-order-ivp",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "First-order IVP: {sys} {method}",
+  "unknown": "the value of y at the end of the integration",
+  "axes": {
+   "sys": [
+    {
+     "key": "tc99m",
+     "label": "technetium-99m decay",
+     "sample": "Tc-99m, half-life 6.0067 h",
+     "source": {
+      "title": "NUBASE2020 evaluation of nuclear physics properties, Chinese Physics C 45, 030001",
+      "note": "lam = ln 2 / T(1/2) from the evaluated half-life"
+     },
+     "params": {
+      "cas": 0,
+      "y0": 100.0,
+      "lam": 0.1153963,
+      "tmax": 24.0
+     },
+     "note": "lam = ln2 / 6.0067 h = 0.115396 per hour."
+    },
+    {
+     "key": "i131",
+     "label": "iodine-131 decay",
+     "sample": "I-131, half-life 8.0252 d",
+     "source": {
+      "title": "NUBASE2020 evaluation of nuclear physics properties, Chinese Physics C 45, 030001",
+      "note": "lam = ln 2 / T(1/2) from the evaluated half-life"
+     },
+     "params": {
+      "cas": 0,
+      "y0": 100.0,
+      "lam": 0.08636834,
+      "tmax": 30.0
+     },
+     "note": "lam = ln2 / 8.0252 d = 0.0863683 per day."
+    },
+    {
+     "key": "rc",
+     "label": "an RC circuit on a DC source",
+     "sample": "R = 1 kilo-ohm, C = 1000 uF, E = 5 V",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 1,
+      "y0": 0.0,
+      "Rr": 1000.0,
+      "Cc": 0.001,
+      "Em": 5.0,
+      "tmax": 5.0
+     }
+    },
+    {
+     "key": "cool",
+     "label": "Newton's law of cooling",
+     "sample": "Water at 90 C in a room at 30 C, k = 0.02 /s",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 2,
+      "y0": 90.0,
+      "Ts": 30.0,
+      "kk": 0.02,
+      "tmax": 120.0
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "euler",
+     "label": "by Euler's method",
+     "method": "Euler, first order",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "rk2",
+     "label": "by RK2 (Heun)",
+     "method": "Runge-Kutta 2 (Heun), second order",
+     "params": {
+      "method": 1
+     }
+    },
+    {
+     "key": "rk4",
+     "label": "by RK4",
+     "method": "Runge-Kutta 4, fourth order",
+     "params": {
+      "method": 2
+     }
+    }
+   ]
+  }
+ }
+}

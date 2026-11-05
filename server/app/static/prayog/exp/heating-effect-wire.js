@@ -71,7 +71,7 @@ HoolaStudio.define('heating-effect-wire', function (S) {
   var stirR = S.mesh(new T.TorusGeometry(0.012, 0.0016, 8, 20), M.chrome); stirR.rotation.x = Math.PI / 2; stirR.position.set(CX + 0.03, 0.022, CZ - 0.01); S.scene.add(stirR);
 
   // ---------- supply, key, ammeter
-  var PB = [-0.6, -0.08];
+  var PB = [-0.52, -0.08];
   var pb = S.powerBox([PB[0], 0, PB[1]], 'BATTERY ELIMINATOR');
   var pbV = S.label(fmtN(p.Eb, 1) + ' V DC', { w: 0.05, ratio: 0.3, color: '#f2f2f2' });
   pbV.position.set(PB[0] + 0.045, 0.034, PB[1] + 0.0405); S.scene.add(pbV);
@@ -89,10 +89,10 @@ HoolaStudio.define('heating-effect-wire', function (S) {
     caption: 'DC AMMETER 0–' + fmtN(AMAX) + ' A', pos: [-0.3, 0, -0.4] });
   var amP = { at: wpt(am, 0.035, 0.07, -0.03) }, amM = { at: wpt(am, -0.035, 0.07, -0.03) };
   var watch = S.stopwatch([0.44, 0, 0.04], [0, -0.4, 0]);
-  lead(pbPlus.at, kL.at, 'red', [[-0.52, -0.14], [-0.44, -0.08]]);
+  lead(pbPlus.at, kL.at, 'red', [[-0.46, -0.14], [-0.4, -0.08]]);
   lead(kR.at, cpost.at, 'red', [[-0.26, -0.08], [0.0, -0.16]]);
   lead(cpost2.at, amP.at, 'yellow', [[-0.1, -0.28], [-0.26, -0.34]]);
-  lead(amM.at, pbMinus.at, 'black', [[-0.46, -0.4], [-0.68, -0.26]]);
+  lead(amM.at, pbMinus.at, 'black', [[-0.46, -0.4], [-0.6, -0.26]]);
 
   S.addApparatus('cal', vessel, 'Calorimeter with ' + fmtN(p.mw * 1000, 0) + ' g of water',
     'A copper vessel in a lagged jacket, so that nearly all the heat made in the coil stays in the water.');
@@ -145,7 +145,7 @@ HoolaStudio.define('heating-effect-wire', function (S) {
   return {
     camera: { pos: [0.0, 1.36, 0.6], look: [0.0, 0.02, -0.24] },
     views: { cal: [[0.14, 0.34, -0.02], [0.12, 0.05, -0.3]], coil: [[0.12, 0.26, -0.1], [0.12, 0.05, -0.3]],
-      therm: [[0.06, 0.34, -0.06], [0.1, 0.08, -0.3]], pb: [[-0.5, 0.32, 0.08], [-0.6, 0.04, -0.1]],
+      therm: [[0.06, 0.34, -0.06], [0.1, 0.08, -0.3]], pb: [[-0.44, 0.32, 0.08], [-0.52, 0.04, -0.1]],
       key: [[-0.3, 0.24, 0.1], [-0.34, 0.02, -0.02]], am: [[-0.3, 0.26, -0.14], [-0.3, 0.04, -0.42]],
       watch: [[0.44, 0.26, 0.26], [0.44, 0.02, 0.04]],
       circuit: [[0.0, 1.36, 0.6], [0.0, 0.02, -0.24]], work: [[0.1, 0.62, 0.14], [0.1, 0.05, -0.28]],

@@ -281,12 +281,208 @@
     measure: function (p) { var s = CpApprox.init(p); return { val: s.val, exact: s.exact, err: s.err, nused: s.nused }; }
   };
 
+
+  // ====================================================================================== second-order IVP
+  function ode2Rates(p) { return [p.cc / (2 * p.mm), Math.sqrt(p.kk / p.mm)]; }
+  function ode2Exact(t, p) {
+    var gw = ode2Rates(p), g = gw[0], w0 = gw[1], x0 = p.x0, wd, rt, rp, rm, A, B;
+    if (g <= 1e-12 * Math.max(w0, 1.0)) return x0 * Math.cos(w0 * t);
+    if (Math.abs(g - w0) <= 1e-8 * w0) return x0 * Math.exp(-g * t) * (1 + g * t);
+    if (g < w0) { wd = Math.sqrt(w0 * w0 - g * g); return x0 * Math.exp(-g * t) * (Math.cos(wd * t) + (g / wd) * Math.sin(wd * t)); }
+    rt = Math.sqrt(g * g - w0 * w0); rp = -g + rt; rm = -g - rt;
+    A = -x0 * rm / (rp - rm); B = x0 * rp / (rp - rm);
+    return A * Math.exp(rp * t) + B * Math.exp(rm * t);
+  }
+  function ode2Amp(p) {
+    var gw = ode2Rates(p), g = gw[0], w0 = gw[1], w = p.wf;
+    return (p.FF / p.mm) / Math.sqrt(Math.pow(w0 * w0 - w * w, 2) + Math.pow(2 * g * w, 2));
+  }
+  function ode2Truth(p) { return I(p.cas) === 1 ? ode2Amp(p) : ode2Exact(p.tmax, p); }
+  var CpOde2 = {
+    PARAMS: { cas: 0.0, method: 2.0, n: 200.0, mm: 1.0, cc: 0.0, kk: 4.0, FF: 0.0, wf: 1.0, x0: 0.1, tmax: 10.0 },
+    VARS: ['t', 'val', 'exact', 'err', 'nused', 'cx', 'ce', 'cy', 'px', 'py'],
+    init: function (p) {
+      var cas = I(p.cas), meth = I(p.method), n = Math.max(2, I(p.n)), h = p.tmax / n;
+      var m = p.mm, c = p.cc, k = p.kk, F = p.FF, wf = p.wf, i, k1, k2, k3, k4, d, t0, amp, val, exact, ce = null;
+      var f = function (t, y) { return [y[1], (F * Math.cos(wf * t) - c * y[1] - k * y[0]) / m]; };
+      var y = [p.x0, 0.0], t = 0.0, px = [0.0], py = [y[0]];
+      for (i = 0; i < n; i++) {
+        if (meth === 0) { d = f(t, y); y = [y[0] + h * d[0], y[1] + h * d[1]]; }
+        else if (meth === 1) {
+          k1 = f(t, y); k2 = f(t + h, [y[0] + h * k1[0], y[1] + h * k1[1]]);
+          y = [y[0] + h * 0.5 * (k1[0] + k2[0]), y[1] + h * 0.5 * (k1[1] + k2[1])];
+        } else {
+          k1 = f(t, y);
+          k2 = f(t + h / 2, [y[0] + h / 2 * k1[0], y[1] + h / 2 * k1[1]]);
+          k3 = f(t + h / 2, [y[0] + h / 2 * k2[0], y[1] + h / 2 * k2[1]]);
+          k4 = f(t + h, [y[0] + h * k3[0], y[1] + h * k3[1]]);
+          y = [y[0] + h / 6 * (k1[0] + 2 * k2[0] + 2 * k3[0] + k4[0]),
+            y[1] + h / 6 * (k1[1] + 2 * k2[1] + 2 * k3[1] + k4[1])];
+        }
+        t += h; px.push(t); py.push(y[0]);
+      }
+      if (cas === 1) {
+        t0 = p.tmax * 0.8; amp = 0.0;
+        for (i = 0; i < px.length; i++) if (px[i] >= t0 && Math.abs(py[i]) > amp) amp = Math.abs(py[i]);
+        val = amp; exact = ode2Amp(p);
+        ce = []; for (i = 0; i < 61; i++) ce.push(ode2Amp(p));
+      } else { val = y[0]; exact = ode2Exact(p.tmax, p); }
+      var cx = grid(0.0, p.tmax, 60);
+      if (ce === null) ce = mapf(cx, function (z) { return ode2Exact(z, p); });
+      return { t: 0.0, val: val, exact: exact, err: errOf(val, exact), nused: n,
+        cx: cx, ce: ce, cy: py.slice(), px: px.slice(), py: py.slice() };
+    },
+    step: function (s, p, dt) { s.t += dt; },
+    view: function (s) { return Object.assign({}, s); },
+    measure: function (p) { var s = CpOde2.init(p); return { val: s.val, exact: s.exact, err: s.err, nused: s.nused }; }
+  };
+
+  // ====================================================================================== Monte Carlo
+  var LCG_M = 2147483647;
+  function lcg(seed) { var s = I(seed) % LCG_M; return [s > 0 ? s : 1]; }
+  function uni(st) { st[0] = (st[0] * 16807.0) % LCG_M; return st[0] / LCG_M; }
+  function gauss2(st) {
+    var u1 = uni(st), u2 = uni(st), r = Math.sqrt(-2.0 * Math.log(u1 > 1e-300 ? u1 : 1e-300));
+    return [r * Math.cos(2 * PI * u2), r * Math.sin(2 * PI * u2)];
+  }
+  function binom(m, kk) {
+    var c = 1.0, i;
+    for (i = 1; i <= kk; i++) c = c * (m - kk + i) / i;
+    return c / Math.pow(2.0, m);
+  }
+  function mcExact(p) {
+    var cas = I(p.cas), sx, sy, rho, x0, y0;
+    if (cas === 1) return Math.E - 1.0;
+    if (cas === 2) return 0.5;
+    if (cas === 3) return binom(I(p.mtoss), I(p.khead));
+    if (cas === 4) return 1.0 / Math.sqrt(12.0 * I(p.mtoss));
+    if (cas === 5) return 1.0 / p.rate;
+    if (cas === 6) {
+      sx = p.sx; sy = p.sy; rho = p.rho; x0 = p.mx; y0 = p.my;
+      return Math.sqrt(y0 * y0 * sx * sx + x0 * x0 * sy * sy + 2 * x0 * y0 * rho * sx * sy);
+    }
+    return PI;
+  }
+  function mcRun(p, N, marks) {
+    var cas = I(p.cas), st = lcg(p.seed), hit = 0.0, tot = 0.0, sq = 0.0, out = [], mi = 0;
+    var m = Math.max(1, I(p.mtoss)), kk = I(p.khead), i, j, est = 0.0, x, y, h, g, v, z, xx, yy, fv;
+    for (i = 1; i <= N; i++) {
+      if (cas === 0) {
+        x = uni(st); y = uni(st);
+        if (x * x + y * y <= 1.0) hit += 1;
+        est = 4.0 * hit / i;
+      } else if (cas === 1) { tot += Math.exp(uni(st)); est = tot / i; }
+      else if (cas === 2) { tot += uni(st); est = tot / i; }
+      else if (cas === 3) {
+        h = 0;
+        for (j = 0; j < m; j++) if (uni(st) < 0.5) h += 1;
+        if (h === kk) hit += 1;
+        est = hit / i;
+      } else if (cas === 4) {
+        g = 0.0;
+        for (j = 0; j < m; j++) g += uni(st);
+        g = g / m; tot += g; sq += g * g;
+        v = sq / i - (tot / i) * (tot / i);
+        est = Math.sqrt(v > 0 ? v : 0.0);
+      } else if (cas === 5) { tot += -Math.log(uni(st)) / p.rate; est = tot / i; }
+      else {
+        z = gauss2(st);
+        xx = p.mx + p.sx * z[0];
+        yy = p.my + p.sy * (p.rho * z[0] + Math.sqrt(1 - p.rho * p.rho) * z[1]);
+        fv = xx * yy; tot += fv; sq += fv * fv;
+        v = sq / i - (tot / i) * (tot / i);
+        est = Math.sqrt(v > 0 ? v : 0.0);
+      }
+      while (mi < marks.length && marks[mi] === i) { out.push(est); mi++; }
+    }
+    while (out.length < marks.length) out.push(N > 0 ? est : 0.0);
+    return [est, out];
+  }
+  function mcMarks(N) {
+    var out = [], i, v;
+    for (i = 1; i <= 60; i++) {
+      v = I(Math.pow(N, i / 60.0));
+      if (v < 1) v = 1;
+      if (!out.length || v > out[out.length - 1]) out.push(v);
+    }
+    return out;
+  }
+  var CpMonteCarlo = {
+    PARAMS: { cas: 0.0, method: 0.0, n: 4000.0, seed: 12345.0, mtoss: 10.0, khead: 5.0, rate: 0.5,
+      mx: 4.0, my: 2.5, sx: 0.08, sy: 0.05, rho: 0.0 },
+    VARS: ['t', 'val', 'exact', 'err', 'nused', 'cx', 'ce', 'cy', 'px', 'py'],
+    init: function (p) {
+      var N = Math.max(10, I(p.n)), marks = mcMarks(N), r = mcRun(p, N, marks), val = r[0], run = r[1];
+      var exact = mcExact(p), cx = marks.slice(), i;
+      for (i = 0; i < cx.length; i++) cx[i] = cx[i];
+      return { t: 0.0, val: val, exact: exact, err: errOf(val, exact), nused: N,
+        cx: cx, ce: mapf(cx, function () { return exact; }), cy: run.slice(), px: [cx[cx.length - 1]], py: [val] };
+    },
+    step: function (s, p, dt) { s.t += dt; },
+    view: function (s) { return Object.assign({}, s); },
+    measure: function (p) { var s = CpMonteCarlo.init(p); return { val: s.val, exact: s.exact, err: s.err, nused: s.nused }; }
+  };
+
+  // ====================================================================================== projectile
+  function projExact(p) {
+    var cas = I(p.cas), u = p.u, th = p.th, g = p.g;
+    if (cas === 1) return u * u * Math.sin(th) * Math.sin(th) / (2 * g);
+    if (cas === 2) return 2 * u * Math.sin(th) / g;
+    return u * u * Math.sin(2 * th) / g;
+  }
+  var CpProjectile = {
+    PARAMS: { cas: 0.0, method: 2.0, n: 100.0, u: 30.0, th: 0.7854, g: 9.8 },
+    VARS: ['t', 'val', 'exact', 'err', 'nused', 'cx', 'ce', 'cy', 'px', 'py', 'tflight', 'hmax', 'range_m'],
+    init: function (p) {
+      var cas = I(p.cas), meth = I(p.method), n = Math.max(4, I(p.n)), u = p.u, th = p.th, g = p.g;
+      var tend = 2 * u * Math.sin(th) / g, h = (tend * 1.2) / n, i, j, k1, k2, k3, k4, d, prev, fr, tmp;
+      var f = function (y) { return [y[2], y[3], 0.0, -g]; };
+      var y = [0.0, 0.0, u * Math.cos(th), u * Math.sin(th)], px = [0.0], py = [0.0];
+      var hmax = 0.0, tf = 0.0, rng = 0.0, t = 0.0;
+      for (i = 0; i < n; i++) {
+        prev = y.slice();
+        if (meth === 0) { d = f(y); tmp = []; for (j = 0; j < 4; j++) tmp[j] = y[j] + h * d[j]; y = tmp; }
+        else if (meth === 1) {
+          k1 = f(y); tmp = []; for (j = 0; j < 4; j++) tmp[j] = y[j] + h * k1[j];
+          k2 = f(tmp); tmp = []; for (j = 0; j < 4; j++) tmp[j] = y[j] + h * 0.5 * (k1[j] + k2[j]); y = tmp;
+        } else {
+          k1 = f(y); tmp = []; for (j = 0; j < 4; j++) tmp[j] = y[j] + h / 2 * k1[j];
+          k2 = f(tmp); tmp = []; for (j = 0; j < 4; j++) tmp[j] = y[j] + h / 2 * k2[j];
+          k3 = f(tmp); tmp = []; for (j = 0; j < 4; j++) tmp[j] = y[j] + h * k3[j];
+          k4 = f(tmp); tmp = [];
+          for (j = 0; j < 4; j++) tmp[j] = y[j] + h / 6 * (k1[j] + 2 * k2[j] + 2 * k3[j] + k4[j]);
+          y = tmp;
+        }
+        t += h;
+        if (y[1] > hmax) hmax = y[1];
+        if (prev[1] >= 0 && y[1] < 0 && tf === 0.0) {
+          fr = prev[1] / (prev[1] - y[1]);
+          tf = t - h + fr * h;
+          rng = prev[0] + fr * (y[0] - prev[0]);
+        }
+        if (tf === 0.0 || px.length < 2) { px.push(y[0]); py.push(y[1]); }
+      }
+      if (tf === 0.0) { tf = t; rng = y[0]; }
+      var val = cas === 1 ? hmax : cas === 2 ? tf : rng;
+      var exact = projExact(p), q = Object.assign({}, p); q.cas = 0.0;
+      var R = projExact(q), cx = grid(0.0, R, 60);
+      var ce = mapf(cx, function (z) { return z * Math.tan(th) - g * z * z / (2 * u * u * Math.cos(th) * Math.cos(th)); });
+      return { t: 0.0, val: val, exact: exact, err: errOf(val, exact), nused: n,
+        cx: cx, ce: ce, cy: [], px: px.slice(), py: py.slice(), tflight: tf, hmax: hmax, range_m: rng };
+    },
+    step: function (s, p, dt) { s.t += dt; },
+    view: function (s) { return Object.assign({}, s); },
+    measure: function (p) { var s = CpProjectile.init(p); return { val: s.val, exact: s.exact, err: s.err, nused: s.nused }; }
+  };
+
   root.HoolaKernels.register({
-    K: { cp_root: CpRoot, cp_quad: CpQuad, cp_ode1: CpOde1, cp_diff: CpDiff, cp_approx: CpApprox },
+    K: { cp_root: CpRoot, cp_quad: CpQuad, cp_ode1: CpOde1, cp_diff: CpDiff, cp_approx: CpApprox,
+      cp_ode2: CpOde2, cp_mc: CpMonteCarlo, cp_proj: CpProjectile },
     TEXTBOOK: {
       cp_root_x: rootExact, cp_quad_I: quadExact, cp_diff_d: fdExact,
       cp_ode1_y: function (p) { return ode1Exact(I(p.cas), p.tmax, p); },
-      cp_approx_f: function (p) { return apF(I(p.cas), p.x); }
+      cp_approx_f: function (p) { return apF(I(p.cas), p.x); },
+      cp_ode2_x: ode2Truth, cp_mc_v: mcExact, cp_proj_v: projExact
     },
     CALCS: {
       cp_best: { label: 'best value', unit: '', needs: ['n', 'val'],

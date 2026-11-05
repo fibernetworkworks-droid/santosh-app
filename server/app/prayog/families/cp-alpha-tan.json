@@ -1,0 +1,75 @@
+{
+ "base": "cp-alpha-tan",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "alpha = tan(alpha): {root} {method}",
+  "unknown": "the root of tan α = α",
+  "axes": {
+   "root": [
+    {
+     "key": "r1",
+     "label": "the first root (π, 3π/2)",
+     "sample": "First root, near 4.49",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "xa": 3.3,
+      "xb": 4.6,
+      "x0": 4.3,
+      "x1": 4.6
+     }
+    },
+    {
+     "key": "r2",
+     "label": "the second root (2π, 5π/2)",
+     "sample": "Second root, near 7.73",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "xa": 6.4,
+      "xb": 7.8,
+      "x0": 7.72,
+      "x1": 7.8
+     }
+    },
+    {
+     "key": "r3",
+     "label": "the third root (3π, 7π/2)",
+     "sample": "Third root, near 10.90",
+     "source": {
+      "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+      "note": "the practical list names these methods and these functions"
+     },
+     "params": {
+      "xa": 9.5,
+      "xb": 10.95,
+      "x0": 10.9,
+      "x1": 10.95
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "bisect",
+     "label": "by bisection",
+     "method": "Bisection on a sign-changing bracket",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "newton",
+     "label": "by Newton-Raphson",
+     "method": "Newton-Raphson from a starting guess",
+     "params": {
+      "method": 1
+     }
+    }
+   ]
+  }
+ }
+}

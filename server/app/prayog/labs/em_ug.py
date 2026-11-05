@@ -249,3 +249,219 @@ def max_power() -> dict:
 
 
 BUILDERS: tuple[Any, ...] = (kirchhoff, thevenin_norton, superposition, max_power)
+
+
+# ============================================================================== the alternating-current bench
+def _ac_bodies(extra: list[dict]) -> list[dict]:
+    """The AC bench as LSL data. The studio rig `ac-bench` draws the real instruments; this is the plain view."""
+    return [board(1.0, 0.56),
+            B("fg", "box", name="Function generator", info="A sine generator with a frequency dial and a "
+              "calibrated output. Its amplitude is held the same all through the experiment.",
+              size=[0.2, 0.1, 0.14], pos=[-0.42, 0.05, -0.4], color="#5f646b"),
+            B("fgs", "box", name="Generator display", size=[0.1, 0.002, 0.034], pos=[-0.42, 0.101, -0.44],
+              color="#121214"),
+            B("cro", "box", name="Oscilloscope", info="Two traces: the generator's own voltage and the voltage "
+              "across the part being measured, so their sizes and their phase can both be read off the screen.",
+              size=[0.3, 0.2, 0.26], pos=[0.18, 0.1, -0.42], color="#3c4149"),
+            B("scr", "box", name="Screen", size=[0.17, 0.002, 0.13], pos=[0.14, 0.201, -0.42], color="#0d2a16"),
+            B("mtr", "box", name="Alternating-current milliammeter", size=[0.12, 0.09, 0.1],
+              pos=[-0.14, 0.045, -0.1], color="#17181b"),
+            B("rbx", "box", name="Decade resistance box", size=[0.19, 0.05, 0.11], pos=[-0.38, 0.025, 0.05],
+              color="#2b2f36"),
+            B("lbx", "box", name="Decade inductance box", size=[0.19, 0.05, 0.11], pos=[-0.14, 0.025, 0.12],
+              color="#2b2f36"),
+            B("cbx", "box", name="Decade capacitance box", size=[0.19, 0.05, 0.11], pos=[0.1, 0.025, 0.12],
+              color="#2b2f36"),
+            _w("aw1", [[-0.34, 0.03, -0.34], [-0.3, 0.03, -0.12], [-0.2, 0.03, -0.08]]),
+            _w("aw2", [[-0.08, 0.03, -0.08], [-0.1, 0.03, 0.04], [-0.14, 0.03, 0.07]], "black"),
+            _w("aw3", [[-0.3, 0.03, 0.05], [-0.22, 0.03, 0.1], [-0.2, 0.03, 0.12]]),
+            _w("aw4", [[-0.06, 0.03, 0.12], [0.0, 0.03, 0.12], [0.04, 0.03, 0.12]]),
+            _w("aw5", [[0.18, 0.03, 0.12], [0.3, 0.03, -0.1], [0.22, 0.03, -0.3]], "black"),
+            *extra]
+
+
+_AC_SAFETY = ("The whole experiment runs on the function generator's own output, a volt or two: nothing here is "
+              "at mains voltage. Keep the generator's amplitude the same for every reading, or the resonance "
+              "curve means nothing, and do not short its output.")
+_AC_CAM = {"pos": [0.0, 1.0, 1.0], "look": [0, 0.04, -0.16]}
+
+
+def _aclab(**kw) -> dict:
+    d = dict(lsl=1, field="physics", lang="en-IN", rig="ac-bench",
+             group="Physics · AC circuits", level="B.Sc. (UG)", topic="Alternating-current circuits",
+             chapter="AC circuits and bridges", autorun=True, camera=dict(_AC_CAM), floor=-0.03,
+             safety=_AC_SAFETY)
+    d.update(kw)
+    return d
+
+
+def series_resonance() -> dict:
+    return _aclab(
+        id="series-lcr-resonance", title="Series LCR resonance: frequency, Q and bandwidth",
+        aim="Sweep the generator's frequency through resonance, plot the current against frequency, and find the "
+            "resonant frequency, the unknown inductance, the half-power bandwidth and the quality factor.",
+        kernel="lcr", params={"R": 47.0, "L": 0.022, "C": 4.7e-8, "f": 1000.0, "V": 1.0, "mode": 0.0},
+        bodies=_ac_bodies([]),
+        knobs=[knob("f", "Generator frequency", "f", 100, 20000, 10, 1000, "Hz"),
+               knob("R", "Resistance in the circuit", "R", 5, 2000, 1, 47, "Ω"),
+               knob("C", "Capacitance", "C", 0.001, 10, 0.001, 0.047, "µF", 1e-6),
+               knob("V", "Generator amplitude", "V", 0.2, 5, 0.1, 1, "V"),
+               knob("L", "Coil (L hidden)", "L", 0.1, 1000, 0.1, 22, "mH", 1e-3, hidden=True)],
+        instruments=[inst("I", "readout", "Milliammeter", "I", k=1000, unit="mA", lc=0.01, digits=2),
+                     inst("Z", "readout", "Impedance", "Z", unit="Ω", digits=1),
+                     inst("gr", "graph", "Current against frequency", "I", k=1000, x="p.f", xlabel="f (Hz)",
+                          dots=True)],
+        steps=["Set the resistance box to 47 Ω and the capacitance box to 0.047 µF.",
+               "Sweep the generator from a few hundred hertz upwards, reading the milliammeter at each setting.",
+               "The current rises to a sharp maximum and falls again: that maximum is resonance.",
+               "Take close readings either side of the peak to fix the resonant frequency.",
+               "L = 1/(4π²f₀²C). Read the two frequencies at which the current is 1/√2 of its peak: their "
+               "difference is the bandwidth, and Q = f₀ / bandwidth."],
+        theory="In a series LCR circuit the inductive reactance 2πfL grows with frequency and the capacitive "
+               "reactance 1/(2πfC) falls, so at one frequency they are equal and opposite and cancel. There the "
+               "impedance is just R, the smallest it can be, and the current is greatest: that is series "
+               "resonance, at f₀ = 1/(2π√(LC)). The current falls to 1/√2 of its peak (half the power) at two "
+               "frequencies whose difference is R/(2πL), so the sharpness of the curve measures the coil: "
+               "Q = f₀/Δf = (1/R)√(L/C). A series resonant circuit is an acceptor: at f₀ it offers the least "
+               "opposition, which is how a receiver is tuned to one station.",
+        tour=[{"say": "The generator, the milliammeter, the resistance box, the coil and the capacitor are all in one series loop."},
+              {"set": {"f": 4950}, "say": "At about five kilohertz the current jumps: the two reactances have cancelled and only the resistance is left."},
+              {"set": {"f": 12000}, "say": "Well above resonance the inductive reactance dominates and the current has fallen away again."}],
+        questions=[{"q": "At series resonance the impedance is", "options": ["The smallest, and equal to R",
+                    "The largest", "Zero"], "answer": 0, "why": "The two reactances cancel, leaving R alone."},
+                   {"q": "A sharper resonance curve means", "options": ["A larger Q", "A larger R",
+                    "A larger C"], "answer": 0, "why": "Q = f₀/Δf, so a narrow curve is a high Q."}],
+        sources=[UG, AC_BOOK, E24, SIM],
+        check={"params": {}, "reading": "fr", "textbook": "lcr_fr"},
+    )
+
+
+def parallel_resonance() -> dict:
+    return _aclab(
+        id="parallel-lcr-resonance", title="Parallel LCR circuit: anti-resonance and Q",
+        aim="Put the coil in parallel with the capacitor, sweep the frequency, and find the anti-resonant "
+            "frequency where the current drawn from the generator is least, with the dynamic impedance and Q.",
+        kernel="lcr", params={"R": 22.0, "L": 0.047, "C": 1e-7, "f": 1000.0, "V": 1.0, "mode": 1.0},
+        bodies=_ac_bodies([]),
+        knobs=[knob("f", "Generator frequency", "f", 100, 20000, 10, 1000, "Hz"),
+               knob("R", "Resistance of the coil", "R", 2, 500, 1, 22, "Ω"),
+               knob("C", "Capacitance in parallel", "C", 0.001, 10, 0.001, 0.1, "µF", 1e-6),
+               knob("V", "Generator amplitude", "V", 0.2, 5, 0.1, 1, "V"),
+               knob("L", "Coil (L hidden)", "L", 0.1, 1000, 0.1, 47, "mH", 1e-3, hidden=True)],
+        instruments=[inst("I", "readout", "Milliammeter (supply lead)", "I", k=1000, unit="mA", lc=0.001,
+                          digits=3),
+                     inst("Z", "readout", "Impedance of the combination", "Z", unit="Ω", digits=0),
+                     inst("gr", "graph", "Supply current against frequency", "I", k=1000, x="p.f",
+                          xlabel="f (Hz)", dots=True)],
+        steps=["Join the coil and the capacitor in parallel across the generator, with the milliammeter in the "
+               "supply lead.",
+               "Sweep the frequency and read the current at each setting.",
+               "The current falls to a minimum and rises again: that minimum is anti-resonance.",
+               "Take close readings either side of it to fix the frequency.",
+               "The impedance there is the dynamic impedance L/(CR), and Q = 2πf L/R."],
+        theory="A coil and a capacitor in parallel across a generator carry currents in nearly opposite phase, "
+               "so they largely cancel in the supply lead. At one frequency the cancellation is at its best: "
+               "the impedance of the combination reaches its greatest value and the current drawn from the "
+               "generator its least. This is anti-resonance, and a parallel circuit is therefore a rejector. "
+               "With a real coil of resistance R the greatest impedance is about L/(CR), not infinite, and it "
+               "sits very slightly below 1/(2π√(LC)); the familiar formula √(1/(LC) − R²/L²) is the frequency at "
+               "which the combination behaves as a pure resistance, which is lower again.",
+        tour=[{"say": "The coil and the capacitor now sit side by side across the generator, and the milliammeter is in the lead that feeds them both."},
+              {"set": {"f": 2320}, "say": "At about two and a third kilohertz the current has fallen to almost nothing: the two branch currents are cancelling."},
+              {"set": {"f": 8000}, "say": "Far above anti-resonance the capacitor takes a large current and the meter reads high again."}],
+        questions=[{"q": "At anti-resonance the current drawn from the generator is", "options": [
+            "The least", "The greatest", "Unchanged"], "answer": 0,
+            "why": "The impedance of the combination is greatest there."},
+            {"q": "The dynamic impedance of the parallel circuit is about", "options": ["L/(CR)", "R", "1/(CR)"],
+             "answer": 0, "why": "The two branch currents cancel all but a small resistive part."}],
+        sources=[UG, AC_BOOK, E24, SIM],
+        check={"params": {}, "reading": "fr", "textbook": "lcr_far"},
+    )
+
+
+def series_rc() -> dict:
+    return _aclab(
+        id="series-rc-characteristics", title="Characteristics of a series RC circuit",
+        aim="Measure the impedance and the phase of a series RC circuit over a wide range of frequency, and find "
+            "the unknown capacitance from the frequency at which the reactance equals the resistance.",
+        kernel="rcfilter", params={"R": 4700.0, "C": 2.2e-8, "f": 1000.0, "V": 1.0, "mode": 0.0},
+        bodies=_ac_bodies([]),
+        knobs=[knob("f", "Generator frequency", "f", 20, 50000, 10, 1000, "Hz"),
+               knob("R", "Resistance in series", "R", 100, 100000, 100, 4700, "Ω"),
+               knob("V", "Generator amplitude", "V", 0.2, 5, 0.1, 1, "V"),
+               knob("C", "Capacitor (C hidden)", "C", 0.001, 10, 0.001, 0.022, "µF", 1e-6, hidden=True)],
+        instruments=[inst("Zm", "readout", "Impedance", "Z", unit="Ω", digits=0),
+                     inst("ph", "readout", "Phase of the current", "phase", k=57.29577951308232, unit="°",
+                          digits=1),
+                     inst("gr", "graph", "Output against frequency", "gain", x="p.f", xlabel="f (Hz)",
+                          dots=True)],
+        steps=["Put the resistance box and the capacitor in series across the generator, with the oscilloscope "
+               "across the capacitor.",
+               "At each frequency read the generator's own amplitude and the amplitude across the capacitor.",
+               "Their ratio is the fraction of the applied voltage the capacitor keeps.",
+               "The two are equal to 1/√2 at the frequency where the reactance equals the resistance.",
+               "C = 1/(2πR f_c), and every single reading gives f_c on its own from the measured ratio."],
+        theory="A resistance and a capacitance in series across an alternating supply divide the voltage in the "
+               "ratio of their impedances, R and 1/(2πfC), and the current leads the applied voltage by "
+               "arctan(1/(2πfCR)). At low frequency the reactance is large, so almost all the voltage is across "
+               "the capacitor and the current leads by nearly 90 degrees; at high frequency the reactance is "
+               "small, the resistance takes the voltage and the current is almost in phase. The two impedances "
+               "are equal at f_c = 1/(2πRC), where the capacitor keeps 1/√2 = 0.707 of the applied voltage and "
+               "the phase is 45 degrees. Measuring that frequency with a known resistance measures the "
+               "capacitance.",
+        tour=[{"say": "The resistance box and the capacitor are in series; the oscilloscope shows the generator's own voltage and the voltage across the capacitor."},
+              {"set": {"f": 1540}, "say": "Here the two traces are in the ratio 0.707 and the phase is forty-five degrees: the reactance has become equal to the resistance."},
+              {"set": {"f": 20000}, "say": "Far above that frequency the capacitor keeps almost nothing: it is nearly a short circuit to the alternating voltage."}],
+        questions=[{"q": "At the cut-off frequency the output is", "options": ["0.707 of the input",
+                    "Half the input", "Equal to the input"], "answer": 0,
+                    "why": "The two impedances are equal, so the sum in quadrature gives a factor √2."},
+                   {"q": "In a series RC circuit the current", "options": ["Leads the applied voltage",
+                    "Lags it", "Is in phase with it"], "answer": 0,
+                    "why": "The capacitor's current leads the voltage across it by 90 degrees."}],
+        sources=[UG, AC_BOOK, E24, SIM],
+        check={"params": {}, "reading": "fc", "textbook": "rc_fc"},
+    )
+
+
+def rc_response() -> dict:
+    return _aclab(
+        id="rc-frequency-response", title="Frequency response of an RC filter",
+        aim="Measure the gain of an RC filter in decibels from well below to well above its cut-off, plot the "
+            "response, and find the cut-off frequency and the roll-off.",
+        kernel="rcfilter", params={"R": 10000.0, "C": 1e-8, "f": 1000.0, "V": 1.0, "mode": 0.0},
+        bodies=_ac_bodies([]),
+        knobs=[knob("f", "Generator frequency", "f", 20, 50000, 10, 1000, "Hz"),
+               knob("R", "Resistance of the filter", "R", 100, 100000, 100, 10000, "Ω"),
+               knob("V", "Generator amplitude", "V", 0.2, 5, 0.1, 1, "V"),
+               knob("C", "Capacitor (C hidden)", "C", 0.001, 10, 0.001, 0.01, "µF", 1e-6, hidden=True)],
+        instruments=[inst("g", "readout", "Output / input", "gain", digits=4),
+                     inst("db", "readout", "Gain", "dB", unit="dB", digits=2),
+                     inst("gr", "graph", "Gain against frequency", "dB", x="p.f", xlabel="f (Hz)", dots=True)],
+        steps=["Build the filter: the resistance box and the capacitor in series, the output taken across one of "
+               "them.",
+               "Hold the generator's amplitude the same and read the output at frequencies spread over three "
+               "decades.",
+               "Work out the gain in decibels, 20 log(output/input), at each frequency.",
+               "Plot the gain against the logarithm of the frequency: the response is flat in the pass band and "
+               "falls in a straight line beyond the corner.",
+               "The corner is where the gain has fallen by 3 dB; the slope beyond it is 20 dB per decade."],
+        theory="An RC filter is a frequency-dependent potential divider. With the output across the capacitor "
+               "the gain is 1/√(1 + (f/f_c)²): flat below the corner and falling as 1/f above it, which on a "
+               "decibel against logarithm plot is a straight line of −20 dB per decade. With the output across "
+               "the resistance the gain is (f/f_c)/√(1 + (f/f_c)²), the mirror image: a high-pass filter rising "
+               "at 20 dB per decade and then flat. Either way the corner is at f_c = 1/(2πRC), where the gain "
+               "is 1/√2, which is 3 dB down, and the phase shift is 45 degrees.",
+        tour=[{"say": "The same two parts, but now we are interested in the output over three decades of frequency, not at one setting."},
+              {"set": {"f": 1590}, "say": "This is the corner: three decibels down from the flat part of the response."},
+              {"set": {"f": 16000}, "say": "A decade past the corner the output has fallen by a further twenty decibels: that is the roll-off."}],
+        questions=[{"q": "Beyond its corner a single-section RC filter falls at", "options": [
+            "20 dB per decade", "6 dB per decade", "40 dB per decade"], "answer": 0,
+            "why": "The gain goes as 1/f, which is a factor of ten, or 20 dB, per decade."},
+            {"q": "With the output taken across the resistance the filter is", "options": ["High-pass",
+             "Low-pass", "Band-pass"], "answer": 0, "why": "The resistance keeps the voltage at high frequency."}],
+        sources=[UG, AC_BOOK, E24, SIM],
+        check={"params": {}, "reading": "fc", "textbook": "rc_fc"},
+    )
+
+
+BUILDERS = BUILDERS + (series_resonance, parallel_resonance, series_rc, rc_response)

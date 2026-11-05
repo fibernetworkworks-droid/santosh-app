@@ -1,0 +1,63 @@
+{
+ "base": "cp-delta-sequences",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Delta sequence: the Lorentzian of width {eps} {method}",
+  "unknown": "the area under the member of the sequence",
+  "axes": {
+   "eps": [
+    {
+     "key": "e50",
+     "label": "0.50",
+     "sample": "Lorentzian, eps = 0.50",
+     "params": {
+      "eps": 0.5
+     },
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     }
+    },
+    {
+     "key": "e25",
+     "label": "0.25",
+     "sample": "Lorentzian, eps = 0.25",
+     "params": {
+      "eps": 0.25
+     },
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     }
+    },
+    {
+     "key": "e10",
+     "label": "0.10",
+     "sample": "Lorentzian, eps = 0.10",
+     "params": {
+      "eps": 0.1
+     },
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "trap",
+     "label": "by the trapezoidal rule",
+     "method": "Composite trapezoidal rule",
+     "params": {
+      "method": 0
+     }
+    },
+    {
+     "key": "simp13",
+     "label": "by Simpson's 1/3",
+     "method": "Composite Simpson 1/3 rule",
+     "params": {
+      "method": 1
+     }
+    }
+   ]
+  }
+ }
+}

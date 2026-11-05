@@ -84,7 +84,9 @@ HoolaStudio.define('metre-scale-depression', function (S) {
   var weights = [], onHanger = [];
   for (var i = 0; i < NW; i++) {
     var g = new T.Group();
-    g.add(S.mesh(new T.CylinderGeometry(DR, DR, DT, 32), M.brass));
+    g.add(S.mesh(new T.CylinderGeometry(DR, DR, DT * 0.78, 32), M.brass));
+    var rim = S.mesh(new T.TorusGeometry(DR * 0.97, DT * 0.1, 8, 36), new T.MeshStandardMaterial({ color: 0x8a6a22, roughness: 0.5, metalness: 0.8 }));
+    rim.rotation.x = Math.PI / 2; rim.position.y = -DT * 0.39; g.add(rim);
     var tag = new T.Mesh(new T.PlaneGeometry(0.02, 0.01), wMat); tag.rotation.x = -Math.PI / 2; tag.position.set(0.006, DT / 2 + 0.0003, 0); tag.renderOrder = 2; g.add(tag);
     g.position.set(PILE.x, DT / 2 + i * DT, PILE.z); S.scene.add(g); weights.push(g);
   }
