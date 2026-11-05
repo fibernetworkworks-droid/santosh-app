@@ -1,4 +1,4 @@
-"""v0.530.0 HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan
+"""v0.531.0 HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan
 (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main). The
 langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code.
 This suite pins the layer:
@@ -762,8 +762,8 @@ def test_no_config_reads_in_graph_module():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.530.0"
-    assert "0.530.0+553" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.531.0"
+    assert "0.531.0+554" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.530.0"')
+    assert line.startswith('APP_VERSION = "0.531.0"')
     assert "HOOLA GRAPH" in line and "StateGraph" in line and "interrupt" in line
