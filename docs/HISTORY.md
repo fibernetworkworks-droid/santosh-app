@@ -19339,3 +19339,20 @@ two checks. 102 pass across every Developer Sahayak suite.
 version has ever started. Every lab path here is tested through a scripted `FakeLab` or monkeypatched `box` calls.
 The order she should take: run **`lab_check`**, read it for `GADBAD` / `KHATRA`, then turn `dev_lab` on and give
 Developer Sahayak one real bug.
+
+## v0.532.0 PRAYOGSHALA fix — the lab could not have built its image on her VPS
+
+Found while writing the deploy commands for her, not by a test: she pastes from `~/santosh_app`, the deploy copies
+**`server/app` only** into `~/apps/santosh-core/`, and `box.DOCKERFILE` was
+`Path(__file__).resolve().parents[3] / "deploy" / "devlab" / "Dockerfile"` — which from
+`~/apps/santosh-core/app/devlab/box.py` resolves to `~/apps/deploy/devlab/Dockerfile`, a path that does not exist.
+The very first `lab_check` would have answered **"Dockerfile nahi mili"**, after 35 green tests in the sandbox.
+
+Fix: the Dockerfile text lives in `box.DOCKERFILE_TEXT` (a raw string, so the `\` line continuations survive) and
+`build_base()` writes it into a temp folder and builds from there, so it works from any path and the image always
+matches the code that is running. `deploy/devlab/Dockerfile` stays as the readable copy; two new tests keep them
+honest — one asserts they are byte-identical (and that the continuations survived the embedding), one builds with the
+disk copy deliberately missing and checks the text handed to `docker build` is the embedded one.
+
+**Rule for this repo:** a path built from `__file__` must be checked against `~/apps/santosh-core`, where the code
+actually runs, not only against the repo layout. Anything outside `server/app` is not deployed.

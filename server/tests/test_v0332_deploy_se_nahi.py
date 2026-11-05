@@ -80,5 +80,5 @@ def test_a_site_map_job_starts_again_after_a_restart(site_env, monkeypatch):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.531.0"
-    assert "0.531.0+554" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.532.0"
+    assert "0.532.0+555" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
