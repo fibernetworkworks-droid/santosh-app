@@ -165,12 +165,19 @@ def test_real_godot_loads_the_generated_scenes_and_instances_multiply(tmp_path):
 
 @pytest.mark.skipif(not _godot(), reason="Godot is not installed here")
 def test_a_scene_the_engine_cannot_load_is_a_FAIL_not_a_pass(tmp_path):
-    """An unknown node type HANGS Godot's load rather than erroring, so 'never finished' must itself fail."""
+    """MEASURED, and it is why the verdict does not rest on instantiate(): an unknown node type does NOT make the
+    load fail. Godot logs `Cannot get class` + `A placeholder will be created instead` and hands back a scene with a
+    plain Node where the real one should be - so this run reports loaded=True, nodes=3, no errors, and would have
+    PASSED on instantiate() alone. A placeholder is a silently broken game, so the log's own trouble lines decide."""
     from app.gamedesk import scene as S
     broken = S.build(COIN, set(SCRIPTS), set()).replace('type="Area2D"', 'type="NoSuchNodeTypeAtAll"')
     rep = S.verify({"coin.tscn": broken}, SCRIPTS, tmp_path / "bad")
-    assert rep["verdict"] == "FAIL"
-    assert not rep.get("loaded") or any(not r["loaded"] for r in rep.get("scenes", []))
+    assert rep["verdict"] == "FAIL", rep
+    # the failure must be EVIDENCED: either the scene did not load, or the engine told us it substituted something
+    trouble = rep.get("trouble") or []
+    assert (not rep.get("loaded") or any(not r["loaded"] for r in rep.get("scenes", []))
+            or any("Cannot get class" in t or "placeholder" in t for t in trouble)), rep
+    assert rep["why"], "a FAIL must say why in words"
 
 
 # ================================================================ the flow, the build, the tool
@@ -252,3 +259,17 @@ def test_api_tool_and_routing(st, monkeypatch):  # noqa: F811
         assert "gamedesk" in admit.route(ask), ask
     root = Path(__file__).resolve().parents[2]
     assert "scenes" in (root / "server/app/gamedesk/service.py").read_text()
+
+
+def test_the_console_has_a_scenes_page():
+    """The lane must be reachable without chat: the studio board gets a Scenes page that proposes, shows the engine's
+    own verdict and takes her OK. (The phone is deliberately NOT given a scenes screen this release - on the phone the
+    same lane is the `game_scenes` tool in chat, which the agent test above covers.)"""
+    emp = (Path(__file__).resolve().parents[2] / "server/app/static/console/employees.js").read_text(encoding="utf-8")
+    assert "async function gsScenes(" in emp
+    assert "id=\"gsScnBtn\"" in emp and "GS_SCN = true; gsScenes(el, id);" in emp
+    assert "if (GS_SCN) return gsScenes(el, id);" in emp, "the board must route back into the page"
+    assert "/api/gamedesk/scenes/${q}" in emp
+    assert "data-sc=\"approve\"" in emp and "data-sc=\"reject\"" in emp
+    # it must say the rule, not just show a list
+    assert "the model never writes a scene file" in emp

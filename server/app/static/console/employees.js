@@ -1069,6 +1069,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   let GS_ASSETS = false;       // v0.416 the Assets page of the open project
   let GS_REL = false;          // v0.416 the Release page (platforms + store kit) of the open project
   let GS_QA = false;           // v0.416 the QA farm + bugs page of the open project
+  let GS_SCN = false;          // v0.456 the Scenes page (the ceiling): specs in, checked .tscn out
   let GS_SIM = null;
   let GS_OPEN = '';            // v0.386 the Studio Project board open in the Game Desk ('' = the desk home)
   let GS_ROLE = '';            // v0.420 a role page open: 'world' | 'physics' ('' = none)
@@ -1423,6 +1424,46 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     el.querySelectorAll('[data-qb]').forEach(b => b.addEventListener('click', () => go(() => api('POST', `/api/gamestudio/${q}/bugs/${encodeURIComponent(b.dataset.n)}/${b.dataset.qb}`),
       b.dataset.qb === 'fix' ? 'A fix task is on the board. The bug closes when the same bot cannot find it again.' : '')));
     if (d.running) GTIMER = setTimeout(() => { if (visible(el) && GS_QA) gsQa(el, id); }, 8000);
+  }
+
+  // ---------------------------------------------------------------- v0.456 Scenes as checked data (the ceiling)
+  const SCST = {approved: ['ok', 'In the game'], draft: ['v', 'Waiting for your OK'], failed: ['bad', 'Did not load'], rejected: ['', 'Dropped']};
+  async function gsScenes(el, id) {
+    clearTimeout(GTIMER);
+    const q = encodeURIComponent(id);
+    let d;
+    try { d = await api('GET', `/api/gamedesk/scenes/${q}`); }
+    catch (e) { toast(e.message, true); GS_SCN = false; return gsBoard(el, id); }
+    const lim = d.limits || {};
+    el.innerHTML = `<div class="vh"><button class="btn soft" type="button" id="scBack">← Board</button><h2>Scenes</h2>
+        <span class="muted em-sub">${num((d.in_the_game || []).length)} in the game · up to ${num(lim.scenes)} scenes, ${num(lim.nodes_per_scene)} nodes each</span></div>
+      <p class="muted em-sub">${esc(d.how || '')}</p>
+      <section class="tile gl"><h3>Ask for a scene</h3>
+        <div class="acts"><input id="scW" maxlength="400" placeholder="A rooftop level: three ledges, a moving platform, twenty coins and the exit door" aria-label="What the scene should have">
+          <input id="scN" maxlength="32" placeholder="Name, e.g. Level1" aria-label="Scene name">
+          <button class="btn go" type="button" id="scGo">Make it and load it in the engine</button></div>
+        <p class="muted em-small">Hoola writes the scene itself from a checked description - the model never writes a scene file, because a script hidden inside one would run. Every scene is opened in the real engine before you see it.</p></section>
+      ${(d.scenes || []).map(x => { const [c, n] = SCST[x.status] || ['', x.status], r = x.report || {};
+        return `<section class="tile gl"><div class="ga-h"><b>${esc(x.name)}</b> <span class="muted">${esc(x.file)}</span> ${tag(c, n)}
+            <span class="muted em-small">${num(x.nodes)} nodes in the engine${(r.verdict ? ' · ' + esc(r.verdict) : '')}</span></div>
+          ${x.words ? `<p class="em-small">${esc(x.words)}</p>` : ''}
+          ${r.why ? `<p class="${x.status === 'failed' ? 'badc' : 'muted'} em-small">${esc(r.why)}</p>` : ''}
+          ${(r.trouble || []).slice(0, 3).map(t => `<div class="badc em-small">${esc(t)}</div>`).join('')}
+          <div class="acts">${x.status === 'draft' ? `<button class="btn go gs-mini" type="button" data-sc="approve" data-n="${esc(x.id)}">Haan, game mein daalo</button>` : ''}
+            ${x.status !== 'rejected' ? `<button class="btn soft gs-mini" type="button" data-sc="reject" data-n="${esc(x.id)}">Drop it</button>` : ''}</div></section>`; }).join('')
+        || '<p class="muted em-small">No scenes yet.</p>'}
+      <p class="muted em-small">Not built: ${esc(d.not_built || '')}</p>`;
+    const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsScenes(el, id); };
+    el.querySelector('#scBack').addEventListener('click', () => { GS_SCN = false; gsBoard(el, id); });
+    el.querySelector('#scGo').addEventListener('click', e => {
+      const words = el.querySelector('#scW').value.trim();
+      if (words.length < 8) { toast('Scene ek line mein likhiye.', true); return; }
+      e.target.disabled = true; e.target.textContent = 'Making it and loading it…';
+      go(() => api('POST', `/api/gamedesk/scenes/${q}`, {words, name: el.querySelector('#scN').value.trim()}));
+    });
+    el.querySelectorAll('[data-sc]').forEach(b => b.addEventListener('click', () => go(
+      () => api('POST', `/api/gamedesk/scenes/${q}/${encodeURIComponent(b.dataset.n)}/${b.dataset.sc}`),
+      b.dataset.sc === 'approve' ? 'Agli build mein dikhega.' : '')));
   }
 
   // ---------------------------------------------------------------- v0.416 platforms: downloads, store kit, itch.io
@@ -2085,6 +2126,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     if (GS_BIBLE) return gsBible(el, id);
     if (GS_ASSETS) return gsAssets(el, id);
     if (GS_QA) return gsQa(el, id);
+    if (GS_SCN) return gsScenes(el, id);
     if (GS_REL) return gsRelease(el, id);
     let p;
     try { p = await api('GET', `/api/gamestudio/${encodeURIComponent(id)}`); }
@@ -2108,6 +2150,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         <button class="btn soft" type="button" id="gsXrBtn">VR / AR</button>
         <button class="btn soft" type="button" id="gsSimBtn">Simulator</button>
         <button class="btn soft" type="button" id="gsRtBtn">Runtime & editor</button>
+        <button class="btn soft" type="button" id="gsScnBtn">Scenes</button>
         <button class="btn soft" type="button" id="gsLoBtn">Live ops</button>
         <button class="btn soft" type="button" id="gsPvBtn">Where it came from</button>
         <button class="btn soft" type="button" id="gsQaBtn">QA${(p.qa || {}).verdict ? ' · ' + esc(p.qa.verdict) : ''}${(p.qa || {}).open ? ' · ' + num(p.qa.open) + ' bug' + (p.qa.open === 1 ? '' : 's') : ''}</button>
@@ -2155,7 +2198,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
       </div>`;
     const q = encodeURIComponent(p.id);
     const go = async (fn, ok) => { try { await fn(); if (ok) toast(ok); } catch (e) { toast(e.message, true); } gsBoard(el, id); };
-    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_REL = false; GS_ROLE = ''; el.innerHTML = ''; game(el); });
+    el.querySelector('#gsBack').addEventListener('click', () => { GS_OPEN = ''; GS_BIBLE = false; GS_ASSETS = false; GS_QA = false; GS_SCN = false; GS_REL = false; GS_ROLE = ''; el.innerHTML = ''; game(el); });
     el.querySelector('#gsBib').addEventListener('click', () => { GS_BIBLE = true; gsBible(el, id); });
     el.querySelector('#gsAst').addEventListener('click', () => { GS_ASSETS = true; gsAssets(el, id); });
     el.querySelector('#gsQaBtn').addEventListener('click', () => { GS_QA = true; gsQa(el, id); });
@@ -2168,6 +2211,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     el.querySelector('#gsXrBtn').addEventListener('click', () => { GS_ROLE = 'xr'; GS_ROLE_SID = id; gsXr(el); });
     el.querySelector('#gsSimBtn').addEventListener('click', () => { GS_ROLE = 'sim'; GS_ROLE_SID = id; gsSim(el); });
     el.querySelector('#gsRtBtn').addEventListener('click', () => { GS_ROLE = 'runtime'; GS_ROLE_SID = id; gsRuntime(el); });
+    el.querySelector('#gsScnBtn').addEventListener('click', () => { GS_SCN = true; gsScenes(el, id); });
     el.querySelector('#gsLoBtn').addEventListener('click', () => { GS_ROLE = 'liveops'; GS_ROLE_SID = id; gsLiveops(el); });
     el.querySelector('#gsPvBtn').addEventListener('click', () => { GS_ROLE = 'prov'; GS_ROLE_SID = id; gsProv(el); });
     el.querySelector('#gsAdd').addEventListener('click', () => {
