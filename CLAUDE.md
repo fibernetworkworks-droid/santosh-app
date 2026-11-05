@@ -182,6 +182,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `grep -n "Notebook" docs/HISTORY.md`, then `sed -n 'START,ENDp'` only the section you need.
 - When you ship a version: add its detailed section to the END of `docs/HISTORY.md`, and AT MOST one line to the
   "Current state" list below. Never paste long sections into this file again.
+- ENFORCED since v0.455: `.claude/hooks/read-guard.sh` (a PreToolUse hook on Read) REFUSES a whole-file read of a
+  Markdown doc over 40 KB under `docs/` or of CLAUDE.md, and answers with that doc's headings BY LINE so the retry
+  reads one section. A ranged read (`offset` / `limit`), `allow_large: true`, a smaller file and every non-Read tool
+  all pass; it fails open on anything it cannot work out. Off with `HOOLA_READ_GUARD=off`, bar with
+  `HOOLA_READ_GUARD_KB`. The rule above was a sentence for 200 versions; now it is a hook.
 
 ## Current state (latest first, one line each)
 - v0.453 EDUCATION + ENTERPRISE IN THE HUB: AI Employees gains "Education, Research & Lab" (tutor / school office / curriculum / research / register / Prayogshala) + "Enterprise Systems & ERP" (the 10 enterprise roles); hiring adds the desk and gates NOTHING (tools stay open, tested); console Education Desk (tabs + Send / Not send share cards + labs); Enterprise Open desk = Systems on that role; phone opens each employee on its own screen.
