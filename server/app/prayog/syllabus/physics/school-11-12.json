@@ -945,7 +945,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "sonometer"
+     "kernel": "sonometer",
+     "built": "ac-mains-frequency-sonometer"
     },
     {
      "id": "inductor-impedance",
@@ -960,7 +961,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "ac-inductor"
+     "kernel": "ac-inductor",
+     "built": "inductor-impedance"
     }
    ]
   },
@@ -1009,7 +1011,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "mirror"
+     "kernel": "mirror",
+     "built": "convex-mirror-using-lens"
     },
     {
      "id": "concave-lens-using-convex",
@@ -1021,7 +1024,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "lens"
+     "kernel": "lens",
+     "built": "concave-lens-using-convex"
     },
     {
      "id": "prism-i-d-curve",
@@ -1068,7 +1072,8 @@
       "refractive index of the liquid"
      ],
      "conditions": [],
-     "kernel": "liquid-lens"
+     "kernel": "liquid-lens",
+     "built": "liquid-lens-plane-mirror"
     },
     {
      "id": "liquid-concave-mirror",
@@ -1082,7 +1087,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "liquid-lens"
+     "kernel": "liquid-lens",
+     "built": "liquid-concave-mirror"
     },
     {
      "id": "slab-lateral-deviation",
@@ -1094,7 +1100,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "slab-ray"
+     "kernel": "slab-ray",
+     "built": "slab-lateral-deviation"
     },
     {
      "id": "image-nature-candle-screen",

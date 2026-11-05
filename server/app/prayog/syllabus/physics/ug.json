@@ -2480,7 +2480,8 @@
       "resistance vs illumination"
      ],
      "conditions": [],
-     "kernel": "photoconductor"
+     "kernel": "photoconductor",
+     "built": "ldr-light-intensity"
     },
     {
      "id": "ir-sensor",
@@ -3049,7 +3050,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "flip-flop"
+     "kernel": "flip-flop",
+     "built": "jk-master-slave"
     },
     {
      "id": "counter-4bit",
@@ -3064,7 +3066,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "counter-logic"
+     "kernel": "counter-logic",
+     "built": "counter-4bit"
     },
     {
      "id": "shift-register",
@@ -3079,7 +3082,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "shift-register"
+     "kernel": "shift-register",
+     "built": "shift-register"
     },
     {
      "id": "microprocessor-8085",

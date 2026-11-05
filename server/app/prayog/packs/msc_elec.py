@@ -278,7 +278,10 @@ class MscGspec:
         flux = p["t"] * p["act"] * 1000.0 * top["w"] * top["I"]
         return {"E_pk": pk["E"], "fwhm_pk": pk["fwhm"], "res_pk": pk["fwhm"] / pk["E"] if pk["E"] > 0 else 0.0,
                 "eff_pk": pk["area"] / flux if flux > 0 else 0.0, "edge": MscGspec.edge(ex, p),
-                "chan_pk": pk["chan"]}
+                "chan_pk": pk["chan"],
+                # what a scintillator comparison reads: the resolution of the photopeak, or (no photopeak at all,
+                # as in plastic) the Compton edge
+                "cmp_pk": (pk["fwhm"] / pk["E"] if pk["E"] > 0 else 0.0) if p["pf662"] > 0 else MscGspec.edge(ex, p)}
 
 
 def _gs_E(p: dict) -> float:
@@ -307,6 +310,10 @@ def _gs_edge(p: dict) -> float:
     return 2.0 * al / (1.0 + 2.0 * al) * e
 
 
+def _gs_cmp(p: dict) -> float:
+    return _gs_res(p) if p["pf662"] > 0 else _gs_edge(p)
+
+
 def _first_line(p: dict) -> float:
     idx = int(round(p["src"]))
     return SRC[idx][1][0][0]
@@ -316,5 +323,5 @@ def _first_line(p: dict) -> float:
 KERNELS: dict[str, Any] = {"msc_gspec": MscGspec}
 FAMILY = {"msc_gspec": "em"}
 TEXTBOOK = {"msc_gs_E": _gs_E, "msc_gs_fwhm": _gs_fwhm, "msc_gs_res": _gs_res, "msc_gs_eff": _gs_eff,
-            "msc_gs_edge": _gs_edge}
+            "msc_gs_edge": _gs_edge, "msc_gs_cmp": _gs_cmp}
 CALCS: dict[str, dict] = {}

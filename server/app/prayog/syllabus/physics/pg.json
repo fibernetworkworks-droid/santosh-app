@@ -1035,7 +1035,8 @@
       "work function"
      ],
      "conditions": [],
-     "kernel": "photoelectric"
+     "kernel": "photoelectric",
+     "built": "photoelectric-planck"
     },
     {
      "id": "planck-solar-cell",
@@ -1241,7 +1242,8 @@
       "room temperature",
       "heated to about 420 K"
      ],
-     "kernel": "four_probe"
+     "kernel": "four_probe",
+     "built": "four-probe-band-gap"
     },
     {
      "id": "van-der-pauw",
@@ -3415,7 +3417,8 @@
       "low count rate",
       "high count rate"
      ],
-     "kernel": "poisson"
+     "kernel": "poisson",
+     "built": "gm-counting-statistics"
     },
     {
      "id": "gm-efficiency",
@@ -3476,7 +3479,8 @@
       "Cs-137 (662 keV)",
       "Co-60 (1.17 / 1.33 MeV)"
      ],
-     "kernel": "attenuation"
+     "kernel": "attenuation",
+     "built": "gamma-attenuation"
     },
     {
      "id": "nai-calibration-resolution",
@@ -3688,7 +3692,8 @@
       "half-life"
      ],
      "conditions": [],
-     "kernel": "decay"
+     "kernel": "decay",
+     "built": "short-half-life"
     },
     {
      "id": "pulse-processing-coincidence",

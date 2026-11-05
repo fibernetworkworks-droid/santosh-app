@@ -155,7 +155,8 @@
       var ex = msc_gspec.expected(p), pk = msc_gspec.findPeak(ex, p), top = msc_gspec.mainLine(p),
         flux = p.t * p.act * 1000.0 * top.w * top.I;
       return { E_pk: pk.E, fwhm_pk: pk.fwhm, res_pk: pk.E > 0 ? pk.fwhm / pk.E : 0.0,
-        eff_pk: flux > 0 ? pk.area / flux : 0.0, edge: msc_gspec.edge(ex, p), chan_pk: pk.chan };
+        eff_pk: flux > 0 ? pk.area / flux : 0.0, edge: msc_gspec.edge(ex, p), chan_pk: pk.chan,
+        cmp_pk: p.pf662 > 0 ? (pk.E > 0 ? pk.fwhm / pk.E : 0.0) : msc_gspec.edge(ex, p) };
     }
   };
   function firstLine(p) { return SRC[Math.round(p.src)][1][0][0]; }
@@ -168,9 +169,11 @@
     return 2.0 * al / (1.0 + 2.0 * al) * e;
   }
 
+  function gs_cmp(p) { return p.pf662 > 0 ? gs_res(p) : gs_edge(p); }
+
   H0.register({
     K: { msc_gspec: msc_gspec },
-    TEXTBOOK: { msc_gs_E: gs_E, msc_gs_fwhm: gs_fwhm, msc_gs_res: gs_res, msc_gs_eff: gs_eff, msc_gs_edge: gs_edge },
+    TEXTBOOK: { msc_gs_E: gs_E, msc_gs_fwhm: gs_fwhm, msc_gs_res: gs_res, msc_gs_eff: gs_eff, msc_gs_edge: gs_edge, msc_gs_cmp: gs_cmp },
     CALCS: {}
   });
 })(typeof window !== 'undefined' ? window : this);
