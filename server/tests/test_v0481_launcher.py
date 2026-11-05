@@ -244,4 +244,4 @@ def test_versions(opc):
     from app.main import APP_VERSION
     assert APP_VERSION == "0.534.0"
     pubspec = (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
-    assert "version: 0.532.0+555" in pubspec
+    assert "version: 0.534.0+557" in pubspec

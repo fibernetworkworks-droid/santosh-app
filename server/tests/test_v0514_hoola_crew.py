@@ -35,7 +35,7 @@ task, kickoff_for_each, usage metrics. This suite pins the port:
     create-if-missing, hers win, the 4,000-char cap, the three-door routing content
     pins; seed_files excludes the cr- prefix (starter stays 11; the library 68, NINE
     lanes).
-(7) VERSION: APP_VERSION 0.514.0 + the story; pubspec 0.532.0+555.
+(7) VERSION: APP_VERSION 0.514.0 + the story; pubspec 0.534.0+557.
 """
 import asyncio
 import inspect
@@ -568,4 +568,4 @@ def test_version(env):
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     assert "HOOLA CREW" in story and "crewAI" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.532.0+555" in pub
+    assert "version: 0.534.0+557" in pub

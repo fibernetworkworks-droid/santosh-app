@@ -19356,6 +19356,41 @@ disk copy deliberately missing and checks the text handed to `docker build` is t
 
 **Rule for this repo:** a path built from `__file__` must be checked against `~/apps/santosh-core`, where the code
 actually runs, not only against the repo layout. Anything outside `server/app` is not deployed.
+## v0.534.0 CAD DESK KI JAANCH (built as 0.531) - is the CAD engineer alive on HER server? (5 Nov 2026)
+Owner: "IS ALL CAD AI WORK DONE". The honest answer was no - the code was done, the proof on her own machine was
+not. Every other desk can be asked from the VPS (game_check, architect_check, lab_check, auth_check, mospi_check);
+the CAD desk had nothing. All it could say was `health()`, and that only reported whether THREE libraries imported.
+
+- `app/engineering/selfcheck.py` + `python -m app.engineering <check|libs|health>` + vps-ops **cad_check** /
+  **cad_setup**. The check does not import libraries and call that proof: it BUILDS three real parts through the
+  same sandbox a real job goes through, runs the studies on them, and prints one line per stage - `live` with the
+  number it measured, or `DEAD` with the reason. 33 stages: 9 libraries (each naming what she loses without it),
+  the box's python + network isolation, a bracket (bbox, volume, faces, STEP/STL/GLB/3MF/DXF, H.expect, DFM,
+  hidden-line views), stress, buckling, past yield, G-code, the gear pair (real hobbed root + ISO 6336 bending /
+  pitting / contact ratio), the mechanism (joints, ranges, URDF/SDF/MJCF/SRDF checks), the MuJoCo move (hardest
+  worked motor, cam shaft torque, loop gap), friction, cam contact (spring / Hertz / jam), the cam designed from
+  the motion, the dimensioned drawing PDF, the charts, all nine hand calculations, the agent's tools and the
+  designer's guide. No model is called, so a run is free; ~80 s with `--quick`, ~3-5 min full.
+- SOFT vs HARD: `mujoco`, `matplotlib` and `pyamg` fail QUIETLY - the part still builds and the answer just stops
+  carrying the motion numbers, the charts or the fast solver. Those report WEAK, not DEAD, and the verdict says
+  "chalega, but degraded". A missing cadquery or scikit-fem is DEAD and the run exits non-zero.
+- `service.health()` now names every library, which are missing, which losses are quiet, and one `ok`; the desk's
+  own route `/api/eng/projects` carries it, the way the game / blender / architect desks already did.
+- WHY IT EXISTS: this has already bitten her once. Every test here was green while her own server answered
+  `fea false` - the stress engine was simply not installed. `mujoco`, `matplotlib` and `reportlab` can each do the
+  same thing silently, and three of them were installed by hand in a deploy command.
+- WHAT ITS FIRST RUN FOUND, in itself: two of its three DEAD stages were the CHECK's own mistakes - its script
+  called `H.hole(plate, 10, (20,0), depth=None)` when `H.hole(m, kind)` returns a DIAMETER (the guide was right),
+  and it read `clearance_min_um` / `load_factor` when calc returns `clearance_mm` / `load_factor_C`. The third was
+  a weak test, not a defect: every joint in its machine turned about the VERTICAL axis, so gravity never loaded
+  anything and the cam shaft honestly came back at 0.0 N·m. The machine now swings an arm about a horizontal axis
+  against gravity with a payload (0.99 N·m at 509 deg/s), and the line reports the hardest-worked motor plus the
+  cam torque instead of row 0. A false alarm is worse than no check, so all three are pinned by tests:
+  `guard.check` must accept its own scripts, the bracket must really build with H.expect PASSING, and all nine
+  calculator kinds must answer with their real keys.
+- Run here: 32 live, 0 dead, 1 skipped (`--quick`) of 33.
+- Tests `test_v0458_cad_check.py` (10).
+
 
 
 ## vNEXT (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026

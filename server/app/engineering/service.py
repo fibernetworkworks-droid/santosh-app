@@ -839,8 +839,18 @@ def _own_any(pid: str) -> EngProject:
 
 
 def health() -> dict[str, Any]:
-    return {"cadquery": sandbox.installed(), "no_network": sandbox.net_isolation(), "python": sandbox.python(),
-            "fea": sandbox.installed("skfem"), "fast_solver": sandbox.installed("pyamg")}
+    """v0.458 EVERY library the desk needs, not three. Each one that is missing takes a piece of the answer with
+    it, and three of them fail QUIETLY (the part still builds, the numbers just stop coming) - which is why they
+    are named here and by `python -m app.engineering check`."""
+    from . import selfcheck
+    libs = {x["lib"]: x["ok"] for x in selfcheck.libs()}
+    missing = [k for k, v in libs.items() if not v]
+    return {"cadquery": libs.get("cadquery", False), "no_network": sandbox.net_isolation(), "python": sandbox.python(),
+            "fea": libs.get("skfem", False), "fast_solver": libs.get("pyamg", False),
+            "motion": libs.get("mujoco", False), "charts": libs.get("matplotlib", False),
+            "drawing": libs.get("reportlab", False), "libraries": libs, "missing": missing,
+            "ok": not [k for k in missing if k not in selfcheck.SOFT],
+            "quiet_losses": [k for k in missing if k in selfcheck.SOFT]}
 
 
 if __name__ == "__main__":   # python -m app.engineering.service  -> is the CAD engine ready on this server?

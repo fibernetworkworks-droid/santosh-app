@@ -46,7 +46,8 @@ def make_router(require_key, current_tenant) -> APIRouter:
         from ..employee import hire
         items = await asyncio.to_thread(_do, service.projects, tenant)
         return {"projects": items, "hired": hire.status(tenant, service.HIRE_KEY),
-                "today": await asyncio.to_thread(service.runs_today, tenant)}
+                "today": await asyncio.to_thread(service.runs_today, tenant),
+                "health": await asyncio.to_thread(service.health)}      # v0.458 is the engine really alive here?
 
     @r.post("/api/eng/projects", dependencies=[Depends(require_key)])
     async def start(body: StartIn, tenant: str = Depends(current_tenant)):
