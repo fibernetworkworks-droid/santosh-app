@@ -155,8 +155,9 @@ async def _llm(system: str, prompt: str, max_tokens: int = 16000) -> str:
     from .agent import llm
     if st.anthropic_api_key:
         from .agent.santosh import get_client
-        msg = await get_client().messages.create(model=st.anthropic_model, max_tokens=max_tokens, system=system,
-                                                 messages=[{"role": "user", "content": prompt}])
+        from .agent import door   # v0.560 EK DARWAZA
+        msg = await door.acreate(get_client(), door.shape("page", st.anthropic_model, max_tokens, system,
+                                                          [{"role": "user", "content": prompt}]))
         return "".join(getattr(b, "text", "") for b in msg.content)
     brain = llm.cheap_brain()
     if not brain:

@@ -23,7 +23,7 @@ def _client():
     global _CLIENT
     if _CLIENT is None:
         from anthropic import Anthropic
-        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=300, max_retries=2)
+        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=600, max_retries=2)   # v0.560 thinking needs room
     return _CLIENT
 
 
@@ -56,15 +56,16 @@ def used(clear: bool = True) -> list[str]:
         return []
 
 
-def ask(system: str, prompt: str, max_tokens: int = 16000) -> str:
+def ask(system: str, prompt: str, max_tokens: int = 16000, job: str = "game_code") -> str:
     st = get_settings()
     if st.anthropic_api_key:
         last: Exception | None = None
         for model in dict.fromkeys([getattr(st, "game_model", "") or "claude-opus-5-5", st.anthropic_model]):
             for attempt in range(2):
                 try:
-                    msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
-                                                    messages=[{"role": "user", "content": prompt}])
+                    from ..agent import door   # v0.560 EK DARWAZA: adaptive thinking + effort + her skill, the Claude way
+                    msg = door.create(_client(), door.shape(job, model, max_tokens, system,
+                                                            [{"role": "user", "content": prompt}]))
                     _mark(model)
                     return "".join(getattr(b, "text", "") for b in msg.content)
                 except Exception as e:
@@ -220,7 +221,7 @@ def design(brief: str, orientation: str, feedback: str = "", old: str = "") -> s
     p = f"Her words: {brief}\nOrientation: {orientation}."
     if old and feedback:
         p += f"\n\nThe current design doc:\n{old}\n\nHer changes to the design (apply them, keep the rest): {feedback}"
-    txt = ask(DESIGN, p, max_tokens=2500).strip()
+    txt = ask(DESIGN, p, max_tokens=2500, job="game_design").strip()
     if not txt.startswith("#"):
         txt = "# " + txt
     return txt[:6000]
@@ -278,7 +279,7 @@ def plan_tasks(design_doc: str, goal: str, milestones: list[dict], tasks: list[d
     p = (f"Project goal: {goal}\nMilestones (in order): {ms}\n\nThe game's design doc:\n{design_doc}\n\n"
          f"Tasks already on the board:\n{have}\n\nDecisions she made (follow them):\n{dec}\n\n"
          + (f"What she asked for now: {words}\n\n" if words else "") + "Write the next tasks.")
-    raw = ask(PLAN, p, max_tokens=4000)
+    raw = ask(PLAN, p, max_tokens=4000, job="game_plan")
     m = re.search(r"\[.*\]", raw or "", re.S)
     try:
         items = json.loads(m.group(0)) if m else []
@@ -297,8 +298,9 @@ def ask_with_images(system: str, text: str, images: list[bytes], max_tokens: int
         content.append({"type": "text", "text": text})
         for model in dict.fromkeys([getattr(st, "game_model", "") or "claude-opus-5-5", st.anthropic_model]):
             try:
-                msg = _client().messages.create(model=model, max_tokens=max_tokens, system=system,
-                                                messages=[{"role": "user", "content": content}])
+                from ..agent import door   # v0.560 EK DARWAZA
+                msg = door.create(_client(), door.shape("game_review", model, max_tokens, system,
+                                                        [{"role": "user", "content": content}]))
                 _mark(model)
                 return "".join(getattr(b, "text", "") for b in msg.content)
             except Exception as e:
@@ -345,7 +347,7 @@ def scene_spec(design: str, scripts: list[str], scenes: list[str], words: str, n
          f"Scenes you may instance: {', '.join(scenes) or 'none'}\n"
          f"Screen: portrait 720x1280 unless the design says otherwise.\n\nShe asked for: {words}\n"
          + (f"Call the scene {name}.\n" if name else ""))
-    raw = ask(SCENE, p, max_tokens=8000)
+    raw = ask(SCENE, p, max_tokens=8000, job="game_scene")
     t = _re.sub(r"^```(?:json)?\s*|\s*```$", "", (raw or "").strip())
     i, j = t.find("{"), t.rfind("}")
     if i < 0 or j <= i:

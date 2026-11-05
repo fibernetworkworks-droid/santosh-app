@@ -397,7 +397,7 @@
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
 })();
 
-/* v0.561 CHALTI WEBSITE: her visitors' JavaScript errors + how fast the page really showed, sent to Hoola so she can see
+/* v0.563 CHALTI WEBSITE: her visitors' JavaScript errors + how fast the page really showed, sent to Hoola so she can see
    it. Nothing about the visitor: no cookie, no id, no query string, no typed text; at most 5 errors a page view and one
    timing line, sent with sendBeacon to the address her own forms already use (the site's CSP allows only that). Off on a
    preview (the API's own host) and when the page has no <meta name="hoola-ops">. */

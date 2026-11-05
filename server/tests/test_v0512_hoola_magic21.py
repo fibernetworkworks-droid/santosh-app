@@ -178,13 +178,13 @@ def test_config_defaults(env, monkeypatch):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.561.0"
+    assert main_mod.APP_VERSION == "0.563.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     # the newest-story precedent (established in the v0.520 rebase): the story pin
     # rides the NEWEST story - now the v0.530 HOOLA GRAPH story
     assert "HOOLA GRAPH" in story and "StateGraph" in story and "interrupt" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.561.0+584" in pub
+    assert "version: 0.563.0+586" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches
@@ -492,7 +492,7 @@ def test_mg_lane_counts(env):
     assert len(skill_packs.seed_files()) == 11       # the starter lane untouched (mg- excluded)
     assert len(skill_packs.byox_files()) == 31 and len(skill_packs.prog_files()) == 2
     seed_dir = skill_packs.SEED_DIR
-    assert len(list(seed_dir.glob("*.md"))) == 72    # 11 + 31 + 2 + 15 + 3 + 2 + 1 + 2 + 1 + 2 + 2, ELEVEN lanes (th- v0.547, ed- v0.548)
+    assert len(list(seed_dir.glob("*.md"))) == 99    # 11 + 31 + 2 + 15 + 3 + 2 + 1 + 2 + 1 + 2 + 2 + 27, TWENTY-NINE lanes (th- v0.547, ed- v0.548, the 18 omni families v0.561)
     seeder_names = {f.__name__ for f in skill_packs._pack_seeders()}
     assert "seed_magicpack" in seeder_names          # found by name - no seed_all edit
 

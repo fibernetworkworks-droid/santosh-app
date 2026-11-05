@@ -1485,3 +1485,15 @@ Work Log:
   backends (now enforced in the dispatcher).
 Stage Summary:
 - v0.559.0 server-only. Deploy = owner's vps-ops dispatch.
+Task ID: 47 — v0.562.0 CLAUDE JAISA + EK DARWAZA (built as 0.560.0) (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "BUILD 1 - 3" (Claude vs Hoola comparison) then "BUILD THE 3 FIXES" (structure audit).
+Work Log:
+- CLAUDE JAISA: every skill named each turn/call (coder/inject.skills_index), maps + team out of the core
+  (admit.py; research + big asks open team), clear_old in agent/prune.py. Cards: tools 176/176, maps 26/26.
+- EK DARWAZA: NEW agent/door.py; gamedesk / blender3d / engineering / motion / notebook / studio / artifacts
+  ride it; cad_model, motion_model, engine_thinking settings; Gemini default gemini-flash-latest + fallback.
+- NEW test_v0559_claude_jaisa.py (14), test_v0560_ek_darwaza.py (10); v0477/v0494 skills tests moved to the
+  new behaviour. Reds seen are pre-existing on pristine main (Playwright, v0270 goal_rounds, ...).
+Stage Summary:
+- v0.562.0 server-only. Deploy = owner's vps-ops dispatch.

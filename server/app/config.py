@@ -360,6 +360,9 @@ class Settings(BaseSettings):
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
+    engine_thinking: str = "adaptive"      # v0.560 EK DARWAZA: adaptive | off for every specialist engine through agent/door.py
+    cad_model: str = "claude-opus-5-5"      # v0.560 CAD engine's model (was written into engineering/ai.py)
+    motion_model: str = ""                 # v0.560 Hoola Motion's HTML plans ('' = anthropic_model, as before)
     app_thinking: str = "adaptive"         # v0.140 adaptive | off: Opus thinks before it designs (Claude decides how much)
     app_effort: str = "high"               # v0.140 effort for screens / Kotlin (low | medium | high | xhigh | max)
     app_art_effort: str = "xhigh"          # v0.140 effort for the art direction of each look
@@ -603,6 +606,26 @@ class Settings(BaseSettings):
 
     # --- EDITORS PACK (v0.548): the VS Code cockpit + the Neovim cockpit - drive Hoola from inside the IDE ---
     edpack_enabled: bool = True            # the ed- seed (the awesome Editors read) seeds on first open under its own stamp (default ON)
+    # --- OMNI PACK (v0.561): the 18 awesome-list lanes, each its own once-ever stamp ---
+    gapack_enabled: bool = True       # the ga- seed (the awesome Gaming read) seeds on first open under its own stamp (default ON)
+    devpack_enabled: bool = True      # the de- seed (the awesome Dev-Environment read) seeds on first open under its own stamp (default ON)
+    enpack_enabled: bool = True       # the en- seed (the awesome Entertainment read) seeds on first open under its own stamp (default ON)
+    dbpack_enabled: bool = True       # the db- seed (the awesome Databases read) seeds on first open under its own stamp (default ON)
+    mepack_enabled: bool = True       # the me- seed (the awesome Media read) seeds on first open under its own stamp (default ON)
+    lepack_enabled: bool = True       # the le- seed (the awesome Learn read) seeds on first open under its own stamp (default ON)
+    secpack_enabled: bool = True      # the se- seed (the awesome Security read) seeds on first open under its own stamp (default ON)
+    cmpack_enabled: bool = True       # the cm- seed (the awesome CMS read) seeds on first open under its own stamp (default ON)
+    hapack_enabled: bool = True       # the ha- seed (the awesome Hardware read) seeds on first open under its own stamp (default ON)
+    bupack_enabled: bool = True       # the bu- seed (the awesome Business read) seeds on first open under its own stamp (default ON)
+    wopack_enabled: bool = True       # the wo- seed (the awesome Work read) seeds on first open under its own stamp (default ON)
+    nepack_enabled: bool = True       # the ne- seed (the awesome Networking read) seeds on first open under its own stamp (default ON)
+    dcpack_enabled: bool = True       # the dc- seed (the Decentralized stance: Tor/privacy only) seeds on first open under its own stamp (default ON)
+    hspack_enabled: bool = True       # the hs- seed (the awesome Health read, non-core) seeds on first open under its own stamp (default ON)
+    evpack_enabled: bool = True       # the ev- seed (the awesome Events read) seeds on first open under its own stamp (default ON)
+    tepack_enabled: bool = True       # the te- seed (the awesome Testing read) seeds on first open under its own stamp (default ON)
+    mipack_enabled: bool = True       # the mi- seed (the awesome Miscellaneous read) seeds on first open under its own stamp (default ON)
+    repack_enabled: bool = True       # the re- seed (the awesome Related read) seeds on first open under its own stamp (default ON)
+
 
     # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
     aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
@@ -641,7 +664,7 @@ class Settings(BaseSettings):
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)
-    youtube_gemini_model: str = "gemini-2.5-flash"   # watches public YouTube videos to summarise / answer (official Gemini API)
+    youtube_gemini_model: str = "gemini-flash-latest"   # v0.560 Google's alias for its newest Flash (was 2.5); usage.install falls back to gemini-2.5-flash if it is refused   # watches public YouTube videos to summarise / answer (official Gemini API)
     hivision_url: str = ""                 # v0.51 e.g. http://127.0.0.1:8085 (docker linzeyi/hivision_idphotos): ID photos
     gotenberg_url: str = ""                # v0.49 e.g. http://127.0.0.1:3005 (docker gotenberg): Office files get page-1 previews
     hoola_enrich: bool = True              # avatars look at what arrives (vision / video) and suggest replies

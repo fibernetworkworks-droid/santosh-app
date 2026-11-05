@@ -1876,7 +1876,7 @@ window.HoolaBuild = function (C) {
     if (lists.length) put('app', {type: 'line', labels: dl, series: lists.slice(0, 6).map(x => ({name: S(x.label), values: L(x.days)}))}, 'No new records in this period.');
   }
 
-  // ---------------------------------------------------------------- v0.561 CHALTI WEBSITE: errors, real speed, cost, backup
+  // ---------------------------------------------------------------- v0.563 CHALTI WEBSITE: errors, real speed, cost, backup
   async function loadOps(o, box, days) {
     const el = box.querySelector('.stdash-ops'); if (!el) return;
     let d;

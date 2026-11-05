@@ -773,7 +773,7 @@ def init_db(url: str | None = None):
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
     from .site import cms as _site_cms  # noqa: F401  (v0.538 her team: members, drafts, revisions)
-    from .site import ops as _site_ops  # noqa: F401  (v0.561 visitors' errors + real-visit speed per day)
+    from .site import ops as _site_ops  # noqa: F401  (v0.563 visitors' errors + real-visit speed per day)
     from .site import catalog as _site_catalog  # noqa: F401  (v0.538 imported lists: products / doctors / properties)
     from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)

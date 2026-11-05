@@ -2906,7 +2906,7 @@ body.albon{overflow:hidden}
 .hcard-go:hover{opacity:.9}
 .hcard-go:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
 
-/* v0.561 CHALTI WEBSITE: running health under the website dashboard */
+/* v0.563 CHALTI WEBSITE: running health under the website dashboard */
 .stdash-ops{margin-top:24px}
 .stdash-ops>h4{font-size:16px;font-weight:600;margin:0 0 6px}
 .sterrs{margin:0;padding-left:20px;display:grid;gap:6px}

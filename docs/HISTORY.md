@@ -20424,7 +20424,45 @@ rows, never one fake row); (2) the search limit was trusted to backends - now cl
 is the contract). Version 0.559.0 (APP_VERSION story, pubspec 0.559.0+582, pins swept 0.558.0 -> 0.559.0 / +581 ->
 +582 / 569 -> 570 across the suites, zero residual; 'reach' joins CORE_FAMILIES + EXTRA_KEYS; server-only, old APKs
 keep working; Mera PC freeze respected).
-## v0.561.0 CHALTI WEBSITE (built as 0.559.0; web Step 7 part 2 = W14 of docs/WEB_PLATFORM_PLAN.md; owner: "GO")
+## v0.562.0 CLAUDE JAISA + EK DARWAZA (built as 0.560.0; the dev chain took 0.560.0 and 0.561.0, all kept) — Hoola's loop and its engines built the way Claude's are (owner: "BUILD 1 - 3", then "BUILD THE 3 FIXES")
+
+The Claude-vs-Hoola comparison (claude.ai/artifact/HeiPyHECLkwvh84a4PHjxp) found three stages Hoola only partly
+matched; the structure audit (claude.ai/artifact/PbsgDmh36rY1FvjyhpDU6m) found the specialist engines did not
+call Claude the way chat did. Both shipped together.
+
+CLAUDE JAISA (the loop):
+1. SKILL KI SOOCHI — Claude's level-1 skill metadata. `coder/store.skill_index` + `coder/inject.skills_index`
+   name EVERY skill she has on every chat turn and call: one short line (<=64 chars) for the first ~36 recently
+   used, names only for the rest (SKILLS_INDEX_BUDGET 3000 + NAMES_BUDGET 1600). `admit_tool` loads skill_manage
+   whenever she has any skill. Before: only the top 2 skills whose words matched were ever seen.
+2. SAHI GINTI — Anthropic: tool choice degrades past 30-50 tools. `maps` (20 tools) and `team` left
+   CORE_FAMILIES; `CORE_TOOLS` keeps maps_search + maps_directions; Hinglish place words and a lat,lng pair open
+   maps; `goal.looks_big`, "agent team" words and every research ask open team (deep research keeps its crew);
+   two construction contract tools that lost their family to a CONTRACTS_TOOLS name clash got it back. Free
+   cards: tools 176/176 right in view, wrong family 0, median tools a turn 80 -> 57; maps 26/26.
+3. SAAF MEZ — Claude's context editing. `prune.clear_old`: when old tool results pass 40,000 chars, results
+   older than the newest 3 steps become one line naming the tool, cleared in batches of 4 so the prompt cache
+   prefix stays stable; tool_use / tool_result pairs untouched, input never mutated, idempotent. A 12-step
+   research turn: 73,519 -> 18,756 chars.
+
+EK DARWAZA (the engines):
+1. ONE DOOR `agent/door.py`: `shape(job, model, max_tokens, system, messages)` = model from settings, adaptive
+   thinking + an effort per job kind (JOBS), extra room for the thinking, capped at 21,000 (the SDK's non-stream
+   limit); `create` / `acreate` with a refusal ladder (a 400 naming thinking / output_config / effort retries
+   once without it, and it is not sent again in the process). Riders: gamedesk/ai, blender3d/ai, engineering/ai
+   (left the deprecated fixed thinking budget), motion/ai, notebook/service, studio/service, artifacts. Client
+   timeouts 600 s. Switch `engine_thinking` (adaptive|off).
+2. SKILLS REACH THE ENGINES: `door.skills_for` puts the top matching skill's full text (<=2,400 chars) in the
+   engine's system prompt and marks it shown — the engines have no tool loop, so this is level 2 for them.
+3. ONE MODEL REGISTRY: `cad_model`, `motion_model` settings; `youtube_gemini_model` default
+   `gemini-flash-latest`; `usage._gemini_fallback` retries a not-found / unsupported model once on
+   gemini-2.5-flash inside the wrapper every Gemini call already passes.
+
+Tests: test_v0559_claude_jaisa.py (14), test_v0560_ek_darwaza.py (10, incl. a guard that no heavy engine calls
+messages.create around the door). test_v0477 / test_v0494 updated (an empty ask now shows the skill index;
+skill_manage loads with any skill). NOT VERIFIED live: no engine call has gone through the door on the VPS yet;
+the first game / CAD build after deploy is the proof, and `door.STATS` counts calls / thinking / refusals / skills.
+## v0.563.0 CHALTI WEBSITE (built as 0.559.0; web Step 7 part 2 = W14 of docs/WEB_PLATFORM_PLAN.md; owner: "GO")
 
 W14 asked for: cookie-less analytics, a JS error beacon, uptime from outside, a per-site dashboard (visitors, orders, errors,
 speed, cost), alerts in her chat, a monthly report, and a daily off-server backup WITH a restore test. Already built and NOT

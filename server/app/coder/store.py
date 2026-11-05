@@ -603,6 +603,22 @@ def skills_count() -> int:
         return int(c.execute("SELECT COUNT(*) FROM skills").fetchone()[0])
 
 
+def skill_index(tenant: str) -> list[dict]:
+    """v0.559 SKILL KI SOOCHI: every enabled skill of hers as {name, description}, the ones she used in the last
+    30 days first, then by name - Claude's level-1 skill metadata (name + one line, always in view)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT name, description FROM skills WHERE tenant=? AND enabled=1 ORDER BY name",
+                         (str(tenant or ""),)).fetchall()
+    out = [{"name": r["name"], "description": r["description"] or ""} for r in rows]
+    try:
+        hot = skill_recent(tenant, 30)
+    except Exception:
+        hot = set()
+    out.sort(key=lambda r: r["name"] not in hot)
+    return out
+
+
 def skill_names(tenant: str, limit: int = 8) -> list[str]:
     """v0.550 EK JAISA: her enabled skills by name, the ones she used lately first - the voice call's
     'these exist' line when nothing matched her words yet (a call starts with no ask)."""
