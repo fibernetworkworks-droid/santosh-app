@@ -77,7 +77,7 @@ HoolaStudio.define('flip-flops-nand', function (S) {
     var ft = S.mesh(new T.CylinderGeometry(0.01, 0.011, 0.004, 14), M.rubber); ft.position.set(f[0] * (TW / 2 - 0.03), 0.002, f[1] * (TD / 2 - 0.03)); tr.add(ft); });
   var SWX = INS.length === 1 ? [-0.2] : [-0.22, -0.17];
   var CLKX = -0.08, CLRX = -0.02, PREX = 0.03;
-  var LEDX = NOUT === 2 ? [0.2, 0.25] : [0.14, 0.19, 0.24, 0.29];
+  var LEDX = NOUT === 2 ? [0.2, 0.25] : [0.12, 0.17, 0.22, 0.27];
   var panelTex = S.canvasTex(1800, Math.round(1800 * (TD - 0.02) / (TW - 0.02)), function (x, w, h) {
     var X = function (u) { return (u / (TW - 0.02) + 0.5) * w; }, Y = function (zz) { return (zz / (TD - 0.02) + 0.5) * h; };
     x.fillStyle = '#242830'; x.fillRect(0, 0, w, h);
@@ -303,6 +303,7 @@ HoolaStudio.define('flip-flops-nand', function (S) {
   function bits4(w) { return [(w >> 3) & 1, (w >> 2) & 1, (w >> 1) & 1, w & 1].join(''); }
 
   // =============================================================================================== the rig
+  drawAnalyser();
   var steps = [];
   steps.push({ id: 'setup', title: 'Set up', view: 'bench', render: function (u) {
       u.h2('Wire the circuit and switch the trainer on');

@@ -165,3 +165,16 @@ def test_no_kernel_pack_or_lab_pack_is_silently_left_out():
     import importlib
     for m in lab_mods:
         importlib.import_module(f"{L.__name__}.{m}")
+
+
+def test_a_variant_may_override_cfg_whole_blocks(tmp_path, monkeypatch):
+    """A universal bridge's R, L and C settings balance on different measurement blocks: cfg is overridable, and a
+    block (measure) is replaced whole rather than half-merged."""
+    _fam(tmp_path, monkeypatch, {"base": "ohms-law", "variants": [
+        {"key": "x", "title": "Ohm's law with another measure", "cfg": {"measure": {"mode": "value", "note": "v"}}}]})
+    base = S.labs()["ohms-law"]
+    fam = specs.families()["ohms-law"]
+    lab = specs.apply(base, fam, fam["variants"][0])
+    assert lab["cfg"]["measure"] == {"mode": "value", "note": "v"}
+    assert lab["cfg"]["net"] == base["cfg"]["net"]              # the netlist the variant did not name is kept
+    assert "measure" not in (base.get("cfg") or {}) or base["cfg"]["measure"] != lab["cfg"]["measure"]

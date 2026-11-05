@@ -2,20 +2,53 @@
   "base": "searle-thermal-conductivity",
   "chapter": "Heat and thermodynamics",
   "variants": [
-    {"key": "aluminium", "title": "Searle's apparatus: thermal conductivity of an aluminium bar",
-     "sample": "Aluminium bar, same size as the copper bar", "method": "Searle's steady-state method, water-cooled end",
-     "unknown": "the thermal conductivity of aluminium", "params": {"K": 237, "mdot": 0.0006},
-     "note": "Aluminium conducts less heat than copper, so the tap is set to a smaller flow (0.60 g/s) and the water still warms by about 8 K.",
-     "source": {"title": "CRC Handbook of Chemistry and Physics: thermal conductivity of aluminium 237 W/(m K) at 300 K"}},
-    {"key": "brass", "title": "Searle's apparatus: thermal conductivity of a brass bar",
-     "sample": "Brass bar, same size as the copper bar", "method": "Searle's steady-state method, water-cooled end",
-     "unknown": "the thermal conductivity of brass", "params": {"K": 109, "mdot": 0.00026},
-     "note": "Brass conducts about a quarter as well as copper, so the flow is only 0.26 g/s to keep the water rise near 8 K.",
-     "source": {"title": "CRC Handbook of Chemistry and Physics: thermal conductivity of brass (70 Cu - 30 Zn) 109 W/(m K) at 300 K"}},
-    {"key": "iron", "title": "Searle's apparatus: thermal conductivity of an iron bar",
-     "sample": "Iron bar, same size as the copper bar", "method": "Searle's steady-state method, water-cooled end",
-     "unknown": "the thermal conductivity of iron", "params": {"K": 80.4, "mdot": 0.00015},
-     "note": "Iron is a poor conductor for a metal, so the flow is only 0.15 g/s: a faster flow would warm the water by less than a degree.",
-     "source": {"title": "CRC Handbook of Chemistry and Physics: thermal conductivity of iron 80.4 W/(m K) at 300 K"}}
+    {
+      "key": "aluminium",
+      "title": "Searle's apparatus: thermal conductivity of an aluminium bar",
+      "sample": "Aluminium bar, same size as the copper bar",
+      "method": "Searle's steady-state method, water-cooled end",
+      "unknown": "the thermal conductivity of aluminium",
+      "params": {
+        "K": 237,
+        "mdot": 0.0006
+      },
+      "note": "Aluminium conducts less heat than copper, so the tap is set to a smaller flow (0.60 g/s) and the water still warms by about 8 K.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics: thermal conductivity of aluminium 237 W/(m K) at 300 K"
+      },
+      "aim": "Send steam down one end of a lagged aluminium bar, collect the water that cools the other end, and find its thermal conductivity K."
+    },
+    {
+      "key": "brass",
+      "title": "Searle's apparatus: thermal conductivity of a brass bar",
+      "sample": "Brass bar, same size as the copper bar",
+      "method": "Searle's steady-state method, water-cooled end",
+      "unknown": "the thermal conductivity of brass",
+      "params": {
+        "K": 109,
+        "mdot": 0.00026
+      },
+      "note": "Brass conducts about a quarter as well as copper, so the flow is only 0.26 g/s to keep the water rise near 8 K.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics: thermal conductivity of brass (70 Cu - 30 Zn) 109 W/(m K) at 300 K"
+      },
+      "aim": "Send steam down one end of a lagged brass bar, collect the water that cools the other end, and find its thermal conductivity K."
+    },
+    {
+      "key": "iron",
+      "title": "Searle's apparatus: thermal conductivity of an iron bar",
+      "sample": "Iron bar, same size as the copper bar",
+      "method": "Searle's steady-state method, water-cooled end",
+      "unknown": "the thermal conductivity of iron",
+      "params": {
+        "K": 80.4,
+        "mdot": 0.00015
+      },
+      "note": "Iron is a poor conductor for a metal, so the flow is only 0.15 g/s: a faster flow would warm the water by less than a degree.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics: thermal conductivity of iron 80.4 W/(m K) at 300 K"
+      },
+      "aim": "Send steam down one end of a lagged iron bar, collect the water that cools the other end, and find its thermal conductivity K."
+    }
   ]
 }

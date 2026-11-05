@@ -2,10 +2,23 @@
   "base": "lissajous-figures",
   "chapter": "Oscillations, waves and acoustics",
   "variants": [
-    {"key": "phase-rc", "title": "Lissajous ellipse: phase difference made by an RC network",
-     "sample": "RC phase-shifting network, R = 1 kOhm, C = 2 uF, at 100 Hz", "method": "Ellipse on the CRO, equal frequencies",
-     "unknown": "the phase difference", "params": {"fx": 100, "fy": 100, "phi": 0.67216, "mode": 1},
-     "note": "At equal frequencies the figure is an ellipse. For a series RC network read across the resistor, tan(phi) = 1 / (2 pi f R C) = 0.796, so phi = 38.5 degrees.",
-     "source": {"title": "Series RC network: the voltage across R leads the supply by phi with tan(phi) = 1 / (omega R C); R = 1 kOhm, C = 2 uF, f = 100 Hz (standard AC circuit theory)"}}
+    {
+      "key": "phase-rc",
+      "title": "Lissajous ellipse: phase difference made by an RC network",
+      "sample": "RC phase-shifting network, R = 1 kOhm, C = 2 uF, at 100 Hz",
+      "method": "Ellipse on the CRO, equal frequencies",
+      "unknown": "the phase difference",
+      "params": {
+        "fx": 100,
+        "fy": 100,
+        "phi": 0.67216,
+        "mode": 1
+      },
+      "note": "At equal frequencies the figure is an ellipse. For a series RC network read across the resistor, tan(phi) = 1 / (2 pi f R C) = 0.796, so phi = 38.5 degrees.",
+      "source": {
+        "title": "Series RC network: the voltage across R leads the supply by phi with tan(phi) = 1 / (omega R C); R = 1 kOhm, C = 2 uF, f = 100 Hz (standard AC circuit theory)"
+      },
+      "aim": "Feed two signals of the same frequency, one through an RC network, to the plates of an oscilloscope and find the phase difference from the ellipse."
+    }
   ]
 }

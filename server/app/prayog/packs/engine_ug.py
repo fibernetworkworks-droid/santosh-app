@@ -250,7 +250,7 @@ class LensMirror:
         while 0.02 + k * 0.002 < v - 0.004:
             a_now = 0.02 + k * 0.002
             g_now = g(a_now)
-            if g_prev != 9.0 and g_now != 9.0 and (g_prev > 0) != (g_now > 0):
+            if abs(g_prev) < 0.1 and abs(g_now) < 0.1 and (g_prev > 0) != (g_now > 0):   # a root, not a pole of the image
                 a0 = _bisect(g, a_prev, a_now)
                 break
             a_prev, g_prev = a_now, g_now

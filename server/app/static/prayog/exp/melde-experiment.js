@@ -67,6 +67,7 @@ HoolaStudio.define('melde-experiment', function (S) {
     while (wstack.children.length) wstack.remove(wstack.children[0]);
     var nW = Math.min(10, Math.round((m - PAN) * 1000 / 10)); for (var i = 0; i < nW; i++) { var w = S.mesh(new T.CylinderGeometry(0.024, 0.024, 0.005, 24), M.brass); w.position.set(0, 0.0065 + i * 0.0052, 0); wstack.add(w); }
   }
+  setHang();
   // metre scale behind the thread (to read l), and a tuning-fork-style nameplate
   var scTex = S.canvasTex(2048, 64, function (x, w, h) { x.fillStyle = '#e7d4a4'; x.fillRect(0, 0, w, h); x.fillStyle = '#3a2a10'; x.font = '600 22px sans-serif';
     for (var c = 0; c <= 100; c++) { var xx = c / 100 * (w - 4) + 2, big = c % 10 === 0; x.fillRect(xx, 0, big ? 3 : 1.5, big ? 28 : (c % 5 === 0 ? 20 : 12)); if (big) x.fillText(String(c), xx - 10, 54); } });
@@ -150,7 +151,7 @@ HoolaStudio.define('melde-experiment', function (S) {
   ];
 
   return {
-    camera: { pos: [-0.1, 0.45, 1.75], look: [-0.1, 0.12, -0.2] },
+    camera: { pos: [-0.15, 0.5, 2.1], look: [-0.15, 0.12, -0.2] },
     views: { thread: [[-0.2, 0.35, 0.6], [-0.15, 0.2, ZT]], fork: [[-0.75, 0.3, 0.3], [XF - 0.1, 0.1, ZT]], pulley: [[0.25, 0.3, 0.3], [XP, 0.18, ZT]], pan: [[0.35, 0.3, 0.35], [XP + 0.02, 0.1, ZT]], scale: [[-0.1, 0.3, 0.45], [-0.1, 0.14, ZT - 0.05]],
       cell: [[-0.8, 0.25, 0.3], [XF - 0.3, 0.03, ZT]], sw: [[-0.5, 0.4, 0.5], [-1.1, 0.05, -0.2]], book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]] },
     theory: { principle: 'A thread stretched between a vibrating fork and a pulley carries waves at v = √(T/μ). When the fork\'s waves and their reflections fit the thread in a whole number of loops, a standing wave forms and the loops are large and steady.',

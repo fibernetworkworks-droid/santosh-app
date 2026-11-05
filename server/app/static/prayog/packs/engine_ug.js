@@ -154,7 +154,7 @@
       aPrev = 0.02; gPrev = g(0.02); k = 1;
       while (0.02 + k * 0.002 < v - 0.004) {
         aNow = 0.02 + k * 0.002; gNow = g(aNow);
-        if (gPrev !== 9.0 && gNow !== 9.0 && (gPrev > 0) !== (gNow > 0)) { a0 = bisect(g, aPrev, aNow); break; }
+        if (Math.abs(gPrev) < 0.1 && Math.abs(gNow) < 0.1 && (gPrev > 0) !== (gNow > 0)) { a0 = bisect(g, aPrev, aNow); break; }
         aPrev = aNow; gPrev = gNow; k++;
       }
       if (a0 === null) return { v: v, a: 0.0, R_est: 0.0, f_est: 0.0 };

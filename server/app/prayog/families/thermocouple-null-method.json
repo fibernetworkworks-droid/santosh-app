@@ -2,10 +2,21 @@
   "base": "thermocouple-null-method",
   "chapter": "Heat and thermodynamics",
   "variants": [
-    {"key": "iron-constantan", "title": "Thermo-emf of an iron-constantan thermocouple by a null method, and calibration",
-     "sample": "Iron-constantan thermocouple (type J)", "method": "Potentiometer null method",
-     "unknown": "the thermo-emf per degree of iron-constantan at 50 °C", "params": {"a": 5.071e-5, "q": 1.98e-8},
-     "note": "Iron-constantan gives about 30 % more emf per degree than copper-constantan: 5.269 mV at 100 °C against 4.279 mV.",
-     "source": {"title": "NIST ITS-90 thermocouple tables, type J (iron-constantan): 2.585 mV at 50 °C, 5.269 mV at 100 °C, cold junction at 0 °C"}}
+    {
+      "key": "iron-constantan",
+      "title": "Thermo-emf of an iron-constantan thermocouple by a null method, and calibration",
+      "sample": "Iron-constantan thermocouple (type J)",
+      "method": "Potentiometer null method",
+      "unknown": "the thermo-emf per degree of iron-constantan at 50 °C",
+      "params": {
+        "a": 5.071e-05,
+        "q": 1.98e-08
+      },
+      "note": "Iron-constantan gives about 30 % more emf per degree than copper-constantan: 5.269 mV at 100 °C against 4.279 mV.",
+      "source": {
+        "title": "NIST ITS-90 thermocouple tables, type J (iron-constantan): 2.585 mV at 50 °C, 5.269 mV at 100 °C, cold junction at 0 °C"
+      },
+      "aim": "Heat one junction of an iron-constantan thermocouple in a water bath, keep the other in melting ice, balance the thermo-emf on a potentiometer and plot the calibration curve."
+    }
   ]
 }

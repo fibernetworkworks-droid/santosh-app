@@ -2,15 +2,39 @@
   "base": "melde-experiment",
   "chapter": "Oscillations, waves and acoustics",
   "variants": [
-    {"key": "transverse-256", "title": "Melde's experiment: a 256 Hz fork, transverse arrangement",
-     "sample": "256 Hz electrically maintained fork (scientific pitch C)", "method": "Transverse arrangement",
-     "unknown": "the frequency of the fork", "params": {"f": 256, "p0": 10, "mode": 0},
-     "note": "A higher fork makes shorter loops: ten loops stand along the thread at about 73 g.",
-     "source": {"title": "Scientific pitch: C = 256 Hz, its lower octave 128 Hz (standard tuning-fork set)"}},
-    {"key": "longitudinal-128", "title": "Melde's experiment: a 128 Hz fork, longitudinal arrangement",
-     "sample": "128 Hz electrically maintained fork (scientific pitch C one octave below 256 Hz)", "method": "Longitudinal arrangement",
-     "unknown": "the frequency of the fork", "params": {"f": 128, "p0": 10, "mode": 1},
-     "note": "With the fork along the thread the thread moves at the fork's own frequency, so twice as many loops fit as in the transverse arrangement for the same load.",
-     "source": {"title": "Scientific pitch: C = 256 Hz, its lower octave 128 Hz (standard tuning-fork set)"}}
+    {
+      "key": "transverse-256",
+      "title": "Melde's experiment: a 256 Hz fork, transverse arrangement",
+      "sample": "256 Hz electrically maintained fork (scientific pitch C)",
+      "method": "Transverse arrangement",
+      "unknown": "the frequency of the fork",
+      "params": {
+        "f": 256,
+        "p0": 10,
+        "mode": 0
+      },
+      "note": "A higher fork makes shorter loops: ten loops stand along the thread at about 73 g.",
+      "source": {
+        "title": "Scientific pitch: C = 256 Hz, its lower octave 128 Hz (standard tuning-fork set)"
+      },
+      "aim": "Drive a thread with a 256 Hz fork across it, change the load until a whole number of loops stands, and find the frequency from the tension and the loop length."
+    },
+    {
+      "key": "longitudinal-128",
+      "title": "Melde's experiment: a 128 Hz fork, longitudinal arrangement",
+      "sample": "128 Hz electrically maintained fork (scientific pitch C one octave below 256 Hz)",
+      "method": "Longitudinal arrangement",
+      "unknown": "the frequency of the fork",
+      "params": {
+        "f": 128,
+        "p0": 10,
+        "mode": 1
+      },
+      "note": "With the fork along the thread the thread moves at the fork's own frequency, so twice as many loops fit as in the transverse arrangement for the same load.",
+      "source": {
+        "title": "Scientific pitch: C = 256 Hz, its lower octave 128 Hz (standard tuning-fork set)"
+      },
+      "aim": "Drive a thread with a fork along it, change the load until a whole number of loops stands, and find the fork frequency from the tension and the loop length."
+    }
   ]
 }

@@ -2,20 +2,55 @@
   "base": "lees-disc",
   "chapter": "Heat and thermodynamics",
   "variants": [
-    {"key": "ebonite-steam", "title": "Lee and Charlton's disc: ebonite, steam heating",
-     "sample": "Ebonite (hard rubber) disc, 3 mm", "method": "Steam heating",
-     "unknown": "the thermal conductivity of ebonite", "params": {"k": 0.16, "d": 0.003},
-     "note": "Ebonite conducts about seven times worse than glass, so the disc is only 3 mm thick; disc B then settles near 84 °C.",
-     "source": {"title": "Engineering ToolBox, thermal conductivity of common materials: rubber, hard (ebonite) about 0.16 W/(m K)"}},
-    {"key": "glass-electric", "title": "Lee and Charlton's disc: glass, electrical heating",
-     "sample": "Glass disc, 8 mm", "method": "Electrical heating",
-     "unknown": "the thermal conductivity of glass", "params": {"k": 1.05, "d": 0.008, "Th": 85},
-     "note": "An electrically heated block replaces the steam chest. The supply is set so the block settles at 85 °C, so the disc settles lower than with steam.",
-     "source": {"title": "CRC Handbook of Chemistry and Physics: thermal conductivity of window (soda-lime) glass 1.05 W/(m K); brass specific heat 0.38 J/(g K)"}},
-    {"key": "ebonite-electric", "title": "Lee and Charlton's disc: ebonite, electrical heating",
-     "sample": "Ebonite (hard rubber) disc, 3 mm", "method": "Electrical heating",
-     "unknown": "the thermal conductivity of ebonite", "params": {"k": 0.16, "d": 0.003, "Th": 85},
-     "note": "Electrical heating of the block, set to 85 °C, with the 3 mm ebonite disc.",
-     "source": {"title": "Engineering ToolBox, thermal conductivity of common materials: rubber, hard (ebonite) about 0.16 W/(m K)"}}
+    {
+      "key": "ebonite-steam",
+      "title": "Lee and Charlton's disc: ebonite, steam heating",
+      "sample": "Ebonite (hard rubber) disc, 3 mm",
+      "method": "Steam heating",
+      "unknown": "the thermal conductivity of ebonite",
+      "params": {
+        "k": 0.16,
+        "d": 0.003
+      },
+      "note": "Ebonite conducts about seven times worse than glass, so the disc is only 3 mm thick; disc B then settles near 84 °C.",
+      "source": {
+        "title": "Engineering ToolBox, thermal conductivity of common materials: rubber, hard (ebonite) about 0.16 W/(m K)"
+      },
+      "aim": "Find the thermal conductivity of a thin ebonite disc from its steady temperatures and the rate at which the bare brass disc cools, heating with steam."
+    },
+    {
+      "key": "glass-electric",
+      "title": "Lee and Charlton's disc: glass, electrical heating",
+      "sample": "Glass disc, 8 mm",
+      "method": "Electrical heating",
+      "unknown": "the thermal conductivity of glass",
+      "params": {
+        "k": 1.05,
+        "d": 0.008,
+        "Th": 85
+      },
+      "note": "An electrically heated block replaces the steam chest. The supply is set so the block settles at 85 °C, so the disc settles lower than with steam.",
+      "source": {
+        "title": "CRC Handbook of Chemistry and Physics: thermal conductivity of window (soda-lime) glass 1.05 W/(m K); brass specific heat 0.38 J/(g K)"
+      },
+      "aim": "Find the thermal conductivity of a glass disc from its steady temperatures and the cooling rate of the bare brass disc, heating electrically."
+    },
+    {
+      "key": "ebonite-electric",
+      "title": "Lee and Charlton's disc: ebonite, electrical heating",
+      "sample": "Ebonite (hard rubber) disc, 3 mm",
+      "method": "Electrical heating",
+      "unknown": "the thermal conductivity of ebonite",
+      "params": {
+        "k": 0.16,
+        "d": 0.003,
+        "Th": 85
+      },
+      "note": "Electrical heating of the block, set to 85 °C, with the 3 mm ebonite disc.",
+      "source": {
+        "title": "Engineering ToolBox, thermal conductivity of common materials: rubber, hard (ebonite) about 0.16 W/(m K)"
+      },
+      "aim": "Find the thermal conductivity of a thin ebonite disc from its steady temperatures and the cooling rate of the bare brass disc, heating electrically."
+    }
   ]
 }

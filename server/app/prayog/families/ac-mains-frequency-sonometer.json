@@ -1,0 +1,65 @@
+{
+ "base": "ac-mains-frequency-sonometer",
+ "chapter": "Alternating Current",
+ "grid": {
+  "title": "Mains frequency with a sonometer: {wire} on {grid}",
+  "unknown": "the frequency of the mains",
+  "sample": "{wire} wire",
+  "axes": {
+   "wire": [
+    {
+     "key": "swg24",
+     "label": "copper SWG 24",
+     "params": {
+      "mu": 0.002199
+     },
+     "source": {
+      "title": "Copper: density 8960 kg/m3 (CRC Handbook); SWG 24 / 26 / 28 = 0.559 / 0.457 / 0.376 mm (BS 3737 standard wire gauge)"
+     }
+    },
+    {
+     "key": "swg26",
+     "label": "copper SWG 26",
+     "params": {
+      "mu": 0.0014697
+     },
+     "source": {
+      "title": "Copper: density 8960 kg/m3 (CRC Handbook); SWG 24 / 26 / 28 = 0.559 / 0.457 / 0.376 mm (BS 3737 standard wire gauge)"
+     }
+    },
+    {
+     "key": "swg28",
+     "label": "copper SWG 28",
+     "params": {
+      "mu": 0.0009949
+     },
+     "source": {
+      "title": "Copper: density 8960 kg/m3 (CRC Handbook); SWG 24 / 26 / 28 = 0.559 / 0.457 / 0.376 mm (BS 3737 standard wire gauge)"
+     }
+    }
+   ],
+   "grid": [
+    {
+     "key": "hz50",
+     "label": "a 50 Hz grid (India, Europe)",
+     "params": {
+      "fm": 50.0
+     },
+     "source": {
+      "title": "Standard mains frequencies 50 Hz and 60 Hz (IEC 60038 standard voltages and frequencies)"
+     }
+    },
+    {
+     "key": "hz60",
+     "label": "a 60 Hz grid (North America)",
+     "params": {
+      "fm": 60.0
+     },
+     "source": {
+      "title": "Standard mains frequencies 50 Hz and 60 Hz (IEC 60038 standard voltages and frequencies)"
+     }
+    }
+   ]
+  }
+ }
+}

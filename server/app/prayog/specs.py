@@ -30,7 +30,7 @@ from typing import Any
 log = logging.getLogger("santosh.prayog")
 FAM_DIR = Path(__file__).resolve().parent / "families"
 KEY = re.compile(r"^[a-z0-9][a-z0-9-]{0,40}$")
-VAR_KEYS = {"key", "title", "sample", "method", "unknown", "note", "source", "params", "level", "aim", "topic", "chapter", "check"}
+VAR_KEYS = {"key", "title", "sample", "method", "unknown", "note", "source", "params", "level", "aim", "topic", "chapter", "check", "cfg"}
 
 
 class SpecError(ValueError):
@@ -134,6 +134,12 @@ def apply(base_lab: dict, fam: dict, v: dict) -> dict:
             kn["value"] = val
             kn["min"] = min(kn.get("min", val), val)       # the ROUNDED value, or a knob at its own edge fails
             kn["max"] = max(kn.get("max", val), val)
+    vcfg = v.get("cfg")
+    if vcfg:                                          # e.g. a universal bridge: R, L and C settings balance differently
+        merged = dict(lab.get("cfg") or {})
+        for k, x in vcfg.items():
+            merged[k] = x                              # a block (measure, net...) is replaced whole, never half-merged
+        lab["cfg"] = merged
     chk = lab.get("check") or {}
     cp = dict(chk.get("params") or {})
     for k in list(cp):                                        # the check must run on the variant's numbers
