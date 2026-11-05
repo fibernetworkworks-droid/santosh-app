@@ -102,6 +102,11 @@ _ACTION = re.compile(r"^\s*(?:hoola[,\s]+)?(?:send|bhej\w*|remind|yaad\s+dila\w*
 _QTY = re.compile(r"\bkitn[aeiy]\b|\bkitni\b|\bhow\s+(?:much|many|long)\b|\bkab\s+(?:tak|hoga|milenge|milega)\b|"
                   r"\bwhen\s+will\b|\bam\s+i\s+(?:actually\s+)?(?:earning|losing|saving)|कितन", re.I)
 _NUM = re.compile(r"(?<![\w.])\d[\d,]*(?:\.\d+)?(?:\s*(?:%|lakh|crore|k\b|cr\b|rs|₹))?", re.I)
+# v0.556 a MAKE / DO request anywhere in her words ("50 chairs ka quotation bana do", "Make an invoice for...") with no
+# reasoning signal is plain work: it skips the 'maybe' judge, which held the reply up to 2.5 s for nothing
+_MAKE = re.compile(r"\bbana\s*(?:do|dijiye|dena|de)\b|\bbanao\b|\bbanaiye\b|\blikh\s*(?:do|dijiye|dena)\b|\blikho\b|"
+                   r"\bbhej\s*(?:do|dijiye)\b|\bset\s*(?:karo|kar\s*do)\b|\blaga\s*do\b|\bmake\s+(?:a|an|the|me)\b|"
+                   r"\bcreate\s+(?:a|an|the)\b|\bgenerate\s+(?:a|an|the)\b|\bdraft\s+(?:a|an|the)\b|\bprepare\s+(?:a|an|the)\b", re.I)
 
 
 def assess(text: str) -> dict:
@@ -128,14 +133,18 @@ def assess(text: str) -> dict:
         score += 1
         why.append("long ask")
     nums = len(_NUM.findall(t))
-    if nums >= 2 and _QTY.search(t) and "calculation" not in why:
-        score += 2                                  # a word problem: numbers + "how much / how many / when"
+    if nums >= 2 and _QTY.search(t) and "calculation" not in why and (words >= 12 or nums >= 3):
+        # a word problem: numbers + "how much / how many / when". v0.556: not a bare sum - "12 aur 15 ka total
+        # kitna?" (6 words, 2 numbers) was sent to Opus with thinking at effort high; a real word problem has a story
+        score += 2
         why.append("word problem")
     if _ACTION.match(t) and score < 3:
         score = 0
     hard = score >= 2
     # not sure: one weak signal, or a real question (8+ words) that is not an action - the fast judge decides
     maybe = (not hard) and not _ACTION.match(t) and (score == 1 or (words >= 8 and ("?" in t or nums >= 2)))
+    if maybe and score == 0 and _MAKE.search(t):
+        maybe = False                               # v0.556 plain make / do work never waits for the judge
     if hard:
         STATS["hard"] += 1
     return {"hard": hard, "maybe": maybe, "score": score, "why": why}

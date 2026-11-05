@@ -1439,3 +1439,14 @@ Work Log:
 - NEW test_v0555_hoola_card.py (8); console + pin suites 141 passed, the reds pre-exist. Rendered light + dark.
 Stage Summary:
 - v0.555.0. Deploy = owner's vps-ops dispatch (console) + the CI APK (phone). Next: dedicated cards onto the same anatomy.
+
+---
+Task ID: 44 — v0.556.0 SEEDHA RAASTA (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "CHECK HOW ALL SURFACES RESPOND FOR SIMPLE TASK AND WHICH MODEL IT USE".
+Work Log:
+- Probed run_turn with a recording fake client: simple = 1 Sonnet call, 2k, no thinking; voice = Gemini Live 3.8.
+- FIXED bare sums on Opus (word-problem rule) and make requests waiting for the Haiku judge (_MAKE). Sets unchanged.
+- NEW test_v0556_simple_route.py (8); hard suites 89 passed. v0.555 APK green (run 41984659811).
+Stage Summary:
+- v0.556.0 server-only. Deploy = owner's vps-ops dispatch.

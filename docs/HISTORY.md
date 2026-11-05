@@ -20336,3 +20336,26 @@ Console + pin suites 141 passed; the reds (v0221, v0223, v0279 aePulse from anot
 committed tree before this change. Rendered with the real v2.css in light and dark and checked by eye.
 NOT VERIFIED: the Dart compiles first on CI. NEXT: move the dedicated cards (bill payment, email draft, approvals)
 onto the same anatomy one by one, keeping each one's buttons.
+
+## v0.556.0 SEEDHA RAASTA - simple tasks take the light path (owner: "NOW CHECK HOW ALL SURFACES RESPOND FOR SIMPLE TASK AND WHICH MODEL IT USE")
+
+MEASURED (not read off the code): the real `santosh.run_turn` with a recording fake Claude client, six simple asks.
+- Console chat and phone chat: one pipeline (POST /api/conversations/{id}/messages -> turn_inbox -> run_turn). Live
+  healthz: chat_brain claude, model claude-sonnet-5-5 (no OmniRoute / GLM configured). A simple ask = ONE call on
+  Sonnet 5.5, max_tokens 2,000, no thinking, the model's default effort, ~75 tools admitted, ~46k chars of system
+  prompt (prompt-cached). Opus 5.5 only for a hard reasoning ask (`model_for`), raised effort only for hard asks /
+  long jobs (`effort_for`), thinking only while a long job runs (`chat_thinking` goal). A message while a long job
+  holds the chat = the quick lane (cheap brain, else the same chat model).
+- Voice call: Gemini Live `gemini-3.8-live` answers in its own voice; declared tools run directly; big work goes to
+  `santosh_kaam` = the chat brain above. OpenAI `gpt-realtime-2.1-mini` only when she picks Real voice (trial).
+
+FOUND AND FIXED (`server/app/agent/hard.py`):
+1. "12 aur 15 ka total kitna?" ran on OPUS with 16,000 tokens, adaptive thinking and effort high: the WORD PROBLEM rule
+   fired on any 2 numbers + "kitna". Now it needs a story (12+ words) or 3+ numbers.
+2. "50 chairs ka quotation bana do Rs 1200 each" and "Make an invoice for ..." fell into the 'maybe' zone and the reply
+   waited for the Haiku judge (up to 2.5 s). A make / do request (`_MAKE`) with no reasoning signal skips it.
+Compared old vs new detector on every set: HARD 50 -> 50, HOLDOUT_HARD 21 -> 21, hard card 27 -> 27, EASY 0 -> 0,
+nothing lost; the everyday card maybe 11 -> 9 (test_v0272_hard::test_everyday_tool_asks_stay_fast was red, now green).
+Borderline kept on purpose: a 12-word story sum still counts as a word problem (same length as a calibrated one).
+Tests: NEW `test_v0556_simple_route.py` (8); hard suites 89 passed. Server-only. The v0.555.0 APK built green on CI
+(run 41984659811), so the Hoola Card compiles on the phone.
