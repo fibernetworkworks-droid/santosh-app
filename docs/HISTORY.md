@@ -19952,3 +19952,53 @@ written by Pillar J's own author. `screens` in a module is recorded as a next st
 (v0.128) still owns screens. And this is the last pillar of `docs/COMPLEX_APPS_PLAN.md`, which means **every pillar
 A–K is now built and the plan's own gate is still unmet**: no proof app — school ERP, clinic, food delivery,
 marketplace, field-service CRM — has ever been built and used on a real phone. Phase 0 asked for that first.
+
+## v0.543.0 PRAYOGSHALA EK HI PYTHON — the box worked, and the first thing it found was real (owner: "DEPLOY DONE, LAB_SETUP DONE, LAB_TRY DONE - CHECK RESULT")
+
+**The v0.539 fixes held.** `lab_try` (vps-ops run 257) walked the whole road for the first time — cloned her repo,
+installed every dependency with the network on, committed the snapshot, and ran the real suite with no network, about
+seven minutes against nine seconds before. Both v0.539 defects (PEP 668, and an install that could not survive
+`docker commit`) are settled by evidence, not by argument.
+
+**Then it failed on something real**, at import:
+
+```
+E     File "/work/server/app/notebook/render.py", line 517
+E       out.append(f"<li>{inline(re.sub(r'^\s*[-*•]\s+', '', ln))}</li>")
+E   SyntaxError: f-string expression part cannot include a backslash
+```
+
+That line runs perfectly on her server. **PEP 701 allows a backslash inside an f-string expression from Python 3.12**,
+her server runs **3.13**, and Debian 12 ships `python3` as **3.11** — so the box was testing a *different language
+version than production*. Seven files in `server/app` carry that shape, so the box would have reported a fault in
+each of them. A lab on another Python does not test her code, it invents failures, which is worse than having no lab:
+a false red costs the trust the whole thing exists to earn.
+
+**The fix is the box, not her code.** The base image is now `python:3.13-slim-bookworm` — bookworm's apt still
+supplies node and jdk 17, 3.13 sits on `/usr/local/bin` (ahead of `/usr/bin` in the box's PATH), and
+`python3-dev` / `python3-venv` / `python3-pip` are dropped from apt so Debian's 3.11 cannot shadow it or hand out
+headers for the wrong version. `render.py` is untouched: it is valid Python for the version she runs, and rewriting
+seven call sites to suit a box that was wrong would have been the fault, not the fix.
+
+**Two guards so this cannot come back quietly:**
+- The self-test prints the box's Python beside the server's and says **GADBAD** when they differ, naming the image
+  revision — a mismatch is now a stage that fails, not a surprise eight minutes into a check.
+- A repo dependency snapshot is keyed on the **base revision** as well as the lock files
+  (`hoola-devlab:<repo>-r3-<deps_key>`). Without it her existing 3.11 snapshot would have been served on the fresh
+  3.13 base — cached, fast, and failing exactly as before. The same class of bug as v0.539's silent one: a cache
+  that answers for a world that no longer exists.
+
+Image revision 2 → 3, so `lab_check` **rebuilds** before it tests the walls (v0.539's staleness check doing its job
+on its first real occasion). vps-ops note updated to say `lab_check` first after a base bump.
+
+Tests: `test_v0456_devlab.py` +3 (the box runs the server's Python / her code is not rewritten to suit the box / a
+base change invalidates every repo snapshot), two existing pins healed to the new base and tag shape. 45 green in
+the lab suites.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has not passed. Three things are now proven by a real run (the
+clone, the dependency install, the sealed no-network check actually executing her suite), and the thing they were
+for — a green check on her own repo — has not happened yet. The next `lab_check` + `lab_try` is that proof.
+
+**RULE recorded:** a sandbox must match production in the things that decide whether code even parses. A lab that
+differs from production in language version reports faults that do not exist, and the first one it reported was in
+code that had been live for months.

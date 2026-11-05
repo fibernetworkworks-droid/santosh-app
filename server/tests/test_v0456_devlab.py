@@ -103,7 +103,7 @@ def test_the_snapshot_key_moves_only_with_the_dependency_files():
 
 def test_the_image_tag_is_per_repo_and_per_key():
     t = service.image_for("Meghana/Shop-API", "abc123")
-    assert t == "hoola-devlab:meghana-shop-api-abc123" and t.islower()
+    assert t == f"hoola-devlab:meghana-shop-api-r{box.BASE_REV}-abc123" and t.islower()
     assert service.image_for("a/b", "k1") != service.image_for("a/b", "k2")
 
 
@@ -228,7 +228,7 @@ def test_the_dockerfile_travels_with_the_code():
     from pathlib import Path
     disk = Path(__file__).resolve().parents[2] / "deploy" / "devlab" / "Dockerfile"
     assert disk.is_file() and box.DOCKERFILE_TEXT == disk.read_text("utf-8")
-    assert "FROM debian:12-slim" in box.DOCKERFILE_TEXT and "USER lab" in box.DOCKERFILE_TEXT
+    assert "FROM python:3.13-slim-bookworm" in box.DOCKERFILE_TEXT and "USER lab" in box.DOCKERFILE_TEXT
     assert "\\\n" in box.DOCKERFILE_TEXT                     # the line continuations survived the embedding
 
 
@@ -339,3 +339,31 @@ def test_the_selftest_proves_an_install_survives_the_commit():
     assert "repo ka apna `pip install` chalta hai" in src and "install snapshot mein bacha rehta hai" in src
     assert "commit_to=tag" in src and "network=True" in src       # the real road: install with the net, then commit
     assert "import tabulate" in src                               # ... and ask the committed image for it back
+
+
+# ---------------------------------------------------------------- v0.542 the box must speak her server's Python
+def test_the_box_runs_the_same_python_as_the_server():
+    """Her first WORKING lab_try died on app/notebook/render.py:517 - a backslash inside an f-string expression,
+    which PEP 701 allows from 3.12 and Debian 12's python3 (3.11) refuses. The code is right; the box was wrong.
+    A lab on another language version does not test her code, it invents failures."""
+    t = box.DOCKERFILE_TEXT
+    assert "FROM python:3.13-slim-bookworm" in t
+    assert "python3-dev" not in t and "python3-venv" not in t    # apt's 3.11 must not shadow or mislead
+    assert box.BASE_REV == "3"                                   # ... and her built image is named stale until rebuilt
+    src = Path(service.__file__).read_text("utf-8")
+    assert "box ka python" in src and "sys.version_info" in src  # the self-test compares and says GADBAD
+    assert "render.py:517" in t                                  # the reason is written where the image is
+
+
+def test_her_code_is_not_rewritten_to_suit_the_box():
+    """The 3.12+ f-string stays: it is valid Python for the version she runs. The box moved, not her code."""
+    p = Path(__file__).resolve().parents[1] / "app" / "notebook" / "render.py"
+    assert "re.sub(r'^\\s*[-*•]\\s+', '', ln)" in p.read_text("utf-8")
+
+
+def test_a_base_image_change_invalidates_every_repo_snapshot():
+    """A snapshot is built ON the base. Keyed on lock files alone, her existing 3.11 snapshot would have been
+    served on the new 3.13 base - cached, fast, and failing exactly as before."""
+    tag = service.image_for("owner/repo", "abc123")
+    assert f"-r{box.BASE_REV}-" in tag and tag.endswith("-abc123")
+    assert service.image_for("owner/repo", "abc123") != tag.replace(f"-r{box.BASE_REV}-", "-r1-")
