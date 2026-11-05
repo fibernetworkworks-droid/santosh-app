@@ -143,12 +143,12 @@ HoolaStudio.define('heating-effect-wire', function (S) {
   function slope(rows) { var f = S.fit.linear(rows.map(function (r) { return [r.t, r.T]; })); return f ? f.m : NaN; }
 
   return {
-    camera: { pos: [0.0, 1.1, 0.5], look: [0.0, 0.02, -0.24] },
+    camera: { pos: [0.0, 1.36, 0.6], look: [0.0, 0.02, -0.24] },
     views: { cal: [[0.14, 0.34, -0.02], [0.12, 0.05, -0.3]], coil: [[0.12, 0.26, -0.1], [0.12, 0.05, -0.3]],
       therm: [[0.06, 0.34, -0.06], [0.1, 0.08, -0.3]], pb: [[-0.5, 0.32, 0.08], [-0.6, 0.04, -0.1]],
       key: [[-0.3, 0.24, 0.1], [-0.34, 0.02, -0.02]], am: [[-0.3, 0.26, -0.14], [-0.3, 0.04, -0.42]],
       watch: [[0.44, 0.26, 0.26], [0.44, 0.02, 0.04]],
-      circuit: [[0.0, 1.1, 0.5], [0.0, 0.02, -0.24]], work: [[0.1, 0.62, 0.14], [0.1, 0.05, -0.28]],
+      circuit: [[0.0, 1.36, 0.6], [0.0, 0.02, -0.24]], work: [[0.1, 0.62, 0.14], [0.1, 0.05, -0.28]],
       book: [[-0.5, 0.45, 0.6], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'A current does work against the resistance of a wire, and all of that work appears as heat: H = I²Rt. '

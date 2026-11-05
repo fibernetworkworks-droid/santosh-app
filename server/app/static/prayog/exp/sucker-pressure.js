@@ -18,7 +18,7 @@ HoolaStudio.define('sucker-pressure', function (S) {
 
   // ---------- geometry
   var GX = -0.06, GZ = -0.06, GT = 0.012, SY = GT;
-  var glass = S.rounded(0.3, 0.22, GT, 0.004, new T.MeshPhysicalMaterial({ color: 0xdeeaf0, roughness: 0.03, transmission: 0.55, thickness: 0.01, transparent: true, opacity: 0.6 }));
+  var glass = S.rounded(0.3, 0.22, GT, 0.004, new T.MeshPhysicalMaterial({ color: 0xe8f2f6, roughness: 0.02, transmission: 0.92, thickness: 0.012, ior: 1.52, transparent: true, opacity: 0.45 }));
   glass.rotation.x = -Math.PI / 2; glass.position.set(GX, GT / 2, GZ); S.scene.add(glass);
   S.contact(0.36, 0.28, GX, GZ, 0.4);
   var gl = S.label('PLATE GLASS — clean and smooth', { w: 0.12, ratio: 0.14, color: '#3a4652' });
@@ -193,14 +193,14 @@ HoolaStudio.define('sucker-pressure', function (S) {
   pose();
 
   var EXP = {
-    camera: { pos: [0.3, 0.42, 0.62], look: [-0.03, 0.1, -0.06] },
+    camera: { pos: [0.44, 0.54, 0.76], look: [0.02, 0.1, -0.04] },
     views: {
       glass: [[0.06, 0.3, 0.34], [-0.05, 0.03, -0.06]],
       suckers: [[0.34, 0.24, 0.26], [0.34, 0.02, 0.03]],
       balance: [[0.14, 0.3, 0.34], [-0.05, 0.16, -0.06]],
       cal: [[0.3, 0.24, 0.0], [0.28, 0.01, -0.2]],
-      press: [[0.18, 0.3, 0.42], [0.04, 0.05, -0.04]],
-      pull: [[0.22, 0.34, 0.46], [-0.04, 0.14, -0.06]],
+      press: [[0.36, 0.48, 0.64], [0.04, 0.07, -0.04]],
+      pull: [[0.34, 0.5, 0.68], [-0.02, 0.13, -0.05]],
       book: [[-0.52, 0.46, 0.5], [-0.6, 0.0, 0.08]]
     },
     theory: {

@@ -335,11 +335,11 @@ HoolaStudio.define('school-bulb-circuit', function (S) {
     } });
 
   return {
-    camera: { pos: [0.0, 1.26, 0.52], look: [0.0, 0.0, -0.26] },
+    camera: { pos: [0.0, 1.5, 0.72], look: [0.0, 0.0, -0.26] },
     views: { cells: [[-0.44, 0.26, 0.08], [-0.52, 0.03, -0.16]], key: [[-0.2, 0.22, 0.1], [-0.24, 0.03, -0.1]],
       am: [[-0.02, 0.26, -0.1], [-0.02, 0.04, -0.4]], bulb: [[0.3, 0.22, 0.08], [0.3, 0.06, -0.14]],
       vm: [[0.34, 0.26, -0.26], [0.34, 0.04, -0.55]], tester: [[0.54, 0.22, -0.06], [0.54, 0.04, -0.3]],
-      circuit: [[0.0, 1.26, 0.52], [0.0, 0.0, -0.26]], work: [[0.04, 0.86, 0.3], [0.03, 0.0, -0.3]],
+      circuit: [[0.0, 1.5, 0.72], [0.0, 0.0, -0.26]], work: [[0.04, 0.86, 0.3], [0.03, 0.0, -0.3]],
       book: [[-0.5, 0.45, 0.6], [-0.5, 0.0, 0.08]] },
     theory: TESTER ? {
       principle: 'A circuit tester is a cell and a bulb with a gap in the loop. Whatever you put in the gap becomes part of the circuit. '

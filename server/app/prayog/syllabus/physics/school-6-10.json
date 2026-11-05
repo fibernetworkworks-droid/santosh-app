@@ -939,7 +939,8 @@
       "angle of deviation"
      ],
      "conditions": [],
-     "kernel": "prism"
+     "kernel": "prism",
+     "built": "prism-minimum-deviation"
     },
     {
      "id": "convex-lens-image-positions",

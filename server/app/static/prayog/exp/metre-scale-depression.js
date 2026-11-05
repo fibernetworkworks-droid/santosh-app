@@ -98,7 +98,7 @@ HoolaStudio.define('metre-scale-depression', function (S) {
   pinT.rotation.z = -Math.PI / 2; pinT.position.x = 0.054; pin.add(pinT);
   var pinC = S.mesh(new T.BoxGeometry(0.008, 0.012, 0.012), M.black); pin.add(pinC);
 
-  var VX = CX + TOT + 0.07, VZ = CZ, VY0 = CY - 0.14, VLEN = 0.2;
+  var VX = CX + FREE + 0.075, VZ = CZ, VY0 = CY - 0.14, VLEN = 0.2;
   var vst = new T.Group(); S.scene.add(vst);
   var vbase = S.rounded(0.1, 0.09, 0.02, 0.005, M.iron); vbase.rotation.x = -Math.PI / 2; vbase.position.set(VX, 0.01, VZ); vst.add(vbase);
   var vpost = S.mesh(new T.CylinderGeometry(0.008, 0.009, VY0 + VLEN + 0.03, 18), M.chrome); vpost.position.set(VX + 0.03, (VY0 + VLEN + 0.03) / 2, VZ); vst.add(vpost);
@@ -130,7 +130,7 @@ HoolaStudio.define('metre-scale-depression', function (S) {
   // ---------- readings
   function delta() { return sim.d; }
   function settled() { return Math.abs(sim.d - p.m * p.g * Math.pow(p.L, 3) / (3 * p.Y * (p.b * Math.pow(p.t, 3) / 12))) < 2e-6; }
-  function pinY() { return CY + curve(FREE + OVER * 0.5, delta()); }
+  function pinY() { return CY + curve(FREE, delta()); }     // the pin is fixed at the loaded end
   function readingMm() { return Math.round((pinY() - VY0) / LC) * LC * 1000; }   // on the vertical scale, to 0.2 mm
 
   function setLoad(n) { st.n = n; p.m = n * STEP_KG; }
@@ -177,7 +177,7 @@ HoolaStudio.define('metre-scale-depression', function (S) {
     var endY = CY + curve(FREE, d);
     hang.position.set(CX + FREE, endY - BT / 2 - 0.006, CZ);
     onHanger.forEach(function (w, i) { w.position.set(hang.position.x, hang.position.y - 0.063 + DT / 2 + i * DT, hang.position.z); });
-    pin.position.set(CX + TOT, pinY(), CZ + BW / 2 + 0.004);
+    pin.position.set(CX + FREE, pinY(), CZ + BW / 2 + 0.004);
     pin.rotation.z = -Math.atan2(delta() * 3 / (2 * FREE), 1);
     hudL.set((st.n * STEP_KG * 1000).toFixed(0) + ' g');
     hudD.set(st.zero === null ? '—' : (st.zero - readingMm()).toFixed(1) + ' mm');
