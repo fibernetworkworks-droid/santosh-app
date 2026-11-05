@@ -19647,3 +19647,75 @@ Owner: "GO STEP 6". New `site/catalog.py`, `site/speed.py`, `site/loadtest.py`, 
   The team page: CSP (no outside anything), no-referrer (the invite never leaks), noindex, frame-ancestors none.
   Tests `tests/test_v0534_hoola_cms.py`. NOT built: 2-step login for the team, photo upload by the team (they pick from
   her site photos only via her), Cloudflare setup on her domain, per-site Postgres for big data.
+
+## v0.539.0 PRAYOGSHALA SACH — the lab could not install anything, and her own first live run said so (owner: "LAB_TRY DONE, CHECK RESULT")
+
+`lab_try` (vps-ops run 252, 5 Nov 2026) came back in nine seconds:
+
+```
+setup command poori nahi hui
+  stage: setup
+---- setup output
+error: externally-managed-environment
+× This environment is externally managed
+```
+
+**Defect A, the one that spoke.** Debian marks its system Python *externally managed* (PEP 668), so **any** `pip
+install` without `--break-system-packages` is refused — which is every Python repo's own declared command, not just
+ours. The image already used that escape hatch for its own pytest install, which is exactly why nobody noticed it
+would bite the repo's command. A container **is** the virtual environment, so the marker now comes off once in the
+image (`rm -f /usr/lib/python3*/EXTERNALLY-MANAGED`) and a repo's real command runs unrewritten. The alternative —
+Hoola silently rewriting her declared command — would have made the lab lie about what it ran.
+
+**Defect B, the silent one behind it, which would have bitten next.** The setup step ran with `--read-only` root
+**and** `--tmpfs /home/lab`, and `docker commit` keeps **neither** a read-only layer's writes nor a tmpfs. So even
+had pip been allowed, every installed dependency would have been thrown away, the snapshot tag would still have been
+created and reported `snapshot_cached: true`, and every later check would have failed on missing imports — fast,
+cached and wrong, the worst shape a failure can take. There was no location in that container where an install could
+survive.
+
+**The fix, one coherent change in `devlab/box.py`:**
+- `_limits(network, writable)` — `writable` is true for the **setup** step alone, and only because a sealed step
+  cannot leave anything behind. It drops `--read-only` and the `/home/lab` tmpfs; every other wall stands (uid 1000,
+  `--cap-drop ALL`, `no-new-privileges`, memory / cpu / pids caps, and no secret can ride in).
+- **Writability is DERIVED from `commit_to` and cannot be asked for** — `run_in` has no `writable` parameter, so no
+  caller can unseal a check by passing a flag. A test pins the signature.
+- A CHECK keeps read-only root and `--network none`, and `/home/lab` is **no longer masked** by a tmpfs — that
+  masking is what threw the snapshot away. `HOME=/tmp/home` (inside the one tmpfs) gives a writable home,
+  `PYTHONUSERBASE=/home/lab/.local` + that dir on `PATH` keep a `pip --user` repo importable, and `run_in` creates
+  `$HOME` before the command.
+- The image carries `LABEL hoola.devlab.rev`, `box.base_rev()` reads it with `docker image inspect` (no container),
+  and `available()` reports `base_stale` with the fix in her words. `lab_check` now **rebuilds from scratch** when
+  the image is older than the code reading it instead of using it quietly — her VPS is holding the pre-v0.539 image
+  right now. `python -m app.devlab setup --rebuild`, and vps-ops `lab_setup` passes it.
+- `.hoola/lab.json` setup is now the plain `python3 -m pip install --no-warn-script-location -r
+  server/requirements.txt` — the command any reader would write.
+
+**The self-test grew the two stages that would have caught all of this before she ran it**: a repo's own
+`pip install` really works with the network on, and what it installs **is still there after the commit** (installs
+`tabulate`, commits, then asks the committed image to import it, then forgets the throwaway tag). Both say GADBAD
+with the real output when they fail.
+
+Tests: `test_v0456_devlab.py` +4 (setup-may-keep / check-still-cannot with every wall asserted by name, no-caller-can-
+unseal, the image lets a repo run its own pip command, a stale image is named and rebuilt not used quietly) and the
+new selftest stages pinned by source. 90 green across the lab and Developer Sahayak suites
+(`test_v0456_devlab`, `test_v0531_lab_loop`, `test_v0445_khud_review`, `test_v0447_saboot`, `test_v0451_plan_pehle`,
+`test_v0371_poochh_lo`, `test_v0377_dekh_ke_review`, `test_tech_devsahayak`, `test_v0351_pakka_saboot`,
+`test_routines`).
+
+Healed on the way, all RED on pristine `origin/main` before this change (the v0.536 ritual missed two pin forms):
+the console stamp pins in `test_v0179_search` / `test_v0221_console_r1` / `test_v0475_console_frames` still read
+0.487.0 while main's console carries 0.536.0 x21, and thirteen suites pinned the full string
+`version: 0.535.0+558` / `APP_VERSION = "0.535.0"`.
+
+Version 0.537.0 (pubspec 0.539.0+562, pins swept across 169 + 13 suites; console stamps stay at main's 0.536.0 x21 —
+server-only release). Mera PC freeze respected: nothing in `server/app/pc/`, `desktop/` or `lib/` touched.
+
+**Her VPS must run `lab_setup` (it now rebuilds) before `lab_try`** — the image on it is the old one.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has never passed. The two defects above are fixed and unit-tested,
+but the only thing that proves the box can run her code is the run itself, and no model has used the lab yet.
+
+**RULE recorded:** a step whose output must survive cannot be sealed the same way as a step whose output must not.
+`docker commit` keeps neither a read-only layer nor a tmpfs — a cache that is written where it cannot persist reports
+success and serves nothing.

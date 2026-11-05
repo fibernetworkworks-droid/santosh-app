@@ -302,9 +302,12 @@ def selftest() -> list[str]:
     lines.append(f"docker: {'ok ' + str(av.get('docker')) if av['ok'] else 'NAHI - ' + av['why']}")
     if not av["ok"]:
         return lines
-    lines.append(f"base image {box.BASE_IMAGE}: {'bani hai' if av.get('base_built') else 'NAHI bani'}")
-    if not av.get("base_built"):
-        b = box.build_base()
+    lines.append(f"base image {box.BASE_IMAGE}: {'bani hai' if av.get('base_built') else 'NAHI bani'}"
+                 + (f" (rev {av.get('base_rev') or '1'}, chahiye {box.BASE_REV})" if av.get("base_built") else ""))
+    if av.get("base_stale"):
+        lines.append("  PURANI image hai - naye niyamon se dobara bana raha hoon")
+    if not av.get("base_built") or av.get("base_stale"):
+        b = box.build_base(nocache=bool(av.get("base_stale")))
         lines.append(f"  build: {'ok' if b['ok'] else 'FAIL - ' + b['why']} ({b.get('seconds')}s)")
         if not b["ok"]:
             lines += ["  " + x for x in b.get("out", "").splitlines()[-12:]]
@@ -328,6 +331,22 @@ def selftest() -> list[str]:
                      else "KHATRA - box ko internet mila, --network none kaam nahi kiya"))
         w = box.run_in(box.BASE_IMAGE, work, "touch /etc/hoola-should-fail 2>&1; echo rc=$?", timeout=60)
         lines.append("root filesystem read-only hai: " + ("ok" if "rc=0" not in w["out"] else "GADBAD - likh paya"))
+        # v0.537: her first live lab_try died here, not on any wall - Debian's PEP 668 marker refused the repo's own
+        # pip command. This proves a plain `pip install` works AND that what it installs survives the commit.
+        Path(work, "needs.txt").write_text("tabulate==0.9.0\n")
+        tag = box.BASE_IMAGE + "-selftest"
+        ins = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -m pip install -q -r needs.txt",
+                         timeout=300, network=True, commit_to=tag)
+        lines.append("repo ka apna `pip install` chalta hai: " + ("ok" if ins["rc"] == 0 else
+                     "GADBAD - " + ins["out"].strip()[-300:]))
+        if ins["rc"] == 0 and box.has_image(tag):
+            kept = box.run_in(tag, work, "cd /work; python3 -c \"import tabulate; print('mila', tabulate.__name__)\"",
+                              timeout=90)
+            lines.append("install snapshot mein bacha rehta hai: " + ("ok" if "mila" in kept["out"]
+                         else "GADBAD - commit ke baad gayab: " + kept["out"].strip()[-300:]))
+            box.forget(tag)
+        else:
+            lines.append("install snapshot mein bacha rehta hai: GADBAD - snapshot hi nahi bani")
         who = box.run_in(box.BASE_IMAGE, work, "id -u", timeout=60)
         lines.append(f"box ka user: {who['out'].strip()[:20]} " + ("(ok, root nahi)" if who["out"].strip() != "0"
                                                                   else "(GADBAD - root hai)"))
