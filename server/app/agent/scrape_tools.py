@@ -166,7 +166,7 @@ _ROTATION = None          # built once from the setting; None until the first fe
 
 
 def _rotation():
-    """v0.533 item 8a: the proxy pool, or None when she has not configured one.
+    """v0.537 item 8a: the proxy pool, or None when she has not configured one.
 
     Off unless `scrape_proxies` is set, so the default path is byte-for-byte what it was. The rotation is
     POLICY only (app/crawl/proxies) - this is the one place that hands the chosen value to the fetcher."""
@@ -265,7 +265,7 @@ def _field_value(el: Any, spec: str) -> Any:
 # --------------------------------------------------------------------------- block detection (v0.481)
 
 def _vendor_block(page: Any) -> str | None:
-    """v0.533 item 7: the vendor fingerprint tiers, on top of this lane's own strong signals.
+    """v0.537 item 7: the vendor fingerprint tiers, on top of this lane's own strong signals.
 
     `_blocked` already catches a block status, a challenge title and a small body carrying a challenge
     fingerprint. What it had no notion of is WHICH wall - and a reason that names Cloudflare or DataDome is
@@ -391,7 +391,7 @@ def _stealth_fetch(url: str, timeout: int = 90, wait_selector: str = "", solve_c
                    steps: str = ""):
     """One StealthyFetcher.fetch with the house discipline - the SEMAPHORE IS THE CALLER'S JOB.
 
-    v0.533 item 8b: `steps` is a short script (WAIT / CLICK / TYPE / SCROLL / SUBMIT) compiled to one
+    v0.537 item 8b: `steps` is a short script (WAIT / CLICK / TYPE / SCROLL / SUBMIT) compiled to one
     reviewable blob of JavaScript, for a page whose content does not exist until a notice is accepted or a
     tab is opened. The compiler refuses a credential field and has no EVAL, so what runs is only ever the
     six verbs - see app/crawl/steps.py."""
@@ -518,7 +518,7 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
         from ..config import get_settings as _gs       # imported per-function in this module
         clean = bool(getattr(_gs(), "scrape_clean_default", False))
     if clean and not css:
-        # v0.533 item 2: drop the nav / cookie banner / advert / footer BEFORE the budget is spent, so the
+        # v0.537 item 2: drop the nav / cookie banner / advert / footer BEFORE the budget is spent, so the
         # 24k characters carry content instead of chrome. `about` keeps only the blocks answering her
         # question (BM25). A page that prunes to nothing keeps its original content - better a little
         # boilerplate than an empty answer.
@@ -537,7 +537,7 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
                            "title": (page.css("title")[0].text.strip() if page.css("title") else ""),
                            "content": _cap(content or "", limit)}
     if chunk:
-        # v0.533 item 6: split on MEANING instead of truncating mid-sentence at the cap. 'topic' starts a
+        # v0.537 item 6: split on MEANING instead of truncating mid-sentence at the cap. 'topic' starts a
         # new piece when the subject changes; 'sliding' overlaps so a fact across a boundary survives whole.
         try:
             from ..crawl import chunks as _ch
@@ -737,7 +737,7 @@ async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_select
             if wait_selector:
                 kw["wait_selector"] = str(wait_selector)[:300]
             if steps:
-                # v0.533 item 8b: compiled OUTSIDE the thread would be tidier, but StepError must reach her
+                # v0.537 item 8b: compiled OUTSIDE the thread would be tidier, but StepError must reach her
                 # as a ToolError with the line number, so it is raised here and caught below.
                 from ..crawl.steps import compile_js
                 kw["script"] = compile_js(str(steps)).js
@@ -865,7 +865,7 @@ async def scrape(ctx: Ctx, url, format="markdown", css=None, include_links=False
 
 async def _seed_urls(ctx: Ctx, start: str, sources: str, want_urls: int, include: str | None,
                      newer_than: str | None) -> dict:
-    """v0.533 item 4: ask the SITE'S OWN INDEX instead of harvesting links from fetched pages.
+    """v0.537 item 4: ask the SITE'S OWN INDEX instead of harvesting links from fetched pages.
 
     scrape_map's own walk fetches up to 8 pages; a sitemap lists every page the site wants found in one or
     two requests. The SSRF guard is injected, so app/crawl keeps no idea of its own about what is safe."""
@@ -888,7 +888,7 @@ async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, tim
                      sources=None, newer_than=None, **_):
     """Links-only discovery (v0.481, the Firecrawl /map shape): fetch a few pages, harvest SAME-SITE urls,
     no content — the cheap 'is site par ka kahan hai' pass before scrape_extract/scrape.
-    v0.533: `sources="sitemap"` (or "sitemap,common_crawl") reads the site's own index instead, which is
+    v0.537: `sources="sitemap"` (or "sitemap,common_crawl") reads the site's own index instead, which is
     the difference between 8 pages' worth of links and the whole catalogue."""
     start = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(start):
@@ -1013,7 +1013,7 @@ async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50,
 
 
 async def scrape_tables(ctx: Ctx, url, which=None, as_csv=False, max_tables=5, timeout=25, **_):
-    """v0.533 item 5: the page's DATA tables as rows, not flattened text.
+    """v0.537 item 5: the page's DATA tables as rows, not flattened text.
 
     A <table> loses its meaning in text: "Cement 50kg 380 410" does not say which number is the old price.
     This expands colspan/rowspan into a dense grid so column N is the same field on every row, and REFUSES

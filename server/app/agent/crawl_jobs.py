@@ -301,7 +301,7 @@ def _save_cp(tenant_id: str, job_id: str, queue: list[str], seen: list[str], cp:
 
 
 def _pick_next(queue: list, cp: dict, question: str, mode: str, seed: str, include: str | None):
-    """Which url to read next. v0.533 item 3: best-first when she asked a QUESTION (the most promising link
+    """Which url to read next. v0.537 item 3: best-first when she asked a QUESTION (the most promising link
     first), plain FIFO otherwise - so a crawl with no question behaves exactly as it did before.
 
     The frontier is rebuilt from the queue each tick rather than held in memory: this job is resumed from a
@@ -337,7 +337,7 @@ def _keywords(question: str) -> list[str]:
 
 
 def _enough_yet(cp: dict, question: str) -> tuple[bool, str, dict]:
-    """v0.533 item 1: has it read enough to answer her question? (stop?, why, metrics)
+    """v0.537 item 1: has it read enough to answer her question? (stop?, why, metrics)
 
     Only ever asked when she gave a question - a crawl told to mirror a section still stops on its page
     budget alone, as it always did.
@@ -377,7 +377,7 @@ async def run_job(tenant_id: str, job_id: str) -> None:
                 return
             include = (row["include"] or "").strip() or None
             start_host = urlparse(row["seed"]).hostname or ""
-            # v0.533 items 1 + 3: the frontier decides WHICH url next, and the question (if she gave one)
+            # v0.537 items 1 + 3: the frontier decides WHICH url next, and the question (if she gave one)
             # decides WHETHER to carry on. Both are rebuilt from the checkpoint every tick, because this
             # job must survive a pm2 restart and resume from where it stopped.
             question = (cp.get("question") or "").strip()
@@ -531,7 +531,7 @@ async def crawl_start(ctx: Ctx, url, max_pages=20, include=None, question=None, 
     """Queue a background crawl of one site section (the Firecrawl /crawl idea): polite BFS, robots
     honoured, HTTP only, checkpointed — the worker tick picks it up within ~20 s.
 
-    v0.533: give `question` and the crawl changes character — it reads the most PROMISING link next
+    v0.537: give `question` and the crawl changes character — it reads the most PROMISING link next
     instead of the next one in line, and it STOPS when the pages answer the question rather than
     spending the whole page budget. Without a question the behaviour is byte-for-byte what it was."""
     from ..config import get_settings

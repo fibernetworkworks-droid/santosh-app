@@ -19490,3 +19490,107 @@ legal question into a declarable fact", for two reasons that land on the same mi
 - NOT VERIFIED: no real store survey has been filled from this, and it is not legal advice. The classification is only
   as good as the `source` each asset kind declares; an asset whose source Hoola cannot place is NAMED rather than
   guessed at, which is the honest failure.
+
+---
+
+## v0.537.0 — CRAWL BRAIN: the crawl4ai ideas, hand-built and wired
+
+Owner read `github.com/unclecode/crawl4ai`, asked **"NOW TELL ME WHAT CRAWL4AI CAN DO THAT HOOLA CANNOT"**,
+then **"give this all to hoola ai"** and **"GO WIRE IT ALL"**.
+
+### Why none of its code is here
+
+`crawl4ai/html2text/` is a **vendored fork of html2text** declaring upstream's own release `2024.2.26`,
+with **no copyright line and no licence header**. Upstream html2text is **GPLv3** — *"Originally written by
+Aaron Swartz. This code is distributed under the GPLv3"*, with a GNU GPL v3 `COPYING`. Both
+`markdown_generation_strategy.py` and `utils.py` import that fork, so **every page-to-markdown conversion in
+that library runs through GPL'd code inside an Apache-2.0 repo.** `agent/crawl_jobs.py` already keeps
+Firecrawl's AGPL engine out of this tree for the same reason. So the published algorithms were
+re-implemented from their formulas and measured. Credited in `THIRD_PARTY_NOTICES.md`.
+
+### The eight things it could do that Hoola could not
+
+| | New module | What Hoola had |
+|---|---|---|
+| 1 | `enough.py` | FIFO crawl, stops on a page cap, never because it has the answer |
+| 2 | `prune.py` | markdown, but no pruning — nav/banners/ads spent the 24k budget |
+| 3 | `frontier.py` | `queue.pop(0)` + a same-host check |
+| 4 | `seed.py` | `scrape_map` fetching 8 pages for links |
+| 5 | `tables.py` | nothing — tables arrived flattened |
+| 6 | `chunks.py` | chunking elsewhere, none for page text |
+| 7 | `blocked.py` | block detection + stealth escalation, but no vendor names |
+| 8 | `proxies.py`, `steps.py` | no proxy support; clicks driven turn-by-turn |
+
+**Item 1 is the one that matters.** `confidence = 0.4 coverage + 0.3 consistency + 0.3 saturation`, stop at
+0.70. On four pages that answer a question it **stops at page 3 instead of spending 20**; on irrelevant
+pages it never claims "enough" and exits as *"stalled: three pages moved confidence by +0.029"*.
+
+**Item 2, measured:** on a realistic page it keeps **57% of the text** and loses the cookie banner, nav,
+sidebar, advert and footer, while keeping the phone number and the content.
+
+### Wired, because modules nothing calls are the v0.389 trap
+
+`scrape_page` gained `clean` / `about` / `chunk`; `scrape_map` gained `sources="sitemap[,common_crawl]"` and
+`newer_than`; **new tool `scrape_tables`** (registry 554 → 555); `crawl_start` gained `question` (frontier +
+stopping rule — without a question the crawl behaves byte-for-byte as before); `_blocked` delegates to the
+vendor tiers after its own checks pass; `_fetch` rotates proxies behind the new `scrape_proxies` setting;
+`scrape_stealth` takes a `steps` script.
+
+`test_every_crawl_module_has_a_caller_outside_its_own_package` encodes CLAUDE.md's rule as an assertion —
+and **caught `chunks`, `proxies` and `steps` with no caller at all.** Built, tested, dead.
+
+### Ten bugs found by measurement, not reading
+
+1. **BM25's idf collapses when every page agrees**, so coverage scored *lower* the better the pages matched
+   — four pages stating the same GST rate stalled at 0.633 and would have spent the whole budget.
+2. Consistency used **Jaccard**, which divides by the union, so pages agreeing on every fact but differing
+   in length scored ~0.33 for ever. Overlap coefficient now.
+3. The chrome signal was **10% of the score**, so a wordy cookie banner *and* a promo advert both survived.
+   A hard gate now; a content word in the attribute vetoes it.
+4. Tier-2 block detection gated on **HTML bytes**, so a 5 KB article about Cloudflare was flagged as a
+   challenge on the words "bot detection". It gates on **visible text** now.
+5. Comment stripping cut at the first `#`, so `TYPE "#q" "cement"` became `TYPE "` — **every CSS id selector
+   broke.**
+6. A selector carrying a quote was silently **truncated** rather than refused.
+7. `json.dumps` does not escape `/`, so a value containing `</script>` would have closed the tag.
+8. The steps script went into the `scrape` waterfall, which has no such variables in scope — a **NameError
+   on every auto-mode scrape**.
+9. `get_settings` is imported per-function in `scrape_tools`, so two new uses were NameErrors.
+10. An off-topic link could outrank an on-topic one on **novelty alone**.
+
+### Deliberately not built
+
+Recorded in `app/crawl/__init__.py` so a later session cannot "complete" them by accident:
+
+- **robots.txt `Disallow`-mining as a URL-discovery source.** crawl4ai's `DomainMapper` offers it — reading
+  the file where an operator wrote down what they do not want crawled, and using it as a map. Hoola reads
+  robots.txt to **obey** it; `scrape_respect_robots` stays `True`.
+- **Minting rotating residential proxies** from a provider API (`set_nstproxy`). Whether Hoola pays to get
+  through a site that said no is the owner's call, not a default.
+- **Upstream's `authority` link weight**, which is 0.2 of its score and hard-coded to 1.0 with the real
+  calculation commented out — a fifth of that ranking is inert. The two live weights are renormalised to sum
+  to 1.0, keeping their exact 5:3 ratio, and a test pins that.
+- **An `EVAL` verb** in the step DSL. A DSL that can run arbitrary JS is just JS with extra steps.
+
+### Also worth knowing about crawl4ai itself
+
+- `crawlers/amazon_product/crawler.py` **returns a hard-coded string** — `{"product": {"name": "Test Amazon
+  Product"}}` for any URL — while advertising `version 1.2.0`, `tested_on: ["amazon.com"]`.
+- `cloud_notice.py` prints a promotional banner on first crawler start and again whenever a page is detected
+  as blocked. No telemetry, no HTTP, print only; kill switch `CRAWL4AI_NO_CLOUD_NOTICE=1`.
+- **No CI runs its test suite** — 2,016 test functions, and the only automated gate on push is a
+  Docker-security subset.
+- `check_robots_txt` **defaults to `False`**.
+
+### Files
+
+New: `server/app/crawl/` (10 modules), `server/tests/test_v0537_crawl_brain.py` (54),
+`server/tests/test_v0537_crawl_wired.py` (15).
+Changed: `agent/scrape_tools.py`, `agent/crawl_jobs.py`, `config.py` (5 settings, all neutral by default),
+`THIRD_PARTY_NOTICES.md`, and `test_v0474_scrapling.py::test_registry_wired` (a conscious bump for the new
+tool, which is what that pin is for).
+
+**Not verified:** no live site has been crawled with any of this — the tests drive mocked fetches, and
+`scrapling` is not installed in the sandbox so the existing lane's own suite is red there on untouched code
+too (16 failures reproduced on the pre-change tree). The first real crawl with a `question` is what will
+show whether the stopping rule fires where it should on live pages.
