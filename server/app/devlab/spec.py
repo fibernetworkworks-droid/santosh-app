@@ -201,6 +201,20 @@ def discover(paths: list[str], files: dict[str, str], hers: dict[str, str] | Non
             "candidates": cand[:8], "refused": refused[:3], "why": why, "timeout": hoola_file.get("timeout", 0)}
 
 
+def one_file(cmd: str, lang: str, path: str) -> str:
+    """The declared command narrowed to ONE test file, when that can be done honestly. '' = it cannot, and the caller
+    says so instead of guessing: appending a path to an arbitrary command is how a check silently tests nothing."""
+    raw = (path or "").strip()
+    c, p = _clean(cmd), raw.removeprefix("./")
+    if not c or not p or refuse_reason(c) or " " in p or ".." in raw or raw.startswith("/"):
+        return ""
+    if lang in LANGS and c == LANGS[lang]["test"]:
+        return _clean(LANGS[lang]["one"].format(path=p))
+    if re.search(r"(?i)\b(pytest|vitest|jest|go test|cargo test|dart test|flutter test)\b", c) and "{" not in c:
+        return _clean(f"{c} {p}")                      # these all take a path as the last argument
+    return ""
+
+
 def deps_key(files: dict[str, str]) -> str:
     """The snapshot's cache key: the hash of the files that decide what gets installed (Codex keys its cached container
     on the setup script + env; we key on the lock files, so a dependency change rebuilds and nothing else does)."""
