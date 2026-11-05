@@ -336,8 +336,13 @@ def _client():
 
 def test_routes_are_public_read_only():
     c = _client()
-    d = c.get("/api/prayog/labs", params={"variants": False, "limit": 200}).json()   # the route pages at 100 by design
-    assert len(d["labs"]) == len(S.labs()) and "simulation" in d["note"]   # every set-up; their variants page separately
+    d = c.get("/api/prayog/labs", params={"variants": False, "limit": 200}).json()   # the route pages at 200 at most
+    assert d["total"] == len(S.labs()) and "simulation" in d["note"]   # every set-up; their variants page separately
+    got, page = [], 1
+    while len(got) < d["total"]:                                        # and paging reaches every one of them, however many
+        got += c.get("/api/prayog/labs", params={"variants": False, "limit": 200, "page": page}).json()["labs"]
+        page += 1
+    assert len(got) == len(S.labs()) and len({r["id"] for r in got}) == len(got)
     hits = {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False, "limit": 200}).json()["labs"]}
     assert "convex-lens" in hits and hits               # the search finds the lens lab (other optics labs may match too)
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]

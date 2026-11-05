@@ -1116,7 +1116,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "lens"
+     "kernel": "lens",
+     "built": "image-nature-candle-screen"
     },
     {
      "id": "lens-combination",

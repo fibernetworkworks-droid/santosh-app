@@ -38,5 +38,6 @@
     "title": "NIST ITS-90 thermocouple reference tables: EMF at 100 degC relative to 0 degC (K 4.096 mV, J 5.269 mV, T 4.279 mV, E 6.319 mV); S = EMF / 100 K"
    }
   }
- ]
+ ],
+ "rig": "msc-sweep-bench"
 }

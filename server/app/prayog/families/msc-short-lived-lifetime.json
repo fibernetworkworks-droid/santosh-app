@@ -1,0 +1,23 @@
+{
+ "base": "msc-short-lived-lifetime",
+ "rig": "gm-halflife-bench",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "in116m",
+   "title": "Half-life of activated indium (indium-116m)",
+   "sample": "Indium foil activated in a neutron howitzer (In-116m)",
+   "unknown": "the half-life of indium-116m",
+   "params": {
+    "T": 3257.4,
+    "tc": 120.0,
+    "N0": 130,
+    "seed": 67
+   },
+   "note": "The half-life of 54 minutes is long enough to take many readings and short enough to finish in one session.",
+   "source": {
+    "title": "NNDC / IAEA evaluated nuclear data: In-116m half-life 54.29 min"
+   }
+  }
+ ]
+}

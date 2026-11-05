@@ -26,5 +26,6 @@
     "title": "Critical temperatures of high-Tc cuprates: YBa2Cu3O7 about 92 K, Bi2Sr2CaCu2O8 about 85 K, Bi2Sr2Ca2Cu3O10 about 110 K (Tinkham; CRC Handbook, 'Superconductivity')"
    }
   }
- ]
+ ],
+ "rig": "msc-sweep-bench"
 }

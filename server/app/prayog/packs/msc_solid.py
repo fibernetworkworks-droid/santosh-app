@@ -838,10 +838,10 @@ FAMILY["msc_vac"] = "thermo"
 FAMILY["msc_metal"] = "thermo"
 
 TEXTBOOK = {
-    "msc_alpha": _metal_alpha, "msc_S": _seebeck_S, "msc_Ea": _ionic_Ea, "msc_Tc_sc": _super_Tc,
-    "msc_mu": _magres_mu, "msc_Tc_fe": _ferro_Tc, "msc_Tc_cu": _curie_Tc, "msc_Tni": _lc_Tni, "msc_er": _diel_er,
-    "msc_Hc": _loop_Hc, "msc_a": _xrd_a, "msc_L": _xrd_L, "msc_chi": _quincke_chi, "msc_Spump": _vac_S,
-    "msc_Pu": _vac_Pu, "msc_Te": _lang_Te,
+    "mss_alpha": _metal_alpha, "mss_S": _seebeck_S, "mss_Ea": _ionic_Ea, "mss_Tc_sc": _super_Tc,
+    "mss_mu": _magres_mu, "mss_Tc_fe": _ferro_Tc, "mss_Tc_cu": _curie_Tc, "mss_Tni": _lc_Tni, "mss_er": _diel_er,
+    "mss_Hc": _loop_Hc, "mss_a": _xrd_a, "mss_L": _xrd_L, "mss_chi": _quincke_chi, "mss_Spump": _vac_S,
+    "mss_Pu": _vac_Pu, "mss_Te": _lang_Te,
 }
 
 
@@ -869,21 +869,21 @@ def _cw(rows, p):
 
 
 CALCS: dict[str, dict] = {
-    "msc_alpha": {"label": "temperature coefficient", "unit": "1/K", "needs": ["T", "R"],
+    "mss_alpha": {"label": "temperature coefficient", "unit": "1/K", "needs": ["T", "R"],
                   "fn": lambda rows, p: (lambda mc: mc[0] / (mc[1] + mc[0] * p["Tref"]) if (mc[1] + mc[0] * p["Tref"]) != 0 else 0.0)(
                       _line(_rows(rows, ["T", "R"])))},
-    "msc_seeb": {"label": "Seebeck coefficient", "unit": "uV/K", "needs": ["dT", "V"],
+    "mss_seeb": {"label": "Seebeck coefficient", "unit": "uV/K", "needs": ["dT", "V"],
                  "fn": lambda rows, p: _slope(_rows(rows, ["dT", "V"]))},
-    "msc_Eact": {"label": "activation energy", "unit": "eV", "needs": ["invT", "lnsT"],
+    "mss_Eact": {"label": "activation energy", "unit": "eV", "needs": ["invT", "lnsT"],
                  "fn": lambda rows, p: -KB * _slope(_rows(rows, ["invT", "lnsT"])) / QE},
-    "msc_mob": {"label": "mobility", "unit": "m2/Vs", "needs": ["B2", "R"],
+    "mss_mob": {"label": "mobility", "unit": "m2/Vs", "needs": ["B2", "R"],
                 "fn": lambda rows, p: (lambda mc: math.sqrt(mc[0] / (p["xi"] * mc[1])) if mc[1] != 0 and mc[0] / (p["xi"] * mc[1]) > 0 else 0.0)(
                     _line(_rows(rows, ["B2", "R"])))},
-    "msc_cw": {"label": "Curie-Weiss temperature", "unit": "K", "needs": ["T", "eps"], "fn": _cw},
-    "msc_wh": {"label": "crystallite size", "unit": "m", "needs": ["x", "y"], "fn": _wh},
-    "msc_chiq": {"label": "volume susceptibility", "unit": "", "needs": ["B2", "h"],
+    "mss_cw": {"label": "Curie-Weiss temperature", "unit": "K", "needs": ["T", "eps"], "fn": _cw},
+    "mss_wh": {"label": "crystallite size", "unit": "m", "needs": ["x", "y"], "fn": _wh},
+    "mss_chiq": {"label": "volume susceptibility", "unit": "", "needs": ["B2", "h"],
                  "fn": lambda rows, p: 2.0 * MU0 * p["rho"] * GRAV * _slope(_rows(rows, ["B2", "h"]))},
-    "msc_Tel": {"label": "electron temperature", "unit": "eV", "needs": ["V", "I"], "fn": _langte},
-    "msc_pump": {"label": "pumping speed", "unit": "m3/s", "needs": ["t", "lnP"],
+    "mss_Tel": {"label": "electron temperature", "unit": "eV", "needs": ["V", "I"], "fn": _langte},
+    "mss_pump": {"label": "pumping speed", "unit": "m3/s", "needs": ["t", "lnP"],
                  "fn": lambda rows, p: -p["V"] * _slope(_rows(rows, ["t", "lnP"]))},
 }

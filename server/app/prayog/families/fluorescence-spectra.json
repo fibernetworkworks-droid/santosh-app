@@ -1,0 +1,38 @@
+{
+ "base": "fluorescence-spectra",
+ "chapter": "Luminescence",
+ "variants": [
+  {
+   "key": "fluorescein",
+   "title": "Absorption and fluorescence of fluorescein",
+   "sample": "Fluorescein in 0.1 M NaOH",
+   "unknown": "the Stokes shift of fluorescein",
+   "params": {
+    "abs": 490.0,
+    "em": 514.0,
+    "sa": 1500.0,
+    "se": 1100.0
+   },
+   "note": "A small Stokes shift: absorption and emission bands overlap.",
+   "source": {
+    "title": "Fluorescein in 0.1 M NaOH: absorption 490 nm, emission about 514 nm (PhotochemCAD; Lakowicz, Principles of Fluorescence Spectroscopy)"
+   }
+  },
+  {
+   "key": "ruby",
+   "title": "Absorption and fluorescence of ruby",
+   "sample": "Ruby (Cr3+ in Al2O3) crystal",
+   "unknown": "the Stokes shift of ruby",
+   "params": {
+    "abs": 550.0,
+    "em": 694.3,
+    "sa": 1200.0,
+    "se": 60.0
+   },
+   "note": "The Y absorption band near 550 nm feeds the sharp R1 emission line at 694.3 nm.",
+   "source": {
+    "title": "Ruby: Y band near 550 nm, R1 line 694.3 nm (Maiman 1960; Koechner, Solid-State Laser Engineering)"
+   }
+  }
+ ]
+}

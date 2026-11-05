@@ -53,7 +53,7 @@ HoolaStudio.define('msc-spectrograph', function (S) {
 
   // ================================================================ the bench
   function box(w, h, d, mat, x, y, z, parent, r) {
-    var m = S.rounded(w, h, d, r === undefined ? 0.006 : r, mat); m.rotation.x = -Math.PI / 2;
+    var m = S.rounded(w, d, h, r === undefined ? 0.006 : r, mat); m.rotation.x = -Math.PI / 2;
     m.position.set(x, y, z); (parent || S.scene).add(m); return m;
   }
   var cream = new T.MeshStandardMaterial({ color: 0xe3dfd3, roughness: 0.5, metalness: 0.1 });
@@ -103,13 +103,13 @@ HoolaStudio.define('msc-spectrograph', function (S) {
   var dcap = S.mesh(new T.CylinderGeometry(0.032, 0.032, 0.012, 28), M.black); dcap.rotation.z = Math.PI / 2; dcap.position.set(0.07, 0.065, 0); det.add(dcap);
   var dlab = S.label(I.det.length > 22 ? I.det.slice(0, 22) : I.det, { w: 0.08, ratio: 0.14, bg: '#d6dade', color: '#222', px: 512 }); dlab.position.set(0, 0.098, 0.0); dlab.rotation.x = -Math.PI / 2; det.add(dlab);
   S.contact(0.18, 0.1, 0.26, -0.17, 0.45);
-  var cab = S.wire([new T.Vector3(0.3, 0.06, -0.17), new T.Vector3(0.36, 0.02, -0.12), new T.Vector3(0.44, 0.012, -0.12)], 0x222222); if (cab) S.scene.add(cab);
+  S.wire([[0.3, 0.06, -0.17], [0.36, 0.02, -0.12], [0.44, 0.012, -0.12]], 'black');
 
   // readout screen
   var scrTex = S.liveTex(900, 520);
   var scrG = new T.Group(); S.scene.add(scrG); scrG.position.set(0.55, 0, -0.2); scrG.rotation.y = -0.4;
-  var scrBody = S.rounded(0.3, 0.04, 0.2, 0.008, new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.6 })); scrBody.position.set(0, 0.11, 0); scrBody.rotation.x = -0.15; scrG.add(scrBody);
-  var scrFace = new T.Mesh(new T.PlaneGeometry(0.28, 0.162), new T.MeshBasicMaterial({ map: scrTex, toneMapped: false })); scrFace.position.set(0, 0.11, 0.0215); scrFace.rotation.x = -0.15; scrG.add(scrFace);
+  var scrBody = S.rounded(0.3, 0.19, 0.03, 0.008, new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.6 })); scrBody.position.set(0, 0.125, 0); scrBody.rotation.x = -0.15; scrG.add(scrBody);
+  var scrFace = new T.Mesh(new T.PlaneGeometry(0.28, 0.162), new T.MeshBasicMaterial({ map: scrTex, toneMapped: false })); scrFace.position.set(0, 0.125, 0.0165); scrFace.rotation.x = -0.15; scrG.add(scrFace);
   var scrNeck = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.06, 16), M.iron); scrNeck.position.y = 0.04; scrG.add(scrNeck);
   var scrBase = S.mesh(new T.CylinderGeometry(0.035, 0.04, 0.012, 24), M.iron); scrBase.position.y = 0.006; scrG.add(scrBase);
   S.contact(0.28, 0.2, 0.55, -0.2, 0.45);

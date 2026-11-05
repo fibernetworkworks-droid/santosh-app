@@ -82,7 +82,7 @@ def metal_conductivity_t() -> dict:
             "The voltage leads carry almost no current.")],
         [PGLAB, KITTEL, {"title": "Serway and Jewett, Physics for Scientists and Engineers, table of temperature "
                                   "coefficients of resistivity (20 °C)"}],
-        {"reading": "alpha", "textbook": "msc_alpha"})
+        {"reading": "alpha", "textbook": "mss_alpha"})
 
 
 def thermoelectric_power() -> dict:
@@ -115,7 +115,7 @@ def thermoelectric_power() -> dict:
                                                             "The cold junction temperature"], 0,
             "A zero-offset shifts the line, not its slope.")],
         [PGLAB, KITTEL, {"title": "NIST ITS-90 thermocouple reference tables (EMF at 100 °C, 0 °C reference)"}],
-        {"reading": "S", "textbook": "msc_S"})
+        {"reading": "S", "textbook": "mss_S"})
 
 
 def ionic_conductivity() -> dict:
@@ -147,7 +147,7 @@ def ionic_conductivity() -> dict:
          _q("On heating, the conductivity of an ionic crystal", ["Rises steeply", "Falls", "Is unchanged"], 0,
             "More vacancies hop more often.")],
         [PGLAB, KITTEL, ILLUS],
-        {"reading": "Ea", "textbook": "msc_Ea"})
+        {"reading": "Ea", "textbook": "mss_Ea"})
 
 
 def superconductor_rt() -> dict:
@@ -180,7 +180,7 @@ def superconductor_rt() -> dict:
                                       "Start of the cooling"], 0,
             "R has fallen to half its normal-state value.")],
         [PGLAB, KITTEL, {"title": "Tinkham, Introduction to Superconductivity, 2nd ed. (McGraw-Hill, 1996)"}],
-        {"reading": "Tc", "textbook": "msc_Tc_sc"})
+        {"reading": "Tc", "textbook": "mss_Tc_sc"})
 
 
 def magnetoresistance() -> dict:
@@ -212,7 +212,7 @@ def magnetoresistance() -> dict:
             "μB measures the angle the carriers turn between collisions.")],
         [PGLAB, KITTEL, {"title": "S. M. Sze and K. K. Ng, Physics of Semiconductor Devices, 3rd ed. (Wiley, 2007): "
                                   "electron mobilities at 300 K"}],
-        {"reading": "mu", "textbook": "msc_mu"})
+        {"reading": "mu", "textbook": "mss_mu"})
 
 
 def ferroelectric_curie() -> dict:
@@ -244,7 +244,7 @@ def ferroelectric_curie() -> dict:
             "1/ε = (T − Tc)/C.")],
         [PGLAB, KITTEL, {"title": "M. E. Lines and A. M. Glass, Principles and Applications of Ferroelectrics (Oxford, "
                                   "1977): triglycine sulphate Tc = 49 °C, Curie constant about 3000 K"}],
-        {"reading": "Tc", "textbook": "msc_Tc_fe", "tol": 0.01})
+        {"reading": "Tc", "textbook": "mss_Tc_fe", "tol": 0.01})
 
 
 def ferrite_curie() -> dict:
@@ -275,7 +275,7 @@ def ferrite_curie() -> dict:
          _q("Above Tc the inductance of the coil", ["Drops to its air-core value", "Doubles", "Is unchanged"], 0,
             "μ falls to about 1.")],
         [PGLAB, KITTEL, {"title": "Cullity and Graham, Introduction to Magnetic Materials, 2nd ed. (Wiley, 2009)"}],
-        {"reading": "Tc", "textbook": "msc_Tc_cu"})
+        {"reading": "Tc", "textbook": "mss_Tc_cu"})
 
 
 def liquid_crystal_transition() -> dict:
@@ -309,7 +309,7 @@ def liquid_crystal_transition() -> dict:
                                              "The laser is polarised"], 0,
             "S = (1 − 0.98 T/T*)^0.22.")],
         [PGLAB, {"title": "P. J. Collings and M. Hird, Introduction to Liquid Crystals (Taylor & Francis, 1997)"}],
-        {"reading": "Tni", "textbook": "msc_Tni"})
+        {"reading": "Tni", "textbook": "mss_Tni"})
 
 
 def dielectric_lcr() -> dict:
@@ -341,7 +341,7 @@ def dielectric_lcr() -> dict:
                                                                   "The highest frequency"], 0,
             "ε'' = (εs − ε∞) x/(1 + x²) with x = f/fr.")],
         [PGLAB, KITTEL, ILLUS],
-        {"reading": "er", "textbook": "msc_er"})
+        {"reading": "er", "textbook": "mss_er"})
 
 
 # ====================================================================================== hysteresis loops
@@ -362,7 +362,7 @@ def _loop(id: str, title: str, aim: str, params: dict, hunit: str, hk: float, hm
          _q("The area inside the loop is", ["The energy lost per cycle per unit volume", "The saturation value",
                                               "The remanence"], 0, "The area of an M-H or B-H loop is the energy "
                                                                     "dissipated in one cycle.")],
-        sources, {"reading": "Hc", "textbook": "msc_Hc", "tol": 0.01}, group=SSP if id != "vsm-magnetisation" else MATS,
+        sources, {"reading": "Hc", "textbook": "mss_Hc", "tol": 0.01}, group=SSP if id != "vsm-magnetisation" else MATS,
         chapter=CH_SS if id != "vsm-magnetisation" else CH_MS)
 
 
@@ -510,7 +510,7 @@ def xrd_powder_photograph() -> dict:
          _q("The best value of a comes from", ["The line at the highest angle", "The first line",
                                                 "The strongest line"], 0, "Δa/a = cotθ Δθ is smallest there.")],
         [PGLAB, CULLITY, {"title": "ICDD / CRC Handbook: lattice parameters of Si, Ge, NaCl, Al, Cu and W"}],
-        {"reading": "a", "textbook": "msc_a", "tol": 0.005}, group=MATS, chapter=CH_SS, topic="Crystal structure")
+        {"reading": "a", "textbook": "mss_a", "tol": 0.005}, group=MATS, chapter=CH_SS, topic="Crystal structure")
 
 
 def xrd_size_strain() -> dict:
@@ -542,7 +542,7 @@ def xrd_size_strain() -> dict:
          _q("In a Williamson-Hall plot the intercept gives", ["The crystallite size", "The strain",
                                                                 "The lattice parameter"], 0, "Intercept = Kλ/L.")],
         [PGLAB, CULLITY, {"title": "G. K. Williamson and W. H. Hall, Acta Metallurgica 1 (1953) 22"}],
-        {"reading": "L_wh", "textbook": "msc_L", "tol": 0.04}, group=MATS, chapter=CH_MS, topic="Crystallite size")
+        {"reading": "L_wh", "textbook": "mss_L", "tol": 0.04}, group=MATS, chapter=CH_MS, topic="Crystallite size")
 
 
 # ====================================================================================== magnetic susceptibility
@@ -576,7 +576,7 @@ def quincke_susceptibility() -> dict:
          _q("The rise is proportional to", ["B squared", "B", "1/B"], 0, "The pressure is χB²/(2μ0).")],
         [PGLAB, {"title": "CRC Handbook of Chemistry and Physics, 'Magnetic susceptibility of the elements and "
                           "inorganic compounds' (molar, cgs)"}, KITTEL],
-        {"reading": "chi", "textbook": "msc_chi"})
+        {"reading": "chi", "textbook": "mss_chi"})
 
 
 # ====================================================================================== vacuum and plasma
@@ -611,7 +611,7 @@ def gaede_vacuum_pump() -> dict:
          _q("A Pirani gauge reads wrongly at atmospheric pressure because", ["It saturates", "It is switched off",
                                                                                "It is too hot"], 0,
             "Gas conduction no longer depends on pressure.")],
-        [PGLAB, CHAMBERS, ILLUS], {"reading": "S", "textbook": "msc_Spump"}, group=VAC, chapter=CH_VP,
+        [PGLAB, CHAMBERS, ILLUS], {"reading": "S", "textbook": "mss_Spump"}, group=VAC, chapter=CH_VP,
         topic="Vacuum physics")
 
 
@@ -644,7 +644,7 @@ def vacuum_gauges() -> dict:
             "At higher pressure the filament burns out."),
          _q("A diffusion pump needs", ["A rotary backing pump", "No other pump", "A compressor"], 0,
             "It cannot exhaust to atmosphere.")],
-        [PGLAB, CHAMBERS, ILLUS], {"reading": "Pu", "textbook": "msc_Pu"}, group=VAC, chapter=CH_VP,
+        [PGLAB, CHAMBERS, ILLUS], {"reading": "Pu", "textbook": "mss_Pu"}, group=VAC, chapter=CH_VP,
         topic="Vacuum physics")
 
 
@@ -680,7 +680,7 @@ def plasma_glow_discharge() -> dict:
                                                        "It is at room temperature"], 0,
             "The net charge is nearly zero on scales above the Debye length.")],
         [PGLAB, LIEBERMAN, CODATA, {"title": "IUPAC atomic weights: Ar 39.948, Ne 20.180, He 4.0026, H 1.008"}],
-        {"reading": "Te", "textbook": "msc_Te"}, group=VAC, chapter=CH_VP, topic="Plasma physics")
+        {"reading": "Te", "textbook": "mss_Te"}, group=VAC, chapter=CH_VP, topic="Plasma physics")
 
 
 BUILDERS = (metal_conductivity_t, thermoelectric_power, ionic_conductivity, superconductor_rt, magnetoresistance,

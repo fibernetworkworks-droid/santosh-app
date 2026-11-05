@@ -17,7 +17,7 @@ HoolaStudio.define('convex-mirror-using-lens', function (S) {
   }
   var p = labParams();
   var P0 = { u: p.u, a: p.a, scr: p.scr };
-  p.h = 0.012;                                                  // the lit pin is 12 mm tall: its tip is the object point
+  p.h = 0.006;                                                  // the lit pin is 6 mm tall: its tip is the object point (small enough for the returning beam to stay inside the lens)
   var X0 = -0.9, LEN = 1.8, BZ = -0.2, AXY = 0.24, MIR = 50;     // bench start x, length, z of the axis, axis height, lens mark (cm)
   var MX = X0 + MIR / 100;
   var RIM = Math.sqrt(Math.max(p.R * p.d - p.d * p.d / 4, 1e-8));
@@ -119,7 +119,7 @@ HoolaStudio.define('convex-mirror-using-lens', function (S) {
   for (var ri = 0; ri < 4; ri++) { var ln = new T.Line(new T.BufferGeometry(), rayMat); ln.visible = false; ln.renderOrder = 7; S.scene.add(ln); rayLines.push(ln); }
 
   S.addApparatus('bench', bench, 'Optical bench', 'A rigid iron bed, 180 cm long, with a centimetre scale (least count 1 mm). Each upright has an index mark that you read on the scale.');
-  S.addApparatus('pin', pinCar, MIRM ? 'Lit pin' : 'Lit pin (the object)', 'A pin lit by its own lamp, 12 mm tall. Its tip is the object. It stands on the left of the lens.');
+  S.addApparatus('pin', pinCar, MIRM ? 'Lit pin' : 'Lit pin (the object)', 'A pin lit by its own lamp, 6 mm tall. Its tip is the object. It stands on the left of the lens.');
   S.addApparatus('lens', lensCar, 'Convex lens', 'A thin biconvex ' + (p.n > 1.55 ? 'flint' : 'crown') + ' glass lens (n = ' + (+p.n.toFixed(4)) + ', both faces R = ' + (+(p.R * 100).toFixed(2)) + ' cm), clamped with its centre exactly at the 50.0 cm mark.');
   S.addApparatus('elem', elCar, MIRM ? 'Convex mirror' : 'Concave lens', MIRM ? 'A small convex mirror on its own upright, silvered on the front. Its radius of curvature is what you find. It goes between the lens and the image.' : 'A biconcave lens on its own upright. Its focal length is what you find. It goes between the convex lens and its image.');
   S.addApparatus('screen', scrCar, 'White screen', 'A white card for catching a real image.');
@@ -241,7 +241,7 @@ HoolaStudio.define('convex-mirror-using-lens', function (S) {
     if (MIRM) {
       if (!v.real) { S.say('No image comes back to the pin. Move the mirror a little.'); return false; }
       if (Math.abs(gapMm()) > GAPTOL) { S.say('The pin and its image are not together yet. Slide the mirror until there is no parallax: the image should stay on the pin as you move your head.'); return false; }
-      if (S.rows.some(function (r) { return Math.abs(r.u - u) < 1; })) { S.say('You already have a reading near u = ' + fmt1(u) + ' cm. Move the pin to a new position.'); return false; }
+      if (S.rows.some(function (r) { return Math.abs(r.u * 100 - u) < 1; })) { S.say('You already have a reading near u = ' + fmt1(u) + ' cm. Move the pin to a new position.'); return false; }
       S.addRow({ u: u / 100, v: st.vNow.v / 100, a: (st.ePos - MIR) / 100 });
       S.say('Written: u = ' + fmt1(u) + ' cm, v = ' + fmt1(st.vNow.v) + ' cm, mirror at a = ' + fmt1(st.ePos - MIR) + ' cm.'); return true;
     }
@@ -267,13 +267,8 @@ HoolaStudio.define('convex-mirror-using-lens', function (S) {
     for (i = 0; i < 30; i++) { m = (a + b) / 2; st.ePos = m; gm = gapMm(); if ((gm > 0) === (ga > 0)) { a = m; ga = gm; } else b = m; }
     st.ePos = keep; return Math.round((a + b) / 2 * 20) / 20;
   }
-  function autoU() {                                              // pin distances a careful student picks beyond 1.5 f (the image comes out well on the bench)
-    if (MIRM) {
-      var us = [], mult = [1.8, 2.1, 2.4], v, q = assign(p, { h: 0.002, mir: 0 }), k;
-      for (k = 0; k < mult.length; k++) us.push(Math.round(mult[k] * FCM * 2) / 2);
-      return us;
-    }
-    return [1.8, 2.1, 2.4].map(function (m) { return Math.round(m * FCM * 2) / 2; });
+  function autoU() {                                              // pin distances a careful student picks: beyond 1.9 f, so the image comes out well on the bench
+    return [1.9, 2.15, 2.4].map(function (m) { return Math.min(Math.round(m * FCM * 2) / 2, LIM.o[1] === undefined ? 46.5 : Math.floor((MIR - LIM.o[0]) * 2 - 1) / 2); });
   }
   function trialA(u) {
     return (st.in2 ? takeElement() : Promise.resolve()).then(function () { st.oSet = MIR - u; return moveUpright('o', MIR - u); }).then(function () {

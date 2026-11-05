@@ -38,5 +38,6 @@
     "title": "S. M. Sze and K. K. Ng, Physics of Semiconductor Devices, 3rd ed.: electron mobility at 300 K (Ge 3900, GaAs 8500, InAs 33000, InSb 77000 cm2/V s)"
    }
   }
- ]
+ ],
+ "rig": "msc-sweep-bench"
 }

@@ -28,5 +28,6 @@
     "title": "CRC Handbook of Chemistry and Physics, 'Magnetic susceptibility of the elements and inorganic compounds' (molar, cgs, 1e-6 cm3/mol) and volume susceptibility of water -9.05e-6 (SI)"
    }
   }
- ]
+ ],
+ "rig": "msc-quincke-bench"
 }

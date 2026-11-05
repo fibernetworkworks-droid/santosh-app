@@ -1,0 +1,32 @@
+{
+ "base": "jamin-air-index",
+ "chapter": "Interferometry",
+ "variants": [
+  {
+   "key": "carbon-dioxide",
+   "title": "Jamin's interferometer: refractive index of carbon dioxide",
+   "sample": "Carbon dioxide",
+   "unknown": "n - 1 of carbon dioxide at 1 atm",
+   "params": {
+    "dn1": 0.00045
+   },
+   "note": "Kaye and Laby give n - 1 = 4.50e-4 at 0 C and 589 nm; used here at 632.8 nm, where dispersion makes it about 0.5 % smaller.",
+   "source": {
+    "title": "Kaye and Laby, Tables of Physical and Chemical Constants: CO2 n - 1 = 4.50e-4 (0 C, 1 atm, 589 nm)"
+   }
+  },
+  {
+   "key": "nitrogen",
+   "title": "Jamin's interferometer: refractive index of nitrogen",
+   "sample": "Nitrogen",
+   "unknown": "n - 1 of nitrogen at 1 atm",
+   "params": {
+    "dn1": 0.000298
+   },
+   "note": "Kaye and Laby give n - 1 = 2.98e-4 at 0 C and 589 nm; used here at 632.8 nm.",
+   "source": {
+    "title": "Kaye and Laby, Tables of Physical and Chemical Constants: N2 n - 1 = 2.98e-4 (0 C, 1 atm, 589 nm)"
+   }
+  }
+ ]
+}

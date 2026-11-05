@@ -77,5 +77,6 @@
     "title": "ICDD / CRC Handbook of Chemistry and Physics, lattice parameters at room temperature: Si 5.4311, Ge 5.6579, NaCl 5.6402, Al 4.0495, Cu 3.6149, W 3.1652 angstrom; Cu K-alpha1 1.5406 angstrom"
    }
   }
- ]
+ ],
+ "rig": "msc-xrd-bench"
 }

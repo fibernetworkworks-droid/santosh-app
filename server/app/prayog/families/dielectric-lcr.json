@@ -62,5 +62,6 @@
     "title": "CRC Handbook of Chemistry and Physics, 'Permittivity (dielectric constant) of materials': PTFE 2.1, polystyrene 2.55, fused silica 3.78, Pyrex glass 4.6"
    }
   }
- ]
+ ],
+ "rig": "msc-sweep-bench"
 }

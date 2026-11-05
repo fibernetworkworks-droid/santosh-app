@@ -26,5 +26,6 @@
     "title": "Liquid-crystal clearing points (nematic to isotropic): 5CB 35.0 degC, 6CB 29.0 degC, 7CB 42.8 degC (Merck / Sigma-Aldrich product data; Collings and Hird)"
    }
   }
- ]
+ ],
+ "rig": "msc-sweep-bench"
 }

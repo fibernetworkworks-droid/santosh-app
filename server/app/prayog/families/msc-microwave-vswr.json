@@ -1,0 +1,81 @@
+{
+ "base": "msc-microwave-vswr",
+ "rig": "msc-microwave-bench",
+ "chapter": "Microwaves",
+ "variants": [
+  {
+   "key": "lamg-86",
+   "title": "Guide wavelength in WR-90 at 8.6 GHz",
+   "sample": "Short circuit on WR-90, source at 8.6 GHz",
+   "unknown": "the guide wavelength at 8.6 GHz",
+   "params": {
+    "f": 8600000000.0
+   },
+   "note": "Near the low end of the band the guide wavelength is much longer than the free-space wavelength.",
+   "source": {
+    "title": "WR-90 waveguide (EIA / IEC 60153): inside 22.86 mm x 10.16 mm, TE10 cut-off 6.557 GHz"
+   }
+  },
+  {
+   "key": "lamg-103",
+   "title": "Guide wavelength in WR-90 at 10.3 GHz",
+   "sample": "Short circuit on WR-90, source at 10.3 GHz",
+   "unknown": "the guide wavelength at 10.3 GHz",
+   "params": {
+    "f": 10300000000.0
+   },
+   "note": "Higher in the band the guide wavelength approaches the free-space wavelength.",
+   "source": {
+    "title": "WR-90 waveguide (EIA / IEC 60153): inside 22.86 mm x 10.16 mm, TE10 cut-off 6.557 GHz"
+   }
+  },
+  {
+   "key": "vswr-horn",
+   "title": "VSWR of a horn radiating into the room",
+   "sample": "Pyramidal horn, open to the room (never aimed at anyone)",
+   "method": "maximum and minimum of the standing wave",
+   "unknown": "the VSWR of the horn",
+   "params": {
+    "task": 1,
+    "g": 0.12,
+    "phi": 2.0
+   },
+   "note": "A well-made horn is nearly matched: a small standing wave, so the maximum and minimum are read directly.",
+   "source": {
+    "title": "S. Y. Liao, Microwave Devices and Circuits, 3rd ed.: VSWR from the maximum and minimum of the standing wave, S = sqrt(Imax/Imin) for a square-law detector"
+   }
+  },
+  {
+   "key": "vswr-high",
+   "title": "High VSWR by the double-minimum method",
+   "sample": "Slide-screw tuner set for a strong mismatch",
+   "method": "double-minimum method",
+   "unknown": "the VSWR of the mismatch",
+   "params": {
+    "task": 2,
+    "g": 0.8,
+    "phi": 0.7
+   },
+   "note": "The minimum is so sharp that the ratio of maximum to minimum cannot be read; the width at twice the minimum power gives S.",
+   "source": {
+    "title": "S. Y. Liao, Microwave Devices and Circuits, 3rd ed.: double-minimum method S = sqrt(1 + 1/sin^2(pi dx / lambda_g))"
+   }
+  },
+  {
+   "key": "impedance",
+   "title": "Load impedance by the shift of the minimum",
+   "sample": "Slide-screw tuner as the unknown load, short circuit as reference",
+   "method": "short-circuit reference and VSWR",
+   "unknown": "the normalised load resistance",
+   "params": {
+    "task": 3,
+    "g": 0.5,
+    "phi": 1.0
+   },
+   "note": "The shift of the first minimum from the short-circuit minimum and the VSWR fix the complex impedance of the load.",
+   "source": {
+    "title": "S. Y. Liao, Microwave Devices and Circuits, 3rd ed.: z = (1 - jS tan(beta d)) / (S - j tan(beta d))"
+   }
+  }
+ ]
+}

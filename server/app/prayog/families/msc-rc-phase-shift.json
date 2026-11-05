@@ -1,0 +1,46 @@
+{
+ "base": "msc-rc-phase-shift",
+ "rig": "msc-signal-bench",
+ "chapter": "Electronics",
+ "variants": [
+  {
+   "key": "r4k7-c22n",
+   "title": "RC phase-shift oscillator: R = 4.7 kΩ, C = 22 nF",
+   "sample": "Three equal sections of 4.7 kΩ and 22 nF",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "R": 4700.0,
+    "C": 2.2e-08
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "r22k-c4n7",
+   "title": "RC phase-shift oscillator: R = 22 kΩ, C = 4.7 nF",
+   "sample": "Three equal sections of 22 kΩ and 4.7 nF",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "R": 22000.0,
+    "C": 4.7e-09
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  },
+  {
+   "key": "r1k-c100n",
+   "title": "RC phase-shift oscillator: R = 1 kΩ, C = 100 nF",
+   "sample": "Three equal sections of 1 kΩ and 100 nF",
+   "unknown": "the frequency of oscillation",
+   "params": {
+    "R": 1000.0,
+    "C": 1e-07
+   },
+   "source": {
+    "title": "IEC 60063 preferred values (E12 series) for the resistors and capacitors"
+   }
+  }
+ ]
+}

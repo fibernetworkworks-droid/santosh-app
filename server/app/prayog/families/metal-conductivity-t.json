@@ -74,5 +74,6 @@
     "title": "Serway and Jewett, Physics for Scientists and Engineers: temperature coefficients of resistivity at 20 degC"
    }
   }
- ]
+ ],
+ "rig": "msc-sweep-bench"
 }

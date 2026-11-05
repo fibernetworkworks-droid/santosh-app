@@ -1,0 +1,19 @@
+{
+ "base": "michelson-wavelength",
+ "chapter": "Interferometry",
+ "variants": [
+  {
+   "key": "dpss-532",
+   "title": "Michelson interferometer: wavelength of a green DPSS laser",
+   "sample": "Green diode-pumped solid-state laser",
+   "unknown": "the wavelength of the green laser",
+   "params": {
+    "lam": 5.32e-07
+   },
+   "note": "A frequency-doubled Nd:YAG laser: 1064 nm halved to 532 nm. The shorter wavelength gives more fringes for the same travel.",
+   "source": {
+    "title": "Nd:YAG 1064 nm frequency-doubled to 532 nm (standard DPSS laser; NIST ASD Nd line)"
+   }
+  }
+ ]
+}

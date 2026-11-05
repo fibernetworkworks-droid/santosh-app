@@ -50,5 +50,6 @@
     "title": "Cullity and Graham, Introduction to Magnetic Materials, 2nd ed.; CRC Handbook 'Curie temperatures' (Fe 1043 K, Ni 627 K, Gd 292 K, Fe3O4 858 K, MnFe2O4 573 K)"
    }
   }
- ]
+ ],
+ "rig": "msc-sweep-bench"
 }

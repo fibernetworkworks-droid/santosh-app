@@ -262,7 +262,7 @@ HoolaStudio.define('flip-flops-nand', function (S) {
       var r = KK.clock(ks, kp()); S.click(1700, 0.04);
       pending = before; st.pulses += 1; st.last = r;
       if (CNT) { var v = KK.view(ks, kp()); st.hist.push({ n: st.pulses, tracks: tracksFor(before.word, 0, ks.events, Math.round(p.tw), Math.round(p.tl), v.word) }); }
-      if (SHF) { var v2 = KK.view(ks, kp()); st.hist.push({ n: st.pulses, tracks: tracksFor(before.word, before.si, [], 0, 0, v2.word_out) }); }
+      if (SHF) { var v2 = KK.view(ks, kp()); st.hist.push({ n: st.pulses, tracks: tracksFor(before.word, before.si, [], Math.round(p.tw), Math.round(p.tw), v2.word_out) }); }
       S.render(); return true;
     });
   }

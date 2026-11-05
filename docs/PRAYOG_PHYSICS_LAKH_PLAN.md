@@ -167,3 +167,17 @@ OOM kill). Run at most 4 - 6 agents at a time, and never edit a rig's .js while 
 - Brass density 8500 (Lee's disc) and 8470 (Kundt rod) kg/m3, and brass Young's modulus 100 GPa (handbooks range 100-125): typical-handbook choices.
 - Copper-iron neutral temperature of about 270 C: from standard B.Sc. textbooks, not a CRC table.
 - Type T / type J thermocouple quadratic coefficients: fitted to two NIST ITS-90 points, not the full NIST polynomial.
+
+**More constants flagged by build agents as written from memory, to be checked against the table named before they are trusted**
+- M.Sc solid state (`msc_solid`): temperature coefficients of resistance (Ag, Au, W, Fe, Pt, nichrome); NIST thermocouple EMFs at 100 C
+  (K 4.096, J 5.269, T 4.279, E 6.319 mV); Quincke molar susceptibilities (MnSO4, FeCl3, water); superconductor Tc (YBCO 92, Bi-2212 85,
+  Bi-2223 110 K); liquid-crystal clearing points (5CB, 6CB, 7CB); dielectric constants (PTFE, polystyrene, fused silica, Pyrex);
+  ferrite Curie points; Sze mobilities (InSb, InAs, GaAs, Ge); TGS Tc and Curie constant, BaTiO3 Ps.
+- M.Sc electronics / microwaves / nuclear (`msc_elec`): Eu-152 and soil gamma line intensities; permittivities (Perspex 2.6, PTFE 2.08,
+  fused silica 3.78); Knoll scintillator resolutions (NaI 7 %, CsI 8 %, BGO 10 %); half-lives Ag-108, Al-28, Ba-137m; HPGe FWHM specs.
+- Engine labs (`engine_ug`): refractive indices of water 1.3330, ethanol 1.3614, glycerol 1.4746 (CRC n_D at 20 C), quoted from memory.
+- Gamma attenuation, lead at 662 keV: CORRECTED in this build-out from 0.1248 (the 600 keV value) to 0.1111 cm2/g, log-log interpolated
+  between remembered XCOM points at 600 and 800 keV. The copper (0.0730) and aluminium (0.07465) values were not re-derived and need a real
+  XCOM look-up.
+- A syllabus row counts as built only when the lab covers every method / sample the row lists. Partial matches are not counted (dropped:
+  logic-gates, passive-filters, sonometer-frequency, neutron-activation).

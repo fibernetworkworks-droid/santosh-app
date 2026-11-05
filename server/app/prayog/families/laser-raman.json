@@ -1,0 +1,24 @@
+{
+ "base": "laser-raman",
+ "chapter": "Molecular spectroscopy",
+ "variants": [
+  {
+   "key": "benzene",
+   "title": "Laser Raman spectrum of benzene",
+   "sample": "Benzene",
+   "unknown": "the ring-breathing Raman shift of benzene",
+   "params": {
+    "s1": 992.0,
+    "a1": 1.0,
+    "s2": 606.0,
+    "a2": 0.15,
+    "s3": 1178.0,
+    "a3": 0.12
+   },
+   "note": "The ring-breathing mode is far stronger than the others; its anti-Stokes line is only about 1 % of the Stokes line.",
+   "source": {
+    "title": "Benzene Raman lines 606, 992, 1178 cm-1 (Socrates; ASTM E1840)"
+   }
+  }
+ ]
+}

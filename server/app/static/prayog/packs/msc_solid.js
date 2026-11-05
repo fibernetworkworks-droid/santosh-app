@@ -341,22 +341,22 @@
   H0.register({
     K: { msc_metal: metal, msc_seebeck: seebeck, msc_ionic: ionic, msc_super: sup, msc_magres: magres, msc_ferro: ferro,
       msc_curie: curie, msc_lc: lc, msc_diel: diel, msc_loop: loop, msc_xrd: xrd, msc_quincke: quincke, msc_vac: vac, msc_langmuir: lang },
-    TEXTBOOK: { msc_alpha: metal_alpha, msc_S: seebeck_S, msc_Ea: ionic_Ea, msc_Tc_sc: sup_Tc, msc_mu: magres_mu, msc_Tc_fe: ferro_Tc,
-      msc_Tc_cu: curie_Tc, msc_Tni: lc_Tni, msc_er: diel_er, msc_Hc: loop_Hc, msc_a: xrd_a, msc_L: xrd_L, msc_chi: quincke_chi,
-      msc_Spump: vac_S, msc_Pu: vac_Pu, msc_Te: lang_Te },
+    TEXTBOOK: { mss_alpha: metal_alpha, mss_S: seebeck_S, mss_Ea: ionic_Ea, mss_Tc_sc: sup_Tc, mss_mu: magres_mu, mss_Tc_fe: ferro_Tc,
+      mss_Tc_cu: curie_Tc, mss_Tni: lc_Tni, mss_er: diel_er, mss_Hc: loop_Hc, mss_a: xrd_a, mss_L: xrd_L, mss_chi: quincke_chi,
+      mss_Spump: vac_S, mss_Pu: vac_Pu, mss_Te: lang_Te },
     CALCS: {
-      msc_alpha: { label: 'temperature coefficient', unit: '1/K', needs: ['T', 'R'],
+      mss_alpha: { label: 'temperature coefficient', unit: '1/K', needs: ['T', 'R'],
         fn: function (r, p) { var mc = line(rws(r, ['T', 'R'])), d = mc[1] + mc[0] * p.Tref; return d !== 0 ? mc[0] / d : 0.0; } },
-      msc_seeb: { label: 'Seebeck coefficient', unit: 'uV/K', needs: ['dT', 'V'], fn: function (r) { return slope(rws(r, ['dT', 'V'])); } },
-      msc_Eact: { label: 'activation energy', unit: 'eV', needs: ['invT', 'lnsT'], fn: function (r) { return -KB * slope(rws(r, ['invT', 'lnsT'])) / QE; } },
-      msc_mob: { label: 'mobility', unit: 'm2/Vs', needs: ['B2', 'R'],
+      mss_seeb: { label: 'Seebeck coefficient', unit: 'uV/K', needs: ['dT', 'V'], fn: function (r) { return slope(rws(r, ['dT', 'V'])); } },
+      mss_Eact: { label: 'activation energy', unit: 'eV', needs: ['invT', 'lnsT'], fn: function (r) { return -KB * slope(rws(r, ['invT', 'lnsT'])) / QE; } },
+      mss_mob: { label: 'mobility', unit: 'm2/Vs', needs: ['B2', 'R'],
         fn: function (r, p) { var mc = line(rws(r, ['B2', 'R'])), q = mc[1] !== 0 ? mc[0] / (p.xi * mc[1]) : 0; return (mc[1] !== 0 && q > 0) ? Math.sqrt(q) : 0.0; } },
-      msc_cw: { label: 'Curie-Weiss temperature', unit: 'K', needs: ['T', 'eps'], fn: cw },
-      msc_wh: { label: 'crystallite size', unit: 'm', needs: ['x', 'y'], fn: wh },
-      msc_chiq: { label: 'volume susceptibility', unit: '', needs: ['B2', 'h'],
+      mss_cw: { label: 'Curie-Weiss temperature', unit: 'K', needs: ['T', 'eps'], fn: cw },
+      mss_wh: { label: 'crystallite size', unit: 'm', needs: ['x', 'y'], fn: wh },
+      mss_chiq: { label: 'volume susceptibility', unit: '', needs: ['B2', 'h'],
         fn: function (r, p) { return 2.0 * MU0 * p.rho * GRAV * slope(rws(r, ['B2', 'h'])); } },
-      msc_Tel: { label: 'electron temperature', unit: 'eV', needs: ['V', 'I'], fn: langTe },
-      msc_pump: { label: 'pumping speed', unit: 'm3/s', needs: ['t', 'lnP'], fn: function (r, p) { return -p.V * slope(rws(r, ['t', 'lnP'])); } }
+      mss_Tel: { label: 'electron temperature', unit: 'eV', needs: ['V', 'I'], fn: langTe },
+      mss_pump: { label: 'pumping speed', unit: 'm3/s', needs: ['t', 'lnP'], fn: function (r, p) { return -p.V * slope(rws(r, ['t', 'lnP'])); } }
     }
   });
 })(typeof window !== 'undefined' ? window : this);

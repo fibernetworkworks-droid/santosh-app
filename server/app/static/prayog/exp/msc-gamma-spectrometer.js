@@ -307,11 +307,11 @@ HoolaStudio.define('msc-gamma-spectrometer', function (S) {
     if (st.loaded < 0) { S.say('Put a source on the rail with the tongs first.'); return Promise.resolve(false); }
     if (st.acq) return Promise.resolve(false);
     var q = Q(), key = [q.src, q.d, q.t, q.seed].join('/');
-    if (st.key !== key || !st.cdata) { st.cdata = KN.counts(q); st.key = key; }
+    if (st.key !== key || !st.cdata) { st.cdata = KN.counts(q); st.key = key; st.total = 0; for (var ii = 0; ii < st.cdata.length; ii++) st.total += st.cdata[ii]; }
     st.acq = true; st.shown = 0; st.fit = null; st.edge = null; dirty = true; st.cursor = Math.round(NCH * 0.25);
     return S.hand.tap(startB, 'front').then(function () { return S.tween(1500, function (k) { st.shown = k; st.live = st.t * k; dirty = true; }); }).then(function () {
       st.acq = false; st.shown = 1; st.live = st.t; dirty = true;
-      var tot = 0, i; for (i = 0; i < st.cdata.length; i++) tot += st.cdata[i];
+      var tot = st.total;
       S.say('Counted ' + name(st.loaded) + (TASK === 0 && st.loaded === UNK ? ' (unknown)' : '') + ' for ' + st.t + ' s of live time: ' + tot + ' counts in the spectrum.'); S.render(); return true; });
   }
   function setCursor(c) { st.cursor = Math.max(3, Math.min(NCH - 4, Math.round(c))); st.fit = null; dirty = true; }
@@ -457,8 +457,7 @@ HoolaStudio.define('msc-gamma-spectrometer', function (S) {
         u.p(TASK === 0 ? 'Switch the high voltage on, then take a known source from the lead store with the tongs and put it on the rail, ' + st.d + ' cm below the detector.'
           : 'Switch the high voltage on, then take the source from the lead store with the tongs and put it on the rail below the detector.');
         u.task('1. High voltage', st.hv, st.hv ? 'On' : 'Off').add(u.button(st.hv ? 'Switch HV off' : 'Switch HV on', function () { S.focus('nim'); turnHV(!st.hv); }, !st.hv, S.hand.busy));
-        var t2 = u.task('2. Source on the rail', st.loaded >= 0, st.loaded >= 0 ? name(st.loaded) + ' on the rail' : 'All sources in their store');
-        t2.add(u.el(document.createElement('div')));
+        u.task('2. Source on the rail', st.loaded >= 0, st.loaded >= 0 ? name(st.loaded) + ' on the rail' : 'All sources in their store');
         sourceButtons(u);
         u.note('Sealed sources are handled with the tongs, from behind the lead, and go back into the locked store as soon as the counting is over. Never point a source at anyone.');
         u.next('Next: take a spectrum', st.hv && st.loaded >= 0);
@@ -598,10 +597,10 @@ HoolaStudio.define('msc-gamma-spectrometer', function (S) {
   }
 
   return {
-    camera: { pos: [-0.02, 0.92, 1.1], look: [-0.02, 0.26, -0.22] },
+    camera: { pos: [-0.02, 0.95, 1.52], look: [-0.03, 0.27, -0.2] },
     views: { det: [[-0.30, 0.66, 0.30], [-0.46, 0.46, -0.30]], dewar: [[-0.1, 0.9, 0.3], [-0.46, 0.8, -0.34]], castle: [[-0.3, 0.52, 0.5], [-0.46, 0.3, -0.3]], rail: [[-0.26, 0.4, 0.34], [-0.4, 0.3, -0.22]],
       store: [[-0.4, 0.28, 0.5], [-0.5, 0.0, 0.12]], tongs: [[-0.22, 0.2, 0.4], [-0.22, 0.0, 0.2]], nim: [[0.14, 0.32, 0.12], [0.05, 0.1, -0.28]],
-      monitor: [[0.36, 0.34, 0.26], [0.44, 0.2, -0.3]], bench: [[-0.02, 0.92, 1.1], [-0.02, 0.26, -0.22]], book: [[0.2, 0.46, 0.5], [0.3, 0.0, 0.08]] },
+      monitor: [[0.36, 0.34, 0.26], [0.44, 0.2, -0.3]], bench: [[-0.02, 0.95, 1.52], [-0.03, 0.27, -0.2]], book: [[0.2, 0.46, 0.5], [0.3, 0.0, 0.08]] },
     theory: { principle: TT.principle, formula: TT.formula, formulaNote: TT.note,
       more: ['The counts in every channel are Poisson numbers, so a peak of N counts carries an uncertainty of √N. This is why a longer live time gives a cleaner spectrum.',
         'Radioactive sources are sealed and handled with tongs behind lead. Time, distance and shielding are the three things that keep a dose low.'],
@@ -618,7 +617,7 @@ HoolaStudio.define('msc-gamma-spectrometer', function (S) {
     steps: STEPS,
     tick: function () {
       if (dirty) { dirty = false; spaint(); paintPanel(); }
-      showT(String(Math.round(st.live))); showN(st.cdata ? String(Math.round(st.cdata.reduce(function (a, b) { return a + b; }, 0) * Math.min(1, st.shown))) : '0');
+      showT(String(Math.round(st.live))); showN(st.cdata ? String(Math.round(st.total * Math.min(1, st.shown))) : '0');
       hudD.set(st.d + ' cm'); hudT.set(r1(st.live, 0) + ' s'); hudR.set(S.rows.length + ' written');
     },
     ready: function () { spaint(); }

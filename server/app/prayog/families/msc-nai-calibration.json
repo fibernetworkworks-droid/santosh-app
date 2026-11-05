@@ -1,0 +1,49 @@
+{
+ "base": "msc-nai-calibration",
+ "rig": "msc-gamma-spectrometer",
+ "chapter": "Nuclear physics",
+ "variants": [
+  {
+   "key": "unknown-b",
+   "title": "NaI(Tl) calibration: unknown source B",
+   "sample": "Unknown sealed disc source B (strong line near 511 keV)",
+   "unknown": "the energy of the strongest line of source B",
+   "params": {
+    "src": 2,
+    "seed": 44
+   },
+   "note": "The calibration uses Am-241, Ba-133, Cs-137 and Co-60 as the known sources. The unknown's line energy comes from the nuclear-data tables.",
+   "source": {
+    "title": "NNDC / ENSDF: Na-22 annihilation line 511.0 keV; Am-241 59.54 keV; Ba-133 80.998 keV; Cs-137 661.657 keV; Co-60 1173.228 keV"
+   }
+  },
+  {
+   "key": "unknown-c",
+   "title": "NaI(Tl) calibration: unknown source C",
+   "sample": "Unknown sealed disc source C (strong line below 100 keV)",
+   "unknown": "the energy of the strongest line of source C",
+   "params": {
+    "src": 3,
+    "seed": 45
+   },
+   "note": "A low-energy line: the calibration line is used near its lower end.",
+   "source": {
+    "title": "NNDC / ENSDF: Ba-133 80.998 keV (32.9 %); Na-22 511.0 keV; Cs-137 661.657 keV; Co-60 1173.228 keV; Am-241 59.541 keV"
+   }
+  },
+  {
+   "key": "unknown-d",
+   "title": "NaI(Tl) calibration: unknown source D",
+   "sample": "Unknown sealed disc source D (strong line above 1 MeV)",
+   "unknown": "the energy of the strongest line of source D",
+   "params": {
+    "src": 1,
+    "seed": 46
+   },
+   "note": "The line lies above the highest known peak, so the calibration line is extended a little beyond the points that made it.",
+   "source": {
+    "title": "NNDC / ENSDF: Co-60 1173.228 and 1332.492 keV; Cs-137 661.657 keV; Na-22 511.0 keV; Ba-133 80.998 keV; Am-241 59.541 keV"
+   }
+  }
+ ]
+}

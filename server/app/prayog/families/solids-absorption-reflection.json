@@ -1,0 +1,30 @@
+{
+ "base": "solids-absorption-reflection",
+ "chapter": "Solid-state spectroscopy",
+ "variants": [
+  {
+   "key": "zno",
+   "title": "Absorption edge of a ZnO film: optical gap by a Tauc plot",
+   "sample": "ZnO thin film",
+   "unknown": "the optical gap of ZnO",
+   "params": {
+    "Eg": 3.37
+   },
+   "source": {
+    "title": "ZnO direct gap 3.37 eV at room temperature (Sze and Ng; Kittel)"
+   }
+  },
+  {
+   "key": "cdte",
+   "title": "Absorption edge of a CdTe film: optical gap by a Tauc plot",
+   "sample": "CdTe thin film",
+   "unknown": "the optical gap of CdTe",
+   "params": {
+    "Eg": 1.5
+   },
+   "source": {
+    "title": "CdTe direct gap about 1.5 eV at room temperature (Sze and Ng)"
+   }
+  }
+ ]
+}

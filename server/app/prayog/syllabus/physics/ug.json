@@ -3038,7 +3038,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "flip-flop"
+     "kernel": "flip-flop",
+     "built": "flip-flops-nand"
     },
     {
      "id": "jk-master-slave",
