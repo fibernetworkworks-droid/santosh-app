@@ -190,10 +190,10 @@ Members: 9, 16, 28, 29, 35, 36, 37–39, 44–46, 52–56, 72, 73, 81, 93.
 
 ### Wave 3 — model-level and certificate-adjacent (open formats + a licensee on every output)
 
-Members: 18–21, 10–12, 22–24, 26, 47, 82, 104, 110–118. **SHIPPED v0.550.0** (C11–C15) after Wave 2
+Members: 18–21, 10–12, 22–24, 26, 47, 82, 104, 110–118. **SHIPPED v0.560.0** (C11–C15; built as
+0.550.0 — the dev chain's collision wave took 0.551–0.559 while it sat built) after Wave 2
 proved the packs and the trails. The register's 23 waved members are all homed (`register.py
-WAVE3_HOME`); the plan's earlier stragglers (#25 as-built, #27 GIS, #74 formwork, #77 setting-out,
-#109 digital twin) stay unwaved until she says.
+WAVE3_HOME`); the plan's earlier stragglers shipped as Wave 3.5 below.
 
 | Phase | Ships | The honest limit printed on every card |
 |---|---|---|
@@ -206,6 +206,24 @@ Shipped together with: the national `statepacks/india.json` (IS 875 / IS 456 / C
 `rule_row(state, id)` reads the state pack first, both refuse when stale), two new tier-C gate rows
 ("certify an area statement", "certify a survey"), 29 new tables, 10 new tools (registry 569 → 579),
 5 Hub hires, VOICE_VIA_KAAM, tests `test_v0550_construction_w3.py` (24).
+
+### Wave 3.5 — the five stragglers (v0.565.0; owner: "GO WAVE 3.5")
+
+Members: 25, 27, 74, 77, 109 — the Wave-3 rows the owner's Wave-3 GO excluded, homed per §5's original
+mapping onto the existing desks (NO new tools; the three desks grew actions). Same laws: open formats,
+recorded names, tier C refusals. **SHIPPED v0.565.0.**
+
+| Phase | Ships | The honest limit printed on every card |
+|---|---|---|
+| **C11b** ✅ | **As-built + twin on `const_bim`** (#25, #109): the as-built SET register — HER required list, received/na marks BY NAME, completeness % + missing list (the set's approval stays with the site architect / QS — new tier-C row) · the digital twin as a DATA-LINK register: asset → IFC GUID + model, sensor feed rows with a SOURCED band flagged out-of-band (the twin is a register, never a live 3D view or a sensor platform) · COBie Component CSV check (required headers, rows missing asset/type) | *"Completeness is arithmetic on YOUR list; approval is the site architect's. The twin is a data link, not a 3D view."* |
+| **C13b** ✅ | **GIS + setting-out on `const_survey`** (#27, #77): GeoJSON read as TEXT for Polygon/MultiPolygon rings — CRS recorded as fed, areas ONLY in projected metres (degree layers REFUSED: a degree has no square metres; inner rings counted, never silently subtracted) · flood / seismic / zoning overlays as HER readings (the map is never fetched or interpreted) · setting-out sheets + as-laid vs design plan deviations (RMS, out-of-tolerance) · level checks with the sign KEPT (up ≠ down) | *"Lat/lng has no square metres and we don't pretend otherwise; the zoning value is YOUR reading off the map."* |
+| **C12b** ✅ | **Formwork & scaffold on `const_predesign`** (#74): contact-area take-off by plain geometry on HER dims (slab soffit / beam soffit + 2 sides / column 4 faces / wall both faces) · striking time vs the IS 456 cl 11.3 **Table 10** pack rows (7 new national rows: 11 → 18; OPC + ambient > 15 °C ONLY — blending cements and cold weather REFUSED, the maturity maths is the engineer's) · props vs the supplier table's allowable (source required) · scaffold tag register (ok / defective / altered, competent person's NAME) — the striking ORDER and the tag itself stay tier C (two new rows) | *"The take-off and the table comparison are ours; the strike order and the green tag are the site engineer's / competent person's."* |
+
+Shipped together with: `india.json` 11 → 18 rows (IS 456 Table 10 striking periods, scope said on the
+row), tier-C gate 30 → 33 rows (approve the as-built set / order formwork striking / tag a scaffold
+safe), 7 new tables (cbim_asbuilts + docs, ctwin_assets + readings, cgis_layers + overlays,
+cpd_scaffolds), registry STILL 580, Hub rows + prompt block + `__init__` carry Wave 3.5, tests
+`test_v0565_construction_w35.py`.
 
 ## 8. The voice-first daily log (the wedge, designed now so C1 builds it once)
 
@@ -226,7 +244,7 @@ escrow withdrawal; accept or reject work on site (inspection pass, concrete cube
 design or a change order; sign a contract; release a payment or a bank guarantee; issue a notice,
 termination or LD deduction; decide delay entitlement; certify measurement or an RA bill; give a safety
 clearance or permit-to-work; certify green rating, commissioning or energy audit; give a
-structural-safety verdict.
+structural-safety verdict; approve the as-built set; order formwork struck; tag a scaffold safe.
 
 ## 10. The pilot (what "GO" should start)
 
@@ -254,8 +272,8 @@ name printed under it.
 
 ## 12. Not in this plan (said plainly)
 
-Register rows outside Waves 1–3 (1–6, 40, 42–43, 47, 57, 63, 65–66, 68–69, 79–80, 83–84, 86, 89, 94–99,
+Register rows outside Waves 1–3.5 (1–6, 40, 42–43, 57, 63, 65–66, 68–69, 79–80, 83–84, 86, 89, 94–99,
 102–103, 105–108, 119–123) wait for her word or a paying customer; FM/society gaps (102–109 except the
-COBie row) belong to the existing property/society employees; the Design Desk disciplines stay in
-`DESIGN_DESK_PLAN.md` (§4); nothing here builds a WhatsApp automation beyond the official API; and no
-phase touches the frozen Mera PC / desktop surface.
+twin steward #109 and the energy row #104) belong to the existing property/society employees; the Design
+Desk disciplines stay in `DESIGN_DESK_PLAN.md` (§4); nothing here builds a WhatsApp automation beyond
+the official API; and no phase touches the frozen Mera PC / desktop surface.

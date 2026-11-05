@@ -28,11 +28,21 @@ BIM_TOOLS = [
         "(schedule AAPKI). action=report4d: model -> per-activity element/volume report. action=qty5d: model "
         "(match_kind/match_value optional) -> model's own Volume/Area rows with GUID trail. action=cost5d: "
         "takeoff (id), rate, rate_source (SOR/quote) -> qty x rate, the ONLY arithmetic. action=ids: model, "
-        "ids_text (IDS XML) -> entity+property facets checked, rest UNVERIFIED."),
+        "ids_text (IDS XML) -> entity+property facets checked, rest UNVERIFIED. Wave 3.5: "
+        "action=asbuilt_set: project, name, required [codes ya 'CODE | Title'] -> as-built set (#25, "
+        "completeness AAPKI list par). action=asbuilt_mark: set (id), code, status received|pending|na, "
+        "by (NAAM), note. action=asbuilt_check: set (id) -> received/na/pending + missing + % (approval "
+        "site architect/QS ka, tier C). action=twin_asset: project, asset_id, guid (IFC GlobalId), name, "
+        "kind, space, model -> data-link row (#109, twin = register, 3D view nahi). action=twin_read: "
+        "project, rows [asset_id, sensor, value], unit, band_min, band_max, band_source (band dena ho to "
+        "source zaroori) -> out-of-band flagged. action=cobie_check: project, csv_text (Component sheet "
+        "CSV) -> required headers + rows bina AssetIdentifier/TypeName."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["ifc_add", "health", "naming", "cde_add", "cde_status",
                                                "transmit", "clash_scan", "clash_mark", "bcf", "link4d",
-                                               "report4d", "qty5d", "cost5d", "ids"]},
+                                               "report4d", "qty5d", "cost5d", "ids", "asbuilt_set",
+                                               "asbuilt_mark", "asbuilt_check", "twin_asset", "twin_read",
+                                               "cobie_check"]},
          "project": {"type": "string"}, "name": {"type": "string"}, "ifc_text": {"type": "string"},
          "file_ref": {"type": "string"}, "model": {"type": "string"},
          "filenames": {"type": "array", "items": {"type": "string"}}, "pattern": {"type": "string"},
@@ -42,15 +52,22 @@ BIM_TOOLS = [
          "clearance_m": {"type": "number"}, "clash": {"type": "string"}, "by": {"type": "string"},
          "activity": {"type": "string"}, "match_kind": {"type": "string"}, "match_value": {"type": "string"},
          "start": {"type": "string"}, "finish": {"type": "string"}, "takeoff": {"type": "string"},
-         "rate": {"type": "number"}, "rate_source": {"type": "string"}, "ids_text": {"type": "string"}},
+         "rate": {"type": "number"}, "rate_source": {"type": "string"}, "ids_text": {"type": "string"},
+         "set": {"type": "string"}, "required": {"type": "array", "items": {"type": "string"}},
+         "asset_id": {"type": "string"}, "guid": {"type": "string"},
+         "kind": {"type": "string"}, "space": {"type": "string"}, "rows": {"type": "array", "items": {}},
+         "unit": {"type": "string"}, "band_min": {"type": "number"}, "band_max": {"type": "number"},
+         "band_source": {"type": "string"}, "csv_text": {"type": "string"}, "model_id": {"type": "string"}},
          "required": ["action"]}},
     {"name": "const_bim_dekho", "description": (
         "Read the BIM desk (nothing changes). what=models | elements (model) | cde (project optional) | "
-        "transmittals | clashes (model, status optional) | takeoff (model) | links (model) | health (model)."),
+        "transmittals | clashes (model, status optional) | takeoff (model) | links (model) | health (model) | "
+        "asbuilt (set) | twins (project optional) | readings (asset optional)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["models", "elements", "cde", "transmittals", "clashes",
-                                             "takeoff", "links", "health"]},
-         "model": {"type": "string"}, "project": {"type": "string"}, "status": {"type": "string"}},
+                                             "takeoff", "links", "health", "asbuilt", "twins", "readings"]},
+         "model": {"type": "string"}, "project": {"type": "string"}, "status": {"type": "string"},
+         "set": {"type": "string"}, "asset": {"type": "string"}},
          "required": ["what"]}},
 ]
 BIM_LABELS = {"const_bim": "BIM desk par kaam kar raha hoon", "const_bim_dekho": "BIM desk dekh raha hoon"}
@@ -101,6 +118,24 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return B.cost5d(t, _s(a.get("takeoff")), a.get("rate"), _s(a.get("rate_source")))
         if action == "ids":
             return B.ids_check(t, _s(a.get("model")), _s(a.get("ids_text")))
+        if action == "asbuilt_set":
+            return B.asbuilt_set(t, _s(a.get("project")), _s(a.get("name")), a.get("required") or [],
+                                 _s(a.get("note")), conv)
+        if action == "asbuilt_mark":
+            return B.asbuilt_mark(t, _s(a.get("set")), _s(a.get("code")), _s(a.get("status")),
+                                  _s(a.get("by")), _s(a.get("note")))
+        if action == "asbuilt_check":
+            return B.asbuilt_check(t, _s(a.get("set")))
+        if action == "twin_asset":
+            return B.twin_asset(t, _s(a.get("project")), _s(a.get("asset_id")), _s(a.get("guid")),
+                                _s(a.get("name")), _s(a.get("kind")), _s(a.get("space")),
+                                _s(a.get("model_id")), _s(a.get("note")), conv)
+        if action == "twin_read":
+            return B.twin_read(t, _s(a.get("project")), a.get("rows") or [], _s(a.get("unit")),
+                               a.get("band_min") or 0.0, a.get("band_max") or 0.0,
+                               _s(a.get("band_source")), _s(a.get("note")), conv)
+        if action == "cobie_check":
+            return B.cobie_check(t, _s(a.get("project")), _s(a.get("csv_text")))
     except (B.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
     raise ToolError("action galat")
@@ -111,8 +146,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..construction.common import guard
     from ..db import session
     from sqlalchemy import select
-    from ..construction.models import (CBimCde, CBimClash, CBimElement, CBimLink4d, CBimModel, CBimTakeoff,
-                                       CBimTransmit)
+    from ..construction.models import (CBimAsbuilt, CBimAsbuiltDoc, CBimCde, CBimClash, CBimElement,
+                                       CBimLink4d, CBimModel, CBimTakeoff, CBimTransmit, CTwinAsset,
+                                       CTwinReading)
     guard(f"read bim {what}")
     t = ctx.tenant_id
     try:
@@ -165,6 +201,32 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                "start": r.start, "finish": r.finish} for r in rows]}
         if what == "health":
             return B.health(t, _s(a.get("model")))
+        if what == "asbuilt":
+            with session() as s:
+                st = s.get(CBimAsbuilt, _s(a.get("set")))
+                if not st or st.tenant_id != t:
+                    raise B.CstError("As-built set nahi mili.")
+                docs = s.scalars(select(CBimAsbuiltDoc).where(CBimAsbuiltDoc.tenant_id == t,
+                                                              CBimAsbuiltDoc.set_id == st.id)).all()
+            return {"set": {"id": st.id, "project": st.project, "name": st.name},
+                    "docs": [{"code": r.code, "title": r.title, "status": r.status, "by": r.by}
+                             for r in docs]}
+        if what == "twins":
+            q = select(CTwinAsset).where(CTwinAsset.tenant_id == t)
+            if _s(a.get("project")):
+                q = q.where(CTwinAsset.project == _s(a.get("project")))
+            with session() as s:
+                rows = s.scalars(q).all()
+            return {"twins": [{"id": r.id, "project": r.project, "asset_id": r.asset_id, "guid": r.guid,
+                               "name": r.name, "kind": r.kind, "space": r.space} for r in rows]}
+        if what == "readings":
+            q = select(CTwinReading).where(CTwinReading.tenant_id == t)
+            if _s(a.get("asset")):
+                q = q.where(CTwinReading.asset_id == _s(a.get("asset")))
+            with session() as s:
+                rows = s.scalars(q).all()
+            return {"readings": [{"id": r.id, "asset_id": r.asset_id, "sensor": r.sensor, "value": r.value,
+                                  "unit": r.unit, "out_band": r.out_band} for r in rows]}
     except (B.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
     raise ToolError("what galat")

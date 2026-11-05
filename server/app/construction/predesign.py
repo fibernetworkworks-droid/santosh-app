@@ -21,7 +21,7 @@ from sqlalchemy import select
 
 from ..db import session
 from .common import (CstError, _LOCK, _date, _dump, _j, _num, today)
-from .models import CpdCalc, CpdRule
+from .models import CpdCalc, CpdRule, CpdScaffold
 from . import statepacks as SP
 
 LL_KINDS = {"residential": "is875_p2_residential", "office": "is875_p2_office", "stair": "is875_p2_stair"}
@@ -286,15 +286,147 @@ def fire_demand(tenant: str, project: str, name: str, density_lpm_m2: float, are
                    "System design fire consultant ka - Hoola ka arithmetic."}
 
 
+# --------------------------------------------------- #74 formwork & scaffold (Wave 3.5, v0.565.0)
+_FORM_KINDS = ("slab", "beam", "column", "wall")
+
+
+def form_area(tenant: str, project: str, name: str, rows: list, note: str = "") -> dict:
+    """Formwork contact area (#74): plain GEOMETRY on HER element rows - [kind, L, B, H, count]
+    (metres; slab soffit L x B, beam soffit + 2 sides, column 4 faces, wall both faces). The
+    formwork DESIGN (props, shores, panels, ties) is the site engineer's - this is the take-off."""
+    if not rows:
+        raise CstError("Element rows bhejo [kind, L, B, H, count] - dims AAPKI readings, metre mein.")
+    out, total = [], 0.0
+    for r in (rows or []):
+        try:
+            v = r if isinstance(r, list) else [p.strip() for p in str(r).split(",")]
+            kind = str(v[0]).strip().lower()
+            L, B, H = float(v[1]), float(v[2]), float(v[3])
+            n = int(float(v[4])) if len(v) > 4 and str(v[4]).strip() else 1
+        except (TypeError, ValueError, IndexError):
+            continue
+        if kind not in _FORM_KINDS or L <= 0 or n < 1:
+            continue
+        if kind == "slab":
+            one, f = L * B, "L x B (soffit)"
+        elif kind == "beam":
+            one, f = L * B + 2.0 * L * H, "L x B (soffit) + 2 x L x H (sides)"
+        elif kind == "column":
+            one, f = 2.0 * (L + B) * H, "2 x (L + B) x H (4 faces)"
+        else:
+            one, f = 2.0 * L * H, "2 x L x H (both faces)"
+        one = round(one * n, 3)
+        out.append({"kind": kind, "L": L, "B": B, "H": H, "count": n, "area_m2": one, "formula": f})
+        total += one
+    if not out:
+        raise CstError("Koi valid row nahi - kind: slab | beam | column | wall, dims metre mein (> 0), "
+                       "count >= 1 (slab mein H=0 chalega).")
+    total = round(total, 2)
+    inputs = {"rows": len(out)}
+    result = {"total_m2": total, "rows": out, "formula": "geometry on HER dims - no factor invented"}
+    cid = _store(tenant, project, "formwork", name, inputs, result,
+                 "contact-area geometry as fed; formwork design + prop loads = site engineer ka")
+    return {"calc_id": cid, "total_m2": total, "rows": out,
+            "say": f"Formwork contact area ({name}): {total:,.2f} m2 ({len(out)} element rows, geometry "
+                   "AAPKE dims se). Yeh take-off hai - shuttering design, props aur load checks site "
+                   "engineer ke (supplier tables wahan lagti hain). Striking time strike_check se."}
+
+
+def strike_check(tenant: str, project: str, element_kind: str, cement: str, ambient_c: float,
+                 age_h: float, state: str = "india") -> dict:
+    """Striking-time check (#74): age vs the IS 456 cl 11.3 Table 10 minimum (pack rows, OPC +
+    ambient above 15 degC ONLY - outside that scope the desk REFUSES; the striking order stays
+    with the site engineer, tier C)."""
+    kinds = {"vertical": "is456_strike_vertical", "slab_soffit": "is456_strike_slab_soffit",
+             "beam_soffit": "is456_strike_beam_soffit", "props_slab_le4m5": "is456_strike_props_slab_le4m5",
+             "props_beam_le6m": "is456_strike_props_beam_le6m", "props_slab_gt4m5": "is456_strike_props_slab_gt4m5",
+             "props_beam_gt6m": "is456_strike_props_beam_gt6m"}
+    if element_kind not in kinds:
+        raise CstError(f"element_kind: {' | '.join(sorted(kinds))} (IS 456 Table 10 rows yahi rakhti hain).")
+    cem = (cement or "").strip().lower()
+    if cem not in ("opc", "opc43", "opc53"):
+        raise CstError("IS 456 Table 10 sirf OPC (ambient > 15 degC) ke liye hai - blending/mineral "
+                       "cements ke liye striking time maturity se engineer decide karta hai; Hoola "
+                       "guess nahi karta. cement=opc batao ya hisaab engineer se.")
+    if _num(ambient_c) <= 15.0:
+        raise CstError(f"Ambient {_num(ambient_c):g} degC: Table 10 ka scope nahi (> 15 degC chahiye, "
+                       "OPC) - thandi / blending conditions par striking time engineer ka hisaab hai.")
+    if _num(age_h) <= 0:
+        raise CstError("Age (hours) bataiye (> 0).")
+    r = _pack_ref(state, kinds[element_kind])
+    mn = float(r["value"])
+    verdict = "ok" if _num(age_h) >= mn else "short"
+    inputs = {"element_kind": element_kind, "cement": "opc", "ambient_c": _num(ambient_c), "age_h": _num(age_h)}
+    result = {"min_h": mn, "verdict": verdict, "margin_h": round(_num(age_h) - mn, 1),
+              "formula": f"age {_num(age_h):g} h vs Table 10 min {mn:g} h"}
+    cid = _store(tenant, project, "strike", element_kind, inputs, result,
+                 f"{r['clause']} ({r['source'][:60]}); OPC + ambient > 15 C scope")
+    say = (f"Striking ({element_kind}): age {_num(age_h):g} h vs IS 456 Table 10 min {mn:g} h -> "
+           f"{'WITHIN (arithmetic)' if verdict == 'ok' else 'SHORT (arithmetic)'}. Rule: {r['clause']} "
+           "(OPC, ambient > 15 degC). Formwork hatane ka ORDER site engineer ka hai - Hoola ka "
+           "hisaab, tier C.")
+    return {"calc_id": cid, **result, "say": say}
+
+
+def props_check(tenant: str, project: str, name: str, declared_kn_m2: float, allowable_kn_m2: float,
+                source: str, note: str = "") -> dict:
+    """Prop/shoring load check (#74): HER declared load vs the SUPPLIER TABLE's allowable - the
+    allowable needs its source (the supplier sheet), the comparison is arithmetic."""
+    if _num(declared_kn_m2) <= 0 or _num(allowable_kn_m2) <= 0:
+        raise CstError("Declared aur allowable load bataiye (sab > 0).")
+    if not str(source or "").strip():
+        raise CstError("Allowable ka SOURCE bataiye (supplier table / design note) - bina source ki "
+                       "allowable value check nahi hoti.")
+    verdict = "ok" if _num(declared_kn_m2) <= _num(allowable_kn_m2) else "exceeds"
+    margin = round(_num(allowable_kn_m2) - _num(declared_kn_m2), 3)
+    inputs = {"declared_kn_m2": _num(declared_kn_m2), "allowable_kn_m2": _num(allowable_kn_m2)}
+    result = {"verdict": verdict, "margin_kn_m2": margin,
+              "formula": f"declared {_num(declared_kn_m2):g} vs allowable {_num(allowable_kn_m2):g} kN/m2"}
+    cid = _store(tenant, project, "props", name, inputs, result,
+                 f"allowable as fed - {source.strip()[:80]}", note)
+    return {"calc_id": cid, **result,
+            "say": f"Props ({name}): declared {_num(declared_kn_m2):g} vs allowable "
+                   f"{_num(allowable_kn_m2):g} kN/m2 ({source.strip()[:40]}) -> "
+                   f"{'WITHIN (arithmetic)' if verdict == 'ok' else 'EXCEEDS (arithmetic)'}. Shoring "
+                   "design aur safe scheme site engineer ki - Form-hatane se pehle uska check."}
+
+
+def scaffold_tag(tenant: str, project: str, scaffold_id: str, status: str, checked_by: str,
+                 next_check: str = "", note: str = "") -> dict:
+    """Scaffold inspection tag row (#74): the competent person's word, NAME required (ok |
+    defective | altered) - Hoola keeps the register; the tag itself is her hand's act."""
+    if status not in ("ok", "defective", "altered"):
+        raise CstError("status: ok | defective | altered")
+    if not str(checked_by or "").strip():
+        raise CstError("Kisne check kiya? (competent person ka NAAM record hota hai).")
+    if not str(scaffold_id or "").strip():
+        raise CstError("Scaffold ka id bataiye.")
+    with _LOCK, session() as s:
+        x = CpdScaffold(tenant_id=tenant, project=project.strip()[:160], scaffold_id=scaffold_id.strip()[:80],
+                        status=status, checked_by=checked_by.strip()[:120], next_check=(next_check or "")[:10],
+                        note=note.strip()[:200])
+        s.add(x)
+        s.flush()
+        sid = x.id
+    return {"tag_id": sid,
+            "say": f"Scaffold {scaffold_id.strip()[:16]}: {status} ({checked_by.strip()}"
+                   + (f", next check {next_check}" if next_check else "") + "). Tag competent person "
+                   "ke haath ka act hai - register Hoola rakhta hai (tier C)."}
+
+
 def day(tenant: str) -> dict:
-    """The pre-design morning: rules on file, calcs by kind, breach-flags waiting."""
+    """The pre-design morning (Wave 3.5 adds scaffolds): rules, calcs by kind, breach-flags, scaffold tags."""
     with session() as s:
         rules = s.scalars(select(CpdRule).where(CpdRule.tenant_id == tenant)).all()
         calcs = s.scalars(select(CpdCalc).where(CpdCalc.tenant_id == tenant)).all()
+        scaffolds = s.scalars(select(CpdScaffold).where(CpdScaffold.tenant_id == tenant)).all()
     by_kind: dict[str, int] = {}
     for c in calcs:
         by_kind[c.kind] = by_kind.get(c.kind, 0) + 1
-    breaches = sum(1 for c in calcs if _j(c.result, {}).get("verdict") in ("breach", "short"))
-    return {"rules": len(rules), "calcs": by_kind, "breach_flags": breaches,
-            "say": f"Pre-design desk: {len(rules)} rules, {len(calcs)} calcs, {breaches} breach/short "
-                   "flag. Sab PRELIMINARY working papers - sign lines khaali hain."}
+    breaches = sum(1 for c in calcs if _j(c.result, {}).get("verdict") in ("breach", "short", "exceeds"))
+    defectives = sum(1 for sc in scaffolds if sc.status != "ok")
+    return {"rules": len(rules), "calcs": by_kind, "breach_flags": breaches, "scaffold_tags": len(scaffolds),
+            "scaffold_defective": defectives,
+            "say": f"Pre-design desk: {len(rules)} rules, {len(calcs)} calcs, {breaches} breach/short/"
+                   f"exceeds flag, {len(scaffolds)} scaffold tags ({defectives} defective/altered). "
+                   "Sab PRELIMINARY working papers - sign lines khaali hain."}

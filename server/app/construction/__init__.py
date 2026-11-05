@@ -19,6 +19,17 @@ traverse, shoelace, grid volumes, CSV deviations, RERA carpet), 47 (delay workin
 Cx/T&C/M&V). The open-format law: the card says what was read (IFC yes, PDF never a model, E57/LAS
 and CPM never computed); `india.json` joins the state packs for the national code rows.
 
+Wave 3.5 (v0.565.0): the FIVE Wave-3 stragglers homed per the plan §5's original mapping - 25
+(const_bim: the as-built SET register, completeness on HER list, marks by name), 27 (const_survey:
+GeoJSON rings read as text, areas ONLY in projected metres - degree layers refused, overlay values
+recorded as HER readings), 74 (const_predesign: formwork contact area by geometry, striking time vs
+IS 456 cl 11.3 Table 10 pack rows - OPC + ambient > 15 degC scope, else refused, props vs the
+supplier table's allowable, scaffold tag register by name), 77 (const_survey: setting-out sheets,
+as-laid vs design plan deviations, level checks with the sign kept), 109 (const_bim: the twin as a
+DATA-LINK register asset -> GUID, sensor feed rows with sourced bands flagged, COBie Component CSV
+check). Three new tier-C rows: approve the as-built set / order formwork striking / tag a scaffold
+safe. No new tools - the three desks grew actions.
+
 THE LAW (construction/gates.py, repeated in every tool docstring and the prompt block): Hoola PREPARES
 the record and the working paper; the named human decides. Tier A rows Hoola owns end to end with the
 owner's tap on every outward step; tier C outputs (sign, certify, file, approve, accept work, release
