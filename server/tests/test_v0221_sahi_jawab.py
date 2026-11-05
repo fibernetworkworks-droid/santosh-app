@@ -1,5 +1,6 @@
 """v0.221 SAHI JAWAB + PATLA PROMPT: one reply rulebook for chat / console / quick lane / voice, and a system prompt
 that carries only the guides of the tool families a turn admitted."""
+import json
 from app.agent import prompts, replystyle
 from app.agent.admit import CORE_FAMILIES, plan_for
 from app.config import get_settings
@@ -80,11 +81,12 @@ def test_every_block_lands_somewhere():
 def test_agent_loop_sends_the_slim_prompt_and_grows_it_on_tool_search(bz, monkeypatch):
     import asyncio
     from app.agent import santosh
-    seen = []
+    seen, hist = [], []
 
     async def fake_think(brain, system, history, settings, tools=None, live=None, max_tokens=None):
         sys_text = system if isinstance(system, str) else "".join(b.get("text", "") for b in system)
         seen.append(sys_text)
+        hist.append(history)
         if len(seen) == 1:
             return ([{"type": "tool_use", "id": "t1", "name": "tool_search", "input": {"need": "gst return"}}],
                     "tool_use", brain)
@@ -94,7 +96,9 @@ def test_agent_loop_sends_the_slim_prompt_and_grows_it_on_tool_search(bz, monkey
     asyncio.run(santosh.run_turn(bz["conv"], "hi kaise ho"))
     assert len(seen) >= 2
     assert "GST work (she" not in seen[0] and len(seen[0]) < len(prompts.SYSTEM) * 0.5
-    assert "GST work (she" in seen[1]            # tool_search opened gst -> its guide joined the prompt
+    # tool_search opened gst -> its guide reaches the model. v0.563 on a Claude turn the system prompt stays the same
+    # (cache + thinking hold) and the guide rides beside the tool result instead
+    assert seen[1] == seen[0] and "GST work (she" in json.dumps(hist[1][-1]["content"])
 
 
 def test_prompt_slim_off_sends_the_full_guide(bz, monkeypatch):
@@ -118,4 +122,4 @@ def test_prompt_slim_off_sends_the_full_guide(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.564.0"
+    assert APP_VERSION == "0.565.0"

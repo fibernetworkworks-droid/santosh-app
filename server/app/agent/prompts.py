@@ -380,6 +380,19 @@ def _guide() -> list:
     return out
 
 
+def guide_for(new_families, had=()) -> str:
+    """v0.563 the guide blocks a family brings that the turn did not have yet (a native tool_search delivers them as a
+    note beside the result, so the system prompt - and the prompt cache with it - never changes inside a turn)."""
+    new, had = set(new_families or ()), set(had or ())
+    if not new:
+        return ""
+    out = []
+    for text, need, _label in _guide():
+        if need is not None and need & new and not (need & had):
+            out.append(text)
+    return "\n".join(out)
+
+
 def system_text(families=None) -> str:
     """The guide for one turn. families=None (admission off, routines, staff, direct callers) = the full SYSTEM,
     byte-identical to before. Otherwise only the guides of the admitted families + an index of the rest."""

@@ -1497,3 +1497,15 @@ Work Log:
   new behaviour. Reds seen are pre-existing on pristine main (Playwright, v0270 goal_rounds, ...).
 Stage Summary:
 - v0.562.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 48 — v0.565.0 CLAUDE KA AUZAAR (built as 0.563.0) (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "NOW MAKE CHOOSING TOOL AND SKILL SAME AS CLAUDE AI ---- EVEN FIND MORE".
+Work Log:
+- Read Anthropic's tool-search page; built agent/toolsearch.py (deferred tools, fixed list per turn, tool_reference
+  answers, BM25, refusal ladder, dangling-reference guard); cache / context / GLM paths made deferral-safe.
+- Skills: full descriptions on chat turns (9,000 chars), call unchanged.
+- NEW test_v0565_claude_ka_auzaar.py (10); v0221 / v0558 / v0193 moved to the new truth.
+Stage Summary:
+- v0.565.0 server-only. Deploy = owner's vps-ops dispatch. Not verified against the live API yet.

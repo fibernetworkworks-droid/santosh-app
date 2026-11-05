@@ -14,7 +14,12 @@ def tools(defs: list[dict] | None) -> list[dict] | None:
     if not defs:
         return defs
     out = list(defs)
-    out[-1] = {**out[-1], "cache_control": _EPH}
+    # v0.563 a deferred tool (defer_loading) may not carry cache_control (the API 400s) and sits outside the cached
+    # prefix anyway: the breakpoint goes on the LAST tool that is really in view
+    for i in range(len(out) - 1, -1, -1):
+        if not (isinstance(out[i], dict) and out[i].get("defer_loading")):
+            out[i] = {**out[i], "cache_control": _EPH}
+            break
     return out
 
 

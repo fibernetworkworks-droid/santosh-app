@@ -510,6 +510,9 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     # the thinking reaches the Soch card while the words are held
     api_stream = streaming or live is not None or cap > NONSTREAM_MAX_TOKENS
     if brain in ("glm", "omniroute"):
+        from . import toolsearch as _ts   # v0.563 deferred tools + tool references are Claude-only
+        tools = _ts.loaded(tools)
+        history = _ts.fit_refs(history, [], keep=False)
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
         if streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
@@ -544,7 +547,12 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
 async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
                        think: bool, streaming: bool) -> tuple[list[dict], str]:
     """One Claude call on `model` (v0.429 split out of _call_brain so a hard ask can try Opus and fall back)."""
-    from . import cache
+    from . import cache, toolsearch as _ts
+    deferred = any(isinstance(t, dict) and t.get("defer_loading") for t in (tools or []))
+    if deferred and not _ts.NATIVE["ok"]:
+        tools = _ts.loaded(tools)          # v0.563 refused earlier in this process: the old shape
+        deferred = False
+    history = _ts.fit_refs(history, tools, keep=deferred)   # a reference must resolve, or the whole call 400s
     kw = cache.shape(dict(model=model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
     api = get_client().messages
@@ -560,6 +568,17 @@ async def _claude_call(model: str, system: str, history: list[dict], settings, t
             return await _claude_stream(api, kw, live)
         resp = await api.create(**kw)
     except Exception as e:
+        if deferred and _ts.refused(e):
+            # v0.563 this API refuses deferred tools / tool references: the same call the old way, off for this process
+            log.warning("tool search refused, continuing with the loaded tools only: %s", str(e)[:200])
+            kw = _ts.downgrade(kw)
+            if live is not None:
+                live.reset()
+            if streaming and hasattr(api, "stream"):
+                return await _claude_stream(api, kw, live)
+            resp = await api.create(**kw)
+            _learn_claude(kw, resp)
+            return [_block_to_dict(b) for b in resp.content], resp.stop_reason
         if "extra_body" in kw and _effort_refused(e):
             # v0.331 this model / API refuses the effort setting: go on without it (the reply matters more)
             EFFORT["ok"], EFFORT["refused"] = False, EFFORT["refused"] + 1
@@ -1094,8 +1113,20 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     while ran_steps < (settings.agent_goal_max_steps if (state.get("goal") or state.get("extended"))
                        else settings.agent_max_steps):
         ran_steps += 1
-        tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs   # v0.191 after tool_search
-        if adm is not None and frozenset(adm.families) != sys_fams:
+        from . import toolsearch as _ts
+        native = adm is not None and _ts.on(settings, brain)
+        ctx.native_search = native
+        if native:
+            # v0.563 CLAUDE KA AUZAAR: the whole toolbox declared once (in view + the rest deferred) and never changed
+            # inside the turn - tool_search answers with tool_reference blocks instead of growing the list
+            if state.get("native_tools") is None:
+                state["native_tools"] = _ts.build(adm.specs() + mcp_defs)
+                _ts.NATIVE["turns"] += 1
+            tools = state["native_tools"]
+            ctx.native_loaded = {t.get("name") for t in tools if not t.get("defer_loading")}
+        else:
+            tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs   # v0.191 after tool_search
+        if adm is not None and not native and frozenset(adm.families) != sys_fams:
             # tool_search opened a family mid-turn: its guide joins the system prompt too (one cache re-write)
             sys_fams = frozenset(adm.families)
             system = _system(sys_fams)
@@ -1145,6 +1176,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     # a server's tool description the model refuses: go on without the direct MCP tools (bazar_run still works)
                     log.warning("MCP tool schemas refused (%s); continuing without them", str(e)[:200])
                     mcp_defs, mcp_route, tools = [], {}, TOOLS
+                    if state.get("native_tools") is not None and adm is not None:   # v0.563 rebuilt without them
+                        from . import toolsearch as _ts2
+                        state["native_tools"] = tools = _ts2.build(adm.specs())
                     if live is not None:
                         live.reset()
                 else:
@@ -1259,9 +1293,11 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
                 fine = not (isinstance(out, dict) and out.get("error"))
                 breaker.after(b["name"], fine)
-                content = _short(out, RESULT_LIMIT.get(b["name"], 6000))
+                refs = out.get("tool_references") if isinstance(out, dict) and getattr(ctx, "native_search", False) \
+                    else None
+                content = refs if refs else _short(out, RESULT_LIMIT.get(b["name"], 6000))   # v0.563 tool_reference
                 call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
-                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else content[:300]}
+                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else str(content)[:300]}
                 if not fine:
                     content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
@@ -1344,6 +1380,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 if b.get("type") != "tool_use":
                     continue
                 results.append(await _one(b))
+        for _g in (getattr(ctx, "native_guides", None) or []):   # v0.563 a family's guide, opened by tool_search
+            results.append({"type": "text", "text": "[Guide for the tools just found]\n" + _g})
+        if getattr(ctx, "native_guides", None):
+            ctx.native_guides = []
         if getattr(settings, "agent_steer", True):
             try:   # v0.223 PHASE A: what she sent while this job ran rides with this step's results (Claude-style)
                 from . import steer as _steer

@@ -88,6 +88,13 @@ def ratio(brain: str) -> float:
     return RATIO.get(brain, CHARS_PER_TOKEN)
 
 
+def _in_view(tools: Any) -> Any:
+    """v0.563 deferred tools (defer_loading) are not in the model's context and are not counted as input tokens."""
+    if isinstance(tools, list):
+        return [t for t in tools if not (isinstance(t, dict) and t.get("defer_loading"))]
+    return tools
+
+
 def size(x: Any) -> int:
     """Characters of anything that goes into a request, the way it travels (JSON)."""
     if x is None:
@@ -117,7 +124,7 @@ def after_call(brain: str, system: Any, tools: Any, messages: list[dict], real_t
     if estimated or not real_tokens:
         return
     try:
-        chars = size(system) + size(tools) + sum(size(m.get("content")) for m in messages if isinstance(m, dict))
+        chars = size(system) + size(_in_view(tools)) + sum(size(m.get("content")) for m in messages if isinstance(m, dict))
         learn(brain, chars, int(real_tokens))
         conv = CONV.get()
         if conv:
@@ -246,7 +253,7 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     """The request's history for this model call: (messages, form). form = full | net | hoola.
     `turn_start` = index where THIS turn's messages begin (never shortened)."""
     s = settings or _settings()
-    fixed = size(system) + size(tools)
+    fixed = size(system) + size(_in_view(tools))
     hist_chars = sum(size(m.get("content")) for m in history)
     est = tokens(brain, fixed + hist_chars)
     line = budget(brain, s)

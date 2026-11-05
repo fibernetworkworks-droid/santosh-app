@@ -20573,3 +20573,41 @@ dashboard (dash.py), the monthly care note, the nightly backup (backup.py). New 
 - NOT VERIFIED live, said plainly: no visitor beacon has reached the VPS yet (her live sites get the beacon on their NEXT
   build / publish - the script and meta come with the build); the restore test needs `SITES_BACKUP_BUCKET` + keys in the
   VPS `.env` (backup is off without them, and the console says so).
+
+## v0.565.0 CLAUDE KA AUZAAR (built as 0.563.0; the parallel sessions took 0.563.0 and 0.564.0, all kept) — tools and skills chosen the way Claude chooses them (owner: "NOW MAKE CHOOSING TOOL AND SKILL SAME AS CLAUDE AI ---- EVEN FIND MORE")
+
+Read first: Anthropic's "Tool search tool" page (platform.claude.com/docs/en/agents-and-tools/tool-use/tool-search-tool).
+Claude's way: every tool is declared, rarely-used ones with `defer_loading: true` (known to the API, not in the model's
+context, not counted as input tokens, outside the cached prefix); a search returns `tool_reference` blocks and the API
+expands them into full definitions; the tool list never changes inside a conversation (a changed tool set rewrites the
+cache and invalidates preserved thinking). A custom search may return `tool_reference` blocks in a normal tool_result.
+
+What Hoola did before: a turn saw only its admitted families (~58 tools); `tool_search` ADDED a family to the request,
+which rewrote the tool list and the system prompt mid-turn.
+
+Built (`agent/toolsearch.py`):
+- `build(shown)`: the admitted tools in view (unchanged), every other registered tool deferred. Built ONCE per turn
+  (state["native_tools"]) on a Claude turn, never changed; `ctx.native_search` / `ctx.native_loaded` tell tool_search.
+- `tool_search` on a native turn: her family words + the exact tool name + `bm25()` over name / description / argument
+  names and descriptions (the fields Claude's own search reads) -> up to 25 `tool_reference` blocks (exact name, then
+  BM25 best, then the rest of the family); the family still counts as opened (pick.py's PC gate, sticky next turn);
+  the family's working guide (`prompts.guide_for`) rides as a text note beside the result instead of rewriting the
+  system prompt. `admit.search_spec()` names all families in the description (Anthropic's advice), byte-stable.
+- Guards: `cache.tools` puts the breakpoint on the last NON-deferred tool (a deferred one 400s); `context` counts
+  only tools in view; `fit_refs` turns a reference that cannot resolve (renamed tool, keep=False for a brain without
+  tool search) into a line of text so an old chat never 400s; GLM / OmniRoute get only loaded tools and no references;
+  `refused()` + `downgrade()` = the refusal ladder (same call without deferred tools, off for this process); an MCP
+  schema refusal rebuilds the list without MCP. Switch `tool_search_native` (default on).
+- Skills: chat turns carry every skill's whole description (SKILLS_INDEX_BUDGET 3,000 -> 9,000, INDEX_DESC_MAX 64 ->
+  200); a call keeps VOICE_INDEX_BUDGET 3,000.
+
+Measured offline: BM25 finds the right tool for English needs (merge pdf, government website form, weather, tally,
+Home Assistant, research...) 15/15 where the tool exists; raw Hinglish asks are a weak search input (90/101 of the
+card asks not in core view), which is why Hoola's keyword preload stays and search is the extra door, not a
+replacement. Tool card unchanged: 176/176 in view.
+
+Tests: test_v0565_claude_ka_auzaar.py (10) incl. a full turn where tool_search returns references and both model calls
+carry the identical tool list, and a refusing API getting the old shape. Updated to the new truth: test_v0221 (the
+guide rides beside the result, the system prompt stays), test_v0558 (counts tools in view), test_v0193 (team not in
+core since v0.559). NOT VERIFIED live: no real Claude call has carried deferred tools from Hoola yet; the first turn
+after deploy is the proof, and `toolsearch.NATIVE` counts turns / searches / refs / refusals.
