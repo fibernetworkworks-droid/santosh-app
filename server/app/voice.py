@@ -259,6 +259,8 @@ VOICE_VIA_KAAM = {
     "wapsi", "samudaay", "call_centre", "dev", "qa", "it_admin", "noc", "cyber", "devops", "docs_writer", "app_review",
     "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk",
     "sitesup", "interior", "archassist", "society", "vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "edit_desk", "edit_desk_dekho", "motion_desk", "motion_desk_dekho", "film_desk", "film_desk_dekho", "patrakar", "patrakar_dekho", "photo_assist", "photo_assist_dekho", "graphic", "graphic_dekho", "artist_manager", "artist_manager_dekho", "kitab", "kitab_dekho", "podcast", "podcast_dekho", "influencer", "influencer_dekho", "kalam", "website", "app_banao", "app_dekho", "video_studio",
+    "const_store", "const_store_dekho", "const_labour", "const_labour_dekho", "const_customer", "const_customer_dekho", "const_quality", "const_quality_dekho", "const_meet", "const_meet_dekho",   # v0.512 construction Wave 1 (heavy desks ride santosh_kaam, never declared to the live call)
+    "const_approvals", "const_approvals_dekho", "const_qs", "const_qs_dekho", "const_rera", "const_rera_dekho", "const_contracts", "const_contracts_dekho", "const_tender", "const_tender_dekho", "const_drawqa", "const_drawqa_dekho",   # v0.531 construction Wave 2 (same law - the file-builders ride kaam)
     "blender_3d", "postgres", "hoola_market", "hoola_booking", "hoola_deal", "hoola_pick", "a2a_bahar", "consent_jaanch",
     "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio", "notebook_studio", "notebook_output", "notebook_discover",
     "notebook_sources", "notebook_chat_config", "notebook_note",
@@ -752,6 +754,10 @@ def _save_turn(conv: str, user_text: str, reply: str) -> None:
 
 # live calls by conversation, so background results (e.g. Santosh Browser) can be spoken into the call
 ACTIVE: dict[str, list] = {}
+# v0.554 CARD KI KHABAR: the call whose DIRECT tool is running right now (its own tool result already says "card bheja");
+# a santosh_kaam delegation clears it, so cards from the full-brain job it starts DO reach the call as news.
+import contextvars as _cv
+VOICE_DIRECT: "_cv.ContextVar[str]" = _cv.ContextVar("voice_direct", default="")
 # live calls by id: a phone whose network dropped re-joins the same call with ?resume=<call_id>
 CALLS: dict[str, "Call"] = {}
 # big jobs handed over by a call keep running after the call ends; hold a reference so they are not collected
@@ -1338,6 +1344,97 @@ def inject(conversation_id: str, text: str) -> int:
             n += 1
         except RuntimeError:
             pass
+    return n
+
+
+# ---------------------------------------------------------------- v0.554 CARD KI KHABAR
+# A card (approval, payment, draft, form, a finished result...) used to reach her SCREEN and the chat, but the voice
+# model on a live call never heard of it - only kaamwatch JOB states were spoken. Now every card worth a phone
+# notification (push.render - the same judgement, the same words) becomes one quiet note to her live call.
+_CARD_NOT = {"message", "typing", "step", "steps", "work", "think", "say", "reply_start", "delta", "delta_reset",
+             "reply_end", "voice_ring", "device_action", "device_action_result", "home_device", "bt_request",
+             "upload", "memory_saved", "procedure", "gyaan_sources", "kaam", "goal", "voice_alert"}
+_CARD_TOLD: dict[str, float] = {}
+CARD_TOLD_S = 1800
+_ASKING = {"", "pending", "waiting", "needs_tap", "asking", "approval", "draft", "ready", "open", "needs_confirm"}
+
+
+def _card_money(kind: str, p: dict) -> bool:
+    """A card whose yes moves money (the haan_karo rule: amount, a pay method, money words) - tap only, never voice."""
+    if any(w in kind for w in ("_pay", "upi", "bill", "spend", "khata", "mandate")):
+        return True
+    if p.get("amount") or p.get("amount_inr") or p.get("amount_paise") or p.get("inr"):
+        return True
+    if re.search(r"upi|card|wallet|pay|bank|cash", str(p.get("pay_method") or ""), re.I):
+        return True
+    try:
+        from . import approval_words
+        return bool(approval_words.money_risk(" ".join(str(p.get(k) or "") for k in ("title", "name", "label"))))
+    except Exception:
+        return False
+
+
+def card_note(kind: str, p: dict, title: str, body: str) -> str:
+    """The quiet note one card becomes on a live call (spoken by Hoola in its own words at a pause)."""
+    st = str(p.get("status") or p.get("state") or "").lower()
+    asks = st in _ASKING and any(w in kind for w in ("ask", "approval", "draft", "confirm", "quote", "sign", "form",
+                                                      "pick", "_pay", "upi", "share", "knock", "reconnect", "spend"))
+    what = f"{title} - {body}".strip(" -")[:400]
+    if _card_money(kind, p) and asks:
+        act = ("Yeh paise / bhejne wala card hai: haan SIRF phone par card tap karke hogi, bolkar nahi - yeh saaf bolo, "
+               "amount ho to bolo.")
+    elif asks:
+        act = ("Isme uski haan / jawab chahiye: bolo ki card phone par hai. Agar yeh kisi chalte kaam ka step hai aur "
+               "woh bolkar haan kahe to haan_karo; warna card par tap.")
+    else:
+        act = "Bas natija ek chhoti line mein batao (kya bana / kya aaya)."
+    return (f"[Card aaya phone par, tell her briefly in your own words at a natural pause, never read symbols] "
+            f"{what}. {act}")
+
+
+def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
+    """Called from bus.publish for every event while any call is live. Returns how many calls got the note."""
+    if not ACTIVE or not conv or kind in _CARD_NOT or not isinstance(p, dict):
+        return 0
+    direct = VOICE_DIRECT.get()
+    if direct and call and direct == call:
+        return 0                                   # the call's own direct tool made it: its tool result said so
+    try:
+        from . import kaamwatch
+        if kaamwatch.shape(kind, p):
+            return 0                               # a JOB state: kaamwatch already speaks it to the call
+    except Exception:
+        pass
+    try:
+        from . import push
+        shown = push.render(kind, p, "Hoola")
+    except Exception:
+        shown = None
+    if not shown:
+        return 0
+    title, body = (str(shown[0] or ""), str(shown[1] or ""))
+    st = str(p.get("status") or p.get("state") or "").lower()
+    key = f"{conv}:{kind}:{p.get('id') or p.get('key') or p.get('job_id') or title}:{st}"
+    now_ = time.time()
+    for k, at in list(_CARD_TOLD.items()):
+        if now_ - at > CARD_TOLD_S:
+            _CARD_TOLD.pop(k, None)
+    if key in _CARD_TOLD:
+        return 0
+    _CARD_TOLD[key] = now_
+    note = card_note(kind, p, title, body)
+    n = inject(conv, note)
+    if not n:                                      # her live call is on another chat of hers: it hears it there
+        try:
+            from .convs import tenant_of
+            tenant = tenant_of(conv)
+        except Exception:
+            tenant = ""
+        if tenant:
+            for c2, calls in list(ACTIVE.items()):
+                if c2 != conv and any(getattr(c, "tenant", "") == tenant for _l, c in list(calls)):
+                    n += inject(c2, note)
+                    break
     return n
 
 
@@ -2591,6 +2688,7 @@ class Call:
         from .events import CALL
         CALL.set(self.call_id)   # v0.158 every card this tool (and the jobs it starts) makes belongs to this call
         name, args = fc.name, dict(fc.args or {})
+        VOICE_DIRECT.set("" if name == "santosh_kaam" else self.call_id)   # v0.554 own-tool cards are not news
         from .avatar.service import gendered
         shown = name
         if name in self._mcp_route:

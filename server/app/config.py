@@ -81,7 +81,7 @@ class Settings(BaseSettings):
     dev_review_steps: int = 25              # v0.377 a PR review explores at most this many steps (read-only tools)
     dev_review_minutes: int = 10            # ... and this many minutes, then the one-shot review is the fallback
     dev_spec_review: bool = True            # v0.402 ECC specialists in PR reviews; ON since the review card (same 8/8 caught, false alarms 8 -> 4, nits 3 -> 0)
-    dev_lab: bool = False                   # v0.456 PRAYOGSHALA: Hoola may run her declared checks in the Docker box. OFF until `python -m app.devlab check` passes on the VPS
+    dev_lab: bool = True                    # v0.533 PRAYOGSHALA ON: her VPS answered lab_check with every wall holding (docker 29.8.1, base image built, pass + fail caught, network blocked, read-only root, uid 1000)
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
@@ -236,6 +236,18 @@ class Settings(BaseSettings):
     google_ads_developer_token: str = ""   # v0.401 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
     google_ads_login_customer_id: str = ""  # optional manager (MCC) id when her ad account sits under Hoola's manager
     google_ads_api_version: str = "v26"
+    # v0.541 SEO INTEL: AI visibility through each company's own API (keys in .env only), DataForSEO for competitor data
+    perplexity_api_key: str = ""            # Perplexity Sonar API (PERPLEXITY_API_KEY); empty = Perplexity left out
+    seo_ai_openai_model: str = "gpt-5-mini"
+    seo_ai_openai_search_tool: str = "web_search"
+    seo_ai_gemini_model: str = "gemini-2.5-flash"
+    seo_ai_perplexity_model: str = "sonar"
+    seo_ai_call_inr: float = 2.0            # what one AI answer is charged as (an estimate; every answer counts against her ceiling)
+    seo_ai_month_inr: float = 300.0         # default monthly ceiling for AI-visibility answers, per site (she can change it)
+    dataforseo_login: str = ""              # Newtika's own DataForSEO login - used ONLY when dataforseo_shared is true
+    dataforseo_password: str = ""
+    dataforseo_shared: bool = False         # false = every user brings her own DataForSEO login (her money)
+    dataforseo_month_usd: float = 5.0       # default monthly DataForSEO ceiling per site (USD, from DataForSEO's own reported cost)
     meta_ads_config_id: str = ""            # v0.417 optional Facebook Login for Business configuration for the ads login (ads_management + ads_read)
     meta_ads_max_daily: int = 2000          # v0.417 Hoola's ceiling on a Facebook / Instagram ad's daily budget (her account currency)
     gads_max_daily: int = 2000              # Hoola's ceiling on a YouTube ad's daily budget (her account currency)
@@ -329,6 +341,12 @@ class Settings(BaseSettings):
     site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
+    site_shop_max_products: int = 20000    # v0.538 BADA CATALOGUE: products one website shop may hold (was 500)
+    site_shop_day_cap: int = 300           # orders a website shop takes in a day (spam guard; a big shop raises it)
+    site_shop_ip_cap: int = 12             # orders from one address in 10 minutes
+    site_gates: bool = True                # v0.551 SURAKSHA GATES: every website build is checked; a FAIL blocks going live
+    site_turnstile_site: str = ""          # v0.551 Cloudflare Turnstile site key (public) - both keys = forms get the box
+    site_turnstile_secret: str = ""        # its secret (VPS .env only): the server checks every form post with Cloudflare
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
     site_sms_provider: str = ""            # v0.434 website phone-OTP login: "" off | msg91 (DLT registered, her account)
     msg91_authkey: str = ""                # v0.434 MSG91 auth key (VPS .env only)
@@ -391,6 +409,12 @@ class Settings(BaseSettings):
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     scrape_respect_robots: bool = True     # v0.477 scrape tools refuse paths the site's robots.txt disallows for bots
     scrape_stealth_enabled: bool = False   # v0.477 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
+    # v0.537 CRAWL BRAIN (the crawl4ai ideas, hand-built). Every one is OFF or neutral by default.
+    scrape_proxies: str = ""               # v0.537 comma list: ip:port[:user:pass] | url | DIRECT. Empty = fetch direct, as before
+    scrape_proxy_max_fails: int = 3        # v0.537 failures before a proxy is rested
+    scrape_proxy_rest_s: int = 300         # v0.537 how long a failing proxy rests
+    scrape_clean_default: bool = False     # v0.537 prune boilerplate on EVERY scrape_page (she can also ask per call)
+    scrape_crawl_question_mode: str = "best"   # v0.537 frontier mode when a crawl job carries a question: best | bfs
     scrape_cache_enabled: bool = True      # v0.481 serve repeat scrapes from the per-tenant page cache within max_age
     scrape_cache_max_age: int = 1800       # v0.481 default seconds a cached page stays fresh for the scrape tool (0 = always fresh)
     scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)
@@ -406,6 +430,22 @@ class Settings(BaseSettings):
     graphify_max_files: int = 8000         # v0.496 files unpacked per repo
     graphify_keep_repos: int = 5           # v0.496 mapped repos kept per tenant, oldest dropped
     scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
+    dhara_enabled: bool = True             # v0.502 DHARA - her workflows (the n8n lane: save/run/schedule/webhook)
+    dhara_max_steps: int = 40              # v0.502 top-level steps per workflow (dhara_save clamps)
+    dhara_loop_max: int = 50               # v0.502 iterations per loop step
+    dhara_run_timeout_s: int = 600         # v0.502 one run's wall clock cap
+    dhara_max_running: int = 1             # v0.502 runs executing at once, per tenant (politeness first)
+    dhara_stale_s: int = 180               # v0.502 a running run without a write this long is resumed from its checkpoint
+    dhara_tries: int = 3                   # v0.502 a run is started at most this many times before it is failed
+    dhara_keep_runs_days: int = 30         # v0.502 finished runs older than this are forgotten (at most 40 kept)
+    dhara_approval_hours: int = 24         # v0.502 an approval step waiting longer than this fails honestly
+    dhara_webhook_enabled: bool = True     # v0.502 POST /api/dhara/hook/{token} (token sha256-hashed at rest)
+    dhara_summaries_enabled: bool = True   # v0.512 a computed summary (steps/parks/tries/wall/cost) on every finished run
+    dhara_dsl_enabled: bool = True         # v0.512 dhara_dsl export/import (the Dify DSL idea: portable workflow files)
+    dhara_dsl_max_kb: int = 64             # v0.512 one DSL envelope's size cap
+    gyaan_annotation_enabled: bool = True  # v0.512 her approved jawabs (the Dify annotation-reply idea) served before retrieval
+    gyaan_annotation_fuzzy: float = 0.92   # v0.512 difflib ratio threshold for a fuzzy annotation hit (exact always wins)
+    gyaan_annotation_max: int = 200        # v0.512 approved-jawab pairs per tenant
     officehours_enabled: bool = True       # v0.495 office hours (the gstack THINK/PLAN lane: design docs + plan reviews)
     officehours_keep_docs: int = 30        # v0.495 baithak docs kept per tenant; older ones (and their reviews) are forgotten
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
@@ -514,6 +554,10 @@ class Settings(BaseSettings):
     sp_enabled: bool = True                 # superpowers lane seeds on first open under its own stamp (default ON)
     # --- FE PACK: the HyperFrames template packs + campaign email templates + UI kit ---
     fepack_enabled: bool = True             # FE pack seeds on first open (default ON)
+    # --- CS PACK: the zoo expansion radar + the operator loop's dialogue/QA patterns ---
+    cspack_enabled: bool = True             # CS pack seeds on first open (default ON)
+    # --- BD PACK: the public-dataset eval benchmarks + the campaign-graph analytics ---
+    bdpack_enabled: bool = True             # Big Data pack seeds on first open (default ON)
     # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
     coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
     coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)
@@ -534,6 +578,32 @@ class Settings(BaseSettings):
     coder_docs7_timeout_s: int = 20        # upstream ceiling 60s (p99.9 ~3.2s); a voice box drops, not waits
     coder_docs7_max_per_hour: int = 12     # the <=3-per-question law, enforceable locally (upstream 429s server-side)
     coder_docs7_ttl_hours: int = 168       # the vault IS the cache: a week before the same query re-fetches
+
+    # --- Hoola 21st (v0.512): the 21st.dev UI catalog + hosted AI generation, the 21st-dev/magic-mcp port ---
+    coder_magic21: bool = False            # the magic21 tool (outbound network: bake on the VPS, then flip)
+    magic21_api_url: str = "https://21st.dev/api/mcp"   # upstream default (mcp.json:3; env MCP_URL_21ST there)
+    magic21_api_key: str = ""              # x-api-key from 21st.dev/mcp (REQUIRED upstream); BYOK - keys never in chat
+    coder_magic21_timeout_s: int = 20      # ONE attempt, drop-don't-wait: a live turn cannot wait on a marketplace
+    coder_magic21_max_per_hour: int = 12   # per-tenant rolling-hour window over OPS (the three wire POSTs are the bridge's own business)
+    magicpack_enabled: bool = True         # the mg- seed (the 21st.dev UI skill) seeds on first open under its own stamp (default ON)
+
+    # --- Hoola Crew (v0.514): the crewAI port, role-based agent crews over the delegate machinery ---
+    coder_crew: bool = False               # the crew_run tool (brain rounds, not network - but real cost: bake, then flip)
+    coder_crew_max_agents: int = 6         # a voice box is not a cluster (library backstop MAX_AGENTS doubled at the door)
+    coder_crew_max_tasks: int = 12         # the task-list cap (library backstop MAX_TASKS doubled at the door)
+    coder_crew_task_timeout_s: int = 180   # per task/manager-round ceiling (the delegate child shape, widened for a worker)
+    coder_crew_timeout_s: int = 600        # the whole-crew wall clock; partial work is not kept (honest)
+    crewpack_enabled: bool = True          # the cr- seed (crew plays) seeds on first open under its own stamp (default ON)
+
+    # --- THEORY PACK (v0.547): the vision-lane syllabus + the agent-architecture research loop ---
+    thpack_enabled: bool = True            # the th- seed (the awesome Theory read) seeds on first open under its own stamp (default ON)
+
+    # --- EDITORS PACK (v0.548): the VS Code cockpit + the Neovim cockpit - drive Hoola from inside the IDE ---
+    edpack_enabled: bool = True            # the ed- seed (the awesome Editors read) seeds on first open under its own stamp (default ON)
+
+    # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
+    aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
+    aep_trace_redact: bool = True          # redaction before storage (strip_private + redact_secrets); a test seam, prod keeps True
 
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""

@@ -339,6 +339,12 @@ TOOLS.extend(CRAWL_TOOLS)
 TOOL_LABELS.update(CRAWL_LABELS)
 HANDLERS.update(CRAWL_HANDLERS)
 
+from .dhara_tools import DHARA_HANDLERS, DHARA_LABELS, DHARA_TOOLS  # noqa: E402  v0.502 DHARA - her workflows (the n8n lane)
+
+TOOLS.extend(DHARA_TOOLS)
+TOOL_LABELS.update(DHARA_LABELS)
+HANDLERS.update(DHARA_HANDLERS)
+
 from .officehours_tools import OFFICEHOURS_HANDLERS, OFFICEHOURS_LABELS, OFFICEHOURS_TOOLS  # noqa: E402  v0.495 office hours (the gstack THINK/PLAN lane)
 
 TOOLS.extend(OFFICEHOURS_TOOLS)
@@ -758,6 +764,39 @@ TOOLS.extend(THEKA_TOOLS)
 TOOL_LABELS.update(THEKA_LABELS)
 HANDLERS.update(THEKA_HANDLERS)
 
+# v0.512 Construction & Real Estate Wave 1 (register docs/research/building_industry/07 - the tier gate in
+# construction/gates.py rides every tool: PREPARE, never CERTIFY; tier C refusals carry the human's name).
+# Store (#61), Labour+wages+cess (#85/#87/#90), Customer money+handover+DLP (#92/#97/#98), Quality ITP/NCR/
+# test lots + punch (#75/#76/#78), Meeting secretary (#67). Sitesup voice_log (#64/#70) and theka
+# sub rate-basis + advances + wage calc (#62/#71) ride the existing tools; RA bills (#88) already lived.
+from .const_store_tools import STORE_HANDLERS, STORE_LABELS, STORE_TOOLS  # noqa: E402
+from .const_labour_tools import LABOUR_HANDLERS, LABOUR_LABELS, LABOUR_TOOLS  # noqa: E402
+from .const_customer_tools import CUSTOMER_HANDLERS, CUSTOMER_LABELS, CUSTOMER_TOOLS  # noqa: E402
+from .const_quality_tools import QUALITY_HANDLERS, QUALITY_LABELS, QUALITY_TOOLS  # noqa: E402
+from .const_meet_tools import MEET_HANDLERS, MEET_LABELS, MEET_TOOLS  # noqa: E402
+
+# v0.531 Construction Wave 2 (file-builders & checkers; plan docs/CONSTRUCTION_EMPLOYEE_PLAN.md C7-C10):
+# Approvals office (#28-32,34,36), QS desk (#37-39,41,49), RERA & escrow (#35,93), Contracts (#44-46,51),
+# Tendering (#52-56,58), Drawing QA + bye-law (#9,16,73). Every tool rides construction/gates.py:
+# PREPARE, never CERTIFY - a named licensee on every output, the pack cites, the pack refuses when stale.
+from .const_approvals_tools import APPROVALS_HANDLERS, APPROVALS_LABELS, APPROVALS_TOOLS  # noqa: E402
+from .const_qs_tools import QS_HANDLERS, QS_LABELS, QS_TOOLS  # noqa: E402
+from .const_rera_tools import RERA_HANDLERS, RERA_LABELS, RERA_TOOLS  # noqa: E402
+from .const_contracts_tools import CONTRACTS_HANDLERS, CONTRACTS_LABELS, CONTRACTS_TOOLS  # noqa: E402
+from .const_tender_tools import TENDER_HANDLERS, TENDER_LABELS, TENDER_TOOLS  # noqa: E402
+from .const_drawqa_tools import DRAWQA_HANDLERS, DRAWQA_LABELS, DRAWQA_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
+                   (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
+                   (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS),
+                   (APPROVALS_TOOLS, APPROVALS_LABELS, APPROVALS_HANDLERS), (QS_TOOLS, QS_LABELS, QS_HANDLERS),
+                   (RERA_TOOLS, RERA_LABELS, RERA_HANDLERS), (CONTRACTS_TOOLS, CONTRACTS_LABELS, CONTRACTS_HANDLERS),
+                   (TENDER_TOOLS, TENDER_LABELS, TENDER_HANDLERS), (DRAWQA_TOOLS, DRAWQA_LABELS, DRAWQA_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+
 # v0.118 Brand Sahayak (brand designer: kit from her logo, posters in every size, final artwork only on her tap)
 from .brand_tools import BRAND_HANDLERS, BRAND_LABELS, BRAND_TOOLS  # noqa: E402
 
@@ -1110,6 +1149,43 @@ _seen = {t["name"] for t in TOOLS}
 TOOLS.extend(t for t in DOCS7_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(DOCS7_LABELS)
 HANDLERS.update(DOCS7_HANDLERS)
+del _seen
+
+# v0.512 HOOLA 21ST: ONE magic21 tool (the coder/magic21 surface) - the 21st-dev/magic-mcp
+# port: search the 21st.dev UI catalog, fetch a component's full code, generate new UI only
+# when the account's entitlement says so (get_usage.aiGenerationEnabled; a result carrying
+# ai_subscription_required STOPS - no retries through legacy aliases or the CLI). Five ops
+# (list/usage/search/get/call) over the MCP wire (initialize -> initialized -> tools/call,
+# the session echo honoured per turn, stateless between turns); the endpoint's NOT_AUTHED
+# sentence rides verbatim; 401 latches for the process life (upstream saw ~100k doomed
+# initialize retries an hour - src/index.ts:146-152); no key or latched auth answers locally
+# with ZERO network; arguments pass strip_private + redact_secrets before egress; one attempt
+# drop-don't-wait (20 s); per-tenant rolling-hour window; voice never sees it (the
+# VOICE_TOOL_NAMES allowlist); coder_magic21 gates the handler (default OFF - bake, then flip).
+from ..coder.magic21 import MAGIC21_HANDLERS, MAGIC21_LABELS, MAGIC21_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in MAGIC21_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(MAGIC21_LABELS)
+HANDLERS.update(MAGIC21_HANDLERS)
+del _seen
+
+# v0.514 HOOLA CREW: ONE crew_run tool (the coder/crew_run surface) - the crewAIInc/crewAI
+# port: a named team of role agents (role/goal/backstory) working a task list inside one
+# turn - sequential with context threading or hierarchical (a manager with NO tools
+# delegating via DELEGATE/ASK/FINISH lines), guardrails with bounded retries, async tasks
+# joining before the next sync task. The library (app.crew: core/agent/task/crew/engine)
+# is inert and provider-free - the RUNNER here is the house child worker (delegate.py's
+# _call_brain + _run_tool funnel) framed by the identity, so capture/scrub/timeout see
+# every crew worker like every other child. The deny set is structural: a crew member can
+# NEVER delegate, send, approve or start PC jobs (delegate.CHILD_DENIED, money never moves
+# inside a crew). Caps: 6 agents / 12 tasks / 180 s per task / 600 s whole-crew. Voice
+# never sees it (out of the VOICE_TOOL_NAMES allowlist); coder_crew gates the handler
+# (default OFF - bake, then flip). Stateless: the crew IS the tool call (v0.514).
+from ..coder.crew_run import CREW_HANDLERS, CREW_LABELS, CREW_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in CREW_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(CREW_LABELS)
+HANDLERS.update(CREW_HANDLERS)
 del _seen
 
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)

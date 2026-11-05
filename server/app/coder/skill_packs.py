@@ -45,6 +45,12 @@ BYOX_STAMP = "skills:byox:{}"           # its OWN once-ever stamp: tenants alrea
 PROG_STAMP = "skills:progpack:{}"       # its OWN once-ever stamp (the v0.492 pattern): the v0.495 PROG pack
 SP_STAMP = "skills:sp:{}"               # its OWN once-ever stamp (v0.495): the superpowers lane, same once-ever law
 FE_STAMP = "skills:fepack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the FE pack, same once-ever law
+CS_STAMP = "skills:cspack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the CS pack, same once-ever law
+MG_STAMP = "skills:magicpack:{}"        # its OWN once-ever stamp (the v0.492 pattern): the 21st/Magic UI pack, same once-ever law
+BD_STAMP = "skills:bdpack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the Big Data pack, same once-ever law
+CR_STAMP = "skills:crewpack:{}"         # its OWN once-ever stamp (the v0.492 pattern): the crewAI pack, same once-ever law
+TH_STAMP = "skills:thpack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the Theory pack, same once-ever law
+ED_STAMP = "skills:edpack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the Editors pack, same once-ever law
 
 
 # ---------------------------------------------------------------- helpers
@@ -106,7 +112,7 @@ def seed_files() -> list[Path]:
     """The shipped starter library (SKILL.md files beside this module)."""
     try:
         return sorted(f for f in SEED_DIR.glob("*.md")
-                      if not f.name.startswith(("byox-", "prog-", "sp-", "fe-")))
+                      if not f.name.startswith(("byox-", "prog-", "sp-", "fe-", "cs-", "mg-", "bd-", "cr-", "th-", "ed-")))
     except Exception:
         return []
 
@@ -140,6 +146,64 @@ def fe_files() -> list[Path]:
     email templates + the Hoola UI kit tokens."""
     try:
         return sorted(SEED_DIR.glob("fe-*.md"))
+    except Exception:
+        return []
+
+
+def cs_files() -> list[Path]:
+    """The CS pack (the awesome Computer Science read): the zoo expansion radar + the
+    operator loop's dialogue/QA patterns."""
+    try:
+        return sorted(SEED_DIR.glob("cs-*.md"))
+    except Exception:
+        return []
+
+
+def mg_files() -> list[Path]:
+    """The MAGIC pack (v0.512, the 21st-dev/magic-mcp read): the 21st.dev UI skill -
+    search-first over the catalog, the generate entitlement law, the family laws."""
+    try:
+        return sorted(SEED_DIR.glob("mg-*.md"))
+    except Exception:
+        return []
+
+
+def bd_files() -> list[Path]:
+    """The Big Data pack (the awesome Big Data read): the public-dataset eval
+    benchmarks for quality regression + the campaign-graph analytics."""
+    try:
+        return sorted(SEED_DIR.glob("bd-*.md"))
+    except Exception:
+        return []
+
+
+def cr_files() -> list[Path]:
+    """The crewAI pack (v0.514, the crewAIInc/crewAI read): when to run a crew, how to
+    shape roles/tasks/guardrails, the three-door routing (delegate vs crew vs dhara)."""
+    try:
+        return sorted(SEED_DIR.glob("cr-*.md"))
+    except Exception:
+        return []
+
+
+def th_files() -> list[Path]:
+    """The Theory pack (the awesome Theory read, v0.547): the vision-lane syllabus
+    (awesome-vlm-architectures - screenshot->action, Hoola's PC operator IS one)
+    + the agent-architecture research loop (awesome-agi-cocosci - read, probe,
+    ledger, adopt)."""
+    try:
+        return sorted(SEED_DIR.glob("th-*.md"))
+    except Exception:
+        return []
+
+
+def ed_files() -> list[Path]:
+    """The Editors pack (the awesome Editors read, v0.548): the VS Code cockpit
+    (palette first, ax tree, never pixels) + the Neovim cockpit (modal grammar,
+    buffers, key lane) - drive Hoola from inside the IDE, editors are already
+    semantically controllable via ax_*."""
+    try:
+        return sorted(SEED_DIR.glob("ed-*.md"))
     except Exception:
         return []
 
@@ -349,6 +413,239 @@ def seed_fepack(tenant: str) -> dict:
     if wrote:
         log.info("fe seed: %d skills into %s", wrote, tenant)
     return {"fe_seeded": wrote}
+
+
+def seed_cspack(tenant: str) -> dict:
+    """Copy the CS pack into a tenant once ever, create-if-missing (the seed_fepack twin).
+    Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND fe still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "cspack_enabled", True):
+            return {"cs_seeded": 0}
+    except Exception:
+        return {"cs_seeded": 0}
+    if not _seed_armed():
+        return {"cs_seeded": 0}
+    stamp = CS_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"cs_seeded": 0}
+    except Exception:
+        return {"cs_seeded": 0}
+    wrote = 0
+    for f in cs_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("cs seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("cs seed: %d skills into %s", wrote, tenant)
+    return {"cs_seeded": wrote}
+
+
+def seed_magicpack(tenant: str) -> dict:
+    """Copy the MAGIC pack into a tenant once ever, create-if-missing (the seed_fepack twin,
+    v0.512). Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND
+    fe AND cs still get this pack. Discovered automatically by _pack_seeders (no seed_all edit)."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "magicpack_enabled", True):
+            return {"mg_seeded": 0}
+    except Exception:
+        return {"mg_seeded": 0}
+    if not _seed_armed():
+        return {"mg_seeded": 0}
+    stamp = MG_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"mg_seeded": 0}
+    except Exception:
+        return {"mg_seeded": 0}
+    wrote = 0
+    for f in mg_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("mg seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("mg seed: %d skills into %s", wrote, tenant)
+    return {"mg_seeded": wrote}
+
+
+def seed_bdpack(tenant: str) -> dict:
+    """Copy the Big Data pack into a tenant once ever, create-if-missing (the seed_cspack twin).
+    Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND fe AND cs AND mg
+    still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "bdpack_enabled", True):
+            return {"bd_seeded": 0}
+    except Exception:
+        return {"bd_seeded": 0}
+    if not _seed_armed():
+        return {"bd_seeded": 0}
+    stamp = BD_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"bd_seeded": 0}
+    except Exception:
+        return {"bd_seeded": 0}
+    wrote = 0
+    for f in bd_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("bd seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("bd seed: %d skills into %s", wrote, tenant)
+    return {"bd_seeded": wrote}
+
+
+def seed_crewpack(tenant: str) -> dict:
+    """Copy the crewAI pack into a tenant once ever, create-if-missing (the seed_bdpack twin).
+    Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND fe AND cs
+    AND mg AND bd still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "crewpack_enabled", True):
+            return {"cr_seeded": 0}
+    except Exception:
+        return {"cr_seeded": 0}
+    if not _seed_armed():
+        return {"cr_seeded": 0}
+    stamp = CR_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"cr_seeded": 0}
+    except Exception:
+        return {"cr_seeded": 0}
+    wrote = 0
+    for f in cr_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("cr seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("cr seed: %d skills into %s", wrote, tenant)
+    return {"cr_seeded": wrote}
+
+
+def seed_thpack(tenant: str) -> dict:
+    """Copy the Theory pack into a tenant once ever, create-if-missing (the seed_crewpack twin).
+    Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND fe AND cs
+    AND mg AND bd AND cr still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "thpack_enabled", True):
+            return {"th_seeded": 0}
+    except Exception:
+        return {"th_seeded": 0}
+    if not _seed_armed():
+        return {"th_seeded": 0}
+    stamp = TH_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"th_seeded": 0}
+    except Exception:
+        return {"th_seeded": 0}
+    wrote = 0
+    for f in th_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("th seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("th seed: %d skills into %s", wrote, tenant)
+    return {"th_seeded": wrote}
+
+
+def seed_edpack(tenant: str) -> dict:
+    """Copy the Editors pack into a tenant once ever, create-if-missing (the seed_thpack twin).
+    Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND fe AND cs
+    AND mg AND bd AND cr AND th still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "edpack_enabled", True):
+            return {"ed_seeded": 0}
+    except Exception:
+        return {"ed_seeded": 0}
+    if not _seed_armed():
+        return {"ed_seeded": 0}
+    stamp = ED_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"ed_seeded": 0}
+    except Exception:
+        return {"ed_seeded": 0}
+    wrote = 0
+    for f in ed_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("ed seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("ed seed: %d skills into %s", wrote, tenant)
+    return {"ed_seeded": wrote}
 
 
 def _pack_seeders() -> list:

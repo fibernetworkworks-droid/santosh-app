@@ -1,0 +1,32 @@
+{
+  "state": "maharashtra",
+  "note": "Rule pack v0 (the plan's worked example). Only DETERMINED, sourced rows live here; notified rates that move (minimum wages, cess notifications, UDCPRFSI tables) are NOT parked as numbers - Wave 2 checkers read them from their own verified packs when she asks. Minimum-wage checks therefore run on HER typed CLabourWage rows and say 'current notification se verify karo' where a pack row is absent.",
+  "checked_on": "2026-11-05",
+  "refresh_by": "2027-05-31",
+  "rows": [
+    {"rule_id": "gst_works_contract", "value": 18.0,
+     "clause": "works contracts incl. government civil works, from 22 Sep 2025",
+     "source": "CBIC rate notification 22 Sep 2025 (researched in-repo: theka/rules.py v0.117, 22 Oct 2026)",
+     "checked_on": "2026-11-05"},
+    {"rule_id": "gst_tds", "value": {"rate": 2.0, "threshold": 250000.0},
+     "clause": "CGST Sec 51 - government / local authority / notified bodies deduct 2% of taxable value (excl. GST) when the contract exceeds Rs 2.5 lakh",
+     "source": "CGST Act s.51 (researched in-repo: theka/rules.py v0.117)",
+     "checked_on": "2026-11-05"},
+    {"rule_id": "it_tds_194c", "value": {"individual": 1.0, "other": 2.0, "single": 30000.0, "year": 100000.0, "no_pan": 20.0},
+     "clause": "TDS on contract payments 1% (individual / HUF) or 2% (others) above Rs 30,000 per payment or Rs 1 lakh a year; 20% without PAN",
+     "source": "Income-tax Act 2025 Sec 393(1) (old 194C) (researched in-repo: theka/rules.py v0.117)",
+     "checked_on": "2026-11-05"},
+    {"rule_id": "bocw_cess", "value": 1.0,
+     "clause": "1% of the cost of construction (land excluded), deducted from bills by government / PSUs or paid in advance on self-assessment",
+     "source": "Code on Social Security 2020, in force 21 Nov 2025 (researched in-repo: theka/rules.py v0.117)",
+     "checked_on": "2026-11-05"},
+    {"rule_id": "rera_escrow_pct", "value": 70.0,
+     "clause": "70% of the receipts for a project into a designated account, withdrawable against certified progress",
+     "source": "Real Estate (Regulation and Development) Act 2016, s.4(2)(l)(D); MahaRERA the state authority",
+     "checked_on": "2026-11-05"},
+    {"rule_id": "rera_ca_audit_months", "value": 6,
+     "clause": "the designated-account statements audited by a chartered accountant within six months after the end of every financial year, and published",
+     "source": "Real Estate (Regulation and Development) Act 2016, s.4(2)(l)(D) proviso; MahaRERA the state authority",
+     "checked_on": "2026-11-05"}
+  ]
+}

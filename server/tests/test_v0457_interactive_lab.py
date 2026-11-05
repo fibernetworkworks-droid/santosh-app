@@ -50,7 +50,8 @@ def test_lab_only_models_cannot_ship(reg):
 
 def test_shippable_models_are_the_licence_checked_ones(reg):
     ship = {k for k, m in reg.MODELS.items() if m["use"] == "commercial"}
-    assert ship == {"chatterbox", "faster_whisper_small", "indic_parler", "musetalk", "sd_vae", "whisper_tiny"}   # whisper small: MIT code + MIT weights, read 3 Nov 2026
+    assert ship == {"chatterbox", "faster_whisper_small", "indic_parler", "musetalk", "sd_vae", "whisper_tiny",   # whisper small: MIT code + MIT weights, read 3 Nov 2026
+                    "flux_schnell", "wan22_ti2v_5b"}             # the AI-made face: both Apache-2.0, read from their HF pages 5 Nov 2026
     assert "hi" in reg.MODELS["chatterbox"]["langs"] and reg.MODELS["chatterbox"]["clone"] is True
     assert {"hi", "mr", "ta", "te", "bn"} <= set(reg.MODELS["indic_parler"]["langs"])
     assert reg.MODELS["indic_parler"]["clone"] is False                  # described in words, never cloned
@@ -241,7 +242,7 @@ def test_e2e_bench_wired():
     import re
     import struct
     wf = open("../.github/workflows/interactive-lab.yml").read()
-    assert "bench_e2e" in wf and "e2e, studio, deploy" in wf
+    assert "bench_e2e" in wf and "e2e, studio, voices, voice_tune, face_make, deploy" in wf
     assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
@@ -283,7 +284,7 @@ def test_live_socket_and_student_page():
     body = src[src.index("async def live_socket"):src.index('api.websocket("/live")')]
     assert 'hello.get("key")' in body and "compare_digest" in body          # key in the first message, never in the address
     assert "AVATAR_ID.match(avatar)" in body and "MAX_TEXT" in body          # same guards as the other doors
-    assert "asyncio.create_task(voice.speak.remote.aio" in body              # every chunk's voice starts at once
+    assert "asyncio.create_task(voiced(k, c))" in body and "voice.speak.remote.aio(c, lang)" in body   # every chunk's voice starts at once
     assert "async for b in face.stream.remote_gen.aio" in body               # read to the end: cancelling restarts a container
     assert ".cancel()" not in body                                           # voice calls are never cancelled
     assert "the live talk stopped" in body and "str(e)" not in body.split("say(type=\"error\", msg=\"the live")[1][:80]   # no internals to the browser
@@ -382,3 +383,158 @@ def test_studio_helpers_and_door():
     assert "signed:" in save and "ai_generated" not in save                    # a cloned voice can never be 'ai generated'
     assert "faster_whisper_small" in (ROOT / "avatar_engine" / "registry.py").read_text()
     assert "studio_card" in WORKFLOW and "inputs.job == 'studio'" in WORKFLOW
+
+
+def test_studio_card_fixes_from_the_first_real_run():
+    """Studio card run 33 (L40S): 5/10. Each failure, pinned to its real cause from the log."""
+    live = MODAL_SRC[MODAL_SRC.index("class Live:"):MODAL_SRC.index("class Live:") + 20000]
+    # photo avatar called self._prepare_impl, which only the old Face class had
+    assert "def _prepare_impl(self, avatar_id: str, video: bytes, consent: str)" in live
+    assert "return self._prepare_impl(avatar_id, video, consent)" in live.split("def prepare_photo")[1][:1200]
+    # transcribe returned numpy floats into the numpy-free studio image
+    hear = MODAL_SRC[MODAL_SRC.index("class Hear:"):MODAL_SRC.index("def _speak_chunks")]
+    assert "round(sg.start" not in hear and "round(float(sg.start), 2)" in hear and "round(float(w.start), 2)" in hear
+    # dub got a silent sample video: no sound = no voice to copy, said plainly; the card now sends a speaking clip
+    dub = MODAL_SRC[MODAL_SRC.index('if op == "dub":'):MODAL_SRC.index('if op == "podcast":')]
+    assert dub.index("_has_audio(src)") < dub.index("save_voice")
+    assert '"dub", {"video": _sample_talking.remote()' in MODAL_SRC
+
+
+def test_voice_never_cut_off_mid_sentence_and_takes_judged_both_ways():
+    m = re.search(r'CB_PATCH = r"""(.*?)"""', MODAL_SRC, re.S)
+    assert m and "'" not in m.group(1)                       # it rides inside python -c '...'
+    code = m.group(1)
+    # run 35: with the repeat rule loosened the voice babbled 3-5 s past its text -> repeat rule only after the text is
+    # spoken (the authors' commented-out intent) + a hard stop 20 tokens (0.8 s) after it
+    assert "assert s.count(o) == 1" in code and "self.complete and len(self.generated_tokens) >= 3" in code
+    assert "(T - self.completed_at) > 20" in code and "or past_end:" in code
+    assert 'base64.b64encode(CB_PATCH.encode())' in MODAL_SRC and '| base64 -d | python' in MODAL_SRC
+    ns: dict = {}
+    exec(re.search(r"def _take_off.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    off = ns["_take_off"]
+    assert off(4.5, 10) < off(1.0, 10) and off(4.5, 10) < off(12.0, 10)
+    speak = MODAL_SRC[MODAL_SRC.index("def speak(self, text: str, lang"):MODAL_SRC.index("@app.cls", MODAL_SRC.index("def speak(self, text: str, lang"))]
+    assert "floor <= secs <= limit" in speak and '"cut_short": secs < floor' in speak
+    assert "limit, floor = n * 0.8 + 1.5, n * 0.22" in speak          # 5 words + 5 s of babble (6.7 s) is a runaway now
+
+
+def test_studio_card_has_ears():
+    """The card transcribes every video it made and compares it with the script - babble shows up as a failed row."""
+    card = MODAL_SRC[MODAL_SRC.index("def studio_card"):]
+    assert "def heard(" in card and "Hear().transcribe.spawn(" in card and "EXTRA SPEECH / BABBLE" in card
+    for n in ("r1", "r2", "r3", "r5", "r6", "r7"):
+        assert f'heard("' in card and f", {n}, " in card
+
+
+def _trim_ns():
+    ns: dict = {}
+    for fn in ("_chars", "_trim_point", "_cut_wav"):
+        exec(re.search(rf"def {fn}\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    return ns
+
+
+def _w(pairs):
+    return [{"w": w, "start": a, "end": b} for w, a, b in pairs]
+
+
+def test_ears_cut_the_babble_measured_on_run_36():
+    """Whisper's real words from studio run 36: the line, a pause, then babble. The cut lands after the line."""
+    ns = _trim_ns()
+    photo = _w([("यहाई", 0.0, 0.4), ("एक", 0.4, 0.5), ("तस्वीशे", 0.5, 0.9), ("बना", 0.9, 1.1), ("वीडियो", 1.1, 1.4), ("है.", 1.4, 1.6),
+                ("हमारे", 3.8, 4.3), ("अदर", 4.3, 4.6), ("अपने", 4.6, 5.0), ("अद", 5.0, 5.2), ("कर", 5.2, 5.4), ("सबसे", 5.4, 5.7),
+                ("तुमी", 5.7, 6.0), ("इस्तात", 6.0, 6.4), ("की", 6.4, 6.6), ("है.", 6.6, 6.7)])
+    assert ns["_trim_point"](photo, "यह एक तस्वीर से बना वीडियो है।", 7.0) == 1.85
+    dub = _w([("या", 0.0, 0.3), ("वही", 0.3, 0.5), ("वेक्ति", 0.5, 0.9), ("है,", 0.9, 1.1), ("अब", 1.4, 1.6), ("हिन्दी", 1.6, 1.8),
+              ("में", 1.8, 2.0), ("बोड़", 2.0, 2.2), ("रहा", 2.2, 2.4), ("है.", 2.4, 2.5)])
+    assert ns["_trim_point"](dub, "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", 7.0) == 2.75    # silent-ish mumble tail
+    clean = _w([("नमस्ते", 0.0, 0.5), ("आरो", 0.5, 0.9), ("आपकी", 1.1, 1.5), ("कक्षा", 1.5, 2.0), ("कल", 2.0, 2.2), ("सुबह", 2.2, 2.5),
+                ("दस", 2.5, 2.6), ("बजे", 2.6, 2.8), ("है", 2.8, 2.9)])
+    assert ns["_trim_point"](clean, "नमस्ते आरव, आपकी कक्षा कल सुबह दस बजे है।", 3.2) is None          # nothing worth cutting
+    assert ns["_trim_point"]([], "x", 5.0) is None
+
+
+def test_cut_wav_keeps_the_head_and_fades():
+    import io
+    import struct
+    import wave
+    ns = _trim_ns()
+    buf = io.BytesIO()
+    with wave.open(buf, "wb") as o:
+        o.setnchannels(1)
+        o.setsampwidth(2)
+        o.setframerate(24000)
+        o.writeframes(struct.pack("<h", 10000) * 24000 * 3)
+    out = ns["_cut_wav"](buf.getvalue(), 1.5)
+    with wave.open(io.BytesIO(out), "rb") as r:
+        assert r.getnframes() == 36000 and r.getframerate() == 24000
+        last = struct.unpack("<h", r.readframes(36000)[-2:])[0]
+    assert abs(last) < 1000                                   # faded, no click
+
+
+def test_studio_voice_goes_through_the_ears():
+    sc = MODAL_SRC[MODAL_SRC.index("def _speak_chunks"):MODAL_SRC.index("def studio_job")]
+    assert "ear.trim.spawn(w, c, lang)" in sc and "except Exception" in sc     # fail-open: a long tail beats a lost sentence
+    hear = MODAL_SRC[MODAL_SRC.index("class Hear:"):MODAL_SRC.index("def _speak_chunks")]
+    assert "def trim(self, wav: bytes, script: str" in hear and '"loud_end": loud_end' in hear
+    assert "loud - end <= 0.8" in MODAL_SRC                   # ears judge real sound after the last word, not silence
+
+
+def test_voice_card_scores_clarity_fairly():
+    ns: dict = {}
+    for fn in ("_norm_hi", "_cer"):
+        exec(re.search(rf"def {fn}\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    cer = ns["_cer"]
+    assert cer("गति का मतलब", "गति का मतलब।") == 0.0                 # punctuation / spaces never count
+    assert cer("चीज़ जगह तेज़ी", "चीज जगह तेजी") == 0.0                  # nukta: whisper drops it, a listener does not mind
+    assert cer("मैं हूँ", "में हूं") < 0.2                                   # chandrabindu = anusvara
+    assert cer("आज हम गति के बारे में", "आज हम ददी के बारे में") > 0.05     # the real mistake whisper keeps hearing
+    assert cer("गति", "") == 1.0
+    card = MODAL_SRC[MODAL_SRC.index("def voice_card"):]
+    assert "IndicParler().speak.spawn" in card and "Chatterbox().speak.spawn" in card
+    assert ".get(timeout=900) for t in VOICE_CARD_LINES" in card                # one warm container per voice, not 8 cold
+    assert "indicf5" not in card                                                # lab_only voices are not candidates to ship
+    wf = WORKFLOW
+    assert "modal run modal_app.py::voice_card" in wf and "inputs.job == 'voices' || inputs.job == 'voice_tune' || inputs.job == 'face_make') && always()" in wf
+
+
+def test_voice_knobs_are_clamped_and_only_known_ones():
+    ns: dict = {}
+    exec(re.search(r"VOICE_SETTINGS: dict = .*?\n_KNOB_RANGE = .*?\n", MODAL_SRC, re.S).group(0), ns)
+    exec(re.search(r"def _voice_knobs\(.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    k = ns["_voice_knobs"]
+    assert k(None) == {}                                                  # her pick = the model's own defaults
+    assert k({"temperature": 5, "cfg_weight": -1, "exaggeration": 0.7}) == {"temperature": 1.0, "cfg_weight": 0.2, "exaggeration": 0.7}
+    assert k({"top_p": 0.1, "audio_prompt_path": "/etc/passwd", "temperature": "x"}) == {}   # unknown / bad never reach generate
+    speak = MODAL_SRC[MODAL_SRC.index("def speak(self, text: str, lang: str = \"hi\""):]
+    assert "**knobs, **(" in speak[:2500]
+
+
+def test_live_talk_trims_every_chunk_but_the_first():
+    sock = MODAL_SRC[MODAL_SRC.index("async def live_socket"):MODAL_SRC.index("live_socket.__annotations__")]
+    assert "if k == 0:\n                    return r" in sock                       # the face starts at once
+    assert "ear.trim.remote.aio(r[\"wav\"], c, lang)" in sock
+    assert "asyncio.wait({cut}, timeout=LIVE_TRIM_WAIT)" in sock and "cut.cancel" not in sock   # never cancelled
+    assert "voiced(k, c)) for k, c in enumerate(chunks)" in sock
+    hear = MODAL_SRC[MODAL_SRC.index("@app.cls(image=hear_image"):MODAL_SRC.index("class Hear:")]
+    assert "min_containers=WARM" in hear and "gpu=" not in hear
+
+
+def test_voice_tune_card():
+    card = MODAL_SRC[MODAL_SRC.index("def voice_tune"):]
+    assert 'voice.speak.spawn(text, "hi", None, "", knobs)' in card and "for take in (1, 2)" in card
+    assert 'tune_{name}.wav' in card and "RAN ON" in card
+    tunes = MODAL_SRC[MODAL_SRC.index("VOICE_TUNES = ["):MODAL_SRC.index("@app.local_entrypoint()\ndef voice_tune")]
+    assert '("default", {})' in tunes                                          # what she liked is always in the race
+    assert "modal run modal_app.py::voice_tune" in WORKFLOW
+
+
+def test_ai_made_face_is_fictional_licensed_and_marked():
+    src = MODAL_SRC
+    specs = src[src.index("FACE_SPECS = ["):src.index("FACE_STYLE")]
+    assert specs.count("a fictional Indian") == 4                     # every face is a fictional person, by its prompt
+    assert 'registry.check("flux_schnell", "lab")' in src and 'registry.check("wan22_ti2v_5b", "lab")' in src
+    card = src[src.index("def face_make"):]
+    assert '"label": "AI-generated - not a real person"' in card and '"consent": "ai_generated"' in card
+    assert 'live.prepare.spawn(avatar, r["mp4"], "ai_generated")' in card    # the face gate gets the honest consent tag
+    assert "lips closed, not speaking" in src                          # the clip must not talk - MuseTalk adds the mouth
+    assert "modal run modal_app.py::face_make" in WORKFLOW

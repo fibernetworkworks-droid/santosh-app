@@ -33,8 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.501.0"   # v0.501.0: HOOLA CONTEXT7 - up-to-date library docs straight into the context, the upstash/context7 port (owner: 'FEED CONTEXT7 TO HOOLA'; the repo read end-to-end first: upstash/context7 @ 193e4bb, @upstash/context7-mcp v4.5.0 - a pnpm monorepo whose whole product surface is TWO tools, resolve-library-id GET {base}/v2/libs/search and query-docs GET {base}/v2/context (tool-names.ts:1-10, api.ts:142-146/214-218, base https://context7.com/api constants.ts:14, Bearer ctx7sk keys encryption.ts:72, 60s ceiling with p99.9 ~3.2s api.ts:23, errors 429/404/401 api.ts:44-52, the LLM-facing search formatting utils.ts:22-84, the SDK's 5-retry exp-backoff on {408,425,429,500,502,503,504} http/retry.ts). NEW server/app/coder/docs7.py: ONE docs7 tool with two ops (the skill_manage/delegate_task law) - op=resolve formats results byte-faithful to upstream (reputation >=7 High / >=4 Medium, snippets hidden at -1, benchmark only >0, the ---------- divider), op=query pulls the docs and lands EVERY successful fetch in the vault as a docs7 observation, so FTS5 search, the primer, the dedup ladder and the curator all see the same rows; THE VAULT IS THE CACHE (same library+query within coder_docs7_ttl_hours default 168h answers with zero network - upstream SDK is no-store); DOCS ARE LIVING ROWS - a post-TTL re-fetch refreshes the docs7 row in place (the only narrative-updating writer in the coder, because a doc row mirrors an upstream page, not a memory of an event). PINNED DEVIATIONS (voice-box law): ONE attempt drop-don't-wait (upstream retries 5x; a live turn fires once with coder_docs7_timeout_s default 20s), a per-tenant rolling-hour courtesy window (coder_docs7_max_per_hour default 12 - the upstream '<=3 calls per question' description law made enforceable; the 429 messages ported verbatim), REDACTION BEFORE EGRESS (upstream warns 'no secrets in the query' - Hoola warns AND enforces: strip_private + redact_secrets before the box is left, the redacted form is what is sent AND stored), voice never sees it (out of VOICE_TOOL_NAMES like delegate_task). Kill switch coder_docs7 default OFF (outbound network - bake on the VPS, then flip via the reviewed docs7_flip vps-ops job, the coder_flip one-boolean shape). Config: context7_api_url default https://context7.com/api, context7_api_key optional Bearer (the zoo BYOK pattern - keys never in chat), timeout/window/TTL knobs. Package-export law honored (docs7 on the app/coder import list - the v0.478 lesson extended); agent/tools.py mounts the ONE tool last; registry 535 -> 536; empty /v2/context body = a valid not-found answer (api.ts:231-243), never an error. Tests: NEW test_v0501_hoola_docs7.py (26): resolve formatting + reputation thresholds + empty wording, query lands in the vault + tenant-scoped, the vault-cache hit (zero network) + post-TTL miss, the living-row refresh, redaction before egress (secret-shaped strings never cross the mock), kill switches coder_docs7/coder_enabled fail-closed with no network, 429/404/401 verbatim ports, timeout drop, the courtesy window, the resolve-first law on a bare library_id, response cap, package-export pin, registry mount + voice absence, config defaults, version. Sweeps green: docs7 26 + curator 28 + selfteach 24 + coder 24 + swarm 17 + home 24 = 143/143 one process; desk/byox/uiux/progpack/superpowers/codegraph/officehours/fepack sampled; mem restart pin 8 -> 9 (+ docs7_flip). THE TWENTY-FOURTH + TWENTY-FIFTH COLLISIONS: the dev chain took 0.482.0-0.500.0 (FE PACK claimed 0.500.0) while this work sat unpushed through two rejected pushes - REBASE PROTOCOL twice: rebuilt on their fresh bases e90e60f1 then acc90bc1, both works kept, the version layer moved coherently on top (0.481.0 -> 0.500.0 -> 0.501.0); their stale-pubspec inconsistency (0.497.0+541 file vs 0.499.0+543 pins) inherited no further - the full-string layer is coherent here at 0.501.0+543. Console stamps STAY 0.487.0 x21 (the dev's maintained convention - stamps move only when the console moves); Mera PC freeze respected; desktop untouched - server-only deploy, old APKs keep working. Previous: v0.500.0 FE PACK (theirs), v0.499.0 HOOLA SUPERPOWERS (theirs), v0.498.0 HOOLA UIUX PRO MAX (theirs), v0.497.0 PROG PACK, v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS [full chain in git history].
-
+APP_VERSION = "0.558.0"   # v0.558.0 (built as 0.557.0; the dev's TEZ CHECKOUT took 0.557.0 - rebased on f5819dca, both kept): SAHI KAMRA - every route measured, two fixed (owner, after deploying v0.556: "IS NOW ALL TASK WILL FLOW PROPERLY TO DEFINED MODEL OR NEED MORE WORK"). Probed with the recording model: simple chat = Sonnet 5.5 2k no thinking; hard ask = Opus 5.5 16k thinking effort high; background-result wake = Sonnet 2k; big ask = Sonnet with thinking at effort xhigh BUT only 2,000 tokens (thinking counts) -> now agent_goal_max_tokens from its first call; her scheduled ROUTINES sent the FULL registry (569 tools, ~739 KB, ~184k tokens) on every call -> now admitted like chat (core + her words + tool_search; gates unchanged; staff / customer keep the full set). Previous: v0.557.0 TEZ CHECKOUT (the website checkout under a rush; CI load proof went red on v0.551: 114 of 600 checkouts timed out). Root cause found with a local Postgres 16 + py-spy, not guessed: Postgres sat idle while every worker thread stood in shop.ensure_tables() -> db._add_missing_columns(engine), which inspects EVERY table in the database (~900), and every checkout thread that arrived before the first finished ran it again; shoppay / shopplus / webapp / appmaker backup did the same on the same path. Now db.add_missing_columns_for(engine, *tables) checks a module's OWN tables, and the four checkout-path self-heals take a lock so one thread sets up and the rest wait; init_db still runs the whole check once at startup. Measured, same test (5,000-product shop, 2,000 visitors + 600 buyers, 4 workers, Postgres 16): run 97.3 s -> 38.8 s, order p50 3.7 s -> 2.4 s, p95 50.5 s -> 7.4 s, 104 re-taps -> 0, nothing unanswered, orders = confirmed, stock exact. Pin: test_shop_self_heal_checks_only_its_own_tables. Previous: v0.556.0: SEEDHA RAASTA - simple tasks take the light path on every surface (owner: "NOW CHECK HOW ALL SURFACES RESPOND FOR SIMPLE TASK AND WHICH MODEL IT USE"). Measured through the real chat turn (console + phone share it) with a recording fake model: a simple ask = Sonnet 5.5, 2,000 tokens, no thinking, default effort, ONE call; the voice call = Gemini Live gemini-3.8-live (OpenAI real voice only as her trial pick), big work from a call -> santosh_kaam -> the same chat brain. TWO WASTE PATHS CLOSED in agent/hard.py: (1) a bare sum ("12 aur 15 ka total kitna?") counted as a WORD PROBLEM and ran on Opus 16k + thinking + effort high - a word problem now needs a story (12+ words) or 3+ numbers; (2) a plain make / do request with numbers ("50 chairs ka quotation bana do") held the reply for the Haiku judge (up to 2.5 s) - _MAKE skips it when no reasoning signal fired. Calibrated hard sets unchanged (HARD 50/50, HOLDOUT 21, hard card 27); the everyday card maybe 11 -> 9 (test_v0272 green again). Previous: v0.555.0: HOOLA CARD - the premium default card on phone + console (owner: "BUILD THIS" on the design at claude.ai/artifact/NgbT6WLDj63Jhh7MbysuGD). Every card kind with no screen of its own (game desk, CAD, research, agent team, Drive file...) now has ONE anatomy on both surfaces: eyebrow (desk + time), a tile, the title + a status signal (dot + plain words: Aapki haan chahiye / Chal raha hai / Taiyaar / Ruk gaya), one sentence (an error IS the sentence), the amount as the hero (Indian grouping, paise as two digits), up to 3 receipt facts on hairlines (ids / tenant / progress fields never), 6 step segments for progress, a secure band for a money ask (fingerprint, never voice), a docked Open/Kholo action only when there is somewhere to go. Console: NEW static/console/hcard.js (pure, node-tested) in renderCard's default (side-panel open kept) + v2.css tokens only, light and dark; phone: lib/ui/any_card.dart rewritten (same rules) with the card time from FeedItem.at. Cards with their own screen and buttons keep them for now. Previous: v0.554.0: CARD KI KHABAR - every card now reaches her LIVE CALL too (owner: "WHEN RESULT ON CARD / APPROVAL CARD / ANY CARD TASK APPEARS --- VOICE CALL DONT KNOW THAT EVEN CARD IS ASSIGNED AND PUSH VIA VOICE CALL"). Found: bus.publish fed the chat streams, FCM and kaamwatch, but a live call heard only kaamwatch JOB states - approval / payment / draft / form / result cards reached the screen while the call talked on. Now bus.publish hands every card to voice.card_news: the same judgement and words as the phone notification (push.render), one quiet note per card per state at a pause (push_news), on the same chat else her call on another chat; a money card (amount / pay method / money words - the haan_karo rule) is said to be tap-only, a non-money ask says she can answer (haan_karo for a running PC step), a result is told as a result; the call's own DIRECT tool cards (VOICE_DIRECT) and job states (kaamwatch) are not repeated; santosh_kaam jobs' cards ARE news. Phone call screen also lists any_card. Previous: v0.553.0: GHANTI - a finished task now RINGS her phone on the normal path too (owner, after deploying v0.552: "NOW ALL SURFACE WILL GIVE PROPER RESULT CALL WHEN TASK DONE"). Checking that claim found the gap: kaam_followup rang (voice_ring) only on the one-shot / fallback path - the wake turn, which is the NORMAL path, returned before the ring, so a finished job almost never rang. Now one _ring helper serves both paths; push.on_event keeps every gate (her voice_ring switch, quiet hours 22-8 in her timezone, voice_ring_max_day 2, never over a live call). Previous: v0.552.0 (built as 0.551.0; the dev's SURAKSHA GATES took 0.551.0 - rebased on their b7f0e273, both kept): NATIJA PAKKA - a finished task's result reliably reaches all 3 (owner: "NOW CHECK FOR ALL 3 --- WHEN RESULT COME FROM ANY TASK DOES IT REPLY RELIABLY"). Traced kaamwatch -> kaam_followup (durable row) -> wake turn / one-shot / honest line -> notify (Message + SSE to console and phone + FCM push) + a quiet note into her live call; a call's santosh_kaam job rides turn_inbox and an ended call opens the next call with it. TWO GAPS FIXED: (1) _answered_since skipped the report when ANY reply landed after the job finished - a job that finished while she asked about something else was never told, and one job's wake report swallowed another's; now only the turn that ran the job (began before it started) counts, never another job's own report; (2) a running turn held the report only ~50 s, then a dry line cut into the turn and the real report never came; now up to KAAM_FOLLOWUP_WAIT_S (300 s), _MAX_TRIES 60 so nothing is stranded. Previous: v0.551.0 SURAKSHA GATES (built as 0.549.0, then 0.550.0) (web Step 7 part 1 = W11, owner: "GO" on Step 7): every website build is now read page by page (all of them, not a sample) by nine gates, and a FAIL blocks the launch card until it is fixed: a key or password in any downloadable file, an outside JavaScript library with a HIGH / CRITICAL hole (OSV.dev; unreachable = said as not checked, never a pass), the security headers (CSP without unsafe-inline / unsafe-eval scripts, object-src none, frame-ancestors, base-uri, form-action, nosniff, referrer, permissions), OWASP page rules (no inline script, no on*= handler, no javascript: link, no outside script, no http:// resource, no unknown iframe; new-tab links without noopener warn), form safety (posts only to HER form address, the hidden honeypot now injected into every enquiry form, no password box on a public page, a privacy page beside any form), bot protection (Cloudflare Turnstile on every form + the server checks each post with Cloudflare when SITE_TURNSTILE_SITE / SECRET are set, CSP opened only then; without them an honest warning naming the honeypot + rate limits), WCAG 2.2 AA checks a file can prove on every page (lang, title, image alt, labelled boxes, named links and buttons, zoom allowed) + the browser axe result, the law of her profession (Drugs and Magic Remedies Act cure claims and Bar Council solicitation FAIL, FSSAI number for a food shop selling online, doctor registration number, refund / terms / privacy for an online shop, coaching "100% placement" warns), a tracker without a consent banner, and the server rate limits stated. A page problem names the section it sits in, so the build's own fix round rewrites that section instead of only blocking; console "Safety gates" list on every version. Previous: v0.550.0: EK JAISA - the whole-house wiring audit (owner: "ALL VOICE CALL, CONSOLE CHAT, MOBILE APP CHAT ---- WIRED TO ALL 100 % AI WORK CHECK"). Checked, held by test_v0550_ek_jaisa.py: console + phone chat share ONE pipeline (same POST /messages -> turn_inbox -> run_turn -> full registry); every tool spec has a handler and every handler a spec (biz_* = customer-inbox only, by design); every tool has a voice-call route (declared or santosh_kaam); every card kind is drawn on both clients. THREE GAPS FOUND AND FIXED: (1) the phone event switch had NO default - game desk, CAD project, research run, agent team, Drive file, bulk mail, call-quality alert and every other unnamed card kind was silently DROPPED on the phone while the console showed it; now lib/ui/any_card.dart AnyEventCard draws the console's default card, updated in place (also on the live-call screen); (2) tool_search asked with a tool's EXACT name opened a keyword family instead (sheet_read, crm_arch, edit_desk, motion_desk, pc_search, ask_form, hoola_skills... 15 tools unreachable in chat) - the exact name now always opens its own family; (3) a voice call never saw a single learned skill (its coder block was built with no ask) - now it searches with her recent words in the chat and otherwise NAMES her skills (store.skill_names). Previous: v0.549.0: HOOLA AGENT - create_agent compiled onto the house graph, P4 of the HOOLA AEP plan (owner: 'GO BUILD P4' after v0.530.0 HOOLA GRAPH landed on main; the COLLISION WAVE - the dev chain shipped 0.538.0 LOAD PROOF, 0.540.0 JAANCH + DHEERE CHHODO, 0.541.0 SEO INTEL + GOOGLE ADS 2, 0.544.0 CONSTRUCTION WAVE 2, 0.545.0 SCENES AS CHECKED DATA, 0.546.0 CHALTA KAAM, 0.547.0 HOOLA TH PACK and 0.548.0 HOOLA ED PACK while P4 sat built at 0.540.0 - REBASE PROTOCOL twice: reset to their fresh bases, the AEP layer re-applied (they never touched server/app/aep), the ritual re-run as 0.549.0). The langchain 1.x agents/factory.py idea hand-built as server/app/aep/agent.py after re-reading upstream at the pinned commit aa2528fb980a290d2b06c83a1be43e60bc2348f9 - ZERO upstream code (the port law): ToolNode (the tool executor - finds the pending tool_calls on the last AIMessage or takes tool_call dicts directly, runs each tool, returns {'messages': [ToolMessage...]}; failures become error ToolMessages (handle_tool_errors=True default, a string replaces the content, False re-raises the ORIGINAL error); unknown tool names are honest error ToolMessages; dict outputs JSON-stringify; GraphInterrupt/GraphRecursionError PROPAGATE - a tool may park the walk, the P5 human-in-the-loop seam) + create_agent (model/tools nodes on the P3 StateGraph; model -> (pending tool_calls ? tools : [structured ? generate_structured_response : END]), tools -> (all executed return_direct ? END : model) - the upstream routing law incl. return_direct; bind_tools at BUILD time so an unsupported model fails at build never mid-run; pre-bound Runnable models ride as-is; system_prompt (str or SystemMessage) rides the PROMPT every model call, never the state; response_format (pydantic/dict) adds the generate_structured_response node writing state['structured_response'] via the P1 with_structured_output lane - the strategy-based 1.x lane is the P8 audit's ledger; state_schema extends AgentState with extra channels riding; checkpointer = chat memory (a dict input on a checkpointed thread MERGES into the stored values through the reducers - parked threads re-run the parked node with the merged state, finished threads start a fresh turn with the step budget reset); interrupt_before/after as static breakpoints on the P3 interrupt()/Command(resume) seam - before-tools/before-model park at node top, after-model parks only when tool calls exist (the END path never parks), after-tools parks at the model re-entry (a ToolMessage last at model entry IS the tools->model hop); one gate per arrival, after checked before before; model strings refused with the P7 HUB pointer; debug prints the walk; name names the compiled graph - the P2 root span is named by the AGENT) + the substrate seams P4 needed: compile(name=...) + get_name naming, node bodies run on their span's CHILD config so model/tool calls nest UNDER their node span in the run tree (the upstream shape), add_messages coerces BOTH sides (upstream coerces the whole lane) + the role-shape dict table shared with the model input lane, and the SqliteSaver engine-path lazy-ensure moved to _raw() PER INSTANCE (the class flag leaked across databases; a get before any put - the chat-memory path - had no table). Registry stays 569 (a library module - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep.agent with zero threads/env/files). Voice untouched by construction; mem restart pin untouched; console stamps FOLLOW APP_VERSION (the dev's own v0.537 convention change, their v0.548 let them drift to 0.546 - healed to 0.549.0, 21 stamps); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected. Tests: NEW test_v0540_hoola_agent.py (56, zero network, the asyncio one-loop law): the surfaces above + the full react loop + parallel tool calls in call order + error ToolMessages with the loop continuing + return_direct ending the walk (mixed goes back) + ToolNode standalone lanes + structured response after the tool rounds + custom state schemas + checkpointer chat memory across invokes + every interrupt gate parked/resumed/repeated + one-gate-per-arrival + a tool calling interrupt() (park inside the tool, resume answers INSIDE it) + recursion limits + the tracer nesting (model/tools node spans under the named agent root, the tool call under the tools span, one trace_id) + the inertness probe + the export law + the version pins. Bugs the suite caught: add_messages left its LEFT side uncoerced (a str/dict seed stayed raw in state forever - upstream coerces the whole lane); handle_tool_errors=False wrapped the original error in a ToolException instead of re-raising it; the SqliteSaver class-level _ensured flag leaked across databases AND get-before-put had no table on the engine path; the interrupt_after=['tools'] first-turn expectation (a breakpoint is STATIC - it parks on every arrival). Version 0.549.0 (APP_VERSION story, pubspec 0.549.0+572, CLAUDE.md healed, pins swept 0.548.0 -> 0.549.0 + +571 -> +572 across the test files zero residual outside deliberate history; the dev chain's stale 568 count pins (six files) healed to the real 569; the drifted story asserts healed to the newest story per the newest-story precedent). AEP train: P5 the 24-middlewares (nudge/curator/delegate/skills-primer collapse into hooks) next. Previous: v0.548.0 HOOLA ED PACK, v0.547.0 HOOLA TH PACK, v0.546.0 CHALTA KAAM, v0.545.0 SCENES AS CHECKED DATA, v0.544.0 CONSTRUCTION WAVE 2, v0.541.0 SEO INTEL + GOOGLE ADS 2, v0.540.0 JAANCH + DHEERE CHHODO, v0.538.0 LOAD PROOF, v0.537.0 CRAWL BRAIN (the crawl4ai ideas hand-built as app/crawl), v0.535.0 PRAYOGSHALA, v0.530.0 HOOLA GRAPH, v0.523.0 HOOLA CREW (the crewAI port), v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.510.0 HOOLA CORE, v0.502.0 DHARA, v0.498.0 UIUX PRO MAX [full chain in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -170,6 +169,31 @@ async def _hosted_sites(request: Request, call_next):
                 # every non-GET fell through, e.g. POST https://her-domain/api/console/login answered)
                 return Response(content=b"not found", status_code=404, media_type="text/plain")
     return await call_next(request)
+
+
+@app.middleware("http")
+async def _app_ops(request: Request, call_next):
+    """v0.546 CHALTA KAAM (Pillar L): how fast her app's own backend answers, and what fails.
+
+    One funnel for all ~80 /api/app-api/ routes: the real thing on every call, nothing to remember to switch on.
+    A telemetry failure never touches the answer - the request is served either way.
+    """
+    path = request.url.path
+    if not path.startswith("/api/app-api/"):
+        return await call_next(request)
+    t0 = time.monotonic()
+    status = 500
+    try:
+        res = await call_next(request)
+        status = res.status_code
+        return res
+    finally:
+        try:
+            from .appmaker import ops as OPS
+            parts = path.split("/")
+            OPS.seen(parts[3] if len(parts) > 3 else "", (time.monotonic() - t0) * 1000, status, path)
+        except Exception:                                   # noqa: BLE001
+            pass
 
 
 @app.middleware("http")
@@ -5372,9 +5396,49 @@ def agent_stats():
     from .agent import pakka
     from . import callreceipt, scrub, web
     from .agent import santosh as _s
+    from .aep import vault_sink
+    from .aep.tracers import GLOBAL_STORE
     return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
             "pakka": dict(pakka.STATS), "halts": dict(_s.HALTS), "scrubbed": scrub.STATS["scrubbed"],
-            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS)}
+            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS),
+            # v0.520.0 HOOLA TRACE: the honest counters of the self-hosted LangSmith layer
+            "aep_trace": {"enabled": vault_sink.trace_enabled(), "store": len(GLOBAL_STORE),
+                          **{k: v for k, v in vault_sink.STATS.items()}}}
+
+
+# --- v0.520.0 HOOLA TRACE: the run-tree explorer (flag-gated, fail-closed) ---
+
+
+@app.get("/api/aep/runs", dependencies=[Depends(require_key)])
+def aep_runs(limit: int = 20, source: str = "memory", tenant: str = Depends(current_tenant)):
+    """Recent runs of the AEP tracer layer: the process ring (source=memory, default)
+    or the vault observations typed 'aep_run' (source=vault). aep_trace OFF = fail-closed."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    limit = max(1, min(int(limit), 200))
+    if source == "vault":
+        rows = vault_sink.vault_runs(tenant, limit)
+        return {"ok": True, "source": "vault", "count": len(rows), "runs": rows}
+    runs = [r.to_dict() for r in tracers.GLOBAL_STORE.recent(limit)]
+    return {"ok": True, "source": "memory", "count": len(runs),
+            "stats": dict(vault_sink.STATS), "runs": runs}
+
+
+@app.get("/api/aep/runs/{run_id}", dependencies=[Depends(require_key)])
+def aep_run_tree(run_id: str, tenant: str = Depends(current_tenant)):
+    """One run nested with its children - the run-tree explorer node. A numeric id
+    falls back to the vault row when the process ring does not have it."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    tree = tracers.global_tracer().tree(run_id)
+    if tree is not None:
+        return {"ok": True, "source": "memory", "run": tree}
+    obs = vault_sink.vault_run_by_id(tenant, int(run_id)) if run_id.isdigit() else None
+    if obs is None:
+        return {"ok": False, "error": "no such run"}
+    return {"ok": True, "source": "vault", "run": obs}
 
 
 class ShopOrderIn(BaseModel):
@@ -6817,6 +6881,151 @@ def employees_settings(key: str, body: dict, tenant: str = Depends(current_tenan
     return _hire_call(hire.save_settings, tenant, key, **allowed)
 
 
+def _intel_call(fn, *a, **k):
+    from .seo import dfs, intel
+    try:
+        return fn(*a, **k)
+    except (intel.IntelError, dfs.DfsError) as e:
+        raise HTTPException(400, str(e))
+
+
+def _intel_bg(tenant: str, site: str, what: str, fn, *a, **k):
+    """Long intel jobs (AI answers, Maps grid, exact positions) run in the background; the result lands on the SEO desk feed."""
+    import threading
+    from .seo import intel
+
+    def go():
+        try:
+            r = fn(*a, **k)
+            text, level = str(r.get("say") or f"{what} done."), "info"
+        except Exception as e:   # noqa: BLE001
+            text, level = f"{what}: {e}", "warn"
+        try:
+            from .seo import desk
+            desk._event(tenant, intel._site(tenant, site)["id"], "run", level, text)
+        except Exception:   # noqa: BLE001
+            pass
+    threading.Thread(target=go, daemon=True).start()
+    return {"started": True, "say": f"{what} shuru - natija SEO desk par aayega."}
+
+
+@app.get("/api/seo/intel", dependencies=[Depends(require_key)])
+def seo_intel(site: str = "", tenant: str = Depends(current_tenant)):
+    """v0.542 SEO INTEL: tracked keywords, AI visibility, Maps grids, DataForSEO status + this month's spend."""
+    from .seo import intel
+    return _intel_call(intel.view, tenant, site)
+
+
+@app.post("/api/seo/intel/settings", dependencies=[Depends(require_key)])
+def seo_intel_settings(body: dict, tenant: str = Depends(current_tenant)):
+    from .seo import intel
+    b = dict(body or {})
+    return _intel_call(intel.save_settings, tenant, str(b.pop("site", "") or ""), **b)
+
+
+@app.post("/api/seo/intel/track", dependencies=[Depends(require_key)])
+def seo_intel_track(body: dict, tenant: str = Depends(current_tenant)):
+    """{keywords: [...], remove: false} - keywords she wants followed in Google (up to 100)."""
+    from .seo import intel
+    b = body or {}
+    kws = b.get("keywords") if isinstance(b.get("keywords"), list) else [x for x in str(b.get("keywords") or "").split("\n")]
+    fn = intel.untrack if b.get("remove") else intel.track
+    return _intel_call(fn, tenant, kws, str(b.get("site") or ""))
+
+
+@app.post("/api/seo/intel/ranks/{source}", dependencies=[Depends(require_key)])
+async def seo_intel_ranks(source: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """gsc = Search Console positions now (free) | serp = exact Google positions through DataForSEO (her key, costs)."""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if source == "gsc":
+        return await asyncio.to_thread(_intel_call, intel.pull_gsc, tenant, site, int(b.get("days") or 28))
+    if source == "serp":
+        kws = b.get("keywords") if isinstance(b.get("keywords"), list) else None
+        return _intel_bg(tenant, site, "Exact Google positions", intel.check_serp, tenant, site, kws)
+    raise HTTPException(404, "source: gsc | serp")
+
+
+@app.post("/api/seo/intel/ai/{action}", dependencies=[Depends(require_key)])
+async def seo_intel_ai(action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """prompts {prompts: [...]} | suggest | run {engines?} | prompt {id, active, remove}"""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if action == "prompts":
+        texts = b.get("prompts") if isinstance(b.get("prompts"), list) else str(b.get("prompts") or "").split("\n")
+        return _intel_call(intel.add_prompts, tenant, texts, site)
+    if action == "prompt":
+        return _intel_call(intel.set_prompt, tenant, str(b.get("id") or ""), b.get("active"), bool(b.get("remove")))
+    if action == "suggest":
+        return await asyncio.to_thread(_intel_call, intel.suggest_prompts, tenant, site)
+    if action == "run":
+        eng = b.get("engines") if isinstance(b.get("engines"), list) else None
+        _intel_call(intel.prompts, tenant, site)
+        return _intel_bg(tenant, site, "AI answers check", intel.run_ai, tenant, site, eng)
+    raise HTTPException(404, "action: prompts | prompt | suggest | run")
+
+
+@app.post("/api/seo/intel/maps/{action}", dependencies=[Depends(require_key)])
+async def seo_intel_maps(action: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """find {query} -> her place on Google Maps | place {place} | grid {keyword, size, km}"""
+    from .seo import intel
+    b = body or {}
+    site = str(b.get("site") or "")
+    if action == "find":
+        return await asyncio.to_thread(_intel_call, intel.find_place, tenant, site, str(b.get("query") or ""))
+    if action == "place":
+        return _intel_call(intel.choose_place, tenant, b.get("place") if isinstance(b.get("place"), dict) else {}, site)
+    if action == "grid":
+        return _intel_bg(tenant, site, "Maps grid", intel.run_grid, tenant, str(b.get("keyword") or ""), site,
+                         b.get("size"), b.get("km"))
+    raise HTTPException(404, "action: find | place | grid")
+
+
+@app.post("/api/seo/intel/dataforseo", dependencies=[Depends(require_key)])
+async def seo_intel_dfs_login(body: dict, tenant: str = Depends(current_tenant)):
+    """Her DataForSEO login + API password, typed in the app (never in chat): checked free, sealed, never returned."""
+    from .seo import dfs, intel
+    b = body or {}
+    sid = _intel_call(intel._site, tenant, str(b.get("site") or ""))["id"]
+    return await asyncio.to_thread(_intel_call, dfs.save_login, tenant, sid, str(b.get("login") or ""), str(b.get("password") or ""))
+
+
+@app.delete("/api/seo/intel/dataforseo", dependencies=[Depends(require_key)])
+def seo_intel_dfs_forget(site: str = "", tenant: str = Depends(current_tenant)):
+    from .seo import dfs, intel
+    return dfs.forget_login(tenant, _intel_call(intel._site, tenant, site)["id"])
+
+
+@app.post("/api/seo/intel/dfs/{what}", dependencies=[Depends(require_key)])
+async def seo_intel_dfs(what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """overview {domain} | competitors {domain} | gap {competitor} | backlinks {domain} - DataForSEO, her key, costs."""
+    from .seo import dfs, intel
+    b = body or {}
+    sv = _intel_call(intel._site, tenant, str(b.get("site") or ""))
+    dom = str(b.get("domain") or "") or sv["domain"]
+    calls = {"overview": lambda: dfs.domain_overview(tenant, sv["id"], dom),
+             "competitors": lambda: {"competitors": dfs.competitors(tenant, sv["id"], dom)},
+             "gap": lambda: dfs.gap(tenant, sv["id"], sv["domain"], str(b.get("competitor") or "")),
+             "backlinks": lambda: dfs.backlinks(tenant, sv["id"], dom)}
+    if what not in calls:
+        raise HTTPException(404, "what: overview | competitors | gap | backlinks")
+    if what == "gap" and not b.get("competitor"):
+        raise HTTPException(400, "Kis competitor se milaana hai? (domain)")
+    out = await asyncio.to_thread(_intel_call, calls[what])
+    return {**out, "spend": dfs.status(tenant, sv["id"])}
+
+
+@app.post("/api/seo/intel/keywords", dependencies=[Depends(require_key)])
+async def seo_intel_keywords(body: dict, tenant: str = Depends(current_tenant)):
+    """Keyword ideas with monthly searches: her Google Ads Keyword Planner (free, official) when linked, else DataForSEO."""
+    from .seo import intel
+    b = body or {}
+    seeds = b.get("seeds") if isinstance(b.get("seeds"), list) else [x.strip() for x in str(b.get("seeds") or "").split(",") if x.strip()]
+    return await asyncio.to_thread(_intel_call, intel.keyword_research, tenant, seeds, str(b.get("site") or ""))
+
+
 @app.post("/api/seo/onboard", dependencies=[Depends(require_key)])
 def seo_onboard(body: dict, tenant: str = Depends(current_tenant)):
     from .seo import desk
@@ -7179,10 +7388,22 @@ async def social_ytads_read(tenant: str = Depends(current_tenant)):
 
 @app.post("/api/social/ytads/drafts", dependencies=[Depends(require_key)])
 def social_ytads_new(body: dict, tenant: str = Depends(current_tenant)):
-    """A new YouTube ad draft from one of her videos {video_id, daily, days, final_url...} - stays in Hoola."""
+    """A new Google ad draft {kind: youtube (video_id) | search | pmax, daily, days, final_url...} - stays in Hoola (v0.425)."""
+    from .ads import gads
+    b = dict(body or {})
+    vid, kind = str(b.pop("video_id", "") or ""), str(b.pop("kind", "") or "youtube")
+    return _gads_call(gads.new_draft, tenant, vid, kind, **b)
+
+
+@app.post("/api/social/ytads/ideas", dependencies=[Depends(require_key)])
+async def social_ytads_ideas(body: dict, tenant: str = Depends(current_tenant)):
+    """v0.425 Google Keyword Planner ideas {seeds: [...], url, cities: [...], lang} - read-only, nothing is created."""
     from .ads import gads
     b = body or {}
-    return _gads_call(gads.new_draft, tenant, str(b.get("video_id") or ""), **{k: v for k, v in b.items() if k != "video_id"})
+    seeds = b.get("seeds") if isinstance(b.get("seeds"), list) else []
+    cities = b.get("cities") if isinstance(b.get("cities"), list) else []
+    return await asyncio.to_thread(_gads_call, gads.keyword_ideas, tenant, seeds, str(b.get("url") or ""), cities,
+                                   str(b.get("lang") or "en"))
 
 
 @app.post("/api/social/ytads/drafts/{did}", dependencies=[Depends(require_key)])
@@ -9092,6 +9313,297 @@ def _shop_owner(fn, *a):
         raise HTTPException(e.code, str(e))
 
 
+# ---- v0.538 HOOLA CMS (web Step 6 part 2, W8): her team - writers / editors / publishers - drafts, review, schedule, history
+def _cms_call(fn):
+    from .site import cms as CM
+    from .site import webapp as W
+    try:
+        return JSONResponse(fn(), headers={**_SITE_APP_CORS, "Cache-Control": "no-store"})
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    except CM.CmsError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+
+
+def _cms_site(site_id: str) -> str:
+    from .site import service as S
+    from .site import webapp as W
+    from .site.models import Site
+    from .db import session as _s
+    with _s() as s:
+        if s.get(Site, site_id) is None:
+            raise W.AppError("not found", 404)
+    return site_id
+
+
+def _cms_who(site_id: str, request: Request):
+    from .site import cms as CM
+    _cms_site(site_id)
+    return CM.who(site_id, _site_tok(request))
+
+
+@app.get("/cms/{site_id}/", response_class=HTMLResponse)
+async def cms_page(site_id: str):
+    """Her team's own page (works without her Hoola login): invite / login, drafts, page texts, review, publish, history."""
+    page = (STATIC / "cms" / "index.html").read_text(encoding="utf-8")
+    return HTMLResponse(page.replace("__SITE__", re.sub(r"[^A-Za-z0-9_-]", "", site_id)),
+                        headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex", "X-Frame-Options": "DENY",
+                                 "Referrer-Policy": "no-referrer",          # the invite link never leaks in a Referer
+                                 "Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+                                                            "connect-src 'self'; img-src 'self' data:; base-uri 'none'; "
+                                                            "form-action 'none'; frame-ancestors 'none'"})
+
+
+@app.post("/api/site-cms/{site_id}/accept")
+async def site_cms_accept(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.accept(_cms_site(site_id), str(b.get("invite") or ""),
+                                                                str(b.get("password") or ""), str(b.get("name") or "")))
+
+
+@app.post("/api/site-cms/{site_id}/login")
+async def site_cms_login(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.login(_cms_site(site_id), str(b.get("email") or ""),
+                                                               str(b.get("password") or ""), _ip(request)))
+
+
+@app.get("/api/site-cms/{site_id}/home")
+async def site_cms_home(site_id: str, request: Request, status: str = ""):
+    """Me + the pages + the drafts I may see + the blog's posts (to edit one)."""
+    from .site import blog as BL
+    from .site import cms as CM
+
+    def go():
+        w = _cms_who(site_id, request)
+        return {"me": CM._me(w.m), "pages": CM.pages(site_id), "drafts": CM.drafts(site_id, w, status),
+                "posts": [{"slug": p["slug"], "title": p["title"], "status": p["status"]} for p in BL.posts(site_id)]}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/page/{slug:path}")
+async def site_cms_page_texts(site_id: str, slug: str, request: Request):
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        return {"texts": CM.page_texts(site_id, slug)}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/post/{slug}")
+async def site_cms_post(site_id: str, slug: str, request: Request):
+    from .site import blog as BL
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        p = next((x for x in BL.posts(site_id) if x["slug"] == slug), None)
+        if p is None:
+            raise CM.CmsError("Post nahi mila.", 404)
+        return {"post": {k: p.get(k) for k in ("slug", "title", "body", "excerpt", "category", "status")}}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.get("/api/site-cms/{site_id}/drafts/{did}")
+async def site_cms_draft(site_id: str, did: str, request: Request):
+    from .site import cms as CM
+    return await asyncio.to_thread(_cms_call, lambda: CM.draft(site_id, _cms_who(site_id, request), did))
+
+
+@app.post("/api/site-cms/{site_id}/drafts")
+async def site_cms_draft_new(site_id: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.save(site_id, _cms_who(site_id, request), b))
+
+
+@app.put("/api/site-cms/{site_id}/drafts/{did}")
+async def site_cms_draft_save(site_id: str, did: str, request: Request):
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.save(site_id, _cms_who(site_id, request), b, did))
+
+
+@app.post("/api/site-cms/{site_id}/drafts/{did}/move")
+async def site_cms_draft_move(site_id: str, did: str, request: Request):
+    """{to: review | approved | returned | published | scheduled | withdrawn, note?, when?}"""
+    from .site import cms as CM
+    b = await _json_body(request)
+    return await asyncio.to_thread(_cms_call, lambda: CM.move(site_id, _cms_who(site_id, request), did, str(b.get("to") or ""),
+                                                              str(b.get("note") or ""), str(b.get("when") or "")))
+
+
+@app.get("/api/site-cms/{site_id}/history")
+async def site_cms_history(site_id: str, request: Request, kind: str = "", target: str = ""):
+    from .site import cms as CM
+
+    def go():
+        _cms_who(site_id, request)
+        return {"history": CM.history(site_id, kind, target)}
+    return await asyncio.to_thread(_cms_call, go)
+
+
+@app.post("/api/site-cms/{site_id}/history/{rid}/restore")
+async def site_cms_restore(site_id: str, rid: str, request: Request):
+    from .site import cms as CM
+    return await asyncio.to_thread(_cms_call, lambda: CM.restore(site_id, rid, _cms_who(site_id, request)))
+
+
+def _cms_owner(tenant: str, ref: str):
+    from .site import catalog as CAT
+    return CAT._site(tenant, ref).id
+
+
+@app.get("/api/sites/{ref}/cms", dependencies=[Depends(require_key)])
+async def sites_cms(ref: str, tenant: str = Depends(current_tenant)):
+    """Her view: the team, every draft, the history."""
+    from .site import cms as CM
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        w = CM.Who(owner=True, site_id=sid)
+        return {"team": CM.team(sid), "drafts": CM.drafts(sid, w), "history": CM.history(sid)[:40], "site_id": sid}
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/cms/invite", dependencies=[Depends(require_key)])
+async def sites_cms_invite(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {email, name, role}: a one-time invite link to share (7 days)."""
+    from .site import cms as CM
+    b = body or {}
+    base = (get_settings().public_base_url or "").rstrip("/")
+    return await asyncio.to_thread(_cat_call, lambda: CM.invite(_cms_owner(tenant, ref), str(b.get("email") or ""),
+                                                                 str(b.get("name") or ""), str(b.get("role") or "writer"), base))
+
+
+@app.post("/api/sites/{ref}/cms/team/{mid}", dependencies=[Depends(require_key)])
+async def sites_cms_member(ref: str, mid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import cms as CM
+    b = body or {}
+    return await asyncio.to_thread(_cat_call, lambda: CM.set_member(_cms_owner(tenant, ref), mid, str(b.get("role") or ""),
+                                                                     bool(b.get("remove"))))
+
+
+@app.post("/api/sites/{ref}/cms/drafts/{did}/move", dependencies=[Depends(require_key)])
+async def sites_cms_move(ref: str, did: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her own tap on a team draft: approve / send back / publish now / schedule."""
+    from .site import cms as CM
+    b = body or {}
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        return CM.move(sid, CM.Who(owner=True, site_id=sid), did, str(b.get("to") or ""), str(b.get("note") or ""), str(b.get("when") or ""))
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/cms/history/{rid}/restore", dependencies=[Depends(require_key)])
+async def sites_cms_restore(ref: str, rid: str, tenant: str = Depends(current_tenant)):
+    from .site import cms as CM
+
+    def go():
+        sid = _cms_owner(tenant, ref)
+        return CM.restore(sid, rid, CM.Who(owner=True, site_id=sid))
+    return await asyncio.to_thread(_cat_call, go)
+
+
+# ---- v0.534 BADA CATALOGUE (web Step 6, W8): her products / doctors / properties from her file / Sheet / dataset -> pages
+def _cat_call(fn, *a, **kw):
+    from .site import catalog as CAT
+    from .site import service as S
+    from .site import webapp as W
+    try:
+        return fn(*a, **kw)
+    except CAT.CatalogError as e:
+        raise HTTPException(e.code, str(e))
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+    except W.AppError as e:                          # v0.534 the team CMS / webapp refusals carry their code
+        raise HTTPException(e.code, str(e))
+    except Exception as e:                           # her Sheet not joined / not found: said plainly
+        if type(e).__name__ in ("NotConnected", "SheetError", "DataError"):
+            raise HTTPException(400, str(e))
+        raise
+
+
+@app.get("/api/sites/{ref}/catalog", dependencies=[Depends(require_key)])
+async def sites_catalog(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import catalog as CAT
+    return await asyncio.to_thread(_cat_call, CAT.lists, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/catalog/preview", dependencies=[Depends(require_key)])
+async def sites_catalog_preview(ref: str, request: Request, tenant: str = Depends(current_tenant)):
+    """A file (multipart: file, coll, label, item_label, mapping JSON) or JSON {coll, sheet, tab | dataset, mapping}.
+    Nothing is written: the answer says what WOULD happen; her Apply tap (with its hash) writes it."""
+    from .site import catalog as CAT
+    ctype = request.headers.get("content-type", "")
+    if ctype.startswith("multipart/"):
+        form = await request.form()
+        up = form.get("file")
+        if up is None or not hasattr(up, "read"):
+            raise HTTPException(400, "File chuniye (CSV / Excel).")
+        raw = await up.read()
+        b = {k: str(form.get(k) or "") for k in ("coll", "label", "item_label", "mapping")}
+        try:
+            mapping = json.loads(b["mapping"]) if b["mapping"] else None
+        except ValueError:
+            mapping = None
+
+        def go():
+            rows = CAT.parse_file(raw, getattr(up, "filename", "") or "")
+            return CAT.preview(tenant, ref, b["coll"], rows, mapping, b["label"], b["item_label"], "file")
+        return await asyncio.to_thread(_cat_call, go)
+    b = await _json_body(request)
+
+    def go2():
+        if b.get("sheet"):
+            rows, src = CAT.from_sheet(tenant, str(b["sheet"]), str(b.get("tab") or "") or None), "sheet"
+        elif b.get("dataset"):
+            rows, src = CAT.from_dataset(tenant, str(b["dataset"])), "dataset"
+        else:
+            raise CAT.CatalogError("File, Google Sheet ya dataset - koi ek chahiye.")
+        return CAT.preview(tenant, ref, str(b.get("coll") or ""), rows, b.get("mapping") if isinstance(b.get("mapping"), dict) else None,
+                           str(b.get("label") or ""), str(b.get("item_label") or ""), src)
+    return await asyncio.to_thread(_cat_call, go2)
+
+
+@app.post("/api/sites/{ref}/catalog/apply", dependencies=[Depends(require_key)])
+async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {hash, replace?}: the preview she saw is written (replace = items not in the file are hidden, never deleted)."""
+    from .site import catalog as CAT
+    from .site import service as S
+    b = body or {}
+
+    def go():
+        out = CAT.apply(tenant, ref, str(b.get("hash") or ""), bool(b.get("replace")))
+        r = CAT._site(tenant, ref)
+        if r.version:                                # her tap: the next checked version carries the pages (going live = her launch)
+            S._after_edit(S._load(r.id), f"catalogue: {out['coll']}")
+            out["say"] = out["say"].split(" Website ki")[0] + " Nayi version ban rahi hai (jaanch ke baad); live karna aapke tap se."
+        return out
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.post("/api/sites/{ref}/catalog/images", dependencies=[Depends(require_key)])
+async def sites_catalog_images(ref: str, tenant: str = Depends(current_tenant)):
+    """Fetch + resize the photos not made yet (resumes; runs in the background)."""
+    from .site import catalog as CAT
+
+    def go():
+        r = CAT._site(tenant, ref)
+        CAT.start_images(r.id)
+        return CAT.lists(tenant, ref)
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.delete("/api/sites/{ref}/catalog/{coll}", dependencies=[Depends(require_key)])
+async def sites_catalog_remove(ref: str, coll: str, tenant: str = Depends(current_tenant)):
+    from .site import catalog as CAT
+    return await asyncio.to_thread(_cat_call, CAT.remove, tenant, ref, coll)
+
 @app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
 async def sites_payments_connect(ref: str, tenant: str = Depends(current_tenant)):
     """v0.446 her website's online payments live on its app project: link it, then the app pay routes take her keys."""
@@ -9259,6 +9771,26 @@ async def site_app_queue_board(site_id: str):
     except W.AppError:
         return HTMLResponse("<!doctype html><title>Not found</title><p>Not found.</p>", status_code=404)
     return HTMLResponse(LS.board_page(site_id, label), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+
+
+@app.post("/api/dhara/hook/{token}")
+async def dhara_hook(token: str, request: Request):
+    """v0.502 DHARA webhook trigger: her outside service calls the workflow in. The token is checked
+    sha256-hashed against the workflow row; the body lands as {{vars.body}}; the run is queued with a
+    checkpoint (the worker executes it). Rate: one run per 6 s per workflow (10/min ceiling)."""
+    from .agent import dhara_tools
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False, "error": "body bohot bada"}, status_code=413)
+    try:
+        body = json.loads(raw or b"{}")
+        if not isinstance(body, dict):
+            body = {"body": body}
+    except Exception:
+        body = {"raw": raw[:8000].decode("utf-8", "ignore")}
+    out = await asyncio.to_thread(dhara_tools.webhook_enqueue, token, body)
+    return JSONResponse({"ok": out["ok"], "run_id": out.get("run_id"), "workflow": out.get("workflow"),
+                         "error": out.get("error")}, status_code=int(out.get("status") or 500))
 
 
 @app.post("/api/site-app/{site_id}/hook/{key}")
@@ -10295,8 +10827,10 @@ async def app_api_me(app_key: str, request: Request):
     from .site import webapp as W
 
     def go():
-        _r, w = _be_app(app_key, request)
-        return {"me": W.view_member(w.m) if w.m else None}
+        r, w = _be_app(app_key, request)
+        from .appmaker import rollout as RO               # v0.540 this phone's feature switches, decided HERE
+        return {"me": W.view_member(w.m) if w.m else None,
+                "flags": RO.for_member(r, w.m.id if w.m else "")}
     return await asyncio.to_thread(_be_call, go)
 
 
@@ -12009,6 +12543,130 @@ async def apps_store_cert(ref: str, tenant: str = Depends(current_tenant)):
     except ST.StoreError:
         raise HTTPException(404, "not found")
     return Response(data, media_type="application/x-pem-file", headers={"Content-Disposition": f'attachment; filename="{name}"'})
+
+
+# ---- v0.546 CHALTA KAAM (App Sahayak Pillar L): the app AFTER it ships - use, speed, failures, cost, alerts.
+@app.get("/api/apps/{ref}/ops", dependencies=[Depends(require_key)])
+async def apps_ops(ref: str, days: int = 14, tenant: str = Depends(current_tenant)):
+    """Users, orders, errors, latency (estimated from bins), 30-day cost, crashes + ANRs, limits, open alerts."""
+    from .appmaker import ops as OPS
+    return await asyncio.to_thread(_be_owner_call,
+                                   lambda: OPS.dashboard(_be_owner(tenant, ref), max(1, min(days, 90))))
+
+
+@app.post("/api/apps/{ref}/ops/{what}", dependencies=[Depends(require_key)])
+async def apps_ops_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """estimate {job} = what the next big job cost HER last times | alerts = run the rules now (her chat gets one
+    line per kind per day) | flush = write out what the workers measured."""
+    from .appmaker import ops as OPS
+    b = body or {}
+    if what == "estimate":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: OPS.estimate(r, str(b.get("job") or "build")))
+    if what == "alerts":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: OPS.watch(r))
+    if what == "flush":
+        return await asyncio.to_thread(_be_owner_call, lambda: (OPS.flush(), {"ok": True})[1])
+    raise HTTPException(404, "unknown ops action")
+
+
+# ---- v0.542 NAKSHA (App Sahayak Pillar K): her one line -> a spec -> the app, one module at a time.
+@app.get("/api/apps/{ref}/naksha", dependencies=[Depends(require_key)])
+async def apps_naksha(ref: str, tenant: str = Depends(current_tenant)):
+    """The whole plan with each module's state (waiting / approved / built / changed) and the changelog."""
+    from .appmaker import architect as AR
+    return await asyncio.to_thread(_be_owner_call, lambda: AR.card(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/naksha/{what}", dependencies=[Depends(require_key)])
+async def apps_naksha_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """plan {words} | answer {ask, said} | approve {module, hash} = HER TAP on one module | build {module} |
+    revise {words} = the change edits the spec and only the touched modules are rebuilt."""
+    from .appmaker import architect as AR
+    b = body or {}
+    r = _be_owner(tenant, ref)
+    if what == "plan":
+        return await asyncio.to_thread(_be_owner_call, lambda: AR.plan(r, str(b.get("words") or "")))
+    if what == "answer":
+        return await asyncio.to_thread(_be_owner_call,
+                                       lambda: AR.answer(r, str(b.get("ask") or ""), str(b.get("said") or "")))
+    if what == "approve":
+        return await asyncio.to_thread(_be_owner_call,
+                                       lambda: AR.approve(r, str(b.get("module") or ""), str(b.get("hash") or "")))
+    if what == "build":
+        return await asyncio.to_thread(_be_owner_call, lambda: AR.build(r, str(b.get("module") or "")))
+    if what == "revise":
+        return await asyncio.to_thread(_be_owner_call, lambda: AR.revise(r, str(b.get("words") or "")))
+    raise HTTPException(404, "unknown naksha action")
+
+
+# ---- v0.540 JAANCH (App Sahayak Pillar J): the app is proved, and a new version goes out a few users at a time.
+# NOTE the two path segments: a single-segment POST would be eaten by the /api/apps/{ref}/{action} catch-all above.
+@app.get("/api/apps/{ref}/jaanch", dependencies=[Depends(require_key)])
+async def apps_jaanch(ref: str, tenant: str = Depends(current_tenant)):
+    """Pillar J's card: scenario tests, rule checks, load, and what real phones reported (+ what was NOT checked)."""
+    from .appmaker import quality as QA
+    return await asyncio.to_thread(_be_owner_call, lambda: QA.card(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/jaanch/{what}", dependencies=[Depends(require_key)])
+async def apps_jaanch_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """stories {words} = Opus writes them | keep {hash} = her tap makes them the app's test set | run | cases |
+    rules | all | load {customers} (hundreds of accounts on the twin: asked for, never a side effect)."""
+    from .appmaker import quality as QA
+    b = body or {}
+    r = _be_owner(tenant, ref)
+    if what == "stories":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.draft(r, str(b.get("words") or "")))
+    if what == "keep":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.keep(r, str(b.get("hash") or "")))
+    if what == "run":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.run(r, base=str(b.get("base") or "")))
+    if what == "cases":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.rule_cases(r))
+    if what == "rules":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.rules_run(r))
+    if what == "all":
+        return await asyncio.to_thread(_be_owner_call, lambda: QA.run_all(r, base=str(b.get("base") or "")))
+    if what == "load":
+        return await asyncio.to_thread(_be_owner_call,
+                                       lambda: QA.load(r, int(b.get("customers") or 200), str(b.get("base") or "")))
+    raise HTTPException(404, "unknown jaanch action")
+
+
+@app.get("/api/apps/{ref}/rollout", dependencies=[Depends(require_key)])
+async def apps_rollout(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.540 the staged rollout on Play + her feature switches."""
+    from .appmaker import rollout as RO
+    return await asyncio.to_thread(_appd, RO.view, tenant, ref)
+
+
+@app.post("/api/apps/{ref}/rollout/{what}", dependencies=[Depends(require_key)])
+async def apps_rollout_act(ref: str, what: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """flag {key, on, percent, label} | unflag {key} - instant, no build.
+    start {her_tap} | advance {her_tap} | halt {why} | rollback {her_tap} - Play's staged release (production = her tap)."""
+    from .appmaker import rollout as RO
+    b = body or {}
+    if what == "flag":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: RO.set_flag(
+            r, str(b.get("key") or ""), b.get("on") if isinstance(b.get("on"), bool) else None,
+            int(b["percent"]) if isinstance(b.get("percent"), (int, float)) else None, str(b.get("label") or "")))
+    if what == "unflag":
+        r = _be_owner(tenant, ref)
+        return await asyncio.to_thread(_be_owner_call, lambda: RO.drop_flag(r, str(b.get("key") or "")))
+    if what == "start":
+        return await asyncio.to_thread(_appd, RO.start, tenant, ref, bool(b.get("her_tap")),
+                                       float(b.get("fraction") or RO.STAGES[0]))
+    if what == "advance":
+        return await asyncio.to_thread(_appd, RO.advance, tenant, ref, bool(b.get("her_tap")),
+                                       float(b.get("fraction") or 0))
+    if what == "halt":
+        return await asyncio.to_thread(_appd, RO.halt, tenant, ref, str(b.get("why") or ""))
+    if what == "rollback":
+        return await asyncio.to_thread(_appd, RO.rollback, tenant, ref, bool(b.get("her_tap")))
+    raise HTTPException(404, "unknown rollout action")
 
 
 @app.get("/api/apps/{ref}/crashes", dependencies=[Depends(require_key)])

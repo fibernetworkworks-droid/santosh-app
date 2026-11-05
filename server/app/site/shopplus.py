@@ -69,17 +69,28 @@ class SiteShopCart(Base):
 _OK = False
 
 
+_LOCK = __import__("threading").Lock()
+
+
 def ensure_tables() -> None:
     global _OK
     if _OK:
         return
+    with _LOCK:                                    # v0.551 one thread sets up, the rest wait (a checkout calls it)
+        if not _OK:
+            _ensure_tables()
+
+
+def _ensure_tables() -> None:
+    global _OK
     from .. import db as _db
     SH.ensure_tables()
     if _db._engine is not None:
         SiteShopVendor.__table__.create(_db._engine, checkfirst=True)
         SiteShopCart.__table__.create(_db._engine, checkfirst=True)
         try:
-            _db._add_missing_columns(_db._engine)
+            _db.add_missing_columns_for(_db._engine, SiteShopVendor.__table__, SiteShopCart.__table__,   # v0.551 own tables only
+                                        SH.SiteShopProduct.__table__, SH.SiteShopOrder.__table__)
         except Exception:                          # noqa: BLE001
             log.exception("shop plus columns")
         _OK = True

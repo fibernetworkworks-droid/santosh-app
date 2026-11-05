@@ -82,13 +82,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Claude Code Game Studios (ideas for the Hoola Game Crew and the game-desk fixes, v0.406)
+## Claude Code Game Studios (ideas for the Hoola Game Crew and the game-desk fixes, v0.406; the read guard, v0.455)
 
 Hoola's Game Crew (`server/app/gamedesk/crew.py`), the task acceptance criteria and evidence, the "not assessed" results
 and the Godot 4.5-4.7 notes in `server/app/gamedesk/ai.py` were designed after studying the open-source project
 **Claude Code Game Studios** by Donchitos (https://github.com/Donchitos/Claude-Code-Game-Studios, release 1.2.0, commit
 05ad7c8). No code or prompt text was copied: the role descriptions, checklists, team flows and code are Hoola's own,
 written for Hoola's hosted Game Desk. These ideas came from that project:
+
+v0.455 took one more idea from the same repo's release 1.2.0: its `validate-read.sh` hook, which refuses a
+whole-file read of a large design doc and answers with the doc's headings so the retry reads one section.
+`.claude/hooks/read-guard.sh` is Hoola's own implementation of that idea (different watched paths, different
+size bar, and a headings reply that caps the list because docs/HISTORY.md has 639 headings - printing them all
+would be the waste the guard exists to prevent). No code was copied.
 
 - the studio roster (3 directors, 8 department leads, specialists, plus Godot / Unity / Unreal engine specialists) and
   the team flows (combat, narrative, UI, release, polish, audio, level, live ops, QA)
@@ -159,3 +165,25 @@ Software without restriction, including without limitation the rights to use, co
 distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to
 do so, subject to the following conditions: The above copyright notice and this permission notice shall be included
 in all copies or substantial portions of the Software. THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND.
+
+## crawl4ai (ideas only, no code) — v0.537 CRAWL BRAIN
+
+Source read: https://github.com/unclecode/crawl4ai @ v0.9.5 (commit cae74b2), Apache-2.0.
+
+**No crawl4ai code is in this tree.** `server/app/crawl/` re-implements published algorithms from their
+formulas: a confidence-weighted stopping rule, a boilerplate-pruning content filter, best-first frontier
+scoring, sitemap/Common-Crawl URL seeding, data-vs-layout table scoring, chunking strategies, anti-bot
+block fingerprinting, proxy rotation, and a step script compiled to JavaScript.
+
+That is not only house style (the "port law" that built `app/aep`, `app/crew`, `app/dhara`). crawl4ai
+vendors a fork of **html2text** at `crawl4ai/html2text/` declaring upstream's own release `2024.2.26`,
+carrying no copyright line and no licence header — and **upstream html2text is distributed under the
+GPLv3** ("Originally written by Aaron Swartz. This code is distributed under the GPLv3", plus a GNU GPL v3
+`COPYING`). Both `markdown_generation_strategy.py` and `utils.py` import that fork, so every
+page-to-markdown conversion in the library runs through GPL'd code inside an Apache-2.0 repository.
+`server/app/agent/crawl_jobs.py` already keeps Firecrawl's AGPL engine out of this tree for the same
+reason.
+
+Two of crawl4ai's capabilities were deliberately **not** reproduced, and `server/app/crawl/__init__.py`
+records why: mining robots.txt `Disallow:` entries as a URL-discovery source, and minting rotating
+residential proxies from a commercial provider's API.

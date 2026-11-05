@@ -20,6 +20,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--keep", type=int, default=12, help="snapshots to keep (prune)")
     ap.add_argument("--log", default="", help="log path (grep)")
     ap.add_argument("--pattern", default="", help="what to look for (grep)")
+    ap.add_argument("--rebuild", action="store_true", help="rebuild the base image from scratch (setup)")
     ap.add_argument("--json", action="store_true")
     a = ap.parse_args(argv)
 
@@ -28,7 +29,7 @@ def main(argv: list[str] | None = None) -> int:
             print(line)
         return 0
     if a.what == "setup":
-        r = box.build_base()
+        r = box.build_base(nocache=a.rebuild)
         print(f"{'ok' if r['ok'] else 'FAIL'} {r.get('image')} ({r.get('seconds')}s) {r.get('why', '')}")
         if not r["ok"]:
             print("\n".join(r.get("out", "").splitlines()[-25:]))

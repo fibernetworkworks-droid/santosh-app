@@ -146,6 +146,76 @@ Call done with explain = ONE short question in her language asking what she sees
 example), and no files. A clear request is never answered with a question - do the work."""
 
 
+# ---------------------------------------------------------------- v0.531 PRAYOGSHALA step 2: the lab's two tools
+LAB_TOOLS: list[dict[str, Any]] = [
+    {"name": "run_check", "description": "RUN HER CHECK on the code as it is right now, including every edit you have "
+     "made in this task, and get back pass or fail with the real output. This is the only way you can know the work "
+     "is done instead of guessing. The command is hers (declared in her repo) - you cannot choose it. Use it: on a "
+     "bug, FIRST with only the new test in place to prove the bug is real (it must FAIL), then again after the fix "
+     "(it must PASS); after a risky edit; and once before done. `only` narrows it to one test file when her command "
+     "allows that, which is faster - the answer says if it could not.",
+     "input_schema": {"type": "object", "properties": {
+         "only": {"type": "string", "description": "one test file path to run alone (optional)"},
+         "why": {"type": "string", "description": "one short line: what you expect this run to show"}}}},
+    {"name": "grep_log", "description": "Search the LAST run_check's full output (it is kept in a file; what you were "
+     "shown inline is cut). Use it to find a test name, a file, an assertion or a traceback instead of re-running the "
+     "whole check.",
+     "input_schema": {"type": "object", "properties": {
+         "pattern": {"type": "string", "description": "words, a test name, a path, or a regex"}}, "required": ["pattern"]}},
+]
+
+
+def _lab_tool(lab: Any, ws: Any, name: str, inp: dict[str, Any], checks: list[dict[str, Any]]) -> str:
+    """run_check / grep_log for the model, as TEXT. An error here teaches instead of blaming (Anthropic: a tool's
+    error response should "clearly communicate specific and actionable improvements")."""
+    if name == "grep_log":
+        pat = str(inp.get("pattern") or "").strip()
+        if not pat:
+            return "grep_log needs a pattern: a test name, a file path, 'Error', 'assert'."
+        ws.trail.append(f"log mein dhoonda: {pat[:40]}")
+        return lab.grep(pat)[:20000]
+    only = str(inp.get("only") or "").strip()
+    overlay = dict(ws.current)                      # every edit made so far in this task, as the files really are now
+    res = lab.run(overlay, only=only, label="loop")
+    stage = res.get("stage")
+    if stage in ("shut", "cap", "box"):
+        ws.trail.append("check nahi chala")
+        return (f"run_check could not run: {res.get('why', '')}. Do not retry it; finish the work you can stand "
+                "behind and say this in risk.")
+    if stage == "setup":
+        ws.trail.append("lab setup fail")
+        return ("run_check could not install this repo's dependencies, so no check can run in this task:\n"
+                + str(res.get("out", ""))[-2000:]
+                + "\nDo not retry. Say this in risk and finish without a measured check.")
+    if stage == "command":
+        return f"run_check refused that command: {res.get('why', '')}"
+    checks.append({"ok": bool(res.get("ok")), "cmd": res.get("cmd", ""), "only": only,
+                   "seconds": res.get("seconds"), "log": res.get("log", ""), "why": str(inp.get("why") or "")[:200]})
+    ws.trail.append(("check PASS" if res.get("ok") else "check FAIL") + f" ({res.get('seconds')}s)")
+    head = res.get("note", "") + (res.get("say") or "")
+    tail = ("\n(The whole output is in a log file - use grep_log to search it.)"
+            if res.get("cut") else "")
+    return f"{head}\n{'-' * 40}\n{res.get('shown', '')}{tail}"[:60000]
+
+
+def lab_block(lab: Any) -> str:
+    """What the model is told when the lab is open. It replaces guesswork with a measurement, so it is stated as a
+    duty, not an option (code.claude.com/docs/en/best-practices: "give Claude something it can run that comes back
+    pass or fail")."""
+    return f"""HER CHECK IS RUNNABLE (the lab is open for this task).
+Command: `{lab.cmd}` - declared in {lab.source}. You run it with run_check; you cannot change it.
+What this changes for you:
+- A BUG FIX is proved, not claimed: write the failing test first, run_check with `only` = that test file and SEE IT
+  FAIL on the unfixed code (that failure is the proof the bug is real), then fix and run_check again until it passes.
+  If your new test PASSES before the fix, the test is wrong - it proves nothing. Say so and write a better one.
+- Before you call done, run_check once with everything in place. If it fails, you are not finished: read the output,
+  or grep_log it for the test name, and fix the cause.
+- If a check cannot run (setup fails, the command is wrong for this repo), do NOT invent a result and do NOT keep
+  retrying: say exactly what happened in `risk` and finish the work you can stand behind.
+- The output you see is cut (a pass is shown short, a failure keeps its END, where the traceback is) and the whole
+  output is in a log file - grep_log asks it a second question. Never guess what the cut part said."""
+
+
 def _numbered(text: str, start: int, end: int) -> str:
     lines = text.splitlines()
     total = len(lines)
@@ -455,7 +525,7 @@ def _skills_block(text: str, tenant: str = "") -> str:
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
         max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
         ref_sha: str = "", extra: str = "", system_extra: str = "",
-        plan_txt: str = "") -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
+        plan_txt: str = "", lab: Any = None) -> tuple[str, list[dict[str, Any]], dict[str, Any], dict[str, Any]]:
     """The loop. Returns (base_sha, read, ctx, out) in the shapes service._work already uses after _gather + _ask_model.
     v0.351 ref_sha = work on that commit (a PR branch's head, for a CI fix round); extra = more context (the CI log)."""
     STATS["runs"] += 1
@@ -478,17 +548,23 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
              + (f"\n<issue>\n{issue_txt}\n</issue>\n" if issue_txt else "")
              + (f"\nFiles named in her words / the error: {', '.join(dict.fromkeys(hints))}\n" if hints else "")
              + (f"\n{plan_txt}\n" if plan_txt else "")      # v0.451 the plan she approved: the handoff, not a hint
+             + (f"\nHer check command for this repo: `{lab.cmd}` ({lab.source}) - run it with run_check.\n"
+                if lab is not None and getattr(lab, "usable", False) else "")
              + (f"\nThis round works on her open PR branch (commit {base_sha[:7]}): the files below are its current "
                 f"state.\n{extra}\n" if extra else "")
              + "\nTop-level folders:\n" + ws.list_dir("") + "\n\n" + _project_rules(ws)
              + (("\n\n" + _sk + "\n\n") if _sk else "")
              + "\n\nStart exploring with the tools. Call done when finished.")
+    use_lab = lab is not None and getattr(lab, "usable", False)
+    tools = TOOLS + (LAB_TOOLS if use_lab else [])
+    system = SYSTEM + ("\n\n" + system_extra if system_extra else "") + (("\n\n" + lab_block(lab)) if use_lab else "")
     messages: list[dict] = [{"role": "user", "content": first}]
     finish: dict[str, Any] | None = None
+    checks: list[dict[str, Any]] = []
     t0, steps, nudged = time.time(), 0, 0
     while steps < max_steps and time.time() - t0 < minutes * 60:
         steps += 1
-        blocks, stop = BRAIN(SYSTEM + ("\n\n" + system_extra if system_extra else ""), messages, TOOLS)   # v0.402 specialist
+        blocks, stop = BRAIN(system, messages, tools)   # v0.402 specialist, v0.531 lab
         messages.append({"role": "assistant", "content": blocks})
         uses = [b for b in blocks if b.get("type") == "tool_use"]
         if not uses:
@@ -506,7 +582,10 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
                 finish = dict(b.get("input") or {})
                 results.append({"type": "tool_result", "tool_use_id": b["id"], "content": "Finished."})
                 continue
-            out = ws.run(b["name"], b.get("input") or {})
+            if use_lab and b["name"] in ("run_check", "grep_log"):
+                out = _lab_tool(lab, ws, b["name"], b.get("input") or {}, checks)
+            else:
+                out = ws.run(b["name"], b.get("input") or {})
             if on_step and ws.trail:
                 try:
                     on_step(ws.trail[-1])
@@ -532,7 +611,9 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
            "pr_title": finish.get("pr_title", ""), "pr_summary": finish.get("pr_summary", ""),
            "test_plan": finish.get("test_plan", ""), "risk": finish.get("risk", ""),
            "rules_followed": finish.get("rules_followed", "")}
+    out["checks"] = checks
     found = {"trace": tr["files"], "errors": tr["errors"], "words": tr["words"], "read": sorted(ws.read),
+             "checks": checks,
              "hidden": [p for p, o in ws.orig.items() if o.get("hidden")], "tree_size": len(paths),
              "issue": bool(issue_txt), "rules": list(dict.fromkeys(ws.rules_shown)), "loop": {"steps": steps, "searched": ws.searched[-20:], "trail": ws.trail[-60:],
                                                  "finished": finished}}

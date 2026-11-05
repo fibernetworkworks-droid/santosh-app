@@ -333,6 +333,7 @@ class Santosh extends ChangeNotifier {
   int videoTick = 0;                          // bumps on every video_job event (the editor screen refreshes)
   final Map<String, FeedItem> _empAsks = {};  // Hoola Employee: actions waiting for the owner's tap, by ask id
   int employeeTick = 0;                       // bumps on any employee event (the Employee screen can refresh)
+  final Map<String, FeedItem> _anyCards = {}; // v0.550 EK JAISA: cards of a kind this app has no screen for yet, updated in place
   final Map<String, FeedItem> _darziCards = {}; // v0.82 Darzi: price cards by id, 'ready' drafts by order, updated in place
   int darziTick = 0;                          // bumps on any darzi event (the Darzi screen refreshes)
   final Map<String, FeedItem> _chaiPlans = {}; // v0.84 Chai: one plan card per day, its order cards updated in place
@@ -1033,6 +1034,7 @@ class Santosh extends ChangeNotifier {
     _nbCards.clear();
     _empAsks.clear();
     _darziCards.clear();
+    _anyCards.clear();
     _chaiPlans.clear();
     _mshopCards.clear();
     _phonedocCards.clear();
@@ -2502,6 +2504,22 @@ class Santosh extends ChangeNotifier {
       case 'voice_ring': // v0.219 VOICE RING: the server is calling her (never over a live call, gated on the server); the app starts the call itself
         if (!_replaying) wake(locked: false);
         break;
+      default:
+        // v0.550 EK JAISA: a card kind this app has no screen for (game desk, CAD project, research run, agent team,
+        // Drive file, bulk mail, call-quality alert...) used to be DROPPED here while the web console showed it.
+        // Now it shows as the same plain card the console draws: title, one line, status, a link - updated in place.
+        if (!anyCardWorthShowing(ev.kind, p)) break;
+        final ak = ev.key ?? '${ev.kind}:${p['id'] ?? p['job_id'] ?? p['order_id'] ?? ''}';
+        final keyed = ev.key != null || !ak.endsWith(':');
+        final ac = keyed ? _anyCards[ak] : null;
+        if (ac != null) {
+          ac.data = {...ac.data, ...p};
+        } else {
+          final it = FeedItem('any_card', {...Map<String, dynamic>.from(p), '_kind': ev.kind});
+          if (keyed) _anyCards[ak] = it;
+          feed.add(it);
+        }
+        break;
     }
     notifyListeners();
   }
@@ -2886,4 +2904,17 @@ String kalaCardKey(String kind, Map<String, dynamic> p) {
   final c = p['card'];
   final id = c is Map ? '${c['id'] ?? ''}' : '';
   return id.isEmpty || id == 'null' ? '' : '$kind:$id';
+}
+
+/// v0.550 EK JAISA: kinds that are stream plumbing, never a card; everything else with something to say is shown.
+const Set<String> _notCards = {'resync', 'replay_end', 'ping', 'heartbeat', 'presence', 'reply_chunk'};
+
+/// Should an event of a kind this app does not know be drawn as a plain card? Only when it carries something to read.
+bool anyCardWorthShowing(String kind, Map<String, dynamic> p) {
+  if (kind.isEmpty || _notCards.contains(kind)) return false;
+  for (final k in const ['title', 'name', 'label', 'what', 'subject', 'number', 'say', 'summary', 'text', 'reason', 'message']) {
+    final v = p[k];
+    if (v is String && v.trim().isNotEmpty) return true;
+  }
+  return false;
 }

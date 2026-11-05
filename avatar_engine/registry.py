@@ -48,6 +48,20 @@ MODELS: dict[str, dict] = {
         "note": "Face-parsing model commonly trained on CelebAMask-HQ, whose terms are non-commercial: must be replaced "
                 "by a commercially licensed segmenter before any public release.",
     },
+    # ------------------------------------------------------------------ the AI-made face (her choice 'b', 5 Nov 2026)
+    "flux_schnell": {
+        "kind": "image", "repo": "black-forest-labs/FLUX.1-schnell", "licence": "Apache-2.0", "use": "commercial",
+        "gated": True,
+        "note": "Paints the portrait of a FICTIONAL teacher (no real person, no celebrity). Licence read from the Hugging "
+                "Face model API on 5 Nov 2026 (license: apache-2.0, gated: auto = one-time terms click on the HF account "
+                "whose token the lab uses).",
+    },
+    "wan22_ti2v_5b": {
+        "kind": "video", "repo": "Wan-AI/Wan2.2-TI2V-5B-Diffusers", "licence": "Apache-2.0", "use": "commercial",
+        "note": "Turns the portrait into a 5 s clip (blinks, breath, slight head movement) so the face is not a frozen "
+                "still. Model card read 5 Nov 2026: 'licensed under the Apache 2.0 License', not gated; its use terms bar "
+                "harm to people, personal information meant to harm, misinformation.",
+    },
     # ------------------------------------------------------------------ speech to text (Hoola Studio: transcribe + dubbing)
     "faster_whisper_small": {
         "kind": "speech_to_text", "repo": "Systran/faster-whisper-small", "licence": "MIT (code + weights; OpenAI Whisper is MIT)",

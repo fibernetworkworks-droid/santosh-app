@@ -17,8 +17,8 @@ the v0.480 curator merges near-duplicates, SAPNE distills time windows.v0.501 HO
 Context7 ID, pull up-to-date docs into the turn, land every fetch in the vault (the vault
 IS the cache); queries redacted before egress.
 """
-from . import capture, curator, dedup, delegate, docs7, dreams, inject, modes, nudge, observer, \
-    parser, prompts, redact, search, skill_packs, skills_store, skills_tool, spool, store
+from . import capture, crew_run, curator, dedup, delegate, docs7, dreams, inject, magic21, modes, nudge, \
+    observer, parser, prompts, redact, search, skill_packs, skills_store, skills_tool, spool, store
 
 # v0.478 FIX (caught by the swarm funnel-capture test): the agent funnel calls
 # coder.tool_observed / coder.turn_prompt / coder.session_started / coder.session_ended /
@@ -30,7 +30,7 @@ from . import capture, curator, dedup, delegate, docs7, dreams, inject, modes, n
 # coder.curator.tick on the package path too - curator rides the import list above.
 from .capture import save_memory, session_ended, session_started, tool_observed, turn_prompt
 
-__all__ = ["capture", "curator", "dedup", "delegate", "docs7", "dreams", "inject", "modes",
+__all__ = ["capture", "crew_run", "curator", "dedup", "delegate", "docs7", "dreams", "inject", "magic21", "modes",
            "nudge", "observer", "parser", "prompts", "redact", "search", "skill_packs",
            "skills_store", "skills_tool", "spool", "store", "save_memory", "session_ended",
            "session_started", "tool_observed", "turn_prompt"]

@@ -888,7 +888,8 @@ def _ctx(r: Site) -> dict[str, Any]:
         logo = str(p) if p and Path(p).exists() else ""
     except Exception:
         logo = ""
-    return {"facts": facts, "tokens": look.get("tokens") or B.tokens(r.style or "editorial_calm", "paper_ink"),
+    return {"site_id": r.id,                                                # v0.538 her imported catalogue lists
+            "facts": facts, "tokens": look.get("tokens") or B.tokens(r.style or "editorial_calm", "paper_ink"),
             "plan": _j(r.plan, {}), "cta": _j(r.plan, {}).get("cta") or "call", "industry": ind,
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],
             "logo_path": logo, "noindex": True,
@@ -1561,6 +1562,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         log.info("og / scroll video skipped", exc_info=True)
     r = _save(r.id, board=_board(r, plan, states, "Visitor ki tarah chala ke dekh raha hoon"))
     report = _journeys(r, report)             # v0.400 Hoola walks the site like a visitor before she sees it
+    report = _gates(r, report)                # v0.551 SURAKSHA GATES: security / legal / accessibility on every page
     _make_version(r, plan, report, shots, states, note or "pehla version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
 
@@ -1579,6 +1581,21 @@ def _journeys(r: Site, report: dict[str, Any]) -> dict[str, Any]:
               "warnings": list(report.get("warnings") or []) + res["warnings"]}
     report["passed"] = not report["blocking"]
     return report
+
+
+def _gates(r: Site, report: dict[str, Any]) -> dict[str, Any]:
+    """v0.551 the security / compliance gates (site/gates.py) on the built copy: every FAIL becomes a blocking item, so the
+    launch card refuses it until fixed; a gate that could not run is said as not checked, never as a pass."""
+    if not getattr(_settings(), "site_gates", True) or report.get("source") == "none":
+        return report
+    try:
+        from . import gates as G
+        res = G.scan(B.site_dir(r.tenant_id, r.id) / "live", _ctx(_load(r.id)), report, form_endpoint(r))
+    except Exception:
+        log.exception("site gates failed to run")
+        return report
+    from . import gates as G
+    return G.merge(report, res)
 
 
 def _make_version(r: Site, plan: dict[str, Any], report: dict[str, Any], shots: Path, states: dict[str, str] | None,
@@ -2586,6 +2603,7 @@ def save_version(site_id: str, note: str = "") -> None:
             report = {"blocking": [], "warnings": [{"kind": "checks", "text": str(e), "sections": []}], "scores": {},
                       "passed": None, "source": "none", "pages": {}}
         report = _journeys(r, report)         # v0.400 her edits too: the shop / form / menu still work
+        report = _gates(r, report)            # v0.551 and the gates again on what she changed
         _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
 
 
@@ -2740,6 +2758,9 @@ def _lead_post(site_id: str, data: dict[str, Any], ip: str = "", kind: str = "en
         raise SiteError("bad form")
     if str(data.get("website") or "").strip():          # honeypot filled = a bot
         return {"ok": True}
+    from . import gates as G
+    if G.turnstile_on() and not turnstile_ok(str(data.get("cf-turnstile-response") or ""), ip):
+        raise SiteError("Robot jaanch poori nahi hui - page dobara khol kar bhejiye.")
     iph = hashlib.sha256(f"{ip}|{site_id}".encode()).hexdigest()[:24]
     t = time.time()
     if len(_RATE) > 5000:                 # v0.223 old entries go (the dict grew without end)
@@ -2780,6 +2801,25 @@ def _lead_post(site_id: str, data: dict[str, Any], ip: str = "", kind: str = "en
         _publish(tenant, "site_lead", {"id": lid, "site": sname, "name": name, "phone": phone, "email": email,
                                        "message": msg[:300], "say": f"{sname or 'Website'} par nayi enquiry: {name or phone}"}, conv)
     return {"ok": True, "id": lid}
+
+
+_TURNSTILE_TRANSPORT = None                               # tests: a fake Cloudflare
+
+
+def turnstile_ok(token: str, ip: str = "") -> bool:
+    """v0.551 Cloudflare Turnstile's own check of the box the visitor solved (siteverify, the secret never leaves the server).
+    No answer from Cloudflare = refused (a form that cannot be checked is not saved as checked)."""
+    if not token or len(token) > 2048:
+        return False
+    import httpx
+    try:
+        with httpx.Client(timeout=8.0, transport=_TURNSTILE_TRANSPORT) as c:
+            resp = c.post("https://challenges.cloudflare.com/turnstile/v0/siteverify",
+                          data={"secret": _settings().site_turnstile_secret, "response": token, **({"remoteip": ip} if ip else {})})
+        return resp.status_code == 200 and bool(resp.json().get("success"))
+    except Exception:                                          # noqa: BLE001
+        log.info("turnstile check failed", exc_info=True)
+        return False
 
 
 def leads(tenant: str, ref: str = "", limit: int = 100) -> list[dict[str, Any]]:

@@ -19,7 +19,7 @@ small and stable per session. HOOLA's version, adapted to a chat agent:
   set goes instead (never worse than v0.190).
 
 Admission only changes what the model SEES. dispatch(), employee.gate, the confirm-card rules, Rokiye - all
-unchanged and applied after, exactly as before. Non-owner actors (routine / staff / customer) keep the full set:
+unchanged and applied after, exactly as before. Non-owner actors (staff / customer) keep the full set (v0.558: her own routines are admitted like chat):
 their gates already restrict them and their jobs may need anything.
 """
 from __future__ import annotations
@@ -135,7 +135,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  # v0.433 Phase 10: big-studio mode
                  "unity", "unreal", "unreal engine", "ue5", "big studio", "hoola crew plugin", "editor plugin",
                  # v0.447 Game Arena
-                 "game arena", "games arena", "game ka score", "game duel", "game originality"),
+                 "game arena", "games arena", "game ka score", "game duel", "game originality",
+                 # v0.455 provenance
+                 "steam survey", "ai disclosure", "game provenance", "kahan se aaya", "created with ai",
+                 # v0.456 scenes
+                 "game scene", "game ka scene", "tscn", "level scene", "platformer level"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",
@@ -200,6 +204,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",
                     "product idea", "business idea", "idea pe soch", "shuru karne se pehle",
                     "officehours_dekho"),
+    # v0.502 DHARA (her workflows, the n8n lane): recurring-automation words. Tight keys - "kaam"
+    # alone is the kaam lane, "reminder" is life; only workflow-shaped asks open dhara.
+    "dhara": ("workflow", "workflows", "dhara", "automation", "automate", "auto chalu", "apne aap chal",
+              "roz ka automatic", "har din automatic", "jab bhi", "webhook", "dhara_list", "dhara_save",
+              "dhara_run", "dhara_runs", "dhara_control", "dhara_dsl", "workflow file", "export workflow", "import workflow", "backup workflow"),
     "brand": ("brand", "branding"),
     "ads": ("ads", "advertis", "meta ad", "google ad", "campaign chalao"),
     "seo": ("seo", "google rank", "search rank"),
@@ -650,6 +659,13 @@ async def tool_search(ctx, need: str = "", **_):
     if not need:
         return {"admitted": [], "note": "Batao kya kaam karna hai - 'send an email', 'sheet update' jaisa."}
     hits = _match(need.lower())
+    # v0.550 EK JAISA: a tool asked for by its EXACT name always opens its own family. The keyword match used to win
+    # and the name lookup ran only when it found nothing, so tool_search("sheet_read") opened sheets but not
+    # gdrive, "crm_arch" opened arch but not enterprise, "edit_desk" opened video - 15 tools could not be reached.
+    for nm in set(_NAME_RE.findall(need.lower())) | {need.lower()}:
+        fam = FAMILY_OF.get(nm)
+        if fam:
+            hits.add(fam)
     if not hits:   # try the words as family tags / tool names directly
         low = need.lower()
         words = set(_WORD_RE.findall(low)) | {low}

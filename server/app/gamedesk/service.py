@@ -388,6 +388,17 @@ def _assets(r: GameProject) -> tuple[str, dict[str, Path]] | None:
         return None
 
 
+def _scenes(r: GameProject) -> dict[str, str]:
+    """v0.456: the approved scenes of this game's Studio project. Hoola generated them from a checked spec and the
+    engine already loaded them; a game without any builds exactly as before."""
+    try:
+        from . import scene
+        return scene.for_game(r.tenant_id, r.id)
+    except Exception:                                   # noqa: BLE001 - a scene problem must never stop a build
+        log.exception("scenes for game %s", r.id)
+        return {}
+
+
 def _packs(r: GameProject) -> dict[str, tuple[str, dict[str, Path]]]:
     try:
         from . import packs
@@ -606,10 +617,10 @@ def _current_files(r: GameProject) -> dict[str, str]:
     return {p.name: p.read_text(encoding="utf-8") for p in proj.glob("*.gd") if p.name != "hoola_probe.gd"}
 
 
-def _write(proj: Path, r: GameProject, scripts: dict[str, str]) -> None:
+def _write(proj: Path, r: GameProject, scripts: dict[str, str], scenes: dict[str, str] | None = None) -> None:
     shutil.rmtree(proj, ignore_errors=True)
     proj.mkdir(parents=True)
-    for name, txt in template.files(r.title or "Hoola game", r.orientation, scripts).items():
+    for name, txt in template.files(r.title or "Hoola game", r.orientation, scripts, scenes).items():
         (proj / name).write_text(txt, encoding="utf-8")
 
 
@@ -645,6 +656,7 @@ def _build(r: GameProject, holder: dict) -> None:
         files["hoola_assets.gd"] = ast[0]
     pk = _packs(r)                                      # v0.420 role packs (HoolaWorld, HoolaPhysics...): Hoola's own
     _own_packs(files, pk)
+    scn = _scenes(r)                                    # v0.456 approved scenes (checked spec -> Hoola generated them)
     checks: list[dict[str, Any]] = []
     fixed = 0
     smoke: dict[str, Any] = {}
@@ -653,13 +665,13 @@ def _build(r: GameProject, holder: dict) -> None:
     for rnd in range(FIX_ROUNDS * 2 + 1):
         if _cancelled(r, holder):
             return
-        bad = guard.problems(files)
+        bad = guard.problems(files, scn)
         if bad:
             STATS["guard_refused"] += 1
             checks.append({"step": "guard", "ok": False, "errors": bad[:6]})
         else:
             _stage(r, "building", "Godot mein chala kar dekh raha hoon", 45 + rnd * 3)
-            _write(vdir / "proj", r, files)
+            _write(vdir / "proj", r, files, scn)
             _copy_assets(vdir / "proj", ast)
             for _f, (_t, extra) in pk.items():
                 _copy_assets(vdir / "proj", ("", extra))
@@ -699,7 +711,10 @@ def _build(r: GameProject, holder: dict) -> None:
     errors = [] if ok else (checks[-1]["errors"] if checks else ["kuch nahi bana"])
     ver = {"n": n, "at": now().isoformat(), "words": words, "ok": ok, "task": task, "base": (_good(r)[-1]["n"] if _good(r) else 0),
            "src": _src_hash(vdir / "proj"), "bible": bib[1] if bib else 0,
-           "assets": sorted(((ast or ("", {}))[1]).keys()), "packs": sorted(pk), "notes": notes, "fixed": fixed, "checks": checks[-4:],
+           # v0.455 PROVENANCE: the model(s) that wrote THIS build's code, so the store disclosure is a fact she can
+           # read off rather than a guess. Empty when nothing was asked (a data-only rebuild writes no new code).
+           "models": ai.used(),
+           "assets": sorted(((ast or ("", {}))[1]).keys()), "packs": sorted(pk), "scenes": sorted(scn), "notes": notes, "fixed": fixed, "checks": checks[-4:],
            "errors": errors[:6], "files": sorted(files), "shots": play.get("shots", []) if ok else [],
            "warnings": play.get("warnings", []),
            "numbers": {"fps_server": play.get("fps"), "load_s": play.get("load_s"),

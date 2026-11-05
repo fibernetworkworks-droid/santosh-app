@@ -357,11 +357,51 @@ async def tick() -> None:
     await team_jobs()
     await research_jobs()
     await scrape_crawl_jobs()
+    await dhara_jobs()
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
     game_studio_jobs()
     await coder_jobs()
+    app_ops_jobs()
+
+
+_ops_last = 0.0
+
+
+def app_ops_jobs() -> None:
+    """v0.546 CHALTA KAAM (Pillar L): write out what the apps' own backends measured, and once a day tell her the
+    things a rule says are worth telling - failures up, the app slower than it was, crashes, a filling app, cost
+    doubling. One line per kind per day; an alert that cries every hour is one she turns off."""
+    global _ops_last
+    if time.time() - _ops_last < 60:
+        return
+    _ops_last = time.time()
+    try:
+        from .appmaker import ops as OPS
+        OPS.flush()
+    except Exception:                                      # noqa: BLE001
+        log.debug("ops flush", exc_info=True)
+    try:
+        from .appmaker import ops as OPS
+        from .appmaker.models import AppProject
+        from .db import session
+        hour = __import__("datetime").datetime.now(OPS.IST).hour
+        if hour != 9:                                      # her morning, once
+            return
+        with session() as s:
+            rows = s.query(AppProject).filter(AppProject.status == "approved").limit(200).all()
+            for row in rows:
+                s.expunge(row)
+        for r in rows:
+            if (r.plan or "").find('"jaanch_of"') >= 0:    # never alert about a test twin
+                continue
+            try:
+                OPS.watch(r)
+            except Exception:                              # noqa: BLE001
+                log.debug("ops watch", exc_info=True)
+    except Exception:                                      # noqa: BLE001
+        log.debug("ops jobs", exc_info=True)
 
 
 _logic_task: "asyncio.Task | None" = None
@@ -525,6 +565,24 @@ async def research_jobs() -> None:
 
 
 _crawl_last = 0.0
+
+
+_dhara_last = 0.0
+
+
+async def dhara_jobs() -> None:
+    """v0.502 DHARA: due scheduled workflows enqueue, slept runs wake, queued/stalled runs claim from
+    their checkpoint, old finished runs are forgotten (the crawl-jobs tick shape, on the dhara lane)."""
+    global _dhara_last
+    import time
+    if time.time() - _dhara_last < 20:
+        return
+    _dhara_last = time.time()
+    try:
+        from .agent import dhara_tools
+        await dhara_tools.tick()
+    except Exception:
+        log.exception("dhara tick failed")
 
 
 async def scrape_crawl_jobs() -> None:
@@ -957,6 +1015,11 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_service.blog_tick)
     except Exception:
         log.exception("site blog tick failed")
+    try:                                   # v0.538 HOOLA CMS: the team's scheduled drafts whose time came
+        from .site import cms as site_cms
+        await asyncio.to_thread(site_cms.tick)
+    except Exception:
+        log.exception("site cms tick failed")
     try:                                   # v0.124 care: visit counters to the DB, monthly care note on the 1st
         from .site import care as site_care
         await asyncio.to_thread(site_care.flush)

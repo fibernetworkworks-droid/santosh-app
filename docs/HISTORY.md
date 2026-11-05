@@ -2,6 +2,100 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.549.0 HOOLA AGENT — create_agent compiled onto the house graph, P4 of the HOOLA AEP plan (5 Nov 2026)
+
+Built at 0.540.0, then the COLLISION WAVE (the dev chain shipped 0.543–0.548 while P4 sat
+built) — REBASE PROTOCOL twice: reset to their fresh bases, the AEP layer re-applied (they
+never touched server/app/aep), re-versioned 0.549.0. The langchain 1.x `agents/factory.py`
+idea hand-built as `server/app/aep/agent.py` after re-reading upstream at the pinned commit
+`aa2528fb980a290d2b06c83a1be43e60bc2348f9` (zero upstream code). **ToolNode**: finds the
+pending `tool_calls` on the last AIMessage (or takes tool_call dicts directly), runs each tool
+sequentially (deterministic, call order); failures become error ToolMessages
+(`handle_tool_errors=True` default — a string replaces the content, `False` re-raises the
+ORIGINAL error); unknown tool names are honest error ToolMessages; `GraphInterrupt` propagates
+— a tool may park the walk (the P5 human-in-the-loop seam). **create_agent**: a `model` node +
+a `tools` node on the P3 StateGraph; `model → (pending tool_calls ? tools : [structured ?
+generate_structured_response : END])` and `tools → (all executed return_direct ? END : model)`.
+`bind_tools` at BUILD time; pre-bound Runnables ride as-is; `system_prompt` rides the PROMPT,
+never the state; `response_format` (pydantic/dict) adds the `generate_structured_response`
+node writing `state["structured_response"]` via the P1 `with_structured_output` lane; model
+strings are refused with the P7 HUB pointer; `name` names the compiled graph. **Interrupts**
+are static breakpoints on the P3 park seam; **checkpointer = chat memory**: a dict input on a
+checkpointed thread MERGES into the stored channel values through the reducers. Substrate
+seams: `compile(name=...)`; node bodies run on their span's CHILD config (model/tool calls
+nest UNDER their node span); `add_messages` coerces BOTH sides + the role-shape dict table;
+the SqliteSaver engine-path lazy-ensure moved to `_raw()` per instance. Registry stays 569
+(INERTNESS re-proven; the dev chain's stale 568 count pins in six suites healed to the real
+569). Tests: NEW `test_v0540_hoola_agent.py` (56). Server-only; old APKs keep working. Train:
+P5 the 24-middlewares → P6 RETRIEVE → P7 HUB → P8 the parity audit.
+
+## v0.530.0 HOOLA GRAPH — the state-graph engine, P3 of the HOOLA AEP plan (5 Nov 2026)
+
+The langgraph idea hand-built as `server/app/aep/graph.py` (zero upstream code). StateGraph
+compiles a TypedDict state schema + nodes + edges + conditional edges into a
+CompiledStateGraph that is itself a Runnable (it composes with `|`). Channels:
+last-value-wins for plain keys, `Annotated[T, reducer]` merges through the reducer
+(operator.add works; `add_messages` is the messages reducer), first-ever values seed the
+channel. The walk runs super-steps — every node sees the same pre-step state, static
+multi-edges fan out, a join node waits for ALL its parents (the barrier), routing is
+additive (routers + static edges both fire), recursion_limit 25 with an honest
+GraphRecursionError. `interrupt(value)` parks the graph (checkpointed, the state carries
+`__interrupt__`); `Command(resume=...)` re-enters — the node re-runs from its top, answered
+slots replay in call order, open slots re-park with earlier answers preserved.
+Checkpointers: MemorySaver (thread-safe ring) and SqliteSaver (stdlib sqlite3 WAL, or the
+vault's sqlalchemy Engine used lazily) — a checkpoint after EVERY super-step, invoke(None)
+resumes the stored walk (the crash path). Tracer seam: one root chain span named
+StateGraph per invocation, one chain span per node named by the node — the P2 run tree
+nests the walk with a single trace_id. Registry stays 542 (library module — no tools, no
+routes, no flag; the inertness law re-proven). Tests: test_v0530_hoola_graph.py (42).
+
+## v0.502.0 DHARA — her workflows (4 Nov 2026)
+
+The n8n idea, house-sized, END TO END (owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END" after the
+full READ of n8n v2.47.0; zero n8n code — fair-code license). The agent is the canvas: she describes a
+recurring job once, `dhara_save` validates and stores the workflow graph (9 step types — tool / code /
+condition / loop / wait / notify / approval / set / http), triggers fire it (manual / schedule IST /
+webhook with a one-time token), the worker tick runs it with a checkpoint after every step (a pm2
+restart resumes mid-run, no step runs twice), and a mid-flow `approval` step parks the run until HER
+word in chat — relayed via `dhara_control approve` — moves it past the gate. Tool steps run as
+actor="routine": the house's own actor gates are the safety n8n never had. Registry 536 -> 541
+(dhara_save / dhara_run / dhara_runs / dhara_control / dhara_list). Tests: test_v0502_dhara.py (35).
+
+## v0.520.0 HOOLA TRACE — the LangSmith layer self-hosted, P2 of the HOOLA AEP plan (5 Nov 2026)
+
+The callbacks/tracers/event-stream idea and the LangSmith run-tree idea hand-built as
+`server/app/aep/tracers.py` + `vault_sink.py` after the deploy verified P1 HOOLA CORE live on the VPS
+(vps-ops run 41876141774, healthz 0.511.0). CallbackManager carries handlers + parent_run_id down the
+`config["callbacks"]` channel — a span start returns the CHILD manager, so the tree assembles with zero
+registry lookups; Span is the fire-point seam (created only when callbacks ride the config — the P1 fast
+path stays byte-identical). RunTreeTracer builds the run tree and persists FINISHED runs to sinks;
+astream_events is the event_stream v2 port (run_id + parent_ids + data.input/output/chunk, version pinned
+"v2"). THE FLAG LAW made real: `aep_trace` default OFF gates the VaultRunSink — finished runs land as
+ordinary vault observations typed `aep_run` (redaction BEFORE storage, fail-closed, honest counters), the
+pre-built `trace_flip` vps-ops job flips it, rollback is one flip, no schema migration. Explorer:
+`/api/aep/runs` (+ `source=vault`) and `/api/aep/runs/{run_id}` (the nested tree), `/api/agent/stats`
+grew the aep_trace block. Registry rides their 542 (the magic21 tool moved 541 -> 542 in v0.512); voice untouched by construction. Tests:
+test_v0520_hoola_trace.py (39) + the P1 core suite re-run green. Bugs the suite caught: async-for over the
+sync bare stream; the lru_cached get_settings vs flag setenv (cache_clear law). Version 0.520.0
+(pubspec 0.520.0+549), pins swept 0.511.0 -> 0.520.0 across 166 files; restart pin 9 -> 10.
+
+## v0.511.0 HOOLA CS PACK — the zoo radar + the operator loop's dialogue patterns (4 Nov 2026)
+
+The awesome Computer Science read turned into two fed skills (owner: "Computer Science (38) — 
+awesome-generative-ai → zoo expansion radar; awesome-conversational-ai → dialogue/QA patterns for 
+the operator loop"). cs-zoo-radar: the 436-model zoo BYOK catalog is the source of truth (186 image 
+/ 221 video / 29 audio; muapi 211 + kie 225), the awesome-generative-ai families are SEARCH TERMS 
+for `zoo action=models`, never invented model ids; the catalog grows only by the owner's tap (the 
+real append shape is in the skill body), the gateway question is asked, never assumed. 
+cs-dialogue-patterns: the operator loop's proven moves — slot ledger (never re-ask an answered slot, 
+ek turn ek sawaal), confirm-before-irreversible, the repair ladder (one fix attempt, honest fallback, 
+never retry-spam), QA shape (answer first, "mujhe nahi pata" over a guess), close-the-loop, voice 
+budget. Fed via its own once-ever stamp `skills:cspack:{}` (the v0.492 pattern), seed_all finds it 
+by name, cspack_enabled default ON. Tests: test_v0502_cspack.py (10) with the zoo numbers 
+cross-checked against the real zoo_catalog.json. Rebuilt on the dev chain's v0.510.0 base after the 
+26th+27th collisions (DHARA took 0.502.0, HOOLA CORE took 0.510.0). Registry stays 541. 
+Server-only deploy; old APKs keep working.
+
 ## 🔒 FROZEN BY OWNER — MERA PC / PC OPERATOR / SANTOSH DESKTOP (25 Oct 2026)
 The owner froze ALL Mera PC code and its AI side. DO NOT touch, edit, refactor, "improve", reformat
 or upgrade any of these until the owner EXPLICITLY asks in chat:
@@ -19090,3 +19184,1221 @@ server/app/coder/uiux_tool.py (the uiux_design tool, registry 534 -> 535) + serv
 vetted design catalog: app-interface, charts, colors, icons, landing, motion, products, react-performance,
 styles, typography, ui-reasoning, ux-guidelines + google-fonts and 21 stack files from angular to wpf, with
 LICENSE + PROVENANCE + data-provenance). Tests test_v0486_hoola_uiux_skill.py (theirs). Base: 8f110ee2.
+
+## v0.521.0 DIFY FOR HOOLA — the three verified deltas from the Dify READ, idea-only (2026-11-05)
+
+The Dify READ (1.19.0, modified-Apache with the multi-tenant ban) proved HOOLA already IS most of Dify — so only
+three lanes were poured, each `git grep`-proven missing first: **gyaan annotations** (her approved jawabs before
+retrieval; exact + difflib fuzzy >= 0.92; redaction; 200/tenant), **DHARA ops-grade eyes** (summary + cost on
+every finished run via the run meter, typed pause reasons, step-type versions in the log, retry from the cursor
+under the checkpoint law), and **dhara_dsl** (portable workflow envelopes: secrets-free export, the same hard
+validator on import, lands disabled, webhook re-token). Registry 541 -> 542 (one tool: dhara_dsl). 41 new tests.
+Zero Dify code, zero new pip, zero new keys, zero new outbound. Server-only deploy.
+
+## v0.510.0 HOOLA CORE — the langchain-core feature clone as server/app/aep, P1 of the HOOLA AEP plan (2026-11-04)
+
+The AEP train opens. langchain read end to end at aa2528fb (core 1.7.5 / langchain 1.4.8); ZERO upstream code — the
+feature surface is hand-built: messages (BaseMessage + the 17 content blocks + chunk merge), runnable (invoke/batch/
+stream + `|` composition with Sequence/Parallel/Lambda/Binding/Passthrough, hand-rolled with_retry/with_fallbacks),
+tools (BaseTool/StructuredTool/@tool with hint+docstring schemas and InjectedToolArg), models (BaseChatModel/BaseLLM
+contracts, InMemoryCache, InMemoryRateLimiter, ModelProfile, FakeList fakes), prompts, parsers, history, stores,
+serializable. Inert library — no network, no threads, no config reads, no kill switch (nothing executes unless
+called); the flag law applies from P2 on. Tests test_v0510_hoola_core.py (79) + core sweep 314/314. P2 TRACE is next;
+then P3 GRAPH, P4 AGENT, P5 the 24-middlewares, P6 RETRIEVE, P7 HUB, P8 the parity audit.
+
+## v0.512.0 HOOLA 21ST — the 21st.dev UI catalog door, the 21st-dev/magic-mcp port (2026-11-05)
+
+magic-mcp read end to end at 6b5299e8: Magic MCP is DEAD as a standalone — it is the unified 21st MCP
+(the npm package is a thin stdio→HTTP proxy to https://21st.dev/api/mcp, x-api-key REQUIRED, old Magic
+keys reset; the proxy IS the protocol documentation: one POST per JSON-RPC message, the Mcp-Session-Id
+echo, notifications get no write-back, empty body = error, NOT_AUTHED verbatim, the 401 latch after the
+~100k doomed initialize retries/hour lesson). NEW server/app/coder/magic21.py: ONE magic21 tool, five
+ops (list = entitlement-aware tools/list; usage = get_usage.aiGenerationEnabled; search; get =
+get_component; call = any tool by its CURRENT name, the legacy table carried), the wire stateless per
+turn (initialize → notifications/initialized → the call), the 401 latch process-wide, no key answers
+locally with zero network, ONE attempt drop-don't-wait (20 s), per-tenant rolling-hour window (12 ops),
+REDACTION BEFORE EGRESS on every string leaf of arguments, the STOP-LAW (ai_subscription_required =
+stop, no retries through aliases or the CLI), voice never sees it, NO vault landing (component code is
+a tool result, not a memory). Kill switch coder_magic21 default OFF. THE SEED: skillpack/mg-21st-ui.md
+(the 21st-ui SKILL.md distilled under the 4,000 cap) + skill_packs mg_files()/MG_STAMP/seed_magicpack
+(once-ever, the v0.492 pattern, found by _pack_seeders by name) + magicpack_enabled default ON — the
+library now 65 = 11 starters + 31 byox + 2 prog + 15 sp + 3 fe + 2 cs + 1 mg across SEVEN lanes. The
+upstream repo rides VERBATIM under skillpack/upstream/21st-magic-mcp/ (ISC (c) 2026 21st.dev, LICENSE
++ PROVENANCE; zero upstream code runs in Hoola). Registry 541 → 542 (the docs7 mount shape, count pins
+healed). Tests test_v0512_hoola_magic21.py (34), all network through the mocked _http seam. TWENTY-SIXTH
+COLLISION: rebuilt on the dev chain's fresh base 84b88c6b (v0.511.0 HOOLA CS PACK), re-versioned
+0.511.0 → 0.512.0, both works kept. Base: 84b88c6b.
+
+## v0.522.0 CONSTRUCTION WAVE 1 — the Construction & Real Estate AI employees: records and money end to end (2026-11-04)
+Owner: "WAVE 1 - RECORDS AND MONEY (TIER A, BUILDERS PAY FOR IT AT ONCE): 61, 62, 64, 67, 70, 71, 75, 78, 85, 87, 88, 90, 91,
+92, 98 - EXTEND THE EXISTING THEKA SAHAYAK / SITE SUPERVISOR -------- END TO END", on the plan shipped this week at
+`docs/CONSTRUCTION_EMPLOYEE_PLAN.md`, built on her register now transcribed into the tree at
+`docs/research/building_industry/07_ai_employees_register.md` (123 AI Employees, 15 fields, tier A/B/C + the human gate; from
+the six sourced reports in the same folder - 276 jobs). THE LAW, riding every tool (`construction/gates.py` + the prompt
+block): PREPARE, never CERTIFY - tier C acts (sign, certify, file, approve, accept work, release payment, decide entitlement)
+refuse with the name of the human who does them; every number carries its formula trail; money never moves without her tap.
+
+THE PACKAGE `server/app/construction/` (models registered in db.init_db on day one, the v0.190.1 lesson):
+- `register.py` - all 123 rows as data (id, name, field, tier, the human who decides, wave) + helpers + WAVE1_HOME mapping
+  register #s to the desk that owns each in Hoola. Waves per the register: 1 = 15 rows, 2 = 29, 3 = 23, later = 56. (76 and 97
+  ride Wave-1 desks as parts of them but stay untagged in the register - the owner's list is verbatim.)
+- `gates.py` - 27 tier-C refusals (`tier_c_check`: broad, order-free keyword match on lowercased text; false refusal costs one
+  clarifying sentence, a missed one costs a forged certificate) + the LAW line. Guard rides every const tool action.
+- `statepacks/` - the state-pack law: rules as DATA with clause + source + checked_on + refresh_by; `maharashtra.json` v0
+  carries the DETERMINED rows (GST works contract 18% from 22 Sep 2025, CGST s.51 TDS 2% > Rs 2.5 lakh, Sec 393(1) TDS
+  1%/2%/20% no-PAN, BOCW cess 1% (Code on Social Security 2020, in force 21 Nov 2025) - cross-cited to theka/rules.py's v0.117
+  research - and RERA escrow 70% s.4(2)(l)(D)); the loader validates schema and refuses a STALE pack with a message instead of
+  answering; minimum wages deliberately NOT parked as numbers (they move; her CLabourWage rows carry the source).
+- `store.py` (#61) - lots with min-max, GRN with challan/invoice, issues (waste written off separately), over-issue refused,
+  reconciliation (received vs issued vs on-hand vs wastage %) with DOBARA MANGWAO reorder alerts.
+- `labour.py` (#85/#87/#90) - muster rolls (site/day/contractor/trade/present/absent/OT), licence + BOCW/EPF/ESIC renewal
+  calendar (30-day morning view), wage rates WITH their source (Hoola never supplies a minimum wage from memory), wage-audit
+  working paper (workers x days x rate + OT 1.5x hourly, trail {rate_row, source, ot_rule}), wage_paid records AFTER her
+  payment, cess_tds from the pack (a stale pack refuses).
+- `books.py` (#91) - project-wise book entries (heads labour/material/hire/subcontract/approval/misc/receipt), in/out/balance,
+  unsettled dues, vendor ageing (0-30/31-60/60+) and settle-after-payment. Khata PATTERN from net/khata.py.
+- `customer.py` (#92/#97/#98) - milestone demand DRAFT, the demand-letter PDF (her facts, her interest clause, the signer line
+  empty), demand_send OWNER ONLY, receipts (cumulative -> part -> paid), handover checklist per unit (ready when all items
+  done, handed when keys recorded), DLP tickets with the window arithmetic (possession + agreement months; a closed window says
+  warranty-only), vendor dispatch recorded after it happens.
+- `quality.py` (#75/#76/#78) - ITPs with HOLD points + approve-on-record, NCRs with severity/close-out, material-test lots
+  (the lab result goes in AS REPORTED; verdict pending until a human says it), IS 456 cl 16.1/Table 11 cube-acceptance DRAFT
+  for M20+ (mean >= fck+4, individual >= fck-4; below M20 the sigma route is REFUSED, never guessed), punch list over sitesup
+  snags (never duplicated), the QA morning (open NCRs, pending verdicts, retests due).
+- `meetings.py` (#67) - OAC/site/coord/client/weekly meetings, minutes as said, action items chased late-first (closed on
+  her/PM word), minutes PDF.
+
+THE HUB: `CONST_GROUP = "Construction & Real Estate"` + five hireable employees (`const_store` Saaman, `const_labour` Mazdoor
+Desk, `const_customer` Grahak Desk, `const_quality` Gunvatta, `const_meet` Baithak) with pitches, does and never-lists; the
+already-live Makaan suite (sitesup / theka / propagent) predates the Hub and keeps its own surfaces.
+
+EXTENSIONS OF THE LIVE DESKS: `sitesup action=voice_log` - the VOICE-FIRST daily log (#70/#64): the spoken evening shaped into
+rows by the brain, written through the SAME service paths (progress / attendance / material / snag / toolbox) so every rule,
+card and Theka mirror holds; returns the summary + the five questions still missing. `sitesup_dekho what=variance` - physical
+% by activity with her behind_pct flagging. `theka action=sub` gains rate_basis (naap kaisa), `sub_advance` (advance RECORD,
+paisa hers), `sub_bill advance_recover` (oldest advances recovered first, partial recovery reduces the row and says so),
+`wage_calc` (the wage working paper with the trail), `theka_dekho what=sub`. RA bills (#88) already lived in theka with the
+full deductions chain - trail noted, nothing rebuilt.
+
+VOICE: the 10 const tools join VOICE_VIA_KAAM (heavy desks ride santosh_kaam, never declared to the live call). Prompt block
+added (the construction law + which tool for which ask).
+
+Tests: NEW `tests/test_v0512_construction_w1.py` (26, the v0512 name is the built-on-0.512 birthmark) - register counts/waves,
+gate hits and legit passes, pack schema/staleness/citations, store GRN-issue-reconcile-reorder, labour muster/licence/
+wage-audit-source/cess-TDS, books/ageing/settle, demand->letter->owner-only-send->receipts->paid, handover/DLP window (open and
+KHATAM), ITP/NCR, test-lot human verdict, cube draft + the M15 sigma refusal, punch over snags, meetings chase, voice_log
+through the service paths + the missing questions, variance behind-flag, theka advances recovered oldest-first + partial +
+wage_calc trail, registry 553, tool dispatch end to end, VOICE_VIA_KAAM + Hub rows + version pins. Registry 543 -> 553 (my 10
+const tools; their magic21/dhara_dsl untouched).
+
+THE THIRTY-FIRST COLLISION: this sat built through FOUR dev ships (v0.512.0 HOOLA 21ST took the number, v0.513.0 BD PACK,
+v0.520.0 HOOLA TRACE, v0.521.0 DIFY) while the owner kept the Wave-1 lane moving - REBASE PROTOCOL: the push rejected, the
+rebase hit 173 version-layer conflicts (both chains swept the same pins), resolved on the documented shape: their fresh base
+0650e7ad kept whole (magic21 + dhara_dsl + TRACE + DIFY all in), my construction package rode in clean, the version layer
+re-applied coherently 0.521.0 -> 0.522.0 + +550 -> +551, both works kept, count-pin notes carry every bump. Server-only deploy
+(old APKs keep working); console untouched (desks open from chat and the Hub shows the hire cards; console desk views are a
+later version). NOT VERIFIED live: the first real site evening on voice, the first RA-bill week, the first demand letter - her
+pilot (one contractor, one project, Maharashtra) is the test. Mera PC freeze respected: nothing in server/app/pc/, desktop/
+or lib/ touched.
+
+## v0.531.0 PRAYOGSHALA step 2 — the coding lab wired into the loop
+
+Owner: *"GO STEP 2."* v0.456 built the sealed Docker box and **nothing called it** — which, by this repo's own hard-won
+rule (*"a module's tests passing says it works, never that anything calls it"*), means it did not work yet. This is the
+caller.
+
+**`devsahayak/lab.py`** — one workspace per coding task. `LAB.for_task()` checks the switch (`dev_lab`), that Docker
+answers, and that a command is **declared** (her word / `.hoola/lab.json` / the repo's rules / its CI / a language
+default); a command Hoola merely *read* keeps the lab **shut for that task** with the reason logged, because the rule
+from v0.456 stands — nothing Hoola read runs without her tap. One clone is made and reused for every check in the task
+(the **persistent workspace** the research ranked first for long multi-file work), and deleted in a `finally`.
+
+**Two loop tools**, offered only when the lab is usable:
+- **`run_check`** runs her command on the code **as it is right now**: `overlay = dict(ws.current)` writes every
+  in-memory edit — including brand-new files — over the checkout before the container starts. Without that the lab
+  would only ever test code that is already pushed, which is the whole problem it exists to solve. Optional
+  `only` narrows the run to one test file **when that can be done honestly** (`spec.one_file`: the language's own
+  one-file form, or a trailing path for pytest/jest/go/cargo-style commands) and says so when it cannot, because
+  appending a path to an arbitrary command is how a check silently tests nothing.
+- **`grep_log`** searches the last run's full output (regex or substring, ±context, capped) instead of re-running.
+
+**The duty is stated, not offered** (`loop.lab_block`): write the failing test, run it with `only` and **see it fail
+on the unfixed code** — that failure is the proof — then fix and run again until it passes; if the new test passes
+*before* the fix, the test is wrong and proves nothing; run once with everything in place before `done`; and if a
+check cannot run, say exactly that in `risk` instead of inventing a result or retrying for ever. A setup failure
+answers with **"Do not retry"** in those words, carrying the installer's own output.
+
+**The bug proof moved from her CI to here.** `_lab_proof()` runs the test files alone (must FAIL) then the whole change
+(must PASS), in seconds, and a conclusive verdict **replaces the deliberate red commit v0.447 pushed to her branch** —
+one clean commit instead of a red-then-green pair. Verdicts: `proven_local`, `not_proven_local` (the test passes
+without the fix, so it proves nothing — said on her card and written into the PR), `still_failing` (her check fails
+*with* the change), `odd`, `checked_local` / `check_failed_local` for work with no test to split. The v0.447 CI proof
+is untouched and still runs wherever the lab cannot answer, and the local verdict rides into the gate's card via
+`say_tail` so it survives on a repo with no CI.
+
+**The plan's acceptance criteria are executed.** `Lab.done_when()` runs up to two of v0.451's `done_when` lines that
+are real commands and reports **VERIFIED / FAILED / not performed** with the evidence — ECC's verification-loop rule
+instead of taking the model's word. All of it goes into the PR (`_lab_pr_note` → `### Checked in the lab`) and into
+**v0.445's own review** as `<lab_evidence>` with *"this was MEASURED, not claimed; if it says her check fails or the
+test proves nothing, that is a real problem with this PR — say so."*
+
+**Two real bugs the new tests found**, both the same class: `devlab.safe_rel` and `spec.one_file` normalised a path
+*before* judging it, so `.lstrip("./")` turned `"../../etc/passwd"` into `"etc/passwd"` and it passed the `..` check.
+Both now judge the RAW string first. An overlay path that is absolute, contains `..`, or touches `.git/` is refused
+**by name** (the result lists what it refused), never silently dropped.
+
+**Caps:** 12 checks a task, `dev_lab_timeout` 600s each, the snapshot built on the first check (so a task that never
+runs one costs a clone and nothing more).
+
+**Files:** new `server/app/devsahayak/lab.py`; `devlab/service.py` (`safe_rel`, `write_overlay`, `open_workspace`,
+`run_on`, `close_workspace`), `devlab/spec.py` (`one_file`); `devsahayak/loop.py` (`LAB_TOOLS`, `lab_block`,
+`_lab_tool`, `run(lab=)`, `out["checks"]`); `devsahayak/service.py` (`_lab_proof`, `_lab_note`, `_lab_pr_note`,
+`LOCAL_SAY`, `LOCAL_PR`, the lab in `_work` and `_round`, `push` choosing local-or-CI proof, the own review's
+evidence). Tests `server/tests/test_v0531_lab_loop.py` (15) + the v0.456 suite (19): the shut lab giving the loop no
+tools, `for_task` never raising, the tools appearing with the duty text, **a check running on the edits and not the
+base** (including a new file), a failing check coming back with its END and the log hint, a setup failure telling it
+to stop, the run cap, grep before any check, the local proof replacing the red commit (asserted: **one** commit on the
+branch), a test that passes without the fix being said plainly, done_when verdicts, the own review seeing the
+evidence, an overlay refusing to escape the checkout, honest one-file narrowing, and one clone + one snapshot across
+two checks. 102 pass across every Developer Sahayak suite.
+
+**NOT VERIFIED:** `dev_lab` is still **False**, and `lab_check` has not been run on her VPS, so no container in this
+version has ever started. Every lab path here is tested through a scripted `FakeLab` or monkeypatched `box` calls.
+The order she should take: run **`lab_check`**, read it for `GADBAD` / `KHATRA`, then turn `dev_lab` on and give
+Developer Sahayak one real bug.
+
+## v0.532.0 PRAYOGSHALA fix — the lab could not have built its image on her VPS
+
+Found while writing the deploy commands for her, not by a test: she pastes from `~/santosh_app`, the deploy copies
+**`server/app` only** into `~/apps/santosh-core/`, and `box.DOCKERFILE` was
+`Path(__file__).resolve().parents[3] / "deploy" / "devlab" / "Dockerfile"` — which from
+`~/apps/santosh-core/app/devlab/box.py` resolves to `~/apps/deploy/devlab/Dockerfile`, a path that does not exist.
+The very first `lab_check` would have answered **"Dockerfile nahi mili"**, after 35 green tests in the sandbox.
+
+Fix: the Dockerfile text lives in `box.DOCKERFILE_TEXT` (a raw string, so the `\` line continuations survive) and
+`build_base()` writes it into a temp folder and builds from there, so it works from any path and the image always
+matches the code that is running. `deploy/devlab/Dockerfile` stays as the readable copy; two new tests keep them
+honest — one asserts they are byte-identical (and that the continuations survived the embedding), one builds with the
+disk copy deliberately missing and checks the text handed to `docker build` is the embedded one.
+
+**Rule for this repo:** a path built from `__file__` must be checked against `~/apps/santosh-core`, where the code
+actually runs, not only against the repo layout. Anything outside `server/app` is not deployed.
+## v0.534.0 CAD DESK KI JAANCH (built as 0.531) - is the CAD engineer alive on HER server? (5 Nov 2026)
+Owner: "IS ALL CAD AI WORK DONE". The honest answer was no - the code was done, the proof on her own machine was
+not. Every other desk can be asked from the VPS (game_check, architect_check, lab_check, auth_check, mospi_check);
+the CAD desk had nothing. All it could say was `health()`, and that only reported whether THREE libraries imported.
+
+- `app/engineering/selfcheck.py` + `python -m app.engineering <check|libs|health>` + vps-ops **cad_check** /
+  **cad_setup**. The check does not import libraries and call that proof: it BUILDS three real parts through the
+  same sandbox a real job goes through, runs the studies on them, and prints one line per stage - `live` with the
+  number it measured, or `DEAD` with the reason. 33 stages: 9 libraries (each naming what she loses without it),
+  the box's python + network isolation, a bracket (bbox, volume, faces, STEP/STL/GLB/3MF/DXF, H.expect, DFM,
+  hidden-line views), stress, buckling, past yield, G-code, the gear pair (real hobbed root + ISO 6336 bending /
+  pitting / contact ratio), the mechanism (joints, ranges, URDF/SDF/MJCF/SRDF checks), the MuJoCo move (hardest
+  worked motor, cam shaft torque, loop gap), friction, cam contact (spring / Hertz / jam), the cam designed from
+  the motion, the dimensioned drawing PDF, the charts, all nine hand calculations, the agent's tools and the
+  designer's guide. No model is called, so a run is free; ~80 s with `--quick`, ~3-5 min full.
+- SOFT vs HARD: `mujoco`, `matplotlib` and `pyamg` fail QUIETLY - the part still builds and the answer just stops
+  carrying the motion numbers, the charts or the fast solver. Those report WEAK, not DEAD, and the verdict says
+  "chalega, but degraded". A missing cadquery or scikit-fem is DEAD and the run exits non-zero.
+- `service.health()` now names every library, which are missing, which losses are quiet, and one `ok`; the desk's
+  own route `/api/eng/projects` carries it, the way the game / blender / architect desks already did.
+- WHY IT EXISTS: this has already bitten her once. Every test here was green while her own server answered
+  `fea false` - the stress engine was simply not installed. `mujoco`, `matplotlib` and `reportlab` can each do the
+  same thing silently, and three of them were installed by hand in a deploy command.
+- WHAT ITS FIRST RUN FOUND, in itself: two of its three DEAD stages were the CHECK's own mistakes - its script
+  called `H.hole(plate, 10, (20,0), depth=None)` when `H.hole(m, kind)` returns a DIAMETER (the guide was right),
+  and it read `clearance_min_um` / `load_factor` when calc returns `clearance_mm` / `load_factor_C`. The third was
+  a weak test, not a defect: every joint in its machine turned about the VERTICAL axis, so gravity never loaded
+  anything and the cam shaft honestly came back at 0.0 N·m. The machine now swings an arm about a horizontal axis
+  against gravity with a payload (0.99 N·m at 509 deg/s), and the line reports the hardest-worked motor plus the
+  cam torque instead of row 0. A false alarm is worse than no check, so all three are pinned by tests:
+  `guard.check` must accept its own scripts, the bracket must really build with H.expect PASSING, and all nine
+  calculator kinds must answer with their real keys.
+- Run here: 32 live, 0 dead, 1 skipped (`--quick`) of 33.
+- Tests `test_v0458_cad_check.py` (10).
+
+## v0.535.0 PRAYOGSHALA ON — the lab is live, because her own VPS proved it
+
+She ran `lab_check` on the VPS and **every wall held**, pasted verbatim:
+
+```
+docker: ok 29.8.1
+base image hoola-devlab:base: NAHI bani
+  build: ok (146.1s)
+ek pass hone wala test: exit 0 (1.9s) - ok
+ek fail hone wala test: exit 1 - ok, aur fail ka ant dikh raha hai
+network band hai: ok (box bahar nahi pahunch saka)
+root filesystem read-only hai: ok
+box ka user: 1000 (ok, root nahi)
+lab images: 1 (hoola-devlab:base 1.54GB)
+```
+
+No `GADBAD`, no `KHATRA`. The box builds, runs her code, catches a failure with its END visible (the v0.456
+failure-first contract working on real output), cannot reach the network, cannot write to its own root, and is not
+root. So `dev_lab` flips to **True** and everything v0.531 wired becomes live: a coding job clones the repo once,
+writes its in-memory edits over that checkout, runs her declared check in seconds, proves a bug **red-then-green
+locally** instead of pushing a deliberate red commit, and **executes** the v0.451 plan's `done_when` lines.
+
+**`.hoola/lab.json` in this repo** — the one place a repo can declare its commands outright, so the lab needs no tap
+here: `setup` = `python3 -m pip install --user -r server/requirements.txt`, `test` = `cd server && python3 -m pytest
+-q -p no:randomly`, `timeout` 900. A test asserts the file parses through `spec.discover` with `confirm=False` and
+that neither command is refusable — so the repo's own declaration cannot rot.
+
+**vps-ops `lab_try`** runs that exact path on her own repo end to end: clone `santosh-app`, install its dependencies
+once with the network on (committed as a cached image snapshot), then a real slice of the suite with **no network**.
+It is the road a coding job takes, minus the model — the honest live proof that the box can run *her* code, not just
+a two-line fixture.
+
+**Disk, said plainly:** the base image is **1.54 GB** and every repo adds its own dependency snapshot on top.
+`lab_prune` keeps the newest 12 and never drops the base; `lab_images` shows what is there beside `docker system df`.
+
+**One test rewritten to the new truth:** `test_the_lab_is_shut_until_she_turns_it_on` asserted the switch-off reason,
+which is no longer what `ready()` says — it now speaks about the **box**. It became
+`test_the_switch_and_the_box_are_two_separate_doors`: switch off → the reason names `dev_lab` and `lab_check`; switch
+on with Docker absent → the reason names docker. A shut lab always says *which* door is closed.
+
+**92 pass** across every Developer Sahayak suite on this commit.
+
+**What is still unproven, and it is the only thing left:** no model has used the lab yet. `lab_try` proves the box
+runs her repo; the first real coding job proves Hoola *uses* it — the plan gate asking her Haan, `run_check` going red
+then green, the self-review reading the measured evidence, the PR carrying it. That job needs the Anthropic credit.
+
+
+
+## v0.536.0 (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026
+Owner: "CONTINUE TO OUR MOAT GAME WORK". The last two "fix first" items of the moat plan. New
+`server/app/gamedesk/provenance.py`, tool `game_provenance`, console Game Desk > "Where it came from".
+
+### Why it was the highest-leverage item left
+The moat research named provenance "the single highest-leverage thing to build, because it converts an unanswerable
+legal question into a declarable fact", for two reasons that land on the same missing record:
+1. **The stores ask, and SHE signs.** Steam's Content Survey asks the publisher to declare "any kind of content that
+   ships with your game and is consumed by players" made with AI, and separately whether the game generates content
+   WHILE RUNNING (that one carries a guardrails obligation). Unity's Asset Store wants the same disclosure; Fab wants a
+   `CreatedWithAI` tag. Completing Steam's survey is HER promise to Valve, checked in pre-release review - and she
+   could not make it honestly, because nothing recorded which model made which file.
+2. **AI output may not be hers at all.** USCO Jan 2025 Part 2: prompt-only output is not copyrightable. India's
+   Copyright Act s.2(d)(vi) asks for the human who "causes the work to be created", and the Copyright Office rejected
+   an AI as author in 2026. So a game made mostly of generated assets may have little in it she can enforce. What IS
+   protectable is human creative selection, arrangement and modification - every one of which Hoola was ALREADY
+   recording (her approvals, her rejections, her uploads, the decisions log with `by="her"`) and had never collected.
+
+### What was added
+- **The model is written down.** `ai.py` gains a thread-local record (`_mark` / `used()`): `ask` and `ask_with_images`
+  mark the model that actually answered, and a FALLBACK to the cheap brain is named as one, because it is a different
+  model. Thread-local because builds run in parallel, and `used()` clears, so a caller records exactly its own call.
+  `service.py` writes `models` onto each build's version row. A build from before this says so instead of guessing.
+- **Three things that are never merged**, because merging them would put a false statement on her survey:
+  GENERATIVE (photogen / lyria / tts - what a store asks about), CODE-MADE (a sound from `sfx.py`'s preset + seed, a
+  Blender-scripted mesh - arithmetic, no model), and HER OWN uploaded files (hers, and her copyright). The
+  classification is read from `assets.KINDS[kind]["source"]` as declared in code, never from a prompt.
+- **Only what ships counts.** The record follows `approved`, not `created`: an asset made and never approved is in no
+  build, so it is on no survey, and the count of those is printed.
+- **Live-generated = a plain No**, as a fact: the game calls no model while it runs (HoolaRuntime talks only to its own
+  play-link host and the play page's CSP allows nothing else), so Valve's guardrails obligation does not apply.
+- **The judgement call is printed, not decided.** The game's own GDScript: Valve's Jan 2026 rewrite exempts AI dev
+  tools such as code assistants and code is not "consumed by players" the way art is - but a game whose code a model
+  wrote start to finish is not plainly that case. BOTH readings are shown and the answer is "You do. Hoola will not
+  answer this one for you." Nothing anywhere claims the declaration is correct (a test greps for that).
+- **The human record** collects her decisions, the asset versions she chose between, what she rejected, what she
+  uploaded and the tasks she asked for - with a THIN WARNING when there are fewer than five such acts, because then
+  there may be little in the game that is protectable. Creating the project is itself logged as her act, correctly.
+- **The under-18 rule, said out loud** (`runtime.UNDER_18`, in `runtime.settings` and the live-ops dashboard): DPDP
+  s.9(3) forbids tracking, behavioural monitoring and targeted advertising for ANYONE UNDER 18, no consent unlocks it,
+  exposure to Rs 200 crore, and "child" means under 18 not under 13 - which is WHY telemetry is off by default, refused
+  for a children's game, asked per player and never carries a device id. The one narrow exception is named: an
+  educational institution monitoring for its own educational activities or the safety of enrolled children.
+- Routes: GET /api/gamedesk/provenance/{sid} and /steam. Tool actions: sheet / steam / disclosure / human.
+- Tests: `server/tests/test_v0455_provenance.py` (9), each pinning a way the record could lie - thread isolation and
+  the named fallback, code-made never counted as generated, an unclassifiable source named not guessed, her own file
+  counted as neither, made-but-never-approved off the survey, the judgement call carrying both readings, and no claim
+  of correctness anywhere in the output.
+- NOT VERIFIED: no real store survey has been filled from this, and it is not legal advice. The classification is only
+  as good as the `source` each asset kind declares; an asset whose source Hoola cannot place is NAMED rather than
+  guessed at, which is the honest failure.
+
+---
+
+## v0.537.0 — CRAWL BRAIN: the crawl4ai ideas, hand-built and wired
+
+Owner read `github.com/unclecode/crawl4ai`, asked **"NOW TELL ME WHAT CRAWL4AI CAN DO THAT HOOLA CANNOT"**,
+then **"give this all to hoola ai"** and **"GO WIRE IT ALL"**.
+
+### Why none of its code is here
+
+`crawl4ai/html2text/` is a **vendored fork of html2text** declaring upstream's own release `2024.2.26`,
+with **no copyright line and no licence header**. Upstream html2text is **GPLv3** — *"Originally written by
+Aaron Swartz. This code is distributed under the GPLv3"*, with a GNU GPL v3 `COPYING`. Both
+`markdown_generation_strategy.py` and `utils.py` import that fork, so **every page-to-markdown conversion in
+that library runs through GPL'd code inside an Apache-2.0 repo.** `agent/crawl_jobs.py` already keeps
+Firecrawl's AGPL engine out of this tree for the same reason. So the published algorithms were
+re-implemented from their formulas and measured. Credited in `THIRD_PARTY_NOTICES.md`.
+
+### The eight things it could do that Hoola could not
+
+| | New module | What Hoola had |
+|---|---|---|
+| 1 | `enough.py` | FIFO crawl, stops on a page cap, never because it has the answer |
+| 2 | `prune.py` | markdown, but no pruning — nav/banners/ads spent the 24k budget |
+| 3 | `frontier.py` | `queue.pop(0)` + a same-host check |
+| 4 | `seed.py` | `scrape_map` fetching 8 pages for links |
+| 5 | `tables.py` | nothing — tables arrived flattened |
+| 6 | `chunks.py` | chunking elsewhere, none for page text |
+| 7 | `blocked.py` | block detection + stealth escalation, but no vendor names |
+| 8 | `proxies.py`, `steps.py` | no proxy support; clicks driven turn-by-turn |
+
+**Item 1 is the one that matters.** `confidence = 0.4 coverage + 0.3 consistency + 0.3 saturation`, stop at
+0.70. On four pages that answer a question it **stops at page 3 instead of spending 20**; on irrelevant
+pages it never claims "enough" and exits as *"stalled: three pages moved confidence by +0.029"*.
+
+**Item 2, measured:** on a realistic page it keeps **57% of the text** and loses the cookie banner, nav,
+sidebar, advert and footer, while keeping the phone number and the content.
+
+### Wired, because modules nothing calls are the v0.389 trap
+
+`scrape_page` gained `clean` / `about` / `chunk`; `scrape_map` gained `sources="sitemap[,common_crawl]"` and
+`newer_than`; **new tool `scrape_tables`** (registry 554 → 555); `crawl_start` gained `question` (frontier +
+stopping rule — without a question the crawl behaves byte-for-byte as before); `_blocked` delegates to the
+vendor tiers after its own checks pass; `_fetch` rotates proxies behind the new `scrape_proxies` setting;
+`scrape_stealth` takes a `steps` script.
+
+`test_every_crawl_module_has_a_caller_outside_its_own_package` encodes CLAUDE.md's rule as an assertion —
+and **caught `chunks`, `proxies` and `steps` with no caller at all.** Built, tested, dead.
+
+### Ten bugs found by measurement, not reading
+
+1. **BM25's idf collapses when every page agrees**, so coverage scored *lower* the better the pages matched
+   — four pages stating the same GST rate stalled at 0.633 and would have spent the whole budget.
+2. Consistency used **Jaccard**, which divides by the union, so pages agreeing on every fact but differing
+   in length scored ~0.33 for ever. Overlap coefficient now.
+3. The chrome signal was **10% of the score**, so a wordy cookie banner *and* a promo advert both survived.
+   A hard gate now; a content word in the attribute vetoes it.
+4. Tier-2 block detection gated on **HTML bytes**, so a 5 KB article about Cloudflare was flagged as a
+   challenge on the words "bot detection". It gates on **visible text** now.
+5. Comment stripping cut at the first `#`, so `TYPE "#q" "cement"` became `TYPE "` — **every CSS id selector
+   broke.**
+6. A selector carrying a quote was silently **truncated** rather than refused.
+7. `json.dumps` does not escape `/`, so a value containing `</script>` would have closed the tag.
+8. The steps script went into the `scrape` waterfall, which has no such variables in scope — a **NameError
+   on every auto-mode scrape**.
+9. `get_settings` is imported per-function in `scrape_tools`, so two new uses were NameErrors.
+10. An off-topic link could outrank an on-topic one on **novelty alone**.
+
+### Deliberately not built
+
+Recorded in `app/crawl/__init__.py` so a later session cannot "complete" them by accident:
+
+- **robots.txt `Disallow`-mining as a URL-discovery source.** crawl4ai's `DomainMapper` offers it — reading
+  the file where an operator wrote down what they do not want crawled, and using it as a map. Hoola reads
+  robots.txt to **obey** it; `scrape_respect_robots` stays `True`.
+- **Minting rotating residential proxies** from a provider API (`set_nstproxy`). Whether Hoola pays to get
+  through a site that said no is the owner's call, not a default.
+- **Upstream's `authority` link weight**, which is 0.2 of its score and hard-coded to 1.0 with the real
+  calculation commented out — a fifth of that ranking is inert. The two live weights are renormalised to sum
+  to 1.0, keeping their exact 5:3 ratio, and a test pins that.
+- **An `EVAL` verb** in the step DSL. A DSL that can run arbitrary JS is just JS with extra steps.
+
+### Also worth knowing about crawl4ai itself
+
+- `crawlers/amazon_product/crawler.py` **returns a hard-coded string** — `{"product": {"name": "Test Amazon
+  Product"}}` for any URL — while advertising `version 1.2.0`, `tested_on: ["amazon.com"]`.
+- `cloud_notice.py` prints a promotional banner on first crawler start and again whenever a page is detected
+  as blocked. No telemetry, no HTTP, print only; kill switch `CRAWL4AI_NO_CLOUD_NOTICE=1`.
+- **No CI runs its test suite** — 2,016 test functions, and the only automated gate on push is a
+  Docker-security subset.
+- `check_robots_txt` **defaults to `False`**.
+
+### Files
+
+New: `server/app/crawl/` (10 modules), `server/tests/test_v0537_crawl_brain.py` (54),
+`server/tests/test_v0537_crawl_wired.py` (15).
+Changed: `agent/scrape_tools.py`, `agent/crawl_jobs.py`, `config.py` (5 settings, all neutral by default),
+`THIRD_PARTY_NOTICES.md`, and `test_v0474_scrapling.py::test_registry_wired` (a conscious bump for the new
+tool, which is what that pin is for).
+
+**Not verified:** no live site has been crawled with any of this — the tests drive mocked fetches, and
+`scrapling` is not installed in the sandbox so the existing lane's own suite is red there on untouched code
+too (16 failures reproduced on the pre-change tree). The first real crawl with a `question` is what will
+show whether the stopping rule fires where it should on live pages.
+
+## v0.538.0 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed; checkpoint "5,000-product marketplace, load test passed")
+Owner: "GO STEP 6". New `site/catalog.py`, `site/speed.py`, `site/loadtest.py`, `site/assets/hoola-catalog.js`.
+- IMPORT: CSV / TSV / Excel / JSON file (25 MB, 50,000 rows, 60 columns), her Google Sheet (`sheets.service.resolve/load`, her
+  own Google login) or a dataset (`datasets.load`: data_fetch, an ERP read saved as data). `guess_mapping` = title / key (SKU /
+  ID / code, else the title) / price (incl. rent / fees) / photo / description / stock / seller + up to 6 filter columns
+  (2-60 distinct values, filled >= 50 %); her mapping overrides, a wrong column is named. `preview` writes NOTHING (pending
+  JSON keyed by a hash): new / changed / same / rejected with row + reason, thin + duplicate counts, sample addresses.
+  `apply(hash, replace)` = her tap; items matched on their key, an item's address never moves once given, replace HIDES.
+  Tables `site_catalog` (one list: label + spec) and `site_catalog_item` (key, slug, data, img, img_meta, q, dup_of, live).
+- QUALITY GATE: duplicate = same content signature as an earlier item (title + every value) -> noindex,follow + canonical to
+  the original; thin = under 20 words and no photo -> noindex,follow; both shown to visitors, both out of the sitemaps.
+- PAGES BY CODE (`catalog.write` from `build.assemble`): item page = her designed template for that list (plan page
+  `<list>-item`) else a code-made page (photo, price, description, details, "More: <filter> <value>" family links) + the
+  shop's Add to cart; listings of 48 with numbered pages (`/<list>/page/N/`), page 1 = her designed page for the list when
+  the plan has one; the filter bar (search, filter columns with counts, price min / max, sort) runs on the static site from
+  `assets/catalog/<list>.json` (rows [slug, title, price, price text, 320 px photo, filter indexes]) fetched on first touch,
+  URL keeps the filter; split sitemaps (`sitemap.xml` = index, `sitemap-pages.xml`, `sitemap-<list>-<n>.xml` <= 45,000).
+  Alternate languages carry no catalogue (her first language only). `shop_grid` points to the lists instead of 5,000 cards.
+- PHOTOS: her uploaded photo by name or an https address, fetched ONCE (`connect._guard_host` = no private / internal
+  address, image content-type, 10 MB, 40 MP), `photo_set(widths=320/640/1024)` AVIF + WebP + JPEG, cached by content hash in
+  `catalog_img/`, hard-linked into each build; one photo run per site at a time; console "Fetch waiting photos" resumes.
+- W10 SPEED: `speed.precompress` (gzip level 9, mtime 0, every text file >= 1 KB, not in her ZIP), nginx `gzip_static on` +
+  `stale-while-revalidate` cache headers (a CDN keeps serving), `speed.budget` = every page vs 100 KB HTML (warnings with
+  the page), checks flag CLS > 0.1 and open each list's page 1 + 2 + two items in the browser (`checks.catalog_slugs`).
+  Measured in the test: 5,000 products -> 5,111 pages built in ~4-5 s, largest page well under 100 KB.
+- SHOP: products up to `site_shop_max_products` (20,000); `site_shop_day_cap` / `site_shop_ip_cap` settings; a seller column
+  links products to HER approved sellers (unknown / unapproved = stays hers); FIXED two defects the load proof was written
+  to catch: order numbers were count+1 (two checkouts at the same moment could both be O-1001) -> unique index (site_id,
+  number) + savepoint retry; a retried checkout made a second order -> `cid` per checkout (hoola-shop.js) + unique index
+  (site_id, cid), the twin returns the first order (stock taken once, coupon given back).
+- LOAD PROOF (`loadtest.run` + `verify`): visitors read listing / item pages / the index from the built files, buyers check out
+  through the API from many addresses, 40 % on one product with 25 left, every 4th checkout sent twice at once; verify = no
+  lost / double order, unique numbers, stock never < 0 and equal to what orders took, no 500. Local (SQLite, 2 workers,
+  300 visitors / 150 buyers): passed, 105 orders, 37 retried pairs each ONE order. CI `app-load.yml` runs it at 2,000 / 600
+  with 4 workers on Postgres.
+- CHAT: `website action=catalog` + coll + sheet / dataset = a PREVIEW only; Apply stays her tap (console Catalogue card).
+- Tests `tests/test_v0534_bada_catalogue.py`.
+- PART 2 HOOLA CMS (`site/cms.py`, `static/cms/index.html`, console `teamBox`): tables `site_cms_member` (email, role
+  writer | editor | publisher, PBKDF2 password, invite hash + 7-day expiry, gen, status invited | active | removed),
+  `site_cms_draft` (post: title / markdown / excerpt / category / target = a live post's slug or new; page: ops
+  [{key, e, op text | link, value, was}] = only the elements `edit.tag` numbers, checked against `page_texts`), and
+  `site_cms_rev` (before / after JSON, who, publish | restore). Team login = an HMAC token "cms|" (12 h, the member's gen:
+  removal or a role change ends it); `/api/site-cms/<site>/...` accept / login / home / page/<slug> / post/<slug> /
+  drafts / move / history / restore; her side `/api/sites/<ref>/cms*`. States draft -> review -> approved | returned (with
+  a note) -> published | scheduled (worker `cms.tick` beside blog_tick); an editor never approves their own draft, only an
+  approved draft is published (her own tap may publish any). Publish: a post through `blog.put` / the live post updated in
+  place; a page's ops applied to the CURRENT section html, an element whose text / link changed since the draft is skipped
+  and named (all skipped = 409, nothing written); then `_blog_rebuild(live=True)` (new checked version, live when her
+  address showed the version before). Restore = what was before, as a new revision (a revision that CREATED a post hides it).
+  The team page: CSP (no outside anything), no-referrer (the invite never leaks), noindex, frame-ancestors none.
+  Tests `tests/test_v0534_hoola_cms.py`. NOT built: 2-step login for the team, photo upload by the team (they pick from
+  her site photos only via her), Cloudflare setup on her domain, per-site Postgres for big data.
+
+## v0.539.0 PRAYOGSHALA SACH — the lab could not install anything, and her own first live run said so (owner: "LAB_TRY DONE, CHECK RESULT")
+
+`lab_try` (vps-ops run 252, 5 Nov 2026) came back in nine seconds:
+
+```
+setup command poori nahi hui
+  stage: setup
+---- setup output
+error: externally-managed-environment
+× This environment is externally managed
+```
+
+**Defect A, the one that spoke.** Debian marks its system Python *externally managed* (PEP 668), so **any** `pip
+install` without `--break-system-packages` is refused — which is every Python repo's own declared command, not just
+ours. The image already used that escape hatch for its own pytest install, which is exactly why nobody noticed it
+would bite the repo's command. A container **is** the virtual environment, so the marker now comes off once in the
+image (`rm -f /usr/lib/python3*/EXTERNALLY-MANAGED`) and a repo's real command runs unrewritten. The alternative —
+Hoola silently rewriting her declared command — would have made the lab lie about what it ran.
+
+**Defect B, the silent one behind it, which would have bitten next.** The setup step ran with `--read-only` root
+**and** `--tmpfs /home/lab`, and `docker commit` keeps **neither** a read-only layer's writes nor a tmpfs. So even
+had pip been allowed, every installed dependency would have been thrown away, the snapshot tag would still have been
+created and reported `snapshot_cached: true`, and every later check would have failed on missing imports — fast,
+cached and wrong, the worst shape a failure can take. There was no location in that container where an install could
+survive.
+
+**The fix, one coherent change in `devlab/box.py`:**
+- `_limits(network, writable)` — `writable` is true for the **setup** step alone, and only because a sealed step
+  cannot leave anything behind. It drops `--read-only` and the `/home/lab` tmpfs; every other wall stands (uid 1000,
+  `--cap-drop ALL`, `no-new-privileges`, memory / cpu / pids caps, and no secret can ride in).
+- **Writability is DERIVED from `commit_to` and cannot be asked for** — `run_in` has no `writable` parameter, so no
+  caller can unseal a check by passing a flag. A test pins the signature.
+- A CHECK keeps read-only root and `--network none`, and `/home/lab` is **no longer masked** by a tmpfs — that
+  masking is what threw the snapshot away. `HOME=/tmp/home` (inside the one tmpfs) gives a writable home,
+  `PYTHONUSERBASE=/home/lab/.local` + that dir on `PATH` keep a `pip --user` repo importable, and `run_in` creates
+  `$HOME` before the command.
+- The image carries `LABEL hoola.devlab.rev`, `box.base_rev()` reads it with `docker image inspect` (no container),
+  and `available()` reports `base_stale` with the fix in her words. `lab_check` now **rebuilds from scratch** when
+  the image is older than the code reading it instead of using it quietly — her VPS is holding the pre-v0.539 image
+  right now. `python -m app.devlab setup --rebuild`, and vps-ops `lab_setup` passes it.
+- `.hoola/lab.json` setup is now the plain `python3 -m pip install --no-warn-script-location -r
+  server/requirements.txt` — the command any reader would write.
+
+**The self-test grew the two stages that would have caught all of this before she ran it**: a repo's own
+`pip install` really works with the network on, and what it installs **is still there after the commit** (installs
+`tabulate`, commits, then asks the committed image to import it, then forgets the throwaway tag). Both say GADBAD
+with the real output when they fail.
+
+Tests: `test_v0456_devlab.py` +4 (setup-may-keep / check-still-cannot with every wall asserted by name, no-caller-can-
+unseal, the image lets a repo run its own pip command, a stale image is named and rebuilt not used quietly) and the
+new selftest stages pinned by source. 90 green across the lab and Developer Sahayak suites
+(`test_v0456_devlab`, `test_v0531_lab_loop`, `test_v0445_khud_review`, `test_v0447_saboot`, `test_v0451_plan_pehle`,
+`test_v0371_poochh_lo`, `test_v0377_dekh_ke_review`, `test_tech_devsahayak`, `test_v0351_pakka_saboot`,
+`test_routines`).
+
+Healed on the way, all RED on pristine `origin/main` before this change (the v0.536 ritual missed two pin forms):
+the console stamp pins in `test_v0179_search` / `test_v0221_console_r1` / `test_v0475_console_frames` still read
+0.487.0 while main's console carries 0.536.0 x21, and thirteen suites pinned the full string
+`version: 0.535.0+558` / `APP_VERSION = "0.535.0"`.
+
+Version 0.537.0 (pubspec 0.539.0+562, pins swept across 169 + 13 suites; console stamps stay at main's 0.536.0 x21 —
+server-only release). Mera PC freeze respected: nothing in `server/app/pc/`, `desktop/` or `lib/` touched.
+
+**Her VPS must run `lab_setup` (it now rebuilds) before `lab_try`** — the image on it is the old one.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has never passed. The two defects above are fixed and unit-tested,
+but the only thing that proves the box can run her code is the run itself, and no model has used the lab yet.
+
+**RULE recorded:** a step whose output must survive cannot be sealed the same way as a step whose output must not.
+`docker commit` keeps neither a read-only layer nor a tmpfs — a cache that is written where it cannot persist reports
+success and serves nothing.
+## v0.540.0 (built as 0.531.0) JAANCH + DHEERE CHHODO — App Sahayak Pillar J, Phase 61 (5 Nov 2026)
+
+Owner: "START PILLAR J". Pillars A–I made her apps do more. This is the first answer to *is it actually all right*
+that is not her using the app and finding out.
+
+### 1. Scenario tests, per user story
+
+Opus writes them as **data**, not prose: a closed set of eight verbs (`signup`, `create`, `read`, `open`, `set`,
+`assign`, `rate`, `fn`), each naming a real list, field, status or role of HER app. `quality.check()` refuses
+anything the app has not got — an invented list, an invented field, an unknown verb, an actor who never signed up —
+so the model cannot write a test for an app that does not exist. Then `run()` **plays** each story over HTTP against
+a real server: sign up, create, read the list as somebody else, change status, assign, rate.
+
+Any step may carry `must: refused`. **That is the privacy test, and it is the reason this exists**: a refusal that
+does NOT happen is reported as a failure. "Another customer opens her order" is one line of a scenario and the
+difference between a shop app and a data leak.
+
+A story stops at its first broken step (the rest is noise), and a step that could not run is `not_run` — never a
+pass. The verdict counts only what really ran.
+
+### 2. The twin — her live app is never the test fixture
+
+A scenario makes accounts and writes rows. `twin()` makes a hidden copy of the app — same lists, same brain, its
+**own** app_key and its own data space — and every run wipes it first. It is never built, never published, never in
+her app list. `wipe()` refuses outright if it is handed anything but a twin, and a test proves a row in her real app
+survives a wipe of the twin.
+
+### 3. Every rule and formula, through the real engine
+
+Each rule gets a case that must pass and a case that must be refused, and the **engine** decides (`check_rules`,
+`compute`) — not the case author. A rule whose "bad" case sails through is reported as a failure: *"galat row bhi
+chal gayi - yeh rule kisi ko rokta hi nahi"*. v0.382's own function tests are folded in rather than rewritten.
+Coverage is counted and the uncovered rules are **named**, because a suite that quietly skips things is worse than
+none.
+
+Found by these tests, in this module's own code: `n = int(case.get("n") or -1)` threw away rule number **0** — the
+first rule of every app — silently, for ever. A check that only ever reports "nothing to do" reports nothing.
+
+### 4. Load, on the twin
+
+v0.390's load engine pointed at the twin: hundreds of customers at once, p50 / p95, the error codes, the oversell
+check. Asked for explicitly — it makes hundreds of accounts, so it is never a side effect of "check my app".
+
+### 5. ANRs — a fault the generated apps could not report at all
+
+The generated apps only ever caught JVM crashes, so an app that **froze** reported nothing: the user saw a dead
+screen and the owner saw silence. `CrashGuard.readExitReasons()` now reads Android's own exit records (API 30+) for
+ANRs and native crashes — faults no Java handler can ever see — and the screen is kept on disk so a record read on
+the *next* start still knows where the user was. The server keeps the `kind`, groups an ANR separately from a crash
+with the same trace, and says it in her words: *"JAM ho gayi (ANR - screen hil hi nahi rahi thi)"*. Two defects that
+look alike in a list are two defects nobody fixes.
+
+### 6. Staged rollout — and the honest sentence about it
+
+A production release goes to 5 % of users, then 20, 50, 100, **each step her tap** (production is public; v0.330's
+rule stands). `halt` needs no tap, because stopping damage should not wait for anyone. `rollback` puts the previous
+build back, and says the true thing rather than the comfortable one: **Play cannot take a version off the phones
+that already have it** — stopping holds back everyone else, and the old build becomes those phones' next update.
+
+### 7. Feature flags — the only rollback that works in minutes
+
+A switch on the SERVER, in the app's schema, read on the phone's next call: no build, no review, no download.
+Anything risky ships behind one. Who gets a half-rolled-out feature is decided **on the server** by a stable hash of
+the member id, so a user never flips between on and off, one user's answer cannot change another's, and the app
+cannot award itself a feature it was not given. An unknown switch reads OFF.
+
+### What is where
+
+`server/app/appmaker/quality.py` (the four checks + the twin + the card), `rollout.py` (staged release + flags),
+kits `Flags.kt` / `Flags.swift`, `CrashGuard.kt`; routes `/api/apps/{ref}/jaanch[/{what}]` and
+`/api/apps/{ref}/rollout[/{what}]` (two segments — v0.455's lesson about the `{action}` catch-all, with a test);
+tool `app_banao action=jaanch|flag|rollout` + `app_dekho what=jaanch|rollout`; console **Jaanch** box; phone
+`lib/ui/app_jaanch.dart`. Tests `server/tests/test_v0540_jaanch.py` (16), in `app-load.yml`.
+
+The tool can read the rollout and can `halt` it, and is refused `start` / `advance` / `rollback` — Hoola does not
+push a build to her users; she does.
+
+### Also fixed on the way
+
+The console cache stamps had been frozen at `0.487.0` since v0.485, which two tests had been failing about ever
+since (`set(app) == {APP_VERSION}`). They follow APP_VERSION again, and the count those tests pin moved 20 → 21,
+which is what v0.485 made true when it added `skills.js`.
+
+### Not built, said plainly
+
+Staged rollout is **Android only** — App Store Connect has phased release, and it is not wired here. The scenario
+runner speaks the app-api, so payments, live tracking and chat are not covered by a story yet. `run_all` writes a
+gate verdict but **nothing blocks a store upload on it** (v0.455's security gates do block); wiring that is a
+decision about her workflow, not a line of code. And the checkpoint this pillar is supposed to end on — *all proof
+apps green* — is **not met**: no proof app exists, and none of this has run against one.
+## v0.541.0 GOOGLE ADS 2 (ad plan A2, built as 0.425) - 2 Nov 2026 (shipped with SEO INTEL)
+Owner: "GO A2" (from the India ad-market report: A1 Meta one-tap, A2 Google beyond YouTube).
+- **Why:** v0.401 used her Google Ads link only for YouTube (Demand Gen). Search and Performance Max are what Indian
+  shops actually buy on Google, and both need nothing new from Newtika: same OAuth, same Cloud project access (Basic).
+- **Search** (`ads/gads.py`, kind `search`): keywords (phrase match, 1-20), not-these words (campaign negatives, broad),
+  responsive search ad (3-15 headlines of 30, 2-4 descriptions of 90, path1/path2 of 15), cities -> geo targets on the
+  campaign + languages, Maximize clicks (`targetSpend`), Google Search + search partners, no Display.
+  `keyword_ideas` = KeywordPlanIdeaService.GenerateKeywordIdeas (keywordSeed / urlSeed / both, her geo targets, Google
+  Search network): avg monthly searches, competition, low/high top-of-page bid; read-only, free.
+- **Performance Max** (kind `pmax`): budget (not shared), campaign PAUSED with `maximizeConversions`,
+  `brandGuidelinesEnabled: false` (business name + logo on the asset group), places + languages, ONE asset group with
+  text assets (headlines 3-5 x 30, long headline 90, descriptions 2-5 x 90 with one <= 60, business name 25) and image
+  assets: logo + each of her photos centre-cut by Hoola to 1200x628 (1.91:1) and 1200x1200 (Pillow, JPEG) - all in one
+  Mutate (Google requires campaign + asset group together); every asset op comes before the asset-group link that uses it.
+  A missing conversion goal is translated to a plain "Google Ads > Goals > Conversions" line. Local campaigns were folded
+  into Performance Max by Google in 2022, so Maps reach comes through here (Business Profile linked once in Google Ads).
+- **Places:** `geo_targets` = geoTargetConstants:suggest (India); empty = all India; a name Google does not know is
+  NAMED in the error, never silently dropped.
+- **Read:** every campaign type (VIDEO, DEMAND_GEN, SEARCH, PERFORMANCE_MAX, DISPLAY, not REMOVED) by day into the Ads
+  desk, plus `search_term_view` summed over the window as term rows (`google_search_terms.csv`), so the desk's existing
+  "terms spending with no result" leak works on live data.
+- New GAdsDraft columns (nullable defaults): kind, keywords, negatives, paths, cities, images. Old drafts = youtube.
+- Routes: POST /api/social/ytads/drafts takes `kind`; new POST /api/social/ytads/ideas.
+- Tool: `ads` action=google_draft (owner only; draft only) + google_ideas (read-only).
+- UI: console Social Desk tile is now "Google ads" (New Search / New Performance Max / New YouTube, per-kind forms,
+  "Keyword ideas from Google" table with Add, photo upload for PMax, Type column in the read table); phone "Google ads"
+  screen gets the two new buttons, an Edit sheet for every kind, photo + logo pickers.
+- Tests: `server/tests/test_v0425_google_ads2.py` (5) + the v0.401 suite unchanged.
+- NOT VERIFIED against a live Google Ads account; field names follow Google's v26 REST and its AddPerformanceMaxCampaign /
+  AddResponsiveSearchAd / GenerateKeywordIdeas examples. The first real Check will confirm or correct them.
+
+## v0.541.0 SEO INTEL (S1 + DataForSEO, built as 0.536) - 5 Nov 2026
+Owner: "https://github.com/every-app/open-seo --- read this repo first", then "GO S1 + DATAFORSEO". OpenSEO (MIT) = an open
+Semrush / Ahrefs alternative whose data is DataForSEO; Hoola already had the audit / Search Console / speed half, so S1 is
+the four things it could not see. Credit in THIRD_PARTY_NOTICES.md (ideas + matching approach; code written fresh).
+- **RANKS** (`seo/intel.py`): SeoTrack (<=100 keywords a site) + SeoRank (day, source gsc | serp). `pull_gsc` = Search
+  Console searchAnalytics with dims date/query/page and an RE2 `includingRegex` filter (20 keywords a call), position
+  weighted by impressions, best page kept. `ranks_view` = latest position, 7-day move (+ = up), 7-day clicks, 30-day
+  history, last exact check. `rank_alerts` = a drop of 5+ places -> desk alert (daily job). `check_serp` = DataForSEO
+  organic live advanced (India 2356, mobile, depth 100): her exact position + the top 3 domains.
+- **AI VISIBILITY**: SeoAiPrompt (<=25) + SeoAiAnswer (run stamp, engine, mentioned, cited, rank, brands, citations,
+  excerpt). Engines through their OWN APIs, each only when its key is set: OpenAI Responses + `web_search` tool
+  (`SEO_AI_OPENAI_MODEL` gpt-5-mini), Gemini generateContent + `google_search` grounding (grounding links redirect, so the
+  site comes from the chunk title), Perplexity chat/completions `sonar` (search_results / citations). `mention_at` = whole
+  word, NFKD accent-folded, case-folded, URLs / e-mails blanked (length kept). Her names = business name, domain, domain
+  stem (>= 4 letters), extra brand names; competitors = the desk's list. Per answer: named, order among brands, her site
+  cited, other cited domains. Priced `SEO_AI_CALL_INR` (2) per answer, refused BEFORE the run when it would pass her
+  monthly ceiling (`SEO_AI_MONTH_INR` 300, per site). `suggest_prompts` = 10 customer questions from the model, any that
+  name her dropped. Weekly when `ai_weekly`.
+- **MAPS GRID**: Places API (New) `places:searchText` - `find_place` (name + city, id/name/address/location) -> she picks
+  her shop once; `run_grid` = 3x3 / 5x5 / 7x7 points `spacing_km` apart, each a locationBias circle search with field mask
+  `places.id` ONLY (Google lists IDs-only Text Search as no-charge), rank = her id's place in the 20; one named search at
+  the shop for "who leads". SeoGrid keeps points / found / average / top-3 count; view shows the previous run to compare.
+  Up to 5 grid keywords re-run weekly.
+- **DATAFORSEO** (`seo/dfs.py`): her login + API password typed in the app only, checked with the free
+  `/v3/appendix/user_data` (balance shown), sealed (accounts.encrypt), masked, never returned; Newtika's shared login only
+  with `DATAFORSEO_SHARED=true`. `call` refuses BEFORE a call when the month's spend reached her ceiling
+  (`DATAFORSEO_MONTH_USD` 5, per site), then adds the cost DataForSEO itself reports (top-level `cost`). Plain messages for
+  401, no balance (40200) and "needs their subscription" (40204 - the Backlinks API). Reads: domain_rank_overview,
+  ranked_keywords, competitors_domain, gap (their top-20 keywords where she is missing / below 20, by volume),
+  backlinks summary + referring_domains, serp organic, keyword_ideas (fallback when Google Ads is not linked).
+- `keyword_research` = Google Ads Keyword Planner (official, free, v0.536 A2) first, DataForSEO second.
+- Desk hooks: daily -> pull_gsc + drop alerts; weekly -> AI run / grids / exact checks only where she switched them on;
+  each result line on the desk feed. Routes `/api/seo/intel*` (long jobs run in the background and report to the feed).
+  Tools: `seo` actions track, rank_check, keyword_ideas, ai_prompts, ai_suggest, ai_run, maps_grid, competitors,
+  backlinks, gap, domain; `seo_dekho` what=ranks / ai / maps / intel.
+- UI: console SEO Desk tile "Search intel" (keyword table + move arrows + exact check, AI KPIs per engine + per-question
+  named / cited table + "sites the AI cites instead", Maps grid as coloured cells + leaders, DataForSEO join form /
+  ceiling / competitors / gap / backlinks tables); phone SEO desk -> `SearchIntelScreen`.
+- Config: PERPLEXITY_API_KEY, SEO_AI_* models / price / ceiling, DATAFORSEO_LOGIN / PASSWORD / SHARED / MONTH_USD.
+- Tests: `server/tests/test_v0541_seo_intel.py` (7).
+- NOT VERIFIED against live OpenAI / Gemini / Perplexity / Places / DataForSEO accounts: request + response shapes follow
+  each vendor's docs. API answers can differ from what a person sees in the consumer apps - the screen says so.
+
+## v0.542.0 NAKSHA — the architect, App Sahayak Pillar K, Phase 62 (5 Nov 2026)
+
+Owner: "START PILLAR K". Pillars A–J each built an engine. This one is the architect that drives them, and it
+exists because of a failure that has nothing to do with code: **a long plan she nodded at once, built in one go,
+and only understood when it was finished and wrong.**
+
+### The spec may only promise what Hoola can build
+
+Her one line becomes the whole app as data: user types and which app each one uses, user stories, lists and fields
+with their relations, the brain, who may do what, screens, integrations, payments, notifications, and the order to
+build it in. Then `check()` refuses, **in code**, anything the engines have not got — a field type that does not
+exist, an app face v0.435 cannot make, a connector that is not one of v0.424's real packs, a part called
+`chatbot`. A spec that cannot be built is refused at the check, not discovered half-built. That is the whole
+difference between a plan and a brochure.
+
+### She approves module by module
+
+A module says what she GETS (in her words, not what the code does), what it needs built first, and **what it will
+ask of her** — a gateway key, a courier account — *before* she says yes. A module may only need one written before
+it, so the order always works. Her Haan is bound to the hash of the plan she was looking at, and if that module
+changes underneath her, **her approval does not carry over**: it goes back to waiting, because she agreed to a
+different thing.
+
+### A built module is proved, not declared
+
+Each module's own user stories become Pillar J scenario tests and are **run**. A module that does not pass is
+recorded as built-and-failing, never as done. The walk is generated in code and kept deliberately simple — somebody
+signs up, uses the module's list, and somebody else is REFUSED — because a generated test that tries to be clever
+about her words is a test nobody can read when it fails.
+
+### A change edits the spec, not the app
+
+`revise()` re-plans, diffs the parts of every module, and marks **only the ones that really changed**. An untouched
+module is left alone. A new module is added, a dropped one is reported, and every build writes one plain line of
+changelog.
+
+### Questions that change the build, and nothing else
+
+A question must name the module or part its answer changes, or the checker drops it with a warning. Curiosity is
+not a question.
+
+### Nothing is pretended to be done
+
+Anything needing HER credential — a payment gateway, a courier, an SMS sender — is never silently skipped: the
+module builds up to that point and the exact next step is named. v0.541 also taught this to the push part: **a
+thing that is not SET UP is not the module being broken.** On a server with no Firebase key, instant notifications
+become a next step and the app keeps its 15-minute check; before this, every such module would have read as failed.
+
+### Found while building it
+
+Pillar J's runner opened an HTTP socket to `127.0.0.1:8077` **even when it was itself that server** — so whether a
+scenario ran depended on the listening port, the worker count and the loopback, none of which have anything to do
+with her app being right. It now drives the same FastAPI app through the same routes in-process by default, says
+`where` it ran, and still goes over the wire when `base=` names a different server.
+
+### What is where
+
+`server/app/appmaker/architect.py`; routes `/api/apps/{ref}/naksha[/{what}]`; tool `app_banao action=naksha |
+naksha_build | naksha_badlo` + `app_dekho what=naksha` (approving a module is refused to the tool — it is her tap);
+console **The plan** box; phone `lib/ui/app_naksha.dart`. Tests `server/tests/test_v0542_naksha.py` (13), in
+`app-load.yml`.
+
+### Not built, said plainly
+
+The generated proof walk covers one list per module, not a whole multi-role journey — her richer stories are still
+written by Pillar J's own author. `screens` in a module is recorded as a next step, not a redraw: the design flow
+(v0.128) still owns screens. And this is the last pillar of `docs/COMPLEX_APPS_PLAN.md`, which means **every pillar
+A–K is now built and the plan's own gate is still unmet**: no proof app — school ERP, clinic, food delivery,
+marketplace, field-service CRM — has ever been built and used on a real phone. Phase 0 asked for that first.
+
+## v0.543.0 PRAYOGSHALA EK HI PYTHON — the box worked, and the first thing it found was real (owner: "DEPLOY DONE, LAB_SETUP DONE, LAB_TRY DONE - CHECK RESULT")
+
+**The v0.539 fixes held.** `lab_try` (vps-ops run 257) walked the whole road for the first time — cloned her repo,
+installed every dependency with the network on, committed the snapshot, and ran the real suite with no network, about
+seven minutes against nine seconds before. Both v0.539 defects (PEP 668, and an install that could not survive
+`docker commit`) are settled by evidence, not by argument.
+
+**Then it failed on something real**, at import:
+
+```
+E     File "/work/server/app/notebook/render.py", line 517
+E       out.append(f"<li>{inline(re.sub(r'^\s*[-*•]\s+', '', ln))}</li>")
+E   SyntaxError: f-string expression part cannot include a backslash
+```
+
+That line runs perfectly on her server. **PEP 701 allows a backslash inside an f-string expression from Python 3.12**,
+her server runs **3.13**, and Debian 12 ships `python3` as **3.11** — so the box was testing a *different language
+version than production*. Seven files in `server/app` carry that shape, so the box would have reported a fault in
+each of them. A lab on another Python does not test her code, it invents failures, which is worse than having no lab:
+a false red costs the trust the whole thing exists to earn.
+
+**The fix is the box, not her code.** The base image is now `python:3.13-slim-bookworm` — bookworm's apt still
+supplies node and jdk 17, 3.13 sits on `/usr/local/bin` (ahead of `/usr/bin` in the box's PATH), and
+`python3-dev` / `python3-venv` / `python3-pip` are dropped from apt so Debian's 3.11 cannot shadow it or hand out
+headers for the wrong version. `render.py` is untouched: it is valid Python for the version she runs, and rewriting
+seven call sites to suit a box that was wrong would have been the fault, not the fix.
+
+**Two guards so this cannot come back quietly:**
+- The self-test prints the box's Python beside the server's and says **GADBAD** when they differ, naming the image
+  revision — a mismatch is now a stage that fails, not a surprise eight minutes into a check.
+- A repo dependency snapshot is keyed on the **base revision** as well as the lock files
+  (`hoola-devlab:<repo>-r3-<deps_key>`). Without it her existing 3.11 snapshot would have been served on the fresh
+  3.13 base — cached, fast, and failing exactly as before. The same class of bug as v0.539's silent one: a cache
+  that answers for a world that no longer exists.
+
+Image revision 2 → 3, so `lab_check` **rebuilds** before it tests the walls (v0.539's staleness check doing its job
+on its first real occasion). vps-ops note updated to say `lab_check` first after a base bump.
+
+Tests: `test_v0456_devlab.py` +3 (the box runs the server's Python / her code is not rewritten to suit the box / a
+base change invalidates every repo snapshot), two existing pins healed to the new base and tag shape. 45 green in
+the lab suites.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has not passed. Three things are now proven by a real run (the
+clone, the dependency install, the sealed no-network check actually executing her suite), and the thing they were
+for — a green check on her own repo — has not happened yet. The next `lab_check` + `lab_try` is that proof.
+
+**RULE recorded:** a sandbox must match production in the things that decide whether code even parses. A lab that
+differs from production in language version reports faults that do not exist, and the first one it reported was in
+code that had been live for months.
+
+## v0.545.0 SCENES AS CHECKED DATA — the 12-script ceiling lifted (built as 0.456.0; docs/GAME_MOAT_PLAN.md §5.2, owner: "GO WITH THE CEILING")
+
+THE CEILING. Every Hoola game from v0.370 to now was at most 12 GDScript files (120 KB) on ONE plain root node,
+building every node in code. For match-3, idle, runner and puzzle games that is genuinely right — one engine plus a
+lot of Game Bible data IS the game. It is false for a platformer or a story game, where the game largely IS its
+scenes, so "Hoola can make a bigger game" was a claim the architecture could not keep. `server/app/gamedesk/scene.py`
+keeps it: scenes and animation become CHECKED DATA.
+
+THE RULE, AND WHY IT IS NOT NEGOTIABLE. **The model never writes a `.tscn`.** It writes a declarative spec; Hoola
+validates it in code and GENERATES the scene file. This was measured in Godot 4.7.2 BEFORE a line of the design was
+written: a `[sub_resource type="GDScript"]` embedded inside a `.tscn` RUNS, and the embedded script reached
+`DirAccess` — which `guard.py` has banned in every `.gd` file since v0.370. A scene the model could write freehand is
+a hole straight through the only thing protecting her games. So the hole is closed in THREE independent places:
+scripts attach only by FILENAME to a `.gd` file guard.py already checked; a spec carrying script source in any shape
+(a `source` / `code` / `gdscript` / `script/source` key, or the text signature) is refused by the checker; and the
+EMITTED text is re-scanned before it ships, because the generator being the only writer must not be the only defence.
+`guard.scene_problems()` scans every scene file the same way on the build path too.
+
+WHAT A SPEC MAY SAY (checked in code, never in a prompt): a tree of nodes from a 44-type allowlist — an unknown type
+does not error in Godot, it HANGS the load, so the allowlist is what keeps a typo from becoming a silent hang — each
+with a name, typed properties (the property table is a allowlist too: an unknown key is DROPPED and NAMED, never
+guessed), an optional script, a collision shape (rect / circle / capsule), AnimationPlayer tracks (value tracks, keys
+must go forward in time), and INSTANCES of another scene of the same game. Instancing is how content actually
+scales: one `coin.tscn` placed 200 times is data, not 200 scripts. Caps: 40 scenes, 300 nodes a scene, 2,000 nodes a
+game, 400 KB of scenes, 12 animations and 120 keys a track; instancing loops refused (Godot would never finish
+loading one); sibling names unique; `main.tscn` reserved for Hoola's own root.
+
+HOW IT IS PROVED, not claimed. `verify()` writes the generated scenes into a real project beside the guarded scripts
+and loads every one of them in the REAL engine, headless, with a `--quit-after` timer, and reports what came back —
+node count with instances expanded and the animation names found. Two findings from the live runs shaped the verdict:
+(1) a broken scene can HANG the load, so "never reached the end" is itself a failure; (2) an unknown node type does
+NOT make `instantiate()` fail — the engine logs `Cannot get class` / `A placeholder will be created instead` and
+hands back a scene with a plain Node where the real one should be. So `instantiate()` succeeding is NOT proof, and
+the log's own trouble signatures (`TROUBLE`) decide the verdict too. A placeholder is a silently broken game.
+
+THE LANE: `game_scenes` (action=list | propose | approve | reject). Her words → `ai.scene_spec` (a new SCENE system
+prompt that hands the model the design, the game's script filenames and the existing scene names, and takes back JSON
+only) → the checker → the generator → the real engine → a DRAFT she approves. A scene that did not load is saved as
+`failed` and cannot be approved. Only APPROVED scenes enter a build (`scene.for_game`, wired into `service._write`
+and recorded on the version row), and the whole path is wrapped so a scene problem can never stop a build — a game
+with no Studio project or no approved scene builds exactly as it did before.
+
+PROVED LIVE on Godot 4.7.2 while building this: a 25-node spec with a coin instanced 20 times instantiated to **65
+live nodes** (20 × 3 + 5 of its own) with the `idle` animation present, verdict PASS; and the broken-type scene the
+test plants is a FAIL for the right reason.
+
+NOT BUILT, said plainly: TileMaps (they need a TileSet and an atlas texture — that is art and a second pipeline), 3D
+scenes, and shaders. 2D node scenes with animation and instancing are what this ships. NOT VERIFIED: no real game of
+hers has been rebuilt with scenes yet — her first platformer is the live test.
+
+Files: NEW `server/app/gamedesk/scene.py` (checker, generator, real-engine `verify`, `GameScene` table +
+propose/approve/reject/view/for_game); `ai.py` (SCENE prompt + `scene_spec`, the GUIDE's SCENES block);
+`guard.py` (`scene_problems`, and `problems(scripts, scenes=None)` starts from it); `template.py`
+(`files(..., scenes=None)`); `service.py` (the `_scenes` hook, `_write(..., scenes=)`, `"scenes"` on the version row);
+`api.py` (`/api/gamestudio/{id}/scenes*`); `agent/gamedesk_tools.py` (`game_scenes`); `agent/admit.py`; `db.py`.
+Tests: NEW `tests/test_v0456_scenes.py` (12) — the 16 checker refusals including all three script-smuggling shapes,
+instancing (expanded node count, loops, unknown scene), animation tracks, caps, the generated `.tscn` shape, the real
+engine run, and a planted broken scene that must FAIL.
+## v0.543.0 CHALTA KAAM — the app after it ships, App Sahayak Pillar L (5 Nov 2026)
+
+Owner: "START PILLAR L". The last line of `docs/COMPLEX_APPS_PLAN.md`, and the only pillar about the time nobody is
+watching. Pillars A–K build and prove an app. None of them tells her, a month later, that her app is slower than it
+was, that one call in twenty is failing, or that it has quietly cost Rs 900.
+
+### Measured, not estimated
+
+**Latency and errors** come from the app's own requests through ONE middleware on `/api/app-api/` — every call of
+all ~80 routes, with no switch anyone has to remember. A telemetry failure never reaches the answer (a test throws
+inside it and the request still returns 200).
+
+**Cost** comes from `usage.run_meter`, the same ledger Hoola bills everything else with, wrapped around the four
+jobs that actually spend her money: the Android build, the logic draft, the naksha, the jaanch stories. The rupees
+are what her model calls really cost — not a table.
+
+### What is not priced is counted and said
+
+Push, SMS and connector calls are counted and reported as **not priced** until she tells Hoola what her provider
+charges. The mapsbill / research-bill rule, because **a zero she believes is worse than a blank she can fill**.
+
+### Latency is honest about being bands
+
+Fixed-bin histograms per hour, so four worker processes merge their counts without a lock fight and a fortnight of
+traffic is a few KB. p50 / p95 are therefore **estimated from bins** and the card says so. A precise-looking number
+nobody can reproduce is worse than an honest band.
+
+### An alert is a rule, not a feeling
+
+Five, each arithmetic over **her own history** with a stated threshold: ≥5 % of calls failing (and at least 20 calls,
+because 1-in-3 of three calls is noise); twice her own average latency and over 400 ms; crashes or ANRs open in the
+last two days; storage or rows over 90 %; this month's cost at twice the monthly average of the three before it.
+Each reaches her chat **once a day per kind** — an alert that cries every hour is one she turns off. Pillar J's test
+twin is skipped: she is never told about her own test copy.
+
+### The estimate before a big job
+
+`kharcha job=build` answers with the **median of what that job cost HER last times** and what the month stands at.
+With fewer than two runs it says *"naapa nahi gaya"* — a made-up rupee figure is not an answer, and a different
+job's history is never borrowed.
+
+### What is where
+
+`server/app/appmaker/ops.py`; the `_app_ops` middleware in `main.py`; a worker slot (`app_ops_jobs`, flush every
+minute, alerts once in her 9 am); routes `/api/apps/{ref}/ops[/{what}]`; tool `app_dekho what=chaal` +
+`app_banao action=kharcha`; console **How it's running** box; phone `lib/ui/app_ops.dart`. Tests
+`server/tests/test_v0546_ops.py` (16), in `app-load.yml`.
+
+### Not built, said plainly
+
+Storage rupees are not priced (the VPS bill is one number for everything, not per app). There is no alert for a
+drop in USE — falling orders may be the market, not a fault, and guessing would be noise. Latency is the backend's,
+not the phone's: a slow screen on a weak network looks fine here. And this is the **last pillar** of the plan —
+A to L are now all built, which makes the plan's own gate the only thing left in it: **no proof app has ever been
+built and used on a real phone**, which Phase 0 asked for before any pillar started.
+
+### v0.538 follow-up: the website checkpoint MEASURED (CI run 41964517783, 4 workers, Postgres 16)
+Third full-size run PASSED: 5,000-product marketplace built in 3.3 s; 2,000 visitors x 3 pages = 6,000 page loads all 200
+(p50 537 ms / p95 1.36 s from the test's stand-in static server); 600 buyers + 150 double-sent checkouts: 364 orders = 364
+confirmed to their buyer, 297 honest sold-out refusals, no lost / double order, unique numbers, stock exact (hot product 0),
+no 500, NO checkout unanswered. Found on the way and fixed: (1) order numbers were count + 1 -> every checkout of a crowd
+collided and retried (119 checkouts > 60 s) -> `site_shop_counter` hands the next number in one atomic step, taken before
+the checkout writes (SQLite-safe), unique index kept as the last guard; (2) the harness now re-taps an unanswered checkout
+with the same cid (as hoola-shop.js does) and names every dropped connection. STILL SLOW, said plainly: checkout p50 1.9 s
+but p95 41 s / max 46 s with 200 buyers at once on ONE shop (the hot product's row lock + 4 workers' DB pools) - every one
+answered, none lost, but a slow tail; next speed pass = a shorter stock transaction + pool size, measured by this same card.
+
+## v0.550.0 EK JAISA - the whole-house wiring audit (owner: "NOW FIRST SORT IS ALL VOICE CALL, CONSOLE CHAT, MOBILE APP CHAT ---- WIRED TO ALL 100 % AI WORK CHECK")
+
+The audit, measured on v0.549.0 and now held by `server/tests/test_v0550_ek_jaisa.py` (10 tests):
+
+- **One brain for both chats - CONFIRMED.** The console (`static/console/app.js`) and the phone (`lib/api.dart`) post to
+  the SAME `POST /api/conversations/{id}/messages` -> `turn_inbox.accept` -> `run_owned` -> `run_turn` with the full
+  registry; the only body difference is the phone's `voice` (mic dictation) flag. The test pins both client URLs.
+- **Registry - CONFIRMED.** Every tool spec has a handler. 26 handlers have no spec - all `biz_*` (customer-safe tools
+  for her business WhatsApp inbox, `employee/inbox.py`, "never offered to her model") - by design, exempted by name.
+- **Voice call - CONFIRMED.** Every tool has a call route (`voice.call_route`: declared to the live model, or run by
+  `santosh_kaam` = the full chat brain); the declared JSON stays under `VOICE_TOOL_BUDGET`. v0.442 + v0.491 suites green.
+- **Money cards on the console - BY DESIGN, unchanged.** `ask_form`, `pg_write`, `upi_result` (convs.MONEY_KINDS) draw
+  on the console with "Haan Hoola app se hoti hai" - the fingerprint rule, not a gap.
+
+**THREE GAPS FOUND AND FIXED**
+
+1. **The phone dropped every card kind it did not name.** `Santosh._handle` (lib/state.dart) had no `default:` and
+   `feedCard` returned null, so `game_desk`, `eng_project`, `research_run`, `research_watch`, `agent_team`,
+   `drive_file`, `bulk_mail`, `voice_alert`, `social_update`, `share_ask` (and any future kind) vanished on the phone
+   while the console's `renderCard` default drew them. Now: a `default:` stores `FeedItem('any_card', {...p, '_kind'})`,
+   merged in place by the server's card key (else kind + id/job_id/order_id), reset with the chat (`_anyCards`), only
+   when the event has something to read (`anyCardWorthShowing`; stream plumbing kinds never); NEW
+   `lib/ui/any_card.dart` `AnyEventCard` = the console's default card (title, status pill, one line <= 600 chars, up to
+   5 short facts, an http(s) "Kholo" link). Nothing on it acts - a card needing her tap has its own screen. It also
+   shows on the live-call screen (same `feedCard`).
+2. **tool_search could not open 15 tools by their exact name.** `admit.tool_search` ran the keyword match first and the
+   name lookup only when the keywords found nothing, so "sheet_read" opened `sheets` (sheet_read lives in `gdrive`),
+   "crm_arch" opened `arch` (not `enterprise`), "edit_desk" opened `video` - lost: sheet_read, doc_create, hoola_inbox,
+   hoola_group_create, hoola_skills, hoola_chain, hoola_booking, pc_search, ask_form, crm_arch(+_dekho), edit_desk(+_dekho),
+   motion_desk(+_dekho). Now an exact tool name (or snake_case name inside the need) always adds its own family, beside
+   the keyword hits. The test asks tool_search for EVERY non-core tool with a real turn's admitted set.
+3. **A voice call never saw a learned skill.** `coder.inject.voice_block` was called with no query, and
+   `skills_block` returns "" on an empty query - so in 100% of calls the live model got no skill hint (chat matched
+   every turn). Now the call searches with her last 4 user lines in the chat (`_recent_asks`; a GoAway reconnect sees
+   the newest words), and when nothing matches it NAMES her enabled skills, recently used first (`store.skill_names`,
+   inside SKILLS_VOICE_BUDGET); `skill_manage` was already declared on calls, so she can have one read and followed.
+
+Sweeps: test_v0550 10 + v0442 + v0491 green; admission / tool-choice / coder / skill / pack / voice-phase suites 351
+passed; the 7 reds are byte-identical on pristine HEAD (stash-proven): test_v0311 plain-hello size 75 > 60 (the dev
+chain grew the always-on set), test_v0473 coder_routes_mounted, and the 5 uiux suites (missing vendored corpus data).
+Version 0.550.0 (pubspec 0.550.0+573, pins swept in 179 suites, console stamps follow APP_VERSION x21).
+NOT VERIFIED (honest): the Dart compiles first on CI (no flutter in the sandbox); the first phone run after the APK is
+the live check that a game-desk / research card now appears; deploy is the owner's vps-ops dispatch.
+## v0.551.0 SURAKSHA GATES (built as 0.549.0 / 0.550.0; web Step 7 part 1 = W11 of docs/WEB_PLATFORM_PLAN.md; owner: "GO" on Step 7)
+
+Every website build now passes nine SAFETY GATES read from the real built files before it can go live
+(`server/app/site/gates.py`, the App Sahayak `appmaker/gates.py` row shape reused: gate / check / pass|warn|fail|
+not_checked / say / read). A FAIL is a BLOCKING item in the build report, so `hosting.blockers` refuses launch and the
+fix round gets the exact SECTION (each row carries the `s-<slug>-<type>` ids it was found in, mapped by `_fixable`).
+
+1. **secrets** - the SECRETS patterns over every page / script / css (a key in a public file = fail).
+2. **libraries** - vendored JS version banners -> OSV.dev npm; a known CVE = fail; OSV unreachable = not_checked, said.
+3. **headers** - the `_headers` file: CSP, nosniff, frame-ancestors, referrer, permissions.
+4. **pages** - no inline script, no on* handlers, no javascript: links, no outside scripts (only Cloudflare Turnstile
+   when she turned it on), no http:// resources, no unknown iframes; target=_blank without noopener = warn.
+5. **forms** - endpoint must be her own site's lead route, honeypot box present, no password box on a public form,
+   privacy page linked; bots row (honeypot always, Turnstile when keyed).
+6. **accessibility** - WCAG 2.2 AA rows by name: page language 3.1.1, page title 2.4.2, image alt 1.1.1, labelled
+   boxes 1.3.1/4.1.2, named links + buttons 2.4.4/4.1.2, zoom allowed 1.4.4; plus the axe row from the browser check.
+7. **legal (profession law)** - Drugs & Magic Remedies Act claim words + "cure for <disease>", BCI advertising rule
+   for lawyers, NMC for doctors (registration number), guaranteed-result claims for education, FSSAI licence on a
+   food shop, e-commerce rules pages (grievance / returns / seller details) on a shop.
+8. **trackers** - gtag / fbq / hotjar etc. only behind `data-hoola-consent`; Hoola's own analytics is cookieless.
+9. **limits** - the server's enquiry / shop / login rate caps, stated (they are code, on every site).
+
+Bots: every Hoola form gets a hidden honeypot (`build.HP`, `guard_forms`); Cloudflare Turnstile is OFF until
+`SITE_TURNSTILE_SITE` + `SITE_TURNSTILE_SECRET` are in the VPS .env - then the widget is added, the CSP opens ONLY
+challenges.cloudflare.com, and `_lead_post` verifies the token server-side (siteverify) before saving a lead.
+Console: the build card shows "Safety gates: n passed - warnings - failed - not checked (pages read)". Switch
+`site_gates` (default on). Tests `test_v0549_suraksha_gates.py`: a clean site passes; every planted fault fails for its
+own reason; profession laws; OSV fail + not_checked; launch blocked; Turnstile box / CSP / server check; the failing
+section is named and fed to the fix round. NOT VERIFIED (honest): no live Turnstile key yet; the profession checks are
+word rules (a careful human still reads her claims) - they catch the common breach, not every one.
+ALSO IN v0.551.0, found by this version's regression run: the v0.538 catalogue + team CMS ROUTES were missing from
+main.py - a merge before v0.538 shipped dropped the whole block (catalog preview / apply / images / remove, /cms/<site>/,
+/api/site-cms/*, /api/sites/<ref>/cms*), so on the live server the catalogue import and her team's CMS answered 404 while
+their modules, tables and worker tick were all there. Restored from the commit that wrote them; catalogue + CMS suites
+green again. RULE (again): a module's tests passing in one commit says nothing about the merged tree - run the feature's
+suite on the MERGED commit before shipping.
+
+## v0.552.0 NATIJA PAKKA (built as 0.551.0; the dev's SURAKSHA GATES took 0.551.0 - rebased, both kept) - a finished task's result reliably reaches voice call, console chat and phone chat (owner: "NOW CHECK FOR ALL 3 --- WHEN RESULT COME FROM ANY TASK DOES IT REPLY RELIABLY")
+
+TRACED end to end, and these parts already hold: `kaamwatch.observe` sees every job event (15 named kinds + any kind
+carrying a job status and an id) -> on done / failed / stopped `kaam_followup.enqueue` writes a DURABLE row (survives a
+restart, deduped per job + state) -> the worker tick (~10 s) wakes the real brain (actor wake, tools allowed) or, if
+that cannot run, a one-shot line, or the honest canned line -> `notify` = a saved Message + SSE (the console and the
+phone both stream it) + FCM push (every assistant message pushes) + `kaamwatch._voice` = a quiet note into her live
+call on that chat, else into her live call on another chat. With no live call, `voice_ring` may ring her phone (quiet
+hours + daily budget). A big job a CALL handed to santosh_kaam runs through the durable turn_inbox, so its reply lands
+in the chat as well; a call that ended meanwhile leaves the result for the next call to open with (yaad followup).
+
+TWO GAPS FOUND AND FIXED (`server/app/kaam_followup.py`):
+1. **Unrelated replies swallowed the news.** v0.260's `_answered_since` skipped the report whenever ANY assistant
+   reply of 40+ chars landed after the job finished. A background job finishing while she asked about something
+   else (her GST question) was never told - proven on the old code (`OLD RULE SKIPS THE NEWS: True`); and when two
+   jobs finished together, the first job's wake report swallowed the second's. Now a reply counts as THIS job's
+   report only when the turn that wrote it began before the job started (`_turn_began` vs `kaam_jobs.started_at`:
+   the turn that ran the job - the 29 Oct duplicate stays fixed) and it is not another job's own wake report
+   (`_other_jobs_report`: a sent follow-up of another key within 2 minutes). Unknown start = the old rule.
+2. **A running turn held the report only ~50 s.** The tick postponed 5 times (one per ~10 s tick) and then dropped
+   the dry canned line INTO the running turn, so any ordinary multi-tool turn lost the real report. Now it waits up to
+   `KAAM_FOLLOWUP_WAIT_S` (default 300 s) and then still sends the honest line; the row cap moved to `_MAX_TRIES` 60
+   so postpones can never strand a row (the old `tries < 5` filter would have).
+
+Tests: NEW `test_v0552_natija_pakka.py` (8): the unrelated reply no longer swallows the news, the turn that ran the
+job still counts, another job's wake report does not count, old callers keep working, `_send` passes the job
+identity, a running turn holds the report past 50 s, past the wait the honest line goes, postpones never strand.
+`test_v0260` pin updated to the new call. Version 0.552.0 (pubspec 0.552.0+575). Server-only change - the v0.550.0
+APK (`v0.550.0-b1643`) is the phone build. NOT VERIFIED live: the first background job that finishes while she is
+chatting about something else is the live proof.
+
+## v0.553.0 GHANTI - a finished task rings her phone on the normal path too (owner, after deploying v0.552: "NOW ALL SURFACE WILL GIVE PROPER RESULT CALL WHEN TASK DONE")
+
+Checked before saying yes, and it was not true. `kaam_followup._send` has two report paths: the WAKE TURN (the normal
+one - the real brain reads the result and writes the reply) and the one-shot / canned line (the fallback when a wake
+is not allowed: a turn running, the 3-wakes budget spent, or wake off). The v0.211 voice ring (`kind=voice_ring`
+data push -> the phone's native side starts the call) sat ONLY after the fallback; the wake path `return`ed before it.
+So with default settings a finished job almost never rang her phone. Now one `_ring(conv, key, state, title,
+settings)` helper is called by both paths. Every gate is unchanged and still lives in `push.on_event` /
+`_ring_allowed`: her `voice_ring` switch (default on), quiet hours `voice_ring_quiet` 22-8 in her timezone,
+`voice_ring_max_day` 2 rings a day, never while a call is live on that chat (a live call hears the news instead).
+Tests: `test_v0552_natija_pakka.py` +2 (the wake report rings; switch off = no ring on any path; the one-shot path
+still rings); report suites 78 passed. Server-only. NOT VERIFIED live: the first task that finishes outside quiet
+hours with no call open should ring her phone (at most 2 a day by default).
+
+## v0.554.0 CARD KI KHABAR - every card reaches her live call (owner: "WHEN RESULT ON CARD / APPROVAL CARD / ANY CARD TASK APPEARS --- VOICE CALL DONT KNOW THAT EVEN CARD IS ASSIGNED AND PUSH VIA VOICE CALL")
+
+FOUND: `events.bus.publish` fans every event out to the chat streams (console + phone), FCM (`push.on_event`) and
+`kaamwatch.observe` - and a live call heard ONLY kaamwatch's JOB states (`kaamwatch._voice`). An approval card, a
+payment card, an email draft, a form, a finished result card (artifact, PDF, photo...) appeared on her screen while
+the voice model talked on knowing nothing.
+
+FIXED: `bus.publish` now also calls `voice.card_news(conv, kind, payload, call)` whenever a call is live (looked up
+in `sys.modules`, so no voice import happens when no call can exist). `card_news`:
+- uses `push.render` - the same judgement as the phone notification (pending asks, ready results) and its words;
+- one quiet note per card per state (`_CARD_TOLD`, 30 min), queued by `Call.push_news` for a natural pause (its own
+  60% word dedup still applies); to the call on that chat, else to her call on another of her chats (tenant check);
+- `card_note`: a MONEY card (amount / amount_paise / inr, a pay method, money words - the same rule `haan_karo` uses)
+  is said to be tap-only, never by voice; a non-money ask says she can answer (`haan_karo` for a running PC/browser
+  step - it refuses anything else itself); a result is told as a result;
+- not repeated: cards made by the call's own DIRECT tool (new `voice.VOICE_DIRECT` contextvar, set in `run_tool`,
+  cleared for `santosh_kaam` - so the cards of a full-brain job a call started ARE news), job states (kaamwatch
+  already speaks them), stream plumbing kinds (`_CARD_NOT`).
+Phone: `lib/call_session.dart` `callCardKinds` gains `any_card` (v0.550's default card) so the call screen can show it.
+
+Tests: NEW `test_v0554_card_khabar.py` (11, incl. an end-to-end `bus.publish` -> live call); voice / call / approval
+suites 308 passed; the 2 reds (`test_v0221_console_r1`: cache-stamp pin 0.543 + console English) are red on the
+pre-session commit bbdcaa60 too. NOT VERIFIED live: the first approval card that appears during a call is the proof.
+
+## v0.555.0 HOOLA CARD - the premium default card on phone and console (owner: "BUILD THIS" on claude.ai/artifact/NgbT6WLDj63Jhh7MbysuGD)
+
+The owner asked for cards that are more user friendly, then "more sophisticated, professional and premium", approved
+the second design and said BUILD THIS. Built as the DEFAULT card - every card kind that has no screen of its own (game
+desk, CAD project, research run / watch, agent team, Drive file, bulk mail, voice alert, social update, any future
+kind) - with one anatomy on both surfaces:
+- eyebrow: the desk in small capitals, "Call par bataya" when `told_on_call`, the time (phone: FeedItem.at);
+- a 42px tile in the tone + the title (Sora on the phone) + a STATUS SIGNAL: a dot and plain words (Aapki haan
+  chahiye / Chal raha hai / Taiyaar / Ruk gaya, dikkat aayi / Band kar diya; console English) - never a raw code;
+- one sentence (say / summary / text / reason / message / detail / now); for a failure the error IS the sentence;
+- a money card: the amount as the hero (Indian grouping 1,24,000, paise as two digits, a small ₹), the pay method,
+  and a secure band "fingerprint, never by voice" while it asks;
+- up to 3 receipt facts on hairlines with human labels; ids, tenant, conversation, links, status and progress
+  fields never show;
+- progress as 6 step segments (pct, or step / total) with the current one half-toned (no looping animation - the
+  console's CRISP TEXT rule);
+- a docked action bar only when there is somewhere to go (console: side panel "Open" or the safe https link; phone:
+  "Kholo"). Nothing on it approves anything: cards that need her tap keep their own screens and buttons.
+Tones: money saffron/warn, ask violet/pri, ready green, working teal, failed red, stopped muted.
+
+Files: NEW `server/app/static/console/hcard.js` (pure `HoolaCard.html(kind, p, at, opts)`, node-tested; loaded before
+results.js) used by `app.js renderCard` default (old markup kept only as a fallback if the script is missing);
+`v2.css` block "v0.555 HOOLA CARD" (theme tokens only, light + dark); `lib/ui/any_card.dart` rewritten with the
+same rules (`stateOf / isMoney / amountOf / deskOf`); `chat_screen.dart` passes `at: it.at`. Stamps 21 -> 22 (the
+new script) in four suites.
+
+Tests: NEW `test_v0555_hoola_card.py` (8: plain status words, no internal codes, 3-fact cap, money hero + secure band,
+Indian amounts, step segments, progress/error never facts, dock only with a target, escaping, console + phone wiring).
+Console + pin suites 141 passed; the reds (v0221, v0223, v0279 aePulse from another merge, v0285, v142) are red on the
+committed tree before this change. Rendered with the real v2.css in light and dark and checked by eye.
+NOT VERIFIED: the Dart compiles first on CI. NEXT: move the dedicated cards (bill payment, email draft, approvals)
+onto the same anatomy one by one, keeping each one's buttons.
+
+## v0.556.0 SEEDHA RAASTA - simple tasks take the light path (owner: "NOW CHECK HOW ALL SURFACES RESPOND FOR SIMPLE TASK AND WHICH MODEL IT USE")
+
+MEASURED (not read off the code): the real `santosh.run_turn` with a recording fake Claude client, six simple asks.
+- Console chat and phone chat: one pipeline (POST /api/conversations/{id}/messages -> turn_inbox -> run_turn). Live
+  healthz: chat_brain claude, model claude-sonnet-5-5 (no OmniRoute / GLM configured). A simple ask = ONE call on
+  Sonnet 5.5, max_tokens 2,000, no thinking, the model's default effort, ~75 tools admitted, ~46k chars of system
+  prompt (prompt-cached). Opus 5.5 only for a hard reasoning ask (`model_for`), raised effort only for hard asks /
+  long jobs (`effort_for`), thinking only while a long job runs (`chat_thinking` goal). A message while a long job
+  holds the chat = the quick lane (cheap brain, else the same chat model).
+- Voice call: Gemini Live `gemini-3.8-live` answers in its own voice; declared tools run directly; big work goes to
+  `santosh_kaam` = the chat brain above. OpenAI `gpt-realtime-2.1-mini` only when she picks Real voice (trial).
+
+FOUND AND FIXED (`server/app/agent/hard.py`):
+1. "12 aur 15 ka total kitna?" ran on OPUS with 16,000 tokens, adaptive thinking and effort high: the WORD PROBLEM rule
+   fired on any 2 numbers + "kitna". Now it needs a story (12+ words) or 3+ numbers.
+2. "50 chairs ka quotation bana do Rs 1200 each" and "Make an invoice for ..." fell into the 'maybe' zone and the reply
+   waited for the Haiku judge (up to 2.5 s). A make / do request (`_MAKE`) with no reasoning signal skips it.
+Compared old vs new detector on every set: HARD 50 -> 50, HOLDOUT_HARD 21 -> 21, hard card 27 -> 27, EASY 0 -> 0,
+nothing lost; the everyday card maybe 11 -> 9 (test_v0272_hard::test_everyday_tool_asks_stay_fast was red, now green).
+Borderline kept on purpose: a 12-word story sum still counts as a word problem (same length as a calibrated one).
+Tests: NEW `test_v0556_simple_route.py` (8); hard suites 89 passed. Server-only. The v0.555.0 APK built green on CI
+(run 41984659811), so the Hoola Card compiles on the phone.
+## v0.557.0 TEZ CHECKOUT (the website checkout under a rush: CI's load proof went red on v0.551 - 114 of 600 checkouts timed out)
+
+ROOT CAUSE, found by running the CI load proof against a local Postgres 16 and sampling the workers with py-spy, not
+by guessing: Postgres was idle (no lock waits, ~22 connections "idle in transaction" waiting on PYTHON). Every worker
+thread stood in `shop.ensure_tables()` -> `db._add_missing_columns(engine)`, which inspects EVERY table in the database
+(~900) - and because the "done" flag is set only at the end, every checkout thread that arrived before the first one
+finished ran the whole scan again. Four more self-heals on the checkout path did the same (`shoppay`, `shopplus`,
+`webapp`, `appmaker/backup`). The p95 41 s tail measured at Step 6 was this, not the hot product's row lock.
+
+FIX: `db.add_missing_columns_for(engine, *tables)` = the same column self-heal for ONE module's own tables; all five
+modules use it, and the four on the checkout path take a lock so one thread sets up and the others wait for it.
+Startup (`init_db`) still runs the whole-database check once, as before.
+
+MEASURED on the same machine, same test (5,000-product shop, 2,000 visitors + 600 buyers, 4 workers, Postgres 16):
+before - order p50 3.7 s, p95 50.5 s, 104 checkouts tapped again after no answer, test RED; after - whole run 38.8 s
+(was 97.3), order p50 2.4 s, p95 7.4 s, nothing tapped again, nothing unanswered, orders = confirmed, stock exact.
+SEEN ONCE, harmless: under the rush, two worker PROCESSES creating the web-app tables at the same instant logged
+"web app security tables failed" (a lock cannot coordinate processes; the tables already exist from startup, the
+error is caught). Pin: test_v0551_suraksha_gates::test_shop_self_heal_checks_only_its_own_tables.
+
+## v0.558.0 SAHI KAMRA (built as 0.557.0; the dev's TEZ CHECKOUT took 0.557.0 - rebased, both kept) - every route measured, two fixed (owner: "IS NOW ALL TASK WILL FLOW PROPERLY TO DEFINED MODEL OR NEED MORE WORK")
+
+Live healthz after her v0.556 deploy: 0.556.0, claude-sonnet-5-5, chat_brain claude. Then the remaining routes were
+measured through the real `run_turn` with the recording fake model (first call of each):
+| route | model | max_tokens | thinking | effort | tools |
+| simple chat (console + phone) | Sonnet 5.5 | 2,000 | no | default | ~75 |
+| hard ask | Opus 5.5 | 16,000 | adaptive | high | ~90 |
+| background result (wake turn) | Sonnet 5.5 | 2,000 | no | default | ~86 |
+| big ask (several things to make) | Sonnet 5.5 | **2,000 -> 16,000** | adaptive | xhigh | ~91 |
+| her scheduled routine | Sonnet 5.5 | 2,000 | no | default | **569 -> admitted** |
+| voice call | Gemini Live gemini-3.8-live (OpenAI real voice = her trial pick) | | | | |
+
+FIXED in `server/app/agent/santosh.py`:
+1. A BIG ask turned on thinking at effort xhigh from its first call (`state["big"]`) but kept the chat-size 2,000
+   tokens; thinking tokens count against max_tokens, the same cut-answer bug v0.429 fixed for hard asks. It now gets
+   `agent_goal_max_tokens` (16,000) from the first call.
+2. Her ROUTINES (actor `routine`) carried the FULL registry: 569 tools, ~739 KB, ~184k tokens of tool JSON on EVERY
+   model call (a chat turn carries ~14k) - near the context edge and the most expensive call Hoola makes. Routines are
+   now admitted like chat (v0.270 did the same for long-job rounds): core families always, her words pick the rest,
+   tool_search opens any other family; dispatch and every gate unchanged. Staff / customer actors keep the full set.
+Tests: NEW `test_v0558_sahi_kamra.py` (3); routing / goal / routine / admission suites 204 passed; the 4 reds
+(test_v091 x3 - a stale fake `think()` signature - and test_v0311 hello-size) are red on the committed tree too.
+NOT VERIFIED live: the next morning routine on the VPS is the first real one with the smaller tool set.

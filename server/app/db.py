@@ -772,6 +772,8 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import cms as _site_cms  # noqa: F401  (v0.538 her team: members, drafts, revisions)
+    from .site import catalog as _site_catalog  # noqa: F401  (v0.538 imported lists: products / doctors / properties)
     from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
@@ -819,6 +821,7 @@ def init_db(url: str | None = None):
     from .social import desk as _social_desk  # noqa: F401  (v0.353 Social Media Manager desk)
     from .ads import gads as _gads  # noqa: F401  (v0.401 YouTube ads, Google Ads API)
     from .ads import metaads as _metaads  # noqa: F401  (v0.417 Facebook / Instagram ads, Meta Marketing API)
+    from .seo import intel as _seo_intel  # noqa: F401  (v0.541 SEO INTEL: ranks, AI visibility, Maps grid, DataForSEO)
     from .social import growth as _social_growth  # noqa: F401  (v0.383 Social Media Manager growth)
     from .social import inbox as _social_inbox  # noqa: F401  (v0.368 Social Media Manager inbox)
     from .thok import service as _thok  # noqa: F401
@@ -943,6 +946,7 @@ def init_db(url: str | None = None):
     from .gamedesk import liveops as _gameliveops  # noqa: F401  (v0.428 live ops: crash groups)
     from .gamedesk import bigstudio as _gamebig  # noqa: F401  (v0.433 big-studio mode: Unity / Unreal projects)
     from .gamedesk import arena as _gamearena  # noqa: F401  (v0.447 Game Arena: runs, items, duels)
+    from .gamedesk import scene as _gamescene  # noqa: F401  (v0.456 scenes as checked data)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
@@ -955,6 +959,10 @@ def init_db(url: str | None = None):
     from . import callrating as _callrating  # noqa: F401
     from . import yaad as _yaad  # noqa: F401  (v0.108 summaries + memory index)
     from . import docdesk as _docdesk  # noqa: F401  (v0.108 document desk + Sheet Milaan)
+    from .construction import models as _construction_models  # noqa: F401  (v0.512 Construction Wave 1:
+        # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
+        # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
+        # stays without its table)
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables
@@ -985,6 +993,13 @@ def _col_default(col):
     if isinstance(val, (int, float, str)):
         return val
     return None
+
+
+def add_missing_columns_for(engine, *tables) -> None:
+    """v0.551 the missing-column check for ONE module's own tables. The whole-database form inspects ~900 tables, and a
+    self-heal that ran it on a hot path (a shop checkout) made the first minutes of every worker crawl."""
+    import types
+    _add_missing_columns(engine, types.SimpleNamespace(sorted_tables=list(tables)))
 
 
 def _add_missing_columns(engine, metadata=None) -> None:

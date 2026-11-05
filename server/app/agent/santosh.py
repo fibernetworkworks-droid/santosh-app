@@ -819,6 +819,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
     state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
+    if state["big"]:   # v0.558 a big ask thinks at effort xhigh from its FIRST call: thinking tokens count, give it the long-job room
+        state["max_tokens"] = max(state.get("max_tokens") or 0, int(settings.agent_goal_max_tokens or 16000))
     # v0.272 SOCH KE JAWAB step 1: a HARD question (analysis, calculation, decision, plan, root cause, proof, deep
     # explanation) is not a long job - looks_big missed 50 of 50 of them - but it needs thinking from its first call
     state["hard"] = False
@@ -1052,7 +1054,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     adm = None
     # v0.270 the background rounds of HER long job ("goal") are routed too: they used to see the whole 425-tool
     # registry (pc_do / hoola_pc_do with their long "do anything" text), so a deep-research + PDF job drifted onto a PC
-    if (getattr(ctx, "actor", "owner") or "owner") in ("owner", "wake", "goal") or \
+    # v0.558 HER scheduled routines too: a routine call used to carry all ~570 tools (~740 KB, ~184k tokens) on every
+    # call; core families stay always on, her words pick the rest, tool_search opens any other one - gates unchanged
+    if (getattr(ctx, "actor", "owner") or "owner") in ("owner", "wake", "goal", "routine") or \
             str(getattr(ctx, "actor", "owner") or "owner").startswith("approved:"):
         _extra = state.get("hint") or ""
         _g0 = state.get("goal")

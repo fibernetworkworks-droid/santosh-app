@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Website team</title>
+<style>
+:root{color-scheme:light dark;--bg:#fff;--ink:#16141c;--mut:#5c5966;--line:#e4e2ea;--soft:#f5f4f8;--acc:#5b3fd6;--bad:#b42318;--ok:#067647}
+@media (prefers-color-scheme:dark){:root{--bg:#131218;--ink:#f2f1f6;--mut:#b3b0bc;--line:#2c2a35;--soft:#1c1a23;--acc:#a996ff;--bad:#f97066;--ok:#47cd89}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}h1{font-size:22px;margin:8px 0 16px}h2{font-size:17px;margin:20px 0 8px}
+input,textarea,select,button{font:inherit;color:inherit}input,textarea,select{width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg)}
+textarea{min-height:90px;resize:vertical}label{display:block;margin:8px 0}label span{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}
+button{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--soft);cursor:pointer;min-height:40px}
+button.go{background:var(--acc);border-color:var(--acc);color:#fff}button:disabled{opacity:.55;cursor:default}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.card{border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0}
+.mut{color:var(--mut);font-size:13px}.bad{color:var(--bad)}.ok{color:var(--ok)}.chip{display:inline-block;font-size:12px;padding:2px 8px;border-radius:99px;background:var(--soft);border:1px solid var(--line)}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:6px;border-bottom:1px solid var(--line);vertical-align:top;font-size:14px}
+.wrap{overflow-x:auto}nav.tabs{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}nav.tabs button[aria-current]{border-color:var(--acc);color:var(--acc)}
+.t{margin:6px 0}.t small{color:var(--mut)}
+</style></head>
+<body><main id="app" aria-live="polite"><h1>Website team</h1><p class="mut">Loading…</p></main>
+<script>
+(function () {
+  'use strict';
+  var SITE = '__SITE__', API = '/api/site-cms/' + SITE, KEY = 'hoola-cms:' + SITE, tok = '', me = null, home = null, tab = 'drafts';
+  var app = document.getElementById('app');
+  try { tok = sessionStorage.getItem(KEY) || ''; } catch (e) {}
+  function setTok(t) { tok = t || ''; try { if (tok) sessionStorage.setItem(KEY, tok); else sessionStorage.removeItem(KEY); } catch (e) {} }
+  function el(t, a, kids) {
+    var x = document.createElement(t);
+    Object.keys(a || {}).forEach(function (k) {
+      if (k === 'text') x.textContent = a[k]; else if (k === 'on') Object.keys(a.on).forEach(function (ev) { x.addEventListener(ev, a.on[ev]); });
+      else if (a[k] !== null && a[k] !== undefined && a[k] !== false) x.setAttribute(k, a[k] === true ? '' : a[k]);
+    });
+    (kids || []).forEach(function (c) { if (c) x.appendChild(typeof c === 'string' ? document.createTextNode(c) : c); });
+    return x;
+  }
+  function call(m, p, b) {
+    var h = {'Content-Type': 'application/json'}; if (tok) h.Authorization = 'Bearer ' + tok;
+    return fetch(API + p, {method: m, headers: h, body: b ? JSON.stringify(b) : undefined}).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.status === 401 && p !== '/login' && p !== '/accept') { setTok(''); start(); }
+        if (!r.ok) throw new Error(j.error || 'Something went wrong');
+        return j;
+      });
+    });
+  }
+  function say(box, t, bad) { var p = box.querySelector('.msg') || box.appendChild(el('p', {'class': 'msg', role: 'status'})); p.textContent = t; p.className = 'msg ' + (bad ? 'bad' : 'ok'); }
+  var RANK = {writer: 1, editor: 2, publisher: 3};
+  function can(r) { return me && RANK[me.role] >= RANK[r]; }
+
+  function loginView() {
+    app.textContent = '';
+    var inv = new URLSearchParams(location.search).get('invite');
+    app.appendChild(el('h1', {text: inv ? 'Join the website team' : 'Website team - log in'}));
+    var f = el('form', {'class': 'card', autocomplete: 'on'});
+    if (inv) {
+      f.appendChild(el('label', {}, [el('span', {text: 'Your name'}), el('input', {name: 'name', autocomplete: 'name'})]));
+      f.appendChild(el('label', {}, [el('span', {text: 'Choose a password (10+ characters)'}), el('input', {name: 'pw', type: 'password', minlength: '10', required: true, autocomplete: 'new-password'})]));
+    } else {
+      f.appendChild(el('label', {}, [el('span', {text: 'Email'}), el('input', {name: 'email', type: 'email', required: true, autocomplete: 'email'})]));
+      f.appendChild(el('label', {}, [el('span', {text: 'Password'}), el('input', {name: 'pw', type: 'password', required: true, autocomplete: 'current-password'})]));
+    }
+    f.appendChild(el('button', {type: 'submit', 'class': 'go', text: inv ? 'Join' : 'Log in'}));
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var p = inv ? call('POST', '/accept', {invite: inv, password: f.pw.value, name: f.name.value})
+        : call('POST', '/login', {email: f.email.value, password: f.pw.value});
+      p.then(function (j) { setTok(j.token); history.replaceState(null, '', location.pathname); start(); }).catch(function (er) { say(f, er.message, true); });
+    });
+    app.appendChild(f);
+  }
+
+  function shell() {
+    app.textContent = '';
+    app.appendChild(el('div', {'class': 'row'}, [el('h1', {text: 'Website team'}), el('span', {'class': 'chip', text: me.name + ' · ' + me.role}),
+      el('button', {type: 'button', text: 'Log out', on: {click: function () { setTok(''); start(); }}})]));
+    var nav = el('nav', {'class': 'tabs', 'aria-label': 'Sections'});
+    [['drafts', 'Drafts'], ['post', 'New post'], ['page', 'Change a page'], ['history', 'History']].forEach(function (t) {
+      nav.appendChild(el('button', {type: 'button', text: t[1], 'aria-current': tab === t[0] ? 'page' : null, on: {click: function () { tab = t[0]; shell(); }}}));
+    });
+    app.appendChild(nav);
+    var box = el('section'); app.appendChild(box);
+    if (tab === 'drafts') draftsView(box); else if (tab === 'post') postForm(box, null); else if (tab === 'page') pagePick(box); else historyView(box);
+  }
+
+  var STATE = {draft: 'Draft', review: 'Waiting for review', approved: 'Approved', returned: 'Sent back', scheduled: 'Scheduled', published: 'Published', withdrawn: 'Withdrawn'};
+  function draftsView(box) {
+    box.appendChild(el('h2', {text: 'Drafts'}));
+    (home.drafts || []).forEach(function (d) {
+      var c = el('div', {'class': 'card'}, [el('div', {'class': 'row'}, [el('b', {text: d.title || '(no title)'}), el('span', {'class': 'chip', text: STATE[d.status] || d.status}),
+        el('span', {'class': 'mut', text: (d.kind === 'page' ? 'Page ' + d.target + ' · ' + d.changes + ' change(s)' : 'Post') + ' · by ' + d.author_name})])]);
+      if (d.note && d.status === 'returned') c.appendChild(el('p', {'class': 'bad', text: 'Note: ' + d.note}));
+      var acts = el('div', {'class': 'row'}); c.appendChild(acts);
+      function mv(to, extra) { return function () { var b = Object.assign({to: to}, extra ? extra() : {}); if (b === null) return;
+        call('POST', '/drafts/' + d.id + '/move', b).then(function () { start(); }).catch(function (er) { say(c, er.message, true); }); }; }
+      var mine = d.author === me.id;
+      if ((mine || can('editor')) && (d.status === 'draft' || d.status === 'returned')) {
+        acts.appendChild(el('button', {type: 'button', text: 'Edit', on: {click: function () { openDraft(d.id); }}}));
+        acts.appendChild(el('button', {type: 'button', 'class': 'go', text: 'Send for review', on: {click: mv('review')}}));
+      }
+      if (can('editor') && d.status === 'review' && !mine) {
+        acts.appendChild(el('button', {type: 'button', text: 'Look', on: {click: function () { openDraft(d.id); }}}));
+        acts.appendChild(el('button', {type: 'button', 'class': 'go', text: 'Approve', on: {click: mv('approved')}}));
+        acts.appendChild(el('button', {type: 'button', text: 'Send back', on: {click: mv('returned', function () { return {note: prompt('What should change?') || ''}; })}}));
+      }
+      if (can('publisher') && d.status === 'approved') {
+        acts.appendChild(el('button', {type: 'button', 'class': 'go', text: 'Publish now', on: {click: function () { if (confirm('Publish this on the website now?')) mv('published')(); }}}));
+        var when = el('input', {type: 'datetime-local', 'aria-label': 'Publish at'});
+        acts.appendChild(when);
+        acts.appendChild(el('button', {type: 'button', text: 'Schedule', on: {click: mv('scheduled', function () { return {when: when.value ? when.value + '+05:30' : ''}; })}}));
+      }
+      if (d.status !== 'published' && d.status !== 'withdrawn' && (mine || can('editor'))) acts.appendChild(el('button', {type: 'button', text: 'Withdraw', on: {click: mv('withdrawn')}}));
+      box.appendChild(c);
+    });
+    if (!(home.drafts || []).length) box.appendChild(el('p', {'class': 'mut', text: 'No drafts yet.'}));
+  }
+
+  function openDraft(id) {
+    call('GET', '/drafts/' + id).then(function (d) {
+      app.querySelector('section').textContent = '';
+      var box = app.querySelector('section');
+      if (d.kind === 'post') postForm(box, d); else pageForm(box, d.target, d);
+    }).catch(function (er) { alert(er.message); });
+  }
+
+  function postForm(box, d, from) {
+    box.textContent = '';
+    box.appendChild(el('h2', {text: d ? 'Edit draft' : 'New post'}));
+    var f = el('form', {'class': 'card'});
+    var pick = el('select', {name: 'target'}, [el('option', {value: '', text: 'A new post'})].concat((home.posts || []).map(function (p) { return el('option', {value: p.slug, text: 'Change: ' + p.title}); })));
+    if (!d) f.appendChild(el('label', {}, [el('span', {text: 'What'}), pick]));
+    f.appendChild(el('label', {}, [el('span', {text: 'Title'}), el('input', {name: 'title', required: true, maxlength: '200'})]));
+    f.appendChild(el('label', {}, [el('span', {text: 'Text (Markdown: ## heading, **bold**, - list)'}), el('textarea', {name: 'body', rows: '16', required: true})]));
+    f.appendChild(el('label', {}, [el('span', {text: 'Short summary (search engines)'}), el('input', {name: 'excerpt', maxlength: '300'})]));
+    f.appendChild(el('label', {}, [el('span', {text: 'Category'}), el('input', {name: 'category', maxlength: '60'})]));
+    f.appendChild(el('button', {type: 'submit', 'class': 'go', text: 'Save draft'}));
+    if (d) { f.title.value = d.title; f.body.value = d.body; f.excerpt.value = (d.meta || {}).excerpt || ''; f.category.value = (d.meta || {}).category || ''; }
+    pick.addEventListener('change', function () {
+      if (!pick.value) return;
+      call('GET', '/post/' + encodeURIComponent(pick.value)).then(function (j) { f.title.value = j.post.title; f.body.value = j.post.body; f.excerpt.value = j.post.excerpt || ''; f.category.value = j.post.category || ''; });
+    });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var b = {kind: 'post', title: f.title.value, body: f.body.value, meta: {excerpt: f.excerpt.value, category: f.category.value}};
+      if (!d) b.target = pick.value;
+      (d ? call('PUT', '/drafts/' + d.id, b) : call('POST', '/drafts', b)).then(function () { tab = 'drafts'; start(); }).catch(function (er) { say(f, er.message, true); });
+    });
+    box.appendChild(f);
+  }
+
+  function pagePick(box) {
+    box.appendChild(el('h2', {text: 'Change the words of a page'}));
+    box.appendChild(el('p', {'class': 'mut', text: 'Only the words and links of a page can be changed here; the design stays.'}));
+    var ul = el('div');
+    (home.pages || []).forEach(function (p) { ul.appendChild(el('button', {type: 'button', text: p.title, on: {click: function () { pageForm(box, p.slug, null); }}})); });
+    box.appendChild(el('div', {'class': 'row'}, [ul]));
+  }
+
+  function pageForm(box, slug, d) {
+    box.textContent = '';
+    box.appendChild(el('h2', {text: 'Page: ' + slug}));
+    var f = el('form', {'class': 'card'}); box.appendChild(f);
+    call('GET', '/page/' + slug).then(function (j) {
+      var mine = {}; ((d && d.ops) || []).forEach(function (o) { mine[o.key + '|' + o.e + '|' + o.op] = o.value; });
+      j.texts.forEach(function (t) {
+        var k = t.key + '|' + t.e, v = mine[k + '|text'] !== undefined ? mine[k + '|text'] : t.text;
+        var inp = t.text.length > 90 ? el('textarea', {'data-k': k, 'data-op': 'text', 'data-was': t.text, rows: '3'}) : el('input', {'data-k': k, 'data-op': 'text', 'data-was': t.text});
+        inp.value = v;
+        f.appendChild(el('label', {'class': 't'}, [el('span', {text: t.tag + (t.kind === 'link' ? ' (link)' : '')}), inp]));
+        if (t.kind === 'link') {
+          var li = el('input', {'data-k': k, 'data-op': 'link', 'data-was': t.href, 'aria-label': 'Link address'});
+          li.value = mine[k + '|link'] !== undefined ? mine[k + '|link'] : t.href;
+          f.appendChild(li);
+        }
+      });
+      f.appendChild(el('button', {type: 'submit', 'class': 'go', text: 'Save draft'}));
+    }).catch(function (er) { say(f, er.message, true); });
+    f.addEventListener('submit', function (e) {
+      e.preventDefault();
+      var ops = [];
+      f.querySelectorAll('[data-k]').forEach(function (x) { if (x.value.trim() !== x.getAttribute('data-was')) { var p = x.getAttribute('data-k').split('|'); ops.push({key: p[0], e: p[1], op: x.getAttribute('data-op'), value: x.value}); } });
+      var b = {kind: 'page', target: slug, ops: ops, title: 'Page: ' + slug};
+      (d ? call('PUT', '/drafts/' + d.id, b) : call('POST', '/drafts', b)).then(function () { tab = 'drafts'; start(); }).catch(function (er) { say(f, er.message, true); });
+    });
+  }
+
+  function historyView(box) {
+    box.appendChild(el('h2', {text: 'History'}));
+    call('GET', '/history').then(function (j) {
+      var t = el('table'), tb = el('tbody');
+      t.appendChild(el('thead', {}, [el('tr', {}, ['When', 'What', 'Who', ''].map(function (h) { return el('th', {text: h}); }))]));
+      (j.history || []).forEach(function (x) {
+        var td = el('td');
+        if (can('publisher')) td.appendChild(el('button', {type: 'button', text: 'Bring back what was before', on: {click: function () {
+          if (!confirm('Put back what was there before this change? This is saved as a new change.')) return;
+          call('POST', '/history/' + x.id + '/restore').then(function () { start(); }).catch(function (er) { alert(er.message); }); }}}));
+        tb.appendChild(el('tr', {}, [el('td', {text: new Date(x.at).toLocaleString()}), el('td', {text: (x.kind === 'post' ? 'Post ' : 'Page ') + x.target + ' · ' + x.summary + (x.action === 'restore' ? ' (restored)' : '')}), el('td', {text: x.by}), td]));
+      });
+      t.appendChild(tb); box.appendChild(el('div', {'class': 'wrap'}, [t]));
+      if (!(j.history || []).length) box.appendChild(el('p', {'class': 'mut', text: 'Nothing published yet.'}));
+    }).catch(function (er) { box.appendChild(el('p', {'class': 'bad', text: er.message})); });
+  }
+
+  function start() {
+    if (!tok) return loginView();
+    call('GET', '/home').then(function (j) { home = j; me = j.me; shell(); }).catch(function () { if (!tok) loginView(); });
+  }
+  start();
+})();
+</script></body></html>

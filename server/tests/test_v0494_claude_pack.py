@@ -178,7 +178,7 @@ def _full_tenant():
 
 def test_retrieval_card_right_skill_in_top2(desk):
     _full_tenant()
-    assert len(skills_store.listing(T)) == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(ALL)
+    assert len(skills_store.listing(T)) == len(skill_packs.seed_files()) + len(skill_packs.byox_files()) + len(skill_packs.prog_files()) + len(skill_packs.sp_files()) + len(skill_packs.fe_files()) + len(skill_packs.cs_files()) + len(skill_packs.mg_files()) + len(skill_packs.bd_files()) + len(skill_packs.cr_files()) + len(skill_packs.th_files()) + len(skill_packs.ed_files()) + len(ALL)
     miss = [(a, w, [r["name"] for r in inject._matched(T, a)]) for a, w in ASKS
             if w not in [r["name"] for r in inject._matched(T, a)]]
     assert not miss, f"right skill missing from top 2: {miss}"
