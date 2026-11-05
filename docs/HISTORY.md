@@ -20378,3 +20378,27 @@ before - order p50 3.7 s, p95 50.5 s, 104 checkouts tapped again after no answer
 SEEN ONCE, harmless: under the rush, two worker PROCESSES creating the web-app tables at the same instant logged
 "web app security tables failed" (a lock cannot coordinate processes; the tables already exist from startup, the
 error is caught). Pin: test_v0551_suraksha_gates::test_shop_self_heal_checks_only_its_own_tables.
+
+## v0.558.0 SAHI KAMRA (built as 0.557.0; the dev's TEZ CHECKOUT took 0.557.0 - rebased, both kept) - every route measured, two fixed (owner: "IS NOW ALL TASK WILL FLOW PROPERLY TO DEFINED MODEL OR NEED MORE WORK")
+
+Live healthz after her v0.556 deploy: 0.556.0, claude-sonnet-5-5, chat_brain claude. Then the remaining routes were
+measured through the real `run_turn` with the recording fake model (first call of each):
+| route | model | max_tokens | thinking | effort | tools |
+| simple chat (console + phone) | Sonnet 5.5 | 2,000 | no | default | ~75 |
+| hard ask | Opus 5.5 | 16,000 | adaptive | high | ~90 |
+| background result (wake turn) | Sonnet 5.5 | 2,000 | no | default | ~86 |
+| big ask (several things to make) | Sonnet 5.5 | **2,000 -> 16,000** | adaptive | xhigh | ~91 |
+| her scheduled routine | Sonnet 5.5 | 2,000 | no | default | **569 -> admitted** |
+| voice call | Gemini Live gemini-3.8-live (OpenAI real voice = her trial pick) | | | | |
+
+FIXED in `server/app/agent/santosh.py`:
+1. A BIG ask turned on thinking at effort xhigh from its first call (`state["big"]`) but kept the chat-size 2,000
+   tokens; thinking tokens count against max_tokens, the same cut-answer bug v0.429 fixed for hard asks. It now gets
+   `agent_goal_max_tokens` (16,000) from the first call.
+2. Her ROUTINES (actor `routine`) carried the FULL registry: 569 tools, ~739 KB, ~184k tokens of tool JSON on EVERY
+   model call (a chat turn carries ~14k) - near the context edge and the most expensive call Hoola makes. Routines are
+   now admitted like chat (v0.270 did the same for long-job rounds): core families always, her words pick the rest,
+   tool_search opens any other family; dispatch and every gate unchanged. Staff / customer actors keep the full set.
+Tests: NEW `test_v0558_sahi_kamra.py` (3); routing / goal / routine / admission suites 204 passed; the 4 reds
+(test_v091 x3 - a stale fake `think()` signature - and test_v0311 hello-size) are red on the committed tree too.
+NOT VERIFIED live: the next morning routine on the VPS is the first real one with the smaller tool set.

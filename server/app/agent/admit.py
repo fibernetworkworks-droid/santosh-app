@@ -19,7 +19,7 @@ small and stable per session. HOOLA's version, adapted to a chat agent:
   set goes instead (never worse than v0.190).
 
 Admission only changes what the model SEES. dispatch(), employee.gate, the confirm-card rules, Rokiye - all
-unchanged and applied after, exactly as before. Non-owner actors (routine / staff / customer) keep the full set:
+unchanged and applied after, exactly as before. Non-owner actors (staff / customer) keep the full set (v0.558: her own routines are admitted like chat):
 their gates already restrict them and their jobs may need anything.
 """
 from __future__ import annotations
