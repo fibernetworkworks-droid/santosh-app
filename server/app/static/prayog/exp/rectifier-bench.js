@@ -204,7 +204,7 @@ HoolaStudio.define('rectifier-bench', function (S) {
   dboot.rotation.x = -Math.PI / 2; dboot.position.y = 0.007; dmm.add(dboot);
   var FUNCS = ['OFF', 'DC V', 'AC V', 'Hz'];
   var lcd = S.liveTex(640, 260);
-  var dface = new T.Group(); dface.rotation.x = -0.5; dface.position.set(0, DH + 0.004, 0); dmm.add(dface);
+  var dface = new T.Group(); dface.rotation.x = -Math.PI / 2 + 0.16; dface.position.set(0, DH + 0.004, 0); dmm.add(dface);
   var dplate = S.canvasTex(700, 900, function (x, w, h) {
     x.fillStyle = '#30353d'; x.fillRect(0, 0, w, h);
     x.fillStyle = '#f1efe8'; x.font = '700 32px "Public Sans", sans-serif'; x.textAlign = 'center';
@@ -408,9 +408,9 @@ HoolaStudio.define('rectifier-bench', function (S) {
   return {
     camera: { pos: [0.12, 0.66, 0.78], look: [0.02, 0.05, -0.2] },
     views: {
-      tx: [[-0.34, 0.24, 0.0], [-0.4, 0.08, -0.24]], bb: [[0.0, 0.26, 0.2], [0.0, 0.01, -0.03]],
+      tx: [[-0.34, 0.24, 0.0], [-0.4, 0.08, -0.24]], bb: [[0.0, 0.34, 0.3], [0.0, 0.01, -0.03]],
       cap: [[0.1, 0.1, 0.06], [0.1, 0.02, -0.05]], load: [[0.2, 0.16, 0.1], [0.19, 0.03, -0.01]],
-      dmm: [[-0.2, 0.24, -0.02], [-0.22, 0.05, -0.32]], cro: [[0.26, 0.3, -0.02], [0.3, 0.12, -0.36]],
+      dmm: [[-0.21, 0.17, -0.17], [-0.22, 0.05, -0.33]], cro: [[0.28, 0.26, -0.05], [0.3, 0.12, -0.37]],
       bench: [[0.1, 0.5, 0.74], [0.02, 0.04, -0.22]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
     },
     theory: {

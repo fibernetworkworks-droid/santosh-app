@@ -362,7 +362,7 @@ def newtons_rings() -> dict:
         topic="Interference", chapter="Interference",
         aim="Measure the diameters of the dark Newton's rings with a travelling microscope and find the radius of "
             "curvature of the plano-convex lens.",
-        kernel="newtonrings", params={"R": 0.1, "lam": 5.893e-7}, autorun=True,
+        kernel="newtonrings", params={"R": 1.0, "lam": 5.893e-7}, autorun=True,
         camera={"pos": [0.0, 0.45, 0.7], "look": [0.0, 0.06, 0.0]}, floor=-0.2,
         bodies=[
             _bench(),
@@ -380,12 +380,12 @@ def newtons_rings() -> dict:
             B("lamp", "box", name="Sodium lamp", size=[0.08, 0.1, 0.08], pos=[-0.22, 0.05, 0], color="#f0c020"),
             B("ring", "torus", name="Dark ring", info="The dark rings crowd together as you go out.", r=0.012,
               tube=0.0008, pos=[0, 0.0085, 0], rot=[-1.5708, 0, 0], color="ink", illustrative=True,
-              bind={"sx": {"var": "rn", "k": 83.3}, "sy": {"var": "rn", "k": 83.3}}),
+              bind={"sx": {"var": "rn", "k": 26.3}, "sy": {"var": "rn", "k": 26.3}}),
             B("scalex", "scale", name="Microscope scale (cm)", length=0.1, spacing=0.01, major=5, labels=True,
               label_step=5, tick=0.006, font=0.01, pos=[0, 0.025, 0.07]),
         ],
         knobs=[knob("n", "Ring the cross-wire is on", "n", 2, 20, 1, 10),
-               knob("R", "This lens (its radius is hidden)", "R", 0.05, 2.0, 0.001, 0.1, "m", hidden=True),
+               knob("R", "This lens (its radius is hidden)", "R", 0.2, 3.0, 0.001, 1.0, "m", hidden=True),
                knob("lam", "Wavelength of the light", "lam", 400, 700, 0.1, 589.3, "nm", 1e-9),
                knob("mu", "Index of the film between the glasses", "mu", 1.0, 1.6, 0.001, 1.0)],
         instruments=[inst("dn", "readout", "Diameter of this dark ring", "dn", k=1000, unit="mm", lc=0.01, digits=3),
@@ -423,7 +423,7 @@ def newtons_rings() -> dict:
                                 "The microscope is out of focus"], "answer": 0,
                     "why": "D_n is proportional to sqrt(n), so the spacing falls as n grows."}],
         sources=[DU, NA_D, SIM],
-        check={"params": {"R": 0.1, "lam": 5.893e-7, "n": 10.0}, "reading": "dn", "textbook": "rings_dn"},
+        check={"params": {"R": 1.0, "lam": 5.893e-7, "n": 10.0}, "reading": "dn", "textbook": "rings_dn"},
     )
 
 

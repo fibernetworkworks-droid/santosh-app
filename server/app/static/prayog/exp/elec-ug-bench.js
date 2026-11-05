@@ -412,7 +412,7 @@ HoolaStudio.define('elec-ug-bench', function (S) {
     var shade = S.mesh(new T.ConeGeometry(0.035, 0.03, 24, 1, true), new T.MeshStandardMaterial({ color: 0xd8d4c8, roughness: 0.4, metalness: 0.3, side: T.DoubleSide }));
     shade.rotation.x = Math.PI; shade.position.set(0, 0.19, 0.0); lampG.add(shade);
     var bulbM = new T.MeshStandardMaterial({ color: 0xfff3cf, emissive: 0xffe9a8, emissiveIntensity: 2.4, roughness: 0.2 });
-    var bulb = S.mesh(new T.SphereGeometry(0.014, 20, 14), bulbM); bulb.position.set(0, 0.176, 0); lampG.add(bulb);
+    var bulb = S.mesh(new T.SphereGeometry(0.014, 20, 14), bulbM, false, false); bulb.position.set(0, 0.176, 0); lampG.add(bulb);
     var lampLight = new T.PointLight(0xfff0d0, 1.6, 0.8); lampLight.position.set(0, 0.16, BZ - 0.005); S.scene.add(lampLight);
     S.addApparatus('lamp', lampG, 'Filament lamp', 'The light source. It stays where it is for the whole experiment: the photocurrent must not change while the load is varied.');
     var potG = new T.Group(); S.scene.add(potG); potG.position.set(0.15, 0, BZ);
@@ -527,7 +527,7 @@ HoolaStudio.define('elec-ug-bench', function (S) {
     var boot = S.rounded(W + 0.012, D + 0.012, 0.012, 0.012, new T.MeshStandardMaterial({ color: 0xd9682a, roughness: 0.8 }));
     boot.rotation.x = -Math.PI / 2; boot.position.y = 0.007; g.add(boot);
     var lcd = S.liveTex(640, 260);
-    var face = new T.Group(); face.rotation.x = -0.5; face.position.set(0, Hh + 0.004, 0.0); g.add(face);
+    var face = new T.Group(); face.rotation.x = -Math.PI / 2 + 0.16; face.position.set(0, Hh + 0.004, 0.0); g.add(face);
     var plate = S.canvasTex(700, 900, function (cx, w, h) {
       cx.fillStyle = '#30353d'; cx.fillRect(0, 0, w, h);
       cx.fillStyle = '#f1efe8'; cx.font = '700 34px "Public Sans", sans-serif'; cx.textAlign = 'center';
@@ -670,16 +670,16 @@ HoolaStudio.define('elec-ug-bench', function (S) {
   function enough() { return S.rows.length >= PL.need; }
 
   return {
-    camera: { pos: [0.1, 0.62, 0.86], look: [0.0, 0.03, -0.14] },
+    camera: { pos: [0.14, 0.74, 1.04], look: [0.04, 0.03, -0.18] },
     views: {
       psu: [[0.6, 0.24, 0.0], [0.44, 0.07, -0.3]], aux: [[-0.4, 0.2, 0.0], [-0.42, 0.06, -0.28]],
       bb: [[0.0, 0.4, 0.36], [0.0, 0.01, -0.04]], comp: [[0.07, 0.12, 0.09], [0.04, 0.015, -0.02]],
       res: [[-0.08, 0.14, 0.1], [-0.08, 0.015, -0.05]], pot: [[0.18, 0.15, 0.12], [0.15, 0.02, -0.03]],
-      dm1: [[-0.23, 0.2, -0.06], [-0.26, 0.055, -0.3]], dm2: [[0.11, 0.2, -0.09], [0.1, 0.055, -0.32]],
+      dm1: [[-0.25, 0.17, -0.14], [-0.26, 0.05, -0.3]], dm2: [[0.1, 0.17, -0.17], [0.1, 0.05, -0.32]],
       bench: [[0.08, 0.46, 0.7], [0.0, 0.03, -0.18]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
     },
     theory: {
-      principle: S.lab.theory.split('. ').slice(0, 3).join('. ').replace(/\.+$/, '') + '.',
+      principle: S.lab.theory,
       formula: BASE === 'bjt-ce-current-gain' ? 'β = ΔI_C / ΔI_B' :
         BASE === 'jfet-transfer-characteristic' ? 'I_D = I_DSS (1 − V_GS/V_P)²' :
         BASE === 'mosfet-transfer-characteristic' ? 'I_D = (k/2)(V_GS − V_th)²' :
@@ -688,7 +688,7 @@ HoolaStudio.define('elec-ug-bench', function (S) {
         BASE === 'opamp-summing-amplifier' ? 'V_o = −R_f (V_1/R_1 + V_2/R_2 + V_3/R_3)' : 'V_o = −(R_f/R_1) V_in',
       formulaNote: 'All the numbers on this bench come from the lab\'s own kernel; the apparatus is the shared ' +
         'electronics bench. ' + (SAMPLE ? 'This specimen: ' + SAMPLE + '.' : ''),
-      more: [PL.wiring, S.lab.theory],
+      more: ['How it is wired: ' + PL.wiring],
       precautions: S.lab.safety + ' Start with the knob at zero, and read both meters only after the pilot lamp is lit.',
     },
     book: {

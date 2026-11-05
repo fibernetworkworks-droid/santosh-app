@@ -248,7 +248,6 @@ def max_power() -> dict:
     )
 
 
-BUILDERS: tuple[Any, ...] = (kirchhoff, thevenin_norton, superposition, max_power)
 
 
 # ============================================================================== the alternating-current bench
@@ -464,7 +463,6 @@ def rc_response() -> dict:
     )
 
 
-BUILDERS = BUILDERS + (series_resonance, parallel_resonance, series_rc, rc_response)
 
 
 # ============================================================================== alternating-current bridges
@@ -600,4 +598,8 @@ def owen_bridge() -> dict:
     )
 
 
-BUILDERS = BUILDERS + (de_sauty, owen_bridge)
+BUILDERS: tuple[Any, ...] = (
+    kirchhoff, thevenin_norton, superposition, max_power,            # the network-theorems trainer panel
+    series_resonance, parallel_resonance, series_rc, rc_response,    # the alternating-current bench
+    de_sauty, owen_bridge,                                           # the alternating-current bridge bench
+)

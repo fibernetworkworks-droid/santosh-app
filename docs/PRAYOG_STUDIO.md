@@ -168,4 +168,9 @@ To build one set-up end to end:
 7. **Prove it**: `BASE=<lab-id> node tools/prayog_walk.js http://localhost:<port>` must PASS for every member,
    and `python3 -m app.prayog.count --cover` must show the set-up counted.
 
+**Add a CALCS entry freely.** The twin test's fixtures now find a kernel for any pack calc by trying the kernels
+whose params feed it, so a new calc name no longer breaks the suite (all 76 are covered). Three build agents
+deliberately shipped no calc because of the old hand-written lookup; that is fixed, and a lab whose observation
+table computes a result should carry its own calc.
+
 Never invent a physical constant. Never pad a family with near-duplicates. English only.

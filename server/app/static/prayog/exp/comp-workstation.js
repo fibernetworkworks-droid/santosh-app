@@ -90,7 +90,7 @@ HoolaStudio.define('comp-workstation', function (S) {
       formula: 'Euler y+hf · Heun y+h(k₁+k₂)/2 · RK4 (k₁+2k₂+2k₃+k₄)/6',
     },
     cp_diff: {
-      quantity: 'derivative f′(x)', unit: '', digits: 6, nlabel: 'step: h = h₀/n', ns: [2, 5, 10, 20, 40, 80],
+      quantity: 'derivative f′(x)', unit: '', digits: 6, nlabel: 'step: h = h₀/n', ncol: 'n', ns: [2, 5, 10, 20, 40, 80],
       tol: 0.03, methods: ['Forward', 'Backward', 'Central', 'Five-point'], xlabel: 'x', ylabel: 'f(x)',
       showCurve: true, title: ['f(x) = A sin(ωx)', 'f(x) = A e^(ωx)', 'f(x) = A x^k'][CAS] || 'f(x)',
       problem: function () {
@@ -516,7 +516,7 @@ HoolaStudio.define('comp-workstation', function (S) {
         'Method: ' + METHODS[M0] + ' (and the others for comparison)', 'For each run: ' + SP.nlabel + ', answer, error.'],
       columns: [{ label: 'S.No', get: function (r, i) { return i + 1; } },
         { label: 'Method', get: function (r) { return METHODS[r.mi].split(' ')[0]; } },
-        { label: SP.nlabel.indexOf('h') === 0 ? 'n' : SP.nlabel, get: function (r) { return String(r.n); } },
+        { label: SP.ncol || SP.nlabel, get: function (r) { return String(r.n); } },
         { label: 'Answer', get: function (r) { return sci(r.val); } },
         { label: 'Rel. error', get: function (r) { return r.err.toExponential(2); } }],
     },

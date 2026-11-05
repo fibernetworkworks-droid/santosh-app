@@ -294,12 +294,12 @@ HoolaStudio.define('digital-trainer', function (S) {
   })();
 
   return {
-    camera: { pos: [0.0, 0.52, 0.62], look: [0.0, 0.03, -0.06] },
+    camera: { pos: [0.04, 0.66, 0.92], look: [0.0, 0.03, -0.02] },
     views: {
-      tr: [[0.0, 0.3, 0.18], [0.0, 0.04, -0.12]], bb: [[0.0, 0.22, 0.3], [0.0, 0.01, 0.12]],
-      chips: [[-0.06, 0.1, 0.22], [-0.06, 0.015, 0.13]], sw: [[-0.2, 0.14, 0.06], [-0.19, 0.06, -0.04]],
-      led: [[0.2, 0.14, 0.06], [0.2, 0.06, -0.04]], probe: [[0.3, 0.14, 0.24], [0.3, 0.02, 0.1]],
-      bench: [[0.05, 0.44, 0.66], [0.0, 0.03, -0.04]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
+      tr: [[0.0, 0.58, 0.55], [0.0, 0.04, -0.1]], bb: [[0.0, 0.4, 0.5], [0.0, 0.01, 0.12]],
+      chips: [[-0.05, 0.22, 0.36], [-0.04, 0.015, 0.13]], sw: [[-0.2, 0.16, 0.08], [-0.19, 0.055, -0.04]],
+      led: [[0.2, 0.16, 0.08], [0.2, 0.055, -0.04]], probe: [[0.3, 0.16, 0.28], [0.3, 0.02, 0.1]],
+      bench: [[0.05, 0.62, 0.9], [0.0, 0.03, -0.02]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
     },
     theory: {
       principle: 'NAND is a universal gate: every Boolean function can be built out of NAND gates alone, because ' +
@@ -382,7 +382,7 @@ HoolaStudio.define('digital-trainer', function (S) {
     },
 
     steps: [
-      { id: 'setup', title: 'Set up', view: 'chips', render: function (u) {
+      { id: 'setup', title: 'Set up', view: 'bench', render: function (u) {
           u.h2('Wire the circuit and switch the trainer on');
           u.p(NCHIPS + ' × SN7400 on the breadboard. ' + BUILD);
           u.p('Pin 14 of every package goes to the +5 V rail and pin 7 to ground. The inputs come from the ' +

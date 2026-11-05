@@ -1,0 +1,28 @@
+{
+  "base": "travelling-microscope",
+  "chapter": "Measurement and error analysis",
+  "grid": {
+    "title": "Travelling microscope: diameter of {wire}",
+    "unknown": "the diameter of the wire, with its standard error",
+    "method": "Repeated settings of the cross-wire on the two edges",
+    "axes": {
+      "wire": [
+        {"key": "swg16", "label": "an SWG 16 copper wire", "sample": "Copper wire, SWG 16 (1.626 mm)",
+         "params": {"L": 0.001626, "sigma": 0.000015},
+         "source": {"title": "BS 3737 standard wire gauge table: SWG 16 = 1.626 mm"}},
+        {"key": "swg18", "label": "an SWG 18 copper wire", "sample": "Copper wire, SWG 18 (1.219 mm)",
+         "params": {"L": 0.001219, "sigma": 0.000015},
+         "source": {"title": "BS 3737 standard wire gauge table: SWG 18 = 1.219 mm"}},
+        {"key": "swg20", "label": "an SWG 20 copper wire", "sample": "Copper wire, SWG 20 (0.914 mm)",
+         "params": {"L": 0.000914, "sigma": 0.000015},
+         "source": {"title": "BS 3737 standard wire gauge table: SWG 20 = 0.914 mm"}},
+        {"key": "swg22", "label": "an SWG 22 copper wire", "sample": "Copper wire, SWG 22 (0.711 mm)",
+         "params": {"L": 0.000711, "sigma": 0.000015},
+         "source": {"title": "BS 3737 standard wire gauge table: SWG 22 = 0.711 mm"}},
+        {"key": "swg24", "label": "an SWG 24 copper wire", "sample": "Copper wire, SWG 24 (0.559 mm)",
+         "params": {"L": 0.000559, "sigma": 0.000015},
+         "source": {"title": "BS 3737 standard wire gauge table: SWG 24 = 0.559 mm"}}
+      ]
+    }
+  }
+}

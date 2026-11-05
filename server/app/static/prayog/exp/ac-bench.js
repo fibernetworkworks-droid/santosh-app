@@ -188,7 +188,7 @@ HoolaStudio.define('ac-bench', function (S) {
   lead(new T.Vector3(-0.4, 0.045, 0.03), new T.Vector3(-0.18, 0.045, 0.07), '#d9a520', [[-0.3, 0.1]]);
   lead(new T.Vector3(-0.08, 0.045, 0.07), new T.Vector3(0.15, 0.045, 0.07), 'blue', [[0.04, 0.1]]);
   lead(new T.Vector3(0.25, 0.045, 0.07), gen.outN, 'black', [[0.34, -0.06], [0.0, -0.22], [-0.3, -0.3]]);
-  lead(cro.chA, new T.Vector3(-0.42, 0.045, 0.03), new T.Color ? 'red' : 'red', [[0.1, -0.26], [-0.2, -0.16]]);
+  lead(cro.chA, new T.Vector3(-0.42, 0.045, 0.03), 'red', [[0.1, -0.26], [-0.2, -0.16]]);
   lead(cro.chB, new T.Vector3(0.18, 0.045, 0.07), 'blue', [[0.3, -0.2]]);
   lead(cro.earth, new T.Vector3(0.26, 0.045, 0.07), 'black', [[0.34, -0.2]]);
 

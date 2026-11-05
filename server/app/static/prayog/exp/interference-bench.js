@@ -18,9 +18,10 @@ HoolaStudio.define('interference-bench', function (S) {
   var CX = 0.02, CZ = -0.17;                            // centre of the film
   var PLATE_Y = 0.042;                                  // top of the glass plate the pattern lives on
   var FIELD = WEDGE ? 0.004 : 0.008;                    // width of the microscope's field of view, metres
+  var PAT = 0.03;                                       // the square of film the drawn pattern covers, metres
   var SAMPLE = (S.lab.variant || {}).sample || '';
   var LIQUID = p.mu > 1.02;
-  var st = { lit: false, plate45: false, focused: false, x: 0, xSet: 0, hold: null, holdN: null };
+  var st = { lit: false, plate45: false, focused: false, x: WEDGE ? 0.003 : 0, xSet: WEDGE ? 0.003 : 0, hold: null, holdN: null };
 
   function fmt(v, d) { return (Math.round(v * Math.pow(10, d)) / Math.pow(10, d)).toFixed(d); }
   function roundLC(x) { return Math.round(x / LC) * LC; }
@@ -111,13 +112,12 @@ HoolaStudio.define('interference-bench', function (S) {
     var upper = S.mesh(new T.BoxGeometry(0.1, 0.006, 0.08), glassM);
     upper.position.set(0, PLATE_Y + 0.003, 0); upper.rotation.z = -Math.atan2(p.ts, p.L) * 6; upper.renderOrder = 3; stage.add(upper);
     var spacer = S.mesh(new T.BoxGeometry(0.004, 0.0006, 0.08), new T.MeshStandardMaterial({ color: 0xd8c49a, roughness: 0.9 }));
-    spacer.position.set(p.L, PLATE_Y + 0.0003, 0); stage.add(spacer);
+    spacer.position.set(-PAT / 2 + p.L, PLATE_Y + 0.0003, 0); stage.add(spacer);
     var sLab = S.label('spacer', { w: 0.016, ratio: 0.3, color: '#8a7a56', weight: 600 });
-    sLab.position.set(p.L, PLATE_Y + 0.001, 0.026); sLab.rotation.x = -Math.PI / 2; stage.add(sLab);
+    sLab.position.set(-PAT / 2 + p.L, PLATE_Y + 0.001, 0.026); sLab.rotation.x = -Math.PI / 2; stage.add(sLab);
   }
 
   // the pattern itself, drawn at TRUE size on the film from the kernel's own intensity
-  var PAT = 0.03;                                        // the square of film the texture covers, metres
   var patTex = S.liveTex(512, 512);
   var pat = new T.Mesh(new T.PlaneGeometry(PAT, PAT), new T.MeshBasicMaterial({ map: patTex, transparent: true, depthWrite: false, toneMapped: false, blending: T.AdditiveBlending }));
   pat.rotation.x = -Math.PI / 2; pat.position.set(CX, PLATE_Y + 0.0012, CZ); pat.renderOrder = 6; S.scene.add(pat);
@@ -181,7 +181,7 @@ HoolaStudio.define('interference-bench', function (S) {
   // ---------------------------------------------------------------- the view in the eyepiece (HUD)
   var eyeCard = document.createElement('div'); eyeCard.className = 'card';
   eyeCard.appendChild(document.createTextNode('Through the microscope'));
-  var eyeCan = document.createElement('canvas'); eyeCan.width = 300; eyeCan.height = 300;
+  var eyeCan = document.createElement('canvas'); eyeCan.width = 220; eyeCan.height = 220;
   eyeCan.style.cssText = 'width:190px;height:190px;display:block;margin-top:4px;border-radius:8px';
   eyeCard.appendChild(eyeCan); S.hud.appendChild(eyeCard);
   var ectx = eyeCan.getContext('2d'), eyeKey = '';
@@ -215,8 +215,9 @@ HoolaStudio.define('interference-bench', function (S) {
     ectx.fillText(st.focused ? 'field ' + fmt(FIELD * 1000, 1) + ' mm' : 'out of focus', 8, h - 8);
   }
 
+  function carX(v) { return WEDGE ? v - PAT / 2 : v; }      // the wedge is measured from the contact edge
   function update() {
-    car.position.x = st.x;
+    car.position.x = carX(st.x);
     lamp.intensity = st.lit ? 0.03 : 0;
     lHole.material.color.setHex(st.lit ? 0xffd45e : 0x5c4a20);
     beam.visible = st.lit; beamDn.visible = st.lit && st.plate45;
@@ -257,13 +258,13 @@ HoolaStudio.define('interference-bench', function (S) {
   }
   function moveTo(x) {
     if (S.hand.busy) return wait();
-    x = Math.max(-0.014, Math.min(0.014, roundLC(x)));
+    x = Math.max(WEDGE ? 0.0005 : -0.014, Math.min(WEDGE ? 0.029 : 0.014, roundLC(x)));
     var from = st.x;
     if (Math.abs(x - from) < 1e-9) { st.x = x; update(); return Promise.resolve(true); }
     function at(k) { return from + (x - from) * k; }
     var ms = Math.min(1600, 380 + Math.abs(x - from) * 24000);
-    return S.hand.pinchMove(new T.Vector3(CX + from + 0.048, 0.05, CZ - 0.112),
-      function (k) { return new T.Vector3(CX + at(k) + 0.048, 0.05, CZ - 0.112); },
+    return S.hand.pinchMove(new T.Vector3(CX + carX(from) + 0.048, 0.05, CZ - 0.112),
+      function (k) { return new T.Vector3(CX + carX(at(k)) + 0.048, 0.05, CZ - 0.112); },
       function (k) { st.x = at(k); update(); }, { ms: ms, reachMs: 600, hold: 140 })
       .then(function () { st.x = x; update(); S.render(); return true; });
   }
@@ -427,7 +428,7 @@ HoolaStudio.define('interference-bench', function (S) {
           + 'reading the scale each time. The slope of the reading against the fringe number is the fringe width.'
           : 'Run the cross-wire out to a ring on one side of the centre and read the scale; cross the centre to the '
           + 'same ring on the other side and read again. The difference is the diameter of that ring.');
-        u.slider('Move the carriage to', -14, 14, 0.001, function () { return st.xSet * 1000; },
+        u.slider('Move the carriage to', WEDGE ? 0.5 : -14, WEDGE ? 29 : 14, 0.001, function () { return st.xSet * 1000; },
           function (x) { st.xSet = x / 1000; }, 'mm', 3);
         u.row(u.button('Move the carriage', function () { moveTo(st.xSet); S.render(); }, true, S.hand.busy),
           u.button('Read the vernier', function () { readScale(); }, false, S.hand.busy));
