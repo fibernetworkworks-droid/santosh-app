@@ -20697,3 +20697,17 @@ The two W9 pieces v0.565 listed as not built. Both are served from her own site 
   off (animations play and are recoloured, the 3D canvas is drawn, only used files copied, other pages stay light, OSV gate sees
   three 0.187.0 + lottie-web 5.13.0), routes + tool + writer rules.
 - NOT VERIFIED: a real phone's GPU (headless is software WebGL), and a real LottieFiles download of hers.
+
+## v0.571.0 SAB SCHEMA SAHI — hotfix from her live hard card (every Claude turn 400ed after v0.565)
+
+Her vps-ops `hard_card` on 0.570.0: ping fine on Opus + Sonnet, then every live turn failed with
+`400 tools.83.custom.input_schema: JSON schema is invalid` (tools.76 on others - the index moves with the admitted set).
+Cause: v0.565 declares EVERY tool on every Claude call; `dhara_save` (agent/dhara_tools.py, v0.502) had `"required"`
+written inside `"properties"`, so its schema was invalid JSON Schema - unseen while the dhara family was almost never
+admitted, fatal once every tool rides every request. The v0.565 ladder (`toolsearch.refused`) only knew the words
+defer_loading / tool_reference, so it never stepped back. Fix: (1) the schema; (2) `toolsearch.schema_ok` validates
+each tool once against Draft 2020-12 (jsonschema added to requirements; missing validator = trusted) and keeps a bad one
+out of the deferred list with a warning; (3) `refused` also matches any 400 naming `tools.N.`. Test:
+`test_every_tool_schema_is_valid_json_schema_2020_12` over all 581 tools + the fallback test. The same deploy's live tool
+card: right first pick 25/26 (fresh15: scrape vs open_website). Lesson: a change that widens what is SENT must validate
+everything it now sends - the free cards never call the API, so only the live card could see this.

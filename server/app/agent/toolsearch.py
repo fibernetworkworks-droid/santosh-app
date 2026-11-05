@@ -37,11 +37,33 @@ def on(settings, brain: str) -> bool:
     return brain == "claude" and bool(NATIVE["ok"]) and bool(getattr(settings, "tool_search_native", True))
 
 
+_SCHEMA_OK: dict[str, bool] = {}
+
+
+def schema_ok(t: dict) -> bool:
+    """v0.571 a tool whose input_schema is not valid JSON Schema 2020-12 is left out of the deferred list (one such
+    schema 400s the WHOLE request). Checked once per tool name; no validator installed = trusted as before."""
+    name = str(t.get("name") or "")
+    if name in _SCHEMA_OK:
+        return _SCHEMA_OK[name]
+    ok = True
+    try:
+        from jsonschema import Draft202012Validator
+        Draft202012Validator.check_schema(t.get("input_schema") or {"type": "object"})
+    except ImportError:
+        ok = True
+    except Exception as e:   # noqa: BLE001 - SchemaError and friends
+        ok = False
+        log.warning("tool %s has an invalid input_schema, kept out of the deferred list: %s", name, str(e)[:160])
+    _SCHEMA_OK[name] = ok
+    return ok
+
+
 def build(shown: list[dict]) -> list[dict]:
     """The turn's whole tool list: what is in view first (unchanged), then every other registered tool deferred."""
     from .tools import TOOLS
     have = {t.get("name") for t in shown}
-    deferred = [{**t, "defer_loading": True} for t in TOOLS if t.get("name") not in have]
+    deferred = [{**t, "defer_loading": True} for t in TOOLS if t.get("name") not in have and schema_ok(t)]
     return list(shown) + deferred
 
 
@@ -164,10 +186,18 @@ def fit_refs(history: list[dict], tools: list[dict] | None, keep: bool = True) -
     return out if changed else history
 
 
+_TOOL_400 = re.compile(r"tools\.(\d+)\.")
+
+
 def refused(e: Exception) -> bool:
+    """The API refused something only the whole-toolbox request carries: deferred tools, tool references, or ANY
+    tool definition (`tools.N...` - v0.571: one bad schema in a rarely-loaded tool, dhara_save, failed every chat
+    turn once all tools were declared). The same call the old way never sends those."""
     s = str(e).lower()
-    return ("400" in s or "invalid" in s) and any(k in s for k in ("defer_loading", "tool_reference",
-                                                                   "tool reference", "deferred"))
+    if not ("400" in s or "invalid" in s):
+        return False
+    return bool(_TOOL_400.search(s)) or any(k in s for k in ("defer_loading", "tool_reference", "tool reference",
+                                                             "deferred"))
 
 
 def downgrade(kw: dict[str, Any]) -> dict[str, Any]:

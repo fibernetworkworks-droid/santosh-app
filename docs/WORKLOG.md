@@ -1525,3 +1525,13 @@ Work Log:
 Stage Summary:
 - P5 DONE at v0.566.0. Train: P6 RETRIEVE -> P7 HUB -> P8 the parity audit. Deploy = the owner's
   dispatch (healthz should say 0.566.0).
+
+---
+Task ID: 49 — v0.571.0 SAB SCHEMA SAHI hotfix (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: her live hard_card on 0.570 showed every Claude turn 400ing (tools.N.custom.input_schema invalid).
+Work Log:
+- Root cause dhara_save schema (`required` inside `properties`), exposed by v0.565 sending all tools.
+- Fixed the schema, schema_ok filter in toolsearch.build, wider refusal ladder, 2 tests; jsonschema in requirements.
+Stage Summary:
+- v0.571.0 server-only. Deploy NOW = owner's vps-ops deploy, then re-run hard_card.

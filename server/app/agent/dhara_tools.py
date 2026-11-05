@@ -1239,8 +1239,8 @@ DHARA_TOOLS = [
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},
          "description": {"type": "string", "description": "One line: yeh kya karti hai"},
          "trigger": {"type": "string", "enum": ["manual", "schedule", "webhook"], "description": "Default manual"},
-         "trigger_spec": {"type": "object", "description": "schedule: {every_hours: 24, at: ['09:30']}; webhook: none"},
-         "required": ["name", "steps"]}}},
+         "trigger_spec": {"type": "object", "description": "schedule: {every_hours: 24, at: ['09:30']}; webhook: none"}},
+         "required": ["name", "steps"]}},
     {"name": "dhara_run", "description": (
         "Run one of her saved workflows NOW (v0.502). Returns a run_id at once — the run goes in the background "
         "with a checkpoint after every step; dhara_runs shows the haal. Optional vars land as {{vars.x}}. A disabled "
