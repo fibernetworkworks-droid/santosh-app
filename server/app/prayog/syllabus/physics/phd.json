@@ -267,7 +267,8 @@
       "self-heating error"
      ],
      "conditions": [],
-     "kernel": "cryo_thermometry"
+     "kernel": "cryo_thermometry",
+     "built": "phd-cryo-thermometry"
     },
     {
      "id": "sc-tc-four-probe",
@@ -330,7 +331,8 @@
       "chi' and chi'' vs T"
      ],
      "conditions": [],
-     "kernel": "ac_susc"
+     "kernel": "ac_susc",
+     "built": "phd-meissner-acsusc"
     },
     {
      "id": "josephson-iv",
@@ -351,7 +353,8 @@
       "no microwaves",
       "microwave irradiated"
      ],
-     "kernel": "rcsj"
+     "kernel": "rcsj",
+     "built": "phd-josephson"
     },
     {
      "id": "squid-magnetometry",
@@ -392,7 +395,8 @@
       "flux noise"
      ],
      "conditions": [],
-     "kernel": "squid"
+     "kernel": "squid",
+     "built": "phd-dc-squid"
     },
     {
      "id": "dilution-refrigerator",
@@ -513,7 +517,8 @@
       "dephasing time vs T"
      ],
      "conditions": [],
-     "kernel": "weak_loc"
+     "kernel": "weak_loc",
+     "built": "phd-weak-localisation"
     },
     {
      "id": "hall-bar-mobility",
@@ -574,7 +579,8 @@
       "gap vs temperature (BCS)"
      ],
      "conditions": [],
-     "kernel": "tunnel_bcs"
+     "kernel": "tunnel_bcs",
+     "built": "phd-tunnel-nis"
     },
     {
      "id": "dlts",
@@ -1233,7 +1239,8 @@
       "several concentrations",
       "several temperatures"
      ],
-     "kernel": "bloch"
+     "kernel": "bloch",
+     "built": "phd-pulsed-nmr"
     },
     {
      "id": "nmr-diffusion",
@@ -1252,7 +1259,8 @@
      "conditions": [
       "several temperatures"
      ],
-     "kernel": "bloch"
+     "kernel": "bloch",
+     "built": "phd-nmr-pfg"
     },
     {
      "id": "mossbauer-fe57",

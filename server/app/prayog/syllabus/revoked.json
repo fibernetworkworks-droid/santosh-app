@@ -6,6 +6,12 @@
   "logic-gates": "row lists NAND and NOR realisations; the lab is NAND only",
   "sonometer-frequency": "row lists an electrically maintained tuning fork AND AC mains; the lab covers mains only",
   "neutron-activation": "the lab measures the product half-life only, not the neutron flux the row is about",
-  "langmuir-probe": "row lists an argon RF discharge; the lab models only the DC glow"
+  "langmuir-probe": "row lists an argon RF discharge; the lab models only the DC glow",
+  "sc-tc-four-probe": "row lists YBCO, niobium film and lead; the family models niobium-type and lead-type only (no YBCO-type, ~92 K)",
+  "sc-critical-current": "row lists a YBCO bridge and NbTi wire; the family models NbTi-type only",
+  "quantum-hall": "row lists GaAs/AlGaAs AND graphene; the lab models the GaAs-type 2DEG only",
+  "shubnikov-de-haas": "row lists GaAs, bismuth and graphene, and asks for effective mass and quantum lifetime; the lab extracts carrier density from GaAs-type only",
+  "esr-research": "row lists DPPH, Mn2+ in MgO and an irradiated radical; the lab models DPPH only",
+  "mossbauer-fe57": "row lists alpha-iron, stainless steel, hematite and nitroprusside; the lab models alpha-iron and hematite only"
  }
 }
