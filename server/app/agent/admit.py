@@ -105,6 +105,12 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # stays with jaanch - Hoola's own health - reach answers only about the internet doors)
     "reach": ("reach", "reach manch", "website nahi khul", "site nahi khul", "nahi khul raha", "internet check",
               "backends", "kaun sa door", "web status"),
+    # v0.560 SPEC SUTRA: a work lane, not core (reach is the fallback door every chat may need; the spec
+    # ladder is admitted when software work is spoken). Bare "spec" stays with product (its action=spec) -
+    # these keys are the software-build shapes.
+    "speckit": ("speckit", "spec sutra", "spec driven", "spec-driven", "sdd", "user story", "acceptance criteria",
+                "user stories", "traceability", "constitution", "naksha banao", "spec banao", "spec likho",
+                "spec likh", "requirements doc", "requirement list", "converge loop", "convergence"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
     "mshop": ("mobile shop", "sim card", "phone repair", "phone shop"),
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",

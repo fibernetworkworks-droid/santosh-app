@@ -359,7 +359,7 @@ def test_registry_566_and_dispatch(env):
               "const_rera_dekho", "const_contracts", "const_contracts_dekho", "const_tender",
               "const_tender_dekho", "const_drawqa", "const_drawqa_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 570, "556 (their chain) + 12 construction Wave 2 + 1 reach (v0.559 REACH MANCH)"
+    assert len(TOOLS) == 571, "556 (their chain) + 12 construction Wave 2 + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.560 SPEC SUTRA)"
 
 
 def test_qs_tool_end_to_end(env):
@@ -440,6 +440,8 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.559.0"
-    assert 'APP_VERSION = "0.558.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.559.0+582" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.560.0"
+    # healed in v0.560: this line pinned the LITERAL main.py source and sat at 0.558.0 (a seed-red
+    # the v0.559 chain missed - red on pristine 981d7fb30, worktree-proven); it reads the LIVE line now
+    assert 'APP_VERSION = "0.560.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.560.0+583" in (REPO / "pubspec.yaml").read_text()

@@ -555,5 +555,5 @@ def test_version_layer():
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
     assert 'APP_VERSION = "0.558.0"' in main   # the story pin rides the newest story (the v0.476 precedent)
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.559.0+582" in pub
+    assert "version: 0.560.0+583" in pub
     assert store._SCHEMA_VERSION == 3

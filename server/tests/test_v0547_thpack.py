@@ -172,8 +172,8 @@ def test_agent_research_matches_the_real_engine():
         assert door in body, door                       # the skill teaches it
     assert (REPO_ROOT / "server" / "app" / "crew" / "crew.py").exists()
     from app.agent import tools
-    assert len(tools.TOOLS) == 570, ("registry moved - refresh th-agent-research's "
-                                     "'abhi 569' and this pin in the SAME commit + 1 reach (v0.559 REACH MANCH)")
+    assert len(tools.TOOLS) == 571, ("registry moved - refresh th-agent-research's "
+                                     "'abhi 569' and this pin in the SAME commit + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.560 SPEC SUTRA)")
 
 
 def test_injection_matches_a_theory_ask(desk):
