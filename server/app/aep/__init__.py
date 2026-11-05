@@ -28,11 +28,16 @@ from P2 where tracers and agents actually run):
                (nodes/edges/conditional, fan-out + join barriers), add_messages +
                AgentState, interrupt/Command park-and-resume, MemorySaver +
                SqliteSaver checkpointers, store wiring
+- agent      : (P4 v0.549.0 HOOLA AGENT) create_agent - the agent loop compiled
+               onto the house graph (model node + ToolNode + pending-tool_calls
+               routing + return_direct + response_format -> structured_response
+               + interrupt_before/after breakpoints + checkpointer chat memory)
 
 P3 (HOOLA GRAPH) is the state-graph engine; P4 (HOOLA AGENT) create_agent; P5 the 24-middleware framework; P6 retrieval;
 P7 the hub/loader/conformance suite.
 """
 from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, extended)
+    agent,
     history,
     messages,
     models,
@@ -47,6 +52,7 @@ from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, exten
     tracers,
     vault_sink,
 )
+from .agent import ToolNode, create_agent, create_react_agent
 from .graph import (
     INTERRUPT_KEY,
     END,
@@ -199,4 +205,6 @@ __all__ = [
     "BaseCheckpointSaver", "MemorySaver", "SqliteSaver",
     "Command", "CompiledStateGraph", "GraphInterrupt", "GraphRecursionError",
     "StateGraph", "interrupt",
+    # P4 agent (HOOLA AGENT)
+    "ToolNode", "create_agent", "create_react_agent",
 ]

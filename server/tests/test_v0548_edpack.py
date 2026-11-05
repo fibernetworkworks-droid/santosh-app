@@ -1,4 +1,4 @@
-"""v0.548.0 ED PACK: the awesome Editors read turned into two fed skills -
+"""v0.549.0 ED PACK: the awesome Editors read turned into two fed skills -
 ed-vscode-cockpit (drive Hoola from inside the IDE: the palette first -
 every command by NAME, quick open, the ax tree over pixels, the integrated
 terminal, the problems panel as printed evidence) and ed-neovim-cockpit

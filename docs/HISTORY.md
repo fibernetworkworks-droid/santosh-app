@@ -2,6 +2,33 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.549.0 HOOLA AGENT — create_agent compiled onto the house graph, P4 of the HOOLA AEP plan (5 Nov 2026)
+
+Built at 0.540.0, then the COLLISION WAVE (the dev chain shipped 0.543–0.548 while P4 sat
+built) — REBASE PROTOCOL twice: reset to their fresh bases, the AEP layer re-applied (they
+never touched server/app/aep), re-versioned 0.549.0. The langchain 1.x `agents/factory.py`
+idea hand-built as `server/app/aep/agent.py` after re-reading upstream at the pinned commit
+`aa2528fb980a290d2b06c83a1be43e60bc2348f9` (zero upstream code). **ToolNode**: finds the
+pending `tool_calls` on the last AIMessage (or takes tool_call dicts directly), runs each tool
+sequentially (deterministic, call order); failures become error ToolMessages
+(`handle_tool_errors=True` default — a string replaces the content, `False` re-raises the
+ORIGINAL error); unknown tool names are honest error ToolMessages; `GraphInterrupt` propagates
+— a tool may park the walk (the P5 human-in-the-loop seam). **create_agent**: a `model` node +
+a `tools` node on the P3 StateGraph; `model → (pending tool_calls ? tools : [structured ?
+generate_structured_response : END])` and `tools → (all executed return_direct ? END : model)`.
+`bind_tools` at BUILD time; pre-bound Runnables ride as-is; `system_prompt` rides the PROMPT,
+never the state; `response_format` (pydantic/dict) adds the `generate_structured_response`
+node writing `state["structured_response"]` via the P1 `with_structured_output` lane; model
+strings are refused with the P7 HUB pointer; `name` names the compiled graph. **Interrupts**
+are static breakpoints on the P3 park seam; **checkpointer = chat memory**: a dict input on a
+checkpointed thread MERGES into the stored channel values through the reducers. Substrate
+seams: `compile(name=...)`; node bodies run on their span's CHILD config (model/tool calls
+nest UNDER their node span); `add_messages` coerces BOTH sides + the role-shape dict table;
+the SqliteSaver engine-path lazy-ensure moved to `_raw()` per instance. Registry stays 569
+(INERTNESS re-proven; the dev chain's stale 568 count pins in six suites healed to the real
+569). Tests: NEW `test_v0540_hoola_agent.py` (56). Server-only; old APKs keep working. Train:
+P5 the 24-middlewares → P6 RETRIEVE → P7 HUB → P8 the parity audit.
+
 ## v0.530.0 HOOLA GRAPH — the state-graph engine, P3 of the HOOLA AEP plan (5 Nov 2026)
 
 The langgraph idea hand-built as `server/app/aep/graph.py` (zero upstream code). StateGraph
