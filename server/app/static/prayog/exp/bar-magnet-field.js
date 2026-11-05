@@ -317,7 +317,7 @@ HoolaStudio.define('bar-magnet-field', function (S) {
   }
 
   var steps = [
-    { id: 'set', title: 'Set the apparatus up', view: 'mag', render: function (u) {
+    { id: 'set', title: 'Set the apparatus up', view: 'work', render: function (u) {
         u.h2(MODE === 'plot' ? 'Line the sheet up with north' : MODE === 'force' ? 'Line the two magnets up' : 'Hang the magnet');
         u.p(MODE === 'plot' ? 'The compass needle must lie along the printed north-south line before anything else is done; then the magnet is laid across the centre, east-west.'
           : MODE === 'force' ? 'One magnet is fixed on the sheet; the second stands on the balance pan with its N pole facing the first magnet’s N pole.'
@@ -416,7 +416,7 @@ HoolaStudio.define('bar-magnet-field', function (S) {
 
   return {
     camera: { pos: [0.0, 1.0, 0.46], look: [0.0, 0.0, -0.2] },
-    views: { mag: [[0.0, 0.34, 0.06], [0.0, 0.02, -0.22]], comp: [[WX + 0.1, 0.34, WZ + 0.16], [WX + 0.04, 0.02, WZ - 0.06]],
+    views: { mag: [[0.0, 0.46, 0.2], [0.0, 0.02, -0.2]], comp: [[WX + 0.1, 0.34, WZ + 0.16], [WX + 0.04, 0.02, WZ - 0.06]],
       bal: [[WX + 0.22, 0.3, WZ + 0.26], [WX + 0.18, 0.03, WZ]],
       swing: [[WX - 0.1, 0.44, WZ + 0.36], [WX - 0.22, 0.28, WZ - 0.12]],
       watch: [[WX + 0.3, 0.26, WZ + 0.3], [WX + 0.3, 0.02, WZ + 0.08]],

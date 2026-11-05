@@ -109,19 +109,16 @@ HoolaStudio.define('metre-scale-moments', function (S) {
     S.addRow({ x: p.x, y: p.y, M: p.M });
     S.say('Written in your record book: x = ' + (p.x * 100).toFixed(1) + ' cm, y = ' + (p.y * 100).toFixed(1) + ' cm.');
   }
-  function balanceAuto() {                                    // the real procedure: centimetre steps, then millimetre steps
-    function coarse(guard) {
-      if (guard <= 0 || level()) return Promise.resolve();
-      var want = (p.M * p.y < p.m * p.x) ? 0.01 : -0.01;
-      if (Math.abs(p.M * p.y - p.m * p.x) < p.M * 0.01 * 0.5) return Promise.resolve();
-      return slide(want).then(function () { S.advance(3, level); return coarse(guard - 1); });
+  function balanceAuto() {                                    // the real procedure: watch the tilt, slide, watch again
+    function settle(sec) { S.advance(sec); }                  // no early exit: the scale must really come to rest
+    function run(step, want, guard) {
+      if (guard <= 0) return Promise.resolve();
+      var th = sim.y[0];
+      if (Math.abs(th) <= want) return Promise.resolve();
+      return slide(th > 0 ? -step : step).then(function () { settle(2.5); return run(step, want, guard - 1); });
     }
-    function fine(guard) {
-      if (guard <= 0 || level()) return Promise.resolve();
-      var want = (p.M * p.y < p.m * p.x) ? 0.001 : -0.001;
-      return slide(want).then(function () { S.advance(3, level); return fine(guard - 1); });
-    }
-    return coarse(60).then(function () { S.advance(4, level); return fine(30); }).then(function () { S.advance(4, level); });
+    settle(2.5);
+    return run(0.01, 0.01, 60).then(function () { return run(0.001, 0.0012, 40); }).then(function () { settle(6); });
   }
 
   var CALC = HK.CALCS.moments_m;

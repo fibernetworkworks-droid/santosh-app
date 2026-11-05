@@ -279,7 +279,7 @@ def metre_scale_moments() -> dict:
         chapter="System of Particles and Rotational Motion",
         aim="Balance a metre scale on a knife edge, hang the body on one side and a known mass on the other, and find "
             "the mass of the body from the principle of moments.",
-        kernel="moments", params={"m": 0.0523, "M": 0.05, "x": 0.2, "y": 0.2}, autorun=True,
+        kernel="moments", params={"m": 0.0523, "M": 0.05, "x": 0.2, "y": 0.2, "c": 8.0}, autorun=True,
         camera={"pos": [0.0, 0.5, 1.0], "look": [0.0, 0.2, -0.08]}, floor=-0.02,
         bodies=[
             B("stand", "box", name="Stand", size=[0.1, 0.16, 0.12], pos=[0, 0.08, -0.08], color="#7a4e2c"),
@@ -331,5 +331,189 @@ def metre_scale_moments() -> dict:
     )
 
 
+# ================================================================= radius of curvature with a spherometer
+def spherometer_radius() -> dict:
+    return lab(
+        id="spherometer-radius", title="Radius of curvature of a spherical surface (spherometer)",
+        group="Physics · Measurement", level="Class XI", topic="Units and Measurement",
+        chapter="Units and Measurements",
+        aim="Measure the sagitta of a spherical surface with a spherometer and work out its radius of curvature.",
+        kernel="spherometer", params={"R": 0.15, "l": 0.045, "pitch": 0.001, "ndiv": 100.0}, autorun=True,
+        camera={"pos": [0.16, 0.18, 0.3], "look": [0.0, 0.05, -0.04]}, floor=-0.02,
+        bodies=[
+            B("plate", "box", name="Plane glass plate", info="The flat surface the zero reading is taken on.",
+              size=[0.11, 0.006, 0.11], pos=[-0.1, 0.003, -0.04], color="glass", opacity=0.35),
+            B("glass", "dish", name="Spherical surface", info="A watch glass: convex on one side, concave on the other.",
+              R=0.15, r=0.05, convex=True, pos=[0.0, 0.004, -0.04], color="glass", opacity=0.4),
+            B("frame", "box", name="Spherometer frame", info="Three legs on the corners of an equilateral triangle, with the screw at its centre.",
+              size=[0.06, 0.006, 0.052], pos=[0.0, 0.052, -0.04], color="brass"),
+            B("leg1", "cylinder", name="Leg", r=0.0016, h=0.05, pos=[-0.026, 0.027, -0.055], color="steel"),
+            B("leg2", "cylinder", name="Leg", r=0.0016, h=0.05, pos=[0.026, 0.027, -0.055], color="steel"),
+            B("leg3", "cylinder", name="Leg", r=0.0016, h=0.05, pos=[0.0, 0.027, -0.009], color="steel"),
+            B("screw", "cylinder", name="Central screw", info="Pitch 1 mm; the disc has 100 divisions, so the least count is 0.01 mm.",
+              r=0.0025, h=0.07, pos=[0.0, 0.055, -0.04], color="steel", bind={"y": {"var": "h", "k": -1.0, "c": 0.055}}),
+            B("disc", "cylinder", name="Circular disc scale (100 divisions)", r=0.022, h=0.006, pos=[0.0, 0.082, -0.04],
+              color="brass", bind={"y": {"var": "h", "k": -1.0, "c": 0.082}, "ry": {"var": "h", "k": -6283.2}}),
+            B("vscale", "scale", name="Vertical millimetre scale", length=0.03, spacing=0.001, major=5, labels=True,
+              label_step=5, tick=0.004, font=0.006, pos=[0.016, 0.054, -0.028], rot=[0, 0, 0]),
+            B("lbl", "text", text="Spherometer", size=0.012, pos=[0.0, 0.1, -0.04]),
+        ],
+        knobs=[knob("R", "Spherical surface (radius hidden)", "R", 0.05, 0.6, 0.001, 0.15, "m", hidden=True),
+               knob("l", "Distance between the legs l", "l", 30, 60, 0.1, 45, "mm", 0.001,
+                    hint="Pressed on paper, the three leg marks make an equilateral triangle; l is the mean of its sides.")],
+        instruments=[inst("h", "readout", "Sagitta h", "h_mm", unit="mm", lc=0.01, digits=3),
+                     inst("turns", "readout", "Whole turns of the screw (help)", "turns", digits=0, hint=True),
+                     inst("div", "readout", "Disc division (help)", "div", digits=0, hint=True)],
+        table={"columns": [col("l", "Distance between the legs l", "knob:l", "mm", 0.001, digits=1),
+                           col("h", "Sagitta h", "manual", "mm", 0.001, digits=3)],
+               "calc": "sph_R", "rows_min": 2, "truth": "p.R", "result_digits": 3,
+               "hint": "Take the zero reading on the plane plate, then the reading on the surface; h is the difference."},
+        steps=["Put the spherometer on the plane glass plate and turn the screw until its tip just touches: that is the zero reading.",
+               "Put it on the convex side of the surface and turn the screw down until it just touches; read again.",
+               "The difference of the two readings is the sagitta h.",
+               "Turn the glass over and repeat on the concave side.",
+               "R = l² / (6h) + h / 2, with l the mean distance between the legs."],
+        theory="The three legs of a spherometer stand on a circle of radius l/\u221a3, where l is the distance between any "
+               "two legs. When the tip of the central screw just touches a sphere of radius R, the height h of the tip "
+               "above (or below) the plane of the legs is the sagitta of that circle, and simple geometry gives "
+               "R = l\u00b2/(6h) + h/2. A flatter surface has a bigger R and a smaller h.",
+        safety="Lower the screw gently: pressing it hard on a glass surface scratches the glass and bends the tip.",
+        tour=[{"say": "A spherometer: three fixed legs and a screw at the centre that carries a disc of 100 divisions."},
+              {"say": "On the plane glass plate the tip and the three legs are in one plane: that reading is the zero."},
+              {"set": {"R": 0.4}, "say": "A flatter surface: the screw hardly moves, because h falls as R grows."}],
+        questions=[{"q": "For a flatter surface (larger R), the sagitta h is", "options": ["Smaller", "Larger", "Unchanged"],
+                    "answer": 0, "why": "h \u2248 l\u00b2/(6R), so h falls as R grows."},
+                   {"q": "The least count of this spherometer is", "options": ["0.01 mm", "0.1 mm", "1 mm"],
+                    "answer": 0, "why": "Pitch 1 mm divided by 100 divisions on the disc."}],
+        sources=[S11, SIM],
+        check={"params": {"l": 0.045}, "reading": "R", "textbook": "sph_R"},
+    )
+
+
+# ======================================================= parallelogram law of vectors (Gravesand's apparatus)
+def parallelogram_law() -> dict:
+    return lab(
+        id="parallelogram-law", title="Parallelogram law of vectors: weight of a body",
+        group="Physics · Mechanics", level="Class XI", topic="Motion in a Plane", chapter="Motion in a Plane",
+        aim="Hold up an unknown weight with two known weights over pulleys, measure the angle between them and find the "
+            "unknown weight from the parallelogram law.",
+        kernel="vecforce", params={"P": 1.47, "Q": 1.47, "W": 1.96}, autorun=True,
+        camera={"pos": [0.0, 0.62, 1.05], "look": [0.0, 0.45, -0.3]}, floor=-0.02,
+        bodies=[
+            B("board", "box", name="Drawing board", info="A vertical board with a sheet of paper pinned to it.",
+              size=[0.8, 0.6, 0.02], pos=[0, 0.42, -0.34], color="wood"),
+            B("paper", "box", name="Paper sheet", size=[0.7, 0.5, 0.001], pos=[0, 0.42, -0.328], color="white"),
+            B("foot", "box", name="Stand", size=[0.4, 0.04, 0.16], pos=[0, 0.02, -0.3], color="#2b3138"),
+            B("pulL", "torus", name="Left pulley", r=0.028, tube=0.006, pos=[-0.3, 0.66, -0.31], color="steel"),
+            B("pulR", "torus", name="Right pulley", r=0.028, tube=0.006, pos=[0.3, 0.66, -0.31], color="steel"),
+            B("knot", "sphere", name="Knot", info="The three threads are tied here; the three forces meet at this point.",
+              r=0.006, pos=[0, 0.42, -0.31], color="red"),
+            B("thL", "rope", name="Thread to P", a=[-0.3, 0.66, -0.31], b="knot", r=0.0012, color="ink"),
+            B("thR", "rope", name="Thread to Q", a=[0.3, 0.66, -0.31], b="knot", r=0.0012, color="ink"),
+            B("thW", "rope", name="Thread to the body", a="knot", b=[0, 0.16, -0.31], r=0.0012, color="ink"),
+            B("hP", "cylinder", name="Hanger P", r=0.022, h=0.02, pos=[-0.3, 0.3, -0.31], color="brass"),
+            B("hQ", "cylinder", name="Hanger Q", r=0.022, h=0.02, pos=[0.3, 0.3, -0.31], color="brass"),
+            B("body", "cylinder", name="Body of unknown weight", r=0.026, h=0.03, pos=[0, 0.14, -0.31], color="#5f646b"),
+            B("lbl", "text", text="Parallelogram law", size=0.03, pos=[0, 0.76, -0.33]),
+        ],
+        knobs=[knob("P", "Weight P (left)", "P", 50, 300, 10, 150, "g", 0.0098),
+               knob("Q", "Weight Q (right)", "Q", 50, 300, 10, 150, "g", 0.0098),
+               knob("W", "Body (weight hidden)", "W", 50, 400, 1, 200, "g", 0.0098, hidden=True)],
+        instruments=[inst("th", "readout", "Angle between the threads", "theta_deg", unit="°", lc=0.5, digits=1),
+                     inst("al", "readout", "Left thread from the vertical", "alpha", k=57.2958, unit="°", digits=1),
+                     inst("R", "readout", "Resultant of P and Q", "R", unit="N", digits=3, hint=True)],
+        table={"columns": [col("P", "Weight P", "knob:P", "g", 0.0098, digits=0),
+                           col("Q", "Weight Q", "knob:Q", "g", 0.0098, digits=0),
+                           col("th", "Angle θ between them", "inst:th", "°", 0.0174533, digits=1)],
+               "calc": "vec_W_calc", "rows_min": 3, "truth": "p.W", "result_digits": 3,
+               "hint": "For each pair of weights: let the knot settle, mark the three directions, measure θ and record."},
+        steps=["Hang the known weights P and Q from the two threads over the pulleys, and the body from the third.",
+               "Let the knot come to rest; tap the board gently so that the threads run free.",
+               "Mark the three directions on the paper with pins and join them.",
+               "Measure the angle θ between the threads carrying P and Q.",
+               "The resultant of P and Q is R = √(P² + Q² + 2PQ cos θ); it must be equal and opposite to the weight of the body."],
+        theory="Three forces that keep a point at rest must add to zero, so the resultant of the two known weights is "
+               "equal and opposite to the weight of the body. The parallelogram law gives that resultant: if P and Q act "
+               "at an angle θ, their resultant is R = √(P² + Q² + 2PQ cos θ), along the diagonal of the parallelogram "
+               "drawn on them. Measuring θ therefore weighs the body without a balance.",
+        safety="Make sure the pulleys turn freely and the threads do not rub the board, or the angles will be wrong.",
+        tour=[{"say": "Two threads run over the pulleys to the known weights P and Q; the third holds the body."},
+              {"set": {"P": 250}, "say": "A heavier weight on the left: the knot moves and the angles change, but the three forces still balance."},
+              {"set": {"P": 150}, "say": "Measure the angle between the two upper threads: that is all the parallelogram law needs."}],
+        questions=[{"q": "The resultant of P and Q must be", "options": ["Equal and opposite to the weight of the body",
+                                                                         "Equal to P + Q always", "Zero"],
+                    "answer": 0, "why": "Three forces in equilibrium at a point add to zero."},
+                   {"q": "If the angle between P and Q is made larger, their resultant",
+                    "options": ["Gets smaller", "Gets larger", "Does not change"], "answer": 0,
+                    "why": "cos θ falls as θ grows, so R = √(P² + Q² + 2PQ cos θ) falls."}],
+        sources=[S11, SIM],
+        check={"params": {}, "reading": "W_calc", "textbook": "vec_W"},
+    )
+
+
+# ============================================================== depression of a loaded metre scale (bending)
+def metre_scale_depression() -> dict:
+    return lab(
+        id="metre-scale-depression", title="Effect of load on the depression of a metre scale",
+        group="Physics · Properties of matter", level="Class XI", topic="Mechanical Properties of Solids",
+        chapter="Mechanical Properties of Solids",
+        aim="Clamp a metre scale at one end, load its free end step by step, measure the depression and see that it is "
+            "proportional to the load and to the cube of the length.",
+        kernel="beambend", params={"Y": 1.0e10, "b": 0.028, "t": 0.005, "L": 0.5, "m": 0.0, "mode": 0.0}, autorun=True,
+        camera={"pos": [0.4, 0.5, 0.95], "look": [0.05, 0.16, -0.1]}, floor=-0.02,
+        bodies=[
+            B("tablec", "box", name="Clamp", info="Holds one end of the scale firmly, so that end cannot turn.",
+              size=[0.12, 0.07, 0.1], pos=[-0.4, 0.22, -0.1], color="#2b3138"),
+            B("post", "cylinder", name="Clamp pillar", r=0.018, h=0.2, pos=[-0.4, 0.1, -0.1], color="steel"),
+            B("foot", "box", name="Heavy base", size=[0.22, 0.02, 0.18], pos=[-0.4, 0.01, -0.1], color="#2b3138"),
+            B("beam", "box", name="Metre scale", info="A wooden metre scale, clamped at one end and free at the other.",
+              size=[0.9, 0.005, 0.028], pos=[0.05, 0.22, -0.1], color="wood"),
+            B("ms", "scale", name="Printed centimetre scale", length=0.9, spacing=0.01, major=10, labels=True,
+              label_step=10, tick=0.008, font=0.012, pos=[-0.4, 0.223, -0.088], rot=[0, 0, 1.5708]),
+            B("hook", "cylinder", name="Hook for the load", r=0.003, h=0.03, pos=[0.46, 0.205, -0.1], color="steel",
+              bind={"y": {"var": "delta", "k": -1.0, "c": 0.205}}),
+            B("pan", "cylinder", name="Hanger with slotted weights", r=0.03, h=0.02, pos=[0.46, 0.17, -0.1], color="brass",
+              bind={"y": {"var": "delta", "k": -1.0, "c": 0.17}}),
+            B("pin", "box", name="Pointer pin", info="A pin fixed at the free end; its tip is read against the vertical scale.",
+              size=[0.002, 0.03, 0.002], pos=[0.5, 0.21, -0.1], color="red", bind={"y": {"var": "delta", "k": -1.0, "c": 0.21}}),
+            B("vscale", "scale", name="Vertical scale (mm)", length=0.16, spacing=0.001, major=10, labels=True,
+              label_step=10, tick=0.006, font=0.01, pos=[0.52, 0.13, -0.09]),
+            B("lbl", "text", text="Cantilever", size=0.024, pos=[0.0, 0.3, -0.1]),
+        ],
+        knobs=[knob("m", "Load at the free end", "m", 0, 500, 50, 0, "g", 0.001),
+               knob("L", "Length from the clamp L", "L", 20, 60, 5, 50, "cm", 0.01),
+               knob("Y", "Material of the scale (Y hidden)", "Y", 2, 20, 0.1, 10, "GPa", 1e9, hidden=True)],
+        instruments=[inst("d", "readout", "Depression \u03b4", "delta_mm", unit="mm", lc=0.1, digits=2),
+                     inst("ld", "readout", "Load", "load_N", unit="N", digits=2),
+                     inst("gr", "graph", "Depression against load", "delta_mm", x="knob:m", xlabel="m (g)", dots=True)],
+        table={"columns": [col("m", "Load m", "knob:m", "g", 0.001, digits=0),
+                           col("delta", "Depression \u03b4", "inst:d", "mm", 0.001, digits=2)],
+               "calc": "beam_Y", "rows_min": 3, "truth": "p.Y", "result_digits": 0,
+               "hint": "After each weight, wait for the scale to stop quivering and read the pin against the vertical scale."},
+        steps=["Clamp the metre scale at one end so that 50 cm of it is free.",
+               "Note the reading of the pointer pin with no load.",
+               "Hang 50 g at the free end, wait, and read the pin again: the difference is the depression \u03b4.",
+               "Repeat up to 250 g; \u03b4 should grow in proportion to the load.",
+               "Y = m g L\u00b3 / (3 I \u03b4) with I = b t\u00b3 / 12."],
+        theory="A beam clamped at one end and loaded at the other bends into an arc. Each layer above the middle of its "
+               "thickness is stretched and each layer below is compressed, and the resistance of the material to that "
+               "stretching holds the load up. For a load W at the free end of a cantilever of length L, width b and "
+               "thickness t, the depression is \u03b4 = W L\u00b3 / (3 Y I) with I = b t\u00b3/12. The same beam supported at both ends "
+               "and loaded in the middle sags only W L\u00b3 / (48 Y I): sixteen times less.",
+        safety="Do not load so far that the scale takes a permanent bend; take the weights off when you have finished.",
+        tour=[{"say": "A metre scale is clamped at one end; 50 centimetres of it stick out free."},
+              {"set": {"m": 150}, "say": "150 grams at the free end: the scale bends and the pointer pin moves down the vertical scale."},
+              {"set": {"m": 300}, "say": "Twice the load, twice the depression: \u03b4 is proportional to the load."},
+              {"set": {"m": 150, "L": 25}, "say": "Half the free length: the depression falls to an eighth, because \u03b4 goes as L cubed."}],
+        questions=[{"q": "If the free length is doubled, the depression under the same load becomes",
+                    "options": ["8 times", "2 times", "4 times", "Half"], "answer": 0, "why": "\u03b4 is proportional to L\u00b3."},
+                   {"q": "A scale of twice the thickness, same load and length, bends",
+                    "options": ["8 times less", "2 times less", "4 times less"], "answer": 0,
+                    "why": "I = b t\u00b3/12, so I grows 8 times and \u03b4 falls 8 times."}],
+        sources=[S11, SIM, WOOD],
+        check={"params": {"m": 0.2}, "reading": "delta", "textbook": "beam_delta"},
+    )
+
+
 BUILDERS = (capillary_rise, detergent_capillary, searle_young_modulus, limiting_friction, rolling_friction,
-            metre_scale_moments)
+            metre_scale_moments, spherometer_radius, parallelogram_law, metre_scale_depression)

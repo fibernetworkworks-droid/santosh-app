@@ -221,6 +221,30 @@ HoolaStudio.define('limiting-friction', function (S) {
     }).then(function () { record(); });
   }
 
+  function pose() {
+    var x = bodyX();
+    body.position.set(x, TOPY + (ROLLER ? ROLL_R : BODY_H / 2), BZ);
+    if (ROLLER) body.rotation.z = -sim.s / ROLL_R;
+    bodyShadow.position.x = x;
+    slabs.forEach(function (g, i) {
+      if (g.userData.on) g.position.x = x;
+    });
+    var hook = new T.Vector3(x + (ROLLER ? ROLL_R + 0.006 : BODY_L / 2 + 0.005), PUY, BZ);
+    var top = new T.Vector3(PUX + 0.012, PUY, BZ);
+    seg(th1, hook, top);
+    var panTop = new T.Vector3(PUX + 0.012 + PUR, PAN_Y, BZ);
+    seg(th2, new T.Vector3(PUX + 0.012 + PUR, PUY, BZ), panTop);
+    pan.position.set(panTop.x, PAN_Y - Math.min(0.03, sim.s * 1.0), BZ);
+    inPan.forEach(function (w, i) {
+      w.grp.position.set(pan.position.x + (i % 3 - 1) * 0.013, pan.position.y - 0.048 + 0.0012, BZ + (i % 2 ? 0.012 : -0.012));
+    });
+    panShadow.position.x = pan.position.x;
+    hudR.set(R().toFixed(2) + ' N');
+    hudF.set(p.F.toFixed(3) + ' N');
+    hudM.set(st.moved ? 'has moved' : 'at rest');
+  }
+  pose();
+
   var CALC = HK.CALCS.friction_mu;
 
   return {
@@ -344,26 +368,7 @@ HoolaStudio.define('limiting-friction', function (S) {
     tick: function (dt) {
       K.step(sim, p, dt);
       if (sim.s > 1e-5 && !st.moved) { st.moved = true; S.render(); }
-      var x = bodyX();
-      body.position.set(x, TOPY + (ROLLER ? ROLL_R : BODY_H / 2), BZ);
-      if (ROLLER) body.rotation.z = -sim.s / ROLL_R;
-      bodyShadow.position.x = x;
-      slabs.forEach(function (g, i) {
-        if (g.userData.on) g.position.x = x;
-      });
-      var hook = new T.Vector3(x + (ROLLER ? ROLL_R + 0.006 : BODY_L / 2 + 0.005), PUY, BZ);
-      var top = new T.Vector3(PUX + 0.012, PUY, BZ);
-      seg(th1, hook, top);
-      var panTop = new T.Vector3(PUX + 0.012 + PUR, PAN_Y, BZ);
-      seg(th2, new T.Vector3(PUX + 0.012 + PUR, PUY, BZ), panTop);
-      pan.position.set(panTop.x, PAN_Y - Math.min(0.03, sim.s * 1.0), BZ);
-      inPan.forEach(function (w, i) {
-        w.grp.position.set(pan.position.x + (i % 3 - 1) * 0.013, pan.position.y - 0.048 + 0.0012, BZ + (i % 2 ? 0.012 : -0.012));
-      });
-      panShadow.position.x = pan.position.x;
-      hudR.set(R().toFixed(2) + ' N');
-      hudF.set(p.F.toFixed(3) + ' N');
-      hudM.set(st.moved ? 'has moved' : 'at rest');
+      pose();
     }
   };
 });

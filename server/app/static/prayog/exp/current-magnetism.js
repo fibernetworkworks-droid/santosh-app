@@ -51,7 +51,7 @@ HoolaStudio.define('current-magnetism', function (S) {
   }
 
   // ---------- supply, key, rheostat, ammeter (the same series circuit for every lab)
-  var PB = [-0.62, -0.21];
+  var PB = [-0.56, -0.22];
   var pb = S.powerBox([PB[0], 0, PB[1]], 'DC SUPPLY');
   var pbV = S.label(fmtN(p.Eb, 1) + ' V DC', { w: 0.05, ratio: 0.3, color: '#f2f2f2' });
   pbV.position.set(PB[0] + 0.045, 0.034, PB[1] + 0.0405); S.scene.add(pbV);
@@ -99,7 +99,7 @@ HoolaStudio.define('current-magnetism', function (S) {
   }
 
   var am = S.meter({ min: 0, max: AMAX, ticks: AMAX === 0.5 ? 5 : AMAX === 1 ? 10 : AMAX === 1.5 ? 6 : 5, unit: 'A', symbol: 'A',
-    caption: 'DC AMMETER 0–' + fmtN(AMAX) + ' A', pos: [-0.44, 0, -0.44] });
+    caption: 'DC AMMETER 0–' + fmtN(AMAX) + ' A', pos: [-0.4, 0, -0.44] });
   var amP = { at: wpt(am, 0.035, 0.07, -0.03) }, amM = { at: wpt(am, -0.035, 0.07, -0.03) };
 
   // ---------- the working table: a card on a wooden stage, with the conductor over it
@@ -285,11 +285,11 @@ HoolaStudio.define('current-magnetism', function (S) {
   S.wire([[0.63, 0.03, -0.45], [0.54, 0.02, -0.38], [WX + 0.12, 0.02, WZ + 0.22], [probe.position.x + 0.004, 0.028, probe.position.z + 0.055]], 'black');
 
   // ---------- the leads
-  lead(pbPlus.at, kL.at, 'red', [[-0.56, -0.26], [-0.48, -0.12]]);
+  lead(pbPlus.at, kL.at, 'red', [[-0.5, -0.26], [-0.46, -0.12]]);
   lead(kR.at, rhA.at, 'red', [[-0.34, -0.1], [-0.3, 0.0]]);
   lead(rhC.at, srcP.at, 'yellow', [[0.04, 0.04], [0.2, 0.06]]);
-  lead(srcM.at, amP.at, 'yellow', [[0.08, -0.3], [-0.3, -0.36]]);
-  lead(amM.at, pbMinus.at, 'black', [[-0.58, -0.46], [-0.68, -0.34]]);
+  lead(srcM.at, amP.at, 'yellow', [[0.08, -0.3], [-0.26, -0.36]]);
+  lead(amM.at, pbMinus.at, 'black', [[-0.54, -0.46], [-0.62, -0.34]]);
 
   S.addApparatus('pb', pb, 'DC supply (' + fmtN(p.Eb, 1) + ' V)', 'A low-voltage supply. Everything here runs on cells or this box: never on the mains.');
   S.addApparatus('key', key, 'Plug key K', 'Closes the circuit. Keep it open between readings so the wire stays cool.');
@@ -493,12 +493,12 @@ HoolaStudio.define('current-magnetism', function (S) {
 
   var TRUTH = CORE ? MUR0 : perAmp(D0, CORE ? MUR0 : p.mur);
   return {
-    camera: { pos: [0.04, 1.42, 0.56], look: [0.04, 0.0, -0.24] },
-    views: { pb: [[-0.5, 0.34, -0.02], [-0.62, 0.04, -0.22]], key: [[-0.38, 0.26, 0.14], [-0.42, 0.02, -0.05]],
-      rh: [[-0.12, 0.3, 0.2], [-0.14, 0.04, 0.0]], am: [[-0.44, 0.3, -0.16], [-0.44, 0.04, -0.45]],
+    camera: { pos: [0.02, 1.46, 0.58], look: [0.02, 0.0, -0.24] },
+    views: { pb: [[-0.46, 0.34, -0.04], [-0.56, 0.04, -0.22]], key: [[-0.38, 0.26, 0.14], [-0.42, 0.02, -0.05]],
+      rh: [[-0.12, 0.3, 0.2], [-0.14, 0.04, 0.0]], am: [[-0.4, 0.3, -0.16], [-0.4, 0.04, -0.45]],
       src: [[0.36, 0.3, 0.04], [0.36, 0.04, -0.26]], comp: [[WX + 0.02, 0.17, WZ + 0.14], [WX, 0.015, WZ]],
       tm: [[0.62, 0.3, -0.22], [0.66, 0.02, -0.52]],
-      circuit: [[0.04, 1.42, 0.56], [0.04, 0.0, -0.24]], work: [[0.22, 0.8, 0.3], [0.22, 0.02, -0.28]],
+      circuit: [[0.02, 1.46, 0.58], [0.02, 0.0, -0.24]], work: [[0.22, 0.8, 0.3], [0.22, 0.02, -0.28]],
       book: [[-0.5, 0.45, 0.6], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: KIND === 'wire'

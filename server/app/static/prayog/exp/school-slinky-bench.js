@@ -12,7 +12,7 @@ HoolaStudio.define('school-slinky-bench', function (S) {
   var BASE = (S.lab.variant && S.lab.variant.base) || S.lab.id;
   var MODE = /wave-types/.test(BASE) || /slinky-waves/.test(BASE) ? 'types' : 'speed';
   var SAMPLE = String((S.lab.variant && S.lab.variant.sample) || 'Steel slinky');
-  var L = p.Lspan, X0 = -L / 2, Y = 0.075, BZ = -0.08;
+  var L = p.Lspan, X0 = -L / 2, Y = 0.075, BZ = -0.26;
   var sim = K.init(p);
   var st = { kind: p.mode > 0.5 ? 'across' : 'along', running: false, speed: 1, n: Math.round(p.nrefl),
     flicked: false, spanRead: false, trips0: 0, amp: 0 };
@@ -61,8 +61,8 @@ HoolaStudio.define('school-slinky-bench', function (S) {
     x.fillText('MEASURING TAPE · centimetres', 40, 148);
   });
   var tape = new T.Mesh(new T.PlaneGeometry(L, 0.035), new T.MeshStandardMaterial({ map: tapeTex, roughness: 0.7 }));
-  tape.rotation.x = -Math.PI / 2; tape.position.set(X0 + L / 2, 0.003, BZ + 0.1); S.scene.add(tape);
-  var watch = S.stopwatch([0.62, 0.035, 0.16], [-1.2, -0.35, 0]);
+  tape.rotation.x = -Math.PI / 2; tape.position.set(X0 + L / 2, 0.003, BZ + 0.09); S.scene.add(tape);
+  var watch = S.stopwatch([0.66, 0.035, 0.12], [-1.2, -0.35, 0]);
 
   S.addApparatus('slinky', bench, SAMPLE, 'A soft steel spring stretched between two clamps. Its mass per metre is what makes the pulse slow enough to time.');
   S.addApparatus('clampL', clampL, 'Far clamp', 'The far end is held fast, so a pulse that reaches it turns back.');
@@ -223,10 +223,10 @@ HoolaStudio.define('school-slinky-bench', function (S) {
   ];
 
   return {
-    camera: { pos: [0.3, 0.95, 1.55], look: [0, 0.05, -0.05] },
-    views: { slinky: [[0.2, 0.72, 1.2], [0, 0.07, -0.06]], tape: [[-0.5, 0.5, 0.75], [-0.4, 0.02, 0.0]],
+    camera: { pos: [0.2, 1.05, 1.75], look: [0, 0.05, -0.2] },
+    views: { slinky: [[0.15, 0.8, 1.35], [0, 0.07, -0.22]], tape: [[-0.45, 0.5, 0.5], [-0.4, 0.02, -0.18]],
       clampL: [[X0 + 0.22, 0.3, 0.34], [X0, 0.06, BZ]], clampR: [[X0 + L - 0.1, 0.3, 0.38], [X0 + L, 0.06, BZ]],
-      sw: [[0.5, 0.3, 0.44], [0.62, 0.03, 0.16]], book: [[-0.4, 0.52, 0.56], [-0.5, 0.0, 0.08]] },
+      sw: [[0.54, 0.3, 0.42], [0.66, 0.03, 0.12]], book: [[-0.4, 0.52, 0.56], [-0.5, 0.0, 0.08]] },
     theory: { principle: MODE === 'types'
         ? 'In a longitudinal wave the coils move along the same line as the wave travels, so a squeeze runs along the slinky; that is how sound travels in air. In a transverse wave the coils move across that line, so a hump runs along. Both kinds travel along the same slinky at the same speed, because the speed is set by the tension and the mass per metre, not by how the pulse was made.'
         : 'A pulse on a stretched slinky travels at a steady speed and turns back at a fixed end, so the length it covers can be counted. Stretching it harder raises the tension and the pulse travels faster; a heavier slinky carries it more slowly.',

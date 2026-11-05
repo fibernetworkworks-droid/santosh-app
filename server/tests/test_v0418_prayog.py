@@ -29,6 +29,11 @@ def _labs():
     return [b() for b in catalog.BUILDERS]
 
 
+def _all_labs():
+    """Every lab, catalogue AND packs: the JS twin must match the physics of a pack kernel too."""
+    return [b() for b in S._all_builders()]
+
+
 # ------------------------------------------------------------------------------------------- the catalogue
 def test_catalogue_has_22_physics_labs_all_checked():
     labs = _labs()
@@ -117,7 +122,7 @@ def _close(a, b, path=""):
 
 def _fixtures():
     fx = []
-    for lab in _labs():                               # every lab, at its own settings, as the phone would run it
+    for lab in _all_labs():                           # every lab, at its own settings, as the phone would run it
         base = dict(lab.get("params") or {})
         fx.append({"kernel": lab["kernel"], "params": base, "cfg": lab.get("cfg") or {}, "steps": 25, "dt": 0.04,
                    "skip_measure": lab["kernel"] == "circuit" and not (lab.get("cfg") or {}).get("measure")})
@@ -333,7 +338,8 @@ def test_routes_are_public_read_only():
     c = _client()
     d = c.get("/api/prayog/labs", params={"variants": False}).json()
     assert len(d["labs"]) == len(S.labs()) and "simulation" in d["note"]   # every set-up; their variants page separately
-    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]} == {"convex-lens"}
+    hits = {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]}
+    assert "convex-lens" in hits and all("lens" in h for h in hits)     # the search finds the lens labs and nothing else
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"
     assert c.get("/api/prayog/labs/nahi-hai").status_code == 404

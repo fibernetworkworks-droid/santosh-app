@@ -24,10 +24,10 @@ HoolaStudio.define('laser-diffraction', function (S) {
   var laser = new T.Group(); S.scene.add(laser); laser.position.set(XL - 0.14, 0, BZ);
   var lsad = S.rounded(0.034, 0.03, 0.06, 0.004, M.alu); lsad.rotation.x = -Math.PI / 2; lsad.position.y = 0.045; laser.add(lsad);
   var lpost = S.mesh(new T.CylinderGeometry(0.0045, 0.0045, 0.05, 18), M.chrome); lpost.position.y = 0.08; laser.add(lpost);
-  var ltube = S.mesh(new T.CylinderGeometry(0.014, 0.014, 0.1, 28), new T.MeshStandardMaterial({ color: 0x2a2d33, roughness: 0.4, metalness: 0.5 }));
+  var ltube = S.mesh(new T.CylinderGeometry(0.014, 0.014, 0.1, 28), new T.MeshStandardMaterial({ color: 0xb6bcc4, roughness: 0.32, metalness: 0.7 }));
   ltube.rotation.z = Math.PI / 2; ltube.position.y = 0.105; laser.add(ltube);
-  var lhead = S.mesh(new T.CylinderGeometry(0.009, 0.011, 0.012, 24), M.chrome); lhead.rotation.z = Math.PI / 2; lhead.position.set(0.055, 0.105, 0); laser.add(lhead);
-  var llab = S.label(LAM_NM + ' nm', { w: 0.05, ratio: 0.28, color: '#e6e7ea' }); llab.position.set(-0.01, 0.105, 0.0142); laser.add(llab);
+  var lhead = S.mesh(new T.CylinderGeometry(0.009, 0.011, 0.012, 24), new T.MeshStandardMaterial({ color: 0xb3261e, roughness: 0.35, metalness: 0.4 })); lhead.rotation.z = Math.PI / 2; lhead.position.set(0.055, 0.105, 0); laser.add(lhead);
+  var llab = S.label(LAM_NM + ' nm', { w: 0.05, ratio: 0.28, color: '#23262b' }); llab.position.set(-0.01, 0.105, 0.0142); laser.add(llab);
   var lampM = new T.MeshStandardMaterial({ color: 0x3a1410, roughness: 0.4 });
   var pilot = S.mesh(new T.SphereGeometry(0.004, 14, 10), lampM); pilot.position.set(-0.03, 0.118, 0.012); laser.add(pilot);
   var lsw = S.mesh(new T.BoxGeometry(0.012, 0.006, 0.01), M.bakelite); lsw.position.set(-0.03, 0.118, -0.012); laser.add(lsw);
