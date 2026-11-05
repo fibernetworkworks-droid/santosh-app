@@ -252,7 +252,7 @@ generates `.tscn` and animation resources from a declarative description it vali
 scene files freehand. Without this, every "bigger game" claim is false, and with it the Arena's scores have somewhere
 to climb.
 
-**SHIPPED in v0.538 (`server/app/gamedesk/scene.py`, tool `game_scenes`).** Exactly that pattern: the model writes a
+**SHIPPED in v0.545 (`server/app/gamedesk/scene.py`, tool `game_scenes`).** Exactly that pattern: the model writes a
 declarative spec, Hoola validates it in code and generates the `.tscn`; nodes come from a 44-type allowlist, properties
 from a property allowlist (an unknown key is dropped and named), and a scene may instance another scene of the same
 game, which is how content scales. One finding hardened the rule beyond the plan: measured in Godot 4.7.2, a

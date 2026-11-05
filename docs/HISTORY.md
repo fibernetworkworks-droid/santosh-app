@@ -20002,3 +20002,62 @@ for — a green check on her own repo — has not happened yet. The next `lab_ch
 **RULE recorded:** a sandbox must match production in the things that decide whether code even parses. A lab that
 differs from production in language version reports faults that do not exist, and the first one it reported was in
 code that had been live for months.
+
+## v0.545.0 SCENES AS CHECKED DATA — the 12-script ceiling lifted (built as 0.456.0; docs/GAME_MOAT_PLAN.md §5.2, owner: "GO WITH THE CEILING")
+
+THE CEILING. Every Hoola game from v0.370 to now was at most 12 GDScript files (120 KB) on ONE plain root node,
+building every node in code. For match-3, idle, runner and puzzle games that is genuinely right — one engine plus a
+lot of Game Bible data IS the game. It is false for a platformer or a story game, where the game largely IS its
+scenes, so "Hoola can make a bigger game" was a claim the architecture could not keep. `server/app/gamedesk/scene.py`
+keeps it: scenes and animation become CHECKED DATA.
+
+THE RULE, AND WHY IT IS NOT NEGOTIABLE. **The model never writes a `.tscn`.** It writes a declarative spec; Hoola
+validates it in code and GENERATES the scene file. This was measured in Godot 4.7.2 BEFORE a line of the design was
+written: a `[sub_resource type="GDScript"]` embedded inside a `.tscn` RUNS, and the embedded script reached
+`DirAccess` — which `guard.py` has banned in every `.gd` file since v0.370. A scene the model could write freehand is
+a hole straight through the only thing protecting her games. So the hole is closed in THREE independent places:
+scripts attach only by FILENAME to a `.gd` file guard.py already checked; a spec carrying script source in any shape
+(a `source` / `code` / `gdscript` / `script/source` key, or the text signature) is refused by the checker; and the
+EMITTED text is re-scanned before it ships, because the generator being the only writer must not be the only defence.
+`guard.scene_problems()` scans every scene file the same way on the build path too.
+
+WHAT A SPEC MAY SAY (checked in code, never in a prompt): a tree of nodes from a 44-type allowlist — an unknown type
+does not error in Godot, it HANGS the load, so the allowlist is what keeps a typo from becoming a silent hang — each
+with a name, typed properties (the property table is a allowlist too: an unknown key is DROPPED and NAMED, never
+guessed), an optional script, a collision shape (rect / circle / capsule), AnimationPlayer tracks (value tracks, keys
+must go forward in time), and INSTANCES of another scene of the same game. Instancing is how content actually
+scales: one `coin.tscn` placed 200 times is data, not 200 scripts. Caps: 40 scenes, 300 nodes a scene, 2,000 nodes a
+game, 400 KB of scenes, 12 animations and 120 keys a track; instancing loops refused (Godot would never finish
+loading one); sibling names unique; `main.tscn` reserved for Hoola's own root.
+
+HOW IT IS PROVED, not claimed. `verify()` writes the generated scenes into a real project beside the guarded scripts
+and loads every one of them in the REAL engine, headless, with a `--quit-after` timer, and reports what came back —
+node count with instances expanded and the animation names found. Two findings from the live runs shaped the verdict:
+(1) a broken scene can HANG the load, so "never reached the end" is itself a failure; (2) an unknown node type does
+NOT make `instantiate()` fail — the engine logs `Cannot get class` / `A placeholder will be created instead` and
+hands back a scene with a plain Node where the real one should be. So `instantiate()` succeeding is NOT proof, and
+the log's own trouble signatures (`TROUBLE`) decide the verdict too. A placeholder is a silently broken game.
+
+THE LANE: `game_scenes` (action=list | propose | approve | reject). Her words → `ai.scene_spec` (a new SCENE system
+prompt that hands the model the design, the game's script filenames and the existing scene names, and takes back JSON
+only) → the checker → the generator → the real engine → a DRAFT she approves. A scene that did not load is saved as
+`failed` and cannot be approved. Only APPROVED scenes enter a build (`scene.for_game`, wired into `service._write`
+and recorded on the version row), and the whole path is wrapped so a scene problem can never stop a build — a game
+with no Studio project or no approved scene builds exactly as it did before.
+
+PROVED LIVE on Godot 4.7.2 while building this: a 25-node spec with a coin instanced 20 times instantiated to **65
+live nodes** (20 × 3 + 5 of its own) with the `idle` animation present, verdict PASS; and the broken-type scene the
+test plants is a FAIL for the right reason.
+
+NOT BUILT, said plainly: TileMaps (they need a TileSet and an atlas texture — that is art and a second pipeline), 3D
+scenes, and shaders. 2D node scenes with animation and instancing are what this ships. NOT VERIFIED: no real game of
+hers has been rebuilt with scenes yet — her first platformer is the live test.
+
+Files: NEW `server/app/gamedesk/scene.py` (checker, generator, real-engine `verify`, `GameScene` table +
+propose/approve/reject/view/for_game); `ai.py` (SCENE prompt + `scene_spec`, the GUIDE's SCENES block);
+`guard.py` (`scene_problems`, and `problems(scripts, scenes=None)` starts from it); `template.py`
+(`files(..., scenes=None)`); `service.py` (the `_scenes` hook, `_write(..., scenes=)`, `"scenes"` on the version row);
+`api.py` (`/api/gamestudio/{id}/scenes*`); `agent/gamedesk_tools.py` (`game_scenes`); `agent/admit.py`; `db.py`.
+Tests: NEW `tests/test_v0456_scenes.py` (12) — the 16 checker refusals including all three script-smuggling shapes,
+instancing (expanded node count, loops, unknown scene), animation tracks, caps, the generated `.tscn` shape, the real
+engine run, and a planted broken scene that must FAIL.
