@@ -1,5 +1,36 @@
 # HOOLA — full version history (moved out of CLAUDE.md on 29 Oct 2026 so sessions stop hitting "context full"). Search it, never read it whole.
 
+## v0.570.0 HOOLA RETRIEVE — the retrieval layer, P6 of the HOOLA AEP plan (5 Nov 2026)
+
+Owner: "P6 RETRIEVE". Vectors IN SCOPE per the 100% directive. Built as server/app/aep/retrieve.py (~1.6k LOC, ZERO
+upstream) after re-reading upstream at the pinned commit aa2528fb (vectorstores base+in_memory+utils, embeddings,
+indexing base+api+in_memory, retrievers.py, text-splitters base+character). The layer: Document (page_content/metadata/id
++ the dict round trip); Embeddings ABC + DeterministicEmbeddings (sha256-seeded unit vectors, byte-stable, numpy-free —
+the zero-network test embedder); maximal_marginal_relevance pure-python (the numpy formula ported); VectorStore ABC (the
+honest defaults — add_texts/delete/with_score refuse, get_by_ids [], the search dispatch similarity|score_threshold|mmr,
+with_relevance_scores with the [0,1] contract + score_threshold filter, by_vector, MMR, from_texts/from_documents,
+as_retriever, a-twins); SqliteVectorStore — the sqlite-first ANN (stdlib sqlite3 WAL, exactly one of path=/engine= the
+vault engine seam via raw_connection, one table aep_vectors(id,doc,vec,ts), exact cosine kNN scan with the
+metadata-equality filter, MMR over fetch_k, relevance = cosine clamped [0,1], persists across instances);
+RecordManager + SqliteRecordManager — the indexing ledger (aep_index_records(uuid,updated_at,group_id), the
+time_at_least monotonic gate, chunked exists, list_keys before/after/group/limit); index()/aindex() — the dedup flow
+(content and metadata hashed separately then combined; key_encoder sha1|sha256|sha512|blake2b, house default sha256;
+in-order dedup; the store write FIRST, the ledger update SECOND; cleanup None|incremental|full|scoped_full;
+IndexingResult counts; force_update; the delete-override gate); the text splitters (TextSplitter ABC with the
+_merge_splits overlap pop-loop ported exactly, add_start_index offset math, the per-chunk metadata deep-copy;
+CharacterTextSplitter with the lookaround guard; RecursiveCharacterTextSplitter with the separator ladder and
+over-cap pieces emitted AS-IS); BaseRetriever — the retriever as a Runnable firing the P2 "retriever" span
+(RUN_TYPES pre-declared it in P2; the P2 seam gained the additive retriever_start/end/error surface, the chain
+fallback untouched); VectorStoreRetriever (search_type similarity|mmr validated, search_kwargs ride every call,
+add_documents proxy); Docs7Retriever — docs7 as a retriever source (the same flag/redaction/window/vault-cache gates,
+the fetch injectable for zero-network tests, the handler imported lazily inside the call, ok=False = the honest empty
+list with the raw result on .last_result). Registry stays 581; inertness re-proven (fresh interpreter, zero
+threads/env/files, sqlite opens on first use). Tests: NEW test_v0560_hoola_retrieve.py (31, zero network, tmp sqlite
+wiped per test). Bugs the suite caught: the MMR search fed cosine scores into the scorer where vectors belonged;
+get_by_ids mis-keyed parsed rows; the chunk_size<=0 error order; the source-id assigner's raw KeyError.
+Version ritual: pubspec 0.570.0+593, console stamps 22x, pins swept 0.569.0 -> 0.570.0 / +592 -> +593 across 187 test
+files. AEP train: P7 HUB -> P8 the 100% parity audit next.
+
 # HOOLA — project brief for any new session (read fully before working)
 
 ## v0.549.0 HOOLA AGENT — create_agent compiled onto the house graph, P4 of the HOOLA AEP plan (5 Nov 2026)
