@@ -1,4 +1,4 @@
-"""v0.559.0 REACH MANCH - the Agent-Reach discipline layer (owner: "MAKE A HOOLA AGENT REACH FEATURE, DEVLOPE END TO END").
+"""v0.566.0 REACH MANCH - the Agent-Reach discipline layer (owner: "MAKE A HOOLA AGENT REACH FEATURE, DEVLOPE END TO END").
 
 The Agent-Reach repo (Panniantong/Agent-Reach, MIT, READ archived at download/AGENT_REACH_READ.md) ported
 IDEA-ONLY onto the house internet stack: ONE envelope {schema_version, ok, tool, action, backend, items,
@@ -421,4 +421,4 @@ def test_the_spec_promises_the_envelope_and_the_hints():
 
 def test_app_version_is_the_conscious_bump():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.565.0"
+    assert APP_VERSION == "0.566.0"

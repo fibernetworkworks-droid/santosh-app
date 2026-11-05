@@ -707,15 +707,29 @@ class CompiledStateGraph(Runnable):
                     pending: dict | None) -> dict | None:
         if self.checkpointer is None:
             return None
+        # untracked channels (the P5 middleware run counters, jump_to) live for
+        # one walk only - they are stripped from the stored payload, so a
+        # checkpointed thread restarts them on the next invoke
+        vals = {k: v for k, v in values.items()
+                if not getattr(self.channels.get(k), "untracked", False)}
         cp = {
             "v": 1, "id": uuid.uuid4().hex,
             "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
             "thread_id": _thread_id(cfg), "step": step,
-            "channel_values": values, "next": [n for n in nxt if n != END],
+            "channel_values": vals, "next": [n for n in nxt if n != END],
             "pending": pending,
         }
         self.checkpointer.put(cfg, cp)
         return cp
+
+    def _strip_ephemeral(self, state: dict) -> dict:
+        """Clear the walk's ephemeral channels (jump_to) after a routing pass -
+        one hook jump answers one gate, never reroutes a later arrival."""
+        drop = [k for k, red in self.channels.items()
+                if getattr(red, "ephemeral", False) and k in state]
+        if not drop:
+            return state
+        return {k: v for k, v in state.items() if k not in drop}
 
     # -- interrupt shape -------------------------------------------------------
 
@@ -737,6 +751,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:
@@ -772,7 +787,9 @@ class CompiledStateGraph(Runnable):
 
     def _limit(self, cfg: dict) -> int:
         return int((cfg.get("configurable") or {}).get("recursion_limit")
-                   or cfg.get("recursion_limit") or DEFAULT_RECURSION_LIMIT)
+                   or cfg.get("recursion_limit")
+                   or getattr(self, "default_limit", None)
+                   or DEFAULT_RECURSION_LIMIT)
 
     # -- interrupt + resume -------------------------------------------------
 
@@ -824,6 +841,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:
@@ -974,6 +992,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:
@@ -1039,6 +1058,7 @@ class CompiledStateGraph(Runnable):
             if step >= limit:
                 raise GraphRecursionError(
                     f"recursion_limit of {limit} super-steps crossed - the walk never reached END")
+            state = self._strip_ephemeral(state)  # one jump, one gate (P5)
             updates: dict[str, dict] = {}
             parked: GraphInterrupt | None = None
             for name in nxt:

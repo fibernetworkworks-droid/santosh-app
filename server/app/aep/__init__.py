@@ -32,14 +32,25 @@ from P2 where tracers and agents actually run):
                onto the house graph (model node + ToolNode + pending-tool_calls
                routing + return_direct + response_format -> structured_response
                + interrupt_before/after breakpoints + checkpointer chat memory)
+- middleware : (P5 v0.559.0 HOOLA MIDDLEWARE) the 24 - the hook taxonomy
+               (before_agent/before_model/wrap_model_call/after_model/
+               after_agent/wrap_tool_call + ModelRequest.override + jump_to as
+               an ephemeral untracked channel) and the middlewares in tiers
+               (summarization, PII + the live stream transformer, model+tool
+               call limits, retry+fallback, tool error/retry/emulator,
+               human-in-the-loop on the P3 park seam, todo, context editing,
+               file search, provider tool search, the bounded shell tool) +
+               THE UNIFICATION: nudge/curator/delegate/skills-primer collapse
+               into middlewares on the one loop
 
-P3 (HOOLA GRAPH) is the state-graph engine; P4 (HOOLA AGENT) create_agent; P5 the 24-middleware framework; P6 retrieval;
-P7 the hub/loader/conformance suite.
+P3 (HOOLA GRAPH) is the state-graph engine; P4 (HOOLA AGENT) create_agent; P5 (HOOLA MIDDLEWARE) the 24;
+P6 retrieval; P7 the hub/loader/conformance suite.
 """
 from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, extended)
     agent,
     history,
     messages,
+    middleware,
     models,
     parsers,
     prompts,

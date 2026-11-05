@@ -564,8 +564,10 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.565.0"
+    assert main_mod.APP_VERSION == "0.566.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
-    assert "HOOLA CREW" in story and "crewAI" in story
+    # story pin moved to the newest story (the v0.549/v0.476 precedent: the newest
+    # release's story carries the marker; the older stories live in git history)
+    assert "HOOLA MIDDLEWARE" in story and "aep/middleware.py" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.565.0+588" in pub
+    assert "version: 0.566.0+589" in pub
