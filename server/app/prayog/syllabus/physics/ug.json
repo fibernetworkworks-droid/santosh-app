@@ -2640,8 +2640,7 @@
       "oscillation frequency"
      ],
      "conditions": [],
-     "kernel": "oscillator",
-     "built": "sn-phase-shift-oscillator"
+     "kernel": "oscillator"
     },
     {
      "id": "colpitts-oscillator",

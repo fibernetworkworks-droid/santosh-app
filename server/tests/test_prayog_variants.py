@@ -178,3 +178,16 @@ def test_a_variant_may_override_cfg_whole_blocks(tmp_path, monkeypatch):
     assert lab["cfg"]["measure"] == {"mode": "value", "note": "v"}
     assert lab["cfg"]["net"] == base["cfg"]["net"]              # the netlist the variant did not name is kept
     assert "measure" not in (base.get("cfg") or {}) or base["cfg"]["measure"] != lab["cfg"]["measure"]
+
+
+def test_no_revoked_row_counts_and_no_claim_points_at_a_lab_that_does_not_open():
+    """A syllabus row dropped as a partial match must stay uncounted for good, and coverage must never lean on a lab
+    that fails to open (the meter's whole point is that 'built' means the experiment really runs)."""
+    revoked = json.loads((Path(count.__file__).resolve().parent / "syllabus" / "revoked.json").read_text())["revoked"]
+    assert revoked and all(reason.strip() for reason in revoked.values())          # every revocation says WHY
+    cov = count.coverage()
+    assert cov["broken"] == [], f"claims whose lab does not open: {cov['broken'][:5]}"
+    for d in count.load():
+        for ch in d["chapters"]:
+            for st in ch["setups"]:
+                assert not (st["id"] in revoked and st.get("built")), f"revoked row counted: {st['id']}"

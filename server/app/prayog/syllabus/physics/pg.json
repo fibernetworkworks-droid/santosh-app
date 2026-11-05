@@ -2853,8 +2853,7 @@
       "roll-off"
      ],
      "conditions": [],
-     "kernel": "filter",
-     "built": "msc-passive-filters"
+     "kernel": "filter"
     },
     {
      "id": "resonant-circuits",

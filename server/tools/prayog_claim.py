@@ -26,7 +26,7 @@ def main(argv: list[str]) -> int:
     claims_dir = Path(argv[0])
     dry = "--dry" in argv
     claims: dict[str, str] = {}
-    for f in sorted(claims_dir.glob("*.json")):
+    for f in sorted(p for p in claims_dir.glob("*.json") if not p.name.startswith("_")):
         try:
             doc = json.loads(f.read_text(encoding="utf-8"))
             # a flat {set-up: lab} map, or a report whose "built" / "claims" key holds it
@@ -36,7 +36,15 @@ def main(argv: list[str]) -> int:
                         claims[str(k)] = v
         except Exception as e:                       # noqa: BLE001
             print(f"  ! {f.name} unreadable: {e}")
-    print(f"{len(claims)} claim(s) from {claims_dir}")
+    # A decision to NOT count a row must be durable: `_revoked.json` (a list of set-up ids) wins over any claim and
+    # clears a `built` already written, so a row dropped as a partial match never creeps back in on a later run.
+    revoked: set[str] = set()
+    rf = SYL.parent / "revoked.json"
+    if rf.exists():
+        revoked = set((json.loads(rf.read_text(encoding="utf-8")).get("revoked") or {}))
+        for rid in revoked:
+            claims.pop(rid, None)
+    print(f"{len(claims)} claim(s) from {claims_dir}" + (f"  ({len(revoked)} revoked)" if revoked else ""))
 
     applied, refused, unknown = [], [], []
     for path in sorted(SYL.glob("*.json")):
@@ -44,6 +52,9 @@ def main(argv: list[str]) -> int:
         changed = False
         for ch in doc.get("chapters") or []:
             for st in ch.get("setups") or []:
+                if st["id"] in revoked and st.get("built"):
+                    del st["built"]
+                    changed = True
                 lab_id = claims.pop(st["id"], None)
                 if not lab_id:
                     continue
