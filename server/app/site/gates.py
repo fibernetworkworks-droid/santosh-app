@@ -1,4 +1,4 @@
-"""v0.550 SURAKSHA GATES for websites (web Step 7 part 1 = W11 of docs/WEB_PLATFORM_PLAN.md: "every build: dependency
+"""v0.551 SURAKSHA GATES for websites (web Step 7 part 1 = W11 of docs/WEB_PLATFORM_PLAN.md: "every build: dependency
 and secret scan, CSP + security headers check, OWASP checks on forms and APIs, rate limits, bot protection on forms,
 accessibility WCAG 2.2 AA gate, legal pages per profession, cookie banner only when a tracker is really present. A failing
 gate blocks going live.").

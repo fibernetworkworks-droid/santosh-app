@@ -762,8 +762,8 @@ def test_no_config_reads_in_graph_module():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.550.0"
-    assert "0.550.0+573" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.551.0"
+    assert "0.551.0+574" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.550.0"')
+    assert line.startswith('APP_VERSION = "0.551.0"')
     assert "HOOLA GRAPH" in line and "StateGraph" in line and "interrupt" in line

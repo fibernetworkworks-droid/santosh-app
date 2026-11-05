@@ -9,6 +9,7 @@ import 'package:flutter/services.dart';
 import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
+import 'any_card.dart';
 import 'employee_inbox.dart';
 import 'think_card.dart';
 import 'chai_screen.dart';
@@ -1969,6 +1970,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return BrowserLiveCard(v: it.data, app: app);
     case 'campaign':
       return _CampaignCard(v: it.data, app: app);
+    case 'any_card':   // v0.550 EK JAISA: a kind with no screen of its own still shows, like the console's default card
+      return AnyEventCard(v: it.data);
     default:
       return null;
   }

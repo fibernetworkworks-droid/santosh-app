@@ -20155,7 +20155,50 @@ with the same cid (as hoola-shop.js does) and names every dropped connection. ST
 but p95 41 s / max 46 s with 200 buyers at once on ONE shop (the hot product's row lock + 4 workers' DB pools) - every one
 answered, none lost, but a slow tail; next speed pass = a shorter stock transaction + pool size, measured by this same card.
 
-## v0.550.0 SURAKSHA GATES (built as 0.549.0; web Step 7 part 1 = W11 of docs/WEB_PLATFORM_PLAN.md; owner: "GO" on Step 7)
+## v0.550.0 EK JAISA - the whole-house wiring audit (owner: "NOW FIRST SORT IS ALL VOICE CALL, CONSOLE CHAT, MOBILE APP CHAT ---- WIRED TO ALL 100 % AI WORK CHECK")
+
+The audit, measured on v0.549.0 and now held by `server/tests/test_v0550_ek_jaisa.py` (10 tests):
+
+- **One brain for both chats - CONFIRMED.** The console (`static/console/app.js`) and the phone (`lib/api.dart`) post to
+  the SAME `POST /api/conversations/{id}/messages` -> `turn_inbox.accept` -> `run_owned` -> `run_turn` with the full
+  registry; the only body difference is the phone's `voice` (mic dictation) flag. The test pins both client URLs.
+- **Registry - CONFIRMED.** Every tool spec has a handler. 26 handlers have no spec - all `biz_*` (customer-safe tools
+  for her business WhatsApp inbox, `employee/inbox.py`, "never offered to her model") - by design, exempted by name.
+- **Voice call - CONFIRMED.** Every tool has a call route (`voice.call_route`: declared to the live model, or run by
+  `santosh_kaam` = the full chat brain); the declared JSON stays under `VOICE_TOOL_BUDGET`. v0.442 + v0.491 suites green.
+- **Money cards on the console - BY DESIGN, unchanged.** `ask_form`, `pg_write`, `upi_result` (convs.MONEY_KINDS) draw
+  on the console with "Haan Hoola app se hoti hai" - the fingerprint rule, not a gap.
+
+**THREE GAPS FOUND AND FIXED**
+
+1. **The phone dropped every card kind it did not name.** `Santosh._handle` (lib/state.dart) had no `default:` and
+   `feedCard` returned null, so `game_desk`, `eng_project`, `research_run`, `research_watch`, `agent_team`,
+   `drive_file`, `bulk_mail`, `voice_alert`, `social_update`, `share_ask` (and any future kind) vanished on the phone
+   while the console's `renderCard` default drew them. Now: a `default:` stores `FeedItem('any_card', {...p, '_kind'})`,
+   merged in place by the server's card key (else kind + id/job_id/order_id), reset with the chat (`_anyCards`), only
+   when the event has something to read (`anyCardWorthShowing`; stream plumbing kinds never); NEW
+   `lib/ui/any_card.dart` `AnyEventCard` = the console's default card (title, status pill, one line <= 600 chars, up to
+   5 short facts, an http(s) "Kholo" link). Nothing on it acts - a card needing her tap has its own screen. It also
+   shows on the live-call screen (same `feedCard`).
+2. **tool_search could not open 15 tools by their exact name.** `admit.tool_search` ran the keyword match first and the
+   name lookup only when the keywords found nothing, so "sheet_read" opened `sheets` (sheet_read lives in `gdrive`),
+   "crm_arch" opened `arch` (not `enterprise`), "edit_desk" opened `video` - lost: sheet_read, doc_create, hoola_inbox,
+   hoola_group_create, hoola_skills, hoola_chain, hoola_booking, pc_search, ask_form, crm_arch(+_dekho), edit_desk(+_dekho),
+   motion_desk(+_dekho). Now an exact tool name (or snake_case name inside the need) always adds its own family, beside
+   the keyword hits. The test asks tool_search for EVERY non-core tool with a real turn's admitted set.
+3. **A voice call never saw a learned skill.** `coder.inject.voice_block` was called with no query, and
+   `skills_block` returns "" on an empty query - so in 100% of calls the live model got no skill hint (chat matched
+   every turn). Now the call searches with her last 4 user lines in the chat (`_recent_asks`; a GoAway reconnect sees
+   the newest words), and when nothing matches it NAMES her enabled skills, recently used first (`store.skill_names`,
+   inside SKILLS_VOICE_BUDGET); `skill_manage` was already declared on calls, so she can have one read and followed.
+
+Sweeps: test_v0550 10 + v0442 + v0491 green; admission / tool-choice / coder / skill / pack / voice-phase suites 351
+passed; the 7 reds are byte-identical on pristine HEAD (stash-proven): test_v0311 plain-hello size 75 > 60 (the dev
+chain grew the always-on set), test_v0473 coder_routes_mounted, and the 5 uiux suites (missing vendored corpus data).
+Version 0.550.0 (pubspec 0.550.0+573, pins swept in 179 suites, console stamps follow APP_VERSION x21).
+NOT VERIFIED (honest): the Dart compiles first on CI (no flutter in the sandbox); the first phone run after the APK is
+the live check that a game-desk / research card now appears; deploy is the owner's vps-ops dispatch.
+## v0.551.0 SURAKSHA GATES (built as 0.549.0 / 0.550.0; web Step 7 part 1 = W11 of docs/WEB_PLATFORM_PLAN.md; owner: "GO" on Step 7)
 
 Every website build now passes nine SAFETY GATES read from the real built files before it can go live
 (`server/app/site/gates.py`, the App Sahayak `appmaker/gates.py` row shape reused: gate / check / pass|warn|fail|
@@ -20185,7 +20228,7 @@ Console: the build card shows "Safety gates: n passed - warnings - failed - not 
 own reason; profession laws; OSV fail + not_checked; launch blocked; Turnstile box / CSP / server check; the failing
 section is named and fed to the fix round. NOT VERIFIED (honest): no live Turnstile key yet; the profession checks are
 word rules (a careful human still reads her claims) - they catch the common breach, not every one.
-ALSO IN v0.550.0, found by this version's regression run: the v0.538 catalogue + team CMS ROUTES were missing from
+ALSO IN v0.551.0, found by this version's regression run: the v0.538 catalogue + team CMS ROUTES were missing from
 main.py - a merge before v0.538 shipped dropped the whole block (catalog preview / apply / images / remove, /cms/<site>/,
 /api/site-cms/*, /api/sites/<ref>/cms*), so on the live server the catalogue import and her team's CMS answered 404 while
 their modules, tables and worker tick were all there. Restored from the commit that wrote them; catalogue + CMS suites

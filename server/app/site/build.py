@@ -790,7 +790,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
             + (f'<script src="{rel}assets/hoola-catalog.js" defer></script>' if "data-hoola-catalog=" in body else "")   # v0.538
             + ('<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
-               if 'class="cf-turnstile"' in body else "")                                                       # v0.550
+               if 'class="cf-turnstile"' in body else "")                                                       # v0.551
             + '</body></html>')
 
 
@@ -1050,7 +1050,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 h = strip(h)
             if form_endpoint:          # every enquiry form that has no endpoint yet (v0.301: a booking form may sit beside it)
                 h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
-            h = guard_forms(h)                   # v0.550 every enquiry form: the hidden honeypot (+ Turnstile when on)
+            h = guard_forms(h)                   # v0.551 every enquiry form: the hidden honeypot (+ Turnstile when on)
             parts.append(h)
         return "\n".join(parts)
 
@@ -1156,7 +1156,7 @@ FORM_OPEN = re.compile(r"<form\b[^>]*data-hoola-form[^>]*>(?P<body>.*?)</form>",
 
 
 def turnstile_key() -> str:
-    """v0.550 Cloudflare Turnstile's SITE key (public) when the server has BOTH keys; '' = off."""
+    """v0.551 Cloudflare Turnstile's SITE key (public) when the server has BOTH keys; '' = off."""
     from . import gates as G
     if not G.turnstile_on():
         return ""
@@ -1165,7 +1165,7 @@ def turnstile_key() -> str:
 
 
 def guard_forms(h: str) -> str:
-    """v0.550 every data-hoola-form gets the hidden honeypot it lacks, and the Turnstile box when the server has the keys
+    """v0.551 every data-hoola-form gets the hidden honeypot it lacks, and the Turnstile box when the server has the keys
     (the visitor's browser adds `cf-turnstile-response`; the server checks it with Cloudflare before saving the enquiry)."""
     key = turnstile_key()
 
@@ -1189,7 +1189,7 @@ def security_headers(form_endpoint: str = "") -> dict[str, str]:
     m = re.match(r"https?://[^/]+", form_endpoint or "")
     if m:
         connect += " " + m.group(0)
-    ts = " https://challenges.cloudflare.com" if turnstile_key() else ""     # v0.550 Turnstile only when it is on
+    ts = " https://challenges.cloudflare.com" if turnstile_key() else ""     # v0.551 Turnstile only when it is on
     return {"Content-Security-Policy": ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
                                         f"script-src 'self'{ts}; font-src 'self'; connect-src {connect}; frame-ancestors 'self'; "
                                         f"frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com{ts}; "

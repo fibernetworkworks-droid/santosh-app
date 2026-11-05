@@ -659,6 +659,13 @@ async def tool_search(ctx, need: str = "", **_):
     if not need:
         return {"admitted": [], "note": "Batao kya kaam karna hai - 'send an email', 'sheet update' jaisa."}
     hits = _match(need.lower())
+    # v0.550 EK JAISA: a tool asked for by its EXACT name always opens its own family. The keyword match used to win
+    # and the name lookup ran only when it found nothing, so tool_search("sheet_read") opened sheets but not
+    # gdrive, "crm_arch" opened arch but not enterprise, "edit_desk" opened video - 15 tools could not be reached.
+    for nm in set(_NAME_RE.findall(need.lower())) | {need.lower()}:
+        fam = FAMILY_OF.get(nm)
+        if fam:
+            hits.add(fam)
     if not hits:   # try the words as family tags / tool names directly
         low = need.lower()
         words = set(_WORD_RE.findall(low)) | {low}
