@@ -201,8 +201,9 @@ async def _write(system: str, prompt: str, max_tokens: int = 12000) -> str:
     if s.anthropic_api_key and s.studio_plan_model:
         try:
             from ..agent.santosh import get_client
-            msg = await get_client().messages.create(model=s.studio_plan_model, max_tokens=max_tokens, system=system,
-                                                     messages=[{"role": "user", "content": prompt}])
+            from ..agent import door   # v0.560 EK DARWAZA
+            msg = await door.acreate(get_client(), door.shape("studio_plan", s.studio_plan_model, max_tokens, system,
+                                                              [{"role": "user", "content": prompt}]))
             text = "".join(getattr(b, "text", "") for b in msg.content).strip()
             if text:
                 return text

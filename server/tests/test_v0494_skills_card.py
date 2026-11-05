@@ -55,9 +55,11 @@ def test_gap_before_and_fixed_after(desk):
 
 
 def test_no_match_or_switch_off_adds_nothing(desk):
+    # v0.559 SKILL KI SOOCHI: every skill is named on every turn, so skill_manage is callable whenever she HAS a
+    # skill (Claude's level 1) - an unrelated ask now loads it too; the switch below still takes it all away
     plan = _plan("aaj ka mausam kaisa rehega Akola mein?")
-    assert inject.admit_tool(plan, T, "aaj ka mausam kaisa rehega Akola mein?") is False
-    assert "skill_manage" not in _names(plan)
+    assert inject.admit_tool(plan, T, "aaj ka mausam kaisa rehega Akola mein?") is True
+    assert "skill_manage" in _names(plan)
     plan2 = _plan("write this week's status report for my team")
     desk.setenv("CODER_SKILLS", "false")
     from app.config import get_settings

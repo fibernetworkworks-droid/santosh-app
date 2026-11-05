@@ -346,6 +346,21 @@ def from_openai(model: str, usage: dict | None) -> None:
            tok_out=int(usage.get("completion_tokens") or 0), cache_read=cached)
 
 
+GEMINI_FALLBACK = {"gemini-flash-latest": "gemini-2.5-flash", "gemini-3.5-flash": "gemini-2.5-flash"}
+
+
+def _gemini_fallback(kw: dict, e: Exception) -> str:
+    """v0.560 ONE MODEL REGISTRY: the Gemini text default is now Google's newest-Flash alias; when this key / region
+    refuses it (not found / not supported), the call is made once on the model Hoola ran on before."""
+    m = str(kw.get("model") or "")
+    s = str(e).lower()
+    if m in GEMINI_FALLBACK and ("404" in s or "not found" in s or "not supported" in s or "unsupported" in s
+                                 or "permission" in s or "invalid model" in s):
+        log.warning("gemini %s refused (%s); answering on %s", m, str(e)[:120], GEMINI_FALLBACK[m])
+        return GEMINI_FALLBACK[m]
+    return ""
+
+
 def install() -> None:
     """Wrap the SDKs once (idempotent): every Claude / Gemini call anywhere in Hoola is counted."""
     if _INSTALLED[0]:
@@ -374,12 +389,26 @@ def install() -> None:
         ga_orig, gs_orig = AsyncModels.generate_content, Models.generate_content
 
         async def ga(self, *a, **kw):
-            r = await ga_orig(self, *a, **kw)
+            try:
+                r = await ga_orig(self, *a, **kw)
+            except Exception as e:      # v0.560 an alias / new model this key cannot use: the proven one answers
+                fb = _gemini_fallback(kw, e)
+                if not fb:
+                    raise
+                kw = {**kw, "model": fb}
+                r = await ga_orig(self, *a, **kw)
             from_gemini(str(kw.get("model") or (a[0] if a else "")), r)
             return r
 
         def gs(self, *a, **kw):
-            r = gs_orig(self, *a, **kw)
+            try:
+                r = gs_orig(self, *a, **kw)
+            except Exception as e:      # v0.560 same fallback, sync
+                fb = _gemini_fallback(kw, e)
+                if not fb:
+                    raise
+                kw = {**kw, "model": fb}
+                r = gs_orig(self, *a, **kw)
             from_gemini(str(kw.get("model") or (a[0] if a else "")), r)
             return r
         AsyncModels.generate_content, Models.generate_content = ga, gs

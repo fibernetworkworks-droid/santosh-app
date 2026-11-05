@@ -221,7 +221,9 @@ def test_turn_block_carries_skills_query(sk):
                         "1. scp the repo")
     blk = inject.turn_block(T, CONV, query="deploy my flask app")
     assert "deploy-flask" in blk
-    assert inject.turn_block(T, CONV, query="") == ""
+    # v0.559 SKILL KI SOOCHI (Claude's level 1): with no ask there is no MATCHED line, but every skill is still named
+    empty = inject.turn_block(T, CONV, query="")
+    assert "LEARNED SKILLS matching" not in empty and "ALL HER SKILLS" in empty and "deploy-flask" in empty
 
 
 # ---------------------------------------------------------------- (4) the nudge fork
@@ -379,4 +381,4 @@ def test_stats_carry_skills_and_nudge(sk, nud, monkeypatch):
 
 def test_version_stamp(sk):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.562.0"
+    assert APP_VERSION == "0.563.0"
