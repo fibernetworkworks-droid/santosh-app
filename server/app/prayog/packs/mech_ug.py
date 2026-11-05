@@ -189,6 +189,14 @@ def _fly_state(p: dict, t: float) -> tuple[float, float, int]:
     return phi + om0 * td - 0.5 * a2 * td * td, om0 - a2 * td, 1
 
 
+def _fly_I_one(p: dict, t1: float, N: float) -> float:
+    """The working formula: I = m (2 g h − v²) r² / (v² (1 + n/N)), with h = 2πnr and v = 2φr/t₁."""
+    phi = _fly_phi(p)
+    h = p["ra"] * phi
+    v = 2 * phi * p["ra"] / t1
+    return p["m"] * (2 * p["g"] * h - v * v) * p["ra"] * p["ra"] / (v * v * (1 + p["n"] / N))
+
+
 class Flywheel:
     """A heavy flywheel on a horizontal axle. A cord wound n turns on the axle carries a mass; it falls, spins the wheel
     up, slips off, and the wheel then runs down against friction alone."""
