@@ -89,7 +89,7 @@ def test_a_finished_job_does_not_report_twice_when_the_turn_already_did():
     assert "in_history" in src                                # progress notes are not an answer
     assert "len(text) >= 40" in src                           # nor is a one-word ack
     tick = (ROOT / "server/app/kaam_followup.py").read_text()
-    assert '_recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None))' in tick
+    assert '_recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None), key=key, tenant=tenant)' in tick   # v0.552 + the job identity
     assert K._answered_since("missing-conv", None) is False   # no timestamp = never block the news
 
 
@@ -114,8 +114,8 @@ def test_the_between_step_narration_still_stands():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.551.0"
-    assert "0.551.0+574" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.557.0"
+    assert "0.557.0+580" in (ROOT / "pubspec.yaml").read_text()
 
 
 from tests.test_bazar import bz  # noqa: E402,F401

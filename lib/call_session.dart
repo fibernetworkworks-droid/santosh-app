@@ -21,6 +21,7 @@ const callCardKinds = {
   // v0.86 every card that waits for her answer shows inside the call too
   'darzi_quote', 'darzi_ready', 'chai_plan', 'video_job', 'motion',
   'ask_form', // v0.97
+  'any_card', // v0.554 a card kind with no screen of its own (v0.550 default card) shows in the call too
   'gyaan_sources', // v0.134
   'tele_logged', 'tele_day', // v0.99
   'kalam_publish', 'kalam_piece', // v0.101

@@ -20235,7 +20235,131 @@ their modules, tables and worker tick were all there. Restored from the commit t
 green again. RULE (again): a module's tests passing in one commit says nothing about the merged tree - run the feature's
 suite on the MERGED commit before shipping.
 
-## v0.555.0 TEZ CHECKOUT (the website checkout under a rush: CI's load proof went red on v0.551 - 114 of 600 checkouts timed out)
+## v0.552.0 NATIJA PAKKA (built as 0.551.0; the dev's SURAKSHA GATES took 0.551.0 - rebased, both kept) - a finished task's result reliably reaches voice call, console chat and phone chat (owner: "NOW CHECK FOR ALL 3 --- WHEN RESULT COME FROM ANY TASK DOES IT REPLY RELIABLY")
+
+TRACED end to end, and these parts already hold: `kaamwatch.observe` sees every job event (15 named kinds + any kind
+carrying a job status and an id) -> on done / failed / stopped `kaam_followup.enqueue` writes a DURABLE row (survives a
+restart, deduped per job + state) -> the worker tick (~10 s) wakes the real brain (actor wake, tools allowed) or, if
+that cannot run, a one-shot line, or the honest canned line -> `notify` = a saved Message + SSE (the console and the
+phone both stream it) + FCM push (every assistant message pushes) + `kaamwatch._voice` = a quiet note into her live
+call on that chat, else into her live call on another chat. With no live call, `voice_ring` may ring her phone (quiet
+hours + daily budget). A big job a CALL handed to santosh_kaam runs through the durable turn_inbox, so its reply lands
+in the chat as well; a call that ended meanwhile leaves the result for the next call to open with (yaad followup).
+
+TWO GAPS FOUND AND FIXED (`server/app/kaam_followup.py`):
+1. **Unrelated replies swallowed the news.** v0.260's `_answered_since` skipped the report whenever ANY assistant
+   reply of 40+ chars landed after the job finished. A background job finishing while she asked about something
+   else (her GST question) was never told - proven on the old code (`OLD RULE SKIPS THE NEWS: True`); and when two
+   jobs finished together, the first job's wake report swallowed the second's. Now a reply counts as THIS job's
+   report only when the turn that wrote it began before the job started (`_turn_began` vs `kaam_jobs.started_at`:
+   the turn that ran the job - the 29 Oct duplicate stays fixed) and it is not another job's own wake report
+   (`_other_jobs_report`: a sent follow-up of another key within 2 minutes). Unknown start = the old rule.
+2. **A running turn held the report only ~50 s.** The tick postponed 5 times (one per ~10 s tick) and then dropped
+   the dry canned line INTO the running turn, so any ordinary multi-tool turn lost the real report. Now it waits up to
+   `KAAM_FOLLOWUP_WAIT_S` (default 300 s) and then still sends the honest line; the row cap moved to `_MAX_TRIES` 60
+   so postpones can never strand a row (the old `tries < 5` filter would have).
+
+Tests: NEW `test_v0552_natija_pakka.py` (8): the unrelated reply no longer swallows the news, the turn that ran the
+job still counts, another job's wake report does not count, old callers keep working, `_send` passes the job
+identity, a running turn holds the report past 50 s, past the wait the honest line goes, postpones never strand.
+`test_v0260` pin updated to the new call. Version 0.552.0 (pubspec 0.552.0+575). Server-only change - the v0.550.0
+APK (`v0.550.0-b1643`) is the phone build. NOT VERIFIED live: the first background job that finishes while she is
+chatting about something else is the live proof.
+
+## v0.553.0 GHANTI - a finished task rings her phone on the normal path too (owner, after deploying v0.552: "NOW ALL SURFACE WILL GIVE PROPER RESULT CALL WHEN TASK DONE")
+
+Checked before saying yes, and it was not true. `kaam_followup._send` has two report paths: the WAKE TURN (the normal
+one - the real brain reads the result and writes the reply) and the one-shot / canned line (the fallback when a wake
+is not allowed: a turn running, the 3-wakes budget spent, or wake off). The v0.211 voice ring (`kind=voice_ring`
+data push -> the phone's native side starts the call) sat ONLY after the fallback; the wake path `return`ed before it.
+So with default settings a finished job almost never rang her phone. Now one `_ring(conv, key, state, title,
+settings)` helper is called by both paths. Every gate is unchanged and still lives in `push.on_event` /
+`_ring_allowed`: her `voice_ring` switch (default on), quiet hours `voice_ring_quiet` 22-8 in her timezone,
+`voice_ring_max_day` 2 rings a day, never while a call is live on that chat (a live call hears the news instead).
+Tests: `test_v0552_natija_pakka.py` +2 (the wake report rings; switch off = no ring on any path; the one-shot path
+still rings); report suites 78 passed. Server-only. NOT VERIFIED live: the first task that finishes outside quiet
+hours with no call open should ring her phone (at most 2 a day by default).
+
+## v0.554.0 CARD KI KHABAR - every card reaches her live call (owner: "WHEN RESULT ON CARD / APPROVAL CARD / ANY CARD TASK APPEARS --- VOICE CALL DONT KNOW THAT EVEN CARD IS ASSIGNED AND PUSH VIA VOICE CALL")
+
+FOUND: `events.bus.publish` fans every event out to the chat streams (console + phone), FCM (`push.on_event`) and
+`kaamwatch.observe` - and a live call heard ONLY kaamwatch's JOB states (`kaamwatch._voice`). An approval card, a
+payment card, an email draft, a form, a finished result card (artifact, PDF, photo...) appeared on her screen while
+the voice model talked on knowing nothing.
+
+FIXED: `bus.publish` now also calls `voice.card_news(conv, kind, payload, call)` whenever a call is live (looked up
+in `sys.modules`, so no voice import happens when no call can exist). `card_news`:
+- uses `push.render` - the same judgement as the phone notification (pending asks, ready results) and its words;
+- one quiet note per card per state (`_CARD_TOLD`, 30 min), queued by `Call.push_news` for a natural pause (its own
+  60% word dedup still applies); to the call on that chat, else to her call on another of her chats (tenant check);
+- `card_note`: a MONEY card (amount / amount_paise / inr, a pay method, money words - the same rule `haan_karo` uses)
+  is said to be tap-only, never by voice; a non-money ask says she can answer (`haan_karo` for a running PC/browser
+  step - it refuses anything else itself); a result is told as a result;
+- not repeated: cards made by the call's own DIRECT tool (new `voice.VOICE_DIRECT` contextvar, set in `run_tool`,
+  cleared for `santosh_kaam` - so the cards of a full-brain job a call started ARE news), job states (kaamwatch
+  already speaks them), stream plumbing kinds (`_CARD_NOT`).
+Phone: `lib/call_session.dart` `callCardKinds` gains `any_card` (v0.550's default card) so the call screen can show it.
+
+Tests: NEW `test_v0554_card_khabar.py` (11, incl. an end-to-end `bus.publish` -> live call); voice / call / approval
+suites 308 passed; the 2 reds (`test_v0221_console_r1`: cache-stamp pin 0.543 + console English) are red on the
+pre-session commit bbdcaa60 too. NOT VERIFIED live: the first approval card that appears during a call is the proof.
+
+## v0.555.0 HOOLA CARD - the premium default card on phone and console (owner: "BUILD THIS" on claude.ai/artifact/NgbT6WLDj63Jhh7MbysuGD)
+
+The owner asked for cards that are more user friendly, then "more sophisticated, professional and premium", approved
+the second design and said BUILD THIS. Built as the DEFAULT card - every card kind that has no screen of its own (game
+desk, CAD project, research run / watch, agent team, Drive file, bulk mail, voice alert, social update, any future
+kind) - with one anatomy on both surfaces:
+- eyebrow: the desk in small capitals, "Call par bataya" when `told_on_call`, the time (phone: FeedItem.at);
+- a 42px tile in the tone + the title (Sora on the phone) + a STATUS SIGNAL: a dot and plain words (Aapki haan
+  chahiye / Chal raha hai / Taiyaar / Ruk gaya, dikkat aayi / Band kar diya; console English) - never a raw code;
+- one sentence (say / summary / text / reason / message / detail / now); for a failure the error IS the sentence;
+- a money card: the amount as the hero (Indian grouping 1,24,000, paise as two digits, a small ₹), the pay method,
+  and a secure band "fingerprint, never by voice" while it asks;
+- up to 3 receipt facts on hairlines with human labels; ids, tenant, conversation, links, status and progress
+  fields never show;
+- progress as 6 step segments (pct, or step / total) with the current one half-toned (no looping animation - the
+  console's CRISP TEXT rule);
+- a docked action bar only when there is somewhere to go (console: side panel "Open" or the safe https link; phone:
+  "Kholo"). Nothing on it approves anything: cards that need her tap keep their own screens and buttons.
+Tones: money saffron/warn, ask violet/pri, ready green, working teal, failed red, stopped muted.
+
+Files: NEW `server/app/static/console/hcard.js` (pure `HoolaCard.html(kind, p, at, opts)`, node-tested; loaded before
+results.js) used by `app.js renderCard` default (old markup kept only as a fallback if the script is missing);
+`v2.css` block "v0.555 HOOLA CARD" (theme tokens only, light + dark); `lib/ui/any_card.dart` rewritten with the
+same rules (`stateOf / isMoney / amountOf / deskOf`); `chat_screen.dart` passes `at: it.at`. Stamps 21 -> 22 (the
+new script) in four suites.
+
+Tests: NEW `test_v0555_hoola_card.py` (8: plain status words, no internal codes, 3-fact cap, money hero + secure band,
+Indian amounts, step segments, progress/error never facts, dock only with a target, escaping, console + phone wiring).
+Console + pin suites 141 passed; the reds (v0221, v0223, v0279 aePulse from another merge, v0285, v142) are red on the
+committed tree before this change. Rendered with the real v2.css in light and dark and checked by eye.
+NOT VERIFIED: the Dart compiles first on CI. NEXT: move the dedicated cards (bill payment, email draft, approvals)
+onto the same anatomy one by one, keeping each one's buttons.
+
+## v0.556.0 SEEDHA RAASTA - simple tasks take the light path (owner: "NOW CHECK HOW ALL SURFACES RESPOND FOR SIMPLE TASK AND WHICH MODEL IT USE")
+
+MEASURED (not read off the code): the real `santosh.run_turn` with a recording fake Claude client, six simple asks.
+- Console chat and phone chat: one pipeline (POST /api/conversations/{id}/messages -> turn_inbox -> run_turn). Live
+  healthz: chat_brain claude, model claude-sonnet-5-5 (no OmniRoute / GLM configured). A simple ask = ONE call on
+  Sonnet 5.5, max_tokens 2,000, no thinking, the model's default effort, ~75 tools admitted, ~46k chars of system
+  prompt (prompt-cached). Opus 5.5 only for a hard reasoning ask (`model_for`), raised effort only for hard asks /
+  long jobs (`effort_for`), thinking only while a long job runs (`chat_thinking` goal). A message while a long job
+  holds the chat = the quick lane (cheap brain, else the same chat model).
+- Voice call: Gemini Live `gemini-3.8-live` answers in its own voice; declared tools run directly; big work goes to
+  `santosh_kaam` = the chat brain above. OpenAI `gpt-realtime-2.1-mini` only when she picks Real voice (trial).
+
+FOUND AND FIXED (`server/app/agent/hard.py`):
+1. "12 aur 15 ka total kitna?" ran on OPUS with 16,000 tokens, adaptive thinking and effort high: the WORD PROBLEM rule
+   fired on any 2 numbers + "kitna". Now it needs a story (12+ words) or 3+ numbers.
+2. "50 chairs ka quotation bana do Rs 1200 each" and "Make an invoice for ..." fell into the 'maybe' zone and the reply
+   waited for the Haiku judge (up to 2.5 s). A make / do request (`_MAKE`) with no reasoning signal skips it.
+Compared old vs new detector on every set: HARD 50 -> 50, HOLDOUT_HARD 21 -> 21, hard card 27 -> 27, EASY 0 -> 0,
+nothing lost; the everyday card maybe 11 -> 9 (test_v0272_hard::test_everyday_tool_asks_stay_fast was red, now green).
+Borderline kept on purpose: a 12-word story sum still counts as a word problem (same length as a calibrated one).
+Tests: NEW `test_v0556_simple_route.py` (8); hard suites 89 passed. Server-only. The v0.555.0 APK built green on CI
+(run 41984659811), so the Hoola Card compiles on the phone.
+## v0.557.0 TEZ CHECKOUT (the website checkout under a rush: CI's load proof went red on v0.551 - 114 of 600 checkouts timed out)
 
 ROOT CAUSE, found by running the CI load proof against a local Postgres 16 and sampling the workers with py-spy, not
 by guessing: Postgres was idle (no lock waits, ~22 connections "idle in transaction" waiting on PYTHON). Every worker

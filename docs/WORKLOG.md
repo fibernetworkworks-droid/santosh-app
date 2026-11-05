@@ -1393,3 +1393,60 @@ Work Log:
 
 Stage Summary:
 - v0.550.0 ready; Dart compiles first on CI. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 40 — v0.552.0 NATIJA PAKKA (built as 0.551.0) (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "WHEN RESULT COME FROM ANY TASK DOES IT REPLY RELIABLY" on voice call, console chat, phone chat.
+
+Work Log:
+- Traced kaamwatch -> kaam_followup -> wake / one-shot / canned -> notify (Message + SSE + FCM) + live-call note;
+  call santosh_kaam jobs via turn_inbox + next-call followup.
+- FIXED _answered_since (unrelated replies swallowed the news; proven on old code) and the ~50 s postpone
+  (now KAAM_FOLLOWUP_WAIT_S 300 s, _MAX_TRIES 60 so nothing is stranded).
+- NEW test_v0552_natija_pakka.py (8). COLLISION: the dev's SURAKSHA GATES took 0.551.0 - rebased on b7f0e273,
+  re-versioned 0.552.0, both kept. v0.550.0 APK published: v0.550.0-b1643.
+
+Stage Summary:
+- v0.552.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 41 — v0.553.0 GHANTI (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner deployed v0.552 and said all surfaces will now call when a task is done - checked first.
+Work Log:
+- Found voice_ring only on the fallback path; the wake turn (normal path) returned before it. One _ring helper
+  for both; gates unchanged. +2 tests; report suites 78 passed. Live healthz read 0.552.0 before this change.
+Stage Summary:
+- v0.553.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 42 — v0.554.0 CARD KI KHABAR (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "WHEN RESULT ON CARD / APPROVAL CARD / ANY CARD APPEARS --- VOICE CALL DONT KNOW".
+Work Log:
+- bus.publish -> voice.card_news (push.render words, one note per card state, money tap-only, own-tool cards and
+  job states not repeated); call screen lists any_card. NEW test_v0554_card_khabar.py (11); 308 voice suites green.
+Stage Summary:
+- v0.554.0 server + one Dart line. Deploy = owner's vps-ops dispatch; APK from CI.
+
+---
+Task ID: 43 — v0.555.0 HOOLA CARD (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "BUILD THIS" on the premium card design (claude.ai/artifact/NgbT6WLDj63Jhh7MbysuGD).
+Work Log:
+- Console hcard.js (pure) + v2.css tokens in renderCard default; phone any_card.dart rewritten with the same rules.
+- NEW test_v0555_hoola_card.py (8); console + pin suites 141 passed, the reds pre-exist. Rendered light + dark.
+Stage Summary:
+- v0.555.0. Deploy = owner's vps-ops dispatch (console) + the CI APK (phone). Next: dedicated cards onto the same anatomy.
+
+---
+Task ID: 44 — v0.556.0 SEEDHA RAASTA (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "CHECK HOW ALL SURFACES RESPOND FOR SIMPLE TASK AND WHICH MODEL IT USE".
+Work Log:
+- Probed run_turn with a recording fake client: simple = 1 Sonnet call, 2k, no thinking; voice = Gemini Live 3.8.
+- FIXED bare sums on Opus (word-problem rule) and make requests waiting for the Haiku judge (_MAKE). Sets unchanged.
+- NEW test_v0556_simple_route.py (8); hard suites 89 passed. v0.555 APK green (run 41984659811).
+Stage Summary:
+- v0.556.0 server-only. Deploy = owner's vps-ops dispatch.
