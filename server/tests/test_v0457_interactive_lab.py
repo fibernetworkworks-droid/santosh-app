@@ -382,3 +382,32 @@ def test_studio_helpers_and_door():
     assert "signed:" in save and "ai_generated" not in save                    # a cloned voice can never be 'ai generated'
     assert "faster_whisper_small" in (ROOT / "avatar_engine" / "registry.py").read_text()
     assert "studio_card" in WORKFLOW and "inputs.job == 'studio'" in WORKFLOW
+
+
+def test_studio_card_fixes_from_the_first_real_run():
+    """Studio card run 33 (L40S): 5/10. Each failure, pinned to its real cause from the log."""
+    live = MODAL_SRC[MODAL_SRC.index("class Live:"):MODAL_SRC.index("class Live:") + 20000]
+    # photo avatar called self._prepare_impl, which only the old Face class had
+    assert "def _prepare_impl(self, avatar_id: str, video: bytes, consent: str)" in live
+    assert "return self._prepare_impl(avatar_id, video, consent)" in live.split("def prepare_photo")[1][:1200]
+    # transcribe returned numpy floats into the numpy-free studio image
+    hear = MODAL_SRC[MODAL_SRC.index("class Hear:"):MODAL_SRC.index("def _speak_chunks")]
+    assert "round(sg.start" not in hear and "round(float(sg.start), 2)" in hear and "round(float(w.start), 2)" in hear
+    # dub got a silent sample video: no sound = no voice to copy, said plainly; the card now sends a speaking clip
+    dub = MODAL_SRC[MODAL_SRC.index('if op == "dub":'):MODAL_SRC.index('if op == "podcast":')]
+    assert dub.index("_has_audio(src)") < dub.index("save_voice")
+    assert '"dub", {"video": _sample_talking.remote()' in MODAL_SRC
+
+
+def test_voice_never_cut_off_mid_sentence_and_takes_judged_both_ways():
+    m = re.search(r'CB_PATCH = r"""(.*?)"""', MODAL_SRC, re.S)
+    assert m and "'" not in m.group(1)                       # it rides inside python -c '...'
+    code = m.group(1)
+    assert "assert s.count(old) == 1" in code and "self.complete and len(self.generated_tokens) >= 4" in code
+    assert 'run_commands(f"python -c \'{CB_PATCH}\'")' in MODAL_SRC
+    ns: dict = {}
+    exec(re.search(r"def _take_off.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
+    off = ns["_take_off"]
+    assert off(4.5, 10) < off(1.0, 10) and off(4.5, 10) < off(12.0, 10)
+    speak = MODAL_SRC[MODAL_SRC.index("def speak(self, text: str, lang"):MODAL_SRC.index("@app.cls", MODAL_SRC.index("def speak(self, text: str, lang"))]
+    assert "floor <= secs <= limit" in speak and '"cut_short": secs < floor' in speak

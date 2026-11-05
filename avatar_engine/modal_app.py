@@ -54,7 +54,23 @@ secret = modal.Secret.from_name("hoola-lab")
 
 # ---------------------------------------------------------------- images (one per clashing stack)
 _base = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "git").env(HF_ENV)
-chatterbox_image = _base.pip_install("chatterbox-tts==0.1.7", "soundfile", "huggingface_hub").add_local_python_source("registry")
+# Chatterbox 0.1.7 stops a sentence the moment ANY two identical speech tokens come in a row (its own comment says "3x";
+# the code checks 2, and the "only after the text is spoken" condition is commented out) - a held vowel is two identical
+# tokens, so words were cut off mid-sentence ("Detected 2x repetition ... forcing EOS" in the studio card log). Patched at
+# build time to what the comment meant: 4 in a row, and only once the whole text has been spoken. Build fails if the
+# line it patches ever changes.
+CB_PATCH = r"""
+import importlib.util, pathlib
+p = pathlib.Path(importlib.util.find_spec("chatterbox").submodule_search_locations[0]) / "models/t3/inference/alignment_stream_analyzer.py"
+s = p.read_text()
+old = "len(self.generated_tokens) >= 3 and\n            len(set(self.generated_tokens[-2:])) == 1"
+new = "self.complete and len(self.generated_tokens) >= 4 and\n            len(set(self.generated_tokens[-4:])) == 1"
+assert s.count(old) == 1, "chatterbox repetition check changed - re-read it before patching"
+p.write_text(s.replace(old, new))
+print("chatterbox repetition guard patched")
+"""
+chatterbox_image = (_base.pip_install("chatterbox-tts==0.1.7", "soundfile", "huggingface_hub")
+                    .run_commands(f"python -c '{CB_PATCH}'").add_local_python_source("registry"))
 indicf5_image = (_base.pip_install("git+https://github.com/ai4bharat/IndicF5.git", "soundfile", "huggingface_hub")
                  # newest `datasets` needs pyarrow>=24, which needs NumPy 2; this stack is on NumPy 1.26 -> pin a matching pair
                  .pip_install("pyarrow==16.1.0", "datasets==2.21.0")
@@ -105,6 +121,11 @@ def _wav_bytes(wav, sr: int) -> bytes:
     buf = io.BytesIO()
     sf.write(buf, a.astype("float32"), sr, format="WAV")
     return buf.getvalue()
+
+
+def _take_off(secs: float, words: int) -> float:
+    """How far a voice take is from the normal length of `words` Hindi words (about 0.45 s a word)."""
+    return abs(secs - max(0.6, words * 0.45))
 
 
 def _tmp(data: bytes | None, suffix: str) -> str | None:
@@ -178,9 +199,11 @@ class Chatterbox:
             ref_audio = self._voice_ref(voice_id)
         ref = _tmp(ref_audio, ".wav")
         t = time.time()
-        # Guard: a short line can make this voice ramble (one word -> 12 s of audio). A line of N words should speak for
-        # about N x 0.45 s (Hindi); more than N x 1.0 s + 2.5 s is a runaway - make it again, keep the shortest take.
-        limit = len(text.split()) * 1.0 + 2.5
+        # Guard both ways. A line of N words should speak for about N x 0.45 s (Hindi). More than N x 1.0 s + 2.5 s is a
+        # runaway (one word once rambled for 12 s); less than N x 0.22 s means the voice stopped early and dropped words.
+        # Either one is made again (max 3 takes); the take closest to the normal length is kept.
+        n = len(text.split())
+        limit, floor = n * 1.0 + 2.5, n * 0.22
         best, tries = None, 0
         for _ in range(3):
             tries += 1
@@ -190,14 +213,14 @@ class Chatterbox:
             if loud.numel():
                 w = w[..., : min(w.shape[-1], int(loud[:, -1].max()) + int(0.2 * self.model.sr))]
             secs = w.shape[-1] / self.model.sr
-            if best is None or secs < best[1]:
+            if best is None or _take_off(secs, n) < _take_off(best[1], n):
                 best = (w, secs)
-            if secs <= limit:
+            if floor <= secs <= limit:
                 break
         wav, secs = best
         out = _wav_bytes(wav, self.model.sr)
         return {"wav": out, "sr": self.model.sr, "synth_s": round(time.time() - t, 2), "load_s": self.load_s,
-                "tries": tries, "runaway": secs > limit}
+                "tries": tries, "runaway": secs > limit, "cut_short": secs < floor}
 
 
 @app.cls(gpu=GPU, image=indicf5_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=600)
@@ -545,6 +568,10 @@ class Live:
 
     @modal.method()
     def prepare(self, avatar_id: str, video: bytes, consent: str) -> dict:
+        return self._prepare_impl(avatar_id, video, consent)
+
+    def _prepare_impl(self, avatar_id: str, video: bytes, consent: str) -> dict:
+        """Shared by prepare (a recorded clip) and prepare_photo (a still made into a clip): same consent rules."""
         if not AVATAR_ID.match(avatar_id or ""):
             raise ValueError("avatar_id: lower-case letters, digits, - and _ (max 40)")
         if not CONSENT.match(consent or ""):
@@ -1343,9 +1370,11 @@ class Hear:
         segs, info = self.model.transcribe(wav, language=(lang or None), word_timestamps=True, vad_filter=True)
         out = []
         for sg in segs:
-            out.append({"start": round(sg.start, 2), "end": round(sg.end, 2), "text": sg.text.strip(),
-                        "words": [{"w": w.word.strip(), "start": round(w.start, 2), "end": round(w.end, 2)} for w in (sg.words or [])]})
-        return {"language": info.language, "language_probability": round(float(info.language_probability), 2),
+            # float(): faster-whisper hands back numpy floats, and the studio image that receives this has no numpy
+            out.append({"start": round(float(sg.start), 2), "end": round(float(sg.end), 2), "text": str(sg.text).strip(),
+                        "words": [{"w": str(w.word).strip(), "start": round(float(w.start), 2), "end": round(float(w.end), 2)}
+                                  for w in (sg.words or [])]})
+        return {"language": str(info.language), "language_probability": round(float(info.language_probability), 2),
                 "duration": round(float(info.duration), 2), "segments": out, "load_s": self.load_s}
 
 
@@ -1363,6 +1392,13 @@ def _speak_chunks(text: str, lang: str, voice_id: str, first_words: int = 14) ->
         cues.append((t, t + d, c))
         t += d
     return _wav_concat(wavs), cues, t
+
+
+def _has_audio(path: str) -> bool:
+    """Does this media file carry a sound track? (ffprobe ships with ffmpeg)"""
+    r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index", "-of", "csv=p=0", path],
+                       capture_output=True, text=True)
+    return bool(r.stdout.strip())
 
 
 @app.function(image=studio_image, secrets=[secret], timeout=1800, max_containers=8)
@@ -1406,6 +1442,8 @@ def studio_job(op: str, p: dict) -> dict:
             raise ValueError(f"text: 1-{MAX_VIDEO_TEXT} characters")
         tmp_id = "dub-" + uuid.uuid4().hex[:10]
         src = _tmp(video, ".mp4")
+        if not _has_audio(src):
+            raise ValueError("this video has no sound, so there is no voice to copy - send a video where the person speaks")
         sample = f"/tmp/{uuid.uuid4().hex}_ref.wav"
         subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", src, "-vn", "-ac", "1", "-ar", "24000", "-t", "20", sample], check=True)
         with open(sample, "rb") as f:
@@ -1465,6 +1503,16 @@ def _sample_photo() -> bytes:
         return f.read()
 
 
+@app.function(image=face_image, timeout=300)
+def _sample_talking() -> bytes:
+    """MuseTalk's sample face with its sample speech laid under it - a stand-in for 'a video of a person speaking'."""
+    out = "/tmp/sample_talking.mp4"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", f"{MUSE_DIR}/data/video/yongen.mp4", "-i", f"{MUSE_DIR}/data/audio/yongen.wav",
+                    "-map", "0:v:0", "-map", "1:a:0", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-c:a", "aac", "-shortest", out], check=True)
+    with open(out, "rb") as f:
+        return f.read()
+
+
 @app.local_entrypoint()
 def studio_card():
     """Every Studio feature once, on the GPU: text to video, photo avatar, my voice, transcribe, dub, podcast, one video many
@@ -1499,7 +1547,7 @@ def studio_card():
             if fn in r["files"]:
                 with open(f"lab_out/{out_name}", "wb") as f:
                     f.write(r["files"][fn])
-        sizes = ", ".join(f"{k} {len(v) // 1024} KB" for k, v in r["files"].items())
+        sizes = ", ".join(f"{k} {len(v) / 1024:.1f} KB" for k, v in r["files"].items())
         note(f"{name:<22} PASS  {time.time() - t:5.1f}s  {sizes or '-'}  {json.dumps(r['info'], ensure_ascii=False)[:200]}")
         results[name] = True
         return r
@@ -1533,7 +1581,7 @@ def studio_card():
     if r:
         note(f"   heard: language {r['info']['language']} ({r['info']['language_probability']}), {len(r['info']['segments'])} segments: "
              + " ".join(sg["text"] for sg in r["info"]["segments"])[:200])
-    run("5 dub (video translate)", "dub", {"video": _sample_face.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
+    run("5 dub (video translate)", "dub", {"video": _sample_talking.remote(), "text": "यह वही व्यक्ति है, अब हिंदी में बोल रहा है।", "lang": "hi", "consent": consent},
         {"video.mp4": "studio_5_dub.mp4"})
     run("6 podcast (2 hosts)", "podcast", {"lang": "hi", "hosts": {"a": {"avatar_id": "lab-live", "voice_id": ""}, "b": {"avatar_id": "lab-photo", "voice_id": "lab-voice"}},
         "lines": [{"host": "a", "text": "आज हम बात करेंगे गति की।"}, {"host": "b", "text": "गति यानी चाल और दिशा, है न?"}, {"host": "a", "text": "बिल्कुल सही।"}]},
