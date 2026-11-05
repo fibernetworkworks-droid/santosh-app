@@ -345,11 +345,17 @@ HoolaStudio.define('ac-bridge', function (S) {
       S.say('The detector is at its quietest: ' + noteText() + '.'); S.render(); return true;
     });
   }
+  function atBest() {                            // the quietest the dials can be set: one step either way is worse
+    var base = detAt(), r = rDial.value(), c = cDial.value() * 1e-6, cs = cDial.step * 1e-6;
+    if (detAt({ R2: r + 1 }) < base || detAt({ R2: Math.max(1, r - 1) }) < base) return false;
+    if (OWEN && (detAt({ C2: c + cs }) < base || detAt({ C2: Math.max(cs, c - cs) }) < base)) return false;
+    return true;
+  }
   function record() {
     if (S.hand.busy) { S.say('Wait for the hand to finish.'); return false; }
     if (!st.osc) { S.say('Switch the oscillator on first.'); return false; }
     var i = quiet() * 1e6;
-    if (i > 0.6) { S.say('The detector still reads ' + i.toFixed(2) + ' µA. Turn the dials until it is quieter than that.'); return false; }
+    if (!atBest()) { S.say('The detector still reads ' + i.toFixed(2) + ' µA and one more step of a dial makes it quieter. Keep turning.'); return false; }
     var key = OWEN ? st.f : st.R1;
     if (S.rows.some(function (r) { return Math.abs(r.key - key) < 1e-6; })) {
       S.say(OWEN ? 'There is already a balance at ' + fHz(st.f) + '.' : 'There is already a balance with R₁ = ' + st.R1 + ' Ω.');

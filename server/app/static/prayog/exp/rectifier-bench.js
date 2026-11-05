@@ -396,7 +396,7 @@ HoolaStudio.define('rectifier-bench', function (S) {
       var vdc = meterRead();
       return turnFunc('AC V').then(function () {
         var vac = meterRead();
-        var vpp = round(m.V_pp / (VDIV / 5), 0) * (VDIV / 5);     // read off the screen to a fifth of a division
+        var vpp = round(m.V_pp, 3);     // read off the screen on AC coupling, at a volts/div small enough to see the ripple
         S.addRow({ RL: LOADS[st.load], Vdc: vdc, Vac: vac, Vpp: vpp, r: vdc > 0 ? vac / vdc : 0 });
         S.say('Load ' + ohm(LOADS[st.load]) + ': DC ' + fmt(vdc, 3) + ' V, ripple ' + fmt(vac, 4) + ' V RMS.');
         S.render();
@@ -438,7 +438,7 @@ HoolaStudio.define('rectifier-bench', function (S) {
         { label: 'R_L (Ω)', get: function (r) { return String(r.RL); } },
         { label: 'V_dc (V)', get: function (r) { return fmt(r.Vdc, 3); } },
         { label: 'V_ac rms (V)', get: function (r) { return fmt(r.Vac, 4); } },
-        { label: 'V_pp (V)', get: function (r) { return fmt(r.Vpp, 2); } },
+        { label: 'V_pp, AC coupled (V)', get: function (r) { return fmt(r.Vpp, 3); } },
         { label: 'r = V_ac/V_dc', get: function (r) { return fmt(r.r, 4); } }],
       at: [-0.52, 0.1, 0.1],
     },

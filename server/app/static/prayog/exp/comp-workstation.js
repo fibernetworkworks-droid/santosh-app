@@ -136,7 +136,8 @@ HoolaStudio.define('comp-workstation', function (S) {
     },
     cp_mc: {
       quantity: 'estimate', unit: '', digits: 6, nlabel: 'samples N', ns: [1000, 4000, 16000, 64000, 256000],
-      tol: 0.02, methods: ['Monte Carlo'], xlabel: 'N (samples)', ylabel: 'running estimate', showCurve: true,
+      tol: 0.02, methods: ['Monte Carlo'], xlabel: 'N (samples, log scale)', ylabel: 'running estimate',
+      showCurve: true, logx: true, yFrom: 0.3,
       caseOver: { 0: { quantity: 'pi' }, 1: { quantity: 'integral I' }, 2: { quantity: 'sample mean' },
         3: { quantity: 'P(k heads)' }, 4: { quantity: 'spread of the mean' }, 5: { quantity: 'sample mean' },
         6: { quantity: 'spread of f = x y' } },
@@ -341,11 +342,13 @@ HoolaStudio.define('comp-workstation', function (S) {
       var P = { l: 86, r: 404, t: 92, b: 100 }, pw = W - P.l - P.r, ph = H - P.t - P.b;
       x.fillStyle = '#081019'; x.fillRect(P.l - 60, P.t - 28, pw + 72, ph + 56);
       var cx = v.cx || [], ce = v.ce || [], cy = v.cy || [], px = v.px || [], py = v.py || [];
-      var xs = cx.slice(), ys = [];
+      var LOGX = !!SP.logx, tx = function (q) { return LOGX ? Math.log(Math.max(q, 1)) / Math.LN10 : q; };
+      var from = Math.floor((cy.length || 0) * (SP.yFrom || 0));
+      var xs = cx.map(tx), ys = [];
       [ce, py].forEach(function (a) { a.forEach(function (q) { if (isFinite(q)) ys.push(q); }); });
       var cyx = (cy.length === cx.length) ? cx : px;
-      cy.forEach(function (q, i) { if (isFinite(q) && i < cyx.length) { ys.push(q); } });
-      px.forEach(function (q) { if (isFinite(q)) xs.push(q); });
+      cy.forEach(function (q, i) { if (isFinite(q) && i >= from && i < cyx.length) { ys.push(q); } });
+      px.forEach(function (q) { if (isFinite(q)) xs.push(tx(q)); });
       if (!xs.length) { xs = [0, 1]; } if (!ys.length) { ys = [0, 1]; }
       var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs);
       var y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
@@ -360,7 +363,8 @@ HoolaStudio.define('comp-workstation', function (S) {
         var gx = x0 + (x1 - x0) * i / 4, gy = y0 + (y1 - y0) * i / 4;
         x.beginPath(); x.moveTo(X(gx), Y(y0)); x.lineTo(X(gx), Y(y1)); x.stroke();
         x.beginPath(); x.moveTo(X(x0), Y(gy)); x.lineTo(X(x1), Y(gy)); x.stroke();
-        x.textAlign = 'center'; x.fillText(fmt(gx, 2), X(gx), H - P.b + 26);
+        x.textAlign = 'center';
+        x.fillText(LOGX ? fmt(Math.pow(10, gx), gx < 3 ? 1 : 0) : fmt(gx, 2), X(gx), H - P.b + 26);
         x.textAlign = 'right'; x.fillText(fmt(gy, 2), P.l - 10, Y(gy) + 7);
       }
       x.textAlign = 'left';
@@ -372,18 +376,18 @@ HoolaStudio.define('comp-workstation', function (S) {
       var rev = Math.max(0.02, Math.min(1, st.reveal));
       // exact curve
       if (SP.fill && cx.length > 1) {
-        x.fillStyle = 'rgba(80,170,255,.14)'; x.beginPath(); x.moveTo(X(cx[0]), Y(Math.max(y0, Math.min(y1, 0))));
-        for (i = 0; i < cx.length; i++) x.lineTo(X(cx[i]), Y(ce[i]));
-        x.lineTo(X(cx[cx.length - 1]), Y(Math.max(y0, Math.min(y1, 0)))); x.closePath(); x.fill();
+        x.fillStyle = 'rgba(80,170,255,.14)'; x.beginPath(); x.moveTo(X(tx(cx[0])), Y(Math.max(y0, Math.min(y1, 0))));
+        for (i = 0; i < cx.length; i++) x.lineTo(X(tx(cx[i])), Y(ce[i]));
+        x.lineTo(X(tx(cx[cx.length - 1])), Y(Math.max(y0, Math.min(y1, 0)))); x.closePath(); x.fill();
       }
       x.strokeStyle = '#59b6ff'; x.lineWidth = 4; x.beginPath();
-      for (i = 0; i < cx.length; i++) { if (i) x.lineTo(X(cx[i]), Y(ce[i])); else x.moveTo(X(cx[i]), Y(ce[i])); }
+      for (i = 0; i < cx.length; i++) { if (i) x.lineTo(X(tx(cx[i])), Y(ce[i])); else x.moveTo(X(tx(cx[i])), Y(ce[i])); }
       x.stroke();
       // what the method built
       if (cy.length > 1 && SP.showCurve) {
         x.strokeStyle = '#ffc247'; x.lineWidth = 3; x.setLineDash([9, 7]); x.beginPath();
         var nseen = Math.max(2, Math.floor(cy.length * rev));
-        for (i = 0; i < nseen && i < cyx.length; i++) { if (i) x.lineTo(X(cyx[i]), Y(cy[i])); else x.moveTo(X(cyx[i]), Y(cy[i])); }
+        for (i = 0; i < nseen && i < cyx.length; i++) { if (i) x.lineTo(X(tx(cyx[i])), Y(cy[i])); else x.moveTo(X(tx(cyx[i])), Y(cy[i])); }
         x.stroke(); x.setLineDash([]);
       }
       // the nodes the method used
@@ -392,10 +396,10 @@ HoolaStudio.define('comp-workstation', function (S) {
       for (i = 0; i < nnodes; i++) {
         if (!isFinite(px[i]) || !isFinite(py[i])) continue;
         if (i % stride !== 0 && i !== nnodes - 1) continue;
-        x.fillStyle = '#ff7b5a'; x.beginPath(); x.arc(X(px[i]), Y(py[i]), rad, 0, Math.PI * 2); x.fill();
+        x.fillStyle = '#ff7b5a'; x.beginPath(); x.arc(X(tx(px[i])), Y(py[i]), rad, 0, Math.PI * 2); x.fill();
         if (KNAME === 'cp_root' && i === nnodes - 1) {
           x.strokeStyle = 'rgba(255,123,90,.5)'; x.lineWidth = 2; x.beginPath();
-          x.moveTo(X(px[i]), Y(y0)); x.lineTo(X(px[i]), Y(y1)); x.stroke();
+          x.moveTo(X(tx(px[i])), Y(y0)); x.lineTo(X(tx(px[i])), Y(y1)); x.stroke();
         }
       }
       // legend
@@ -489,7 +493,7 @@ HoolaStudio.define('comp-workstation', function (S) {
       kbd: [[0.17, 0.33, 0.2], [0.16, 0.0, -0.09]],
       mouse: [[0.46, 0.22, 0.1], [0.44, 0.0, -0.1]],
       tower: [[0.78, 0.42, 0.22], [0.66, 0.18, -0.46]],
-      card: [[-0.13, 0.42, 0.2], [-0.13, 0.0, 0.03]],
+      card: [[-0.13, 0.54, 0.44], [-0.13, 0.0, 0.03]],
       book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]],
       bench: [[0.72, 0.68, 1.08], [0.12, 0.12, -0.3]],
     },

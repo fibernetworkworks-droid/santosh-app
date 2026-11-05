@@ -93,7 +93,8 @@ def _calc_net_rth(rows: list[dict], p: dict) -> float:
 class Lcr:
     """A resistance, an inductance and a capacitance driven by a sine of frequency f and amplitude V, in the two
     arrangements the laboratory uses. `mode` 0 = the three in SERIES; `mode` 1 = the coil (R + jwL) in PARALLEL
-    with C, fed from the generator through a series resistance Rs.
+    with C. The generator holds its voltage and a meter in the supply lead reads the current it drives, which is
+    the usual bench arrangement for both.
 
     Everything is the textbook's own phasor algebra in complex numbers: Z = R + j(wL - 1/(wC)) in series, and
     Y = 1/(R + jwL) + jwC in parallel. The RESONANT FREQUENCY is not printed from a formula: it is found by
