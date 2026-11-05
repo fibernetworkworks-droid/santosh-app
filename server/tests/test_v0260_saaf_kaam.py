@@ -25,10 +25,10 @@ def test_kaam_plan_description_names_a_parameter_that_exists():
     spec = [t for t in GOAL_TOOLS if t["name"] == "kaam_plan"][0]
     desc = spec["description"]
     props = spec["input_schema"]["properties"]
-    assert "step (n, state done|failed|skipped|current, reason)" in desc
+    assert "step (n, state done|failed|skipped|current, reason, check)" in desc   # v0.443 + the step's own check
     assert "current, note)" not in desc                       # the parameter that never existed
     # every parameter the description names in its Actions line is really declared
-    for named in ("goal", "steps", "n", "state", "reason", "text"):
+    for named in ("goal", "steps", "n", "state", "reason", "text", "check"):
         assert named in props, named
 
 
@@ -114,8 +114,8 @@ def test_the_between_step_narration_still_stands():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.425.0"
-    assert "0.425.0+469" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.535.0"
+    assert "0.535.0+558" in (ROOT / "pubspec.yaml").read_text()
 
 
 from tests.test_bazar import bz  # noqa: E402,F401

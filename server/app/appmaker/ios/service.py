@@ -173,6 +173,12 @@ def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any
     system = PR.screen_system(sid, ids=ids, lists=SP.list_fields(sp["seed"]),
                               facts=sorted(k for k in sp["seed"]["facts"] if k != "privacy"), lang=AS._lang_line(r.language),
                               backend=sp["seed"].get("backend"))
+    from .. import family as FA                      # v0.435 PARIVAAR: a partner app's first tab opens on its jobs
+    if FA.prompt_line(sp["seed"].get("backend") or {}):
+        system += "\n" + FA.prompt_line(sp["seed"].get("backend") or {})
+    from .. import sign as SG                         # v0.455 SURAKSHIT LOGIN: the kit's sign-in screen owns every way in
+    if SG.prompt_line(sp["seed"].get("backend") or {}):
+        system += "\n" + SG.prompt_line(sp["seed"].get("backend") or {})
     prompt = (f"APP: {sp['app']['name']} ({ctx.get('goal')}).\nSCREEN: {sid} = {me['label']}"
               f"{' (a bottom tab)' if me['tab'] else ' (opened on top of a tab; Back is automatic)'}.\nPURPOSE: {me['purpose']}\n"
               f"DATA SHOWN: {', '.join(me['data'])}\n"
@@ -267,6 +273,8 @@ def _run(r: AppProject) -> None:
                   app_key=AN._app_key(r))
     from .. import backend as BE
     sp["seed"]["backend"] = BE.seed_hint(r)          # the SAME backend as the Android app: one set of accounts and orders
+    from .. import custom as CU                      # v0.425 RANG: her approved custom components (Swift) ride along
+    sp["custom"] = CU.for_build(r)
     bid = bundle_id(r)
     sp["ios"] = {"bundle_id": bid, "version": f"{r.version}.{int(ast.get('build') or 0) or n}", "build": bn}
     from .. import turant as TU                        # v0.368 TURANT IPHONE: the push capability + PushHub on

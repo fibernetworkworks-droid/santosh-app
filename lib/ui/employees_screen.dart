@@ -17,8 +17,14 @@ import 'package:url_launcher/url_launcher.dart';
 import '../state.dart';
 import 'arch_desk.dart';
 import 'cad_desk.dart';
+import 'daftar_screen.dart';
+import 'enterprise_screen.dart';
 import 'game_desk_screen.dart';
 import 'glass.dart';
+import 'guru_screen.dart';
+import 'prayog_screen.dart';
+import 'shiksha_screen.dart';
+import 'shodh_screen.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
 List<Map<String, dynamic>> _list(dynamic l) =>
@@ -105,16 +111,29 @@ class _EmployeesScreenState extends State<EmployeesScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
+  // v0.453 every hired employee opens ITS OWN screen; an unknown key used to fall through to the SEO Desk
+  // (the nine non-lead Game Desk roles did, and the new Education / Enterprise employees would have).
+  static const _gameKeys = {'game_dev', 'procgen_dev', 'physics_dev', 'audio_dev', 'haptics_dev', 'netcode_dev',
+                            'xr_dev', 'sim_dev', 'twin_arch', 'vfx_td'};
+  static const _entKeys = {'erp', 'crm_arch', 'tpm', 'bpa', 'ecom_arch', 'health_int', 'bank_int', 'supply_opt', 'plm', 'regtech'};
+
+  Widget _deskFor(String key) {
+    final app = widget.app;
+    if (key == 'social') return SocialDeskScreen(app: app);
+    if (key == 'cad') return CadDeskScreen(app: app);
+    if (_gameKeys.contains(key)) return GameDeskScreen(app: app);     // v0.370 Game Desk (v0.420 all ten roles)
+    if (key == 'architect') return ArchDeskScreen(app: app);         // v0.410 Architecture Desk
+    if (key == 'tutor') return GuruScreen(app: app);                 // v0.453 Education, Research & Lab
+    if (key == 'school_office') return DaftarScreen(app: app);
+    if (key == 'curriculum' || key == 'school_register') return ShikshaScreen(app: app);
+    if (key == 'research') return ShodhScreen(app: app);
+    if (key == 'lab') return PrayogScreen(app: app);
+    if (_entKeys.contains(key)) return EnterpriseScreen(app: app, role: key);   // v0.453 Enterprise Systems & ERP
+    return SeoDeskScreen(app: app);
+  }
+
   void _openDesk(String key) => Navigator.of(context)
-      .push(MaterialPageRoute(builder: (_) => key == 'social'
-          ? SocialDeskScreen(app: widget.app)
-          : key == 'cad'
-              ? CadDeskScreen(app: widget.app)
-              : key == 'game_dev'
-                  ? GameDeskScreen(app: widget.app)     // v0.370 Game Desk
-                  : key == 'architect'
-                      ? ArchDeskScreen(app: widget.app)     // v0.410 Architecture Desk
-                      : SeoDeskScreen(app: widget.app)))
+      .push(MaterialPageRoute(builder: (_) => _deskFor(key)))
       .then((_) => _load());
 
   Widget _card(Map<String, dynamic> e) {

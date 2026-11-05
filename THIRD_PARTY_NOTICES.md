@@ -82,13 +82,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Claude Code Game Studios (ideas for the Hoola Game Crew and the game-desk fixes, v0.406)
+## Claude Code Game Studios (ideas for the Hoola Game Crew and the game-desk fixes, v0.406; the read guard, v0.455)
 
 Hoola's Game Crew (`server/app/gamedesk/crew.py`), the task acceptance criteria and evidence, the "not assessed" results
 and the Godot 4.5-4.7 notes in `server/app/gamedesk/ai.py` were designed after studying the open-source project
 **Claude Code Game Studios** by Donchitos (https://github.com/Donchitos/Claude-Code-Game-Studios, release 1.2.0, commit
 05ad7c8). No code or prompt text was copied: the role descriptions, checklists, team flows and code are Hoola's own,
 written for Hoola's hosted Game Desk. These ideas came from that project:
+
+v0.455 took one more idea from the same repo's release 1.2.0: its `validate-read.sh` hook, which refuses a
+whole-file read of a large design doc and answers with the doc's headings so the retry reads one section.
+`.claude/hooks/read-guard.sh` is Hoola's own implementation of that idea (different watched paths, different
+size bar, and a headings reply that caps the list because docs/HISTORY.md has 639 headings - printing them all
+would be the waste the guard exists to prevent). No code was copied.
 
 - the studio roster (3 directors, 8 department leads, specialists, plus Godot / Unity / Unreal engine specialists) and
   the team flows (combat, narrative, UI, release, polish, audio, level, live ops, QA)
@@ -134,6 +140,20 @@ Vendored unchanged at `server/app/static/vendor/maplibre/` (maplibre-gl.js, mapl
 native apps' tracking screens (Android WebView) and the console's riders map. BSD-3-Clause, full text in
 `server/app/static/vendor/maplibre/LICENSE.txt`. Map tiles come from OpenFreeMap (https://openfreemap.org, free, no key);
 the map shows their attribution: © OpenFreeMap, © OpenMapTiles, data © OpenStreetMap contributors (ODbL).
+
+## Anthropic example skills (Apache License 2.0)
+
+Shipped (v0.494, `server/app/coder/skillpack/claude/`): **internal-comms**, **theme-factory**, **frontend-design**,
+**canvas-design** (without its canvas-fonts folder, which is not shipped), **webapp-testing**, **mcp-builder**,
+from https://github.com/anthropics/skills (commit ca45fc49), Copyright Anthropic, PBC, licensed under the Apache
+License, Version 2.0. Each folder keeps its own LICENSE.txt. Changes by Newtika for Hoola (marked in each SKILL.md
+under "Hoola note"): one added `when_to_use` frontmatter line and an appended Hoola section; the original text is
+otherwise unchanged and pinned by a hash test. No Anthropic trademarks are used beyond naming the origin.
+
+Also in that folder: **coauthor-docs** and **skill-maker**, Hoola originals (the upstream doc-coauthoring has no
+licence file, and the upstream skill-creator needs the Claude command line tool and sub-agents, so none of their
+text is used).
+Licence verdicts: `docs/research/skills/licences.md`.
 
 ## Mermaid (diagram drawing for the Architecture Desk, v0.413)
 

@@ -7,13 +7,15 @@
 <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#110F20" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
-<script src="/static/console/theme.js?v=0.425.0"></script>
+<script src="/static/console/theme.js?v=0.534.0"></script>
 <title>Hoola Console</title>
-<link rel="icon" href="/static/santosh-head.png">
+<link rel="icon" href="/static/favicon-32.png" sizes="32x32">
+<link rel="icon" href="/static/hoola-icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="/static/hoola-apple-touch.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700;800&family=Schibsted+Grotesk:wght@400..700&family=Literata:opsz,wght@7..72,400;7..72,600&display=swap">
-<link rel="stylesheet" href="/static/console/v2.css?v=0.425.0">
+<link rel="stylesheet" href="/static/console/v2.css?v=0.534.0">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -31,7 +33,7 @@
       <p><a href="/" style="color:inherit;font-weight:700;opacity:.8">← Hoola website</a></p>
     </div>
     <form class="lcard gl" id="lform" autocomplete="on">
-      <div class="brand"><img src="/static/santosh-head.png" alt="">Hoola Console</div>
+      <div class="brand"><img src="/static/hoola-logo.png" alt="">Hoola Console</div>
       <p class="muted" style="margin-top:-6px">Sign in to your Hoola workspace.</p>
       <button type="button" class="gbtn" id="gbtn">
         <svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.6 13.2l7.9 6.2C12.4 13.6 17.7 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.6c0-1.6-.1-3.1-.4-4.6H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.3 5.7c4.3-3.9 7-9.8 7-17z"/><path fill="#FBBC05" d="M10.5 28.6A14.5 14.5 0 0 1 9.5 24c0-1.6.3-3.2.9-4.6l-7.9-6.2A24 24 0 0 0 0 24c0 3.9.9 7.5 2.6 10.8l7.9-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.3 0-11.6-4.2-13.5-9.9l-7.9 6.2C6.6 42.6 14.6 48 24 48z"/></svg>
@@ -54,7 +56,7 @@
 <!-- ================= APP ================= -->
 <div id="app" hidden>
   <aside class="side" aria-label="Sidebar" tabindex="0">
-    <div class="shd"><button type="button" class="mk" data-v="chat" aria-label="Hoola home"><img src="/static/santosh-head.png" alt=""><span>Hoola</span></button><button class="ib" id="collapse" aria-label="Collapse sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
+    <div class="shd"><button type="button" class="mk" data-v="chat" aria-label="Hoola home"><img src="/static/hoola-logo.png" alt=""><span>Hoola</span></button><button class="ib" id="collapse" aria-label="Collapse sidebar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3"/><path d="M9 4v16"/></svg></button></div>
     <button class="newc" id="newChat"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span class="txt">New chat</span><kbd class="txt">Ctrl ⇧ O</kbd></button>
     <button class="sn srch" id="searchBtn" type="button" hidden aria-label="Search chats (Ctrl K)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg><span class="txt">Search</span><kbd class="txt">Ctrl K</kbd></button>
     <nav id="snav" aria-label="Sections"></nav>
@@ -121,12 +123,14 @@
       <section class="view" id="v-arena" aria-label="Design Arena" hidden><div class="pad" id="arena" tabindex="0"></div></section>
       <section class="view" id="v-lab" aria-label="Prayogshala" hidden><iframe id="labframe" title="Prayogshala 3D labs" style="border:0;width:100%;height:100%;display:block;background:var(--bg,#fff)"></iframe></section>
       <section class="view" id="v-systems" aria-label="Enterprise systems" hidden><div class="pad" id="systems" tabindex="0"></div></section>
-      <section class="view" id="v-hire" aria-label="Employees" hidden><div class="pad" id="hire" tabindex="0"></div></section>
+      <section class="view" id="v-hire" aria-label="AI Employees" hidden><div class="pad" id="hire" tabindex="0"></div></section>
       <section class="view" id="v-seodesk" aria-label="SEO Desk" hidden><div class="pad" id="seodesk" tabindex="0"></div></section>
       <section class="view" id="v-socialdesk" aria-label="Social Desk" hidden><div class="pad" id="socialdesk" tabindex="0"></div></section>
       <section class="view" id="v-caddesk" aria-label="CAD Desk" hidden><div class="pad" id="caddesk" tabindex="0"></div></section>
       <section class="view" id="v-gamedesk" aria-label="Game Desk" hidden><div class="pad" id="gamedesk" tabindex="0"></div></section>
+      <section class="view" id="v-edudesk" aria-label="Education Desk" hidden><div class="pad" id="edudesk" tabindex="0"></div></section>
       <section class="view" id="v-archdesk" aria-label="Architecture Desk" hidden><div class="pad" id="archdesk" tabindex="0"></div></section>
+      <section class="view" id="v-skills" aria-label="Skills" hidden><div class="pad" id="skills" tabindex="0"></div></section>
     </div>
   </main>
 
@@ -168,24 +172,25 @@
 </form>
 <div class="toast" id="toast" role="status" hidden></div>
 <noscript><p style="padding:40px;text-align:center">Hoola Console needs JavaScript.</p></noscript>
-<script src="/static/console/kaam.js?v=0.425.0"></script>
+<script src="/static/console/kaam.js?v=0.534.0"></script>
 <script src="/static/console/vendor/qrcode.js?v=1.4.4"></script>
-<script src="/static/console/charts.js?v=0.425.0"></script>
-<script src="/static/console/build.js?v=0.425.0"></script>
-<script src="/static/console/md.js?v=0.425.0"></script>
-<script src="/static/console/stream.js?v=0.425.0"></script>
-<script src="/static/console/menu.js?v=0.425.0"></script>
-<script src="/static/console/chatlist.js?v=0.425.0"></script>
-<script src="/static/console/pdfview.js?v=0.425.0"></script>
-<script src="/static/console/panel.js?v=0.425.0"></script>
-<script src="/static/console/projects.js?v=0.425.0"></script>
-<script src="/static/console/studio.js?v=0.425.0"></script>
-<script src="/static/console/results.js?v=0.425.0"></script>
-<script src="/static/console/workspace.js?v=0.425.0"></script>
-<script src="/static/console/attach.js?v=0.425.0"></script>
-<script src="/static/console/arena.js?v=0.425.0"></script>
-<script src="/static/console/employees.js?v=0.425.0"></script>
-<script src="/static/console/enterprise.js?v=0.425.0"></script>
-<script src="/static/console/v2.js?v=0.425.0"></script>
+<script src="/static/console/charts.js?v=0.534.0"></script>
+<script src="/static/console/build.js?v=0.534.0"></script>
+<script src="/static/console/md.js?v=0.534.0"></script>
+<script src="/static/console/stream.js?v=0.534.0"></script>
+<script src="/static/console/menu.js?v=0.534.0"></script>
+<script src="/static/console/chatlist.js?v=0.534.0"></script>
+<script src="/static/console/pdfview.js?v=0.534.0"></script>
+<script src="/static/console/panel.js?v=0.534.0"></script>
+<script src="/static/console/projects.js?v=0.534.0"></script>
+<script src="/static/console/studio.js?v=0.534.0"></script>
+<script src="/static/console/results.js?v=0.534.0"></script>
+<script src="/static/console/workspace.js?v=0.534.0"></script>
+<script src="/static/console/attach.js?v=0.534.0"></script>
+<script src="/static/console/arena.js?v=0.534.0"></script>
+<script src="/static/console/employees.js?v=0.534.0"></script>
+<script src="/static/console/enterprise.js?v=0.534.0"></script>
+<script src="/static/console/skills.js?v=0.534.0"></script>
+<script src="/static/console/v2.js?v=0.534.0"></script>
 </body>
 </html>

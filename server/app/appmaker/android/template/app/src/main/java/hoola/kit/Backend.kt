@@ -37,6 +37,8 @@ import javax.crypto.spec.GCMParameterSpec
 
 /** The code-made sign-in screen and the account screen (my orders / bookings; staff see and handle everyone's). */
 const val SCREEN_LOGIN = "hoola_login"
+/** v0.455 login said "right, now the authenticator code" (staff 2FA). */
+const val NEED_2FA = "\u0000need_2fa"
 const val SCREEN_ACCOUNT = "hoola_account"
 
 /** One answer from the server: code 0 = no network. */
@@ -65,7 +67,7 @@ object Cloud {
     internal val baseUrl: String get() = base
 
     /** v0.319 a photo (JPEG bytes) -> {id}. */
-    internal suspend fun upload(bytes: ByteArray, token: String): Reply = withContext(Dispatchers.IO) {
+    internal suspend fun upload(bytes: ByteArray, token: String, ctype: String? = null): Reply = withContext(Dispatchers.IO) {
         if (!ready) return@withContext Reply(0, JSONObject())
         var c: HttpURLConnection? = null
         try {
@@ -77,7 +79,7 @@ object Cloud {
                 doOutput = true
                 setFixedLengthStreamingMode(bytes.size)
                 // v0.346 a document (PDF) goes up as itself; photos as JPEG
-                setRequestProperty("Content-Type", if (bytes.size > 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-") "application/pdf" else "image/jpeg")
+                setRequestProperty("Content-Type", ctype ?: if (bytes.size > 5 && String(bytes, 0, 5, Charsets.US_ASCII) == "%PDF-") "application/pdf" else "image/jpeg")
                 setRequestProperty("Accept", "application/json")
                 if (token.isNotEmpty()) setRequestProperty("Authorization", "Bearer $token")
             }
@@ -240,14 +242,67 @@ object Auth {
     // so a late sign-out can never end the token that sign-in just got
     private var bye: Job? = null
 
-    suspend fun signup(ctx: Context, email: String, password: String, name: String): String? {
+    /** v0.462 `consent` is null when this app does not ask for it; the tick used to be collected on the sign-in
+     *  screen and never sent, so the server never recorded it. */
+    suspend fun signup(ctx: Context, email: String, password: String, name: String, consent: Boolean? = null): String? {
         bye?.join()
-        return keep(ctx, Cloud.call("POST", "/signup", JSONObject().put("email", email.trim()).put("password", password).put("name", name.trim())))
+        val body = JSONObject().put("email", email.trim()).put("password", password).put("name", name.trim())
+        if (consent != null) body.put("consent", consent)
+        return keep(ctx, Cloud.call("POST", "/signup", body))
     }
 
     suspend fun login(ctx: Context, email: String, password: String): String? {
         bye?.join()
-        return keep(ctx, Cloud.call("POST", "/login", JSONObject().put("email", email.trim()).put("password", password)))
+        val r = Cloud.call("POST", "/login", JSONObject().put("email", email.trim()).put("password", password))
+        if (r.ok && r.body.optBoolean("need_2fa")) {              // v0.455 staff 2FA: the authenticator code is step two
+            ticket = r.body.optString("ticket", "")
+            return NEED_2FA
+        }
+        return keep(ctx, r)
+    }
+
+    // v0.455 SURAKSHIT LOGIN: mobile OTP, Google / Apple and the second step. The code / token is sent straight to the
+    // app's own server and is never stored, shown again or logged here.
+    private var ticket = ""
+
+    suspend fun otpStart(phone: String): String? {
+        val r = Cloud.call("POST", "/login/otp", JSONObject().put("phone", phone.trim()))
+        return if (r.ok) null else r.error.ifEmpty { if (r.offline) Strings.offline else Strings.tryAgain }
+    }
+
+    suspend fun otpCheck(ctx: Context, phone: String, code: String, name: String, consent: Boolean): String? {
+        bye?.join()
+        val r = Cloud.call("POST", "/login/otp/check", JSONObject().put("phone", phone.trim()).put("code", code.trim())
+            .put("name", name.trim()).put("consent", consent))
+        if (r.ok && r.body.optBoolean("need_2fa")) {
+            ticket = r.body.optString("ticket", "")
+            return NEED_2FA
+        }
+        return keep(ctx, r)
+    }
+
+    /** The provider's own ID token; the SERVER checks its signature, audience and nonce before any account is made. */
+    suspend fun social(ctx: Context, provider: String, idToken: String, nonce: String, name: String, consent: Boolean): String? {
+        bye?.join()
+        val r = Cloud.call("POST", "/login/$provider", JSONObject().put("id_token", idToken).put("nonce", nonce)
+            .put("name", name).put("consent", consent))
+        if (r.ok && r.body.optBoolean("need_2fa")) {
+            ticket = r.body.optString("ticket", "")
+            return NEED_2FA
+        }
+        return keep(ctx, r)
+    }
+
+    suspend fun nonce(): String {
+        val r = Cloud.call("GET", "/login/nonce", null)
+        return if (r.ok) r.body.optString("nonce", "") else ""
+    }
+
+    suspend fun twoFa(ctx: Context, code: String): String? {
+        if (ticket.isEmpty()) return Strings.tryAgain
+        val r = Cloud.call("POST", "/login/2fa", JSONObject().put("ticket", ticket).put("code", code.trim()))
+        if (r.ok) ticket = ""
+        return keep(ctx, r)
     }
 
     fun logout(ctx: Context) {
@@ -397,6 +452,22 @@ object Db {
         val show = job.optJSONObject("show")
         for (k in data.keys().asSequence().toList()) {
             val v = data.optString(k)
+            if (v.contains(",local:") || (v.startsWith("local:") && v.contains(","))) {     // v0.425 several photos in one field
+                val parts = v.split(",").map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
+                for (i in parts.indices) {
+                    if (!parts[i].startsWith("local:")) continue
+                    val pf = java.io.File(parts[i].removePrefix("local:"))
+                    val pb = try { pf.readBytes() } catch (_: Exception) { null }
+                    if (pb == null) { parts[i] = ""; continue }
+                    val pr = Cloud.upload(pb, Auth.token())
+                    if (pr.ok && pr.body.optString("id").startsWith("f_")) { parts[i] = pr.body.optString("id"); pf.delete() }
+                    else if (pr.retry || pr.code == 401) { data.put(k, parts.filter { it.isNotEmpty() }.joinToString(",")); synchronized(this) { persist() }; return pr }
+                    else parts[i] = ""
+                    data.put(k, parts.filter { it.isNotEmpty() }.joinToString(","))
+                    synchronized(this) { persist() }
+                }
+                continue
+            }
             if (!v.startsWith("local:")) continue
             val f = java.io.File(v.removePrefix("local:"))
             val bytes = try { f.readBytes() } catch (_: Exception) { null }
@@ -404,7 +475,8 @@ object Db {
                 data.remove(k); show?.remove(k)
                 continue
             }
-            val r = Cloud.upload(bytes, Auth.token())
+            val ctype = when (f.extension.lowercase()) { "m4a" -> "audio/mp4"; "mp4", "mov" -> "video/mp4"; else -> null }   // v0.425
+            val r = Cloud.upload(bytes, Auth.token(), ctype)
             if (r.ok && r.body.optString("id").startsWith("f_")) {
                 data.put(k, r.body.optString("id"))
                 f.delete()

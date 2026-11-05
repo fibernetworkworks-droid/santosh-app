@@ -1819,6 +1819,7 @@ class Santosh extends ChangeNotifier {
         break;
       case 'devsahayak_task':
       case 'devsahayak_push':
+      case 'devsahayak_plan':
       case 'devsahayak_review':
       case 'devsahayak_merge':
       case 'devsahayak_deploy':
@@ -2428,6 +2429,9 @@ class Santosh extends ChangeNotifier {
       case 'bazar_open':
         feed.add(FeedItem('open', Map<String, dynamic>.from(p)));
         break;
+      case 'maps_places': // v0.449 Phase 2: Google Maps results as a card, never a wall of addresses
+        feed.add(FeedItem('maps_places', Map<String, dynamic>.from(p)));
+        break;
       case 'bazar_link':
         feed.add(FeedItem('link', Map<String, dynamic>.from(p)));
         break;
@@ -2750,7 +2754,7 @@ String sevaCardKey(String kind, Map<String, dynamic> p) {
 String techCardKey(String kind, Map<String, dynamic> p) {
   String sub(String k) => p[k] is Map ? '${(p[k] as Map)['id'] ?? ''}' : '';
   final (group, id) = switch (kind) {
-    'devsahayak_task' || 'devsahayak_push' => ('devtask', sub('task')),
+    'devsahayak_task' || 'devsahayak_push' || 'devsahayak_plan' => ('devtask', sub('task')),
     'devsahayak_review' => ('devreview', sub('review')),
     'devsahayak_merge' || 'devsahayak_deploy' => ('devaction', sub('action')),
     'qa_run' => ('qarun', sub('run')),

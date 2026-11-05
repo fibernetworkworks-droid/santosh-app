@@ -162,6 +162,17 @@ class Gh:
         return self.req("POST", f"/repos/{full}/pulls", {"title": title, "head": head, "base": base, "body": body, "draft": draft,
                                                           "maintainer_can_modify": True})
 
+    def update_pr(self, full: str, n: int, body: str = "", title: str = "") -> dict[str, Any]:
+        """v0.447 edit an open PR's body / title (the proof-of-the-bug section is written after her CI has answered)."""
+        patch: dict[str, Any] = {}
+        if body:
+            patch["body"] = body[:60000]
+        if title:
+            patch["title"] = title[:200]
+        if not patch:
+            return {}
+        return self.req("PATCH", f"/repos/{full}/pulls/{int(n)}", patch)
+
     def mark_ready(self, full: str, n: int) -> bool:
         """v0.351 a draft PR -> ready for review. REST has no call for this; GitHub's GraphQL mutation does it."""
         node = str(self.pr(full, n).get("node_id") or "")

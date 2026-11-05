@@ -116,7 +116,7 @@ class _CadDeskScreenState extends State<CadDeskScreen> {
               mainAxisSpacing: 8, crossAxisSpacing: 8,
               children: [
                 for (final k in const ['iso.png', 'front.png', 'top.png', 'right.png', 'fea_0.png', 'fea_1.png', 'fea_2.png',
-                    'cam.png', 'flat.png', 'motion.gif', 'explode.png'])
+                    'cam.png', 'flat.png', 'motion.gif', 'explode.png', 'camcurve.png', 'dynamics.png'])
                   if (files[k] != null)
                     GestureDetector(
                       onTap: () => _open(_s(files[k])),

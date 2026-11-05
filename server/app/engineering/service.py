@@ -7,6 +7,7 @@ body, volume, the size the model promised vs the real box) -> up to 2 fixes from
 kharcha), and nothing is sent anywhere."""
 from __future__ import annotations
 
+import math
 import hashlib
 import hmac
 import json
@@ -43,7 +44,9 @@ FILES = ("part.step", "part.stl", "part.3mf", "part.glb", "section.dxf", "drawin
          # v0.365 after-build stage
          "analysis.pdf", "fea_0.png", "fea_1.png", "fea_2.png", "part.nc", "cam.png", "flat.dxf", "flat.png",
          # v0.406 mechanisms
-         "robot_urdf.zip", "motion.gif", "explode.png")
+         "robot_urdf.zip", "motion.gif", "explode.png",
+         # v0.425 cams + dynamics
+         "camcurve.png", "dynamics.png")
 
 
 class EngError(Exception):
@@ -123,7 +126,7 @@ def view(r: EngProject) -> dict[str, Any]:
         vs.append({**{k: v.get(k) for k in ("n", "title", "size", "bbox", "volume_mm3", "checks", "assumed", "notes",
                                             "at", "seconds", "words", "plan", "material", "mass_g", "com", "parts",
                                             "print", "review", "expect", "analysis", "cam", "sheet", "dfm",
-                                            "kinematics")},
+                                            "kinematics", "gears", "gear_duty")},
                    "files": files})
     return {"id": r.id, "kind": r.kind, "title": r.title or "Part", "brief": r.brief, "status": r.status, "stage": r.stage,
             "error": r.error, "versions": vs, "latest": vs[-1] if vs else None,
@@ -332,6 +335,48 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
                                     + (f" + acceleration {r['dynamic']:.3g}" if r["dynamic"] else "") + ")"
                                     + (f", limit given {r['given']:.3g}" if r.get("given") is not None else
                                        f", limit set to {r['need'] * 1.5:.3g} (x 1.5)")})
+            dyn = kin.get("dynamics") or {}
+            if dyn.get("rows"):                         # v0.425 the real move in MuJoCo
+                for r in dyn["rows"]:
+                    out.append({"name": f"Move {r['joint']} ({dyn['move_time_s']:g} s)", "ok": bool(r["ok"]),
+                                "note": f"peak {r['peak']:.3g} {r['unit']}"
+                                        + (f" (cam {r['cam_peak']:.3g})" if r.get("cam_peak") is not None else "")
+                                        + f", rms {r['rms']:.3g}, speed {r['peak_speed']:g} {r['speed_unit']}, "
+                                        f"error {r['worst_error']:g} {r['error_unit']}"
+                                        + (f", saturated {r['saturated_pct']:g}% of the time" if r["saturated_pct"] else "")
+                                        + (f"; motor sized to {r['sized_to']:g}" if r.get("sized_to") else "")})
+                for fr in dyn.get("friction") or []:      # v0.427 bearing friction in the move
+                    out.append({"name": f"Friction {fr['joint']}", "ok": True,
+                                "note": f"peak {fr['peak']:.3g} {fr['unit']}, {fr['energy_J']:.3g} J lost"
+                                        + (f" ({fr['bearing']}, mu {fr['mu']:g})" if fr.get("bearing") else "")})
+                if dyn.get("friction_share_pct") is not None:
+                    out.append({"name": "Energy lost to friction", "ok": True,
+                                "note": f"{dyn['friction_share_pct']:g}% of the motors' work in this move"})
+                for bl in dyn.get("backlash") or []:
+                    out.append({"name": f"Backlash {bl['joint']} in the move", "ok": True,
+                                "note": f"lost motion {bl['lost_motion']:g} {bl['unit']} (play {bl['play']:g}), "
+                                        f"{bl['knocks']} flank change(s), peak mesh {bl['peak_mesh']:.3g} {bl['mesh_unit']}"})
+                if dyn.get("loop_gap_m"):
+                    out.append({"name": "Loops stay closed while moving", "ok": dyn["loop_gap_m"] < 5e-4,
+                                "note": f"worst gap {dyn['loop_gap_m'] * 1000:.3g} mm"})
+            elif dyn.get("note"):
+                out.append({"name": "Dynamic simulation", "ok": dyn.get("ok") is not False, "note": dyn["note"]})
+            for bl in kin.get("backlash") or []:          # v0.427 play at the tip from gear / belt backlash
+                acc = bl.get("accuracy_mm")
+                out.append({"name": f"Backlash {bl['joint']}: play at the tip", "ok": bool(bl["ok"]),
+                            "note": f"{bl['tip_play_mm']:g} mm from {bl['backlash']:g} {bl['unit']}"
+                                    + (f" over {bl['reach_mm']:g} mm" if bl.get("reach_mm") else "")
+                                    + (f"; all backlash {bl['total_mm']:g} mm vs accuracy {acc:g} mm" if acc else "")})
+                if not bl["ok"]:
+                    probs.append(f"backlash: the tip plays {bl['total_mm']:g} mm, more than the {acc:g} mm asked - less "
+                                 "backlash (anti-backlash / preloaded gears, a tensioned belt, a smaller couple backlash) "
+                                 "or the backlash joint nearer the tip")
+            for cname, ct in (kin.get("cam_contact") or {}).items():   # v0.427 cam contact force / spring / Hertz
+                for r in ct.get("rows") or []:
+                    out.append({"name": f"Cam {cname}: {r['check']}", "ok": bool(r["ok"]),
+                                "note": f"{r['measured']} ({r['limit']}; force from {ct.get('force_from')})"})
+                    if not r["ok"]:
+                        probs.append(f"cam {cname}: {r['check']} {r['measured']} (limit {r['limit']}): {r['fix']}")
             for fb in kin.get("fourbar") or []:
                 out.append({"name": f"Four-bar {fb['loop']}", "ok": bool(fb["ok"]),
                             "note": f"{fb['grashof']}; links {fb['links_mm']}; min transmission angle "
@@ -342,6 +387,35 @@ def checks(res: dict[str, Any], size: list[float]) -> tuple[list[dict[str, Any]]
                             "note": f"free {r['free'][0]:g} .. {r['free'][1]:g} {r['unit']} (asked {r['asked'][0]:g} .. "
                                     f"{r['asked'][1]:g})" + "".join(f"; hits {' / '.join(h['parts'])} at {h['at']:g}"
                                                                     for h in hits)})
+    for g in res.get("gears") or []:                 # v0.432 the gear as DRAWN: undercut is a shape problem
+        if g.get("undercut"):
+            out.append({"name": f"Gear {g['teeth']}T x {g['module']}mm: undercut", "ok": False,
+                        "note": f"the hob cuts into the working flank ({g['teeth']} teeth, needs about "
+                                f"{g['teeth_for_no_undercut']:g} without a profile shift)"})
+            probs.append(f"the {g['teeth']}-tooth gear is UNDERCUT: the cutter eats into the part of the flank that "
+                         f"does the driving, so the tooth is weaker and runs rougher. Use at least "
+                         f"{math.ceil(g['teeth_for_no_undercut'])} teeth, or keep the tooth count and pass "
+                         "shift=0.5 to H.spur_gear (a profile shift), or a bigger pressure angle")
+        elif g.get("below_classical_limit"):
+            out.append({"name": f"Gear {g['teeth']}T x {g['module']}mm", "ok": True,
+                        "note": f"below the classical {g['teeth_for_no_undercut']:g}-tooth limit, but the real hob "
+                                "fillet does not cut the flank here - no undercut measured on the tooth"})
+    for gd in res.get("gear_duty") or []:            # v0.432 will the teeth last? ISO 6336
+        if gd.get("error"):
+            out.append({"name": "Gear duty", "ok": False, "note": gd["error"]})
+            continue
+        tag = f"Gear {gd['pinion_teeth']}/{gd['wheel_teeth']}T x {gd['module']}mm"
+        for r in gd.get("rows") or []:
+            out.append({"name": f"{tag}: {r['check']}", "ok": bool(r["ok"]), "note": f"{r['measured']} ({r['limit']})"})
+            if not r["ok"]:
+                probs.append(f"gear {gd['pinion_teeth']}/{gd['wheel_teeth']} teeth, module {gd['module']}: "
+                             f"{r['check']} - {r['measured']}, limit {r['limit']}. {r['fix']}. Keep her fixed sizes "
+                             "and the H.gear_duty call unchanged")
+    for cname, cm_ in (res.get("cams") or {}).items():   # v0.425 the cam designer's checks
+        for r in cm_.get("rows") or []:
+            out.append({"name": f"Cam {cname}: {r['check']}", "ok": bool(r["ok"]), "note": f"{r['measured']} ({r['limit']})"})
+            if not r["ok"]:
+                probs.append(f"cam {cname}: {r['check']} {r['measured']} (limit {r['limit']}): {r['fix']}")
     for row in res.get("expect") or []:             # v0.365 her own numbers, measured on the B-rep
         out.append({"name": f"Asked: {row.get('name')}", "ok": bool(row.get("ok")),
                     "note": f"{row.get('got')} (wanted {row.get('want')})"})
@@ -385,6 +459,27 @@ def _weak(ana: dict[str, Any]) -> list[str]:
                        f"gives a fatigue safety factor {fat['fatigue_sf']} but she needs {fat['need_sf']} for "
                        f"{fat['target_cycles']:.0e} cycles: lower the stress there (bigger fillet radius, thicker section, "
                        "no sharp notch / hole at the hot spot); keep H.analyze unchanged")
+        if st.get("kind") == "plastic" and st.get("passes") is False:       # v0.450 it bends for good, or folds up
+            hl = st.get("at_her_load") or {}
+            if not hl:
+                out.append(f"it COLLAPSES under her own load (it gives way at about x{st.get('collapse_factor')} of "
+                           "it): this is not a small overload, the part has to carry the load a different way - a "
+                           "deeper section, a rib along the bending direction, a shorter span, or more material at "
+                           "the place that is yielding. Keep her fixed sizes and the H.analyze call unchanged")
+            else:
+                out.append(f"it keeps a PERMANENT BEND of {hl.get('permanent_set_mm')} mm after her load comes off "
+                           f"(she allows {st.get('max_set_mm')} mm; {hl.get('yielded_pct')}% of the part has yielded "
+                           f"and it collapses at about x{st.get('collapse_factor') or st.get('collapse_at_least')}): "
+                           "take the stress below yield where it is yielding - thicker there, a bigger fillet, a rib, "
+                           "or a stronger material. Keep her fixed sizes and the H.analyze call unchanged")
+        if st.get("kind") == "buckling" and st.get("passes") is False:      # v0.432 slender: it folds, not breaks
+            out.append(f"it FOLDS (buckles) too easily: the buckling load factor is {st['load_factor']:.3g} but it must "
+                       f"be at least {st['need_lf']:g}"
+                       + (f" - at her own load it already folds" if st.get("buckles") else "")
+                       + ". A slender part in compression folds long before the stress breaks it, so thickening it a "
+                       "little will not do: make the section DEEPER across the folding direction (the second moment "
+                       "goes as depth^3), use a tube / box instead of a flat bar, shorten the free length, or add a "
+                       "brace / tie in the middle. Keep her fixed sizes, holes and the H.analyze call unchanged")
         if st.get("kind") == "flow" and st.get("passes") is False:
             out.append(f"flow: pressure drop {st['pressure_drop_Pa']:.4g} Pa is above her limit {st['max_dp_pa']:g} Pa: "
                        "widen / shorten the channel, round sharp bends; keep H.analyze unchanged")
@@ -431,6 +526,19 @@ def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: st
         except Exception as e:
             log.info("cam picture: %s", e)
     cp.unlink(missing_ok=True)
+    for name_, maker in (("dyn.json", "dynamics_png"),):
+        jp = vdir / name_
+        if jp.exists():
+            try:
+                (vdir / "dynamics.png").write_bytes(getattr(report, maker)(json.loads(jp.read_text(encoding="utf-8"))))
+            except Exception as e:
+                log.info("dynamics chart: %s", e)
+            jp.unlink(missing_ok=True)
+    if res.get("cams"):
+        try:
+            (vdir / "camcurve.png").write_bytes(report.cam_curve_png(res["cams"], (res.get("kinematics") or {}).get("cam_contact")))
+        except Exception as e:
+            log.info("cam chart: %s", e)
     kp = vdir / "kin.json"
     if kp.exists():                                  # v0.406 motion GIF + exploded view from the part transforms
         try:
@@ -447,9 +555,10 @@ def _after_files(vdir: Path, res: dict[str, Any], ana: dict[str, Any], title: st
             report.flat_png(res["sheet"]).save(vdir / "flat.png", "PNG", optimize=True)
         except Exception as e:
             log.info("flat pattern: %s", e)
-    if ana.get("studies") or cam or res.get("dfm"):
+    if ana.get("studies") or cam or res.get("dfm") or res.get("gear_duty"):
         (vdir / "analysis.pdf").write_bytes(report.analysis_pdf(title, {**res, "material": material},
-                                                                ana.get("studies") or [], pics, cam, res.get("dfm")))
+                                                                ana.get("studies") or [], pics, cam, res.get("dfm"),
+                                                                res.get("gear_duty")))
 
 
 def printability(mesh: dict[str, Any], bbox: dict[str, Any]) -> dict[str, Any]:
@@ -562,6 +671,9 @@ def _run(pid: str) -> None:
                 kin = res.get("kinematics") or {}
                 hits = [r for r in kin.get("range") or [] if r.get("collides")]
                 weak_m = [r for r in kin.get("torque") or [] if not r.get("ok")]
+                weak_m += [{"joint": r["joint"], "need": r["peak"], "unit": r["unit"], "given": r.get("effort")}
+                           for r in (kin.get("dynamics") or {}).get("rows") or []
+                           if not r["ok"] and r.get("effort") is not None and r["saturated_pct"] >= 2.0]
                 if not probs and weak_m and kin_rounds > 0 and attempt < MAX_FIXES:
                     kin_rounds -= 1
                     probs = [f"mechanism: joint {r['joint']} needs {r['need']:.3g} {r['unit']} but her motor gives "
@@ -648,7 +760,8 @@ def _run(pid: str) -> None:
            "checks": chk, "assumed": d.get("assumed", ""), "notes": d.get("notes", ""), "words": words,
            "plan": d.get("plan", ""), "material": material, "mass_g": mass, "com": res.get("com"), "parts": parts,
            "print": pr, "review": review, "expect": res.get("expect") or [], "sheet": res.get("sheet"),
-           "dfm": res.get("dfm"),
+           "dfm": res.get("dfm"), "gears": res.get("gears"),
+           "gear_duty": [{k: v for k, v in g.items() if k != "root"} for g in res.get("gear_duty") or []] or None,
            "kinematics": {k: v for k, v in (res.get("kinematics") or {}).items() if k != "urdf"} or None,
            "analysis": [_ana_card(st) for st in ana.get("studies") or []],
            "cam": {k: v for k, v in (ana.get("cam") or {}).items() if k != "paths"} or None,
@@ -663,6 +776,9 @@ def _run(pid: str) -> None:
               + "".join(f", {line}" for line in _ana_lines(ana))
               + (f", banane ki jaanch ({res['dfm']['process']}): {res['dfm']['fails']} fail / {res['dfm']['reviews']} dekhna"
                  if (res.get("dfm") or {}).get("rows") else "")
+              + "".join(f", gear {g['pinion_teeth']}/{g['wheel_teeth']}T: daant {g['bending_sf']:.2f}, "
+                        f"ghisav {g['pitting_sf']:.2f} safety" for g in (res.get("gear_duty") or [])[:2]
+                        if not g.get("error"))
               + (f" (jaanch mein dikkat: {', '.join(bad)})" if bad else "")
               + ". STEP, STL, 3MF, drawing CAD Desk par hain.")
 
@@ -674,7 +790,10 @@ def _ana_card(st: dict[str, Any]) -> dict[str, Any]:
                                    "t_max_C", "t_min_C", "frequencies_hz", "resonance", "mesh", "error", "glued_assembly",
                                    "fatigue", "pressure_drop_Pa", "reynolds", "regime", "valid", "max_speed_mm_s",
                                    "mass_balance_pct", "flow_lpm", "fluid", "contact", "friction", "parts", "contacts",
-                                   "bolts", "separated", "slipped", "valid")
+                                   "bolts", "separated", "slipped", "valid", "load_factor", "factors", "need_lf",
+                                   "buckles", "critical_load_N", "yield_factor", "governs", "not_a_buckling_case",
+                                   "note", "first_yield_factor", "collapse_factor", "collapse_at_least", "steps",
+                                   "at_her_load", "max_set_mm", "collapse_note", "yield_MPa", "hardening_MPa")
             if st.get(k) is not None}
     keep["lines"] = summary_rows(st)
     return keep
@@ -692,6 +811,13 @@ def _ana_lines(ana: dict[str, Any]) -> list[str]:
         elif st["kind"] == "static":
             out.append(f"safety factor {st['safety_factor']:g} (max jhukav {st['max_disp_mm']:.3g} mm)"
                        + (f", fatigue SF {st['fatigue']['fatigue_sf']:g}" if st.get("fatigue") else ""))
+        elif st["kind"] == "plastic":
+            hl = st.get("at_her_load") or {}
+            out.append(f"pakka jhukav {hl.get('permanent_set_mm', '-')} mm, collapse x"
+                       f"{st.get('collapse_factor') or st.get('collapse_at_least')}")
+        elif st["kind"] == "buckling":
+            out.append(f"buckling factor {st['load_factor']:.3g}" if st.get("load_factor")
+                       else "buckling: compression mein nahi hai")
         elif st["kind"] == "thermal":
             out.append(f"max garmi {st['t_max_C']:.3g} °C")
         elif st["kind"] == "flow":
@@ -713,8 +839,18 @@ def _own_any(pid: str) -> EngProject:
 
 
 def health() -> dict[str, Any]:
-    return {"cadquery": sandbox.installed(), "no_network": sandbox.net_isolation(), "python": sandbox.python(),
-            "fea": sandbox.installed("skfem"), "fast_solver": sandbox.installed("pyamg")}
+    """v0.458 EVERY library the desk needs, not three. Each one that is missing takes a piece of the answer with
+    it, and three of them fail QUIETLY (the part still builds, the numbers just stop coming) - which is why they
+    are named here and by `python -m app.engineering check`."""
+    from . import selfcheck
+    libs = {x["lib"]: x["ok"] for x in selfcheck.libs()}
+    missing = [k for k, v in libs.items() if not v]
+    return {"cadquery": libs.get("cadquery", False), "no_network": sandbox.net_isolation(), "python": sandbox.python(),
+            "fea": libs.get("skfem", False), "fast_solver": libs.get("pyamg", False),
+            "motion": libs.get("mujoco", False), "charts": libs.get("matplotlib", False),
+            "drawing": libs.get("reportlab", False), "libraries": libs, "missing": missing,
+            "ok": not [k for k in missing if k not in selfcheck.SOFT],
+            "quiet_losses": [k for k in missing if k in selfcheck.SOFT]}
 
 
 if __name__ == "__main__":   # python -m app.engineering.service  -> is the CAD engine ready on this server?

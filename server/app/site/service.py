@@ -2114,7 +2114,7 @@ def app_info(tenant: str, ref: str) -> dict[str, Any]:
     W.ensure_tables()
     p = AL.project(r)                       # v0.407 a linked site counts the app's rows
     return {"app": app_schema(r), "counts": W.counts(("app:" + p.id) if p else r.id), "api": app_api(r),
-            "linked": {"app": p.id, "number": p.number} if p else None}
+            "linked": {"app": p.id, "number": p.number} if p else None, "site_id": r.id}
 
 
 def _owner_app(tenant: str, ref: str):
@@ -2208,8 +2208,9 @@ def shop_api(r: Site) -> str:
 def _shop_cfg(r: Site) -> dict[str, Any]:
     facts = _j(r.facts, {})
     from . import live as LV
+    from . import shoppay as SP
     return {**SH.settings_of(facts), "upi": facts.get("upi") if LV.vpa_ok(str(facts.get("upi") or "")) else "",
-            "shop_name": facts.get("name") or r.name or "Shop"}
+            "shop_name": facts.get("name") or r.name or "Shop", "online": SP.online_on(r.id)}   # v0.446 her own gateway
 
 
 def shop_info(tenant: str, ref: str) -> dict[str, Any]:
@@ -2220,7 +2221,13 @@ def shop_info(tenant: str, ref: str) -> dict[str, Any]:
     return {"settings": {k: cfg[k] for k in ("on", "cod", "pickup", "pincodes")} | {
                 k: SH.rupees(cfg[k]) for k in ("delivery", "free_above", "min_order")},
             "upi": cfg["upi"], "products": SH.products(r.id, active_only=False), "summary": SH.summary(r.id),
-            "from_lists": len(SH.from_collections(_j(r.plan, {})))}
+            "from_lists": len(SH.from_collections(_j(r.plan, {}))),
+            "online": {"on": bool(cfg.get("online")), "app": _app_of(r)}}      # v0.446 her own gateway behind the site
+
+
+def _app_of(r: Site) -> str:
+    from . import applink as AL
+    return AL.linked_id(r)
 
 
 def shop_setup(tenant: str, ref: str, settings: dict[str, Any] | None = None, products: list[dict[str, Any]] | None = None,
@@ -2272,10 +2279,10 @@ def shop_order(site_id: str, body: dict[str, Any], ip: str = "") -> dict[str, An
     """A customer's order from her website; she hears of it at once."""
     r, cfg = shop_public(site_id)
     out = SH.place(site_id, r.tenant_id, cfg, body, ip)
+    how = {"upi": "UPI", "cod": "Cash on delivery", "online": "online payment - pakka tab hoga jab gateway bataye"}.get(out["method"], out["method"])
     _publish(r.tenant_id, "site_order", {"site": r.name, "number": out["number"], "total": out["total"], "method": out["method"],
                                          "items": len(out["items"]),
-                                         "say": f"{r.name or 'Website'} par naya order {out['number']}: {out['total']} "
-                                                f"({'UPI' if out['method'] == 'upi' else 'Cash on delivery'})"}, r.conv)
+                                         "say": f"{r.name or 'Website'} par naya order {out['number']}: {out['total']} ({how})"}, r.conv)
     return out
 
 

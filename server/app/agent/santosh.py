@@ -261,13 +261,13 @@ def _api_ready(history: list[dict]) -> list[dict]:
 
 
 STATS_LONG: dict[str, int] = {"extended": 0, "wake_saved": 0, "deadline_extended": 0, "narrate": 0, "plan_now": 0,
-                               "plan_first": 0, "auto_plan": 0}   # v0.221 long-job counters
-_LONG_TURN: set[str] = set()     # v0.221 turns that moved to the long-job caps mid-way (no plan when they began)
+                               "plan_first": 0, "auto_plan": 0}   # v0.473 long-job counters
+_LONG_TURN: set[str] = set()     # v0.473 turns that moved to the long-job caps mid-way (no plan when they began)
 _PROGRESS: dict[str, float] = {}  # v0.311 conv -> when its running turn last finished a tool (the deadline reads it)
 
 
 async def _with_deadline(coro, conversation_id: str, first: float, long: float):
-    """v0.221 the turn's lock deadline. A turn that became a long job mid-way (kaam_plan written, or the short cap
+    """v0.473 the turn's lock deadline. A turn that became a long job mid-way (kaam_plan written, or the short cap
     reached with work going) gets the long-job deadline instead of being killed at the short one."""
     task = asyncio.ensure_future(coro)
     try:
@@ -320,6 +320,10 @@ def _pending_worker_notes(conversation_id: str) -> list[str]:
 
 
 TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
+
+
+# v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
+RESULT_LIMIT = {"research_run": 40000}
 
 
 def _short(obj, limit: int = 6000) -> str:
@@ -384,6 +388,63 @@ THINK = {"ok": True, "calls": 0, "refused": 0}   # v0.232 PHASE C: Claude's adap
 # v0.331 SOCH GEHRI: a long job / hard ask runs at a higher Claude effort (output_config.effort, set once per turn so the
 # prompt cache inside the turn holds). Sent via extra_body so any SDK version carries it; a 400 about it turns it off.
 _EFFORT_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_effort_now", default="")
+# v0.429 SOCH KE JAWAB step 2: the model for THIS step ('' = settings.anthropic_model). Set once per step from the
+# turn's state, like _EFFORT_NOW, so sub-agents and every caller of _call_brain keep their signature.
+_MODEL_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_model_now", default="")
+HARD_MODEL = {"ok": True, "calls": 0, "failed": 0}
+
+
+def _model_refused(e: Exception) -> bool:
+    m = str(e).lower()
+    return ("not_found" in m or "404" in m or "unknown model" in m or "model:" in m) and "model" in m
+
+
+def _hard_held(state: dict, settings) -> bool:
+    """v0.436 is this turn's answer held for the self-check? Her hard question, check switched on."""
+    return bool(state.get("hard") and getattr(settings, "hard_check", True))
+
+
+async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings) -> list[str]:
+    """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or []."""
+    from . import hard as _hardc
+    bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch raha hoon", "state": "running",
+                                          "id": "hard-check"})
+    try:
+        ev, names = _hardc.evidence(history)
+        full, _ = _hardc.evidence(history, limit=400_000, per=200_000)   # v0.437 every link a tool returned
+        why = ((state.get("hard_why") or {}).get("why")) or []
+        problems = _hardc.code_check(state.get("request", ""), draft, why, names, full)
+        reviewed = False
+        if not problems and ("research_run" in names or "research_status" in names or "research_watch" in names):
+            try:    # v0.474 R3 SABOOT: every figure in the report must be carried by a note's own words or a calculation
+                from ..research import claims as _claims, engine as _reng
+                _d = _reng.recall(conversation_id)
+                if _d is not None and float(_d.get("_delivered", 0)) >= float(state.get("t0", 0)):   # handed to the model in THIS turn
+                    problems = _claims.check_report(draft, _d)
+                    if not problems:    # v0.480 R9: then a reviewer reads the WORDING against the dossier's notes (the generic one only sees a truncated tail)
+                        from ..research import review as _rrev
+                        problems = await _rrev.review_report(state.get("request", ""), draft, _d, settings)
+                        reviewed = bool(getattr(settings, "research_review", True)) and bool(_d.get("fields"))
+            except Exception:
+                log.exception("claim check failed")
+        if not problems and not reviewed:
+            problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
+        state["hard_check"] = {"problems": problems, "tools": names[:12]}
+        return problems
+    except Exception:
+        log.exception("hard check failed")
+        return []
+    finally:
+        bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch liya", "state": "done",
+                                              "id": "hard-check"})
+
+
+def model_for(settings, hard: bool, long_job: bool) -> str:
+    """'' = the chat model. A hard reasoning ask (not a long job - those run many steps and stay on the chat model at
+    agent_long_effort) gets agent_hard_model."""
+    if hard and not long_job:
+        return str(getattr(settings, "agent_hard_model", "") or "")
+    return ""
 EFFORT = {"ok": True, "calls": 0, "refused": 0}
 
 
@@ -443,6 +504,11 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens
     streaming = live is not None and live.streaming
+    # v0.443 a held answer (a hard ask being checked, a Gyaan answer) and any big answer still STREAM from Claude: the
+    # live reply decides what she sees (feed() only shows words while live.streaming), the API call is never one long
+    # blocking request (16k tokens + thinking as one HTTP call is the shape a client / proxy refuses or times out) and
+    # the thinking reaches the Soch card while the words are held
+    api_stream = streaming or live is not None or cap > NONSTREAM_MAX_TOKENS
     if brain in ("glm", "omniroute"):
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
         if streaming:
@@ -455,8 +521,31 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         from . import context as _ctx   # v0.237 the gauge learns this brain's real chars-per-token
         _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
+    over = _MODEL_NOW.get()
+    if over and over != settings.anthropic_model and HARD_MODEL["ok"]:
+        # v0.429 SOCH KE JAWAB step 2: a hard reasoning ask runs on the strongest model (agent_hard_model, Opus). Any
+        # failure there (not available on this key, overloaded, ...) retries the SAME call on the chat model once, so
+        # she always gets an answer; a 404 / unknown model turns the switch off for this process.
+        try:
+            HARD_MODEL["calls"] += 1
+            return await _claude_call(over, system, history, settings, tools, live, cap, think, api_stream)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:   # noqa: BLE001 - the chat model answers instead
+            HARD_MODEL["failed"] += 1
+            if _model_refused(e):
+                HARD_MODEL["ok"] = False
+            log.warning("hard model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
+            if live is not None:
+                live.reset()
+    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
+
+
+async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
+                       think: bool, streaming: bool) -> tuple[list[dict], str]:
+    """One Claude call on `model` (v0.429 split out of _call_brain so a hard ask can try Opus and fall back)."""
     from . import cache
-    kw = cache.shape(dict(model=settings.anthropic_model, max_tokens=cap,
+    kw = cache.shape(dict(model=model, max_tokens=cap,
                           system=system, tools=tools, messages=history), getattr(settings, "prompt_cache", True))
     api = get_client().messages
     if think and THINK["ok"] and _loop_ok(history):
@@ -508,10 +597,26 @@ def _learn_claude(kw: dict, resp) -> None:
     _ctx.after_call("claude", kw.get("system"), kw.get("tools"), kw.get("messages") or [], n)
 
 
+NONSTREAM_MAX_TOKENS = 8192     # v0.443 above this an answer is always streamed from the API (no live reply needed)
+
+
+class _QuietLive:
+    """v0.443 a stream with no live reply to show it in (a sub-agent, a check): the words are just collected."""
+    def feed(self, piece: str) -> None:
+        pass
+
+    def feed_think(self, piece: str) -> None:
+        pass
+
+    def new_text_block(self) -> None:
+        pass
+
+
 async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
     """v0.161 Claude's answer word by word: text deltas go to the live reply; tool input (input_json_delta) is left to
     the SDK, which parses it only when the block is complete. Prompt caching is the same request shape.
     v0.171 thinking deltas (adaptive / extended thinking) stream to the console's Soch card, never into the answer."""
+    live = live if live is not None else _QuietLive()
     async with api.stream(**kw) as st:
         async for ev in st:
             t = getattr(ev, "type", "")
@@ -688,6 +793,15 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                                                     "ok": not (isinstance(out, dict) and out.get("error")),
                                                     "ms": int((time.time() - _t0) * 1000), "line": _line},
                      _meta.get("turn_id", ""), _meta.get("actor", ""))
+    try:   # v0.473 HOOLA CODER: the same funnel the harness log rides becomes the memory capture -
+           # best-effort, redacted at the capture boundary, a memory failure can never touch the call
+        from .. import coder as _coder
+        _coder.tool_observed(_ev_t, _ev_c, name, args or {}, out,
+                             not (isinstance(out, dict) and out.get("error")),
+                             int((time.time() - _t0) * 1000), _meta.get("turn_id", ""),
+                             _meta.get("actor", ""))
+    except Exception:
+        pass
     return out
 
 
@@ -713,8 +827,22 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             from . import hard as _hard
             _hv = await _hard.decide(user_text or "", settings)
             state["hard"], state["hard_why"] = bool(_hv["hard"]), _hv
+            # v0.437 a deep-research ask: the agent crew gets research room + must return sources
+            ctx.research = bool(_hv["hard"] and "research" in (_hv.get("why") or []))
+            if state["hard"]:   # v0.429 thinking tokens count against max_tokens: a hard answer gets real room
+                state["max_tokens"] = max(state.get("max_tokens") or 0,
+                                          int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
         except Exception:
             log.exception("hard check failed")
+    elif ctx.actor == "wake":
+        try:    # v0.475 R4: the wake turn that WRITES a finished research report is a hard, held answer (Opus, room, the R3 check)
+            from ..research import runner as _rrun
+            if _rrun.is_report_due(user_text):
+                # a WATCH change is a short message citing [n]: the link-list rule of a full report does not apply to it (the figure check + the review still do)
+                state["hard"], state["hard_why"] = True, {"hard": True, "why": ["research_change" if _rrun.is_change_due(user_text) else "research"], "score": 3}
+                state["max_tokens"] = max(state.get("max_tokens") or 0, int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
+        except Exception:
+            log.exception("research report wake setup failed")
     if settings.agent_goal:
         g0 = _goal.active_for(conversation_id)
         if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step
@@ -760,7 +888,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                           "routine" if actor == "goal" else actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
-    if user_text and actor == "owner" and settings.draft_check:
+    if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked"):
+        # (v0.436 a hard answer already passed the self-check before she saw it - no second, weaker look after)
         # v0.223 the last look, in the background: the reply is already on her screen, so nothing waits for this
         from . import draftcheck
         state["chat_tail"] = _chat_tail(history)
@@ -902,6 +1031,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools, _last_user_text(history))
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
     tail += state.get("hint") or ""
+    if state.get("hard") and getattr(settings, "hard_recipe", True):
+        # v0.433 SOCH KE JAWAB step 4: a hard question gets the reasoning recipe (ordinary chat never pays for it)
+        from . import hard as _hardr
+        tail += "\n\n" + _hardr.recipe(((state.get("hard_why") or {}).get("why")) or [])
     if _secret:   # v0.250 incognito: she knows nothing from here is kept; never promise it is
         tail += ("\n\nINCOGNITO CHAT: she opened this chat in incognito. Nothing from it goes into her memory (no facts, "
                  "no diary, no search, no memory page) and other chats will not know it. Never say 'yaad rakh liya'; if "
@@ -931,11 +1064,20 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if _sticky - adm.families:
                 adm.admit_families(_sticky)
                 adm.why.update({f: "chat" for f in _sticky})
+    if adm is not None and state.get("hard"):
+        adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
+    if adm is not None:             # v0.494 a LEARNED SKILL matched this ask: skill_manage must be callable to read it
+        try:
+            from .. import coder as _coder_adm
+            await asyncio.to_thread(_coder_adm.inject.admit_tool, adm, tenant_id, state.get("request", "") or "")
+        except Exception:
+            log.exception("skill tool admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
+    ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
-        # v0.221 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
+        # v0.473 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
         text = system_prompt(settings.wa_dry_run, _ctxb, tenant_id,
                              families=None if (fams is None or not settings.prompt_slim) else fams) + tail
         return text + (_admit.unloaded_note(text, adm) if adm is not None else "")
@@ -966,11 +1108,16 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _long_now = bool(state.get("goal") or state.get("extended") or state.get("auto_plan") or state.get("big"))
         if _long_now and brain != "claude" and _claude_ready() and getattr(settings, "agent_long_on_claude", True):
             brain = "claude"   # v0.331 a long job runs on Claude even when a cheaper brain answers ordinary chat
+        if state.get("hard") and brain != "claude" and _claude_ready() and getattr(settings, "agent_hard_on_claude", True):
+            brain = "claude"   # v0.429 a hard reasoning ask runs on Claude even when a cheaper brain answers chat
         _EFFORT_NOW.set(effort_for(settings, _long_now, bool(state.get("hard"))))
+        _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
                                                    (state.get("hard") and getattr(settings, "hard_thinking", True)))))
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
-            live.block(stream=not _gyaan.used(conversation_id))
+            # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
+            # still streams on the Soch card)
+            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings)))
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
@@ -1019,6 +1166,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _ctx.CONV.reset(_conv_tok)
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
+        if texts and stop not in ("tool_use", "max_tokens") and _hard_held(state, settings) \
+                and not state.get("hard_checked"):
+            state["hard_checked"] = True
+            problems = await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings)
+            if problems:   # v0.436 the draft is kept for the model but never shown; the fixed answer replaces it
+                _save(conversation_id, "assistant", blocks, display=None)
+                from . import hard as _hardc
+                nudge = _hardc.fix_note(problems)
+                history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
+                _save(conversation_id, "user", [{"type": "text", "text": nudge}])
+                continue
         _save(conversation_id, "assistant", blocks, display="\n\n".join(texts) or None)
         if texts:
             final_text = "\n\n".join(texts)
@@ -1032,7 +1190,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if stop != "tool_use":
             if stop == "max_tokens":
                 # v0.187 the words were cut mid-thought: continue exactly where the cut happened, in goal mode and out
-                # v0.221 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
+                # v0.473 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
                 state["max_tokens"] = min(16000, 2 * (state.get("max_tokens") or settings.agent_max_tokens))
                 state["cuts"] = state.get("cuts", 0) + 1
                 nudge = "[System: aapka jawab beech mein cut gaya (max_tokens). Wahi se exactly aage badho — kaam ya " \
@@ -1097,7 +1255,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
                 fine = not (isinstance(out, dict) and out.get("error"))
                 breaker.after(b["name"], fine)
-                content = _short(out)
+                content = _short(out, RESULT_LIMIT.get(b["name"], 6000))
                 call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
                         "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else content[:300]}
                 if not fine:
@@ -1257,7 +1415,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if (settings.agent_goal and not state.get("goal") and not state.get("extended")
                 and ran_steps >= settings.agent_max_steps
                 and (getattr(ctx, "actor", "owner") or "owner") in ("owner", "routine", "wake", "goal")):
-            # v0.221 the short-job cap is reached while work is still going (the model never wrote a plan): instead of
+            # v0.473 the short-job cap is reached while work is still going (the model never wrote a plan): instead of
             # "Yeh kaam lamba ho gaya, yahin ruk raha hoon" the turn moves to the long-job caps ONCE and the model is
             # told to write the plan of what is left - long jobs no longer die at step 24.
             state["extended"] = True
@@ -1292,7 +1450,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, True)})
-            # v0.221 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+            # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         return final_text
     if not final_text.strip():
@@ -1389,15 +1547,12 @@ def _key(name: str, args) -> str:
     return k(name, args)
 
 
-def _goal_open(state: dict, conversation_id: str, settings) -> bool:
-    """A kaam_plan goal is open for this chat (v0.186): its steps and its honest "X/Y steps ho gaye" line are the
-    truth machinery there, so v0.223's free claim check stays out of its way."""
-    if state.get("goal"):
-        return True
-    if not settings.agent_goal:
-        return False
+def _goal_now(conversation_id: str, settings) -> dict | None:
+    """The working goal of this chat (v0.443: the claim check asks the whole job, not one round)."""
+    if not getattr(settings, "agent_goal", True):
+        return None
     from . import goal as _g
-    return _g.active_for(conversation_id) is not None
+    return _g.active_for(conversation_id)
 
 
 async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, conversation_id: str) -> str:
@@ -1408,10 +1563,18 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     cap = pakka.SELF_CHECKS_GOAL if state.get("goal") else pakka.SELF_CHECKS_PER_TURN
     if conversation_id in _stopped or state["breaker"].stopped or state.get("halted"):
         return ""
-    if settings.draft_check and not _goal_open(state, conversation_id, settings):
-        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run,
-        # and goal mode (v0.186) owns its own truth - its steps and its honest "X/Y steps ho gaye" line.
-        fake = draftcheck.fake_done(state, final_text)
+    if settings.draft_check:
+        # v0.223 free, in code: the reply claims work that never ran. pakka below owns the case where tools DID run.
+        # v0.443 (long-task report item 2) this used to be switched OFF for the whole of goal mode, on the idea that
+        # the plan's own "X/Y steps ho gaye" line was truth enough - but a step is ticked by the MODEL, so a goal
+        # could tick steps and claim sent / booked / saved with only reads behind it. Goal mode now gets the same
+        # free check; its own honest lines never trip it (_ALREADY_HONEST + the goal line carries no claim verb).
+        g0 = state.get("goal") or (_goal_now(conversation_id, settings))
+        since = None
+        if g0:
+            from . import goal as _g
+            since = _g.started_at(g0["id"]) if g0.get("id") else None
+        fake = draftcheck.fake_done(state, final_text, conversation_id, since)
         if fake:
             return fake
     calls = state.get("calls") or []
@@ -1543,6 +1706,23 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
+        if not voice and save_user and not str(user_text or "").lstrip().startswith(("[", "(")):
+            try:   # v0.472 R1 PLAN PEHLE: a big research ask shows its plan and waits for her Haan; her Haan starts it
+                from . import research_plan as _rplan
+                _rp = await _rplan.gate(tenant_id, conversation_id, user_text, settings)
+            except Exception:
+                log.exception("research plan gate failed")      # a broken gate never blocks her ask
+                _rp = None
+            if _rp and _rp["action"] == "say":
+                _save(conversation_id, "user", user_text, display=user_text)
+                _save(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": _rp["text"], "source": "research_plan"})
+                bus.publish(conversation_id, "typing", {"on": False})
+                return _rp["text"]
+            if _rp and _rp["action"] == "start":
+                # her words are what the chat shows; the SAME turn gets the ask + the plan she approved (never saved twice)
+                _save(conversation_id, "user", _rp["words"], display=_rp["words"])
+                user_text, save_user = _rp["text"], False
         try:   # v0.191 SAMAJHDAR CARD: PC/browser step uski haan ka intezaar hai aur usne LIKH diya ('haan karo',
                # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
                # Sirf POORA uttar hi manzoori ho tabhi ('haan, address yeh raha' ka baaki hissa brain dekhega).
@@ -1622,11 +1802,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             log.exception("compact before turn failed")
         saved_wake = False
         if save_user:
-            # v0.221 a goal's background round is not her words: kept in history, but never shown as her message
+            # v0.473 a goal's background round is not her words: kept in history, but never shown as her message
             _save(conversation_id, "user", agent_text,
                   display=None if (who in ("routine", "goal") and user_text.startswith("[Goal jaari")) else user_text)
         elif who == "wake" and agent_text.strip():
-            # v0.221 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
+            # v0.473 a finished job's RESULT is saved into the chat history (display None = never shown as her words,
             # never in her focus words). Before, only Hoola's reply about it was kept: from the next turn on the real
             # result - ids, links, what failed - was gone.
             _save(conversation_id, "user", agent_text, display=None)
@@ -1639,6 +1819,18 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         _evlog.log_event(tenant_id, conversation_id, "turn_started", {"line": str(user_text or "")[:160],
                                                                        "voice": bool(voice)},
                          turn_id=_turn_id, actor=who)
+        try:   # v0.473 HOOLA CODER: her ask itself is memory (redacted at the boundary; a <private>
+               # turn stores nothing but its privacy marker)
+            from .. import coder as _coder
+            await asyncio.to_thread(_coder.turn_prompt, tenant_id, conversation_id, user_text or "")
+        except Exception:
+            pass
+        try:   # v0.477 HOOLA NUDGE: a live turn began - any background reflection fork thinking
+               # about this conversation drops its writes (it never makes the live turn wait)
+            from .. import coder as _coder
+            _coder.nudge.poke(conversation_id)
+        except Exception:
+            pass
 
         history = _load_history(conversation_id)
         if not save_user and not saved_wake and agent_text.strip():
@@ -1660,6 +1852,15 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         block = (block + "\n\n" + kb) if block else kb
                 except Exception:
                     log.exception("kaam block failed")
+                try:   # v0.473 HOOLA CODER: the compact coder-memory primer rides BESIDE yaad, never
+                       # instead of it - KAAM KA HAAL and the diary keep their order, this lands after
+                    from .. import coder as _coder
+                    cb = await asyncio.to_thread(_coder.inject.turn_block, tenant_id, conversation_id,
+                                                 query=user_text or "")
+                    if cb:
+                        block = (block + "\n\n" + cb) if block else cb
+                except Exception:
+                    log.exception("coder block failed")
                 if settings.agent_goal:   # v0.187 an open goal rides above everything: this turn continues it
                     from . import goal as _goalb
                     gb = _goalb.goal_block(conversation_id)
@@ -1734,6 +1935,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                                 "owner" if who == "owner" else ("routine" if who == "goal" else who))
             except Exception:
                 log.exception("memory after turn failed")
+            try:   # v0.477 HOOLA NUDGE: the turn counter - at coder_nudge_every turns ONE quiet
+                   # reflection writes memories + skills in the background (never this turn's path)
+                from .. import coder as _coder
+                _coder.nudge.count_turn(tenant_id, conversation_id)
+            except Exception:
+                log.exception("coder nudge count failed")
         if who == "owner":
             from .. import chats
             if chats.enabled():   # v0.162 the chat gets a short title after her first exchange (background)

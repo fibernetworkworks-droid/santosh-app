@@ -24,7 +24,11 @@ def test_sidebar_markup():
     for label in ("'Create'", "'Today'", "'Tools'", "'Voice call'"):
         assert label in nav, label
     assert "'chat'" not in nav and "'main'" not in nav                  # chat = brand mark, account = user card
-    assert "NAV.splice(1, 0, ['bana', 'Library'])" in js
+    # v0.447 moved Library from a fixed index to one computed from where 'creative' sits (so it lands just
+    # above Create and never inside the AI Employees group), and left this assertion pinning the old literal -
+    # red on main itself. Pin what the code now guarantees: Library is inserted, positioned off 'creative'.
+    assert "['bana', 'Library']" in js
+    assert "NAV.findIndex(([k]) => k === 'creative')" in js
     assert "Pinned" in _read("chatlist.js") and "Pin kiye hue" not in _read("chatlist.js")
 
 
@@ -75,5 +79,5 @@ def test_styles_live_in_the_one_stylesheet():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.425.0"
-    assert "0.425.0+469" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.535.0"
+    assert "0.535.0+558" in (ROOT / "pubspec.yaml").read_text()

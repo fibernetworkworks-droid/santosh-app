@@ -238,6 +238,15 @@ def write_screen(r: AppProject, sid: str, ctx: dict[str, Any], sp: dict[str, Any
     system = PR.screen_system(sid, back=not me["tab"], ids=ids, lists=SP.list_fields(sp["seed"]),
                               facts=sorted(k for k in sp["seed"]["facts"] if k != "privacy"), lang=AS._lang_line(r.language),
                               icons=list(sp["icons"]), backend=sp["seed"].get("backend"))
+    from .. import custom as CU                       # v0.425 RANG: her approved custom components may be used here
+    if sp.get("custom"):
+        system += "\n" + CU.prompt_line(sp["custom"])
+    from .. import family as FA                       # v0.435 PARIVAAR: a partner app's first tab opens on its jobs
+    if FA.prompt_line(sp["seed"].get("backend") or {}):
+        system += "\n" + FA.prompt_line(sp["seed"].get("backend") or {})
+    from .. import sign as SG                         # v0.455 SURAKSHIT LOGIN: the kit's sign-in screen owns every way in
+    if SG.prompt_line(sp["seed"].get("backend") or {}):
+        system += "\n" + SG.prompt_line(sp["seed"].get("backend") or {})
     prompt = (f"APP: {sp['app']['name']} ({ctx.get('goal')}).\nSCREEN: {sid} = {me['label']}"
               f"{' (a bottom tab)' if me['tab'] else ''}.\nPURPOSE: {me['purpose']}\nDATA SHOWN: {', '.join(me['data'])}\n"
               f"ACTIONS (label -> screen): {'; '.join(a['label'] + ' -> ' + a['go'] for a in me['actions'])}\n"
@@ -287,6 +296,8 @@ def _run(r: AppProject) -> None:
     # build carries its lists so screens save for real and the kit knows the rules
     from .. import backend as BE
     sp["seed"]["backend"] = BE.seed_hint(r)
+    from .. import custom as CU                    # v0.425 RANG: her approved custom components ride in this build
+    sp["custom"] = CU.for_build(r)
     ids = [s["id"] for s in sp["screens"]]
     if st.get("rollback"):                         # v0.325 an older build again, under a new (higher) version
         return _rollback(r, st, n, sp, work)
@@ -361,6 +372,14 @@ def _run(r: AppProject) -> None:
         _put(r.id, where=result.get("where", ""), seconds=result.get("seconds"))
         if result.get("ok") and result.get("apk"):
             break
+        broke = CU.failed_in(result.get("log") or "", sp.get("custom") or [])
+        if broke:                                  # v0.425 a custom component that does not compile leaves THIS build
+            for nm in broke:
+                CU.mark(r, nm, "failed", "\n".join(x for x in (result.get("log") or "").splitlines() if nm in x)[:800])
+            sp["custom"] = [c for c in sp["custom"] if c["name"] not in broke]
+            _note(r, "Custom component " + ", ".join(broke) + " compile nahi hua - is build se nikaal diya; app uske bina ban rahi hai.")
+            G.write_project(sp, src_dir)
+            continue
         errs = ER.parse(result.get("log") or "")
         if errs["project"]:
             raise AndroidError("Build machine par project nahi bana (Hoola ki taraf ki galti, team ko bataiye): "
@@ -449,6 +468,8 @@ def _run(r: AppProject) -> None:
             if last.get("ok") and last.get("apk"):
                 result = last
     _keep_qa(r, n, result.get("qa"))
+    for c in sp.get("custom") or []:               # v0.425 compiled + opened on the device check
+        CU.mark(r, c["name"], "verified")
     from .. import match as MT
     MT.after_build(r, "android")                    # v0.343 how close each real screen is to her approved design
     apk = result["apk"]

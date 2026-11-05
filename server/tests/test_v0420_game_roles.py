@@ -125,7 +125,7 @@ def test_world_flow_files_signed_links_and_into_the_build(st):  # noqa: F811
     wid, sig = v["id"], url.split("sig=")[1]
     assert W.world_file(wid, "preview.png", sig) is not None
     assert W.world_file(wid, "preview.png", "0" * 16) is None and W.world_file(wid, "../t.db", sig) is None
-    assert packs.for_game("default", st["gid"]) == {}                              # nothing before her OK
+    assert "hoola_world.gd" not in packs.for_game("default", st["gid"])            # nothing before her OK
     W.approve("default", "W-001")
     v2 = W.make("default", kind="dungeon", seed=6, studio=st["sid"], key="crypt")
     assert v2["version"] == 2

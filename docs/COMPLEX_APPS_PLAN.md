@@ -116,6 +116,11 @@ Tally = the monthly XML export (Tally is not reachable over the internet). Check
   templates), Google Sheets / Calendar, Tally / Zoho / QuickBooks, Aadhaar-free KYC via licensed providers only.
 
 ### G. Rich UI — Phases 55–57
+**Status: BUILT in v0.425.0 RANG** (kits `Rich.kt` / `Rich.swift`, `server/app/appmaker/custom.py`) — signature, multi-photo,
+video, voice note, rich text, PDF reader, calendar, kanban, Gantt, line / pie charts, carousel, onboarding (native, no web views,
+no new libraries); custom components (Kotlin + Swift) with house rules in code, her approval, build-proved, failing ones left out.
+Not built yet: camera capture flows + document scan (Android needs an extra ML Kit library), Lottie (an extra library; native
+animations instead), offline map tiles, barcode inventory flow (scan field + stock exist separately).
 - Kit growth: camera capture flows (multi-photo, document scan), video player + upload, audio record, rich text editor,
   calendar / scheduler, Gantt / kanban, charts dashboard, carousels, onboarding, animations (Lottie), signature pad,
   barcode inventory flows, PDF viewer, offline maps.
@@ -124,11 +129,18 @@ Tally = the monthly XML export (Tally is not reachable over the internet). Check
 - Design: her design can be any style; the visual match score (v0.346) guards every screen.
 
 ### H. Multi-app products + web admin — Phases 58–59
+**Status: BUILT in v0.435.0 PARIVAAR** (`server/app/appmaker/family.py`, kits `Partner.kt` / `Partner.swift`, web admin
+`/app-admin/<app_key>`) — faces = own projects on the main backend, partner roles checked in code (rider offers / take /
+steps, partner shop = only its orders + menu), web admin (plain JS, not React). Not yet: the food-delivery proof on real phones.
 - One backend, several apps: customer app, partner / rider / vendor app, staff app — each with its own screens, roles,
   store listing; plus a generated **web admin panel** (React, v0.305 web-app engine grown up) for the business.
 - Proof: Swiggy-class food delivery = customer app + rider app + restaurant app + admin web, end to end.
 
 ### I. Auth + security — Phase 60
+**Status: BUILT in v0.455.0 SURAKSHIT LOGIN + SURAKSHA GATE** (`server/app/appmaker/sign.py` + `gates.py`, kits
+`SignIn.kt` / `SignIn.swift`) — phone OTP, Google / Apple verified on the server, sessions, staff TOTP 2FA, DPDP consent +
+export, permissions matrix + audit log (v0.434's engine), and six security gates that block a store upload when one fails.
+Not built: Google sign-in on iPhone (needs the GoogleSignIn SDK), passkeys, magic links, company SSO, device binding.
 - Phone OTP login through a DLT-registered SMS provider (OTP only in the app's own login box), Google / Apple sign-in,
   passkeys later; fine-grained permissions matrix; audit log; session management; DPDP consent + data export / delete.
 - Security gates on every build: static scan (MobSF-style on the APK / IPA), dependency CVE check, secrets scan,

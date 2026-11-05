@@ -111,7 +111,9 @@ def test_persona_diet(env):
 
 def test_tool_diet(env):
     specs = voice._tool_specs()
-    assert len(specs) <= 110 and sum(len(json.dumps(t)) for t in specs) < 60000
+    # v0.230 pinned 110 specs / 60k chars; v0.491 EQUAL POWER deliberately widened the declared set (suite read heads +
+    # the 30 desk readers = 164 specs, ~90k chars). The sanctioned limits stay the v0.149 ones, enforced in test_v149.
+    assert len(specs) <= 170 and sum(len(json.dumps(t)) for t in specs) < voice.VOICE_TOOL_BUDGET
     names = {t["name"] for t in specs}
     for moved in ("form_create", "slides_add", "make_document", "pdf_tools", "email_accounts"):
         assert moved not in names and voice.via_kaam(moved)
@@ -173,4 +175,4 @@ def test_no_murmur_on_a_short_turn(env, monkeypatch):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.425.0"
+    assert main.APP_VERSION == "0.535.0"

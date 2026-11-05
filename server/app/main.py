@@ -33,8 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.425.0"   # v0.425.0 GOOGLE ADS 2 (ad plan A2; owner: "GO A2"): the Google Ads link that made YouTube ads (v0.401) now makes the two campaigns an Indian shop actually buys - Search (keywords + Google Keyword Planner ideas for HER cities: monthly searches, competition, top-of-page bid range; not-these words as campaign negatives; responsive search ad 3-15 x 30 / 2-4 x 90 / two paths; Maximize clicks on Google Search + partners) and Performance Max (one asset group over Search / YouTube / Display / Discover / Gmail / Maps; her photo cut by Hoola to Google's 1.91:1 + 1:1 shapes at 1200 px, logo, texts; Maximize conversions - a missing conversion goal is said plainly; Local campaigns were folded into PMax by Google in 2022). Cities -> geoTargetConstants:suggest (an unknown place is named, never dropped). Same rails: draft in Hoola -> validateOnly check -> Create PAUSED -> Start only on confirm -> paused after its days. The read covers every campaign type and Search's search terms go to the Ads desk as term rows (its money-leak check already finds terms spending with no result). Tool ads action=google_draft / google_ideas; console + phone "Google ads". NOT VERIFIED against a live account. Previous: v0.424.0 JODO (App Sahayak Pillar F, Phase 54, owner: "START PILLAR F"): connectors inside her apps as DECLARED HTTP actions, never code (appmaker/connect.py) - nothing runs before her approval tap, bound to a hash of the exact action (any change = approve again); https + the approved host only, the address resolved and refused when private / loopback / link-local / metadata, no redirects, 1 MB answers; her secrets sealed, returned by no route, scrubbed from every run log; auth bearer / basic / header / query / login token / refresh token (QuickBooks rotation kept) / Google service account; answers are DATA written only into real fields through their type checks; safe retries only, a POST that timed out = ambiguous and never resent; new-row / status triggers queued in the background (the order never waits), staff buttons only where she allowed; signed inbound webhooks mapped into a matched row; Aadhaar refused. 13 ready packs from the providers' own docs (connect_packs.py: Shiprocket, Delhivery, MSG91, Fast2SMS, WhatsApp Cloud, Brevo, Resend, Google Sheets, Google Calendar, Zoho Books, QuickBooks, Tally = export, licensed KYC). Kits Connect.kt / Connect.swift, console Connectors box, phone panel. NOT VERIFIED against live accounts. Previous: v0.423.0 GAME DESK ROLES 4: SIMULATORS + DIGITAL TWIN + VFX PIPELINE (Hoola Game Engine plan Phase 7 batch 4 = Game Desk plan phase 5, owner: "GO PHASE 7" - Phase 7 done: all ten Game Desk employees live). Simulation Software Engineer (gamedesk/sim.py, tool game_sim): orbit (two-body + J2, WGS 84 constants), light-aircraft glide and car-handling models in RK4, each validated against its textbook case (orbit period, energy drift, J2 node regression - sun-synchronous at 98 degrees, GEO = a sidereal day; glide angle, Lanchester phugoid; steady yaw rate), sources cited, scenarios run twice, HoolaSim's GDScript step matching the Python one in the real Godot; weapon / targeting / combat simulators refused. Digital Twin Architect (gamedesk/twin.py, tool game_twin): her line as data with every number traced to a data tag or a stated assumption, read-only by construction, Hoola's event engine checked against exact answers and Erlang C, throughput / utilisation / WIP / lead time / bottleneck + what-ifs on common random numbers, validated only against her real week (else NOT ASSESSED). VFX Pipeline TD (gamedesk/vfx.py, tool game_vfx): naming + versions, ACES colour converted and measured (LogC3 / S-Log3 18 % grey), a real ACEScg EXR written and read back, a render queue with re-queue and cost per shot, every frame traced to its scene sha256; Blender / OCIO not run on the server (said).
-
+APP_VERSION = "0.535.0"   # v0.535.0 PRAYOGSHALA ON - the lab is live, because her own VPS proved it. She ran `lab_check` and every wall held: docker 29.8.1, the base image built in 146 s, a passing test passed, a failing test was caught with its END visible, the box could NOT reach 1.1.1.1 (--network none), the root filesystem refused a write, the user was uid 1000 - no GADBAD, no KHATRA. So `dev_lab` flips to True: from now on a coding job can clone the repo once, write its in-memory edits over that checkout and RUN her declared check in seconds, prove a bug red-then-green locally instead of pushing a red commit, and execute the plan's done_when lines instead of asserting them. Also NEW `.hoola/lab.json` in THIS repo - the one place a repo can declare its own commands outright, so the lab needs no tap here: setup = pip install -r server/requirements.txt, test = cd server && python3 -m pytest -q -p no:randomly, timeout 900. And vps-ops `lab_try` runs that exact path on her own repo end to end (clone, install once into a cached snapshot with the network on, then a real slice of the suite with no network) - the same road a coding job takes, minus the model. Disk: the base image is 1.54 GB and each repo adds a dependency snapshot; `lab_prune` keeps the newest 12 and never drops the base. Previous: v0.534.0 CAD DESK KI JAANCH (built as 0.531; owner: "IS ALL CAD AI WORK DONE" -> the honest answer was "the code is done, the proof on your own server is not"): every other desk can be asked from the VPS whether it is alive (game_check, architect_check, lab_check, auth_check) - the CAD desk could only say whether THREE libraries imported, and an importable library is not a working desk. `python -m app.engineering check` + vps-ops cad_check now BUILD real parts in the box on her own machine and run every stage on them, printing live / DEAD with the number measured: geometry + files out, her own numbers (H.expect), DFM, hidden-line views, stress, buckling, past yield, G-code, the real hobbed gear root + ISO 6336 duty, the mechanism with its URDF / SDF / MJCF / SRDF, the MuJoCo move with friction, cam contact, the dimensioned drawing PDF, the charts, all nine hand calculations, and whether the agent can reach the desk at all. No model is called, so it is free (33 stages, ~100 s). cad_setup installs every CAD library and re-runs it. health() now names ALL of them (it named three) and says which losses are QUIET - mujoco, matplotlib and pyamg take a piece of the answer away while the part still builds - and the desk's own route carries it like the other desks. This exists because it has already bitten her once: every test was green here while her server answered `fea false`. Its first run found two false alarms IN ITSELF (its scripts called H.hole and two calc keys the wrong way) and one weak test (a machine where everything turned about the vertical axis, so every torque came out zero) - all three fixed, and pinned by tests so the check cannot lie. Previous: v0.532.0 PRAYOGSHALA fix - the lab could not have built its image on her VPS. The deploy copies `server/app` only, so `deploy/devlab/Dockerfile` does not exist beside the running code and `build_base` would have answered "Dockerfile nahi mili" on the very first lab_check - a feature that passes 35 tests in the sandbox and cannot work where it runs. The Dockerfile text now lives in `box.DOCKERFILE_TEXT` (raw string, line continuations intact) and a build writes it into a temp folder, so it works from any path; deploy/devlab/Dockerfile stays as the readable copy and a test asserts the two are byte-identical, plus one that builds with the disk copy deliberately missing. Found by reading her own `~/santosh_app` prompt against the deploy path, not by a test. Previous: v0.531.0 PRAYOGSHALA step 2 - the coding lab wired in (owner: "GO STEP 2"). v0.456 built the sealed Docker box and NOTHING called it, which by this repo's own rule means it did not work yet. This is the caller. `devsahayak/lab.py` opens ONE clone per coding task (reused for every check in it, deleted at the end) and the loop gains two tools: `run_check` runs HER declared command on the code as it is RIGHT NOW - every in-memory edit written over the checkout, so a check tests the work and not the base commit - and `grep_log` asks that run's full output a second question instead of re-running it. The system block states it as a duty, not an option: write the failing test, SEE it fail on the unfixed code, fix, run again until it passes, run once before done, and if a check cannot run say so in risk instead of inventing a result or retrying for ever (a setup failure says "Do not retry" in those words). The v0.447 bug proof is now measured HERE in seconds (`_lab_proof`: the test files alone must FAIL, the whole change must PASS) and a conclusive local verdict REPLACES the deliberate red commit on her branch - one clean commit instead of a red-then-green pair, with the evidence (command, source, both runs' seconds) written into the PR and the verdict said on her card; proven_local / not_proven_local (the test passes without the fix, so it proves nothing - said plainly) / still_failing / odd / checked_local, and the CI proof stays exactly as it was wherever the lab cannot answer. The v0.451 plan's done_when lines are RUN where they are real commands and reported VERIFIED / FAILED / not performed with their output, and v0.445's own review is handed that evidence with "this was MEASURED, not claimed". Caps: 12 checks a task. Two path-escape bugs were found by the new tests and fixed (`safe_rel` and `one_file` both normalised before judging, so "../../etc/passwd" became "etc/passwd"). Everything stays behind `dev_lab`, still OFF until `lab_check` passes on her VPS. Previous: v0.530.0: HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main as a51ea087 - the trace-layer deploy stays the owner's call, healthz still says 0.511.0 on the VPS). The langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code (the port law): StateGraph (add_node/add_edge/add_conditional_edges/set_entry_point/compile - duplicates, reserved names and unknown endpoints refused at BUILD time, no-node/no-entry/bad-path-map refused at compile; plain channels last-value-wins, Annotated[T, reducer] channels merge through the reducer - operator.add works, add_messages is the messages reducer; a FIRST-EVER value seeds the channel because operator.add has no identity for a missing left side) + the walk (super-steps; every node sees the SAME pre-step state; several static edges from one node fan out; a node with several inbound edges joins only after ALL its parents ran - the barrier; routing is ADDITIVE, routers + static edges both fire; routers see the POST-node state; dict path_map maps by answer, list path_map maps by index (the upstream law); recursion_limit default 25 with an honest GraphRecursionError; None updates are no-ops; non-dict node returns refused; fn(state) and fn(state, config) both accepted; async nodes run natively in ainvoke and via asyncio.run in sync invoke when no loop is running) + AgentState (messages Annotated[list, add_messages] - the P4 create_agent substrate; add_messages: append, replace-by-id, RemoveMessage drops one id, REMOVE_ALL_MESSAGES clears, dicts coerce back, strings become HumanMessages) + interrupts (interrupt(value) PARKS the graph - the state is checkpointed, invoke returns the state carrying __interrupt__, nothing after the interrupt runs; Command(resume=...) re-enters - the node re-runs FROM ITS TOP, answered slots replay in call order, open slots re-park with the earlier answers preserved; parking without a checkpointer refuses honestly; interrupt() outside a node refuses) + checkpointers (BaseCheckpointSaver; MemorySaver thread-safe capped ring; SqliteSaver stdlib sqlite3 WAL - a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a checkpoint lands after EVERY super-step; get_state/update_state with as_node re-deriving next; invoke(None) resumes the stored walk - the crash path, the dhara lesson; Command.update_only/goto_nodes reshape a stored walk) + the tracer seam (CompiledStateGraph is a Runnable - composes with |; every invocation fires a ROOT chain span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays run-free) + store wiring (compile(store=...) rides config['store'] into every node - the P1 stores are the cross-thread memory). Registry rides their 554 (the construction wave's ten tools took 543 -> 553, the crew_run tool took 553 -> 554; the graph is a library - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep with zero threads/env/files; checkpointers write only when a compiled graph with one actually runs). Voice untouched by construction; mem restart pin untouched (no new vps-ops job); console stamps stay 0.487.0 (the dev's convention); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected (nothing in server/app/pc/, desktop/ or lib/ touched). Tests: NEW test_v0530_hoola_graph.py (42, zero network, the asyncio one-loop law): builder validation, reducer channels + seeding, linear/conditional/diamond walks + the join barrier, additive routing + END-from-router, recursion limit default + configurable, two-arg config + store wiring, add_messages + AgentState accumulation, MemorySaver caps/threads/delete, checkpoint-per-step + get_state + update_state + invoke(None) crash-resume + Command reshapes, SqliteSaver round-trip across instances + the engine shape + thread isolation, interrupt refusal/park shape/resume/two-interrupt chain/stream park/async park, node spans named by the node nested under the root span, the inertness probe, the package-export law, no-registry-tools, the version pins. Bugs the smoke caught: parallel fan-out updates must fold SEQUENTIALLY through the reducer (a merge-by-setdefault dropped the second writer's write); _node_config swallowed 1-arg async fns into a sync lambda (the walk saw a coroutine object, not a dict); the engine-path SqliteSaver never created its table; parking without a checkpointer was silent (now the honest RuntimeError); dict path_maps fell through to positional-index lookups (a router returning END would misroute). Version 0.530.0 (APP_VERSION story, pubspec 0.530.0+553, CLAUDE.md healed, pins swept 0.520.0/0.522.0 -> 0.530.0 + +549/+551/+552 -> +553 across the test files zero residual outside deliberate history). TWO COLLISIONS in one build: the THIRTY-SECOND (0.521.0 DIFY + 0.522.0 CONSTRUCTION WAVE 1, registry 543 -> 553, +551) and the THIRTY-THIRD (0.523.0 HOOLA CREW, the crewAI port, registry 553 -> 554, +552) - REBASE PROTOCOL twice: rebuilt on their fresh bases f561f047 then 1db3e577, both works kept each time, the version layer moved coherently on top (0.530.0 stays the newest story). AEP train: P4 AGENT (create_agent on the graph) next. Previous: v0.523.0 HOOLA CREW, v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE (the langchain-core P1), v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7 [full chain in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -497,6 +496,12 @@ def create_conversation(tenant: str = Depends(current_tenant), project_id: str =
     bus.publish(cid, "message", {"role": "assistant", "text": greeting, "source": "greeting"})
     from . import convs
     convs.mark(tenant, cid, "new")
+    if not incognito:   # v0.473 HOOLA CODER: a new chat opens a memory session - an INCOGNITO chat
+        try:            # never does (her own promise: "yahan ki baatein yaad mein nahi jayengi")
+            from . import coder
+            coder.session_started(tenant, cid, "chat")
+        except Exception:
+            pass
     return {"id": cid, "incognito": bool(incognito)}
 
 
@@ -1789,6 +1794,14 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
         _pc_err(e)
 
 
+# v0.487 W3 - the PC -> Hoola TEXT LANE (the quick-ask lane): a PAIRED device (the desktop, the
+# browser extension paired through the same /api/pc/pair flow) sends a typed ask / a page into her
+# conversation and reads the answer back. NEW surface beside the PC block - no existing PC endpoint,
+# setting or behaviour is touched (the Mera PC freeze stands; the owner's W3 ask named this lane).
+from .quicklane import router as quicklane_router               # noqa: E402
+app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
+
+
 @app.get("/api/voice/check", dependencies=[Depends(require_key)])
 async def voice_check(tenant: str = Depends(current_tenant)):
     """v0.150 Connect to Gemini Live the way her calls do and say which part it refuses (and heal it)."""
@@ -1812,6 +1825,15 @@ def voice_stats(tenant: str = Depends(current_tenant)):
 
 class VoiceEngineBody(BaseModel):
     engine: str
+
+
+@app.get("/api/maps/usage", dependencies=[Depends(require_key)])
+def maps_usage(tenant: str = Depends(current_tenant)):
+    """v0.449 PAISA PEHLE: today's Google Maps spend, the free allowance left this month, the daily cap and
+    how many calls it has refused. `assumed_tier` and `unsourced_skus` say where our price table is a guess
+    rather than a sourced rate, so a wrong estimate is visible instead of silent."""
+    from . import mapsbill
+    return mapsbill.usage(tenant)
 
 
 @app.get("/api/voice/engine", dependencies=[Depends(require_key)])
@@ -4988,6 +5010,8 @@ app.include_router(_notebook_router(require_key, current_tenant))
 from .quality.api import make_router as _quality_router  # noqa: E402
 
 app.include_router(_quality_router(require_key))
+from .interactive.api import router as _interactive_router
+app.include_router(_interactive_router(require_key, current_tenant))   # live-talk ticket (the engine key never reaches a browser)
 
 from .drive.api import make_router as _drive_router  # noqa: E402
 from .forms.api import make_router as _forms_router  # noqa: E402
@@ -5033,11 +5057,13 @@ from .customs.api import make_router as _customs_router  # noqa: E402
 from .travel.api import make_router as _travel_router  # noqa: E402
 from .warehouse.api import make_router as _warehouse_router  # noqa: E402
 from .fleet.api import make_router as _fleet_router  # noqa: E402
+from .ownmap_api import make_router as _ownmap_router  # noqa: E402  (v0.468)
+from .research.api import make_router as _research_router  # noqa: E402  (v0.476 R5: research cost + runs)
 from .courier.api import make_router as _courier_router  # noqa: E402
 from .drivers.api import make_router as _drivers_router  # noqa: E402
 from .logistics.api import make_router as _logistics_router  # noqa: E402
 
-for _mk in (_customs_router, _travel_router, _warehouse_router, _fleet_router, _courier_router, _drivers_router, _logistics_router):
+for _mk in (_customs_router, _travel_router, _warehouse_router, _fleet_router, _ownmap_router, _research_router, _courier_router, _drivers_router, _logistics_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.144 Makaan suite: 6 Real estate & construction Sahayaks (all under /api/<mod>/*, key-protected; the ONLY public routes are
@@ -5081,7 +5107,7 @@ for _mk in (_shiksha_router, _pathyakram_router, _guru_router, _daftar_router, _
 # v0.415 Prayogshala (3D practical labs): the catalogue is public teaching material (no user data), read without a key
 from .prayog.api import make_router as _prayog_router  # noqa: E402
 
-app.include_router(_prayog_router())
+app.include_router(_prayog_router(require_key, current_tenant))   # catalogue public; /api/prayog/ask needs the key
 
 # v0.152 Mehmaan suite: 6 Hospitality, events & tourism Sahayaks (under /api/<mod>/*, key-protected; homestay's router also holds
 # the public calendar feed /api/homestay-ical/{tenant}/{token}.ics, which checks its own random token)
@@ -5130,6 +5156,25 @@ app.include_router(_pgdb_router(require_key, current_tenant))
 from .gyaan.api import make_router as _gyaan_router  # noqa: E402
 
 app.include_router(_gyaan_router(require_key, current_tenant))
+
+# v0.473 Hoola Coder (persistent session memory): /api/coder/*
+from .coder.service import make_router as _coder_router  # noqa: E402
+
+app.include_router(_coder_router(require_key, current_tenant))
+
+
+# v0.486.0 BYOX SKILL PACK: /api/byox/categories and /api/byox/guide/{slug} (restored v0.492.0: dropped by a merge)
+from .byox.guide import get_guide, list_categories as _byox_list  # noqa: E402
+
+
+@app.get("/api/byox/categories", dependencies=[Depends(require_key)])
+async def byox_categories(q: str = ""):
+    return {"categories": _byox_list(q)}
+
+
+@app.get("/api/byox/guide/{slug}", dependencies=[Depends(require_key)])
+async def byox_guide(slug: str, level: str = "standard", language: str = ""):
+    return get_guide(slug, level=level, language=language)
 
 
 @app.get("/auth/microsoft/callback")
@@ -5326,9 +5371,49 @@ def agent_stats():
     from .agent import pakka
     from . import callreceipt, scrub, web
     from .agent import santosh as _s
+    from .aep import vault_sink
+    from .aep.tracers import GLOBAL_STORE
     return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
             "pakka": dict(pakka.STATS), "halts": dict(_s.HALTS), "scrubbed": scrub.STATS["scrubbed"],
-            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS)}
+            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS),
+            # v0.520.0 HOOLA TRACE: the honest counters of the self-hosted LangSmith layer
+            "aep_trace": {"enabled": vault_sink.trace_enabled(), "store": len(GLOBAL_STORE),
+                          **{k: v for k, v in vault_sink.STATS.items()}}}
+
+
+# --- v0.520.0 HOOLA TRACE: the run-tree explorer (flag-gated, fail-closed) ---
+
+
+@app.get("/api/aep/runs", dependencies=[Depends(require_key)])
+def aep_runs(limit: int = 20, source: str = "memory", tenant: str = Depends(current_tenant)):
+    """Recent runs of the AEP tracer layer: the process ring (source=memory, default)
+    or the vault observations typed 'aep_run' (source=vault). aep_trace OFF = fail-closed."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    limit = max(1, min(int(limit), 200))
+    if source == "vault":
+        rows = vault_sink.vault_runs(tenant, limit)
+        return {"ok": True, "source": "vault", "count": len(rows), "runs": rows}
+    runs = [r.to_dict() for r in tracers.GLOBAL_STORE.recent(limit)]
+    return {"ok": True, "source": "memory", "count": len(runs),
+            "stats": dict(vault_sink.STATS), "runs": runs}
+
+
+@app.get("/api/aep/runs/{run_id}", dependencies=[Depends(require_key)])
+def aep_run_tree(run_id: str, tenant: str = Depends(current_tenant)):
+    """One run nested with its children - the run-tree explorer node. A numeric id
+    falls back to the vault row when the process ring does not have it."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    tree = tracers.global_tracer().tree(run_id)
+    if tree is not None:
+        return {"ok": True, "source": "memory", "run": tree}
+    obs = vault_sink.vault_run_by_id(tenant, int(run_id)) if run_id.isdigit() else None
+    if obs is None:
+        return {"ok": False, "error": "no such run"}
+    return {"ok": True, "source": "vault", "run": obs}
 
 
 class ShopOrderIn(BaseModel):
@@ -8478,6 +8563,7 @@ async def _site_pub(site_id: str, op: str, request: Request, body: dict | None =
     backend + DIMAAG logic for a linked one (site/applink.py). The site's pages keep the same addresses."""
     from .site import applink as AL
     tok, ip = _site_tok(request), _ip(request)
+    kw.setdefault("ua", (request.headers.get("user-agent") or "")[:160])     # v0.434 the sessions list names the device
     return await asyncio.to_thread(_app_call, lambda: AL.call(site_id, op, tok, body or {}, ip, **kw))
 
 
@@ -8560,6 +8646,95 @@ async def site_app_decide(site_id: str, appr_id: str, request: Request):
     return await _site_pub(site_id, "decide", request, await _json_body(request), appr_id=appr_id)
 
 
+# v0.434 LOGIN AUR SURAKSHA: phone OTP, staff 2FA, sessions, her data (export / delete), audit log, permissions, uploads
+@app.post("/api/site-app/{site_id}/otp/start")
+async def site_app_otp_start(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_start", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/otp/verify")
+async def site_app_otp_verify(site_id: str, request: Request):
+    return await _site_pub(site_id, "otp_verify", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/login")
+async def site_app_2fa_login(site_id: str, request: Request):
+    return await _site_pub(site_id, "2fa_login", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/2fa/{step}")
+async def site_app_2fa(site_id: str, step: str, request: Request):
+    if step not in ("start", "confirm", "off"):
+        raise HTTPException(404, "not found")
+    return await _site_pub(site_id, "2fa_" + step, request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/sessions")
+async def site_app_sessions(site_id: str, request: Request):
+    return await _site_pub(site_id, "sessions", request)
+
+
+@app.post("/api/site-app/{site_id}/sessions/{sid}/end")
+async def site_app_session_end(site_id: str, sid: str, request: Request):
+    return await _site_pub(site_id, "session_end", request, sid=sid)
+
+
+@app.post("/api/site-app/{site_id}/logout-all")
+async def site_app_logout_all(site_id: str, request: Request):
+    return await _site_pub(site_id, "logout_all", request)
+
+
+@app.get("/api/site-app/{site_id}/me/export")
+async def site_app_export(site_id: str, request: Request):
+    return await _site_pub(site_id, "export", request)
+
+
+@app.post("/api/site-app/{site_id}/me/delete")
+async def site_app_delete_me(site_id: str, request: Request):
+    return await _site_pub(site_id, "delete_me", request)
+
+
+@app.get("/api/site-app/{site_id}/audit")
+async def site_app_audit(site_id: str, request: Request, limit: int = 200, coll: str = ""):
+    return await _site_pub(site_id, "audit", request, limit=limit, coll=coll)
+
+
+@app.get("/api/site-app/{site_id}/matrix")
+async def site_app_matrix(site_id: str, request: Request):
+    return await _site_pub(site_id, "matrix", request)
+
+
+@app.post("/api/site-app/{site_id}/upload")
+async def site_app_upload(site_id: str, request: Request):
+    raw = await request.body()
+    if len(raw) > 12 * 1024 * 1024:
+        raise HTTPException(413, "File bahut badi hai (12 MB tak).")
+    return await _site_pub(site_id, "upload", request, raw=raw)
+
+
+@app.get("/api/site-app/{site_id}/file/{fid}")
+async def site_app_file(site_id: str, fid: str, request: Request):
+    """v0.434 a photo / PDF from a form, for whoever may see it (the page fetches it with the login header)."""
+    from .appmaker import backend as BE
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+
+    def go():
+        r, _ = S.public_app(site_id)
+        p = AL.project(r)
+        if p is None:
+            raise W.AppError("not found", 404)
+        return BE.file_for(p, fid, AL._who(site_id, p, _site_tok(request)))
+    try:
+        path = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    from fastapi.responses import FileResponse
+    return FileResponse(path, media_type="application/pdf" if str(path).endswith(".pdf") else "image/jpeg",
+                        headers={**_SITE_APP_CORS, "Cache-Control": "private, max-age=300"})
+
+
 @app.post("/api/site-app/{site_id}/fn/{name}")
 async def site_app_fn(site_id: str, name: str, request: Request):
     """v0.407 a callable locked function of the site's logic (its own tests passed before it went live)."""
@@ -8610,6 +8785,13 @@ async def sites_logic_apply(ref: str, body: dict, tenant: str = Depends(current_
     """ONLY her tap: the draft she saw (by its hash) goes live on the site + its app."""
     from .site import applink as AL
     return await asyncio.to_thread(_site_logic, AL.logic_apply, tenant, ref, str(body.get("hash") or ""))
+
+
+@app.get("/api/sites/{ref}/audit", dependencies=[Depends(require_key)])
+async def sites_audit(ref: str, limit: int = 100, tenant: str = Depends(current_tenant)):
+    """v0.434 her website app's audit log (every change, who made it) + the permissions matrix."""
+    from .site import applink as AL
+    return await asyncio.to_thread(_site_logic, AL.owner_audit, tenant, ref, max(1, min(limit, 500)))
 
 
 @app.post("/api/sites/{ref}/link-app", dependencies=[Depends(require_key)])
@@ -8876,7 +9058,9 @@ async def site_shop_products(site_id: str):
         _r, cfg = S.shop_public(site_id)
         if not cfg["on"]:
             raise SH.ShopError("shop off", 404)
-        return {"products": [{k: p[k] for k in ("slug", "title", "price", "price_text", "unit", "in_stock")} for p in SH.products(site_id)]}
+        from .site import shoppay as SP                        # v0.446 online payment on? + verified-buyer stars
+        return {"products": [{k: p[k] for k in ("slug", "title", "price", "price_text", "unit", "in_stock")} for p in SH.products(site_id)],
+                "online": bool(cfg.get("online")), "ratings": SP.reviews(site_id)["summary"]}
     return await asyncio.to_thread(_shop_call, go)
 
 
@@ -8909,6 +9093,432 @@ async def site_shop_paid(site_id: str, number: str, request: Request):
     body = body if isinstance(body, dict) else {}
     return await asyncio.to_thread(_shop_call, lambda: S.shop_paid(site_id, number, str(body.get("token") or ""),
                                                                    str(body.get("utr") or ""), _ip(request)))
+
+
+# v0.446 DUKAAN PAISA: coupons, online payment again, verified-buyer reviews (public) + her side (connect, refund, reviews)
+async def _shop_body(request: Request) -> dict:
+    try:
+        b = await request.json()
+    except Exception:
+        b = {}
+    return b if isinstance(b, dict) else {}
+
+
+@app.post("/api/site-shop/{site_id}/coupon")
+async def site_shop_coupon(site_id: str, request: Request):
+    from .site import shoppay as SP
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SP.coupon_check(site_id, str(b.get("code") or ""), b.get("items")))
+
+
+@app.post("/api/site-shop/{site_id}/order/{number}/pay")
+async def site_shop_pay_again(site_id: str, number: str, request: Request):
+    from .site import shoppay as SP
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SP.again(site_id, number, str(b.get("token") or "")))
+
+
+@app.post("/api/site-shop/{site_id}/order/{number}/review")
+async def site_shop_review(site_id: str, number: str, request: Request):
+    from .site import shoppay as SP
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SP.review(site_id, number, str(b.get("token") or ""), str(b.get("slug") or ""),
+                                                                 b.get("stars"), str(b.get("text") or "")))
+
+
+@app.get("/api/site-shop/{site_id}/reviews")
+async def site_shop_reviews(site_id: str, slug: str = ""):
+    from .site import shoppay as SP
+    return await asyncio.to_thread(_shop_call, lambda: SP.reviews(site_id, slug))
+
+
+def _shop_owner(fn, *a):
+    from .site import shop as SH
+    from .site import webapp as W
+    try:
+        return fn(*a)
+    except SH.ShopError as e:
+        raise HTTPException(e.code, str(e))
+    except W.AppError as e:
+        raise HTTPException(e.code, str(e))
+
+
+@app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
+async def sites_payments_connect(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.446 her website's online payments live on its app project: link it, then the app pay routes take her keys."""
+    from .site import shoppay as SP
+    return await asyncio.to_thread(_shop_owner, SP.connect, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/shop/orders/{number}/refund", dependencies=[Depends(require_key)])
+async def sites_shop_refund(ref: str, number: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER tap only: refund a website order paid online {amount? (rupees, blank = all that is left), why}."""
+    from .site import shoppay as SP
+    b = body or {}
+    return await asyncio.to_thread(_shop_owner, SP.refund, tenant, ref, number, b.get("amount"), str(b.get("why") or ""))
+
+
+@app.get("/api/sites/{ref}/shop/reviews", dependencies=[Depends(require_key)])
+async def sites_shop_reviews(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shoppay as SP
+    return {"reviews": await asyncio.to_thread(_shop_owner, SP.owner_reviews, tenant, ref)}
+
+
+@app.post("/api/sites/{ref}/shop/reviews/{rid}", dependencies=[Depends(require_key)])
+async def sites_shop_review_hide(ref: str, rid: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import shoppay as SP
+    return await asyncio.to_thread(_shop_owner, SP.hide_review, tenant, ref, rid, bool((body or {}).get("hide", True)))
+
+
+# v0.452 DUKAAN PLUS: GST invoices for website orders, marketplace sellers, Shiprocket, opted-in cart reminders, AutoPay
+@app.get("/api/site-app/{site_id}/pay/plans")
+async def site_app_pay_plans(site_id: str, request: Request):
+    return await _site_pub(site_id, "pay_plans", request)
+
+
+@app.post("/api/site-app/{site_id}/pay/plans/{key}/subscribe")
+async def site_app_pay_subscribe(site_id: str, key: str, request: Request):
+    return await _site_pub(site_id, "pay_subscribe", request, key=key)
+
+
+@app.get("/api/site-app/{site_id}/pay/subs")
+async def site_app_pay_subs(site_id: str, request: Request):
+    return await _site_pub(site_id, "pay_subs", request)
+
+
+@app.post("/api/site-app/{site_id}/pay/subs/{sid}/cancel")
+async def site_app_pay_cancel(site_id: str, sid: str, request: Request):
+    return await _site_pub(site_id, "pay_cancel", request, sid=sid)
+
+
+# ---- v0.459 ABHI ABHI WEBSITE (web Step 5, W6 + W7): live channel, live chat, presence, clinic queue, browser notifications,
+# inbound webhooks - all on the website's linked app (site/livesite.py, appmaker/live.py, appmaker/baat.py, site/webpush.py).
+@app.get("/api/site-app/{site_id}/live")
+async def site_app_live(site_id: str, request: Request, colls: str = ""):
+    """The website's live stream for a signed-in member (Bearer token in the header; ?last=j<id> replays a reconnect)."""
+    from .appmaker import live as LV
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    tok = _site_tok(request)
+
+    def go():
+        p, w = AL.live_open(site_id, tok)
+        LV.admit(p, w)
+        return p, w
+    try:
+        p, w = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    last = request.headers.get("last-event-id") or request.query_params.get("last") or ""
+    member = w.m.id if w.m else ""
+    return StreamingResponse(LV.stream(p, w, tok, colls, last, gone=request.is_disconnected,
+                                       check=lambda: LS.still(site_id, p, tok, member)),
+                             media_type="text/event-stream",
+                             headers={**_SITE_APP_CORS, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.post("/api/site-app/{site_id}/live/typing")
+async def site_app_live_typing(site_id: str, request: Request):
+    return await _site_pub(site_id, "typing", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/live/presence")
+async def site_app_live_presence(site_id: str, request: Request):
+    return await _site_pub(site_id, "presence", request)
+
+
+@app.get("/api/site-app/{site_id}/chat")
+async def site_app_chat(site_id: str, request: Request, member: str = ""):
+    """A member: her own thread. Staff: every thread (member= one thread)."""
+    if member:
+        return await _site_pub(site_id, "chat_thread", request, member=member)
+    if request.query_params.get("all"):
+        return await _site_pub(site_id, "chat_threads", request)
+    return await _site_pub(site_id, "chat_mine", request)
+
+
+@app.post("/api/site-app/{site_id}/chat")
+async def site_app_chat_write(site_id: str, request: Request):
+    return await _site_pub(site_id, "chat_write", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/chat/{member}")
+async def site_app_chat_reply(site_id: str, member: str, request: Request):
+    return await _site_pub(site_id, "chat_reply", request, await _json_body(request), member=member)
+
+
+@app.get("/api/site-app/{site_id}/push/key")
+async def site_app_push_key(site_id: str, request: Request):
+    return await _site_pub(site_id, "push_key", request)
+
+
+@app.post("/api/site-app/{site_id}/push/subscribe")
+async def site_app_push_sub(site_id: str, request: Request):
+    """Only after the visitor's own tap AND the browser's permission (consent: true)."""
+    return await _site_pub(site_id, "push_sub", request, await _json_body(request))
+
+
+@app.post("/api/site-app/{site_id}/push/unsubscribe")
+async def site_app_push_unsub(site_id: str, request: Request):
+    return await _site_pub(site_id, "push_unsub", request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/queue")
+async def site_app_queue(site_id: str, request: Request, mine: int = 0, staff: int = 0):
+    """Public: the board (numbers only). mine=1: my token. staff=1: today's list with names (staff only)."""
+    return await _site_pub(site_id, "queue_mine" if mine else "queue_staff" if staff else "queue_board", request)
+
+
+@app.post("/api/site-app/{site_id}/queue/{step}")
+async def site_app_queue_step(site_id: str, step: str, request: Request):
+    ops = {"take": "queue_take", "add": "queue_add", "call": "queue_call", "mark": "queue_mark"}
+    if step not in ops:
+        return JSONResponse({"ok": False, "error": "not found"}, status_code=404, headers=_SITE_APP_CORS)
+    return await _site_pub(site_id, ops[step], request, await _json_body(request))
+
+
+@app.get("/api/site-app/{site_id}/queue/live")
+async def site_app_queue_live(site_id: str, request: Request):
+    """The public board as a stream (no login: numbers only), for the waiting-room TV and the site's own pages."""
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    ip = _ip(request)
+
+    def go():
+        p = AL.queue_project(site_id)
+        LS.board_admit(ip)
+        return p
+    try:
+        p = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    return StreamingResponse(LS.board_stream(p, ip, gone=request.is_disconnected), media_type="text/event-stream",
+                             headers={**_SITE_APP_CORS, "Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
+
+
+@app.get("/api/site-app/{site_id}/queue/board", response_class=HTMLResponse)
+async def site_app_queue_board(site_id: str):
+    """A full-screen live board for the clinic's TV: now serving, next, how many wait. No names, no phones."""
+    from .site import applink as AL
+    from .site import livesite as LS
+    from .site import webapp as W
+    try:
+        p = await asyncio.to_thread(AL.queue_project, site_id)
+        label = (await asyncio.to_thread(LS.cfg, p)).get("label") or "Queue"
+    except W.AppError:
+        return HTMLResponse("<!doctype html><title>Not found</title><p>Not found.</p>", status_code=404)
+    return HTMLResponse(LS.board_page(site_id, label), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+
+
+@app.post("/api/dhara/hook/{token}")
+async def dhara_hook(token: str, request: Request):
+    """v0.502 DHARA webhook trigger: her outside service calls the workflow in. The token is checked
+    sha256-hashed against the workflow row; the body lands as {{vars.body}}; the run is queued with a
+    checkpoint (the worker executes it). Rate: one run per 6 s per workflow (10/min ceiling)."""
+    from .agent import dhara_tools
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False, "error": "body bohot bada"}, status_code=413)
+    try:
+        body = json.loads(raw or b"{}")
+        if not isinstance(body, dict):
+            body = {"body": body}
+    except Exception:
+        body = {"raw": raw[:8000].decode("utf-8", "ignore")}
+    out = await asyncio.to_thread(dhara_tools.webhook_enqueue, token, body)
+    return JSONResponse({"ok": out["ok"], "run_id": out.get("run_id"), "workflow": out.get("workflow"),
+                         "error": out.get("error")}, status_code=int(out.get("status") or 500))
+
+
+@app.post("/api/site-app/{site_id}/hook/{key}")
+async def site_app_hook(site_id: str, key: str, request: Request):
+    """Her outside service tells the website's app something (signed with HER secret; the payload is data)."""
+    raw = (await request.body())[:1_000_000]
+    return await _site_pub(site_id, "hook", request, key=key, raw=raw, headers=dict(request.headers))
+
+
+# her own controls (console / phone): the queue of any of her apps or linked websites, by app id / number
+@app.get("/api/apps/{ref}/queue", dependencies=[Depends(require_key)])
+async def apps_queue(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import livesite as LS
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.staff_view(_be_data(tenant, ref), W.Who(owner=True)))
+
+
+@app.put("/api/apps/{ref}/queue", dependencies=[Depends(require_key)])
+async def apps_queue_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import livesite as LS
+    from .site import webapp as W
+
+    def go():
+        p = _be_data(tenant, ref)
+        LS.save_cfg(p, body or {})
+        return LS.staff_view(p, W.Who(owner=True))
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.post("/api/apps/{ref}/queue/{step}", dependencies=[Depends(require_key)])
+async def apps_queue_step(ref: str, step: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{name, phone} add · {token?} call (next) · {token, status} mark."""
+    from .site import livesite as LS
+    from .site import webapp as W
+    b, who = body or {}, W.Who(owner=True)
+
+    def go():
+        p = _be_data(tenant, ref)
+        if step == "add":
+            return LS.add(p, who, b)
+        if step == "call":
+            n = b.get("token")
+            return LS.call_next(p, who, int(n) if str(n or "").isdigit() else None)
+        if step == "mark":
+            return LS.mark(p, who, int(b.get("token") or 0), str(b.get("status") or ""))
+        raise W.AppError("not found", 404)
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.get("/api/apps/{ref}/push", dependencies=[Depends(require_key)])
+async def apps_push(ref: str, tenant: str = Depends(current_tenant)):
+    """How many browsers said yes to notifications on this app's website (never who)."""
+    from .appmaker import backend as BE
+    from .site import webpush as WP
+    return await asyncio.to_thread(_be_owner_call, lambda: WP.status(BE.bid(_be_data(tenant, ref))))
+
+
+def _pdf_resp(go):
+    from .site import shop as SH
+    try:
+        data, name = go()
+    except SH.ShopError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SHOP_CORS)
+    return Response(data, media_type="application/pdf", headers={**_SHOP_CORS, "Cache-Control": "private, no-store",
+                                                                 "Content-Disposition": f'inline; filename="{name}.pdf"'})
+
+
+@app.get("/api/site-shop/{site_id}/order/{number}/invoice")
+async def site_shop_invoice(site_id: str, number: str, t: str = "", doc: str = ""):
+    """The buyer's own GST invoice / credit note (by the order's private link)."""
+    from .site import shop as SH
+    from .site import shopplus as SPL
+    from .db import session as _ses
+
+    def go():
+        with _ses() as s:
+            SH._mine(s, site_id, number, t)
+        return SPL.invoice_pdf(site_id, number, "credit" if doc == "credit" else "")
+    return await asyncio.to_thread(_pdf_resp, go)
+
+
+@app.get("/api/site-shop/{site_id}/order/{number}/track")
+async def site_shop_courier_track(site_id: str, number: str, t: str = ""):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_call, lambda: SPL.track(site_id, number, t))
+
+
+@app.post("/api/site-shop/{site_id}/vendor/apply")
+async def site_shop_vendor_apply(site_id: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.apply_vendor(site_id, b, _ip(request)))
+
+
+@app.get("/api/site-shop/{site_id}/vendor/{token}")
+async def site_shop_vendor_portal(site_id: str, token: str):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_call, lambda: SPL.vendor_portal(site_id, token))
+
+
+@app.post("/api/site-shop/{site_id}/vendor/{token}/product")
+async def site_shop_vendor_product(site_id: str, token: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.vendor_add_product(site_id, token, b))
+
+
+@app.get("/api/site-shop/{site_id}/seller", response_class=HTMLResponse)
+async def site_shop_seller_page(site_id: str):
+    """The seller page (apply + the private seller dashboard when ?k=<their link>)."""
+    from .site import shopplus as SPL
+    return HTMLResponse(SPL.SELLER_PAGE.replace("__API__", f"/api/site-shop/{site_id}"),
+                        headers={"Content-Security-Policy": "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+                                                            "connect-src 'self'; form-action 'none'; base-uri 'none'; frame-ancestors 'none'"})
+
+
+@app.post("/api/site-shop/{site_id}/cart/remind")
+async def site_shop_cart_hold(site_id: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.hold_cart(site_id, b, _ip(request)))
+
+
+@app.post("/api/site-shop/{site_id}/cart/stop")
+async def site_shop_cart_stop(site_id: str, request: Request):
+    from .site import shopplus as SPL
+    b = await _shop_body(request)
+    return await asyncio.to_thread(_shop_call, lambda: SPL.stop_cart(site_id, str(b.get("token") or "")))
+
+
+@app.get("/api/sites/{ref}/shop/orders/{number}/invoice", dependencies=[Depends(require_key)])
+async def sites_shop_invoice(ref: str, number: str, doc: str = "", gstin: str = "", tenant: str = Depends(current_tenant)):
+    """Her tax invoice (buyer GSTIN optional, for a B2B bill) / credit note of a website order."""
+    from .site import shopplus as SPL
+
+    def go():
+        return SPL.invoice_pdf(SPL._site_id(tenant, ref), number, "credit" if doc == "credit" else "", gstin.strip().upper()[:15])
+    return await asyncio.to_thread(_pdf_resp, go)
+
+
+@app.get("/api/sites/{ref}/shop/vendors", dependencies=[Depends(require_key)])
+async def sites_shop_vendors(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.vendors, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/shop/vendors/{vid}", dependencies=[Depends(require_key)])
+async def sites_shop_vendor_set(ref: str, vid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER tap: approve / block a seller, their commission %, their Razorpay Route linked account."""
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.set_vendor, tenant, ref, vid, body or {})
+
+
+@app.post("/api/sites/{ref}/shop/products/{slug}/approve", dependencies=[Depends(require_key)])
+async def sites_shop_product_ok(ref: str, slug: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.approve_product, tenant, ref, slug, bool((body or {}).get("ok", True)))
+
+
+@app.put("/api/sites/{ref}/shop/courier", dependencies=[Depends(require_key)])
+async def sites_shop_courier(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her Shiprocket API user (typed here only, checked with a real login, sealed, returned by no route)."""
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.set_courier, tenant, ref, body or {})
+
+
+@app.get("/api/sites/{ref}/shop/courier", dependencies=[Depends(require_key)])
+async def sites_shop_courier_view(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, lambda: SPL.courier_view(SPL._site_id(tenant, ref)))
+
+
+@app.post("/api/sites/{ref}/shop/orders/{number}/ship", dependencies=[Depends(require_key)])
+async def sites_shop_ship(ref: str, number: str, tenant: str = Depends(current_tenant)):
+    """HER tap: Shiprocket order + AWB + label for a confirmed order."""
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.ship, tenant, ref, number)
+
+
+@app.get("/api/sites/{ref}/shop/carts", dependencies=[Depends(require_key)])
+async def sites_shop_carts(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.carts, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/shop/carts/{cid}/reminded", dependencies=[Depends(require_key)])
+async def sites_shop_cart_reminded(ref: str, cid: str, tenant: str = Depends(current_tenant)):
+    from .site import shopplus as SPL
+    return await asyncio.to_thread(_shop_owner, SPL.mark_reminded, tenant, ref, cid)
 
 
 @app.get("/api/sites/{ref}/shop", dependencies=[Depends(require_key)])
@@ -9506,7 +10116,7 @@ async def apps_act(ref: str, action: str, body: dict | None = None, tenant: str 
 
         def go_dc():
             try:
-                return BE.change_schema(_be_owner(tenant, ref), body.get("ops") if isinstance(body.get("ops"), dict) else {},
+                return BE.change_schema(_be_data(tenant, ref), body.get("ops") if isinstance(body.get("ops"), dict) else {},
                                         str(body.get("words") or ""))
             except W.AppError as e:
                 raise HTTPException(e.code, str(e))
@@ -9645,20 +10255,110 @@ async def app_api_schema(app_key: str):
     return await asyncio.to_thread(_be_call, lambda: BE.public_schema(BE.by_key(app_key)))
 
 
+def _ua_of(request: Request) -> str:
+    return (request.headers.get("user-agent") or "")[:160]
+
+
 @app.post("/api/app-api/{app_key}/signup")
 async def app_api_signup(app_key: str, request: Request):
+    """v0.455 the sign-up records the DPDP consent tick and this login as a session she can end."""
     from .appmaker import backend as BE
-    body, ip = await _json_body(request), _ip(request)
-    return await asyncio.to_thread(_be_call, lambda: BE.signup(BE.by_key(app_key), str(body.get("email") or ""),
-                                                               str(body.get("password") or ""), str(body.get("name") or ""), ip))
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.password_signup(BE.by_key(app_key), body, ua, ip))
 
 
 @app.post("/api/app-api/{app_key}/login")
 async def app_api_login(app_key: str, request: Request):
+    """v0.455 a staff account with 2FA on gets {need_2fa, ticket} here and finishes at /login/2fa."""
     from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.password_login(BE.by_key(app_key), body, ua, ip))
+
+
+# ---- v0.455 SURAKSHIT LOGIN (App Sahayak Pillar I): phone OTP, Google / Apple checked on the SERVER, sessions she can
+# end, staff 2FA, her own data (DPDP). The engine is the website's (site/security.py) on the same backend id.
+@app.post("/api/app-api/{app_key}/login/otp")
+async def app_api_login_otp(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
     body, ip = await _json_body(request), _ip(request)
-    return await asyncio.to_thread(_be_call, lambda: BE.login(BE.by_key(app_key), str(body.get("email") or ""),
-                                                              str(body.get("password") or ""), ip))
+    return await asyncio.to_thread(_be_call, lambda: SG.otp_start(BE.by_key(app_key), str(body.get("phone") or ""), ip))
+
+
+@app.post("/api/app-api/{app_key}/login/otp/check")
+async def app_api_login_otp_check(app_key: str, request: Request):
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    return await asyncio.to_thread(_be_call, lambda: SG.otp_verify(BE.by_key(app_key), body, ua, ip))
+
+
+@app.get("/api/app-api/{app_key}/login/nonce")
+async def app_api_login_nonce(app_key: str):
+    """One single-use nonce per Google / Apple attempt (the app passes it to the provider, the server checks it back)."""
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    return await asyncio.to_thread(_be_call, lambda: SG.nonce(BE.by_key(app_key)))
+
+
+@app.post("/api/app-api/{app_key}/login/{provider}")
+async def app_api_login_social(app_key: str, provider: str, request: Request):
+    """Google / Apple: the app sends the provider's ID token; this server checks its signature, audience and nonce."""
+    from .appmaker import backend as BE
+    from .appmaker import sign as SG
+    body, ip, ua = await _json_body(request), _ip(request), _ua_of(request)
+    if provider == "2fa":
+        return await asyncio.to_thread(_be_call, lambda: SG.two_fa_login(BE.by_key(app_key), str(body.get("ticket") or ""),
+                                                                         str(body.get("code") or ""), ua, ip))
+    if provider not in ("google", "apple"):
+        return JSONResponse({"ok": False, "error": "login: google / apple / 2fa"}, status_code=404)
+    return await asyncio.to_thread(_be_call, lambda: SG.social_login(BE.by_key(app_key), provider, body, ua, ip))
+
+
+@app.get("/api/app-api/{app_key}/security")
+async def app_api_security(app_key: str, request: Request):
+    """The member's own security page in the app: her logins, 2FA, what consent she gave."""
+    from .appmaker import sign as SG
+
+    def go():
+        r, w = _be_app(app_key, request)
+        tok = (request.headers.get("authorization") or "").removeprefix("Bearer ").strip()
+        return SG.my_security(r, w, tok)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/security/{what}")
+async def app_api_security_do(app_key: str, what: str, request: Request):
+    from .appmaker import sign as SG
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        if what == "end":
+            return SG.end_session(r, w, str(body.get("id") or ""))
+        if what == "end-all":
+            return SG.end_everywhere(r, w)
+        if what == "2fa-start":
+            return SG.two_fa_start(r, w)
+        if what == "2fa-on":
+            return SG.two_fa_confirm(r, w, str(body.get("code") or ""))
+        if what == "2fa-off":
+            return SG.two_fa_off(r, w, str(body.get("code") or ""))
+        raise SG.SignError("security: end / end-all / 2fa-start / 2fa-on / 2fa-off", 404)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/my-data")
+async def app_api_my_data(app_key: str, request: Request):
+    """DPDP: this account downloads everything of its own, from inside the app."""
+    from .appmaker import sign as SG
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return SG.my_data(r, w)
+    return await asyncio.to_thread(_be_call, go)
 
 
 @app.get("/api/app-api/{app_key}/me")
@@ -9912,11 +10612,35 @@ async def app_api_upload(app_key: str, request: Request):
     from .appmaker import backend as BE
     raw = await request.body()
     ip = _ip(request)
+    ctype = request.headers.get("content-type") or ""
 
     def go():
         r, w = _be_app(app_key, request)
-        return BE.upload(r, w, raw, ip)
+        return BE.upload(r, w, raw, ip, ctype)
     return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/files/{fid}/link")
+async def app_api_file_link(app_key: str, fid: str, request: Request):
+    """v0.425 RANG: a 15-minute signed address for the phone's own video / audio / PDF player (no token in it)."""
+    from .appmaker import backend as BE
+    def go():
+        r, w = _be_app(app_key, request)
+        return BE.media_link(r, fid, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/media/{tok}")
+async def app_api_media(app_key: str, tok: str):
+    from .appmaker import backend as BE
+    from .site import webapp as W
+    try:
+        f = await asyncio.to_thread(lambda: BE.media_file(BE.by_key(app_key), tok))
+    except W.AppError:
+        raise HTTPException(404, "not found")
+    return FileResponse(f, media_type=BE.MEDIA_MIME.get(f.suffix, "application/octet-stream"),
+                        headers={"Cache-Control": "private, max-age=900", "X-Content-Type-Options": "nosniff",
+                                 "Content-Security-Policy": "sandbox", "Referrer-Policy": "no-referrer"})
 
 
 @app.get("/api/app-api/{app_key}/files/{fid}")
@@ -9928,6 +10652,10 @@ async def app_api_file(app_key: str, fid: str, request: Request):
         f = await asyncio.to_thread(BE.file_for, r, fid, w)
     except W.AppError:
         raise HTTPException(404, "not found")
+    if f.suffix in (".mp4", ".mov", ".m4a"):     # v0.425 RANG: video / voice note for the phone's own player (range requests)
+        return FileResponse(f, media_type=BE.MEDIA_MIME[f.suffix], headers={"Cache-Control": "private, max-age=3600",
+                                                                            "X-Content-Type-Options": "nosniff",
+                                                                            "Content-Security-Policy": "sandbox"})
     if str(f).endswith(".pdf"):                  # v0.346 a PDF is only ever a download, never opened in a page
         return FileResponse(f, media_type="application/pdf", filename=f"{fid}.pdf",
                             headers={"Cache-Control": "private, max-age=86400", "X-Content-Type-Options": "nosniff",
@@ -10213,7 +10941,7 @@ async def apps_live(ref: str, request: Request, colls: str = "", tenant: str = D
 async def apps_live_presence(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import live as LV
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: LV.online(_be_owner(tenant, ref), W.Who(owner=True)))
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.online(_be_data(tenant, ref), W.Who(owner=True)))
 
 
 @app.post("/api/apps/{ref}/live/typing", dependencies=[Depends(require_key)])
@@ -10221,7 +10949,7 @@ async def apps_live_typing(ref: str, body: dict, tenant: str = Depends(current_t
     """Her 'typing...' in a customer's chat thread {thread}."""
     from .appmaker import live as LV
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_owner(tenant, ref), W.Who(owner=True),
+    return await asyncio.to_thread(_be_owner_call, lambda: LV.typing(_be_data(tenant, ref), W.Who(owner=True),
                                                                      str((body or {}).get("thread") or "")))
 
 
@@ -10268,7 +10996,7 @@ async def apps_track(ref: str, tenant: str = Depends(current_tenant)):
     from .site import webapp as W
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         return {**TR.settings(r), **TR.riders(r, W.Who(owner=True))}
     return await asyncio.to_thread(_be_owner_call, go)
 
@@ -10277,14 +11005,14 @@ async def apps_track(ref: str, tenant: str = Depends(current_tenant)):
 async def apps_track_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """Her tap: {on, coll, statuses} - which list is tracked and which statuses mean 'on the way'."""
     from .appmaker import track as TR
-    return await asyncio.to_thread(_be_owner_call, lambda: TR.save_settings(_be_owner(tenant, ref), body or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.save_settings(_be_data(tenant, ref), body or {}))
 
 
 @app.get("/api/apps/{ref}/track/c/{coll}/{row_id}", dependencies=[Depends(require_key)])
 async def apps_track_order(ref: str, coll: str, row_id: str, tenant: str = Depends(current_tenant)):
     from .appmaker import track as TR
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_owner(tenant, ref), W.Who(owner=True), coll, row_id))
+    return await asyncio.to_thread(_be_owner_call, lambda: TR.order(_be_data(tenant, ref), W.Who(owner=True), coll, row_id))
 
 
 def html_escape(s: str) -> str:
@@ -10370,7 +11098,7 @@ async def app_api_pay_sub_cancel(app_key: str, sid: str, request: Request):
 async def apps_pay(ref: str, tenant: str = Depends(current_tenant)):
     """Her payments page: gateway (never the keys), webhook address, payments + refunds, plans, AutoPay, split rule."""
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.status(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.status(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
@@ -10378,7 +11106,7 @@ async def apps_pay_keys(ref: str, body: dict, tenant: str = Depends(current_tena
     """{gateway, keys: {...}, test}: typed in the app, checked with the gateway, sealed; returned by no route."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_keys(_be_owner(tenant, ref), str(b.get("gateway") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_keys(_be_data(tenant, ref), str(b.get("gateway") or ""),
                                                                        b.get("keys") if isinstance(b.get("keys"), dict) else {},
                                                                        bool(b.get("test"))))
 
@@ -10386,7 +11114,7 @@ async def apps_pay_keys(ref: str, body: dict, tenant: str = Depends(current_tena
 @app.delete("/api/apps/{ref}/pay/keys", dependencies=[Depends(require_key)])
 async def apps_pay_keys_forget(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.forget_keys(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.forget_keys(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/pay/{pid}/refund", dependencies=[Depends(require_key)])
@@ -10394,20 +11122,20 @@ async def apps_pay_refund(ref: str, pid: str, body: dict, tenant: str = Depends(
     """Her tap only {amount? (rupees, blank = the rest), why, her_tap: true}."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund(_be_owner(tenant, ref), pid, b.get("amount"),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund(_be_data(tenant, ref), pid, b.get("amount"),
                                                                      str(b.get("why") or ""), bool(b.get("her_tap"))))
 
 
 @app.post("/api/apps/{ref}/pay/refunds/{fid}/check", dependencies=[Depends(require_key)])
 async def apps_pay_refund_check(ref: str, fid: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund_check(_be_owner(tenant, ref), fid))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.refund_check(_be_data(tenant, ref), fid))
 
 
 @app.get("/api/apps/{ref}/pay/settlements", dependencies=[Depends(require_key)])
 async def apps_pay_settlements(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.settlements(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.settlements(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/pay/link", dependencies=[Depends(require_key)])
@@ -10415,7 +11143,7 @@ async def apps_pay_link(ref: str, body: dict, tenant: str = Depends(current_tena
     """{amount, purpose, name?, phone?, her_tap: true} -> a payment link she sends herself."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.link(_be_owner(tenant, ref), b.get("amount"), str(b.get("purpose") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.link(_be_data(tenant, ref), b.get("amount"), str(b.get("purpose") or ""),
                                                                    str(b.get("name") or ""), str(b.get("phone") or ""), bool(b.get("her_tap"))))
 
 
@@ -10424,21 +11152,21 @@ async def apps_pay_plan_add(ref: str, body: dict, tenant: str = Depends(current_
     """{name, amount, period: week|month|year, count, her_tap: true}"""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.add_plan(_be_owner(tenant, ref), str(b.get("name") or ""), b.get("amount"),
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.add_plan(_be_data(tenant, ref), str(b.get("name") or ""), b.get("amount"),
                                                                        str(b.get("period") or ""), b.get("count"), bool(b.get("her_tap"))))
 
 
 @app.delete("/api/apps/{ref}/pay/plans/{key}", dependencies=[Depends(require_key)])
 async def apps_pay_plan_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.drop_plan(_be_owner(tenant, ref), key))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.drop_plan(_be_data(tenant, ref), key))
 
 
 @app.post("/api/apps/{ref}/pay/subs/{sid}/cancel", dependencies=[Depends(require_key)])
 async def apps_pay_sub_cancel(ref: str, sid: str, tenant: str = Depends(current_tenant)):
     from .appmaker import pay as PY
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.cancel_sub(_be_owner(tenant, ref), W.Who(owner=True), sid))
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.cancel_sub(_be_data(tenant, ref), W.Who(owner=True), sid))
 
 
 @app.put("/api/apps/{ref}/pay/split", dependencies=[Depends(require_key)])
@@ -10446,7 +11174,7 @@ async def apps_pay_split(ref: str, body: dict, tenant: str = Depends(current_ten
     """{vendors: [{key, name, account}], rules: [{vendor, percent}], her_tap: true} - her approved payout rule."""
     from .appmaker import pay as PY
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_split(_be_owner(tenant, ref), b.get("vendors") or [], b.get("rules") or [],
+    return await asyncio.to_thread(_be_owner_call, lambda: PY.set_split(_be_data(tenant, ref), b.get("vendors") or [], b.get("rules") or [],
                                                                         bool(b.get("her_tap"))))
 
 
@@ -10471,10 +11199,205 @@ async def app_api_connect_hook(app_key: str, key: str, request: Request):
     return await asyncio.to_thread(_be_call, lambda: CN.hook(BE.by_key(app_key), key, hdrs, raw))
 
 
+# ---- v0.435 PARIVAAR (App Sahayak Pillar H): one backend, several apps (customer / delivery partner / partner shop /
+# staff) + the web admin. The partner app's jobs screen and the web admin talk to these; every rule is checked in
+# appmaker/family.py on the server, never by the app.
+@app.get("/api/app-api/{app_key}/partner/me")
+async def app_api_partner_me(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.me(r, w, FA.kind_for_key(app_key))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/partner/request")
+async def app_api_partner_request(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.request(r, w, FA.kind_for_key(app_key))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/partner/jobs")
+async def app_api_partner_jobs(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.jobs(r, w, app_key)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/partner/jobs/{row_id}/take")
+async def app_api_partner_take(app_key: str, row_id: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.take(r, w, row_id)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/partner/jobs/{row_id}/step")
+async def app_api_partner_step(app_key: str, row_id: str, request: Request):
+    from .appmaker import family as FA
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.step(r, w, row_id, str(body.get("status") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/overview")
+async def app_api_admin_overview(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_overview(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/members")
+async def app_api_admin_members(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return {"members": FA.admin_members(r, w)}
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/admin/members/{member}/role")
+async def app_api_admin_role(app_key: str, member: str, request: Request):
+    from .appmaker import family as FA
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_role(r, w, member, str(body.get("role") or ""))
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/partners")
+async def app_api_admin_partners(app_key: str, request: Request):
+    from .appmaker import family as FA
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_partners(r, w)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.post("/api/app-api/{app_key}/admin/partners/{pid}")
+async def app_api_admin_partner(app_key: str, pid: str, request: Request):
+    from .appmaker import family as FA
+    body = await _json_body(request)
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.admin_decide(r, w, pid, body)
+    return await asyncio.to_thread(_be_call, go)
+
+
+@app.get("/api/app-api/{app_key}/admin/export/{coll}")
+async def app_api_admin_export(app_key: str, coll: str, request: Request):
+    from .appmaker import family as FA
+    from .site import webapp as W
+
+    def go():
+        r, w = _be_app(app_key, request)
+        return FA.export_csv(r, coll, w)
+    try:
+        text, name = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code)
+    return Response(text.encode("utf-8"), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": f'attachment; filename="{name}"', "Cache-Control": "no-store",
+                             "X-Content-Type-Options": "nosniff"})
+
+
+_ADMIN_CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; "
+              "connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'")
+
+
+@app.get("/app-admin/{app_key}")
+async def app_admin_page(app_key: str):
+    """The business's web admin: a page that signs in with an app staff / admin account and talks only to its own
+    /api/app-api/<app_key>/ addresses (the server checks every rule)."""
+    import re as _re
+    if not _re.fullmatch(r"ak[0-9a-f]{8,38}", app_key or ""):
+        raise HTTPException(404, "not found")
+    return FileResponse(STATIC / "appadmin" / "index.html", media_type="text/html",
+                        headers={"Content-Security-Policy": _ADMIN_CSP, "Cache-Control": "no-cache", "X-Frame-Options": "DENY",
+                                 "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff"})
+
+
+@app.get("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
+async def apps_sign(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.455 her login + security card: which ways are on, her client ids (masked where long), the permissions matrix,
+    the audit log, and the last security gate."""
+    from .appmaker import gates as GT
+    from .appmaker import sign as SG
+
+    def go():
+        r = _be_data(tenant, ref)
+        return {**SG.view(r), "gate": GT.last(r)}
+    return await asyncio.to_thread(_be_owner_call, go)
+
+
+@app.put("/api/apps/{ref}/sign", dependencies=[Depends(require_key)])
+async def apps_sign_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import sign as SG
+    return await asyncio.to_thread(_be_owner_call, lambda: SG.save_settings(_be_data(tenant, ref), body or {}))
+
+
+@app.post("/api/apps/{ref}/security/check", dependencies=[Depends(require_key)])
+async def apps_security_check(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
+    """v0.455 run the security gates on the newest build (a failing gate blocks the store upload)."""
+    from .appmaker import gates as GT
+    b = body or {}
+    return await asyncio.to_thread(_be_owner_call,
+                                   lambda: GT.scan(_be_owner(tenant, ref), str(b.get("platform") or "android")))
+
+
+@app.get("/api/apps/{ref}/family", dependencies=[Depends(require_key)])
+async def apps_family(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import family as FA
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.view(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/family/face", dependencies=[Depends(require_key)])
+async def apps_family_face(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap: a delivery partner / partner shop / staff / customer app on the SAME backend (its own plan card next)."""
+    from .appmaker import family as FA
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.add_face(tenant, ref, str(body.get("kind") or ""),
+                                                                       str(body.get("words") or ""), str(body.get("conv") or "")))
+
+
+@app.put("/api/apps/{ref}/family/settings", dependencies=[Depends(require_key)])
+async def apps_family_settings(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import family as FA
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.save_settings(_be_data(tenant, ref), body))
+
+
+@app.post("/api/apps/{ref}/family/partners/{pid}", dependencies=[Depends(require_key)])
+async def apps_family_partner(ref: str, pid: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her Haan / Na / remove on a delivery partner or partner shop."""
+    from .appmaker import family as FA
+    from .site import webapp as W
+    return await asyncio.to_thread(_be_owner_call, lambda: FA.admin_decide(_be_data(tenant, ref), W.Who(owner=True), pid, body))
+
+
 @app.get("/api/apps/{ref}/connect", dependencies=[Depends(require_key)])
 async def apps_connect(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.status(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.status(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/connect/pack", dependencies=[Depends(require_key)])
@@ -10482,7 +11405,7 @@ async def apps_connect_pack(ref: str, body: dict, tenant: str = Depends(current_
     """{pack, settings, secrets}: secrets sealed at once; the drafted actions wait for her approval tap."""
     from .appmaker import connect as CN
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.apply_pack(_be_owner(tenant, ref), str(b.get("pack") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.apply_pack(_be_data(tenant, ref), str(b.get("pack") or ""),
                                                                          b.get("settings") if isinstance(b.get("settings"), dict) else {},
                                                                          b.get("secrets") if isinstance(b.get("secrets"), dict) else {}))
 
@@ -10490,19 +11413,19 @@ async def apps_connect_pack(ref: str, body: dict, tenant: str = Depends(current_
 @app.put("/api/apps/{ref}/connect/actions", dependencies=[Depends(require_key)])
 async def apps_connect_action(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_action(_be_owner(tenant, ref), (body or {}).get("action") or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_action(_be_data(tenant, ref), (body or {}).get("action") or {}))
 
 
 @app.post("/api/apps/{ref}/connect/actions/{key}/approve", dependencies=[Depends(require_key)])
 async def apps_connect_approve(ref: str, key: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.approve(_be_owner(tenant, ref), key, bool((body or {}).get("her_tap"))))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.approve(_be_data(tenant, ref), key, bool((body or {}).get("her_tap"))))
 
 
 @app.delete("/api/apps/{ref}/connect/actions/{key}", dependencies=[Depends(require_key)])
 async def apps_connect_action_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_action(_be_owner(tenant, ref), key))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_action(_be_data(tenant, ref), key))
 
 
 @app.post("/api/apps/{ref}/connect/actions/{key}/run", dependencies=[Depends(require_key)])
@@ -10515,7 +11438,7 @@ async def apps_connect_run(ref: str, key: str, body: dict, tenant: str = Depends
     def go():
         if not b.get("her_tap"):
             raise W.AppError("Sirf aapke tap se.", 403)
-        return CN.run(_be_owner(tenant, ref), key, str(b.get("row") or ""), "her_tap", wait=True)
+        return CN.run(_be_data(tenant, ref), key, str(b.get("row") or ""), "her_tap", wait=True)
     return await asyncio.to_thread(_be_owner_call, go)
 
 
@@ -10523,25 +11446,51 @@ async def apps_connect_run(ref: str, key: str, body: dict, tenant: str = Depends
 async def apps_connect_secret(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
     """{value}: typed in the app, sealed at once, returned by no route."""
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.set_secret(_be_owner(tenant, ref), name, str((body or {}).get("value") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.set_secret(_be_data(tenant, ref), name, str((body or {}).get("value") or "")))
 
 
 @app.delete("/api/apps/{ref}/connect/secrets/{name}", dependencies=[Depends(require_key)])
 async def apps_connect_secret_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.forget_secret(_be_owner(tenant, ref), name))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.forget_secret(_be_data(tenant, ref), name))
 
 
 @app.put("/api/apps/{ref}/connect/hooks", dependencies=[Depends(require_key)])
 async def apps_connect_hook_save(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_hook(_be_owner(tenant, ref), (body or {}).get("hook") or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.save_hook(_be_data(tenant, ref), (body or {}).get("hook") or {}))
 
 
 @app.delete("/api/apps/{ref}/connect/hooks/{key}", dependencies=[Depends(require_key)])
 async def apps_connect_hook_drop(ref: str, key: str, tenant: str = Depends(current_tenant)):
     from .appmaker import connect as CN
-    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_owner(tenant, ref), key))
+    return await asyncio.to_thread(_be_owner_call, lambda: CN.remove_hook(_be_data(tenant, ref), key))
+
+
+# ---- v0.425 RANG (App Sahayak Pillar G): custom native components (Kotlin + Swift) - house rules in code, her tap, build-proved.
+@app.get("/api/apps/{ref}/components", dependencies=[Depends(require_key)])
+async def apps_components(ref: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.listing(_be_owner(tenant, ref)))
+
+
+@app.post("/api/apps/{ref}/components/draft", dependencies=[Depends(require_key)])
+async def apps_component_draft(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """{words}: Opus drafts one component (Kotlin + Swift); refused when a house rule fails. Waits for her approval."""
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+
+
+@app.post("/api/apps/{ref}/components/{name}/approve", dependencies=[Depends(require_key)])
+async def apps_component_approve(ref: str, name: str, body: dict, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.approve(_be_owner(tenant, ref), name, bool((body or {}).get("her_tap"))))
+
+
+@app.delete("/api/apps/{ref}/components/{name}", dependencies=[Depends(require_key)])
+async def apps_component_drop(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .appmaker import custom as CU
+    return await asyncio.to_thread(_be_owner_call, lambda: CU.remove(_be_owner(tenant, ref), name))
 
 
 def _be_owner(tenant: str, ref: str):
@@ -10550,6 +11499,12 @@ def _be_owner(tenant: str, ref: str):
         r = A._find(s, tenant, ref)
         s.expunge(r)
     return r
+
+
+def _be_data(tenant: str, ref: str):
+    """v0.435 PARIVAAR: the app whose DATA she means - a rider / shop / staff app runs on its main app's backend."""
+    from .appmaker import family as FA
+    return FA.home(_be_owner(tenant, ref))
 
 
 def _be_owner_call(fn):
@@ -10564,26 +11519,26 @@ def _be_owner_call(fn):
 async def apps_data(ref: str, tenant: str = Depends(current_tenant)):
     """Her app's backend: lists, fields, rules, counts, the address the installed app talks to."""
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_view(_be_data(tenant, ref)))
 
 
 @app.get("/api/apps/{ref}/data/{coll}", dependencies=[Depends(require_key)])
 async def apps_data_rows(ref: str, coll: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: {"rows": BE.owner_rows(_be_owner(tenant, ref), coll)})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"rows": BE.owner_rows(_be_data(tenant, ref), coll)})
 
 
 @app.patch("/api/apps/{ref}/data/{coll}/{row_id}", dependencies=[Depends(require_key)])
 async def apps_data_update(ref: str, coll: str, row_id: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_update(_be_owner(tenant, ref), coll, row_id, body))
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.owner_update(_be_data(tenant, ref), coll, row_id, body))
 
 
 @app.post("/api/apps/{ref}/data/{coll}/{row_id}/credit-note", dependencies=[Depends(require_key)])
 async def apps_credit_note(ref: str, coll: str, row_id: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
     """v0.356 WAPSI: her credit note for an invoiced row (a return / a wrong bill), full value, with her reason."""
     from .appmaker import gst as G
-    return await asyncio.to_thread(_be_owner_call, lambda: G.credit(_be_owner(tenant, ref), coll, row_id,
+    return await asyncio.to_thread(_be_owner_call, lambda: G.credit(_be_data(tenant, ref), coll, row_id,
                                                                     str((body or {}).get("reason") or "")))
 
 
@@ -10617,7 +11572,7 @@ async def apps_turant_set(ref: str, body: dict, tenant: str = Depends(current_te
 async def apps_owndb(ref: str, tenant: str = Depends(current_tenant)):
     """The link, her connected databases (Profile > Postgres database), the provider list, sync lag."""
     from .appmaker import owndb as OD
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.status(_be_data(tenant, ref)))
 
 
 @app.post("/api/owndb/conns", dependencies=[Depends(require_key)])
@@ -10641,20 +11596,20 @@ async def apps_owndb_link(ref: str, body: dict, tenant: str = Depends(current_te
     """HER TAP {conn, mode: primary|mirror}: backup, her tables, every row copied, counts compared, then live."""
     from .appmaker import owndb as OD
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.link(_be_owner(tenant, ref), str(b.get("conn") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.link(_be_data(tenant, ref), str(b.get("conn") or ""),
                                                                    str(b.get("mode") or "primary")))
 
 
 @app.post("/api/apps/{ref}/owndb/unlink", dependencies=[Depends(require_key)])
 async def apps_owndb_unlink(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import owndb as OD
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.unlink(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.unlink(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/owndb/verify", dependencies=[Depends(require_key)])
 async def apps_owndb_verify(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import owndb as OD
-    return await asyncio.to_thread(_be_owner_call, lambda: OD.verify(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: OD.verify(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/owndb/sync", dependencies=[Depends(require_key)])
@@ -10663,12 +11618,12 @@ async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import owndb as OD
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         o = OD.cfg(r, fresh=True)
         if not o:
             raise OD.OwnDbError("Yeh app kisi database se judi nahi hai.", 404)
         n = OD.tick(force=True)
-        return {"ok": True, "synced": n, **OD.status(_be_owner(tenant, ref))}
+        return {"ok": True, "synced": n, **OD.status(_be_data(tenant, ref))}
     return await asyncio.to_thread(_be_owner_call, go)
 
 
@@ -10676,14 +11631,14 @@ async def apps_owndb_sync(ref: str, tenant: str = Depends(current_tenant)):
 @app.get("/api/apps/{ref}/backups", dependencies=[Depends(require_key)])
 async def apps_backups(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backup as BK
-    return await asyncio.to_thread(_be_owner_call, lambda: {"backups": BK.snapshots(_be_owner(tenant, ref))})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"backups": BK.snapshots(_be_data(tenant, ref))})
 
 
 @app.post("/api/apps/{ref}/backups/now", dependencies=[Depends(require_key)])
 async def apps_backup_now(ref: str, tenant: str = Depends(current_tenant)):
     """A snapshot now (her button)."""
     from .appmaker import backup as BK
-    return await asyncio.to_thread(_be_owner_call, lambda: BK.snapshot(_be_owner(tenant, ref), "by hand", "manual"))
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.snapshot(_be_data(tenant, ref), "by hand", "manual"))
 
 
 @app.post("/api/apps/{ref}/backups/preview", dependencies=[Depends(require_key)])
@@ -10691,7 +11646,7 @@ async def apps_backup_preview(ref: str, body: dict, tenant: str = Depends(curren
     """{at: "YYYY-MM-DDTHH:MM" IST} or {name}: what a restore would change - nothing is changed."""
     from .appmaker import backup as BK
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: BK.preview(_be_owner(tenant, ref), str(b.get("at") or ""), str(b.get("name") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.preview(_be_data(tenant, ref), str(b.get("at") or ""), str(b.get("name") or "")))
 
 
 @app.post("/api/apps/{ref}/backups/restore", dependencies=[Depends(require_key)])
@@ -10699,7 +11654,7 @@ async def apps_backup_restore(ref: str, body: dict, tenant: str = Depends(curren
     """HER TAP: the app's rows back to a snapshot {name} or a minute {at} (a safety snapshot is taken first)."""
     from .appmaker import backup as BK
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: BK.restore(_be_owner(tenant, ref), str(b.get("at") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: BK.restore(_be_data(tenant, ref), str(b.get("at") or ""),
                                                                       str(b.get("name") or ""), bool(b.get("members"))))
 
 
@@ -10709,7 +11664,7 @@ async def apps_export(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backup as BK
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         return r, BK.export(r)
     r, data = await asyncio.to_thread(_be_owner_call, go)
     name = re.sub(r"[^A-Za-z0-9_-]+", "-", f"{r.name or 'app'}-{r.number}-data").strip("-") + ".zip"
@@ -10720,41 +11675,41 @@ async def apps_export(ref: str, tenant: str = Depends(current_tenant)):
 @app.get("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
 async def apps_usage(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import meter as MT
-    return await asyncio.to_thread(_be_owner_call, lambda: MT.usage(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.usage(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/usage", dependencies=[Depends(require_key)])
 async def apps_usage_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """Her limits {rows, files_mb, writes_day} (never above the ceiling, never below what is used)."""
     from .appmaker import meter as MT
-    return await asyncio.to_thread(_be_owner_call, lambda: MT.set_limits(_be_owner(tenant, ref), body or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: MT.set_limits(_be_data(tenant, ref), body or {}))
 
 
 # ---- v0.382 DIMAAG: her side of the app's logic (Opus drafts, the checker proves, HER tap applies)
 @app.get("/api/apps/{ref}/logic", dependencies=[Depends(require_key)])
 async def apps_logic(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.view(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/logic/draft", dependencies=[Depends(require_key)])
 async def apps_logic_draft(ref: str, body: dict | None = None, tenant: str = Depends(current_tenant)):
     """{words}: Opus writes the logic for this app's real lists; checked; kept as a DRAFT (her live app unchanged)."""
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.draft(_be_owner(tenant, ref), str((body or {}).get("words") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.draft(_be_data(tenant, ref), str((body or {}).get("words") or "")))
 
 
 @app.delete("/api/apps/{ref}/logic/draft", dependencies=[Depends(require_key)])
 async def apps_logic_discard(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.discard(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.discard(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/logic/apply", dependencies=[Depends(require_key)])
 async def apps_logic_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """HER TAP: {hash} = the exact draft she saw goes live (new lists / fields first, then the logic, then a recompute)."""
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.apply(_be_owner(tenant, ref), str((body or {}).get("hash") or "")))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.apply(_be_data(tenant, ref), str((body or {}).get("hash") or "")))
 
 
 @app.put("/api/apps/{ref}/logic", dependencies=[Depends(require_key)])
@@ -10762,13 +11717,13 @@ async def apps_logic_save(ref: str, body: dict, tenant: str = Depends(current_te
     """The console editor {logic, lists, fields}: the same checker; saved + applied only when it has zero errors."""
     from .appmaker.logic import service as LS
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.save(_be_owner(tenant, ref), b.get("logic") or {}, b.get("lists"), b.get("fields")))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.save(_be_data(tenant, ref), b.get("logic") or {}, b.get("lists"), b.get("fields")))
 
 
 @app.post("/api/apps/{ref}/logic/switch", dependencies=[Depends(require_key)])
 async def apps_logic_switch(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import service as LS
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.switch(_be_owner(tenant, ref), bool((body or {}).get("on"))))
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.switch(_be_data(tenant, ref), bool((body or {}).get("on"))))
 
 
 @app.post("/api/apps/{ref}/logic/test", dependencies=[Depends(require_key)])
@@ -10776,7 +11731,7 @@ async def apps_logic_test(ref: str, body: dict, tenant: str = Depends(current_te
     """Try a formula {coll, expr, row} on a real row - nothing saved."""
     from .appmaker.logic import service as LS
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: LS.test(_be_owner(tenant, ref), str(b.get("coll") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: LS.test(_be_data(tenant, ref), str(b.get("coll") or ""),
                                                                    str(b.get("expr") or ""), str(b.get("row") or "")))
 
 
@@ -10784,20 +11739,20 @@ async def apps_logic_test(ref: str, body: dict, tenant: str = Depends(current_te
 async def apps_logic_run(ref: str, name: str, tenant: str = Depends(current_tenant)):
     """Run one scheduled job now (her button)."""
     from .appmaker.logic import engine as LE
-    return await asyncio.to_thread(_be_owner_call, lambda: LE.run_schedule(_be_owner(tenant, ref), name, force=True))
+    return await asyncio.to_thread(_be_owner_call, lambda: LE.run_schedule(_be_data(tenant, ref), name, force=True))
 
 
 @app.get("/api/apps/{ref}/logic/audit", dependencies=[Depends(require_key)])
 async def apps_logic_audit(ref: str, row: str = "", limit: int = 100, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import engine as LE
-    return await asyncio.to_thread(_be_owner_call, lambda: {"audit": LE.audit_list(_be_owner(tenant, ref), limit, row)})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"audit": LE.audit_list(_be_data(tenant, ref), limit, row)})
 
 
 @app.get("/api/apps/{ref}/approvals", dependencies=[Depends(require_key)])
 async def apps_approvals(ref: str, all: int = 0, tenant: str = Depends(current_tenant)):
     from .appmaker.logic import engine as LE
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: {"approvals": LE.approvals(_be_owner(tenant, ref), W.Who(owner=True), bool(all))})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"approvals": LE.approvals(_be_data(tenant, ref), W.Who(owner=True), bool(all))})
 
 
 @app.post("/api/apps/{ref}/approvals/{appr_id}", dependencies=[Depends(require_key)])
@@ -10806,7 +11761,7 @@ async def apps_decide(ref: str, appr_id: str, body: dict, tenant: str = Depends(
     from .appmaker.logic import engine as LE
     from .site import webapp as W
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: LE.decide(_be_owner(tenant, ref), appr_id, str(b.get("decision") or ""),
+    return await asyncio.to_thread(_be_owner_call, lambda: LE.decide(_be_data(tenant, ref), appr_id, str(b.get("decision") or ""),
                                                                      str(b.get("note") or ""), W.Who(owner=True)))
 
 
@@ -10814,7 +11769,7 @@ async def apps_decide(ref: str, appr_id: str, body: dict, tenant: str = Depends(
 async def apps_variants(ref: str, tenant: str = Depends(current_tenant)):
     """v0.362 VARIANTS: each product's sizes (name + own price)."""
     from .appmaker import variants as VR
-    return await asyncio.to_thread(_be_owner_call, lambda: VR.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: VR.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/variants", dependencies=[Depends(require_key)])
@@ -10822,7 +11777,7 @@ async def apps_variants_set(ref: str, body: dict, tenant: str = Depends(current_
     """v0.362 one product's sizes {product: id or name, variants: [{name, price}]} ([] removes them)."""
     from .appmaker import variants as VR
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: VR.save(_be_owner(tenant, ref), str(b.get("product") or ""), b.get("variants")))
+    return await asyncio.to_thread(_be_owner_call, lambda: VR.save(_be_data(tenant, ref), str(b.get("product") or ""), b.get("variants")))
 
 
 @app.get("/api/apps/{ref}/hisaab", dependencies=[Depends(require_key)])
@@ -10831,7 +11786,7 @@ async def apps_hisaab(ref: str, month: str = "", download: int = 0, tenant: str 
     from .appmaker import hisaab as HS
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         if download:
             return HS.zip_bytes(r, month)
         rep = HS.build(r, month)
@@ -10848,7 +11803,7 @@ async def apps_hisaab(ref: str, month: str = "", download: int = 0, tenant: str 
 async def apps_tally(ref: str, month: str = "", tenant: str = Depends(current_tenant)):
     """v0.374 TALLY EXPORT: the month's invoices + credit notes as Tally XML vouchers (Import > Vouchers in her Tally)."""
     from .appmaker import tally as TL
-    data, name, _n = await asyncio.to_thread(_be_owner_call, lambda: TL.file_bytes(_be_owner(tenant, ref), month))
+    data, name, _n = await asyncio.to_thread(_be_owner_call, lambda: TL.file_bytes(_be_data(tenant, ref), month))
     return Response(data, media_type="application/xml", headers={"Content-Disposition": f'attachment; filename="{name}"',
                                                                  "Cache-Control": "private, no-store"})
 
@@ -10857,14 +11812,14 @@ async def apps_tally(ref: str, month: str = "", tenant: str = Depends(current_te
 async def apps_tally_names(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.374 her Tally ledger names {party, sales, cgst, sgst, igst, round}."""
     from .appmaker import tally as TL
-    return await asyncio.to_thread(_be_owner_call, lambda: TL.set_names(_be_owner(tenant, ref), body))
+    return await asyncio.to_thread(_be_owner_call, lambda: TL.set_names(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/gstr1", dependencies=[Depends(require_key)])
 async def apps_gstr1(ref: str, month: str = "", tenant: str = Depends(current_tenant)):
     """v0.373 GSTR-1 FILE: the month's GSTR-1 JSON (GST offline tool shape) from her invoices + credit notes. Nothing is filed."""
     from .appmaker import gstr1 as GR
-    data, name = await asyncio.to_thread(_be_owner_call, lambda: GR.file_bytes(_be_owner(tenant, ref), month))
+    data, name = await asyncio.to_thread(_be_owner_call, lambda: GR.file_bytes(_be_data(tenant, ref), month))
     return Response(data, media_type="application/json", headers={"Content-Disposition": f'attachment; filename="{name}"',
                                                                   "Cache-Control": "private, no-store"})
 
@@ -10873,7 +11828,7 @@ async def apps_gstr1(ref: str, month: str = "", tenant: str = Depends(current_te
 async def apps_delivery(ref: str, tenant: str = Depends(current_tenant)):
     """v0.360 DELIVERY: fee, free above, PIN codes, opening hours."""
     from .appmaker import delivery as DL
-    return await asyncio.to_thread(_be_owner_call, lambda: DL.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: DL.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/delivery", dependencies=[Depends(require_key)])
@@ -10882,10 +11837,10 @@ async def apps_delivery_set(ref: str, body: dict, tenant: str = Depends(current_
     from .appmaker import delivery as DL
     b = body or {}
     if "holidays" in b:                                  # v0.377 her holidays
-        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_holidays(_be_owner(tenant, ref), b.get("holidays")))
+        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_holidays(_be_data(tenant, ref), b.get("holidays")))
     if "slots" in b:
-        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_slots(_be_owner(tenant, ref), b.get("slots"), b.get("days"), b.get("cutoff")))
-    return await asyncio.to_thread(_be_owner_call, lambda: DL.save(_be_owner(tenant, ref), body))
+        return await asyncio.to_thread(_be_owner_call, lambda: DL.save_slots(_be_data(tenant, ref), b.get("slots"), b.get("days"), b.get("cutoff")))
+    return await asyncio.to_thread(_be_owner_call, lambda: DL.save(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/chat", dependencies=[Depends(require_key)])
@@ -10893,8 +11848,8 @@ async def apps_chat(ref: str, member: str = "", tenant: str = Depends(current_te
     """v0.378 BAAT: her customers' threads (member= one thread)."""
     from .appmaker import baat as BT
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: BT.thread(_be_owner(tenant, ref), W.Who(owner=True), member) if member
-                                   else BT.threads(_be_owner(tenant, ref), W.Who(owner=True)))
+    return await asyncio.to_thread(_be_owner_call, lambda: BT.thread(_be_data(tenant, ref), W.Who(owner=True), member) if member
+                                   else BT.threads(_be_data(tenant, ref), W.Who(owner=True)))
 
 
 @app.post("/api/apps/{ref}/chat/{member}", dependencies=[Depends(require_key)])
@@ -10903,7 +11858,7 @@ async def apps_chat_reply(ref: str, member: str, body: dict, tenant: str = Depen
     from .appmaker import baat as BT
     from .site import webapp as W
     b = body or {}
-    return await asyncio.to_thread(_be_owner_call, lambda: BT.reply(_be_owner(tenant, ref), W.Who(owner=True), member,
+    return await asyncio.to_thread(_be_owner_call, lambda: BT.reply(_be_data(tenant, ref), W.Who(owner=True), member,
                                                                     str(b.get("text") or ""), bool(b.get("her_tap"))))
 
 
@@ -10912,15 +11867,15 @@ async def apps_khata(ref: str, member: str = "", tenant: str = Depends(current_t
     """v0.359 KHATA: who owes how much (member= one customer's entries)."""
     from .appmaker import khata as KH
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: KH.summary(_be_owner(tenant, ref), member) if member
-                                   else KH.dues(_be_owner(tenant, ref), W.Who(owner=True)))
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.summary(_be_data(tenant, ref), member) if member
+                                   else KH.dues(_be_data(tenant, ref), W.Who(owner=True)))
 
 
 @app.get("/api/apps/{ref}/khata-yaad", dependencies=[Depends(require_key)])
 async def apps_khata_yaad(ref: str, tenant: str = Depends(current_tenant)):
     """v0.375 KHATA YAAD: customers who owe + the ready reminder (wa.me link for her own phone, template allowed or not)."""
     from .appmaker import khata as KH
-    return await asyncio.to_thread(_be_owner_call, lambda: KH.reminders(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.reminders(_be_data(tenant, ref)))
 
 
 @app.post("/api/apps/{ref}/khata-yaad/{member}", dependencies=[Depends(require_key)])
@@ -10929,7 +11884,7 @@ async def apps_khata_yaad_send(ref: str, member: str, body: dict, tenant: str = 
     from .appmaker import khata as KH
     from .site import webapp as W
     b = body or {}
-    r = await asyncio.to_thread(_be_owner_call, lambda: _be_owner(tenant, ref))
+    r = await asyncio.to_thread(_be_owner_call, lambda: _be_data(tenant, ref))
     try:
         return await KH.send_reminder(r, member, str(b.get("template") or ""), bool(b.get("her_tap")))
     except W.AppError as e:
@@ -10941,7 +11896,7 @@ async def apps_khata_pay(ref: str, member: str, body: dict, tenant: str = Depend
     """v0.359 she records a customer's payment (cash / UPI ...; money never moves here)."""
     from .appmaker import khata as KH
     from .site import webapp as W
-    return await asyncio.to_thread(_be_owner_call, lambda: KH.payment(_be_owner(tenant, ref), member, (body or {}).get("amount"),
+    return await asyncio.to_thread(_be_owner_call, lambda: KH.payment(_be_data(tenant, ref), member, (body or {}).get("amount"),
                                                                       str((body or {}).get("mode") or "cash"),
                                                                       str((body or {}).get("note") or ""), W.Who(owner=True)))
 
@@ -10950,42 +11905,42 @@ async def apps_khata_pay(ref: str, member: str, body: dict, tenant: str = Depend
 async def apps_coupons(ref: str, tenant: str = Depends(current_tenant)):
     """v0.358 COUPON: her discount codes (uses, customers, live or not)."""
     from .appmaker import coupon as CP
-    return await asyncio.to_thread(_be_owner_call, lambda: CP.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: CP.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/coupons", dependencies=[Depends(require_key)])
 async def apps_coupons_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.358 make / change / delete one code."""
     from .appmaker import coupon as CP
-    return await asyncio.to_thread(_be_owner_call, lambda: CP.save(_be_owner(tenant, ref), body))
+    return await asyncio.to_thread(_be_owner_call, lambda: CP.save(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/stock", dependencies=[Depends(require_key)])
 async def apps_stock(ref: str, tenant: str = Depends(current_tenant)):
     """v0.357 STOCK: each product's stock + warning level (blank = unlimited)."""
     from .appmaker import stock as SK
-    return await asyncio.to_thread(_be_owner_call, lambda: SK.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: SK.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/stock", dependencies=[Depends(require_key)])
 async def apps_stock_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.357 set stock {items: {product id: {qty: n | null, low: n}}}."""
     from .appmaker import stock as SK
-    return await asyncio.to_thread(_be_owner_call, lambda: SK.set_items(_be_owner(tenant, ref), (body or {}).get("items") or {}))
+    return await asyncio.to_thread(_be_owner_call, lambda: SK.set_items(_be_data(tenant, ref), (body or {}).get("items") or {}))
 
 
 @app.get("/api/apps/{ref}/gst", dependencies=[Depends(require_key)])
 async def apps_gst(ref: str, tenant: str = Depends(current_tenant)):
     """v0.355 GST BILL: her GST details for this app (GSTIN, legal name, default rate / HSN, per-product HSN + rate)."""
     from .appmaker import gst as G
-    return await asyncio.to_thread(_be_owner_call, lambda: G.view(_be_owner(tenant, ref)))
+    return await asyncio.to_thread(_be_owner_call, lambda: G.view(_be_data(tenant, ref)))
 
 
 @app.put("/api/apps/{ref}/gst", dependencies=[Depends(require_key)])
 async def apps_gst_set(ref: str, body: dict, tenant: str = Depends(current_tenant)):
     """v0.355 set them; gstin "" = plain receipts again (issued invoice numbers are kept)."""
     from .appmaker import gst as G
-    return await asyncio.to_thread(_be_owner_call, lambda: G.set_settings(_be_owner(tenant, ref), body))
+    return await asyncio.to_thread(_be_owner_call, lambda: G.set_settings(_be_data(tenant, ref), body))
 
 
 @app.get("/api/apps/{ref}/data/{coll}/{row_id}/receipt", dependencies=[Depends(require_key)])
@@ -10994,7 +11949,7 @@ async def apps_data_receipt(ref: str, coll: str, row_id: str, doc: str = "", ten
     from .appmaker import receipt as RC
 
     def go():
-        r = _be_owner(tenant, ref)
+        r = _be_data(tenant, ref)
         doc_ = "invoice" if doc == "invoice" else ""
         data = RC.for_owner(r, coll, row_id, doc_)
         row = RC._load(r, coll, row_id)[1]
@@ -11137,14 +12092,14 @@ async def apps_crashes(ref: str, tenant: str = Depends(current_tenant)):
 @app.get("/api/apps/{ref}/members", dependencies=[Depends(require_key)])
 async def apps_members(ref: str, tenant: str = Depends(current_tenant)):
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: {"members": BE.members(_be_owner(tenant, ref))})
+    return await asyncio.to_thread(_be_owner_call, lambda: {"members": BE.members(_be_data(tenant, ref))})
 
 
 @app.post("/api/apps/{ref}/members/{member_id}/role", dependencies=[Depends(require_key)])
 async def apps_member_role(ref: str, member_id: str, body: dict, tenant: str = Depends(current_tenant)):
     """She makes an account staff / admin (a new account of a staff app sees nothing until she does)."""
     from .appmaker import backend as BE
-    return await asyncio.to_thread(_be_owner_call, lambda: BE.set_role(_be_owner(tenant, ref), member_id,
+    return await asyncio.to_thread(_be_owner_call, lambda: BE.set_role(_be_data(tenant, ref), member_id,
                                                                        str(body.get("role") or "")))
 
 

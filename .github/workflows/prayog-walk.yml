@@ -1,0 +1,52 @@
+name: Prayogshala walk
+
+# P1 / P6 of docs/PRAYOG_PHYSICS_LAKH_PLAN.md: every experiment (catalogue labs + their variants) is opened in headless
+# Chromium and run through its own buttons; its result must land within tolerance of the true value. Sharded so the
+# catalogue can grow to 1 lakh (raise SHARDS when it does). Nothing is deployed from here.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/app/prayog/**'
+      - 'server/app/static/prayog/**'
+      - 'server/tools/prayog_walk.js'
+      - 'server/tools/prayog_serve.py'
+      - '.github/workflows/prayog-walk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  walk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      SHARDS: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install
+        run: |
+          pip install -q fastapi==0.115.6 uvicorn==0.34.0
+          npm install --no-save --prefix server playwright@1.49.1
+          npx --prefix server playwright install --with-deps chromium
+      - name: Serve Prayogshala
+        working-directory: server
+        run: |
+          python -m uvicorn tools.prayog_serve:app --port 8791 > serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf localhost:8791/api/prayog/labs?limit=1 > /dev/null && break; sleep 1; done
+      - name: Walk shard ${{ matrix.shard }} of ${{ env.SHARDS }}
+        working-directory: server
+        env:
+          SHARD: ${{ matrix.shard }}/${{ env.SHARDS }}
+        run: node tools/prayog_walk.js http://localhost:8791

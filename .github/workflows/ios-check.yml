@@ -46,7 +46,7 @@ jobs:
       - name: Every screen on an iPhone simulator (no crash + pictures)
         working-directory: ${{ runner.temp }}/ios
         run: |
-          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" ! -name "*-Runner.app" | head -1)
           bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios-shots" $(cat hoola_qa/screens.txt)
       - name: Every button on every screen (flow walk, v0.345)
         working-directory: ${{ runner.temp }}/ios
@@ -54,7 +54,7 @@ jobs:
       - name: App Store screenshots are 1320x2868 (iPhone Pro Max simulator, v0.338)
         working-directory: ${{ runner.temp }}/ios
         run: |
-          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" ! -name "*-Runner.app" | head -1)
           SIM_KIND=max bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/store-shots" home cart orders
           python3 - "$GITHUB_WORKSPACE/store-shots/screens" <<'PY'
           import sys
@@ -72,7 +72,7 @@ jobs:
       - name: iPad - every screen on a 13-inch iPad Pro + the 13-inch App Store screenshots (v0.364)
         working-directory: ${{ runner.temp }}/ios
         run: |
-          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" ! -name "*-Runner.app" | head -1)
           SIM_KIND=ipad bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ipad-shots" $(cat hoola_qa/screens.txt)
           python3 - "$GITHUB_WORKSPACE/ipad-shots" <<'PY'
           import json, sys
@@ -95,6 +95,7 @@ jobs:
           cache: pip
           cache-dependency-path: server/requirements.txt
       - name: A real Hoola server for the app's backend (e2e)
+        id: e2e_server
         working-directory: server
         env:
           DATABASE_URL: sqlite:///${{ runner.temp }}/e2e.db
@@ -110,9 +111,9 @@ jobs:
           for i in $(seq 1 120); do curl -sf -o /dev/null http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema && break; sleep 1; done
           curl -sf http://127.0.0.1:8077/api/app-api/akf1c7a2e0000000000000001/schema | head -c 200
       - name: The iPhone app against the real server (sign up, order, paid claim, crash report)
-        run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots "$(find "$RUNNER_TEMP/ios/dd/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' | head -1)"
+        run: bash server/app/appmaker/ios/ci_e2e.sh in.hoola.preview.fixture ios-shots "$(find "$RUNNER_TEMP/ios/dd/Build/Products/Debug-iphonesimulator" -maxdepth 1 -name '*.app' ! -name '*-Runner.app' | head -1)"
       - name: The order the iPhone app placed is on the server (priced by the server, sent once)
-        if: always()
+        if: always() && steps.e2e_server.outcome == 'success'
         working-directory: server
         env:
           DATABASE_URL: sqlite:///${{ runner.temp }}/e2e.db
@@ -175,7 +176,7 @@ jobs:
       - name: Every screen + every button on an iPhone simulator
         working-directory: ${{ runner.temp }}/ios2
         run: |
-          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" ! -name "*-Runner.app" | head -1)
           bash hoola_qa/sim_check.sh "$APP" "$(cat hoola_qa/bundle.txt)" "$GITHUB_WORKSPACE/ios2-shots" $(cat hoola_qa/screens.txt)
           bash hoola_qa/flow_check.sh "$GITHUB_WORKSPACE/ios2-shots"
       - name: HOOLA QA report (field-service app)

@@ -168,15 +168,19 @@ def _active(x: AppRider | None) -> bool:
     return now() - _aware(x.started) < timedelta(hours=SHIFT_HOURS)
 
 
-def _staff(w: W.Who) -> None:
+def _staff(w: W.Who, r: AppProject | None = None) -> None:
     if w.m is None:
         raise TrackError("Pehle login kijiye.", 401)
     if not w.staff:
+        if r is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR: an approved delivery partner too
+            from . import family as FA
+            if FA.is_rider(r, w):
+                return
         raise TrackError("Shift sirf staff ke liye hai.", 403)
 
 
 def shift(r: AppProject, w: W.Who, on: bool) -> dict[str, Any]:
-    _staff(w)
+    _staff(w, r)
     st = _on(r) if on else settings(r)
     ensure_table()
     name = (w.m.name or w.m.email.split("@")[0])
@@ -237,7 +241,7 @@ def _orders_of(r: AppProject, st: dict[str, Any], rider: str, here: tuple[float,
 
 def position(r: AppProject, w: W.Who, body: dict[str, Any]) -> dict[str, Any]:
     """POST /track/pos from the rider's phone while the shift is on."""
-    _staff(w)
+    _staff(w, r)
     st = _on(r)
     try:
         lat, lng = float(body.get("lat")), float(body.get("lng"))
@@ -351,7 +355,7 @@ def riders(r: AppProject, w: W.Who) -> dict[str, Any]:
 
 def mine(r: AppProject, w: W.Who) -> dict[str, Any]:
     """The rider's own shift state (the shift button)."""
-    _staff(w)
+    _staff(w, r)
     x = _rider(r, w.id)
     return {"on": _active(x), "started": _aware(x.started).isoformat() if _active(x) and x.started else "",
             "tracking": settings(r)["on"]}

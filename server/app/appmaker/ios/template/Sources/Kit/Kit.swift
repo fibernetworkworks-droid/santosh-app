@@ -33,7 +33,77 @@ enum Words {
     static var isOnline: String { t("online", "ऑनलाइन", "online") }
     static var isTyping: String { t("typing…", "लिख रहे हैं…", "likh rahe hain…") }
     static var live: String { t("Live", "लाइव", "Live") }
+    // v0.425 RANG
+    static var signAgain: String { t("Sign again", "फिर से साइन करें", "Phir se sign karein") }
+    static var useSignature: String { t("Use this signature", "यह साइन लें", "Yeh sign lein") }
+    static var clearWord: String { t("Clear", "मिटाएँ", "Mitayein") }
+    static var addPhotos: String { t("Add photos", "फ़ोटो जोड़ें", "Photos jodiye") }
+    static var videoTooBig: String { t("The video did not open or is over 50 MB.", "वीडियो नहीं खुला या 50 MB से बड़ा है।", "Video nahi khula ya 50 MB se bada hai.") }
+    static var videoReady: String { t("Video ready - it is sent with the form.", "वीडियो तैयार - फ़ॉर्म के साथ जाएगा।", "Video taiyaar - form ke saath jayega.") }
+    static var videoSaved: String { t("Video saved.", "वीडियो सेव है।", "Video save hai.") }
+    static var addVideo: String { t("Add video", "वीडियो जोड़ें", "Video jodiye") }
+    static var changeVideo: String { t("Change video", "वीडियो बदलें", "Video badlein") }
+    static var recording: String { t("Recording…", "रिकॉर्ड हो रहा है…", "Record ho raha hai…") }
+    static var record: String { t("Record", "रिकॉर्ड करें", "Record karein") }
+    static var recordAgain: String { t("Record again", "फिर रिकॉर्ड करें", "Phir record karein") }
+    static var stopWord: String { t("Stop", "रोकें", "Rokein") }
+    static var micDenied: String { t("Microphone not allowed. You can type instead.", "माइक की अनुमति नहीं मिली। लिख दीजिए।", "Mic ki anumati nahi mili. Likh dijiye.") }
+    static var listWord: String { t("List", "सूची", "List") }
+    static var playVideo: String { t("Play video", "वीडियो चलाएँ", "Video chalayein") }
+    static var pauseWord: String { t("Pause", "रोकें", "Rokein") }
+    static var playWord: String { t("Play", "चलाएँ", "Chalayein") }
+    static var pdfFailed: String { t("The PDF did not open.", "PDF नहीं खुला।", "PDF nahi khula.") }
+    static var pageWord: String { t("Page", "पेज", "Page") }
+    static var prevWord: String { t("Back", "पीछे", "Peeche") }
+    static var nextWord: String { t("Next", "आगे", "Aage") }
+    static var skipWord: String { t("Skip", "छोड़ें", "Chhodein") }
+    static var doneWord: String { t("Done", "हो गया", "Ho gaya") }
     static var connDone: String { t("Done.", "हो गया।", "Ho gaya.") }   // v0.424 JODO
+    // v0.455 SURAKSHIT LOGIN
+    static var sgWhy: String { t("Sign in to order, book and see what you asked for.", "ऑर्डर, बुकिंग और अपनी जानकारी के लिए साइन इन करें।", "Order, booking aur apni jaankari ke liye sign in karein.") }
+    static var sgPhone: String { t("Mobile number", "मोबाइल नंबर", "Mobile number") }
+    static var sgSendCode: String { t("Send the code", "कोड भेजें", "Code bhejiye") }
+    static var sgSentTo: String { t("Code sent to", "कोड भेजा गया", "Code bheja gaya") }
+    static var sgCode: String { t("6-digit code", "6 अंकों का कोड", "6 ank ka code") }
+    static var sgAgain: String { t("Change number / send again", "नंबर बदलें / फिर भेजें", "Number badlein / phir bhejiye") }
+    static var sgUseEmail: String { t("Use email instead", "ईमेल से करें", "Email se karein") }
+    static var sgUsePhone: String { t("Use mobile number instead", "मोबाइल नंबर से करें", "Mobile number se karein") }
+    static var sgConsent: String { t("I agree to the privacy notice", "मैं प्राइवेसी नोटिस से सहमत हूँ", "Main privacy notice se sehmat hoon") }
+    static var sgNever: String { t("The code goes only into this box. Nobody from this business or Hoola will ever ask you for it.", "कोड सिर्फ इसी बॉक्स में डालें। यह बिज़नेस या Hoola आपसे कोड कभी नहीं माँगेगा।", "Code sirf isi box mein daaliye. Yeh business ya Hoola aapse code kabhi nahi maangega.") }
+    static var sgSecurity: String { t("Security", "सुरक्षा", "Suraksha") }
+    static var sgLogins: String { t("Where you are signed in", "आप कहाँ साइन इन हैं", "Aap kahan sign in hain") }
+    static var sgThisPhone: String { t("this phone", "यही फ़ोन", "yahi phone") }
+    static var sgEnd: String { t("Sign out", "साइन आउट", "Sign out") }
+    static var sgEndAll: String { t("Sign out everywhere", "हर जगह से साइन आउट", "Har jagah se sign out") }
+    static var sg2fa: String { t("Second step (authenticator)", "दूसरा चरण (ऑथेंटिकेटर)", "Doosra step (authenticator)") }
+    static var sg2faWhy: String { t("Staff accounts can add a 6-digit code from an authenticator app as a second step.", "स्टाफ अकाउंट दूसरे चरण के लिए ऑथेंटिकेटर ऐप का कोड जोड़ सकते हैं।", "Staff account doosre step ke liye authenticator app ka code jod sakte hain.") }
+    static var sg2faStart: String { t("Turn it on", "चालू करें", "Chalu karein") }
+    static var sg2faAdd: String { t("Add this key in your authenticator app, then type the code it shows.", "यह की अपने ऑथेंटिकेटर ऐप में डालें, फिर उसका कोड लिखें।", "Yeh key apne authenticator app mein daaliye, phir uska code likhiye.") }
+    static var sg2faOn: String { t("Second step is on.", "दूसरा चरण चालू है।", "Doosra step chalu hai.") }
+    static var sg2faIsOn: String { t("Second step is on for this account.", "इस अकाउंट पर दूसरा चरण चालू है।", "Is account par doosra step chalu hai.") }
+    static var sg2faOff: String { t("Turn it off", "बंद करें", "Band karein") }
+    static var sg2faMust: String { t("The business asks every staff account to keep the second step on.", "बिज़नेस चाहता है कि हर स्टाफ अकाउंट पर दूसरा चरण चालू रहे।", "Business chahta hai ki har staff account par doosra step chalu rahe.") }
+    static var sgMyData: String { t("My data", "मेरी जानकारी", "Meri jaankari") }
+    static var sgMyDataWhy: String { t("Take a copy of everything this account has here.", "इस अकाउंट की सारी जानकारी की कॉपी लें।", "Is account ki saari jaankari ki copy lijiye.") }
+    static var sgMyDataGet: String { t("Copy my data", "मेरी जानकारी कॉपी करें", "Meri jaankari copy karein") }
+    static var sgMyDataReady: String { t("Copied. Paste it anywhere to keep it.", "कॉपी हो गई। कहीं पेस्ट कर लें।", "Copy ho gayi. Kahin paste kar lijiye.") }
+    // v0.435 PARIVAAR: the partner app's jobs screen
+    static var ptJobs: String { t("Jobs", "काम", "Kaam") }
+    static var ptLoginWhy: String { t("Sign in with your partner account to see your jobs.", "अपने काम देखने के लिए पार्टनर खाते से साइन इन करें।", "Apne kaam dekhne ke liye partner account se sign in karein.") }
+    static var ptWaiting: String { t("Your application is waiting", "आपकी अर्ज़ी रुकी है", "Aapki arzi ruki hai") }
+    static var ptWaitingWhy: String { t("The business will approve it. Jobs appear here after that.", "बिज़नेस इसे मंज़ूर करेगा। उसके बाद काम यहाँ दिखेंगे।", "Business ise manzoor karega. Uske baad kaam yahan dikhenge.") }
+    static var ptApply: String { t("Become a partner", "पार्टनर बनें", "Partner baniye") }
+    static var ptApplyWhy: String { t("Send an application. The business approves every partner itself.", "अर्ज़ी भेजें। हर पार्टनर को बिज़नेस खुद मंज़ूर करता है।", "Arzi bhejiye. Har partner ko business khud manzoor karta hai.") }
+    static var ptApplyBtn: String { t("Send application", "अर्ज़ी भेजें", "Arzi bhejiye") }
+    static var ptMine: String { t("My jobs", "मेरे काम", "Mere kaam") }
+    static var ptNew: String { t("New jobs", "नए काम", "Naye kaam") }
+    static var ptPast: String { t("Finished", "पूरे हुए", "Poore hue") }
+    static var ptNone: String { t("Nothing for you right now.", "अभी आपके लिए कुछ नहीं।", "Abhi aapke liye kuch nahi.") }
+    static var ptNoOffers: String { t("No new jobs right now.", "अभी कोई नया काम नहीं।", "Abhi koi naya kaam nahi.") }
+    static var ptTake: String { t("Take this job", "यह काम लें", "Yeh kaam lein") }
+    static var ptRoute: String { t("Route", "रास्ता", "Raasta") }
+    static var ptRefresh: String { t("Refresh", "ताज़ा करें", "Taaza karein") }
+    static var ptRetry: String { t("Try again", "फिर कोशिश करें", "Phir koshish karein") }
     // v0.419 PAISA
     static var payOnline: String { t("Pay online", "ऑनलाइन भुगतान", "Online pay karein") }
     static var opening: String { t("Opening…", "खुल रहा है…", "Khul raha hai…") }

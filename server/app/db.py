@@ -751,6 +751,7 @@ def init_db(url: str | None = None):
     from .reels import models as _reels_models  # noqa: F401
     from .motion import models as _motion_models  # noqa: F401
     from . import idvault as _idvault  # noqa: F401
+    from . import mapsbill as _mapsbill  # noqa: F401  (v0.449 Maps spend, free caps, place_id cache)
     from . import voicestyle as _voicestyle  # noqa: F401  (v0.119 how she speaks, mis-hearings, her words)
     from .site import models as _site_models  # noqa: F401  (v0.121 Website Sahayak)
     from .site import hosting_models as _site_hosting  # noqa: F401  (v0.122 hosts, DNS plans, her keys)
@@ -762,6 +763,7 @@ def init_db(url: str | None = None):
     from .appmaker import owndb_conns as _app_owndb_conns  # noqa: F401  (v0.404 her MySQL / MongoDB / Firebase connections, sealed)
     from .appmaker import live as _app_live  # noqa: F401  (v0.407 ABHI ABHI: presence / typing signals for live apps)
     from .appmaker import track as _app_track  # noqa: F401  (v0.412 NAKSHA LIVE: rider shifts + one current position)
+    from .appmaker import family as _app_family  # noqa: F401  (v0.435 PARIVAAR: partners of a multi-app product)
     from .appmaker import connect as _app_connect  # noqa: F401  (v0.424 JODO: sealed connector secrets + run log)
     from .appmaker import pay as _app_pay  # noqa: F401  (v0.419 PAISA: her gateway keys (sealed), payments, refunds, AutoPay)
     from .appmaker import owndb as _app_owndb  # noqa: F401  (v0.396 her own database per app: the write-through hook)
@@ -770,6 +772,7 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -850,6 +853,10 @@ def init_db(url: str | None = None):
     from .travel import models as _travel  # noqa: F401
     from .warehouse import models as _warehouse  # noqa: F401
     from .fleet import models as _fleet  # noqa: F401
+    from . import ownmap as _ownmap  # noqa: F401  (v0.468 her own pins / areas)
+    from .agent import research_plan as _research_plan  # noqa: F401  (v0.472 research plans waiting for her Haan)
+    from .research import store as _research_store  # noqa: F401  (v0.475 background research runs)
+    from .research import watch as _research_watch  # noqa: F401  (v0.480 watched research topics)
     from .courier import models as _courier  # noqa: F401
     from .drivers import models as _drivers  # noqa: F401
     from .logistics import models as _logistics  # noqa: F401
@@ -907,6 +914,8 @@ def init_db(url: str | None = None):
     from . import turn_inbox as _turn_inbox  # noqa: F401  (v0.192.0 the durable accepted-message inbox - registered
         # HERE on day one, the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
+    from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
+        # HERE on day one AND self-healing via home.ensure_table(), same lesson)
     from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session
         # log - registered HERE on day one AND self-healing via eventlog.ensure_table(), same lesson)
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
@@ -929,6 +938,11 @@ def init_db(url: str | None = None):
     from .gamedesk import sim as _gamesim  # noqa: F401  (v0.423 training simulators)
     from .gamedesk import twin as _gametwin  # noqa: F401  (v0.423 digital twin)
     from .gamedesk import vfx as _gamevfx  # noqa: F401  (v0.423 VFX pipeline)
+    from .gamedesk import runtime as _gameruntime  # noqa: F401  (v0.425 Hoola Runtime telemetry)
+    from .gamedesk import editor as _gameeditor  # noqa: F401  (v0.425 editor tokens + MCP)
+    from .gamedesk import liveops as _gameliveops  # noqa: F401  (v0.428 live ops: crash groups)
+    from .gamedesk import bigstudio as _gamebig  # noqa: F401  (v0.433 big-studio mode: Unity / Unreal projects)
+    from .gamedesk import arena as _gamearena  # noqa: F401  (v0.447 Game Arena: runs, items, duels)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
@@ -941,6 +955,10 @@ def init_db(url: str | None = None):
     from . import callrating as _callrating  # noqa: F401
     from . import yaad as _yaad  # noqa: F401  (v0.108 summaries + memory index)
     from . import docdesk as _docdesk  # noqa: F401  (v0.108 document desk + Sheet Milaan)
+    from .construction import models as _construction_models  # noqa: F401  (v0.512 Construction Wave 1:
+        # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
+        # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
+        # stays without its table)
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables

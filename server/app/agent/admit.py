@@ -126,7 +126,16 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "ar game", "headset", "oculus", "quest 3", "hand tracking",
                  # v0.423 batch 4: simulators, digital twin, VFX pipeline
                  "flight simulator", "training simulator", "orbit simulation", "driving simulator", "digital twin",
-                 "factory simulation", "line simulation", "vfx pipeline", "render farm", "aces colour", "aces color", "exr"),
+                 "factory simulation", "line simulation", "vfx pipeline", "render farm", "aces colour", "aces color", "exr",
+                 # v0.425 Phase 8: runtime + editor
+                 "replay test", "game replay", "game telemetry", "retention", "godot editor", "godot plugin", "ask hoola panel",
+                 # v0.428 Phase 9: live ops
+                 "live ops", "liveops", "a/b test", "ab test", "live event", "game event", "game crash", "hotfix",
+                 "patch check", "arpdau", "game revenue", "game ka event", "game ka a/b",
+                 # v0.433 Phase 10: big-studio mode
+                 "unity", "unreal", "unreal engine", "ue5", "big studio", "hoola crew plugin", "editor plugin",
+                 # v0.447 Game Arena
+                 "game arena", "games arena", "game ka score", "game duel", "game originality"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",
@@ -186,6 +195,16 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "itadmin": ("it admin", "itadmin", "office wifi", "office network"),
     "devops": ("devops", "deploy", "server", "uptime"),
     "dev": ("dev", "developer", "code", "bug", "software"),
+    # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
+    # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
+    "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",
+                    "product idea", "business idea", "idea pe soch", "shuru karne se pehle",
+                    "officehours_dekho"),
+    # v0.502 DHARA (her workflows, the n8n lane): recurring-automation words. Tight keys - "kaam"
+    # alone is the kaam lane, "reminder" is life; only workflow-shaped asks open dhara.
+    "dhara": ("workflow", "workflows", "dhara", "automation", "automate", "auto chalu", "apne aap chal",
+              "roz ka automatic", "har din automatic", "jab bhi", "webhook", "dhara_list", "dhara_save",
+              "dhara_run", "dhara_runs", "dhara_control", "dhara_dsl", "workflow file", "export workflow", "import workflow", "backup workflow"),
     "brand": ("brand", "branding"),
     "ads": ("ads", "advertis", "meta ad", "google ad", "campaign chalao"),
     "seo": ("seo", "google rank", "search rank"),
@@ -243,6 +262,44 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "desk2": ("desk",),
     "team": ("agents", "agent lagao", "agent banao", "team banao", "team laga", "crew", "deploy",
              "parallel", "kai agents", "multiple agents", "agents lagao", "madadgar dal", "team se karo"),
+    # v0.479 HOOLA SMART HOME: ghar ke devices (Home Assistant). Fridge / geyser words bhi yahin
+    # admit hote hain TAAKI Hoola politely refuse kar sake (read-only guard app/home.py mein).
+    "home": ("home assistant", "smart home", "smart bulb", "smart light", "smart plug", "smart speaker",
+             "ghar ki light", "ghar ki lights", "ghar ka", "ghar ke device", "ghar ke devices",
+             "light on", "light off", "light band", "light jalao", "light bujha", "lights band", "lights on",
+             "bulb", "led strip", "dim ", "mood light",
+             "pankha", "fan chala", "fan band", "fan on", "fan off", "fan band karo",
+             "ac chala", "ac band", "ac on", "ac off", "ac lagao", "ac temperature", "ac 24", "ac 22", "ac 26",
+             "thermostat", "hvac", "temperature set",
+             "curtain", "curtains", "parda", "parde", "blind", "blinds", "shutter", "shutters",
+             "taala", "lock khol", "lock kar", "door lock", "main door",
+             "home_devices", "home_state", "home_on", "home_off", "home_link",
+             "fridge", "refrigerator", "washing machine", "geyser", "washer",
+             "home assistant link", "smart plug on", "device band karo", "device chalao", "saari lights"),
+    "byox": ("build your own", "byox", "from scratch", "scratch se banao", "scratch se banana",
+             "implement a", "write a compiler", "write a database", "write a shell", "write a web server",
+             "build a database", "build a git", "build a compiler", "build a shell", "build a browser",
+             "build a container", "build an os", "build an operating system", "build a renderer",
+             "build a torrent", "build a blockchain", "build a neural", "build a physics",
+             "systems programming", "how does git work", "how does a database work",
+             "how does tcp work", "how does docker work", "low-level programming",
+             "byox_list", "byox_guide", "byox_plan",
+             "3d renderer", "bittorrent client", "blockchain", "docker container",
+             "emulator", "frontend framework", "language interpreter", "memory allocator",
+             "regex engine", "search engine", "voxel engine", "web browser",
+             # v0.488 Hinglish / Hindi: how people actually ask
+             "khud se banao", "khud se banana", "khud banana sikhao", "banana sikhao", "banate hain",
+             "kaise banta hai", "kaise banate", "ground up", "bilkul scratch", "shuru se banao",
+             "systems seekhna", "sikhna chahta", "sikhna chahti", "kaise kaam karta hai git",
+             "kaise kaam karta hai database", "kaise kaam karta hai docker",
+             "खुद से बनाओ", "स्क्रैच से", "बनाना सिखाओ", "कैसे बनाते हैं"),
+
+    # v0.496 CODE GRAPH (Graphify): structure questions about a repo. No bare 'graph' (charts / dashboards own that word).
+    "graph": ("graphify", "knowledge graph", "code graph", "call graph", "dependency graph", "codebase map",
+              "map the codebase", "map this repo", "map this codebase", "who calls", "what calls", "what depends on",
+              "what breaks if", "impact of changing", "architecture of this repo", "codebase samjh", "code ka naksha",
+              "repo ka naksha", "kaun call karta", "kis par depend", "isko badalne se kya tootega", "graph_build",
+              "graph_ask", "graph_list"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys
@@ -277,6 +334,8 @@ _GENERIC = frozenset({
     "act", "skills", "business", "connect", "find", "me", "inbox", "send", "post", "digest", "booking", "remove",
     "detail", "action", "status", "list", "my", "chat", "config", "output", "discover", "open", "ask", "add",
     "pdf",       # making a pdf = docstudio; working ON a pdf = the "pdf work" intent
+    "build",     # v0.496 "build a website / app" is not a code-graph ask
+    "graph",     # v0.496 charts / dashboards own the bare word; the code-graph family has its own phrases
 })
 
 
@@ -488,6 +547,33 @@ def route(text: str, settings=None) -> dict[str, str]:
     return why
 
 
+# v0.430 SOCH KE JAWAB step 3: pylab (the locked Python sandbox - pandas / numpy / scipy / statsmodels / matplotlib,
+# no network, no secrets) lived in the Shiksha family and was in view for 1 of 50 hard asks, so Hoola did EMIs, CAGRs,
+# break-evens and forecasts in its head. It now rides with every ask that needs a worked-out number or real analysis.
+_CALC = re.compile(r"\bcalculat\w*|\bcompute\b|\bstatistic\w*|\baverage\b|\bmean\b|\bmedian\b|\bcorrelat\w*|"
+                   r"\bregression|\btrend\b|\bgrowth\s+rate|\bchart\b|\bgraph\b|\bplot\b|\bhisaab\s+laga|\bjod\s+ke|"
+                   r"\btotal\s+(?:kitna|nikal)|\bpercent\w*|\b\d+(?:\.\d+)?\s*%|\bganana|गणना|\bforecast|\bproject(?:ion|ed)\b",
+                   re.I)
+
+
+def calc_needed(text: str, why: dict | None = None) -> bool:
+    """Does this ask need numbers worked out / data analysed for real? A hard reasoning ask (agent/hard.py), a data job,
+    a reverse-engineering list, or plain calculation words."""
+    t = str(text or "")
+    if not t.strip() or t.lstrip().startswith(("[", "(")):
+        return False
+    why = why or {}
+    if any(str(v).startswith(("intent:data", "intent:business numbers")) for v in why.values()):
+        return True
+    if _CALC.search(t):
+        return True
+    try:
+        from . import hard
+        return hard.assess(t)["hard"]
+    except Exception:
+        return False
+
+
 def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     """The admitted set for one turn, routed on her words (+ goal steps / worker notes).
     None = admission is off or the valve tripped: caller uses the FULL registry (v0.190 behaviour)."""
@@ -501,6 +587,16 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     if why:
         adm.admit_families(why)
         adm.why = why
+    if calc_needed(text, why):
+        adm.extra.add("pylab")          # v0.430 SOCH KE JAWAB 3: every worked-out number comes from real code
+        adm.why = {**adm.why, "pylab": "calculation"}
+    try:                            # v0.473 R2: a research ask brings Hoola's own research engine into view
+        from . import hard as _hard
+        if "research" in set(FAMILY_OF.values()) and (_hard.research_wanted(text) or "research_status" in str(text) or "research_watch" in str(text)):
+            adm.admit_families(["research"])
+            adm.why = {**adm.why, "research": "research ask"}
+    except Exception:               # noqa: BLE001 - routing never fails a turn
+        pass
     STATS["turns"] += 1
     if adm.size() > max(40, int(getattr(settings, "tool_admit_cap", 220))):
         STATS["full_fallback"] += 1     # router over-matched: never worse than the full registry

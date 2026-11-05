@@ -4,20 +4,33 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Body, Depends, HTTPException
 from fastapi.responses import FileResponse, RedirectResponse
 
 THREE = Path(__file__).resolve().parent.parent / "appmaker" / "assets" / "three.min.js"
 
 
-def make_router() -> APIRouter:
+def make_router(require_key=None, current_tenant=None) -> APIRouter:
     from . import service as S
 
     r = APIRouter()
 
+    if require_key is not None and current_tenant is not None:
+        @r.post("/api/prayog/ask", dependencies=[Depends(require_key)])
+        def ask(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+            """Ask Hoola inside one experiment: answers ONLY about that lab, from its theory + the live state."""
+            b = dict(body or {})
+            try:
+                return S.ask(tenant, str(b.get("lab_id") or ""), str(b.get("question") or ""), b.get("turns") or [], b.get("state") or {})
+            except S.AskError as e:
+                raise HTTPException(e.status, str(e))
+
     @r.get("/api/prayog/labs")
-    def list_labs(q: str = "", field: str = "", limit: int = 100):
-        return {"labs": S.search(q, field, limit), "note": S.NOTE}
+    def list_labs(q: str = "", field: str = "", limit: int = 100, level: str = "", chapter: str = "", base: str = "",
+                  page: int = 1, variants: bool = True):
+        out = S.search_page(q, field, limit, level, chapter, base, page, variants)
+        out["note"] = S.NOTE
+        return out
 
     @r.get("/api/prayog/labs/{lab_id}")
     def get_lab(lab_id: str):

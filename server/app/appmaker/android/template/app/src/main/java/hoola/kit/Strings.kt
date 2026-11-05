@@ -104,6 +104,31 @@ object Strings {
     val isOnline get() = t("online", "ऑनलाइन", "ऑनलाइन", "online")
     val isTyping get() = t("typing…", "लिख रहे हैं…", "लिहित आहेत…", "likh rahe hain…")
     val live get() = t("Live", "लाइव", "लाइव्ह", "Live")
+    // v0.425 RANG
+    val signAgain get() = t("Sign again", "फिर से साइन करें", "फिर से साइन करें", "Phir se sign karein")
+    val useSignature get() = t("Use this signature", "यह साइन लें", "यह साइन लें", "Yeh sign lein")
+    val clearWord get() = t("Clear", "मिटाएँ", "मिटाएँ", "Mitayein")
+    val addPhotos get() = t("Add photos", "फ़ोटो जोड़ें", "फ़ोटो जोड़ें", "Photos jodiye")
+    val videoTooBig get() = t("The video did not open or is over 50 MB.", "वीडियो नहीं खुला या 50 MB से बड़ा है।", "वीडियो नहीं खुला या 50 MB से बड़ा है।", "Video nahi khula ya 50 MB se bada hai.")
+    val videoReady get() = t("Video ready - it is sent with the form.", "वीडियो तैयार - फ़ॉर्म के साथ जाएगा।", "वीडियो तैयार - फ़ॉर्म के साथ जाएगा।", "Video taiyaar - form ke saath jayega.")
+    val videoSaved get() = t("Video saved.", "वीडियो सेव है।", "वीडियो सेव है।", "Video save hai.")
+    val addVideo get() = t("Add video", "वीडियो जोड़ें", "वीडियो जोड़ें", "Video jodiye")
+    val changeVideo get() = t("Change video", "वीडियो बदलें", "वीडियो बदलें", "Video badlein")
+    val recording get() = t("Recording…", "रिकॉर्ड हो रहा है…", "रिकॉर्ड हो रहा है…", "Record ho raha hai…")
+    val record get() = t("Record", "रिकॉर्ड करें", "रिकॉर्ड करें", "Record karein")
+    val recordAgain get() = t("Record again", "फिर रिकॉर्ड करें", "फिर रिकॉर्ड करें", "Phir record karein")
+    val stopWord get() = t("Stop", "रोकें", "रोकें", "Rokein")
+    val micDenied get() = t("Microphone not allowed. You can type instead.", "माइक की अनुमति नहीं मिली। लिख दीजिए।", "माइक की अनुमति नहीं मिली। लिख दीजिए।", "Mic ki anumati nahi mili. Likh dijiye.")
+    val listWord get() = t("List", "सूची", "सूची", "List")
+    val playVideo get() = t("Play video", "वीडियो चलाएँ", "वीडियो चलाएँ", "Video chalayein")
+    val pauseWord get() = t("Pause", "रोकें", "रोकें", "Rokein")
+    val playWord get() = t("Play", "चलाएँ", "चलाएँ", "Chalayein")
+    val pdfFailed get() = t("The PDF did not open.", "PDF नहीं खुला।", "PDF नहीं खुला।", "PDF nahi khula.")
+    val pageWord get() = t("Page", "पेज", "पेज", "Page")
+    val prevWord get() = t("Back", "पीछे", "पीछे", "Peeche")
+    val nextWord get() = t("Next", "आगे", "आगे", "Aage")
+    val skipWord get() = t("Skip", "छोड़ें", "छोड़ें", "Chhodein")
+    val doneWord get() = t("Done", "हो गया", "हो गया", "Ho gaya")
     val connDone get() = t("Done.", "हो गया।", "झाले.", "Ho gaya.")     // v0.424 JODO
     // v0.419 PAISA
     val payOnline get() = t("Pay online", "ऑनलाइन भुगतान", "ऑनलाइन पैसे भरा", "Online pay karein")
@@ -240,4 +265,60 @@ object Strings {
     val step get() = t("Step", "चरण", "पायरी", "Step")
     val askedBy get() = t("Asked by", "माँगा", "मागितले", "Maanga")
     val allLists get() = t("All lists", "सारी सूचियाँ", "सर्व याद्या", "Saari lists")
+    // v0.435 PARIVAAR: the partner app's jobs screen
+    val ptJobs get() = t("Jobs", "काम", "कामे", "Kaam")
+    val ptLoginWhy get() = t("Sign in with your partner account to see your jobs.", "अपने काम देखने के लिए पार्टनर खाते से साइन इन करें।", "तुमची कामे पाहण्यासाठी पार्टनर खात्याने साइन इन करा.", "Apne kaam dekhne ke liye partner account se sign in karein.")
+    val ptWaiting get() = t("Your application is waiting", "आपकी अर्ज़ी रुकी है", "तुमचा अर्ज प्रलंबित आहे", "Aapki arzi ruki hai")
+    val ptWaitingWhy get() = t("The business will approve it. Jobs appear here after that.", "बिज़नेस इसे मंज़ूर करेगा। उसके बाद काम यहाँ दिखेंगे।", "व्यवसाय मंजूर करेल. त्यानंतर कामे इथे दिसतील.", "Business ise manzoor karega. Uske baad kaam yahan dikhenge.")
+    val ptApply get() = t("Become a partner", "पार्टनर बनें", "पार्टनर व्हा", "Partner baniye")
+    val ptApplyWhy get() = t("Send an application. The business approves every partner itself.", "अर्ज़ी भेजें। हर पार्टनर को बिज़नेस खुद मंज़ूर करता है।", "अर्ज पाठवा. प्रत्येक पार्टनरला व्यवसाय स्वतः मंजूर करतो.", "Arzi bhejiye. Har partner ko business khud manzoor karta hai.")
+    val ptApplyBtn get() = t("Send application", "अर्ज़ी भेजें", "अर्ज पाठवा", "Arzi bhejiye")
+    val ptMine get() = t("My jobs", "मेरे काम", "माझी कामे", "Mere kaam")
+    val ptNew get() = t("New jobs", "नए काम", "नवीन कामे", "Naye kaam")
+    val ptPast get() = t("Finished", "पूरे हुए", "पूर्ण झाली", "Poore hue")
+    val ptNone get() = t("Nothing for you right now.", "अभी आपके लिए कुछ नहीं।", "आत्ता तुमच्यासाठी काही नाही.", "Abhi aapke liye kuch nahi.")
+    val ptNoOffers get() = t("No new jobs right now.", "अभी कोई नया काम नहीं।", "आत्ता नवीन काम नाही.", "Abhi koi naya kaam nahi.")
+    val ptTake get() = t("Take this job", "यह काम लें", "हे काम घ्या", "Yeh kaam lein")
+    val ptRoute get() = t("Route", "रास्ता", "रस्ता", "Raasta")
+    val ptRefresh get() = t("Refresh", "ताज़ा करें", "रिफ्रेश करा", "Taaza karein")
+    val ptRetry get() = t("Try again", "फिर कोशिश करें", "पुन्हा प्रयत्न करा", "Phir koshish karein")
+    // v0.455 SURAKSHIT LOGIN
+    val sgPhone get() = t("Mobile number", "मोबाइल नंबर", "मोबाइल नंबर", "Mobile number")
+    val sgSendCode get() = t("Send the code", "कोड भेजें", "कोड पाठवा", "Code bhejiye")
+    val sgSentTo get() = t("Code sent to", "कोड भेजा गया", "कोड पाठवला", "Code bheja gaya")
+    val sgCode get() = t("6-digit code", "6 अंकों का कोड", "6 अंकी कोड", "6 ank ka code")
+    val sgAgain get() = t("Change number / send again", "नंबर बदलें / फिर भेजें", "नंबर बदला / पुन्हा पाठवा", "Number badlein / phir bhejiye")
+    val sgUseEmail get() = t("Use email instead", "ईमेल से करें", "ईमेलने करा", "Email se karein")
+    val sgUsePhone get() = t("Use mobile number instead", "मोबाइल नंबर से करें", "मोबाइल नंबरने करा", "Mobile number se karein")
+    val sgConsent get() = t("I agree to the privacy notice", "मैं प्राइवेसी नोटिस से सहमत हूँ", "मी प्रायव्हसी नोटिसला सहमत आहे", "Main privacy notice se sehmat hoon")
+    val sgNever get() = t("The code goes only into this box. Nobody from this business or Hoola will ever ask you for it.",
+        "कोड सिर्फ इसी बॉक्स में डालें। यह बिज़नेस या Hoola आपसे कोड कभी नहीं माँगेगा।",
+        "कोड फक्त याच बॉक्समध्ये टाका. हा व्यवसाय किंवा Hoola तुमचा कोड कधीच मागणार नाही.",
+        "Code sirf isi box mein daaliye. Yeh business ya Hoola aapse code kabhi nahi maangega.")
+    val sgGoogle get() = t("Continue with Google", "Google से जारी रखें", "Google ने पुढे जा", "Google se aage badhiye")
+    val sgSecurity get() = t("Security", "सुरक्षा", "सुरक्षा", "Suraksha")
+    val sgLogins get() = t("Where you are signed in", "आप कहाँ साइन इन हैं", "तुम्ही कुठे साइन इन आहात", "Aap kahan sign in hain")
+    val sgThisPhone get() = t("this phone", "यही फ़ोन", "हाच फोन", "yahi phone")
+    val sgEnd get() = t("Sign out", "साइन आउट", "साइन आउट", "Sign out")
+    val sgEndAll get() = t("Sign out everywhere", "हर जगह से साइन आउट", "सर्वत्र साइन आउट", "Har jagah se sign out")
+    val sg2fa get() = t("Second step (authenticator)", "दूसरा चरण (ऑथेंटिकेटर)", "दुसरी पायरी (ऑथेंटिकेटर)", "Doosra step (authenticator)")
+    val sg2faWhy get() = t("Staff accounts can add a 6-digit code from an authenticator app as a second step.",
+        "स्टाफ अकाउंट दूसरे चरण के लिए ऑथेंटिकेटर ऐप का 6 अंकों का कोड जोड़ सकते हैं।",
+        "स्टाफ अकाउंट दुसऱ्या पायरीसाठी ऑथेंटिकेटर ॲपचा 6 अंकी कोड जोडू शकतात.",
+        "Staff account doosre step ke liye authenticator app ka 6 ank ka code jod sakte hain.")
+    val sg2faStart get() = t("Turn it on", "चालू करें", "चालू करा", "Chalu karein")
+    val sg2faAdd get() = t("Add this key in your authenticator app, then type the code it shows.",
+        "यह की अपने ऑथेंटिकेटर ऐप में डालें, फिर उसका कोड लिखें।", "ही की तुमच्या ऑथेंटिकेटर ॲपमध्ये टाका, नंतर कोड लिहा.",
+        "Yeh key apne authenticator app mein daaliye, phir uska code likhiye.")
+    val sg2faOn get() = t("Second step is on.", "दूसरा चरण चालू है।", "दुसरी पायरी चालू आहे.", "Doosra step chalu hai.")
+    val sg2faIsOn get() = t("Second step is on for this account.", "इस अकाउंट पर दूसरा चरण चालू है।", "या अकाउंटवर दुसरी पायरी चालू आहे.", "Is account par doosra step chalu hai.")
+    val sg2faOff get() = t("Turn it off", "बंद करें", "बंद करा", "Band karein")
+    val sg2faMust get() = t("The business asks every staff account to keep the second step on.",
+        "बिज़नेस चाहता है कि हर स्टाफ अकाउंट पर दूसरा चरण चालू रहे।", "व्यवसायाची अपेक्षा आहे की प्रत्येक स्टाफ अकाउंटवर दुसरी पायरी चालू राहावी.",
+        "Business chahta hai ki har staff account par doosra step chalu rahe.")
+    val sgMyData get() = t("My data", "मेरी जानकारी", "माझी माहिती", "Meri jaankari")
+    val sgMyDataWhy get() = t("Take a copy of everything this account has here.", "इस अकाउंट की सारी जानकारी की कॉपी लें।",
+        "या अकाउंटची सर्व माहितीची कॉपी घ्या.", "Is account ki saari jaankari ki copy lijiye.")
+    val sgMyDataGet get() = t("Copy my data", "मेरी जानकारी कॉपी करें", "माझी माहिती कॉपी करा", "Meri jaankari copy karein")
+    val sgMyDataReady get() = t("Copied. Paste it anywhere to keep it.", "कॉपी हो गई। कहीं पेस्ट कर लें।", "कॉपी झाली. कुठेही पेस्ट करा.", "Copy ho gayi. Kahin paste kar lijiye.")
 }

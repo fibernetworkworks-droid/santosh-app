@@ -38,6 +38,10 @@ MAX_DOC = 10 * 1024 * 1024        # v0.346 a PDF (prescription, ID proof, bill, 
 # a PDF that could run something when opened is refused (scripts, launch / open actions, embedded files, forms engine, media)
 PDF_RISK = re.compile(rb"/(JavaScript|JS|Launch|EmbeddedFiles?|OpenAction|AA|RichMedia|XFA|SubmitForm|ImportData|GoToR)\b")
 MAX_UPLOAD = 6 * 1024 * 1024     # what the phone may send (it shrinks to ~1600 px first); stored re-encoded, smaller
+MAX_VIDEO = 50 * 1024 * 1024     # v0.425 RANG: a short video (MP4 / MOV), kept as sent after a container check
+MAX_AUDIO = 10 * 1024 * 1024     # v0.425 a voice note (M4A / MP4 audio)
+MAX_PHOTOS = 6                   # v0.425 photos in one multi-photo field
+RICH_TAG = re.compile(r"<[^>]{0,200}>")
 STATS.update({"uploads": 0, "upload_refused": 0, "paid_claims": 0, "updates": 0})
 _KEYS: dict[str, tuple[float, str]] = {}           # app_key -> (when, project id)
 _NOTES: dict[str, list[float]] = {}
@@ -135,7 +139,7 @@ DM_TYPE = {"text": "text", "long": "long_text", "int": "number", "decimal": "num
            "date": "date", "datetime": "text", "time": "text", "phone": "phone", "email": "email", "url": "text",
            "enum": "choice", "ref": "text", "uuid": "text", "file": "photo", "point": "location"}
 # v0.319 kinds the app backend adds on top of the web-app engine's vocabulary (kept through clean_schema, checked here)
-EXTRA_TYPES = ("photo", "location", "scan", "file")    # v0.346 file = a PDF document        # v0.340 scan = a barcode / QR read by the camera (or typed)
+EXTRA_TYPES = ("photo", "location", "scan", "file", "signature", "photos", "video", "audio", "richtext")   # v0.425 RANG    # v0.346 file = a PDF document        # v0.340 scan = a barcode / QR read by the camera (or typed)
 DOC_NAME = re.compile(r"(?i)(document|doc_|attachment|report|prescription|invoice|bill|resume|cv|proof|certificate|receipt|agreement|kyc)")
 SCAN_NAME = re.compile(r"(?i)(barcode|^sku$|^tag$|serial|qr_?code|^imei$)")
 LOC = re.compile(r"^\s*(-?\d{1,2}(?:\.\d{1,7})?)\s*,\s*(-?\d{1,3}(?:\.\d{1,7})?)\s*$")
@@ -299,11 +303,18 @@ def by_key(app_key: str) -> AppProject:
             raise NotFound()
         s.expunge(r)
     _KEYS[app_key] = (time.time(), r.id)
-    return r
+    from . import family as FA                       # v0.435 PARIVAAR: a rider / shop / staff app uses its main app's backend
+    FA.note_key(app_key, r)
+    return FA.home(r)
 
 
 def who(r: AppProject, token: str) -> W.Who:
-    return W.Who(W.member_of(bid(r), token) if token else None)
+    m = W.member_of(bid(r), token) if token else None
+    if m is not None:
+        from ..site import security as SEC                 # v0.455 a login she / the member ENDED stops working at once
+        if not SEC.token_ok(bid(r), token):
+            return W.Who(None)
+    return W.Who(m)
 
 
 def public_schema(r: AppProject) -> dict[str, Any]:
@@ -315,6 +326,11 @@ def public_schema(r: AppProject) -> dict[str, Any]:
     tr = _track_public(r)                                                 # v0.412 NAKSHA LIVE
     if tr:
         out["track"] = tr
+    try:                                                                  # v0.455 SURAKSHIT LOGIN: the login box's ways
+        from . import sign as SG
+        out["sign"] = SG.public(r)
+    except Exception:                                                     # noqa: BLE001
+        log.debug("sign public", exc_info=True)
     return out
 
 
@@ -408,12 +424,19 @@ def create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "
     """One write from the app. `cid` = the phone's own id for this write: the same cid again returns the first row.
     v0.390 the cid check and the insert hold one cross-process lock, so a phone's retry racing its first try in another
     worker process still makes exactly ONE row."""
+    from . import backup as BK
     cid = str((body or {}).get("cid") or "") if isinstance(body, dict) else ""
-    if cid and CID.match(cid):
-        from . import locks as LK
-        with LK.hold(f"cid:{r.id}:{w.id}:{cid}"):
-            return _create(r, coll, body, w, ip)
-    return _create(r, coll, body, w, ip)
+    with BK.acting(w):                                   # v0.434 the journal records who made it
+        if w.m is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR: a partner shop's own menu rows
+            from . import family as FA
+            got_p = FA.create(r, coll, body, w, ip)
+            if got_p is not None:
+                return got_p
+        if cid and CID.match(cid):
+            from . import locks as LK
+            with LK.hold(f"cid:{r.id}:{w.id}:{cid}"):
+                return _create(r, coll, body, w, ip)
+        return _create(r, coll, body, w, ip)
 
 
 def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = "") -> dict[str, Any]:
@@ -490,6 +513,11 @@ def _create(r: AppProject, coll: str, body: dict[str, Any], w: W.Who, ip: str = 
             from . import delivery as DL
             DL.confirm(r, out["id"])
     LE.after_create(r, coll, out["id"], w)          # v0.382 formulas stored, triggers, parents' totals
+    try:                                            # v0.435 PARIVAAR: the partner shop this order is for hears it at once
+        from . import family as FA
+        FA.on_create(r, coll, out["id"], out)
+    except Exception:
+        log.debug("family create", exc_info=True)
     try:                                            # v0.424 JODO: her approved connectors listening for a new row (queued)
         from . import connect as CN
         CN.fire(r, coll, out["id"], "create")
@@ -514,6 +542,11 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
          mine: bool = False) -> list[dict[str, Any]]:
     """v0.319 + search (q, any field) and a status filter, newest first; offset pages through them.
     v0.352 every row says who it is with (staff) / the first name on it (her own row); mine = only the rows given to me."""
+    if w.m is not None and (w.m.role or "") == "partner":          # v0.435 PARIVAAR: a partner sees only its own work
+        from . import family as FA
+        got_p = FA.rows(r, coll, w, limit, q, status, offset, mine)
+        if got_p is not None:
+            return got_p
     got = with_assign(r, W.rows(bid(r), schema(r), coll, w, 1000 if (q or status or offset or mine) else limit), w)
     if mine:
         got = [x for x in got if w.id and x.get("assigned_to") == w.id]
@@ -528,6 +561,15 @@ def rows(r: AppProject, coll: str, w: W.Who, limit: int = 200, q: str = "", stat
 
 
 def update(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(w):                               # v0.434 the journal records who made it
+        if w.m is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR: checked steps only, then as the system
+            from . import family as FA
+            return FA.update(r, coll, row_id, body, w)
+        return _update_inner(r, coll, row_id, body, w)
+
+
+def _update_inner(r: AppProject, coll: str, row_id: str, body: dict[str, Any], w: W.Who) -> dict[str, Any]:
     body = {k: v for k, v in (body if isinstance(body, dict) else {}).items() if k not in ("cid", "cart")}
     if body.get("_credit"):                  # v0.359 KHATA: staff's "on credit" through the outbox (works offline)
         from . import khata as KH
@@ -591,6 +633,11 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
             CN.fire(r, coll_, row_id, "status", status)
     except Exception:
         log.debug("connect status", exc_info=True)
+    try:                                            # v0.435 PARIVAAR: ready for pickup -> approved riders hear of the job
+        from . import family as FA
+        FA.on_status(r, row_id, status)
+    except Exception:
+        log.debug("family status", exc_info=True)
     if status.strip().lower() != "cancelled":
         return
     _stock_back(r, row_id)                          # v0.357 a cancelled order puts its stock back (once)
@@ -609,6 +656,15 @@ def status_moved(r: AppProject, row_id: str, status: str) -> None:
 
 
 def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(w):                               # v0.434 the journal records who made it
+        if w.m is not None and (w.m.role or "") == "partner":      # v0.435 PARIVAAR
+            from . import family as FA
+            return FA.delete(r, coll, row_id, w)
+        return _delete_inner(r, coll, row_id, w)
+
+
+def _delete_inner(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
     _guard_assigned(r, coll, row_id, w)
     from .logic import engine as LE                  # v0.382 children first: restrict / cascade / nullify
     sch = schema(r)
@@ -624,6 +680,12 @@ def delete(r: AppProject, coll: str, row_id: str, w: W.Who) -> dict[str, Any]:
 
 
 def delete_me(r: AppProject, w: W.Who) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(w):                               # v0.434 the journal records who made it
+        return _delete_me_inner(r, w)
+
+
+def _delete_me_inner(r: AppProject, w: W.Who) -> dict[str, Any]:
     """In-app account deletion: the account and every row it owns are gone (Play + App Store rule, DPDP right to erase)."""
     if w.m is None:
         raise W.AppError("Pehle login kijiye.", 401)
@@ -685,7 +747,15 @@ def by_key_or_ref(tenant: str, ref: str) -> AppProject:
     return r
 
 
+def data_app(tenant: str, ref: str) -> AppProject:
+    """v0.435 PARIVAAR: the app whose DATA she means - a rider / shop / staff app's data is its main app's."""
+    from . import family as FA
+    return FA.home(by_key_or_ref(tenant, ref))
+
+
 def owner_view(r: AppProject) -> dict[str, Any]:
+    from . import family as FA
+    r = FA.home(r)
     be = ensure(r)
     sch = be["schema"]
     from ..config import get_settings
@@ -697,11 +767,21 @@ def owner_view(r: AppProject) -> dict[str, Any]:
 
 
 def owner_rows(r: AppProject, coll: str, limit: int = 300) -> list[dict[str, Any]]:
+    from . import family as FA
+    r = FA.home(r)
     return rows(r, coll, W.Who(owner=True), limit)
 
 
 def owner_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
+    from . import backup as BK
+    with BK.acting(W.Who(None, owner=True)):                               # v0.434 the journal records who made it
+        return _owner_update_inner(r, coll, row_id, body)
+
+
+def _owner_update_inner(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) -> dict[str, Any]:
     """Her change from Hoola; {"assign": member id | ""} gives the row to a staff member (v0.352)."""
+    from . import family as FA
+    r = FA.home(r)
     body = dict(body or {})
     if "assign" in body:
         body[ASSIGN_KEY] = body.pop("assign")
@@ -709,22 +789,34 @@ def owner_update(r: AppProject, coll: str, row_id: str, body: dict[str, Any]) ->
 
 
 def members(r: AppProject) -> list[dict[str, Any]]:
+    from . import family as FA
+    r = FA.home(r)
     ensure(r)
     return W.members(bid(r))
 
 
 def set_role(r: AppProject, member_id: str, role: str) -> dict[str, Any]:
+    from . import family as FA
+    r = FA.home(r)
     ensure(r)
     return W.set_role(bid(r), member_id, role)
 
 
 def seed_hint(r: AppProject) -> dict[str, Any]:
     """What the build puts into the app (assets/seed.json 'backend'): the lists, their fields and rules - no data."""
+    from . import family as FA                             # v0.435 PARIVAAR: a face app carries its MAIN app's lists
+    face = FA.face_info(r)
+    r = FA.home(r)
     sch = schema(r)
     out = {"kind": sch.get("kind"), "order": sch.get("order"), "signup": sch.get("signup", True),
            "collections": sch["collections"]}
     if sch.get("approvals"):                               # v0.382 DIMAAG: the Approvals button for staff
         out["approvals"] = True
+    try:                                                   # v0.455 SURAKSHIT LOGIN: which ways the app's login box offers
+        from . import sign as SG
+        out["sign"] = SG.public(r)
+    except Exception:                                      # noqa: BLE001
+        log.debug("sign hint", exc_info=True)
     if sch.get("order"):                                   # v0.358 COUPON: the cart shows the code box while a code is live
         from . import coupon as CP
         out["coupons"] = CP.active(r)
@@ -748,6 +840,10 @@ def seed_hint(r: AppProject) -> dict[str, Any]:
             out["pay"] = {"on": True, "plans": bool(PY.plans(r)["plans"])}
     except Exception:                                      # noqa: BLE001
         log.debug("pay hint", exc_info=True)
+    if face:
+        out["face"] = face["kind"]
+        if face["kind"] in FA.PARTNER_KINDS:
+            out["partner"] = face["kind"]
     return out
 
 
@@ -774,6 +870,20 @@ def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Wh
                 raise W.AppError(f"{f['label']}: code khaali hai.")
             data[k] = v
             continue
+        if t == "richtext":                     # v0.425 formatted text = markdown words only (no HTML ever reaches a screen)
+            data[k] = RICH_TAG.sub("", re.sub(r"[\x00-\x08\x0b-\x1f\x7f]", "", v))[:4000]
+            continue
+        if t == "photos":                       # v0.425 up to MAX_PHOTOS picture ids, each checked like one photo
+            ids = [x.strip() for x in v.split(",") if x.strip()]
+            if len(ids) > MAX_PHOTOS:
+                raise W.AppError(f"{f['label']}: {MAX_PHOTOS} photos tak.")
+            for x in ids:
+                meta = _file_meta(r, x)
+                if meta is None or meta.get("kind") not in (None, "image") or \
+                        not (w.staff or (w.id and meta.get("owner") == w.id) or (not meta.get("owner") and not w.id)):
+                    raise W.AppError(f"{f['label']}: ek photo is account ki nahi.", 403)
+            data[k] = ",".join(ids)
+            continue
         if t == "location":
             m = LOC.match(v)
             if not m or abs(float(m.group(1))) > 90 or abs(float(m.group(2))) > 180:
@@ -785,6 +895,9 @@ def _check_extra(r: AppProject, c: dict[str, Any], data: dict[str, Any], w: W.Wh
                 raise W.AppError(f"{f['label']}: yeh photo is account ki nahi.", 403)
             if t == "photo" and meta.get("kind") == "pdf":         # v0.346
                 raise W.AppError(f"{f['label']}: yahan photo chahiye, PDF nahi.")
+            want = {"signature": (None, "image"), "video": ("video",), "audio": ("audio",)}.get(t)   # v0.425
+            if want is not None and meta.get("kind") not in want:
+                raise W.AppError(f"{f['label']}: yeh file is field ke liye nahi.")
             if (c.get("rules") or {}).get("read") == "public" and not meta.get("public"):
                 meta["public"] = True
                 _files(r).joinpath(v + ".json").write_text(json.dumps(meta))
@@ -805,7 +918,35 @@ def _file_meta(r: AppProject, fid: str) -> dict[str, Any] | None:
     return _j(f.read_text(), None) if f.exists() else None
 
 
-def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "") -> dict[str, Any]:
+MEDIA_EXT = {"video": ".mp4", "video_mov": ".mov", "audio": ".m4a"}
+MEDIA_MIME = {".mp4": "video/mp4", ".mov": "video/quicktime", ".m4a": "audio/mp4", ".pdf": "application/pdf", ".jpg": "image/jpeg"}
+
+
+def _upload_media(r: AppProject, w: W.Who, raw: bytes, want: str) -> dict[str, Any]:
+    """v0.425 RANG: a video / voice note, kept as sent. Only an ISO-BMFF container (MP4 / MOV / M4A) whose first box is
+    `ftyp` with a known brand gets in - not whatever the phone calls it; the app never shows it inside a web page."""
+    import secrets as _sec
+    cap = MAX_AUDIO if want == "audio" else MAX_VIDEO
+    if not raw or len(raw) > cap:
+        STATS["upload_refused"] += 1
+        raise W.AppError(("Voice note" if want == "audio" else "Video") + f" bahut bada hai ({cap // (1024 * 1024)} MB tak).", 413)
+    brand = raw[8:12] if raw[4:8] == b"ftyp" else b""
+    video_brands = (b"isom", b"iso2", b"iso4", b"iso5", b"iso6", b"mp41", b"mp42", b"avc1", b"qt  ", b"3gp4", b"3gp5", b"dash", b"MSNV", b"M4V ")
+    audio_brands = (b"M4A ", b"M4B ", b"isom", b"mp42", b"mp41", b"iso2", b"3gp4", b"3gp5")
+    if (want == "audio" and brand not in audio_brands) or (want == "video" and brand not in video_brands):
+        STATS["upload_refused"] += 1
+        raise W.AppError("Yeh file nahi khuli (MP4 / MOV video ya M4A voice note bhejiye).", 415)
+    ext = ".m4a" if want == "audio" else (".mov" if brand == b"qt  " else ".mp4")
+    fid = "f_" + _sec.token_hex(8)
+    d = _files(r)
+    (d / (fid + ext)).write_bytes(raw)
+    (d / (fid + ".json")).write_text(json.dumps({"owner": w.id, "at": now().isoformat(), "size": len(raw), "kind": want,
+                                                 "ext": ext, "public": False}))
+    STATS["uploads"] += 1
+    return {"id": fid, "kind": want, "size": len(raw)}
+
+
+def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "", ctype: str = "") -> dict[str, Any]:
     """A photo from the app: any common image the phone sends, stored as a fresh JPEG (EXIF / GPS dropped by the
     re-encode), at most 1600 px. Needs an account unless the app has a list anybody may write to."""
     import io
@@ -818,6 +959,8 @@ def upload(r: AppProject, w: W.Who, raw: bytes, ip: str = "") -> dict[str, Any]:
         W.rate(f"up|{bid(r)}|{w.id or ip}", 30, 600)
     if raw[:5] == b"%PDF-":                    # v0.346 a document
         return _upload_pdf(r, w, raw)
+    if raw[4:8] == b"ftyp":                     # v0.425 a video / voice note (the app says which; the bytes must agree)
+        return _upload_media(r, w, raw, "audio" if (ctype or "").lower().startswith("audio/") else "video")
     if not raw or len(raw) > MAX_UPLOAD:
         STATS["upload_refused"] += 1
         raise W.AppError("Photo bahut badi hai (6 MB tak).", 413)
@@ -912,10 +1055,39 @@ def file_for(r: AppProject, fid: str, w: W.Who):
     """The stored photo / PDF, for the person who sent it, staff, her, or anyone when it sits in a public list.
     Returns the path; its suffix (.jpg / .pdf) says what it is."""
     meta = _file_meta(r, fid)
-    f = (_files(r) / (fid + (".pdf" if meta.get("kind") == "pdf" else ".jpg"))) if meta is not None else None
+    f = (_files(r) / (fid + (meta.get("ext") or (".pdf" if meta.get("kind") == "pdf" else ".jpg")))) if meta is not None else None
     if f is None or not f.exists():
         raise W.AppError("not found", 404)
     if not (meta.get("public") or w.staff or (w.id and meta.get("owner") == w.id)):
+        raise W.AppError("not found", 404)
+    return f
+
+
+def media_link(r: AppProject, fid: str, w: W.Who) -> dict[str, Any]:
+    """v0.425 a 15-minute signed address for a video / voice note / PDF, so the phone's own player can open it without
+    the sign-in token (players cannot add headers). Only for someone who may see the file now."""
+    import hashlib as _h
+    import hmac as _hm
+    file_for(r, fid, w)
+    exp = int(time.time()) + 900
+    sig = _hm.new(W._secret(), f"media|{r.id}|{fid}|{exp}".encode(), _h.sha256).hexdigest()[:32]
+    return {"path": f"/api/app-api/{_j(r.android, {}).get('app_key', '')}/media/{fid}.{exp}.{sig}", "expires": exp}
+
+
+def media_file(r: AppProject, tok: str):
+    import hashlib as _h
+    import hmac as _hm
+    try:
+        fid, exp, sig = tok.split(".")
+        exp_i = int(exp)
+    except ValueError:
+        raise W.AppError("not found", 404)
+    want = _hm.new(W._secret(), f"media|{r.id}|{fid}|{exp_i}".encode(), _h.sha256).hexdigest()[:32]
+    if not _hm.compare_digest(sig, want) or exp_i < time.time():
+        raise W.AppError("not found", 404)
+    meta = _file_meta(r, fid)
+    f = (_files(r) / (fid + (meta.get("ext") or (".pdf" if meta.get("kind") == "pdf" else ".jpg")))) if meta else None
+    if f is None or not f.exists():
         raise W.AppError("not found", 404)
     return f
 
@@ -1247,6 +1419,8 @@ def _new_field(a: dict[str, Any], colls: dict[str, Any], fresh: bool) -> dict[st
     typ = a.get("type") if a.get("type") in (*W.TYPES, *EXTRA_TYPES, "ref") else "text"
     fd: dict[str, Any] = {"key": k, "label": str(a.get("label") or k.replace("_", " ").title())[:60], "type": typ,
                           "required": bool(a.get("required")) and fresh and typ != "choice", "admin_only": bool(a.get("admin_only"))}
+    if a.get("private") is True:            # v0.434 per-field rule: only staff / her see it (row_view hides it from others)
+        fd["private"], fd["admin_only"] = True, True
     if typ == "choice":
         opts = [str(o)[:40] for o in (a.get("options") or []) if str(o).strip()][:20]
         if not opts:

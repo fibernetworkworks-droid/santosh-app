@@ -1090,7 +1090,7 @@ def _maps_distance(tenant: str, origin: str, destination: str, stops: list[str])
             nxt = await maps.resolve(p, tenant)
             if not prev or not nxt:
                 return None
-            r = await maps.route(prev, nxt, "DRIVE")
+            r = await maps.route(prev, nxt, "DRIVE", tenant_id=tenant)
             km += r["distance_km"]
             mins += r["duration_min"]
             prev = nxt
@@ -1100,6 +1100,84 @@ def _maps_distance(tenant: str, origin: str, destination: str, stops: list[str])
     except Exception as e:
         log.info("fleet maps distance failed: %s", e)
         return None
+
+
+def nearest_vehicle(tenant: str, pickup: str, day: str = "", load_t=None, top: int = 3) -> dict:
+    """v0.463 Phase 4: which FREE truck is closest to a pickup, by real road time (Google route matrix).
+
+    A vehicle has no live GPS in this module, so its position is the DESTINATION OF ITS LAST FINISHED TRIP -
+    said as such in the answer ("last drop"). A vehicle with no finished trip has no known position and is
+    LISTED as such, never guessed. Vehicles in the workshop / sold, already assigned or started that day, or
+    too small for `load_t`, are left out and named. Billed per vehicle (matrix element) through the Maps cap.
+    """
+    from .. import maps
+    if not str(pickup or "").strip():
+        raise FleetError("Pickup kahan se hai?")
+    if not maps.configured():
+        raise FleetError("Google Maps connect nahi hai, isliye road se sabse paas wali gaadi nahi nikal sakta.")
+    try:
+        asyncio.get_running_loop()
+        raise FleetError("Abhi nahi ho sakta, thodi der baad try karein.")      # never block the event loop
+    except RuntimeError:
+        pass
+    d = _date(day) if day else today(tenant)
+    if not d:
+        raise FleetError("Taarikh samajh nahi aayi.")
+    cands, skipped, unknown = [], [], []
+    with session() as s:
+        for v in s.scalars(select(FleetVehicle).where(FleetVehicle.tenant_id == tenant,
+                                                      FleetVehicle.status == "active").order_by(FleetVehicle.reg)).all():
+            if _busy(s, tenant, v.id, d.isoformat()):
+                skipped.append({"vehicle": v.reg, "why": "us din kisi trip par lagi hai"})
+                continue
+            if _num(load_t) > 0 and v.capacity_t and v.capacity_t < _num(load_t):
+                skipped.append({"vehicle": v.reg, "why": f"capacity {v.capacity_t:g} t, maal {_num(load_t):g} t"})
+                continue
+            last = s.scalars(select(FleetTrip).where(FleetTrip.vehicle_id == v.id, FleetTrip.status == "done",
+                                                     FleetTrip.destination != "").order_by(FleetTrip.updated_at.desc())).first()
+            if last is None:
+                unknown.append(v.reg)
+            else:
+                cands.append({"vehicle": v.reg, "capacity_t": v.capacity_t or None, "last_drop": last.destination})
+    if not cands:
+        return {"pickup": pickup, "ranked": [], "nearest": None, "no_known_position": unknown, "skipped": skipped,
+                "note": "Kisi khali gaadi ki pichhli drop jagah maloom nahi (koi poori hui trip nahi)." if unknown
+                else "Us din koi khali gaadi nahi."}
+
+    async def go():
+        dst = await maps.resolve(pickup, tenant)
+        if not dst:
+            raise FleetError(f"'{pickup}' Google Maps par nahi mila. Area / shehar ke saath bataiye.")
+        origins, keep = [], []
+        for c in cands:
+            try:
+                pt = await maps.resolve(c["last_drop"], tenant)
+            except maps.MapsError:
+                pt = None
+            if pt:
+                origins.append(pt)
+                keep.append(c)
+            else:
+                unknown.append(c["vehicle"])
+        if not origins:
+            return dst, [], []
+        try:
+            return dst, keep, await maps.matrix(origins, [dst], "DRIVE", tenant_id=tenant)
+        except maps.MapsError as e:
+            raise FleetError(str(e))
+    dst, keep, rows = asyncio.run(go())
+    ranked, none = [], []
+    for c, row in zip(keep, rows):
+        cell = row[0]
+        if cell["ok"]:
+            ranked.append({**c, "distance_km": cell["distance_km"], "duration_min": cell["duration_min"],
+                           "duration": cell["duration"]})
+        else:
+            none.append(c["vehicle"])
+    ranked.sort(key=lambda r: r["duration_min"])
+    return {"pickup": pickup, "position_is": "har gaadi ki pichhli poori hui trip ki drop jagah (live GPS nahi)",
+            "nearest": ranked[0] if ranked else None, "ranked": ranked[:max(1, min(int(top or 3), 10))],
+            "no_road": none, "no_known_position": unknown, "skipped": skipped}
 
 
 def _items(items) -> list[dict]:

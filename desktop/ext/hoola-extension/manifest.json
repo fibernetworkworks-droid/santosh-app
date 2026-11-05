@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Hoola",
+  "version": "1.9.0",
+  "description": "Jis page par padh rahi hain use Hoola ko bhejiye - sawaal ke saath. Jawab Hoola ki conversation mein.",
+  "default_locale": "en",
+  "icons": {
+    "16": "icons/hoola16.png",
+    "32": "icons/hoola32.png",
+    "48": "icons/hoola48.png",
+    "128": "icons/hoola128.png"
+  },
+  "permissions": ["storage", "contextMenus", "scripting", "activeTab"],
+  "host_permissions": ["https://hoola.ainewtika.com/*"],
+  "optional_host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*", "http://*/*"],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Hoola ko bhejiye",
+    "default_icon": {
+      "16": "icons/hoola16.png",
+      "32": "icons/hoola32.png",
+      "48": "icons/hoola48.png"
+    }
+  },
+  "options_page": "options.html",
+  "commands": {
+    "send-page": {
+      "suggested_key": { "default": "Ctrl+Shift+H", "mac": "Command+Shift+H" },
+      "description": "Yeh page Hoola ko bhejiye (sawaal popup mein likh sakti hain)"
+    }
+  }
+}

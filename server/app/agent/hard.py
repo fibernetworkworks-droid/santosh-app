@@ -19,6 +19,22 @@ STATS = {"checked": 0, "hard": 0}
 
 # (pattern, points, label) - each label counts once
 _SIGNALS: list[tuple[re.Pattern, int, str]] = [
+    # v0.437 SOCH KE JAWAB step 6: DEEP RESEARCH is hard work on its own (5 of 5 research asks scored 0 before)
+    (re.compile(r"\bdeep\s*research|\bresearch\s+(?:karo|kar\s*do|kijiye|kariye|karke|kar\s*ke|report|on|about|into|"
+                r"paper)|\b(?:market|industry|sector|competitor\w*|feasibility|landscape)\s+(?:study|research|analysis|"
+                r"report|overview|size|sizing|map)|\bdetailed\s+(?:report|study|analysis)|\b(?:with|ke\s+saath)\s+"
+                r"sources?|\bsources?\s+ke\s+saath|\bliterature\s+review|\bwhite\s*paper|\bstate\s+of\s+the\b|"
+                r"\btrends?\s+in\b|\b(?:pe|par|on)\s+(?:ek\s+)?(?:poori|detailed|in.?depth)?\s*report\b|शोध|रिसर्च|"
+                # v0.472 R1: the R0 card found 11 of 20 real research asks NOT seen ("Research the cotton...", "Research
+                # India's...", "Compare ... date every price"). The VERB at the start of a sentence, "do / need research",
+                # and the phrases only a sourced report asks for. "meri research ki file kholo" stays a plain ask.
+                r"(?:^|[.!?\n]\s*)(?:please\s+|zara\s+)?research\s+(?!notes?\b|team\b|folder\b|files?\b|gate\b|lab\b|wing\b|dept\b|department\b|"
+                r"cent(?:re|er)\b|institute\b|tab\b|sheet\b)\S|"
+                r"\b(?:do|run|need|want|make|start)\s+(?:some\s+|a\s+|proper\s+)?research\b|"
+                r"\bresearch\s+(?:chahiye|karna|karni)\b|\bofficial\s+(?:sources?|guidance|documents?)\b|"
+                r"\bsources?\s+(?:and|aur)\s+dates?\b|\bdate\s+every\s+(?:price|point|figure|number)\b|"
+                r"\bown\s+pricing\s+page\b|\bcite\s+the\b",
+                re.I), 3, "research"),
     (re.compile(r"\banaly[sz]\w*|\bvishleshan|विश्लेषण|\bevaluat\w*|\bassess\w*|\bcritique|\binterpret\w*|"
                 r"\bjaanch\s*ke\s*batao|\bdeep\s*dive", re.I), 2, "analysis"),
     (re.compile(r"\broot\s*cause|\bdiagnos\w*|\btroubleshoot\w*|figure\s+out\s+why|\bkya\s+galat|\bgalti\s+kahan|"
@@ -129,12 +145,22 @@ def is_hard(text: str) -> bool:
     return assess(text)["hard"]
 
 
+def research_wanted(text: str) -> bool:
+    """v0.437 does this ask want DEEP RESEARCH (many sources, a report)?"""
+    return "research" in assess(text)["why"]
+
+
 # ---------------------------------------------------------------- the fast judge for the "not sure" zone
 JUDGE = ("Does answering this message well need careful multi-step reasoning - analysis, a calculation, a comparison "
          "and a decision, a plan or strategy, finding a root cause, a proof or puzzle, or a deep explanation? A plain "
          "fact, small talk, or a simple action (send, remind, open, play, order) is NOT. Reply with exactly one word: "
          "HARD or EASY.")
 _CACHE: dict[str, bool] = {}
+
+
+def _text_of(b) -> str:
+    """A content block's text - SDK objects and plain dicts alike."""
+    return str(b.get("text") or "") if isinstance(b, dict) else str(getattr(b, "text", "") or "")
 
 
 async def judge(text: str, settings) -> bool | None:
@@ -151,7 +177,7 @@ async def judge(text: str, settings) -> bool | None:
         resp = await asyncio.wait_for(get_client().messages.create(
             model=getattr(settings, "hard_judge_model", "") or "claude-haiku-5-5", max_tokens=3, system=JUDGE,
             messages=[{"role": "user", "content": key}]), timeout=float(getattr(settings, "hard_judge_timeout_s", 2.5)))
-        word = "".join(getattr(b, "text", "") for b in resp.content).strip().upper()
+        word = "".join(_text_of(b) for b in resp.content).strip().upper()
         STATS["judged"] = STATS.get("judged", 0) + 1
         out = word.startswith("HARD")
         _CACHE[key] = out
@@ -175,3 +201,196 @@ async def decide(text: str, settings) -> dict:
                 STATS["hard"] += 1
             return {"hard": bool(j), "by": "judge", "why": a["why"]}
     return {"hard": False, "by": "rules", "why": a["why"]}
+
+
+# ---------------------------------------------------------------- v0.433 SOCH KE JAWAB step 4: the reasoning recipe
+# Rides in the system prompt ONLY on a hard turn (ordinary chat stays lean). The core is how a careful analyst works;
+# the kind lines come from the labels assess() found. The reply rulebook (her language, answer first, length follows
+# the question, light formatting) still governs HOW it is written - this governs how it is THOUGHT.
+RECIPE_CORE = """SOCH KA TAREEKA (this is a hard question - think it through like a careful analyst, then answer like Hoola):
+1. The real question: what decision or number does she actually need? If the words allow two readings, take the most
+   likely one and say it in ONE line; ask a question only when a wrong guess would cost her (money, a filing, a send).
+2. Facts first: use what she gave, this chat, her files and memory. A fact you need and do not have = a stated
+   assumption in one short line ("maan ke chal rahe hain: ..."), never a made-up fact. Current rates, rules or prices
+   that change = say they should be checked, or look them up with a tool.
+3. Work it out in parts. EVERY number you work out comes from pylab (run it, quote the printed result) - never mental
+   maths. Keep units and the Indian way of writing money (Rs / lakh / crore).
+4. Check before you write: do the totals add up, are units and orders of magnitude sane, does the answer survive the
+   strongest objection? Re-run the one figure the answer stands on. If a check fails, fix it before writing.
+5. Write it: the answer or decision FIRST (one or two lines, with the key number); then the reasoning, compact - steps,
+   or a small table when comparing; then the assumptions that matter, what would change the answer, and the next step
+   for her. Say plainly what is uncertain. Your private thinking is not the reply - show the clean result."""
+
+RECIPE_KIND = {
+    "research": "DEEP RESEARCH: (a) split the topic into 4-6 sub-questions that together answer her real question; "
+                "(b) gather - call research_run with the question and the sub-questions (Hoola's own engine: it reads "
+                "the real pages in parallel and returns a dossier you write from; use its notes, never memory), and fall back to "
+                "deploy_agents with one agent per sub-question plus web_sources / google_search / open_website if it is "
+                "unavailable; prefer primary sources (government, regulator, "
+                "company filings and reports, MoSPI for Indian official numbers) over blogs; (c) every fact and number "
+                "carries its source as [n] with the date; the key numbers from two sources when you can, and say when "
+                "they disagree; (d) derived figures (growth, share, CAGR, totals) from pylab; (e) write: a 5-7 line "
+                "summary with the key numbers first, then findings by sub-question, what is still uncertain, and "
+                "'Sources: [n] title - link - date'; a document with research_document (PDF / Word / workbook) when she asked for a file or the report is "
+                "long, the chat then carries the summary + the file. Never cite a link you did not get from a tool in "
+                "this work.",
+    "calculation": "Calculation: write the formula in words, compute it in pylab, show the 2-4 inputs and the result; "
+                   "for money over time give the monthly AND total figure.",
+    "word problem": "Word problem: list the givens, solve step by step (pylab for the arithmetic), then check the "
+                    "answer against the question's own numbers.",
+    "maths": "Maths / logic: show each step so she can follow it; for a proof state the claim, the method, and close "
+             "it cleanly; verify any numeric result in pylab.",
+    "decision": "Decision: name 2-3 real options, judge them on HER criteria (cost, risk, time, effort) - a small table "
+                "when it helps - then recommend ONE and say when the other would be better.",
+    "plan": "Plan / strategy: goal and constraints first, then phases with what happens, who, by when and rough cost; "
+            "name the 2-3 biggest risks and the first step for this week.",
+    "diagnosis": "Root cause: list the likely causes ranked by how well the evidence fits, what she can check to "
+                 "confirm each, and the fix for the most likely one first.",
+    "analysis": "Analysis: what the data says (numbers from pylab), what it means, and what she should do about it - "
+                "separate facts from your reading of them.",
+    "rules": "Tax / legal / compliance: name the rule or section you rely on, apply it to her facts, say what is "
+             "uncertain, and that a CA / lawyer should confirm before she files or signs.",
+    "impact": "Impact / what-if: compare before vs after with the numbers, and name second-order effects.",
+    "deep": "Explanation: build from the basics up, one idea per paragraph, with one concrete example from her world.",
+}
+
+
+def recipe(why: list[str] | None) -> str:
+    """The reasoning recipe for one hard turn: the core + the lines for the kinds of reasoning found (max 3)."""
+    kinds = []
+    for w in sorted(why or [], key=lambda x: x != "research"):     # research leads when present
+        k = {"how-long": "calculation", "numbers": "calculation", "judgement": "decision", "difference": "decision",
+             "how-to-improve": "plan", "reasons": "diagnosis", "why": "diagnosis", "design": "plan", "fix": "diagnosis",
+             "what-if": "impact", "explain": "deep"}.get(w, w)
+        if k in RECIPE_KIND and k not in kinds:
+            kinds.append(k)
+    lines = [RECIPE_KIND[k] for k in kinds[:3]]
+    return RECIPE_CORE + ("\n" + "\n".join("- " + x for x in lines) if lines else "")
+
+
+# ---------------------------------------------------------------- v0.436 SOCH KE JAWAB step 5: the self-check
+# A hard answer is HELD (not streamed) and checked before she sees it - like a careful analyst who re-reads the
+# working before sending. Two checks: a free one in code (a calculation answered without running pylab), then ONE
+# independent reviewer call that sees her question, the draft and the real tool evidence (pylab code + output). Any
+# problem goes back to the same brain ONCE as a fix note; the corrected answer replaces the draft (she never sees the
+# wrong one). A failing / slow reviewer never blocks the answer.
+CHECK_SYSTEM = """You are the REVIEWER of a draft answer an AI assistant wrote for a hard question. Do not rewrite it.
+Find only REAL problems that would make the answer wrong or misleading for her:
+- a number that does not follow from the inputs (re-derive the key figures yourself; compare with the tool evidence),
+- a figure stated as computed but not present in the tool evidence,
+- a logical gap, a wrong formula, a wrong unit, a total that does not add up,
+- a wrong rule / law / rate stated as fact, or an assumption hidden instead of stated,
+- the draft does not actually answer the question she asked (or skips a part of it),
+- for research: a fact or number with no source, or a source that the tool evidence does not back.
+Style, tone, length and formatting are NOT problems. If the answer is right, say so.
+Reply with ONLY a JSON object: {"ok": true} or {"ok": false, "problems": ["short, specific problem with the correct value if you know it", ...]} (max 4 problems)."""
+
+_CALC_KINDS = {"calculation", "word problem", "maths", "numbers", "how-long", "impact"}
+_DIGITS = re.compile(r"\d[\d,]*(?:\.\d+)?")
+
+
+_URL = re.compile(r"https?://[^\s)\]>\"']+")
+
+
+def _norm_url(u: str) -> str:
+    return re.sub(r"^https?://(www\.)?", "", u.rstrip(".,;:")).rstrip("/").lower()
+
+
+def research_check(draft: str, evidence_text: str) -> list[str]:
+    """v0.437 free check for a research answer: sources must exist, and every link must come from this work's tools."""
+    links = [_norm_url(u) for u in _URL.findall(draft or "")]
+    if not links:
+        return ["The research answer cites no sources. Every fact and number needs its source link from the tool "
+                "results (as [n], with a Sources list)."]
+    ev = (evidence_text or "").lower()
+    made_up = [u for u in dict.fromkeys(links) if u.split("?")[0] not in ev]
+    if made_up:
+        return [f"These links are not in any tool result of this work (do not cite a page you did not get from a "
+                f"tool): {', '.join(made_up[:5])}. Remove them or open the real source and cite that."]
+    return []
+
+
+def code_check(question: str, draft: str, why: list[str] | None, tools_run: list[str],
+               evidence_text: str = "") -> list[str]:
+    """Free check: a calculation ask whose draft carries worked-out numbers while pylab never ran; a research answer
+    with no sources or with links no tool returned."""
+    if "research" in (why or []):
+        found = research_check(draft, evidence_text)
+        if found:
+            return found
+    if "pylab" in (tools_run or []):
+        return []
+    if not (set(why or []) & _CALC_KINDS):
+        return []
+    asked = set(_DIGITS.findall(question or ""))
+    new = [n for n in _DIGITS.findall(draft or "") if n not in asked and len(n.replace(",", "")) >= 3]
+    if len(new) >= 2:
+        return [f"These figures were worked out without running pylab: {', '.join(new[:6])}. Compute them in pylab "
+                "and use its printed results."]
+    return []
+
+
+def evidence(history: list[dict], limit: int = 9000, per: int = 2000) -> tuple[str, list[str]]:
+    """This turn's tool calls and their results (pylab code + output first-class), newest last, capped."""
+    start = 0
+    for i in range(len(history) - 1, -1, -1):
+        m = history[i]
+        c = m.get("content")
+        if m.get("role") == "user" and (isinstance(c, str) or not any(
+                isinstance(b, dict) and b.get("type") == "tool_result" for b in (c or []))):
+            txt = c if isinstance(c, str) else " ".join(str(b.get("text") or "") for b in c if isinstance(b, dict))
+            if not txt.lstrip().startswith("[System"):
+                start = i
+                break
+    parts: list[str] = []
+    names: list[str] = []
+    for m in history[start:]:
+        for b in (m.get("content") if isinstance(m.get("content"), list) else []):
+            if not isinstance(b, dict):
+                continue
+            if b.get("type") == "tool_use":
+                names.append(str(b.get("name")))
+                inp = b.get("input") or {}
+                shown = inp.get("code") if b.get("name") == "pylab" else inp
+                parts.append(f"TOOL {b.get('name')} input: {str(shown)[:1500]}")
+            elif b.get("type") == "tool_result":
+                cont = b.get("content")
+                cont = cont if isinstance(cont, str) else " ".join(str(x.get("text") or "") for x in (cont or [])
+                                                                  if isinstance(x, dict))
+                parts.append(f"RESULT: {cont[:per]}")
+    text = "\n".join(parts)
+    return (text[-limit:] if len(text) > limit else text), names
+
+
+async def review(question: str, draft: str, ev: str, settings) -> list[str]:
+    """One independent reviewer call. [] = no problem found (or the reviewer failed - never blocks the answer)."""
+    import asyncio
+    import json as _json
+    try:
+        from .santosh import get_client
+        model = getattr(settings, "hard_check_model", "") or settings.anthropic_model
+        user = (f"HER QUESTION:\n{question[:3000]}\n\nTOOL EVIDENCE FROM THIS TURN (pylab code + outputs, data):\n"
+                f"{ev or '(no tools ran)'}\n\nDRAFT ANSWER:\n{draft[:8000]}")
+        resp = await asyncio.wait_for(get_client().messages.create(
+            model=model, max_tokens=900, system=CHECK_SYSTEM, messages=[{"role": "user", "content": user}]),
+            timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        raw = "".join(_text_of(b) for b in resp.content).strip()
+        m = re.search(r"\{.*\}", raw, re.S)
+        v = _json.loads(m.group(0)) if m else {}
+        STATS["reviewed"] = STATS.get("reviewed", 0) + 1
+        if v.get("ok") is False:
+            probs = [str(p)[:400] for p in (v.get("problems") or []) if str(p).strip()][:4]
+            if probs:
+                STATS["review_found"] = STATS.get("review_found", 0) + 1
+            return probs
+        return []
+    except Exception:
+        STATS["review_failed"] = STATS.get("review_failed", 0) + 1
+        return []
+
+
+def fix_note(problems: list[str]) -> str:
+    return ("[System: JAANCH - your draft answer was checked before she saw it, and these problems were found:\n" +
+            "\n".join(f"- {p}" for p in problems) +
+            "\nFix them (run pylab again for any number), then write the COMPLETE corrected answer from the start, "
+            "in her language - she has not seen the draft. Keep what was right. Do not mention this check.]")

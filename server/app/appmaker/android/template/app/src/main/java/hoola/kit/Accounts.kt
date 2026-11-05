@@ -30,7 +30,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
 @Composable
-private fun PasswordBox(value: String, onChange: (String) -> Unit) {
+internal fun PasswordBox(value: String, onChange: (String) -> Unit) {   // v0.455 the sign-in screen uses it too
     val c = H.c
     OutlinedTextField(
         value = value,
@@ -60,7 +60,8 @@ fun AuthScreen() {
             err = ""
             scope.launch {
                 val email = AppState.form["auth_email"] ?: ""
-                val e = if (signup) Auth.signup(c, email, pw, AppState.form["auth_name"] ?: "") else Auth.login(c, email, pw)
+                val e = if (signup) Auth.signup(c, email, pw, AppState.form["auth_name"] ?: "",
+                    if (Ways.consentNeeded) AppState.form["sg_consent"] == "1" else null) else Auth.login(c, email, pw)
                 busy = false
                 if (e == null) {
                     pw = ""
@@ -74,6 +75,9 @@ fun AuthScreen() {
         if (signup) block { Field(Strings.name, "auth_name") }
         block { Field(Strings.email, "auth_email", keyboard = KeyboardType.Email) }
         block { PasswordBox(pw) { pw = it } }
+        // v0.462 this screen creates accounts too, so where the app asks for the privacy tick it has to ask HERE
+        // as well - otherwise the server refuses a sign-up for a box the user was never shown.
+        if (signup && Ways.consentNeeded) block { CheckRow(Strings.sgConsent, "sg_consent") }
         if (err.isNotEmpty()) block { Pill(err, "bad") }
         if (Db.signupOpen) block {
             Btn(if (signup) Strings.haveAccount else Strings.newHere, kind = BtnKind.Ghost, small = true) { signup = !signup; err = "" }
@@ -139,6 +143,9 @@ fun AccountScreen() {
             val visible = read == "public" || (me != null && (read != "admin" || Auth.isStaff))
             if (visible) block { RowsSection(coll) }
         }
+        if (me != null) block {                      // v0.455 her logins, second step and own data
+            ListRow(Strings.sgSecurity, Strings.sgLogins, icon = "lock") { nav.go("hoola_security") }
+        }
         if (me != null) block {
             Btn(Strings.logout, kind = BtnKind.Ghost, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) { Auth.logout(c) }
         }
@@ -195,10 +202,18 @@ private fun RowCard(coll: String, r: Item, fields: List<Item>) {
             if (paid.isNotEmpty() && paid != "No") Pill(T(paid), if (paid == "Verified") "ok" else "warn")
             if (r.has("total") && r.n("total") > 0) Title(rupees(r.n("total")))
         }
-        fields.filter { it.s("type") == "photo" && r.has(it.s("key")) }.take(2).forEach { f ->
+        fields.filter { it.s("type") in listOf("photo", "signature") && r.has(it.s("key")) }.take(2).forEach { f ->
             RemotePhoto(r.s(f.s("key")), Modifier.fillMaxWidth().padding(top = 6.dp), f.s("label"))
         }
-        fields.filter { it !== head && it.s("key") !in listOf("status", "total", "paid") && it.s("type") != "photo" && r.has(it.s("key")) }
+        fields.filter { it.s("type") in listOf("photos", "video", "audio", "richtext") && r.has(it.s("key")) && !r.b("pending") }.take(3).forEach { f ->
+            when (f.s("type")) {                                  // v0.425 RANG
+                "photos" -> PhotosStrip(r.s(f.s("key")))
+                "video" -> VideoPlayer(r.s(f.s("key")))
+                "audio" -> AudioPlayer(r.s(f.s("key")))
+                else -> RichText(r.s(f.s("key")))
+            }
+        }
+        fields.filter { it !== head && it.s("key") !in listOf("status", "total", "paid") && it.s("type") !in listOf("photo", "signature", "photos", "video", "audio", "richtext") && r.has(it.s("key")) }
             .take(6).forEach { f ->
                 if (f.s("type") == "location") {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

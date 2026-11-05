@@ -128,6 +128,7 @@ import 'attach.dart';
 import 'chat_attach.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
+import 'maps_card.dart';
 import 'notebook_screen.dart';
 import 'pc_screen.dart';
 import 'photos_screen.dart';
@@ -1386,6 +1387,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return SevaTicketCard(app: app, data: it.data);
     case 'gyaan_sources':
       return GyaanSourcesCard(app: app, data: it.data);
+    case 'maps_places':
+      return MapsPlacesCard(app: app, data: it.data);
     case 'seva_day':
       return SevaDayCard(app: app, data: it.data);
     case 'helpdesk_ticket':
@@ -1456,6 +1459,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return CallCentreMessageCard(key: ValueKey('cm${it.data['id']}'), app: app, data: it.data);
     // v0.137 Tech suite
     case 'devsahayak_task':
+      return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);
+    case 'devsahayak_plan':
       return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);
     case 'devsahayak_push':
       return DevTaskCard(key: ValueKey('dt${(it.data['task'] as Map?)?['id']}'), app: app, data: it.data);

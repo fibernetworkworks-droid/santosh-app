@@ -10,7 +10,7 @@ from typing import Any
 
 from . import kernels as KN
 
-SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{1,60}$")
+SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{1,100}$")
 IDENT = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,40}$")
 COLOR = re.compile(r"^#[0-9a-fA-F]{6}$")
 NAMED = {"glass", "water", "steel", "brass", "copper", "wood", "red", "blue", "green", "black", "white", "gold", "ink", "ray",
@@ -18,7 +18,7 @@ NAMED = {"glass", "water", "steel", "brass", "copper", "wood", "red", "blue", "g
 
 TOP = {"lsl", "id", "title", "field", "group", "level", "topic", "aim", "kernel", "cfg", "params", "speed", "speeds",
        "autorun", "camera", "floor", "bodies", "knobs", "instruments", "table", "tour", "questions", "steps", "theory",
-       "safety", "sources", "check", "lang"}
+       "safety", "sources", "check", "lang", "rig", "variant", "chapter"}
 BODY_COMMON = {"id", "kind", "name", "info", "pos", "rot", "color", "opacity", "bind", "explode", "illustrative", "cut", "parent"}
 KINDS: dict[str, set[str]] = {
     "box": {"size"}, "sphere": {"r"}, "cylinder": {"r", "r2", "h", "open"}, "cone": {"r", "h"},
@@ -143,6 +143,15 @@ def check(lab: dict) -> dict:
         raise LabError("lab.lsl: 1")
     if not isinstance(lab.get("id"), str) or not SLUG.match(lab["id"]):
         raise LabError("lab.id: a short slug (a-z, 0-9, -)")
+    if "rig" in lab and (not isinstance(lab["rig"], str) or not SLUG.match(lab["rig"])):
+        raise LabError("lab.rig: the studio rig's id (a slug)")
+    if "variant" in lab:
+        v = _keys(lab["variant"], {"base", "key", "sample", "method", "unknown", "note", "source"}, "lab.variant")
+        for k, mx in (("base", 64), ("key", 64), ("sample", 120), ("method", 120), ("unknown", 120), ("note", 600)):
+            _text(v.get(k), f"lab.variant.{k}", mx)
+        if v.get("source") is not None:
+            _keys(v["source"], {"title", "note", "url"}, "lab.variant.source")
+    _text(lab.get("chapter"), "lab.chapter", 80)
     for k, mx in (("title", 80), ("field", 40), ("group", 60), ("level", 60), ("topic", 120), ("aim", 300),
                   ("theory", 1500), ("safety", 600), ("lang", 10)):
         _text(lab.get(k), f"lab.{k}", mx, need=k in ("title", "field", "aim"))

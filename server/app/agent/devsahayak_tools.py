@@ -11,7 +11,9 @@ from .tools import Ctx, ToolError
 DEV_TOOLS = [
     {"name": "dev", "description": (
         "Software developer in the owner's OWN GitHub repos (official API, her token set in the app; never ask for the token in chat). "
-        "Work always goes on a hoola/<task> branch + pull request; tests run in HER CI, never on this server. "
+        "Work always goes on a hoola/<task> branch + pull request; tests run in HER CI, never on this server. Every PR opens as "
+        "a DRAFT: her CI runs, Hoola fixes what fails, then Hoola reviews its OWN code and fixes what it finds, and only then is "
+        "the PR marked 'Ready for review' - so a new PR card may say the work is still being checked. "
         "action=write (new code / feature: text = what she wants), fix (bug: text = her words + error / stack trace / log pasted, or "
         "issue = issue number; Hoola finds the files, explains in Hinglish and opens a fix PR WITH a test), tests (write tests for code "
         "she names), docs (README / docstrings / API docs), explain (only explain a bug, no PR). files = paths she names (optional), repo "
@@ -22,7 +24,7 @@ DEV_TOOLS = [
         "action=repo_add (repo, deploy_workflow = her workflow_dispatch file, deploy_ref) | repo_remove | settings (review_post draft|"
         "direct, ask_before_pr, draft_pr, allow_workflows, merge_method, max_files, max_lines, rules, default_repo; owner only)."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["write", "fix", "tests", "docs", "explain", "begin", "revise", "fix_ci", "refresh", "cancel", "review",
+         "action": {"type": "string", "enum": ["write", "fix", "tests", "docs", "explain", "plan_ok", "begin", "revise", "fix_ci", "refresh", "cancel", "review",
                                                "merge", "deploy", "repo_add", "repo_remove", "settings"]},
          "text": {"type": "string", "description": "Her exact words / the error, stack trace or log (data, pasted as is)"},
          "repo": {"type": "string"}, "issue": {"type": "integer"}, "files": {"type": "array", "items": {"type": "string"}},
@@ -69,6 +71,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                            [str(x) for x in (a.get("files") or []) if x][:10], conv, actor)
         if action == "begin":      # a draft task (e.g. from App Review): the PR still waits for her tap
             return S.begin(t, _s(a.get("task")), _s(a.get("repo")), conv, actor)
+        if action == "plan_ok":    # v0.451 ECC PHASE 4: her Haan on a LARGE job's plan (she said it herself, in chat)
+            if not _owner(ctx):
+                raise ToolError("Plan par haan sirf owner de sakti hain.")
+            v = S.get_task(t, _s(a.get("task")))
+            if v.get("status") != "plan_wait":
+                raise ToolError(f"Yeh kaam '{v.get('status_label') or v.get('status')}' hai; plan ka intezaar nahi hai.")
+            return S.plan_ok(t, _s(a.get("task")), str(v.get("hash") or ""), by_tap=True, note=_s(a.get("text")), conv=conv)
         if action == "revise":
             return S.revise(t, _s(a.get("task")), _s(a.get("text")), conv)
         if action == "fix_ci":

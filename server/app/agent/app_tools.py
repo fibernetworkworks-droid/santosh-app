@@ -120,12 +120,24 @@ APP_TOOLS = [
         "v0.353 RAAY: a finished row carries the customer's own rating (rating 1-5 + rating_note); only that customer gives it, once - "
         "never set or change a rating yourself; a 1-2 star rating already reached her chat. "
         "action=role (app, member, role staff|admin|member) makes an account staff (a staff app's new account sees nothing until then). "
+        "v0.455 action=login (app): the ways into her app - ways [email_password, phone_otp, google, apple], her PUBLIC client "
+        "ids, staff_2fa. Mobile OTP needs a DLT-registered SMS template on the server; Google needs her Google Cloud WEB client "
+        "id; Apple needs the app's bundle id. NEVER ask her for a client SECRET - native sign-in does not use one, and the "
+        "server checks every token itself. action=security_check (app, platform android|ios) runs the security gates on the "
+        "newest build (secrets in the app, permissions, release settings, library CVEs via OSV.dev, login + data rules); a "
+        "FAILING gate blocks the store upload until she fixes it. Read both with app_dekho what=login. "
+        "v0.435 PARIVAAR action=family (app): more apps on the SAME data - face=rider (delivery partner app) / vendor (partner shop: "
+        "restaurant, seller) / staff -> its own plan card next (same accounts, orders, rules; nothing copied); partner + pdo "
+        "approve|refuse|remove decides a partner's application (ONLY on her words; a shop needs shop=<which shop row>). Partners "
+        "apply from their own app; a rider sees only ready jobs + his own, a shop only its own orders, never a customer's phone. "
+        "The web admin link for her staff is in app_dekho what=family. "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
                                                  "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
                                                  "logic", "logic_switch", "approval", "logic_run",
-                                                 "data_safety", "backup_now", "limits", "own_db"]},
+                                                 "data_safety", "backup_now", "limits", "own_db", "family", "login",
+                                                 "security_check"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -164,7 +176,15 @@ APP_TOOLS = [
          "platform": {"type": "string", "enum": ["android", "ios"], "description": "action=match: which app's screens"},
          "fix": {"type": "boolean", "description": "action=match: rebuild the screens that do not match (only when she asks)"},
          "astep": {"type": "string", "enum": ["listing", "push"], "description": "action=appstore: the App Store step (submit for review = only her tap in the app)"},
-         "kind": {"type": "string", "enum": ["sim", "testflight"], "description": "action=ios: sim = build + simulator check (default); testflight = also upload to TestFlight (only on her ask)"}},
+         "kind": {"type": "string", "enum": ["sim", "testflight"], "description": "action=ios: sim = build + simulator check (default); testflight = also upload to TestFlight (only on her ask)"},
+         "face": {"type": "string", "enum": ["rider", "vendor", "staff", "customer"], "description": "action=family: add this app on the SAME data (rider = delivery partner app, vendor = partner shop / restaurant / seller app, staff = staff app)"},
+         "partner": {"type": "string", "description": "action=family: the partner application id (app_dekho what=family) to decide"},
+         "pdo": {"type": "string", "enum": ["approve", "refuse", "remove"], "description": "action=family with partner: HER decision (only when she said it)"},
+         "shop": {"type": "string", "description": "action=family pdo=approve for a partner shop: which shop row (id or name) it is"},
+         "ways": {"type": "array", "items": {"type": "string"},
+                  "description": "action=login: the ways into the app - email_password, phone_otp, google, apple (Google alone also turns Apple on: App Store 4.8)"},
+         "ids": {"type": "object", "description": "action=login: her PUBLIC client ids {google_web_client_id, google_ios_client_id, apple_bundle_id, apple_service_id} - no secret is needed or accepted"},
+         "staff_2fa": {"type": "boolean", "description": "action=login: every staff / admin account must keep the authenticator second step"}},
          "required": ["action"]}},
     {"name": "app_dekho", "description": (
         "Read her app designs (nothing changes). what=data (app, coll: the real rows her app's users made) | members (app) | crashes (app: crashes on users' phones) | apps | app (app: board, screens, checks, preview link, versions) | "
@@ -185,7 +205,8 @@ APP_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
-                                             "data", "members", "crashes", "store", "ios", "appstore", "logic"]},
+                                             "data", "members", "crashes", "store", "ios", "appstore", "logic", "family",
+                                             "login"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -304,7 +325,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if not _owner(ctx):
             raise ToolError("Sirf maalkin yeh kar sakti hain.")
         from ..appmaker import backend as BE
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref) if action == "data_change" else BE.by_key_or_ref(t, ref)
         if action == "rollback":
             from ..appmaker.android import service as AN
             v = AN.rollback(t, r.id, int(a.get("build") or 0), conv)
@@ -334,7 +355,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("App ka database sirf maalkin dekh sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import owndb as OD
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         v = OD.status(r)
         out = {"linked": v["linked"], "link": {k: (v.get("link") or {}).get(k) for k in ("name", "label", "schema", "mode", "status",
                                                                                         "last_sync", "last_error")} if v["linked"] else None,
@@ -357,7 +378,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         from ..appmaker import backup as BK
         from ..appmaker import meter as MT
         from ..site import webapp as W
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         try:
             if action == "backup_now":
                 return BK.snapshot(r, "asked in chat", "manual")
@@ -380,7 +401,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         from ..appmaker.logic import engine as LE
         from ..appmaker.logic import service as LS
         from ..site import webapp as W
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         try:
             if action == "logic_switch":
                 return LS.switch(r, bool(a.get("on")))
@@ -393,6 +414,43 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not words and v["has_logic"]:
                 return {k: v[k] for k in ("on", "rev", "summary", "approvals")} | {"draft": bool(v["draft"]), "say": "; ".join(v["summary"][:6])}
             return LS.draft(r, words)
+        except W.AppError as e:
+            raise ToolError(str(e))
+    if action == "login":                     # v0.455 SURAKSHIT LOGIN: the ways into her app
+        if not _owner(ctx):
+            raise ToolError("Login ke tareeke sirf maalkin badal sakti hain.")
+        from ..appmaker import backend as BE
+        from ..appmaker import sign as SG
+        from ..site import webapp as W
+        r = BE.data_app(t, ref)
+        try:
+            body: dict[str, Any] = {}
+            for k in ("ways", "ids", "staff_2fa"):
+                if a.get(k) is not None:
+                    body[k] = a[k]
+            v = SG.save_settings(r, body) if body else SG.settings(r)
+        except W.AppError as e:
+            raise ToolError(str(e))
+        v["say"] = ("Login ke tareeke: " + ", ".join(v["ways"]).replace("_", " ")
+                    + (" (" + "; ".join(v["problems"].values()) + ")" if v.get("problems") else "")
+                    + " Agli build se app mein dikhenge.")
+        return v
+    if action == "security_check":            # v0.455 SURAKSHA GATE: the gates that block a store upload
+        from ..appmaker import backend as BE
+        from ..appmaker import gates as GT
+        from ..site import webapp as W
+        try:
+            v = GT.scan(BE.by_key_or_ref(t, ref), str(a.get("platform") or "android"))
+        except W.AppError as e:
+            raise ToolError(str(e))
+        return {k: v.get(k) for k in ("at", "platform", "build", "pass", "warn", "fail", "not_checked", "ok", "blocks")} | \
+            {"rows": [{kk: x.get(kk) for kk in ("gate", "check", "state", "say")} for x in v["rows"]]}
+    if action == "family":                    # v0.435 PARIVAAR: more apps on the same data + partner decisions
+        from ..appmaker import backend as BE
+        from ..appmaker import family as FA
+        from ..site import webapp as W
+        try:
+            return _family(ctx, a, t, ref, conv, BE, FA, W)
         except W.AppError as e:
             raise ToolError(str(e))
     if action == "turant":                    # v0.367 TURANT
@@ -415,7 +473,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("Sizes sirf maalkin badal sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import variants as VR
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         if a.get("product"):
             v = VR.save(r, str(a.get("product")), a.get("variants") if isinstance(a.get("variants"), list) else [])
         else:
@@ -429,7 +487,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("Hisaab sirf maalkin dekh sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import hisaab as HS
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         rep = HS.build(r, str(a.get("month") or ""))
         return {k: rep[k] for k in ("month", "summary", "say", "counts")} | {
             "download": f"/api/apps/{r.id}/hisaab?month={rep['month']}&download=1",
@@ -440,7 +498,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("Delivery niyam sirf maalkin badal sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import delivery as DL
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         dv = a.get("delivery") if isinstance(a.get("delivery"), dict) else {}
         v = DL.save(r, dv) if dv else DL.view(r)
         v["say"] = (f"Delivery Rs {v['fee']:g}" + (f", Rs {v['free_above']:g} se upar free" if v.get("free_above") is not None else "")
@@ -453,7 +511,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         from ..appmaker import backend as BE
         from ..appmaker import khata as KH
         from ..site import webapp as W
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         mem = str(a.get("member") or "").strip()
         if mem and not KH._who_name(r, mem):                 # her words name a person
             hit = [m for m in BE.members(r) if mem.lower() in (str(m.get("name") or "").lower(), str(m.get("email") or "").lower())]
@@ -476,7 +534,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("Coupon codes sirf maalkin bana sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import coupon as CP
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         cp = a.get("coupon") if isinstance(a.get("coupon"), dict) else {}
         v = CP.save(r, cp) if cp else CP.view(r)
         live = [c["code"] for c in v["coupons"] if c["live"]]
@@ -487,7 +545,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("Stock sirf maalkin badal sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import stock as SK
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         items = a.get("items") if isinstance(a.get("items"), dict) else {}
         if items:                                   # her words name products: by id or by name
             prods = BE._products(r)
@@ -501,7 +559,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("Credit note sirf maalkin bana sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import gst as G
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         v = G.credit(r, str(a.get("coll") or ""), str(a.get("row") or ""), str(a.get("reason") or ""))
         v["say"] = f"Credit note {v['credit_note']} ban gaya. Paise lautane hon to woh aap khud karein."
         return v
@@ -510,7 +568,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError("GST details sirf maalkin badal sakti hain.")
         from ..appmaker import backend as BE
         from ..appmaker import gst as G
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         g = a.get("gst") if isinstance(a.get("gst"), dict) else {}
         v = G.set_settings(r, g) if g else G.view(r)
         v["say"] = (f"GST invoice chalu: {v['gstin']} ({v['state']}), default {v['rate']}%." if v["on"]
@@ -520,7 +578,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if not _owner(ctx):
             raise ToolError("App ka data sirf maalkin badal sakti hain.")
         from ..appmaker import backend as BE
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         if action == "role":
             return BE.set_role(r, str(a.get("member") or ""), str(a.get("role") or ""))
         sets = a.get("set") if isinstance(a.get("set"), dict) else {}
@@ -537,6 +595,28 @@ async def app_banao(ctx: Ctx, action: str, **a) -> Any:
         return await asyncio.to_thread(_act, ctx, action, a)
     except (S.AppError, W.AppError, KeyError) as e:
         raise ToolError(str(e) or "Nahi mila")
+
+
+def _family(ctx: Ctx, a: dict[str, Any], t: str, ref: str, conv: str, BE, FA, W) -> dict[str, Any]:
+    """v0.435 PARIVAAR: app_banao action=family."""
+    if a.get("face"):
+        return FA.add_face(t, ref, str(a["face"]), str(a.get("instruction") or a.get("brief") or ""), conv)
+    r = BE.data_app(t, ref)
+    if a.get("partner"):
+        if not _owner(ctx):
+            raise ToolError("Partner ko haan / na sirf maalkin kar sakti hain.")
+        pdo = str(a.get("pdo") or "")
+        if pdo not in ("approve", "refuse", "remove"):
+            raise ToolError("pdo: approve / refuse / remove (sirf unke kehne par).")
+        shop = str(a.get("shop") or "")
+        if pdo == "approve" and shop:
+            link = FA.settings(r)["vendor"]["link"]
+            hits = [x for x in FA._scan(r, link)[:500] if shop in (x.id, FA._row_name(FA._site(r), x.id))] if link else []
+            shop = hits[0].id if len(hits) == 1 else shop
+        v = FA.admin_decide(r, W.Who(owner=True), str(a["partner"]), {"action": pdo, "link_row": shop})
+        return {**v, "say": f"{v['name']}: {v['state']}."}
+    v = FA.view(r)
+    return {k: v.get(k) for k in ("faces", "partners", "problems", "admin_url", "admin_note", "settings")}
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
@@ -620,13 +700,26 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
     if what == "logic":                                   # v0.382 DIMAAG: the app's brain, its draft, approvals, what it did
         from ..appmaker import backend as BE
         from ..appmaker.logic import service as LS
-        v = LS.view(BE.by_key_or_ref(t, ref))
+        v = LS.view(BE.data_app(t, ref))
         d = v.get("draft") or {}
         return {"on": v["on"], "rev": v["rev"], "summary": v["summary"], "approvals": v["approvals"][:20],
                 "audit": v["audit"][:15], "draft": {k: d.get(k) for k in ("summary", "lines", "errors", "questions")} if d else None}
+    if what == "login":                                   # v0.455 SURAKSHIT LOGIN + the security gates
+        from ..appmaker import backend as BE
+        from ..appmaker import gates as GT
+        from ..appmaker import sign as SG
+        r = BE.data_app(t, ref)
+        v = SG.view(r)
+        return {k: v.get(k) for k in ("ways", "ids", "staff_2fa", "otp_ready", "signup", "problems", "matrix")} | \
+            {"audit": v.get("audit", [])[:15], "gate": GT.last(r)}
+    if what == "family":                                  # v0.435 PARIVAAR: the apps on this data, partners, web admin
+        from ..appmaker import backend as BE
+        from ..appmaker import family as FA
+        v = FA.view(BE.data_app(t, ref))
+        return {k: v.get(k) for k in ("faces", "partners", "problems", "admin_url", "admin_note", "settings")}
     if what in ("data", "members", "crashes"):            # v0.314 the app's own backend
         from ..appmaker import backend as BE
-        r = BE.by_key_or_ref(t, ref)
+        r = BE.data_app(t, ref)
         if what == "crashes":
             return {"crashes": [{k: c.get(k) for k in ("id", "exception", "count", "screens", "versions", "devices", "status", "last")}
                                 for c in BE.crashes(r)[:20]]}

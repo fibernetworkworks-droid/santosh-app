@@ -308,3 +308,64 @@ form[data-hoola-calc] output{font-family:var(--font-head),sans-serif;font-weight
 .hs-langs a:hover,.hs-langs a[aria-current]{background:color-mix(in srgb,var(--c-primary) 12%,transparent)}
 [dir=rtl] .hs-langs ul{right:auto;left:0}[dir=rtl] .hs-prose blockquote{border-left:0;border-right:3px solid var(--c-primary);padding:.25rem 1rem .25rem 0}
 .hs-post-b .pill{align-self:flex-start}.hs-blog-h{padding-bottom:0}.hs-blog-h+.hs-blog{padding-top:1rem}
+
+/* v0.434 APP PAGES: the app area (menu per role, tables, kanban, calendar, detail, steps) - dressed by the site's own tokens */
+.hs-appx{display:grid;gap:1.25rem;grid-template-columns:minmax(0,1fr)}
+@media(min-width:900px){.hs-appx{grid-template-columns:200px minmax(0,1fr)}}
+.hs-appx-nav{display:flex;flex-wrap:wrap;gap:.25rem;align-content:start}
+@media(min-width:900px){.hs-appx-nav{flex-direction:column;position:sticky;top:1rem}}
+.hs-appx-nav a{padding:.5rem .75rem;border-radius:var(--radius,10px);color:var(--c-ink);text-decoration:none;border:1px solid transparent}
+.hs-appx-nav a:hover{border-color:var(--c-line)}
+.hs-appx-nav a[aria-current=page]{background:var(--c-primary);color:var(--c-on-primary,#fff)}
+.hs-appx-main{min-width:0}
+.hs-appx-head{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;justify-content:space-between;margin-bottom:1rem}
+.hs-appx-head h2{margin:0}
+.hs-appx-tools{display:flex;flex-wrap:wrap;gap:.5rem;margin:0 0 .75rem}
+.hs-appx-tools input,.hs-appx-tools select{min-height:40px;padding:.4rem .6rem;border:1px solid var(--c-line);border-radius:var(--radius,10px);background:var(--c-bg);color:var(--c-ink)}
+.hs-appx-bulk{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;padding:.5rem .75rem;margin:0 0 .75rem;border:1px solid var(--c-line);border-radius:var(--radius,10px);background:var(--c-surface,transparent)}
+.hs-appx-tablewrap{overflow-x:auto;border:1px solid var(--c-line);border-radius:var(--radius,10px)}
+.hs-appx-table{width:100%;border-collapse:collapse;font-size:.95rem}
+.hs-appx-table th,.hs-appx-table td{padding:.6rem .75rem;text-align:left;border-bottom:1px solid var(--c-line);vertical-align:top}
+.hs-appx-table thead th{background:var(--c-surface,transparent);font-weight:600;white-space:nowrap}
+.hs-appx-table tr.is-pending td{background:color-mix(in srgb,var(--c-accent,#f5a623) 10%,transparent)}
+.hs-sort{all:unset;cursor:pointer;font-weight:600}.hs-sort:focus-visible{outline:2px solid var(--c-primary);outline-offset:2px}
+.hs-appx-pager{margin-top:.75rem;align-items:center}
+.hs-kanban{display:grid;gap:1rem;grid-auto-flow:column;grid-auto-columns:minmax(240px,1fr);overflow-x:auto;padding-bottom:.5rem}
+.hs-lane{background:var(--c-surface,transparent);border:1px solid var(--c-line);border-radius:var(--radius,10px);padding:.75rem;min-height:120px}
+.hs-lane h3{margin:0 0 .5rem;font-size:1rem}.hs-lane.is-over{outline:2px dashed var(--c-primary)}
+.hs-kcard{padding:.75rem;margin:0 0 .5rem}.hs-kcard[draggable=true]{cursor:grab}.hs-kcard .muted{margin:.25rem 0 0;font-size:.85rem}
+.hs-cal-head{align-items:center;margin-bottom:.5rem}
+.hs-cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:2px}
+.hs-cal-dow{font-size:.8rem;padding:.25rem}
+.hs-cal-day{min-height:84px;border:1px solid var(--c-line);border-radius:6px;padding:.25rem;overflow:hidden}
+.hs-cal-day.is-empty{border-color:transparent}.hs-cal-n{font-size:.8rem;color:var(--c-muted)}
+.hs-cal-item{display:block;font-size:.8rem;margin-top:2px;padding:1px 4px;border-radius:4px;background:color-mix(in srgb,var(--c-primary) 14%,transparent);color:var(--c-ink);text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hs-appx-dl{display:grid;grid-template-columns:minmax(120px,max-content) 1fr;gap:.5rem 1rem;margin:0 0 1rem}
+.hs-appx-dl dt{color:var(--c-muted)}.hs-appx-dl dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.hs-appx-img{display:block;max-width:min(100%,320px);border-radius:var(--radius,10px);margin-bottom:.25rem}
+.hs-appx-rel{margin:1.5rem 0 0}
+.hs-steps{margin:0 0 .5rem}.hs-step{border:0;padding:0;margin:0}
+.hs-field{display:block}.hs-field-err{display:block;color:#b42318;font-size:.85rem;min-height:0}
+.hs-consent{display:flex;gap:.4rem;align-items:flex-start;font-size:.9rem}
+.hs-key{display:inline-block;padding:.4rem .6rem;border:1px dashed var(--c-line);border-radius:6px;word-break:break-all}
+.hs-danger{color:#b42318}
+@media(max-width:600px){.hs-cal-day{min-height:56px}.hs-appx-dl{grid-template-columns:1fr}}
+
+/* v0.446 DUKAAN PAISA: verified-buyer stars, review forms, coupon line */
+.hs-stars{margin:.25rem 0 0;font-size:.9rem;color:var(--c-ink)}
+.hs-reviews{margin-top:1rem;border-top:1px solid var(--c-line);padding-top:.75rem}.hs-review{margin:.5rem 0}
+.hs-coupon-msg{margin:.25rem 0 .5rem;font-size:.9rem}
+
+/* v0.452 DUKAAN PLUS: wishlist button + saved list, live courier line */
+.hs-wish{border:1px solid var(--c-line);background:transparent;color:var(--c-ink);border-radius:999px;padding:.25rem .7rem;font:inherit;font-size:.85rem;cursor:pointer;margin-top:.35rem}
+.hs-wish[aria-pressed=true]{border-color:var(--c-primary)}.hs-wishlist{margin:.5rem 0;display:flex;flex-wrap:wrap;gap:.4rem;align-items:center}
+.hs-track-live{margin:.5rem 0}
+/* v0.459 live: dot, chat, queue */
+.hs-live{font-size:.8rem;color:var(--c-muted,#5d5a66);padding:.5rem .75rem}
+.hs-chat{max-height:26rem;overflow:auto;display:flex;flex-direction:column;gap:.5rem;padding:.75rem;border:1px solid var(--c-line,#e6e4ea);border-radius:var(--radius,10px)}
+.hs-msg{max-width:80%;padding:.5rem .75rem;border-radius:var(--radius,10px);background:var(--c-soft,#f4f3f7);overflow-wrap:anywhere}
+.hs-msg-me{align-self:flex-end}.hs-msg-staff{align-self:flex-start;border:1px solid var(--c-line,#e6e4ea);background:transparent}
+.hs-chat-f{display:flex;gap:.5rem;margin-top:.5rem;align-items:flex-end}.hs-chat-f textarea{flex:1;min-width:0}
+.hs-typing{min-height:1.2em;margin:.25rem 0}.hs-threads{list-style:none;padding:0}.hs-threads li{padding:.5rem 0;border-bottom:1px solid var(--c-line,#e6e4ea)}
+.hs-queue-board,.hs-queue-mine{text-align:center;margin-bottom:1rem}.hs-queue-add{display:flex;flex-wrap:wrap;gap:.5rem;margin:1rem 0}
+.hs-queue-add input{flex:1 1 10rem;min-width:0}.hs-q-done td{opacity:.6}.hs-q-called td{font-weight:600}

@@ -1,0 +1,151 @@
+{
+ "base": "vernier-callipers",
+ "chapter": "Units and Measurement",
+ "variants": [
+  {
+   "key": "ball-half-inch",
+   "title": "Vernier callipers: diameter of a 1/2 inch steel ball bearing",
+   "sample": "Steel ball bearing, 1/2 inch size",
+   "unknown": "the diameter of the steel ball",
+   "params": {
+    "L": 0.0127
+   },
+   "source": {
+    "title": "ISO 3290-1 / ABMA Std 10: nominal ball diameter 1/2 in = 12.700 mm"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a steel ball (least count 0.1 mm)."
+  },
+  {
+   "key": "ball-3-4-inch",
+   "title": "Vernier callipers: diameter of a 3/4 inch steel ball bearing",
+   "sample": "Steel ball bearing, 3/4 inch size",
+   "unknown": "the diameter of the steel ball",
+   "params": {
+    "L": 0.01905
+   },
+   "note": "Its diameter falls between two vernier steps: the reading can be good only to the least count.",
+   "source": {
+    "title": "ISO 3290-1 / ABMA Std 10: nominal ball diameter 3/4 in = 19.050 mm"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a steel ball (least count 0.1 mm)."
+  },
+  {
+   "key": "ball-1-inch",
+   "title": "Vernier callipers: diameter of a 1 inch steel ball bearing",
+   "sample": "Steel ball bearing, 1 inch size",
+   "unknown": "the diameter of the steel ball",
+   "params": {
+    "L": 0.0254
+   },
+   "source": {
+    "title": "ISO 3290-1 / ABMA Std 10: nominal ball diameter 1 in = 25.400 mm"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a steel ball (least count 0.1 mm)."
+  },
+  {
+   "key": "marble",
+   "title": "Vernier callipers: diameter of a glass marble",
+   "sample": "Glass marble (a generic toy marble; its size is not a standard)",
+   "unknown": "the diameter of the marble",
+   "params": {
+    "L": 0.0158
+   },
+   "note": "Marbles are not made to a standard size: this one is a generic sample.",
+   "aim": "Read the main scale and the vernier to measure the diameter of a glass marble (least count 0.1 mm)."
+  },
+  {
+   "key": "bob",
+   "title": "Vernier callipers: diameter of a pendulum bob",
+   "sample": "Brass pendulum bob from the simple pendulum set (generic)",
+   "unknown": "the diameter of the bob",
+   "params": {
+    "L": 0.0218
+   },
+   "note": "Half this diameter is added to the thread length to get the length of a simple pendulum.",
+   "source": {
+    "title": "NCERT Laboratory Manual Physics Class XI: simple pendulum, effective length = thread + radius of the bob"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a pendulum bob (least count 0.1 mm)."
+  },
+  {
+   "key": "coin-1",
+   "title": "Vernier callipers: diameter of a ₹1 coin",
+   "sample": "₹1 coin (2019 series, ferritic stainless steel)",
+   "unknown": "the diameter of the coin",
+   "params": {
+    "L": 0.02
+   },
+   "source": {
+    "title": "Government of India, Ministry of Finance notification G.S.R. 184(E), 6 March 2019: ₹1 coin, diameter 20 mm"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a coin (least count 0.1 mm)."
+  },
+  {
+   "key": "coin-2",
+   "title": "Vernier callipers: diameter of a ₹2 coin",
+   "sample": "₹2 coin (2019 series, ferritic stainless steel)",
+   "unknown": "the diameter of the coin",
+   "params": {
+    "L": 0.023
+   },
+   "source": {
+    "title": "Government of India, Ministry of Finance notification G.S.R. 184(E), 6 March 2019: ₹2 coin, diameter 23 mm"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a coin (least count 0.1 mm)."
+  },
+  {
+   "key": "coin-5",
+   "title": "Vernier callipers: diameter of a ₹5 coin",
+   "sample": "₹5 coin (2019 series, nickel brass)",
+   "unknown": "the diameter of the coin",
+   "params": {
+    "L": 0.025
+   },
+   "source": {
+    "title": "Government of India, Ministry of Finance notification G.S.R. 184(E), 6 March 2019: ₹5 coin, diameter 25 mm"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a coin (least count 0.1 mm)."
+  },
+  {
+   "key": "coin-10",
+   "title": "Vernier callipers: diameter of a ₹10 coin",
+   "sample": "₹10 bimetallic coin (2019 series)",
+   "unknown": "the diameter of the coin",
+   "params": {
+    "L": 0.027
+   },
+   "source": {
+    "title": "Government of India, Ministry of Finance notification G.S.R. 184(E), 6 March 2019: ₹10 bimetallic coin, diameter 27 mm"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a coin (least count 0.1 mm)."
+  },
+  {
+   "key": "brass-cylinder",
+   "title": "Vernier callipers: diameter of a brass cylinder",
+   "sample": "Brass cylinder from a density set (generic)",
+   "unknown": "the diameter of the cylinder",
+   "params": {
+    "L": 0.0191
+   },
+   "note": "With its length and mass, the diameter gives the density of brass. The cylinder is a generic sample.",
+   "source": {
+    "title": "NCERT Laboratory Manual Physics Class XI: dimensions of a regular body with vernier callipers"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a cylinder (least count 0.1 mm)."
+  },
+  {
+   "key": "al-cylinder",
+   "title": "Vernier callipers: diameter of an aluminium cylinder",
+   "sample": "Aluminium cylinder from a density set (generic)",
+   "unknown": "the diameter of the cylinder",
+   "params": {
+    "L": 0.0254
+   },
+   "note": "A generic sample, turned from 1 inch aluminium rod.",
+   "source": {
+    "title": "NCERT Laboratory Manual Physics Class XI: dimensions of a regular body with vernier callipers"
+   },
+   "aim": "Read the main scale and the vernier to measure the diameter of a cylinder (least count 0.1 mm)."
+  }
+ ]
+}

@@ -9,6 +9,8 @@ import shutil
 import subprocess
 from pathlib import Path
 
+import re
+
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
@@ -249,8 +251,9 @@ def test_everything_the_learner_sees_is_english():
     def walk(v, where):
         if isinstance(v, str):
             low = f" {v} "
-            for w in HINGLISH:
-                assert w not in low, (where, w, v)
+            for w in HINGLISH:                           # whole words only: 'var hair' in code is not ' hai'
+                pat = r"(?<![A-Za-z])" + re.escape(w.strip()) + r"(?![A-Za-z])"
+                assert not re.search(pat, low), (where, w, v)
         elif isinstance(v, dict):
             for k, x in v.items():
                 walk(x, f"{where}.{k}")
@@ -260,8 +263,10 @@ def test_everything_the_learner_sees_is_english():
     for lab in _labs():
         assert lab["lang"] == "en-IN"
         walk(lab, lab["id"])
-    for f in ("lab3d.js", "index.html", "lab.html"):
+    for f in ("lab3d.js", "index.html", "lab.html", "studio/studio.js"):
         walk((STATIC / f).read_text(), f)
+    for f in sorted((STATIC / "exp").glob("*.js")):
+        walk(f.read_text(), f.name)
     walk((ROOT.parent / "lib" / "ui" / "prayog_screen.dart").read_text(), "prayog_screen.dart")
     walk(S.NOTE, "NOTE")
 
@@ -293,9 +298,9 @@ def _client():
 
 def test_routes_are_public_read_only():
     c = _client()
-    d = c.get("/api/prayog/labs").json()
-    assert len(d["labs"]) == 22 and "simulation" in d["note"]
-    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens"}).json()["labs"]} == {"convex-lens"}
+    d = c.get("/api/prayog/labs", params={"variants": False}).json()
+    assert len(d["labs"]) == 22 and "simulation" in d["note"]     # the 22 set-ups; their variants page separately
+    assert {r["id"] for r in c.get("/api/prayog/labs", params={"q": "lens", "variants": False}).json()["labs"]} == {"convex-lens"}
     lab = c.get("/api/prayog/labs/simple-pendulum").json()["lab"]
     assert lab["kernel"] == "pendulum" and lab["check"]["textbook"] == "pendulum_T"
     assert c.get("/api/prayog/labs/nahi-hai").status_code == 404
@@ -328,7 +333,7 @@ def test_prayog_tool(env):
     assert chk["ok"] and chk["error_percent"] < 1
     with pytest.raises(T.ToolError):
         asyncio.run(prayog(ctx, "open", id="nope"))
-    assert asyncio.run(prayog(ctx, "all"))["count"] == 22
+    assert asyncio.run(prayog(ctx, "all"))["count"] >= 22        # set-ups + every variant
 
 
 def test_wiring():
@@ -352,4 +357,84 @@ def test_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.425.0"
+    assert APP_VERSION == "0.535.0"
+
+
+# ------------------------------------------------------------------------------------------- the realistic studio
+def test_every_lab_has_a_studio_module():
+    have = {f.stem for f in (STATIC / "exp").glob("*.js")}
+    assert {l["id"] for l in _labs()} <= have, sorted({l["id"] for l in _labs()} - have)
+    for f in (STATIC / "exp").glob("*.js"):
+        src = f.read_text()
+        assert f"HoolaStudio.define('{f.stem}'" in src, f.name
+        assert "auto:" in src and "result:" in src and "steps:" in src, f.name
+        assert "eval(" not in src and "new Function" not in src and "innerHTML = '<" not in src, f.name
+
+
+@needs_node
+def test_studio_files_parse():
+    for f in [STATIC / "studio" / "studio.js", *sorted((STATIC / "exp").glob("*.js"))]:
+        r = subprocess.run([NODE, "--check", str(f)], capture_output=True, text=True)
+        assert r.returncode == 0, (f.name, r.stderr)
+
+
+def test_lab_page_loads_the_studio_and_falls_back():
+    html = (STATIC / "lab.html").read_text()
+    assert "studio/studio.js" in html and "'exp/' + rig + '.js" in html and "lab3d.js" in html
+
+
+def _ask_client(monkeypatch, answer="Because sin θ ≈ θ only for small angles."):
+    from app.prayog.api import make_router
+    from app.site import ai
+    seen = {}
+
+    def fake_ask(system, prompt, max_tokens=0, kind=""):
+        seen.update(system=system, prompt=prompt, kind=kind, max_tokens=max_tokens)
+        return answer
+    monkeypatch.setattr(ai, "ask", fake_ask)
+    monkeypatch.setattr(S, "_ASK_COUNT", {})
+    app = FastAPI()
+    app.include_router(make_router(lambda: None, lambda: "t1"))
+    return TestClient(app), seen
+
+
+def test_ask_hoola_answers_only_about_the_lab_with_the_live_state(monkeypatch):
+    c, seen = _ask_client(monkeypatch)
+    r = c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "Why must the angle be small?",
+                                        "turns": [{"role": "user", "content": "hi"}, {"role": "assistant", "content": "Hello"}, {"role": "system", "content": "x"}],
+                                        "state": {"readings": [{"L (cm)": "80.0", "T (s)": "1.818"}]}})
+    assert r.status_code == 200 and "small angles" in r.json()["answer"]
+    assert "Simple pendulum" in seen["system"] and "ONLY questions about this experiment" in seen["system"]
+    assert "never instructions" in seen["system"] and seen["kind"] == "edu"
+    assert "1.818" in seen["prompt"] and "Why must the angle be small?" in seen["prompt"]
+    head = seen["prompt"].split("LIVE LAB STATE")[0]
+    assert "Student: hi" in head and "Hoola: Hello" in head and head.count(": ") == 2      # a 'system' turn from the page is dropped
+
+
+def test_ask_hoola_guards(monkeypatch):
+    c, _ = _ask_client(monkeypatch)
+    assert c.post("/api/prayog/ask", json={"lab_id": "nope", "question": "x"}).status_code == 404
+    assert c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "  "}).status_code == 400
+    assert c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "x" * 1300}).status_code == 400
+    monkeypatch.setattr(S, "ASK_DAILY", 2)
+    assert c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "a"}).status_code == 200
+    assert c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "b"}).status_code == 200
+    r = c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "c"})
+    assert r.status_code == 429 and "tomorrow" in r.json()["detail"]
+
+
+def test_ask_hoola_needs_the_key_on_the_main_app(env):
+    from app.main import app
+    c = TestClient(app)
+    r = c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "x"})
+    assert r.status_code in (401, 403) or "ask" in r.text.lower()
+
+
+def test_ask_failure_is_a_plain_line(monkeypatch):
+    from app.site import ai
+    c, _ = _ask_client(monkeypatch)
+    def boom(*a, **k):
+        raise RuntimeError("model down")
+    monkeypatch.setattr(ai, "ask", boom)
+    r = c.post("/api/prayog/ask", json={"lab_id": "simple-pendulum", "question": "x"})
+    assert r.status_code == 503 and "model down" not in r.text

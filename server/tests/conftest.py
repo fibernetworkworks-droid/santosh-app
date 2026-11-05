@@ -59,6 +59,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
+    monkeypatch.setenv("GOAL_VERIFY_LINKS", "false")   # v0.443 the done=verified gate never reaches the network in tests
     monkeypatch.setenv("CHAT_HEAL_AI", "false")        # v0.158 no model judge of call cards in tests
     monkeypatch.setenv("AGENT_SELF_CHECK", "false")    # v0.78: scripted model tests don't expect the extra check call
     monkeypatch.setenv("NOTEBOOK_PAINT", "false")      # v0.155: Notebook pages are painted by Gemini; tests use the HTML renderer
@@ -79,7 +80,9 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("SITE_AI_PHOTOS", "0")       # v0.292: no image-model calls in scripted site tests
     monkeypatch.setenv("SITE_LOOK_SECTIONS", "1")   # v0.292: looks stay hero-only unless a test asks for more
     monkeypatch.setenv("KAAM_WATCH", "false")        # v0.136: job-watch notes only in its own tests
+    monkeypatch.setenv("CODER_ENABLED", "false")     # v0.473: coder memory writes only in its own tests
     monkeypatch.setenv("HARD_JUDGE", "false")        # v0.272: no tiny judge model call in tests (the rules still run)
+    monkeypatch.setenv("HARD_CHECK", "false")        # v0.436: no reviewer call in scripted turns (its own tests switch it on)
     monkeypatch.setenv("CALL_RECEIPT", "false")      # v0.91: scripted calls don't expect the extra receipt message
     monkeypatch.setenv("BLENDER3D_WORKER", "false")   # v0.141: tests run 3D jobs themselves
     monkeypatch.setenv("BLENDER_LOOK", "false")

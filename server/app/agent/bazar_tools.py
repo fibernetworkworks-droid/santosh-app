@@ -129,11 +129,11 @@ async def _ride_points(ctx: Ctx, args: dict) -> dict:
     if maps.configured():
         try:
             if drop and drop.get("lat") is None and drop.get("name"):
-                g = await maps.geocode(drop["name"], near=here)
+                g = await maps.geocode(drop["name"], near=here, tenant_id=ctx.tenant_id)
                 if g:
                     drop = {"lat": g["lat"], "lng": g["lng"], "name": g["name"]}
             if pickup and pickup.get("lat") is None and pickup.get("name"):
-                g = await maps.geocode(pickup["name"], near=here)
+                g = await maps.geocode(pickup["name"], near=here, tenant_id=ctx.tenant_id)
                 pickup = {"lat": g["lat"], "lng": g["lng"], "name": g["name"]} if g else None
         except maps.MapsError:
             pass
