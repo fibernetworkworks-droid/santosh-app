@@ -1377,3 +1377,19 @@ Stage Summary:
   hooks) -> P6 RETRIEVE -> P7 HUB -> P8 the parity audit. Deploy is the owner's dispatch
   (v0.530.0 + v0.549.0 ride it together; healthz should say 0.549.0); trace_flip stays
   pre-built and dispatch-ready. Rollback = one flip; checkpoints live in their own table.
+
+---
+Task ID: 39 — v0.550.0 EK JAISA (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "ALL VOICE CALL, CONSOLE CHAT, MOBILE APP CHAT ---- WIRED TO ALL 100 % AI WORK CHECK".
+
+Work Log:
+- Audited the three surfaces: console + phone chat = one pipeline (same POST /messages -> run_turn); registry specs
+  vs handlers (biz_* customer-only by design); voice call_route for every tool; card kinds drawn per client.
+- FIXED: phone event switch had no default (unnamed card kinds dropped) -> any_card + AnyEventCard; tool_search
+  exact-name lookup lost to keyword families (15 tools unreachable) -> exact name always opens its family; voice
+  coder block had no query (no skills ever on a call) -> recent words + named skills.
+- NEW test_v0550_ek_jaisa.py (10). Pre-existing reds stash-proven (v0311 hello size, v0473 routes, uiux x5).
+
+Stage Summary:
+- v0.550.0 ready; Dart compiles first on CI. Deploy = owner's vps-ops dispatch.

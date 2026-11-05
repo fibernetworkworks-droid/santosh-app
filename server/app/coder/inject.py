@@ -230,12 +230,51 @@ def turn_block(tenant: str, conv: str, query: str = "") -> str:
         return ""
 
 
+def _recent_asks(conv: str, n: int = 4) -> str:
+    """v0.550 EK JAISA: her last few words in this chat - a call starts with no ask, so this is what the call's
+    matched-skills lookup searches with (a reconnect mid-call sees the newest words, call turns included)."""
+    if not conv:
+        return ""
+    try:
+        from sqlalchemy import select
+        from ..db import Message, session
+        with session() as s:
+            rows = s.scalars(select(Message.display).where(Message.conversation_id == conv,
+                                                           Message.role == "user")
+                             .order_by(Message.id.desc()).limit(n)).all()
+        return " ".join(str(r or "") for r in rows)[:800]
+    except Exception:
+        return ""
+
+
+def skill_names_line(tenant: str) -> str:
+    """v0.550 the call's fallback: when nothing matched, NAME her skills (no bodies) so the live model knows
+    they exist and can `skill_manage read` one - before this a call never saw a single skill."""
+    if not _skills_enabled():
+        return ""
+    try:
+        names = store.skill_names(tenant, 8)
+    except Exception:
+        return ""
+    if not names:
+        return ""
+    return ("Her saved skills (skill_manage read <name> before you follow one): " + ", ".join(names))[:SKILLS_VOICE_BUDGET]
+
+
 def voice_block(tenant: str, conv: str, query: str = "") -> str:
-    """The full call-start block (rides after the KAAM YAAD block in the voice context)."""
+    """The full call-start block (rides after the KAAM YAAD block in the voice context).
+    v0.550 EK JAISA: a call has no ask yet, so the matched-skills lookup uses her recent words in this chat;
+    when still nothing matches, her skills are NAMED so the call is not blind to them (chat always saw them)."""
     try:
         from ..config import get_settings
         if not getattr(get_settings(), "coder_enabled", True):
             return ""
-        return primer(tenant, conv=conv, compact=False, query=query)
+        q = query or _recent_asks(conv)
+        out = primer(tenant, conv=conv, compact=False, query=q)
+        if "LEARNED SKILLS" not in out:
+            names = skill_names_line(tenant)
+            if names:
+                out = (out + "\n" + names) if out else names
+        return out
     except Exception:
         return ""
