@@ -1308,3 +1308,72 @@ python:3.13-slim-bookworm, apt python3-dev/venv/pip dropped; her code untouched 
 self-test compares box vs server Python and says GADBAD; snapshots keyed on the base revision so a stale 3.11 snapshot
 cannot be served on the new base. Image rev 2 -> 3; lab_check rebuilds. 45 green. lab_try still has never passed.
 No credentials in this entry.
+
+## Task 38 — v0.549.0 HOOLA AGENT (owner: "GO BUILD P4"; built through the collision wave)
+
+- Grounding re-established after compaction: repo synced to origin/main 99d752f7 (v0.537.0
+  CRAWL BRAIN), tree clean; P1 + P2 + P3 all on main.
+- The READ again (house law): upstream re-fetched at the pinned commit
+  aa2528fb980a290d2b06c83a1be43e60bc2348f9 (the full SHA recovered from the
+  langchain-core==1.7.5 tag); libs/langchain_v1/langchain/agents/factory.py (2164 lines) read:
+  create_agent(model, tools=None, *, system_prompt, middleware, response_format, state_schema,
+  context_schema, checkpointer, store, interrupt_before, interrupt_after, debug, name, cache,
+  transformers) -> CompiledStateGraph; nodes "model"/"tools"; START->model,
+  model->(tools|END), tools->(model|END-if-return_direct); the 24-middlewares listed in
+  agents/middleware/* (P5's spec).
+- Built server/app/aep/agent.py (~430 LOC, ZERO upstream): ToolNode (pending tool_calls of the
+  last AIMessage or an explicit tool_call list; sequential, call order, deterministic;
+  handle_tool_errors True/str/False - False re-raises the ORIGINAL error; unknown names honest;
+  dict outputs JSON-stringify; GraphInterrupt/GraphRecursionError propagate) + create_agent
+  (bind_tools at BUILD time; pre-bound Runnable lane; system_prompt rides the prompt never the
+  state; response_format pydantic/dict -> generate_structured_response writing
+  state['structured_response'] through the P1 with_structured_output lane; state_schema extra
+  channels ride via a dynamic TypedDict only when the structured channel is needed;
+  interrupt_before/after static breakpoints on the P3 park seam - before-tools/before-model at
+  node top, after-model only when tool calls exist, after-tools at the model re-entry detected
+  by a ToolMessage last at model entry; one gate per arrival, after checked before before;
+  checkpointer chat memory; store wiring; debug prints; name names the compiled graph) +
+  create_react_agent alias. Honest divergences recorded for the P8 audit: response_format uses
+  the post-loop structured node; model strings point at the P7 HUB; dict (provider) tools
+  refused; context_schema accepted and inert until P5.
+- Substrate seams P4 needed (graph.py, additive; P3 suite re-verified): compile(name=...) +
+  get_name naming; node bodies run on their span's CHILD config so model/tool calls nest UNDER
+  their node span; add_messages coerces BOTH sides + the role-shape dict table; the
+  CHECKPOINT-MERGE law (a dict input on a checkpointed thread merges into the stored channel
+  values through the reducers - parked threads re-run the parked node with the merged state;
+  finished threads start a fresh turn with the step budget reset; crashed walks resume from the
+  stored next); SqliteSaver lazy-ensure moved to _raw() PER INSTANCE (the class-level _ensured
+  leaked across databases AND a get before any put had no table on the engine path).
+- INERTNESS re-proven: a fresh interpreter imports app.aep.agent with zero threads/env/files;
+  registry stays 569 (library module); voice untouched; mem pin untouched; console stamps
+  FOLLOW APP_VERSION (the dev's own v0.537 convention change; their v0.548 let them drift to
+  0.546 - healed to 0.549.0, 21 stamps).
+- Tests: NEW test_v0540_hoola_agent.py (56, zero network, one-loop law). Bugs caught: the
+  add_messages left-side coercion gap; handle_tool_errors=False wrapping instead of re-raising;
+  the SqliteSaver class-flag leak + get-before-put table; the interrupt_after=['tools']
+  first-turn expectation (a breakpoint is STATIC - it parks on every arrival).
+- THE COLLISION WAVE (thirty-fourth + thirty-fifth): the dev chain shipped 0.538 LOAD PROOF,
+  0.540 JAANCH, 0.541 SEO INTEL + GOOGLE ADS 2, 0.544 CONSTRUCTION WAVE 2, 0.545 SCENES AS
+  CHECKED DATA, 0.546 CHALTA KAAM, 0.547 TH PACK and 0.548 ED PACK while P4 sat built.
+  REBASE PROTOCOL twice (efc96e04f, then 154940f18): the AEP layer re-applied each time (they
+  never touched server/app/aep), the ritual re-run as 0.549.0 on their fresh base.
+- Version ritual v0.549.0 (story / pubspec 0.549.0+572 / CLAUDE.md healed / v2.html stamps 21x
+  0.546.0 -> 0.549.0 / pins swept 0.548.0 -> 0.549.0 + +571 -> +572 across 179 test files, 94
+  full-string + 176 bare hits + 7 story-literal heals, zero residual outside deliberate
+  history; the dev chain's stale 568 count pins (six suites) healed to the real 569).
+  docs/WORKLOG.md Task 38 + docs/HISTORY.md v0.549.0.
+- Sweeps on the ritual tree: AEP quad (core 79 + trace + graph 42 + agent 56) + the dev's
+  newest (seo_intel, crawl 69, lab 15) + dhara/docs7/cspack/bdpack/mem/dify/construction
+  w1+w2/crew + selfteach/swarm/curator/officehours/magic21/coder/skill-desk/console + memory
+  suites (exact counts in the commit message); remaining sandbox reds are the DOCUMENTED
+  env/data classes byte-identical on pristine (patchright missing; the dev's own missing uiux
+  corpus data files styles.csv + friends; the jaanch twin-project suite needs >10 min
+  in-process - CI's own job).
+
+Stage Summary:
+- P4 DONE: the AEP train has its agent - create_agent compiles model+tools onto the house
+  graph with real chat memory, static breakpoints, structured answers and a run tree that
+  nests. Train: P5 the 24-middlewares (nudge/curator/delegate/skills-primer collapse into
+  hooks) -> P6 RETRIEVE -> P7 HUB -> P8 the parity audit. Deploy is the owner's dispatch
+  (v0.530.0 + v0.549.0 ride it together; healthz should say 0.549.0); trace_flip stays
+  pre-built and dispatch-ready. Rollback = one flip; checkpoints live in their own table.

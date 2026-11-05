@@ -146,7 +146,7 @@ window.HoolaBuild = function (C) {
       ${L(c.journeys).length ? `<div class="bln faint" style="margin-top:6px">Visitor tests (Hoola used the site like a customer on a phone):</div>${L(c.journeys).map(j => `<div class="${j.ok ? 'okc' : 'badc'} bln">${j.ok ? '✓' : '✗'} ${esc(JOURNEY[S(j.name)] || S(j.name))}${j.ok ? '' : ' - ' + esc(S(j.detail))}</div>`).join('')}` : ''}
       ${gatesBlock(M(c.gates))}</section>`;
   }
-  /* v0.549 SURAKSHA GATES: security, forms, bots, accessibility, legal, trackers - every page; a fail blocks going live */
+  /* v0.550 SURAKSHA GATES: security, forms, bots, accessibility, legal, trackers - every page; a fail blocks going live */
   const GATE = {secrets: 'Keys', libraries: 'Libraries', headers: 'Headers', pages: 'Pages', forms: 'Forms', bots: 'Bots',
                 accessibility: 'Accessibility', legal: 'Legal', trackers: 'Trackers', limits: 'Rate limits', gate: 'Gate'};
   function gatesBlock(g) {
@@ -929,7 +929,7 @@ window.HoolaBuild = function (C) {
       }));
     };
     try { drawSign(await api('GET', base(o) + '/sign')); } catch (er) { sgbox.remove(); }
-    // v0.549 CHALTA KAAM (Pillar L): the app AFTER it ships - use, speed, failures, cost, alerts
+    // v0.550 CHALTA KAAM (Pillar L): the app AFTER it ships - use, speed, failures, cost, alerts
     const opbox = document.createElement('section'); opbox.className = 'stcol stops'; box.appendChild(opbox);
     const drawOps = op => {
       const tr = op.traffic || {}, cs = op.cost || {}, fd = op.field || {}, pe = op.people || {}, al = L(op.alerts);

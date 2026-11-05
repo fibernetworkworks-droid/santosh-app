@@ -1562,7 +1562,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
         log.info("og / scroll video skipped", exc_info=True)
     r = _save(r.id, board=_board(r, plan, states, "Visitor ki tarah chala ke dekh raha hoon"))
     report = _journeys(r, report)             # v0.400 Hoola walks the site like a visitor before she sees it
-    report = _gates(r, report)                # v0.549 SURAKSHA GATES: security / legal / accessibility on every page
+    report = _gates(r, report)                # v0.550 SURAKSHA GATES: security / legal / accessibility on every page
     _make_version(r, plan, report, shots, states, note or "pehla version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
 
@@ -1584,7 +1584,7 @@ def _journeys(r: Site, report: dict[str, Any]) -> dict[str, Any]:
 
 
 def _gates(r: Site, report: dict[str, Any]) -> dict[str, Any]:
-    """v0.549 the security / compliance gates (site/gates.py) on the built copy: every FAIL becomes a blocking item, so the
+    """v0.550 the security / compliance gates (site/gates.py) on the built copy: every FAIL becomes a blocking item, so the
     launch card refuses it until fixed; a gate that could not run is said as not checked, never as a pass."""
     if not getattr(_settings(), "site_gates", True) or report.get("source") == "none":
         return report
@@ -2603,7 +2603,7 @@ def save_version(site_id: str, note: str = "") -> None:
             report = {"blocking": [], "warnings": [{"kind": "checks", "text": str(e), "sections": []}], "scores": {},
                       "passed": None, "source": "none", "pages": {}}
         report = _journeys(r, report)         # v0.400 her edits too: the shop / form / menu still work
-        report = _gates(r, report)            # v0.549 and the gates again on what she changed
+        report = _gates(r, report)            # v0.550 and the gates again on what she changed
         _make_version(r, plan, report, shots, None, note or "aapke badlav", None, push=False)
 
 
@@ -2807,7 +2807,7 @@ _TURNSTILE_TRANSPORT = None                               # tests: a fake Cloudf
 
 
 def turnstile_ok(token: str, ip: str = "") -> bool:
-    """v0.549 Cloudflare Turnstile's own check of the box the visitor solved (siteverify, the secret never leaves the server).
+    """v0.550 Cloudflare Turnstile's own check of the box the visitor solved (siteverify, the secret never leaves the server).
     No answer from Cloudflare = refused (a form that cannot be checked is not saved as checked)."""
     if not token or len(token) > 2048:
         return False

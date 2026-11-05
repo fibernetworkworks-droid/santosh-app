@@ -1,4 +1,4 @@
-"""v0.549 SURAKSHA GATES for websites (web Step 7 part 1 = W11): every build's pages are read (not a sample) for secrets,
+"""v0.550 SURAKSHA GATES for websites (web Step 7 part 1 = W11): every build's pages are read (not a sample) for secrets,
 outside libraries with known holes (OSV.dev), security headers, OWASP page rules, form safety + honeypot + Turnstile,
 WCAG 2.2 AA (file-provable on every page + axe), profession law (DMR cure claims, Bar Council solicitation, FSSAI, NMC
 registration, e-commerce seller pages, coaching claims), trackers without consent; a FAIL blocks the launch card."""
@@ -14,7 +14,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.549.0"
+    assert APP_VERSION == "0.550.0"
 
 
 def _built(S):
