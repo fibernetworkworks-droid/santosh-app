@@ -2058,7 +2058,7 @@ window.HoolaBuild = function (C) {
     };
   }
 
-  /* v0.534 HOOLA CMS: her team (writers / editors / publishers) works at /cms/<site>/ with their own login; here she
+  /* v0.538 HOOLA CMS: her team (writers / editors / publishers) works at /cms/<site>/ with their own login; here she
      invites, changes roles, removes, and acts on any draft herself (approve / send back / publish / restore). */
   async function teamBox(o, box) {
     let v; try { v = await api('GET', base(o) + '/cms'); } catch (er) { return; }
@@ -2102,7 +2102,7 @@ window.HoolaBuild = function (C) {
     };
   }
 
-  /* v0.534 BADA CATALOGUE: her products / doctors / properties from her file, Google Sheet or a dataset -> pages by code.
+  /* v0.538 BADA CATALOGUE: her products / doctors / properties from her file, Google Sheet or a dataset -> pages by code.
      Preview first (nothing written, every count + rejected row shown), then her Apply tap writes it. */
   async function catalogBox(o, box) {
     let v; try { v = await api('GET', base(o) + '/catalog'); } catch (er) { return; }

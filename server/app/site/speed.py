@@ -1,4 +1,4 @@
-"""v0.534 SPEED (web Step 6, W10): the parts of "fast on a mid phone" that code can guarantee on every build.
+"""v0.538 SPEED (web Step 6, W10): the parts of "fast on a mid phone" that code can guarantee on every build.
 
   * precompress(out): every text file (html / css / js / json / xml / svg / txt) of 1 KB or more gets a gzip twin
     (`page.html.gz`, level 9, fixed mtime so a rebuild with the same content is byte-identical). nginx serves the twin

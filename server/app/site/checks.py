@@ -289,7 +289,7 @@ def _check_page(b, out: Path, slug: str, shots_dir: Path | None, axe, report: di
     if pr.get("first_load_kb", 0) > 1024:
         pr["issues"].append({"kind": "weight", "text": f"{slug}: first load {pr['first_load_kb']} KB (limit 1,024)",
                              "sections": []})
-    if pr.get("cls", 0) > 0.1:                  # v0.534 W10 target: the page must not jump while it loads
+    if pr.get("cls", 0) > 0.1:                  # v0.538 W10 target: the page must not jump while it loads
         pr["warnings"].append({"kind": "speed", "text": f"{slug}: layout shift {pr['cls']} (target 0.1)", "sections": []})
     if pr.get("lcp_ms", 0) > 2500:
         pr["warnings"].append({"kind": "speed", "text": f"{slug}: LCP {pr['lcp_ms']} ms in Hoola's lab (target 2,500)",
@@ -342,7 +342,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
         pages = SM.check_slugs(plan, max(5, int(getattr(get_settings(), "site_check_pages", 40) or 40)))
     else:
         pages = [p["slug"] for p in plan.get("pages", []) if not p.get("template_of")]
-    pages += [x for x in catalog_slugs(out) if x not in pages]   # v0.534 every imported list: its pages 1 + 2 + two items
+    pages += [x for x in catalog_slugs(out) if x not in pages]   # v0.538 every imported list: its pages 1 + 2 + two items
     if only:                                 # v0.400 re-check just the pages that changed (critique redraws)
         pages = [x for x in pages if x in set(only)] or list(only)
     report: dict[str, Any] = {"pages": {}, "blocking": [], "warnings": [], "scores": {}, "source": "hoola"}
@@ -356,7 +356,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
         report["blocking"].append({"kind": "weight", "text": f"JavaScript {js_kb} KB gzipped (limit 120 KB)", "sections": []})
     if big_img[0] > 300 * 1024 and not big_img[1].endswith("-1600.jpg"):
         report["warnings"].append({"kind": "weight", "text": f"Image {big_img[1]} is {big_img[0] // 1024} KB", "sections": []})
-    from . import speed as SPD               # v0.534 W10: EVERY page's HTML against the 100 KB target (not just the opened ones)
+    from . import speed as SPD               # v0.538 W10: EVERY page's HTML against the 100 KB target (not just the opened ones)
     bud = SPD.budget(out)
     report["scores"].update({"html_max_kb": bud["max_kb"], "html_over": bud["over_count"]})
     for o in bud["over"][:5]:
@@ -400,7 +400,7 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
 
 
 def catalog_slugs(out: Path) -> list[str]:
-    """v0.534 the pages of every imported list the browser opens: the listing, its page 2, and its first two items."""
+    """v0.538 the pages of every imported list the browser opens: the listing, its page 2, and its first two items."""
     got: list[str] = []
     for f in sorted((out / "assets" / "catalog").glob("*.json")):
         try:

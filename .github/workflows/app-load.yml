@@ -30,7 +30,7 @@ on:
       - "server/app/site/catalog.py"
       - "server/app/site/shop.py"
       - "server/app/site/loadtest.py"
-      - "server/tests/test_v0534_bada_catalogue.py"
+      - "server/tests/test_v0538_bada_catalogue.py"
       - "server/app/pgdb/**"
       - ".github/workflows/app-load.yml"
   workflow_dispatch:
@@ -110,4 +110,4 @@ jobs:
         working-directory: server
         env:
           HOOLA_LOAD: "1"
-        run: python -m pytest -q -s -p no:cacheprovider tests/test_v0534_bada_catalogue.py -k "load_proof or retried"
+        run: python -m pytest -q -s -p no:cacheprovider tests/test_v0538_bada_catalogue.py -k "load_proof or retried"

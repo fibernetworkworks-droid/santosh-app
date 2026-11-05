@@ -746,7 +746,9 @@ def dashboard(tenant: str, ref: str) -> dict[str, Any]:
         stuck = [{"level": lv, "game_overs": n, "x_median": round(n / med, 1)} for lv, n in sorted(overs.items(), key=lambda x: -x[1])
                  if med and n > 2 * med][:5]
     last14 = [(today - timedelta(days=i)).isoformat() for i in range(13, -1, -1)]
+    from . import runtime as _RT
     return base | {"d30": d30, "dau": {d: len(dau.get(d, ())) for d in last14}, "balance": balance, "stuck_levels": stuck,
+                   "under_18": _RT.UNDER_18,
                    "note_values": "numbers come from HoolaRuntime.track(event, value) in the game; a level with more than "
                                   "2x the median game-overs is flagged as a difficulty spike"}
 

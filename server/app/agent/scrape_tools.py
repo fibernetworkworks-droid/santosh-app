@@ -162,14 +162,59 @@ async def _robots_ok(url: str) -> bool:
 
 # --------------------------------------------------------------------------- fetch core
 
-def _fetch(url: str, tenant_id: str, timeout: int = 25, adaptive: bool = False):
+_ROTATION = None          # built once from the setting; None until the first fetch asks
+
+
+def _rotation():
+    """v0.537 item 8a: the proxy pool, or None when she has not configured one.
+
+    Off unless `scrape_proxies` is set, so the default path is byte-for-byte what it was. The rotation is
+    POLICY only (app/crawl/proxies) - this is the one place that hands the chosen value to the fetcher."""
+    global _ROTATION
+    if _ROTATION is not None:
+        return _ROTATION or None
+    from ..config import get_settings as _gs
+    spec = (getattr(_gs(), "scrape_proxies", "") or "").strip()
+    if not spec:
+        _ROTATION = False                     # remember "none configured" so this runs once
+        return None
+    try:
+        from ..crawl.proxies import Rotation
+        _ROTATION = Rotation([s for s in spec.split(",") if s.strip()],
+                             max_fails=int(getattr(_gs(), "scrape_proxy_max_fails", 3)),
+                             rest_s=float(getattr(_gs(), "scrape_proxy_rest_s", 300)))
+        log.info("scrape proxies: %s", [p["proxy"] for p in _ROTATION.report()])
+        return _ROTATION
+    except Exception as e:
+        log.warning("scrape_proxies could not be read (%s) - fetching direct", e)
+        _ROTATION = False
+        return None
+
+
+def _fetch(url: str, tenant_id: str, timeout: int = 25, adaptive: bool = False, session: str = ""):
     """One public page through Scrapling's curl_cffi engine (TLS-impersonated chrome, no browser)."""
     from scrapling.fetchers import Fetcher
     timeout = max(5, min(int(timeout or 25), _MAX_TIMEOUT))
     sel_cfg: dict[str, Any] = {}
     if adaptive:
         sel_cfg = {"adaptive": True, "storage_args": {"storage_file": _storage_path(tenant_id)}}
-    return Fetcher.get(url, timeout=timeout, follow_redirects=True, selector_config=sel_cfg)
+    rot = _rotation()
+    kw: dict[str, Any] = {}
+    chosen = None
+    if rot is not None:
+        chosen = rot.next(session=session or "")
+        if not chosen.is_direct:
+            kw["proxy"] = chosen.url            # the only place the real credential is used
+    try:
+        page = Fetcher.get(url, timeout=timeout, follow_redirects=True, selector_config=sel_cfg, **kw)
+    except Exception:
+        if rot is not None and chosen is not None and not chosen.is_direct:
+            rot.failed(chosen)                  # rest a proxy that keeps breaking, do not retry for ever
+        raise
+    if rot is not None and chosen is not None:
+        st = int(getattr(page, "status", 0) or 0)
+        (rot.failed if st in (403, 407, 429, 502, 503) else rot.ok)(chosen)
+    return page
 
 
 def _split_xpath(selector: str) -> tuple[str, str]:
@@ -219,6 +264,22 @@ def _field_value(el: Any, spec: str) -> Any:
 
 # --------------------------------------------------------------------------- block detection (v0.481)
 
+def _vendor_block(page: Any) -> str | None:
+    """v0.537 item 7: the vendor fingerprint tiers, on top of this lane's own strong signals.
+
+    `_blocked` already catches a block status, a challenge title and a small body carrying a challenge
+    fingerprint. What it had no notion of is WHICH wall - and a reason that names Cloudflare or DataDome is
+    worth more on her card than 'blocked', because it tells her whether a stealth read could ever help.
+    Also catches the silent case this lane missed entirely: a 200 that is an empty script-only shell."""
+    try:
+        from ..crawl import blocked as _bl
+        html = getattr(page, "html_content", "") or ""
+        status = int(getattr(page, "status", 0) or 0)
+        return _bl.why_blocked(html, status, getattr(page, "url", "") or "")
+    except Exception:
+        return None
+
+
 def _blocked(page: Any) -> str | None:
     """Firecrawl-waterfall idea, tightened: does this answer look like a bot-block, not a page?
     Only strong signals escalate: a block status, a challenge title, or a SMALL body carrying a
@@ -247,7 +308,7 @@ def _blocked(page: Any) -> str | None:
         for m in _STEALTHY_SCRIPTS:
             if m in low:
                 return f"challenge script ('{m}')"
-    return None
+    return _vendor_block(page)
 
 
 # --------------------------------------------------------------------------- page cache (v0.481)
@@ -326,8 +387,14 @@ def _cache_put_page(tenant_id: str, page: Any) -> None:
 
 # --------------------------------------------------------------------------- stealth core (v0.481)
 
-def _stealth_fetch(url: str, timeout: int = 90, wait_selector: str = "", solve_cloudflare: bool = False):
-    """One StealthyFetcher.fetch with the house discipline - the SEMAPHORE IS THE CALLER'S JOB."""
+def _stealth_fetch(url: str, timeout: int = 90, wait_selector: str = "", solve_cloudflare: bool = False,
+                   steps: str = ""):
+    """One StealthyFetcher.fetch with the house discipline - the SEMAPHORE IS THE CALLER'S JOB.
+
+    v0.537 item 8b: `steps` is a short script (WAIT / CLICK / TYPE / SCROLL / SUBMIT) compiled to one
+    reviewable blob of JavaScript, for a page whose content does not exist until a notice is accepted or a
+    tab is opened. The compiler refuses a credential field and has no EVAL, so what runs is only ever the
+    six verbs - see app/crawl/steps.py."""
     from scrapling.fetchers import StealthyFetcher
     kw: dict[str, Any] = {"headless": True,
                           # StealthyFetcher timeout is MILLISECONDS (default 30_000) - seconds in, ms out
@@ -335,6 +402,9 @@ def _stealth_fetch(url: str, timeout: int = 90, wait_selector: str = "", solve_c
                           "solve_cloudflare": bool(solve_cloudflare)}
     if wait_selector:
         kw["wait_selector"] = str(wait_selector)[:300]
+    if steps:
+        from ..crawl.steps import compile_js        # StepError propagates: a bad script never runs
+        kw["script"] = compile_js(str(steps)).js
     return StealthyFetcher.fetch(url, **kw)
 
 
@@ -399,7 +469,8 @@ async def _extract_brain(system: str, user: str) -> tuple[str, str]:
 
 # --------------------------------------------------------------------------- handlers
 
-async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=False, max_chars=24000, timeout=25, max_age=None, **_):
+async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=False, max_chars=24000,
+                      timeout=25, max_age=None, clean=False, about=None, chunk=None, **_):
     """Fast public-page read (no browser). Returns title + clean content; links optional.
     v0.481: pass max_age (seconds) to serve the page from the tenant cache when fresh; css and
     include_links always read the live page (they need the DOM). Successful reads write through."""
@@ -442,9 +513,41 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
             content = page.markdown()
         except Exception:                 # markdownify missing -> text fallback
             content = page.get_all_text(separator="\n")
+    pruned: dict | None = None
+    if not clean:
+        from ..config import get_settings as _gs       # imported per-function in this module
+        clean = bool(getattr(_gs(), "scrape_clean_default", False))
+    if clean and not css:
+        # v0.537 item 2: drop the nav / cookie banner / advert / footer BEFORE the budget is spent, so the
+        # 24k characters carry content instead of chrome. `about` keeps only the blocks answering her
+        # question (BM25). A page that prunes to nothing keeps its original content - better a little
+        # boilerplate than an empty answer.
+        try:
+            from ..crawl import prune as _prune
+            blocks = (_prune.bm25_blocks(page.html_content, str(about))
+                      if about else _prune.prune(page.html_content))
+            cleaned = _prune.as_text(blocks, cap=limit)
+            if cleaned and len(cleaned) >= 120:
+                pruned = {"kept_blocks": len(blocks), "before_chars": len(content or ""),
+                          "after_chars": len(cleaned)}
+                content = cleaned
+        except Exception as e:             # a filter must never cost her the page
+            log.debug("prune skipped: %s", e)
     out: dict[str, Any] = {"status": page.status, "url": page.url,
                            "title": (page.css("title")[0].text.strip() if page.css("title") else ""),
                            "content": _cap(content or "", limit)}
+    if chunk:
+        # v0.537 item 6: split on MEANING instead of truncating mid-sentence at the cap. 'topic' starts a
+        # new piece when the subject changes; 'sliding' overlaps so a fact across a boundary survives whole.
+        try:
+            from ..crawl import chunks as _ch
+            how = str(chunk).lower()
+            how = how if how in _ch.STRATEGIES else "topic"
+            pieces = _ch.chunk(content or "", how)
+            out["chunks"] = [_cap(c, 6000) for c in pieces[:40]]
+            out["chunked"] = {"how": how, "pieces": len(pieces)}
+        except Exception as e:
+            log.debug("chunking skipped: %s", e)
     await asyncio.to_thread(_cache_put_page, ctx.tenant_id, page)   # v0.481 write-through
     if include_links:
         links = []
@@ -456,6 +559,8 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
             if len(links) >= 60:
                 break
         out["links"] = links
+    if pruned:
+        out["cleaned"] = pruned
     return _masked(out)
 
 
@@ -608,7 +713,8 @@ async def scrape_site(ctx: Ctx, start_url, max_pages=15, include=None, max_chars
                     "note": "Data jis page par hai uska url uthakar scrape_extract chalayein — rows JSON mein aayengi"})
 
 
-async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_selector=None, solve_cloudflare=False, max_chars=24000, timeout=90, **_):
+async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_selector=None,
+                         solve_cloudflare=False, max_chars=24000, timeout=90, steps=None, **_):
     """Anti-bot / JavaScript pages: Scrapling's stealth browser engine. Needs scrape_stealth_enabled=True + `scrapling install`."""
     from ..config import get_settings
     s = get_settings()
@@ -630,11 +736,19 @@ async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_select
                                   "solve_cloudflare": bool(solve_cloudflare)}
             if wait_selector:
                 kw["wait_selector"] = str(wait_selector)[:300]
+            if steps:
+                # v0.537 item 8b: compiled OUTSIDE the thread would be tidier, but StepError must reach her
+                # as a ToolError with the line number, so it is raised here and caught below.
+                from ..crawl.steps import compile_js
+                kw["script"] = compile_js(str(steps)).js
             return StealthyFetcher.fetch(url, **kw)
         page = await asyncio.to_thread(_run)
     except ToolError:
         raise
     except Exception as e:
+        from ..crawl.steps import StepError
+        if isinstance(e, StepError):
+            raise ToolError(f"steps script theek nahi hai — {e}")
         raise ToolError(f"Stealth fetch failed: {str(e)[:300]}")
     finally:
         try:
@@ -749,12 +863,47 @@ async def scrape(ctx: Ctx, url, format="markdown", css=None, include_links=False
     return _masked(out)
 
 
-async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, timeout=15, **_):
+async def _seed_urls(ctx: Ctx, start: str, sources: str, want_urls: int, include: str | None,
+                     newer_than: str | None) -> dict:
+    """v0.537 item 4: ask the SITE'S OWN INDEX instead of harvesting links from fetched pages.
+
+    scrape_map's own walk fetches up to 8 pages; a sitemap lists every page the site wants found in one or
+    two requests. The SSRF guard is injected, so app/crawl keeps no idea of its own about what is safe."""
+    import httpx
+
+    from ..crawl import seed as _seed
+    srcs = tuple(s.strip().lower() for s in str(sources or "sitemap").split(",") if s.strip())
+    def _g(u: str) -> str:
+        return _guard_url(u)
+    from ..web import UA                      # the one user-agent this server sends, defined once
+    async with httpx.AsyncClient(timeout=20, follow_redirects=True,
+                                 headers={"User-Agent": UA}) as c:
+        r = await _seed.seed(start, c, guard=_g, sources=srcs, max_urls=want_urls,
+                            include=str(include or ""), newer_than=str(newer_than or ""))
+    return {"urls": r.urls, "count": r.count, "sources": r.sources,
+            "sitemaps": r.sitemaps[:10], "notes": r.notes[:8]}
+
+
+async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, timeout=15,
+                     sources=None, newer_than=None, **_):
     """Links-only discovery (v0.481, the Firecrawl /map shape): fetch a few pages, harvest SAME-SITE urls,
-    no content — the cheap 'is site par ka kahan hai' pass before scrape_extract/scrape."""
+    no content — the cheap 'is site par ka kahan hai' pass before scrape_extract/scrape.
+    v0.537: `sources="sitemap"` (or "sitemap,common_crawl") reads the site's own index instead, which is
+    the difference between 8 pages' worth of links and the whole catalogue."""
     start = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(start):
         raise ToolError("Is site ke robots.txt ne bots ko mana kiya hai (respect_robots on)")
+    if sources:
+        try:
+            want = max(1, min(int(max_urls or 100), _MAX_MAP_URLS))
+        except Exception:
+            want = 100
+        got = await _seed_urls(ctx, start, str(sources), want, include, newer_than)
+        if got["count"]:
+            return _masked({**got, "start": start, "engine": "index"})
+        got["note"] = ("Site ke index se kuch nahi mila — page-walk se dekh raha hoon"
+                       + (f" ({got['notes'][0]})" if got.get("notes") else ""))
+        # fall through to the page walk rather than returning nothing
     try:
         want_urls = max(1, min(int(max_urls or 100), _MAX_MAP_URLS))
     except Exception:
@@ -863,6 +1012,55 @@ async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50,
                     "data": data, "brain": brain})
 
 
+async def scrape_tables(ctx: Ctx, url, which=None, as_csv=False, max_tables=5, timeout=25, **_):
+    """v0.537 item 5: the page's DATA tables as rows, not flattened text.
+
+    A <table> loses its meaning in text: "Cement 50kg 380 410" does not say which number is the old price.
+    This expands colspan/rowspan into a dense grid so column N is the same field on every row, and REFUSES
+    layout tables - handing a logo-positioning table to her Data Desk as if it were a price list is worse
+    than returning nothing."""
+    url = await asyncio.to_thread(_guard_url, url)
+    if not await _robots_ok(url):
+        raise ToolError("Is site ke robots.txt ne bots ko mana kiya hai (respect_robots on)")
+    try:
+        page = await asyncio.to_thread(_fetch, url, ctx.tenant_id, timeout)
+    except ToolError:
+        raise
+    except Exception as e:
+        raise ToolError(f"Fetch failed: {str(e)[:300]}")
+    if int(getattr(page, "status", 0) or 0) >= 400:
+        raise ToolError(f"Site ne {page.status} bheja — page nahi mila")
+    blk = await asyncio.to_thread(_blocked, page)
+    if blk:
+        raise ToolError(f"Yeh page bot-block nikla ({blk}) — scrape_stealth se try karein")
+    from ..crawl import tables as _tb
+    got = await asyncio.to_thread(_tb.extract, getattr(page, "html_content", "") or "",
+                                  7, max(1, min(int(max_tables or 5), 20)))
+    if not got:
+        return {"url": getattr(page, "url", url), "tables": 0,
+                "note": "Is page par koi DATA table nahi mili (sirf layout tables, ya koi table hi nahi). "
+                        "scrape_extract se CSS selector ke saath nikaal sakte hain."}
+    if which is not None:
+        try:
+            i = int(which)
+        except Exception:
+            raise ToolError("which ek number hona chahiye (0 = pehli table)")
+        if not (0 <= i < len(got)):
+            raise ToolError(f"is page par {len(got)} table hain; which 0..{len(got) - 1} ho")
+        got = [got[i]]
+    out = []
+    for tb in got:
+        row: dict[str, Any] = {"headers": tb.headers, "rows": tb.rows[:200], "caption": tb.caption,
+                               "n_rows": tb.n_rows, "n_cols": tb.n_cols,
+                               "numeric_share": tb.numeric_share, "score": tb.score}
+        if as_csv:
+            row["csv"] = _cap(tb.as_csv(), _MAX_TEXT)
+        out.append(row)
+    return _masked({"url": getattr(page, "url", url), "tables": len(out), "data": out,
+                    "note": "Rows headers ke hisaab se aligned hain (rowspan/colspan khol diye gaye). "
+                            "data_note se Data Desk mein daal sakte hain."})
+
+
 SCRAPE_TOOLS = [
     {"name": "scrape_page", "description": (
         "Fetch and read a PUBLIC webpage fast (Scrapling engine: TLS-impersonated HTTP, no browser, 1-3 s). "
@@ -876,7 +1074,17 @@ SCRAPE_TOOLS = [
          "format": {"type": "string", "enum": ["markdown", "text", "html"], "description": "Default markdown"},
          "css": {"type": "string", "description": "Optional css to return only matching parts"},
          "include_links": {"type": "boolean", "description": "Add up to 60 outgoing links (text + href)"},
-         "max_chars": {"type": "integer", "description": "Content cap, default 24000"}},
+         "max_chars": {"type": "integer", "description": "Content cap, default 24000"},
+         "clean": {"type": "boolean", "description": (
+             "Drop the nav / cookie banner / advert / footer before the cap is spent, so the content budget "
+             "carries the article instead of chrome. Use it on a long page, a news site or anything with ads.")},
+         "about": {"type": "string", "description": (
+             "With clean: keep only the parts that answer THIS question (e.g. 'opening hours and phone'). "
+             "Use when the page is long and only one section matters.")},
+         "chunk": {"type": "string", "enum": ["topic", "sentence", "sliding", "fixed_words", "regex"],
+                   "description": (
+             "Also return the content split into pieces instead of one block. 'topic' starts a new piece "
+             "when the subject changes - use it on a long page you are going to quote from or store.")}},
          "required": ["url"]}},
     {"name": "scrape_extract", "description": (
         "Pull STRUCTURED data out of a webpage as JSON rows (Scrapling): product lists, price tables, directories, "
@@ -933,7 +1141,12 @@ SCRAPE_TOOLS = [
          "css": {"type": "string", "description": "Optional css to return only matching parts"},
          "wait_selector": {"type": "string", "description": "css to wait for before reading"},
          "solve_cloudflare": {"type": "boolean", "description": "Try to pass a Cloudflare challenge (default false)"},
-         "max_chars": {"type": "integer"}, "timeout": {"type": "integer", "description": "Default 90"}},
+         "max_chars": {"type": "integer"}, "timeout": {"type": "integer", "description": "Default 90"},
+         "steps": {"type": "string", "description": (
+             "Optional short script run on the page before it is read, one step a line: "
+             "WAIT \".sel\" 5 | CLICK \".sel\" | TYPE \"#sel\" \"text\" | SCROLL bottom | SUBMIT \".sel\". "
+             "For a page whose content only appears after a notice is accepted or a tab is opened. "
+             "Never for logging in: a password / OTP / PIN / CVV / card field is refused.")}},
          "required": ["url"]}},
     {"name": "scrape", "description": (
         "THE default door to read a public page (v0.481, Firecrawl-style waterfall): fast HTTP first (1-3 s), and "
@@ -961,7 +1174,12 @@ SCRAPE_TOOLS = [
          "include": {"type": "string", "description": "Regex the harvested urls must match, e.g. '/product/'"},
          "max_urls": {"type": "integer", "description": "Default 100, cap 200"},
          "max_pages": {"type": "integer", "description": "Pages fetched to harvest links, default 5, cap 8"},
-         "timeout": {"type": "integer", "description": "Per page, default 15"}},
+         "timeout": {"type": "integer", "description": "Per page, default 15"},
+         "sources": {"type": "string", "description": (
+             "Read the SITE'S OWN INDEX instead of walking pages: 'sitemap' (robots.txt -> sitemap, follows "
+             "sitemap indexes and .gz) or 'sitemap,common_crawl'. Far more urls for far fewer requests on a "
+             "big site — use it whenever the site is large. Falls back to the page walk if the index is empty.")},
+         "newer_than": {"type": "string", "description": "With sources=sitemap: keep only pages whose lastmod is on/after this date (YYYY-MM-DD)"}},
          "required": ["url"]}},
     {"name": "scrape_extract_json", "description": (
         "Page data as JSON WITHOUT a css selector (v0.481): give a JSON schema (and optionally a prompt) and the "
@@ -975,9 +1193,23 @@ SCRAPE_TOOLS = [
          "limit": {"type": "integer", "description": "Max rows (default 50, cap 50)"},
          "timeout": {"type": "integer", "description": "Seconds, default 25"}},
          "required": ["url"]}},
+    {"name": "scrape_tables", "description": (
+        "Get the DATA TABLES on a page as real rows — headers plus aligned cells, not flattened text. "
+        "Use whenever the answer is in a table: price lists, rate charts, specifications, fee tables, "
+        "results, timetables, comparison tables. Merged cells (rowspan/colspan) are opened out so every "
+        "row lines up with the headers, which plain text reading gets wrong. Layout tables (a table used "
+        "to position a logo or a menu) are refused rather than returned as if they were data. "
+        "Feed the rows into data_note / doc_studio for her Data Desk, or ask for csv."),
+     "input_schema": {"type": "object", "properties": {
+         "url": {"type": "string"},
+         "which": {"type": "integer", "description": "Only this table (0 = the first); omit for all"},
+         "as_csv": {"type": "boolean", "description": "Also return each table as CSV text"},
+         "max_tables": {"type": "integer", "description": "Default 5, max 20"}},
+         "required": ["url"]}},
 ]
 
 SCRAPE_LABELS = {"scrape_page": "Website turant khol kar padh raha hoon",
+                 "scrape_tables": "Page ki table nikaal raha hoon",
                  "scrape_extract": "Website se data nikaal raha hoon",
                  "scrape_many": "Kayi pages se data nikaal raha hoon",
                  "scrape_site": "Poori site padh kar map bana raha hoon",
@@ -988,4 +1220,5 @@ SCRAPE_LABELS = {"scrape_page": "Website turant khol kar padh raha hoon",
 
 SCRAPE_HANDLERS = {"scrape_page": scrape_page, "scrape_extract": scrape_extract, "scrape_many": scrape_many,
                    "scrape_site": scrape_site, "scrape_stealth": scrape_stealth, "scrape": scrape,
-                   "scrape_map": scrape_map, "scrape_extract_json": scrape_extract_json}
+                   "scrape_map": scrape_map, "scrape_extract_json": scrape_extract_json,
+                   "scrape_tables": scrape_tables}

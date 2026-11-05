@@ -1,4 +1,4 @@
-"""v0.534 HOOLA CMS (web Step 6 part 2, W8 "a CMS for her team: editors with roles, drafts, review, scheduled publish,
+"""v0.538 HOOLA CMS (web Step 6 part 2, W8 "a CMS for her team: editors with roles, drafts, review, scheduled publish,
 version history for every page and post").
 
 Invite = one-time link (hash only kept), own password, own login (not her Hoola login), removal ends every login now;
@@ -11,7 +11,7 @@ from datetime import timedelta
 import pytest
 from fastapi.testclient import TestClient
 
-from tests.test_v0534_bada_catalogue import _site
+from tests.test_v0538_bada_catalogue import _site
 from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 

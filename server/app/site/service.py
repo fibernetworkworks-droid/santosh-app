@@ -888,7 +888,7 @@ def _ctx(r: Site) -> dict[str, Any]:
         logo = str(p) if p and Path(p).exists() else ""
     except Exception:
         logo = ""
-    return {"site_id": r.id,                                                # v0.534 her imported catalogue lists
+    return {"site_id": r.id,                                                # v0.538 her imported catalogue lists
             "facts": facts, "tokens": look.get("tokens") or B.tokens(r.style or "editorial_calm", "paper_ink"),
             "plan": _j(r.plan, {}), "cta": _j(r.plan, {}).get("cta") or "call", "industry": ind,
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],

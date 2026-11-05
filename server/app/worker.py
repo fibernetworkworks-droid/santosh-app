@@ -976,7 +976,7 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_service.blog_tick)
     except Exception:
         log.exception("site blog tick failed")
-    try:                                   # v0.534 HOOLA CMS: the team's scheduled drafts whose time came
+    try:                                   # v0.538 HOOLA CMS: the team's scheduled drafts whose time came
         from .site import cms as site_cms
         await asyncio.to_thread(site_cms.tick)
     except Exception:

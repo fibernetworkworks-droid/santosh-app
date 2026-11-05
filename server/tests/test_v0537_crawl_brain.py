@@ -1,4 +1,4 @@
-"""v0.533 CRAWL BRAIN — the crawl4ai ideas, hand-built (the port law).
+"""v0.537 CRAWL BRAIN — the crawl4ai ideas, hand-built (the port law).
 
 Owner read unclecode/crawl4ai and said "give this all to hoola ai". Zero upstream code: crawl4ai vendors a
 fork of html2text, which upstream distributes under the GPLv3 with no header in the vendored copy, and
@@ -307,3 +307,230 @@ def test_block_statuses_and_empty_shells():
     assert BL.why_blocked("<html><body>slow down</body></html>", 429) == "HTTP 429"
     assert "empty shell" in (BL.why_blocked('<html><body><script src="/a.js"></script></body></html>', 200) or "")
     assert BL.is_blocked("<html><body>" + ("a real page. " * 500) + "</body></html>", 200) is False
+
+
+# ---------------------------------------------------------------- item 3: best-first frontier
+import asyncio  # noqa: E402
+
+import httpx  # noqa: E402
+import pytest  # noqa: E402
+
+from app.crawl import seed as SD  # noqa: E402
+from app.crawl.frontier import Filters, Frontier, Seen, score_url  # noqa: E402
+from app.crawl.proxies import DIRECT, Rotation  # noqa: E402
+from app.crawl.steps import StepError, compile_js  # noqa: E402
+
+LINKS = [{"url": "https://x.in/careers", "text": "Careers"},
+         {"url": "https://x.in/logo.png", "text": "logo"},
+         {"url": "https://x.in/prices/cement-rate-akola", "text": "Cement rate in Akola"},
+         {"url": "https://x.in/privacy", "text": "Privacy"}]
+
+
+def _drain(f: Frontier) -> list[str]:
+    out = []
+    while True:
+        got = f.pop()
+        if not got:
+            return out
+        out.append(got[0].rsplit("/", 1)[-1])
+
+
+def _filled(mode: str) -> Frontier:
+    f = Frontier(keywords=["cement", "rate", "akola"],
+                 filters=Filters(same_host_as="https://x.in/"), mode=mode)
+    f.push_many(LINKS)
+    return f
+
+
+def test_best_first_reads_the_on_topic_link_first_and_fifo_does_not():
+    """The whole point of item 3: FIFO spends the budget on whatever breadth-first reached."""
+    best = _drain(_filled("best"))
+    fifo = _drain(_filled("bfs"))
+    assert best[0] == "cement-rate-akola"
+    assert fifo[0] != "cement-rate-akola"
+
+
+def test_best_first_ordering_is_actually_by_score():
+    f = Frontier(keywords=["cement", "rate", "akola"], filters=Filters(same_host_as="https://x.in/"))
+    f.push_many(LINKS)
+    assert _drain(f)[0] == "cement-rate-akola"
+
+
+def test_fifo_mode_preserves_the_old_behaviour():
+    f = Frontier(filters=Filters(same_host_as="https://x.in/"), mode="bfs")
+    f.push_many(LINKS)
+    assert _drain(f)[0] == "careers"
+
+
+def test_assets_and_offsite_links_never_enter_the_frontier():
+    f = Frontier(filters=Filters(same_host_as="https://x.in/"))
+    assert f.push("https://x.in/logo.png") is False
+    assert f.push("https://other.com/p") is False
+    assert "not a page" in f.rejected["https://x.in/logo.png"]
+
+
+def test_filters_say_why_so_a_crawl_can_report_instead_of_dropping_silently():
+    fl = Filters(same_host_as="https://x.in/", deny=r"/tag/", max_depth=3, max_query_params=2)
+    assert "too deep" in fl.reasons("https://x.in/a/b/c/d/e")
+    assert "other host" in fl.reasons("https://other.com/p")
+    assert fl.reasons("https://x.in/tag/cement") == "deny match"
+    assert "query-param trap" in fl.reasons("https://x.in/p?a=1&b=2&c=3")
+    assert fl.reasons("ftp://x.in/f").startswith("scheme")
+    assert fl.reasons("https://x.in/ok") == ""
+
+
+def test_scorer_parts_are_exposed_so_a_card_can_say_why():
+    s = score_url("https://x.in/prices/cement-rate-akola", "Cement rate", ["cement", "rate"])
+    assert set(s.parts) == {"keyword", "depth", "content_type", "freshness", "novelty"}
+    assert s.score > 0.5
+    assert score_url("https://x.in/2019/old", "", ["old"]).parts["freshness"] < 0.6
+    assert score_url("https://x.in/a.png").score == 0.0
+
+
+def test_seen_is_exact_while_small_bounded_when_large_and_never_refetches():
+    s = Seen(capacity=500, exact_upto=10)
+    assert s.add("u1") is True and s.add("u1") is False
+    for i in range(200):
+        s.add(f"u{i}")
+    assert s.exact is None                                  # handed over; memory stops growing
+    assert sum(1 for i in range(200) if s.add(f"u{i}")) == 0  # no duplicate fetch, ever
+
+
+# ---------------------------------------------------------------- item 4: seeding
+_ROBOTS = b"User-agent: *\nDisallow: /admin\nDisallow: /secret-reports\nSitemap: https://shop.in/si.xml\n"
+_INDEX = b'<?xml version="1.0"?><sitemapindex><sitemap><loc>https://shop.in/a.xml</loc></sitemap>' \
+         b'<sitemap><loc>https://shop.in/b.xml.gz</loc></sitemap></sitemapindex>'
+_A = b'<?xml version="1.0"?><urlset><url><loc>https://shop.in/p/cement</loc><lastmod>2026-10-01</lastmod></url>' \
+     b'<url><loc>https://shop.in/p/steel</loc><lastmod>2024-01-01</lastmod></url></urlset>'
+
+
+def _client():
+    import gzip
+    b = gzip.compress(b'<?xml version="1.0"?><urlset><url><loc>https://shop.in/blog/x</loc></url></urlset>')
+
+    def h(req):
+        u = str(req.url)
+        if u.endswith("/robots.txt"):
+            return httpx.Response(200, content=_ROBOTS)
+        if "si.xml" in u:
+            return httpx.Response(200, content=_INDEX)
+        if "a.xml" in u:
+            return httpx.Response(200, content=_A)
+        if "b.xml.gz" in u:
+            return httpx.Response(200, content=b)
+        if "commoncrawl" in u:
+            return httpx.Response(200, content=b'{"url":"https://shop.in/old/1","status":"200"}\n')
+        return httpx.Response(404)
+    return httpx.AsyncClient(transport=httpx.MockTransport(h))
+
+
+def test_the_sitemap_chain_follows_indexes_and_gzip():
+    async def _body():
+        async with _client() as c:
+            r = await SD.from_sitemaps("https://shop.in/", c)
+        assert any(u.endswith("/p/cement") for u in r.urls)
+        assert any("blog/x" in u for u in r.urls), "a .xml.gz child sitemap was not decompressed"
+        assert len(r.sitemaps) == 3
+    asyncio.run(_body())
+
+def test_disallow_paths_are_never_mined_as_targets():
+    async def _body():
+        """The deliberate carve-out: crawl4ai's DomainMapper reads Disallow: as a list of places to GO. Hoola
+        reads robots.txt to obey it, so only Sitemap: lines are used here."""
+        async with _client() as c:
+            r = await SD.seed("https://shop.in/", c, sources=("sitemap", "common_crawl"))
+        blob = " ".join(r.urls)
+        assert "/admin" not in blob and "secret-reports" not in blob
+    asyncio.run(_body())
+
+def test_newer_than_drops_stale_entries_and_keeps_undated_ones():
+    async def _body():
+        async with _client() as c:
+            r = await SD.from_sitemaps("https://shop.in/", c, newer_than="2026-01-01")
+        assert any("p/cement" in u for u in r.urls)
+        assert not any("p/steel" in u for u in r.urls)
+    asyncio.run(_body())
+
+def test_the_injected_guard_is_honoured_and_never_raises_into_her_chat():
+    async def _body():
+        def deny(u):
+            raise RuntimeError("private ip refused")
+        async with _client() as c:
+            r = await SD.from_sitemaps("https://shop.in/", c, guard=deny)
+        assert r.count == 0 and any("guard" in n for n in r.notes)
+    asyncio.run(_body())
+
+def test_an_unknown_source_is_a_note_not_a_crash():
+    async def _body():
+        async with _client() as c:
+            r = await SD.seed("https://shop.in/", c, sources=("magic",))
+        assert r.count == 0 and any("unknown seed source" in n for n in r.notes)
+    asyncio.run(_body())
+
+# ---------------------------------------------------------------- item 8: proxies + steps
+def test_a_proxy_password_is_never_in_anything_printable():
+    r = Rotation(["1.2.3.4:8080:bob:s3cret", DIRECT])
+    assert "s3cret" not in r.pool[0].safe()
+    assert "s3cret" not in f"{r.pool[0]}"            # an accidental f-string must not leak it
+    assert not any("s3cret" in str(x) for x in r.report())
+
+
+def test_rotation_is_round_robin_with_sticky_sessions_and_resting():
+    r = Rotation(["1.1.1.1:1", "2.2.2.2:2", DIRECT], max_fails=2, rest_s=999)
+    assert len({r.next().safe() for _ in range(3)}) == 3          # all three used
+    a, b = r.next(session="f1"), r.next(session="f1")
+    assert a is b                                                  # a flow keeps one IP
+    p = r.pool[0]
+    r.failed(p); r.failed(p)
+    assert p not in r.available()
+    r.ok(p)
+    assert p in r.available()
+
+
+def test_when_every_proxy_rests_it_falls_back_honestly():
+    d = Rotation(["1.1.1.1:1"], max_fails=1, rest_s=999)
+    d.failed(d.pool[0])
+    assert d.next() is d.pool[0]        # says what it is doing rather than pretending to have a proxy
+
+
+def test_a_bad_proxy_spec_refuses_at_parse_time():
+    with pytest.raises(ValueError):
+        Rotation(["not:a:valid:proxy:spec:at:all"])
+
+
+def test_the_step_compiler_emits_selectors_as_data_not_code():
+    import json as _j
+    v = "x</script><img src=x onerror=alert(1)>"
+    js = compile_js(f'TYPE "#q" "{v}"').js
+    assert "</script>" not in js                       # safe even inside an HTML script block
+    assert "\\u003c/script" in js
+    m = __import__("re").search(r'e\.value="(.*?)";', js)
+    assert _j.loads('"' + m.group(1) + '"') == v        # the browser still sees the real value
+
+
+def test_a_hash_in_an_id_selector_is_not_a_comment():
+    s = compile_js('CLICK "#tab-prices"   # open the tab\nTYPE "#q" "cement"')
+    assert [x.css for x in s.steps] == ["#tab-prices", "#q"]
+
+
+def test_a_selector_it_cannot_represent_is_refused_not_truncated():
+    with pytest.raises(StepError):
+        compile_js('CLICK "a\\" ); alert(1); //"')
+    for src in ('CLICK ".a" extra', 'SUBMIT ".a" junk', 'WAIT ".a" soon', 'SCROLL 10 more'):
+        with pytest.raises(StepError):
+            compile_js(src)
+
+
+def test_the_command_set_is_closed_and_credentials_are_refused_at_compile_time():
+    for src in ('EVAL "fetch(1)"', 'JUMP "#x"', 'CLICK', ''):
+        with pytest.raises(StepError):
+            compile_js(src)
+    for field in ("#password", "input[name=otp]", "#card_number", "#cvv", "#user_pin", "#security_code"):
+        with pytest.raises(StepError):
+            compile_js(f'TYPE "{field}" "x"')
+
+
+def test_step_and_wait_caps():
+    with pytest.raises(StepError):
+        compile_js("\n".join(['CLICK ".x"'] * 40))
+    assert compile_js("WAIT 9999").steps[0].seconds == 30

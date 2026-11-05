@@ -1,4 +1,4 @@
-"""v0.534 HOOLA CMS (web Step 6 part 2 = W8 "a CMS for her team: editors with roles, drafts, review, scheduled publish,
+"""v0.538 HOOLA CMS (web Step 6 part 2 = W8 "a CMS for her team: editors with roles, drafts, review, scheduled publish,
 version history for every page and post").
 
 Her team works on her website WITHOUT her Hoola login and without AI:

@@ -1,4 +1,4 @@
-"""v0.534 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed of docs/WEB_PLATFORM_PLAN.md; checkpoint
+"""v0.538 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed of docs/WEB_PLATFORM_PLAN.md; checkpoint
 "5,000-product marketplace, load test passed").
 
 Her products / doctors / properties / courses come from HER data - a CSV or Excel file, her Google Sheet, or a dataset
@@ -556,7 +556,7 @@ def sync_shop(r, coll: str) -> dict[str, Any]:
 
 
 def _sellers(r, coll: str, spec: dict[str, Any]) -> dict[str, int]:
-    """v0.534 a marketplace file: a seller column links each product to HER approved seller of that name (an unknown or
+    """v0.538 a marketplace file: a seller column links each product to HER approved seller of that name (an unknown or
     unapproved seller's product stays hers - never handed to someone she did not approve)."""
     sk = next((f["key"] for f in spec.get("fields", []) if SELLER.match(f.get("src") or f.get("label") or "")), "")
     if not sk:

@@ -1,4 +1,4 @@
-"""v0.534 WEBSITE LOAD PROOF (web Step 6, W10: "load test before launch of big sites: thousands of visitors + orders, no
+"""v0.538 WEBSITE LOAD PROOF (web Step 6, W10: "load test before launch of big sites: thousands of visitors + orders, no
 lost or double orders").
 
 `run()` drives a REAL server (any number of worker processes) the way a sale-day crowd would:

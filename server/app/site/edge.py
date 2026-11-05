@@ -125,7 +125,7 @@ server {{
     proxy_set_header X-Forwarded-Proto https;
     gzip on;
     gzip_types text/css application/javascript image/svg+xml application/xml text/plain application/json;
-    gzip_static on;          # v0.534 the build's own .gz twins: no compression work per visitor (10,000-page catalogues)
+    gzip_static on;          # v0.538 the build's own .gz twins: no compression work per visitor (10,000-page catalogues)
     gzip_vary on;
 
     # served by nginx itself only when the address is live in the enabled folder
@@ -162,7 +162,7 @@ server {{
         }}
         if (-d $request_filename) {{ rewrite [^/]$ $uri/ permanent; }}
 {hdr}
-        add_header Cache-Control "public, max-age=300, stale-while-revalidate=86400" always;   # v0.534 a CDN keeps serving
+        add_header Cache-Control "public, max-age=300, stale-while-revalidate=86400" always;   # v0.538 a CDN keeps serving
         try_files $uri $uri/index.html =404;
     }}
     error_page 404 /404.html;

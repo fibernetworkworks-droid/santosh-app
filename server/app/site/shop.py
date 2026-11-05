@@ -87,7 +87,7 @@ class SiteShopOrder(Base):
     coupon: Mapped[str | None] = mapped_column(String(20), nullable=True)      # v0.446 the code used
     pay_id: Mapped[str | None] = mapped_column(String(40), nullable=True)      # v0.446 her gateway payment (app_payment.id)
     inv_row: Mapped[str | None] = mapped_column(String(40), nullable=True)     # v0.452 the hidden app row that holds the GST numbers
-    cid: Mapped[str | None] = mapped_column(String(40), nullable=True)         # v0.534 the checkout's own id: a retry = the same order
+    cid: Mapped[str | None] = mapped_column(String(40), nullable=True)         # v0.538 the checkout's own id: a retry = the same order
 
 
 _TABLES_OK = False
@@ -106,7 +106,7 @@ def ensure_tables() -> None:
             _db._add_missing_columns(eng)
         except Exception:                               # noqa: BLE001
             pass
-        from sqlalchemy import text as _t               # v0.534 one number and one checkout id per order, enforced by the db
+        from sqlalchemy import text as _t               # v0.538 one number and one checkout id per order, enforced by the db
         for sql in ("CREATE UNIQUE INDEX IF NOT EXISTS ux_shop_order_num ON site_shop_orders (site_id, number)",
                     "CREATE UNIQUE INDEX IF NOT EXISTS ux_shop_order_cid ON site_shop_orders (site_id, cid)"):
             try:
@@ -270,7 +270,7 @@ class _SameCheckout(Exception):
 
 
 def _again(site_id: str, cid: str, cfg: dict[str, Any]) -> dict[str, Any] | None:
-    """v0.534 the same checkout sent twice (a slow network, a double tap): the first order, never a second one."""
+    """v0.538 the same checkout sent twice (a slow network, a double tap): the first order, never a second one."""
     if not cid:
         return None
     with session() as s:
@@ -292,7 +292,7 @@ log = logging.getLogger("santosh.site.shop")
 def place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, Any], ip: str = "") -> dict[str, Any]:
     try:
         return _place(site_id, tenant_id, cfg, body, ip)
-    except _SameCheckout:                                 # v0.534 a twin of this checkout landed first: that one order
+    except _SameCheckout:                                 # v0.538 a twin of this checkout landed first: that one order
         got = _again(site_id, re.sub(r"[^A-Za-z0-9_-]", "", str(body.get("cid") or ""))[:40], cfg)
         if got is None:
             raise ShopError("Order abhi nahi ho paya; ek baar phir dabaiye.", 503)
@@ -384,7 +384,7 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
                           discount=off or None, coupon=code or None,
                           history=json.dumps([{"at": _iso(), "to": "new"}] + ([{"at": _iso(), "note": cnote}] if cnote else [])))
         from sqlalchemy.exc import IntegrityError
-        for attempt in range(60):                     # v0.534 two checkouts at once never share an order number
+        for attempt in range(60):                     # v0.538 two checkouts at once never share an order number
             o.number = _number(s, site_id, attempt)
             try:
                 with s.begin_nested():
