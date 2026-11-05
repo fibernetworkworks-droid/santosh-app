@@ -24,6 +24,9 @@ Waveform benches (read on a scope; every reading is found on the SAMPLED wavefor
   sn_ce       common-emitter amplifier, one or two RC-coupled stages: complex small-signal response
   sn_am       amplitude modulation (transmitter side)
   sn_fm       frequency modulation and a zero-crossing frequency discriminator
+  sn_ant      dipole antenna pattern, peak field and half-power beamwidth
+  sn_bias     fixed, collector-feedback and voltage-divider bias of a common-emitter transistor
+  sn_opa      op-amp comparator (trip point, slew rate), integrator and differentiator on a scope
 """
 from __future__ import annotations
 
@@ -690,6 +693,8 @@ class Mv(_Static):
       kind 0  555 astable:   C charges to 2/3 V_cc through R1 + R2, then discharges through R2 to 1/3 V_cc
       kind 1  555 monostable: a trigger (falling input) starts the output; C charges through R1 to 2/3 V_cc, ends it
       kind 2  UJT relaxation oscillator: C charges through R1 toward V_cc until V_p = eta V_cc + V_d, then drops to V_v
+      kind 3  transistor astable multivibrator (V_BE and V_CE(sat) taken as zero): each base charges from -V_cc toward +V_cc
+              through its resistor (R1 then R2, one capacitor C) until it reaches 0 V, then the other transistor turns off
     The output is the average of the logic level over each sample interval, so an edge falls between two samples as a
     fraction exactly as a real scope's finite bandwidth would draw it, and the edge time is recovered by interpolation."""
 
@@ -703,6 +708,8 @@ class Mv(_Static):
             return 4.4 * (p["R1"] + 2.0 * p["R2"]) * p["C"]
         if k == 1:
             return 8.0 * p["R1"] * p["C"]
+        if k == 3:
+            return 8.5 * (p["R1"] + p["R2"]) * p["C"]
         return 5.5 * p["R1"] * p["C"]
 
     @staticmethod
@@ -711,7 +718,7 @@ class Mv(_Static):
         span = Mv.span(p)
         dt0 = span / NW
         vcc = p["Vcc"]
-        vc, hi = 0.0, (k == 0)
+        vc, hi = (-vcc if k == 3 else 0.0), (k in (0, 3))
         vcs, vos, vts = [], [], []
         tc = p["R1"] * p["C"]
         trig = [0.5 * tc, 4.5 * tc, 8.5 * tc]
@@ -765,6 +772,20 @@ class Mv(_Static):
                             ti += 1
                         else:
                             t = tend
+                elif k == 3:
+                    tau = (p["R1"] if hi else p["R2"]) * p["C"]
+                    tcx = tau * math.log((vcc - vc) / vcc)
+                    if tcx <= rem:
+                        if hi:
+                            high_t += tcx
+                        t += tcx
+                        vc = -vcc
+                        hi = not hi
+                    else:
+                        vc = vcc + (vc - vcc) * math.exp(-rem / tau)
+                        if hi:
+                            high_t += rem
+                        t = tend
                 else:
                     tau, tgt = p["R1"] * p["C"], vcc
                     thr = p["eta"] * vcc + p["Vd"]
@@ -776,7 +797,7 @@ class Mv(_Static):
                         vc = tgt + (vc - tgt) * math.exp(-rem / tau)
                         t = tend
             vcs.append(vc)
-            vos.append(vcc * high_t / dt0 if k < 2 else 0.0)
+            vos.append(vcc * high_t / dt0 if k != 2 else 0.0)
             tt = (i + 0.5) * dt0
             low = 0.0
             for q in trig:
@@ -790,7 +811,7 @@ class Mv(_Static):
         k = int(round(p["kind"]))
         dt, vc, vo, vt = Mv.trace(p)
         out = {"f": 0.0, "T": 0.0, "width": 0.0, "duty": 0.0, "Thigh": 0.0, "Tlow": 0.0, "main": 0.0}
-        if k == 0:
+        if k == 0 or k == 3:
             lvl = 0.5 * p["Vcc"]
             r = _cross(vo, dt, lvl, True)
             fl = _cross(vo, dt, lvl, False)
@@ -832,6 +853,8 @@ def _mv_main(p: dict) -> float:
         return 1.44 / ((p["R1"] + 2.0 * p["R2"]) * p["C"])
     if k == 1:
         return 1.1 * p["R1"] * p["C"]
+    if k == 3:
+        return 1.0 / (0.693 * (p["R1"] + p["R2"]) * p["C"])
     thr = p["eta"] * p["Vcc"] + p["Vd"]
     return 1.0 / (p["R1"] * p["C"] * math.log((p["Vcc"] - p["Vv"]) / (p["Vcc"] - thr)))
 
@@ -1067,17 +1090,223 @@ def _fm_df(p: dict) -> float:
     return p["kf"] * p["Vm"]
 
 
+# ================================================================================================== op-amp on a scope
+class Opa(_Static):
+    """An op-amp circuit on the scope, sampled over `n` periods (NW samples). `kind`:
+      0 comparator / zero-crossing detector: out follows clamp(A0 (v_in - V_ref), +-V_sat) but can only slew at SR volts per
+        second. v_in = -V_p cos(2 pi f t). The trip point is the input at the instant the edge, extended back along its
+        straight slewing line, leaves the rail; the slew rate is the 10-90 % swing over the time between those crossings.
+      1 integrator: R in, C and a leakage resistor R_f in feedback, square input +-V_p; solved exactly between the
+        samples (the input is constant in each): vo' = -v_in/(R C) - vo/(R_f C). The slope is a least-squares line
+        through the first half-cycle.
+      2 differentiator: R and C in series with the input, a series resistor R_s limits the high-frequency gain, triangle
+        input of peak V_p: the output is the ideal -R C dv/dt low-passed with time constant R_s C. Its amplitude is half the
+        spread of the samples."""
+
+    PARAMS = {"kind": 0.0, "f": 1000.0, "Vp": 2.0, "R": 10000.0, "C": 1.0e-8, "Rf": 1.0e7, "Rs": 1000.0, "Vref": 1.0,
+              "A0": 200000.0, "Vsat": 13.0, "SR": 500000.0, "n": 1.0}
+    VARS = ["t", "trip", "SR_us", "slope", "amp"]
+
+    @staticmethod
+    def trace(p: dict) -> tuple[float, list, list]:
+        k = int(round(p["kind"]))
+        n = int(round(p["n"]))
+        span = n / p["f"]
+        dt = span / NW
+        vin, out = [], []
+        o = 0.0
+        for i in range(NW):
+            t = i * dt
+            if k == 0:
+                v = -p["Vp"] * math.cos(2.0 * PI * p["f"] * t)
+                if i == 0:
+                    o = _clamp(p["A0"] * (v - p["Vref"]), -p["Vsat"], p["Vsat"])
+                else:
+                    for sub in range(1, 9):                     # 8 sub-steps a sample, so an edge starts where the input crosses
+                        vs = -p["Vp"] * math.cos(2.0 * PI * p["f"] * (t - dt + dt * sub / 8.0))
+                        tgt = _clamp(p["A0"] * (vs - p["Vref"]), -p["Vsat"], p["Vsat"])
+                        o = o + _clamp(tgt - o, -p["SR"] * dt / 8.0, p["SR"] * dt / 8.0)
+            elif k == 1:
+                half = NW // (2 * n)
+                v = p["Vp"] if (i // half) % 2 == 0 else -p["Vp"]
+                e = math.exp(-dt / (p["Rf"] * p["C"]))
+                o = _clamp(o * e + (-v * p["Rf"] / p["R"]) * (1.0 - e), -p["Vsat"], p["Vsat"])
+            else:
+                ph = (i % (NW // n)) / (NW // n)
+                v = p["Vp"] * (4.0 * ph if ph < 0.25 else 2.0 - 4.0 * ph if ph < 0.75 else 4.0 * ph - 4.0)
+                slope = p["Vp"] * 4.0 * p["f"] * (1.0 if (ph < 0.25 or ph >= 0.75) else -1.0)
+                tgt = _clamp(-p["R"] * p["C"] * slope, -p["Vsat"], p["Vsat"])
+                e = math.exp(-dt / (p["Rs"] * p["C"]))
+                o = o * e + tgt * (1.0 - e)
+            vin.append(v)
+            out.append(o)
+        return dt, vin, out
+
+    @staticmethod
+    def analyse(p: dict) -> dict:
+        k = int(round(p["kind"]))
+        dt, vin, out = Opa.trace(p)
+        res = {"trip": 0.0, "SR": 0.0, "vlo": 0.0, "vhi": 0.0, "slope": 0.0, "vpp": 0.0, "amp": 0.0}
+        if k == 0:
+            lo, hi = min(out), max(out)
+            sw = hi - lo
+            t10 = _cross(out, dt, lo + 0.1 * sw, True)
+            t90 = _cross(out, dt, lo + 0.9 * sw, True)
+            res["SR"] = 0.8 * sw / (t90[0] - t10[0])
+            j = 0
+            while out[j] < lo + 1.0:
+                j += 1
+            s = (out[j + 1] - out[j]) / dt
+            tdep = j * dt - (out[j] - lo) / s
+            res["trip"] = -p["Vp"] * math.cos(2.0 * PI * p["f"] * tdep)
+            res["vlo"], res["vhi"] = lo, hi
+        elif k == 1:
+            half = NW // (2 * int(round(p["n"])))
+            xs = [i * dt for i in range(20, half - 20)]
+            ys = [out[i] for i in range(20, half - 20)]
+            res["slope"] = _ols(xs, ys)
+            res["vpp"] = max(out) - min(out)
+        else:
+            res["amp"] = 0.5 * (max(out) - min(out))
+        return res
+
+    @staticmethod
+    def view(s, p, cfg=None):
+        a = Opa.analyse(p)
+        return {"t": s.get("t", 0.0), "trip": a["trip"], "SR_us": a["SR"] / 1e6, "slope": a["slope"], "amp": a["amp"]}
+
+    @staticmethod
+    def measure(p, cfg=None):
+        return Opa.analyse(p)
+
+
+def _opa_main(p: dict) -> float:
+    k = int(round(p["kind"]))
+    if k == 0:
+        return p["Vref"]
+    if k == 1:
+        return -p["Vp"] / (p["R"] * p["C"])
+    return 4.0 * p["Vp"] * p["f"] * p["R"] * p["C"]
+
+
+# ================================================================================================== dipole antenna
+class Ant(_Static):
+    """Far field of a centre-fed linear dipole of length L = ell lambda carrying a sinusoidal current of peak I0, at distance r
+    and angle theta from its axis:  |E| = eta I0 / (2 pi r) |cos(pi ell cos theta) - cos(pi ell)| / sin theta  (eta = 376.73 ohm).
+    The peak field and the half-power beamwidth are found by SCANNING theta from 0.5 to 179.5 degrees in half-degree steps
+    (the beamwidth is the angular distance between the two crossings of E_max/sqrt 2, interpolated linearly)."""
+
+    PARAMS = {"th": 90.0, "ell": 0.5, "I0": 0.1, "r": 5.0}
+    VARS = ["t", "E", "rel"]
+    ETA = 376.730313668
+
+    @staticmethod
+    def pat(p: dict, th: float) -> float:
+        a = math.radians(th)
+        s = math.sin(a)
+        if abs(s) < 1e-9:
+            return 0.0
+        return abs(math.cos(PI * p["ell"] * math.cos(a)) - math.cos(PI * p["ell"])) / s
+
+    @staticmethod
+    def field(p: dict, th: float) -> float:
+        return Ant.ETA * p["I0"] / (2.0 * PI * p["r"]) * Ant.pat(p, th)
+
+    @staticmethod
+    def scan(p: dict) -> dict:
+        es = [Ant.field(p, 0.5 + 0.5 * i) for i in range(359)]
+        emax = max(es)
+        half = emax / math.sqrt(2.0)
+        left = right = 0.0
+        for i in range(1, 359):
+            if es[i - 1] < half <= es[i] and left == 0.0:
+                left = 0.5 + 0.5 * (i - 1) + 0.5 * (half - es[i - 1]) / (es[i] - es[i - 1])
+            if es[i - 1] >= half > es[i]:
+                right = 0.5 + 0.5 * (i - 1) + 0.5 * (es[i - 1] - half) / (es[i - 1] - es[i])
+        return {"Emax": emax, "hpbw": right - left}
+
+    @staticmethod
+    def view(s, p, cfg=None):
+        e = Ant.field(p, p["th"])
+        return {"t": s.get("t", 0.0), "E": e, "rel": e / (Ant.ETA * p["I0"] / (2.0 * PI * p["r"]))}
+
+    @staticmethod
+    def measure(p, cfg=None):
+        return Ant.scan(p)
+
+
+def _ant_emax(p: dict) -> float:
+    return Ant.ETA * p["I0"] / (2.0 * PI * p["r"]) * (1.0 - math.cos(PI * p["ell"]))
+
+
+# ================================================================================================== BJT bias circuits
+class Bias(_Static):
+    """Three ways of biasing a common-emitter transistor from V_cc, with a constant V_BE and a current gain beta:
+      cfg 0  fixed bias:            I_B = (V_cc - V_BE)/R_B
+      cfg 1  collector-to-base:     I_B = (V_cc - V_BE)/(R_F + (beta + 1) R_C)
+      cfg 2  voltage divider + R_E: I_C = (V_th - V_BE)/(R_th/beta + R_E (beta + 1)/beta)
+    and I_C = beta I_B in the first two. V_CE follows from the loop."""
+
+    PARAMS = {"cfg": 0.0, "Vcc": 12.0, "beta": 200.0, "Vbe": 0.65, "Rb": 1200000.0, "Rf": 470000.0, "R1": 47000.0,
+              "R2": 10000.0, "Rc": 2200.0, "Re": 680.0}
+    VARS = ["t", "Ic_mA", "Vce", "Ib_uA"]
+
+    @staticmethod
+    def solve(p: dict) -> tuple[float, float, float]:
+        k = int(round(p["cfg"]))
+        b = p["beta"]
+        if k == 0:
+            ib = (p["Vcc"] - p["Vbe"]) / p["Rb"]
+            ic = b * ib
+            vce = p["Vcc"] - ic * p["Rc"]
+        elif k == 1:
+            ib = (p["Vcc"] - p["Vbe"]) / (p["Rf"] + (b + 1.0) * p["Rc"])
+            ic = b * ib
+            vce = p["Vcc"] - (ic + ib) * p["Rc"]
+        else:
+            vth = p["Vcc"] * p["R2"] / (p["R1"] + p["R2"])
+            rth = p["R1"] * p["R2"] / (p["R1"] + p["R2"])
+            ic = (vth - p["Vbe"]) / (rth / b + p["Re"] * (b + 1.0) / b)
+            ib = ic / b
+            vce = p["Vcc"] - ic * p["Rc"] - (ic + ib) * p["Re"]
+        return ic, vce, ib
+
+    @staticmethod
+    def view(s, p, cfg=None):
+        ic, vce, ib = Bias.solve(p)
+        return {"t": s.get("t", 0.0), "Ic_mA": ic * 1000.0, "Vce": vce, "Ib_uA": ib * 1e6}
+
+    @staticmethod
+    def measure(p, cfg=None):
+        ic, vce, ib = Bias.solve(p)
+        return {"Ic": ic, "Vce": vce, "Ib": ib}
+
+
+def _bias_ic(p: dict) -> float:
+    """Textbook: fixed bias I_C = beta (V_cc - V_BE)/R_B; collector feedback I_C = beta (V_cc - V_BE)/(R_F + beta R_C);
+    divider (I_E taken equal to I_C):  I_C = (V_th - V_BE)/(R_E + R_th/beta)."""
+    k = int(round(p["cfg"]))
+    b = p["beta"]
+    if k == 0:
+        return b * (p["Vcc"] - p["Vbe"]) / p["Rb"]
+    if k == 1:
+        return b * (p["Vcc"] - p["Vbe"]) / (p["Rf"] + b * p["Rc"])
+    vth = p["Vcc"] * p["R2"] / (p["R1"] + p["R2"])
+    rth = p["R1"] * p["R2"] / (p["R1"] + p["R2"])
+    return (vth - p["Vbe"]) / (p["Re"] + rth / b)
+
+
 # ================================================================================================== registry
 KERNELS: dict[str, Any] = {
     "sn_lvdt": Lvdt, "sn_strain": Strain, "sn_capl": Capl, "sn_ultra": Ultra, "sn_tsens": Tsens, "sn_photo": Photo,
     "sn_mload": Mload, "sn_mbw": Mbw, "sn_vac": Vac, "sn_scope": Scope, "sn_pulse": Pulse, "sn_shape": Shape,
-    "sn_mv": Mv, "sn_ce": Ce, "sn_am": Am, "sn_fm": Fm,
+    "sn_mv": Mv, "sn_ce": Ce, "sn_am": Am, "sn_fm": Fm, "sn_opa": Opa, "sn_ant": Ant, "sn_bias": Bias,
 }
 FAMILY = {k: "circuit" for k in KERNELS}
 TEXTBOOK = {
     "sn_lvdt_v": _lvdt_v, "sn_strain_vb": _strain_vb, "sn_capl_slope": _capl_slope, "sn_ultra_d": _ultra_d,
     "sn_tsens_slope": _tsens_slope, "sn_photo_r": _photo_r, "sn_mload_err": _mload_err, "sn_mbw_f3": _mbw_f3,
     "sn_vac_p": _vac_p, "sn_scope_phase": _scope_phase, "sn_pulse_tr": _pulse_tr, "sn_shape_lvl": _shape_lvl,
-    "sn_mv_main": _mv_main, "sn_ce_amid": _ce_amid, "sn_am_m": _am_m, "sn_fm_df": _fm_df,
+    "sn_mv_main": _mv_main, "sn_ce_amid": _ce_amid, "sn_am_m": _am_m, "sn_fm_df": _fm_df, "sn_opa_main": _opa_main, "sn_ant_emax": _ant_emax, "sn_bias_ic": _bias_ic,
 }
 CALCS: dict[str, dict] = {}

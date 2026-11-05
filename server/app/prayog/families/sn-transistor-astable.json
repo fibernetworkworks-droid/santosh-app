@@ -1,0 +1,33 @@
+{
+ "base": "sn-transistor-astable",
+ "rig": "sn-scope-bench",
+ "chapter": "Analog electronics and devices",
+ "variants": [
+  {
+   "key": "c-47n",
+   "title": "Transistor astable multivibrator with 47 nF capacitors",
+   "sample": "Unknown capacitors from the E6 series (47 nF)",
+   "unknown": "the coupling capacitors from the frequency",
+   "params": {
+    "C": 4.7e-08
+   },
+   "note": "Smaller capacitors make the multivibrator run about twice as fast.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 47 nF"
+   }
+  },
+  {
+   "key": "c-220n",
+   "title": "Transistor astable multivibrator with 220 nF capacitors",
+   "sample": "Unknown capacitors from the E6 series (220 nF)",
+   "unknown": "the coupling capacitors from the frequency",
+   "params": {
+    "C": 2.2e-07
+   },
+   "note": "Larger capacitors slow it to a visible flash rate with the larger resistors.",
+   "source": {
+    "title": "IEC 60063 preferred values (E6 series): 220 nF"
+   }
+  }
+ ]
+}

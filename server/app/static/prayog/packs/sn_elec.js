@@ -19,6 +19,12 @@
     }
     return out;
   }
+  function olsSlope(xs, ys) {
+    var n = xs.length, sx = 0, sy = 0, sxy = 0, sxx = 0, i, den;
+    for (i = 0; i < n; i++) { sx += xs[i]; sy += ys[i]; sxy += xs[i] * ys[i]; sxx += xs[i] * xs[i]; }
+    den = n * sxx - sx * sx;
+    return den === 0 ? 0.0 : (n * sxy - sx * sy) / den;
+  }
   function stat(extra) {
     var o = { init: function () { return { t: 0.0 }; }, step: function (s, p, dt) { s.t += dt; } };
     var k; for (k in extra) o[k] = extra[k];
@@ -314,10 +320,11 @@
       var k = Math.round(p.kind);
       if (k === 0) return 4.4 * (p.R1 + 2.0 * p.R2) * p.C;
       if (k === 1) return 8.0 * p.R1 * p.C;
+      if (k === 3) return 8.5 * (p.R1 + p.R2) * p.C;
       return 5.5 * p.R1 * p.C;
     },
     trace: function (p) {
-      var k = Math.round(p.kind), span = sn_mv.span(p), dt0 = span / NW, vcc = p.Vcc, vc = 0.0, hi = (k === 0), vcs = [], vos = [], vts = [];
+      var k = Math.round(p.kind), span = sn_mv.span(p), dt0 = span / NW, vcc = p.Vcc, vc = (k === 3 ? -vcc : 0.0), hi = (k === 0 || k === 3), vcs = [], vos = [], vts = [];
       var tc = p.R1 * p.C, trig = [0.5 * tc, 4.5 * tc, 8.5 * tc], tw = 0.05 * tc, ti = 0, t = 0.0, i, tend, highT, rem, tau, thr, tgt, tcx, nxt, tt, low, q;
       for (i = 0; i < NW; i++) {
         tend = (i + 1) * dt0; highT = 0.0;
@@ -337,6 +344,10 @@
               else { vc = vcc + (vc - vcc) * Math.exp(-rem / tau); highT += rem; t = tend; }
             } else if (nxt <= tend) { t = Math.max(t, nxt); hi = true; ti++; }
             else t = tend;
+          } else if (k === 3) {
+            tau = (hi ? p.R1 : p.R2) * p.C; tcx = tau * Math.log((vcc - vc) / vcc);
+            if (tcx <= rem) { if (hi) highT += tcx; t += tcx; vc = -vcc; hi = !hi; }
+            else { vc = vcc + (vc - vcc) * Math.exp(-rem / tau); if (hi) highT += rem; t = tend; }
           } else {
             tau = p.R1 * p.C; tgt = vcc; thr = p.eta * vcc + p.Vd;
             tcx = vc < thr ? tau * Math.log((tgt - vc) / (tgt - thr)) : 0.0;
@@ -345,7 +356,7 @@
           }
         }
         vcs.push(vc);
-        vos.push(k < 2 ? vcc * highT / dt0 : 0.0);
+        vos.push(k !== 2 ? vcc * highT / dt0 : 0.0);
         tt = (i + 0.5) * dt0; low = 0.0;
         for (q = 0; q < trig.length; q++) if (trig[q] <= tt && tt < trig[q] + tw) low = 1.0;
         vts.push(vcc * (1.0 - low));
@@ -355,7 +366,7 @@
     analyse: function (p) {
       var k = Math.round(p.kind), tr = sn_mv.trace(p), dt = tr[0], vc = tr[1], vo = tr[2];
       var out = { f: 0.0, T: 0.0, width: 0.0, duty: 0.0, Thigh: 0.0, Tlow: 0.0, main: 0.0 }, lvl, r, fl, T, lows, i, prev, j, tl, w, use;
-      if (k === 0) {
+      if (k === 0 || k === 3) {
         lvl = 0.5 * p.Vcc; r = cross(vo, dt, lvl, true); fl = cross(vo, dt, lvl, false);
         T = (r[r.length - 1] - r[0]) / (r.length - 1); lows = [];
         for (i = 0; i < r.length; i++) {
@@ -382,6 +393,7 @@
     var k = Math.round(p.kind), thr;
     if (k === 0) return 1.44 / ((p.R1 + 2.0 * p.R2) * p.C);
     if (k === 1) return 1.1 * p.R1 * p.C;
+    if (k === 3) return 1.0 / (0.693 * (p.R1 + p.R2) * p.C);
     thr = p.eta * p.Vcc + p.Vd;
     return 1.0 / (p.R1 * p.C * Math.log((p.Vcc - p.Vv) / (p.Vcc - thr)));
   }
@@ -494,13 +506,125 @@
   });
   function fm_df(p) { return p.kf * p.Vm; }
 
+  // ===================================================================================== op-amp on a scope
+  var sn_opa = stat({
+    PARAMS: { kind: 0.0, f: 1000.0, Vp: 2.0, R: 10000.0, C: 1.0e-8, Rf: 1.0e7, Rs: 1000.0, Vref: 1.0, A0: 200000.0, Vsat: 13.0, SR: 500000.0, n: 1.0 },
+    VARS: ['t', 'trip', 'SR_us', 'slope', 'amp'],
+    trace: function (p) {
+      var k = Math.round(p.kind), n = Math.round(p.n), span = n / p.f, dt = span / NW, vin = [], out = [], o = 0.0, i, t, v, tgt, e, half, ph, slope, sub, vs;
+      for (i = 0; i < NW; i++) {
+        t = i * dt;
+        if (k === 0) {
+          v = -p.Vp * Math.cos(2.0 * PI * p.f * t);
+          if (i === 0) o = Math.min(Math.max(p.A0 * (v - p.Vref), -p.Vsat), p.Vsat);
+          else for (sub = 1; sub <= 8; sub++) {
+            vs = -p.Vp * Math.cos(2.0 * PI * p.f * (t - dt + dt * sub / 8.0));
+            tgt = Math.min(Math.max(p.A0 * (vs - p.Vref), -p.Vsat), p.Vsat);
+            o = o + Math.min(Math.max(tgt - o, -p.SR * dt / 8.0), p.SR * dt / 8.0);
+          }
+        } else if (k === 1) {
+          half = Math.floor(NW / (2 * n));
+          v = (Math.floor(i / half) % 2 === 0) ? p.Vp : -p.Vp;
+          e = Math.exp(-dt / (p.Rf * p.C));
+          o = Math.min(Math.max(o * e + (-v * p.Rf / p.R) * (1.0 - e), -p.Vsat), p.Vsat);
+        } else {
+          ph = (i % Math.floor(NW / n)) / Math.floor(NW / n);
+          v = p.Vp * (ph < 0.25 ? 4.0 * ph : ph < 0.75 ? 2.0 - 4.0 * ph : 4.0 * ph - 4.0);
+          slope = p.Vp * 4.0 * p.f * ((ph < 0.25 || ph >= 0.75) ? 1.0 : -1.0);
+          tgt = Math.min(Math.max(-p.R * p.C * slope, -p.Vsat), p.Vsat);
+          e = Math.exp(-dt / (p.Rs * p.C));
+          o = o * e + tgt * (1.0 - e);
+        }
+        vin.push(v); out.push(o);
+      }
+      return [dt, vin, out];
+    },
+    analyse: function (p) {
+      var k = Math.round(p.kind), tr = sn_opa.trace(p), dt = tr[0], out = tr[2];
+      var res = { trip: 0.0, SR: 0.0, vlo: 0.0, vhi: 0.0, slope: 0.0, vpp: 0.0, amp: 0.0 }, lo, hi, sw, t10, t90, j, s, tdep, half, xs, ys, i;
+      if (k === 0) {
+        lo = minOf(out); hi = maxOf(out); sw = hi - lo;
+        t10 = cross(out, dt, lo + 0.1 * sw, true); t90 = cross(out, dt, lo + 0.9 * sw, true);
+        res.SR = 0.8 * sw / (t90[0] - t10[0]);
+        j = 0; while (out[j] < lo + 1.0) j++;
+        s = (out[j + 1] - out[j]) / dt; tdep = j * dt - (out[j] - lo) / s;
+        res.trip = -p.Vp * Math.cos(2.0 * PI * p.f * tdep);
+        res.vlo = lo; res.vhi = hi;
+      } else if (k === 1) {
+        half = Math.floor(NW / (2 * Math.round(p.n))); xs = []; ys = [];
+        for (i = 20; i < half - 20; i++) { xs.push(i * dt); ys.push(out[i]); }
+        res.slope = olsSlope(xs, ys); res.vpp = maxOf(out) - minOf(out);
+      } else res.amp = 0.5 * (maxOf(out) - minOf(out));
+      return res;
+    },
+    view: function (s, p) { var a = sn_opa.analyse(p); return { t: s.t || 0.0, trip: a.trip, SR_us: a.SR / 1e6, slope: a.slope, amp: a.amp }; },
+    measure: function (p) { return sn_opa.analyse(p); }
+  });
+  function opa_main(p) {
+    var k = Math.round(p.kind);
+    if (k === 0) return p.Vref;
+    if (k === 1) return -p.Vp / (p.R * p.C);
+    return 4.0 * p.Vp * p.f * p.R * p.C;
+  }
+
+  // ===================================================================================== dipole antenna
+  var sn_ant = stat({
+    PARAMS: { th: 90.0, ell: 0.5, I0: 0.1, r: 5.0 },
+    VARS: ['t', 'E', 'rel'],
+    ETA: 376.730313668,
+    pat: function (p, th) {
+      var a = th * PI / 180, s = Math.sin(a);
+      if (Math.abs(s) < 1e-9) return 0.0;
+      return Math.abs(Math.cos(PI * p.ell * Math.cos(a)) - Math.cos(PI * p.ell)) / s;
+    },
+    field: function (p, th) { return sn_ant.ETA * p.I0 / (2.0 * PI * p.r) * sn_ant.pat(p, th); },
+    scan: function (p) {
+      var es = [], i, emax, half, left = 0.0, right = 0.0;
+      for (i = 0; i < 359; i++) es.push(sn_ant.field(p, 0.5 + 0.5 * i));
+      emax = maxOf(es); half = emax / Math.sqrt(2.0);
+      for (i = 1; i < 359; i++) {
+        if (es[i - 1] < half && half <= es[i] && left === 0.0) left = 0.5 + 0.5 * (i - 1) + 0.5 * (half - es[i - 1]) / (es[i] - es[i - 1]);
+        if (es[i - 1] >= half && half > es[i]) right = 0.5 + 0.5 * (i - 1) + 0.5 * (es[i - 1] - half) / (es[i - 1] - es[i]);
+      }
+      return { Emax: emax, hpbw: right - left };
+    },
+    view: function (s, p) { var e = sn_ant.field(p, p.th); return { t: s.t || 0.0, E: e, rel: e / (sn_ant.ETA * p.I0 / (2.0 * PI * p.r)) }; },
+    measure: function (p) { return sn_ant.scan(p); }
+  });
+  function ant_emax(p) { return sn_ant.ETA * p.I0 / (2.0 * PI * p.r) * (1.0 - Math.cos(PI * p.ell)); }
+
+  // ===================================================================================== BJT bias circuits
+  var sn_bias = stat({
+    PARAMS: { cfg: 0.0, Vcc: 12.0, beta: 200.0, Vbe: 0.65, Rb: 1200000.0, Rf: 470000.0, R1: 47000.0, R2: 10000.0, Rc: 2200.0, Re: 680.0 },
+    VARS: ['t', 'Ic_mA', 'Vce', 'Ib_uA'],
+    solve: function (p) {
+      var k = Math.round(p.cfg), b = p.beta, ib, ic, vce, vth, rth;
+      if (k === 0) { ib = (p.Vcc - p.Vbe) / p.Rb; ic = b * ib; vce = p.Vcc - ic * p.Rc; }
+      else if (k === 1) { ib = (p.Vcc - p.Vbe) / (p.Rf + (b + 1.0) * p.Rc); ic = b * ib; vce = p.Vcc - (ic + ib) * p.Rc; }
+      else {
+        vth = p.Vcc * p.R2 / (p.R1 + p.R2); rth = p.R1 * p.R2 / (p.R1 + p.R2);
+        ic = (vth - p.Vbe) / (rth / b + p.Re * (b + 1.0) / b); ib = ic / b; vce = p.Vcc - ic * p.Rc - (ic + ib) * p.Re;
+      }
+      return [ic, vce, ib];
+    },
+    view: function (s, p) { var r = sn_bias.solve(p); return { t: s.t || 0.0, Ic_mA: r[0] * 1000.0, Vce: r[1], Ib_uA: r[2] * 1e6 }; },
+    measure: function (p) { var r = sn_bias.solve(p); return { Ic: r[0], Vce: r[1], Ib: r[2] }; }
+  });
+  function bias_ic(p) {
+    var k = Math.round(p.cfg), b = p.beta, vth, rth;
+    if (k === 0) return b * (p.Vcc - p.Vbe) / p.Rb;
+    if (k === 1) return b * (p.Vcc - p.Vbe) / (p.Rf + b * p.Rc);
+    vth = p.Vcc * p.R2 / (p.R1 + p.R2); rth = p.R1 * p.R2 / (p.R1 + p.R2);
+    return (vth - p.Vbe) / (p.Re + rth / b);
+  }
+
   H.register({
     K: { sn_lvdt: sn_lvdt, sn_strain: sn_strain, sn_capl: sn_capl, sn_ultra: sn_ultra, sn_tsens: sn_tsens, sn_photo: sn_photo,
       sn_mload: sn_mload, sn_mbw: sn_mbw, sn_vac: sn_vac, sn_scope: sn_scope, sn_pulse: sn_pulse, sn_shape: sn_shape,
-      sn_mv: sn_mv, sn_ce: sn_ce, sn_am: sn_am, sn_fm: sn_fm },
+      sn_mv: sn_mv, sn_ce: sn_ce, sn_am: sn_am, sn_fm: sn_fm, sn_opa: sn_opa, sn_ant: sn_ant, sn_bias: sn_bias },
     TEXTBOOK: { sn_lvdt_v: lvdt_v, sn_strain_vb: strain_vb, sn_capl_slope: capl_slope, sn_ultra_d: ultra_d, sn_tsens_slope: tsens_slope,
       sn_photo_r: photo_r, sn_mload_err: mload_err, sn_mbw_f3: mbw_f3, sn_vac_p: vac_p, sn_scope_phase: scope_phase,
-      sn_pulse_tr: pulse_tr, sn_shape_lvl: shape_lvl, sn_mv_main: mv_main, sn_ce_amid: ce_amid, sn_am_m: am_m, sn_fm_df: fm_df },
+      sn_pulse_tr: pulse_tr, sn_shape_lvl: shape_lvl, sn_mv_main: mv_main, sn_ce_amid: ce_amid, sn_am_m: am_m, sn_fm_df: fm_df, sn_opa_main: opa_main, sn_ant_emax: ant_emax, sn_bias_ic: bias_ic },
     CALCS: {}
   });
 })(typeof window !== 'undefined' ? window : this);

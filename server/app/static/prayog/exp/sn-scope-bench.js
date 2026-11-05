@@ -488,6 +488,34 @@ HoolaStudio.define('sn-scope-bench', function (S) {
     chips: ['Why does a triangle become a square wave?', 'What does the series resistor do?', 'How is C found from the amplitude?', 'Check my readings'],
     viva: [['The output of a differentiator is proportional to', ['the rate of change of the input', 'the input itself', 'the area under the input'], 0, 'V_out = -R C dV_in/dt.']] }; };
 
+
+  PLANS['sn-transistor-astable'] = function () { return {
+    compName: 'Transistor astable multivibrator board',
+    wiring: 'Two BC547 transistors, each with a 1 kΩ collector resistor, cross-coupled through two equal capacitors C (unknown) and biased through R1 and R2 from 9 V. Channel 1 is on the collector of the first transistor, channel 2 on the base of the one that is charging.',
+    controls: [{ param: 'R1', label: 'Resistor R1', short: 'R1', unit: 'Ω', digits: 0, fmtv: rLabel, vals: [4700, 10000, 22000, 47000] }, { param: 'R2', label: 'Resistor R2', short: 'R2', unit: 'Ω', digits: 0, fmtv: rLabel, vals: [4700, 10000, 22000, 47000] }],
+    art: function () { to92(-0.07, -0.02, 'BC547'); to92(0.04, -0.02, 'BC547'); var a = resistor(-0.12, 0.03, p.R1, 'R1'), b = resistor(0.09, 0.03, p.R2, 'R2'); resistor(-0.06, 0.04, 1000, 'RC1'); resistor(0.03, 0.04, 1000, 'RC2');
+      capacitor(-0.02, -0.04, 0, 'C1', 'ceramic', true); capacitor(0.0, 0.0, 0, 'C2', 'ceramic', true); battery(0.13, -0.02, '9 V');
+      jumper([-0.07, -0.03], [0.04, -0.03], 'yellow'); jumper([-0.02, -0.01], [0.0, 0.01], 'blue'); return function (q) { a.set(q.R1); b.set(q.R2); }; },
+    trace: function (q) { return memo('tr', q, function (qq) { var t = KN.trace(qq), dt = t[0], lvl = 0.5 * qq.Vcc, r = cross(t[2], dt, lvl, true), fl = cross(t[2], dt, lvl, false), marks = [], i;
+      for (i = 0; i < Math.min(2, r.length); i++) marks.push({ kind: 'v', t: r[i], color: YEL }); if (fl.length > 1) marks.push({ kind: 'v', t: fl[1], color: YEL });
+      return { dt: dt, ch: [{ y: t[2], color: YEL, name: 'COLL' }, { y: t[1], color: CYA, name: 'BASE' }], marks: marks }; }); },
+    meas: function (q) { var m = memo('ms', q, function (qq) { return KN.measure(qq); });
+      return { lines: ['Period T = ' + eng(m.T, 's') + '   f = ' + eng(m.f, 'Hz'), 'High time = ' + eng(m.Thigh, 's') + '   low time = ' + eng(m.Tlow, 's'), 'Duty cycle = ' + fmt(m.duty * 100, 1) + ' %'],
+        row: { f: m.f, thigh: m.Thigh, tlow: m.Tlow, duty: m.duty } }; },
+    cols: [{ label: 'R1', get: function (r) { return rLabel(r.set.R1); } }, { label: 'R2', get: function (r) { return rLabel(r.set.R2); } }, { label: 'f (Hz)', get: function (r) { return fmt(r.f, 1); } },
+      { label: 'High (ms)', get: function (r) { return fmt(r.thigh * 1000, 3); } }, { label: 'Low (ms)', get: function (r) { return fmt(r.tlow * 1000, 3); } }, { label: 'Duty (%)', get: function (r) { return fmt(r.duty * 100, 1); } },
+      { label: 'C = 1/(0.693 (R1 + R2) f) (nF)', get: function (r) { return fmt(1 / (0.693 * (r.set.R1 + r.set.R2) * r.f) * 1e9, 2); } }],
+    need: 5,
+    runs: [{ R1: 10000, R2: 10000 }, { R1: 10000, R2: 22000 }, { R1: 22000, R2: 10000 }, { R1: 47000, R2: 22000 }, { R1: 4700, R2: 47000 }, { R1: 22000, R2: 22000 }],
+    graph: { x: function (r) { return (r.set.R1 + r.set.R2) / 1000; }, y: function (r) { return 1 / r.f * 1000; }, xlabel: 'R1 + R2 (kΩ)', ylabel: 'Period (ms)', line: function (pts) { var m = origin(pts); return function (x) { return m * x; }; } },
+    result: function (rows) {
+      return { label: 'Capacitors C', value: mean(rows.map(function (r) { return 1 / (0.693 * (r.set.R1 + r.set.R2) * r.f); })) * 1e9, unit: 'nF', digits: 2, truth: p.C * 1e9,
+        note: 'From f = 1/(0.693 (R1 + R2) C) at each setting; the duty cycle came out as R1/(R1 + R2) within ' + fmt(maxOf(rows.map(function (r) { return Math.abs(r.duty - r.set.R1 / (r.set.R1 + r.set.R2)) * 100; })), 1) + ' percentage points.' };
+    },
+    resultNote: 'Each transistor stays off for 0.693 times the resistor-capacitor product on its base, so the high time is 0.693 R1 C and the low time 0.693 R2 C. The period is their sum and the duty cycle R1/(R1 + R2). The model takes V_BE and V_CE(sat) as zero, which is a good approximation when the supply is much larger than 0.7 V.',
+    chips: ['Why is each half-period 0.693 R C?', 'How is the duty cycle set?', 'How is C found?', 'Check my readings'],
+    viva: [['The period of the astable multivibrator is', ['0.693 (R1 + R2) C', '1.1 R C', '2 π R C'], 0, 'Each half is 0.693 times its own R C.']] }; };
+
   var PL = (PLANS[BASE] || PLANS['sn-cro-measure'])();
   var CTRL = PL.controls;
 
@@ -641,7 +669,7 @@ HoolaStudio.define('sn-scope-bench', function (S) {
   function enough() { return S.rows.length >= PL.need && (!PL.okFn || PL.okFn(S.rows)); }
   var FORMULA = { 'sn-cro-measure': 'tan φ = 2π f R C', 'sn-cro-pulse': 't_r = 2.197 R C,   t_d = 0.693 R C', 'sn-waveshaper': 'clip level = V_b ± V_f',
     'sn-timer-555': 'f = 1.44 / ((R1 + 2 R2) C),   T = 1.1 R1 C', 'sn-ujt-oscillator': 'V_p = η V_bb + V_D,   T = R C ln((V_bb − V_v)/(V_bb − V_p))',
-    'sn-ce-amplifier': 'A_v = − g_m (R_C ∥ R_L) · R_in/(R_s + R_in)', 'sn-opamp-comparator': 'trip when V_in = V_ref,   SR = ΔV / Δt', 'sn-opamp-integrator': 'V_out = −(1/RC) ∫ V_in dt', 'sn-opamp-differentiator': 'V_out = −R C dV_in/dt = −4 R C V f (triangle)', 'sn-am-modulation': 'm = (V_max − V_min)/(V_max + V_min) = k_a V_m', 'sn-fm-modulation': 'Δf = k_f V_m,   β = Δf / f_m' };
+    'sn-ce-amplifier': 'A_v = − g_m (R_C ∥ R_L) · R_in/(R_s + R_in)', 'sn-transistor-astable': 'f = 1 / (0.693 (R1 + R2) C),   duty = R1/(R1 + R2)', 'sn-opamp-comparator': 'trip when V_in = V_ref,   SR = ΔV / Δt', 'sn-opamp-integrator': 'V_out = −(1/RC) ∫ V_in dt', 'sn-opamp-differentiator': 'V_out = −R C dV_in/dt = −4 R C V f (triangle)', 'sn-am-modulation': 'm = (V_max − V_min)/(V_max + V_min) = k_a V_m', 'sn-fm-modulation': 'Δf = k_f V_m,   β = Δf / f_m' };
   function liveLine() { return PL.meas(qNow()).lines[0]; }
   function ctrlLine() { return CTRL.map(function (c, i) { return c.label + ': ' + ctrlTxt(i, st.set[i]); }).join('  ·  '); }
 

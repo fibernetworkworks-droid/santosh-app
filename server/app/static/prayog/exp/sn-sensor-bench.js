@@ -129,7 +129,7 @@ HoolaStudio.define('sn-sensor-bench', function (S) {
     var br = boxM(0.12, 0.04, 0.07, new T.MeshStandardMaterial({ color: 0x4a5866, roughness: 0.5 }), 0.1, 0.036, 0.03);
     var bl = L('BRIDGE + AMP (G = 100)', { w: 0.11, ratio: 0.15, color: '#f1f1f1' }); bl.position.set(0.1, 0.057, 0.0655); bl.rotation.x = -1.5708; add(bl);
     S.wire([[-0.075 + G.position.x, 0.078, G.position.z], [0.0 + G.position.x, 0.06, 0.04 + G.position.z], [0.07 + G.position.x, 0.05, 0.03 + G.position.z]], 'yellow');
-    tag('STEEL CANTILEVER, 25 x 2 mm', 0.13, -0.02, 0.0165, 0.045, -1.5708);
+    tag((p.E < 1e11 ? 'ALUMINIUM' : 'STEEL') + ' CANTILEVER, 25 x 2 mm', 0.13, -0.02, 0.0165, 0.045, -1.5708);
     return function (v) { var m = v.m || 0; beam.rotation.z = -m * 0.045; discs.forEach(function (d, k) { d.visible = k < Math.round(m / 0.1); }); hook.visible = true; };
   }
 
@@ -243,9 +243,9 @@ HoolaStudio.define('sn-sensor-bench', function (S) {
     var lamp = new T.Group(); add(lamp); lamp.position.set(0.0, 0.04, 0);
     var hb = S.mesh(new T.BoxGeometry(0.03, 0.012, 0.05), M.alu); lamp.add(hb);
     var cyl = S.mesh(new T.CylinderGeometry(0.014, 0.014, 0.05, 24), new T.MeshStandardMaterial({ color: 0x24262b, roughness: 0.4, metalness: 0.5 })); cyl.rotation.z = Math.PI / 2; cyl.position.set(0.0, 0.03, 0); lamp.add(cyl);
-    var led = S.mesh(new T.SphereGeometry(0.0055, 16, 12), new T.MeshStandardMaterial({ color: 0xff3a2a, emissive: 0xff1a0a, emissiveIntensity: 2.2, roughness: 0.2 }), false); led.position.set(-0.026, 0.03, 0); lamp.add(led);
+    var led = S.mesh(new T.SphereGeometry(0.0055, 16, 12), new T.MeshStandardMaterial(p.lam > 8e-7 ? { color: 0x3a2a3a, emissive: 0x1a0a2a, emissiveIntensity: 0.8, roughness: 0.2 } : { color: 0xff3a2a, emissive: 0xff1a0a, emissiveIntensity: 2.2, roughness: 0.2 }), false); led.position.set(-0.026, 0.03, 0); lamp.add(led);
     tag('PHOTODIODE (chip 7.5 mm²) IN A BLACK TUBE', 0.14, -0.2, 0.012, 0.06, -1.5708);
-    tag('RED LED 660 nm · 130 mW/sr', 0.1, 0.18, 0.012, 0.06, -1.5708);
+    tag((p.lam > 8e-7 ? 'INFRARED LED ' : 'RED LED ') + Math.round(p.lam * 1e9) + ' nm · ' + Math.round(p.Ie * 1000) + ' mW/sr', 0.12, 0.18, 0.012, 0.06, -1.5708);
     return function (v) { lamp.position.x = -0.29 + (v.d || 0.1) * 1.6; };
   }
 
@@ -419,7 +419,7 @@ HoolaStudio.define('sn-sensor-bench', function (S) {
 
   PLANS['sn-meter-bandwidth'] = function () { return {
     compName: 'AC meter and function generator', art: artMbw,
-    wiring: 'The generator feeds the AC volts input of the meter at a constant 1 V rms (checked on meter 2 at every frequency).',
+    wiring: 'The generator feeds the ' + (SAMPLE || 'AC volts range') + ' of the meter at a constant 1 V rms (checked on meter 2 at every frequency).',
     ctrlLabel: 'FREQUENCY (generator dial)',
     controls: [{ params: ['f'], label: 'Generator frequency', unit: 'Hz', scale: 1, digits: 0, vals: [100, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000] }],
     m1: { fn: 'AC V', title: 'METER UNDER TEST', label: 'Meter reading', unit: 'V', digits: 4, lc: 1e-4, get: function (v) { return v.reading; } },
@@ -490,6 +490,97 @@ HoolaStudio.define('sn-sensor-bench', function (S) {
     viva: [['If the chamber volume is doubled the pump-down time', ['doubles', 'halves', 'stays the same'], 0, 'The time constant is V/S.']] }; };
   function ult(rows) { var best = null, i; for (i = 0; i < rows.length; i++) if (rows[i].c0 >= 200 && (best === null || rows[i].c0 > best.c0)) best = rows[i]; return best ? best.m1 : null; }
 
+
+  function artAnt() {
+    boxM(0.5, 0.012, 0.22, M.darkWood, 0, 0.006, 0);
+    var tt = disc(0.095, 0.01, steelM(), -0.1, 0.017, 0);
+    var proto = S.canvasTex(512, 512, function (c, w, h) { c.fillStyle = '#f0ead8'; c.beginPath(); c.arc(w / 2, h / 2, w / 2 - 4, 0, Math.PI * 2); c.fill(); c.strokeStyle = '#222'; c.fillStyle = '#222'; c.font = '600 28px sans-serif'; c.textAlign = 'center';
+      for (var a = 0; a < 360; a += 10) { var r1 = w / 2 - 6, r2 = w / 2 - (a % 30 === 0 ? 40 : 24); c.lineWidth = a % 30 === 0 ? 3 : 1.5; c.beginPath(); c.moveTo(w / 2 + r1 * Math.cos(a * Math.PI / 180), h / 2 - r1 * Math.sin(a * Math.PI / 180)); c.lineTo(w / 2 + r2 * Math.cos(a * Math.PI / 180), h / 2 - r2 * Math.sin(a * Math.PI / 180)); c.stroke();
+        if (a % 30 === 0) c.fillText(String(a), w / 2 + (r2 - 22) * Math.cos(a * Math.PI / 180), h / 2 - (r2 - 22) * Math.sin(a * Math.PI / 180) + 10); } });
+    var pt = new T.Mesh(new T.CircleGeometry(0.09, 48), new T.MeshStandardMaterial({ map: proto, roughness: 0.6 })); pt.rotation.x = -Math.PI / 2; pt.position.set(-0.1, 0.0225, 0); add(pt);
+    var arm = new T.Group(); arm.position.set(-0.1, 0.03, 0); add(arm);
+    [-1, 1].forEach(function (sg) { var rod = S.mesh(new T.CylinderGeometry(0.0025, 0.0025, 0.07, 14), M.brass); rod.rotation.z = Math.PI / 2; rod.position.x = sg * 0.037; arm.add(rod); });
+    var feed = S.mesh(new T.BoxGeometry(0.008, 0.01, 0.01), M.black); arm.add(feed);
+    var cable = S.wire([[G.position.x - 0.1, 0.035, G.position.z + 0.0], [G.position.x - 0.2, 0.05, G.position.z - 0.08], [G.position.x - 0.3, 0.1, G.position.z - 0.1]], 'black');
+    boxM(0.08, 0.05, 0.06, new T.MeshStandardMaterial({ color: 0x4a5866, roughness: 0.5 }), -0.22, 0.03, -0.07);
+    var tl = L('TRANSMITTER 100 MHz', { w: 0.07, ratio: 0.18, color: '#f2f2f2' }); tl.position.set(-0.22, 0.04, -0.0395); add(tl);
+    var stand = disc(0.004, 0.14, steelM(), 0.2, 0.08, 0); var whip = disc(0.0012, 0.12, M.chrome, 0.2, 0.2, 0); boxM(0.05, 0.03, 0.05, M.iron, 0.2, 0.025, 0);
+    tag('FIELD PROBE AT 5 m (SHOWN CLOSER)', 0.14, 0.2, 0.0125, 0.06, -1.5708);
+    tag('TURNTABLE · HALF-WAVE DIPOLE', 0.14, -0.1, 0.0125, 0.1, -1.5708);
+    return function (v) { arm.rotation.y = -(v.th || 0) * Math.PI / 180; };
+  }
+  function resBox(x, z, label, parent) {
+    var g = new T.Group(); g.position.set(x, 0.026, z); add(g);
+    var body = S.mesh(new T.CylinderGeometry(0.004, 0.004, 0.022, 18), new T.MeshStandardMaterial({ color: 0xd9bf8c, roughness: 0.55 })); body.rotation.z = Math.PI / 2; g.add(body);
+    var lb = L(label, { w: 0.05, ratio: 0.22, color: '#3d3528', weight: 700 }); lb.rotation.x = -Math.PI / 2; lb.position.set(0, -0.012, 0.014); g.add(lb); return g;
+  }
+  function artBias() {
+    boxM(0.34, 0.012, 0.16, M.cabinet, 0, 0.006, 0);
+    boxM(0.3, 0.012, 0.11, new T.MeshStandardMaterial({ color: 0xefece2, roughness: 0.6 }), 0, 0.018, 0);
+    var q = new T.Group(); q.position.set(0.02, 0.026, 0); add(q);
+    var caseM = new T.MeshStandardMaterial({ color: 0x14151a, roughness: 0.42 });
+    var body = S.mesh(new T.CylinderGeometry(0.005, 0.005, 0.01, 24, 1, false, -0.7, Math.PI * 2 - 1.4), caseM); body.position.y = 0.005; q.add(body);
+    L('BC547', { w: 0.03 }); var ql = L('BC547', { w: 0.04, ratio: 0.3, color: '#3d3528', weight: 700 }); ql.rotation.x = -Math.PI / 2; ql.position.set(0.02, 0.0125, 0.03); add(ql);
+    var fixedG = [resBox(-0.1, -0.03, 'RB 1.2 MΩ'), resBox(0.1, -0.03, 'RC 2.2 kΩ')];
+    var fbG = [resBox(-0.1, -0.03, 'RF 470 kΩ'), resBox(0.1, -0.03, 'RC 2.2 kΩ')];
+    var divG = [resBox(-0.12, -0.04, 'R1 47 kΩ'), resBox(-0.12, 0.03, 'R2 10 kΩ'), resBox(0.1, -0.03, 'RC 2.2 kΩ'), resBox(0.1, 0.035, 'RE 680 Ω')];
+    boxM(0.03, 0.02, 0.02, M.green, 0.14, 0.032, 0.02);
+    var bl = L('+12 V', { w: 0.026, ratio: 0.3, color: '#f4f4f4' }); bl.rotation.x = -Math.PI / 2; bl.position.set(0.14, 0.0425, 0.02); add(bl);
+    return function (v) { var c = Math.round(v.cfg); fixedG.forEach(function (g) { g.visible = c === 0; }); fbG.forEach(function (g) { g.visible = c === 1; }); divG.forEach(function (g) { g.visible = c === 2; }); };
+  }
+  function angle(v) { return v; }
+  PLANS['sn-dipole-antenna'] = function () { return {
+    compName: SAMPLE || 'Half-wave dipole on a turntable with a field probe',
+    wiring: 'A dipole of length ' + (p.ell === 0.5 ? 'half a wavelength' : p.ell + ' wavelengths') + ' (100 MHz, wavelength 3 m) carries a current of ' + (p.I0 * 1000) + ' mA peak; a field-strength probe is fixed ' + p.r + ' m away. The hand turns the dipole on its turntable; meter 1 reads the field, meter 2 the angle between the dipole axis and the probe.',
+    ctrlLabel: 'TURNTABLE (angle to the probe)',
+    controls: [{ params: ['th'], label: 'Angle θ between the dipole axis and the probe', unit: '°', scale: 1, digits: 0, vals: span(0, 180, 10) }],
+    m1: { fn: 'mV/m', title: 'FIELD STRENGTH', label: 'Field strength', unit: 'mV/m', digits: 1, lc: 0.1, get: function (v) { return v.E * 1000; } },
+    m2: { fn: 'deg', title: 'TURNTABLE', label: 'Angle', unit: '°', digits: 0, lc: 1, get: function (v, q) { return q.th; } },
+    cols: [{ label: 'θ (°)', get: function (r) { return fmt(r.m2, 0); } }, { label: 'E (mV/m)', get: function (r) { return fmt(r.m1, 1); } },
+      { label: 'E / E_max', get: function (r, i, rows) { var mx = Math.max.apply(null, rows.map(function (q) { return q.m1; })); return fmt(r.m1 / mx, 3); } }],
+    need: 13,
+    graph: { x: function (r) { return r.m2; }, y: function (r) { return r.m1; }, xlabel: 'Angle θ (degrees)', ylabel: 'Field strength (mV/m)',
+      line: function (pts) { var q = pts.slice().sort(function (a, b) { return a[0] - b[0]; }); return function (x) { var i; if (x <= q[0][0]) return q[0][1]; for (i = 0; i < q.length - 1; i++) if (x <= q[i + 1][0]) return q[i][1] + (q[i + 1][1] - q[i][1]) * (x - q[i][0]) / (q[i + 1][0] - q[i][0]); return q[q.length - 1][1]; }; } },
+    result: function (rows) {
+      var q = rows.slice().sort(function (a, b) { return a.m2 - b.m2; }), mx = 0, i, half, l = NaN, r = NaN;
+      for (i = 0; i < q.length; i++) if (q[i].m1 > mx) mx = q[i].m1;
+      half = mx / Math.sqrt(2);
+      for (i = 1; i < q.length; i++) {
+        if (isNaN(l) && q[i - 1].m1 < half && q[i].m1 >= half) l = q[i - 1].m2 + (q[i].m2 - q[i - 1].m2) * (half - q[i - 1].m1) / (q[i].m1 - q[i - 1].m1);
+        if (q[i - 1].m1 >= half && q[i].m1 < half) r = q[i - 1].m2 + (q[i].m2 - q[i - 1].m2) * (q[i - 1].m1 - half) / (q[i - 1].m1 - q[i].m1);
+      }
+      return { label: 'Half-power beamwidth', value: r - l, unit: '°', digits: 1, truth: KK.measure(p).hpbw,
+        note: 'The angle between the two points where the field has fallen to 0.707 of its peak (' + fmt(mx, 1) + ' mV/m).' };
+    },
+    resultNote: 'The field is zero along the dipole\'s axis and largest broadside to it, falling to 0.707 of the peak (half the power) about 39 degrees either side of the maximum for a half-wave dipole, a beamwidth of 78 degrees. A longer dipole has a narrower beam; a very short one has the wide sin θ pattern with a beamwidth of 90 degrees.',
+    chips: ['Why is the field zero along the dipole?', 'What is the half-power beamwidth?', 'How does the pattern change with length?', 'Check my readings'],
+    viva: [['A dipole radiates most strongly', ['broadside, at right angles to its axis', 'along its axis', 'equally in all directions'], 0, 'The pattern is cos((π/2) cos θ)/sin θ, largest at θ = 90 degrees.']], art: artAnt }; };
+
+  var BETAS = [100, 150, 200, 300, 450], BIASN = ['fixed bias', 'collector-to-base bias', 'voltage-divider bias'];
+  PLANS['sn-bjt-biasing'] = function () { return {
+    compName: 'Transistor bias board: fixed, collector-to-base and voltage-divider', art: artBias,
+    wiring: 'A BC547 with R_C = 2.2 kΩ on 12 V. The dial selects the bias circuit and the current gain of the transistor plugged in (beta 100 to 450, as the spread within one type). Meter 1 reads the collector current, meter 2 the collector-emitter voltage.',
+    ctrlLabel: 'CIRCUIT + TRANSISTOR (beta)',
+    controls: [{ params: ['cfg', 'beta'], label: 'Circuit and transistor', unit: '', scale: 1, digits: 0, vals: span(0, 14, 1),
+      map: function (v) { return { cfg: Math.floor(v / 5), beta: BETAS[v % 5] }; }, fmtv: function (v) { return BIASN[Math.floor(v / 5)].split(' ')[0] + ' β=' + BETAS[v % 5]; } }],
+    m1: { fn: 'DC mA', title: 'COLLECTOR CURRENT', label: 'Collector current I_C', unit: 'mA', digits: 3, lc: 0.001, get: function (v) { return v.Ic_mA; } },
+    m2: { fn: 'DC V', title: 'V CE', label: 'Collector-emitter voltage', unit: 'V', digits: 2, lc: 0.01, get: function (v) { return v.Vce; } },
+    cols: [{ label: 'Circuit', get: function (r) { return BIASN[Math.floor(r.c0 / 5)]; } }, { label: 'β', get: function (r) { return BETAS[r.c0 % 5]; } }, { label: 'I_C (mA)', get: function (r) { return fmt(r.m1, 3); } }, { label: 'V_CE (V)', get: function (r) { return fmt(r.m2, 2); } }],
+    need: 10,
+    okFn: function (rows) { var c = [0, 0, 0]; known(rows).forEach(function (r) { c[Math.floor(r.c0 / 5)]++; }); return c[0] >= 2 && c[1] >= 2 && c[2] >= 2; },
+    graph: { x: function (r) { return BETAS[r.c0 % 5]; }, y: function (r) { return r.m1; }, xlabel: 'Transistor beta', ylabel: 'Collector current (mA)' },
+    result: function (rows) {
+      function spread(c) { var q = known(rows).filter(function (r) { return Math.floor(r.c0 / 5) === c; }).sort(function (a, b) { return a.c0 - b.c0; }); if (q.length < 2) return NaN; var mid = q[Math.floor(q.length / 2)].m1; return (q[q.length - 1].m1 - q[0].m1) / mid; }
+      function truthSpread(c) { var lo = readAt({ cfg: c, beta: BETAS[0] }).Ic_mA, hi = readAt({ cfg: c, beta: BETAS[4] }).Ic_mA, mid = readAt({ cfg: c, beta: BETAS[2] }).Ic_mA; return (hi - lo) / mid; }
+      var a = spread(0), b = spread(2);
+      if (!(a > 0) || !(b > 0)) return null;
+      return { label: 'How much steadier the divider bias is than fixed bias', value: a / b, unit: '× smaller spread', digits: 1, truth: truthSpread(0) / truthSpread(2),
+        note: 'Spread of I_C over the beta range, as a fraction of its middle value: fixed bias ' + fmt(a * 100, 0) + ' %, collector-to-base ' + fmt(spread(1) * 100, 0) + ' %, voltage divider ' + fmt(b * 100, 0) + ' %.' };
+    },
+    resultNote: 'In fixed bias the base current is set by one resistor and the collector current is simply beta times it, so it follows beta in full. Collector-to-base feedback cuts that to a half or less, and the voltage divider with an emitter resistor makes the current depend almost only on the resistors. A good amplifier is biased so that its working point hardly moves when the transistor is changed or warms up.',
+    chips: ['Why does fixed bias vary so much with beta?', 'How does the emitter resistor stabilise the current?', 'What is the working point?', 'Check my readings'],
+    viva: [['Which bias circuit keeps I_C steadiest as beta changes?', ['the voltage divider with an emitter resistor', 'fixed bias', 'they are all the same'], 0, 'The emitter resistor feeds back any change of I_C.']] }; };
+
   var PL = (PLANS[BASE] || PLANS['sn-lvdt'])();
   var CTRL = PL.controls;
   var ART = PL.art();
@@ -552,7 +643,7 @@ HoolaStudio.define('sn-sensor-bench', function (S) {
 
   // =============================================================================================== state and readings
   var st = { power: false, checked: false, unk: false, set: CTRL[0].vals[0], idx: 0, unkSeen: false };
-  function over() { var o = {}; CTRL[0].params.forEach(function (pr) { o[pr] = st.set; }); return st.unk && PL.unknown ? assign(o, PL.unknown.set) : o; }
+  function over() { var o = {}; if (CTRL[0].map) o = CTRL[0].map(st.set); else CTRL[0].params.forEach(function (pr) { o[pr] = st.set; }); return st.unk && PL.unknown ? assign(o, PL.unknown.set) : o; }
   function live() { return readAt(over()); }
   function liveQ() { return assign(p, over()); }
   function mval(m) {
@@ -636,7 +727,7 @@ HoolaStudio.define('sn-sensor-bench', function (S) {
     'sn-lvdt': 'V = V_p S x', 'sn-strain-gauge': 'V = V_s n GF ε / 4,   ε = 6 m g L / (E b h²)', 'sn-capacitive-level': 'C = 2π ε₀ (H + (ε_r − 1) h) / ln(b/a) + C_stray',
     'sn-ultrasonic-ranging': 'te = 2 d / c + t₀,   c = 331.3 √(1 + T/273.15)', 'sn-temp-sensor': 'reading = m × T + c',
     'sn-meter-loading': 'V_meter / V_true = R_m / (R_m + R_th)', 'sn-meter-bandwidth': 'reading = V / √(1 + (f/f_c)²)', 'sn-photodiode': 'I = R P + I_dark,   R = η λ q / (h c)',
-    'sn-rotary-vacuum': 'P − P_u = (P₀ − P_u) exp(−S t / V)' };
+    'sn-rotary-vacuum': 'P − P_u = (P₀ − P_u) exp(−S t / V)', 'sn-dipole-antenna': '|E| = (η I₀ / 2π r) |cos(π ℓ cos θ) − cos(π ℓ)| / sin θ', 'sn-bjt-biasing': 'I_C = (V_th − V_BE) / (R_E + R_th/β)   (divider)' };
 
   return {
     camera: { pos: [0.02, 0.74, 1.14], look: [0.02, 0.04, -0.2] },

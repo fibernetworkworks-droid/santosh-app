@@ -146,7 +146,7 @@ HoolaStudio.define('phd-tweezers-bench', function (S) {
   var pwr = ins.buttons[0], go = ins.buttons[1], led1 = S.mesh(new T.SphereGeometry(0.004, 12, 12), new T.MeshStandardMaterial({ color: 0x331111, emissive: 0x000000 }));
   led1.position.copy(ins.at(0.1, -0.038, 0.002)); ins.g.add(led1);
   S.contact(0.5, 0.34, 0.28, -0.22, 0.5);
-  S.wire([[-0.1 + 0.05, 0.33, -0.25], [0.0, 0.2, -0.2], [0.28 - 0.17, 0.1, -0.22 + 0.13]], 'black'); S.wire([[-0.1 + 0.12, 0.015, -0.2], [0.05, 0.02, -0.12], [0.28 - 0.1, 0.05, -0.22 + 0.13]], 'red');
+  S.wire([[-0.1 + 0.05, 0.33, -0.25], [0.0, 0.2, -0.2], [0.07, 0.08, -0.22]], 'black'); S.wire([[-0.1 + 0.12, 0.015, -0.2], [0.05, 0.02, -0.12], [0.07, 0.05, -0.2]], 'red');
   S.addApparatus('mic', mic, 'Inverted microscope with a bead chamber', 'A drop of 1 micrometre silica beads in water on a slide, on a motorised stage. The trapping beam enters from below through the objective and holds one bead near its focus; a quadrant photodiode follows the bead.');
   S.addApparatus('las', las, 'Trapping laser (simulated, sealed)', 'A real trapping laser is an invisible Class 4 infrared beam, enclosed and interlocked, set up by staff. Here it is a simulated instrument: you set its power with the knob on the analyser and nothing else.');
   S.addApparatus('ins', ins.g, 'Trap analyser', 'Records the bead position, shows its histogram and power spectrum, and drives the stage.');

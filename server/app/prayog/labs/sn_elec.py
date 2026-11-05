@@ -786,5 +786,87 @@ def opa_dif() -> dict:
         {"params": {}, "reading": "amp", "textbook": "sn_opa_main", "tol": 0.01}, chapter=CH_ANA)
 
 
+def tr_astable() -> dict:
+    return _sk(
+        "sn-transistor-astable", "Astable multivibrator with transistors: frequency, duty cycle and the capacitors",
+        "Build a transistor astable multivibrator, read its frequency and duty cycle for several resistor pairs on the "
+        "scope, and find the unknown coupling capacitors from the frequency.",
+        "sn_mv", {"kind": 3.0, "R1": 10000.0, "R2": 22000.0, "C": 1.0e-7, "Vcc": 9.0},
+        [knob("R1", "Resistor R1", "R1", 4700, 47000, 100, 10000, "Ω"), knob("R2", "Resistor R2", "R2", 4700, 47000, 100, 22000, "Ω"),
+         knob("C", "Unknown capacitors (hidden)", "C", 1e-8, 1e-6, 1e-9, 1e-7, "F", hidden=True)],
+        [inst("f", "readout", "Frequency", "f", unit="Hz", digits=1), inst("d", "readout", "Duty cycle", "duty", digits=3)],
+        "Two transistors are cross-coupled so that each collector drives the other's base through a capacitor; one is on and "
+        "the other off, and they swap. The off transistor's base is pulled to minus V_cc when the other turns on, then rises "
+        "toward plus V_cc through its base resistor until it reaches the turn-on level near 0 V, which takes 0.693 R C (ln 2 times "
+        "the resistor-capacitor product). The two half-periods are 0.693 R1 C and 0.693 R2 C, so f = 1/(0.693 (R1 + R2) C) and the duty "
+        "cycle is R1/(R1 + R2). The simple model takes V_BE and V_CE(sat) as zero, fair when V_cc is much larger than 0.7 V.",
+        ["Build the circuit on the board and switch on; look at the collector and base waveforms.",
+         "Measure the high and low times of the collector waveform with the cursors and compute the frequency and duty cycle.",
+         "Change R1 and R2 and repeat; the frequency should follow 1/(R1 + R2) and the duty cycle R1/(R1 + R2).",
+         "Find the capacitor from each reading and average."],
+        [_q("What sets how long each transistor stays off?", ["The resistor-capacitor product on its base", "The collector resistor", "The supply voltage alone"], 0,
+            "The base must charge back to the turn-on level through its resistor."),
+         _q("For R1 = R2 the duty cycle is", ["50 %", "100 %", "0 %"], 0, "R1/(R1 + R2) = 1/2.")],
+        [DU, SEDRA, {"title": "Astable multivibrator: Millman and Halkias, Integrated Electronics (T = 0.693 (R1 C1 + R2 C2))"}, IEC60063],
+        {"params": {}, "reading": "main", "textbook": "sn_mv_main", "tol": 0.01}, chapter=CH_ANA)
+
+
+# ====================================================================================== dipole antenna and BJT bias (sensor bench)
+BALANIS = {"title": "C. A. Balanis, Antenna Theory: Analysis and Design: far field of a linear dipole, "
+                    "E = (eta I0 / 2 pi r) [cos(pi l cos theta) - cos(pi l)] / sin theta, eta = 376.73 ohm"}
+
+
+def dipole() -> dict:
+    return _mk(
+        "sn-dipole-antenna", "sn-sensor-bench", "Radiation pattern of a half-wave dipole antenna",
+        "Turn a half-wave dipole on a turntable in front of a fixed field probe, plot the field strength against the angle, "
+        "and find the half-power beamwidth from the pattern.",
+        "sn_ant", {"th": 90.0, "ell": 0.5, "I0": 0.1, "r": 5.0},
+        [knob("th", "Angle between the dipole axis and the probe", "th", 0, 180, 10, 90, "°")],
+        [inst("e", "readout", "Field strength", "E", k=1000.0, unit="mV/m", digits=1), inst("rel", "readout", "Relative to the peak", "rel", digits=3),
+         inst("gr", "graph", "Field against angle", "E", k=1000.0, x="knob:th", xlabel="θ (°)", dots=True)],
+        "A centre-fed dipole of length L = ell lambda carrying a sinusoidal current radiates a far field that depends on the angle theta "
+        "from its axis: |E| = (eta I_0 / 2 pi r) |cos(pi ell cos theta) - cos(pi ell)| / sin theta. For a half-wave dipole (ell = 1/2) this is "
+        "cos((pi/2) cos theta)/sin theta: zero along the axis, largest at right angles to it, and 0.707 of the peak (half the power) about "
+        "39 degrees to either side, a half-power beamwidth of 78 degrees. A longer dipole has a narrower beam, a very short one a wider "
+        "one that tends to sin theta with a beamwidth of 90 degrees.",
+        ["Place the field probe at a fixed distance in the far field, in line with the turntable.",
+         "Set the dipole's axis along the line to the probe (0 degrees) and read the field.",
+         "Turn the dipole in steps of 10 degrees through 180 degrees, reading the field each time.",
+         "Plot the field against the angle: the pattern is symmetric about 90 degrees.",
+         "Find the two angles where the field has fallen to 0.707 of its peak; their difference is the half-power beamwidth."],
+        [_q("Along the axis of a dipole the radiated field is", ["zero", "largest", "half the maximum"], 0, "The pattern has a factor 1/sin(theta) with a numerator that vanishes there."),
+         _q("A half-power point is where the field is", ["0.707 of its peak", "half of its peak", "0.25 of its peak"], 0, "Half the power is 1/sqrt 2 of the field.")],
+        [DU, BALANIS, {"title": "Dipole current 0.1 A peak, 100 MHz and distance 5 m are illustrative lab settings", "note": "Unsourced / illustrative; the pattern is textbook"}],
+        {"params": {}, "reading": "Emax", "textbook": "sn_ant_emax", "tol": 0.01}, chapter=CH_COM,
+        safety="Low power only: a few milliwatts of radio-frequency power, never aimed at a person; keep clear of the dipole while it is on.")
+
+
+def bias() -> dict:
+    return _mk(
+        "sn-bjt-biasing", "sn-sensor-bench", "Biasing a BJT for class A: fixed, collector-to-base and voltage-divider bias",
+        "Measure the collector current and voltage of a transistor biased three ways while the current gain is changed, and "
+        "find which bias keeps the working point steadiest.",
+        "sn_bias", {"cfg": 2.0, "Vcc": 12.0, "beta": 200.0, "Vbe": 0.65, "Rb": 1200000.0, "Rf": 470000.0, "R1": 47000.0, "R2": 10000.0,
+                    "Rc": 2200.0, "Re": 680.0},
+        [knob("cfg", "Bias circuit (0 fixed, 1 collector-to-base, 2 divider)", "cfg", 0, 2, 1, 2, ""), knob("beta", "Current gain of the transistor", "beta", 100, 450, 10, 200, "")],
+        [inst("ic", "readout", "Collector current", "Ic_mA", unit="mA", digits=3), inst("vc", "readout", "Collector-emitter voltage", "Vce", unit="V", digits=2),
+         inst("ib", "readout", "Base current", "Ib_uA", unit="µA", digits=2)],
+        "For an amplifier to work the transistor must sit at a working point in the middle of its active range: a collector current I_C and "
+        "voltage V_CE that stay put. In fixed bias, I_B = (V_cc - V_BE)/R_B and I_C = beta I_B, so I_C follows beta in full. In collector-to-base bias "
+        "the base resistor goes to the collector, and any rise of I_C lowers V_CE and so I_B; the current changes less. In voltage-divider bias "
+        "with an emitter resistor R_E, I_C = (V_th - V_BE)/(R_E + R_th/beta), almost independent of beta when R_th/beta is small beside R_E. The "
+        "model takes V_BE as a constant 0.65 V.",
+        ["Select fixed bias and plug in transistors of different current gain (beta 100 to 450); read I_C and V_CE each time.",
+         "Repeat with collector-to-base bias and with voltage-divider bias.",
+         "For each circuit work out the spread of I_C over the beta range as a fraction of its middle value.",
+         "Compare the three: which is steadiest, and which would let the transistor saturate?"],
+        [_q("Which bias circuit keeps the collector current steadiest?", ["voltage divider with an emitter resistor", "fixed bias", "collector-to-base"], 0,
+            "The emitter resistor provides negative feedback."),
+         _q("In fixed bias a transistor with twice the beta carries", ["about twice the collector current", "the same current", "half the current"], 0, "I_C = beta I_B with I_B fixed.")],
+        [DU, SEDRA, IEC60063, {"title": "BC547 hFE groups A, B and C span 110 to 800 (ON Semiconductor BC546/547/548 datasheet); V_BE = 0.65 V is a typical value (unsourced)"}],
+        {"params": {}, "reading": "Ic", "textbook": "sn_bias_ic", "tol": 0.01}, chapter=CH_ANA, extra=None)
+
+
 BUILDERS = (lvdt, strain, capl, ultra, tsens, mload, mbw, photo, vac, cro, pulse, shape, t555, ujt, ce, am, fm,
-            wien, rcphase, colpitts, opa_cmp, opa_int, opa_dif)
+            wien, rcphase, colpitts, opa_cmp, opa_int, opa_dif, tr_astable, dipole, bias)

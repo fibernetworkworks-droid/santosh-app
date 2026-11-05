@@ -101,7 +101,7 @@ HoolaStudio.define('phd-transport-bench', function (S) {
       result: function (rows) {
         var r = rows[rows.length - 1];
         if (!r || !r.per) return null;
-        return { label: 'Flux quantum Φ0 = Mi × period', value: r.per * p.Mi, unit: 'Wb', digits: 4, truth: PHI0,
+        return { label: 'Flux quantum Φ0 = Mi × period', value: r.per * p.Mi * 1e15, unit: 'fWb (10⁻¹⁵ Wb)', digits: 4, truth: PHI0 * 1e15,
           note: 'The voltage crosses its mean level every ' + sig(r.per * 1e6, 4) + ' µA of coil current; with the coil\'s mutual inductance Mi = ' + sig(p.Mi, 3) + ' Wb/A that is one flux quantum. Modulation depth ' + sig(r.dV * 1e6, 3) + ' µV; steepest slope V_Φ = ' + sig(r.VPhi * 1e6, 3) + ' µV/Φ0, so the white noise of ' + sig(r.vn * 1e6, 2) + ' µV per reading is a flux noise of about ' + sig(r.vn / r.VPhi * 1e6, 2) + ' µΦ0 per reading.' };
       },
       info: 'A DC SQUID read at constant bias. SIMULATED INSTRUMENT: V = (Rn/2) sqrt(Ib² - Ic(Φ)²) with seeded white noise.'

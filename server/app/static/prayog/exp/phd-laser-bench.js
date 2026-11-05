@@ -162,7 +162,7 @@ HoolaStudio.define('phd-laser-bench', function (S) {
   var pwr = ins.buttons[0], auto = ins.buttons[1], led1 = S.mesh(new T.SphereGeometry(0.004, 12, 12), new T.MeshStandardMaterial({ color: 0x331111, emissive: 0x000000 }));
   led1.position.copy(ins.at(0.1, -0.038, 0.002)); ins.g.add(led1);
   S.contact(0.5, 0.34, 0.2, -0.22, 0.5);
-  S.wire([[-0.02 + 0.015, 0.1, -0.2], [0.05, 0.04, -0.18], [0.18, 0.05, -0.11]], 'black'); S.wire([[-0.17 + 0.06, 0.03, -0.04], [0.0, 0.02, -0.08], [0.17, 0.05, -0.1]], 'red');
+  S.wire([[-0.02 + 0.015, 0.1, -0.2], [0.05, 0.04, -0.18], [-0.015, 0.06, -0.24]], 'black'); S.wire([[-0.17 + 0.06, 0.03, -0.04], [0.0, 0.02, -0.08], [-0.015, 0.07, -0.2]], 'red');
 
   S.addApparatus('lasers', hene, 'He-Ne laser and diode laser', 'The He-Ne laser has a 30 cm tube, so its longitudinal modes are 500 MHz apart and two of them oscillate. The diode laser is a single mode. The knob on the selector box picks which one feeds the cavity.');
   S.addApparatus('fp', fpc, 'Scanning Fabry-Perot cavity', 'Two mirrors a fixed distance apart; the second is on a piezo disc that moves it by a few hundred nanometres as the ramp voltage rises. Light passes only when the spacing is a whole number of half wavelengths.');

@@ -118,7 +118,7 @@ HoolaStudio.define('phd-plasma-bench', function (S) {
   // ================================================================ the bench
   var sup = new T.Group(); sup.position.set(-0.6, 0, -0.18); S.scene.add(sup);
   Kt.box(0.14, 0.09, 0.12, 0x6f8193, 0, 0, 0, sup);
-  var supl = S.label(MODE === 'lang' ? 'DISCHARGE SUPPLY · HIGH VOLTAGE' : 'BREAKDOWN SUPPLY · 0 - 5 kV · interlocked', { w: 0.13, ratio: 0.1, color: '#f1efe8', bg: '#7a1f1f', px: 768 }); supl.position.set(0, 0.07, 0.0607); sup.add(supl);
+  var supl = S.label(MODE === 'lang' ? 'DISCHARGE SUPPLY · HIGH VOLTAGE' : 'BREAKDOWN SUPPLY · 0 - 20 kV · interlocked', { w: 0.13, ratio: 0.1, color: '#f1efe8', bg: '#7a1f1f', px: 768 }); supl.position.set(0, 0.07, 0.0607); sup.add(supl);
   var sbut = S.mesh(new T.CylinderGeometry(0.01, 0.01, 0.008, 20), M.green); sbut.rotation.x = Math.PI / 2; sbut.position.set(-0.03, 0.04, 0.064); sup.add(sbut);
   var sled = S.mesh(new T.SphereGeometry(0.005, 12, 12), new T.MeshStandardMaterial({ color: 0x331111, emissive: 0x000000 })); sled.position.set(0.03, 0.04, 0.062); sup.add(sled);
   var sbl = S.label('ON / OFF', { w: 0.04, ratio: 0.15, color: '#f1efe8' }); sbl.position.set(-0.03, 0.022, 0.0607); sup.add(sbl);
@@ -162,7 +162,7 @@ HoolaStudio.define('phd-plasma-bench', function (S) {
   var pwr = ins.buttons[0], go = ins.buttons[1], led1 = S.mesh(new T.SphereGeometry(0.004, 12, 12), new T.MeshStandardMaterial({ color: 0x331111, emissive: 0x000000 }));
   led1.position.copy(ins.at(0.1, -0.038, 0.002)); ins.g.add(led1);
   S.contact(0.5, 0.34, 0.22, -0.22, 0.5);
-  S.wire([[-0.2, 0.1, -0.2], [0.0, 0.05, -0.18], [0.22 - 0.17, 0.05, -0.22 + 0.13]], 'black');
+  S.wire([[-0.2, 0.1, -0.2], [0.0, 0.05, -0.18], [0.01, 0.06, -0.22]], 'black');
 
   S.addApparatus('jar', jar, MODE === 'lang' ? 'Glass discharge tube with three probes' : 'Bell jar with two parallel plates', MODE === 'lang' ? 'A glass tube of argon at about 10 pascal with a brass anode and cathode. Three thin tungsten wires dip in from the top ports: S, a single probe; D, one of a pair for the double probe; E, a loop that can be heated.' : 'Two brass plates exactly 1 cm apart under a bell jar. A pump (out of sight) sets the pressure; the gauge reads it.');
   S.addApparatus('sup', sup, MODE === 'lang' ? 'Discharge supply' : 'Breakdown supply', 'A high-voltage supply with an interlock: it works only with the cover on. The glow in the tube starts when it is switched on.');
@@ -186,16 +186,16 @@ HoolaStudio.define('phd-plasma-bench', function (S) {
         ch = Kt.chart(x, { x: w * 0.1, y: h * 0.08, w: w * 0.86, h: h * 0.66 }, { xr: [-30, 30], yr: [-KN.iis(p) * 1.4e6, KN.iis(p) * 1.4e6], xlabel: 'voltage across the pair (V)', ylabel: 'current (µA)' });
         if (sw) Kt.poly(x, ch, sw.map(function (q) { return [q[0], q[1] * 1e6]; }), '#ffe45e', 1.8);
       } else {
-        ch = Kt.chart(x, { x: w * 0.1, y: h * 0.08, w: w * 0.86, h: h * 0.66 }, { xr: [0, 3.5], yr: [p.Vp - 16, p.Vp + 4], xlabel: 'heater current (A)', ylabel: 'floating potential (V)' });
+        ch = Kt.chart(x, { x: w * 0.1, y: h * 0.08, w: w * 0.86, h: h * 0.66 }, { xr: [0, 3.5], yr: [p.Vp - 6 * p.Te, p.Vp + 0.8 * p.Te], xlabel: 'heater current (A)', ylabel: 'floating potential (V)' });
         if (sw) Kt.poly(x, ch, sw.map(function (q) { return [q[0], q[1]]; }), '#ffe45e', 1.8);
       }
       var msg = st.fit ? (st.probe === 2 ? 'plateau ' + r(st.fit.Vp, 2) + ' V' : 'Te ' + r(st.fit.Te, 3) + ' eV' + (st.probe === 0 ? '   Vp ' + r(st.fit.Vp, 2) + ' V' : '') + '   ne ' + (st.fit.ne / 1e16).toFixed(3) + ' × 10¹⁶ m⁻³') : sw ? 'curve recorded: press FIT' : 'press SWEEP';
       Kt.text(x, 'probe ' + PROBES[st.probe] + (st.dis ? '' : '   (discharge off)'), w * 0.04, h * 0.9, '#9fe0b8', fs); Kt.text(x, msg, w * 0.96, h * 0.97, '#ffe45e', fs * 1.1, 'right');
     } else {
       var rows = S.rows.filter(function (q) { return q.k; });
-      ch = Kt.chart(x, { x: w * 0.1, y: h * 0.08, w: w * 0.86, h: h * 0.62 }, { xr: [0.3, 300], yr: [200, 2400], xlog: true, xlabel: 'pd (torr cm, log)', ylabel: 'breakdown voltage (V)' });
+      ch = Kt.chart(x, { x: w * 0.1, y: h * 0.08, w: w * 0.86, h: h * 0.62 }, { xr: [0.3, 300], yr: [150, 30000], xlog: true, ylog: true, xlabel: 'pd (torr cm, log)', ylabel: 'breakdown voltage (V, log)' });
       Kt.dots(x, ch, rows.map(function (q) { return [q.pd, q.V]; }), '#ffe45e', 4);
-      if (st.lastV !== null) { Kt.text(x, 'last: pd ' + r(st.pd, 3) + '  →  ' + (st.lastV > 0 ? r(st.lastV, 0) + ' V' : 'no breakdown up to 5 kV'), w * 0.04, h * 0.82, '#64e3ff', fs * 1.2); }
+      if (st.lastV !== null) { Kt.text(x, 'last: pd ' + r(st.pd, 3) + '  →  ' + (st.lastV > 0 ? r(st.lastV, 0) + ' V' : 'no breakdown up to 20 kV'), w * 0.04, h * 0.82, '#64e3ff', fs * 1.2); }
       Kt.text(x, 'supply ' + r(st.vshow, 0) + ' V' + (st.flash > 0 ? '   SPARK' : ''), w * 0.04, h * 0.92, st.flash > 0 ? '#ff9f5e' : '#9fe0b8', fs * 1.3);
     }
     if (st.prog > 0 && st.prog < 1) { x.fillStyle = 'rgba(100,227,255,.8)'; x.fillRect(0, h - 6, w * st.prog, 6); }
@@ -260,10 +260,10 @@ HoolaStudio.define('phd-plasma-bench', function (S) {
     if (needOn() || Kt.busy()) return Promise.resolve(null);
     if (!st.dis) { S.say('Arm the breakdown supply first (the ON / OFF key).'); return Promise.resolve(null); }
     return S.hand.tap(go, 'front').then(function () {
-      var g = Kt.rnd(p.seed + 13 * st.idx++ + 1), vb = KN.vb(p, st.pd), v = vb > 0 && vb < 5000 ? vb * (1 + p.noise * g.gauss()) : 0;
-      return S.tween(900, function (k) { st.vshow = (v > 0 ? v : 5000) * k; st.prog = k >= 1 ? 0 : k; mark(); }).then(function () {
+      var g = Kt.rnd(p.seed + 13 * st.idx++ + 1), vb = KN.vb(p, st.pd), v = vb > 0 && vb < 20000 ? vb * (1 + p.noise * g.gauss()) : 0;
+      return S.tween(900, function (k) { st.vshow = (v > 0 ? v : 20000) * k; st.prog = k >= 1 ? 0 : k; mark(); }).then(function () {
         st.prog = 0; st.lastV = v; st.cur = { pd: st.pd, V: v }; st.flash = v > 0 ? 1 : 0; if (spark) spark.material.opacity = v > 0 ? 0.9 : 0;
-        S.say(v > 0 ? 'Breakdown at ' + r(v, 0) + ' V: the gas flashes over.' : 'No breakdown up to 5 kV: at this pd the gas holds off.'); mark(); S.render();
+        S.say(v > 0 ? 'Breakdown at ' + r(v, 0) + ' V: the gas flashes over.' : 'No breakdown up to 20 kV: at this pd the gas holds off.'); mark(); S.render();
         return S.tween(250, function () {}).then(function () { st.flash = 0; st.vshow = 0; if (spark) spark.material.opacity = 0; mark(); return st.cur; });
       });
     });
@@ -274,7 +274,7 @@ HoolaStudio.define('phd-plasma-bench', function (S) {
     if (S.rows.some(function (z) { return z.k && Math.abs(Math.log(z.pd / st.cur.pd)) < 1e-3; })) { S.say('That pd is already in the book.'); return false; }
     S.addRow({ k: kind, pd: st.cur.pd, V: st.cur.V }); st.cur = null; return true;
   }
-  function coarsePd(i, n) { var lo = 0.35; return lo * Math.exp(Math.log(300 / lo) * i / (n - 1)); }
+  function coarsePd(i, n) { var lo = 0.35; return Math.min(300, lo * Math.exp(Math.log(300 / lo) * i / (n - 1))); }
   function minOf(rows) {
     var cs = rows.filter(function (z) { return z.k === 'coarse'; }).sort(function (a, b) { return a.pd - b.pd; }), k = 0, i; if (cs.length < 8) return null;
     for (i = 1; i < cs.length; i++) if (cs[i].V < cs[k].V) k = i; return cs[k];
@@ -300,7 +300,7 @@ HoolaStudio.define('phd-plasma-bench', function (S) {
     principle: 'A spark jumps across a gas when each electron leaving the cathode makes enough ions on its way to free one more. The voltage needed depends on the product pd of pressure and gap, falling to a minimum and rising again on both sides: too few collisions at low pd, too many at high.',
     formula: 'V = B pd / (ln(A pd) − ln ln(1 + 1/γ))', note: 'minimum V = e B ln(1 + 1/γ) / A at pd = e ln(1 + 1/γ) / A',
     more: ['The breakdown voltage depends on pd only, not on p and d separately.', 'The gas constants A and B and the cathode coefficient γ are set by the gas and the plate surface.', 'Each breakdown carries a little scatter, so the minimum is found by a fit, not by one point.'],
-    precautions: 'The breakdown supply goes to 5 kV and is interlocked: it works only with the cover on. Never touch the plates or the leads while it is on.' };
+    precautions: 'The breakdown supply goes to 20 kV and is interlocked: it works only with the cover on. Never touch the plates or the leads while it is on.' };
   var BOOK = MODE === 'lang' ? [{ label: 'Probe', get: function (z) { return z.m; } }, { label: 'Te (eV)', get: function (z) { return z.Te ? r(z.Te, 3) : '—'; } }, { label: 'Vp (V)', get: function (z) { return z.Vp ? r(z.Vp, 2) : '—'; } }, { label: 'ne (1e16)', get: function (z) { return z.ne ? (z.ne / 1e16).toFixed(3) : '—'; } }]
     : [{ label: 'Scan', get: function (z) { return z.k; } }, { label: 'pd (torr cm)', get: function (z) { return r(z.pd, 3); } }, { label: 'V (V)', get: function (z) { return r(z.V, 0); } }];
   var VIVA = MODE === 'lang' ? [['The slope of ln(electron current) against V is', ['1/Te in volts', 'Te', 'The plasma potential'], 0, 'Ie is proportional to exp(V/Te).'], ['A double probe can never draw more than', ['The ion saturation current', 'The electron saturation current', 'Zero'], 0, 'It floats and draws equal and opposite currents.'], ['A heated emissive probe floats at', ['Close to the plasma potential', 'Far below it', 'Zero volts'], 0, 'Strong emission raises the floating potential to Vp.']]
@@ -330,7 +330,7 @@ HoolaStudio.define('phd-plasma-bench', function (S) {
         u.p('Choose a pd (the pressure in torr, as the plates are 1 cm apart), press RAISE V and write the breakdown voltage down. Take at least ten values spread from 0.35 to 300 torr cm.');
         u.slider('pd (torr cm), log scale', 0, 100, 1, function () { return Math.round(100 * Math.log(st.pd / 0.35) / Math.log(300 / 0.35)); }, function (v) { setPd(0.35 * Math.exp(Math.log(300 / 0.35) * v / 100)); paintPanel(); }, '%', 0);
         u.row(u.button('RAISE V', function () { S.focus('ins'); raise(); }, true, S.hand.busy), u.button('Write it down', function () { recordPd('coarse'); }, false, !st.cur || S.hand.busy));
-        u.live(function () { return 'pd = ' + r(st.pd, 3) + ' torr cm · ' + (st.lastV === null ? 'no reading' : st.lastV > 0 ? r(st.lastV, 0) + ' V' : 'no breakdown up to 5 kV'); });
+        u.live(function () { return 'pd = ' + r(st.pd, 3) + ' torr cm · ' + (st.lastV === null ? 'no reading' : st.lastV > 0 ? r(st.lastV, 0) + ' V' : 'no breakdown up to 20 kV'); });
         panel(u); u.h3('Observation table'); u.table(); var nc = S.rows.filter(function (z) { return z.k === 'coarse'; }).length; u.next('Next: fine scan', nc >= 10); },
       ok: function () { return S.rows.filter(function (z) { return z.k === 'coarse'; }).length >= 10; },
       auto: function () { var c = Promise.resolve(), j; for (j = 0; j < 12; j++) (function (jj) { c = c.then(function () { setPd(coarsePd(jj, 12)); st.lastV = null; return raise(); }).then(function () { if (st.cur && st.cur.V > 0) recordPd('coarse'); }); })(j); return c; } });

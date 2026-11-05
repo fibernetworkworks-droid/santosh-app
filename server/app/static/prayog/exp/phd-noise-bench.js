@@ -198,7 +198,7 @@ HoolaStudio.define('phd-noise-bench', function (S) {
     screen: { u: -0.06, v: 0.0, w: 0.25, h: 0.155 }, knobs: KNOBS[MODE], buttons: [[0.1, -0.058, 'POWER', M.green], [0.17, -0.058, MODE === 'psd' ? 'ACQUIRE' : 'READ', M.grey]] });
   var pwr = ins.buttons[0], go = ins.buttons[1], led1 = S.mesh(new T.SphereGeometry(0.004, 12, 12), new T.MeshStandardMaterial({ color: 0x331111, emissive: 0x000000 }));
   led1.position.copy(ins.at(0.1, -0.035, 0.002)); ins.g.add(led1);
-  S.wire([[-0.1 + 0.055, 0.03, -0.27], [0.0, 0.02, -0.24], [0.22 - 0.17, 0.045, -0.24 + 0.13]], 'black');
+  S.wire([[-0.1 + 0.055, 0.03, -0.27], [0.0, 0.02, -0.24], [0.22 - 0.215, 0.07, -0.24]], 'black');
   S.contact(0.5, 0.34, 0.22, -0.24, 0.5);
 
   S.addApparatus('dut', dut, ({ lockin: 'Optical chopper, lamp and photodiode', johnson: 'Resistor decade and liquid-nitrogen dewar', shot: 'LED driver and light-tight photodiode tube',

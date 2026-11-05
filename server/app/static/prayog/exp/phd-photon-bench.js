@@ -184,8 +184,8 @@ HoolaStudio.define('phd-photon-bench', function (S) {
   var pwr = ins.buttons[0], go = ins.buttons[1], led1 = S.mesh(new T.SphereGeometry(0.004, 12, 12), new T.MeshStandardMaterial({ color: 0x331111, emissive: 0x000000 }));
   led1.position.copy(ins.at(0.1, -0.038, 0.002)); ins.g.add(led1);
   S.contact(0.5, 0.34, 0.22, -0.24, 0.5);
-  if (MODE === 'g2') { S.wire([[0.06 + 0.035, 0.03, -0.22], [0.12, 0.02, -0.2], [0.1, 0.04, -0.12]], 'black'); S.wire([[-0.12, 0.03, -0.38 + 0.035], [0.0, 0.02, -0.3], [0.1, 0.045, -0.13]], 'black'); }
-  if (MODE === 'poisson') S.wire([[0.07 + 0.035, 0.03, -0.22], [0.12, 0.02, -0.2], [0.1, 0.04, -0.12]], 'black');
+  if (MODE === 'g2') { S.wire([[0.06 + 0.035, 0.03, -0.22], [0.07, 0.02, -0.3], [0.01, 0.06, -0.26]], 'black'); S.wire([[-0.12, 0.03, -0.38 + 0.035], [-0.05, 0.02, -0.33], [0.01, 0.07, -0.23]], 'black'); }
+  if (MODE === 'poisson') S.wire([[0.07 + 0.035, 0.03, -0.22], [0.05, 0.02, -0.3], [0.01, 0.06, -0.26]], 'black');
 
   S.addApparatus('optics', MODE === 'g2' ? optics : MODE === 'poisson' ? optics : srcBox, MODE === 'g2' ? 'Laser, ground glass, beam splitter and counters' : MODE === 'poisson' ? 'LED source on a rail and photon counter' : 'Heralded photon source (simulated)',
     MODE === 'g2' ? 'A low-power laser is expanded and passes through a rotating ground-glass disc, then a 50:50 beam splitter sends half to each photon counter. The beam stays 10 cm above the bench. The disc slides in and out of the beam.'
