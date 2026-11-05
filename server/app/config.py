@@ -329,6 +329,9 @@ class Settings(BaseSettings):
     site_max_ai_pages: int = 40            # v0.315 most pages with their OWN designed sections (each section = one Opus call)
     site_parallel_big: int = 8             # v0.315 sections written at the same time on a big site (v0.400: 5 -> 8)
     site_check_pages: int = 40             # v0.315 pages the browser checks open on a big site (+2 items of every list)
+    site_shop_max_products: int = 20000    # v0.531 BADA CATALOGUE: products one website shop may hold (was 500)
+    site_shop_day_cap: int = 300           # orders a website shop takes in a day (spam guard; a big shop raises it)
+    site_shop_ip_cap: int = 12             # orders from one address in 10 minutes
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
     site_sms_provider: str = ""            # v0.434 website phone-OTP login: "" off | msg91 (DLT registered, her account)
     msg91_authkey: str = ""                # v0.434 MSG91 auth key (VPS .env only)

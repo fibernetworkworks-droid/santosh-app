@@ -282,14 +282,14 @@ def make_photo(data: bytes, max_px: int = 2400) -> tuple[bytes, tuple[int, int]]
     return buf.getvalue(), im.size
 
 
-def photo_set(src: Path, name: str, dest: Path) -> dict[str, Any]:
+def photo_set(src: Path, name: str, dest: Path, widths: tuple[int, ...] = WIDTHS) -> dict[str, Any]:
     from PIL import Image, features
     dest.mkdir(parents=True, exist_ok=True)
     im = Image.open(src).convert("RGB")
     w0, h0 = im.size
     made = []
     avif = features.check("avif")
-    for w in WIDTHS:
+    for w in widths:
         if w > w0 and made:
             break
         ww = min(w, w0)
@@ -306,11 +306,14 @@ def photo_set(src: Path, name: str, dest: Path) -> dict[str, Any]:
     return {"name": name, "w": w0, "h": h0, "sizes": made, "avif": avif}
 
 
-def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: str = "", extra: str = "") -> str:
+def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: str = "", extra: str = "",
+            sizes: str = "(min-width:1100px) 50vw, 100vw") -> str:
     name = meta["name"]
+    size_attr = sizes
     sizes = meta.get("sizes") or []
     if not sizes:
         return ""
+    sz = esc(size_attr)
 
     def srcset(ext: str) -> str:
         return ", ".join(f"{rel}assets/img/{name}-{w}.{ext} {ww}w" for w, ww, _h in sizes)
@@ -318,11 +321,11 @@ def picture(meta: dict[str, Any], alt: str, rel: str, eager: bool = False, cls: 
     load = 'loading="eager" fetchpriority="high"' if eager else 'loading="lazy"'
     srcs = ""
     if meta.get("avif"):
-        srcs += f'<source type="image/avif" srcset="{srcset("avif")}" sizes="(min-width:1100px) 50vw, 100vw">'
-    srcs += f'<source type="image/webp" srcset="{srcset("webp")}" sizes="(min-width:1100px) 50vw, 100vw">'
+        srcs += f'<source type="image/avif" srcset="{srcset("avif")}" sizes="{sz}">'
+    srcs += f'<source type="image/webp" srcset="{srcset("webp")}" sizes="{sz}">'
     c = f' class="{esc(cls)}"' if cls else ""
     return (f'<picture>{srcs}<img src="{rel}assets/img/{name}-{w}.jpg" srcset="{srcset("jpg")}" '
-            f'sizes="(min-width:1100px) 50vw, 100vw" width="{ww}" height="{hh}" alt="{esc(alt)}" {load} decoding="async"{c}{extra}></picture>')
+            f'sizes="{sz}" width="{ww}" height="{hh}" alt="{esc(alt)}" {load} decoding="async"{c}{extra}></picture>')
 
 
 def expand_images(html: str, photos: dict[str, dict[str, Any]], rel: str, first_eager: bool) -> tuple[str, list[str]]:
@@ -504,10 +507,22 @@ def buy_button(slug: str, title: str) -> str:
             f'aria-label="Add {esc(title)} to cart">Add to cart</button>')
 
 
+SHOP_GRID_MAX = 60
+
+
 def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
     items = (site.get("shop") or {}).get("products") or []
     if not items:
         return '<p class="muted">Products jald aa rahe hain.</p>'
+    lists = [c for c in site.get("catalog") or [] if c.get("items")]
+    if lists:                                    # v0.531 a big catalogue: its products are on their own list pages
+        own = {f'{c["key"]}/' for c in lists}
+        items = [p for p in items if not any(p["slug"].startswith(k) for k in own)]
+    more = ""
+    if len(items) > SHOP_GRID_MAX or lists:
+        more = '<ul class="hs-cat-lists">' + "".join(
+            f'<li><a class="btn btn-ghost" href="{rel}{esc(c["key"])}/">{esc(c["label"])} ({len(c["items"])})</a></li>' for c in lists) + "</ul>"
+        items = items[:SHOP_GRID_MAX]
     cards = []
     for p in items:
         img = picture(photos[p["photo"]], p["title"], rel) if p.get("photo") in photos else ""
@@ -516,7 +531,7 @@ def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]])
                      f'<p class="hs-price"><span data-hoola-price>{esc(p["price_text"])}</span>{unit}</p>'
                      + (buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>')
                      + '</li>')
-    return f'<ul class="hs-prods">{"".join(cards)}</ul>'
+    return more + f'<ul class="hs-prods">{"".join(cards)}</ul>'
 
 
 def shop_page(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]]) -> str:
@@ -526,9 +541,17 @@ def shop_page(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]])
 
 def buy_box(site: dict[str, Any], slug: str) -> str:
     """On a product's own page (a list item that is also a product): its price + Add to cart."""
-    p = next((x for x in (site.get("shop") or {}).get("products") or [] if x["slug"] == slug), None)
+    shop = site.get("shop") or {}
+    idx = shop.get("_by_slug")
+    if idx is None:                                  # v0.531 one dict per build (10,000 product pages, not 10,000 scans)
+        idx = shop["_by_slug"] = {x["slug"]: x for x in shop.get("products") or []} if shop else {}
+    p = idx.get(slug)
     if not p:
         return ""
+    return buy_box_of(p)
+
+
+def buy_box_of(p: dict[str, Any]) -> str:
     unit = f' <small>/ {esc(p["unit"])}</small>' if p.get("unit") else ""
     act = buy_button(p["slug"], p["title"]) if p.get("in_stock") else '<p class="muted">Abhi stock mein nahi</p>'
     return (f'<section class="hs hs-buybox" aria-label="Buy {esc(p["title"])}"><div class="wrap">'
@@ -710,6 +733,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             f'<meta property="og:type" content="website"><meta property="og:image" content="{rel}assets/og.jpg">',
             '<meta name="twitter:card" content="summary_large_image">',
             '<meta name="generator" content="Hoola">']
+    canon = page.get("canonical") or canon          # v0.531 a duplicate catalogue page points at the original
     if canon:
         meta.append(f'<link rel="canonical" href="{esc(canon)}">')
     root_base = (site.get("root_base") if site.get("root_base") is not None else base_url) or ""
@@ -725,6 +749,8 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         meta = [m.replace('content="website"', f'content="{esc(page["og_type"])}"') for m in meta]
     if site.get("noindex") or page["slug"] in ("admin", "account"):
         meta.append('<meta name="robots" content="noindex">')
+    elif page.get("robots"):                         # v0.531 a thin / duplicate catalogue page: shown, not indexed
+        meta.append(f'<meta name="robots" content="{esc(page["robots"])}">')
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
         meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}" '
                     f'data-privacy="{rel}privacy/">')
@@ -762,6 +788,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             + (f'<script src="{rel}assets/hoola-chart.js" defer></script>' if uses_charts(body) else "")   # v0.357
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
             + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
+            + (f'<script src="{rel}assets/hoola-catalog.js" defer></script>' if "data-hoola-catalog=" in body else "")   # v0.531
             + '</body></html>')
 
 
@@ -927,6 +954,14 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     if site.get("app_api"):
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
         shutil.copy(ASSETS / "hoola-push-sw.js", out / "assets" / "hoola-push-sw.js")   # v0.459 browser notifications (her yes)
+    from . import catalog as CAT                    # v0.531 BADA CATALOGUE: her imported lists, pages made by code
+    cats = site["catalog"] if site.get("catalog") is not None else (CAT.load(site.get("site_id") or "") if not site.get("edit") else [])
+    cats = [c for c in cats if c.get("items")]
+    site = {**site, "catalog": cats}
+    if cats:
+        keys = {c["key"] for c in cats}
+        plan = {**plan, "collections": [c for c in plan.get("collections") or [] if c.get("key") not in keys]}
+        shutil.copy(ASSETS / "hoola-catalog.js", out / "assets" / "hoola-catalog.js")
     plan = with_app_pages(site, plan)
     plan = with_shop_pages(site, plan)            # v0.351
     plan, blog_extra = with_blog_pages(site, plan)   # v0.366
@@ -1050,10 +1085,26 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             body = render(slug, page.get("sections", []), rel)
             if big and page.get("collection") in cols:     # the listing of its items, made by code
                 body += "\n" + SM.grid(cols[page["collection"]], rel)
+            cat_here = next((c for c in cats if c["key"] == slug), None)
+            if cat_here is not None:                 # v0.531 her designed page for an imported list carries its page 1
+                body += "\n" + CAT.listing(cat_here, 1, rel)
         dest = out / page_path(slug)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(page_html(site, plan, page, body, rel, logo, base_url), encoding="utf-8")
         files += 1
+    cat_res: dict[str, Any] = {"pages": 0, "urls": [], "noindex": 0}
+    if cats:                                     # v0.531 every catalogue page: listings, items, the filter index
+        designed = {p["slug"] for p in plan.get("pages", []) if not p.get("template_of")}
+
+        def tpl_body(c: dict[str, Any], it: dict[str, Any], rel: str) -> str:
+            t = tpls.get(SM.template_slug(c["key"]))
+            if not t:
+                return ""
+            return render(f'{c["key"]}/{it["slug"]}', t.get("sections", []), rel, t["slug"],
+                          {"title": it["title"], "data": {k: str(v) for k, v in it["data"].items()}}, c["fields"])
+        cat_res = CAT.write(out, site, plan, cats, lambda pg, b, rel: page_html(site, plan, pg, b, rel, logo, base_url),
+                            base_url, designed, tpl_body)
+        files += cat_res["pages"]
     (out / "assets" / "site.css").write_text(_min_css("\n".join(css_all)), encoding="utf-8")
     (out / "assets" / "site.js").write_text("\n".join(js_all) or "/* no section scripts */", encoding="utf-8")
     (out / "404.html").write_text(page_html(site, plan, {"slug": "home", "title": "Not found"},
@@ -1068,7 +1119,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     urls = [(base_url.rstrip("/") + "/" + ("" if p["slug"] == "home" else p["slug"] + "/")) for p in every]
     if big:                                  # v0.315 the site search reads this (titles, addresses, one line each)
         (out / "assets" / "search.json").write_text(json.dumps(SM.search_entries(plan), ensure_ascii=False), encoding="utf-8")
-    if base_url:
+    if base_url and cats:                    # v0.531 a sitemap index + one file per list (each under 45,000 addresses)
+        by_coll: dict[str, list[tuple[str, str]]] = {}
+        for u, lm in cat_res["urls"]:
+            by_coll.setdefault(u[len(base_url.rstrip("/")) + 1:].split("/")[0], []).append((u, lm))
+        CAT.sitemaps(out, base_url, urls, by_coll)
+    elif base_url:
         (out / "sitemap.xml").write_text('<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/'
                                          'sitemap/0.9">' + "".join(f"<url><loc>{esc(u)}</loc></url>" for u in urls) + "</urlset>")
     robots = "User-agent: *\n" + ("Disallow: /\n" if site.get("noindex") else "Allow: /\n")
@@ -1078,14 +1134,18 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     (out / "_headers").write_text("/*\n  " + "\n  ".join(f"{k}: {v}" for k, v in security_headers(form_endpoint).items()) + "\n")
     for alt in alts:                         # v0.301 / v0.366 each extra language under /<lang>/, one menu to all of them
         sub = {**site, "language": alt["lang"], "alt": None, "alts": [], "src_root": str(src_root), "root_up": "../",
+               "catalog": [], "_sub": True,                  # v0.531 her imported lists stay in her first language
                "blog": alt.get("blog") if alt.get("blog") is not None else (site.get("blog") or [])}
         res = assemble(sub, alt["plan"], alt["sections"], dict(photos), out / alt["lang"],
                        (base_url.rstrip("/") + "/" + alt["lang"]) if base_url else "", form_endpoint)
         problems += [f'{alt["lang"]}: {x}' for x in res["problems"]]
         files += res["pages"]
-    total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file())
-    return {"files": sum(1 for p in out.rglob("*") if p.is_file()), "pages": files, "bytes": total, "problems": problems,
-            "photos": photos}
+    if not site.get("_sub") and not site.get("edit"):   # v0.531 W10: every text file also pre-compressed (nginx gzip_static)
+        from . import speed as SPD
+        SPD.precompress(out)
+    total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file() and p.suffix != ".gz")
+    return {"files": sum(1 for p in out.rglob("*") if p.is_file() and p.suffix != ".gz"), "pages": files, "bytes": total,
+            "problems": problems, "photos": photos, "catalog": {"pages": cat_res["pages"], "noindex": cat_res["noindex"]}}
 
 
 def security_headers(form_endpoint: str = "") -> dict[str, str]:
@@ -1112,7 +1172,7 @@ def export_zip(out: Path) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for p in sorted(out.rglob("*")):
-            if p.is_file():
+            if p.is_file() and p.suffix != ".gz":            # v0.531 the .gz twins are for nginx, not her ZIP
                 z.write(p, p.relative_to(out).as_posix())
     return buf.getvalue()
 

@@ -1925,6 +1925,7 @@ window.HoolaBuild = function (C) {
     });
     if (info.linked) logicBox(o, box.querySelector('.stlogic'), M(info.linked), () => loadData(o, root));
     if (info.linked) auditBox(o, box);
+    catalogBox(o, box);
     if (info.linked) liveBox(o, box, M(info.linked), S(info.site_id), S(info.api));
     const cbox = box.querySelector('.stcols');
     for (const c of cols) {
@@ -2053,6 +2054,63 @@ window.HoolaBuild = function (C) {
       const th = e.target.closest('li[data-th]');
       if (th && e.target.closest('[data-rep]')) { const inp = th.querySelector('input'), v = inp.value.trim(); if (!v) return;
         try { await api('POST', A + '/chat/' + encodeURIComponent(th.dataset.th), {text: v, her_tap: true}); toast('Sent.'); reload(); } catch (er) { toast(er.message, true); } }
+    };
+  }
+
+  /* v0.531 BADA CATALOGUE: her products / doctors / properties from her file, Google Sheet or a dataset -> pages by code.
+     Preview first (nothing written, every count + rejected row shown), then her Apply tap writes it. */
+  async function catalogBox(o, box) {
+    let v; try { v = await api('GET', base(o) + '/catalog'); } catch (er) { return; }
+    const sec = document.createElement('section'); sec.className = 'stlogic';
+    const im = M(v.images);
+    sec.innerHTML = `<h4>Catalogue <span>${L(v.lists).length} list(s) · up to ${N(M(v.limits).rows).toLocaleString()} rows each</span></h4>
+      <p class="stnote">Products, doctors, properties, courses… from your CSV / Excel file, Google Sheet or a dataset. Each row becomes a page (made by code, no AI cost), with listing pages, filters and sitemaps. Pages with almost nothing of their own, or copies of another row, are shown but not sent to Google.</p>
+      ${L(v.lists).length ? `<div class="sttbl"><table><thead><tr><th>List</th><th>Live</th><th>Good</th><th>Thin</th><th>Copies</th><th>Photos</th><th>Filters</th><th></th></tr></thead><tbody>${L(v.lists).map(c => { const k = M(c.counts); return `<tr data-cl="${esc(S(c.coll))}"><td>${esc(S(c.label))}<br><small>/${esc(S(c.coll))}/</small></td><td>${N(k.live)}</td><td>${N(k.ok)}</td><td>${N(k.thin)}</td><td>${N(k.dup)}</td><td>${N(k.photos)}${k.photos_todo ? ' (+' + N(k.photos_todo) + ' waiting)' : ''}</td><td>${esc(L(c.filters).join(', '))}</td><td><button class="btn soft" type="button" data-rm>Remove</button></td></tr>`; }).join('')}</tbody></table></div>` : ''}
+      ${im.running ? `<p class="stnote">Making photos: ${N(im.done)} / ${N(im.todo)}…</p>` : (L(v.lists).some(c => N(M(c.counts).photos_todo)) ? '<div class="acts"><button class="btn soft" type="button" data-img>Fetch waiting photos</button></div>' : '')}
+      <form class="stapp" data-cat="file" autocomplete="off"><div class="row">
+        <label><span>List address</span><input name="coll" placeholder="products" required pattern="[a-zA-Z0-9-]+"></label>
+        <label><span>Name on the site</span><input name="label" placeholder="Products"></label>
+        <label><span>File (CSV / Excel)</span><input name="file" type="file" accept=".csv,.tsv,.xlsx,.json,text/csv"></label>
+        <label><span>…or Google Sheet link / name</span><input name="sheet" placeholder="https://docs.google.com/spreadsheets/…"></label>
+        <label><span>…or dataset id</span><input name="dataset" placeholder="ds_…"></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Preview (nothing is written)</button></div></form>
+      <div class="stcatp"></div>`;
+    box.appendChild(sec);
+    const reload = () => { sec.remove(); catalogBox(o, box); };
+    const f = sec.querySelector('[data-cat=file]'), pv = sec.querySelector('.stcatp');
+    f.onsubmit = async e => {
+      e.preventDefault();
+      const b = f.querySelector('button'); b.disabled = true; pv.innerHTML = '<p class="stnote">Reading…</p>';
+      try {
+        let p;
+        if (f.file.files[0]) {
+          const fd = new FormData(); fd.append('file', f.file.files[0]); fd.append('coll', f.coll.value.trim()); fd.append('label', f.label.value.trim());
+          p = await api('POST', base(o) + '/catalog/preview', undefined, {form: fd});
+        } else {
+          p = await api('POST', base(o) + '/catalog/preview', {coll: f.coll.value.trim(), label: f.label.value.trim(), sheet: f.sheet.value.trim(), dataset: f.dataset.value.trim()});
+        }
+        const mp = M(p.mapping);
+        pv.innerHTML = `<div class="stdraft"><b>${N(p.items).toLocaleString()} items ready</b> - ${N(p.new)} new, ${N(p.changed)} changed, ${N(p.same)} same, ${N(p.rejected)} rows left out · ${N(p.thin)} thin, ${N(p.dup)} copies · ${N(p.photos)} photos
+          <div class="bln faint">Name: ${esc(S(mp.title))} · Key: ${esc(S(mp.key))} · Price: ${esc(S(mp.price) || '-')} · Photo: ${esc(S(mp.image) || '-')} · Filters: ${esc(L(mp.filters).join(', ') || '-')}</div>
+          ${L(p.rejected_rows).slice(0, 8).map(x => `<div class="badc bln">Row ${N(x.row)}: ${esc(S(x.why))}</div>`).join('')}
+          ${L(p.sample).length ? `<div class="sttbl"><table><thead><tr><th>Page</th><th>Address</th><th>Price</th></tr></thead><tbody>${L(p.sample).map(x => `<tr><td>${esc(S(x.title))}</td><td>${esc(S(x.address))}</td><td>${esc(S(x.price))}</td></tr>`).join('')}</tbody></table></div>` : ''}
+          <div class="acts"><label><input type="checkbox" data-rep> Hide items that are not in this file (${N(p.hidden_if_replace)})</label>
+          <button class="btn go" type="button" data-apply>Apply</button></div></div>`;
+        pv.querySelector('[data-apply]').onclick = async ev => {
+          ev.target.disabled = true;
+          try { const r = await api('POST', base(o) + '/catalog/apply', {hash: S(p.hash), replace: pv.querySelector('[data-rep]').checked}); toast(S(r.say) || 'Saved.'); reload(); }
+          catch (er) { toast(er.message, true); ev.target.disabled = false; }
+        };
+      } catch (er) { pv.innerHTML = ''; toast(er.message, true); }
+      finally { b.disabled = false; }
+    };
+    sec.onclick = async e => {
+      if (e.target.closest('[data-img]')) { try { await api('POST', base(o) + '/catalog/images'); toast('Photos are being made.'); reload(); } catch (er) { toast(er.message, true); } return; }
+      const tr = e.target.closest('tr[data-cl]');
+      if (tr && e.target.closest('[data-rm]')) {
+        if (!confirm('Take this list off the website? Its rows are kept (hidden) and come back on the next import.')) return;
+        try { await api('DELETE', base(o) + '/catalog/' + encodeURIComponent(tr.dataset.cl)); reload(); } catch (er) { toast(er.message, true); }
+      }
     };
   }
 

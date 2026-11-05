@@ -27,6 +27,10 @@ on:
       - "server/app/appmaker/gates.py"
       - "server/app/appmaker/family.py"
       - "server/app/paygate/**"
+      - "server/app/site/catalog.py"
+      - "server/app/site/shop.py"
+      - "server/app/site/loadtest.py"
+      - "server/tests/test_v0531_bada_catalogue.py"
       - "server/app/pgdb/**"
       - ".github/workflows/app-load.yml"
   workflow_dispatch:
@@ -102,3 +106,8 @@ jobs:
         env:
           HOOLA_LOAD: "1"
         run: python -m pytest -q -s -p no:cacheprovider tests/test_v0390_pakki_neev.py -k thousand
+      - name: The website checkpoint (web Step 6) - a 5,000-product marketplace, 2,000 visitors + 600 buyers, 4 workers
+        working-directory: server
+        env:
+          HOOLA_LOAD: "1"
+        run: python -m pytest -q -s -p no:cacheprovider tests/test_v0531_bada_catalogue.py -k "load_proof or retried"

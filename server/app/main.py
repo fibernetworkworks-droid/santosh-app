@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.530.0"   # v0.530.0: HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main as a51ea087 - the trace-layer deploy stays the owner's call, healthz still says 0.511.0 on the VPS). The langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code (the port law): StateGraph (add_node/add_edge/add_conditional_edges/set_entry_point/compile - duplicates, reserved names and unknown endpoints refused at BUILD time, no-node/no-entry/bad-path-map refused at compile; plain channels last-value-wins, Annotated[T, reducer] channels merge through the reducer - operator.add works, add_messages is the messages reducer; a FIRST-EVER value seeds the channel because operator.add has no identity for a missing left side) + the walk (super-steps; every node sees the SAME pre-step state; several static edges from one node fan out; a node with several inbound edges joins only after ALL its parents ran - the barrier; routing is ADDITIVE, routers + static edges both fire; routers see the POST-node state; dict path_map maps by answer, list path_map maps by index (the upstream law); recursion_limit default 25 with an honest GraphRecursionError; None updates are no-ops; non-dict node returns refused; fn(state) and fn(state, config) both accepted; async nodes run natively in ainvoke and via asyncio.run in sync invoke when no loop is running) + AgentState (messages Annotated[list, add_messages] - the P4 create_agent substrate; add_messages: append, replace-by-id, RemoveMessage drops one id, REMOVE_ALL_MESSAGES clears, dicts coerce back, strings become HumanMessages) + interrupts (interrupt(value) PARKS the graph - the state is checkpointed, invoke returns the state carrying __interrupt__, nothing after the interrupt runs; Command(resume=...) re-enters - the node re-runs FROM ITS TOP, answered slots replay in call order, open slots re-park with the earlier answers preserved; parking without a checkpointer refuses honestly; interrupt() outside a node refuses) + checkpointers (BaseCheckpointSaver; MemorySaver thread-safe capped ring; SqliteSaver stdlib sqlite3 WAL - a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a checkpoint lands after EVERY super-step; get_state/update_state with as_node re-deriving next; invoke(None) resumes the stored walk - the crash path, the dhara lesson; Command.update_only/goto_nodes reshape a stored walk) + the tracer seam (CompiledStateGraph is a Runnable - composes with |; every invocation fires a ROOT chain span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays run-free) + store wiring (compile(store=...) rides config['store'] into every node - the P1 stores are the cross-thread memory). Registry rides their 554 (the construction wave's ten tools took 543 -> 553, the crew_run tool took 553 -> 554; the graph is a library - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep with zero threads/env/files; checkpointers write only when a compiled graph with one actually runs). Voice untouched by construction; mem restart pin untouched (no new vps-ops job); console stamps stay 0.487.0 (the dev's convention); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected (nothing in server/app/pc/, desktop/ or lib/ touched). Tests: NEW test_v0530_hoola_graph.py (42, zero network, the asyncio one-loop law): builder validation, reducer channels + seeding, linear/conditional/diamond walks + the join barrier, additive routing + END-from-router, recursion limit default + configurable, two-arg config + store wiring, add_messages + AgentState accumulation, MemorySaver caps/threads/delete, checkpoint-per-step + get_state + update_state + invoke(None) crash-resume + Command reshapes, SqliteSaver round-trip across instances + the engine shape + thread isolation, interrupt refusal/park shape/resume/two-interrupt chain/stream park/async park, node spans named by the node nested under the root span, the inertness probe, the package-export law, no-registry-tools, the version pins. Bugs the smoke caught: parallel fan-out updates must fold SEQUENTIALLY through the reducer (a merge-by-setdefault dropped the second writer's write); _node_config swallowed 1-arg async fns into a sync lambda (the walk saw a coroutine object, not a dict); the engine-path SqliteSaver never created its table; parking without a checkpointer was silent (now the honest RuntimeError); dict path_maps fell through to positional-index lookups (a router returning END would misroute). Version 0.530.0 (APP_VERSION story, pubspec 0.530.0+553, CLAUDE.md healed, pins swept 0.520.0/0.522.0 -> 0.530.0 + +549/+551/+552 -> +553 across the test files zero residual outside deliberate history). TWO COLLISIONS in one build: the THIRTY-SECOND (0.521.0 DIFY + 0.522.0 CONSTRUCTION WAVE 1, registry 543 -> 553, +551) and the THIRTY-THIRD (0.523.0 HOOLA CREW, the crewAI port, registry 553 -> 554, +552) - REBASE PROTOCOL twice: rebuilt on their fresh bases f561f047 then 1db3e577, both works kept each time, the version layer moved coherently on top (0.530.0 stays the newest story). AEP train: P4 AGENT (create_agent on the graph) next. Previous: v0.523.0 HOOLA CREW, v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE (the langchain-core P1), v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7 [full chain in git history].
+APP_VERSION = "0.531.0"   # v0.530.0: HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main as a51ea087 - the trace-layer deploy stays the owner's call, healthz still says 0.511.0 on the VPS). The langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code (the port law): StateGraph (add_node/add_edge/add_conditional_edges/set_entry_point/compile - duplicates, reserved names and unknown endpoints refused at BUILD time, no-node/no-entry/bad-path-map refused at compile; plain channels last-value-wins, Annotated[T, reducer] channels merge through the reducer - operator.add works, add_messages is the messages reducer; a FIRST-EVER value seeds the channel because operator.add has no identity for a missing left side) + the walk (super-steps; every node sees the SAME pre-step state; several static edges from one node fan out; a node with several inbound edges joins only after ALL its parents ran - the barrier; routing is ADDITIVE, routers + static edges both fire; routers see the POST-node state; dict path_map maps by answer, list path_map maps by index (the upstream law); recursion_limit default 25 with an honest GraphRecursionError; None updates are no-ops; non-dict node returns refused; fn(state) and fn(state, config) both accepted; async nodes run natively in ainvoke and via asyncio.run in sync invoke when no loop is running) + AgentState (messages Annotated[list, add_messages] - the P4 create_agent substrate; add_messages: append, replace-by-id, RemoveMessage drops one id, REMOVE_ALL_MESSAGES clears, dicts coerce back, strings become HumanMessages) + interrupts (interrupt(value) PARKS the graph - the state is checkpointed, invoke returns the state carrying __interrupt__, nothing after the interrupt runs; Command(resume=...) re-enters - the node re-runs FROM ITS TOP, answered slots replay in call order, open slots re-park with the earlier answers preserved; parking without a checkpointer refuses honestly; interrupt() outside a node refuses) + checkpointers (BaseCheckpointSaver; MemorySaver thread-safe capped ring; SqliteSaver stdlib sqlite3 WAL - a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a checkpoint lands after EVERY super-step; get_state/update_state with as_node re-deriving next; invoke(None) resumes the stored walk - the crash path, the dhara lesson; Command.update_only/goto_nodes reshape a stored walk) + the tracer seam (CompiledStateGraph is a Runnable - composes with |; every invocation fires a ROOT chain span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays run-free) + store wiring (compile(store=...) rides config['store'] into every node - the P1 stores are the cross-thread memory). Registry rides their 554 (the construction wave's ten tools took 543 -> 553, the crew_run tool took 553 -> 554; the graph is a library - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep with zero threads/env/files; checkpointers write only when a compiled graph with one actually runs). Voice untouched by construction; mem restart pin untouched (no new vps-ops job); console stamps stay 0.487.0 (the dev's convention); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected (nothing in server/app/pc/, desktop/ or lib/ touched). Tests: NEW test_v0530_hoola_graph.py (42, zero network, the asyncio one-loop law): builder validation, reducer channels + seeding, linear/conditional/diamond walks + the join barrier, additive routing + END-from-router, recursion limit default + configurable, two-arg config + store wiring, add_messages + AgentState accumulation, MemorySaver caps/threads/delete, checkpoint-per-step + get_state + update_state + invoke(None) crash-resume + Command reshapes, SqliteSaver round-trip across instances + the engine shape + thread isolation, interrupt refusal/park shape/resume/two-interrupt chain/stream park/async park, node spans named by the node nested under the root span, the inertness probe, the package-export law, no-registry-tools, the version pins. Bugs the smoke caught: parallel fan-out updates must fold SEQUENTIALLY through the reducer (a merge-by-setdefault dropped the second writer's write); _node_config swallowed 1-arg async fns into a sync lambda (the walk saw a coroutine object, not a dict); the engine-path SqliteSaver never created its table; parking without a checkpointer was silent (now the honest RuntimeError); dict path_maps fell through to positional-index lookups (a router returning END would misroute). Version 0.530.0 (APP_VERSION story, pubspec 0.530.0+553, CLAUDE.md healed, pins swept 0.520.0/0.522.0 -> 0.530.0 + +549/+551/+552 -> +553 across the test files zero residual outside deliberate history). TWO COLLISIONS in one build: the THIRTY-SECOND (0.521.0 DIFY + 0.522.0 CONSTRUCTION WAVE 1, registry 543 -> 553, +551) and the THIRTY-THIRD (0.523.0 HOOLA CREW, the crewAI port, registry 553 -> 554, +552) - REBASE PROTOCOL twice: rebuilt on their fresh bases f561f047 then 1db3e577, both works kept each time, the version layer moved coherently on top (0.530.0 stays the newest story). AEP train: P4 AGENT (create_agent on the graph) next. Previous: v0.523.0 HOOLA CREW, v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE (the langchain-core P1), v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7 [full chain in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -9129,6 +9129,90 @@ def _shop_owner(fn, *a):
         raise HTTPException(e.code, str(e))
     except W.AppError as e:
         raise HTTPException(e.code, str(e))
+
+
+# ---- v0.531 BADA CATALOGUE (web Step 6, W8): her products / doctors / properties from her file / Sheet / dataset -> pages
+def _cat_call(fn, *a, **kw):
+    from .site import catalog as CAT
+    from .site import service as S
+    try:
+        return fn(*a, **kw)
+    except CAT.CatalogError as e:
+        raise HTTPException(e.code, str(e))
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+    except Exception as e:                           # her Sheet not joined / not found: said plainly
+        if type(e).__name__ in ("NotConnected", "SheetError", "DataError"):
+            raise HTTPException(400, str(e))
+        raise
+
+
+@app.get("/api/sites/{ref}/catalog", dependencies=[Depends(require_key)])
+async def sites_catalog(ref: str, tenant: str = Depends(current_tenant)):
+    from .site import catalog as CAT
+    return await asyncio.to_thread(_cat_call, CAT.lists, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/catalog/preview", dependencies=[Depends(require_key)])
+async def sites_catalog_preview(ref: str, request: Request, tenant: str = Depends(current_tenant)):
+    """A file (multipart: file, coll, label, item_label, mapping JSON) or JSON {coll, sheet, tab | dataset, mapping}.
+    Nothing is written: the answer says what WOULD happen; her Apply tap (with its hash) writes it."""
+    from .site import catalog as CAT
+    ctype = request.headers.get("content-type", "")
+    if ctype.startswith("multipart/"):
+        form = await request.form()
+        up = form.get("file")
+        if up is None or not hasattr(up, "read"):
+            raise HTTPException(400, "File chuniye (CSV / Excel).")
+        raw = await up.read()
+        b = {k: str(form.get(k) or "") for k in ("coll", "label", "item_label", "mapping")}
+        try:
+            mapping = json.loads(b["mapping"]) if b["mapping"] else None
+        except ValueError:
+            mapping = None
+
+        def go():
+            rows = CAT.parse_file(raw, getattr(up, "filename", "") or "")
+            return CAT.preview(tenant, ref, b["coll"], rows, mapping, b["label"], b["item_label"], "file")
+        return await asyncio.to_thread(_cat_call, go)
+    b = await _json_body(request)
+
+    def go2():
+        if b.get("sheet"):
+            rows, src = CAT.from_sheet(tenant, str(b["sheet"]), str(b.get("tab") or "") or None), "sheet"
+        elif b.get("dataset"):
+            rows, src = CAT.from_dataset(tenant, str(b["dataset"])), "dataset"
+        else:
+            raise CAT.CatalogError("File, Google Sheet ya dataset - koi ek chahiye.")
+        return CAT.preview(tenant, ref, str(b.get("coll") or ""), rows, b.get("mapping") if isinstance(b.get("mapping"), dict) else None,
+                           str(b.get("label") or ""), str(b.get("item_label") or ""), src)
+    return await asyncio.to_thread(_cat_call, go2)
+
+
+@app.post("/api/sites/{ref}/catalog/apply", dependencies=[Depends(require_key)])
+async def sites_catalog_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """Her tap {hash, replace?}: the preview she saw is written (replace = items not in the file are hidden, never deleted)."""
+    from .site import catalog as CAT
+    b = body or {}
+    return await asyncio.to_thread(_cat_call, CAT.apply, tenant, ref, str(b.get("hash") or ""), bool(b.get("replace")))
+
+
+@app.post("/api/sites/{ref}/catalog/images", dependencies=[Depends(require_key)])
+async def sites_catalog_images(ref: str, tenant: str = Depends(current_tenant)):
+    """Fetch + resize the photos not made yet (resumes; runs in the background)."""
+    from .site import catalog as CAT
+
+    def go():
+        r = CAT._site(tenant, ref)
+        CAT.start_images(r.id)
+        return CAT.lists(tenant, ref)
+    return await asyncio.to_thread(_cat_call, go)
+
+
+@app.delete("/api/sites/{ref}/catalog/{coll}", dependencies=[Depends(require_key)])
+async def sites_catalog_remove(ref: str, coll: str, tenant: str = Depends(current_tenant)):
+    from .site import catalog as CAT
+    return await asyncio.to_thread(_cat_call, CAT.remove, tenant, ref, coll)
 
 
 @app.post("/api/sites/{ref}/payments/connect", dependencies=[Depends(require_key)])
