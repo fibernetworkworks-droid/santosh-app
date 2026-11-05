@@ -3,10 +3,10 @@
 Two cards over `app/quality/lead_asks.py`, the mapscard shape:
 
 - free_card(): no model, no network, no key. For every ask: is the right leads tool IN VIEW (admit.plan_for on her
-  exact words) and are the five tools REGISTERED and REACHABLE at all (the v0.393 lesson); are the guards PRESENT
+  exact words) and are the six tools REGISTERED and REACHABLE at all (the v0.393 lesson); are the guards PRESENT
   in the code - the provenance gate, the plan-time cap (fired FOR REAL on a huge ask), the unbuilt lanes refused
-  by name, the consent=False campaign hand-off, the opt-out honouring, and an engine whose own service module
-  contains no sending machinery at all. CI pins this card.
+  by name, the official lanes (P1) actually wired, the consent=False campaign hand-off, the opt-out honouring,
+  and an engine whose own service module contains no sending machinery at all. CI pins this card.
 - live_card(): ONE real turn per ask on the tenant "__quality__" (never her chats), scored IN CODE. Needs a model;
   without one the rows come back as errors rather than as a pass.
 
@@ -23,7 +23,7 @@ from .lead_asks import ASKS, LEADS_SET_V
 
 log = logging.getLogger("santosh.quality.leads")
 
-LEADS_TOOLS = ("leads_run", "leads_status", "leads_list", "leads_export", "leads_forget")
+LEADS_TOOLS = ("leads_run", "leads_status", "leads_list", "leads_export", "leads_forget", "leads_enrich")
 
 
 # ---------------------------------------------------------------- the guards (present in the code, fired for real)
@@ -50,6 +50,11 @@ def guards_in_code() -> dict[str, Any]:
     p = S.plan("__leadscard__", "Nagpur contractors", ["SCRAPE"], "Nagpur")
     out["lane_refused_by_name"] = (not p["ok"]) and "SCRAPE" in json.dumps(p.get("refused_lanes", [])) \
         and "P3" in json.dumps(p.get("why", []), ensure_ascii=False)
+    # 3b. v0.541.0: the official lanes are REALLY wired (REGISTRY = IndiaMART MCP, OFFICIAL_API = the existing
+    # maps tools) - and the service still holds no second Google client (only maps/indiamart imports, no httpx)
+    out["official_lanes_built"] = (R.LANE_BUILT.get("REGISTRY") == "P1" and R.LANE_BUILT.get("OFFICIAL_API") == "P1"
+                                   and hasattr(S, "run_indiamart") and hasattr(S, "run_places"))
+    out["no_second_google_client"] = "places.googleapis" not in src and "maps.googleapis" not in src
     # 4. the campaign hand-off pre-fills consent False and writes the ledger; the engine itself never sends
     out["consent_false_handoff"] = "opted_in=False" in src.replace(" ", "") or "opted_in=False" in src
     out["engine_never_sends"] = ("httpx" not in src and "requests.post" not in src and "smtplib" not in src

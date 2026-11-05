@@ -1,6 +1,8 @@
-"""Leads Sahayak tools (v0.540.0 LEADS NEEV). `leads_run` works (P0: her own data only - L0), the other four read,
-export or erase. Every tool answers with a CARD that names the caps, the lanes and the provenance; the engine never
-contacts anyone - outreach is her tap on the campaign / email desks, and the campaign hand-off pre-fills consent False."""
+"""Leads Sahayak tools (v0.540.0 LEADS NEEV, v0.541.0 OFFICIAL LANES). `leads_run` works her data (P0), the
+IndiaMART MCP sellers lane (P1 REGISTRY) and the Places lane through the EXISTING maps tools (P1 OFFICIAL_API);
+`leads_enrich` is the P2 skeleton - it refuses by name, no pretending. Every tool answers with a CARD that names
+the caps, the lanes and the provenance; the engine never contacts anyone - outreach is her tap on the campaign /
+email desks, and the campaign hand-off pre-fills consent False."""
 from __future__ import annotations
 
 import asyncio
@@ -10,17 +12,29 @@ from .tools import Ctx, ToolError
 
 LEADS_TOOLS = [
     {"name": "leads_run", "description": (
-        "Leads ka run chalao (Leads Sahayak). P0 mein lane sirf 'HER_DATA' hai: uski apni rows (CSV/Excel/purani "
-        "campaign list se nikale gaye businesses) engine ke store mein jayengi - har row ke saath source, dedupe "
-        "same business ko ek row, E.164 phone. action=her_data: ask (kya liya), rows [{name, phone, category, city, "
-        "address, email, website, rating, review_count}], source_name (file/list ka naam). Plan PEHLE banta hai "
-        "(caps: 5,000 rows/run, 20,000/day) - cap paar hua to refuse hota hai, cap ka naam batate hue. Doosri lanes "
-        "(REGISTRY / OFFICIAL_API / SCRAPE / VENDOR) abhi built nahi - naam se refuse, phase batate hue."),
+        "Leads ka run chalao (Leads Sahayak). Teen actions:\n"
+        "- action=her_data: uski apni rows (CSV/Excel/purani campaign list) store mein - har row ke saath source, "
+        "dedupe, E.164 phone.\n"
+        "- action=indiamart: IndiaMART ke SELLERS (official IndiaMART MCP server, muft) - search_term (jaise "
+        "'cement', 'LED bulb'), city ya cities (max 5), biztype (manufacturer/exporter/wholesaler/retailer), "
+        "max_rows (default 200). Har row ke saath seller ka IndiaMART page (source), ek business = ek row.\n"
+        "- action=places: Google Places EXISTING maps tools se - kinds (Google place types, jaise pharmacy, "
+        "hardware_store), near (jaise 'Pune'), sweep_km (default 5, 20-ka-Nearby-ceiling tiles se toota), "
+        "details (default false - phone/website mehenge hain, sirf details_max jagahon ke liye kharide jaate "
+        "hain, mapsbill cap ke neeche), max_rows. Har row ke saath Google Maps link (source).\n"
+        "Plan PEHLE banta hai (caps: per-run rows, per-day 20,000) - cap paar hua to refuse, cap ka naam batate "
+        "hue. SCRAPE / VENDOR lanes abhi built nahi - naam se refuse, phase (P3/P4) batate hue. Yeh engine kabhi "
+        "khud kisi ko message NAHI bhejta - outreach sirf aapke tap par, campaign desk se."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["her_data"]},
+         "action": {"type": "string", "enum": ["her_data", "indiamart", "places"]},
          "ask": {"type": "string"}, "place": {"type": "string"},
-         "rows": {"type": "array", "items": {"type": "object"}},
-         "source_name": {"type": "string"}, "lane": {"type": "string"}}, "required": ["action", "ask"]}},
+         "rows": {"type": "array", "items": {"type": "object"}}, "source_name": {"type": "string"},
+         "lane": {"type": "string"},
+         "search_term": {"type": "string"}, "city": {"type": "string"},
+         "cities": {"type": "array", "items": {"type": "string"}}, "biztype": {"type": "string"},
+         "kinds": {"type": "array", "items": {"type": "string"}}, "near": {"type": "string"},
+         "sweep_km": {"type": "number"}, "cell_km": {"type": "number"}, "details": {"type": "boolean"},
+         "max_rows": {"type": "integer"}}, "required": ["action", "ask"]}},
     {"name": "leads_status", "description": (
         "Ek leads run ya poore store ka haal (kuch nahi badalta). run_id do to uska card: status, found/kept/"
         "duped/refused, lanes, cap check. run_id na do to store ka summary: kitni rows, kitni phone/email waali, "
@@ -51,10 +65,19 @@ LEADS_TOOLS = [
      "input_schema": {"type": "object", "properties": {
          "run_id": {"type": "string"}, "row_ids": {"type": "array", "items": {"type": "string"}},
          "all_rows": {"type": "boolean"}}, "required": []}},
+    {"name": "leads_enrich", "description": (
+        "Store ki ek ya zyada rows ko ENRICH karo (email, socials, website ka check, email_grade) - ABHI BUILT "
+        "NAHI HAI: enrichment P2 mein aayega (plan: docs/LEADS_PLAN.md section 6 - website ka ek crawl-brain pass, "
+        "MX grading pakka/sadak_tak/galat). Yeh tool abhi sirf refuse karta hai, phase ka naam batate hue - "
+        "jhooth bolna (khaali enrichment ka dawa) isse bura hai. Store aur export pehle se kaam kar rahe hain."),
+     "input_schema": {"type": "object", "properties": {
+         "row_ids": {"type": "array", "items": {"type": "string"}}, "run_id": {"type": "string"}},
+         "required": []}},
 ]
 LEADS_LABELS = {"leads_run": "Leads ka run bana raha hoon", "leads_status": "Leads ka haal dekh raha hoon",
                 "leads_list": "Leads store khoj raha hoon", "leads_export": "Leads export taiyaar kar raha hoon",
-                "leads_forget": "Leads mita raha hoon (aapke kaha se)"}
+                "leads_forget": "Leads mita raha hoon (aapke kaha se)",
+                "leads_enrich": "Enrichment ka haal dekh raha hoon"}
 
 
 def _s(v: Any) -> str:
@@ -87,12 +110,22 @@ async def leads_run(ctx: Ctx, action, **a: Any):
             return await asyncio.to_thread(S.run_her_data, t, _s(a.get("ask")), _rows(a.get("rows")),
                                            _s(a.get("source_name")) or "her-data", _s(a.get("place")),
                                            [str(a.get("lane") or "HER_DATA")])
+        if action == "indiamart":
+            cities = a.get("cities") if isinstance(a.get("cities"), list) else None
+            return await S.run_indiamart(t, _s(a.get("ask")), _s(a.get("search_term")), _s(a.get("city")),
+                                         cities, _s(a.get("biztype")), _s(a.get("place")),
+                                         int(a.get("max_rows") or 200))
+        if action == "places":
+            return await S.run_places(t, _s(a.get("ask")), a.get("kinds"), _s(a.get("near")),
+                                      float(a.get("sweep_km") or 5.0), float(a.get("cell_km") or 2.0),
+                                      bool(a.get("details")), _s(a.get("place")),
+                                      int(a.get("max_rows") or 1000))
         if action == "plan":
             return await asyncio.to_thread(S.plan, t, _s(a.get("ask")), [str(a.get("lane") or "HER_DATA")],
                                            _s(a.get("place")), int(a.get("planned_rows") or 0))
     except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat (P0 mein sirf her_data / plan)")
+    raise ToolError("action galat (her_data | indiamart | places | plan)")
 
 
 async def leads_status(ctx: Ctx, **a: Any):
@@ -157,5 +190,14 @@ async def leads_forget(ctx: Ctx, **a: Any):
         raise ToolError(str(e))
 
 
+async def leads_enrich(ctx: Ctx, **a: Any):
+    """The P2 skeleton: it REFUSES by name - an enrichment that pretends to have run is worse than one that says
+    when it will arrive (the same no-stub law the lanes carry)."""
+    _actor(ctx)
+    raise ToolError("Enrichment abhi built nahi hai - P2 mein aayega (website ka crawl-brain pass, email_grade "
+                    "pakka/sadak_tak/galat; plan: docs/LEADS_PLAN.md section 6). Store aur export pehle se kaam "
+                    "kar rahe hain.")
+
+
 LEADS_HANDLERS = {"leads_run": leads_run, "leads_status": leads_status, "leads_list": leads_list,
-                  "leads_export": leads_export, "leads_forget": leads_forget}
+                  "leads_export": leads_export, "leads_forget": leads_forget, "leads_enrich": leads_enrich}

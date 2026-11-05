@@ -40,6 +40,31 @@ def make_router(require_key, current_tenant) -> APIRouter:
         return await run(S.run_her_data, tenant, str(b.get("ask") or ""), b.get("rows") or [],
                          str(b.get("source_name") or "her-data"), str(b.get("place") or ""), lanes)
 
+    @r.post("/runs/indiamart")
+    async def post_indiamart(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """P1 REGISTRY lane: IndiaMART sellers (official IndiaMART MCP server via app/indiamart.py), free."""
+        b = _b(body)
+        cities = b.get("cities") if isinstance(b.get("cities"), list) else None
+        try:
+            return await S.run_indiamart(tenant, str(b.get("ask") or ""), str(b.get("search_term") or ""),
+                                         str(b.get("city") or ""), cities, str(b.get("biztype") or ""),
+                                         str(b.get("place") or ""), int(b.get("max_rows") or 200))
+        except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/runs/places")
+    async def post_places(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """P1 OFFICIAL_API lane: the EXISTING maps tools (maps.nearby list, maps.place_details bought per place
+        under the mapsbill cap) - no second Google client."""
+        b = _b(body)
+        try:
+            return await S.run_places(tenant, str(b.get("ask") or ""), b.get("kinds"), str(b.get("near") or ""),
+                                      float(b.get("sweep_km") or 5.0), float(b.get("cell_km") or 2.0),
+                                      bool(b.get("details")), str(b.get("place") or ""),
+                                      int(b.get("max_rows") or 1000))
+        except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
     @r.post("/rows")
     async def post_row(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)

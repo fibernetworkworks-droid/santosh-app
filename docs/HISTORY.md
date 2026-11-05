@@ -2,6 +2,57 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.541.0 LEADS OFFICIAL — P1 of the leads plan: the IndiaMART + Places lanes (6 Nov 2026)
+
+Owner: "P1 (IndiaMART + Places lanes through the existing maps tools)". P1 of docs/LEADS_PLAN.md
+section 10: the two OFFICIAL lanes, both through code that already existed — no second Google
+client, no new IndiaMART client.
+
+NEW in `server/app/leads/service.py`:
+
+- `run_indiamart()` — the REGISTRY lane: IndiaMART's OWN MCP server via the existing
+  `app/indiamart.py` (official route, no sign-in, free). Sellers for a `search_term` in up to 5
+  cities (`indiamart.MAX_CITIES`); one BUSINESS one row — the same company behind five products is
+  ONE lead, counted duped; the seller's phone goes E.164, no-phone sellers key on name+address
+  (the identity ladder unchanged); provenance = the seller's IndiaMART page; the bill names
+  `indiamart.mcp.search` at ₹0.0; an `IndiaMartError` ABORTS the run with the reason.
+- `run_places()` — the OFFICIAL_API lane: Google Places through the EXISTING maps tools ONLY —
+  `maps.resolve` for the centre, `maps.nearby` for the list, `maps.place_details` bought per
+  place. Nearby Search's documented ceilings (a circle, ≤ 50 km, ≤ 20 results, NO paging) are
+  beaten by `place_cells()` tiling: overlapping circles spaced 1.5× the radius so a dukaan on the
+  seam shows up twice and the deduper collapses it; more than 400 cells is REFUSED at plan time.
+- BILLING HONESTY, all inherited from the maps phases: the ask is cap-checked RAW at plan time and
+  only then clamped to the working bound (a 5,001-row ask is refused, never clamped silently); a
+  `MapsCapped` mid-list ABORTS the run with the cap named and nothing truncated; mid-details it
+  only stops the BUYING — phone/website/rating (the Enterprise-priced fields) are bought for at
+  most `leads_places_details_per_run` (new config, default 50) places per run, the maps_place
+  economics, and the card says `details_stopped` when the cap cut it. `apply_details()` moves only
+  phone/website/rating/review_count onto the stored row; provenance untouched.
+- FIXED en route: `_clean_row` now carries the listing ids (kgmid/cid/place_id) and the numeric
+  facts (rating, review COUNT, lat/lng) through — the P0 version silently dropped them, which
+  would have made every official-lane row lose its place_id and fall to a name+address hash.
+
+`rules.py`: LANE_BUILT = HER_DATA (P0) + REGISTRY (P1) + OFFICIAL_API (P1); SCRAPE (P3, her word,
+per-tenant opt-in OFF) and VENDOR (P4) still REFUSED BY NAME. `agent/leads_tools.py`:
+`leads_run` gains `action=indiamart` and `action=places`; NEW `leads_enrich` — the P2 skeleton
+that REFUSES by name with the phase (no stub, no pretending); registry 561 → 562. API:
+key-protected `/api/leads/runs/indiamart` + `/api/leads/runs/places`; refusals are 400s with the
+reason. LEADS card set v2: three new asks (IndiaMART, Places, enrich) and two new guards —
+`official_lanes_built` and `no_second_google_client` (the service module must contain no
+places.googleapis / maps.googleapis string, now and always).
+
+Tests: NEW `test_v0541_leads_official.py` (17, offline — the lanes' network functions faked at the
+module boundary, everything else real): seller dedup + idempotent re-run + cross-lane phone dedup
+(the same business from her file and IndiaMART collapses to one), the 5-city cap, the plan-time
+cap on the RAW ask, abort-on-error; `place_cells` math, tiling + place_id dedup + re-run no-op,
+details bought per place under the budget, the REAL mapsbill charge path firing mid-list ABORT and
+mid-details stop-the-buying, `apply_details` facts-only, the API surface, `leads_enrich` refusing
+with P2. `test_v0540_*` updated for the version, the lanes built and the six tools.
+
+NOT VERIFIED, said plainly: neither lane has answered the real world yet — her first live
+IndiaMART sellers run and her first live Places sweep confirm them; the mapsbill cap firing
+mid-run is proven against the real charge path in tests, not yet by a real bill.
+
 ## v0.540.0 LEADS NEEV — the lead generation engine's foundation, P0 of docs/LEADS_PLAN.md (5 Nov 2026)
 
 Owner asked on 5 Nov 2026: "NOW A LEAD GENERATION ENGINE HOOLA AI EMPLOYEE ---- SCRAPER IN BACK END

@@ -7,11 +7,12 @@ from __future__ import annotations
 
 LANES = ("HER_DATA", "REGISTRY", "OFFICIAL_API", "SCRAPE", "VENDOR")
 
-# v0.540.0 P0: L0 only. P1 adds REGISTRY + OFFICIAL_API, P2 enrichment, P3 SCRAPE (owner opt-in, OFF by
-# default), P4 VENDOR. The phase names are the plan's, so a refusal can say exactly when it arrives.
-LANE_BUILT: dict[str, str] = {"HER_DATA": "P0"}
-LANE_ARRIVES = {"REGISTRY": "P1", "OFFICIAL_API": "P1", "SCRAPE": "P3 (uski haan chahiye, per-tenant opt-in, OFF)",
-                "VENDOR": "P4"}
+# v0.540.0 P0: L0 only. v0.541.0 P1 adds REGISTRY (IndiaMART's own MCP server, the app/indiamart.py lane) and
+# OFFICIAL_API (Places through the EXISTING maps tools - maps.nearby for the list, maps.place_details bought per
+# place under the mapsbill cap, NO second Google client). P2 enrichment, P3 SCRAPE (owner opt-in, OFF by default),
+# P4 VENDOR. The phase names are the plan's, so a refusal can say exactly when it arrives.
+LANE_BUILT: dict[str, str] = {"HER_DATA": "P0", "REGISTRY": "P1", "OFFICIAL_API": "P1"}
+LANE_ARRIVES = {"SCRAPE": "P3 (uski haan chahiye, per-tenant opt-in, OFF)", "VENDOR": "P4"}
 
 STATUSES = ("PLANNED", "RUNNING", "PAUSED", "DONE", "REFUSED", "ABORTED")
 

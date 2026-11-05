@@ -19,10 +19,10 @@ from app.leads.models import LeadContact, LeadRun, LeadOutreach, ensure_tables
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.540.0"
+    assert APP_VERSION == "0.541.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.540.0+563" in pub.read_text()
+    assert "0.541.0+564" in pub.read_text()
 
 
 # ---------------------------------------------------------------- the move did not break the old lane
@@ -162,8 +162,17 @@ def test_unbuilt_lanes_refused_by_name(env):
     assert any("P3" in w for w in p["why"])
     p = S.plan("t1", "ask", ["BOGUS"], "x")
     assert p["ok"] is False and any("koi lane hi nahi" in w for w in p["why"])
-    p = S.plan("t1", "ask", ["REGISTRY", "OFFICIAL_API", "VENDOR"], "x")
-    assert p["ok"] is False and any("P1" in w for w in p["why"]) and any("P4" in w for w in p["why"])
+    p = S.plan("t1", "ask", ["VENDOR"], "x")
+    assert p["ok"] is False and any("P4" in w for w in p["why"])
+
+
+def test_official_lanes_now_plan(env):
+    # v0.541.0: REGISTRY (IndiaMART MCP) and OFFICIAL_API (the existing maps tools) are BUILT - a plan with
+    # them and a place now says ok, with the caps in the card
+    for lane in ("REGISTRY", "OFFICIAL_API"):
+        p = S.plan("t1", "cement sellers Pune", [lane], "Pune")
+        assert p["ok"] is True, p
+        assert lane in p["lanes"] and "cap_check" in p
 
 
 def test_vague_ask_gets_the_one_question(env):
@@ -242,7 +251,7 @@ def test_tools_registered_and_family_wired(env):
     from app.agent.leads_tools import LEADS_HANDLERS, LEADS_LABELS, LEADS_TOOLS
     from app.agent.tools import FAMILY_OF, HANDLERS, TOOLS, TOOL_LABELS
     names = {t["name"] for t in LEADS_TOOLS}
-    assert names == {"leads_run", "leads_status", "leads_list", "leads_export", "leads_forget"}
+    assert names == {"leads_run", "leads_status", "leads_list", "leads_export", "leads_forget", "leads_enrich"}
     assert set(LEADS_LABELS) == set(LEADS_HANDLERS) == names
     global_names = {t["name"] for t in TOOLS}
     assert names <= global_names
@@ -261,7 +270,7 @@ def test_employee_role_and_duty_wired(env):
     from app.employee.roles import DUTIES, ROLES, duty_of, kind_of
     assert "leads_sahayak" in ROLES and "leads_work" in DUTIES
     assert "leads_work" in ROLES["leads_sahayak"]["duties"]
-    for t in ("leads_run", "leads_status", "leads_list", "leads_export", "leads_forget"):
+    for t in ("leads_run", "leads_status", "leads_list", "leads_export", "leads_forget", "leads_enrich"):
         assert duty_of(t) == "leads_work", t                     # the prefix ("leads_",) mapped them
         assert kind_of(t) in ("read", "action", "big")
     assert "leads_desk" in __import__("app.employee.roles", fromlist=["PRESETS"]).PRESETS

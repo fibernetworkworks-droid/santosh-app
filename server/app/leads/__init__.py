@@ -8,9 +8,11 @@ into CLAUDE.md in the P3 commit that adds the scrape lane itself). Until then TH
 
 - THE ENGINE GATHERS; IT NEVER CONTACTS ANYONE. No message, no email, no call leaves this code. Outreach stays
   behind her tap on the campaign / email desks (LeadOutreach below is the ledger of taps, never an act).
-- P0 RUNS L0 ONLY: her own data (her past campaign lists, her files). The official lanes (IndiaMART MCP, the
-  existing Places tools) come in P1, the scrape lane in P3 behind a per-tenant opt-in that is OFF by default,
-  the vendor lane in P4. A lane that is not built yet is REFUSED by name ("P1 mein aayega") - no stub, no pretending.
+- P0 RAN L0 ONLY (her own data). v0.541.0 P1 adds the OFFICIAL lanes: REGISTRY (IndiaMART's own MCP server,
+  through the existing app/indiamart.py) and OFFICIAL_API (Google Places through the EXISTING maps tools -
+  maps.nearby for the list, maps.place_details bought per place under the mapsbill cap, NO second Google client).
+  The scrape lane comes in P3 behind a per-tenant opt-in that is OFF by default, the vendor lane in P4. A lane
+  that is not built yet is REFUSED by name ("P3 mein aayega") - no stub, no pretending.
 - EVERY ROW CARRIES ITS PROVENANCE or it is not stored: source_lane + source_url + fetched_at. An export that
   finds a row without provenance REFUSES rather than ships an unexplained row (verify gate).
 - BUSINESS FACTS ONLY. No review text at scale, no photos, no popular times, no consumer individuals

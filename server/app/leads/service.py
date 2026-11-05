@@ -20,6 +20,7 @@ import json
 import re
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote_plus
 
 from sqlalchemy.exc import IntegrityError
 
@@ -29,8 +30,17 @@ from .models import LeadContact, LeadListRef, LeadOutreach, LeadRun, ensure_tabl
 from . import rules as R
 
 PARSER_VERSION = "v0.540.0-her1"        # the L0 her-data reader; every row names the code that read its source
+PARSER_INDIAMART = "v0.541.0-im1"       # the REGISTRY lane: IndiaMART's own MCP server via app/indiamart.py
+PARSER_PLACES = "v0.541.0-pl1"          # the OFFICIAL_API lane: the existing maps tools (nearby + details on tap)
+
+# mapsbill.MapsCapped arrives here re-raised as maps.MapsError (maps._bill's own law: "a cap hit becomes a
+# MapsError"), with this stable text inside - so the cap and an ordinary MapsError are told apart by MARK,
+# not by hope: the cap ABORTS the list / stops the buying, an ordinary error just skips the cell.
+_MAPSCAP_MARK = "Google Maps budget"
 
 _LEAD_FIELDS = ("name", "category", "address", "city", "state", "pincode", "phone", "website", "email")
+_ID_FIELDS = ("kgmid", "cid", "place_id")            # the listing ids the identity key reads (plan 5.4)
+_NUM_FIELDS = ("rating", "review_count", "lat", "lng")  # FACTS only, the count never the text
 
 
 class LeadsError(ValueError):
@@ -96,13 +106,23 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
 
 # ---------------------------------------------------------------- the run (L0: her data)
 def _clean_row(row: dict) -> dict:
-    """One business row from her data -> the store's fields, house-laws applied (E.164 phone, facts only)."""
-    out: dict[str, str] = {}
+    """One business row from her data or a lane -> the store's fields, house-laws applied (E.164 phone, facts
+    only). v0.541.0: the listing ids (kgmid/cid/place_id) and the numeric facts (rating, review COUNT, lat/lng)
+    now ride through too - the P0 version silently dropped them, which would have made every official-lane row
+    lose its place_id and fall to a name+address hash."""
+    out: dict[str, Any] = {}
     for f in _LEAD_FIELDS:
         v = row.get(f)
         if v is None and f == "phone":
             v = row.get("mobile") or row.get("whatsapp")
         out[f] = str(v).strip() if v is not None else ""
+    for f in _ID_FIELDS:
+        v = row.get(f)
+        if v not in (None, ""):
+            out[f] = str(v).strip()
+    for f in _NUM_FIELDS:
+        if row.get(f) not in (None, ""):
+            out[f] = row[f]
     phone = normalize_phone(out.get("phone"))
     out["phone"] = phone or ""
     return out
@@ -149,6 +169,260 @@ def run_her_data(tenant: str, ask: str, rows: list[dict], source_name: str, plac
     _counters(run, found, kept, duped, refused)
     _finish(run, "DONE")
     return {"ok": True, "run": run_card(run.id)}   # re-read: the counters / status live in the DB, not the detached object
+
+
+# ---------------------------------------------------------------- the REGISTRY lane (P1: IndiaMART, official MCP)
+async def run_indiamart(tenant: str, ask: str, search_term: str, city: str = "", cities: list[str] | None = None,
+                        biztype: str = "", place: str = "", max_rows: int = 200) -> dict:
+    """P1's REGISTRY lane: IndiaMART's OWN MCP server through the existing app/indiamart.py (official route, no
+    sign-in, free) - sellers for a product in up to 5 cities. PLAN PEHLE: the cap refuses at plan time on
+    max_rows. The one search per city is bounded (max_rows), the seller is the row (one BUSINESS one row - the
+    same company behind five products is ONE lead, counted duped), provenance is the product's IndiaMART page."""
+    ensure_tables()
+    from .. import indiamart
+    search_term = str(search_term or "").strip()
+    if not search_term:
+        raise LeadsError("Kaunsa product dhoondhna hai? Naam bataiye (jaise 'cement', 'LED bulb').")
+    raw_rows = max(1, int(max_rows or 200))
+    city_list: list[str] = []
+    for c in [str(city or "").strip()] + [str(c).strip() for c in (cities or [])]:
+        if c and c.lower() not in [x.lower() for x in city_list]:
+            city_list.append(c)
+    city_list = city_list[: indiamart.MAX_CITIES]
+    p = plan(tenant, ask, ["REGISTRY"], place or (city_list[0] if city_list else ""), planned_rows=raw_rows)
+    run = _new_run(tenant, ask, place or (city_list[0] if city_list else ""), ["REGISTRY"], p)
+    if not p["ok"]:
+        why = "; ".join(p.get("why") or [])
+        if why or p.get("need"):
+            _delete_run(run.id)
+            raise LeadsError(why or p.get("need", ""))
+        _finish(run, "REFUSED", error=p.get("cap_refusal", ""))
+        return {"ok": False, "run": run_card(run.id), "plan": p}
+    max_rows = min(raw_rows, leadscap.caps()["per_run"])          # the ask was checked RAW; now the working bound
+    _status(run, "RUNNING")
+    found = kept = duped = refused = calls = 0
+    stopped_by_bound = False
+    for c in city_list or [""]:
+        if found >= max_rows:
+            stopped_by_bound = True
+            break
+        try:
+            res = await indiamart.search(search_term, city=c, biztype=str(biztype or "").strip())
+        except indiamart.IndiaMartError as e:
+            _finish(run, "ABORTED", error=str(e))
+            leadscap.record(tenant, kept)
+            _counters(run, found, kept, duped, refused)
+            return {"ok": False, "run": run_card(run.id), "error": str(e)}
+        calls += 1
+        for prod in res.get("products") or []:
+            if found >= max_rows:
+                stopped_by_bound = True
+                break
+            if not isinstance(prod, dict):
+                refused += 1
+                continue
+            found += 1
+            row = _clean_row({"name": prod.get("company") or prod.get("title") or "",
+                              "category": prod.get("category") or search_term,
+                              "address": prod.get("location") or "",
+                              "city": prod.get("city") or c,
+                              "phone": prod.get("phone") or "", "website": "", "email": ""})
+            url = str(prod.get("url") or "")
+            if not url.startswith("http"):
+                url = "https://dir.indiamart.com/search.mp?ss=" + quote_plus(search_term)
+            try:
+                _write_row(tenant, run, *_identity_of(row), row, source_lane="REGISTRY",
+                           source_url=url[:500], parser_version=PARSER_INDIAMART)
+                kept += 1
+            except LeadsError as e:
+                if "already" in str(e):
+                    duped += 1
+                else:
+                    refused += 1
+    leadscap.record(tenant, kept)
+    _counters(run, found, kept, duped, refused)
+    with _s() as s:
+        r = s.get(LeadRun, run.id)
+        if r:
+            r.bill = json.dumps({"lane": "REGISTRY", "sku": "indiamart.mcp.search", "calls": calls,
+                                 "inr": 0.0, "cities": city_list,
+                                 "note": "IndiaMART ka apna MCP server - official route, abhi ke liye muft"})
+    _finish(run, "DONE")
+    return {"ok": True, "run": run_card(run.id),
+            "bound": {"max_rows": max_rows, "stopped_by_bound": stopped_by_bound}}
+
+
+# ---------------------------------------------------------------- the OFFICIAL_API lane (P1: the existing maps tools)
+def _identity_of(row: dict) -> tuple[str, str]:
+    return identity_key(row)
+
+
+def place_cells(center: dict, sweep_km: float, cell_km: float, max_cells: int = 400) -> list[dict]:
+    """Circle of `sweep_km` around the centre, tiled into overlapping maps_nearby circles of radius `cell_km`
+    (spacing 1.5x the radius, so the tiles overlap by a quarter - a dukaan on the seam shows up twice and the
+    deduper collapses it). The 20-result ceiling of Nearby Search is beaten by tiling, never by hoping."""
+    import math
+    sweep_km = max(0.5, min(float(sweep_km or 5), 50.0))
+    cell_km = max(0.5, min(float(cell_km or 2), min(sweep_km, 50.0)))
+    lat0, lng0 = float(center["lat"]), float(center["lng"])
+    step_lat = cell_km * 1.5 / 111.0
+    step_lng = cell_km * 1.5 / max(0.2, math.cos(math.radians(lat0))) / 111.0
+    n = int(math.ceil(sweep_km / (cell_km * 1.5)))
+    cells: list[dict] = []
+    for i in range(-n, n + 1):
+        for j in range(-n, n + 1):
+            lat, lng = lat0 + i * step_lat, lng0 + j * step_lng
+            d = math.hypot((lat - lat0) * 111.0, (lng - lng0) * 111.0 * math.cos(math.radians(lat0)))
+            if d <= sweep_km + cell_km * 0.5:
+                cells.append({"lat": round(lat, 6), "lng": round(lng, 6), "radius_m": int(cell_km * 1000)})
+    if len(cells) > max_cells:
+        raise LeadsError(f"Yeh sweep {len(cells)} cells banata hai - ek run ka limit {max_cells} hai. "
+                         f"Sweep chhota kijiye (sweep_km/cell_km), ya sheher ke tukdon mein chalaiye.")
+    return cells
+
+
+async def run_places(tenant: str, ask: str, kinds, near: str, sweep_km: float = 5.0, cell_km: float = 2.0,
+                     details: bool = False, place: str = "", max_rows: int = 1000) -> dict:
+    """P1's OFFICIAL_API lane: Google Places through the EXISTING maps tools only - maps.resolve for the centre,
+    maps.nearby for the list (billed by mapsbill, cap refuses BEFORE the call), and maps.place_details bought
+    for at most `details_max` places (the maps_place economics: phone/website are the expensive fields and are
+    bought per place, never hoarded for a whole list). NO new Google client code; the MapsPlaceCache six-column
+    rule is untouched - this store keeps its OWN rules (business facts + provenance + fetched_at, plan section 8).
+    A MapsCapped mid-list ABORTS the run with the cap named; mid-details it only stops the buying."""
+    ensure_tables()
+    from .. import maps, mapsbill
+    from ..config import get_settings
+    kinds_l = [str(k).strip() for k in (kinds if isinstance(kinds, list) else [kinds]) if str(k).strip()]
+    if not kinds_l:
+        raise LeadsError("Kis tarah ki jagah dhoondhni hai? Google place types bataiye (jaise pharmacy, "
+                         "hardware_store, restaurant).")
+    if not str(near or "").strip():
+        raise LeadsError("Kahan dhoondhna hai? Jagah ka naam bataiye (jaise 'Pune', 'Karol Bagh Delhi').")
+    if not maps.configured():
+        raise LeadsError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+    raw_rows = max(1, int(max_rows or 1000))
+    p = plan(tenant, ask, ["OFFICIAL_API"], place or str(near).strip(), planned_rows=raw_rows)
+    if not p["ok"]:
+        why = "; ".join(p.get("why") or [])
+        if why or p.get("need"):
+            raise LeadsError(why or p.get("need", ""))     # no run row: nothing ran, no cells yet either
+        # cap refusal still gets its REFUSED card (the numbers are the receipt) - and NOT one billed call:
+        # a run that is refused before it starts must not spend a geocode to deliver its own refusal
+        run0 = _new_run(tenant, ask, place or str(near).strip(), ["OFFICIAL_API"], p)
+        _finish(run0, "REFUSED", error=p.get("cap_refusal", ""))
+        return {"ok": False, "run": run_card(run0.id), "plan": p}
+    max_rows = min(raw_rows, leadscap.caps()["per_run"])          # the ask was checked RAW; now the working bound
+    try:
+        center = await maps.resolve(str(near).strip(), tenant, near=None)
+    except maps.MapsError as e:
+        raise LeadsError(f"Jagah resolve nahi hui: {e}") from None
+    if not center or center.get("lat") is None:
+        raise LeadsError(f"'{near}' Google Maps par nahi mila - sheher / area ka naam dobara bataiye.")
+    cells = place_cells(center, sweep_km, cell_km)
+    run = _new_run(tenant, ask, place or str(near).strip(), ["OFFICIAL_API"], p)
+    _status(run, "RUNNING")
+    found = kept = duped = refused = nearby_calls = detail_calls = 0
+    errors: list[str] = []
+    details_stopped = False
+    details_max = min(max(0, int(get_settings().leads_places_details_per_run)), len(cells) * 20)
+    bill_before = mapsbill.usage(tenant)["inr"]
+    to_detail: list[str] = []
+    for cell in cells:
+        if found >= max_rows:
+            break
+        try:
+            places = await maps.nearby({"lat": cell["lat"], "lng": cell["lng"]}, kinds_l,
+                                       radius_m=cell["radius_m"], limit=min(20, max_rows - found),
+                                       rank="popularity", tenant_id=tenant)
+        except maps.MapsError as e:
+            if _MAPSCAP_MARK in str(e):        # mapsbill refused BEFORE the call - ABORT, never truncate
+                _finish(run, "ABORTED", error=f"Google Maps ka cap: {e}")
+                leadscap.record(tenant, kept)
+                _counters(run, found, kept, duped, refused)
+                return {"ok": False, "run": run_card(run.id), "error": f"Google Maps ka cap: {e}",
+                        "bill": {"inr_spent": round(mapsbill.usage(tenant)["inr"] - bill_before, 4)}}
+            errors.append(str(e)[:200])
+            continue
+        nearby_calls += 1
+        for pl in places:
+            if found >= max_rows:
+                break
+            if not isinstance(pl, dict) or not pl.get("place_id"):
+                refused += 1
+                continue
+            found += 1
+            row = _clean_row({"place_id": pl.get("place_id"), "name": pl.get("name") or "",
+                              "category": pl.get("type") or ", ".join(kinds_l),
+                              "address": pl.get("address") or "",
+                              "city": center.get("name") or str(near).strip(),
+                              "phone": pl.get("phone") or "", "website": pl.get("website") or "",
+                              "rating": pl.get("rating"), "review_count": pl.get("reviews"),
+                              "lat": pl.get("lat"), "lng": pl.get("lng")})
+            src = pl.get("maps_link") or f"https://www.google.com/maps/place/?q=place_id:{pl['place_id']}"
+            try:
+                _write_row(tenant, run, *_identity_of(row), row, source_lane="OFFICIAL_API",
+                           source_url=src[:500], parser_version=PARSER_PLACES)
+                kept += 1
+                if details and not row.get("phone"):
+                    to_detail.append(pl["place_id"])
+            except LeadsError as e:
+                if "already" in str(e):
+                    duped += 1
+                else:
+                    refused += 1
+    bought = 0
+    for pid in to_detail[: max(0, details_max)]:
+        try:
+            d = await maps.place_details(pid, tenant_id=tenant)
+        except maps.MapsError as e:
+            if _MAPSCAP_MARK in str(e):        # the cap cut the buying, not the run: the list rows stay
+                details_stopped = True
+                errors.append(f"details cap: {e}"[:200])
+                break
+            errors.append(str(e)[:200])
+            continue
+        detail_calls += 1
+        apply_details(tenant, pid, d)
+        bought += 1
+    leadscap.record(tenant, kept)
+    _counters(run, found, kept, duped, refused)
+    with _s() as s:
+        r = s.get(LeadRun, run.id)
+        if r:
+            r.bill = json.dumps({"lane": "OFFICIAL_API", "sku_nearby": mapsbill.SKU_NEARBY_PRO,
+                                 "nearby_calls": nearby_calls, "details_calls": detail_calls,
+                                 "details_max": details_max, "details_stopped": details_stopped,
+                                 "inr": round(mapsbill.usage(tenant)["inr"] - bill_before, 4),
+                                 "attribution": "Google", "note": "list maps.nearby se, details maps.place_details se - "
+                                 "existing maps tools, mapsbill cap ke neeche"})
+            r.error = "; ".join(errors)[:600]
+    _finish(run, "DONE")
+    return {"ok": True, "run": run_card(run.id),
+            "center": {"name": center.get("name", ""), "lat": center["lat"], "lng": center["lng"]},
+            "cells": len(cells), "kinds": kinds_l, "sweep_km": sweep_km, "cell_km": cell_km,
+            "details": {"requested": bool(details), "bought": bought, "max": details_max,
+                        "stopped_by_cap": details_stopped},
+            "errors": errors[:5]}
+
+
+def apply_details(tenant: str, key_value: str, data: dict) -> bool:
+    """One maps.place_details answer onto its stored row: phone (E.164), website, rating, review COUNT. Only
+    these facts move; provenance stays as it was (the row's source is still the nearby list that found it)."""
+    ensure_tables()
+    with _s() as s:
+        c = s.query(LeadContact).filter(LeadContact.tenant_id == tenant, LeadContact.key_type == "place_id",
+                                        LeadContact.key_value == str(key_value)).first()
+        if c is None:
+            return False
+        if data.get("phone"):
+            c.phone = normalize_phone(data.get("phone")) or c.phone
+        if data.get("website"):
+            c.website = str(data["website"]).strip()[:300]
+        if data.get("rating") not in (None, ""):
+            c.rating = float(data["rating"])
+        if data.get("reviews") not in (None, ""):
+            c.review_count = int(data["reviews"])
+        return True
 
 
 def _new_run(tenant: str, ask: str, place: str, lanes: list[str], plan_card: dict) -> LeadRun:
