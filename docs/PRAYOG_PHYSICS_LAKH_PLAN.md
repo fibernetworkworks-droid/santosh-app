@@ -181,3 +181,13 @@ OOM kill). Run at most 4 - 6 agents at a time, and never edit a rig's .js while 
   XCOM look-up.
 - A syllabus row counts as built only when the lab covers every method / sample the row lists. Partial matches are not counted (dropped:
   logic-gates, passive-filters, sonometer-frequency, neutron-activation).
+
+**Sources attributed from memory, not fetched (B.Sc sensors / analog / communication, `sn_elec`) - verify before shipping**
+- The labs cite the IEC 60063 E-series, AD590, LM35, LM75B, IEC 60751 (Pt100 A and B), NE555 thresholds, LM741 slew rate / gain / swing, BC547 hFE
+  groups, the 2N2646 eta range, CRC water permittivity 80.2, E = 200 GPa (steel) / 68.9 GPa (6061-T6), gauge factor 2.0 and 376.73 ohm. The agent that
+  wrote them looked none of these up. Design values (LVDT drive, strain amplifier offset, ultrasonic delay, photodiode area, pump speed, UJT eta...)
+  are labelled "unsourced / illustrative" inside each lab and variant note.
+- Rows NOT counted though a lab exists: phase-shift-oscillator (row says "with a BJT", the lab draws an op-amp); langmuir-probe (row lists an RF
+  discharge the lab does not model).
+- Computational labs: the lab-wide caveat is that a model parameter (Hulthen screening length, tight-binding t = 1, Ising J = 1) is a model unit, not
+  a measured constant. schrodinger-screened-coulomb uses the exactly solvable Hulthen potential, not Yukawa, and says so.
