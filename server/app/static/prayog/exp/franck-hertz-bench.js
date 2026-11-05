@@ -33,8 +33,8 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
     var ft = S.mesh(new T.CylinderGeometry(0.009, 0.01, 0.006, 16), M.rubber);
     ft.position.set(f[0] * (OW / 2 - 0.02), 0.003, f[1] * (OD / 2 - 0.02)); oven.add(ft);
   });
-  var winM = new T.MeshPhysicalMaterial({ color: 0xcfd8df, roughness: 0.05, transmission: 0.82, thickness: 0.004,
-    transparent: true, opacity: 0.45 });
+  var winM = new T.MeshStandardMaterial({ color: 0xdfe6ea, roughness: 0.08, metalness: 0.0,
+    transparent: true, opacity: 0.16 });
   var win = S.mesh(new T.BoxGeometry(0.13, 0.15, 0.004), winM); win.position.set(0, 0.14, OD / 2 + 0.004);
   oven.add(win);
   var frame = S.mesh(new T.TorusGeometry(0.085, 0.004, 8, 4), M.iron);
@@ -240,7 +240,7 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
 
   return {
     camera: { pos: [-0.04, 1.0, 1.24], look: [-0.06, 0.13, -0.08] },
-    views: { oven: [[-0.34, 0.36, 0.26], [-0.4, 0.15, -0.14]], unit: [[0.3, 0.34, 0.3], [0.26, 0.08, -0.06]],
+    views: { oven: [[-0.22, 0.42, 0.36], [-0.4, 0.15, -0.14]], unit: [[0.3, 0.34, 0.3], [0.26, 0.08, -0.06]],
       bench: [[-0.04, 1.0, 1.24], [-0.06, 0.13, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'An atom can only take energy from an electron in the exact amount of one of its own jumps. Below the first excitation energy every collision is elastic and the current climbs with the accelerating voltage; the moment an electron has gained that energy it can lose all of it in one collision, arrives too slow to climb the retarding voltage, and the current falls. The pattern repeats, so the current peaks are one excitation potential apart.',
