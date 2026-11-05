@@ -22,7 +22,7 @@ TIER_C: tuple[tuple[str, str], ...] = (
     ("sign or stamp a completion or occupancy certificate", "Completion / Occupancy certificate licensed architect / authority deti hai; Hoola sirf packet jodta hai."),
     ("file a permission application", "Application file karna owner / licensee ka kaam hai (aapki DSC, aapke naam). Hoola file taiyaar karta hai, jama nahi karta."),
     ("certify RERA percentage completion", "RERA completion % certify karna promoter / architect / engineer ki declaration hai."),
-    ("certify RERA escrow withdrawal", "Escrow 70% withdrawal certificate CA / architect / engineer dete hain; Hoola sirf reconciliation banata hai."),
+    ("certify escrow withdrawal", "Escrow 70% withdrawal certificate CA / architect / engineer dete hain; Hoola sirf reconciliation banata hai."),
     ("accept or reject work on site", "Kaam ka inspection pass / reject site engineer / QA engineer karte hain; Hoola record rakhta hai."),
     ("accept a concrete cube", "Cube acceptance QA engineer ka decision hai (IS 456 criteria Hoola sirf DRAFT mein computing karta hai)."),
     ("approve a design", "Design approve karna client / PMC ka kaam hai."),
@@ -33,7 +33,9 @@ TIER_C: tuple[tuple[str, str], ...] = (
     ("issue a notice", "Notice issue karna (termination / delay / LD) aapke aur aapke advocate ke through hota hai; Hoola draft ke saath rukta hai."),
     ("issue a termination", "Termination notice aapke adhikaar mein hai; Hoola sirf draft aur record rakhta hai."),
     ("issue an LD deduction", "LD kaati ya maafi - yeh legal entitlement ka decision hai; Hoola sirf arithmetic dikhata hai."),
-    ("decide delay entitlement", "Delay entitlement ka nishkarsh code se nahi nikalta; Hoola as-planned vs as-built ka working paper banata hai."),
+    ("decide delay entitlement", "Delay entitlement ka nishkarsh code se nahi nikalta - woh commercial manager ke "
+     "working paper par advocate/counsel ka conclusion hota hai; Hoola as-planned vs as-built ka working paper "
+     "banata hai (notice-compliance ka hisaab saath)."),
     ("certify measurement", "Measurement certify karna billing engineer ka kaam hai; naap jaisa likha waisa rehta hai."),
     ("certify an RA bill", "RA bill ka certification / pass billing engineer / department karta hai; Hoola bill draft karta hai."),
     ("give a safety clearance", "Safety clearance safety officer deti hai; Hoola permit DRAFT + records rakhta hai."),

@@ -919,6 +919,58 @@ window.HoolaBuild = function (C) {
       }));
     };
     try { drawSign(await api('GET', base(o) + '/sign')); } catch (er) { sgbox.remove(); }
+    // v0.542 NAKSHA (Pillar K): her one line as a plan, approved and built ONE MODULE AT A TIME
+    const nkbox = document.createElement('section'); nkbox.className = 'stcol stnaksha'; box.appendChild(nkbox);
+    const againNaksha = async () => { try { drawNaksha(await api('GET', base(o) + '/naksha')); } catch (er) { toast(er.message, true); } };
+    const drawNaksha = nk => {
+      const mods = L(nk.modules), qs = L(nk.questions);
+      const built = mods.filter(m => m.state === 'built').length;
+      const STATE = {waiting: 'Waiting for you', approved: 'You said yes', built: 'Built', failed: 'Built, with problems', changed: 'Changed since it was built'};
+      nkbox.innerHTML = `<h4>The plan <span>${mods.length ? built + '/' + mods.length + ' built' : 'not made yet'}</span></h4>
+        <p class="stnote">Your one line becomes the whole app as a plan - who uses it, what it stores, what it does - and you say yes to ONE PIECE AT A TIME. Each piece says what you get, what it needs first, and what it will ask of you. Nothing is built before you agree to that piece.</p>
+        ${nk.one_line ? `<p class="stnote"><b>${esc(S(nk.one_line))}</b></p>` : ''}
+        <form class="stapp nkask" autocomplete="off"><div class="row"><input name="words" placeholder="${mods.length ? 'A change: riders ko bhi app chahiye' : 'kirana dukaan ki app, ghar pe delivery'}" maxlength="400"><button class="btn${mods.length ? '' : ' go'}" type="submit">${mods.length ? 'Change the plan' : 'Make the plan'}</button></div></form>
+        ${qs.length ? `<h5>Before building</h5><p class="stnote">Only questions whose answer changes what gets built.</p>${qs.map((q, i) => `<form class="stapp nkq" data-ask="${esc(S(q.ask))}"><div class="row"><label class="stnote" style="flex:1">${esc(S(q.ask))}<input name="said" maxlength="200"></label><button class="btn" type="submit">Answer</button></div></form>`).join('')}` : ''}
+        ${L(nk.user_types).length ? `<p class="stnote">Who uses it: ${L(nk.user_types).map(u => esc(S(u.label)) + (u.app && u.app !== 'main' ? ' (' + esc(S(u.app)) + ' app)' : '')).join(' · ')}</p>` : ''}
+        ${mods.map(m => `<div class="cnact">
+          <b>${esc(S(m.label))}</b> <span class="stnote">${esc(STATE[m.state] || S(m.state))}${m.stories ? ' · ' + m.stories + ' stories' : ''}</span>
+          <p class="stnote">${esc(S(m.why))}</p>
+          ${L(m.needs).length ? `<p class="stnote">Needs first: ${esc(L(m.needs).join(', '))}</p>` : ''}
+          ${L(m.setup).length ? `<p class="stnote">Will ask you for: ${esc(L(m.setup).join('; '))}</p>` : ''}
+          ${m.said ? `<p class="stnote">${esc(S(m.said))}</p>` : ''}
+          <div class="row">${m.state === 'waiting' || m.state === 'changed' ? `<button class="btn go" type="button" data-nkok="${esc(S(m.key))}">Yes, build this</button>` : ''}${m.state === 'approved' || m.state === 'failed' ? `<button class="btn go" type="button" data-nkbuild="${esc(S(m.key))}">Build it now</button>` : ''}</div>
+        </div>`).join('')}
+        ${L(nk.changelog).length ? `<h5>What changed</h5><ul class="stlines">${L(nk.changelog).slice(0, 8).map(x => `<li>${esc(S(x.at).slice(0, 16).replace('T', ' '))} · ${esc(S(x.said))}</li>`).join('')}</ul>` : ''}
+        <div data-nkout></div>`;
+      const out = nkbox.querySelector('[data-nkout]');
+      nkbox.querySelector('.nkask').addEventListener('submit', async e => {
+        e.preventDefault();
+        const w = e.target.words.value.trim();
+        if (!w) return;
+        out.textContent = 'Thinking…';
+        try { const v = await api('POST', base(o) + '/naksha/' + (mods.length ? 'revise' : 'plan'), {words: w}); out.textContent = S(v.says); againNaksha(); }
+        catch (er) { out.textContent = er.message; }
+      });
+      nkbox.querySelectorAll('.nkq').forEach(f => f.addEventListener('submit', async e => {
+        e.preventDefault();
+        out.textContent = 'Thinking…';
+        try { const v = await api('POST', base(o) + '/naksha/answer', {ask: f.dataset.ask, said: e.target.said.value.trim()}); out.textContent = S(v.says); againNaksha(); }
+        catch (er) { out.textContent = er.message; }
+      }));
+      nkbox.querySelectorAll('[data-nkok]').forEach(b => b.addEventListener('click', async () => {
+        try { toast((await api('POST', base(o) + '/naksha/approve', {module: b.dataset.nkok, hash: nk.hash})).says); againNaksha(); }
+        catch (er) { toast(er.message, true); }
+      }));
+      nkbox.querySelectorAll('[data-nkbuild]').forEach(b => b.addEventListener('click', async () => {
+        out.textContent = 'Building…';
+        try {
+          const v = await api('POST', base(o) + '/naksha/build', {module: b.dataset.nkbuild});
+          out.innerHTML = `<p class="stnote">${esc(S(v.says))}</p>${L(v.next_steps).length ? '<ul class="stlines">' + L(v.next_steps).map(x => '<li>' + esc(S(x)) + '</li>').join('') + '</ul>' : ''}`;
+          againNaksha();
+        } catch (er) { out.textContent = er.message; }
+      }));
+    };
+    try { drawNaksha(await api('GET', base(o) + '/naksha')); } catch (er) { nkbox.remove(); }
     // v0.540 JAANCH (Pillar J): the scenario tests, the rule checks, what real phones reported, and the staged rollout
     const jnbox = document.createElement('section'); jnbox.className = 'stcol stjaanch'; box.appendChild(jnbox);
     const againJaanch = async () => {

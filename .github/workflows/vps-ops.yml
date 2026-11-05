@@ -519,9 +519,10 @@ jobs:
                 # "GADBAD" / "KHATRA" anywhere in the output = the lab is not trustworthy, tell the developer.
                 echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab check 2>&1 | tail -40' ;;
               lab_try)
-                # RUN lab_setup FIRST after any v0.539+ deploy - the base image on the VPS is older than this code
-                # (PEP 668 + the commit-survives-setup fix live IN the image), and lab_setup now rebuilds it.
-                # v0.539 the lab on HER OWN repo, end to end: clone santosh-app, install its dependencies ONCE (network
+                # RUN lab_check (or lab_setup) FIRST after a deploy that bumps box.BASE_REV - the fixes live IN the
+                # image (v0.539 PEP 668 + commit-survives-setup, v0.542 Python 3.13), and lab_check now REBUILDS a
+                # stale image before it tests the walls. Repo snapshots are keyed on the base rev, so none is stale.
+                # v0.542 the lab on HER OWN repo, end to end: clone santosh-app, install its dependencies ONCE (network
                 # on, cached as an image snapshot), then run a small slice of the real suite with NO network. This is the
                 # same path a coding job takes, minus the model. First run installs deps (a few minutes); later runs reuse
                 # the snapshot. "PASS" here means the box can really run her code.

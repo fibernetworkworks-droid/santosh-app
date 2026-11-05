@@ -19882,3 +19882,182 @@ the four things it could not see. Credit in THIRD_PARTY_NOTICES.md (ideas + matc
 - Tests: `server/tests/test_v0541_seo_intel.py` (7).
 - NOT VERIFIED against live OpenAI / Gemini / Perplexity / Places / DataForSEO accounts: request + response shapes follow
   each vendor's docs. API answers can differ from what a person sees in the consumer apps - the screen says so.
+
+## v0.542.0 NAKSHA — the architect, App Sahayak Pillar K, Phase 62 (5 Nov 2026)
+
+Owner: "START PILLAR K". Pillars A–J each built an engine. This one is the architect that drives them, and it
+exists because of a failure that has nothing to do with code: **a long plan she nodded at once, built in one go,
+and only understood when it was finished and wrong.**
+
+### The spec may only promise what Hoola can build
+
+Her one line becomes the whole app as data: user types and which app each one uses, user stories, lists and fields
+with their relations, the brain, who may do what, screens, integrations, payments, notifications, and the order to
+build it in. Then `check()` refuses, **in code**, anything the engines have not got — a field type that does not
+exist, an app face v0.435 cannot make, a connector that is not one of v0.424's real packs, a part called
+`chatbot`. A spec that cannot be built is refused at the check, not discovered half-built. That is the whole
+difference between a plan and a brochure.
+
+### She approves module by module
+
+A module says what she GETS (in her words, not what the code does), what it needs built first, and **what it will
+ask of her** — a gateway key, a courier account — *before* she says yes. A module may only need one written before
+it, so the order always works. Her Haan is bound to the hash of the plan she was looking at, and if that module
+changes underneath her, **her approval does not carry over**: it goes back to waiting, because she agreed to a
+different thing.
+
+### A built module is proved, not declared
+
+Each module's own user stories become Pillar J scenario tests and are **run**. A module that does not pass is
+recorded as built-and-failing, never as done. The walk is generated in code and kept deliberately simple — somebody
+signs up, uses the module's list, and somebody else is REFUSED — because a generated test that tries to be clever
+about her words is a test nobody can read when it fails.
+
+### A change edits the spec, not the app
+
+`revise()` re-plans, diffs the parts of every module, and marks **only the ones that really changed**. An untouched
+module is left alone. A new module is added, a dropped one is reported, and every build writes one plain line of
+changelog.
+
+### Questions that change the build, and nothing else
+
+A question must name the module or part its answer changes, or the checker drops it with a warning. Curiosity is
+not a question.
+
+### Nothing is pretended to be done
+
+Anything needing HER credential — a payment gateway, a courier, an SMS sender — is never silently skipped: the
+module builds up to that point and the exact next step is named. v0.541 also taught this to the push part: **a
+thing that is not SET UP is not the module being broken.** On a server with no Firebase key, instant notifications
+become a next step and the app keeps its 15-minute check; before this, every such module would have read as failed.
+
+### Found while building it
+
+Pillar J's runner opened an HTTP socket to `127.0.0.1:8077` **even when it was itself that server** — so whether a
+scenario ran depended on the listening port, the worker count and the loopback, none of which have anything to do
+with her app being right. It now drives the same FastAPI app through the same routes in-process by default, says
+`where` it ran, and still goes over the wire when `base=` names a different server.
+
+### What is where
+
+`server/app/appmaker/architect.py`; routes `/api/apps/{ref}/naksha[/{what}]`; tool `app_banao action=naksha |
+naksha_build | naksha_badlo` + `app_dekho what=naksha` (approving a module is refused to the tool — it is her tap);
+console **The plan** box; phone `lib/ui/app_naksha.dart`. Tests `server/tests/test_v0542_naksha.py` (13), in
+`app-load.yml`.
+
+### Not built, said plainly
+
+The generated proof walk covers one list per module, not a whole multi-role journey — her richer stories are still
+written by Pillar J's own author. `screens` in a module is recorded as a next step, not a redraw: the design flow
+(v0.128) still owns screens. And this is the last pillar of `docs/COMPLEX_APPS_PLAN.md`, which means **every pillar
+A–K is now built and the plan's own gate is still unmet**: no proof app — school ERP, clinic, food delivery,
+marketplace, field-service CRM — has ever been built and used on a real phone. Phase 0 asked for that first.
+
+## v0.543.0 PRAYOGSHALA EK HI PYTHON — the box worked, and the first thing it found was real (owner: "DEPLOY DONE, LAB_SETUP DONE, LAB_TRY DONE - CHECK RESULT")
+
+**The v0.539 fixes held.** `lab_try` (vps-ops run 257) walked the whole road for the first time — cloned her repo,
+installed every dependency with the network on, committed the snapshot, and ran the real suite with no network, about
+seven minutes against nine seconds before. Both v0.539 defects (PEP 668, and an install that could not survive
+`docker commit`) are settled by evidence, not by argument.
+
+**Then it failed on something real**, at import:
+
+```
+E     File "/work/server/app/notebook/render.py", line 517
+E       out.append(f"<li>{inline(re.sub(r'^\s*[-*•]\s+', '', ln))}</li>")
+E   SyntaxError: f-string expression part cannot include a backslash
+```
+
+That line runs perfectly on her server. **PEP 701 allows a backslash inside an f-string expression from Python 3.12**,
+her server runs **3.13**, and Debian 12 ships `python3` as **3.11** — so the box was testing a *different language
+version than production*. Seven files in `server/app` carry that shape, so the box would have reported a fault in
+each of them. A lab on another Python does not test her code, it invents failures, which is worse than having no lab:
+a false red costs the trust the whole thing exists to earn.
+
+**The fix is the box, not her code.** The base image is now `python:3.13-slim-bookworm` — bookworm's apt still
+supplies node and jdk 17, 3.13 sits on `/usr/local/bin` (ahead of `/usr/bin` in the box's PATH), and
+`python3-dev` / `python3-venv` / `python3-pip` are dropped from apt so Debian's 3.11 cannot shadow it or hand out
+headers for the wrong version. `render.py` is untouched: it is valid Python for the version she runs, and rewriting
+seven call sites to suit a box that was wrong would have been the fault, not the fix.
+
+**Two guards so this cannot come back quietly:**
+- The self-test prints the box's Python beside the server's and says **GADBAD** when they differ, naming the image
+  revision — a mismatch is now a stage that fails, not a surprise eight minutes into a check.
+- A repo dependency snapshot is keyed on the **base revision** as well as the lock files
+  (`hoola-devlab:<repo>-r3-<deps_key>`). Without it her existing 3.11 snapshot would have been served on the fresh
+  3.13 base — cached, fast, and failing exactly as before. The same class of bug as v0.539's silent one: a cache
+  that answers for a world that no longer exists.
+
+Image revision 2 → 3, so `lab_check` **rebuilds** before it tests the walls (v0.539's staleness check doing its job
+on its first real occasion). vps-ops note updated to say `lab_check` first after a base bump.
+
+Tests: `test_v0456_devlab.py` +3 (the box runs the server's Python / her code is not rewritten to suit the box / a
+base change invalidates every repo snapshot), two existing pins healed to the new base and tag shape. 45 green in
+the lab suites.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has not passed. Three things are now proven by a real run (the
+clone, the dependency install, the sealed no-network check actually executing her suite), and the thing they were
+for — a green check on her own repo — has not happened yet. The next `lab_check` + `lab_try` is that proof.
+
+**RULE recorded:** a sandbox must match production in the things that decide whether code even parses. A lab that
+differs from production in language version reports faults that do not exist, and the first one it reported was in
+code that had been live for months.
+
+## v0.545.0 SCENES AS CHECKED DATA — the 12-script ceiling lifted (built as 0.456.0; docs/GAME_MOAT_PLAN.md §5.2, owner: "GO WITH THE CEILING")
+
+THE CEILING. Every Hoola game from v0.370 to now was at most 12 GDScript files (120 KB) on ONE plain root node,
+building every node in code. For match-3, idle, runner and puzzle games that is genuinely right — one engine plus a
+lot of Game Bible data IS the game. It is false for a platformer or a story game, where the game largely IS its
+scenes, so "Hoola can make a bigger game" was a claim the architecture could not keep. `server/app/gamedesk/scene.py`
+keeps it: scenes and animation become CHECKED DATA.
+
+THE RULE, AND WHY IT IS NOT NEGOTIABLE. **The model never writes a `.tscn`.** It writes a declarative spec; Hoola
+validates it in code and GENERATES the scene file. This was measured in Godot 4.7.2 BEFORE a line of the design was
+written: a `[sub_resource type="GDScript"]` embedded inside a `.tscn` RUNS, and the embedded script reached
+`DirAccess` — which `guard.py` has banned in every `.gd` file since v0.370. A scene the model could write freehand is
+a hole straight through the only thing protecting her games. So the hole is closed in THREE independent places:
+scripts attach only by FILENAME to a `.gd` file guard.py already checked; a spec carrying script source in any shape
+(a `source` / `code` / `gdscript` / `script/source` key, or the text signature) is refused by the checker; and the
+EMITTED text is re-scanned before it ships, because the generator being the only writer must not be the only defence.
+`guard.scene_problems()` scans every scene file the same way on the build path too.
+
+WHAT A SPEC MAY SAY (checked in code, never in a prompt): a tree of nodes from a 44-type allowlist — an unknown type
+does not error in Godot, it HANGS the load, so the allowlist is what keeps a typo from becoming a silent hang — each
+with a name, typed properties (the property table is a allowlist too: an unknown key is DROPPED and NAMED, never
+guessed), an optional script, a collision shape (rect / circle / capsule), AnimationPlayer tracks (value tracks, keys
+must go forward in time), and INSTANCES of another scene of the same game. Instancing is how content actually
+scales: one `coin.tscn` placed 200 times is data, not 200 scripts. Caps: 40 scenes, 300 nodes a scene, 2,000 nodes a
+game, 400 KB of scenes, 12 animations and 120 keys a track; instancing loops refused (Godot would never finish
+loading one); sibling names unique; `main.tscn` reserved for Hoola's own root.
+
+HOW IT IS PROVED, not claimed. `verify()` writes the generated scenes into a real project beside the guarded scripts
+and loads every one of them in the REAL engine, headless, with a `--quit-after` timer, and reports what came back —
+node count with instances expanded and the animation names found. Two findings from the live runs shaped the verdict:
+(1) a broken scene can HANG the load, so "never reached the end" is itself a failure; (2) an unknown node type does
+NOT make `instantiate()` fail — the engine logs `Cannot get class` / `A placeholder will be created instead` and
+hands back a scene with a plain Node where the real one should be. So `instantiate()` succeeding is NOT proof, and
+the log's own trouble signatures (`TROUBLE`) decide the verdict too. A placeholder is a silently broken game.
+
+THE LANE: `game_scenes` (action=list | propose | approve | reject). Her words → `ai.scene_spec` (a new SCENE system
+prompt that hands the model the design, the game's script filenames and the existing scene names, and takes back JSON
+only) → the checker → the generator → the real engine → a DRAFT she approves. A scene that did not load is saved as
+`failed` and cannot be approved. Only APPROVED scenes enter a build (`scene.for_game`, wired into `service._write`
+and recorded on the version row), and the whole path is wrapped so a scene problem can never stop a build — a game
+with no Studio project or no approved scene builds exactly as it did before.
+
+PROVED LIVE on Godot 4.7.2 while building this: a 25-node spec with a coin instanced 20 times instantiated to **65
+live nodes** (20 × 3 + 5 of its own) with the `idle` animation present, verdict PASS; and the broken-type scene the
+test plants is a FAIL for the right reason.
+
+NOT BUILT, said plainly: TileMaps (they need a TileSet and an atlas texture — that is art and a second pipeline), 3D
+scenes, and shaders. 2D node scenes with animation and instancing are what this ships. NOT VERIFIED: no real game of
+hers has been rebuilt with scenes yet — her first platformer is the live test.
+
+Files: NEW `server/app/gamedesk/scene.py` (checker, generator, real-engine `verify`, `GameScene` table +
+propose/approve/reject/view/for_game); `ai.py` (SCENE prompt + `scene_spec`, the GUIDE's SCENES block);
+`guard.py` (`scene_problems`, and `problems(scripts, scenes=None)` starts from it); `template.py`
+(`files(..., scenes=None)`); `service.py` (the `_scenes` hook, `_write(..., scenes=)`, `"scenes"` on the version row);
+`api.py` (`/api/gamestudio/{id}/scenes*`); `agent/gamedesk_tools.py` (`game_scenes`); `agent/admit.py`; `db.py`.
+Tests: NEW `tests/test_v0456_scenes.py` (12) — the 16 checker refusals including all three script-smuggling shapes,
+instancing (expanded node count, loops, unknown scene), animation tracks, caps, the generated `.tscn` shape, the real
+engine run, and a planted broken scene that must FAIL.
