@@ -140,11 +140,11 @@
         opts.forEach(function (o) { var op = el('option', {value: o[0], text: o[1]}); if (String(val || '') === o[0]) op.selected = true; box.appendChild(op); });
       });
     }
-    else if (f.type === 'photo' || f.type === 'file') {
-      box = el('input', {id: id, name: f.key, type: 'file', accept: f.type === 'photo' ? 'image/*' : 'image/*,application/pdf', 'data-kind': f.type});
+    else if (f.type === 'photo' || f.type === 'file' || f.type === 'video') {   // v0.570 + a lesson's video
+      box = el('input', {id: id, name: f.key, type: 'file', accept: {photo: 'image/*', video: 'video/mp4,video/quicktime'}[f.type] || 'image/*,application/pdf', 'data-kind': f.type});
       if (val) box.setAttribute('data-had', String(val));
     }
-    else box = el('input', {id: id, name: f.key, type: {number: 'number', phone: 'tel', email: 'email', date: 'date'}[f.type] || 'text',
+    else box = el('input', {id: id, name: f.key, type: {number: 'number', phone: 'tel', email: 'email', date: 'date', url: 'url'}[f.type] || 'text',
       inputmode: f.type === 'phone' ? 'numeric' : null, step: f.type === 'number' ? 'any' : null});
     if (f.required && f.type !== 'yes_no' && !(box.type === 'file' && val)) box.setAttribute('data-req', '1');
     if (val !== undefined && val !== null && box.type !== 'file') { if (f.type === 'yes_no') box.checked = !!val; else if (f.type !== 'ref') box.value = val; }
@@ -645,7 +645,16 @@
         var v = r[f.key];
         if (v === '' || v === null || v === undefined) return;
         var dd = el('dd');
-        if ((f.type === 'photo' || f.type === 'file') && v) {
+        if (f.type === 'video' && v) {                  // v0.570 a lesson video plays here (fetched with her login, so a locked course stays locked)
+          var vid = el('video', {controls: true, preload: 'metadata', 'class': 'hs-appx-video', 'aria-label': f.label});
+          blobOf('/file/' + encodeURIComponent(v)).then(function (b) { vid.src = URL.createObjectURL(b); }).catch(function () { dd.textContent = t.fail; });
+          dd.appendChild(vid);
+        } else if (f.type === 'url' && v) {
+          var yt = String(v).match(/^https:\/\/(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{6,20})/);
+          if (yt) dd.appendChild(el('iframe', {src: 'https://www.youtube-nocookie.com/embed/' + yt[1], title: f.label, loading: 'lazy',
+            allow: 'encrypted-media; picture-in-picture', allowfullscreen: true, 'class': 'hs-appx-video'}));
+          else dd.appendChild(el('a', {href: String(v), target: '_blank', rel: 'noopener', text: String(v)}));
+        } else if ((f.type === 'photo' || f.type === 'file') && v) {
           var a = el('a', {href: '#', text: t.file + ' ↗'});
           a.addEventListener('click', function (e) { e.preventDefault(); blobOf('/file/' + encodeURIComponent(v)).then(function (b) { window.open(URL.createObjectURL(b), '_blank', 'noopener'); }).catch(function (er) { alert(er.message); }); });
           if (f.type === 'photo') blobOf('/file/' + encodeURIComponent(v)).then(function (b) { dd.insertBefore(el('img', {src: URL.createObjectURL(b), alt: f.label, 'class': 'hs-appx-img'}), dd.firstChild); }).catch(function () {});
@@ -657,6 +666,14 @@
       });
       if (r.created) { dl.appendChild(el('dt', {text: t.when})); dl.appendChild(el('dd', {text: new Date(r.created).toLocaleString()})); }
       main.appendChild(dl);
+      if (c.document) {                                 // v0.570 the row's PDF (a certificate), only when the server agrees
+        main.appendChild(el('p', {}, [btn(c.document + ' (PDF)', 'btn-primary', function (ev) {
+          var b = ev.target; b.disabled = true;
+          blobOf('/c/' + encodeURIComponent(c.key) + '/' + encodeURIComponent(id) + '/document').then(function (bl) {
+            var a = el('a', {href: URL.createObjectURL(bl), download: c.document + '.pdf'}); document.body.appendChild(a); a.click(); a.remove();
+          }).catch(function (er) { alert(er.message); }).then(function () { b.disabled = false; });
+        })]));
+      }
       rowActions(main, c, r, function () { go('c/' + c.key + '/' + id + '?' + Date.now()); });
       var acts = el('div', {'class': 'btns'});
       if (mayEdit) acts.appendChild(btn(t.edit, 'btn-ghost', function () { go('c/' + c.key + '/' + id + '/edit'); }));

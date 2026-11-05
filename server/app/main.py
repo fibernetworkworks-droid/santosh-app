@@ -8939,8 +8939,33 @@ async def site_app_file(site_id: str, fid: str, request: Request):
     except W.AppError as e:
         return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
     from fastapi.responses import FileResponse
-    return FileResponse(path, media_type="application/pdf" if str(path).endswith(".pdf") else "image/jpeg",
-                        headers={**_SITE_APP_CORS, "Cache-Control": "private, max-age=300"})
+    import mimetypes as _mt                          # v0.570 a lesson's video plays with its own type (was always image/jpeg)
+    kind = "application/pdf" if str(path).endswith(".pdf") else (_mt.guess_type(str(path))[0] or "image/jpeg")
+    return FileResponse(path, media_type=kind, headers={**_SITE_APP_CORS, "Cache-Control": "private, max-age=300"})
+
+
+@app.get("/api/site-app/{site_id}/c/{key}/{row_id}/document")
+async def site_app_document(site_id: str, key: str, row_id: str, request: Request):
+    """v0.570 the row's PDF (a course certificate) - only for someone who may read that row, only when its shart holds."""
+    from .appmaker.logic import engine as LE
+    from .site import applink as AL
+    from .site import service as S
+    from .site import webapp as W
+
+    def go():
+        r, _ = S.public_app(site_id)
+        p = AL.project(r)
+        if p is None:
+            raise W.AppError("not found", 404)
+        return LE.document_pdf(p, key, row_id, AL._who(site_id, p, _site_tok(request)))
+    try:
+        pdf, title = await asyncio.to_thread(go)
+    except W.AppError as e:
+        return JSONResponse({"ok": False, "error": str(e)}, status_code=e.code, headers=_SITE_APP_CORS)
+    name = re.sub(r"[^A-Za-z0-9_-]+", "-", title)[:60].strip("-") or "document"
+    return Response(content=pdf, media_type="application/pdf",
+                    headers={**_SITE_APP_CORS, "Cache-Control": "private, no-store",
+                             "Content-Disposition": f'attachment; filename="{name}.pdf"'})
 
 
 @app.post("/api/site-app/{site_id}/fn/{name}")

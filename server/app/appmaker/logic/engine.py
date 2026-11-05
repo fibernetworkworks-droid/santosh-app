@@ -1298,3 +1298,106 @@ def _save_ran(r: AppProject, ran: dict[str, str]) -> None:
         if isinstance(be.get("logic"), dict):
             be["logic"]["ran"] = ran
     BE.patch_backend(r, fn=put)
+
+
+# ---------------------------------------------------------------- v0.570 subscriptions -> a pass row the gates can read
+SUB_ACTIVE = ("authenticated", "activated", "charged", "resumed")
+SUB_ENDED = ("halted", "cancelled", "completed", "paused")
+
+
+def subscription_event(r: AppProject, member: str, plan_name: str, status: str) -> str:
+    """Her AutoPay plan's state, kept as ONE row per member + plan in the declared subscription_list (status Active /
+    Ended), owned by the member - so a gate ('lessons only with an Active membership') reads it like any other row.
+    Only the gateway's own events reach here (pay._sub_event after the signed webhook); a phone can never write it,
+    because the list is created by admin only in a sensible spec and this path is the system's."""
+    sp = spec_of(r)
+    coll = (sp or {}).get("subscription_list") or ""
+    if not coll or not member:
+        return ""
+    want = "Active" if status in SUB_ACTIVE else ("Ended" if status in SUB_ENDED else "")
+    if not want:
+        return ""
+    from sqlalchemy import select as _sel
+    with session() as s:
+        rows = s.scalars(_sel(W.SiteAppRow).where(W.SiteAppRow.site_id == site(r), W.SiteAppRow.coll == coll,
+                                                  W.SiteAppRow.owner == member)).all()
+        hit = next((x.id for x in rows if str(_j(x.data, {}).get("plan") or "") == plan_name), "")
+    if hit:
+        cur = load(r, hit, coll) or {}
+        if str(cur.get("status") or "") != want:
+            system_update(r, coll, hit, {"status": want}, f"subscription {status}")
+        return hit
+    if want != "Active":
+        return ""
+    return system_create(r, coll, {"plan": plan_name, "status": "Active"}, member, f"subscription {status}")
+
+
+# ---------------------------------------------------------------- v0.570 a document (certificate) made from a row
+def document_pdf(r: AppProject, coll: str, row_id: str, w: W.Who) -> tuple[bytes, str]:
+    """The row's PDF, only for someone who may read that row now, and only when its `when` holds (a certificate only
+    for a passed attempt). Every value comes from the row through the checked template - nothing typed by a model."""
+    sp = spec_of(r)
+    d = next((x for x in (sp or {}).get("documents", []) if x["coll"] == coll), None)
+    if d is None:
+        raise W.AppError("Is list ka koi document nahi.", 404)
+    raw = _raw(r, row_id)
+    sch = _schema(r)
+    cc = W.coll(sch, coll)
+    if raw is None or raw.coll != coll or not (w.owner or W._can_read(cc, w, raw)):
+        raise W.AppError("not found", 404)
+    c = compiled(r)
+    row = load(r, row_id, coll) or {}
+    if d.get("when"):
+        try:
+            ok = L.evaluate(d["when"], env(r, c, coll, row, w, None), c["fns"])
+        except (L.LogicError, L.Fail):
+            ok = False
+        if not ok:
+            raise W.AppError("Yeh document abhi nahi ban sakta (shart poori nahi).", 409)
+    title = _tmpl(r, c, coll, row, None, w, d["title"])
+    lines = [_tmpl(r, c, coll, row, None, w, x) for x in d["lines"]]
+    return _pdf(r, title, lines, d.get("signer") or "", row_id), title
+
+
+def _pdf(r: AppProject, title: str, lines: list[str], signer: str, row_id: str) -> bytes:
+    import io
+    from reportlab.lib.pagesizes import A4, landscape
+    from reportlab.lib.units import mm
+    from reportlab.pdfgen import canvas
+    buf = io.BytesIO()
+    w, h = landscape(A4)
+    cv = canvas.Canvas(buf, pagesize=(w, h))
+    cv.setTitle(title[:120])
+    cv.setLineWidth(3)
+    cv.rect(12 * mm, 12 * mm, w - 24 * mm, h - 24 * mm)
+    cv.setLineWidth(0.8)
+    cv.rect(16 * mm, 16 * mm, w - 32 * mm, h - 32 * mm)
+    cv.setFont("Helvetica-Bold", 30)
+    cv.drawCentredString(w / 2, h - 48 * mm, title[:60])
+    cv.setFont("Helvetica", 15)
+    y = h - 72 * mm
+    for ln in lines:
+        for part in _wrap(ln, 90):
+            cv.drawCentredString(w / 2, y, part)
+            y -= 9 * mm
+    cv.setFont("Helvetica", 11)
+    cv.drawString(26 * mm, 30 * mm, f"{(r.name or '')[:60]}")
+    if signer:
+        cv.line(w - 96 * mm, 36 * mm, w - 26 * mm, 36 * mm)
+        cv.drawCentredString(w - 61 * mm, 30 * mm, signer[:40])
+    cv.setFont("Helvetica", 8)
+    cv.drawString(26 * mm, 20 * mm, f"No. {row_id}")
+    cv.showPage()
+    cv.save()
+    return buf.getvalue()
+
+
+def _wrap(s: str, n: int) -> list[str]:
+    out, cur = [], ""
+    for word in str(s).split():
+        if len(cur) + len(word) + 1 > n and cur:
+            out.append(cur)
+            cur = word
+        else:
+            cur = (cur + " " + word).strip()
+    return out + ([cur] if cur else [])

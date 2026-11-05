@@ -1215,7 +1215,8 @@ def security_headers(form_endpoint: str = "") -> dict[str, str]:
     if m:
         connect += " " + m.group(0)
     ts = " https://challenges.cloudflare.com" if turnstile_key() else ""     # v0.551 Turnstile only when it is on
-    return {"Content-Security-Policy": ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
+    return {"Content-Security-Policy": ("default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; "   # v0.570 app photos / lesson videos arrive as blob: (fetched with her login)
+                                        "style-src 'self' 'unsafe-inline'; "
                                         f"script-src 'self'{ts}; font-src 'self'; connect-src {connect}; frame-ancestors 'self'; "
                                         f"frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com{ts}; "
                                         "base-uri 'self'; form-action 'self'; object-src 'none'"),

@@ -1063,9 +1063,31 @@ def file_for(r: AppProject, fid: str, w: W.Who):
     f = (_files(r) / (fid + (meta.get("ext") or (".pdf" if meta.get("kind") == "pdf" else ".jpg")))) if meta is not None else None
     if f is None or not f.exists():
         raise W.AppError("not found", 404)
-    if not (meta.get("public") or w.staff or (w.id and meta.get("owner") == w.id)):
+    if not (meta.get("public") or w.staff or (w.id and meta.get("owner") == w.id) or _readable_via_row(r, fid, w)):
         raise W.AppError("not found", 404)
     return f
+
+
+def _readable_via_row(r: AppProject, fid: str, w: W.Who) -> bool:
+    """v0.570 a file the teacher uploaded into a lesson is hers to watch exactly while she may read that lesson (a gated
+    course: only with an active pass) - the row's own read rule decides, never the file alone."""
+    if not w.id or not re.fullmatch(r"[\w-]{6,64}", fid or ""):
+        return False
+    from sqlalchemy import select as _sel
+    sch = schema(r)
+    with session() as s:
+        hits = s.scalars(_sel(W.SiteAppRow).where(W.SiteAppRow.site_id == bid(r), W.SiteAppRow.data.like(f'%"{fid}"%')).limit(20)).all()
+        for x in hits:
+            s.expunge(x)
+    for x in hits:
+        try:
+            c = W.coll(sch, x.coll)
+        except W.AppError:
+            continue
+        files = {f["key"] for f in c["fields"] if f["type"] in EXTRA_TYPES}
+        if any(_j(x.data, {}).get(k) == fid for k in files) and W._can_read(c, w, x):
+            return True
+    return False
 
 
 def media_link(r: AppProject, fid: str, w: W.Who) -> dict[str, Any]:

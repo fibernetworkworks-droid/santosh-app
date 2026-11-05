@@ -11,6 +11,9 @@ be["logic"] = {
   "schedules":  [{name, every: hourly|daily HH:MM|weekly mon HH:MM|monthly D HH:MM, coll, where, do, once_per_row}]
   "functions":  [{name, params, body, tests: [{args, expect} | {args, fails}], callable}]  locked custom logic
   "labels":     {coll: field}                                                            what a row is called
+  "gates":      [{coll, pass, via, pass_field, match: {field: value}}]   v0.570 read only with an active pass (a course)
+  "subscription_list": coll                                             v0.570 her AutoPay plans -> one row per member
+  "documents":  [{coll, title, lines: ["... {{expr}} ..."], signer, when}]  v0.570 a PDF from a row (a certificate)
 }
 Everything Opus (or the console) writes passes `check()`: every list / field / state / name must exist, every
 formula and function must parse, formulas may not loop on each other, every function's own tests must pass. Only a
@@ -27,7 +30,7 @@ WHO = ("member", "row_owner", "assigned", "staff", "admin", "owner")
 ON_DELETE = ("restrict", "cascade", "nullify")
 NOTIFY = ("owner", "staff", "admins", "row_owner", "assigned")
 CAPS = {"relations": 24, "formulas": 60, "rules": 60, "unique": 20, "workflows": 12, "triggers": 60, "schedules": 20,
-        "functions": 30, "transitions": 30, "actions": 8, "tests": 12}
+        "functions": 30, "transitions": 30, "actions": 8, "tests": 12, "gates": 12, "documents": 6}
 EVERY = re.compile(r"^(hourly|daily (\d{1,2}):(\d{2})|weekly (mon|tue|wed|thu|fri|sat|sun) (\d{1,2}):(\d{2})|"
                    r"monthly (\d{1,2}) (\d{1,2}):(\d{2}))$")
 TEMPLATE = re.compile(r"\{\{(.+?)\}\}")
@@ -113,7 +116,8 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
     """Whatever was written -> {spec (clean), errors, warnings, summary}. errors = [] means it can be applied."""
     ck = Checker(sch)
     raw = raw if isinstance(raw, dict) else {}
-    out: dict[str, Any] = {k: [] for k in ("relations", "formulas", "rules", "unique", "workflows", "triggers", "schedules", "functions")}
+    out: dict[str, Any] = {k: [] for k in ("relations", "formulas", "rules", "unique", "workflows", "triggers", "schedules", "functions",
+                                           "gates", "documents")}
     out["labels"] = {}
     for k, cap in CAPS.items():
         if k in raw and isinstance(raw[k], list) and len(raw[k]) > cap:
@@ -445,6 +449,78 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
         sd["do"] = acts
         out["schedules"].append(sd)
 
+    # ---- v0.570 gates: a list read only through a pass list (enrollment / membership) - courses, members-only content
+    for i, g in enumerate((raw.get("gates") or [])[:CAPS["gates"]]):
+        if not isinstance(g, dict):
+            continue
+        coll, pk = slug(g.get("coll")), slug(g.get("pass"))
+        where = f"gate {coll or i + 1}"
+        if not ck.has_coll(where, coll) or not ck.has_coll(where, pk):
+            continue
+        if coll == pk:
+            ck.err(where, "list apna hi pass nahi ho sakti")
+            continue
+        via, pf = slug(g.get("via")), slug(g.get("pass_field"))
+        if via and (via not in ck.fields(coll) or not pf or pf not in ck.fields(pk)):
+            ck.err(where, "via (is list ka field) aur pass_field (pass list ka field) dono asli hone chahiye")
+            continue
+        match = g.get("match") if isinstance(g.get("match"), dict) else {}
+        bad = [k for k in match if slug(k) not in ck.fields(pk)]
+        if bad or not match:
+            ck.err(where, "match mein pass list ke asli field + value chahiye (jaise {status: Active})")
+            continue
+        if any(x["coll"] == coll for x in out["gates"]):
+            ck.err(where, "ek list ka ek hi gate")
+            continue
+        out["gates"].append({"coll": coll, "pass": pk, "via": via, "pass_field": pf if via else "",
+                             "match": {slug(k): str(v)[:60] for k, v in match.items()}})
+
+    # ---- v0.570 subscription_list: her AutoPay plans keep one row per member here (plan + status Active / Ended)
+    sl = raw.get("subscription_list")
+    if sl:
+        coll = slug(sl.get("coll") if isinstance(sl, dict) else sl)
+        where = f"subscription_list {coll}"
+        if ck.has_coll(where, coll):
+            fl = ck.fields(coll)
+            st = fl.get("status") or {}
+            opts = set(st.get("options") or [])
+            if "plan" not in fl or "status" not in fl:
+                ck.err(where, "list mein 'plan' aur 'status' field chahiye")
+            elif st.get("type") == "choice" and not {"Active", "Ended"} <= opts:
+                ck.err(where, "status ke options mein Active aur Ended chahiye")
+            else:
+                out["subscription_list"] = coll
+
+    # ---- v0.570 documents: a PDF made from a row (a certificate on completion), only for whoever may read that row
+    for i, d in enumerate((raw.get("documents") or [])[:CAPS["documents"]]):
+        if not isinstance(d, dict):
+            continue
+        coll = slug(d.get("coll"))
+        where = f"document {coll or i + 1}"
+        if not ck.has_coll(where, coll):
+            continue
+        lines = [str(x)[:300] for x in (d.get("lines") or []) if str(x).strip()][:12]
+        if not lines:
+            ck.err(where, "lines chahiye (jaise 'This certifies that {{student_name}} completed {{course}}')")
+            continue
+        ok = True
+        for ln in lines + [str(d.get("title") or "")]:
+            for m in TEMPLATE.finditer(ln):
+                if ck.expr(where, m.group(1), coll) is None:
+                    ok = False
+        if not ok:
+            continue
+        dd = {"coll": coll, "title": str(d.get("title") or "Certificate")[:80], "lines": lines,
+              "signer": str(d.get("signer") or "")[:80]}
+        if str(d.get("when") or "").strip():
+            if ck.expr(f"{where} when", d["when"], coll) is None:
+                continue
+            dd["when"] = str(d["when"])[:500]
+        if any(x["coll"] == coll for x in out["documents"]):
+            ck.err(where, "ek list ka ek hi document")
+            continue
+        out["documents"].append(dd)
+
     for k in ("formulas", "rules", "triggers", "schedules"):     # nothing parsed is kept in the stored spec
         for x in out[k]:
             x.pop("_ast", None)
@@ -585,6 +661,14 @@ def summary(spec: dict[str, Any]) -> list[str]:
         out.append(f"Samay par ({s['every']}): {s['label']}")
     for f in spec.get("functions", []):
         out.append(f"Custom kaam: {f['label']}({', '.join(f['params'])}) - band dabbe mein, {len(f['tests'])} test")
+    for g in spec.get("gates", []):                     # v0.570
+        m = ", ".join(f"{k} = {v}" for k, v in g["match"].items())
+        out.append(f"Taala: '{g['coll']}' sirf staff ko, ya us member ko jiski '{g['pass']}' entry mein {m} ho"
+                   + (f" aur wahi {g['via']} ho" if g["via"] else ""))
+    if spec.get("subscription_list"):
+        out.append(f"Subscription: AutoPay chalu hote hi '{spec['subscription_list']}' mein member ki entry Active, band hote hi Ended")
+    for d in spec.get("documents", []):
+        out.append(f"PDF: '{d['coll']}' ki har entry ka '{d['title']}' - sirf wahi download kar sake jo woh entry dekh sakta hai")
     return out
 
 
@@ -616,6 +700,16 @@ def decorate_schema(sch: dict[str, Any], spec: dict[str, Any] | None) -> dict[st
     for c, fk in (spec.get("labels") or {}).items():
         if c in colls:
             colls[c]["label_field"] = fk
+    for g in spec.get("gates", []):                     # v0.570 the list is read through its pass list
+        c = colls.get(g["coll"])
+        if c is not None:
+            c["rules"] = {**c.get("rules", {}), "read": "gated"}
+            c["gate"] = {k: g[k] for k in ("pass", "via", "pass_field", "match")}
+    for d in spec.get("documents", []):
+        if d["coll"] in colls:
+            colls[d["coll"]]["document"] = d["title"]
+    if spec.get("subscription_list"):
+        sch["subscription_list"] = spec["subscription_list"]
     sch["approvals"] = any(t.get("approval") for w in spec.get("workflows", []) for t in w["transitions"])
     sch["functions"] = [{"name": f["name"], "label": f["label"], "params": f["params"]}
                         for f in spec.get("functions", []) if f.get("callable")]

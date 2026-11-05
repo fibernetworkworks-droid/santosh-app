@@ -29,9 +29,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
 
-TYPES = ("text", "long_text", "number", "phone", "email", "date", "choice", "yes_no")
+TYPES = ("text", "long_text", "number", "phone", "email", "date", "choice", "yes_no", "url")   # v0.570 url = a https link (a YouTube lesson)
 CREATE = ("public", "member", "admin")
-READ = ("public", "members", "own", "admin")
+READ = ("public", "members", "own", "admin", "gated")   # v0.570 gated = through her pass list (logic `gates`)
 WRITE = ("own", "admin")
 ROLES = ("member", "staff", "admin")
 MAX_COLLECTIONS, MAX_FIELDS, MAX_ROW = 12, 24, 8000
@@ -342,6 +342,10 @@ def _value(f: dict[str, Any], v: Any) -> Any:
             return datetime.strptime(s[:10], "%Y-%m-%d").date().isoformat()
         except ValueError:
             raise AppError(f"{f['label']}: tareekh YYYY-MM-DD.")
+    if t == "url":                                  # v0.570 https only, no spaces / quotes (it is shown as a link / player)
+        if not re.fullmatch(r"https://[^\s\"'<>]{3,500}", s):
+            raise AppError(f"{f['label']}: https:// se shuru hone wala poora link chahiye.")
+        return s
     if t == "choice":
         if s not in f["options"]:
             raise AppError(f"{f['label']}: in mein se chuniye: {', '.join(f['options'])}.")
@@ -366,7 +370,34 @@ def _clean(c: dict[str, Any], data: dict[str, Any], who: Who, partial: bool = Fa
 
 def _can_read(c: dict[str, Any], who: Who, row: SiteAppRow) -> bool:
     r = c["rules"]["read"]
+    if r == "gated" and not who.staff:                  # v0.570 a lesson only while she holds an active pass for it
+        return bool(who.id) and _gate_ok(c.get("gate") or {}, who, row)
     return who.staff or r == "public" or (r == "members" and who.m is not None) or (r == "own" and who.id and row.owner == who.id)
+
+
+def _gate_ok(g: dict[str, Any], who: Who, row: SiteAppRow) -> bool:
+    """v0.570 GATE: the reader owns a row in the pass list (an enrollment / membership) whose `match` values all hold,
+    and - when the gate names `via` - that pass points at the same parent this row points at (one course's lessons).
+    No gate written = nobody but staff (never 'open by default')."""
+    pk = str(g.get("pass") or "")
+    if not pk:
+        return False
+    memo = who.__dict__.setdefault("_gate_memo", {})
+    k = (row.site_id, pk)
+    if k not in memo:
+        with session() as s:
+            memo[k] = [json.loads(x or "{}") for x in s.scalars(select(SiteAppRow.data).where(
+                SiteAppRow.site_id == row.site_id, SiteAppRow.coll == pk, SiteAppRow.owner == who.id)).all()]
+    want = {str(a): str(b) for a, b in (g.get("match") or {}).items()}
+    via, pf = str(g.get("via") or ""), str(g.get("pass_field") or "")
+    target = str(json.loads(row.data or "{}").get(via) or "") if via else ""
+    for d in memo[k]:
+        if any(str(d.get(a, "")) != b for a, b in want.items()):
+            continue
+        if via and (not target or str(d.get(pf) or "") != target):
+            continue
+        return True
+    return False
 
 
 def _can_write(c: dict[str, Any], who: Who, row: SiteAppRow, op: str) -> bool:
@@ -407,7 +438,7 @@ def create(site_id: str, schema: dict[str, Any], key: str, data: dict[str, Any],
 def rows(site_id: str, schema: dict[str, Any], key: str, who: Who, limit: int = 200) -> list[dict[str, Any]]:
     c = coll(schema, key)
     r = c["rules"]["read"]
-    if not who.staff and (r == "admin" or (r in ("members", "own") and who.m is None)):
+    if not who.staff and (r == "admin" or (r in ("members", "own", "gated") and who.m is None)):
         _deny("Pehle login kijiye." if who.m is None else "Iski ijaazat nahi.", 401 if who.m is None else 403)
     with session() as s:
         q = select(SiteAppRow).where(SiteAppRow.site_id == site_id, SiteAppRow.coll == key)
