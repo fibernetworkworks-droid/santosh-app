@@ -130,14 +130,16 @@ APP_TOOLS = [
         "restaurant, seller) / staff -> its own plan card next (same accounts, orders, rules; nothing copied); partner + pdo "
         "approve|refuse|remove decides a partner's application (ONLY on her words; a shop needs shop=<which shop row>). Partners "
         "apply from their own app; a rider sees only ready jobs + his own, a shop only its own orders, never a customer's phone. "
-        "The web admin link for her staff is in app_dekho what=family. jaanch step=stories|keep|run|cases|rules|all|load = v0.540 Pillar J: Opus writes scenario tests from her user stories (a closed set of verbs, checked against her real lists - it cannot invent a field), her tap keeps them, and `run` PLAYS them over HTTP against a throwaway twin of her app (never her live data): sign-up, order, read as another customer (which must be REFUSED), status, rating. rules = every rule / formula / function through the real engine. load = hundreds of customers at once. flag key=<name> on=true|false percent=<n> = a feature switch that turns something off with NO new build (the only rollback that works in minutes); flag with no key lists them. rollout = the Play staged release (read it; start / advance / rollback are her tap in the app, halt is allowed here when something is going wrong). "
+        "The web admin link for her staff is in app_dekho what=family. kharcha job=build|ios|logic|naksha|jaanch = v0.546 what that job cost HER last times (her own median, never a number from a table) and what this month stands at - say it BEFORE starting a big job. naksha instruction=<her one line> = v0.542 Pillar K THE ARCHITECT: her words become the WHOLE app as a spec - user types and which app each uses, user stories, lists + fields, the brain, who may do what, connectors, payments, notifications - split into MODULES she approves ONE AT A TIME (her tap, never the tool's). The spec may only promise what Hoola can really build: an invented field type, connector or app face is refused at the check. naksha_build module=<key> builds ONE approved module through the real engines and PROVES it with its own stories as Pillar J tests. naksha_badlo instruction=<her change> edits the spec and marks only the modules it touches for rebuilding. Read it with app_dekho what=naksha. jaanch step=stories|keep|run|cases|rules|all|load = v0.540 Pillar J: Opus writes scenario tests from her user stories (a closed set of verbs, checked against her real lists - it cannot invent a field), her tap keeps them, and `run` PLAYS them over HTTP against a throwaway twin of her app (never her live data): sign-up, order, read as another customer (which must be REFUSED), status, rating. rules = every rule / formula / function through the real engine. load = hundreds of customers at once. flag key=<name> on=true|false percent=<n> = a feature switch that turns something off with NO new build (the only rollback that works in minutes); flag with no key lists them. rollout = the Play staged release (read it; start / advance / rollback are her tap in the app, halt is allowed here when something is going wrong). "
         "Read them with app_dekho what=data / members."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["new", "answer", "plan_ok", "look", "change", "approve", "android", "stop", "resume", "delete",
                                                  "data", "role", "fix_crash", "rollback", "data_change", "store", "ios", "appstore", "github", "match", "bhasha", "gst", "credit_note", "stock", "coupon", "khata", "delivery", "hisaab", "variants", "turant",
                                                  "logic", "logic_switch", "approval", "logic_run",
                                                  "data_safety", "backup_now", "limits", "own_db", "family", "login",
-                                                 "security_check", "jaanch", "flag", "rollout"]},
+                                                 "security_check", "jaanch", "flag", "rollout",
+                                                 "naksha", "naksha_ok", "naksha_build", "naksha_badlo",
+                                                 "kharcha"]},
          "app": {"type": "string", "description": "app number (A-0001) or name; empty = the latest"},
          "brief": {"type": "string"}, "name": {"type": "string"}, "goal": {"type": "string"}, "style": {"type": "string"},
          "answers": {"type": "object"}, "index": {"type": "integer"}, "colors_from": {"type": "integer"},
@@ -160,6 +162,9 @@ APP_TOOLS = [
          "step": {"type": "string", "description": "action=jaanch: stories|keep|run|cases|rules|all|load (default all); "
                                                    "action=rollout: start|advance|halt|rollback"},
          "key": {"type": "string", "description": "action=flag: the switch's name (a-z, _)"},
+         "module": {"type": "string", "description": "action=naksha_ok / naksha_build: which module of the naksha"},
+         "job": {"type": "string", "description": "action=kharcha: build|ios|logic|naksha|jaanch|design - what the "
+                                                  "next big job cost her last times"},
          "percent": {"type": "integer", "description": "action=flag: give it to this % of users (default 100)"},
          "customers": {"type": "integer", "description": "action=jaanch step=load: how many at once (default 200)"},
          "at": {"type": "string", "description": "action=data_safety: a moment YYYY-MM-DDTHH:MM (IST) to preview a restore to"},
@@ -206,12 +211,12 @@ APP_TOOLS = [
         "(q = her words -> the best precise app idea + 2 near ones + how many ideas exist for that business; field / goal / "
         "aud filter; offset pages through them; idea = one idea's full detail). Show ideas to her as 2-3 short lines (name + "
         "the special thing) and ask which one; then app_banao action=new idea=<id>." " data (app; coll = one list: its rows, newest first - the real orders / bookings / requests her app's users made, with status) | "
-        "members (app: the app's accounts with their role). logic (app: v0.382 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps). jaanch (app: v0.540 Pillar J - the scenario tests written from her user stories and what the last run said, the rule / formula checks, the load test, and the crashes AND ANRs real phones reported; `not_checked` names what has never been run - read this before telling her an app is ready). rollout (app: the Play staged release - which version is at what % of users, and her feature switches, which turn a feature off with no new build)."),
+        "members (app: the app's accounts with their role). logic (app: v0.382 its business logic in plain lines, the draft waiting for her tap, approvals waiting, the last automatic actions). ios (app: the iPhone build: status, screens, simulator check, TestFlight). appstore (app: App Store steps, listing, App Privacy answers, one-time steps). jaanch (app: v0.540 Pillar J - the scenario tests written from her user stories and what the last run said, the rule / formula checks, the load test, and the crashes AND ANRs real phones reported; `not_checked` names what has never been run - read this before telling her an app is ready). chaal (app: v0.546 how the app is RUNNING - people, orders, how fast its backend answers (p50 / p95, estimated from bins), what share of calls fail, crashes + ANRs from real phones, what it has cost her in 30 days, how full it is, and the alerts a rule says are worth telling her; `not_measured` names what has no numbers yet. Read this before telling her an app is fine). naksha (app: v0.542 the architect's plan - every module with what it gives her, what it needs first, what setup it will ask of her, whether it is waiting / approved / built / changed, and the plain changelog). rollout (app: the Play staged release - which version is at what % of users, and her feature switches, which turn a feature off with no new build)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["apps", "app", "checks", "spec", "library", "brief", "understand", "design_system",
                                              "archetypes", "capabilities", "login", "blueprint", "schema", "android", "ideas",
                                              "data", "members", "crashes", "store", "ios", "appstore", "logic", "family",
-                                             "login", "jaanch", "rollout"]},
+                                             "login", "jaanch", "rollout", "naksha", "chaal"]},
          "app": {"type": "string"}, "q": {"type": "string"}, "script": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "aud": {"type": "string"}, "offset": {"type": "integer"},
          "idea": {"type": "string"}, "coll": {"type": "string"}},
@@ -450,6 +455,33 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             raise ToolError(str(e))
         return {k: v.get(k) for k in ("at", "platform", "build", "pass", "warn", "fail", "not_checked", "ok", "blocks")} | \
             {"rows": [{kk: x.get(kk) for kk in ("gate", "check", "state", "say")} for x in v["rows"]]}
+    if action == "kharcha":                   # v0.546 CHALTA KAAM: what the next big job cost HER last times
+        from ..appmaker import backend as BE
+        from ..appmaker import ops as OPS
+        from ..site import webapp as W
+        try:
+            return OPS.estimate(BE.by_key_or_ref(t, ref), str(a.get("job") or "build"))
+        except W.AppError as e:
+            raise ToolError(str(e))
+    if action in ("naksha", "naksha_ok", "naksha_build", "naksha_badlo"):   # v0.542 NAKSHA (Pillar K): the architect
+        from ..appmaker import architect as AR
+        from ..appmaker import backend as BE
+        from ..site import webapp as W
+        try:
+            r = BE.by_key_or_ref(t, ref)
+            if action == "naksha":
+                return AR.plan(r, str(a.get("instruction") or ""))
+            if action == "naksha_badlo":
+                return AR.revise(r, str(a.get("instruction") or ""))
+            mod = str(a.get("module") or "").strip()
+            if not mod:
+                raise ToolError("Kaunsa module? (app_dekho what=naksha se module ka naam lijiye)")
+            if action == "naksha_ok":
+                raise ToolError("Module par Haan aapka tap hai - app ke Naksha card par (ya console par) dabaiye. "
+                                "Main naksha bana sakti hoon aur jis module par aapki Haan ho chuki hai use bana sakti hoon.")
+            return AR.build(r, mod)
+        except W.AppError as e:
+            raise ToolError(str(e))
     if action == "jaanch":                    # v0.540 JAANCH (Pillar J): prove the app, do not hope
         from ..appmaker import backend as BE
         from ..appmaker import quality as QA
@@ -716,6 +748,22 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         b = I.browse(q, str(a.get("field") or ""), str(a.get("goal") or ""), str(a.get("aud") or ""), int(a.get("offset") or 0), 12)
         b["items"] = [{k: x[k] for k in ("id", "name", "special")} for x in b.get("items", [])]
         return b
+    if what == "chaal":                       # v0.546 Pillar L: how the app is actually running
+        from ..appmaker import backend as BE
+        from ..appmaker import ops as OPS
+        from ..site import webapp as W
+        try:
+            return OPS.dashboard(BE.by_key_or_ref(t, str(a.get("app") or "")), int(a.get("days") or 14))
+        except W.AppError as e:
+            raise ToolError(str(e))
+    if what == "naksha":                      # v0.542 Pillar K: the whole plan, module by module, + the changelog
+        from ..appmaker import architect as AR
+        from ..appmaker import backend as BE
+        from ..site import webapp as W
+        try:
+            return AR.card(BE.by_key_or_ref(t, str(a.get("app") or "")))
+        except W.AppError as e:
+            raise ToolError(str(e))
     if what == "jaanch":                      # v0.540 Pillar J: what has really been proved about this app
         from ..appmaker import backend as BE
         from ..appmaker import quality as QA

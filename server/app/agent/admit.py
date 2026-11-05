@@ -137,7 +137,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  # v0.447 Game Arena
                  "game arena", "games arena", "game ka score", "game duel", "game originality",
                  # v0.455 provenance
-                 "steam survey", "ai disclosure", "game provenance", "kahan se aaya", "created with ai"),
+                 "steam survey", "ai disclosure", "game provenance", "kahan se aaya", "created with ai",
+                 # v0.456 scenes
+                 "game scene", "game ka scene", "tscn", "level scene", "platformer level"),
     # v0.348 official Indian statistics -> MoSPI (built in); the STATS intent below carries sentence shapes
     "mospi": ("mospi", "esankhyiki", "inflation", "mehngai", "mahangai", "महंगाई", "cpi", "wpi", "iip", "gdp", "gva",
               "plfs", "unemployment", "berozgari", "बेरोजगारी", "jobless", "labour force", "nfhs", "census", "sarkari aankde",

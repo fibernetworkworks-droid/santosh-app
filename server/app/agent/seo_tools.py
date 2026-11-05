@@ -24,11 +24,25 @@ SEO_TOOLS = [
         "final). action=task: task_id, status done|ignored|open. action=report (Excel). action=settings: weekday, morning_time. "
         "v0.317 HIRED SEO EMPLOYEE (only when she hired it in Employees): action=report_pdf (the monthly PDF report now), "
         "action=roadmap (rebuild the 90-day plan draft), action=plan_item: item_id, status planned|doing|waiting_her|done|skipped, "
-        "action=indexnow (her IndexNow key file; once she puts it on the site, changed pages go to Bing / IndexNow weekly)."),
+        "action=indexnow (her IndexNow key file; once she puts it on the site, changed pages go to Bing / IndexNow weekly). "
+        "v0.541 SEARCH INTEL: action=track: keywords [what people search] (remove=true to stop) -> followed daily from Search "
+        "Console; action=rank_check: keywords (optional) -> exact Google position + top 3 via DataForSEO (her key, costs, runs in "
+        "the background); action=keyword_ideas: keywords [seed words] -> monthly searches (Google Keyword Planner if her Google Ads "
+        "is linked, else DataForSEO); action=ai_prompts: prompts [questions customers ask ChatGPT / Gemini] (add); action="
+        "ai_suggest -> 10 such questions to offer her; action=ai_run -> ask ChatGPT / Gemini / Perplexity through their APIs: is "
+        "she named, is her site cited, who is cited instead (priced per answer, her monthly ceiling, background); action=maps_grid: "
+        "keyword, size 3|5|7 -> her Google Maps rank from a grid of points around her shop (her shop must be picked once in the "
+        "app); action=competitors / backlinks / domain: domain (empty = hers) and action=gap: competitor (domain) -> DataForSEO "
+        "data (her key; she joins DataForSEO only in the app, never a password in chat)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["site", "audit", "speed", "performance", "brief", "schema", "gbp_post", "review_reply",
                                                "approve", "task", "report", "settings", "report_pdf", "roadmap", "plan_item",
-                                               "inspect", "crux", "indexnow"]},
+                                               "inspect", "crux", "indexnow", "track", "rank_check", "keyword_ideas",
+                                               "ai_prompts", "ai_suggest", "ai_run", "maps_grid", "competitors", "backlinks",
+                                               "gap", "domain"]},
+         "keywords": {"type": "array", "items": {"type": "string"}}, "remove": {"type": "boolean"},
+         "prompts": {"type": "array", "items": {"type": "string"}},
+         "size": {"type": "integer"}, "domain": {"type": "string"}, "competitor": {"type": "string"},
          "kind": {"type": "string"}, "urls": {"type": "array", "items": {"type": "string"}},
          "item_id": {"type": "string"},
          "site": {"type": "string"}, "url": {"type": "string"}, "name": {"type": "string"}, "city": {"type": "string"},
@@ -47,10 +61,13 @@ SEO_TOOLS = [
         "desk (v0.317 the hired SEO Employee: KPIs vs baseline, 90-day plan board, alerts, schedule; says if not hired) | "
         "health (v0.319 last audit: health score in 7 parts with critical/high/medium/low counts, E-E-A-T signals, local "
         "score, which AI search / training bots robots.txt lets in) | changes (what changed on her pages since the last audit) | "
-        "updates (Google's confirmed core / spam updates, to explain a rise or drop)."),
+        "updates (Google's confirmed core / spam updates, to explain a rise or drop) | ranks (v0.541 her tracked keywords: "
+        "Search Console position + 7-day move + exact Google check) | ai (AI answers: % named / cited per engine, competitors "
+        "named, sites cited instead, per question) | maps (her Maps grids: top-3 points, average rank, who leads) | intel "
+        "(everything + this month's spend and DataForSEO status)."),
      "input_schema": {"type": "object", "properties": {
          "what": {"type": "string", "enum": ["summary", "sites", "tasks", "pages", "keywords", "drafts", "gsc", "rules", "desk",
-                                             "health", "changes", "updates"]},
+                                             "health", "changes", "updates", "ranks", "ai", "maps", "intel"]},
          "site": {"type": "string"}, "status": {"type": "string"}},
          "required": ["what"]}},
 ]
@@ -107,6 +124,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             if not _owner(ctx):
                 raise ToolError("Sirf owner.")
             return S.save_settings(t, **{k: a[k] for k in ("weekday", "morning_time") if k in a})
+        if action in INTEL_ACTIONS:
+            return _intel_act(ctx, action, a)
         if action in ("report_pdf", "roadmap", "plan_item", "indexnow"):
             from ..employee import hire
             from ..seo import desk as D
@@ -123,6 +142,63 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 return D.build_roadmap(t, sid)
             return D.monthly_report(t, sid, conv)
     except (S.SeoError, ValueError) as ex:
+        raise ToolError(str(ex))
+    raise ToolError("action galat")
+
+
+INTEL_ACTIONS = ("track", "rank_check", "keyword_ideas", "ai_prompts", "ai_suggest", "ai_run", "maps_grid", "competitors",
+                 "backlinks", "gap", "domain")
+
+
+def _bg(fn, *args) -> dict[str, Any]:
+    import threading
+
+    def go():
+        try:
+            fn(*args)
+        except Exception:   # noqa: BLE001 - the result / error is on the SEO desk view
+            pass
+    threading.Thread(target=go, daemon=True).start()
+    return {"started": True, "say": "Kaam shuru - natija SEO desk (Search intel) par aayega; thodi der baad seo_dekho se dekhiye."}
+
+
+def _intel_act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
+    from ..seo import dfs
+    from ..seo import intel as I
+    t, site = ctx.tenant_id, _s(a.get("site"))
+    kws = [str(x) for x in (a.get("keywords") or []) if str(x).strip()]
+    try:
+        if action == "track":
+            return (I.untrack if a.get("remove") else I.track)(t, kws, site)
+        if action == "rank_check":
+            I._site(t, site)
+            return _bg(I.check_serp, t, site, kws or None)
+        if action == "keyword_ideas":
+            r = I.keyword_research(t, kws, site)
+            return {**r, "ideas": (r.get("ideas") or [])[:25]}
+        if action == "ai_prompts":
+            return I.add_prompts(t, [str(x) for x in (a.get("prompts") or [])], site)
+        if action == "ai_suggest":
+            return I.suggest_prompts(t, site)
+        if action == "ai_run":
+            I._site(t, site)
+            return _bg(I.run_ai, t, site, None)
+        if action == "maps_grid":
+            I._site(t, site)
+            return _bg(I.run_grid, t, _s(a.get("keyword")), site, a.get("size"), None)
+        sv = I._site(t, site)
+        dom = _s(a.get("domain")) or sv["domain"]
+        if action == "competitors":
+            return {"competitors": dfs.competitors(t, sv["id"], dom), "spend": dfs.status(t, sv["id"])}
+        if action == "backlinks":
+            return {**dfs.backlinks(t, sv["id"], dom), "spend": dfs.status(t, sv["id"])}
+        if action == "domain":
+            return {**dfs.domain_overview(t, sv["id"], dom), "spend": dfs.status(t, sv["id"])}
+        if action == "gap":
+            if not a.get("competitor"):
+                raise ToolError("Kis competitor se milaana hai? (domain)")
+            return {**dfs.gap(t, sv["id"], sv["domain"], _s(a.get("competitor"))), "spend": dfs.status(t, sv["id"])}
+    except (I.IntelError, dfs.DfsError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")
 
@@ -166,6 +242,27 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             pro = S.pro_view(t, site)
             return {"at": pro.get("at"), "changes": pro.get("drift") or [],
                     "say": f"Pichhli jaanch se {len(pro.get('drift') or [])} badlav." if pro.get("drift") else "Pichhli jaanch se koi badlav nahi."}
+        if what in ("ranks", "ai", "maps", "intel"):
+            from ..seo import intel as I
+            try:
+                if what == "ranks":
+                    v = I.ranks_view(t, site)
+                    return {"keywords": [{k: x[k] for k in ("keyword", "position", "move_7d", "clicks_7d", "impressions_7d", "url", "exact")}
+                                         for x in v["keywords"]], "note": v["note"]}
+                if what == "ai":
+                    v = I.ai_view(t, site)
+                    v.pop("site", None)
+                    for p in v["prompts"]:
+                        for r in p["results"]:
+                            r.pop("excerpt", None)
+                    return v
+                if what == "maps":
+                    return I.grids_view(t, site)
+                v = I.view(t, site)
+                return {"settings": v["settings"], "spend": v["spend"], "dataforseo": v["dataforseo"],
+                        "ranks": len(v["ranks"]["keywords"]), "ai": v["ai"]["summary"], "maps": len(v["maps"]["grids"])}
+            except I.IntelError as ex:
+                raise ToolError(str(ex))
         if what == "updates":
             from ..seo import pro as P
             return {"updates": [{"date": d, "name": n, "kind": k} for d, n, k in P.UPDATES[-12:]],

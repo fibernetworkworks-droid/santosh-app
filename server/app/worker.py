@@ -363,6 +363,45 @@ async def tick() -> None:
     applogic_jobs()
     game_studio_jobs()
     await coder_jobs()
+    app_ops_jobs()
+
+
+_ops_last = 0.0
+
+
+def app_ops_jobs() -> None:
+    """v0.546 CHALTA KAAM (Pillar L): write out what the apps' own backends measured, and once a day tell her the
+    things a rule says are worth telling - failures up, the app slower than it was, crashes, a filling app, cost
+    doubling. One line per kind per day; an alert that cries every hour is one she turns off."""
+    global _ops_last
+    if time.time() - _ops_last < 60:
+        return
+    _ops_last = time.time()
+    try:
+        from .appmaker import ops as OPS
+        OPS.flush()
+    except Exception:                                      # noqa: BLE001
+        log.debug("ops flush", exc_info=True)
+    try:
+        from .appmaker import ops as OPS
+        from .appmaker.models import AppProject
+        from .db import session
+        hour = __import__("datetime").datetime.now(OPS.IST).hour
+        if hour != 9:                                      # her morning, once
+            return
+        with session() as s:
+            rows = s.query(AppProject).filter(AppProject.status == "approved").limit(200).all()
+            for row in rows:
+                s.expunge(row)
+        for r in rows:
+            if (r.plan or "").find('"jaanch_of"') >= 0:    # never alert about a test twin
+                continue
+            try:
+                OPS.watch(r)
+            except Exception:                              # noqa: BLE001
+                log.debug("ops watch", exc_info=True)
+    except Exception:                                      # noqa: BLE001
+        log.debug("ops jobs", exc_info=True)
 
 
 _logic_task: "asyncio.Task | None" = None

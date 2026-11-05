@@ -15,6 +15,7 @@ import logging
 import os
 import re
 import shutil
+import sys
 import subprocess
 import tempfile
 import time
@@ -35,7 +36,10 @@ def _slug(repo: str) -> str:
 
 
 def image_for(repo: str, key: str) -> str:
-    return f"hoola-devlab:{_slug(repo)}-{key}"
+    """v0.542: the BASE revision rides in the tag. A snapshot is built ON the base image, so a base that changes
+    (a new Python, a new tool) must not be served stale dependencies built against the old one - which is exactly
+    what would have happened after the 3.11 -> 3.13 move: a cached snapshot, a fresh base, and the same failure."""
+    return f"hoola-devlab:{_slug(repo)}-r{box.BASE_REV}-{key}"
 
 
 def _git(argv: list[str], cwd: str, token: str, timeout: int) -> tuple[int, str]:
@@ -325,6 +329,15 @@ def selftest() -> list[str]:
         shaped = out.shape(bad["out"], bad["rc"], "", bad["secs"], bad["timed_out"])
         lines.append(f"ek fail hone wala test: exit {bad['rc']} - " + ("ok, aur fail ka ant dikh raha hai"
                      if bad["rc"] != 0 and "assert" in shaped["shown"] else "GADBAD: fail pakda nahi gaya"))
+        # v0.542: the box must speak the SAME Python as her server, or a check fails on code that runs fine in
+        # production - which is exactly what her first working lab_try did (a 3.12+ f-string, SyntaxError on 3.11).
+        ver = box.run_in(box.BASE_IMAGE, work, "python3 -c \"import sys;print('%d.%d' % sys.version_info[:2])\"",
+                         timeout=60)
+        box_py = (ver["out"] or "").strip().splitlines()[-1].strip() if (ver["out"] or "").strip() else "?"
+        mine = "%d.%d" % sys.version_info[:2]
+        lines.append(f"box ka python {box_py}, server ka {mine}: "
+                     + ("ok (ek hi hai)" if box_py == mine else
+                        f"GADBAD - farak hai, uska code is box mein toot sakta hai (image rev {box.BASE_REV})"))
         net = box.run_in(box.BASE_IMAGE, work, "cd /work; python3 -c \"import socket;"
                          "socket.create_connection(('1.1.1.1',53),timeout=4)\"", timeout=60)
         lines.append("network band hai: " + ("ok (box bahar nahi pahunch saka)" if net["rc"] != 0

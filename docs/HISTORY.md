@@ -19809,3 +19809,310 @@ runner speaks the app-api, so payments, live tracking and chat are not covered b
 gate verdict but **nothing blocks a store upload on it** (v0.455's security gates do block); wiring that is a
 decision about her workflow, not a line of code. And the checkpoint this pillar is supposed to end on — *all proof
 apps green* — is **not met**: no proof app exists, and none of this has run against one.
+## v0.541.0 GOOGLE ADS 2 (ad plan A2, built as 0.425) - 2 Nov 2026 (shipped with SEO INTEL)
+Owner: "GO A2" (from the India ad-market report: A1 Meta one-tap, A2 Google beyond YouTube).
+- **Why:** v0.401 used her Google Ads link only for YouTube (Demand Gen). Search and Performance Max are what Indian
+  shops actually buy on Google, and both need nothing new from Newtika: same OAuth, same Cloud project access (Basic).
+- **Search** (`ads/gads.py`, kind `search`): keywords (phrase match, 1-20), not-these words (campaign negatives, broad),
+  responsive search ad (3-15 headlines of 30, 2-4 descriptions of 90, path1/path2 of 15), cities -> geo targets on the
+  campaign + languages, Maximize clicks (`targetSpend`), Google Search + search partners, no Display.
+  `keyword_ideas` = KeywordPlanIdeaService.GenerateKeywordIdeas (keywordSeed / urlSeed / both, her geo targets, Google
+  Search network): avg monthly searches, competition, low/high top-of-page bid; read-only, free.
+- **Performance Max** (kind `pmax`): budget (not shared), campaign PAUSED with `maximizeConversions`,
+  `brandGuidelinesEnabled: false` (business name + logo on the asset group), places + languages, ONE asset group with
+  text assets (headlines 3-5 x 30, long headline 90, descriptions 2-5 x 90 with one <= 60, business name 25) and image
+  assets: logo + each of her photos centre-cut by Hoola to 1200x628 (1.91:1) and 1200x1200 (Pillow, JPEG) - all in one
+  Mutate (Google requires campaign + asset group together); every asset op comes before the asset-group link that uses it.
+  A missing conversion goal is translated to a plain "Google Ads > Goals > Conversions" line. Local campaigns were folded
+  into Performance Max by Google in 2022, so Maps reach comes through here (Business Profile linked once in Google Ads).
+- **Places:** `geo_targets` = geoTargetConstants:suggest (India); empty = all India; a name Google does not know is
+  NAMED in the error, never silently dropped.
+- **Read:** every campaign type (VIDEO, DEMAND_GEN, SEARCH, PERFORMANCE_MAX, DISPLAY, not REMOVED) by day into the Ads
+  desk, plus `search_term_view` summed over the window as term rows (`google_search_terms.csv`), so the desk's existing
+  "terms spending with no result" leak works on live data.
+- New GAdsDraft columns (nullable defaults): kind, keywords, negatives, paths, cities, images. Old drafts = youtube.
+- Routes: POST /api/social/ytads/drafts takes `kind`; new POST /api/social/ytads/ideas.
+- Tool: `ads` action=google_draft (owner only; draft only) + google_ideas (read-only).
+- UI: console Social Desk tile is now "Google ads" (New Search / New Performance Max / New YouTube, per-kind forms,
+  "Keyword ideas from Google" table with Add, photo upload for PMax, Type column in the read table); phone "Google ads"
+  screen gets the two new buttons, an Edit sheet for every kind, photo + logo pickers.
+- Tests: `server/tests/test_v0425_google_ads2.py` (5) + the v0.401 suite unchanged.
+- NOT VERIFIED against a live Google Ads account; field names follow Google's v26 REST and its AddPerformanceMaxCampaign /
+  AddResponsiveSearchAd / GenerateKeywordIdeas examples. The first real Check will confirm or correct them.
+
+## v0.541.0 SEO INTEL (S1 + DataForSEO, built as 0.536) - 5 Nov 2026
+Owner: "https://github.com/every-app/open-seo --- read this repo first", then "GO S1 + DATAFORSEO". OpenSEO (MIT) = an open
+Semrush / Ahrefs alternative whose data is DataForSEO; Hoola already had the audit / Search Console / speed half, so S1 is
+the four things it could not see. Credit in THIRD_PARTY_NOTICES.md (ideas + matching approach; code written fresh).
+- **RANKS** (`seo/intel.py`): SeoTrack (<=100 keywords a site) + SeoRank (day, source gsc | serp). `pull_gsc` = Search
+  Console searchAnalytics with dims date/query/page and an RE2 `includingRegex` filter (20 keywords a call), position
+  weighted by impressions, best page kept. `ranks_view` = latest position, 7-day move (+ = up), 7-day clicks, 30-day
+  history, last exact check. `rank_alerts` = a drop of 5+ places -> desk alert (daily job). `check_serp` = DataForSEO
+  organic live advanced (India 2356, mobile, depth 100): her exact position + the top 3 domains.
+- **AI VISIBILITY**: SeoAiPrompt (<=25) + SeoAiAnswer (run stamp, engine, mentioned, cited, rank, brands, citations,
+  excerpt). Engines through their OWN APIs, each only when its key is set: OpenAI Responses + `web_search` tool
+  (`SEO_AI_OPENAI_MODEL` gpt-5-mini), Gemini generateContent + `google_search` grounding (grounding links redirect, so the
+  site comes from the chunk title), Perplexity chat/completions `sonar` (search_results / citations). `mention_at` = whole
+  word, NFKD accent-folded, case-folded, URLs / e-mails blanked (length kept). Her names = business name, domain, domain
+  stem (>= 4 letters), extra brand names; competitors = the desk's list. Per answer: named, order among brands, her site
+  cited, other cited domains. Priced `SEO_AI_CALL_INR` (2) per answer, refused BEFORE the run when it would pass her
+  monthly ceiling (`SEO_AI_MONTH_INR` 300, per site). `suggest_prompts` = 10 customer questions from the model, any that
+  name her dropped. Weekly when `ai_weekly`.
+- **MAPS GRID**: Places API (New) `places:searchText` - `find_place` (name + city, id/name/address/location) -> she picks
+  her shop once; `run_grid` = 3x3 / 5x5 / 7x7 points `spacing_km` apart, each a locationBias circle search with field mask
+  `places.id` ONLY (Google lists IDs-only Text Search as no-charge), rank = her id's place in the 20; one named search at
+  the shop for "who leads". SeoGrid keeps points / found / average / top-3 count; view shows the previous run to compare.
+  Up to 5 grid keywords re-run weekly.
+- **DATAFORSEO** (`seo/dfs.py`): her login + API password typed in the app only, checked with the free
+  `/v3/appendix/user_data` (balance shown), sealed (accounts.encrypt), masked, never returned; Newtika's shared login only
+  with `DATAFORSEO_SHARED=true`. `call` refuses BEFORE a call when the month's spend reached her ceiling
+  (`DATAFORSEO_MONTH_USD` 5, per site), then adds the cost DataForSEO itself reports (top-level `cost`). Plain messages for
+  401, no balance (40200) and "needs their subscription" (40204 - the Backlinks API). Reads: domain_rank_overview,
+  ranked_keywords, competitors_domain, gap (their top-20 keywords where she is missing / below 20, by volume),
+  backlinks summary + referring_domains, serp organic, keyword_ideas (fallback when Google Ads is not linked).
+- `keyword_research` = Google Ads Keyword Planner (official, free, v0.536 A2) first, DataForSEO second.
+- Desk hooks: daily -> pull_gsc + drop alerts; weekly -> AI run / grids / exact checks only where she switched them on;
+  each result line on the desk feed. Routes `/api/seo/intel*` (long jobs run in the background and report to the feed).
+  Tools: `seo` actions track, rank_check, keyword_ideas, ai_prompts, ai_suggest, ai_run, maps_grid, competitors,
+  backlinks, gap, domain; `seo_dekho` what=ranks / ai / maps / intel.
+- UI: console SEO Desk tile "Search intel" (keyword table + move arrows + exact check, AI KPIs per engine + per-question
+  named / cited table + "sites the AI cites instead", Maps grid as coloured cells + leaders, DataForSEO join form /
+  ceiling / competitors / gap / backlinks tables); phone SEO desk -> `SearchIntelScreen`.
+- Config: PERPLEXITY_API_KEY, SEO_AI_* models / price / ceiling, DATAFORSEO_LOGIN / PASSWORD / SHARED / MONTH_USD.
+- Tests: `server/tests/test_v0541_seo_intel.py` (7).
+- NOT VERIFIED against live OpenAI / Gemini / Perplexity / Places / DataForSEO accounts: request + response shapes follow
+  each vendor's docs. API answers can differ from what a person sees in the consumer apps - the screen says so.
+
+## v0.542.0 NAKSHA — the architect, App Sahayak Pillar K, Phase 62 (5 Nov 2026)
+
+Owner: "START PILLAR K". Pillars A–J each built an engine. This one is the architect that drives them, and it
+exists because of a failure that has nothing to do with code: **a long plan she nodded at once, built in one go,
+and only understood when it was finished and wrong.**
+
+### The spec may only promise what Hoola can build
+
+Her one line becomes the whole app as data: user types and which app each one uses, user stories, lists and fields
+with their relations, the brain, who may do what, screens, integrations, payments, notifications, and the order to
+build it in. Then `check()` refuses, **in code**, anything the engines have not got — a field type that does not
+exist, an app face v0.435 cannot make, a connector that is not one of v0.424's real packs, a part called
+`chatbot`. A spec that cannot be built is refused at the check, not discovered half-built. That is the whole
+difference between a plan and a brochure.
+
+### She approves module by module
+
+A module says what she GETS (in her words, not what the code does), what it needs built first, and **what it will
+ask of her** — a gateway key, a courier account — *before* she says yes. A module may only need one written before
+it, so the order always works. Her Haan is bound to the hash of the plan she was looking at, and if that module
+changes underneath her, **her approval does not carry over**: it goes back to waiting, because she agreed to a
+different thing.
+
+### A built module is proved, not declared
+
+Each module's own user stories become Pillar J scenario tests and are **run**. A module that does not pass is
+recorded as built-and-failing, never as done. The walk is generated in code and kept deliberately simple — somebody
+signs up, uses the module's list, and somebody else is REFUSED — because a generated test that tries to be clever
+about her words is a test nobody can read when it fails.
+
+### A change edits the spec, not the app
+
+`revise()` re-plans, diffs the parts of every module, and marks **only the ones that really changed**. An untouched
+module is left alone. A new module is added, a dropped one is reported, and every build writes one plain line of
+changelog.
+
+### Questions that change the build, and nothing else
+
+A question must name the module or part its answer changes, or the checker drops it with a warning. Curiosity is
+not a question.
+
+### Nothing is pretended to be done
+
+Anything needing HER credential — a payment gateway, a courier, an SMS sender — is never silently skipped: the
+module builds up to that point and the exact next step is named. v0.541 also taught this to the push part: **a
+thing that is not SET UP is not the module being broken.** On a server with no Firebase key, instant notifications
+become a next step and the app keeps its 15-minute check; before this, every such module would have read as failed.
+
+### Found while building it
+
+Pillar J's runner opened an HTTP socket to `127.0.0.1:8077` **even when it was itself that server** — so whether a
+scenario ran depended on the listening port, the worker count and the loopback, none of which have anything to do
+with her app being right. It now drives the same FastAPI app through the same routes in-process by default, says
+`where` it ran, and still goes over the wire when `base=` names a different server.
+
+### What is where
+
+`server/app/appmaker/architect.py`; routes `/api/apps/{ref}/naksha[/{what}]`; tool `app_banao action=naksha |
+naksha_build | naksha_badlo` + `app_dekho what=naksha` (approving a module is refused to the tool — it is her tap);
+console **The plan** box; phone `lib/ui/app_naksha.dart`. Tests `server/tests/test_v0542_naksha.py` (13), in
+`app-load.yml`.
+
+### Not built, said plainly
+
+The generated proof walk covers one list per module, not a whole multi-role journey — her richer stories are still
+written by Pillar J's own author. `screens` in a module is recorded as a next step, not a redraw: the design flow
+(v0.128) still owns screens. And this is the last pillar of `docs/COMPLEX_APPS_PLAN.md`, which means **every pillar
+A–K is now built and the plan's own gate is still unmet**: no proof app — school ERP, clinic, food delivery,
+marketplace, field-service CRM — has ever been built and used on a real phone. Phase 0 asked for that first.
+
+## v0.543.0 PRAYOGSHALA EK HI PYTHON — the box worked, and the first thing it found was real (owner: "DEPLOY DONE, LAB_SETUP DONE, LAB_TRY DONE - CHECK RESULT")
+
+**The v0.539 fixes held.** `lab_try` (vps-ops run 257) walked the whole road for the first time — cloned her repo,
+installed every dependency with the network on, committed the snapshot, and ran the real suite with no network, about
+seven minutes against nine seconds before. Both v0.539 defects (PEP 668, and an install that could not survive
+`docker commit`) are settled by evidence, not by argument.
+
+**Then it failed on something real**, at import:
+
+```
+E     File "/work/server/app/notebook/render.py", line 517
+E       out.append(f"<li>{inline(re.sub(r'^\s*[-*•]\s+', '', ln))}</li>")
+E   SyntaxError: f-string expression part cannot include a backslash
+```
+
+That line runs perfectly on her server. **PEP 701 allows a backslash inside an f-string expression from Python 3.12**,
+her server runs **3.13**, and Debian 12 ships `python3` as **3.11** — so the box was testing a *different language
+version than production*. Seven files in `server/app` carry that shape, so the box would have reported a fault in
+each of them. A lab on another Python does not test her code, it invents failures, which is worse than having no lab:
+a false red costs the trust the whole thing exists to earn.
+
+**The fix is the box, not her code.** The base image is now `python:3.13-slim-bookworm` — bookworm's apt still
+supplies node and jdk 17, 3.13 sits on `/usr/local/bin` (ahead of `/usr/bin` in the box's PATH), and
+`python3-dev` / `python3-venv` / `python3-pip` are dropped from apt so Debian's 3.11 cannot shadow it or hand out
+headers for the wrong version. `render.py` is untouched: it is valid Python for the version she runs, and rewriting
+seven call sites to suit a box that was wrong would have been the fault, not the fix.
+
+**Two guards so this cannot come back quietly:**
+- The self-test prints the box's Python beside the server's and says **GADBAD** when they differ, naming the image
+  revision — a mismatch is now a stage that fails, not a surprise eight minutes into a check.
+- A repo dependency snapshot is keyed on the **base revision** as well as the lock files
+  (`hoola-devlab:<repo>-r3-<deps_key>`). Without it her existing 3.11 snapshot would have been served on the fresh
+  3.13 base — cached, fast, and failing exactly as before. The same class of bug as v0.539's silent one: a cache
+  that answers for a world that no longer exists.
+
+Image revision 2 → 3, so `lab_check` **rebuilds** before it tests the walls (v0.539's staleness check doing its job
+on its first real occasion). vps-ops note updated to say `lab_check` first after a base bump.
+
+Tests: `test_v0456_devlab.py` +3 (the box runs the server's Python / her code is not rewritten to suit the box / a
+base change invalidates every repo snapshot), two existing pins healed to the new base and tag shape. 45 green in
+the lab suites.
+
+**STILL NOT VERIFIED, said plainly:** `lab_try` has not passed. Three things are now proven by a real run (the
+clone, the dependency install, the sealed no-network check actually executing her suite), and the thing they were
+for — a green check on her own repo — has not happened yet. The next `lab_check` + `lab_try` is that proof.
+
+**RULE recorded:** a sandbox must match production in the things that decide whether code even parses. A lab that
+differs from production in language version reports faults that do not exist, and the first one it reported was in
+code that had been live for months.
+
+## v0.545.0 SCENES AS CHECKED DATA — the 12-script ceiling lifted (built as 0.456.0; docs/GAME_MOAT_PLAN.md §5.2, owner: "GO WITH THE CEILING")
+
+THE CEILING. Every Hoola game from v0.370 to now was at most 12 GDScript files (120 KB) on ONE plain root node,
+building every node in code. For match-3, idle, runner and puzzle games that is genuinely right — one engine plus a
+lot of Game Bible data IS the game. It is false for a platformer or a story game, where the game largely IS its
+scenes, so "Hoola can make a bigger game" was a claim the architecture could not keep. `server/app/gamedesk/scene.py`
+keeps it: scenes and animation become CHECKED DATA.
+
+THE RULE, AND WHY IT IS NOT NEGOTIABLE. **The model never writes a `.tscn`.** It writes a declarative spec; Hoola
+validates it in code and GENERATES the scene file. This was measured in Godot 4.7.2 BEFORE a line of the design was
+written: a `[sub_resource type="GDScript"]` embedded inside a `.tscn` RUNS, and the embedded script reached
+`DirAccess` — which `guard.py` has banned in every `.gd` file since v0.370. A scene the model could write freehand is
+a hole straight through the only thing protecting her games. So the hole is closed in THREE independent places:
+scripts attach only by FILENAME to a `.gd` file guard.py already checked; a spec carrying script source in any shape
+(a `source` / `code` / `gdscript` / `script/source` key, or the text signature) is refused by the checker; and the
+EMITTED text is re-scanned before it ships, because the generator being the only writer must not be the only defence.
+`guard.scene_problems()` scans every scene file the same way on the build path too.
+
+WHAT A SPEC MAY SAY (checked in code, never in a prompt): a tree of nodes from a 44-type allowlist — an unknown type
+does not error in Godot, it HANGS the load, so the allowlist is what keeps a typo from becoming a silent hang — each
+with a name, typed properties (the property table is a allowlist too: an unknown key is DROPPED and NAMED, never
+guessed), an optional script, a collision shape (rect / circle / capsule), AnimationPlayer tracks (value tracks, keys
+must go forward in time), and INSTANCES of another scene of the same game. Instancing is how content actually
+scales: one `coin.tscn` placed 200 times is data, not 200 scripts. Caps: 40 scenes, 300 nodes a scene, 2,000 nodes a
+game, 400 KB of scenes, 12 animations and 120 keys a track; instancing loops refused (Godot would never finish
+loading one); sibling names unique; `main.tscn` reserved for Hoola's own root.
+
+HOW IT IS PROVED, not claimed. `verify()` writes the generated scenes into a real project beside the guarded scripts
+and loads every one of them in the REAL engine, headless, with a `--quit-after` timer, and reports what came back —
+node count with instances expanded and the animation names found. Two findings from the live runs shaped the verdict:
+(1) a broken scene can HANG the load, so "never reached the end" is itself a failure; (2) an unknown node type does
+NOT make `instantiate()` fail — the engine logs `Cannot get class` / `A placeholder will be created instead` and
+hands back a scene with a plain Node where the real one should be. So `instantiate()` succeeding is NOT proof, and
+the log's own trouble signatures (`TROUBLE`) decide the verdict too. A placeholder is a silently broken game.
+
+THE LANE: `game_scenes` (action=list | propose | approve | reject). Her words → `ai.scene_spec` (a new SCENE system
+prompt that hands the model the design, the game's script filenames and the existing scene names, and takes back JSON
+only) → the checker → the generator → the real engine → a DRAFT she approves. A scene that did not load is saved as
+`failed` and cannot be approved. Only APPROVED scenes enter a build (`scene.for_game`, wired into `service._write`
+and recorded on the version row), and the whole path is wrapped so a scene problem can never stop a build — a game
+with no Studio project or no approved scene builds exactly as it did before.
+
+PROVED LIVE on Godot 4.7.2 while building this: a 25-node spec with a coin instanced 20 times instantiated to **65
+live nodes** (20 × 3 + 5 of its own) with the `idle` animation present, verdict PASS; and the broken-type scene the
+test plants is a FAIL for the right reason.
+
+NOT BUILT, said plainly: TileMaps (they need a TileSet and an atlas texture — that is art and a second pipeline), 3D
+scenes, and shaders. 2D node scenes with animation and instancing are what this ships. NOT VERIFIED: no real game of
+hers has been rebuilt with scenes yet — her first platformer is the live test.
+
+Files: NEW `server/app/gamedesk/scene.py` (checker, generator, real-engine `verify`, `GameScene` table +
+propose/approve/reject/view/for_game); `ai.py` (SCENE prompt + `scene_spec`, the GUIDE's SCENES block);
+`guard.py` (`scene_problems`, and `problems(scripts, scenes=None)` starts from it); `template.py`
+(`files(..., scenes=None)`); `service.py` (the `_scenes` hook, `_write(..., scenes=)`, `"scenes"` on the version row);
+`api.py` (`/api/gamestudio/{id}/scenes*`); `agent/gamedesk_tools.py` (`game_scenes`); `agent/admit.py`; `db.py`.
+Tests: NEW `tests/test_v0456_scenes.py` (12) — the 16 checker refusals including all three script-smuggling shapes,
+instancing (expanded node count, loops, unknown scene), animation tracks, caps, the generated `.tscn` shape, the real
+engine run, and a planted broken scene that must FAIL.
+## v0.543.0 CHALTA KAAM — the app after it ships, App Sahayak Pillar L (5 Nov 2026)
+
+Owner: "START PILLAR L". The last line of `docs/COMPLEX_APPS_PLAN.md`, and the only pillar about the time nobody is
+watching. Pillars A–K build and prove an app. None of them tells her, a month later, that her app is slower than it
+was, that one call in twenty is failing, or that it has quietly cost Rs 900.
+
+### Measured, not estimated
+
+**Latency and errors** come from the app's own requests through ONE middleware on `/api/app-api/` — every call of
+all ~80 routes, with no switch anyone has to remember. A telemetry failure never reaches the answer (a test throws
+inside it and the request still returns 200).
+
+**Cost** comes from `usage.run_meter`, the same ledger Hoola bills everything else with, wrapped around the four
+jobs that actually spend her money: the Android build, the logic draft, the naksha, the jaanch stories. The rupees
+are what her model calls really cost — not a table.
+
+### What is not priced is counted and said
+
+Push, SMS and connector calls are counted and reported as **not priced** until she tells Hoola what her provider
+charges. The mapsbill / research-bill rule, because **a zero she believes is worse than a blank she can fill**.
+
+### Latency is honest about being bands
+
+Fixed-bin histograms per hour, so four worker processes merge their counts without a lock fight and a fortnight of
+traffic is a few KB. p50 / p95 are therefore **estimated from bins** and the card says so. A precise-looking number
+nobody can reproduce is worse than an honest band.
+
+### An alert is a rule, not a feeling
+
+Five, each arithmetic over **her own history** with a stated threshold: ≥5 % of calls failing (and at least 20 calls,
+because 1-in-3 of three calls is noise); twice her own average latency and over 400 ms; crashes or ANRs open in the
+last two days; storage or rows over 90 %; this month's cost at twice the monthly average of the three before it.
+Each reaches her chat **once a day per kind** — an alert that cries every hour is one she turns off. Pillar J's test
+twin is skipped: she is never told about her own test copy.
+
+### The estimate before a big job
+
+`kharcha job=build` answers with the **median of what that job cost HER last times** and what the month stands at.
+With fewer than two runs it says *"naapa nahi gaya"* — a made-up rupee figure is not an answer, and a different
+job's history is never borrowed.
+
+### What is where
+
+`server/app/appmaker/ops.py`; the `_app_ops` middleware in `main.py`; a worker slot (`app_ops_jobs`, flush every
+minute, alerts once in her 9 am); routes `/api/apps/{ref}/ops[/{what}]`; tool `app_dekho what=chaal` +
+`app_banao action=kharcha`; console **How it's running** box; phone `lib/ui/app_ops.dart`. Tests
+`server/tests/test_v0546_ops.py` (16), in `app-load.yml`.
+
+### Not built, said plainly
+
+Storage rupees are not priced (the VPS bill is one number for everything, not per app). There is no alert for a
+drop in USE — falling orders may be the market, not a fault, and guessing would be noise. Latency is the backend's,
+not the phone's: a slow screen on a weak network looks fine here. And this is the **last pillar** of the plan —
+A to L are now all built, which makes the plan's own gate the only thing left in it: **no proof app has ever been
+built and used on a real phone**, which Phase 0 asked for before any pillar started.

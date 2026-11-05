@@ -170,7 +170,8 @@ def draft(r: AppProject, words: str, ask=None) -> dict[str, Any]:
     ask = ask or (lambda system, prompt: AI.ask_json(system, prompt, 9000))
     be = _be(r)
     prompt = _prompt(r, words, be)
-    with _DRAFT_LOCK:
+    from .. import ops as OPS                               # v0.546 the brain's draft costs her money: on this app's bill
+    with OPS.meter(r, note="logic"), _DRAFT_LOCK:
         out = ask(AUTHOR_SYSTEM, prompt)
         if not isinstance(out, dict):
             raise W.AppError("Logic ka draft nahi bana; dobara koshish kijiye.", 502)

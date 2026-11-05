@@ -1,8 +1,10 @@
 """v0.512.0 const_quality tools (#75 Quality Auditor's Assistant + #76 Material Test Register Keeper +
-#78 punch-list glue). `const_quality_dekho` only reads; `const_quality` does the work. ITPs with HOLD
-points (the card law: Hoola prepares the stop card, the QA manager's tap decides), NCRs, material-test
-lots (the lab result goes in AS REPORTED; verdict is a human's word), and the IS 456 cube-acceptance
-DRAFT (explicitly a draft - acceptance is the QA engineer's act). Punch list reads sitesup snags."""
+#78 punch-list glue), extended v0.531.0 Wave 2 C10 with the EHS Officer's Assistant (#81):
+permit-to-work DRAFTS (the permit itself is the safety officer's - tier C) and toolbox-talk records.
+`const_quality_dekho` only reads; `const_quality` does the work. ITPs with HOLD points (the card law:
+Hoola prepares the stop card, the QA manager's tap decides), NCRs, material-test lots (the lab result
+goes in AS REPORTED; verdict is a human's word), and the IS 456 cube-acceptance DRAFT (explicitly a
+draft - acceptance is the QA engineer's act). Punch list reads sitesup snags."""
 from __future__ import annotations
 
 import asyncio
@@ -19,10 +21,15 @@ QUALITY_TOOLS = [
         "kind (cement OPC 53 lot...), lot_no, vendor, test, lab, result (Jaisa lab ne bola WAISA), verdict "
         "pending|pass|fail, tested_on, retest_due, report_ref. action=lot_verdict: lot (id), verdict pass|fail, by. "
         "action=cube_draft: grade (M20+), results [N/mm2] -> IS 456 Table 11 DRAFT (acceptance QA engineer ka sign). "
-        "action=punch: site (optional) -> open snag punch list by trade (sitesup snags)."),
+        "action=punch: site (optional) -> open snag punch list by trade (sitesup snags). "
+        "EHS (#81): action=permit_draft: site, kind height|confined space|hot work|excavation|electrical, hazard, "
+        "controls [{control, done}], valid_till -> permit DRAFT (issue SAFETY OFFICER karti hai). action=permit_issue: "
+        "permit (id), issued_by (safety officer ka naam - bina naam issue nahi). action=permit_close: permit (id), note. "
+        "action=toolbox: site, topic, day, attendees, gang - talk ka record."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["itp", "itp_approve", "ncr", "ncr_close", "lot", "lot_verdict",
-                                               "cube_draft", "punch"]},
+                                               "cube_draft", "punch", "permit_draft", "permit_issue",
+                                               "permit_close", "toolbox"]},
          "site": {"type": "string"}, "activity": {"type": "string"}, "steps": {"type": "array", "items": {"type": "object"}},
          "note": {"type": "string"}, "itp": {"type": "string"}, "approved_by": {"type": "string"}, "defect": {"type": "string"},
          "spec": {"type": "string"}, "severity": {"type": "string"}, "action_taken": {"type": "string"},
@@ -30,14 +37,17 @@ QUALITY_TOOLS = [
          "test": {"type": "string"}, "lab": {"type": "string"}, "result": {"type": "string"}, "verdict": {"type": "string"},
          "tested_on": {"type": "string"}, "retest_due": {"type": "string"}, "report_ref": {"type": "string"},
          "lot": {"type": "string"}, "by": {"type": "string"}, "grade": {"type": "string"},
-         "results": {"type": "array", "items": {"type": "number"}}},
+         "results": {"type": "array", "items": {"type": "number"}},
+         "permit": {"type": "string"}, "issued_by": {"type": "string"}, "valid_till": {"type": "string"},
+         "controls": {"type": "array", "items": {"type": "object"}}, "topic": {"type": "string"},
+         "day": {"type": "string"}, "attendees": {"type": "number"}, "gang": {"type": "string"}},
          "required": ["action"]}},
     {"name": "const_quality_dekho", "description": (
-        "Read quality records (nothing changes). what=day (open NCRs, pending verdicts, retest due) | itps | ncrs | "
-        "lots (verdict filter optional) | punch (site optional)."),
+        "Read quality records (nothing changes). what=day (open NCRs, pending verdicts, retest due, expiring permits) | "
+        "itps | ncrs | lots (verdict filter optional) | punch (site optional) | permits (site optional) | toolbox."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["day", "itps", "ncrs", "lots", "punch"]}, "verdict": {"type": "string"},
-         "site": {"type": "string"}},
+         "what": {"type": "string", "enum": ["day", "itps", "ncrs", "lots", "punch", "permits", "toolbox"]},
+         "verdict": {"type": "string"}, "site": {"type": "string"}},
          "required": ["what"]}},
 ]
 QUALITY_LABELS = {"const_quality": "Quality ka record likh raha hoon", "const_quality_dekho": "Quality records dekh raha hoon"}
@@ -73,6 +83,16 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return Q.cube_draft(t, _s(a.get("grade")), a.get("results"))
         if action == "punch":
             return Q.punch(t, _s(a.get("site")))
+        if action == "permit_draft":
+            return Q.permit_draft(t, _s(a.get("site")), _s(a.get("kind")), _s(a.get("hazard")),
+                                  a.get("controls"), _s(a.get("valid_from")), _s(a.get("valid_till")), conv)
+        if action == "permit_issue":
+            return Q.permit_issue(t, _s(a.get("permit")), _s(a.get("issued_by")))
+        if action == "permit_close":
+            return Q.permit_close(t, _s(a.get("permit")), _s(a.get("note")))
+        if action == "toolbox":
+            return Q.toolbox_log(t, _s(a.get("site")), _s(a.get("topic")), _s(a.get("day")),
+                                 a.get("attendees"), _s(a.get("gang")), _s(a.get("note")), conv)
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")
@@ -82,7 +102,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..construction import quality as Q
     from ..db import session
     from sqlalchemy import select
-    from ..construction.models import CItp, CNcr, CTestLot
+    from ..construction.models import CItp, CNcr, CQualPermit, CQualToolbox, CTestLot
     t = ctx.tenant_id
     try:
         if what == "day":
@@ -107,6 +127,22 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                               "result": r.result[:80], "verdict": r.verdict, "retest_due": r.retest_due} for r in rows]}
         if what == "punch":
             return Q.punch(t, _s(a.get("site")))
+        if what == "permits":
+            with session() as s:
+                rows = s.scalars(select(CQualPermit).where(CQualPermit.tenant_id == t)).all()
+            site = _s(a.get("site"))
+            if site:
+                rows = [r for r in rows if r.site == site]
+            return {"permits": [{"id": r.id, "site": r.site, "kind": r.kind, "status": r.status,
+                                 "issued_by": r.issued_by, "valid_till": r.valid_till} for r in rows]}
+        if what == "toolbox":
+            with session() as s:
+                rows = s.scalars(select(CQualToolbox).where(CQualToolbox.tenant_id == t)).all()
+            site = _s(a.get("site"))
+            if site:
+                rows = [r for r in rows if r.site == site]
+            return {"toolbox": [{"id": r.id, "site": r.site, "topic": r.topic[:80], "day": r.day,
+                                 "gang": r.gang, "attendees": r.attendees} for r in rows]}
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("what galat")

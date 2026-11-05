@@ -2582,6 +2582,12 @@ body.albon{overflow:hidden}
 .stcomp .ccode { max-height: 240px; overflow: auto; font-size: 12px; background: var(--tint, #f4f4f6); padding: 8px; border-radius: 8px; white-space: pre; }
 .stcomp .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
 /* v0.540 JAANCH (Pillar J): the proof box - same shape as the family / login boxes above it */
+.stops h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+.stops table td:first-child { color: var(--mut); white-space: nowrap; padding-right: 12px; }
+.stops .stlines li { font-size: 13px; line-height: 1.5; }
+.stnaksha h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
+.stnaksha .cnact { border: 1px solid var(--line, #e5e5ea); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.stnaksha .cnact b { font-size: 14px; }
 .stjaanch h5 { font-size: 14px; font-weight: 600; margin: 14px 0 4px; }
 .stjaanch .stlines li { font-size: 13px; line-height: 1.5; }
 .stjaanch .stchk { display: inline-flex; gap: 6px; align-items: center; }

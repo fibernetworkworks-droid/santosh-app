@@ -161,6 +161,14 @@ store upload on a failed run (the verdict is written, nothing reads it yet).
   big apps; ANR / crash monitoring; staged rollouts (5% → 100%), feature flags, instant rollback.
 
 ### K. The architect — from a one-line idea to a full spec — Phase 62 (built early, finished here)
+**Status: BUILT in v0.542.0 NAKSHA** (`server/app/appmaker/architect.py`) — her one line becomes the whole app as a
+checked spec (user types and their app, stories, lists + fields, the brain, permissions, integrations, payments,
+notifications, release order); the checker refuses in CODE anything the engines cannot build; she approves MODULE BY
+MODULE with her Haan bound to the plan's hash (a module that changes underneath her goes back to waiting); each built
+module is PROVED by its own stories as Pillar J tests; a change edits the spec and only the touched modules rebuild;
+every build writes a plain changelog line; anything needing her credential is named, never pretended.
+Not built: the generated proof walk covers one list per module (richer journeys are Pillar J's own author), and
+`screens` is a next step rather than a redraw — the v0.128 design flow still owns screens.
 - Opus "product architect" turns her brief into: user types, user stories, data model (with relations), workflows,
   permissions, screens per app, integrations, payments, notifications, analytics, release plan — shown as a spec card
   she approves module by module; it asks only the questions that change the build.
@@ -168,6 +176,13 @@ store upload on a failed run (the verdict is written, nothing reads it yet).
   touched parts; every build has a plain changelog.
 
 ### L. Operations — continuous
+**Status: BUILT in v0.546.0 CHALTA KAAM** (`server/app/appmaker/ops.py`) — latency + errors measured by one
+middleware over every `/api/app-api/` call; cost from the real `usage.run_meter` on the four jobs that spend her
+money, with unpriced kinds counted and SAID rather than zeroed; p50 / p95 estimated from mergeable bins and labelled
+as bands; five alert rules over her own history, one line per kind per day into her chat (the Pillar J twin skipped);
+and `kharcha` = the median of what a big job cost HER last times, or an honest "not measured".
+Not built: storage rupees (the VPS bill is one number, not per app), an alert for falling USE (that may be the
+market, not a fault), and phone-side latency (this is the backend's).
 - Per-app dashboard: users, orders, errors, latency, costs; alerts to her chat; monthly cost estimate before big jobs.
 
 ## Proof apps (each must pass on real phones before the next pillar is called done)

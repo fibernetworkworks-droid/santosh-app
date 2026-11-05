@@ -275,6 +275,12 @@ def run(app_id: str) -> None:
 
 
 def _run(r: AppProject) -> None:
+    from .. import ops as OPS                              # v0.546 what this build really costs lands on HER app's bill
+    with OPS.meter(r, note="build"):
+        _run_inner(r)
+
+
+def _run_inner(r: AppProject) -> None:
     st = state(r)
     n = int(st.get("build") or 1)
     ctx = AS._ctx(r)
