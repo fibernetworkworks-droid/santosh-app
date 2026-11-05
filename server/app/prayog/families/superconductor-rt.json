@@ -1,0 +1,30 @@
+{
+ "base": "superconductor-rt",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "bi2212",
+   "title": "Resistance against temperature: Bi-2212 superconductor",
+   "sample": "Bi2Sr2CaCu2O8 pellet",
+   "unknown": "critical temperature of Bi-2212",
+   "params": {
+    "Tc": 85.0
+   },
+   "source": {
+    "title": "Critical temperatures of high-Tc cuprates: YBa2Cu3O7 about 92 K, Bi2Sr2CaCu2O8 about 85 K, Bi2Sr2Ca2Cu3O10 about 110 K (Tinkham; CRC Handbook, 'Superconductivity')"
+   }
+  },
+  {
+   "key": "bi2223",
+   "title": "Resistance against temperature: Bi-2223 superconductor",
+   "sample": "Bi2Sr2Ca2Cu3O10 pellet",
+   "unknown": "critical temperature of Bi-2223",
+   "params": {
+    "Tc": 110.0
+   },
+   "source": {
+    "title": "Critical temperatures of high-Tc cuprates: YBa2Cu3O7 about 92 K, Bi2Sr2CaCu2O8 about 85 K, Bi2Sr2Ca2Cu3O10 about 110 K (Tinkham; CRC Handbook, 'Superconductivity')"
+   }
+  }
+ ]
+}

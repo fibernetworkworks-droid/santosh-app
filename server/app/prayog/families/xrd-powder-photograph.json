@@ -1,0 +1,81 @@
+{
+ "base": "xrd-powder-photograph",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "si",
+   "title": "X-ray powder diffraction of silicon",
+   "sample": "Silicon powder (diamond structure)",
+   "unknown": "lattice parameter of silicon",
+   "params": {
+    "a": 5.4311e-10,
+    "ltype": 4,
+    "Z1": 14,
+    "Z2": 0
+   },
+   "source": {
+    "title": "ICDD / CRC Handbook of Chemistry and Physics, lattice parameters at room temperature: Si 5.4311, Ge 5.6579, NaCl 5.6402, Al 4.0495, Cu 3.6149, W 3.1652 angstrom; Cu K-alpha1 1.5406 angstrom"
+   }
+  },
+  {
+   "key": "ge",
+   "title": "X-ray powder diffraction of germanium",
+   "sample": "Germanium powder (diamond structure)",
+   "unknown": "lattice parameter of germanium",
+   "params": {
+    "a": 5.6579e-10,
+    "ltype": 4,
+    "Z1": 32,
+    "Z2": 0
+   },
+   "source": {
+    "title": "ICDD / CRC Handbook of Chemistry and Physics, lattice parameters at room temperature: Si 5.4311, Ge 5.6579, NaCl 5.6402, Al 4.0495, Cu 3.6149, W 3.1652 angstrom; Cu K-alpha1 1.5406 angstrom"
+   }
+  },
+  {
+   "key": "nacl",
+   "title": "X-ray powder diffraction of rock salt",
+   "sample": "Sodium chloride powder (rock salt structure)",
+   "unknown": "lattice parameter of rock salt",
+   "params": {
+    "a": 5.6402e-10,
+    "ltype": 5,
+    "Z1": 17,
+    "Z2": 11
+   },
+   "source": {
+    "title": "ICDD / CRC Handbook of Chemistry and Physics, lattice parameters at room temperature: Si 5.4311, Ge 5.6579, NaCl 5.6402, Al 4.0495, Cu 3.6149, W 3.1652 angstrom; Cu K-alpha1 1.5406 angstrom"
+   }
+  },
+  {
+   "key": "cu",
+   "title": "X-ray powder diffraction of copper",
+   "sample": "Copper powder (FCC)",
+   "unknown": "lattice parameter of copper",
+   "params": {
+    "a": 3.6149e-10,
+    "ltype": 3,
+    "Z1": 29,
+    "Z2": 0
+   },
+   "source": {
+    "title": "ICDD / CRC Handbook of Chemistry and Physics, lattice parameters at room temperature: Si 5.4311, Ge 5.6579, NaCl 5.6402, Al 4.0495, Cu 3.6149, W 3.1652 angstrom; Cu K-alpha1 1.5406 angstrom"
+   }
+  },
+  {
+   "key": "w",
+   "title": "X-ray powder diffraction of tungsten",
+   "sample": "Tungsten powder (BCC)",
+   "unknown": "lattice parameter of tungsten",
+   "params": {
+    "a": 3.1652e-10,
+    "ltype": 2,
+    "Z1": 74,
+    "Z2": 0
+   },
+   "source": {
+    "title": "ICDD / CRC Handbook of Chemistry and Physics, lattice parameters at room temperature: Si 5.4311, Ge 5.6579, NaCl 5.6402, Al 4.0495, Cu 3.6149, W 3.1652 angstrom; Cu K-alpha1 1.5406 angstrom"
+   }
+  }
+ ]
+}

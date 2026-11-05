@@ -1,0 +1,42 @@
+{
+ "base": "thermoelectric-power",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "j",
+   "title": "Seebeck coefficient: type J thermocouple",
+   "sample": "Iron-constantan (type J) thermocouple",
+   "unknown": "Seebeck coefficient of the Iron-constantan (type J) thermocouple",
+   "params": {
+    "S": 52.69
+   },
+   "source": {
+    "title": "NIST ITS-90 thermocouple reference tables: EMF at 100 degC relative to 0 degC (K 4.096 mV, J 5.269 mV, T 4.279 mV, E 6.319 mV); S = EMF / 100 K"
+   }
+  },
+  {
+   "key": "t",
+   "title": "Seebeck coefficient: type T thermocouple",
+   "sample": "Copper-constantan (type T) thermocouple",
+   "unknown": "Seebeck coefficient of the Copper-constantan (type T) thermocouple",
+   "params": {
+    "S": 42.79
+   },
+   "source": {
+    "title": "NIST ITS-90 thermocouple reference tables: EMF at 100 degC relative to 0 degC (K 4.096 mV, J 5.269 mV, T 4.279 mV, E 6.319 mV); S = EMF / 100 K"
+   }
+  },
+  {
+   "key": "e",
+   "title": "Seebeck coefficient: type E thermocouple",
+   "sample": "Chromel-constantan (type E) thermocouple",
+   "unknown": "Seebeck coefficient of the Chromel-constantan (type E) thermocouple",
+   "params": {
+    "S": 63.19
+   },
+   "source": {
+    "title": "NIST ITS-90 thermocouple reference tables: EMF at 100 degC relative to 0 degC (K 4.096 mV, J 5.269 mV, T 4.279 mV, E 6.319 mV); S = EMF / 100 K"
+   }
+  }
+ ]
+}

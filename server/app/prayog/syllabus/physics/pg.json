@@ -1666,7 +1666,8 @@
      "conditions": [
       "several temperatures"
      ],
-     "kernel": "ultrasonic"
+     "kernel": "ultrasonic",
+     "built": "ultrasonic-interferometer"
     },
     {
      "id": "pulse-echo-solids",

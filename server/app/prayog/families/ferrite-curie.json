@@ -1,0 +1,54 @@
+{
+ "base": "ferrite-curie",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "fe3o4",
+   "title": "Curie temperature of magnetite",
+   "sample": "Magnetite (Fe3O4) core",
+   "unknown": "Curie temperature of magnetite",
+   "params": {
+    "Tc": 858.0
+   },
+   "source": {
+    "title": "Cullity and Graham, Introduction to Magnetic Materials, 2nd ed.; CRC Handbook 'Curie temperatures' (Fe 1043 K, Ni 627 K, Gd 292 K, Fe3O4 858 K, MnFe2O4 573 K)"
+   }
+  },
+  {
+   "key": "ni",
+   "title": "Curie temperature of nickel",
+   "sample": "Nickel rod core",
+   "unknown": "Curie temperature of nickel",
+   "params": {
+    "Tc": 627.0
+   },
+   "source": {
+    "title": "Cullity and Graham, Introduction to Magnetic Materials, 2nd ed.; CRC Handbook 'Curie temperatures' (Fe 1043 K, Ni 627 K, Gd 292 K, Fe3O4 858 K, MnFe2O4 573 K)"
+   }
+  },
+  {
+   "key": "gd",
+   "title": "Curie temperature of gadolinium",
+   "sample": "Gadolinium rod core",
+   "unknown": "Curie temperature of gadolinium",
+   "params": {
+    "Tc": 292.0
+   },
+   "source": {
+    "title": "Cullity and Graham, Introduction to Magnetic Materials, 2nd ed.; CRC Handbook 'Curie temperatures' (Fe 1043 K, Ni 627 K, Gd 292 K, Fe3O4 858 K, MnFe2O4 573 K)"
+   }
+  },
+  {
+   "key": "fe",
+   "title": "Curie temperature of iron",
+   "sample": "Iron rod core",
+   "unknown": "Curie temperature of iron",
+   "params": {
+    "Tc": 1043.0
+   },
+   "source": {
+    "title": "Cullity and Graham, Introduction to Magnetic Materials, 2nd ed.; CRC Handbook 'Curie temperatures' (Fe 1043 K, Ni 627 K, Gd 292 K, Fe3O4 858 K, MnFe2O4 573 K)"
+   }
+  }
+ ]
+}

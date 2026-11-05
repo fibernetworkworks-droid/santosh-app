@@ -161,3 +161,9 @@ opens; a claim that does not open is reported as BROKEN, never counted.
 
 **Load note**: each walk drives a real headless browser. Six build agents saturate a 4-core box (load 35, one
 OOM kill). Run at most 4 - 6 agents at a time, and never edit a rig's .js while its walk is loading it.
+
+**Constants a build agent flagged as NOT looked up in a table (to verify against the source before they are trusted)**
+- Lee's disc / ebonite thermal conductivity 0.16 W/(m K): recalled, cited to Engineering ToolBox "rubber, hard", unchecked.
+- Brass density 8500 (Lee's disc) and 8470 (Kundt rod) kg/m3, and brass Young's modulus 100 GPa (handbooks range 100-125): typical-handbook choices.
+- Copper-iron neutral temperature of about 270 C: from standard B.Sc. textbooks, not a CRC table.
+- Type T / type J thermocouple quadratic coefficients: fitted to two NIST ITS-90 points, not the full NIST polynomial.

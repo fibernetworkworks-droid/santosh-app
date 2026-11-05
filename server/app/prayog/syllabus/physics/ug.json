@@ -712,7 +712,8 @@
       "verification of the lambda-squared vs T law"
      ],
      "conditions": [],
-     "kernel": "string-standing-wave"
+     "kernel": "string-standing-wave",
+     "built": "melde-experiment"
     },
     {
      "id": "sonometer-frequency",
@@ -744,7 +745,8 @@
       "phase difference"
      ],
      "conditions": [],
-     "kernel": "lissajous"
+     "kernel": "lissajous",
+     "built": "lissajous-figures"
     },
     {
      "id": "ultrasonic-interferometer",
@@ -799,7 +801,8 @@
       "Young's modulus of the rod"
      ],
      "conditions": [],
-     "kernel": "kundt-tube"
+     "kernel": "kundt-tube",
+     "built": "kundt-tube"
     },
     {
      "id": "harmonics-complex-wave",
@@ -868,7 +871,8 @@
       "thermal conductivity"
      ],
      "conditions": [],
-     "kernel": "heat-conduction-bar"
+     "kernel": "heat-conduction-bar",
+     "built": "searle-thermal-conductivity"
     },
     {
      "id": "angstrom-conductivity",
@@ -906,7 +910,8 @@
       "thermal conductivity"
      ],
      "conditions": [],
-     "kernel": "lees-disc"
+     "kernel": "lees-disc",
+     "built": "lees-disc"
     },
     {
      "id": "platinum-resistance-thermometer",
@@ -920,7 +925,8 @@
       "temperature coefficient of resistance"
      ],
      "conditions": [],
-     "kernel": "resistance-thermometer"
+     "kernel": "resistance-thermometer",
+     "built": "platinum-resistance-thermometer"
     },
     {
      "id": "thermocouple-null-method",
@@ -940,7 +946,8 @@
       "calibration curve"
      ],
      "conditions": [],
-     "kernel": "thermocouple"
+     "kernel": "thermocouple",
+     "built": "thermocouple-null-method"
     },
     {
      "id": "thermocouple-opamp",
@@ -955,7 +962,8 @@
       "neutral temperature"
      ],
      "conditions": [],
-     "kernel": "thermocouple"
+     "kernel": "thermocouple",
+     "built": "thermocouple-opamp"
     },
     {
      "id": "rtd-calibration",
@@ -972,7 +980,8 @@
       "calibration curve"
      ],
      "conditions": [],
-     "kernel": "resistance-thermometer"
+     "kernel": "resistance-thermometer",
+     "built": "rtd-calibration"
     },
     {
      "id": "cooling-curve-daq",

@@ -1,0 +1,32 @@
+{
+ "base": "quincke-susceptibility",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "fecl3",
+   "title": "Quincke's method: ferric chloride solution",
+   "sample": "1.0 M iron(III) chloride solution",
+   "unknown": "molar susceptibility of FeCl3",
+   "params": {
+    "chim": 13450.0
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Magnetic susceptibility of the elements and inorganic compounds' (molar, cgs, 1e-6 cm3/mol) and volume susceptibility of water -9.05e-6 (SI)"
+   }
+  },
+  {
+   "key": "water",
+   "title": "Quincke's method: water (diamagnetic)",
+   "sample": "Distilled water",
+   "unknown": "volume susceptibility of water",
+   "note": "No solute: the liquid is pushed out of the field.",
+   "params": {
+    "c": 0.0,
+    "rho": 998.2
+   },
+   "source": {
+    "title": "CRC Handbook of Chemistry and Physics, 'Magnetic susceptibility of the elements and inorganic compounds' (molar, cgs, 1e-6 cm3/mol) and volume susceptibility of water -9.05e-6 (SI)"
+   }
+  }
+ ]
+}

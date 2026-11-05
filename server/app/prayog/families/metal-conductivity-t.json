@@ -1,0 +1,78 @@
+{
+ "base": "metal-conductivity-t",
+ "chapter": "Solid state and materials",
+ "variants": [
+  {
+   "key": "ag",
+   "title": "Resistance against temperature: silver",
+   "sample": "Silver wire",
+   "unknown": "temperature coefficient of resistance of silver",
+   "params": {
+    "alpha": 0.0038
+   },
+   "source": {
+    "title": "Serway and Jewett, Physics for Scientists and Engineers: temperature coefficients of resistivity at 20 degC"
+   }
+  },
+  {
+   "key": "au",
+   "title": "Resistance against temperature: gold",
+   "sample": "Gold wire",
+   "unknown": "temperature coefficient of resistance of gold",
+   "params": {
+    "alpha": 0.0034
+   },
+   "source": {
+    "title": "Serway and Jewett, Physics for Scientists and Engineers: temperature coefficients of resistivity at 20 degC"
+   }
+  },
+  {
+   "key": "w",
+   "title": "Resistance against temperature: tungsten",
+   "sample": "Tungsten filament wire",
+   "unknown": "temperature coefficient of resistance of tungsten",
+   "params": {
+    "alpha": 0.0045
+   },
+   "source": {
+    "title": "Serway and Jewett, Physics for Scientists and Engineers: temperature coefficients of resistivity at 20 degC"
+   }
+  },
+  {
+   "key": "fe",
+   "title": "Resistance against temperature: iron",
+   "sample": "Iron wire",
+   "unknown": "temperature coefficient of resistance of iron",
+   "params": {
+    "alpha": 0.005
+   },
+   "source": {
+    "title": "Serway and Jewett, Physics for Scientists and Engineers: temperature coefficients of resistivity at 20 degC"
+   }
+  },
+  {
+   "key": "pt",
+   "title": "Resistance against temperature: platinum",
+   "sample": "Platinum wire",
+   "unknown": "temperature coefficient of resistance of platinum",
+   "params": {
+    "alpha": 0.00392
+   },
+   "source": {
+    "title": "Serway and Jewett, Physics for Scientists and Engineers: temperature coefficients of resistivity at 20 degC"
+   }
+  },
+  {
+   "key": "nichrome",
+   "title": "Resistance against temperature: nichrome",
+   "sample": "Nichrome wire (an alloy)",
+   "unknown": "temperature coefficient of resistance of nichrome",
+   "params": {
+    "alpha": 0.0004
+   },
+   "source": {
+    "title": "Serway and Jewett, Physics for Scientists and Engineers: temperature coefficients of resistivity at 20 degC"
+   }
+  }
+ ]
+}
