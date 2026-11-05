@@ -20836,8 +20836,15 @@ the Sonnet guess. Now `longcard.estimate(n, model)` scales the Sonnet per-run gu
 to it. The try now reads "5 of 25 asks, 5 runs at k=1 on claude-haiku-5-5 (rough cost Rs 15-55)". Still a GUESS until a real
 card fills the per-run number. Nothing in Hoola itself changed. Tests: test_v0586_sahi_kharcha.py (4).
 
+## v0.587.0 EXCEL BINA NAAM — the long card reads a delivered workbook from its bytes
 
-## v0.587.0 PAISA SAHAYAK — consumer finance protection, Wave 1 slice (built as 0.585.0; owner: the Banking & Finance AI Employees register, "now lets work on this")
+Her first long-card try on Haiku (5 jobs, k=1): finished 80%, false done 0%, false stuck 0%, Rs 30 total, median 2.0 min.
+The one fail, rent_xlsx "unreadable: InvalidFileException", was the CARD: a delivered file is stored by its id with no
+extension (`mailbox.store_bytes` -> files_dir()/<file_id>), and openpyxl's `_validate_archive` refuses a PATH whose
+extension is not .xlsx before reading a byte. `longcard.read_file` now hands openpyxl the bytes (BytesIO); a truly broken
+file still fails (BadZipFile). pdf / docx / pptx readers were already extension-blind. Tests test_v0587_excel_bina_naam.py (3).
+
+## v0.588.0 PAISA SAHAYAK — consumer finance protection, Wave 1 slice (built as 0.585.0; owner: the Banking & Finance AI Employees register, "now lets work on this")
 
 The register (`docs/research/banking_finance_industry/00_INDEX.md`, 132 candidate employees in 10 fields) names the consumer "Paisa Sahayak" (#1-8) as the first pilot: no regulator signs anything, fraud protection is a daily need, and none of it moves money. This builds that slice, STATELESS by design (the non-negotiable "do not save financial details to memory" rule): it reads what she types or pastes, answers, and forgets.
 

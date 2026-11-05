@@ -542,4 +542,4 @@ def test_registry_542_with_dhara_dsl():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.587.0"
+    assert APP_VERSION == "0.588.0"
