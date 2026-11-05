@@ -141,10 +141,17 @@ HoolaStudio.define('led-planck-bench', function (S) {
     res.rotation.z = Math.PI / 2; res.position.set(x0, BT + 0.003, BZ + 0.03); ledsG.add(res);
     ledMats.push(lm);
   }
-  // black viewing shroud over the LEDs, so a dim LED can still be seen
-  var shroud = S.mesh(new T.BoxGeometry(BW - 0.02, 0.05, 0.05),
-    new T.MeshStandardMaterial({ color: 0x15171a, roughness: 0.95, side: T.DoubleSide, transparent: true, opacity: 0.55 }));
-  shroud.position.set(BX, BT + 0.026, BZ - 0.022); S.scene.add(shroud);
+  // black viewing hood BEHIND and OVER the LEDs (open at the front), so a dim LED can still be seen
+  var hoodM = new T.MeshStandardMaterial({ color: 0x15171a, roughness: 0.95, side: T.DoubleSide });
+  var shroud = new T.Group(); S.scene.add(shroud);
+  var hoodBack = S.mesh(new T.BoxGeometry(BW - 0.02, 0.045, 0.002), hoodM);
+  hoodBack.position.set(BX, BT + 0.022, BZ - 0.046); shroud.add(hoodBack);
+  var hoodTop = S.mesh(new T.BoxGeometry(BW - 0.02, 0.002, 0.046), hoodM);
+  hoodTop.position.set(BX, BT + 0.044, BZ - 0.024); shroud.add(hoodTop);
+  [-1, 1].forEach(function (sg) {
+    var side = S.mesh(new T.BoxGeometry(0.002, 0.045, 0.046), hoodM);
+    side.position.set(BX + sg * (BW - 0.02) / 2, BT + 0.022, BZ - 0.024); shroud.add(side);
+  });
   // rotary selector
   var selG = new T.Group(); S.scene.add(selG); selG.position.set(BX - BW / 2 + 0.028, BT, BZ + 0.052);
   var selBase = S.mesh(new T.CylinderGeometry(0.019, 0.02, 0.006, 32), M.bakelite); selBase.position.y = 0.003;
@@ -294,8 +301,8 @@ HoolaStudio.define('led-planck-bench', function (S) {
 
   return {
     camera: { pos: [-0.02, 0.86, 1.02], look: [-0.06, 0.06, -0.06] },
-    views: { psu: [[-0.4, 0.3, 0.1], [-0.46, 0.08, -0.18]], board: [[0.0, 0.3, 0.14], [0.0, 0.02, -0.07]],
-      leds: [[-0.06, 0.12, 0.06], [-0.06, 0.02, -0.1]], sel: [[-0.14, 0.16, 0.06], [-0.14, 0.02, -0.03]],
+    views: { psu: [[-0.4, 0.3, 0.1], [-0.46, 0.08, -0.18]], board: [[0.0, 0.44, 0.38], [0.0, 0.02, -0.06]],
+      leds: [[0.0, 0.16, 0.12], [0.0, 0.025, -0.03]], sel: [[-0.14, 0.16, 0.06], [-0.14, 0.02, -0.03]],
       ma: [[-0.16, 0.24, 0.36], [-0.16, 0.05, 0.14]], dmm: [[0.3, 0.24, 0.3], [0.3, 0.03, 0.08]],
       bench: [[-0.02, 0.86, 1.02], [-0.06, 0.06, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {

@@ -62,6 +62,7 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
     depthWrite: false, blending: T.AdditiveBlending });
   var glow = S.mesh(new T.CylinderGeometry(0.03, 0.03, 0.045, 24, 1, true), glowM, false, false);
   glow.position.set(0, 0.127, 0); oven.add(glow);
+  var inside = new T.PointLight(0xfff0d8, 0.55, 0.6); inside.position.set(0, 0.15, 0.03); oven.add(inside);
   var ovenLbl = S.label(NEON ? 'FRANCK–HERTZ TUBE (NEON)' : 'FRANCK–HERTZ TUBE IN OVEN',
     { w: 0.17, ratio: 0.13, color: '#e8eaec' });
   ovenLbl.position.set(0, 0.03, OD / 2 + 0.006); oven.add(ovenLbl);
@@ -71,7 +72,7 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
   S.contact(0.34, 0.3, -0.4, -0.14, 0.55);
 
   // ================================================================ control unit
-  var unit = new T.Group(); S.scene.add(unit); unit.position.set(0.3, 0, -0.08); unit.rotation.y = -0.28;
+  var unit = new T.Group(); S.scene.add(unit); unit.position.set(0.26, 0, -0.06); unit.rotation.y = -0.3;
   var UW = 0.4, UD = 0.26, UH = 0.14;
   var ucase = S.rounded(UW, UD, UH, 0.012, new T.MeshStandardMaterial({ color: 0xd7d3c9, roughness: 0.5, metalness: 0.12 }));
   ucase.rotation.x = -Math.PI / 2; ucase.position.y = UH / 2 + 0.004; unit.add(ucase);
@@ -143,7 +144,7 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
     };
   }
   var showV = lcd(-0.125, -0.02, 0.1, 0.034), showI = lcd(-0.125, 0.024, 0.1, 0.034);
-  S.contact(0.5, 0.34, 0.3, -0.08, 0.55);
+  S.contact(0.5, 0.34, 0.26, -0.06, 0.55);
 
   // ================================================================ cables
   S.wire([[-0.3, 0.03, -0.06], [-0.1, 0.02, 0.0], [0.12, 0.02, 0.02]], 'red');
@@ -237,9 +238,9 @@ HoolaStudio.define('franck-hertz-bench', function (S) {
   }
 
   return {
-    camera: { pos: [-0.04, 0.95, 1.1], look: [-0.06, 0.14, -0.08] },
-    views: { oven: [[-0.34, 0.36, 0.26], [-0.4, 0.15, -0.14]], unit: [[0.34, 0.34, 0.26], [0.3, 0.08, -0.08]],
-      bench: [[-0.04, 0.95, 1.1], [-0.06, 0.14, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+    camera: { pos: [-0.04, 1.0, 1.24], look: [-0.06, 0.13, -0.08] },
+    views: { oven: [[-0.34, 0.36, 0.26], [-0.4, 0.15, -0.14]], unit: [[0.3, 0.34, 0.3], [0.26, 0.08, -0.06]],
+      bench: [[-0.04, 1.0, 1.24], [-0.06, 0.13, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'An atom can only take energy from an electron in the exact amount of one of its own jumps. Below the first excitation energy every collision is elastic and the current climbs with the accelerating voltage; the moment an electron has gained that energy it can lose all of it in one collision, arrives too slow to climb the retarding voltage, and the current falls. The pattern repeats, so the current peaks are one excitation potential apart.',
       formula: 'ΔV = U₁  (the spacing of the peaks)',

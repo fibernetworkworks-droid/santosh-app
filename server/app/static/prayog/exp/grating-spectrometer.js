@@ -112,6 +112,12 @@ HoolaStudio.define('grating-spectrometer', function (S) {
   var glbl = S.label(Math.round(NLINES / 1000) + ' lines/mm', { w: 0.03, ratio: 0.25, color: '#1b1b1b' });
   glbl.position.set(0, 0.048, 0.002); table.add(glbl);
 
+  // bench labels, so the collimator and the telescope are not mistaken for each other
+  var lblC = S.label('COLLIMATOR', { w: 0.07, ratio: 0.2, color: '#d8dce2' });
+  lblC.rotation.x = -Math.PI / 2; lblC.position.set(CX + 0.07, 0.0012, CZ + 0.2); S.scene.add(lblC);
+  var lblT = S.label('TELESCOPE', { w: 0.07, ratio: 0.2, color: '#d8dce2' });
+  lblT.rotation.x = -Math.PI / 2; lblT.position.set(CX + 0.2, 0.0012, CZ - 0.2); S.scene.add(lblT);
+
   // ================================================================ discharge tube and its supply
   var dis = new T.Group(); S.scene.add(dis); dis.position.set(CX, 0, CZ + 0.42);
   var dstand = S.rounded(0.09, 0.07, 0.012, 0.005, M.iron); dstand.rotation.x = -Math.PI / 2; dstand.position.y = 0.006;
@@ -218,11 +224,11 @@ HoolaStudio.define('grating-spectrometer', function (S) {
   }
 
   return {
-    camera: { pos: [0.06, 0.78, 0.78], look: [0.0, 0.1, -0.06] },
-    views: { spec: [[0.1, 0.42, 0.26], [0.0, 0.1, -0.1]], grating: [[0.06, 0.2, 0.02], [0.0, 0.12, -0.1]],
-      tele: [[0.24, 0.26, 0.0], [0.0, 0.11, -0.12]], dis: [[0.16, 0.3, 0.46], [0.0, 0.16, 0.32]],
+    camera: { pos: [0.02, 1.02, 1.22], look: [0.0, 0.08, 0.02] },
+    views: { spec: [[0.12, 0.5, 0.42], [0.0, 0.09, -0.04]], grating: [[0.06, 0.2, 0.02], [0.0, 0.12, -0.1]],
+      tele: [[0.3, 0.3, 0.02], [0.02, 0.1, -0.16]], dis: [[0.16, 0.3, 0.46], [0.0, 0.16, 0.32]],
       hv: [[0.36, 0.26, 0.42], [0.34, 0.06, 0.24]],
-      bench: [[0.06, 0.78, 0.78], [0.0, 0.1, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      bench: [[0.02, 1.02, 1.22], [0.0, 0.08, 0.02]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'Hydrogen\'s visible light is four sharp lines, the Balmer series: an electron falling from level n to level 2 gives out a photon of wavenumber R(1/4 − 1/n²). A plane transmission grating sends each wavelength out at its own angle, so reading that angle on the spectrometer circle measures the wavelength directly.',
       formula: 'sin θ = m λ N   and   1/λ = R (1/2² − 1/n²)',

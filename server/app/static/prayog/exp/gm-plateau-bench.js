@@ -27,7 +27,9 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
     brick(0.105, r * 0.045, 0, 0.05, 0.044, 0.22);
     brick(0, r * 0.045, -0.085, 0.16, 0.044, 0.05);
   }
-  var roof = brick(0, 0.18, 0, 0.26, 0.03, 0.24);
+  // a lintel across the back only: the castle is open at the front and the top, as a teaching one is, so the
+  // tube and the source shelf can be seen
+  var roof = brick(0, 0.18, -0.072, 0.26, 0.03, 0.095);
   var stand = new T.Group(); castle.add(stand);
   var sPost = S.mesh(new T.CylinderGeometry(0.005, 0.005, 0.17, 16), M.chrome); sPost.position.set(-0.052, 0.085, 0.05);
   stand.add(sPost);
@@ -93,7 +95,7 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
   S.contact(0.1, 0.1, 0.0, 0.16, 0.45);
 
   // ================================================================ scaler - timer
-  var unit = new T.Group(); S.scene.add(unit); unit.position.set(0.34, 0, -0.12); unit.rotation.y = -0.3;
+  var unit = new T.Group(); S.scene.add(unit); unit.position.set(0.3, 0, -0.1); unit.rotation.y = -0.32;
   var UW = 0.36, UD = 0.24, UH = 0.13;
   var ucase = S.rounded(UW, UD, UH, 0.012, new T.MeshStandardMaterial({ color: 0xd7d3c9, roughness: 0.5, metalness: 0.12 }));
   ucase.rotation.x = -Math.PI / 2; ucase.position.y = UH / 2 + 0.004; unit.add(ucase);
@@ -159,7 +161,7 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
     };
   }
   var showC = lcd(-0.115, 0.022, 0.11, 0.034, true), showT = lcd(-0.115, -0.022, 0.11, 0.034, false);
-  S.contact(0.46, 0.32, 0.34, -0.12, 0.55);
+  S.contact(0.46, 0.32, 0.3, -0.1, 0.55);
   S.wire([[-0.26, 0.03, 0.0], [0.0, 0.02, 0.0], [0.2, 0.02, -0.04]], 'black');
 
   S.addApparatus('castle', castle, 'Lead castle with the shelf stand',
@@ -262,11 +264,11 @@ HoolaStudio.define('gm-plateau-bench', function (S) {
   }
 
   return {
-    camera: { pos: [-0.02, 0.84, 0.96], look: [-0.04, 0.1, -0.08] },
+    camera: { pos: [-0.02, 0.95, 1.16], look: [-0.03, 0.1, -0.06] },
     views: { castle: [[-0.2, 0.36, 0.22], [-0.26, 0.1, -0.12]], tube: [[-0.16, 0.26, 0.08], [-0.26, 0.15, -0.09]],
       src: [[-0.18, 0.2, 0.06], [-0.26, 0.09, -0.09]], pot: [[0.06, 0.18, 0.3], [0.0, 0.02, 0.16]],
-      tongs: [[0.1, 0.2, 0.34], [0.1, 0.0, 0.2]], unit: [[0.38, 0.3, 0.2], [0.34, 0.07, -0.12]],
-      bench: [[-0.02, 0.84, 0.96], [-0.04, 0.1, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      tongs: [[0.1, 0.2, 0.34], [0.1, 0.0, 0.2]], unit: [[0.34, 0.32, 0.24], [0.3, 0.07, -0.1]],
+      bench: [[-0.02, 0.95, 1.16], [-0.03, 0.1, -0.06]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'A Geiger-Muller tube only counts once its voltage is high enough for a single ion pair to set off a full avalanche. Above that starting voltage nearly every particle that enters is counted, so the rate hardly changes with voltage: that flat stretch is the plateau. Past its end the gas discharges continuously and the tube is destroyed.',
       formula: 'N = N_obs / (1 − N_obs τ)',
