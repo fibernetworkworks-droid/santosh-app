@@ -21,6 +21,7 @@ import time
 from typing import Any
 
 RETRY_EVERY = 4
+AGAIN = 3                                                   # a checkout that got NO answer is tapped again (like the page)
 
 
 async def _visitor(c, base: str, paths: list[str], n: int, codes: dict[int, int], times: list[float]) -> None:
@@ -45,22 +46,34 @@ async def _buyer(c, api: str, i: int, slug: str, out: dict[str, Any]) -> None:
         try:
             r = await c.post(api + "/order", json=body, headers=hdr)
             return r.status_code, (r.json() if r.headers.get("content-type", "").startswith("application/json") else {})
-        except Exception:                                    # noqa: BLE001
+        except Exception as e:                               # noqa: BLE001 - named, so the report says WHY
+            out["errors"][type(e).__name__] = out["errors"].get(type(e).__name__, 0) + 1
             return 0, {}
+
+    def note(got):
+        for code, j in got:
+            out["codes"][code] = out["codes"].get(code, 0) + 1
+            if code == 200 and j.get("number"):
+                out["ok"].setdefault(body["cid"], set()).add(j["number"])
     got = await asyncio.gather(*[one() for _ in range(tries)])
-    for code, j in got:
-        out["codes"][code] = out["codes"].get(code, 0) + 1
-        if code == 200 and j.get("number"):
-            out["ok"].setdefault(body["cid"], set()).add(j["number"])
+    note(got)
     if tries == 2:
         out["retried"] += 1
+    unanswered = (0, 502, 503, 504)
+    for k in range(AGAIN):            # NO answer at all = the shopper taps again with the SAME checkout id (as the page does)
+        if body["cid"] in out["ok"] or not all(code in unanswered for code, _ in got):
+            break
+        await asyncio.sleep(1.0 + k)
+        out["again"] += 1
+        got = [await one()]
+        note(got)
 
 
 async def run(page_base: str, api: str, item_paths: list[str], buy: list[str], hot: str = "", visitors: int = 2000,
               pages_each: int = 3, buyers: int = 500, hot_share: float = 0.4, concurrency: int = 200) -> dict[str, Any]:
     import httpx
     limits = httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency)
-    out: dict[str, Any] = {"codes": {}, "ok": {}, "retried": 0}
+    out: dict[str, Any] = {"codes": {}, "ok": {}, "retried": 0, "again": 0, "errors": {}}
     vcodes: dict[int, int] = {}
     times: list[float] = []
     sem = asyncio.Semaphore(concurrency)
@@ -81,7 +94,7 @@ async def run(page_base: str, api: str, item_paths: list[str], buy: list[str], h
     pct = lambda q: round(times[min(len(times) - 1, int(q * len(times)))] * 1000) if times else 0  # noqa: E731
     return {"seconds": round(took, 1), "visitors": visitors, "page_views": len(times), "page_codes": vcodes,
             "page_p50_ms": pct(0.5), "page_p95_ms": pct(0.95), "buyers": buyers, "retried": out["retried"],
-            "order_codes": out["codes"], "accepted": {k: sorted(v) for k, v in out["ok"].items()}}
+            "order_codes": out["codes"], "no_answer": out["errors"], "tapped_again": out["again"], "accepted": {k: sorted(v) for k, v in out["ok"].items()}}
 
 
 def verify(site_id: str, before: dict[str, int | None], res: dict[str, Any]) -> dict[str, Any]:
