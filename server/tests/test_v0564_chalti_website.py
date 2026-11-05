@@ -1,4 +1,4 @@
-"""v0.563 CHALTI WEBSITE (web Step 7 part 2 = W14): her visitors' JavaScript errors + real-visit speed (bands, p75), AI cost
+"""v0.564 CHALTI WEBSITE (web Step 7 part 2 = W14): her visitors' JavaScript errors + real-visit speed (bands, p75), AI cost
 per site, alerts in her chat (error spike / slow, against her OWN history, once a day), and the nightly backup RESTORE TEST
 (downloaded back, unpacked, compared byte for byte with the live files)."""
 import json
@@ -16,7 +16,7 @@ IST = timezone(timedelta(hours=5, minutes=30))
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.563.0"
+    assert APP_VERSION == "0.564.0"
 
 
 def _site(S):

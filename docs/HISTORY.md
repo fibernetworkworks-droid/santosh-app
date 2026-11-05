@@ -20424,6 +20424,77 @@ rows, never one fake row); (2) the search limit was trusted to backends - now cl
 is the contract). Version 0.559.0 (APP_VERSION story, pubspec 0.559.0+582, pins swept 0.558.0 -> 0.559.0 / +581 ->
 +582 / 569 -> 570 across the suites, zero residual; 'reach' joins CORE_FAMILIES + EXTRA_KEYS; server-only, old APKs
 keep working; Mera PC freeze respected).
+## FILM DESK PRODUCTION LAYER (shipped as v0.563.0; owner: "READ THIS PLAN START WORK FOR HOOLA AI EMPLOYEE FOR THIS INDUSTRY")
+
+The plan is `docs/research/film_industry/00_INDEX.md` (122 candidate AI Employees, 12 fields). Reading the code first showed Hoola already HAS a film
+desk (`server/app/filmdesk/`, tool `film_desk`/`film_desk_dekho`, employee `film_producer`): script -> breakdown -> shots -> studio storyboard,
+consent register, rights register, release checklist, cards. What it lacked was the traditional PRODUCER ADMIN layer (register Wave 1:
+#13 line-producer budget, #24-27 breakdown/schedule/day-out-of-days/call sheet). Built on the existing desk, nothing replaced:
+
+- NEW `filmdesk/production.py` (pure, deterministic, no model/network/DB): `build_schedule` (one day-or-night bucket per shoot day, same place together,
+  places in order of first appearance, day closes at `day_hours`, over-long scene flagged, optional dates skipping weekly days off / blocked dates,
+  a day moves to a later date when its cast is unavailable and is listed as unscheduled rather than dropped), `day_out_of_days` (SW/W/WF/SWF/H grid,
+  hold days shown NOT priced), `call_sheet` (unit call, per-cast calls; every unknown address/contact/hospital stays a `[blank]`, weather/sunrise
+  never invented), `budget_from_rates` (quantities from the schedule, rupees ONLY from her rate card; a head with no rate is listed missing and left
+  out of the total; contingency only when she gives a percent; bad/negative rates ignored).
+- Every guessed number (day hours, set-up hours, hours per screen minute, call time) comes back as `assumptions` with `assumed: true`.
+- Service (`filmdesk/service.py`): `plan_schedule`, `plan_view`, `plan_callsheet` (text + PDF into her chat via the existing `_store`), `plan_budget`
+  (OWNER ONLY, rates merge with earlier ones, a new schedule makes the old budget stale). New nullable column `filmdesk_projects.plan` (old rows NULL
+  work, tested). `release_pdf`'s ReportLab fallback was lifted into `_blocks_pdf` so the call sheet reuses it (the Indic fonts are optional).
+- Tool: `film_desk` gains actions `schedule`, `callsheet`, `budget_plan` (budget_plan in `_OWNER_ONLY`); `film_desk_dekho` gains `schedule | dood |
+  plan_budget | callsheet`. No new tool, so the registry count and the voice budget are unchanged. Sending a call sheet to the cast stays the existing
+  `message` CARD (her tap); nothing is sent or paid by this layer.
+- Tests: NEW `server/tests/test_film_production_layer.py` (11) + the existing film desk suites (test_kala_filmdesk, test_v476_avatar_films) green:
+  36 passed, 1 skipped.
+- NOT DONE (said plainly): version ritual (APP_VERSION/pubspec/pins are untouched on purpose - this is on the designated branch, not shipped to main); no
+  console or phone screen for the schedule yet (tool + API-free); Wave 2/3 of the register (script coverage, previs, consent registry as a shared
+  foundation for generative employees, dubbing/subtitle project manager, sales/festival) are the next steps. NOT VERIFIED: no live run; the default
+  hours-per-day assumptions are placeholders until a real 1st AD's numbers replace them.
+
+## FILM DESK SALES LAYER (shipped as v0.563.0; owner: "GO NEXT WAVE" after the production layer)
+
+Register `docs/research/film_industry/00_INDEX.md`: #84 festival strategy, #85 festival submission packager, #22/#86 rights and distribution windows,
+#21/#23 waterfall maths. On top of the production layer, same Film Desk, nothing replaced.
+
+- NEW `filmdesk/sales.py` (pure code, no model/network/DB). FESTIVAL TRACKER: an entry holds HER deadline, fee, category, premiere rule
+  (regional|national|international|world|none, else `unknown`), status, dates; bad input becomes blank/unknown, never a guess. View = days left,
+  deadline flags (due within 7 days / overdue while still `planned`), fees committed, a 12-line submission packet (4 lines derived from the film -
+  logline, script, runtime, language; the rest ticked by her), and a PREMIERE WARNING when a world/international-premiere festival comes after a
+  film that already screened elsewhere: worded as a warning "festival ka apna niyam padhiye", never a ruling. RELEASE WINDOWS: medium x territory
+  ('world' overlaps everything) x start/end (open-ended = never ends) x exclusive; conflicts = same medium, overlapping time AND territory, at least one
+  exclusive; HOLDBACKS are HER rules {after, before, days} (no defaults invented): `before` may not start sooner than `days` days after the START of
+  `after`; malformed rules are reported, not skipped. WATERFALL: gross -> her deductions in her order (fixed, percent of gross, percent of remaining,
+  optional cap, never more than what is left) -> investors recouped pari passu to invested x (1+premium) -> profit shares (must total 100, else NOT
+  split and said); the last line of each tier takes the rounding so the tiers add back to the gross to the paisa (`ties_to_gross`), investor shortfall shown.
+- Service: `festival_op` (add|update|remove|tick; the crew may keep it), `festival_view`, `window_op` (add|remove|holdbacks, OWNER ONLY), `windows_view`,
+  `waterfall_run` / `waterfall_view` (OWNER ONLY), all in the existing `plan` JSON column (no new table, no new column).
+- Tool: `film_desk` actions `festival`, `window`, `waterfall` (window + waterfall in `_OWNER_ONLY`); `film_desk_dekho` what=`festivals | windows | waterfall`.
+  No new tool: registry and voice budget unchanged (test_v0230_voice_phase3 green). Nothing is submitted, signed, sent or paid.
+- Tests: NEW `server/tests/test_film_sales_layer.py` (13); with the production layer (11) and the film desk suites: 60 passed, 1 skipped.
+- NOT DONE: version ritual (branch only); no console/phone screen; script coverage, previs, dubbing/subtitle project manager, royalty-by-guild tables, and
+  festival/market calendars as data are the next waves. Festival deadlines and market dates are deliberately NOT bundled: they change yearly and would be
+  invented data unless a maintained source feeds them.
+
+## FILM DESK DELIVERY LAYER (shipped as v0.563.0; owner: "GO NEXT WAVE", second time)
+
+Register `docs/research/film_industry/00_INDEX.md`: #64 deliverables manager, #93 subtitle and dub localisation project manager, #107/#110
+digital-replica consent. After production (schedule/call sheet/budget) and sales (festivals/windows/waterfall) this closes the loop to "the film leaves the building".
+
+- NEW `filmdesk/delivery.py` (pure code). DELIVERABLES: items (label, buyer, due, status todo|in_progress|delivered|qc_failed|accepted|waived, notes); view = days
+  left, overdue / due-within-7-days flags for open items, QC-failed flagged for resend, progress %, sorted open-and-earliest first. `starter` adds a STARTING list of
+  item NAMES per kind (festival / ott / theatrical / tv), skipping names already there; every view says the buyer's own specification is final. LOCALISATION: one row per
+  language (subtitles | dub | both; dub_mode human | ai_voice - subtitles never carry a voice mode, a dub defaults to a HUMAN voice; vendor, due, status, qa_rounds);
+  flags overdue / due soon / blocked / 3+ QA rounds still open. THE ONE CROSS-CHECK IT MAKES ALONE: an ai_voice row must name a person (P-001) and that person's recorded
+  consent must cover `ai_voice` TODAY - missing consent, a use that is not covered, withdrawn, expired, famous (personality rights), or a person not in the register are
+  all flagged by the film desk's existing `rules.consent_problem` (so a withdrawal AFTER the row was made is caught on the next look); switching the row to a human dubber clears it.
+- Service: `deliverable_op` (add|update|remove|starter), `deliverables_view`, `localise_op` (add|update|remove), `localisation_view` (consent checked in one session with a
+  per-view cache), a shared `_simple_list_op` over the existing `plan` JSON column (ids never collide after a removal). Both are hers to edit: no money in this layer, so the
+  crew may keep them (not owner-only).
+- Tool: `film_desk` actions `deliverable`, `localise`; `film_desk_dekho` what=`deliverables | localisation`. No new tool: registry + voice budget unchanged;
+  test_v0230_voice_phase3 and the v0.550 wiring audit (every tool a handler + a call route) green.
+- Tests: NEW `server/tests/test_film_delivery_layer.py` (8); the three film layers together = 32 new tests; 78 passed, 1 skipped with the existing film desk suites.
+- NOT DONE: version ritual (branch only); no console/phone screen; Hoola does not translate or dub (it only tracks); script coverage, previs and guild royalty tables remain.
+
 ## v0.562.0 CLAUDE JAISA + EK DARWAZA (built as 0.560.0; the dev chain took 0.560.0 and 0.561.0, all kept) — Hoola's loop and its engines built the way Claude's are (owner: "BUILD 1 - 3", then "BUILD THE 3 FIXES")
 
 The Claude-vs-Hoola comparison (claude.ai/artifact/HeiPyHECLkwvh84a4PHjxp) found three stages Hoola only partly

@@ -139,5 +139,5 @@ def test_phone_soch_card_wiring():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.563.0"
-    assert "0.563.0+586" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.564.0"
+    assert "0.564.0+587" in (ROOT / "pubspec.yaml").read_text()

@@ -33,7 +33,10 @@ from urllib.parse import quote as urlq
 from sqlalchemy import select
 
 from ..db import now, session
+from . import delivery as DL
+from . import production as P
 from . import rules as R
+from . import sales as SL
 from .models import FilmAlert, FilmCard, FilmPerson, FilmProject, FilmRight, FilmSettings
 
 log = logging.getLogger("santosh.filmdesk")
@@ -938,6 +941,258 @@ def budget(tenant: str, ref: str) -> dict:
             "say": f"Draft ~₹{tot['draft']['inr']}, final ~₹{tot['final']['inr']} (sab shots). Ab tak ₹{spent:.0f} laga."}
 
 
+# ---------------------------------------------------------------- production layer (v0.559): schedule / day-out-of-days / call sheet / rate budget
+def plan_schedule(tenant: str, ref: str, actor: str = "owner", **opts: Any) -> dict:
+    """Shooting schedule + day-out-of-days from the saved scenes, in code (see production.py). Saved on the film; nothing is sent."""
+    keys = ("start_date", "day_hours", "setup_hours", "hours_per_screen_minute", "days_off", "blocked_dates", "unavailable",
+            "call_time")
+    kw = {k: opts[k] for k in keys if k in opts and opts[k] not in (None, "", [], {})}
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        try:
+            sch = P.build_schedule(_j(p.scenes, []), **kw)
+        except ValueError as e:
+            raise FilmError(str(e)) from None
+        dd = P.day_out_of_days(sch)
+        pl = _j(p.plan, {})
+        pl.update({"schedule": sch, "dood": dd, "inputs": kw})
+        pl.pop("budget", None)                    # a new schedule makes an old budget stale: ask again
+        p.plan = _dump(pl)
+        _log(p, f"Schedule: {sch['shoot_days']} shoot din", actor_name(tenant, actor))
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, "shoot_days": sch["shoot_days"], "night_days": sch["night_days"], "company_moves": sch["company_moves"],
+            "days": sch["days"], "dood": dd, "flags": sch["flags"], "assumptions": sch["assumptions"],
+            "say": f"{sch['shoot_days']} shoot din ({sch['night_days']} raat), {sch['company_moves']} jagah badalna. "
+                   "Ghante andaaze hain: apne asli number batayiye."}
+
+
+def _saved_plan(p: FilmProject) -> dict:
+    pl = _j(p.plan, {})
+    if not pl.get("schedule"):
+        raise FilmError("Pehle schedule banao (action=schedule).")
+    return pl
+
+
+def plan_view(tenant: str, ref: str, what: str = "schedule", day: Any = None) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _saved_plan(p)
+        head = {"number": p.number, "title": p.title}
+    if what == "dood":
+        return {"project": head, **pl["dood"]}
+    if what == "plan_budget":
+        if not pl.get("budget"):
+            raise FilmError("Budget abhi nahi bana (action=budget_plan, sirf owner).")
+        return {"project": head, **pl["budget"]}
+    if what == "callsheet":
+        d = _pick_day(pl["schedule"], day)
+        return {"project": head, **P.call_sheet(head, d)}
+    return {"project": head, "days": pl["schedule"]["days"], "flags": pl["schedule"]["flags"],
+            "assumptions": pl["schedule"]["assumptions"]}
+
+
+def _pick_day(sch: dict, day: Any) -> dict:
+    try:
+        n = int(day)
+    except (TypeError, ValueError):
+        raise FilmError("Kaunsa shoot din? (day=1, 2, ...)") from None
+    for d in sch["days"]:
+        if d["order"] == n:
+            return d
+    raise FilmError(f"Shoot din {n} nahi hai (1 se {len(sch['days'])}).")
+
+
+def plan_callsheet(tenant: str, ref: str, day: Any, actor: str = "owner", conv: str = "", **opts: Any) -> dict:
+    """One day's call sheet as text + a PDF file in her chat. Cast are NOT messaged: use action=message (a card for her tap)."""
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _saved_plan(p)
+        head = {"number": p.number, "title": p.title}
+        banner = _st(s, tenant).banner
+    d = _pick_day(pl["schedule"], day)
+    kw = {k: opts[k] for k in ("call_time", "cast_calls", "location_address", "contacts", "notes") if k in opts}
+    cs = P.call_sheet(head, d, **kw)
+    if "call_time" not in kw:
+        cs = P.call_sheet(head, d, **{**kw, "call_time": pl["schedule"]["assumptions"].get("call_time", "")})
+    blocks: list[tuple] = [("h1", f"Call sheet · {head['title']} · Din {d['order']}"),
+                           ("p", " · ".join(x for x in (banner, cs["date"] or "[tareekh bharo]", "Unit call " + cs["unit_call"]) if x)),
+                           ("h", "Jagah"), ("table", [["Jagah", "Pata"]] + [[x["place"], x["address"]] for x in cs["places"]]),
+                           ("h", "Scenes"),
+                           ("table", [["#", "Scene", "Ghante", "Cast"]] + [[str(x["n"]), x["heading"], str(x["hours"]), ", ".join(x["cast"])]
+                                                                           for x in cs["scenes"]]),
+                           ("h", "Cast call"),
+                           ("table", [["Kaun", "Call", "Scenes"]] + [[x["who"], x["call"], ", ".join(str(n) for n in x["scenes"])]
+                                                                      for x in cs["cast"]] or [["-", "-", "-"]]),
+                           ("h", "Sampark"), ("p", "; ".join(f"{r['role']}: {r['phone']}" for r in cs["contacts"]) or " ".join(cs["blanks"])),
+                           ("p", "Mausam, sunrise/sunset aur surakshit raasta yahan nahi bharte: asli source se dekhiye.")]
+    file = None
+    try:
+        pdf = _blocks_pdf(f"{head['title']} call sheet day {d['order']}", blocks, "Call sheet")
+    except Exception:
+        log.exception("filmdesk call sheet pdf failed")
+        pdf = b""
+    if pdf:
+        file = _store(tenant, f"CallSheet_{head['number']}_Day{d['order']}.pdf", pdf, "application/pdf", conv, "Call sheet")
+        with _LOCK, session() as s:
+            q = _proj(s, tenant, ref)
+            _log(q, f"Call sheet din {d['order']}", actor_name(tenant, actor))
+    return {"project": head, **cs, "file": file,
+            "say": f"Din {d['order']} ka call sheet taiyaar" + (" (PDF chat me)." if file else ".")
+                   + " Cast ko bhejna 'message' card se, aapki haan par."}
+
+
+def plan_budget(tenant: str, ref: str, rates: Any = None, contingency_pct: Any = None, actor: str = "owner") -> dict:
+    """Rupees only from HER rate card; quantities from the schedule. Owner only: it holds money numbers."""
+    _need_owner(actor)
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _saved_plan(p)
+        old = pl.get("rates") or {}
+        merged = {**old, **(rates if isinstance(rates, dict) else {})}
+        out = P.budget_from_rates(pl["schedule"], pl["dood"], merged, contingency_pct if contingency_pct is not None
+                                  else pl.get("contingency_pct"))
+        pl["rates"], pl["budget"] = merged, out
+        if contingency_pct is not None:
+            pl["contingency_pct"] = contingency_pct
+        p.plan = _dump(pl)
+        _log(p, f"Budget plan: ₹{out['total_inr']:,.0f} (kam se kam)", actor_name(tenant, actor))
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **out}
+
+
+# ---------------------------------------------------------------- sales layer (festival tracker / release windows / waterfall), see sales.py
+def _next_id(items: list[dict], prefix: str) -> int:
+    nums = [int(str(x.get("id", ""))[len(prefix):] or 0) for x in items if str(x.get("id", "")).startswith(prefix)
+            and str(x.get("id", ""))[len(prefix):].isdigit()]
+    return (max(nums) + 1) if nums else 1
+
+
+def festival_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | update | remove | tick one festival entry. Deadline, fee and premiere rule are HERS: nothing is looked up or guessed."""
+    op = (op or "add").lower()
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        fest = [x for x in pl.get("festivals", []) if isinstance(x, dict)]
+        eid = _s_str(f.get("entry"))
+        cur = next((x for x in fest if x["id"] == eid), None)
+        try:
+            if op == "add":
+                if len(fest) >= SL.FEST_MAX:
+                    raise FilmError(f"{SL.FEST_MAX} se zyada festival nahi.")
+                e = SL.norm_festival(f, _next_id(fest, "fs"))
+                fest.append(e)
+                what = f"Festival add: {e['name']}"
+            else:
+                if cur is None:
+                    raise FilmError("Kaunsa festival? (entry=fs1 jaisa id)")
+                if op == "remove":
+                    fest.remove(cur)
+                    what = f"Festival hata: {cur['name']}"
+                elif op == "tick":
+                    key = _s_str(f.get("key"))
+                    if key not in {r["key"] for r in SL.festival_packet({}, cur)}:
+                        raise FilmError("Yeh packet line nahi pehchani.")
+                    cur["ticks"][key] = f.get("done", True) is not False
+                    what = f"Festival packet: {cur['name']} - {key}"
+                elif op == "update":
+                    merged = {**cur, **{k: v for k, v in f.items() if k in ("name", "country", "category", "deadline", "event_date",
+                                                                           "fee_inr", "requires", "status", "submitted_on",
+                                                                           "screened_on", "notes")}}
+                    e = SL.norm_festival(merged, 0)
+                    e["id"], e["ticks"] = cur["id"], cur.get("ticks") or {}
+                    fest[fest.index(cur)] = e
+                    what = f"Festival badla: {e['name']}"
+                else:
+                    raise FilmError("op: add | update | remove | tick")
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        pl["festivals"] = fest
+        p.plan = _dump(pl)
+        _log(p, what, actor_name(tenant, actor))
+    return festival_view(tenant, ref) | {"say": what}
+
+
+def _s_str(v: Any) -> str:
+    return "" if v is None else str(v).strip()
+
+
+def festival_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        fest = [x for x in _j(p.plan, {}).get("festivals", []) if isinstance(x, dict)]
+        proj = {"scenes_n": len(_j(p.scenes, [])), "logline": p.logline, "runtime_s": p.runtime_s, "language": p.language}
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **SL.festival_view(fest, today(tenant), proj)}
+
+
+def window_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | remove a release window, or set the holdback rules. Owner only (these are rights/commercial commitments)."""
+    _need_owner(actor)
+    op = (op or "add").lower()
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        wins = [x for x in pl.get("windows", []) if isinstance(x, dict)]
+        try:
+            if op == "add":
+                if len(wins) >= SL.WINDOW_MAX:
+                    raise FilmError(f"{SL.WINDOW_MAX} se zyada window nahi.")
+                w = SL.norm_window(f, _next_id(wins, "w"))
+                wins.append(w)
+                what = f"Window add: {w['medium']} {w['start']}"
+            elif op == "remove":
+                cur = next((x for x in wins if x["id"] == _s_str(f.get("entry"))), None)
+                if cur is None:
+                    raise FilmError("Kaunsi window? (entry=w1 jaisa id)")
+                wins.remove(cur)
+                what = f"Window hata: {cur['id']}"
+            elif op == "holdbacks":
+                pl["holdbacks"] = [h for h in (f.get("holdbacks") or []) if isinstance(h, dict)][:20]
+                what = "Holdback niyam save"
+            else:
+                raise FilmError("op: add | remove | holdbacks")
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        pl["windows"] = wins
+        p.plan = _dump(pl)
+        _log(p, what, actor_name(tenant, actor))
+    return windows_view(tenant, ref) | {"say": what}
+
+
+def windows_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        head = {"number": p.number, "title": p.title}
+    wins = [x for x in pl.get("windows", []) if isinstance(x, dict)]
+    wins.sort(key=lambda w: (w["start"], w["medium"]))
+    return {"project": head, "windows": wins, "holdbacks": pl.get("holdbacks", []),
+            "check": SL.check_windows(wins, pl.get("holdbacks"))}
+
+
+def waterfall_run(tenant: str, ref: str, gross_inr: Any, deductions: Any = None, investors: Any = None, shares: Any = None,
+                  actor: str = "owner") -> dict:
+    """Owner only: it holds money numbers. The result is saved on the film (last calculation) and is a hisaab, not a statement."""
+    _need_owner(actor)
+    try:
+        out = SL.waterfall(gross_inr, deductions, investors, shares)
+    except ValueError as ex:
+        raise FilmError(str(ex)) from None
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        pl["waterfall"] = {"inputs": {"gross_inr": gross_inr, "deductions": deductions, "investors": investors, "shares": shares},
+                           "result": out}
+        p.plan = _dump(pl)
+        _log(p, f"Waterfall: gross ₹{out['gross_inr']:,.0f}", actor_name(tenant, actor))
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **out,
+            "say": f"₹{out['gross_inr']:,.0f} me se " + ("investor poora wapas" if out["investors_fully_recouped"] else
+                   "investor ka poora paisa nahi nikla" if out["investors_fully_recouped"] is False else "hisaab") +
+                   f"; baanta ja sakne wala ₹{out['net_after_recoup_inr']:,.0f}."}
+
+
 async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | None = None, variants: int = 1,
                 actor: str = "owner", conv: str = "") -> dict:
     """Ask the studio for paid shots: her film / month caps and consents are checked first; the studio then makes ITS price
@@ -1315,8 +1570,13 @@ def release_pdf(tenant: str, ref: str, sh: dict) -> bytes:
                ("table", [["Line", "Haal"]] + [[i["label"], "Haan" if i["ok"] else ("Owner ne chhoda" if i["key"] in (sh.get("forced") or [])
                                                                                   else "Nahi")] for i in sh.get("items") or []]),
                ("p", "Yeh producer ke record ke liye hai, kanooni salah nahi.")]
+    return _blocks_pdf(f"{sh.get('title')} release", blocks, "Release pack")
+
+
+def _blocks_pdf(title: str, blocks: list[tuple], doc_title: str = "") -> bytes:
+    """Blocks (h1 / h / p / table) to a PDF: Indic fonts through indicpdf when they are installed, else plain ReportLab."""
     from .. import indicpdf
-    pdf = indicpdf.blocks_pdf(f"{sh.get('title')} release", blocks)
+    pdf = indicpdf.blocks_pdf(title, blocks)
     if pdf:
         return pdf
     from reportlab.lib import colors
@@ -1344,7 +1604,7 @@ def release_pdf(tenant: str, ref: str, sh: dict) -> bytes:
             story.append(t)
         story.append(Spacer(1, 6))
     bio = io.BytesIO()
-    SimpleDocTemplate(bio, pagesize=A4, title="Release pack", leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36).build(story)
+    SimpleDocTemplate(bio, pagesize=A4, title=doc_title or title, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36).build(story)
     return bio.getvalue()
 
 
@@ -1434,3 +1694,116 @@ def tick(when: datetime | None = None) -> dict:
         except Exception:
             log.exception("filmdesk tick failed for %s", tenant)
     return out
+
+
+def waterfall_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        w = _j(p.plan, {}).get("waterfall")
+        head = {"number": p.number, "title": p.title}
+    if not w:
+        raise FilmError("Waterfall abhi nahi bana (action=waterfall, sirf owner).")
+    return {"project": head, **w["result"]}
+
+
+# ---------------------------------------------------------------- delivery layer (deliverables / localisation), see delivery.py
+def _simple_list_op(tenant: str, ref: str, key: str, prefix: str, norm, maxn: int, op: str, actor: str, f: dict, fields: tuple,
+                    label_of) -> str:
+    """add | update | remove on one JSON list kept in the film's `plan`; returns the log line."""
+    op = (op or "add").lower()
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        items = [x for x in pl.get(key, []) if isinstance(x, dict)]
+        eid = _s_str(f.get("entry"))
+        cur = next((x for x in items if x["id"] == eid), None)
+        try:
+            if op == "add":
+                if len(items) >= maxn:
+                    raise FilmError(f"{maxn} se zyada nahi.")
+                e = norm(f, _next_id(items, prefix))
+                items.append(e)
+                what = f"{key}: add {label_of(e)}"
+            elif cur is None:
+                raise FilmError("Kaun sa? (entry=" + prefix + "1 jaisa id)")
+            elif op == "remove":
+                items.remove(cur)
+                what = f"{key}: hata {label_of(cur)}"
+            elif op == "update":
+                e = norm({**cur, **{k: v for k, v in f.items() if k in fields}}, 0)
+                e["id"] = cur["id"]
+                items[items.index(cur)] = e
+                what = f"{key}: badla {label_of(e)}"
+            else:
+                raise FilmError("op: add | update | remove")
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        pl[key] = items
+        p.plan = _dump(pl)
+        _log(p, what, actor_name(tenant, actor))
+    return what
+
+
+def deliverable_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | update | remove | starter (adds a kind's starting item names that are not there yet). Hers to edit: no money here."""
+    if (op or "").lower() == "starter":
+        try:
+            names = DL.starter_items(_s_str(f.get("kind")))
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        with _LOCK, session() as s:
+            p = _proj(s, tenant, ref)
+            pl = _j(p.plan, {})
+            items = [x for x in pl.get("deliverables", []) if isinstance(x, dict)]
+            have = {x["label"].lower() for x in items}
+            added = 0
+            for nm in names:
+                if nm.lower() in have or len(items) >= DL.ITEM_MAX:
+                    continue
+                items.append(DL.norm_deliverable({"label": nm, "buyer": f.get("buyer"), "due": f.get("due")}, _next_id(items, "d")))
+                added += 1
+            pl["deliverables"] = items
+            p.plan = _dump(pl)
+            _log(p, f"Deliverables starter ({_s_str(f.get('kind'))}): {added} naye", actor_name(tenant, actor))
+        what = f"{added} item jude (shuruaati list: buyer ki apni spec final)."
+    else:
+        what = _simple_list_op(tenant, ref, "deliverables", "d", DL.norm_deliverable, DL.ITEM_MAX, op, actor, f,
+                               ("label", "buyer", "due", "status", "notes"), lambda e: e["label"])
+    return deliverables_view(tenant, ref) | {"say": what}
+
+
+def deliverables_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        items = [x for x in _j(p.plan, {}).get("deliverables", []) if isinstance(x, dict)]
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **DL.deliverables_view(items, today(tenant))}
+
+
+def localise_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | update | remove one language row (subtitles / dub / both)."""
+    what = _simple_list_op(tenant, ref, "localisation", "l", DL.norm_loc, DL.LOC_MAX, op, actor, f,
+                           ("language", "kind", "dub_mode", "voice_person", "vendor", "due", "status", "qa_rounds", "notes"),
+                           lambda e: f"{e['language']} {e['kind']}")
+    return localisation_view(tenant, ref) | {"say": what}
+
+
+def localisation_view(tenant: str, ref: str) -> dict:
+    day = today(tenant)
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        items = [x for x in _j(p.plan, {}).get("localisation", []) if isinstance(x, dict)]
+        head = {"number": p.number, "title": p.title}
+        seen: dict[str, str] = {}
+
+        def check(person_ref: str) -> str:
+            if person_ref not in seen:
+                try:
+                    pe = _person_view(_person(s, tenant, person_ref))
+                except FilmError:
+                    seen[person_ref] = f"{person_ref}: register me vyakti nahi mila."
+                else:
+                    seen[person_ref] = R.consent_problem(pe, "ai_voice", day.isoformat())
+            return seen[person_ref]
+        view = DL.loc_view(items, day, check)
+    return {"project": head, **view}
