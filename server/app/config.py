@@ -391,6 +391,12 @@ class Settings(BaseSettings):
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     scrape_respect_robots: bool = True     # v0.477 scrape tools refuse paths the site's robots.txt disallows for bots
     scrape_stealth_enabled: bool = False   # v0.477 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
+    # v0.533 CRAWL BRAIN (the crawl4ai ideas, hand-built). Every one is OFF or neutral by default.
+    scrape_proxies: str = ""               # v0.533 comma list: ip:port[:user:pass] | url | DIRECT. Empty = fetch direct, as before
+    scrape_proxy_max_fails: int = 3        # v0.533 failures before a proxy is rested
+    scrape_proxy_rest_s: int = 300         # v0.533 how long a failing proxy rests
+    scrape_clean_default: bool = False     # v0.533 prune boilerplate on EVERY scrape_page (she can also ask per call)
+    scrape_crawl_question_mode: str = "best"   # v0.533 frontier mode when a crawl job carries a question: best | bfs
     scrape_cache_enabled: bool = True      # v0.481 serve repeat scrapes from the per-tenant page cache within max_age
     scrape_cache_max_age: int = 1800       # v0.481 default seconds a cached page stays fresh for the scrape tool (0 = always fresh)
     scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)
