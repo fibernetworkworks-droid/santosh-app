@@ -122,11 +122,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'CONSTRUCTION WAVE 3' in main and 'construction/bim.py' in main
+    assert 'HOOLA RETRIEVE' in main and 'aep/retrieve.py' in main  # the newest-story precedent (the v0.570 P6 story carries the marker; CONSTRUCTION WAVE 3 lives in the Previous chain)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.569.0+592' in pub
+    assert 'version: 0.580.0+595' in pub

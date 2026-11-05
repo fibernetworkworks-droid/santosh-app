@@ -28,7 +28,8 @@ from sqlalchemy import select
 
 from ..db import session
 from .common import (CstError, _LOCK, _dump, _j, _num, today)
-from .models import (CBimCde, CBimClash, CBimElement, CBimLink4d, CBimModel, CBimTakeoff, CBimTransmit)
+from .models import (CBimAsbuilt, CBimAsbuiltDoc, CBimCde, CBimClash, CBimElement, CBimLink4d, CBimModel,
+                     CBimTakeoff, CBimTransmit, CTwinAsset, CTwinReading)
 
 # ---------------------------------------------------------------- the STEP reader (pure text)
 _ENT = re.compile(r"^#(\d+)\s*=\s*([A-Z0-9_]+)\s*\((.*)\)\s*;\s*$")
@@ -704,3 +705,165 @@ def ids_check(tenant: str, model_id: str, ids_text: str) -> dict:
             "say": "IDS subset check: ENTITY (class) aur PROPERTY (pset.property presence) facets only - "
                    "datatype/cardinality facets UNVERIFIED kehlati hain (guess nahi). 'IFC exchange "
                    "checkable hai - is IDS tak.'"}
+
+
+# --------------------------------------- #25 as-built set + #109 digital twin (Wave 3.5, v0.565.0)
+def asbuilt_set(tenant: str, project: str, name: str, required: list, note: str = "", conv: str = "") -> dict:
+    """An as-built SET (#25): the required document codes as SHE listed them - completeness is
+    arithmetic on HER list. Redline marking and the set's approval stay with the site architect/QS."""
+    if not str(project or "").strip() or not str(name or "").strip():
+        raise CstError("Project aur set ka naam bataiye.")
+    codes = []
+    for r in (required or []):
+        c = str(r).strip()
+        if c:
+            codes.append(c[:160])
+    if not codes:
+        raise CstError("Required documents ki list bhejo (code ya 'CODE | Title' strings) - bina list "
+                       "ke completeness check nahi banta.")
+    with _LOCK, session() as s:
+        x = CBimAsbuilt(tenant_id=tenant, project=project.strip()[:160], name=name.strip()[:200],
+                        note=note.strip()[:300])
+        s.add(x)
+        s.flush()
+        sid = x.id
+        for c in codes:
+            parts = [p.strip() for p in c.split("|", 1)]
+            s.add(CBimAsbuiltDoc(tenant_id=tenant, set_id=sid, code=parts[0][:80],
+                                 title=(parts[1] if len(parts) > 1 else "")[:200]))
+    from .common import publish
+    publish(tenant, "const_bim", {"kind": "asbuilt_set", "project": project, "set": name}, conv)
+    return {"set_id": sid, "required": len(codes),
+            "say": f"As-built set '{name}': {len(codes)} required documents (aapki list). Har doc ko "
+                   "mark karo received/na - apne NAAM ke saath; check kabhi bhi chalega. Set ka "
+                   "approval site architect/QS ka hai (tier C) - Hoola completeness register rakhta hai."}
+
+
+def asbuilt_mark(tenant: str, set_id: str, code: str, status: str, by: str, note: str = "") -> dict:
+    """One document's word, recorded: received | pending | na - and WHOSE word (name required; a
+    received without a name is nobody's word, the same law clash_mark rides)."""
+    if status not in ("received", "pending", "na"):
+        raise CstError("status: received | pending | na")
+    if not str(by or "").strip():
+        raise CstError("Kiske naam se? (jo mark kar raha hai uska naam record hota hai).")
+    with _LOCK, session() as s:
+        rows = s.scalars(select(CBimAsbuiltDoc).where(CBimAsbuiltDoc.tenant_id == tenant,
+                                                      CBimAsbuiltDoc.set_id == set_id)).all()
+        hit = next((r for r in rows if r.code.strip().upper() == str(code or "").strip().upper()), None)
+        if hit is None:
+            raise CstError(f"Code '{code}' is set mein nahi - dekho what=asbuilt se list dekho.")
+        hit.status, hit.by, hit.note = status, by.strip()[:120], note.strip()[:200]
+    return {"code": hit.code, "status": status,
+            "say": f"{hit.code}: {status} ({by.strip()}). Record hai - as-built ka APPROVAL site "
+                   "architect/QS ka, Hoola kabhi nahi."}
+
+
+def asbuilt_check(tenant: str, set_id: str) -> dict:
+    """Completeness (#25): received vs HER required list - received, na, pending, the missing codes,
+    the percent. Arithmetic on her list; approval reserved (tier C)."""
+    with session() as s:
+        st = s.get(CBimAsbuilt, set_id)
+        if not st or st.tenant_id != tenant:
+            raise CstError("As-built set nahi mili.")
+        rows = s.scalars(select(CBimAsbuiltDoc).where(CBimAsbuiltDoc.tenant_id == tenant,
+                                                      CBimAsbuiltDoc.set_id == set_id)).all()
+    recv = [r.code for r in rows if r.status == "received"]
+    na = [r.code for r in rows if r.status == "na"]
+    pend = [r.code for r in rows if r.status == "pending"]
+    eff = len(rows) - len(na)
+    pct = round(len(recv) / eff * 100.0, 1) if eff else 0.0
+    return {"set_id": set_id, "required": len(rows), "received": len(recv), "na": len(na),
+            "pending": len(pend), "completeness_pct": pct, "missing": pend[:40],
+            "say": f"As-built '{st.name}': {len(recv)}/{eff} received ({pct:g}%), {len(na)} na, "
+                   f"{len(pend)} pending - missing: {', '.join(pend[:6]) or '-'}"
+                   + ("..." if len(pend) > 6 else "") + ". Completeness AAPKI list ke against hai; "
+                   "handover ka approval site architect/QS karta hai (tier C)."}
+
+
+def twin_asset(tenant: str, project: str, asset_id: str, guid: str, name: str = "", kind: str = "",
+               space: str = "", model_id: str = "", note: str = "", conv: str = "") -> dict:
+    """Digital-twin asset row (#109): the DATA LINK asset -> IFC GUID (+ model). The twin is a
+    register Hoola keeps - never a live 3D view, never a sensor platform."""
+    if not str(asset_id or "").strip() or not str(guid or "").strip():
+        raise CstError("Asset id aur IFC GUID dono chahiye - twin ka data link yahi jodi hai (bina "
+                       "GUID ka asset model se juda nahi, sirf ek row hai).")
+    with _LOCK, session() as s:
+        x = CTwinAsset(tenant_id=tenant, project=project.strip()[:160], asset_id=asset_id.strip()[:80],
+                       guid=guid.strip()[:40], model_id=model_id.strip()[:40], name=name.strip()[:200],
+                       kind=kind.strip()[:60], space=space.strip()[:120], note=note.strip()[:200])
+        s.add(x)
+        s.flush()
+        tid = x.id
+    from .common import publish
+    publish(tenant, "const_bim", {"kind": "twin_asset", "project": project, "asset": asset_id}, conv)
+    return {"twin_id": tid,
+            "say": f"Twin asset {asset_id} -> GUID {guid.strip()[:12]}... ({kind or 'kind ?'}). "
+                   "Yeh DATA LINK hai - sensor feeds twin_read se aate hain; live 3D view Hoola "
+                   "nahi hai, COBie handover cobie_check se jachega."}
+
+
+def twin_read(tenant: str, project: str, rows: list, unit: str = "", band_min: float = 0.0,
+              band_max: float = 0.0, band_source: str = "", note: str = "", conv: str = "") -> dict:
+    """Sensor feed rows (#109): HER export as fed - [asset_id, sensor, value] rows, one unit per
+    call. Feed a band WITH its source and out-of-band is flagged - arithmetic, not judgement."""
+    parsed = []
+    for r in (rows or []):
+        try:
+            v = r if isinstance(r, list) else str(r).split(",")
+            if len(v) < 3:
+                continue
+            parsed.append((str(v[0]).strip()[:80], str(v[1]).strip()[:80], float(v[2])))
+        except (TypeError, ValueError):
+            continue
+    if not parsed:
+        raise CstError("Reading rows bhejo [asset_id, sensor, value] - sensor feeds AAPKE export se "
+                       "aate hain, Hoola khud sensor nahi baithata.")
+    has_band = _num(band_min) != 0.0 or _num(band_max) != 0.0
+    if has_band and not str(band_source or "").strip():
+        raise CstError("Band di hai to uska SOURCE bhi do (design table / OEM sheet / FM note) - "
+                       "bina source ki band guess hai.")
+    with _LOCK, session() as s:
+        out = 0
+        for aid, sn, val in parsed:
+            ob = has_band and (val < _num(band_min) or val > _num(band_max))
+            out += 1 if ob else 0
+            s.add(CTwinReading(tenant_id=tenant, project=project.strip()[:160], asset_id=aid, sensor=sn,
+                               value=val, unit=unit.strip()[:20], band_min=_num(band_min),
+                               band_max=_num(band_max), band_source=band_source.strip()[:160],
+                               out_band=bool(ob), note=note.strip()[:200]))
+    from .common import publish
+    publish(tenant, "const_bim", {"kind": "twin_read", "project": project, "rows": len(parsed)}, conv)
+    say = (f"Twin readings: {len(parsed)} rows ({unit or 'unit ?'}) store. "
+           + (f"Band {band_min:g}-{band_max:g} ({band_source.strip()[:40]}): {out} OUT-OF-BAND - flag "
+              f"arithmetic hai, kaam FM/asset manager ka. " if has_band else "Band nahi di - sirf "
+              "record (band ke saath degi to out-of-band flag hoga, source ke saath). ")
+           + "Yeh data steward ka register hai - control ka faisla FM ka.")
+    return {"rows": len(parsed), "out_of_band": out, "say": say}
+
+
+_COBIE_HEADERS = ("AssetIdentifier", "TypeName", "Space", "InstallationDate")
+
+
+def cobie_check(tenant: str, project: str, csv_text: str) -> dict:
+    """COBie Component sheet as CSV (#109): the REQUIRED headers checked, rows missing the asset id
+    or type listed. The workbook itself is HERS - converted CSV in, said on the tin."""
+    lines = [ln for ln in str(csv_text or "").strip().splitlines() if ln.strip()]
+    if len(lines) < 2:
+        raise CstError("COBie Component sheet ka CSV do (header + kam se kam ek row).")
+    hdr = [h.strip().strip('"') for h in lines[0].split(",")]
+    low = {h.lower(): i for i, h in enumerate(hdr)}
+    missing_cols = [c for c in _COBIE_HEADERS if c.lower() not in low]
+    if missing_cols:
+        raise CstError(f"Yeh COBie columns nahi mile: {', '.join(missing_cols)} - Component sheet "
+                       "ke required headers chahiye (AssetIdentifier, TypeName, Space, InstallationDate).")
+    ai, tn = low["assetidentifier"], low["typename"]
+    bad, n = [], 0
+    for ln in lines[1:]:
+        cells = [c.strip().strip('"') for c in ln.split(",")]
+        n += 1
+        if not (len(cells) > max(ai, tn) and cells[ai] and cells[tn]):
+            bad.append(ln[:120])
+    return {"rows": n, "missing_required_fields": len(bad), "examples": bad[:8],
+            "say": f"COBie CSV check: {n} rows, {len(bad)} bina AssetIdentifier/TypeName. Yeh header-"
+                   "aur-row completeness hai - COBie handover ka certificate asset information "
+                   "manager deta hai; xlsx workbook aapki, CSV yahan aaya."}

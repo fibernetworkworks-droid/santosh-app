@@ -43,9 +43,9 @@ ROWS: list[tuple[int, str, int, str, str, str]] = [
     (22, "Land Survey Data Processor", 3, "B", "licensed surveyor signs", "3"),
     (23, "Drone Survey & Photogrammetry Processor", 3, "B", "survey lead", "3"),
     (24, "Laser Scan / Point-cloud Reality Capture Assistant", 3, "B", "scan technician", "3"),
-    (25, "As-built Documentation Assistant", 3, "A", "site architect / QS", ""),
+    (25, "As-built Documentation Assistant", 3, "A", "site architect / QS", "3.5"),
     (26, "RERA Carpet-area Measurement Assistant", 3, "B", "project architect / CE", "3"),
-    (27, "GIS Analyst", 3, "A", "planner", ""),
+    (27, "GIS Analyst", 3, "A", "planner", "3.5"),
     # 4. Approvals, permits & statutory compliance (R5 A1-A14)
     (28, "Approvals Tracker (Liaison Officer Assistant)", 4, "A", "liaison manager", "2"),
     (29, "Building-permission File Assembler", 4, "A/B", "licensed professional", "2"),
@@ -98,10 +98,10 @@ ROWS: list[tuple[int, str, int, str, str, str]] = [
     (71, "Site Manager (Theka Sahayak) *", 9, "A", "contractor", "1"),
     (72, "Pour & Concrete Records Keeper", 9, "B", "QA engineer", "2"),
     (73, "Rebar Bar-bending Schedule Assistant", 9, "B", "structural/site engineer", "2"),
-    (74, "Formwork & Scaffold Planner", 9, "B", "site engineer", ""),
+    (74, "Formwork & Scaffold Planner", 9, "B", "site engineer", "3.5"),
     (75, "Quality Auditor's Assistant", 9, "A/B", "QA/QC manager", "1"),
     (76, "Material Test Register Keeper", 9, "A", "QC engineer", ""),
-    (77, "Setting-out & Level Check Recorder", 9, "A/B", "survey engineer", ""),
+    (77, "Setting-out & Level Check Recorder", 9, "A/B", "survey engineer", "3.5"),
     (78, "Snagging & Punch-list Manager", 9, "A", "QA engineer", "1"),
     (79, "Specialist Works Coordinators", 9, "B", "respective specialists", ""),
     (80, "Concrete-Pump, Crane & Plant Scheduler", 9, "A", "plant manager", ""),
@@ -137,7 +137,7 @@ ROWS: list[tuple[int, str, int, str, str, str]] = [
     (106, "Housekeeping & Security Rosters", 13, "A", "FM", ""),
     (107, "Structural-safety & Building-audit Scheduler", 13, "A", "society / owner", ""),
     (108, "Asset & Space Manager", 13, "A", "asset manager", ""),
-    (109, "Digital Twin Data Steward", 13, "B", "asset information manager", ""),
+    (109, "Digital Twin Data Steward", 13, "B", "asset information manager", "3.5"),
     # 14. Sustainability, commissioning & performance (R6 C-D)
     (110, "Green Building Consultant's Assistant", 14, "B", "AP / CP", "3"),
     (111, "ECBC / Energy-code Compliance Checker", 14, "B", "ECBC assessor", "3"),
@@ -168,6 +168,7 @@ FIELDS = {1: "Land, feasibility & development", 2: "Architecture, design & consu
 WAVE1_IDS = [61, 62, 64, 67, 70, 71, 75, 78, 85, 87, 88, 90, 91, 92, 98]
 WAVE2_IDS = [9, 16, 28, 29, 30, 31, 32, 34, 35, 36, 37, 38, 39, 41, 44, 45, 46, 49, 51, 52, 53, 54, 55, 56, 58, 72, 73, 81, 93]
 WAVE3_IDS = [10, 11, 12, 18, 19, 20, 21, 22, 23, 24, 26, 47, 82, 104, 110, 111, 112, 113, 114, 115, 116, 117, 118]
+WAVE35_IDS = [25, 27, 74, 77, 109]
 
 # register id -> where the work lives in Hoola after Wave 1 (the Hub key, or the existing desk that owns it)
 WAVE1_HOME: dict[int, str] = {
@@ -210,6 +211,17 @@ WAVE3_HOME: dict[int, str] = {
     113: "const_green (daylight WFR)", 114: "const_green (carbon hotspots)",
     115: "const_green (water demand, RWH)", 116: "const_green (Cx scripts + issues)",
     117: "const_green (T&C records)", 118: "const_green (M&V baseline + savings)",
+}
+
+# register id -> where the work lives after Wave 3.5 (v0.565.0): the FIVE Wave-3 stragglers, homed
+# per the plan §5's original mapping - same laws (open formats, recorded names, tier C refusals).
+# #25's approval + #74's striking order + #74's scaffold tag are the humans' acts (gates.py rows).
+WAVE35_HOME: dict[int, str] = {
+    25: "const_bim (as-built set register, completeness check)",
+    27: "const_survey (GeoJSON layers, honest areas, overlay readings)",
+    74: "const_predesign (formwork area, strike times, props, scaffold tags)",
+    77: "const_survey (setting-out sheets, as-laid vs design, level checks)",
+    109: "const_bim (twin asset->GUID register, sensor rows, COBie CSV check)",
 }
 
 

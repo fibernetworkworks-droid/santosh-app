@@ -42,9 +42,17 @@ from P2 where tracers and agents actually run):
                file search, provider tool search, the bounded shell tool) +
                THE UNIFICATION: nudge/curator/delegate/skills-primer collapse
                into middlewares on the one loop
+- retrieve   : (P6 v0.570.0 HOOLA RETRIEVE) the retrieval layer - Document,
+               Embeddings + DeterministicEmbeddings, VectorStore + the
+               sqlite-first SqliteVectorStore (path or the vault engine),
+               RecordManager + SqliteRecordManager + index()/aindex() (the
+               content+metadata hash dedup, incremental/full/scoped_full
+               cleanup), the text splitters (character + recursive), the
+               retrievers as Runnables (BaseRetriever/VectorStoreRetriever,
+               the P2 "retriever" span) + Docs7Retriever (docs7 as a source)
 
-P3 (HOOLA GRAPH) is the state-graph engine; P4 (HOOLA AGENT) create_agent; P5 (HOOLA MIDDLEWARE) the 24;
-P6 retrieval; P7 the hub/loader/conformance suite.
+P6 (HOOLA RETRIEVE) is the retrieval layer; P7 the hub/loader/conformance suite;
+P8 the 100% parity audit.
 """
 from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, extended)
     agent,
@@ -56,6 +64,7 @@ from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, exten
     prompts,
     parsers as _parsers_mod,
     graph,
+    retrieve,
     runnable,
     serializable,
     stores,
@@ -139,6 +148,26 @@ from .prompts import (
     MessagesPlaceholder,
     PromptTemplate,
 )
+from .retrieve import (
+    BaseRetriever,
+    CharacterTextSplitter,
+    DeterministicEmbeddings,
+    Document,
+    Docs7Retriever,
+    Embeddings,
+    IndexingException,
+    IndexingResult,
+    RecordManager,
+    RecursiveCharacterTextSplitter,
+    SqliteRecordManager,
+    SqliteVectorStore,
+    TextSplitter,
+    VectorStore,
+    VectorStoreRetriever,
+    aindex,
+    index,
+    maximal_marginal_relevance,
+)
 from .runnable import (
     Runnable,
     RunnableBinding,
@@ -218,4 +247,12 @@ __all__ = [
     "StateGraph", "interrupt",
     # P4 agent (HOOLA AGENT)
     "ToolNode", "create_agent", "create_react_agent",
+    # P6 retrieve (HOOLA RETRIEVE)
+    "Document", "Embeddings", "DeterministicEmbeddings",
+    "maximal_marginal_relevance",
+    "VectorStore", "SqliteVectorStore",
+    "RecordManager", "SqliteRecordManager", "IndexingException",
+    "IndexingResult", "index", "aindex",
+    "TextSplitter", "CharacterTextSplitter", "RecursiveCharacterTextSplitter",
+    "BaseRetriever", "VectorStoreRetriever", "Docs7Retriever",
 ]

@@ -1,5 +1,36 @@
 # HOOLA — full version history (moved out of CLAUDE.md on 29 Oct 2026 so sessions stop hitting "context full"). Search it, never read it whole.
 
+## v0.570.0 HOOLA RETRIEVE — the retrieval layer, P6 of the HOOLA AEP plan (5 Nov 2026)
+
+Owner: "P6 RETRIEVE". Vectors IN SCOPE per the 100% directive. Built as server/app/aep/retrieve.py (~1.6k LOC, ZERO
+upstream) after re-reading upstream at the pinned commit aa2528fb (vectorstores base+in_memory+utils, embeddings,
+indexing base+api+in_memory, retrievers.py, text-splitters base+character). The layer: Document (page_content/metadata/id
++ the dict round trip); Embeddings ABC + DeterministicEmbeddings (sha256-seeded unit vectors, byte-stable, numpy-free —
+the zero-network test embedder); maximal_marginal_relevance pure-python (the numpy formula ported); VectorStore ABC (the
+honest defaults — add_texts/delete/with_score refuse, get_by_ids [], the search dispatch similarity|score_threshold|mmr,
+with_relevance_scores with the [0,1] contract + score_threshold filter, by_vector, MMR, from_texts/from_documents,
+as_retriever, a-twins); SqliteVectorStore — the sqlite-first ANN (stdlib sqlite3 WAL, exactly one of path=/engine= the
+vault engine seam via raw_connection, one table aep_vectors(id,doc,vec,ts), exact cosine kNN scan with the
+metadata-equality filter, MMR over fetch_k, relevance = cosine clamped [0,1], persists across instances);
+RecordManager + SqliteRecordManager — the indexing ledger (aep_index_records(uuid,updated_at,group_id), the
+time_at_least monotonic gate, chunked exists, list_keys before/after/group/limit); index()/aindex() — the dedup flow
+(content and metadata hashed separately then combined; key_encoder sha1|sha256|sha512|blake2b, house default sha256;
+in-order dedup; the store write FIRST, the ledger update SECOND; cleanup None|incremental|full|scoped_full;
+IndexingResult counts; force_update; the delete-override gate); the text splitters (TextSplitter ABC with the
+_merge_splits overlap pop-loop ported exactly, add_start_index offset math, the per-chunk metadata deep-copy;
+CharacterTextSplitter with the lookaround guard; RecursiveCharacterTextSplitter with the separator ladder and
+over-cap pieces emitted AS-IS); BaseRetriever — the retriever as a Runnable firing the P2 "retriever" span
+(RUN_TYPES pre-declared it in P2; the P2 seam gained the additive retriever_start/end/error surface, the chain
+fallback untouched); VectorStoreRetriever (search_type similarity|mmr validated, search_kwargs ride every call,
+add_documents proxy); Docs7Retriever — docs7 as a retriever source (the same flag/redaction/window/vault-cache gates,
+the fetch injectable for zero-network tests, the handler imported lazily inside the call, ok=False = the honest empty
+list with the raw result on .last_result). Registry stays 581; inertness re-proven (fresh interpreter, zero
+threads/env/files, sqlite opens on first use). Tests: NEW test_v0560_hoola_retrieve.py (31, zero network, tmp sqlite
+wiped per test). Bugs the suite caught: the MMR search fed cosine scores into the scorer where vectors belonged;
+get_by_ids mis-keyed parsed rows; the chunk_size<=0 error order; the source-id assigner's raw KeyError.
+Version ritual: pubspec 0.570.0+593, console stamps 22x, pins swept 0.569.0 -> 0.570.0 / +592 -> +593 across 187 test
+files. AEP train: P7 HUB -> P8 the 100% parity audit next.
+
 # HOOLA — project brief for any new session (read fully before working)
 
 ## v0.549.0 HOOLA AGENT — create_agent compiled onto the house graph, P4 of the HOOLA AEP plan (5 Nov 2026)
@@ -20697,3 +20728,17 @@ The two W9 pieces v0.565 listed as not built. Both are served from her own site 
   off (animations play and are recoloured, the 3D canvas is drawn, only used files copied, other pages stay light, OSV gate sees
   three 0.187.0 + lottie-web 5.13.0), routes + tool + writer rules.
 - NOT VERIFIED: a real phone's GPU (headless is software WebGL), and a real LottieFiles download of hers.
+
+## v0.571.0 SAB SCHEMA SAHI — hotfix from her live hard card (every Claude turn 400ed after v0.565)
+
+Her vps-ops `hard_card` on 0.570.0: ping fine on Opus + Sonnet, then every live turn failed with
+`400 tools.83.custom.input_schema: JSON schema is invalid` (tools.76 on others - the index moves with the admitted set).
+Cause: v0.565 declares EVERY tool on every Claude call; `dhara_save` (agent/dhara_tools.py, v0.502) had `"required"`
+written inside `"properties"`, so its schema was invalid JSON Schema - unseen while the dhara family was almost never
+admitted, fatal once every tool rides every request. The v0.565 ladder (`toolsearch.refused`) only knew the words
+defer_loading / tool_reference, so it never stepped back. Fix: (1) the schema; (2) `toolsearch.schema_ok` validates
+each tool once against Draft 2020-12 (jsonschema added to requirements; missing validator = trusted) and keeps a bad one
+out of the deferred list with a warning; (3) `refused` also matches any 400 naming `tools.N.`. Test:
+`test_every_tool_schema_is_valid_json_schema_2020_12` over all 581 tools + the fallback test. The same deploy's live tool
+card: right first pick 25/26 (fresh15: scrape vs open_website). Lesson: a change that widens what is SENT must validate
+everything it now sends - the free cards never call the API, so only the live card could see this.

@@ -48,6 +48,12 @@ TIER_C: tuple[tuple[str, str], ...] = (
     ("certify commissioning", "Commissioning sign-off Cx authority ka hai."),
     ("certify an energy audit", "Energy audit certified auditor karta hai; Hoola data aur hisaab taiyaar karta hai."),
     ("give a structural-safety verdict", "Structural-safety ka verdict registered engineer deta hai; Hoola kabhi nahi."),
+    ("approve the as-built set", "As-built set ka approval handover se pehle site architect / QS karta hai; "
+     "Hoola completeness register aur missing list dikhata hai - sign line khaali rehti hai."),
+    ("order formwork striking", "Formwork striking (hataane) ka order site engineer deta hai; Hoola IS 456 "
+     "Table 10 ke against sirf hisaab dikhata hai."),
+    ("tag a scaffold safe", "Scaffold ka green tag competent person lagata hai; Hoola inspection REGISTER "
+     "rakhta hai, tag nahi lagata."),
 )
 
 
