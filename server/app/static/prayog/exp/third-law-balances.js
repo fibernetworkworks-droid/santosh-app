@@ -66,7 +66,7 @@ HoolaStudio.define('third-law-balances', function (S) {
   }
   var balA = balance(FULL_A, LC_A, 'A', 0x2b2f36);
   var balB = balance(FULL_B, LC_B, 'B', 0x3a3038);
-  var B_HOME = new T.Vector3(0.16, 0.012, 0.11);
+  var B_HOME = new T.Vector3(0.16, 0.019, 0.11);
   balB.position.copy(B_HOME); balB.rotation.z = 0;
   var bShadow = S.contact(0.24, 0.1, B_HOME.x + 0.1, B_HOME.z, 0.45);
 
