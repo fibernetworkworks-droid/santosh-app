@@ -267,9 +267,124 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
             <button class="btn soft" type="button" data-run="index">Check Google index</button></div></div>
       </div>
       <div class="tile gl"><h3>Open fixes on the website</h3>${fixes(d.open_tasks || [])}</div>
-      ${indexNow(d)}`;
+      ${indexNow(d)}
+      <div class="tile gl" id="emIntel"><div class="em-h"><h3>Search intel</h3></div><div class="empty">Loading…</div></div>`;
     wireDesk(el, d);
+    intel(el);
     if (d.state === 'first_run') TIMER = setTimeout(() => { if (visible(el)) desk(el); }, 10000);
+  }
+
+  // ------------------------------------------------------------ v0.536 SEARCH INTEL: ranks, AI answers, Maps grid, DataForSEO
+  const ENG = {openai: 'ChatGPT', gemini: 'Gemini', perplexity: 'Perplexity'};
+  const cell = r => r == null ? 'var(--line)' : r <= 3 ? 'var(--ok)' : r <= 10 ? 'var(--warn)' : 'var(--bad)';
+  async function intel(el) {
+    const box = el.querySelector('#emIntel'); if (!box) return;
+    let v;
+    try { v = await api('GET', '/api/seo/intel'); }
+    catch (e) { box.innerHTML = `<div class="em-h"><h3>Search intel</h3></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const sp = v.spend || {}, ai = v.ai || {}, mp = v.maps || {}, df = v.dataforseo || {}, rk = (v.ranks || {}).keywords || [];
+    const pos = p => p == null ? '–' : esc(String(p));
+    const move = m => m == null ? '' : `<i class="${m > 0 ? 'okc' : m < 0 ? 'badc' : ''}">${m > 0 ? '▲' : m < 0 ? '▼' : ''}${esc(String(Math.abs(m)))}</i>`;
+    const ranks = `<div class="tile gl em-sub2"><div class="em-h"><h4>Keywords you follow in Google</h4><span class="muted em-small">${rk.length} / ${num((v.ranks || {}).max || 100)}</span></div>
+      ${rk.length ? `<table class="em-tbl"><thead><tr><th>Keyword</th><th>Position</th><th>7 days</th><th>Clicks (7d)</th><th>Page</th><th>Exact check</th><th></th></tr></thead><tbody>${rk.map(k =>
+        `<tr><td>${esc(k.keyword)}</td><td>${pos(k.position)}</td><td>${move(k.move_7d)}</td><td>${num(k.clicks_7d)}</td><td class="muted">${esc((k.url || '').replace(/^https?:\/\/[^/]+/, '') || '–')}</td>
+          <td>${k.exact ? `${k.exact.position == null ? 'not in top 100' : '#' + esc(String(k.exact.position))} <span class="muted em-small">top: ${esc((k.exact.top || []).map(t => t.domain).join(', '))}</span>` : '–'}</td>
+          <td><button class="btn soft" type="button" data-untrack="${esc(k.keyword)}">Stop</button></td></tr>`).join('')}</tbody></table>` : '<div class="empty">Add the searches you want to win.</div>'}
+      <div class="ar-form em-form"><label><span>Add keywords (one per line)</span><textarea id="inTrack" rows="2" placeholder="dentist in akola"></textarea></label></div>
+      <div class="acts"><button class="btn go" type="button" id="inTrackGo">Follow these</button>
+        <button class="btn soft" type="button" id="inGsc">Refresh from Search Console (free)</button>
+        <button class="btn soft" type="button" id="inSerp"${df.connected ? '' : ' disabled title="Join DataForSEO below"'}>Exact Google check (DataForSEO)</button>
+        <button class="btn soft" type="button" id="inIdeas">Keyword ideas</button></div><div id="inIdeasOut"></div>
+      <p class="muted em-small">${esc((v.ranks || {}).note || '')}</p></div>`;
+    const be = ai.by_engine || {};
+    const aiBox = `<div class="tile gl em-sub2"><div class="em-h"><h4>Are you named in AI answers?</h4><span class="muted em-small">${Object.entries(ai.engines || {}).map(([k, e]) => tag(e.ready ? 'ok' : '', (ENG[k] || k) + (e.ready ? '' : ' (no key)'))).join(' ')}</span></div>
+      ${ai.last_run ? `<div class="kpis em-kpis"><div class="kpi gl"><b>${num(ai.summary.mentioned_pct)}%</b><span>answers name you</span></div><div class="kpi gl"><b>${num(ai.summary.cited_pct)}%</b><span>cite your site</span></div>
+        ${Object.entries(be).map(([k, x]) => `<div class="kpi gl"><b>${num(x.mentioned_pct)}%</b><span>${esc(ENG[k] || k)}</span><small>cited ${num(x.cited_pct)}%</small></div>`).join('')}</div>
+        ${(ai.cited_instead || []).length ? `<p class="em-small"><b>Sites the AI cites instead</b> (get listed / mentioned here): ${ai.cited_instead.map(([d, n]) => `${esc(d)} <span class="muted">${n}</span>`).join(' · ')}</p>` : ''}
+        ${(ai.competitors_named || []).length ? `<p class="em-small"><b>Competitors named</b>: ${ai.competitors_named.map(([d, n]) => `${esc(d)} <span class="muted">${n}</span>`).join(' · ')}</p>` : ''}` : '<div class="empty">No answers read yet.</div>'}
+      <table class="em-tbl"><thead><tr><th>Question</th>${Object.keys(ENG).map(k => `<th>${ENG[k]}</th>`).join('')}<th></th></tr></thead><tbody>${(ai.prompts || []).map(p => {
+        const r = Object.fromEntries((p.results || []).map(x => [x.engine, x]));
+        return `<tr><td>${esc(p.prompt)}${p.active ? '' : ' <span class="muted">(off)</span>'}</td>${Object.keys(ENG).map(k => `<td>${r[k] ? (r[k].mentioned ? `<i class="okc">named${r[k].rank ? ' #' + r[k].rank : ''}</i>` : '<i class="badc">not named</i>') + (r[k].cited ? ' · cited' : '') : '–'}</td>`).join('')}
+          <td><button class="btn soft" type="button" data-pr="${esc(p.id)}" data-on="${p.active ? '0' : '1'}">${p.active ? 'Pause' : 'Resume'}</button></td></tr>`; }).join('')}</tbody></table>
+      <div class="ar-form em-form"><label><span>Questions customers ask an AI (one per line)</span><textarea id="inPrompts" rows="2" placeholder="Best dental clinic in Akola for implants?"></textarea></label></div>
+      <div class="acts"><button class="btn soft" type="button" id="inPromptsGo">Add questions</button><button class="btn soft" type="button" id="inSuggest">Suggest questions</button>
+        <button class="btn go" type="button" id="inAiRun">Ask the AIs now (~₹${num((ai.price_per_answer_inr || 2) * (ai.prompts || []).filter(p => p.active).length * Object.values(ai.engines || {}).filter(e => e.ready).length)})</button>
+        <label class="em-small"><input type="checkbox" id="inAiWeekly"${(v.settings || {}).ai_weekly ? ' checked' : ''}> every week</label></div><div id="inSugOut"></div>
+      <p class="muted em-small">${esc(ai.note || '')} This month ₹${num(sp.ai_inr)} of ₹${num(sp.ai_cap_inr)}.</p></div>`;
+    const grid = g => `<div class="em-grid-wrap"><b>${esc(g.keyword)}</b> <span class="muted em-small">top 3 at ${num(g.top3)} / ${g.points.length} points · average ${g.average == null ? '–' : esc(String(g.average))}${g.previous ? ` (was ${num(g.previous.top3)} top-3)` : ''} · ${esc(when(g.at))}</span>
+      <div style="display:grid;grid-template-columns:repeat(${g.size},34px);gap:4px;margin:8px 0">${g.points.map(p => `<span title="${p.rank == null ? 'not in first 20' : '#' + p.rank}" style="height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;background:${cell(p.rank)};color:#fff">${p.rank == null ? '20+' : p.rank}</span>`).join('')}</div>
+      ${(g.leaders || []).length ? `<p class="em-small muted">At your shop: ${g.leaders.map((x, i) => `${i + 1}. ${x.you ? '<b>you</b>' : esc(x.name)}`).join(' · ')}</p>` : ''}</div>`;
+    const maps = `<div class="tile gl em-sub2"><div class="em-h"><h4>Google Maps grid</h4><span class="muted em-small">${mp.place && mp.place.id ? esc(mp.place.name + ' · ' + (mp.place.address || '')) : 'Pick your shop first'}</span></div>
+      ${!mp.ready ? '<div class="empty">Google Maps key not set on the server.</div>' : !(mp.place && mp.place.id) ? '<div class="acts"><button class="btn go" type="button" id="inFind">Find my shop on Google Maps</button></div><div id="inFindOut"></div>' :
+        `${(mp.grids || []).map(grid).join('') || '<div class="empty">No grid yet.</div>'}
+        <div class="acts"><input id="inGridKw" placeholder="dentist near me" aria-label="Search"><select id="inGridSize" aria-label="Grid">${[3, 5, 7].map(n => `<option value="${n}"${n === (v.settings || {}).grid_size ? ' selected' : ''}>${n}x${n}</option>`).join('')}</select>
+          <button class="btn go" type="button" id="inGridGo">Check this search</button><button class="btn soft" type="button" id="inFind">Change shop</button></div><div id="inFindOut"></div>`}
+      <p class="muted em-small">${esc(mp.note || '')}</p></div>`;
+    const dfs = `<div class="tile gl em-sub2"><div class="em-h"><h4>Competitors and backlinks (DataForSEO)</h4><span class="muted em-small">${df.connected ? `Joined (${esc(df.via === 'own' ? df.login : 'Newtika')}) · this month $${esc(String(df.spent_usd))} of $${esc(String(df.cap_usd))}` : 'Your own DataForSEO account, pay as you go'}</span></div>
+      ${df.connected ? `<div class="acts"><button class="btn soft" type="button" data-dfs="overview">My domain</button><button class="btn soft" type="button" data-dfs="competitors">Who competes with me</button>
+          <button class="btn soft" type="button" data-dfs="backlinks">My backlinks</button><input id="inGapDom" placeholder="competitor.com" aria-label="Competitor"><button class="btn soft" type="button" data-dfs="gap">Keyword gap</button>
+          <label class="em-small">Monthly ceiling $<input id="inCap" type="number" min="0.5" step="0.5" value="${esc(String(df.cap_usd))}" style="width:70px"></label>
+          ${df.via === 'own' ? '<button class="btn soft" type="button" id="inDfsOff">Remove login</button>' : ''}</div><div id="inDfsOut"></div>`
+        : `<div class="ar-form em-form"><label><span>DataForSEO login (email)</span><input id="inDfsLogin" autocomplete="off"></label><label><span>API password (app.dataforseo.com > API Access)</span><input id="inDfsPw" type="password" autocomplete="new-password"></label></div>
+          <div class="acts"><button class="btn go" type="button" id="inDfsGo">Join DataForSEO</button></div><p class="muted em-small">Checked once for free, then kept sealed; Hoola never shows it again. Every call shows what DataForSEO charged.</p>`}</div>`;
+    box.innerHTML = `<div class="em-h"><h3>Search intel</h3><span class="muted em-small">What Google, Maps and AI assistants show people looking for what you sell.</span></div>${ranks}${aiBox}${maps}${dfs}`;
+    wireIntel(el, box, v);
+  }
+
+  function wireIntel(el, box, v) {
+    const go = async (fn, done) => { try { const r = await fn(); toast(done || (r && r.say) || 'Done.'); intel(el); } catch (e) { toast(e.message, true); } };
+    const lines = id => (box.querySelector(id)?.value || '').split('\n').map(x => x.trim()).filter(Boolean);
+    box.querySelector('#inTrackGo')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/track', {keywords: lines('#inTrack')})));
+    box.querySelectorAll('[data-untrack]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/track', {keywords: [b.dataset.untrack], remove: true}), 'Stopped.')));
+    box.querySelector('#inGsc')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ranks/gsc', {}), 'Search Console positions refreshed.'));
+    box.querySelector('#inSerp')?.addEventListener('click', () => { if (confirm('Check every keyword on Google through DataForSEO? It costs a little per keyword on your DataForSEO balance.')) go(() => api('POST', '/api/seo/intel/ranks/serp', {})); });
+    box.querySelector('#inIdeas')?.addEventListener('click', async () => {
+      const out = box.querySelector('#inIdeasOut'); out.innerHTML = '<div class="empty">Asking…</div>';
+      try { const r = await api('POST', '/api/seo/intel/keywords', {seeds: lines('#inTrack')});
+        out.innerHTML = `<p class="muted em-small">${esc(r.source || '')}</p><table class="em-tbl"><thead><tr><th>Idea</th><th>Searches a month</th><th>Competition</th><th></th></tr></thead><tbody>${(r.ideas || []).slice(0, 25).map(x =>
+          `<tr><td>${esc(x.text)}</td><td>${num(x.searches)}</td><td>${esc(x.competition || '')}</td><td><button class="btn soft" type="button" data-addkw="${esc(x.text)}">Follow</button></td></tr>`).join('')}</tbody></table>`;
+        out.querySelectorAll('[data-addkw]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/track', {keywords: [b.dataset.addkw]}))));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    box.querySelector('#inPromptsGo')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ai/prompts', {prompts: lines('#inPrompts')}), 'Questions added.'));
+    box.querySelectorAll('[data-pr]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ai/prompt', {id: b.dataset.pr, active: b.dataset.on === '1'}), 'Saved.')));
+    box.querySelector('#inSuggest')?.addEventListener('click', async () => {
+      const out = box.querySelector('#inSugOut'); out.innerHTML = '<div class="empty">Thinking of questions…</div>';
+      try { const r = await api('POST', '/api/seo/intel/ai/suggest', {});
+        out.innerHTML = (r.suggestions || []).map(q => `<p class="em-small"><button class="btn soft" type="button" data-sug="${esc(q)}">Add</button> ${esc(q)}</p>`).join('') || '<div class="empty">No ideas.</div>';
+        out.querySelectorAll('[data-sug]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/ai/prompts', {prompts: [b.dataset.sug]}), 'Added.')));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    box.querySelector('#inAiRun')?.addEventListener('click', () => { if (confirm('Ask ChatGPT, Gemini and Perplexity every active question now? Each answer counts against your monthly ceiling.')) go(() => api('POST', '/api/seo/intel/ai/run', {})); });
+    box.querySelector('#inAiWeekly')?.addEventListener('change', e => go(() => api('POST', '/api/seo/intel/settings', {ai_weekly: e.target.checked}), 'Saved.'));
+    box.querySelector('#inFind')?.addEventListener('click', async () => {
+      const out = box.querySelector('#inFindOut'); out.innerHTML = '<div class="empty">Searching Google Maps…</div>';
+      try { const r = await api('POST', '/api/seo/intel/maps/find', {});
+        out.innerHTML = (r.candidates || []).map((c, i) => `<p class="em-small"><button class="btn soft" type="button" data-place="${i}">This is my shop</button> <b>${esc(c.name)}</b> <span class="muted">${esc(c.address)}</span></p>`).join('') || '<div class="empty">Not found - check the name and city on the desk.</div>';
+        out.querySelectorAll('[data-place]').forEach(b => b.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/maps/place', {place: r.candidates[+b.dataset.place]}), 'Shop saved.')));
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    });
+    box.querySelector('#inGridGo')?.addEventListener('click', () => {
+      const kw = box.querySelector('#inGridKw').value.trim(), size = +box.querySelector('#inGridSize').value;
+      if (!kw) return toast('Type the search, e.g. "dentist near me".', true);
+      go(async () => { await api('POST', '/api/seo/intel/settings', {grid_keywords: [...new Set([...(v.settings.grid_keywords || []), kw])].slice(-5), grid_size: size});
+        return api('POST', '/api/seo/intel/maps/grid', {keyword: kw, size}); });
+    });
+    box.querySelector('#inDfsGo')?.addEventListener('click', () => go(() => api('POST', '/api/seo/intel/dataforseo', {login: box.querySelector('#inDfsLogin').value, password: box.querySelector('#inDfsPw').value})));
+    box.querySelector('#inDfsOff')?.addEventListener('click', () => go(() => api('DELETE', '/api/seo/intel/dataforseo')));
+    box.querySelector('#inCap')?.addEventListener('change', e => go(() => api('POST', '/api/seo/intel/settings', {dfs_cap_usd: Number(e.target.value)}), 'Ceiling saved.'));
+    box.querySelectorAll('[data-dfs]').forEach(b => b.addEventListener('click', async () => {
+      const out = box.querySelector('#inDfsOut'), what = b.dataset.dfs; out.innerHTML = '<div class="empty">Asking DataForSEO…</div>';
+      try {
+        const r = await api('POST', `/api/seo/intel/dfs/${what}`, {competitor: box.querySelector('#inGapDom').value.trim()});
+        const tbl = (h, rows) => `<table class="em-tbl"><thead><tr>${h.map(x => `<th>${x}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`;
+        out.innerHTML = (what === 'overview' ? `<p class="em-small"><b>${esc(r.domain)}</b>: ${num(r.keywords)} keywords in Google India, ${num(r.top3)} in the top 3, ${num(r.top10)} in the top 10, about ${num(r.traffic)} visits a month.</p>`
+          : what === 'competitors' ? tbl(['Competitor', 'Shared keywords', 'Their avg position', 'Their keywords', 'Their traffic'], (r.competitors || []).map(c => `<tr><td>${esc(c.domain)}</td><td>${num(c.shared_keywords)}</td><td>${esc(String(c.avg_position))}</td><td>${num(c.keywords)}</td><td>${num(c.traffic)}</td></tr>`))
+          : what === 'gap' ? `<p class="em-small">${esc(r.say || '')}</p>` + tbl(['Keyword', 'Searches', 'Their position', 'Yours', 'Their page'], (r.gap || []).map(g => `<tr><td>${esc(g.keyword)}</td><td>${num(g.volume)}</td><td>${esc(String(g.their_position))}</td><td>${g.your_position == null ? '–' : esc(String(g.your_position))}</td><td class="muted">${esc(g.their_url)}</td></tr>`))
+          : `<p class="em-small"><b>${esc(r.domain)}</b>: ${num(r.backlinks)} backlinks from ${num(r.referring_domains)} sites, ${num(r.broken)} broken.</p>` + tbl(['Site linking to you', 'Its rank', 'Links', 'First seen'], (r.top_referrers || []).map(x => `<tr><td>${esc(x.domain)}</td><td>${num(x.rank)}</td><td>${num(x.backlinks)}</td><td>${esc(x.first_seen)}</td></tr>`)))
+          + `<p class="muted em-small">This month $${esc(String((r.spend || {}).spent_usd))} of $${esc(String((r.spend || {}).cap_usd))}.</p>`;
+      } catch (e) { out.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    }));
   }
 
   function kpi(k) {

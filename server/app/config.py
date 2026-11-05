@@ -236,6 +236,18 @@ class Settings(BaseSettings):
     google_ads_developer_token: str = ""   # v0.401 YouTube ads (plan Y2): Google Ads API Center token (test / Basic access)
     google_ads_login_customer_id: str = ""  # optional manager (MCC) id when her ad account sits under Hoola's manager
     google_ads_api_version: str = "v26"
+    # v0.536 SEO INTEL: AI visibility through each company's own API (keys in .env only), DataForSEO for competitor data
+    perplexity_api_key: str = ""            # Perplexity Sonar API (PERPLEXITY_API_KEY); empty = Perplexity left out
+    seo_ai_openai_model: str = "gpt-5-mini"
+    seo_ai_openai_search_tool: str = "web_search"
+    seo_ai_gemini_model: str = "gemini-2.5-flash"
+    seo_ai_perplexity_model: str = "sonar"
+    seo_ai_call_inr: float = 2.0            # what one AI answer is charged as (an estimate; every answer counts against her ceiling)
+    seo_ai_month_inr: float = 300.0         # default monthly ceiling for AI-visibility answers, per site (she can change it)
+    dataforseo_login: str = ""              # Newtika's own DataForSEO login - used ONLY when dataforseo_shared is true
+    dataforseo_password: str = ""
+    dataforseo_shared: bool = False         # false = every user brings her own DataForSEO login (her money)
+    dataforseo_month_usd: float = 5.0       # default monthly DataForSEO ceiling per site (USD, from DataForSEO's own reported cost)
     meta_ads_config_id: str = ""            # v0.417 optional Facebook Login for Business configuration for the ads login (ads_management + ads_read)
     meta_ads_max_daily: int = 2000          # v0.417 Hoola's ceiling on a Facebook / Instagram ad's daily budget (her account currency)
     gads_max_daily: int = 2000              # Hoola's ceiling on a YouTube ad's daily budget (her account currency)

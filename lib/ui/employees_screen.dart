@@ -543,6 +543,19 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
                 child: Text(_s((d['indexnow'] as Map?)?['key']).isEmpty ? 'Turn on' : 'Check the file')),
           ]),
         ),
+        const SizedBox(height: 12),
+        Press(
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SearchIntelScreen(app: widget.app))),
+          child: Glass(
+            child: Row(children: [
+              const Icon(Icons.travel_explore_rounded, color: C.accent),
+              const SizedBox(width: 10),
+              Expanded(child: Text('Search intel', style: display(14))),
+              const Text('Google, Maps, AI answers', style: TextStyle(color: C.muted, fontSize: 12)),
+              const Icon(Icons.chevron_right_rounded, color: C.muted),
+            ]),
+          ),
+        ),
         const SizedBox(height: 16),
         Text('Open fixes on the website', style: display(15)),
         const SizedBox(height: 6),
@@ -2089,5 +2102,266 @@ class _MetaAdsScreenState extends State<MetaAdsScreen> {
         ),
       ),
     );
+  }
+}
+
+// ---------------------------------------------------------------- v0.536 SEARCH INTEL (phone): same server as the console tile
+class SearchIntelScreen extends StatefulWidget {
+  const SearchIntelScreen({super.key, required this.app});
+  final Santosh app;
+  @override
+  State<SearchIntelScreen> createState() => _SearchIntelScreenState();
+}
+
+class _SearchIntelScreenState extends State<SearchIntelScreen> {
+  Map<String, dynamic>? _v;
+  bool _busy = false;
+  static const _eng = {'openai': 'ChatGPT', 'gemini': 'Gemini', 'perplexity': 'Perplexity'};
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final v = await widget.app.api!.seoIntel();
+      if (mounted) setState(() => _v = v);
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Future<void> _do(Future<dynamic> Function() fn, [String done = '']) async {
+    setState(() => _busy = true);
+    try {
+      final r = await fn();
+      if (mounted) _snack(context, done.isNotEmpty ? done : (r is Map && _s(r['say']).isNotEmpty ? _s(r['say']) : 'Done.'));
+      await _load();
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
+  }
+
+  Future<List<String>?> _ask(String title, String hint, {bool lines = true}) async {
+    final c = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: Text(title),
+        content: TextField(controller: c, minLines: lines ? 3 : 1, maxLines: lines ? 8 : 1, decoration: InputDecoration(hintText: hint)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('OK')),
+        ],
+      ),
+    );
+    if (ok != true) return null;
+    return c.text.split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
+  }
+
+  Future<void> _joinDfs() async {
+    final login = TextEditingController(), pw = TextEditingController();
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (d) => AlertDialog(
+        title: const Text('Join DataForSEO'),
+        content: Column(mainAxisSize: MainAxisSize.min, children: [
+          const Text('Your own account at app.dataforseo.com (API Access). Checked once for free, then kept sealed.',
+              style: TextStyle(fontSize: 12.5)),
+          TextField(controller: login, decoration: const InputDecoration(labelText: 'Login (email)')),
+          TextField(controller: pw, obscureText: true, enableSuggestions: false, autocorrect: false,
+              decoration: const InputDecoration(labelText: 'API password')),
+        ]),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(d, true), child: const Text('Join')),
+        ],
+      ),
+    );
+    if (ok == true) {
+      await _do(() => widget.app.api!.seoIntelPost('dataforseo', {'login': login.text.trim(), 'password': pw.text.trim()}));
+    }
+    pw.clear();
+  }
+
+  Future<void> _findShop() async {
+    try {
+      final r = await widget.app.api!.seoIntelPost('maps/find', {});
+      final cands = _list(r['candidates']);
+      if (!mounted) return;
+      if (cands.isEmpty) {
+        _snack(context, 'Not found on Google Maps - check the name and city.');
+        return;
+      }
+      final pick = await showDialog<int>(
+        context: context,
+        builder: (d) => SimpleDialog(title: const Text('Which one is your shop?'), children: [
+          for (var i = 0; i < cands.length; i++)
+            SimpleDialogOption(onPressed: () => Navigator.pop(d, i), child: Text('${_s(cands[i]['name'])}\n${_s(cands[i]['address'])}')),
+        ]),
+      );
+      if (pick != null) await _do(() => widget.app.api!.seoIntelPost('maps/place', {'place': cands[pick]}), 'Shop saved.');
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+  }
+
+  Color _cell(dynamic r) => r == null ? C.muted.withOpacity(0.25) : ((r as num) <= 3 ? C.ok : (r <= 10 ? C.warn : C.bad));
+
+  Widget _grid(Map<String, dynamic> g) {
+    final n = (g['size'] as num?)?.toInt() ?? 5;
+    final pts = _list(g['points']);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text('${_s(g['keyword'])} · top 3 at ${_num(g['top3'])} / ${pts.length} points',
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13.5)),
+        const SizedBox(height: 6),
+        SizedBox(
+          width: n * 38.0,
+          child: Wrap(spacing: 4, runSpacing: 4, children: [
+            for (final p in pts)
+              Container(
+                width: 34, height: 34, alignment: Alignment.center,
+                decoration: BoxDecoration(color: _cell(p['rank']), borderRadius: BorderRadius.circular(8)),
+                child: Text(p['rank'] == null ? '20+' : _s(p['rank']), style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)),
+              ),
+          ]),
+        ),
+      ]),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final v = _v;
+    final kids = <Widget>[];
+    if (v == null) {
+      kids.add(const Center(child: CircularProgressIndicator()));
+    } else {
+      final rk = _list((v['ranks'] as Map?)?['keywords']);
+      final ai = Map<String, dynamic>.from((v['ai'] as Map?) ?? const {});
+      final mp = Map<String, dynamic>.from((v['maps'] as Map?) ?? const {});
+      final df = Map<String, dynamic>.from((v['dataforseo'] as Map?) ?? const {});
+      final sp = Map<String, dynamic>.from((v['spend'] as Map?) ?? const {});
+      final place = Map<String, dynamic>.from((mp['place'] as Map?) ?? const {});
+      kids.addAll([
+        Text('Keywords you follow in Google', style: display(15)),
+        for (final k in rk)
+          ListTile(
+            dense: true, contentPadding: EdgeInsets.zero,
+            title: Text(_s(k['keyword'])),
+            subtitle: Text('Position ${k['position'] ?? '–'}'
+                '${k['move_7d'] == null ? '' : ' · ${(k['move_7d'] as num) >= 0 ? '▲' : '▼'}${(k['move_7d'] as num).abs()} this week'}'
+                '${k['exact'] == null ? '' : ' · exact #${(k['exact'] as Map)['position'] ?? '100+'}'}',
+                style: const TextStyle(fontSize: 12, color: C.muted)),
+            trailing: IconButton(icon: const Icon(Icons.close_rounded, size: 18), tooltip: 'Stop',
+                onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('track', {'keywords': [_s(k['keyword'])], 'remove': true}), 'Stopped.')),
+          ),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          OutlinedButton(onPressed: _busy ? null : () async {
+            final l = await _ask('Follow keywords', 'dentist in akola');
+            if (l != null && l.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('track', {'keywords': l}));
+          }, child: const Text('Add keywords')),
+          OutlinedButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('ranks/gsc', {}), 'Search Console positions refreshed.'),
+              child: const Text('Refresh (free)')),
+          if (df['connected'] == true)
+            OutlinedButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('ranks/serp', {})), child: const Text('Exact check')),
+        ]),
+        const SizedBox(height: 16),
+        Text('Are you named in AI answers?', style: display(15)),
+        Text(_s(ai['last_run']).isEmpty ? 'No answers read yet.'
+            : 'Named in ${_num((ai['summary'] as Map?)?['mentioned_pct'])}% · your site cited in ${_num((ai['summary'] as Map?)?['cited_pct'])}%',
+            style: const TextStyle(fontSize: 13.5)),
+        for (final e in ((ai['by_engine'] as Map?) ?? const {}).entries)
+          Text('${_eng[e.key] ?? e.key}: named ${_num((e.value as Map)['mentioned_pct'])}%, cited ${_num((e.value as Map)['cited_pct'])}%',
+              style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        if (_list(ai['prompts']).isNotEmpty) Text('${_list(ai['prompts']).length} questions tracked', style: const TextStyle(fontSize: 12, color: C.muted)),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          OutlinedButton(onPressed: _busy ? null : () async {
+            final l = await _ask('Questions customers ask an AI', 'Best dental clinic in Akola for implants?');
+            if (l != null && l.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('ai/prompts', {'prompts': l}), 'Questions added.');
+          }, child: const Text('Add questions')),
+          OutlinedButton(onPressed: _busy ? null : () async {
+            try {
+              final r = await widget.app.api!.seoIntelPost('ai/suggest', {});
+              final sug = ((r['suggestions'] as List?) ?? const []).map((e) => '$e').toList();
+              if (sug.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('ai/prompts', {'prompts': sug}), '${sug.length} questions added.');
+            } catch (e) {
+              if (mounted) _snack(context, '$e');
+            }
+          }, child: const Text('Suggest + add')),
+          FilledButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelPost('ai/run', {})), child: const Text('Ask the AIs now')),
+        ]),
+        Text('This month ₹${_num(sp['ai_inr'])} of ₹${_num(sp['ai_cap_inr'])}. ${_s(ai['note'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        const SizedBox(height: 16),
+        Text('Google Maps grid', style: display(15)),
+        if (mp['ready'] != true)
+          const Text('Google Maps key not set on the server.', style: TextStyle(color: C.muted))
+        else if (place['id'] == null)
+          OutlinedButton(onPressed: _busy ? null : _findShop, child: const Text('Find my shop on Google Maps'))
+        else ...[
+          Text('${_s(place['name'])} · ${_s(place['address'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          const SizedBox(height: 6),
+          for (final g in _list(mp['grids'])) _grid(g),
+          Wrap(spacing: 8, children: [
+            OutlinedButton(onPressed: _busy ? null : () async {
+              final l = await _ask('Which search?', 'dentist near me', lines: false);
+              if (l != null && l.isNotEmpty) await _do(() => widget.app.api!.seoIntelPost('maps/grid', {'keyword': l.first}));
+            }, child: const Text('Check a search')),
+            TextButton(onPressed: _busy ? null : _findShop, child: const Text('Change shop')),
+          ]),
+        ],
+        const SizedBox(height: 16),
+        Text('Competitors and backlinks', style: display(15)),
+        Text(df['connected'] == true ? 'DataForSEO joined · this month \$${_s(df['spent_usd'])} of \$${_s(df['cap_usd'])}'
+            : 'Join your own DataForSEO account (pay as you go) to see competitors, keyword gaps and backlinks.',
+            style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Wrap(spacing: 8, runSpacing: 6, children: [
+          if (df['connected'] != true) FilledButton(onPressed: _busy ? null : _joinDfs, child: const Text('Join DataForSEO')),
+          if (df['connected'] == true) ...[
+            OutlinedButton(onPressed: _busy ? null : () => _showDfs('competitors'), child: const Text('Who competes with me')),
+            OutlinedButton(onPressed: _busy ? null : () => _showDfs('backlinks'), child: const Text('My backlinks')),
+            if (df['via'] == 'own')
+              TextButton(onPressed: _busy ? null : () => _do(() => widget.app.api!.seoIntelForget()), child: const Text('Remove login')),
+          ],
+        ]),
+      ]);
+    }
+    return Scaffold(
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Search intel')),
+      body: Aurora(
+        child: RefreshIndicator(
+          onRefresh: _load,
+          child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: kids),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showDfs(String what) async {
+    setState(() => _busy = true);
+    try {
+      final r = await widget.app.api!.seoIntelPost('dfs/$what', {});
+      if (!mounted) return;
+      final rows = what == 'competitors'
+          ? _list(r['competitors']).map((c) => '${_s(c['domain'])} · ${_num(c['shared_keywords'])} shared keywords').toList()
+          : ['${_num(r['backlinks'])} backlinks from ${_num(r['referring_domains'])} sites',
+             ..._list(r['top_referrers']).take(15).map((x) => '${_s(x['domain'])} (rank ${_num(x['rank'])})')];
+      await showDialog<void>(
+        context: context,
+        builder: (d) => AlertDialog(
+          title: Text(what == 'competitors' ? 'Who competes with you' : 'Your backlinks'),
+          content: SingleChildScrollView(child: Text(rows.join('\n'))),
+          actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Close'))],
+        ),
+      );
+    } catch (e) {
+      if (mounted) _snack(context, '$e');
+    }
+    if (mounted) setState(() => _busy = false);
   }
 }

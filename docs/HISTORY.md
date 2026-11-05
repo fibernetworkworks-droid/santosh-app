@@ -19436,7 +19436,7 @@ on with Docker absent → the reason names docker. A shut lab always says *which
 **What is still unproven, and it is the only thing left:** no model has used the lab yet. `lab_try` proves the box
 runs her repo; the first real coding job proves Hoola *uses* it — the plan gate asking her Haan, `run_check` going red
 then green, the self-review reading the measured evidence, the PR carrying it. That job needs the Anthropic credit.
-## v0.425.0 GOOGLE ADS 2 (ad plan A2) - 2 Nov 2026
+## v0.536.0 GOOGLE ADS 2 (ad plan A2, built as 0.425) - 2 Nov 2026 (shipped with SEO INTEL)
 Owner: "GO A2" (from the India ad-market report: A1 Meta one-tap, A2 Google beyond YouTube).
 - **Why:** v0.401 used her Google Ads link only for YouTube (Demand Gen). Search and Performance Max are what Indian
   shops actually buy on Google, and both need nothing new from Newtika: same OAuth, same Cloud project access (Basic).
@@ -19466,3 +19466,46 @@ Owner: "GO A2" (from the India ad-market report: A1 Meta one-tap, A2 Google beyo
 - Tests: `server/tests/test_v0425_google_ads2.py` (5) + the v0.401 suite unchanged.
 - NOT VERIFIED against a live Google Ads account; field names follow Google's v26 REST and its AddPerformanceMaxCampaign /
   AddResponsiveSearchAd / GenerateKeywordIdeas examples. The first real Check will confirm or correct them.
+
+## v0.536.0 SEO INTEL (S1 + DataForSEO) - 5 Nov 2026
+Owner: "https://github.com/every-app/open-seo --- read this repo first", then "GO S1 + DATAFORSEO". OpenSEO (MIT) = an open
+Semrush / Ahrefs alternative whose data is DataForSEO; Hoola already had the audit / Search Console / speed half, so S1 is
+the four things it could not see. Credit in THIRD_PARTY_NOTICES.md (ideas + matching approach; code written fresh).
+- **RANKS** (`seo/intel.py`): SeoTrack (<=100 keywords a site) + SeoRank (day, source gsc | serp). `pull_gsc` = Search
+  Console searchAnalytics with dims date/query/page and an RE2 `includingRegex` filter (20 keywords a call), position
+  weighted by impressions, best page kept. `ranks_view` = latest position, 7-day move (+ = up), 7-day clicks, 30-day
+  history, last exact check. `rank_alerts` = a drop of 5+ places -> desk alert (daily job). `check_serp` = DataForSEO
+  organic live advanced (India 2356, mobile, depth 100): her exact position + the top 3 domains.
+- **AI VISIBILITY**: SeoAiPrompt (<=25) + SeoAiAnswer (run stamp, engine, mentioned, cited, rank, brands, citations,
+  excerpt). Engines through their OWN APIs, each only when its key is set: OpenAI Responses + `web_search` tool
+  (`SEO_AI_OPENAI_MODEL` gpt-5-mini), Gemini generateContent + `google_search` grounding (grounding links redirect, so the
+  site comes from the chunk title), Perplexity chat/completions `sonar` (search_results / citations). `mention_at` = whole
+  word, NFKD accent-folded, case-folded, URLs / e-mails blanked (length kept). Her names = business name, domain, domain
+  stem (>= 4 letters), extra brand names; competitors = the desk's list. Per answer: named, order among brands, her site
+  cited, other cited domains. Priced `SEO_AI_CALL_INR` (2) per answer, refused BEFORE the run when it would pass her
+  monthly ceiling (`SEO_AI_MONTH_INR` 300, per site). `suggest_prompts` = 10 customer questions from the model, any that
+  name her dropped. Weekly when `ai_weekly`.
+- **MAPS GRID**: Places API (New) `places:searchText` - `find_place` (name + city, id/name/address/location) -> she picks
+  her shop once; `run_grid` = 3x3 / 5x5 / 7x7 points `spacing_km` apart, each a locationBias circle search with field mask
+  `places.id` ONLY (Google lists IDs-only Text Search as no-charge), rank = her id's place in the 20; one named search at
+  the shop for "who leads". SeoGrid keeps points / found / average / top-3 count; view shows the previous run to compare.
+  Up to 5 grid keywords re-run weekly.
+- **DATAFORSEO** (`seo/dfs.py`): her login + API password typed in the app only, checked with the free
+  `/v3/appendix/user_data` (balance shown), sealed (accounts.encrypt), masked, never returned; Newtika's shared login only
+  with `DATAFORSEO_SHARED=true`. `call` refuses BEFORE a call when the month's spend reached her ceiling
+  (`DATAFORSEO_MONTH_USD` 5, per site), then adds the cost DataForSEO itself reports (top-level `cost`). Plain messages for
+  401, no balance (40200) and "needs their subscription" (40204 - the Backlinks API). Reads: domain_rank_overview,
+  ranked_keywords, competitors_domain, gap (their top-20 keywords where she is missing / below 20, by volume),
+  backlinks summary + referring_domains, serp organic, keyword_ideas (fallback when Google Ads is not linked).
+- `keyword_research` = Google Ads Keyword Planner (official, free, v0.536 A2) first, DataForSEO second.
+- Desk hooks: daily -> pull_gsc + drop alerts; weekly -> AI run / grids / exact checks only where she switched them on;
+  each result line on the desk feed. Routes `/api/seo/intel*` (long jobs run in the background and report to the feed).
+  Tools: `seo` actions track, rank_check, keyword_ideas, ai_prompts, ai_suggest, ai_run, maps_grid, competitors,
+  backlinks, gap, domain; `seo_dekho` what=ranks / ai / maps / intel.
+- UI: console SEO Desk tile "Search intel" (keyword table + move arrows + exact check, AI KPIs per engine + per-question
+  named / cited table + "sites the AI cites instead", Maps grid as coloured cells + leaders, DataForSEO join form /
+  ceiling / competitors / gap / backlinks tables); phone SEO desk -> `SearchIntelScreen`.
+- Config: PERPLEXITY_API_KEY, SEO_AI_* models / price / ceiling, DATAFORSEO_LOGIN / PASSWORD / SHARED / MONTH_USD.
+- Tests: `server/tests/test_v0536_seo_intel.py` (7).
+- NOT VERIFIED against live OpenAI / Gemini / Perplexity / Places / DataForSEO accounts: request + response shapes follow
+  each vendor's docs. API answers can differ from what a person sees in the consumer apps - the screen says so.

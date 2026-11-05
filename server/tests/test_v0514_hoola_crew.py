@@ -35,7 +35,7 @@ task, kickoff_for_each, usage metrics. This suite pins the port:
     create-if-missing, hers win, the 4,000-char cap, the three-door routing content
     pins; seed_files excludes the cr- prefix (starter stays 11; the library 68, NINE
     lanes).
-(7) VERSION: APP_VERSION 0.514.0 + the story; pubspec 0.535.0+558.
+(7) VERSION: APP_VERSION 0.514.0 + the story; pubspec 0.536.0+559.
 """
 import asyncio
 import inspect
@@ -564,8 +564,8 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.535.0"
+    assert main_mod.APP_VERSION == "0.536.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     assert "HOOLA CREW" in story and "crewAI" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.535.0+558" in pub
+    assert "version: 0.536.0+559" in pub
