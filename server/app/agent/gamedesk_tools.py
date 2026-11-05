@@ -406,6 +406,26 @@ GAMEDESK_TOOLS.append(
 
 GAMEDESK_LABELS.update({"game_provenance": "Dekh raha hoon kya kahan se aaya"})
 
+# v0.456 scenes as checked data - the 12-file ceiling
+GAMEDESK_TOOLS.append(
+    {"name": "game_scenes", "description": (
+        "Real Godot SCENES for her game, as checked data (part of the Game Developer desk) - this is what lets a game be "
+        "bigger than its scripts. Until now a Hoola game was at most 12 GDScript files building every node in code, which "
+        "is right for match-3 / idle / runner but false for a platformer, where the game IS its scenes. Actions: list / "
+        "new (words, name: her words become a scene SPEC, which Hoola checks and generates, then LOADS IN THE REAL ENGINE "
+        "before she sees it - a draft only if it really loaded) / approve (her tap: it goes into the next build) / reject. "
+        "THE MODEL NEVER WRITES A .tscn: a scene may not carry script source, because an embedded script inside a scene "
+        "RUNS and would escape the code guard (measured). Scripts attach by file name to .gd files the guard already "
+        "checked. INSTANCES are how content scales: one coin.tscn placed forty times is data, and the engine reports the "
+        "expanded node count. Quote only the node count and animations the ENGINE reported. TileMaps, 3D and shaders are "
+        "NOT available - say so rather than promising them. id = S-0001 (optional with one project)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["list", "new", "approve", "reject"]},
+         "id": {"type": "string"}, "words": {"type": "string"}, "name": {"type": "string"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_scenes": "Scene bana raha hoon"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -1004,6 +1024,40 @@ async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
                             {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
 
 
+async def game_scenes(ctx: Ctx, action="", id="", words="", name="", **_):
+    from ..employee import hire
+    from ..gamedesk import scene as SC
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    if action in ("new", "approve", "reject"):
+        _owner_only(ctx, "Scenes")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "list":
+            v = await run(SC.view, t, id)
+            return {"scenes": [{k: x[k] for k in ("name", "file", "status", "nodes")} for x in v["scenes"]],
+                    "in_the_game": v["in_the_game"], "how": v["how"], "not_built": v["not_built"]}
+        if action == "new":
+            if len(str(words or "").strip()) < 3:
+                raise ToolError("Scene kaisa ho, ek line mein likhiye.")
+            return await run(SC.propose, t, id, words, name)
+        if action == "approve":
+            return await run(SC.approve, t, id, name)
+        if action == "reject":
+            return await run(SC.reject, t, id, name)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = list | new | approve | reject")
+
+
 async def game_provenance(ctx: Ctx, action="", id="", **_):
     from ..employee import hire
     from ..gamedesk import provenance as P
@@ -1198,4 +1252,5 @@ GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_b
                      "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
                      "game_vfx": game_vfx, "game_runtime": game_runtime,
                      "game_liveops": game_liveops, "game_bigstudio": game_bigstudio,
-                     "game_arena": game_arena, "game_provenance": game_provenance}
+                     "game_arena": game_arena, "game_provenance": game_provenance,
+                     "game_scenes": game_scenes}

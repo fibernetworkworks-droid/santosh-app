@@ -943,6 +943,7 @@ def init_db(url: str | None = None):
     from .gamedesk import liveops as _gameliveops  # noqa: F401  (v0.428 live ops: crash groups)
     from .gamedesk import bigstudio as _gamebig  # noqa: F401  (v0.433 big-studio mode: Unity / Unreal projects)
     from .gamedesk import arena as _gamearena  # noqa: F401  (v0.447 Game Arena: runs, items, duels)
+    from .gamedesk import scene as _gamescene  # noqa: F401  (v0.456 scenes as checked data)
     from .pgdb import service as _pgdb  # noqa: F401  (v0.147 Hoola Postgres)
     from .employee import models as _employee_models  # noqa: F401
     from .employee import network as _employee_net  # noqa: F401
