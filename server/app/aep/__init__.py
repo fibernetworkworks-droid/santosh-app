@@ -68,10 +68,12 @@ from P2 where tracers and agents actually run):
                passes (the capability-gated rows, the misattribution law, the
                serdes round trip, the P2 span row)
 
-P7 (HOOLA HUB) is the hub/loader/conformance suite; P8 the 100% parity audit.
+P7 (HOOLA HUB) is the hub/loader/conformance suite; P8 (HOOLA AEP 1.0) is the
+100% parity audit + the openwiki analog - the train's last phase.
 """
 from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, extended)
     agent,
+    audit,
     conformance,
     history,
     hub,
@@ -93,6 +95,14 @@ from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, exten
     vault_sink,
 )
 from .agent import ToolNode, create_agent, create_react_agent
+from .audit import (
+    AuditRow,
+    PARITY_MATRIX,
+    PHASES,
+    audit_parity,
+    generate_wiki,
+    phase_checklist,
+)
 from .graph import (
     INTERRUPT_KEY,
     END,
@@ -324,4 +334,6 @@ __all__ = [
     "summarize_profile_diff",
     # P7 conformance (the standard-tests port)
     "run_standard_tests", "assert_conformance", "ConformanceReport", "ConformanceRow", "Capabilities",
+    # P8 the 100% parity audit (HOOLA AEP 1.0)
+    "PARITY_MATRIX", "PHASES", "AuditRow", "audit_parity", "phase_checklist", "generate_wiki",
 ]

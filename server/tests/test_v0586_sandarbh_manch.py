@@ -1,4 +1,4 @@
-"""v0.590.0 SANDARBH MANCH - the T1 reference family, backend-only (owner: "T1 Reference -- deploye
+"""v0.600.0 SANDARBH MANCH - the T1 reference family, backend-only (owner: "T1 Reference -- deploye
 it for hoola --- only in backend for hoola ai"; built as 0.586.0, re-versioned twice onto the dev
 chain - their PAISA chain took 0.586-0.588 (COLLISION #8) and their P7 HOOLA HUB took 0.589
 (COLLISION #9), REBASE PROTOCOL both rounds, both kept; the file name keeps the first-build
@@ -378,4 +378,4 @@ def test_tools_are_registered_with_families_and_handlers():
 
 def test_app_version_pin():
     import app.main as M
-    assert M.APP_VERSION == "0.590.0"
+    assert M.APP_VERSION == "0.600.0"

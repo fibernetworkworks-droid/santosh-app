@@ -1,5 +1,21 @@
 # HOOLA — full version history (moved out of CLAUDE.md on 29 Oct 2026 so sessions stop hitting "context full"). Search it, never read it whole.
 
+## v0.600.0 HOOLA AEP 1.0 — the 100% parity audit + the openwiki analog, P8 of the HOOLA AEP plan (5 Nov 2026)
+
+Owner: "P7 HUB -> P8 the 100% parity audit" (with v0.589.0 HOOLA HUB the same dispatch). THE TRAIN'S LAST PHASE. server/app/aep/audit.py
+(~600 LOC, ZERO upstream; the upstream analogs read at aa2528fb: openwiki/ = generated evidence pages grounded in the repo,
+standard-tests/base.py = the no-silent-override law). PARITY_MATRIX: 230 rows, one per upstream feature across the eight phases ->
+(phase, feature, upstream ref, hoola module + symbol, proving suite + test needle); audit_parity() verifies every row LIVE (the symbol
+imports, the needle greps) and the 100% verdict is COMPUTED — 'TOTAL: 230/230 - 100% PARITY VERIFIED' (exit 1 on drift, the drifted row
+names itself). phase_checklist(): P1..P8 signed off with LIVING numbers — 11523 LOC of AEP (P1 2201 / P2 786 / P3 1152 / P4 682 /
+P5 2122 / P6 1644 / P7 2340 / P8 596), 369 suite tests (79/39/42/56/68/31/44/10), every phase DONE. generate_wiki(): the openwiki
+analog — deterministic byte-stable markdown evidence pages (index + 9, front-matter, repo:// sources, the feature->symbol->test
+tables), committed as docs/aep-wiki/ + docs/AEP_PARITY_AUDIT.md (the sign-off). The CLI: python -m app.aep.audit
+matrix|checklist|wiki. THE REGISTRY HEAL their v0.588 owed: paisa_sahayak took the registry 581 -> 582 without healing the w35 pin
+(red on their own tree) — the PIN HEAL law applied, a P8 test holds it. AEP TRAIN COMPLETE: P1 HOOLA CORE v0.510.0 -> P2 HOOLA TRACE
+v0.520.0 -> P3 HOOLA GRAPH v0.530.0 -> P4 HOOLA AGENT v0.549.0 -> P5 HOOLA MIDDLEWARE v0.566.0 -> P6 HOOLA RETRIEVE v0.580.0 ->
+P7 HOOLA HUB v0.589.0 -> P8 HOOLA AEP 1.0 v0.600.0. server-only deploy = owner's vps-ops dispatch.
+
 ## v0.570.0 HOOLA RETRIEVE — the retrieval layer, P6 of the HOOLA AEP plan (5 Nov 2026)
 
 Owner: "P6 RETRIEVE". Vectors IN SCOPE per the 100% directive. Built as server/app/aep/retrieve.py (~1.6k LOC, ZERO
