@@ -560,6 +560,8 @@ class Settings(BaseSettings):
     home_control: bool = False              # the HOME gate (default OFF - bake on the VPS, then flip to true)
     home_assistant_url: str = ""            # e.g. http://192.168.1.10:8123 (the HA base URL, no trailing slash)
     home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
+    # --- KAAN PACK v0.589 (WhisperAI Wave W0): transcription core, AUDIO gate PC/HOME se alag, default OFF ---
+    kaan_audio: bool = False                # the AUDIO gate (default OFF - KAAN_AUDIO=1 on the VPS flips it)
     # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---

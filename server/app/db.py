@@ -744,6 +744,7 @@ def init_db(url: str | None = None):
     from .photos import models as _photos_models  # noqa: F401
     from .notebook import models as _notebook_models  # noqa: F401
     from .youtube import models as _youtube_models  # noqa: F401
+    from .kaan import models as _kaan_models  # noqa: F401  v0.589 KAAN PACK (transcripts)
     from .appcheck import models as _appcheck_models  # noqa: F401
     from .avatar import models as _avatar_models  # noqa: F401
     from .voiceid import models as _voiceid_models  # noqa: F401

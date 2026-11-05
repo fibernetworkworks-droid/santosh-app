@@ -1,3 +1,44 @@
+## v0.589.0 KAAN PACK — WhisperAI Wave W0, the transcription core (6 Nov 2026)
+
+The owner read whisperai.com end to end (17 features, 10 style presets, ~100-word custom vocabulary, no-bot Meeting
+Assistant, Drive sync, Whisper MCP, PDF/DOCX/TXT/SRT exports, ≤5 GB / 30+ formats, tiers Free → Premium $14.99 →
+Business Pro $24.99 → Enterprise $75 → API $99/10k min) and fed it to HOOLA. The verdict held: every feature is
+wrapper-layer around the open model, so the MIT-licensed openai-whisper engine comes in as a DEPENDENCY (never
+vendored — the port law) and the wrapper is hand-built on house primitives.
+
+- **Engine** (`kaan/engine.py`): openai-whisper behind one hand-built interface. Model ladder tiny 39M / base 74M /
+  small 244M / medium 769M / turbo 809M (~8×, NO translate) / large-v3 1550M — from the model card, pinned by test.
+  The engine's own published guards are passed explicitly and testably: temperature fallback 0.0→1.0,
+  compression_ratio_threshold 2.4, logprob_threshold −1.0, no_speech_threshold 0.6. word_timestamps=True rides the
+  DTW alignment heads. LAZY import: `import whisper` lives inside _load(); importing app.kaan loads no model, no
+  threads, no files (inertness law, proven by test). available() caches an honest one-line reason when the package
+  or ffmpeg is missing — never a stack trace to her.
+- **Service** (`kaan/service.py`): the AUDIO gate `kaan_audio` default OFF (the HOME-gate pattern, PC/HOME se alag;
+  KAAN_AUDIO=1 flips it) → transcribe refuses with the bake line while status always answers. Intake guards: the
+  audio extension list (mp3/m4a/wav/ogg/opus/aac/flac/amr/3gp/webm/wma/mp4/mkv), the 5 GB ceiling (whisperai.com's
+  own cap, kept as ours), empty-file refusal, missing file_id honesty. Silence comes back as status "empty" with the
+  khamoshi note — never filled in. Transcripts land in kaan_transcripts (text / segments / words JSON /
+  speakers-for-W1) and read back through get / list / search (tenant-scoped, LIKE on the said words).
+- **One tool** `kaan` (registry 582 → 583; actions transcribe / status / list / get / search; family kaan):
+  customers refused, staff gets reads only, transcribe is owner/approved. Voice rides santosh_kaam
+  (VOICE_VIA_KAAM) — a long file is not call talk, and GHANTI rings her phone when it finishes. Admitted on her
+  transcript words (transcript / transcribe / sun kar / likhawat / srt...); bare "kaan" kept OUT because "makaan"
+  contains it, and "sunwai" stays the vakil desk's court-hearing word. Hub entry "Kaan (transcription)" in the new
+  "Voice, Meetings & Transcription" group (never: audio never leaves the server, gate stays off until the owner
+  flips it, silence is never guessed).
+- **LOCAL FIRST**: no API key anywhere on this path; audio bytes and transcripts stay on the VPS. The scripted-engine
+  swap (fake_engine, the voice_openai connect-swap pattern) keeps the suite zero-network and zero-torch.
+- **Tests**: `test_v0589_kaan.py` (25): the round trip (transcribe → store → get → search → list), word timestamps
+  in and out, silence honesty, tenant isolation, every guard including the 5 GB ceiling, the model card pinned, the
+  guard numbers pinned, turbo-translate refusal, lazy-import proof, admit keys with the sunwai/makaan traps, the hub
+  entry, the table on init, engine-never-touches-DB. The 14 registry-count pins healed 582 → 583.
+- **NOT built (later waves, own START each)**: W1 diarization + meeting notes (sherpa-onnx embeddings already on
+  main are a candidate), W2 live-call captions, W3 style presets + custom vocabulary (initial_prompt /
+  suppress_tokens hooks), W4 exports (SRT/VTT/PDF/DOCX) + translate + the Gyaan audio unlock, W5 Whisper MCP +
+  developer API + extension audio lane, W6 quota counters + retention + a fresh read of whisperai.com's live prices.
+- **Not verified on real hardware yet**: the sandbox suite runs the scripted engine; real-model accuracy (and the
+  Hindi/Marathi eval gate) is measured on the VPS after `pip install openai-whisper` + ffmpeg, before W1 exits.
+
 # HOOLA — full version history (moved out of CLAUDE.md on 29 Oct 2026 so sessions stop hitting "context full"). Search it, never read it whole.
 
 ## v0.600.0 HOOLA AEP 1.0 — the 100% parity audit + the openwiki analog, P8 of the HOOLA AEP plan (5 Nov 2026)

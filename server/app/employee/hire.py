@@ -47,6 +47,7 @@ def ensure_table() -> None:
 TRUST = ("seekh", "saathi", "bharosa")
 
 FIN_GROUP = "Finance & Banking"   # v0.585 the consumer money-safety employee
+VOICE_GROUP = "Voice, Meetings & Transcription"   # v0.589 the KAAN PACK employee (WhisperAI Wave W0)
 FILM_GROUP = "Film, Media & Entertainment"   # v0.565 the Film Desk employee
 GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
 SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.410 the Architecture Desk employees' heading
@@ -136,6 +137,18 @@ CATALOG: dict[str, dict[str, Any]] = {
                                 "Move money, place an order, or recommend a lender or a product",
                                 "Give personalised investment, tax or legal advice, or promise a loan or a score",
                                 "Store your statement: it reads it, answers, and forgets"]},
+    # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
+    "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
+             "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",
+             "does": ["Transcribe an audio / video file from chat into text (mp3, wav, m4a, ogg, flac... up to 5 GB)",
+                      "Detect the language (hi, mr, en... 90+), or you name it; translate-to-English on the capable models",
+                      "Per-word timestamps for subtitles and precise edits",
+                      "Your transcripts are stored, listed, re-opened and searched by what was said",
+                      "Engine status made honest: gate, model ladder (tiny to large-v3), what is missing, all in one status"],
+             "needs": ["The audio / video file sent in chat (or its file id)"],
+             "never": ["Send your audio anywhere: engine and files stay on your server (KAAN_AUDIO=1 turns it on)",
+                       "Record or transcribe while the AUDIO gate is off",
+                       "Guess a transcript it did not hear: silence is reported as silence, never filled in"]},
     # v0.565 FILM DESK producer layers (script coverage, previs, schedule, budget, festivals, windows, deliverables, royalties)
     "film": {"name": "AI Film Producer", "live": True, "icon": "game", "group": FILM_GROUP,
              "pitch": "A film producer's coworker: script facts, shot-list checks, shooting schedule, rate-card budget, festivals, release windows, deliverables and royalty sums.",

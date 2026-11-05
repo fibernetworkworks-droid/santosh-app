@@ -375,6 +375,12 @@ TOOLS.extend(FINGUARD_TOOLS)
 TOOL_LABELS.update(FINGUARD_LABELS)
 HANDLERS.update(FINGUARD_HANDLERS)
 
+from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
+
+TOOLS.extend(KAAN_TOOLS)
+TOOL_LABELS.update(KAAN_LABELS)
+HANDLERS.update(KAAN_HANDLERS)
+
 from .officehours_tools import OFFICEHOURS_HANDLERS, OFFICEHOURS_LABELS, OFFICEHOURS_TOOLS  # noqa: E402  v0.495 office hours (the gstack THINK/PLAN lane)
 
 TOOLS.extend(OFFICEHOURS_TOOLS)

@@ -760,9 +760,9 @@ def test_version_pins():
     from pathlib import Path
     from app.main import APP_VERSION
     root = Path(__file__).resolve().parents[2]
-    assert APP_VERSION == "0.600.0"
-    assert "0.600.0+606" in (root / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.601.0"
+    assert "0.601.0+607" in (root / "pubspec.yaml").read_text()
     # the newest-story keyword pins, inherited from the P6 graph suite
     line = (root / "server" / "app" / "main.py").read_text().splitlines()[35]
-    assert "HOOLA HUB" in line and "init_chat_model" in line
-    assert "HOOLA RETRIEVE" in line  # the P6 name rides the Previous chain
+    assert "HOOLA HUB" in line and "init_chat_model" in line  # the P7 name rides the Previous chain
+    assert "KAAN PACK" in line  # the newest story (the newest-story precedent)

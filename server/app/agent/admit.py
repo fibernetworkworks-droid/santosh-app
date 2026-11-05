@@ -91,6 +91,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
                "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
+    # v0.589 KAAN PACK: her words for a transcript job (sunwai stays OUT - it is the vakil desk's court-hearing word;
+    # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
+    "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",
+             "sun kar", "sun ke", "audio likh", "likhawat", "srt", "subtitle", "voice note likh", "speech to text",
+             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट"),
     # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
     "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
             "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad",
