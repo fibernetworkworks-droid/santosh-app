@@ -50,7 +50,8 @@ def test_lab_only_models_cannot_ship(reg):
 
 def test_shippable_models_are_the_licence_checked_ones(reg):
     ship = {k for k, m in reg.MODELS.items() if m["use"] == "commercial"}
-    assert ship == {"chatterbox", "faster_whisper_small", "indic_parler", "musetalk", "sd_vae", "whisper_tiny"}   # whisper small: MIT code + MIT weights, read 3 Nov 2026
+    assert ship == {"chatterbox", "faster_whisper_small", "indic_parler", "musetalk", "sd_vae", "whisper_tiny",   # whisper small: MIT code + MIT weights, read 3 Nov 2026
+                    "flux_schnell", "wan22_ti2v_5b"}             # the AI-made face: both Apache-2.0, read from their HF pages 5 Nov 2026
     assert "hi" in reg.MODELS["chatterbox"]["langs"] and reg.MODELS["chatterbox"]["clone"] is True
     assert {"hi", "mr", "ta", "te", "bn"} <= set(reg.MODELS["indic_parler"]["langs"])
     assert reg.MODELS["indic_parler"]["clone"] is False                  # described in words, never cloned
@@ -241,7 +242,7 @@ def test_e2e_bench_wired():
     import re
     import struct
     wf = open("../.github/workflows/interactive-lab.yml").read()
-    assert "bench_e2e" in wf and "e2e, studio, voices, voice_tune, deploy" in wf
+    assert "bench_e2e" in wf and "e2e, studio, voices, voice_tune, face_make, deploy" in wf
     assert "def bench_e2e" in MODAL_SRC and "REPORT_e2e.txt" in MODAL_SRC
     ns: dict = {}
     exec(re.search(r"def _wav_seconds.*?\n\n\n", MODAL_SRC, re.S).group(0), ns)
@@ -493,7 +494,7 @@ def test_voice_card_scores_clarity_fairly():
     assert ".get(timeout=900) for t in VOICE_CARD_LINES" in card                # one warm container per voice, not 8 cold
     assert "indicf5" not in card                                                # lab_only voices are not candidates to ship
     wf = WORKFLOW
-    assert "modal run modal_app.py::voice_card" in wf and "inputs.job == 'voices' || inputs.job == 'voice_tune') && always()" in wf
+    assert "modal run modal_app.py::voice_card" in wf and "inputs.job == 'voices' || inputs.job == 'voice_tune' || inputs.job == 'face_make') && always()" in wf
 
 
 def test_voice_knobs_are_clamped_and_only_known_ones():
@@ -525,3 +526,15 @@ def test_voice_tune_card():
     tunes = MODAL_SRC[MODAL_SRC.index("VOICE_TUNES = ["):MODAL_SRC.index("@app.local_entrypoint()\ndef voice_tune")]
     assert '("default", {})' in tunes                                          # what she liked is always in the race
     assert "modal run modal_app.py::voice_tune" in WORKFLOW
+
+
+def test_ai_made_face_is_fictional_licensed_and_marked():
+    src = MODAL_SRC
+    specs = src[src.index("FACE_SPECS = ["):src.index("FACE_STYLE")]
+    assert specs.count("a fictional Indian") == 4                     # every face is a fictional person, by its prompt
+    assert 'registry.check("flux_schnell", "lab")' in src and 'registry.check("wan22_ti2v_5b", "lab")' in src
+    card = src[src.index("def face_make"):]
+    assert '"label": "AI-generated - not a real person"' in card and '"consent": "ai_generated"' in card
+    assert 'live.prepare.spawn(avatar, r["mp4"], "ai_generated")' in card    # the face gate gets the honest consent tag
+    assert "lips closed, not speaking" in src                          # the clip must not talk - MuseTalk adds the mouth
+    assert "modal run modal_app.py::face_make" in WORKFLOW

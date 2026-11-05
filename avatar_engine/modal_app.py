@@ -113,6 +113,11 @@ face_image = (
 )
 hear_image = (modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg")
               .pip_install("faster-whisper==1.1.0", "requests", "huggingface_hub").add_local_python_source("registry"))
+# The AI-made face: FLUX.1-schnell paints a fictional teacher, Wan 2.2 TI2V-5B makes her blink and breathe (both Apache-2.0).
+paint_image = (modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg", "git").env(HF_ENV)
+               .pip_install("torch==2.5.1", "diffusers>=0.35.0", "transformers>=4.51,<5", "accelerate", "sentencepiece",
+                            "protobuf", "ftfy", "imageio", "imageio-ffmpeg", "huggingface_hub", "Pillow")
+               .add_local_python_source("registry"))
 studio_image = modal.Image.debian_slim(python_version="3.11").apt_install("ffmpeg").add_local_python_source("registry")
 web_image = modal.Image.debian_slim(python_version="3.11").pip_install("fastapi[standard]").add_local_python_source("registry")
 
@@ -1810,6 +1815,152 @@ def voice_tune():
     note("RANKING (clearest first; each ran-on take costs 0.02 - then LISTEN to tune_<name>.wav, the ear picks):")
     for avg, bab, name, knobs, pace, n in board:
         note(f"   {name:<15} CER {avg:.3f}  ran on {bab}/{n}  {pace:.1f} words/s  {json.dumps(knobs)}")
+
+
+# ================================================================ THE AI-MADE FACE (her choice 'b')
+# Fictional people only: the prompts describe no real person, and every face carries a provenance note
+# (model, prompt, seed, 'AI-generated - not a real person'). Faces are prepared with consent 'ai_generated'.
+FACE_SPECS = [
+    ("asha", "female", "a fictional Indian woman teacher in her early 30s, warm kind face, simple cotton saree, hair "
+                       "neatly tied back, small bindi"),
+    ("meera", "female", "a fictional Indian woman teacher in her mid 40s, gentle confident face, plain salwar kurta with "
+                        "a dupatta, hair in a low bun"),
+    ("arjun", "male", "a fictional Indian man teacher in his early 30s, friendly face, neat short hair, light blue "
+                      "formal shirt"),
+    ("vikram", "male", "a fictional Indian man teacher in his mid 40s, calm face, thin glasses, simple kurta, neatly "
+                       "trimmed beard"),
+]
+FACE_STYLE = ("photorealistic head-and-shoulders portrait, looking straight into the camera, lips gently closed, soft "
+              "natural smile, plain light grey studio background, soft even front lighting, sharp focus, natural skin "
+              "texture, 85mm lens, centred, shoulders visible")
+FACE_MOTION = ("The same person sits still and looks straight into the camera, blinks naturally and breathes calmly, "
+               "very slight natural head movement, lips closed, not speaking, static camera, plain background, "
+               "photorealistic")
+FACE_MOTION_NEG = ("talking, open mouth, speaking, laughing, camera movement, zoom, pan, text, subtitles, watermark, "
+                   "distorted face, deformed, extra fingers, blurry, low quality, flicker")
+
+
+@app.cls(gpu=GPU, image=paint_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=1800)
+class Painter:
+    """FLUX.1-schnell: a portrait of a fictional teacher in 4 steps."""
+
+    @modal.enter()
+    def load(self):
+        registry.check("flux_schnell", "lab")
+        import torch
+        from diffusers import FluxPipeline
+        t = time.time()
+        self.pipe = FluxPipeline.from_pretrained("black-forest-labs/FLUX.1-schnell", torch_dtype=torch.bfloat16,
+                                                 token=os.environ.get("HF_TOKEN")).to("cuda")
+        self.torch = torch
+        self.load_s = round(time.time() - t, 1)
+        volume.commit()
+
+    @modal.method()
+    def paint(self, prompt: str, seed: int, width: int = 704, height: int = 1280) -> dict:
+        import io
+        t = time.time()
+        img = self.pipe(prompt, guidance_scale=0.0, num_inference_steps=4, max_sequence_length=256, width=width,
+                        height=height, generator=self.torch.Generator("cuda").manual_seed(int(seed))).images[0]
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return {"png": buf.getvalue(), "make_s": round(time.time() - t, 1), "load_s": self.load_s}
+
+
+@app.cls(gpu=GPU, image=paint_image, volumes={MODELS_DIR: volume}, secrets=[secret], scaledown_window=IDLE, timeout=3600)
+class Mover:
+    """Wan 2.2 TI2V-5B: the portrait becomes a short clip of the same person blinking and breathing (no speech)."""
+
+    @modal.enter()
+    def load(self):
+        registry.check("wan22_ti2v_5b", "lab")
+        import torch
+        from diffusers import AutoencoderKLWan, WanImageToVideoPipeline
+        t = time.time()
+        mid = "Wan-AI/Wan2.2-TI2V-5B-Diffusers"
+        vae = AutoencoderKLWan.from_pretrained(mid, subfolder="vae", torch_dtype=torch.float32)
+        self.pipe = WanImageToVideoPipeline.from_pretrained(mid, vae=vae, torch_dtype=torch.bfloat16).to("cuda")
+        self.torch = torch
+        self.load_s = round(time.time() - t, 1)
+        volume.commit()
+
+    @modal.method()
+    def move(self, png: bytes, prompt: str, negative: str, seed: int, frames: int = 121, steps: int = 40) -> dict:
+        import io
+        from diffusers.utils import export_to_video
+        from PIL import Image
+        img = Image.open(io.BytesIO(png)).convert("RGB")
+        w, h = img.size
+        t = time.time()
+        out = self.pipe(image=img, prompt=prompt, negative_prompt=negative, width=w, height=h, num_frames=int(frames),
+                        num_inference_steps=int(steps), guidance_scale=5.0,
+                        generator=self.torch.Generator("cuda").manual_seed(int(seed))).frames[0]
+        path = f"/tmp/{uuid.uuid4().hex}.mp4"
+        export_to_video(out, path, fps=24)
+        with open(path, "rb") as f:
+            data = f.read()
+        return {"mp4": data, "make_s": round(time.time() - t, 1), "load_s": self.load_s, "frames": len(out)}
+
+
+@app.local_entrypoint()
+def face_make():
+    """Her choice 'b': AI-made teacher faces. Paints the four fictional teachers in FACE_SPECS, brings two of them to
+    life (HOOLA_FACES, default asha + arjun: one woman, one man), prepares each moving clip for the face engine with
+    consent 'ai_generated', then makes it speak a Hindi line in the Chatterbox voice she chose. Everything lands in
+    lab_out/: face_<name>.png (+ .json provenance), face_<name>_motion.mp4, face_<name>_talking.mp4, REPORT_faces.txt.
+    She picks the face by eye; nothing here is shipped by itself."""
+    os.makedirs("lab_out", exist_ok=True)
+    out_lines = [f"GPU {GPU}  Hoola AI-made faces - fictional teachers only, every file marked AI-generated"]
+
+    def note(text: str) -> None:
+        out_lines.append(text)
+        print(text, flush=True)
+        with open("lab_out/REPORT_faces.txt", "w") as f:
+            f.write("\n".join(out_lines) + "\n")
+
+    painter = Painter()
+    pngs = {}
+    for k, (name, sex, who) in enumerate(FACE_SPECS):
+        prompt = f"{FACE_STYLE}, {who}"
+        seed = 1000 + 17 * k
+        try:
+            r = painter.paint.spawn(prompt, seed).get(timeout=1500)
+        except Exception as e:
+            note(f"paint {name:<7} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            continue
+        pngs[name] = r["png"]
+        with open(f"lab_out/face_{name}.png", "wb") as f:
+            f.write(r["png"])
+        with open(f"lab_out/face_{name}.json", "w") as f:
+            json.dump({"name": name, "voice_sex": sex, "model": "black-forest-labs/FLUX.1-schnell (Apache-2.0)",
+                       "prompt": prompt, "seed": seed, "label": "AI-generated - not a real person",
+                       "consent": "ai_generated"}, f, ensure_ascii=False, indent=1)
+        note(f"paint {name:<7} PASS  {r['make_s']}s (load {r['load_s']}s)")
+    picks = [n.strip() for n in os.environ.get("HOOLA_FACES", "asha,arjun").split(",") if n.strip() in pngs]
+    mover, live = Mover(), Live()
+    line = "नमस्ते, मैं आपकी शिक्षक हूँ। आज हम गति के बारे में सीखेंगे।"
+    for k, name in enumerate(picks):
+        try:
+            r = mover.move.spawn(pngs[name], FACE_MOTION, FACE_MOTION_NEG, 7 + k).get(timeout=3300)
+        except Exception as e:
+            note(f"move  {name:<7} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            continue
+        with open(f"lab_out/face_{name}_motion.mp4", "wb") as f:
+            f.write(r["mp4"])
+        note(f"move  {name:<7} PASS  {r['make_s']}s for {r['frames']} frames (load {r['load_s']}s)")
+        avatar = f"ai-{name}"
+        try:
+            p = live.prepare.spawn(avatar, r["mp4"], "ai_generated").get(timeout=2700)
+            note(f"face  {name:<7} PASS  prepared in {p['prepare_s']}s")
+            v = studio_job.spawn("video", {"avatar_id": avatar, "text": line, "lang": "hi"}).get(timeout=900)
+        except Exception as e:
+            note(f"talk  {name:<7} FAIL  {type(e).__name__}: {str(e)[:300]}")
+            continue
+        with open(f"lab_out/face_{name}_talking.mp4", "wb") as f:
+            f.write(v["files"]["video.mp4"])
+        note(f"talk  {name:<7} PASS  {v['info'].get('seconds')}s of speech, made in {v['info'].get('made_s')}s")
+    note("WATCH face_<name>_talking.mp4 - pick the face; the voice is the Chatterbox default for every face today "
+         "(a man's face with that voice is a known mismatch until a male voice is chosen).")
 
 
 @app.function(image=face_image, timeout=300)

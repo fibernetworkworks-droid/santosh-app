@@ -289,3 +289,15 @@ known weaknesses are handled in code: the end-of-speech patch + the ears trim (S
 baseline for any later voice tuning. whisper-small makes its own Hindi mistakes, so the CER numbers rank voices, they do
 not grade them.
 
+## 15. The face (5 Nov 2026) - her choice: (b) an AI-made face
+
+No real person's face. Pipeline, every model Apache-2.0 (read from the official Hugging Face pages on 5 Nov 2026):
+FLUX.1-schnell paints a FICTIONAL teacher portrait (4 prompts: two women, two men; seeds fixed) -> Wan 2.2 TI2V-5B
+turns it into a ~5 s clip of the same person blinking and breathing with lips closed (the face engine adds the mouth)
+-> MuseTalk prepares that clip with consent `ai_generated` -> the Chatterbox voice she chose makes it speak. Every face
+carries a provenance file (model, prompt, seed, "AI-generated - not a real person"). Lab job `face_make`; she picks the
+face by eye. OPEN, said plainly: FLUX.1-schnell is 'gated: auto' - the Hugging Face account whose token the lab uses must
+click Agree once on its page; MuseTalk still depends on the lab-only face-parsing model (replace before any public
+release); a visible AI mark / C2PA on delivered videos is not built yet; one voice for every face today (a male voice is
+an open choice).
+
