@@ -20279,3 +20279,27 @@ settings)` helper is called by both paths. Every gate is unchanged and still liv
 Tests: `test_v0552_natija_pakka.py` +2 (the wake report rings; switch off = no ring on any path; the one-shot path
 still rings); report suites 78 passed. Server-only. NOT VERIFIED live: the first task that finishes outside quiet
 hours with no call open should ring her phone (at most 2 a day by default).
+
+## v0.554.0 CARD KI KHABAR - every card reaches her live call (owner: "WHEN RESULT ON CARD / APPROVAL CARD / ANY CARD TASK APPEARS --- VOICE CALL DONT KNOW THAT EVEN CARD IS ASSIGNED AND PUSH VIA VOICE CALL")
+
+FOUND: `events.bus.publish` fans every event out to the chat streams (console + phone), FCM (`push.on_event`) and
+`kaamwatch.observe` - and a live call heard ONLY kaamwatch's JOB states (`kaamwatch._voice`). An approval card, a
+payment card, an email draft, a form, a finished result card (artifact, PDF, photo...) appeared on her screen while
+the voice model talked on knowing nothing.
+
+FIXED: `bus.publish` now also calls `voice.card_news(conv, kind, payload, call)` whenever a call is live (looked up
+in `sys.modules`, so no voice import happens when no call can exist). `card_news`:
+- uses `push.render` - the same judgement as the phone notification (pending asks, ready results) and its words;
+- one quiet note per card per state (`_CARD_TOLD`, 30 min), queued by `Call.push_news` for a natural pause (its own
+  60% word dedup still applies); to the call on that chat, else to her call on another of her chats (tenant check);
+- `card_note`: a MONEY card (amount / amount_paise / inr, a pay method, money words - the same rule `haan_karo` uses)
+  is said to be tap-only, never by voice; a non-money ask says she can answer (`haan_karo` for a running PC/browser
+  step - it refuses anything else itself); a result is told as a result;
+- not repeated: cards made by the call's own DIRECT tool (new `voice.VOICE_DIRECT` contextvar, set in `run_tool`,
+  cleared for `santosh_kaam` - so the cards of a full-brain job a call started ARE news), job states (kaamwatch
+  already speaks them), stream plumbing kinds (`_CARD_NOT`).
+Phone: `lib/call_session.dart` `callCardKinds` gains `any_card` (v0.550's default card) so the call screen can show it.
+
+Tests: NEW `test_v0554_card_khabar.py` (11, incl. an end-to-end `bus.publish` -> live call); voice / call / approval
+suites 308 passed; the 2 reds (`test_v0221_console_r1`: cache-stamp pin 0.543 + console English) are red on the
+pre-session commit bbdcaa60 too. NOT VERIFIED live: the first approval card that appears during a call is the proof.

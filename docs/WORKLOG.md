@@ -1419,3 +1419,13 @@ Work Log:
   for both; gates unchanged. +2 tests; report suites 78 passed. Live healthz read 0.552.0 before this change.
 Stage Summary:
 - v0.553.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 42 — v0.554.0 CARD KI KHABAR (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "WHEN RESULT ON CARD / APPROVAL CARD / ANY CARD APPEARS --- VOICE CALL DONT KNOW".
+Work Log:
+- bus.publish -> voice.card_news (push.render words, one note per card state, money tap-only, own-tool cards and
+  job states not repeated); call screen lists any_card. NEW test_v0554_card_khabar.py (11); 308 voice suites green.
+Stage Summary:
+- v0.554.0 server + one Dart line. Deploy = owner's vps-ops dispatch; APK from CI.

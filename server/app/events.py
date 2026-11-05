@@ -179,6 +179,13 @@ class EventBus:
             kaamwatch.observe(conversation_id, kind, payload)
         except Exception:
             pass
+        try:   # v0.554 CARD KI KHABAR: a card that reaches her screen also reaches her live call as a quiet note
+            import sys as _sys
+            _v = _sys.modules.get(__package__ + ".voice")      # no voice module loaded = no call can be live
+            if _v is not None and _v.ACTIVE:
+                _v.card_news(conversation_id, kind, payload, call)
+        except Exception:
+            pass
         return data
 
     def publish_live(self, conversation_id: str, kind: str, payload: dict) -> dict:
