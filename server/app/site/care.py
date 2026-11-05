@@ -202,6 +202,17 @@ def report(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
         tips.append("Log aa rahe hain par enquiry nahi; contact / WhatsApp button upar laane ka badlav bolun?")
     if views_prev and views < 0.6 * views_prev:
         tips.append("Pichhle mahine se visit kaafi kam; SEO sahayak se jaanch karwa sakte hain.")
+    ops_ = None
+    try:                                         # v0.559 her visitors' errors + real-visit speed in the same note
+        from . import ops as OPS
+        ops_ = OPS.summary(r.id, days)
+        if ops_["errors"] >= 50:
+            tips.append(f"Visitors ke browser mein {ops_['errors']} JavaScript galtiyan aayin; 'website ki galti dekho' kahiye.")
+        lcp = (ops_["speed"].get("lcp") or {})
+        if lcp and lcp.get("grade") == "poor":
+            tips.append(f"Main hissa dikhne mein {lcp['p75']} lag raha hai (75% visits); 'website tez karo' kahiye.")
+    except Exception:
+        log.debug("care ops summary failed", exc_info=True)
     tips += _drift(r)
     if chk.get("blocking"):
         tips.append(f"Pichhli jaanch mein {len(chk['blocking'])} zaroori kami thi; 'website theek karo' kahiye.")
@@ -215,7 +226,8 @@ def report(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
             "uptime_pct": round(100 * up / (up + down), 2) if up + down else None, "down_checks": down,
             "missing_hits": sum(x.missing for x in cur), "daily": [{"day": x.day, "views": x.views} for x in cur],
             "top_pages": sorted(pages.items(), key=lambda x: -x[1])[:8], "live_version": live_v, "version": r.version,
-            "ssl_days": ssl, "domains": doms, "scores": json.loads(r.scores or "{}"), "tips": tips[:8], "say": say}
+            "ssl_days": ssl, "domains": doms, "scores": json.loads(r.scores or "{}"), "tips": tips[:8], "say": say,
+            "errors": (ops_ or {}).get("errors"), "speed": (ops_ or {}).get("speed")}
 
 
 def monthly(at: datetime | None = None) -> int:

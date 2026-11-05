@@ -1850,8 +1850,10 @@ window.HoolaBuild = function (C) {
       <div class="stdash-grid">${card('visits', 'Visits a day', true)}${card('leads', 'Enquiries and bookings')}${card('pages', 'Top pages')}
         ${d.shop ? card('sales', 'Sales a day (confirmed, ₹)') + card('orders', 'Orders a day') + card('mix', 'Order status') + card('prods', 'Top products (₹)') : ''}
         ${lists.length ? card('app', 'Web app: new records a day', true) : ''}</div>
-      <p class="stnote">Visits are counted by Hoola's own server (no cookies, no tracker; bots and Hoola's uptime checks are not counted). Sales count only orders you confirmed.</p>`;
+      <p class="stnote">Visits are counted by Hoola's own server (no cookies, no tracker; bots and Hoola's uptime checks are not counted). Sales count only orders you confirmed.</p>
+      <div class="stdash-ops"></div>`;
     box.querySelectorAll('[data-days]').forEach(b => b.addEventListener('click', () => { DASH_DAYS[o.id] = N(b.dataset.days); loadDash(o, root); }));
+    loadOps(o, box, Math.min(N(d.days), 90));
     if (!HC) return;
     const put = (id, spec, empty) => {
       const el = box.querySelector(`[data-c="${id}"]`); if (!el) return;
@@ -1872,6 +1874,28 @@ window.HoolaBuild = function (C) {
       put('prods', {type: 'hbar', unit: '₹', labels: pr.map(x => `${S(x[0])} × ${N(x[1])}`), series: [{name: 'Sales', values: pr.map(x => N(x[2]))}]}, 'No confirmed sales yet.');
     }
     if (lists.length) put('app', {type: 'line', labels: dl, series: lists.slice(0, 6).map(x => ({name: S(x.label), values: L(x.days)}))}, 'No new records in this period.');
+  }
+
+  // ---------------------------------------------------------------- v0.559 CHALTI WEBSITE: errors, real speed, cost, backup
+  async function loadOps(o, box, days) {
+    const el = box.querySelector('.stdash-ops'); if (!el) return;
+    let d;
+    try { d = await api('GET', `${base(o)}/ops?days=${days}`); }
+    catch (er) { el.innerHTML = `<p class="stempty">${esc(er.message)}</p>`; return; }
+    const sp = M(d.speed), names = {lcp: 'Main content shown (LCP)', fcp: 'First paint (FCP)', ttfb: 'Server answer (TTFB)', cls: 'Layout shift (CLS)'};
+    const row = k => { const m = sp[k]; return `<tr><td>${esc(names[k])}</td><td>${m ? esc(S(m.p75)) : 'not measured yet'}</td><td>${m ? `<span class="stgrade ${esc(S(m.grade).replace(' ', '-'))}">${esc(S(m.grade))}</span>` : ''}</td></tr>`; };
+    const te = L(d.top_errors), bk = M(d.backup), rt = bk.restore_test ? M(bk.restore_test) : null, c = M(d.cost);
+    el.innerHTML = `<h4>Running health</h4><p>${esc(S(d.say))}</p>
+      <div class="stdash-grid"><section class="stdash-card wide"><h4>Visitor errors a day</h4><div data-c="errs"></div></section>
+        <section class="stdash-card"><h4>Most common errors</h4>${te.length ? `<ol class="sterrs">${te.map(x => `<li><code>${esc(S(x[0]))}</code> <small>× ${N(x[1])}</small></li>`).join('')}</ol>` : '<p class="stempty">No JavaScript errors from visitors in this period.</p>'}</section>
+        <section class="stdash-card"><h4>Real-visit speed (75% of ${N(sp.samples)} visits)</h4><table class="sttable"><tbody>${['lcp', 'fcp', 'ttfb', 'cls'].map(row).join('')}<tr><td>Response to taps (INP)</td><td>not measured</td><td></td></tr></tbody></table></section>
+        <section class="stdash-card"><h4>Cost and backup</h4><p>AI cost so far: <b>₹${esc(String(N(c.ai_inr).toLocaleString('en-IN')))}</b></p><p class="stnote">${esc(S(c.note))}</p>
+          <p>Backup: ${bk.enabled ? `last ${esc(S(bk.last_day) || 'not yet')}` : 'off (backup storage not set on the server)'}${rt ? ` · restore test ${esc(S(rt.day))}: <b>${rt.ok ? 'restored cleanly' : 'FAILED'}</b>${rt.files_checked ? ` (${N(rt.files_checked)} files compared)` : ''}` : (bk.enabled ? ' · restore test not run yet' : '')}</p></section></div>
+      <p class="stnote">Errors and timings come from your visitors' browsers with no cookie and nothing about the visitor; timings are kept only as bands, so "at most 2.5 s" is a band, not a stopwatch reading.</p>`;
+    const HC = window.HoolaChart, ed = M(d.error_days), ks = Object.keys(ed).sort();
+    const ce = el.querySelector('[data-c="errs"]');
+    if (!HC || !ks.length || !ks.some(k => N(ed[k]))) { ce.innerHTML = '<p class="stempty">No errors counted in this period.</p>'; return; }
+    HC.live(ce, {animate: false, type: 'bar', labels: ks.map(k => k.slice(5)), series: [{name: 'Errors', values: ks.map(k => N(ed[k]))}]});
   }
 
   /* v0.446 DUKAAN PAISA: her own gateway (keys typed HERE only, sealed, shown nowhere), payments, coupons, reviews */

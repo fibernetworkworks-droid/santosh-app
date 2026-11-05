@@ -1020,6 +1020,11 @@ async def employee_jobs() -> None:
         await asyncio.to_thread(site_cms.tick)
     except Exception:
         log.exception("site cms tick failed")
+    try:                                   # v0.559 CHALTI WEBSITE: visitors' errors + speed, alerts, nightly restore test
+        from .site import ops as site_ops
+        await asyncio.to_thread(site_ops.tick)
+    except Exception:
+        log.exception("site ops tick failed")
     try:                                   # v0.124 care: visit counters to the DB, monthly care note on the 1st
         from .site import care as site_care
         await asyncio.to_thread(site_care.flush)

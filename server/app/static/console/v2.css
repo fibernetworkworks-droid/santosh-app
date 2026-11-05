@@ -2905,3 +2905,15 @@ body.albon{overflow:hidden}
 .hcard-go{font:600 13.5px var(--fb);padding:8px 15px;border-radius:9px;background:var(--ink);color:var(--surface);border:0;cursor:pointer;text-decoration:none}
 .hcard-go:hover{opacity:.9}
 .hcard-go:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+
+/* v0.559 CHALTI WEBSITE: running health under the website dashboard */
+.stdash-ops{margin-top:24px}
+.stdash-ops>h4{font-size:16px;font-weight:600;margin:0 0 6px}
+.sterrs{margin:0;padding-left:20px;display:grid;gap:6px}
+.sterrs code{font-size:12.5px;word-break:break-word}
+.sttable{width:100%;border-collapse:collapse;font-size:14px}
+.sttable td{padding:6px 4px;border-top:1px solid var(--hair)}
+.stgrade{font-size:12.5px;font-weight:500;padding:2px 8px;border-radius:8px;background:var(--chip,rgba(127,127,127,.12))}
+.stgrade.good{color:var(--ok,#1a7f4b)}
+.stgrade.needs-work{color:var(--warn,#a15c00)}
+.stgrade.poor{color:var(--bad,#b42318)}

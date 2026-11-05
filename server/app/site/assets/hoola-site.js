@@ -396,3 +396,46 @@
   W.HoolaSite = { start: start };      // v0.305 the React export starts it again after a route change
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
 })();
+
+/* v0.559 CHALTI WEBSITE: her visitors' JavaScript errors + how fast the page really showed, sent to Hoola so she can see
+   it. Nothing about the visitor: no cookie, no id, no query string, no typed text; at most 5 errors a page view and one
+   timing line, sent with sendBeacon to the address her own forms already use (the site's CSP allows only that). Off on a
+   preview (the API's own host) and when the page has no <meta name="hoola-ops">. */
+(function () {
+  'use strict';
+  var d = document, W = window, meta = d.querySelector('meta[name="hoola-ops"]');
+  if (!meta || !W.navigator || !navigator.sendBeacon || !W.JSON) return;
+  var url = meta.getAttribute('content') || '';
+  try { if (new URL(url, location.href).host === location.host) return; } catch (e) { return; }
+  var errs = [], sent = 0, timed = false, sp = {}, path = location.pathname;
+  function send(body) { try { navigator.sendBeacon(url, JSON.stringify(body)); } catch (e) { /* never break her page */ } }
+  function push(m, f, l) {
+    if (sent + errs.length >= 5) return;
+    errs.push({ m: String(m || '').slice(0, 200), f: String(f || '').split(/[?#]/)[0].split('/').pop().slice(0, 60), l: +l || 0 });
+    if (errs.length === 1) setTimeout(flush, 2000);
+  }
+  function flush() { if (!errs.length) return; send({ p: path, e: errs }); sent += errs.length; errs = []; }
+  W.addEventListener('error', function (ev) {
+    if (ev && ev.message) push(ev.message, ev.filename, ev.lineno);
+  });
+  W.addEventListener('unhandledrejection', function (ev) {
+    var r = ev && ev.reason; push(r && r.message ? r.message : String(r), r && r.fileName, 0);
+  });
+  var has = (W.PerformanceObserver && PerformanceObserver.supportedEntryTypes) || [], cls = 0;
+  function watch(type, fn) {      // only what this browser really measures (Safari: no LCP / layout shift -> left out, never 0)
+    if (has.indexOf(type) < 0) return false;
+    try { new PerformanceObserver(function (l) { fn(l.getEntries()); }).observe({ type: type, buffered: true }); return true; }
+    catch (e) { return false; }
+  }
+  try { var nav = performance.getEntriesByType('navigation')[0]; if (nav) sp.ttfb = Math.round(nav.responseStart); } catch (e) { /* old */ }
+  watch('paint', function (es) { es.forEach(function (e) { if (e.name === 'first-contentful-paint') sp.fcp = Math.round(e.startTime); }); });
+  watch('largest-contentful-paint', function (es) { if (es.length) sp.lcp = Math.round(es[es.length - 1].startTime); });
+  var clsOn = watch('layout-shift', function (es) { es.forEach(function (e) { if (!e.hadRecentInput) cls += e.value; }); });
+  function timing() {
+    if (timed) return; timed = true; flush();
+    if (clsOn) sp.cls = Math.round(cls * 1000) / 1000;
+    if (sp.ttfb !== undefined || sp.lcp !== undefined) send({ p: path, s: sp });
+  }
+  d.addEventListener('visibilitychange', function () { if (d.visibilityState === 'hidden') timing(); });
+  W.addEventListener('pagehide', timing);
+})();

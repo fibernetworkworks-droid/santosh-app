@@ -464,6 +464,11 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: {title}", str(p.get("say") or "")[:300])
     if kind == "site_live":
         return (f"{name}: website live!", str(p.get("say") or "")[:300])
+    if kind == "site_ops":                        # v0.559 her website: an error spike / slow pages / a backup that did not come back
+        if not p.get("push"):
+            return None
+        title = {"errors": "website par galtiyan", "slow": "website dheemi", "backup": "backup jaanch fail"}.get(p.get("kind"), "website")
+        return (f"{name}: {title}", str(p.get("say") or "")[:300])
     if kind in ("site_care", "site_github"):       # v0.124 monthly care note / GitHub export card
         if not p.get("push"):
             return None
@@ -624,7 +629,7 @@ def _send(tenant: str, ev: dict[str, Any]) -> int:
 
 
 PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo_made", "blender3d", "notebook_output", "pg_write", "email_draft", "email_new", "email_snooze", "bazar_open", "device_action",
-              "home_device", "bt_request", "voice_ring", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "voice_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "social_lead", "social_alert", "social_day", "social_week", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "hoola_dosti", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_order", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_github", "app_board", "app_android", "app_ios",
+              "home_device", "bt_request", "voice_ring", "employee_ask", "employee_report", "biz_inbox", "operator_ask", "studio_approval", "google_reconnect", "darzi_quote", "darzi_day", "chai_plan", "office_spend", "office_day", "office_note", "lekhak_sign", "mshop_bill", "mshop_day", "gst_day", "gst_return", "payroll_run", "payroll_day", "fin_alert", "voice_alert", "audit_update", "ask_form", "ins_day", "ins_advice", "tele_day", "kalam_publish", "hoola_deal", "seo_week", "seo_alert", "seo_draft", "social_lead", "social_alert", "social_day", "social_week", "hoola_pick", "hoola_khata", "thok_order", "thok_alert", "thok_day", "sheet_milaan", "doc_edit", "niryat_pi", "niryat_day", "ads_change", "ads_report", "hoola_rfq", "hoola_promo", "hoola_mandate", "hoola_dosti", "fr_statement", "fr_day", "a2a_task", "a2a_out", "handoff_reminder", "digilocker", "theka_bill", "theka_letter", "theka_day", "brand_approval", "brand_idea", "site_board", "site_lead", "site_order", "site_launch", "site_live", "site_dns", "site_down", "site_domain", "site_care", "site_ops", "site_github", "app_board", "app_android", "app_ios",
               # v0.133 Seva suite
               "seva_exception", "seva_sla", "seva_ticket", "seva_day", "helpdesk_change", "helpdesk_alert", "helpdesk_escalate", "helpdesk_day", "shikayat_comp", "shikayat_case", "shikayat_alert", "shikayat_day", "aftersales_charge", "aftersales_reminders", "aftersales_visit", "aftersales_day", "feedback_reply", "feedback_alert", "feedback_report", "wapsi_return", "wapsi_refund", "wapsi_day", "samudaay_alert", "samudaay_action", "samudaay_question", "samudaay_join", "samudaay_template", "samudaay_week", "callcentre_script", "callcentre_message", "callcentre_call",
               # v0.137 Tech suite

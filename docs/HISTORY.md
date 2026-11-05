@@ -20402,3 +20402,44 @@ FIXED in `server/app/agent/santosh.py`:
 Tests: NEW `test_v0558_sahi_kamra.py` (3); routing / goal / routine / admission suites 204 passed; the 4 reds
 (test_v091 x3 - a stale fake `think()` signature - and test_v0311 hello-size) are red on the committed tree too.
 NOT VERIFIED live: the next morning routine on the VPS is the first real one with the smaller tool set.
+
+## v0.559.0 CHALTI WEBSITE (web Step 7 part 2 = W14 of docs/WEB_PLATFORM_PLAN.md; owner: "GO")
+
+W14 asked for: cookie-less analytics, a JS error beacon, uptime from outside, a per-site dashboard (visitors, orders, errors,
+speed, cost), alerts in her chat, a monthly report, and a daily off-server backup WITH a restore test. Already built and NOT
+redone: server-counted views (care.py), inside + outside uptime with the `site_down` card after two misses (hosting.py), the
+dashboard (dash.py), the monthly care note, the nightly backup (backup.py). New in `server/app/site/ops.py`:
+
+1. **Visitors' errors.** A separate block at the end of `assets/hoola-site.js` listens for `error` + `unhandledrejection` and
+   sends `{p, e:[{m,f,l}]}` with `navigator.sendBeacon` to `<meta name="hoola-ops">` = `/api/site-ops/<site>/beacon` on the
+   SAME host her forms already post to, so the site CSP (`connect-src`) and all nine safety gates still pass. Max 5 per page
+   view. The server keeps message (emails -> [email], 6+ digit runs -> [n], URL query / fragment cut, 200 chars), file BASE
+   name + line, and the page path without its query; nothing about the visitor (no cookie, no id, IP only hashed in memory for
+   the 120 / 10-minute cap). Unknown site ids, bad JSON, bodies over 8 KB and floods are dropped silently; the route always
+   answers 204. Skipped on a preview (beacon host == page host) and never on Edit builds.
+2. **Real-visit speed.** Once per page view (on hidden / pagehide): TTFB, FCP, LCP, CLS - each only if
+   `PerformanceObserver.supportedEntryTypes` says this browser measures it (Safari has no LCP / layout-shift, so they are
+   LEFT OUT, never sent as 0). Stored only as counts in fixed bands per day; p75 read from the bands and SAID as a band
+   ("at most 2.5 s"), graded good / needs work / poor on Google's published lines (LCP 2.5 / 4 s, FCP 1.8 / 3 s, TTFB 0.8 /
+   1.8 s, CLS 0.1 / 0.25). INP is said as "not measured".
+3. **Cost per site.** `Site.cost_usd` (the AI calls of building and changing it) at the server's `usd_inr`; hosting is shared
+   and said to be not split per site.
+4. **Alerts in her chat** (`site_ops` card + push, one line per kind per site per IST day, claimed atomically so 4 workers say
+   it once): errors >= 25 today AND >= 3x her own 7-day median; slow = LCP p75 over 4 s on >= 30 measured visits AND >= 1.5x
+   her own week (when the week was measured). Downtime keeps its existing card.
+5. **Restore test.** `backup.run` now records when it was taken; after 04:00 IST, once a night, `ops.daily_restore_test`
+   downloads that night's archive back, unpacks it into a temp folder (the existing safe `restore`) and `compare`s it with
+   the live published sites: every site folder present with its index.html, every live file NOT changed since the backup
+   was taken byte-identical (sha256; capped at 4,000 files a night). Sites published after the backup are skipped, deleted
+   files are fine. A failing site -> its owner hears it once; a failed download -> every owner with a live site.
+- Rows: `site_ops_days` (one per site per day; unique index `ux_site_ops_day` + insert retry). Worker slot `site_ops.tick`
+  at most every 5 minutes. Routes: POST `/api/site-ops/{site}/beacon` (public), GET `/api/sites/{ref}/ops`. Console website
+  Dashboard: "Running health" (errors a day, top errors, speed table, cost, backup + restore test). Agent:
+  `website_dekho what=ops`. The monthly care note names 50+ errors and a poor LCP.
+- Tests `test_v0559_chalti_website.py` 11: masking + caps + unknown site, bands + p75 + no fake 0 + one row a day, routes,
+  the built page's meta + JS + CSP + gates still clean, alerts against her own week + once a day + push title, a new site's
+  real spike, byte-for-byte compare honest about time, a failed restore telling that owner once + recovery + a failed
+  download, the nightly wait, wiring.
+- NOT VERIFIED live, said plainly: no visitor beacon has reached the VPS yet (her live sites get the beacon on their NEXT
+  build / publish - the script and meta come with the build); the restore test needs `SITES_BACKUP_BUCKET` + keys in the
+  VPS `.env` (backup is off without them, and the console says so).

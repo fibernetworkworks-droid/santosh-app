@@ -110,11 +110,11 @@ SITE_TOOLS = [
          "required": ["action"]}},
     {"name": "website_dekho", "description": (
         "Read her websites (nothing changes). what=sites | site (site: board, pages, sections, scores, preview link, "
-        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | code (site, + file: the code files of the site / one file's code) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
+        "versions) | hosting (site: live addresses, DNS / SSL state, DNS plans) | domains (domains bought through Hoola, KYC, expiry) | care (site, days: visits / enquiries / uptime / tips) | dashboard (site, days: day-by-day visits, enquiries, orders, sales, top pages / products, web-app records + change vs the previous period; she sees the charts in the website's Dashboard tab) | ops (site, days: her VISITORS' JavaScript errors (top messages + pages), real-visit speed as p75 bands (LCP / first paint / server answer / layout shift; INP not measured), AI cost of the site, last backup + whether it restored cleanly - use for 'website ki galti dekho', 'site dheemi kyun hai', 'backup theek hai?') | code (site, + file: the code files of the site / one file's code) | blog (site: her posts - published / scheduled / hidden - and the site's languages) | clients (agency: sites by client) | checks (site: what failed / warnings) | leads (site: enquiries from the site forms) | library (q: "
         "find a business type, or industry) | brief (field, goal, style: the full ready brief) | understand (q: what a "
         "short ask means: business type, goal, 3 looks)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "blog", "code", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
+         "what": {"type": "string", "enum": ["sites", "site", "hosting", "domains", "care", "dashboard", "ops", "blog", "code", "clients", "checks", "leads", "orders", "library", "brief", "understand"]},
          "site": {"type": "string"}, "q": {"type": "string"}, "industry": {"type": "string"}, "field": {"type": "string"},
          "goal": {"type": "string"}, "style": {"type": "string"}, "days": {"type": "integer"}, "file": {"type": "string"}},
          "required": ["what"]}},
@@ -360,6 +360,9 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> Any:
         sr = r.pop("series")
         r["busiest_days"] = sorted(zip(sr["days"], sr["visits"]), key=lambda x: -x[1])[:5]
         return r
+    if what == "ops":                             # v0.559 CHALTI WEBSITE: errors, real speed, cost, backup restore test
+        from ..site import ops as OPS
+        return OPS.owner_view(t, site, int(a.get("days") or 30))
     if what == "clients":
         from ..site import care as SC
         return {"clients": SC.clients(t)}
