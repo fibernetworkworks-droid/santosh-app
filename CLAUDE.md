@@ -46,6 +46,13 @@ Exception recorded (29 Oct 2026): v0.238.0 DATA DESK — the owner said "GO for 
 only, never data; a VM file does not come back to the chat). No PC behaviour, endpoint or desktop file changed; fix 4
 (VM files back to the chat) still needs her "GO WITH PC". The freeze stands for everything else.
 
+Exception recorded (4 Nov 2026): v0.487.0 WEB EXTENSION (W3) - the owner asked in chat "W3 (web extension)" and the
+v0.484 W2b release had explicitly named this lane for W3, so the text lane was built BESIDE the frozen PC surface, not inside it:
+`server/app/quicklane.py` is a NEW module mounted beside the PC block (one include_router; no /api/pc/* endpoint, no pc_* setting,
+no hub/operator/service behaviour changed), and `server/app/pc/operator.py` gained ONLY the additive ext tool (spec + _do branch +
+_say line + the _desktop_says tuple entry) on the W2b exception precedent - one-time setup, ask_approval PEHLE, behind the same
+control switch. The freeze is back in force for everything else the moment this ships.
+
 ## What it is
 **Hoola** is an Indian "Dots-like" always-on AI coworker app by Newtika Pvt Ltd (FNW). Owner: Meghana.
 Each user names their own **avatar** (e.g. "Santosh", male or female voice). The avatar works for the owner
@@ -225,6 +232,25 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   "Current state" list below. Never paste long sections into this file again.
 
 ## Current state (latest first, one line each)
+- v0.522 CONSTRUCTION WAVE 1 (owner: 'WAVE 1 - RECORDS AND MONEY ... END TO END' on docs/CONSTRUCTION_EMPLOYEE_PLAN.md): server/app/construction/ (register.py = the 123-row register as data, gates.py = 27 tier-C refusals riding every const tool, statepacks/maharashtra.json v0 with a stale-pack refusal, store/labour/books/customer/quality/meetings services) + 5 hireable Hub employees (const_store/labour/customer/quality/meet) + sitesup voice_log + variance + theka rate_basis/advances/wage_calc; registry 541 -> 551; test_v0512_construction_w1.py 26; server-only deploy. PREPARE never CERTIFY.
+- v0.500 FE PACK (TWENTY-THIRD COLLISION re-version 0.498.0 -> 0.500.0: the dev's chain took 0.498.0 UIUX PRO MAX + 0.499.0 SUPERPOWERS while this sat unpushed - REBASE PROTOCOL respected, rebased on their e90e60f1, both lanes kept, their sp wiring restored by hand; owner: the awesome Front-End (85) read - 'awesome-charting + web-animation + CSS frameworks -> HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly into the campaigns engine. Design-systems list -> Hoola's own UI kit consistency. NOW WORK ON IT MAKE THE SKILL. FEED THIS TO HOOLA'): three skillpack files, fe-frames-templates (HyperFrames MP4 styles ASSEMBLED not invented - the CHART PACK (big-number KPI card, CSS bar chart, SVG line/area draw-on, donut ring) + the MOTION PACK (kinetic type 80-120ms stagger, lower-third, logo sting, price reveal, countdown, gradient wash) + the layout discipline (16:9 1920x1080 / 9:16 1080x1920, ~10% safe margins, ek scene ek idea); the laws: everything INLINE (no CDN/webfont/network - the determinism gate refuses), CHECK cheap BEFORE render expensive, colors/motion from fe-ui-kit) and fe-email-templates (campaign emails assembled from the template library - OFFER/SALE, NEWSLETTER, REMINDER, FESTIVAL GREETING, PRODUCT LAUNCH, FEEDBACK REQUEST - subject <=45 chars + preheader first line + ONE CTA + her facts only with [blanks]; the lane: email_draft markdown=true, email_bulk behind the approval card, kalam publish; NEVER OTP/password/card numbers in a mail, no spam shape, no bought lists) and fe-ui-kit (the REAL Night Glass tokens from lib/ui/glass.dart class C - bg #0B0A1A -> #120E2A, ink #F4F2FF, saffron #FFB15C, violet #7C5CFF, house gradient #FFD9A8 -> #FF9A3C -> #C055F5, Sora display + serif body; tokens first, contrast >=7:1, ONE accent per screen, motion one family - composition, email aur console card sab ek family). THE FEED: skill_packs.seed_fepack(tenant) with its OWN once-ever stamp (the v0.492/v0.495 pattern) - every tenant gets it on the next skills-desk open, create-if-missing, hers win; fepack_enabled default ON. Tests test_v0498_fepack.py 10 (+ the desk-route live count 43 -> 46 healed in test_v0485; the ui-kit hexes cross-checked against glass.dart itself).
+- v0.497 PROG PACK (TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0: the dev's chain took 0.495.0 OFFICE HOURS and then 0.496.0 CODE GRAPH while this sat unpushed - REBASE PROTOCOL respected twice, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand; owner: the awesome Programming Languages read - 'CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI'): two skillpack files, prog-library-registry (pick libraries from the vetted registry - requests/httpx, beautifulsoup4+lxml/scrapy, openpyxl/pandas/xlsxwriter, pypdf/reportlab/pdfplumber, python-docx/python-pptx, Pillow, flask/fastapi/pytest, stdlib first; outside it = VERIFY on PyPI through the gated run door or say unverified, NEVER a plausible guess; install only on her tap - the supply-chain safety win) and prog-windows-script-lane (the THIRD automation lane beside pixels and ax_*: AutoHotkey v2 / AutoIt / VBA for the apps the accessibility tree cannot reach; the script is a FILE shown + explained, nothing self-runs, execution rides the gated run door or her own double-click; no Win+R-class keys, no AV/UAC, money/delete macros read back first). THE FEED: skill_packs.seed_progpack(tenant) with its OWN once-ever stamp (the v0.492 pattern) - every tenant gets it on the next skills-desk open, create-if-missing, hers win; progpack_enabled default ON. Tests test_v0495_progpack.py 9 (+ the desk-route live count 41 -> 43 healed in test_v0485). Bonus heal: the dev chain's missed story pins (0.493.0 asserts left red on main 7c1e5139) now ride this newest story.
+- v0.496 CODE GRAPH (Graphify, Apache-2.0, as a read-only lane): graph_build maps a GitHub repo (tarball, safe unpack, local AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill), graph_ask answers query/path/explain/affected/god_nodes, graph_list; per-tenant graphs, the source deleted after the build, the optional binary gets a calm install hint, flag-like arguments refused, Hinglish routing + 5 card asks (their own TWENTY-FIRST collision: re-versioned 0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0). Tests test_v0496_codegraph.py.
+- v0.495 OFFICE HOURS (owner: 'BUILD' on github.com/garrytan/gstack - Garry Tan's open-source software factory: /office-hours writes a design doc, four plan reviews amend it, only then anything is built): the house had the hands (qa, devops, appreview, kaam_plan) but never the HEAD - a structured think/plan step that decides what is WORTH building before anything is built. NEW agent/officehours_tools.py beside kaam_plan (registry 529 -> 531, tools officehours / officehours_dekho): start opens a baithak asking SIX forcing questions ONE at a time (real pain with a specific example, who does it today + what it costs, the first visible change when fixed, today's jugaad, the smallest self-useful wedge, kill criteria), same topic returns the SAME doc honestly (already_open); doc writes reframe + capabilities (max 7) + premises challenged + 3-4 options with honest effort + recommendation = the narrowest wedge; review appends one lens row ceo|design|devex|eng - eng ALWAYS last and the eng lens flips status to reviewed, review on a doc-less draft is refused; decide records HER decision in her words (Hoola never decides) + next_step; stop closes. NOTHING AUTO-RUNS OFF A DOC - the wedge is advisory; building happens later through the existing doors with her Haan. Config officehours_enabled=True, officehours_keep_docs=30. Tests test_v0495_officehours.py 30. NOT VERIFIED: the first real baithak in her chat is the live test.
+- v0.494 EQUAL POWER (NINETEENTH COLLISION, re-versioned 0.491.0 -> 0.494.0 on the dev's fresh base 8e3339fe; owner: "GIVE EQUAL POWER TO ALL - WIRE ALL AI FUNCTIONALITIES, TOOLS, SKILLS ETC TO ALL THUS CALL SECTION CAN WORK PROPERLY"): the difference was that chat surfaces share one brain by construction while the call declared only ~111 of 368 listed tools - now the head of every suite is declared: campaigns (auto_send=False on a call, the SEND still waits for her card), Ghar Home Assistant x5, the Forms/Slides/Notebook/Photos/doc READ heads, scrape_page/research_status/skill_manage, and VOICE_HEADS = the 30 main desks' X_dekho state readers (every desk's CHANGES stay fenced); MCP on calls 25->40 and the SETUP ladder burns vocab/langcodes before her MCP tools; the phone can TYPE INTO A CALL (the server took {"type":"text"} all along; LiveVoice.sendText + CallSession.sendText with chat fallback + a type bar in the call screen); NEW test_v0491_equal_power.py (5 tests) holds it equal forever - no dead names, heads stay declared, money guards stay up, card parity both clients; test_v149 updated; budget proven green locally. NOT VERIFIED (honest): the first live call on the VPS is the real test; the type bar compiles first on CI; W4 (console card parity + SAPNE page) and W5 (phone edit/retry + Skill Desk + Ghar screens) are the next versions.
+- v0.487 HOOLA WEB EXTENSION (W3 of the Platforms plan, owner: 'W3 (web extension)'): the 'send page to Hoola' door + the PC→Hoola TEXT LANE the desktop bridge never had. `server/app/quicklane.py` (NEW surface beside the PC block, one include_router; no frozen endpoint/setting touched): POST /api/pc/quickask takes a PAIRED device's {text?, url?, title?, selection?, client_id?} (the SAME spc_ token; the extension pairs through the SAME /api/pc/pair flow and shows on her Mera PC list), composes ONE honest Hinglish user message server-side and rides the SAME turn pipeline as the phone (convs.mark + bus.publish + turn_inbox.accept + run_owned) - Hoola answers in her conversation with her own tools (the page she reads with her v0.483 scrape lane; this lane never fetches); GET /api/pc/quickask/messages reads the answer back; guards = device-token auth, tenant check, 30/hour/device cap, client_id dedup. THE EXTENSION `desktop/ext/hoola-extension` (MV3 Chrome/Edge): service worker + popup + right-click 'Hoola ko bhejiye' + Ctrl+Shift+H, pairing in options with the phone's 6-digit code, custom server asks its host permission first, no eval/remote code; rides INSIDE the exe (ext_payload, %TEMP%\_MEIxxxx\ext), release ships Hoola-Chrome-extension.zip; `ext_install.py` (the pt_run.py twin) copies ONLY Hoola's folder to %LOCALAPPDATA%\Hoola\chrome-extension (no browser policy, nothing auto-starts), the window card installs on HER click; desktop 1.9.0 do_ext behind the SAME _control_on() switch. THE DOORS RIDE IT: Main.cs 'hoola <sawaal>' -> 'Hoola se poochho' -> --ask (alias launch truth kept, plugin ID unchanged); the single-instance lock port receives ASK: lines (second instance hands over, the running window sends via the events queue); the window's own ask box; desktop quickask.py. SERVER: operator ext tool (ONE-TIME SETUP, ask_approval PEHLE) + _do/_say/_desktop_says; win+r still BLOCKED_KEYS. Tests test_v0487_webext.py 30. Version 0.487.0 (pubspec 0.487.0+532, desktop/plugin/extension 1.9.0, stamps stay 0.485.0 x21). NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet; the C# ask-door compiles first on the next push - her first right-click after deploy is the live test.
+- v0.489 HOOLA POWERTOYS RUN (W2b of the Platforms plan, owner: 'W2b - PowerToys Run plugin'): the 'hoola' door inside PowerToys Run - Alt+Space, 'hoola', Enter. The plugin (`desktop/ptrun_plugin/Community.PowerToys.Run.Plugin.Hoola`, .NET 9 class library on the community Dependencies 0.97.0 references, static PluginID 162E72D3C1D7464E865293A276993A7B = plugin.json, ActionKeyword 'hoola') launches through the SAME W2a HKCU App Paths alias - one launch truth; CI (build-desktop.yml) publishes it and rides it INSIDE SantoshDesktop.exe (PyInstaller datas -> %TEMP%\_MEIxxxx\ptrun); desktop 1.8.0 `pt_run.py` (the app_paths.py twin) installs ONLY Hoola's own folder into %LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins\Hoola (user-level, no admin, whole-folder replace = upgrade); PowerToys absent -> `quickkey.py` registers Ctrl+Alt+H (RegisterHotKey on its own thread, events-queue -> Tk, Quit unregisters) as the same door - Hoola never presses keys (win+r stays BLOCKED_KEYS); `do_pt_run` behind the SAME _control_on() switch, on=false undoes both doors; server operator `pt_run` tool (ask_approval PEHLE) + _do/_say/_desktop_says wiring. Tests test_v0484_ptrun.py 33. Version 0.486.0 (pubspec 0.486.0+531, desktop pin 1.8.0, stamps stay 0.485.0 x21; SEVENTEENTH COLLISION - rebuilt on the dev's e2a57481 base). The PC→Hoola text lane is deliberately left for W3 (the extension's send-page lane; both doors will ride it).
+- v0.484 SAPNE - MOAT PLAN Phase 1 (owner: "USE THIS 2 REPO --- MOAT...PLAN FIRST" -> docs/HOOLA_AI_MOAT_PLAN.md -> "GO"; FIFTEENTH COLLISION, re-versioned 0.479.0->0.484.0 on their fresh base f9bf4db6 - the dev's chain took 0.479 Smart Home, 0.480 their CURATOR, 0.481 Launcher, 0.482 research, 0.483 Firecrawl; BOTH curators kept): the NIGHTLY curator, OpenClaw's dreaming sweep ported - coder/dreams.py LIGHT pass (26h window) distills the vault's raw observations into <=4 curated rows via store_observation actor='dreams' (dedup ladder reinforces restatements), DEEP weekly pass may rewrite LIVE curated rows with a MANDATORY preimage (obs_preimages + obs_restore_preimage = the undo line; superseded rows never rewritten; dreams never reads superseded rows), tenant privacy gate + usage gate + no self-recursion, per-tenant conv bucket dreams-<tenant>, one brain call per tick max, reviewable digest <coder_dir>/dreams/<tenant>/dreams.md + GET /api/coder/dreams, STABLE prompts.dreams_system, same <observation> XML. Kill switch coder_dreams default OFF (bake, then flip). Tests test_v0484_hoola_dreams.py 19; dreams+curator+coder 71 green on the rebased base. Server-only, freeze respected, old APKs keep working.
+- v0.480 RESEARCH R9 NIGRANI + HELD REVIEW (plan `docs/RESEARCH_PRO_PLAN.md` R9 - the LAST phase): (1) `research/watch.py` + tool `research_watch(add|list|pause|resume|delete|check_now|result)` - a topic she WATCHES re-runs on a schedule (daily / weekly / fortnightly / monthly, never faster than daily) as an ordinary quiet background run (R4, same R5 ceilings) and tells her ONLY what changed. Creation needs her yes: `add` first returns the cost (per check, per month - measured once 3 runs exist, else 'not measured'), the ceilings and that a no-change check says nothing; only `confirm=true` creates. Limits: 3 active watches, a monthly cap per watch (`research_watch_month_inr` 300, a guess) after which it PAUSES itself and says so once, 3 failed checks in a row pause it, the daily ceiling skips a check (noted, retried in 6 h), an unavailable vendor engine skips it. `diff(old_snapshot, new)` BY CODE: snapshot = verified + backed + medium/high findings; CHANGED (same finding by claim-word overlap >= 0.6, figures moved beyond rounding), NEW, NOT SEEN THIS TIME (never an alarm: only 'this run did not find it again'), UNCHANGED; matching is one-to-one. The baseline run and an unchanged check say NOTHING (counted only); a material change publishes `research_watch` -> kaamwatch -> a WAKE turn (`<research_change_due>`) that fetches the digest with `research_watch result` and writes a 3-8 line message; that wake turn is a held + checked answer with the EARLIER values admitted to the figure check (`watch.check_dossier`) and WITHOUT the full report's link-list rule (`research_change` why). (2) `research/review.py`: after the R3 code checks pass, a reviewer reads the report's WORDING against the dossier's notes (the page's own words + the gaps): claims stronger than the evidence, NOT-CONFIRMED stated as fact, comparisons nobody sourced; <= 4 named problems into the same ONE fix round; replaces the generic reviewer for research answers; a failing reviewer never blocks; switch `research_review`. Found by its own tests: a research answer needed LINKS even for a short [n]-citing change message (a different kind of answer now); a frequency of 0 became weekly instead of daily. NOT VERIFIED: never run live - no watch has ever fired, the 0.6 overlap / 300 cap / 3-failure rules are judgement; the scheduled path is tested with scripted fakes.
+- v0.479 RESEARCH R8 KAAGAZ (plan `docs/RESEARCH_PRO_PLAN.md` part 10): `research/document.py` + tool `research_document(report, kinds=[pdf|docx|xlsx], title, include_cost)` - the model's report is only the BODY; everything that makes it a DOCUMENT is built IN CODE from the dossier: AT A GLANCE (up to 4 key figures chosen by rule: verified + figures in the page's words + high/medium, one per figure, different sites first - never a model's pick), THE REPORT (headings shifted, its own Sources tail replaced), KEY FIGURES table (period, source [n], confidence, unconfirmed ones labelled), NOT CONFIRMED (the FULL list: engine's unresolved items + notes not found on their page + figures outrunning their quote + search-excerpt-only), SOURCES table (site, link, period, looks-primary-by-name, page read or search excerpt only, findings standing on it), HOW THIS WAS MADE (engine, pages, verified share, confidence counts, cost line optional, and the sentence 'traced is not the same as correct'). Charts ONLY from a real calculated series (3+ `label: number` lines a calc printed) and only in the workbook - HOOLA PRINT / Word have no chart path, nothing is plotted from prose. Her brand kit sets the PDF colours + name with NO model call (`brand_art` -> `htmlpdf` `art=`); Word / workbook keep the topic's look. The tool REFUSES a chat with no delivered dossier and a report that fails the same R3 figure check as the chat answer (so a document cannot carry what the answer could not). The wake text, `research_status result` and the research recipe now point to it (doc_studio stays the plain fallback). NOT BUILT: a Google Doc (her Google sign-in is dead; the Word file opens in Google Docs); charts inside the PDF / Word. NOT VERIFIED: HOOLA PRINT (Chromium) was not available where this was built - the PDF was exercised through the ReportLab fallback only (text extracted, sections checked); Word + workbook were opened and read back.
+- v0.478 RESEARCH R7 THE RUN-OFF (plan `docs/RESEARCH_PRO_PLAN.md` R7): `quality/runoffcard.py` - the R0 research card run ACROSS the engines on the same asks, scored the same way, with a RULE IN CODE that recommends the default. The same for every engine: the same asks (incl. the 3 traps), the same deterministic sub-questions, the same source policy, the same WRITER prompt + model (one fix round on the R3 claim check), the same scorer (`score_report` + `check_report`) reading the report against the pages / excerpts / calcs THAT engine's run fetched, the same cost meter; runs INTERLEAVED so a budget that runs out leaves every engine the same coverage. `first_stop_tool` is left out (the agent's, not an engine's); `calc_in_pylab` stays (a vendor cannot compute in Hoola's sandbox - shown, with `right_non_calc` beside `right`). THE RULE: an engine is eligible only if it answered >= 80% of its asks AND invented a confident answer to NO trap; a challenger displaces the incumbent (hoola) only by leading on `right` by >= 15 points (with ~20 asks one run each, less is noise), ties within 2 points -> the cheaper; her verdicts (`research verdict <ask> right|wrong --engine X`) OUTRANK every check; no clear lead = NO WINNER. It only RECOMMENDS: `python -m app.quality research runoff --apply` writes `research_default.json` (her act), `research_engine` default is now "auto" (= the applied winner, else hoola; the tool falls back to hoola, saying why, when the default's vendor gate is closed; a NAMED engine that cannot run is an error). A live run needs `--budget-inr N` (the whole card's rupees, enforced through the day ceiling) and enabled engines; `--check` (free) / `--status` / `--decide` / `--reset`; `GET /api/research/runoff`; vps-ops `research_runoff_check` (free). `vendors.gather` is now the one vendor path for the runner and the card. NOT VERIFIED: it has never run live - the table, the cost per report and any winner do not exist yet; the 15-point margin and 80% floor are judgement, not measured.
+- v0.477 RESEARCH R6 PARAYA ENGINE (plan `docs/RESEARCH_PRO_PLAN.md` R6): `research/vendors.py` - four vendor engines behind the SAME research job, built from each vendor's OWN SDK (no live vendor has ever answered): parallel (Task API, per-field basis + excerpts), exa (Agent API: vendor-side `budget.maxCostDollars` + real `costDollars`), openai (Responses deep research, url_citation annotations), linkup (/research structured). OFF BY DEFAULT: a vendor runs only when built + listed in `RESEARCH_ENGINES_ALLOWED` + keyed (`EXA_API_KEY` / `LINKUP_API_KEY` / `OPENAI_API_KEY` / `PARALLEL_API_KEY`) + listed in `RESEARCH_VENDOR_TERMS_ACK` (the vendors' terms could NOT be read from here, so reading them is HERS - nothing assumed) + a per-run PRICE set (`RESEARCH_<ENGINE>_RUN_INR`, 0 = refused: a ceiling needs a price) under the run ceiling + room today; every refusal names how to fix it. A vendor only GATHERS: its claims become notes only after Hoola FETCHES each cited page itself (its own quote if really on the page, else a page sentence carrying the claim's figures; else NOT VERIFIED) and its prose is never carried - then the same R3 dossier / claim check / R5 cost line. A create is NEVER retried (no double charge) and the vendor's run id is saved at once so a restart RE-ATTACHES; stop cancels it. Cost = the price she set (shown as an ESTIMATE) or the vendor's own reported cost (Exa). `research_run(engine=...)`, vendor runs always background. CORRECTION found while reading the SDKs: Exa's Research API is RETIRED (its SDK says so) - the callable one is the Agent API; docs fixed. NOT built (wire format not read): perplexity, valyu, gemini. R3 check refinement: a figure stated AS unconfirmed in its own sentence is no longer flagged. NOT VERIFIED: every adapter's request / response shape is read from SDK source only; Parallel's JSON-schema subset, Exa's grounding field names, OpenAI's deep-research tool type are unconfirmed until one live call each.
+- v0.476 RESEARCH R5 KHARCHA (plan `docs/RESEARCH_PRO_PLAN.md` part 9; built like `mapsbill`, BEFORE any paid engine): `research/bill.py` - a run's model calls are counted by `usage.run_meter` (a context-scoped meter fed by `usage.record`: a chat of the same tenant is NOT in it; rupees = `usage.cost` list price x `usd_inr`, never a typed number), web search / fetch calls are COUNTED but UNPRICED (`research_search_inr` / `research_fetch_inr` default 0 = price unknown until her Parallel plan is read, and EVERY cost line says 'web price not known'). Ceilings that REFUSE BEFORE the call: per run `research_run_cap_inr` 150, per tenant per IST day `research_daily_inr` 600 (other runs' saved spend counts; yesterday's and other tenants' do not), reserve `research_call_reserve_inr` 3 - the engine asks `deps.afford()` before every model call and before a re-plan, stops with what it has ('cost ceiling'), and `preflight` refuses a NEW run when the day's room is gone. Defaults are defaults, not measured needs. A run restarted after a crash starts its meter at what it had ALREADY spent (saved at every checkpoint); a stopped run still records its spend; inline runs are a ledger row too. Dossier + `research_status` carry the itemised cost; R1's plan card uses the MEDIAN rupees per goal of her own 3+ finished runs (and says 'from your last N runs') else the assumed sizes, and shows the ceilings + what is left today. `GET /api/research/usage|runs`, `POST /api/research/runs/{id}/stop`. Feature label 'research' in `usage`. NOT VERIFIED: no live run, so the measured cost per goal does not exist yet and the 150 / 600 defaults are guesses; model rupees are list price x the server's rate, not an invoice. NOT BUILT: the paid engines (R6), a console view of cost.
+- v0.475 RESEARCH R4 LAMBA KAAM (plan `docs/RESEARCH_PRO_PLAN.md` part 8): `research_run` now PERSISTS a run (`research/store.py`, table `research_runs`, self-heals + registered in `db.init_db`) and returns at once; the worker slot (`research/runner.py` `tick`, ~20 s, `worker.research_jobs`) starts it and picks a STALLED one (no heartbeat 180 s) up again FROM ITS CHECKPOINT (goals already finished are kept, only the rest of the round runs, the clock used stays used; a goal mid-way restarts from its start; 3 tries then failed). The engine checkpoints after every goal, prunes old page text from a worker's context (Anthropic `clear_tool_uses` idea: newest 2 pages whole, notes kept, `read` again if needed), and a page read twice costs one page of budget. Live narration `3/6 - padh raha hoon: cbse.gov.in` in her language (every step carries its goal's number) + a progress event per finished goal. Finish -> `research_run` event -> kaamwatch -> kaam_followup -> a WAKE turn whose text carries `<research_report_due>`: the brain calls `research_status result` for the dossier and WRITES the report; that wake turn is a hard, held answer so the R3 claim check runs on it (the check applies only to a dossier handed over in THIS turn). New tool `research_status` (check / result / stop = Rokiye). Switches `research_background` (False = inline in the turn), `research_bg_soft_s` 1500, `research_bg_max_running` 2, `research_bg_stale_s` 180, `research_bg_tries` 3. Found while building: the R0 live card would have stopped at R1's plan card (and now at the hand-off) - it switches both off while it runs; the narration total showed 1/1 until the run seeded it from its goals. NOT VERIFIED: no live run; the restart path is tested with a faked crash, not a real pm2 restart. NOT BUILT: the rupee ceiling (R5), paid engines (R6), a tappable card / console view of a run.
+- v0.474 RESEARCH R3 SABOOT (plan `docs/RESEARCH_PRO_PLAN.md` part 7; model = Parallel's `field_basis`): `app/research/claims.py` + `figures.py` - every note is a FIELD (claim + the page's own words + page + date + verified + whether the CLAIM's figures are in those words or in a calc of the run) with a CONFIDENCE that is a RULE with printed reasons: high / medium / low / unconfirmed (a real quote whose figure is not in it = LOW; a figure two different websites carry lifts it); `check_report(report, dossier)` runs in the turn (`santosh._hard_check`, after the link check) and sends a draft back for ONE fix when a figure is carried by no note's words and no calculation, is cited to the wrong source, comes only from a NOT VERIFIED / unsupported note, cites a link that is not a source of the run, or hides the gaps; the worker is told at `note` time when its claim's figure is not in its words. R0 card rubric v2 adds `claims_supported` when the turn used the engine and shares ONE figure reader with the live check. NOT DONE, said plainly: it cannot tell whether a page is RIGHT, does not re-open the live page, and does not detect two sources disagreeing; the dossier is kept in memory per conversation (a restart drops it and the check falls back to the link-only one; R4 persists runs). NOT VERIFIED live.
+- v0.473 RESEARCH R2 APNA ENGINE (plan `docs/RESEARCH_PRO_PLAN.md` parts 3-6): `app/research/engine.py` + tool `research_run` (`agent/research_tools.py`, family `research`, in view only for a research ask) - Hoola's OWN loop, the shape Exa's SDK exposes: the approved sub-questions become goals, one worker each IN PARALLEL (search -> READ the page -> `note` with the page's own words -> `calc` in pylab -> finish), then a planner adds goals for real gaps or STOPS (rounds 2). Source policy is DATA (allow / block domains, after-date; a caller can only LOWER a budget); url discipline = a page may be read only if its link came from her ask, a search of THIS run, or the same site as an admitted page (never another site's page); a note's words are CHECKED against the page - not found = kept but `NOT VERIFIED`; budgets per goal / per run (pages, calcs, steps, soft clock 420 s inside the 900 s turn). Returns a DOSSIER (notes with [n], calcs with code, NOT CONFIRMED items, numbered sources) the main model writes from; result limit 40,000 chars (`santosh.RESULT_LIMIT`, the usual 6,000 would cut the source list). Switches `research_engine_on`, `research_engine`. BUG FOUND BY ITS OWN TEST: the planner prompt went through str.format() with JSON braces and always answered stop. NOT BUILT: claims as per-field evidence + a page re-read (R3), background run + resume (R4: today the run lives inside one turn), the rupee ceiling (R5: counts only, no cost), paid engines (R6). NOT VERIFIED: no live run - the engine has only run against scripted fakes.
+- v0.472 RESEARCH R1 PLAN PEHLE (plan `docs/RESEARCH_PRO_PLAN.md` parts 1+2): `agent/research_plan.py` - her ask is sized IN CODE (small / standard / large: deep-report words, things asked, figures to work out); a LARGE research ask answers with a PLAN first (4-6 sub-questions from one cheap call, template fallback; where to look; as-of; est. minutes + rupees labelled ASSUMED) and NOTHING runs until her Haan (`Haan, shuru karo`; `Haan, par X bhi` = the change; `nahi` drops it; other words revise the plan; a different big ask replaces it; 24 h stale). The same turn then gets the ask + `<approved_research_plan>` (her bubble shows only her words). Hook in `santosh._run_turn` before the approval shortcut; table `research_plans` (self-heals); switch `research_plan_gate`. ALSO fixed: `hard.research_wanted` saw 9 of the R0 card's 20 asks - now 20/20 (verb at sentence start, 'do research', 'official sources', 'date every price'), with a no-list for 'research notes / team / folder / gate'. NOT BUILT: a tappable card with buttons (text reply works on every surface), the phone/console drawing; estimates are assumed until the live research card runs (R5).
+- v0.471 RESEARCH R0 NAAP (plan `docs/RESEARCH_PRO_PLAN.md`, vendor techniques `docs/research/research_apis/01_techniques.md`): the RESEARCH card `app/quality/researchcard.py` + `research_asks.py` - 20 asks (17 topics in her world + 3 TRAPS whose subject was invented for the card) scored IN CODE on provenance, never on a remembered fact: every key figure traceable to a page or pylab result the turn fetched, every link opened by a tool, as-of, dated sources, [n] match, uncertainty stated, pylab / first-stop tool where the ask needs them; corroboration + primary-looking domains measured only. The scorer is CALIBRATED (11 planted-fault cases must each fail for their own reason - it already caught its own bug: a year inside a URL counted as a date). `python -m app.quality research [--live] [--judge]`, `research verdict <id> right|wrong` (HER verdict outranks every number), GET /api/quality/research, vps-ops `research_card`. FINDING: Hoola's research signal (`hard.research_wanted`) recognises only 9 of the 20 asks - 'Research the X...' and 'Compare...' are missed (R1 fixes). NOT VERIFIED: no live card has run yet.
 - v0.479 HOOLA SMART HOME (owner: 'START bolo aur W1 (0.473.0 smart home)' on the Platforms plan from the sindresorhus/awesome read; re-versioned 0.473.0->0.479.0 - the dev's parallel chain took 0.473..0.478, REBASE PROTOCOL respected, rebuilt fresh on ae5bfc58): ghar ka control via Home Assistant's OFFICIAL REST API (`/api/states`, `/api/services/<domain>/<service>`, Bearer) - ESPHome/Zigbee/Matter devices all arrive through HA; raw MQTT deliberately deferred. NEW `app/home.py` + `agent/home_tools.py`: 5 tools - home_link (link status + the full setup guide + a MASKED token preview), home_devices / home_state (reads, gate-free, die without the link), home_on / home_off (controls behind the HOME gate). THE LINK: HOME_ASSISTANT_URL + HOME_ASSISTANT_TOKEN in the VPS .env only (zoo BYOK pattern; the non-negotiable 'keys never in chat' rule), the token never returns to the model. THE HOME GATE `home_control` (default OFF - bake on the VPS, then flip) is SEPARATE from PC control; every gate-off control attempt is refused AND audited. FROZEN-BRIEF GUARDS executable: AC 20-28 C clamp (climate without a temperature asks for one), volume <= 90 %, fridge/washer/geyser/heater/oven READ-ONLY by name-match (even as switch.*), sensor/camera/vacuum not switchable, locks CONFIRM-ONLY (confirm=true the model may pass only after she said haan; a routine turn refuses locks outright - 'raat 11 baje saari lights band' works free because routines ride the same tool surface). Domain-native services (cover open/close, scene/script turn_on, button press, lock lock/unlock, climate set_temperature/set_hvac_mode, light brightness), a settle re-read makes the Hinglish say honest ('Hall Light band kar di'). AUDIT: every attempt (success or refusal) lands in home_audit (init_db day one + engine-id-keyed ensure_table self-heal, the v0.190.1 lesson). ADMISSION: the 'home' family keyword-admitted (ghar ki light band karo, pankha, ac 24, parde, taala, smart plug; fridge/geyser words admit so Hoola can refuse politely). VOICE deliberately NOT in VOICE_TOOL_NAMES this release (its own pass once the gate is baked). PC FROZEN LANES byte-identical (server/app/pc/*, agent/pc_tools.py, desktop/ untouched) - server-only deploy, old APKs keep working. Tests test_v0479_home.py 24. Version ritual 0.479.0 (pubspec 0.479.0+524, pins ->0.479.0, console stamps stay 0.475.0 x20 - the v0.476 precedent; console story pin moved to the v0.479 story). PRE-EXISTING stash-proven red at ae5bfc58, untouched: test_v0230_voice_phase3.py::test_tool_diet 113<=110 (the dev's parallel chain filled the voice budget).
 - v0.476 AVATAR FILMS - FRAMES Phase 2 (owner: "WHAT PAHSE 2 DOES" then "GO"; docs/HYPERFRAMES_PLAN.md section 7, the "our own HeyGen" moment): `hoola_frames` grows action=avatar_film - the model sends a SPEC (shape talking_head|product|reel + script + real data), never HTML, and `app/studio/avatar.py` + `frames.do_avatar_film` make the talking film: the Model Lab speaks each sentence (lab.voice Chatterbox; honest NotConfigured when the lab is down, silent:true = same film without voice), real ffmpeg pads every WAV to a whole-frame scene span (30 fps snap, 0.35 s breath, last hold 1.2 s / 2.2 s with a closing card) and concatenates one track, on-box faster-whisper aligns words (videoedit/captions.py whisper_words; without it words are shared by length, deterministic, marked words_estimated), then the SAME check->render gate and the MP4 card. Three shapes: talking-head (her photo by file_id or an illustrated disc), product film (DUKAAN items, prices never invented), 9:16 reel (kinetic captions); cta card (UPI QR etc.) opens only after the last spoken word; determinism pinned byte-identical; 12-rule contract holds (one paused GSAP timeline, <audio id="voice">, bundled Noto incl Devanagari). Tool schema grows spec + _resolve_spec (file_id -> assets/avatar.jpg, photos only png/jpg/webp, owner-checked); status() reports the avatar block (shapes/lab/voices/whisper) for deploy asserts. Tests test_v476_avatar_films.py 16 + the v0_frames pins moved to 7 actions. Server-only: pubspec 0.476.0+521, stamps stay 0.475.0 x20 (console unchanged - Phase 1 precedent), pins ->0.476.0 in 146 suites.
 - v0.475 HOOLA FRAMES on the web console (owner: "DEPLOYE IT TO WEB CONSOLE ALSO"; collision #9 - the dev's SCRAPLING took 0.474.0, both kept, mine re-versioned): the console could already RECEIVE a frames MP4 (pc_file card = inline <video> in results.js, video tab in panel.js) but nothing OFFERED the free engine - workspace.js "Video & motion" only knew the paid video_studio path and the Kaam catalog had no frames row. Now: an Engine choice in the video form (HOOLA FRAMES animated/free/~2 min DEFAULT vs AI film storyboard-first/paid; voiceover select only for film - the free engine is honest about no AI voiceover; per-engine submit label, tool line and note), the frames request points the model at app/studio/frames_contract.md with action=check -> fix -> action=render and "never claim ready before render succeeds", and kaam.js "Photos & video" gains the "HOOLA FRAMES video" job (free animated MP4, ~2 min). Chat itself needed nothing - same brain, same tools. Server-only; pubspec 0.475.0+520, stamps ?v=0.475.0 x20, pins ->0.475.0 in 146 suites (the dev's 76 full-string +519 pins moved coherently to +520). Tests test_v0475_console_frames.py 14.
@@ -299,9 +325,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   the Architects Act protects the TITLE not the practice (CoA v. Mukesh Goyal, SC 2020); (3) 'without an IDS, we
   exchanged IFC guarantees nothing checkable' and every Indian submission is a DWG or a PDF. NCO-2015 codes: trust
   the 4-digit stem always, the 8-digit only where a Qualification Pack printed it.
-- Current version: v0.470.0 (pubspec 0.470.0+515). Version ritual = main.py APP_VERSION + pubspec version(+build) +
-  console `?v=` stamps in `server/app/static/console/v2.html` (20 now: theme.js, pdfview.js, studio.js, attach.js, menu.js, arena.js, employees.js, charts.js, enterprise.js) + the version pins in tests (grep the old number in
-- v0.459 ABHI ABHI WEBSITE (web Step 5 = W6 + W7, `site/livesite.py` + `site/webpush.py`): linked websites get the live SSE (read-rule filtered, replay), visitor <-> team chat (her reply = her tap), clinic queue (tokens under lock, TV board numbers only, ONE "turn near" SMS via her approved connector), browser push only after her tap (RFC 8291/8292); connectors: `remind` trigger (once per booking, never cancelled), `queue`, HubSpot, Composio (her account), signed website webhooks; console Live panel.
+- Current version: v0.530.0 (pubspec 0.530.0+553; HOOLA GRAPH v0.530.0 = the state-graph engine as server/app/aep/graph.py - P3 of the AEP plan (StateGraph nodes/edges/conditional + fan-out/join barriers, add_messages + AgentState, interrupt/Command park-and-resume, MemorySaver/SqliteSaver checkpointers, store wiring, node spans nested under a StateGraph root run); HOOLA CREW v0.523.0 = the crewAI port (role/goal/backstory agents, sequential/hierarchical crews over the delegate machinery, the ONE crew_run tool, coder_crew default OFF, the cr-crew-plays seed, registry 553 -> 554), DIFY FOR HOOLA v0.521.0 = the three verified Dify deltas, idea-only (gyaan annotations, dhara ops-grade eyes + retry, dhara_dsl export/import, registry 542 -> 543), CONSTRUCTION WAVE 1 v0.522.0 = the ten const tools + the gates law (registry 543 -> 553); HOOLA TRACE v0.520.0 = the LangSmith layer self-hosted as server/app/aep/tracers.py + vault_sink.py - P2 of the AEP plan (CallbackManager + run trees + astream_events v2, runs land as vault observations typed 'aep_run', aep_trace default OFF + the trace_flip job, /api/aep/runs explorer); HOOLA BD PACK v0.513.0 = the awesome Big Data read as two fed skills (bd-eval-benchmarks + bd-graph-analytics), HOOLA 21ST v0.512.0 = the 21st.dev UI catalog + hosted AI generation (the magic21 tool, coder_magic21 default OFF), HOOLA CS PACK v0.511.0 = the awesome Computer Science read as two fed skills - cs-zoo-radar (the 436-model zoo catalog as the source of truth, the awesome-generative-ai families as SEARCH TERMS for zoo action=models, never invented model ids, the owner-only catalog append shape) + cs-dialogue-patterns (the operator loop: slot ledger, confirm-before-irreversible, repair ladder, QA shape, close-the-loop, voice budget); HOOLA CORE v0.510.0 = the langchain-core feature clone as server/app/aep - P1 of the AEP plan (messages / runnables / tools / models / prompts / parsers / history / stores); DHARA v0.502.0 = her workflows - the n8n lane end to end; HOOLA CONTEXT7 v0.501.0, FE PACK v0.500.0 = the HyperFrames template packs + campaign email templates + UI kit tokens, SUPERPOWERS v0.499.0, UIUX PRO MAX v0.498.0 = the uiux_design tool, PROG PACK v0.497.0, CODE GRAPH v0.496.0 = the Graphify read-only lane, OFFICE HOURS v0.495.0 = the gstack THINK/PLAN lane, EQUAL POWER v0.494.0 = the equal-power call feed + type-into-a-call, CRAWL JOBS v0.491.0 = Phase 2 of our own Firecrawl, the Flutter pass v0.493.0 = W4 (the text lane both doors ride), Web Extension v0.490.0 = W3, PowerToys Run v0.489.0 = W2b, Firecrawl core v0.483.0, SAPNE v0.484.0, Skill Desk v0.485.0; desktop/plugin/extension 1.9.0). Version ritual = main.py APP_VERSION + pubspec version(+build) +- v0.459 ABHI ABHI WEBSITE (web Step 5 = W6 + W7, `site/livesite.py` + `site/webpush.py`): linked websites get the live SSE (read-rule filtered, replay), visitor <-> team chat (her reply = her tap), clinic queue (tokens under lock, TV board numbers only, ONE "turn near" SMS via her approved connector), browser push only after her tap (RFC 8291/8292); connectors: `remind` trigger (once per booking, never cancelled), `queue`, HubSpot, Composio (her account), signed website webhooks; console Live panel.
 - v0.452 DUKAAN PLUS (web Step 4B): `site/shopplus.py` = website GST invoice / credit note on HER ONE series (hidden `_web_orders` app rows), AutoPay plans for website members, marketplace (seller apply -> her approval, commission, Route account, product moderation, transfer once), Shiprocket (her tap: AWB + label, tracking), wishlist + opted-in cart reminders she sends herself.
 - v0.446 DUKAAN PAISA (web Step 4 part 1): `site/shoppay.py` = website shop online payments through HER gateway on the app engine (paid only from signed webhook / status read, amount must match, unpaid released after 3 h, late money kept, refunds her tap), coupons applied by the server (once per mobile), verified-buyer reviews (delivered orders only, her hide). Not yet: website GST invoices, marketplace, courier, wishlists.
 - v0.441 PRAYOGSHALA STUDIO (built as 0.435): all 22 labs in the realistic studio (`static/prayog/studio/studio.js` engine + `exp/<id>.js` per lab, contract `docs/PRAYOG_STUDIO.md`): real equipment, gloved hand, theory -> steps -> record book -> graph -> viva, Ask Hoola per lab (`/api/prayog/ask`); `tools/prayog_walk.js` = 22/22 within tolerance.
@@ -987,3 +1011,310 @@ releases). Server-only — no desktop file, no new binary, no APK; the PC freeze
   the voice budget; not mine, not fixed here.
 - **Deploy**: bake `HOME_CONTROL=1` (+ URL/token) on the VPS, then the normal vps-ops deploy. Console stamps stay
   0.475.0 x20 (server-only release, the v0.476 precedent); story pin moved to the v0.479 story.
+
+## v0.483.0 FIRECRAWL CORE — our own Firecrawl, house-sized, on the Scrapling lane (owner: "CAN WE BUILD OUR OWN FIRECRAWL FOR HOOLA" -> "BUILD")
+
+Design-only descent from the end-to-end Firecrawl engine read (engine waterfall, /map, /extract, index cache): ZERO
+Firecrawl code — the engine is AGPL-3.0 and never enters this tree; everything is built on the BSD-3 Scrapling lane
+inside `agent/scrape_tools.py` (5 v0.474 tools -> 8). FOUR IDEAS:
+
+- **scrape** — THE one door with the auto-waterfall: fast curl_cffi HTTP first; on a block signature (401/403/429,
+  challenge titles like "Just a moment", or a SMALL body (<2500 chars) carrying a challenge fingerprint — the size
+  gate keeps a long article that merely mentions captcha from ever escalating) it escalates BY ITSELF to the stealth
+  browser when `scrape_stealth_enabled` is on. The agent no longer picks scrape_page vs scrape_stealth manually.
+  stealth=never is HTTP-only; stealth=always goes straight to the browser (still gated, semaphore(1), MEM-CURE RAM
+  discipline). Block with a 200 answer is served with a `block_note`; a block that survives stealth is an honest
+  ToolError.
+- **scrape_map** — links-only discovery (the /map shape): fetches max 8 pages, harvests SAME-SITE urls (cap 200,
+  include-regex, robots respected + skipped counter, 0.3 s politeness), returns just the url list. The cheap "is
+  site par ka kahan hai" pass before scrape_extract.
+- **per-tenant page cache + max_age** — the index-engine idea: `data/scraping/<tenant>/cache.db` (raw sqlite3),
+  page-level markdown+text stored write-through on EVERY successful page read, served BEFORE the fetch (zero
+  outbound when fresh); `scrape_cache_enabled=True` + `scrape_cache_max_age=1800`; LRU cap 300 rows; max_age 0 =
+  always fresh, None = never read (scrape_page keeps legacy behaviour); css/include_links bypass the read (they
+  need the live DOM); the cache never breaks a scrape.
+- **scrape_extract_json** — schema -> JSON rows through ONE capped brain call (the /extract idea on the house
+  brain): page read (markdown, 14k cap), schema rides in the prompt, the coder-observer pakka pattern (cheap brain
+  first, Claude fallback), max_tokens 2000, rows cap 50, loose JSON parse (direct -> fenced block anywhere ->
+  balanced run) with honest refusal otherwise.
+
+- **Tests**: `test_v0481_scrape_firecrawl.py` 28 (8-tool registry pin, block detection + the long-article
+  false-positive guard, waterfall incl. never/always/busy-semaphore, cache roundtrip/isolation/expiry/kill-switch/
+  LRU/write-through->serve->css-bypass/default-read, map same-host/BFS/include/cap/robots/SSRF, extract_json
+  fenced/balanced/garbage/50-cap/SSRF, version). v0474 suite green beside it (its registry pin grew to 8).
+- **Deploy**: no new pip packages; the usual vps-ops ritual. Console stamps stay 0.475.0 x20 (server-only, the
+  v0.476/v0.480 precedent); pins ->0.481.0(+526) in 151 version-pin suites.
+
+## v0.489.0 HOOLA POWERTOYS RUN — the 'hoola' door inside PowerToys Run (owner: "W2b - PowerToys Run plugin"; W2b of the 4-workstream Platforms plan, W2a Win+R alias v0.481.0 live; SEVENTEENTH then EIGHTEENTH COLLISION - the dev's chain took 0.484.0/0.485.0 while this built and 0.486.0/0.487.0/0.488.0 while it sat unpushed, REBASE PROTOCOL respected twice, rebuilt on their fresh base fdc7c402)
+
+`Alt+Space`, type `hoola`, Enter → Hoola Desktop opens. THE PLUGIN: `desktop/ptrun_plugin/Community.PowerToys.Run.Plugin.Hoola` —
+a .NET 9 class library (`net9.0-windows10.0.26100.0`, UseWPF, x64) against the community reference package
+`Community.PowerToys.Run.Plugin.Dependencies` 0.97.0 — loads on every .NET 9 PowerToys since 0.87 and on the .NET 10 host of
+0.102+ (the forward compatibility every community plugin relies on; Microsoft's own checklist TFM is now net10.0 — official
+plugins only). `Main : IPlugin` with static `PluginID 162E72D3C1D7464E865293A276993A7B` (= plugin.json ID, never changes),
+ActionKeyword `hoola`, and the launch through the SAME HKCU App Paths alias the W2a MVP writes — ONE launch truth on the PC; an
+honest ShowMsg when the alias is off, never a path guess. plugin.json in Microsoft's documented community shape (ID / ActionKeyword /
+IsGlobal / Name / Author / Version / Language "csharp" / Website / ExecuteFileName / IcoPathDark / IcoPathLight / DynamicLoading
+false — only Wox.Plugin + BCL, so no isolated loading needed); dark/light icons cut from `hoola_logo.png`; plugin version rides
+the desktop (1.8.0). THE RIDE: `build-desktop.yml` publishes the plugin (`dotnet publish -p:Platform=x64`, setup-dotnet 9.0.x),
+stages `desktop/ptrun_payload/`, and the PyInstaller spec carries it INSIDE SantoshDesktop.exe (datas → `%TEMP%\_MEIxxxx\ptrun`)
+so Hoola installs it herself — no extra download for her; the desktop release also ships `Hoola-PowerToysRun-plugin.zip` (extract
+into `%LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins`, restart PowerToys). THE INSTALLER: `desktop/santosh_desktop/pt_run.py`
+(the `app_paths.py` twin) copies ONLY Hoola's own folder to `%LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins\Hoola`
+(Microsoft's documented user-level community-plugin location; no admin, machine folders untouched), whole-folder replace = upgrade,
+calm idempotent undo, honest errors (missing payload → "naya exe chahiye"); `power_toys_present()` checks per-user exe, machine exe
+and the Run plugins root. THE FALLBACK (the plan's "PowerToys absent → global-hotkey quick-ask"): `quickkey.py` registers `Ctrl+Alt+H`
+(user32 RegisterHotKey on its own message-loop thread via ctypes — no new dependency; Quit unregisters; the hotkey thread reaches the
+Tk window only through the events queue, the `control.on_activity` injection pattern). Hoola never presses keys herself — win+r stays
+BLOCKED_KEYS; the doors open windows, the USER presses. Desktop 1.8.0 `do_pt_run` behind the SAME `_control_on()` switch; on=false
+undoes both doors; PowerToys absent at install time wires the hotkey door through `actions.set_hotkey`. SERVER: pc operator `pt_run`
+tool (ONE-TIME SETUP, ask_approval PEHLE — settings change; "Hoola ko PowerToys Run se khulwao") + `_do` branch (plugin ready /
+hotkey door / honest failures) + `_say` line + `_desktop_says` upgrade line for old desktops. Tests: `test_v0484_ptrun.py` 33.
+Version ritual 0.486.0 on the rebased tree (pubspec 0.486.0+531, desktop pin stays 1.8.0, pins →0.486.0(+531) swept across
+BOTH chains' suites, console stamps stay 0.485.0 x21 — the console is untouched; the version layer moved coherently on top of
+the dev's SAPNE + SKILL DESK work).
+NOT BUILT (deliberately, for W3): the PC→Hoola text lane — a quick-ask that sends typed text into the Hoola conversation needs a new
+server surface (the desktop bridge is a job channel only); the extension's "send page to Hoola" (W3) will build exactly that lane, and
+these doors will ride it. NOT VERIFIED: the dotnet build runs for the first time on the next push (CI-only compile; the C# is
+reviewed against the documented IPlugin API), and the plugin has not been loaded by a real PowerToys yet.
+
+## v0.490.0 HOOLA WEB EXTENSION — the 'send page to Hoola' door + the PC→Hoola text lane (owner: "W3 (web extension)"; W3 of the 4-workstream Platforms plan; W2b PowerToys Run v0.486.0 live on the rebased base)
+
+Right-click any page → "Hoola ko bhejiye" (ya `Ctrl+Shift+H`, ya the popup's ask box) → the page rides the W3 TEXT LANE into her
+conversation → Hoola answers there, on every screen she already reads. THE LANE: `server/app/quicklane.py` — the surface the whole
+W-line was missing (the desktop bridge was a JOB channel only): `POST /api/pc/quickask` takes a PAIRED device's `{text?, url?,
+title?, selection?, client_id?}` — the SAME `spc_` token the bridge pairs with, and the extension pairs through the SAME
+`/api/pc/pair` 6-digit flow, so it shows on her phone's Mera PC list like any PC and dies by the same revoke. The server composes
+ONE honest Hinglish user message (title + link, her selection inside a quoted block, her ask or the honest default) and rides the
+SAME turn pipeline the phone's POST /messages uses (`convs.mark` + `bus.publish` + `turn_inbox.accept` + `run_owned`) — the answer
+lands in her conversation with every tool she already has; the page itself she reads with her own v0.483 scrape lane (cache,
+stealth, SSRF guards) — this lane never fetches anything. `GET /api/pc/quickask/messages` reads the last display rows back (the
+popup's answer view). Guards: device-token auth only (401 on revoked), the conversation must belong to the device's tenant,
+30/hour/device rate cap, client_id dedup so a retry never acts twice. Mounted beside the PC block with ONE `include_router` — no
+frozen endpoint, setting or behaviour touched (the exception is recorded in the freeze block above). THE EXTENSION:
+`desktop/ext/hoola-extension`, MV3 (Chrome/Edge/Brave) — service worker, popup (pair line, ask box, page send, last replies,
+console link), the context menu, `Ctrl+Shift+H`, `activeTab`+`scripting` selection capture (chrome:// pages honestly skip),
+pairing in Options (the code + a custom server asks its host permission first), no eval / no remote code, badge feedback; version
+rides the desktop (1.9.0). THE RIDE: `build-desktop.yml` stages `desktop/ext_payload/` (rm+cp+existence-checked) and
+`santosh_desktop.spec` walks it INSIDE SantoshDesktop.exe (`%TEMP%\_MEIxxxx\ext`); the desktop release also ships
+`Hoola-Chrome-extension.zip`. THE INSTALLER: `desktop/santosh_desktop/ext_install.py` (the pt_run.py twin) copies ONLY Hoola's own
+folder to `%LOCALAPPDATA%\Hoola\chrome-extension` (user-level, no admin, NO browser policy, no registry, nothing auto-starts),
+whole-folder replace = upgrade, MV3 checked before copy, calm idempotent undo, honest errors; the window's "Browser extension" card
+installs on HER click and names the honest 3 steps (chrome://extensions → Developer mode → Load unpacked). Desktop 1.9.0: `do_ext`
+behind the SAME `_control_on()` switch; on=false undoes. THE DOORS RIDE IT (W2b's promise kept): the PT Run plugin's
+`hoola <sawaal>` becomes "Hoola se poochho: <sawaal>" and launches the alias target with `--ask` (quoted; the alias read-back
+launch truth and the plugin ID unchanged); the desktop's single-instance lock port now also RECEIVES `ASK:` lines — the second
+instance hands over, the running window sends through its events queue (the hotkey-door injection pattern); the window's own ask
+box types into the same lane; `desktop/santosh_desktop/quickask.py` is the send module (paired token, client_id always, honest
+dicts). SERVER: pc operator `ext` tool (ONE-TIME SETUP, ask_approval PEHLE — "Hoola extension lagao") + `_do` branch + `_say` line
++ `_desktop_says` old-desktop line; win+r stays BLOCKED_KEYS. Tests: `test_v0487_webext.py` 30 — lane (page/ask/compose/422s,
+device auth incl. revoked, tenant-checked read-back, dedup, rate cap, no-pc-settings pin), extension (manifest MV3,
+version-rides-desktop, no-remote-code, pairing), installer (fake-%LOCALAPPDATA% round trips, neighbours untouched, upgrade, calm
+undo, honest missing/bad/MV2 payload, non-Windows), desktop (MockTransport honest dicts, --ask handover pins, window wiring pins,
+do_ext gate), Main.cs ask door, operator (spec/_do/_say/_desktop_says, win+r blocked), CI/spec pins, versions. Sweeps green:
+webext 30 + ptrun 33 + launcher 16 + frames 14 + v0179/r1 guards 12 + dreams/desk/curator 88 + routines 3 + pc kinds/bridge 20 +
+home/coder/ax 83; test_pc_operator 3 reds STASH-PROVEN on the committed W2b tree AND on pristine main (the sandbox's async/env
+class — pre-existing, untouched). Version ritual 0.487.0 (ritual_0487.py): APP_VERSION story, pubspec 0.487.0+532, pins
+→0.487.0(+532) in 84 full-string + 153 assert suites (zero residual; the regex keeps the v=0.485.0 stamp pins safe),
+desktop/plugin pins 1.8.0→1.9.0, story pins → the v0.487 story, console stamps stay 0.485.0 x21 (the console is untouched). Mera
+PC freeze respected. NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet, and the C# ask-door compiles
+first on the next push (CI-only) — her first right-click "Hoola ko bhejiye" after deploy is the live test. Deploy: server via the
+usual vps-ops ritual; desktop 1.9.0 exe publishes via build-desktop (desktop/** trigger); she pairs the extension once (Options →
+the phone's 6-digit code), loads it unpacked once, and both W2b doors become quick-ask doors. Previous: v0.486.0 HOOLA POWERTOYS
+RUN (the W2b rebase), v0.485.0 HOOLA SKILL DESK, v0.484.0 HOOLA SAPNE [full chains in git history].
+
+## v0.493.0 THE FLUTTER PASS — the curated pubspec upgrade (W4, owner: "push + deploy, phir W4 (flutter pass)")
+
+The W4 milestone of the Platforms plan was scoped as maintenance: read the awesome-flutter curated
+list, then bring the pubspec up to the newest versions the project can actually run. The ceiling is
+Dart 3.5.4 (CI builds the APK on Flutter 3.24.5), so every bump was verified against pub.dev's SDK
+constraints — nothing guessed, nothing adopted past what the CI can compile.
+
+**Adopted (11 constraints):** http ^1.6.0 · shared_preferences ^2.5.3 · google_fonts ^6.3.0 ·
+url_launcher ^6.3.1 ·
+webview_flutter ^4.10.0 · video_player ^2.9.5 · path_provider ^2.1.5 · flutter_lints ^4.0.0 → ^5.0.0 ·
+flutter_launcher_icons ^0.14.4. ZERO Dart code changes: the speech_to_text listen() params the six
+call sites use are deprecated-but-functional in 7.x; SharedPreferencesAsync (2.4+) is additive and
+the legacy getInstance API is untouched.
+
+**Deferred, with the exact blocker named:**
+- flutter_local_notifications 18/19 — need compileSdk 35 + a newer AGP than the generated gradle has.
+- flutter_tts 4.2.x — demands Android SDK 36; the CI APK build caught it and the bump
+  was reverted to 4.0.2 (fix 1).
+- speech_to_text 7.2+ — its rewritten android gradle reads the 'flutter' extension
+  property a Flutter 3.24.5 gradle does not expose (fix 2 reverted it to ^6.6.2).
+- android_intent_plus 6.x — forces AGP 8.12 / Gradle 8.13 / Kotlin 2.2.
+- file_picker 9/10/11 — major API churn across 32 call sites; not verifiable without flutter locally.
+- flutter_timezone 4/5 — 4.x only adds a Java-17 requirement we already meet; 5.x returns a
+  TimezoneInfo object (API break) for a localized name we never read.
+- image_picker 1.2+, google_fonts 7–9, flutter_lints 6, speech_to_text 7.5, webview_flutter 4.11+,
+  video_player 2.10+ — all require Dart > 3.5.4.
+- timezone 0.10/0.11 — 0.10.x ships an sdk constraint of <3.0.0 (unresolvable on Dart 3); 0.11 needs ^3.10.
+
+**The curated shortlist for a future UI pass** (from awesome-flutter; deliberately NOT adopted here
+because no flutter runs in the sandbox and every new package would ride CI-only validation):
+cached_network_image (avatar/image caching), flutter_svg (vector icons), dio (interceptors — only if
+the http lane needs them), riverpod (state architecture — the current setState + ChangeNotifier +
+InheritedWidget pattern carries the app fine today).
+
+Version 0.493.0 (pubspec 0.493.0+537, pins → 0.493.0(+537); desktop 1.9.0 and the 0.487.0 console
+stamps untouched). Mera PC freeze respected — server untouched except the APP_VERSION story.
+
+
+## v0.496.0 CODE GRAPH — Graphify as a read-only lane (their ship, entry re-added by hand after the -X theirs rebase clobbered it)
+
+[Entry reconstructed from commit ad71c841's APP_VERSION story — the TWENTY-SECOND COLLISION reconcile.]
+
+Graphify (Apache-2.0) as a read-only lane: `graph_build` maps a GitHub repo (tarball, safe unpack, local
+AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill),
+`graph_ask` answers query/path/explain/affected/god_nodes, `graph_list` lists what is mapped. Per-tenant
+graphs; the source deleted after the build; the optional binary gets a calm install hint; flag-like
+arguments refused; Hinglish routing + 5 card asks. Their own TWENTY-FIRST collision: re-versioned
+0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0, both works kept. Tests test_v0496_codegraph.py.
+
+## v0.495.0 OFFICE HOURS — the gstack THINK/PLAN lane (owner: 'BUILD' right after 'NOW READ THIS REPO FIRST' on github.com/garrytan/gstack)
+
+[Entry reconstructed from commit 571d8ec1's message after the twenty-first collision: the -X theirs
+rebase kept their code but clobbered their docs entries; re-added by hand, the REBASE PROTOCOL's
+reconcile step.]
+
+Garry Tan's open-source software factory: /office-hours writes a design doc, four plan reviews amend it,
+only then anything is built. THE HOUSE HAD THE HANDS (qa, devops, appreview, kaam_plan); IT NEVER HAD THE
+HEAD - a structured think/plan step that decides what is WORTH building before anything is built. Zero
+gstack code rides this tree (their side is all Markdown prompts).
+
+NEW `agent/officehours_tools.py` beside kaam_plan (registry 529 -> 531, two tools: `officehours` /
+`officehours_dekho`): action=start opens a baithak (per-tenant data/officehours/<tenant>/officehours.db,
+office_docs + office_reviews) and returns SIX forcing questions - real pain with a specific example (not
+hypothetical), who does it today and what it costs, the first visible change when fixed, today's jugaad,
+the smallest self-useful wedge, kill criteria - asked ONE at a time, framing pushed back on; same topic
+while open returns the SAME doc honestly (already_open). action=doc writes the design doc: reframe,
+capabilities (max 7), premises challenged + her answers (max 7), 3-4 options each with honest effort
+(hours|day|days|week|weeks, unknown clamps to days), recommendation = the narrowest wedge (gstack: ship
+the narrowest wedge, learn from real usage). action=review appends one lens row ceo|design|devex|eng
+(findings + changes, append-only) - eng ALWAYS last and the eng lens is what flips status to reviewed
+(gstack's autoplan rule); a review on a draft that has no doc is refused. action=decide records HER
+decision in her words (Hoola never decides; decision text required) + optional next_step; action=stop
+closes. officehours_dekho: what=list / doc / reviews - no id = the latest. NOTHING AUTO-RUNS OFF A DOC:
+the wedge/next_step is advisory text; turning it into work happens on later turns through the existing
+doors with her Haan (the house rule gstack cannot have: Hoola never starts building by itself).
+
+Config: officehours_enabled=True, officehours_keep_docs=30 (older docs + their reviews forgotten on
+write). Family + admit keys: the officehours family opens on her big-idea words; tight keys only.
+prompts.py grew the OFFICE HOURS bullet (before LAMBA KAAM - think before plan). Tests
+test_v0495_officehours.py (30) green; a REAL BUG caught by the suite on first run - _con() did not set
+row_factory=sqlite3.Row (fixed once at _con). Version 0.495.0 (pubspec 0.495.0+539 at their ship time;
+swept to 0.496.0+540 by the PROG PACK re-version on top). NOT VERIFIED (honest): the first real baithak
+in her chat is the live test; the voice lane does not declare these tools yet (they ride santosh_kaam on
+calls, same as every other desk head change).
+
+## v0.500.0 FE PACK (TWENTY-THIRD COLLISION re-version 0.498.0 -> 0.500.0 - the dev's chain took 0.498.0 UIUX PRO MAX + 0.499.0 SUPERPOWERS while this sat unpushed, rebased on their e90e60f1, both lanes kept) — the HyperFrames template packs + the campaign email templates + the UI kit tokens, fed to every tenant (owner: the awesome Front-End (85) read, "NOW WORK ON IT MAKE THE SKILL. FEED THIS TO HOOLA")
+
+The owner took the Front-End (85) category of the awesome index and asked for its three insights turned
+into Hoola skills: (1) awesome-charting + web-animation + CSS frameworks -> HyperFrames template packs so a
+new MP4 style is cheap (assembled from proven blocks, not invented from scratch - fewer check-gate failures,
+fewer expensive re-renders); (2) awesome-emails -> campaign email templates directly into the campaigns
+lane (email_draft / email_bulk / kalam publish - proven structures, her facts inside); (3) the design-systems
+discipline -> Hoola's OWN UI kit tokens pinned in one skill so every surface (composition, email, console
+card) stays one recognisable family. The v0.497 PROG PACK pattern exactly: skillpack files, own once-ever
+stamp, seed on the next skills-desk open, create-if-missing, hers win.
+
+The three skills (`server/app/coder/skillpack/`, frontmatter name + description <=60, body <=4000):
+- `fe-frames-templates`: MP4 styles are ASSEMBLED - the CHART PACK for numbers (big-number KPI card, CSS bar
+  chart, SVG line/area with stroke-dasharray draw-on, donut progress ring), the MOTION PACK for movement
+  (kinetic type with 80-120ms stagger, lower-third, logo sting, price/offer reveal, countdown strip, gradient
+  wash), the LAYOUT discipline (16:9 1920x1080 / 9:16 1080x1920, ~10% safe margins, flex/grid, ek scene ek
+  idea, 6-12 words per screen). LAWS: everything INLINE (no CDN, no webfont fetch, no network mid-render -
+  the determinism gate refuses), CHECK first (`hoola_frames action=check`, cheap) and render only on pass
+  (expensive, minutes), colors/motion from fe-ui-kit, assets project-relative only, only the existing
+  hoola_frames doors - never a self-made Chrome/FFmpeg.
+- `fe-email-templates`: the template library (OFFER/SALE, NEWSLETTER, APPOINTMENT/PAYMENT REMINDER, FESTIVAL
+  GREETING, PRODUCT LAUNCH, FEEDBACK REQUEST) each with its subject pattern + body skeleton; the LANE is
+  email_draft markdown=true (markdown, never raw HTML), email_bulk for a list (mail merge, approval card
+  first), kalam action=publish for marketing. LAWS: subject <=45 chars, first line = preheader, ONE CTA,
+  paras 2-3 lines, HER facts only with [blanks] for unknowns (the kalam law), no spam shape (ALL CAPS, !!!,
+  URGENT, fake Re:), consent/unsubscribe on bulk, bought lists never; NEVER OTP/password/card/Aadhaar in a
+  mail, no misleading subject, no bulk without the card, no sent-claim before the tool result.
+- `fe-ui-kit`: the REAL Night Glass tokens read from `lib/ui/glass.dart` class C (the test cross-checks the
+  hexes against the file itself): bg #0B0A1A -> #120E2A, ink #F4F2FF / muted #B9B3DA / faint #9C96C2, saffron
+  action #FFB15C with onAccent #1B1030, violet #7C5CFF, magenta #C055F5, teal #2DD4BF, ok/warn/bad
+  #34D399/#FFC27A/#F87171, chip #D7D2F2, house gradient #FFD9A8 -> #FF9A3C -> #C055F5, panels/lines white 8%
+  #FFFFFF14; type = Sora display (height 1.12) over a 16px/1.5 serif body. LAWS: tokens first, contrast
+  ink-on-bg >=7:1, ONE accent per screen, motion one family (150-250ms fades, 80-120ms stagger, ease-out).
+
+THE FEED (the v0.492/v0.495 pattern): `skill_packs.fe_files()` + `FE_STAMP skills:fepack:{}`
++ `seed_fepack(tenant)` - its OWN once-ever stamp, so tenants that already consumed seed AND byox AND prog
+still receive this pack on their next skills-desk open; the desk route calls it right after seed_progpack;
+create-if-missing, hers win; `seed_files()` excludes the fe- prefix (starter stays 10, byox 31, prog 2,
+fe = 3); config `fepack_enabled` default ON. Discovery through the coder injection block (FTS5 match on
+name+description, top 2 ride the block, shown-telemetry), the FULL skill read via skill_manage before
+following it (the read-before-follow law).
+
+TESTS `server/tests/test_v0498_fepack.py` (10): counts (10/31/2/3), once-ever reaches an
+already-all-three-stamps tenant, hers-win, FEPACK_ENABLED=false, the desk-route source pin, the lint gate,
+frames content (check-before-render + determinism + safe margins + doors), email content (email_draft
+markdown + email_bulk card + NEVER), ui-kit content (the REAL hex tokens cross-checked against
+lib/ui/glass.dart itself), injection FTS match on Hinglish asks (video/chart -> fe-frames-templates, email
+template -> fe-email-templates, colors/brand -> fe-ui-kit); the desk-route live counts 43 -> 46
+(10+31+2+3) healed in test_v0485. Version 0.498.0 (pubspec 0.498.0+542; full-string + assert pin files
+swept zero residual - the story's Previous chain keeps history; desktop 1.9.0 untouched, console stamps
+untouched). Mera PC freeze respected: nothing in server/app/pc/, desktop/ or lib/ touched - the pack only
+NAMES existing doors and tokens. NOT VERIFIED (honest): the first real 'reels ke liye chart video banao'
+ask on the VPS is the live proof; the pack lands in a tenant only when the skills desk is opened (the
+feed's own design). Deploy: the usual vps-ops ritual.
+
+## v0.497.0 PROG PACK (TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0 - the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH while this sat unpushed, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept) — the curated-library registry + the windows script lane, fed to every tenant (owner: the awesome Programming Languages read, "NOW CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI"; TWENTY-FIRST COLLISION re-version 0.495.0 -> 0.496.0 - the dev's chain took 0.495.0 OFFICE HOURS while this sat unpushed, rebased -X theirs on 571d8ec1, both works kept)
+
+The owner took the Programming Languages (77) category of the sindresorhus/awesome index and asked for
+its two insights turned into Hoola skills: (1) awesome-python/vetted library lists -> code mode with a
+curated registry, so a script Hoola writes picks libraries from awesome lists, NEVER hallucinated
+package names (a hallucinated name is a supply-chain door — typosquatting); (2) the AutoHotkey/AutoIt/VBA
+lists -> a THIRD automation lane beside pixels and ax_*, for the apps the accessibility tree cannot
+reach. Built as the PROG PACK on the skill-pack platform (v0.484 seeds, v0.486/v0.492 BYOX pack, own
+stamp).
+
+**The two skills** (`server/app/coder/skillpack/`, the skills_store shape: frontmatter name + description
+<= 60 chars, body <= 4000 chars):
+
+- `prog-library-registry` — the vetted registry itself rides IN the skill body: HTTP requests/httpx;
+  scraping beautifulsoup4+lxml, scrapy, feedparser; Excel openpyxl/xlsxwriter/pandas; PDF
+  pypdf/reportlab/pdfplumber; Word python-docx, PowerPoint python-pptx; images Pillow; dates
+  python-dateutil; QR qrcode; OCR pytesseract; web flask/fastapi; tests pytest; STDLIB FIRST for
+  zip/files/paths/email/json (zero supply chain, zero install). The never-invent law: a need outside the
+  registry is VERIFIED (`pip index versions` / the PyPI JSON) through the gated run door, or named
+  honestly as unverified — never a plausible guess from memory. Install only with her tap, pin what was
+  installed in the script header, ek kaam ek library. Scope note: the pylab sandbox has no network, this
+  registry governs scripts written for HER PC / her servers.
+- `prog-windows-script-lane` — the lane order is ax_* first, pixels second, THIS lane last or when the
+  ask is script-native: AutoHotkey v2 (house style: `#Requires AutoHotkey v2.0` + `#SingleInstance Force`
+  + `WinWait -> WinActivate -> WinWaitActive` before Send + Hinglish block comments), AutoIt for Win32
+  controls (ControlClick/WinList), VBA when the app IS Office (its native tongue). The delivery law: the
+  script is a FILE shown in chat one line per block, nothing self-runs, execution rides the gated run
+  door (exit + output shown) or her own double-click; AutoHotkey missing -> the winget install door, her
+  tap again; delete/send/money macros are read back before the file even lands. The NEVER law: no
+  Win+R/Task-Manager/lock-screen keys (the same BLOCKED_KEYS law the PC lane keeps), no AV/UAC
+  disabling, no registry beyond the app's own HKCU, no network call inside the script unless the ask is
+  a network ask (then the registry picks the package).
+
+**The feed** (the v0.492 pattern exactly): `skill_packs.prog_files()` + `PROG_STAMP = "skills:progpack:{}"`
++ `seed_progpack(tenant)` — its OWN once-ever stamp, so tenants that already consumed the seed stamp AND
+the byox stamp still receive this pack on their next skills-desk open (the desk route in
+`coder/service.py` calls it right after `seed_byox`); create-if-missing, hers win; `seed_files()` now
+excludes the `prog-` prefix (starter stays 10, byox stays 31, prog = 2); `config.progpack_enabled`
+default ON. How she uses them: the coder injection block FTS-matches name+description against the ask
+and shows the one-liner; she reads the FULL skill via skill_manage before following it (the
+read-before-follow law).
+
+**Tests** `server/tests/test_v0495_progpack.py` (9): counts (10/31/2), once-ever reaches an
+already-seeded tenant, hers-win, switch-off, desk-route call, the lint gate, registry content (13 real
+packages named + the pypi verify door + NEVER), script-lane content (three lanes + the law), injection
+FTS match on Hinglish asks. **Bonus heal**: the dev chain's v0.494 ritual left the three story pins
+asserting 0.493.0 (test_v0475:118 / test_v0480:517 / test_v0485:556) — RED proven on pristine 7c1e5139
+before any change of ours; this ritual moves them to the newest story (the v0.476 precedent) and they
+go green.
+
+Version 0.497.0 (pubspec 0.497.0+541, pins -> 0.497.0(+541) zero residual; desktop 1.9.0 untouched,
+console stamps untouched). Mera PC freeze respected — nothing in server/app/pc/, desktop/ or lib/
+touched. NOT VERIFIED (honest): the FTS matching is tested, but the first real "excel ka macro likho"
+ask on the VPS is the live proof; the pack lands in a tenant only when the skills desk is opened (the
+feed's own design).

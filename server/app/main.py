@@ -33,8 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.479.0"   # v0.479.0: HOOLA SMART HOME - ghar ka control, Home Assistant ke official REST API se (W1 of the Platforms plan from the sindresorhus/awesome read; owner: 'START bolo aur W1 (0.473.0 smart home)'; re-versioned 0.473.0 -> 0.479.0: the dev parallel chain took 0.473..0.478 first - REBASE PROTOCOL respected, rebuilt fresh on ae5bfc58). NEW server/app/home.py: the Home Assistant REST client (GET /api/, /api/states, /api/states/<entity>, POST /api/services/<domain>/<service>, Authorization: Bearer) + the sealed safety core. THE LINK: HOME_ASSISTANT_URL + HOME_ASSISTANT_TOKEN in the VPS .env only (the zoo BYOK pattern - the non-negotiable rule: keys never in chat, never in the repo); home_link shows linked/not + a MASKED token preview and the full setup guide (HA profile -> Security -> Long-lived access tokens), the token never returns to the model or any tool result. THE HOME GATE: home_control (default OFF - bake on the VPS, then flip HOME_CONTROL=1) is SEPARATE from PC control; reads (home_devices / home_state / link status) are gate-free but die without the link, CONTROLS (home_on / home_off) refuse with a clear line while the gate is off. FROZEN-BRIEF GUARDS made executable (the CLAUDE.md home-safety rule now has teeth): AC temperature clamped 20-28 C (the model cannot set 19 or 32; climate without a temperature asks for one), media volume clamped at 90 %, fridge / washing machine / geyser / heater / oven READ-ONLY by name-match (they surface as switch.* and are still refused), sensor / camera / vacuum domains not switchable. LOCKS CONFIRM-ONLY, NEVER AUTONOMOUS: home_on(lock)=band, home_off(lock)=khol, both need confirm=true which the model may pass only after the user said haan; in a ROUTINE turn (actor=routine) locks refuse outright - the worker routine lane gets lights off at 11 pm for free (routines ride the same tool surface) but can never touch a taala. SERVICES: domain-native (cover open/close, scene + script turn_on, button press, lock lock/unlock, climate set_temperature / set_hvac_mode, light brightness 1-255); after every service call a short settle re-read makes the Hinglish say honest ("Hall Light band kar di", "Main Door band kar diya. Dhyan se."). AUDIT: every attempt (success OR refusal: gate off, read-only appliance, unconfirmed lock, unknown device) lands in the home_audit table (registered in init_db day one AND self-healing via home.ensure_table() keyed by engine id - the v0.190.1 lesson); recent_audit reads it back; the detail column never carries the token. ADMISSION: the "home" family rides the keyword router (ghar ki light band karo / light jalao / pankha / ac 24 / parde / taala / smart plug / fridge / geyser - the appliance words admit the family SO Hoola can refuse politely) + tool-name auto-keys; "hello" admits nothing. VOICE: deliberately NOT in VOICE_TOOL_NAMES this release (voice gets the home lane in its own pass once the gate is baked); voice calls still reach it via santosh_kaam if ever needed. PC FROZEN LANES UNTOUCHED: server/app/pc/*, agent/pc_tools.py, desktop/ all byte-identical - server-only deploy, old APKs keep working. Tests: NEW test_v0479_home.py (24): registry + family router + voice absence, the gate (controls refuse, reads open, home_link reports the gate honestly), token privacy (masked preview, never in any result), devices/state reads, the guards (fridge/geyser read-only, sensor/camera refused, AC clamp both ways, volume clamp), locks (no confirm refused, routine refused even with confirm, owner confirm passes + audited), the fake-HA REST round trips (light on/off + settle, brightness, scene, button, cover open/close, by-name resolution, honest unknown-device and HA-down lines), the audit trail readback, version. Version 0.479.0 (APP_VERSION story, pubspec 0.479.0+524, pins ->0.479.0 across the suites, console stamps stay 0.475.0 x20 - server-only release, the v0.476 precedent); Mera PC freeze respected; desktop untouched.
-
+APP_VERSION = "0.530.0"   # v0.530.0: HOOLA GRAPH - the state-graph engine, P3 of the HOOLA AEP plan (owner: 'P3 HOOLA GRAPH' after v0.520.0 HOOLA TRACE landed on main as a51ea087 - the trace-layer deploy stays the owner's call, healthz still says 0.511.0 on the VPS). The langgraph idea hand-built as server/app/aep/graph.py - ZERO upstream code (the port law): StateGraph (add_node/add_edge/add_conditional_edges/set_entry_point/compile - duplicates, reserved names and unknown endpoints refused at BUILD time, no-node/no-entry/bad-path-map refused at compile; plain channels last-value-wins, Annotated[T, reducer] channels merge through the reducer - operator.add works, add_messages is the messages reducer; a FIRST-EVER value seeds the channel because operator.add has no identity for a missing left side) + the walk (super-steps; every node sees the SAME pre-step state; several static edges from one node fan out; a node with several inbound edges joins only after ALL its parents ran - the barrier; routing is ADDITIVE, routers + static edges both fire; routers see the POST-node state; dict path_map maps by answer, list path_map maps by index (the upstream law); recursion_limit default 25 with an honest GraphRecursionError; None updates are no-ops; non-dict node returns refused; fn(state) and fn(state, config) both accepted; async nodes run natively in ainvoke and via asyncio.run in sync invoke when no loop is running) + AgentState (messages Annotated[list, add_messages] - the P4 create_agent substrate; add_messages: append, replace-by-id, RemoveMessage drops one id, REMOVE_ALL_MESSAGES clears, dicts coerce back, strings become HumanMessages) + interrupts (interrupt(value) PARKS the graph - the state is checkpointed, invoke returns the state carrying __interrupt__, nothing after the interrupt runs; Command(resume=...) re-enters - the node re-runs FROM ITS TOP, answered slots replay in call order, open slots re-park with the earlier answers preserved; parking without a checkpointer refuses honestly; interrupt() outside a node refuses) + checkpointers (BaseCheckpointSaver; MemorySaver thread-safe capped ring; SqliteSaver stdlib sqlite3 WAL - a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a checkpoint lands after EVERY super-step; get_state/update_state with as_node re-deriving next; invoke(None) resumes the stored walk - the crash path, the dhara lesson; Command.update_only/goto_nodes reshape a stored walk) + the tracer seam (CompiledStateGraph is a Runnable - composes with |; every invocation fires a ROOT chain span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays run-free) + store wiring (compile(store=...) rides config['store'] into every node - the P1 stores are the cross-thread memory). Registry rides their 554 (the construction wave's ten tools took 543 -> 553, the crew_run tool took 553 -> 554; the graph is a library - no tools, no routes, no flag: the INERTNESS LAW re-proven - a fresh interpreter imports app.aep with zero threads/env/files; checkpointers write only when a compiled graph with one actually runs). Voice untouched by construction; mem restart pin untouched (no new vps-ops job); console stamps stay 0.487.0 (the dev's convention); desktop untouched - server-only, old APKs keep working; Mera PC freeze respected (nothing in server/app/pc/, desktop/ or lib/ touched). Tests: NEW test_v0530_hoola_graph.py (42, zero network, the asyncio one-loop law): builder validation, reducer channels + seeding, linear/conditional/diamond walks + the join barrier, additive routing + END-from-router, recursion limit default + configurable, two-arg config + store wiring, add_messages + AgentState accumulation, MemorySaver caps/threads/delete, checkpoint-per-step + get_state + update_state + invoke(None) crash-resume + Command reshapes, SqliteSaver round-trip across instances + the engine shape + thread isolation, interrupt refusal/park shape/resume/two-interrupt chain/stream park/async park, node spans named by the node nested under the root span, the inertness probe, the package-export law, no-registry-tools, the version pins. Bugs the smoke caught: parallel fan-out updates must fold SEQUENTIALLY through the reducer (a merge-by-setdefault dropped the second writer's write); _node_config swallowed 1-arg async fns into a sync lambda (the walk saw a coroutine object, not a dict); the engine-path SqliteSaver never created its table; parking without a checkpointer was silent (now the honest RuntimeError); dict path_maps fell through to positional-index lookups (a router returning END would misroute). Version 0.530.0 (APP_VERSION story, pubspec 0.530.0+553, CLAUDE.md healed, pins swept 0.520.0/0.522.0 -> 0.530.0 + +549/+551/+552 -> +553 across the test files zero residual outside deliberate history). TWO COLLISIONS in one build: the THIRTY-SECOND (0.521.0 DIFY + 0.522.0 CONSTRUCTION WAVE 1, registry 543 -> 553, +551) and the THIRTY-THIRD (0.523.0 HOOLA CREW, the crewAI port, registry 553 -> 554, +552) - REBASE PROTOCOL twice: rebuilt on their fresh bases f561f047 then 1db3e577, both works kept each time, the version layer moved coherently on top (0.530.0 stays the newest story). AEP train: P4 AGENT (create_agent on the graph) next. Previous: v0.523.0 HOOLA CREW, v0.522.0 CONSTRUCTION WAVE 1, v0.521.0 DIFY FOR HOOLA, v0.520.0 HOOLA TRACE, v0.513.0 HOOLA BD PACK, v0.512.0 HOOLA 21ST, v0.511.0 HOOLA CS PACK, v0.510.0 HOOLA CORE (the langchain-core P1), v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7 [full chain in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -1793,6 +1792,14 @@ async def pc_send(file: UploadFile = File(...), tenant: str = Depends(current_te
         return await hub.call_personal(tenant, "save_file", {"file_id": row.id, "name": row.name, "url": f"/api/pc/fetch/{row.id}"})
     except Exception as e:
         _pc_err(e)
+
+
+# v0.487 W3 - the PC -> Hoola TEXT LANE (the quick-ask lane): a PAIRED device (the desktop, the
+# browser extension paired through the same /api/pc/pair flow) sends a typed ask / a page into her
+# conversation and reads the answer back. NEW surface beside the PC block - no existing PC endpoint,
+# setting or behaviour is touched (the Mera PC freeze stands; the owner's W3 ask named this lane).
+from .quicklane import router as quicklane_router               # noqa: E402
+app.include_router(quicklane_router)                            # POST /api/pc/quickask (+ /messages)
 
 
 @app.get("/api/voice/check", dependencies=[Depends(require_key)])
@@ -5051,11 +5058,12 @@ from .travel.api import make_router as _travel_router  # noqa: E402
 from .warehouse.api import make_router as _warehouse_router  # noqa: E402
 from .fleet.api import make_router as _fleet_router  # noqa: E402
 from .ownmap_api import make_router as _ownmap_router  # noqa: E402  (v0.468)
+from .research.api import make_router as _research_router  # noqa: E402  (v0.476 R5: research cost + runs)
 from .courier.api import make_router as _courier_router  # noqa: E402
 from .drivers.api import make_router as _drivers_router  # noqa: E402
 from .logistics.api import make_router as _logistics_router  # noqa: E402
 
-for _mk in (_customs_router, _travel_router, _warehouse_router, _fleet_router, _ownmap_router, _courier_router, _drivers_router, _logistics_router):
+for _mk in (_customs_router, _travel_router, _warehouse_router, _fleet_router, _ownmap_router, _research_router, _courier_router, _drivers_router, _logistics_router):
     app.include_router(_mk(require_key, current_tenant))
 
 # v0.144 Makaan suite: 6 Real estate & construction Sahayaks (all under /api/<mod>/*, key-protected; the ONLY public routes are
@@ -5153,6 +5161,20 @@ app.include_router(_gyaan_router(require_key, current_tenant))
 from .coder.service import make_router as _coder_router  # noqa: E402
 
 app.include_router(_coder_router(require_key, current_tenant))
+
+
+# v0.486.0 BYOX SKILL PACK: /api/byox/categories and /api/byox/guide/{slug} (restored v0.492.0: dropped by a merge)
+from .byox.guide import get_guide, list_categories as _byox_list  # noqa: E402
+
+
+@app.get("/api/byox/categories", dependencies=[Depends(require_key)])
+async def byox_categories(q: str = ""):
+    return {"categories": _byox_list(q)}
+
+
+@app.get("/api/byox/guide/{slug}", dependencies=[Depends(require_key)])
+async def byox_guide(slug: str, level: str = "standard", language: str = ""):
+    return get_guide(slug, level=level, language=language)
 
 
 @app.get("/auth/microsoft/callback")
@@ -5349,9 +5371,49 @@ def agent_stats():
     from .agent import pakka
     from . import callreceipt, scrub, web
     from .agent import santosh as _s
+    from .aep import vault_sink
+    from .aep.tracers import GLOBAL_STORE
     return {"breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
             "pakka": dict(pakka.STATS), "halts": dict(_s.HALTS), "scrubbed": scrub.STATS["scrubbed"],
-            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS)}
+            "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS),
+            # v0.520.0 HOOLA TRACE: the honest counters of the self-hosted LangSmith layer
+            "aep_trace": {"enabled": vault_sink.trace_enabled(), "store": len(GLOBAL_STORE),
+                          **{k: v for k, v in vault_sink.STATS.items()}}}
+
+
+# --- v0.520.0 HOOLA TRACE: the run-tree explorer (flag-gated, fail-closed) ---
+
+
+@app.get("/api/aep/runs", dependencies=[Depends(require_key)])
+def aep_runs(limit: int = 20, source: str = "memory", tenant: str = Depends(current_tenant)):
+    """Recent runs of the AEP tracer layer: the process ring (source=memory, default)
+    or the vault observations typed 'aep_run' (source=vault). aep_trace OFF = fail-closed."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    limit = max(1, min(int(limit), 200))
+    if source == "vault":
+        rows = vault_sink.vault_runs(tenant, limit)
+        return {"ok": True, "source": "vault", "count": len(rows), "runs": rows}
+    runs = [r.to_dict() for r in tracers.GLOBAL_STORE.recent(limit)]
+    return {"ok": True, "source": "memory", "count": len(runs),
+            "stats": dict(vault_sink.STATS), "runs": runs}
+
+
+@app.get("/api/aep/runs/{run_id}", dependencies=[Depends(require_key)])
+def aep_run_tree(run_id: str, tenant: str = Depends(current_tenant)):
+    """One run nested with its children - the run-tree explorer node. A numeric id
+    falls back to the vault row when the process ring does not have it."""
+    from .aep import tracers, vault_sink
+    if not vault_sink.trace_enabled():
+        return {"ok": False, "error": "aep_trace is switched off - bake, then flip (the trace_flip vps-ops job)"}
+    tree = tracers.global_tracer().tree(run_id)
+    if tree is not None:
+        return {"ok": True, "source": "memory", "run": tree}
+    obs = vault_sink.vault_run_by_id(tenant, int(run_id)) if run_id.isdigit() else None
+    if obs is None:
+        return {"ok": False, "error": "no such run"}
+    return {"ok": True, "source": "vault", "run": obs}
 
 
 class ShopOrderIn(BaseModel):
@@ -9236,6 +9298,26 @@ async def site_app_queue_board(site_id: str):
     except W.AppError:
         return HTMLResponse("<!doctype html><title>Not found</title><p>Not found.</p>", status_code=404)
     return HTMLResponse(LS.board_page(site_id, label), headers={"Cache-Control": "no-store", "X-Robots-Tag": "noindex"})
+
+
+@app.post("/api/dhara/hook/{token}")
+async def dhara_hook(token: str, request: Request):
+    """v0.502 DHARA webhook trigger: her outside service calls the workflow in. The token is checked
+    sha256-hashed against the workflow row; the body lands as {{vars.body}}; the run is queued with a
+    checkpoint (the worker executes it). Rate: one run per 6 s per workflow (10/min ceiling)."""
+    from .agent import dhara_tools
+    raw = await request.body()
+    if len(raw) > 256_000:
+        return JSONResponse({"ok": False, "error": "body bohot bada"}, status_code=413)
+    try:
+        body = json.loads(raw or b"{}")
+        if not isinstance(body, dict):
+            body = {"body": body}
+    except Exception:
+        body = {"raw": raw[:8000].decode("utf-8", "ignore")}
+    out = await asyncio.to_thread(dhara_tools.webhook_enqueue, token, body)
+    return JSONResponse({"ok": out["ok"], "run_id": out.get("run_id"), "workflow": out.get("workflow"),
+                         "error": out.get("error")}, status_code=int(out.get("status") or 500))
 
 
 @app.post("/api/site-app/{site_id}/hook/{key}")

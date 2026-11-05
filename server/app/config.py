@@ -85,6 +85,47 @@ class Settings(BaseSettings):
     dev_lab_timeout: int = 600              # ... seconds one check may run (her .hoola/lab.json may lower it)
     dev_lab_keep: int = 12                  # ... per-repo dependency snapshots kept before the oldest are dropped
     dev_plan_first: bool = True             # v0.451 ECC PHASE 4: a standard / large job gets a read-only PLAN pass before any edit
+    research_engines_allowed: str = "hoola"   # v0.477 R6: comma list of engines she lets run research ("hoola" is always allowed); a vendor must be listed here ...
+    research_vendor_terms_ack: str = ""       # ... AND here: the vendors whose current terms SHE has read and accepts for this use (storing + showing the result to her). Nothing is assumed.
+    exa_api_key: str = ""                     # VPS .env only (EXA_API_KEY), never in chat or the repo
+    linkup_api_key: str = ""                  # VPS .env only (LINKUP_API_KEY)
+    research_parallel_run_inr: float = 0.0    # ONE run's price in rupees per vendor: UNKNOWN until she reads the vendor's plan, so 0 = that engine is REFUSED (a ceiling needs a price)
+    research_exa_run_inr: float = 0.0         # (Exa also takes this as its own vendor-side budget.maxCostDollars and reports its real costDollars back)
+    research_openai_run_inr: float = 0.0
+    research_linkup_run_inr: float = 0.0
+    research_parallel_processor: str = "core"          # Parallel processor tier: lite | base | core | pro (read from the SDK; the price of each is NOT known)
+    research_exa_effort: str = "auto"                  # Exa agent effort (SDK literal: minimal low medium high xhigh auto ultra max)
+    research_openai_model: str = "o4-mini-deep-research"   # or o3-deep-research
+    research_openai_search_tool: str = "web_search_preview"
+    research_openai_max_tool_calls: int = 40
+    research_linkup_depth: str = "L"                   # S | M | L | XL
+    research_linkup_mode: str = "research"
+    research_vendor_poll_s: float = 10.0
+    research_vendor_wait_s: float = 1500.0             # a vendor run that has not finished by now is given up on (it may still bill)
+    research_run_cap_inr: float = 150.0     # v0.476 R5: ONE research run may spend at most this many rupees (model calls; a default, not a measured need)
+    research_daily_inr: float = 600.0       # ... and one tenant's research runs together at most this much a day (IST); 0 = no research that day
+    research_call_reserve_inr: float = 3.0  # a run asks "can I still afford another call?" with this much room - it refuses BEFORE the call that would cross
+    research_search_inr: float = 0.0        # price of ONE Parallel search call in rupees: UNKNOWN until her plan is read, so 0 and said so on every cost line
+    research_fetch_inr: float = 0.0         # price of ONE page fetch in rupees: same
+    research_review: bool = True            # v0.480 R9: after the code checks, a reviewer reads the report against the dossier's notes (wording stronger than the evidence ...)
+    research_watch_month_inr: float = 300.0 # v0.480 R9: ONE watched topic may spend at most this many rupees a month, then it pauses itself (a default, not a measured need)
+    research_background: bool = True        # v0.475 R4: research_run starts a PERSISTED background run and returns at once (False = inline, inside the turn)
+    research_bg_soft_s: float = 1500.0      # a background run's soft clock: after this the workers finish with what they have
+    research_bg_max_running: int = 2        # background research runs at once per tenant
+    research_bg_stale_s: int = 180          # a running run that has not heartbeated for this long is picked up again from its checkpoint
+    research_bg_tries: int = 3              # ... at most this many starts (the first + restarts)
+    research_engine_on: bool = True         # v0.473 R2: the `research_run` tool (Hoola's own research engine) is available
+    research_engine: str = "auto"           # v0.478 R7: "auto" = the run-off winner she applied, else Hoola's own; or name one (hoola | parallel | exa | openai | linkup) - a vendor still needs every R6 gate open
+    research_tasks_max: int = 6             # goals in the first round
+    research_steps: int = 8                 # model steps one goal may take
+    research_pages_per_task: int = 6        # pages one goal may read
+    research_pages_total: int = 30          # pages a whole run may read
+    research_calcs_max: int = 8             # pylab calculations a whole run may make
+    research_rounds: int = 2                # the first plan + at most one re-plan
+    research_parallel: int = 3              # goals worked at once
+    research_soft_s: float = 420.0          # after this the workers finish with what they have (a turn is capped at 900 s)
+    research_read_chars: int = 12000        # characters of one page shown to a worker
+    research_plan_gate: bool = True         # v0.472 R1 PLAN PEHLE: a LARGE research ask shows its plan and waits for her Haan
     dev_plan_gate: bool = True              # ... and a LARGE job waits for her Haan on that plan (ECC's Gate 1)
     dev_plan_steps: int = 18                # ... the plan pass explores at most this many steps
     dev_plan_minutes: int = 8               # ... and at most this long
@@ -350,6 +391,39 @@ class Settings(BaseSettings):
     operator_preflight: bool = True        # v0.92 check a website job's site from this server first; refused -> her PC
     scrape_respect_robots: bool = True     # v0.477 scrape tools refuse paths the site's robots.txt disallows for bots
     scrape_stealth_enabled: bool = False   # v0.477 allow scrape_stealth to launch the stealth browser (RAM-heavy; needs `scrapling install` once)
+    scrape_cache_enabled: bool = True      # v0.481 serve repeat scrapes from the per-tenant page cache within max_age
+    scrape_cache_max_age: int = 1800       # v0.481 default seconds a cached page stays fresh for the scrape tool (0 = always fresh)
+    scrape_crawl_enabled: bool = True      # v0.486 background crawl jobs (crawl_start -> worker tick -> crawl_status/results)
+    scrape_crawl_max_pages: int = 20       # v0.486 default page budget per crawl job (crawl_start clamps to 50)
+    scrape_crawl_max_running: int = 1      # v0.486 crawl jobs running at once, globally (HTTP-only, politeness first)
+    scrape_crawl_stale_s: int = 180        # v0.486 a running crawl without a heartbeat this long is resumed from its checkpoint
+    scrape_crawl_tries: int = 3            # v0.486 a crawl job is started at most this many times before it is failed
+    graphify_enabled: bool = True          # v0.496 Graphify code graph (graph_build / graph_ask); inert until the graphifyy package is installed
+    graphify_bin: str = ""                 # v0.496 path to the graphify CLI ("" = next to the server Python, then PATH)
+    graphify_build_timeout_s: int = 600    # v0.496 one repo map may run this long, then its process group is killed
+    graphify_query_timeout_s: int = 60     # v0.496 one graph question
+    graphify_max_repo_mb: int = 80         # v0.496 refuse a repo tarball bigger than this (unpacked cap = 4x)
+    graphify_max_files: int = 8000         # v0.496 files unpacked per repo
+    graphify_keep_repos: int = 5           # v0.496 mapped repos kept per tenant, oldest dropped
+    scrape_crawl_keep_days: int = 7        # v0.486 finished crawl jobs (and their pages) older than this are forgotten
+    dhara_enabled: bool = True             # v0.502 DHARA - her workflows (the n8n lane: save/run/schedule/webhook)
+    dhara_max_steps: int = 40              # v0.502 top-level steps per workflow (dhara_save clamps)
+    dhara_loop_max: int = 50               # v0.502 iterations per loop step
+    dhara_run_timeout_s: int = 600         # v0.502 one run's wall clock cap
+    dhara_max_running: int = 1             # v0.502 runs executing at once, per tenant (politeness first)
+    dhara_stale_s: int = 180               # v0.502 a running run without a write this long is resumed from its checkpoint
+    dhara_tries: int = 3                   # v0.502 a run is started at most this many times before it is failed
+    dhara_keep_runs_days: int = 30         # v0.502 finished runs older than this are forgotten (at most 40 kept)
+    dhara_approval_hours: int = 24         # v0.502 an approval step waiting longer than this fails honestly
+    dhara_webhook_enabled: bool = True     # v0.502 POST /api/dhara/hook/{token} (token sha256-hashed at rest)
+    dhara_summaries_enabled: bool = True   # v0.512 a computed summary (steps/parks/tries/wall/cost) on every finished run
+    dhara_dsl_enabled: bool = True         # v0.512 dhara_dsl export/import (the Dify DSL idea: portable workflow files)
+    dhara_dsl_max_kb: int = 64             # v0.512 one DSL envelope's size cap
+    gyaan_annotation_enabled: bool = True  # v0.512 her approved jawabs (the Dify annotation-reply idea) served before retrieval
+    gyaan_annotation_fuzzy: float = 0.92   # v0.512 difflib ratio threshold for a fuzzy annotation hit (exact always wins)
+    gyaan_annotation_max: int = 200        # v0.512 approved-jawab pairs per tenant
+    officehours_enabled: bool = True       # v0.495 office hours (the gstack THINK/PLAN lane: design docs + plan reviews)
+    officehours_keep_docs: int = 30        # v0.495 baithak docs kept per tenant; older ones (and their reviews) are forgotten
     call_receipt: bool = True              # v0.91 after a call: a short card of what was decided and what really ran
     voice_tool_ack: bool = True            # a tool runs and he is silent: say a quick "ek second" in his own voice
     voice_backchannel: bool = True         # v0.205 KAAN KAAPI: tiny listener murmurs in her pauses + one progress sound on a long silent tool (kill switch)
@@ -429,6 +503,15 @@ class Settings(BaseSettings):
     coder_nudge_every: int = 10            # turns between reflections (Hermes nudge_interval = 10)
     coder_nudge_max_writes: int = 4        # max observations + skill ops ONE reflection may write
 
+    # --- Hoola Skill Desk (v0.481): the skills platform - seeds, import/export, the share shelf ---
+    coder_skills_seed: bool = True         # the 57-skill seed library copied into a fresh tenant once (create-if-missing)
+    coder_skills_share: bool = True        # the anonymised share lane: nominations need the curator armed, publishing needs her tap
+    coder_skills_share_min_reads: int = 3  # real reads (the telemetry) before a skill may be nominated
+    coder_skills_share_max_pending: int = 10  # nominations waiting for the owner at once
+
+    # --- Hoola UIUX Pro Max (v0.486): the vendored design database behind ONE local tool ---
+    coder_uiux: bool = True                # uiux_design over coder/uiux/ (MIT engine, pure stdlib, zero network, zero brain calls)
+
     # --- Hoola Swarm (v0.475): self-spawning subagents for parallel work ---
     coder_delegate: bool = False           # the delegate_task tool (bake on the VPS, then flip to true)
     coder_delegate_max_children: int = 3   # concurrent child agents (Hermes 10; tightened for a voice box)
@@ -438,6 +521,60 @@ class Settings(BaseSettings):
     home_control: bool = False              # the HOME gate (default OFF - bake on the VPS, then flip to true)
     home_assistant_url: str = ""            # e.g. http://192.168.1.10:8123 (the HA base URL, no trailing slash)
     home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
+    # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
+    byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
+    # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---
+    claude_skills_enabled: bool = True      # skillpack/claude/* seeds on first open (create-if-missing, hers win)
+    # --- v0.495.0 PROG PACK: the vetted-library registry + the windows script lane ---
+    progpack_enabled: bool = True           # PROG pack seeds on first open (default ON)
+    sp_enabled: bool = True                 # superpowers lane seeds on first open under its own stamp (default ON)
+    # --- FE PACK: the HyperFrames template packs + campaign email templates + UI kit ---
+    fepack_enabled: bool = True             # FE pack seeds on first open (default ON)
+    # --- CS PACK: the zoo expansion radar + the operator loop's dialogue/QA patterns ---
+    cspack_enabled: bool = True             # CS pack seeds on first open (default ON)
+    # --- BD PACK: the public-dataset eval benchmarks + the campaign-graph analytics ---
+    bdpack_enabled: bool = True             # Big Data pack seeds on first open (default ON)
+    # --- Hoola Curator (the v0.480 weekly consolidation): the weekly memory consolidation ---
+    coder_curator: bool = False            # scan + arbitrate + promote (bake on the VPS, then flip to true)
+    coder_curator_every_hours: int = 168   # one consolidation a week (the claude-mem cadence)
+    coder_curator_max_pairs: int = 20      # pending pairs the brain arbitrates per tenant per run
+    coder_curator_max_merges: int = 10     # merges per run; the rest stays pending (soft merges, revivable)
+
+    # --- Hoola SAPNE (v0.484): the NIGHTLY curator (OpenClaw's dreaming sweep ported) ---
+    coder_dreams: bool = False             # the light+deep consolidation passes (bake on the VPS, then flip)
+    coder_dreams_light_hours: int = 26     # the nightly window (26h catches the slow clock)
+    coder_dreams_deep_days: int = 7        # the weekly window (deep subsumes light when both due)
+    coder_dreams_max_writes: int = 4       # max curated rows ONE pass may write or rewrite
+    coder_dedup_min_docs: int = 10         # the Tier-1 scan's corpus gate (IDF on 3 documents is astrology)
+
+    # --- Hoola Context7 (v0.501): up-to-date library docs into the context, the upstash/context7 port ---
+    coder_docs7: bool = False              # the docs7 tool (outbound network: bake on the VPS, then flip)
+    context7_api_url: str = "https://context7.com/api"  # upstream default (constants.ts:14; env-overridable there)
+    context7_api_key: str = ""             # optional Bearer (ctx7sk-...); empty = anonymous rate limits; never in chat
+    coder_docs7_timeout_s: int = 20        # upstream ceiling 60s (p99.9 ~3.2s); a voice box drops, not waits
+    coder_docs7_max_per_hour: int = 12     # the <=3-per-question law, enforceable locally (upstream 429s server-side)
+    coder_docs7_ttl_hours: int = 168       # the vault IS the cache: a week before the same query re-fetches
+
+    # --- Hoola 21st (v0.512): the 21st.dev UI catalog + hosted AI generation, the 21st-dev/magic-mcp port ---
+    coder_magic21: bool = False            # the magic21 tool (outbound network: bake on the VPS, then flip)
+    magic21_api_url: str = "https://21st.dev/api/mcp"   # upstream default (mcp.json:3; env MCP_URL_21ST there)
+    magic21_api_key: str = ""              # x-api-key from 21st.dev/mcp (REQUIRED upstream); BYOK - keys never in chat
+    coder_magic21_timeout_s: int = 20      # ONE attempt, drop-don't-wait: a live turn cannot wait on a marketplace
+    coder_magic21_max_per_hour: int = 12   # per-tenant rolling-hour window over OPS (the three wire POSTs are the bridge's own business)
+    magicpack_enabled: bool = True         # the mg- seed (the 21st.dev UI skill) seeds on first open under its own stamp (default ON)
+
+    # --- Hoola Crew (v0.514): the crewAI port, role-based agent crews over the delegate machinery ---
+    coder_crew: bool = False               # the crew_run tool (brain rounds, not network - but real cost: bake, then flip)
+    coder_crew_max_agents: int = 6         # a voice box is not a cluster (library backstop MAX_AGENTS doubled at the door)
+    coder_crew_max_tasks: int = 12         # the task-list cap (library backstop MAX_TASKS doubled at the door)
+    coder_crew_task_timeout_s: int = 180   # per task/manager-round ceiling (the delegate child shape, widened for a worker)
+    coder_crew_timeout_s: int = 600        # the whole-crew wall clock; partial work is not kept (honest)
+    crewpack_enabled: bool = True          # the cr- seed (crew plays) seeds on first open under its own stamp (default ON)
+
+    # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
+    aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
+    aep_trace_redact: bool = True          # redaction before storage (strip_private + redact_secrets); a test seam, prod keeps True
+
     # --- email (Baat/Chat can read your inbox and send approved replies). App password, not your login password. ---
     email_address: str = ""
     email_password: str = ""                # app password (Gmail/Outlook/Zoho "app password")

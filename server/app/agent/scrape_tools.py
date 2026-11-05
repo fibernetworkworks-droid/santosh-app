@@ -45,6 +45,16 @@ _MAX_SITE_PAGES = 25        # scrape_site cap
 _MAX_TIMEOUT = 60           # per-fetch cap, seconds
 _ROBOTS_TTL = 3600          # robots.txt cache per host, seconds
 _STEALTH_SEM = threading.BoundedSemaphore(1)   # one stealth browser at a time (MEM-CURE RAM discipline)
+# v0.481 FIRECRAWL CORE - the engine-waterfall ideas, house-sized:
+_MAX_MAP_FETCHES = 8        # scrape_map fetches at most this many pages to harvest links
+_MAX_MAP_URLS = 200         # scrape_map cap on returned urls
+_CACHE_ROWS = 300           # per-tenant page cache LRU cap (rows)
+_BRAIN_TEXT = 14_000        # page text handed to the brain for schema extraction
+_BRAIN_MAX_TOKENS = 2_000   # hard cap on one schema-extraction brain call
+_STEALTHY_TITLES = ("just a moment", "attention required", "access denied", "unusual traffic",
+                    "are you a robot", "verify you are human", "bot verification")
+_STEALTHY_SCRIPTS = ("challenge-platform", "cf-browser-verification", "cf_chl_opt",
+                     "enable javascript and cookies to continue")
 
 _ROBOTS_CACHE: dict[str, tuple[float, Any]] = {}   # host -> (expiry, ProtegoRobot)
 
@@ -81,12 +91,17 @@ def _guard_url(url: str) -> str:
     return u.geturl()
 
 
-def _storage_path(tenant_id: str) -> str:
-    """Per-tenant adaptive-element memory (SQLite): data/scraping/<safe-tenant>/elements.db."""
+def _tenant_dir(tenant_id: str) -> str:
+    """data/scraping/<safe-tenant>/ - everything the scrape lane remembers lives here."""
     safe = re.sub(r"[^a-zA-Z0-9_-]", "", str(tenant_id or "x"))[:48] or "x"
     p = Path("data") / "scraping" / safe
     p.mkdir(parents=True, exist_ok=True)
-    return str(p / "elements.db")
+    return str(p)
+
+
+def _storage_path(tenant_id: str) -> str:
+    """Per-tenant adaptive-element memory (SQLite): data/scraping/<safe-tenant>/elements.db."""
+    return str(Path(_tenant_dir(tenant_id)) / "elements.db")
 
 
 def _cap(text: str, limit: int) -> str:
@@ -202,14 +217,207 @@ def _field_value(el: Any, spec: str) -> Any:
     return (deep or (node.text or "")).strip()[:2000]
 
 
+# --------------------------------------------------------------------------- block detection (v0.481)
+
+def _blocked(page: Any) -> str | None:
+    """Firecrawl-waterfall idea, tightened: does this answer look like a bot-block, not a page?
+    Only strong signals escalate: a block status, a challenge title, or a SMALL body carrying a
+    challenge fingerprint (the size gate keeps a normal article that merely mentions captcha
+    from ever escalating). Returns a short reason, or None when the page looks real."""
+    try:
+        status = int(getattr(page, "status", 0) or 0)
+    except Exception:
+        status = 0
+    if status in (401, 403, 429):
+        return f"HTTP {status}"
+    try:
+        t = page.css("title")
+        title = (t[0].text or "").strip().lower()[:200] if t else ""
+    except Exception:
+        title = ""
+    for m in _STEALTHY_TITLES:
+        if m in title:
+            return f"challenge title ('{m}')"
+    try:
+        text = page.get_all_text(separator=" ") or ""
+    except Exception:
+        text = ""
+    if 0 < len(text) < 2500:
+        low = text.lower()
+        for m in _STEALTHY_SCRIPTS:
+            if m in low:
+                return f"challenge script ('{m}')"
+    return None
+
+
+# --------------------------------------------------------------------------- page cache (v0.481)
+
+def _cache_get(tenant_id: str, url: str, max_age) -> dict[str, Any] | None:
+    """Cached page inside max_age seconds (per-tenant SQLite). max_age None/<=0 -> never read."""
+    from ..config import get_settings
+    if not get_settings().scrape_cache_enabled or max_age is None or int(max_age or 0) <= 0:
+        return None
+    import sqlite3
+    try:
+        con = sqlite3.connect(str(Path(_tenant_dir(tenant_id)) / "cache.db"))
+        try:
+            row = con.execute("SELECT fetched_at, status, title, markdown, text FROM page_cache WHERE url = ?",
+                              (url,)).fetchone()
+        finally:
+            con.close()
+    except Exception:
+        return None
+    if not row:
+        return None
+    age = time.time() - float(row[0] or 0)
+    if age > int(max_age):
+        return None
+    return {"age": int(age), "status": int(row[1] or 0), "title": row[2] or "",
+            "markdown": row[3] or "", "text": row[4] or ""}
+
+
+def _cache_put(tenant_id: str, url: str, status: int, title: str, markdown: str, text: str) -> None:
+    from ..config import get_settings
+    if not get_settings().scrape_cache_enabled or int(status or 0) >= 400 or not url:
+        return
+    import sqlite3
+    try:
+        con = sqlite3.connect(str(Path(_tenant_dir(tenant_id)) / "cache.db"))
+        try:
+            con.execute("CREATE TABLE IF NOT EXISTS page_cache (url TEXT PRIMARY KEY, fetched_at REAL, "
+                        "status INTEGER, title TEXT, markdown TEXT, text TEXT)")
+            con.execute("INSERT INTO page_cache (url, fetched_at, status, title, markdown, text) VALUES (?,?,?,?,?,?) "
+                        "ON CONFLICT(url) DO UPDATE SET fetched_at=excluded.fetched_at, status=excluded.status, "
+                        "title=excluded.title, markdown=excluded.markdown, text=excluded.text",
+                        (url, time.time(), int(status), (title or "")[:500],
+                         (markdown or "")[:_HARD_TEXT], (text or "")[:_HARD_TEXT]))
+            con.execute("DELETE FROM page_cache WHERE url IN (SELECT url FROM page_cache "
+                        "ORDER BY fetched_at DESC LIMIT -1 OFFSET ?)", (_CACHE_ROWS,))
+            con.commit()
+        finally:
+            con.close()
+    except Exception:
+        pass                                    # the cache never breaks a scrape
+
+
+def _cache_put_page(tenant_id: str, page: Any) -> None:
+    """Write-through: remember the page-level markdown + text (2xx only, best effort)."""
+    try:
+        status = int(getattr(page, "status", 0) or 0)
+        if status >= 400:
+            return
+        try:
+            md = page.markdown()
+        except Exception:
+            md = ""
+        try:
+            txt = page.get_all_text(separator="\n")
+        except Exception:
+            txt = ""
+        try:
+            t = page.css("title")
+            title = (t[0].text.strip() if t else "")
+        except Exception:
+            title = ""
+        _cache_put(tenant_id, getattr(page, "url", "") or "", status, title, md or "", txt or "")
+    except Exception:
+        pass
+
+
+# --------------------------------------------------------------------------- stealth core (v0.481)
+
+def _stealth_fetch(url: str, timeout: int = 90, wait_selector: str = "", solve_cloudflare: bool = False):
+    """One StealthyFetcher.fetch with the house discipline - the SEMAPHORE IS THE CALLER'S JOB."""
+    from scrapling.fetchers import StealthyFetcher
+    kw: dict[str, Any] = {"headless": True,
+                          # StealthyFetcher timeout is MILLISECONDS (default 30_000) - seconds in, ms out
+                          "timeout": max(30_000, min(int(timeout or 90), 180) * 1000),
+                          "solve_cloudflare": bool(solve_cloudflare)}
+    if wait_selector:
+        kw["wait_selector"] = str(wait_selector)[:300]
+    return StealthyFetcher.fetch(url, **kw)
+
+
+# --------------------------------------------------------------------------- brain extraction (v0.481)
+
+def _json_loose(text: str):
+    """The brain's answer -> JSON: direct, then a fenced block ANYWHERE in the answer, then the first
+    balanced {..}/[..] run."""
+    import json as _json
+    if not text:
+        return None
+    s = text.strip()
+    try:
+        return _json.loads(s)
+    except Exception:
+        pass
+    m = re.search(r"```[a-zA-Z0-9_-]*\s*(.*?)\s*```", s, re.S)
+    if m:
+        try:
+            return _json.loads(m.group(1).strip())
+        except Exception:
+            pass
+    for open_ch, close_ch in (("{", "}"), ("[", "]")):
+        start = s.find(open_ch)
+        if start < 0:
+            continue
+        depth = 0
+        for i in range(start, len(s)):
+            c = s[i]
+            if c == open_ch:
+                depth += 1
+            elif c == close_ch:
+                depth -= 1
+                if depth == 0:
+                    try:
+                        return _json.loads(s[start:i + 1])
+                    except Exception:
+                        break
+    return None
+
+
+async def _extract_brain(system: str, user: str) -> tuple[str, str]:
+    """The pakka pattern (coder/observer shape): cheap brain first, Claude fallback. (text, label)."""
+    from ..agent import llm
+    msgs = [{"role": "user", "content": [{"type": "text", "text": user}]}]
+    cheap = llm.cheap_brain()
+    if cheap:
+        try:
+            blocks, _, _ = await llm.openai_create(cheap, system, [], msgs, _BRAIN_MAX_TOKENS)
+            return "".join(b.get("text", "") for b in blocks if b.get("type") == "text"), f"cheap:{cheap}"
+        except Exception:
+            pass
+    from ..config import get_settings
+    if get_settings().anthropic_api_key:
+        from .santosh import get_client
+        resp = await get_client().messages.create(model=get_settings().anthropic_model,
+                                                  max_tokens=_BRAIN_MAX_TOKENS, system=system,
+                                                  messages=[{"role": "user", "content": user}])
+        return "".join(b.text for b in resp.content if getattr(b, "type", "") == "text"), "claude"
+    raise ToolError("Is VPS par extraction brain configured nahi hai — schema extraction ke liye ek brain chahiye")
+
+
 # --------------------------------------------------------------------------- handlers
 
-async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=False, max_chars=24000, timeout=25, **_):
-    """Fast public-page read (no browser). Returns title + clean content; links optional."""
+async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=False, max_chars=24000, timeout=25, max_age=None, **_):
+    """Fast public-page read (no browser). Returns title + clean content; links optional.
+    v0.481: pass max_age (seconds) to serve the page from the tenant cache when fresh; css and
+    include_links always read the live page (they need the DOM). Successful reads write through."""
     url = await asyncio.to_thread(_guard_url, url)
     if not await _robots_ok(url):
         raise ToolError("Is site ke robots.txt ne is page ke liye bots ko mana kiya hai (respect_robots on) — user se poochh kar scrape_stealth ya browse_web try kar sakte hain")
     limit = max(500, min(int(max_chars or _MAX_TEXT), _HARD_TEXT))
+    fmt = str(format or "markdown").lower()
+    if not css and not include_links:      # v0.481 cache read BEFORE the fetch — zero outbound when fresh
+        hit = await asyncio.to_thread(_cache_get, ctx.tenant_id, url, max_age)
+        if hit:
+            content = hit["markdown"] if fmt != "text" else hit["text"]
+            if not content:                 # one of the two stored forms may be empty
+                content = hit["text"] if fmt != "text" else hit["markdown"]
+            if content:
+                return _masked({"status": hit["status"], "url": url, "title": hit["title"],
+                                "engine": "cache", "cached": True, "age_s": hit["age"],
+                                "content": _cap(content, limit)})
     try:
         page = await asyncio.to_thread(_fetch, url, ctx.tenant_id, timeout)
     except ToolError:
@@ -218,7 +426,6 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
         raise ToolError(f"Fetch failed: {str(e)[:300]}")
     if page.status >= 400:
         raise ToolError(f"Site ne {page.status} bheja ({page.reason}) — page nahi mila")
-    fmt = str(format or "markdown").lower()
     if css:
         hits = _pick(page, css)
         if not hits:
@@ -238,6 +445,7 @@ async def scrape_page(ctx: Ctx, url, format="markdown", css=None, include_links=
     out: dict[str, Any] = {"status": page.status, "url": page.url,
                            "title": (page.css("title")[0].text.strip() if page.css("title") else ""),
                            "content": _cap(content or "", limit)}
+    await asyncio.to_thread(_cache_put_page, ctx.tenant_id, page)   # v0.481 write-through
     if include_links:
         links = []
         for a in page.css("a[href]")[:80]:
@@ -452,6 +660,209 @@ async def scrape_stealth(ctx: Ctx, url, format="markdown", css=None, wait_select
                     "content": _cap(content or "", limit)})
 
 
+async def scrape(ctx: Ctx, url, format="markdown", css=None, include_links=False, max_chars=24000, timeout=25, max_age=None, stealth="auto", **_):
+    """THE one door (v0.481, the Firecrawl waterfall idea): fast HTTP first; on a block signature it
+    escalates ITSELF to the stealth browser (when enabled). Cache-aware. stealth: auto|never|always."""
+    from ..config import get_settings
+    s = get_settings()
+    url = await asyncio.to_thread(_guard_url, url)
+    if not await _robots_ok(url):
+        raise ToolError("Is site ke robots.txt ne is page ke liye bots ko mana kiya hai (respect_robots on)")
+    limit = max(500, min(int(max_chars or _MAX_TEXT), _HARD_TEXT))
+    fmt = str(format or "markdown").lower()
+    mode = str(stealth or "auto").lower()
+    if mode not in ("auto", "never", "always"):
+        mode = "auto"
+    if mode == "always" and not s.scrape_stealth_enabled:
+        raise ToolError("Stealth scraping is VPS par band hai (RAM guard). Owner 'scrape_stealth_enabled=true' on kare aur ek baar 'scrapling install' chalaye.")
+    if mode != "always" and not css and not include_links:
+        hit = await asyncio.to_thread(_cache_get, ctx.tenant_id, url,
+                                      max_age if max_age is not None else s.scrape_cache_max_age)
+        if hit:
+            content = hit["markdown"] if fmt != "text" else hit["text"]
+            if not content:                 # one of the two stored forms may be empty
+                content = hit["text"] if fmt != "text" else hit["markdown"]
+            if content:
+                return _masked({"status": hit["status"], "url": url, "title": hit["title"], "engine": "cache",
+                                "cached": True, "age_s": hit["age"], "escalated": False,
+                                "content": _cap(content, limit)})
+    page = None
+    engine, escalated, block = "http", False, None
+    if mode != "always":
+        try:
+            page = await asyncio.to_thread(_fetch, url, ctx.tenant_id, timeout)
+        except ToolError:
+            raise
+        except Exception as e:
+            block = f"fetch failed ({str(e)[:140]})"
+        else:
+            block = await asyncio.to_thread(_blocked, page)
+    escalate = (mode == "always") or (mode == "auto" and bool(block))
+    if escalate and s.scrape_stealth_enabled:
+        if _STEALTH_SEM.acquire(blocking=False) is False:
+            raise ToolError("Ek stealth browser already chal raha hai — ek minute baad try karein")
+        try:
+            page = await asyncio.to_thread(_stealth_fetch, url, timeout)
+            engine, escalated = "stealth", True
+            block = await asyncio.to_thread(_blocked, page)
+        except Exception as e:
+            raise ToolError(f"Stealth fetch failed: {str(e)[:300]}")
+        finally:
+            try:
+                _STEALTH_SEM.release()
+            except Exception:
+                pass
+    elif block and page is None:
+        raise ToolError(f"Fetch failed: {block}")
+    elif mode == "auto" and block and not s.scrape_stealth_enabled:
+        raise ToolError(f"Site ne block kiya ({block}) — stealth is VPS par band hai (RAM guard). Owner "
+                        "'scrape_stealth_enabled=true' on kare aur ek baar 'scrapling install' chalaye, phir yeh "
+                        "door khud advance mode mein khulega. Tab tak browse_web try karein.")
+    if page is None:
+        raise ToolError("Fetch failed — site tak pahunch nahi paye")
+    if page.status >= 400:
+        if escalated:
+            raise ToolError(f"Site ne block kiya ({block}) — advance mode ne bhi nahi khola. browse_web try karein.")
+        raise ToolError(f"Site ne {page.status} bheja ({getattr(page, 'reason', '')}) — page nahi mila")
+    if css:
+        hits = _pick(page, css)
+        if not hits:
+            return {"status": page.status, "url": page.url, "engine": engine, "escalated": escalated, "count": 0,
+                    "content": "", "note": "css selector se kuch nahi mila — selector check karein"}
+        parts = [h.html_content if fmt == "html" else (h.markdown() if fmt == "markdown" and hasattr(h, "markdown") else h.get_all_text(separator="\n")) for h in hits[:20]]
+        content = ("\n\n---\n\n").join(p for p in parts if p)
+    elif fmt == "html":
+        content = page.html_content
+    elif fmt == "text":
+        content = page.get_all_text(separator="\n")
+    else:
+        try:
+            content = page.markdown()
+        except Exception:
+            content = page.get_all_text(separator="\n")
+    await asyncio.to_thread(_cache_put_page, ctx.tenant_id, page)
+    out: dict[str, Any] = {"status": page.status, "url": page.url, "engine": engine, "escalated": escalated,
+                           "title": (page.css("title")[0].text.strip() if page.css("title") else ""),
+                           "content": _cap(content or "", limit)}
+    if block:
+        out["block_note"] = block
+    return _masked(out)
+
+
+async def scrape_map(ctx: Ctx, url, include=None, max_urls=100, max_pages=5, timeout=15, **_):
+    """Links-only discovery (v0.481, the Firecrawl /map shape): fetch a few pages, harvest SAME-SITE urls,
+    no content — the cheap 'is site par ka kahan hai' pass before scrape_extract/scrape."""
+    start = await asyncio.to_thread(_guard_url, url)
+    if not await _robots_ok(start):
+        raise ToolError("Is site ke robots.txt ne bots ko mana kiya hai (respect_robots on)")
+    try:
+        want_urls = max(1, min(int(max_urls or 100), _MAX_MAP_URLS))
+    except Exception:
+        want_urls = 100
+    try:
+        want_pages = max(1, min(int(max_pages or 5), _MAX_MAP_FETCHES))
+    except Exception:
+        want_pages = 5
+    pat = None
+    if include:
+        try:
+            pat = re.compile(str(include))
+        except re.error:
+            raise ToolError("include pattern valid regex nahi hai")
+    start_host = urlparse(start).hostname or ""
+    seen: set[str] = {start}
+    queue = [start]
+    urls: list[str] = [start]
+    fetched = 0
+    skipped_robots = 0
+    while queue and fetched < want_pages and len(urls) < want_urls:
+        u = queue.pop(0)
+        try:
+            page = await asyncio.to_thread(_fetch, u, ctx.tenant_id, timeout)
+        except Exception:
+            continue
+        fetched += 1
+        if page.status >= 400:
+            continue
+        for a in page.css("a[href]"):
+            href = a.attrib.get("href") or ""
+            if href.startswith(("javascript:", "mailto:", "tel:", "#")):
+                continue
+            nxt = urljoin(page.url or u, href).split("#")[0]
+            try:
+                nu = urlparse(nxt)
+            except Exception:
+                continue
+            if nu.scheme not in ("http", "https") or (nu.hostname or "") != start_host:
+                continue
+            if pat and not pat.search(nxt):
+                continue
+            if nu.geturl() in seen:
+                continue
+            seen.add(nu.geturl())
+            if not await _robots_ok(nu.geturl()):
+                skipped_robots += 1
+                continue
+            urls.append(nu.geturl())
+            if len(queue) < 200:
+                queue.append(nu.geturl())
+        await asyncio.sleep(0.3)           # politeness
+    urls = urls[:want_urls]
+    return _masked({"start": start, "host": start_host, "pages_fetched": fetched,
+                    "urls_found": len(urls), "urls": urls, "skipped_by_robots": skipped_robots,
+                    "note": "Jis url par data hai us par scrape_extract (css) ya scrape_extract_json (schema) chalayein"})
+
+
+async def scrape_extract_json(ctx: Ctx, url, schema=None, prompt=None, limit=50, max_chars=24000, timeout=25, **_):
+    """No stable css? (v0.481, the Firecrawl /extract idea on the house brain): the page is fetched and read,
+    and ONE capped brain call turns it into JSON rows matching the schema you give."""
+    import json as _json
+    url = await asyncio.to_thread(_guard_url, url)
+    if not await _robots_ok(url):
+        raise ToolError("Is site ke robots.txt ne is page ke liye bots ko mana kiya hai (respect_robots on)")
+    try:
+        limit = max(1, min(int(limit or 50), 50))
+    except Exception:
+        limit = 50
+    try:
+        page = await asyncio.to_thread(_fetch, url, ctx.tenant_id, timeout)
+    except ToolError:
+        raise
+    except Exception as e:
+        raise ToolError(f"Fetch failed: {str(e)[:300]}")
+    if page.status >= 400:
+        raise ToolError(f"Site ne {page.status} bheja ({getattr(page, 'reason', '')})")
+    try:
+        text = page.markdown()
+    except Exception:
+        text = page.get_all_text(separator="\n")
+    text = (text or "")[:_BRAIN_TEXT]
+    try:
+        title = (page.css("title")[0].text.strip() if page.css("title") else "")
+    except Exception:
+        title = ""
+    ask = str(prompt or "").strip() or "Extract every data item on this page (products, entries, rows, facts) as JSON."
+    parts = [ask, "Output ONLY valid JSON — no prose, no markdown fences. If the page has a list of items output "
+             "a JSON array of objects; otherwise one JSON object."]
+    if isinstance(schema, dict) and schema:
+        parts.insert(1, "The JSON MUST match this schema exactly: " + _json.dumps(schema, ensure_ascii=False))
+    parts.append(f"Page title: {title}")
+    parts.append("Page content:")
+    parts.append(text)
+    answer, brain = await _extract_brain("You turn web page text into strict JSON. Answer with JSON only.", "\n\n".join(parts))
+    data = _json_loose(answer)
+    if data is None:
+        raise ToolError("Brain ne JSON nahi bheja — page shayad bina structure ka hai. scrape_page ka content "
+                        "khud padh lein, ya scrape_extract (css selector) try karein.")
+    if isinstance(data, list):
+        data = data[:limit]
+        count = len(data)
+    else:
+        count = 1
+    return _masked({"url": getattr(page, "url", url), "status": page.status, "count": count,
+                    "data": data, "brain": brain})
+
+
 SCRAPE_TOOLS = [
     {"name": "scrape_page", "description": (
         "Fetch and read a PUBLIC webpage fast (Scrapling engine: TLS-impersonated HTTP, no browser, 1-3 s). "
@@ -524,13 +935,57 @@ SCRAPE_TOOLS = [
          "solve_cloudflare": {"type": "boolean", "description": "Try to pass a Cloudflare challenge (default false)"},
          "max_chars": {"type": "integer"}, "timeout": {"type": "integer", "description": "Default 90"}},
          "required": ["url"]}},
+    {"name": "scrape", "description": (
+        "THE default door to read a public page (v0.481, Firecrawl-style waterfall): fast HTTP first (1-3 s), and "
+        "when the site blocks bots (401/403/429 or a Cloudflare-style challenge) it ESCALATES BY ITSELF to the "
+        "stealth browser — if stealth is enabled on the server. Cache-aware: repeat reads within max_age seconds "
+        "come back instantly from the tenant cache. Use this instead of scrape_page when a site might be stubborn; "
+        "stealth='never' makes it HTTP-only. Login/typing/forms stay with browse_web / computer_operator."),
+     "input_schema": {"type": "object", "properties": {
+         "url": {"type": "string", "description": "Full link, or a domain like example.com/prices"},
+         "format": {"type": "string", "enum": ["markdown", "text", "html"], "description": "Default markdown"},
+         "css": {"type": "string", "description": "Optional css to return only matching parts"},
+         "include_links": {"type": "boolean", "description": "Add up to 60 outgoing links (text + href)"},
+         "max_chars": {"type": "integer", "description": "Content cap, default 24000"},
+         "timeout": {"type": "integer", "description": "Seconds, default 25"},
+         "max_age": {"type": "integer", "description": "Serve from the tenant cache if fetched within this many seconds (0 = always fresh); default 1800"},
+         "stealth": {"type": "string", "enum": ["auto", "never", "always"], "description": "auto = escalate to the stealth browser on a block (default); never = HTTP only; always = stealth directly"}},
+         "required": ["url"]}},
+    {"name": "scrape_map", "description": (
+        "Quick site MAP without reading pages (v0.481): fetches a few pages (max 8), harvests same-site urls "
+        "(max 200, robots respected) and returns just the link list — 'is site par ka kahan hai' in one cheap "
+        "call. 'include' filters urls with a regex (e.g. '/product/'). Then point scrape_extract / scrape at the "
+        "right url for the actual data. Not for JS-only sites."),
+     "input_schema": {"type": "object", "properties": {
+         "url": {"type": "string", "description": "Where to start (homepage or a section)"},
+         "include": {"type": "string", "description": "Regex the harvested urls must match, e.g. '/product/'"},
+         "max_urls": {"type": "integer", "description": "Default 100, cap 200"},
+         "max_pages": {"type": "integer", "description": "Pages fetched to harvest links, default 5, cap 8"},
+         "timeout": {"type": "integer", "description": "Per page, default 15"}},
+         "required": ["url"]}},
+    {"name": "scrape_extract_json", "description": (
+        "Page data as JSON WITHOUT a css selector (v0.481): give a JSON schema (and optionally a prompt) and the "
+        "page is fetched, read, and ONE brain call turns it into JSON that matches the schema. Use when the page "
+        "has no clean repeating element for scrape_extract, or she wants the whole page summarised into fields. "
+        "One capped call per page (rows max 50); costs a brain call, so prefer scrape_extract when a css exists."),
+     "input_schema": {"type": "object", "properties": {
+         "url": {"type": "string"},
+         "schema": {"type": "object", "description": "JSON schema the output must match, e.g. {'type':'array', 'items':{'type':'object','properties':{'product':{'type':'string'},'price':{'type':'string'}}}}"},
+         "prompt": {"type": "string", "description": "What to pull out, in words (optional)"},
+         "limit": {"type": "integer", "description": "Max rows (default 50, cap 50)"},
+         "timeout": {"type": "integer", "description": "Seconds, default 25"}},
+         "required": ["url"]}},
 ]
 
 SCRAPE_LABELS = {"scrape_page": "Website turant khol kar padh raha hoon",
                  "scrape_extract": "Website se data nikaal raha hoon",
                  "scrape_many": "Kayi pages se data nikaal raha hoon",
                  "scrape_site": "Poori site padh kar map bana raha hoon",
-                 "scrape_stealth": "Website advanced mode mein khol raha hoon"}
+                 "scrape_stealth": "Website advanced mode mein khol raha hoon",
+                 "scrape": "Website khol raha hoon (auto mode)",
+                 "scrape_map": "Site ka url-naksha bana raha hoon",
+                 "scrape_extract_json": "Page padh kar JSON data bana raha hoon"}
 
 SCRAPE_HANDLERS = {"scrape_page": scrape_page, "scrape_extract": scrape_extract, "scrape_many": scrape_many,
-                   "scrape_site": scrape_site, "scrape_stealth": scrape_stealth}
+                   "scrape_site": scrape_site, "scrape_stealth": scrape_stealth, "scrape": scrape,
+                   "scrape_map": scrape_map, "scrape_extract_json": scrape_extract_json}

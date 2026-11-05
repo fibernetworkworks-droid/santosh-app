@@ -1,0 +1,40 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- W2b of the Platforms plan: the PowerToys Run door for Hoola ('hoola' action keyword).
+       Built by build-desktop.yml (dotnet publish -p:Platform=x64); the payload
+       (Community.PowerToys.Run.Plugin.Hoola.dll + plugin.json + Images) rides INSIDE
+       SantoshDesktop.exe (PyInstaller datas -> %TEMP%\_MEIxxxx\ptrun) and Hoola installs it
+       itself to %LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins\Hoola
+       (user-level, no admin - the pt_run.py twin of the W2a App Paths alias).
+       TFM net9.0-windows matches Community.PowerToys.Run.Plugin.Dependencies 0.97.0 (the
+       community reference package); a net9 assembly loads on the newer .NET 10 PowerToys
+       host (0.102+) and on every .NET 9 PowerToys since 0.87 - the same forward
+       compatibility every community plugin relies on. -->
+  <PropertyGroup>
+    <TargetFramework>net9.0-windows10.0.26100.0</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- direct `dotnet build` defaults Platform to AnyCPU, which is not in Platforms and
+         would make the arch-specific reference package resolve nothing; pin it to x64 -->
+    <Platform Condition="'$(Platform)' == '' or '$(Platform)' == 'AnyCPU'">x64</Platform>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>$(Platform)</PlatformTarget>
+    <LangVersion>preview</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Community.PowerToys.Run.Plugin.Hoola</AssemblyName>
+    <RootNamespace>Community.PowerToys.Run.Plugin.Hoola</RootNamespace>
+    <Version>1.8.0</Version>
+    <DebugType>none</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Community.PowerToys.Run.Plugin.Dependencies" Version="0.97.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Images\**\*.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+</Project>

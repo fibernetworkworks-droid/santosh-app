@@ -109,12 +109,14 @@ IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 
 let AR = null;         // v0.312 the Arena screen (arena.js)
 IC.systems = '<path d="M4 7h16M4 12h16M4 17h16M7 4v16"/>';   // v0.396 CONNECT: her own ERP / CRM systems
 IC.hire = '<path d="M14 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20M8 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M18 2.5l1.1 2.4 2.4 1.1-2.4 1.1L18 9.5l-1.1-2.4L14.5 6l2.4-1.1z"/>';   // v0.443 AI Employees (person + spark)
+IC.skills = '<path d="M4 19.5V6a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 1.5zM12 4h6a2 2 0 0 1 2 2v13.5M12 4v16M8 8h1M8 12h1M15 8h1M15 12h1"/>';   // v0.481 the Skill Desk (an open book)
 IC.seodesk = '<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35M8 11h6M11 8v6"/>';                     // v0.317 SEO Desk
 IC.caddesk = '<path d="M12 2l9 5v10l-9 5-9-5V7l9-5zM3 7l9 5 9-5M12 12v10"/>';   // v0.357 CAD Desk
 IC.archdesk = '<path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6M9 13h.01M15 13h.01"/>';   // v0.410 Architecture Desk
 IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 0 0 2 9.7v4.1A3.2 3.2 0 0 0 5.2 17c1 0 2-.5 2.6-1.4L9 14h6l1.2 1.6c.6.9 1.6 1.4 2.6 1.4a3.2 3.2 0 0 0 3.2-3.2V9.7A4.7 4.7 0 0 0 17.3 5z"/>';   // v0.370 Game Desk
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
+let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
 function syncEmployees(hired) {                     // v0.317 desks exist only while their employee is hired
@@ -148,7 +150,7 @@ function drawNav() {
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -164,6 +166,7 @@ function go(v, arg) {
   if (v === 'gamedesk') EMP?.game($('#gamedesk'));
   if (v === 'archdesk') EMP?.arch($('#archdesk'));   // v0.410
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
+  if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
 }
@@ -193,6 +196,7 @@ $('#model').addEventListener('click', e => {
     {header: ME.email || ME.owner || 'Signed in'},
     {label: 'Settings', icon: 'settings', run: () => go('main')},
     ...(PN ? [{label: 'Library', icon: 'library', run: () => go('bana')}] : []),
+    {label: 'Skills', icon: 'skills', run: () => go('skills')},   // v0.481 the Skill Desk
     {sep: true},
     {label: 'Light', icon: 'sun', checked: t === 'light', run: setT('light')},
     {label: 'Dark', icon: 'moon', checked: t === 'dark', run: setT('dark')},
@@ -255,6 +259,9 @@ async function enter() {
   syncEmployees(ME.employees || {});
   if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
     ENT = HoolaEnterprise({api, esc, toast});
+  }
+  if (window.HoolaSkills && !SK) {             // v0.481 the Skill Desk
+    SK = HoolaSkills({api, esc, toast});
   }
   if (ME.arena && window.HoolaArena && !AR) { AR = HoolaArena({api, esc, toast}); if (!NAV.some(([k]) => k === 'arena')) NAV.push(['arena', 'Arena']); }   // v0.312 owner only
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
@@ -1370,6 +1377,7 @@ const SLASH_CMDS = [
   ['tools', 'All tools', 'everything Hoola can do', () => go('kaam')],
   ['call', 'Voice call', 'live voice call', () => go('baat')],
   ['account', 'Account', 'profile, password, AI spend', () => go('main')],
+  ['skills', 'Learned Skills', 'what your Hoola knows', () => go('skills')],   // v0.481
   ['appearance', 'Appearance', 'Light, Dark or System', () => { go('main'); setTimeout(() => $('#appearance')?.scrollIntoView({block: 'center', behavior: SMOOTH()}), 60); }],
   ['light', 'Light theme', 'switch to light', () => TH?.setTheme('light')],
   ['dark', 'Dark theme', 'switch to dark', () => TH?.setTheme('dark')],

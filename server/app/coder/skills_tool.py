@@ -17,6 +17,7 @@ SKILL_MANAGE_SCHEMA = {
         "task she would do again (deploy-a-flask-app), never for one specific incident. Skills "
         "are files she re-reads later. Operations is an array, max 10; delete must be the ONLY "
         "operation in its batch. update requires a prior read of that skill (list or read first). "
+        "A read of a skill with bundled files lists them; read_file (name + path) opens one. "
         "name: lowercase-hyphenated <= 64 chars. description: <= 60 chars, one sentence. "
         "body: <= 4000 chars of instructions."),
     "input_schema": {
@@ -29,8 +30,9 @@ SKILL_MANAGE_SCHEMA = {
                     "type": "object",
                     "properties": {
                         "action": {"type": "string",
-                                   "enum": ["read", "list", "create", "update", "delete"]},
+                                   "enum": ["read", "list", "create", "update", "delete", "read_file"]},
                         "name": {"type": "string", "description": "lowercase-hyphenated skill id"},
+                        "path": {"type": "string", "description": "read_file only: the bundled file, relative"},
                         "description": {"type": "string", "description": "<= 60 chars, one sentence"},
                         "body": {"type": "string", "description": "the instructions, markdown"},
                     },

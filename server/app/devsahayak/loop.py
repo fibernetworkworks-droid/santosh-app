@@ -428,6 +428,30 @@ def _project_rules(ws: Workspace) -> str:
     return head + "\n\n" + "\n\n".join(blocks)
 
 
+SKILLS_BUDGET = 1600   # v0.484 the learned-skills carve-out inside the first message
+
+
+def _skills_block(text: str, tenant: str = "") -> str:
+    """v0.484 HOOLA SKILLS reach: the house's learned how-tos for this CLASS of task ride the
+    first message whole (DevSahayak has no skill_manage tool - the loop is its own surface, so
+    the bodies come whole instead of name+description). Zero model cost: FTS5 match only, hard
+    budget, fail-open, absent on any switch off."""
+    if not tenant or not (text or "").strip():
+        return ""
+    try:
+        from ..coder import inject as _ci, store as _cs
+        if not _ci._skills_enabled():
+            return ""
+        rows = _cs.skills_search(tenant, text, limit=2)
+        if not rows:
+            return ""
+        lines = [f"<skill name=\"{r['name']}\">\n{r['body']}\n</skill>" for r in rows]
+        return ("LEARNED SKILLS for this class of task (the house's own how-to; follow them "
+                "unless the repo's own rules contradict them):\n" + "\n".join(lines))[:SKILLS_BUDGET]
+    except Exception:
+        return ""
+
+
 def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False, issue_txt: str = "",
         max_steps: int = 40, minutes: float = 20.0, on_step: Callable[[str], None] | None = None,
         ref_sha: str = "", extra: str = "", system_extra: str = "",
@@ -447,6 +471,7 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
            "tests": "Write tests for the code she names (no behaviour change unless a test proves a bug: say so in risk).",
            "docs": "Write / update the docs she asks for. No code behaviour change.",
            "explain": "Explain this bug: where, why, how to fix. Do NOT edit."}[t.kind]
+    _sk = _skills_block(t.text, getattr(t, "tenant_id", ""))
     first = (f"Task kind: {t.kind}. {ask}\nRepo: {t.repo} (base branch {t.base}), {len(paths)} files.\n"
              + (f"Her coding rules: {rules}\n" if rules else "")
              + f"\n<request>\n{t.text}\n</request>\n"
@@ -456,6 +481,7 @@ def run(g, t, rules: str, extra_files: list[str], allow_workflows: bool = False,
              + (f"\nThis round works on her open PR branch (commit {base_sha[:7]}): the files below are its current "
                 f"state.\n{extra}\n" if extra else "")
              + "\nTop-level folders:\n" + ws.list_dir("") + "\n\n" + _project_rules(ws)
+             + (("\n\n" + _sk + "\n\n") if _sk else "")
              + "\n\nStart exploring with the tools. Call done when finished.")
     messages: list[dict] = [{"role": "user", "content": first}]
     finish: dict[str, Any] | None = None
@@ -671,10 +697,12 @@ def plan_run(g, t, rules: str, extra_files: list[str], issue_txt: str = "", max_
     paths = [x["path"] for x in g.tree(t.repo, base_sha)]
     ws = Workspace(g, t.repo, base_sha, paths, False)
     ask = f"<ask kind=\"{t.kind}\">\n{t.text[:6000]}\n</ask>"
+    _psk = _skills_block(t.text, getattr(t, "tenant_id", ""))
     first = (f"{ask}\n\n" + (f"<issue>\n{issue_txt[:6000]}\n</issue>\n\n" if issue_txt else "")
              + (f"Her team coding rules: {rules}\n\n" if rules else "")
              + (f"Files she named: {', '.join(extra_files[:20])}\n\n" if extra_files else "")
              + "Top-level folders:\n" + ws.list_dir("") + "\n\n" + _project_rules(ws)
+             + (("\n\n" + _psk + "\n\n") if _psk else "")
              + "\n\nExplore with the tools until you can name the real files, then call done with the plan.")
     messages: list[dict] = [{"role": "user", "content": first}]
     finish: dict[str, Any] | None = None

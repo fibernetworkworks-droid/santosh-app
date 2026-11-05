@@ -610,3 +610,679 @@ Work Log:
 Stage Summary:
 - W1 HOOLA SMART HOME ready on w1-home: 5 gated tools, the frozen home-safety brief now executable, routines can switch lights off at 11 pm but can never touch a lock. Deploy = bake HOME_CONTROL=1 + HOME_ASSISTANT_URL/TOKEN in the VPS .env, then vps-ops deploy; healthz should say 0.479.0.
 - Next in the approved Platforms plan: W2a (Win+R "hoola" App Paths MVP), W2b (PowerToys Run plugin), W3 (browser extension), W4 (flutter pass). The tools lane (local Task 10) still awaits its own START.
+Task ID: 22 (HOOLA CURATOR - the weekly memory consolidation -> v0.480.0; owner: "START -- curator consolidation")
+Agent: main (Z.ai, self-teach session)
+Task: The v0.479 candidate named in the Task ID 12 plan and in Task 20's next-steps: the claude-mem curator role - the review layer the dedup ladder's Tier-1 was built for.
+
+Work Log:
+- THE DISCOVERY: dedup.classify_pair existed since v0.473 with NO production caller - the Tier-1 near-dup scan was never wired (candidates were only ever written by tests; store.note_candidate had no caller in app code). The curator becomes its home and wires it for real.
+- NEW server/app/coder/curator.py: SCAN (blocked on shared tokens so a weekly scan never walks 2000x2000 pairs; IDF veto; corpus gate coder_dedup_min_docs default 10 - "IDF on 3 documents is astrology"; new pairs land pending, re-scans never duplicate) -> ARBITRATE (ONE combined cheap-brain call per tenant per run - the nudge's one-combined-pass law; both rows of every pending pair shown, already-redacted vault content only, the privacy gate extends to the curator; verdicts merge/distinct/dismiss per pair; silence keeps a pair pending; no pending pairs = NO brain call, pure cost law) -> PROMOTE (the same response may carry skills, class-level names, <=2 ops per run, through the SAME skills_store.apply funnel, read-before-write honored, coder_skills gates only promotion).
+- THE PINNED DEVIATION: the ladder's law "nothing is ever auto-merged on Tier 1" becomes "the owner's flip of coder_curator IS the human decision" - one opt-in switch (default OFF, bake then flip) delegates the weekly judgment. Every merge is SOFT: the absorbed row stays on disk with superseded_by=canonical, search stops showing it, revive() undoes it. The OLDER row is always the canonical even when a pair was recorded inverted (orientation by epoch, not by the recorded direction). A merge reinforces the canonical row (reinforce(bump=True) - occurrence_count grows: absorbing a duplicate IS the world saying it again). Caps: coder_curator_max_pairs 20 / coder_curator_max_merges 10 per run; cross-tenant pairs are NEVER arbitrated; an already-superseded row's pair is marked merged without acting again.
+- MIGRATION ADDITIVE ONLY: observations.superseded_by INTEGER NOT NULL DEFAULT 0 - in-schema for fresh vaults, pragma-lifted for legacy vaults (the ensure() check), schema_version -> 2, never destructive. Search hiding: superseded rows vanish from the FTS leg, the LIKE fallback, the timeline (anchor included) and the primer's recent block (store.recent_observations filtered); layer-3 get_observations still fetches by id (the admin console can see what was absorbed).
+- Scheduling: worker.coder_jobs calls coder.curator.tick beside observer.tick (due-gated weekly via the consumed-table stamp, coder_curator_every_hours default 168; malformed stamp runs again - the caps bound every attempt; a wedged stamp would pile pending work forever). The worker slot discipline, never inside a live turn - nothing here can stall a voice latency budget, no poke coupling needed. Routes: GET /api/coder/curator (the ledger) + POST /api/coder/curator/run (admin, due-gate bypassed, kill switch absolute).
+- Package-export law honored: curator rides the app/coder/__init__ import list (coder.curator.tick is the worker's call path) - the v0.478 funnel lesson extended.
+- Tests: NEW test_v0480_hoola_curator.py (28): legacy migration lift (real v1-schema DB ALTERed in place + version stamped 2), fresh-vault stats shape, supersede soft+once+revive, merge reinforces the canonical, inverted-pair orientation, the scan gate + the Tier-1 end-to-end wiring, verdict parsing (garbage = silence), distinct/dismiss leave rows live, silence keeps pending, max_merges + max_pairs caps, cross-tenant refusal, already-superseded marking, search hiding on BOTH legs + timeline + primer + layer-3 still fetches, skill promotion create / update-needs-the-listing / no-pairs-no-call / coder_skills-off, the ONE-combined-call pin + stable prefix, due gate (never/fresh/old/malformed), tick gates + stamp, kill switches (coder_curator default OFF + coder_enabled master), the package-export pin, routes mounted + live, version stamps.
+- Sweeps green: curator 28 + selfteach 24 + coder 24 + swarm 17 + console-frames 14 (story pin moved to the v0.480 story, the newest-story precedent) = 107/107; sampled version-pinned suites green (mem, console_r2, noprefill, direct_domains, proof, clean_workspace). STASH-PROVEN pre-existing environment reds: test_v0474_scrapling 10 fails at clean HEAD ae5bfc58 too (the scrapling/playwright stack this recycled sandbox lacks - the documented red class, untouched by my diff).
+- Version ritual 0.480.0: APP_VERSION story (the full curator story + the collision preamble in main.py), pubspec 0.480.0+525, pins ->0.480.0 (swept twice: +523 -> +524 with the dev's chain, then +524 -> +525 on the rebase), historical v0.478.0 docstring headers left as history, console stamps stay 0.475.0 x20 (server-only precedent). Mera PC freeze respected; desktop untouched - server-only deploy, old APKs keep working.
+
+Stage Summary:
+- v0.480.0 HOOLA CURATOR: the memory now tends itself weekly behind coder_curator (default OFF - bake on the VPS, then flip). Deploy order: this release first (it needs the v0.478 capture revival to have real data), flip coder_nudge, let it accumulate, then flip coder_curator. Rollback = one flip; the migration is additive; revive() undoes any merge the owner dislikes.
+Task ID: 23 (HOOLA LAUNCHER - Win+R se 'hoola', W2a MVP -> v0.481.0; owner: "W2 - LAUNCHER --- START A WORK")
+Agent: main (Z.ai, launcher session)
+Task: W2a of the approved Platforms plan (Task 21's next-steps): Hoola becomes a real command on her Windows PC - Win+R 'hoola' opens Hoola Desktop, via Windows's own App Paths mechanism, user-level, no admin.
+
+Work Log:
+- NEW desktop/santosh_desktop/app_paths.py (v1.7.0): HKCU\Software\Microsoft\Windows\CurrentVersion\App Paths\hoola.exe - default value = the full SantoshDesktop.exe path (quoted), Path value = its folder; Windows itself then resolves Win+R 'hoola' and Start-menu search to Hoola Desktop. autostart.py's twin module (lazy winreg import, sys.platform guards, PureWindowsPath for the folder so the module is deterministic on any OS - the Linux test sandbox caught a POSIX-parse bug in the first draft). NO Run-key, NO autostart, NO admin, other users untouched; on=false removes the key (idempotent undo, 'pehle se nahi' is ok).
+- Desktop 1.7.0: NEW do_app_paths action behind the SAME _control_on() switch as every control action (source-pinned like the v0472 ax_* gate pins). Response carries ok/on/command/exe + a Hinglish message the chat shows as-is.
+- Server pc operator: NEW app_paths tool (ONE-TIME SETUP wording; ALWAYS ask_approval FIRST - it changes a Windows setting, so the approval card always fires), the _do() branch (_pc(op, "app_paths", {"on": on}) with add/remove/unsupported lines), _say() line ("Win+R ka 'hoola' alias jod raha hoon"), and app_paths added to _desktop_says() - an old desktop 1.6.0 answers 'Unknown action' and the model gets the clean _OLD_DESKTOP upgrade line, nothing breaks.
+- SAFETY law pinned by test: 'win+r' STAYS in BLOCKED_KEYS - Hoola never opens the Run dialog itself; it WRITES the alias so the USER can press Win+R. The alias is the safe substitute for the forbidden door, not a new one.
+- Tests: NEW test_v0481_launcher.py (16): fake-winreg round trip (add -> enabled -> registry shape (quoted default + Path folder) -> remove -> remove-again idempotent), non-Windows refusal, dev-mode refusal, supported() pins (needs win32+frozen), do_app_paths gate source-pin + desktop 1.7.0 pin, server _do add/remove/unsupported/old-desktop-upgrade via FakePC, _say + _desktop_says, win+r-still-blocked regression, APP_VERSION/pubspec pins. Desktop pin moved 1.6.0 -> 1.7.0 in test_v0185 (the conscious-bump guard); console-frames story pin moved to the v0.481 story (the newest-story precedent).
+- Sweeps green: launcher 16 + pc neighbours 114 (v0185 pc_browser, v0472 ax_desktop, pc_operator, pc_bridge, v0202, v0479 home 24) + curator 28 + selfteach 24 + swarm 17 + frames 36 = 235/235. desktop package py_compile clean. Known environment reds untouched (scrapling/playwright stack; voice_phase3 test_tool_diet - pre-existing, my diff adds no voice tool).
+
+Stage Summary:
+- v0.481.0 HOOLA LAUNCHER (W2a): Win+R 'hoola' on her PC, behind the PC-control switch + an approval card, user-level registry only. Deploy: server (vps-ops deploy) + the build-desktop workflow publishes SantoshDesktop.exe 1.7.0 on desktop/** (she installs the new exe from the desktop-latest release, then asks Hoola 'Win+R se hoola khulwao'). Next: W2b PowerToys Run plugin (C# IPlugin, Alt+Space 'hoola'), W3 browser extension, W4 flutter pass; the tools lane still awaits its own START.
+
+---
+## Task 24 — v0.482.0 FIRECRAWL CORE (owner: "CAN WE BUILD OUR OWN FIRECRAWL FOR HOOLA" -> "BUILD")
+Date: 2026-11-03 | Branch firecrawl-v0481 off origin/main v0.480.0; MID-BUILD the dev took 0.481.0 (HOOLA LAUNCHER, collision #13 -
+same pubspec +526, same pins sweep, even the same Task 23) - REBASE PROTOCOL: committed, rebased on 09a1a673,
+re-versioned to 0.482.0, both works kept. The pin suites merged clean (identical 0.480->0.481 replacements); three
+real conflicts (main.py story chain, frames story pin, this Task number) resolved dev-wins-then-mine-on-top.
+
+What shipped (agent/scrape_tools.py, 5 -> 8 tools; ZERO Firecrawl code - design only, the engine is AGPL-3.0):
+1. `scrape` - the one door with the auto-waterfall (fast HTTP -> self-escalation to stealth on 401/403/429 or challenge
+   signature; stealth=auto|never|always; cache-aware; semaphore(1) kept; honest refusals name the exact setting).
+2. `scrape_map` - links-only discovery (max 8 pages fetched, same-host urls cap 200, include-regex, robots + skipped
+   counter, politeness pauses).
+3. Per-tenant page cache + max_age (data/scraping/<tenant>/cache.db, write-through on every 2xx page read, read BEFORE
+   the fetch, LRU 300, scrape_cache_enabled/scrape_cache_max_age settings, css/include_links bypass, best-effort
+   everywhere).
+4. `scrape_extract_json` - schema -> JSON rows, ONE capped brain call (cheap-brain-first pakka pattern, 14k text cap,
+   2k max_tokens, 50 rows cap, loose-JSON parser with honest refusal).
+
+Journey: baseline re-verified after the sandbox recycle (requirements reinstalled; APP_VERSION 0.480.0, 516 tools,
+v0474 suite 27/27). Build found + fixed three real bugs of mine during bring-up: (a) the escalation guard let
+stealth=never still escalate (fixed: escalate = always OR (auto AND blocked)); (b) the scrape_page cache read sat
+AFTER the fetch so an offline fetch never reached the cache (fixed: read before fetch, same as the new door);
+(c) the loose-JSON parser missed fenced blocks that appear mid-prose (fixed: fenced-block-anywhere pass). One test
+regex was mine-wrong (/product/ does not match /products/) - fixed. Cross-test cache pollution killed the first
+suite run (write-through rows leaked between tests through the shared tenant) - killed with an autouse clean-state
+fixture. The sandbox display phantom ate brackets in sed output again - py_compile/pytest remained the only truth.
+
+Tests: NEW test_v0481_scrape_firecrawl.py (28) - registry 8-tool pin, block detection (status/title/script +
+long-article false-positive guard), waterfall (clean-no-escalation, escalate-when-enabled, honest-refusal,
+stealth-still-blocked, never=HTTP-only, always-needs-setting, semaphore-busy, SSRF), cache (roundtrip + tenant
+isolation, expiry + None/0 gates, kill switch, LRU 300, write-through -> cache serve -> css bypass -> default-read
+-> max_age=0 fresh), map (same-host only, BFS walks, include regex, cap, robots skip, SSRF), extract_json (fenced,
+balanced + schema-in-prompt, garbage refused, 50-cap, SSRF), version pin. test_v0474_scrapling.py registry pin
+grew to the 8-name set; 27/27 still green.
+
+Version ritual 0.481.0: APP_VERSION story (full FIRECRAWL CORE story prepended to the chain), pubspec 0.481.0+526,
+pins ->0.481.0(+526) in 151 suites (idempotent batch), console stamps stay 0.475.0 x20 (server-only, the
+v0.476/v0.480 precedent), prompts.py Scraping bullet rewritten around the new doors. Mera PC freeze respected;
+desktop untouched - server-only deploy, old APKs keep working. VPS: no new pip packages; the usual ritual.
+
+Stage Summary:
+- HOOLA now HAS its own Firecrawl-shaped lane: one self-escalating door, a cheap map, a per-tenant cache that makes
+  repeat pulls free, and schema-driven JSON extraction on the house brain - all in-process, all house-guarded
+  (SSRF/robots/mask_ids/caps), no separate service, no AGPL.
+- Phase 2 (crawl JOBS: sqlite queue + worker tick + status/results tools, the Firecrawl /crawl at scale) and Phase 3
+  (change tracking, monitors-lite) stay queued in the workspace worklog Task 14-c.
+
+---
+++ b/docs/WORKLOG.md
+
+Task ID: byox-skill-pack-v0486
+Date: 2026-11-04
+Branch: claude/loving-goldberg-ywnzsq
+Version: v0.486.0
+Summary: BYOX SKILL PACK — Build-Your-Own-X 31 categories, seed default on. New: server/app/byox/ (registry + guide functions), agent/byox_tools.py (3 tools), 31 SKILL.md seed files, admit byox family, /api/byox/* routes, byox_enabled config (default ON). 26 tests (17 pass in sandbox, 9 need server deps). Server-only deploy.
+
+Task ID: byox-full-dataset-v0487
+Date: 2026-11-04
+Branch: claude/loving-goldberg-ywnzsq
+Version: v0.487.0
+Summary: BYOX FULL DATASET — all 415 tutorials from 31 categories with language filtering. Added TUTORIALS dict to byox/__init__.py, tutorial_count on every category, language= param in get_guide() / byox_guide tool. 22 sandbox tests pass. Server-only deploy.
+
+## Task 25 — v0.489.0 HOOLA POWERTOYS RUN (W2b) (2026-11-04; SEVENTEENTH then EIGHTEENTH COLLISION rebase)
+
+Owner: "W2b - PowerToys Run plugin" (the Platforms plan's W2 full step; W2a Win+R alias v0.481.0 live).
+REBASE (start of W3, 2026-11-04): origin had taken 0.484.0 (HOOLA SAPNE, 3beb5a9f) and 0.485.0 (HOOLA SKILL
+DESK, e2a57481) while W2b built - SEVENTEENTH COLLISION. W2b rebuilt on e2a57481 (rebase -X theirs for the
+153 pin-conflict suites, docs reconciled by hand: main's SAPNE + SKILL DESK HISTORY sections and the CLAUDE
+one-liner restored), the version layer moved coherently to 0.486.0+531 (ritual_0486: full-strings 84 files,
+APP_VERSION asserts 153 files, ZERO residual; the v=0.485.0 console-stamp pins untouched by the regex sweep).
+
+State check first: w2-launcher worktree sat at 09a1a673 (v0.481.0, already merged upstream); origin had
+moved 16 commits (the research R0-R9 chain re-versioned 0.471-0.480, then 1fdb7714 merged the launcher in,
+then f9bf4db6 = v0.483.0 FIRECRAWL CORE). 0.484 was free on tags -> ff-only to f9bf4db6, W2b built fresh on it.
+
+THE READ: PowerToys Run's documented community-plugin path: plugins are FOLDERS under
+%LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins\<Name> holding plugin.json + the plugin DLL
+(microsoft/PowerToys doc/thirdPartyRunPlugins.md + the community installers do exactly this); IPlugin =
+Init(PluginInitContext) + Query(Query)->List<Result> + Name/Description (Wox.Plugin namespace, stable since
+0.84); plugin.json = ID (32-hex GUID) / ActionKeyword / IsGlobal / Name / Author / Version / Language
+"csharp" / Website / ExecuteFileName / IcoPathDark / IcoPathLight / DynamicLoading. Current PowerToys is
+0.102/0.103; Microsoft's checklist TFM is net10.0, the community reference package
+(Community.PowerToys.Run.Plugin.Dependencies 0.97.0) targets net9.0 - a net9 assembly loads on the .NET 10
+host (forward compatibility, what every community plugin relies on) and on every .NET 9 PowerToys since 0.87.
+
+THE PLUGIN: desktop/ptrun_plugin/Community.PowerToys.Run.Plugin.Hoola - Main.cs (IPlugin + IDisposable,
+static PluginID 162E72D3C1D7464E865293A276993A7B = plugin.json ID, ActionKeyword 'hoola', themed dark/light
+icons), and the launch decision: READ the W2a alias back (HKCU App Paths\hoola.exe default value, trimmed of
+quotes, File.Exists) and Process.Start(UseShellExecute) on it - ONE launch truth on the PC, the plugin adds
+no second mechanism; alias off -> honest ShowMsg telling her the Win+R alias is the door. csproj: net9.0-
+windows10.0.26100.0 + UseWPF + Platforms x64 (with the AnyCPU->x64 pin, because a bare `dotnet build` defaults
+Platform to AnyCPU and the arch-aware reference package would resolve nothing), Dependencies 0.97.0,
+plugin.json + Images copy to output, DynamicLoading false (only Wox.Plugin + BCL are used).
+
+THE RIDE: build-desktop.yml gains setup-dotnet 9.0.x + the publish step BEFORE PyInstaller, staging
+desktop/ptrun_payload/ (DLL + plugin.json + Images, cherry-picked - never the reference copies); the spec's
+datas pick the payload up when present (dev machines without dotnet still build) and ride it INSIDE
+SantoshDesktop.exe -> %TEMP%\_MEIxxxx\ptrun at runtime; the release also ships Hoola-PowerToysRun-plugin.zip.
+
+THE INSTALLER: desktop/santosh_desktop/pt_run.py (the app_paths.py twin): plugins_root/plugin_dir under
+LOCALAPPDATA, power_toys_present() (per-user exe, machine exe, plugins root), installed() (plugin.json +
+ExecuteFileName), set_enabled(on) = install (whole-folder replace = upgrade; only Hoola's own folder touched)
+/ uninstall (calm idempotent undo); honest error dicts for missing/bad payload ("naya exe chahiye"); PowerToys
+absent -> ok=True with pt_present=False pointing at the hotkey door, nothing installed.
+
+THE FALLBACK: quickkey.py - Ctrl+Alt+H via user32 RegisterHotKey on a daemon message-loop thread (ctypes
+only, _MSG struct, PostThreadMessageW WM_QUIT for a clean stop); WM_HOTKEY -> on_fired runs on the hotkey
+thread and the App routes it through its events queue (("focus", "") -> deiconify/lift/focus_force on the Tk
+main loop) - the control.on_activity injection pattern; Actions gains set_hotkey=None, the window app wires
+it; App registers it silently at start only when PowerToys is absent; Quit unregisters. Hoola never presses
+keys herself (win+r stays BLOCKED_KEYS): both doors open the window, the USER presses.
+
+Desktop 1.8.0: do_pt_run behind _control_on(); PowerToys absent at install -> also starts the hotkey;
+on=false undoes both. Server: operator pt_run tool (ONE-TIME SETUP, ask_approval PEHLE wording, on=false,
+no admin, Ctrl+Alt+H mentioned), _do branch (plugin ready / hotkey door / honest not-ok / old-desktop upgrade
+line via _desktop_says pt_run), _say line.
+
+Tests: NEW test_v0484_ptrun.py (33) - plugin.json shape + ID/Main.PluginID match + icons exist, alias-launch
+pins, csproj TFM/dependencies/x64 pins, plugin-version-rides-desktop, CI payload pins, spec datas pin,
+install/upgrade/undo round trips on a fake %LOCALAPPDATA% (neighbours of Hoola's folder untouched), PT-absent
+hotkey pointer, power_toys_present three ways, missing/bad/dll-less payload honesty, non-Windows refusals,
+quickkey win32 shape + no-thread-off-windows, app events-queue wiring, do_pt_run gate, operator spec/_do/
+_say/_desktop_says (incl. old desktop), win+r still blocked, version (0.484.0+529, desktop 1.8.0, plugin 1.8.0).
+One test bug of mine caught on first run: plugin.json carries Windows separators (IcoPathDark) - the repo-file
+check needs a backslash->slash swap on Linux; fixed in the TEST, the json stays Windows-form.
+Sweeps: 33 + launcher 16 + frames 14 + pc-pins 19 = 82/82, then ax/bridge/kinds/curator 83 and home/coder/
+selfteach 72 - 237 green, one pytest process per suite.
+
+Version ritual 0.484.0 (scripts/ritual_0484.py, line-wise): APP_VERSION story (line 36 replaced whole),
+pubspec 0.484.0+529, pins ->0.484.0(+529) in 153 bare + 82 full-string suites (zero residual), desktop pins
+1.7.0 -> 1.8.0 (test_v0185 + test_v0481), frames story pin -> the v0.484 story (newest-story precedent),
+console stamps stay 0.482.0 x20 (console untouched by this release). CLAUDE.md: current-state one-liner +
+current-version line + the v0.484 section at the end. Mera PC freeze respected (pc/* lanes untouched except
+the operator's own tool surface; desktop/ follows its own version line).
+
+Deliberately NOT built (named for W3): the PC->Hoola text lane - a typed quick-ask that lands in the Hoola
+conversation needs a new server surface (the desktop bridge is a job channel only today); W3's "send page to
+Hoola" builds exactly that lane and both doors will ride it. The C# compile runs for the first time on the
+next push (CI-only; the source is reviewed against the documented API), and the plugin has not yet been
+loaded by a real PowerToys - her first "Hoola ko PowerToys Run se khulwao" after deploy is the live test.
+
+Stage Summary:
+- The 'hoola' door now exists in all three hands: Win+R (W2a), PowerToys Run 'hoola' (W2b), Ctrl+Alt+H
+  (W2b fallback) - all opening the same Hoola Desktop window, all user-level, all behind the same PC-control
+  switch, all undone by on=false. Next: W3 (the MV3 web extension, which brings the PC->Hoola text lane).
+
+---
+Task ID: 26 (HOOLA WEB EXTENSION - W3 -> v0.490.0; EIGHTEENTH COLLISION rebase: re-versioned 0.487.0 -> 0.490.0 - the dev's chain took 0.486.0/0.487.0/0.488.0 while W2b+W3 sat unpushed, rebuilt on W2b's 0.489.0 rebase of fdc7c402)
+Agent: main (Z.ai, W3 web-extension session)
+Task: Owner: "W3 (web extension)" - W3 of the Platforms plan: the MV3 'send page to Hoola' extension, which brings the PC->Hoola TEXT LANE the W2b release named for it.
+
+Work Log:
+- REORIENT (the state check first): the w2-launcher worktree sat at 1505588d (v0.484.0 W2b, unpushed) while origin/main had taken 0.484.0 (HOOLA SAPNE, 3beb5a9f) AND 0.485.0 (HOOLA SKILL DESK, e2a57481) - SEVENTEENTH COLLISION. REBASE PROTOCOL: W2b rebuilt on e2a57481 (rebase -X theirs over the 153 pin-conflict suites; docs reconciled by hand - main's SAPNE + SKILL DESK HISTORY sections and the CLAUDE one-liner restored; the frames-stamps and v0179 guards re-pointed to the 0.485.0-x21 convention that -X theirs had aged out), the version layer moved coherently to 0.486.0+531 (ritual_0486: full-strings 84 + asserts 153 files, ZERO residual; the v=0.485.0 stamp pins safe because the assert sweep is a regex, not a bare replace) - commit 713e2a1c on branch w2-launcher, then W3 built on branch w3-webext. Post-rebase sweep green (ptrun 33 + launcher 16 + frames 14 + guards 12 + dreams/desk/curator 88 + routines 3 + pc 20 + home/coder/ax 83); test_pc_operator 3 reds STASH-PROVEN on the committed tree AND WORKTREE-PROVEN on pristine main (the sandbox's async/env class - pre-existing, untouched).
+- v0.487.0 built (the full chain in CLAUDE.md's v0.487 section + the commit message): server/app/quicklane.py (the TEXT LANE: POST /api/pc/quickask on the paired-device token, compose server-side, ride the SAME turn pipeline as the phone, GET the answers back; guards = tenant check + 30/hour/device + client_id dedup; ONE include_router beside the PC block - the freeze respected with a recorded exception); desktop/ext/hoola-extension (MV3: service worker + popup + context menu + Ctrl+Shift+H, pairs through /api/pc/pair like a PC, no eval/remote code); ext_install.py (the pt_run.py twin, %LOCALAPPDATA%\Hoola\chrome-extension, install on HER click); desktop quickask.py + --ask + the lock-port ASK: handover + the window's ask box (desktop 1.9.0, do_ext behind _control_on); Main.cs 'hoola <sawaal>' -> 'Hoola se poochho' -> --ask (plugin 1.9.0, ID unchanged); operator ext tool (ask_approval PEHLE); CI stages ext_payload + ships Hoola-Chrome-extension.zip; spec rides it inside the exe.
+- Tests: NEW test_v0487_webext.py (30) - first run caught two of my own bugs (the test created DoosraFolder before the install created %LOCALAPPDATA%; the Jodiye label lives in options.html, not the JS) + the background.js 'activeTab' comment read like a permission reference - all fixed. Version ritual 0.487.0 (ritual_0487.py): pubspec 0.487.0+532, pins 84+153 files ZERO residual, desktop/plugin pins 1.8.0->1.9.0, story pins -> the v0.487 story, console stamps stay 0.485.0 x21.
+- NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet; the C# ask-door compiles first on the next push (CI-only); the lane has never carried a real page - her first right-click 'Hoola ko bhejiye' after deploy is the live test.
+
+Stage Summary:
+- v0.490.0 HOOLA WEB EXTENSION on w3-webext: 'send page to Hoola' is real, and the W2b promise is kept - the PT Run door ('hoola <sawaal>') and the window's ask box ride the SAME text lane into her conversation. Deploy = the usual vps-ops ritual for the server; the desktop 1.9.0 exe publishes via build-desktop (desktop/** trigger).
+- Next in the Platforms plan: W4 (the flutter pass). The tools lane still awaits its own START.
+
+---
+++ b/docs/WORKLOG.md
+
+## Task 27 — v0.491.0 CRAWL JOBS (owner: "PHASE 2 END TO END"; NINETEENTH COLLISION re-ship - the branch sat built+tagged v0.488.0-b1450 while dev took 0.489.0 PowerToys Run + 0.490.0 web extension; rebuilt on their fresh base 1eea1356X x2) while this built, rebuilt on their fresh base fdc7c402)
+
+Phase 2 of our own Firecrawl, on the v0.483 FIRECRAWL CORE lane (live on the VPS, healthz verified 0.483.0):
+the crawl JOBS queue. NEW `server/app/agent/crawl_jobs.py` + 3 tools (registry 526 -> 529):
+- `crawl_start` - queues a per-tenant job in `data/scraping/<tenant>/crawl.db` (crawl_jobs + crawl_pages,
+  the scrape lane's own sqlite; NOT the main db - the research lane keeps SQLAlchemy, this lane keeps raw
+  sqlite beside elements.db/cache.db). Same-seed dedupe honest (`already_running`), seed SSRF-guarded +
+  robots-checked at queue time, max_pages clamp 50.
+- `worker.scrape_crawl_jobs` (~20 s self-throttle, the research tick shape) -> `crawl_jobs.tick()`: candidates
+  = queued jobs + running jobs whose heartbeat went stale (scrape_crawl_stale_s=180); claim = ONE conditional
+  UPDATE (tries+1, `tries < scrape_crawl_tries`, exhausted = failed with an honest error); the runner is a
+  checkpointed polite same-site BFS - HTTP ONLY (a browser never launches in the background lane; a blocked
+  page is recorded with its reason and the crawl moves on), robots per url (skipped counter), SSRF per url,
+  the frontier (queue+seen) written back after EVERY page (a pm2 restart resumes FROM THE CHECKPOINT, a
+  finished page is never fetched twice), write-through into the v0.481 page cache (the crawl warms the scrape
+  door).
+- `crawl_status` (no job_id = latest; check/stop; stop lands between pages - the page in the air finishes,
+  nothing after it starts) and `crawl_results` (paginated listings cap 8k, `url=` one full page 20k, works
+  mid-crawl, mask_ids applied).
+- config: scrape_crawl_enabled / max_pages(20) / max_running(1) / stale_s(180) / tries(3) / keep_days(7).
+- prompts.py Scraping bullet grew the background-crawl sentence.
+Tests: NEW `server/tests/test_v0488_scrape_crawl_jobs.py` (26) - offline: fetches monkeypatched to local
+scrapling Responses, robots gate patched, politeness 0. Covers registry 529, start gates + dedupe, candidates
+(stale-only, tenant isolation), claim tries->failed, the runner (BFS + cache warm + no double fetch, include
+regex, same-host only, max_pages budget, robots skips, blocked page + stealth-never, fetch failures never kill
+the crawl, stop between pages, stalled resume from checkpoint, tick+drain on ONE loop, max_running, disabled
+setting, forget-old caps), tools (status/stop, results pagination + url= + tenant isolation + mask_ids).
+Found by its own tests: a second asyncio.run(drain()) cannot await the first run's task (loop close cancels
+it; the job lands honestly back in 'queued' - tests tick+drain in ONE flow; production never affected);
+crawl_start's dedupe needed an internal _created flag to say 'new' vs 'already there'.
+Sweeps on the v0.490 base: crawl-jobs 26 + scrape-firecrawl 28 + scrapling 27 + frames 14 + v0179 7 = 102/102, one pytest process per suite;
+pins ->0.491.0(+535) on the rebased base; console stamps stay 0.487.0 (dev's console changed, mine did not).
+Version ritual: pubspec 0.491.0+535, APP_VERSION story, CLAUDE.md one line, HISTORY.md section.
+- Re-ship notes: the stray data/scraping/tenantabd/cache.db test artifact the v0.488 branch build accidentally committed is dropped; this deploy also carries the dev's v0.489/v0.490 server side (PowerToys lane + quickask lane).
+
+Task ID: byox-feed-0.492.0
+Summary: BYOX skills reach already-seeded tenants (own stamp); 15 over-long descriptions fixed (only 16/31 were being created); Hinglish/Hindi routing; 8 card asks; /api/byox/* routes restored after v0.491 dropped them. Server-only, PC freeze untouched.
+
+Task ID: 29 (THE FLUTTER PASS - W4 -> v0.493.0; TWENTIETH COLLISION rebase: re-versioned 0.491.0 -> 0.493.0 - the dev's chain re-shipped 0.491.0 (CRAWL JOBS, their NINETEENTH) and took 0.492.0 (BYOX FEED) while W4 sat unpushed, rebuilt on 59b8ec36)
+Agent: main (Z.ai, W3/W4 session)
+Task: Owner: "push + deploy, phir W4 (flutter pass)" - W4 of the Platforms plan: the curated pubspec upgrade (maintenance).
+
+Work Log:
+- State check first: fresh worktree w4-flutter from origin/main a0226923 (the W3 deploy + the two
+  build-desktop CI fixes); no new collisions - v0.491.0 free on tags.
+- Read the W4 spec from the Platforms plan notes ("awesome-flutter resource pass = curated pubspec
+  upgrade (maintenance)"). The android/ folder is CI-generated (tool/patch_android.py), so gradle
+  facts come from there: minSdk 23, desugaring 2.1.4, compileSdk = the Flutter 3.24.5 default.
+- Audited all 17 pubspec deps against pub.dev's version API with the Dart 3.5.4 ceiling
+  (scripts/w4_pubspec_audit.py): 11 constraints adopted, 6 stay, every deferred major named with
+  its exact blocker (compileSdk 35, AGP 8.12, Dart >3.5.4, API churn over 32 call sites).
+- Changelogs read for every adopted major (shared_preferences 2.4/2.5, speech_to_text 7.0,
+  flutter_tts 4.1-4.2): API-compatible at our call sites - grep-verified (6 listen() sites,
+  6 getInstance() sites), ZERO Dart code changes.
+- Ritual 0.491.0 line-wise (scripts/ritual_0491.py): APP_VERSION story, pins 0.490.0+534 ->
+  0.491.0+535 (85 full-string + 155 assert suites), story pins + the frames markers -> the v0.491
+  story, CLAUDE.md one-liners + the v0.491 section, WORKLOG Task 27, HISTORY section. Also fixed
+  the stale "- v0.487 HOOLA WEB EXTENSION" current-state line (-> v0.490, missed in the 0.490 ritual).
+- NOT VERIFIED (honest): the APK compile runs first on the CI push (no flutter in the sandbox);
+  if a constraint lies about its SDK ceiling the build fails and the constraint reverts.
+
+---
+Task ID: officehours-0.495.0 (reconstructed from commit 571d8ec1 - the dev chain's OFFICE HOURS; their docs entry was clobbered by the twenty-first-collision -X theirs rebase and re-added by hand)
+Agent: dev-chain (reconstructed by main)
+Task: Owner: 'BUILD' right after 'NOW READ THIS REPO FIRST' on github.com/garrytan/gstack - the gstack THINK/PLAN lane shipped as v0.495.0
+
+Work Log:
+- NEW agent/officehours_tools.py beside kaam_plan (registry 529 -> 531, tools officehours / officehours_dekho): start = a baithak with SIX forcing questions one at a time (real pain + specific example, who does it today + cost, first visible change, today's jugaad, the smallest self-useful wedge, kill criteria); doc = reframe + capabilities (max 7) + premises challenged + 3-4 options with honest effort + recommendation = the narrowest wedge; review = one lens row ceo|design|devex|eng, eng ALWAYS last and flips status to reviewed, review on a doc-less draft refused; decide = HER decision in her words + next_step; stop closes; same topic returns the SAME doc honestly.
+- NOTHING AUTO-RUNS OFF A DOC - the wedge is advisory; building happens through the existing doors with her Haan. Per-tenant data/officehours/<tenant>/officehours.db (office_docs + office_reviews); config officehours_enabled=True, officehours_keep_docs=30; prompts.py OFFICE HOURS bullet before LAMBA KAAM.
+- Tests test_v0495_officehours.py (30): the six questions, dedupe, caps, the four lenses, eng-last flip, review-on-draft refusal, decide/stop closure, dekho, tenant isolation, disabled switch, forget-old, prompts + story pins. A REAL BUG caught on first run: _con() missing row_factory=sqlite3.Row (fixed once at _con).
+- Version 0.495.0 (pubspec 0.495.0+539 at their ship time; the PROG PACK re-version on top moved the shared version layer to 0.497.0+541).
+Stage Summary:
+- The house got its HEAD: think/plan before build, her decision recorded in her words, nothing auto-runs off a doc.
+
+
+---
+Task ID: codegraph-0.496.0 (reconstructed from commit ad71c841 - the dev chain's CODE GRAPH; their docs entry was clobbered by the twenty-second-collision -X theirs rebase and re-added by hand)
+Agent: dev-chain (reconstructed by main)
+Task: Graphify (Apache-2.0) as a read-only lane shipped as v0.496.0 (their own TWENTY-FIRST collision: re-versioned 0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0)
+
+Work Log:
+- graph_build maps a GitHub repo: tarball, safe unpack, local AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill.
+- graph_ask answers query/path/explain/affected/god_nodes; graph_list lists what is mapped. Per-tenant graphs; the source deleted after the build; the optional binary gets a calm install hint; flag-like arguments refused; Hinglish routing + 5 card asks.
+- Tests test_v0496_codegraph.py.
+Stage Summary:
+- Repo ka naksha bana, padhne ke liye - read-only, per-tenant, source build ke baad miti.
+
+
+---
+Task ID: 30 (PROG PACK -> v0.497.0 - the awesome Programming Languages read turned into two fed skills; TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0: the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH while this sat unpushed, rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand)
+Agent: main
+Task: Owner: "Programming Languages (77) - awesome-python/vetted library lists -> code mode with a curated registry ... AutoHotkey/AutoIt/VBA lists -> Hoola generates AHK/VBA automation scripts as a THIRD lane beside pixels and ax_* ... NOW CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI"
+
+Work Log:
+- State check: origin/main 7c1e5139 (v0.494.0 EQUAL POWER, the dev chain's; deployed by us at the owner's "DEPLOY", healthz 0.494.0). Fresh worktree prog-pack from origin/main. Next free version 0.495.0 (latest tag v0.494.0-b1473).
+- Read the skill platform end to end: skill_packs.py (seed/seed_byox/import/export/share, the once-ever stamps), skills_store.py (parse_skill + validate: name ^[a-z0-9-]+$, desc <=60, body <=4000), coder/inject.py (skills_block: FTS5 match on name+description, top 2 ride the coder memory block, she reads the full skill via skill_manage before following), the desk route (seed + seed_byox), config byox_enabled, the v0.492 test suite (the pattern to mirror).
+- TWO SKILLPACK FILES: server/app/coder/skillpack/prog-library-registry.md (the vetted registry IN the body: 13 named packages across http/scrape/excel/pdf/office/image/qr/ocr/web/test + STDLIB-FIRST; never-invent = verify on PyPI via the gated run door or say unverified; install only with her tap, pin in the header; pylab no-network scope note) and prog-windows-script-lane.md (lane order ax_ -> pixels -> scripts; AHK v2 house style #Requires+#SingleInstance+WinWaitActive-before-Send+Hinglish comments, AutoIt ControlClick/WinList, VBA for Office-native; delivery law = FILE shown+explained, nothing self-runs, gated run door or her double-click, winget install door; NEVER law = no Win+R-class keys / AV / UAC / registry-beyond-HKCU, money+delete macros read back first).
+- THE FEED (v0.492 pattern): skill_packs.py + PROG_STAMP "skills:progpack:{}" + prog_files() + seed_progpack(tenant) (the seed_byox twin, own once-ever stamp - tenants that consumed seed AND byox still get it); seed_files() excludes prog- (10/31/2 counts preserved); service.py desk route calls seed_progpack beside seed_byox; config.py progpack_enabled default ON.
+- Tests test_v0495_progpack.py 9 green (counts, once-ever on a both-stamps-consumed tenant, hers-win, PROGPACK_ENABLED=false, desk-route source pin, lint gate, registry content pins, script-lane law pins, injection FTS match on "excel ... python script library" + "autohotkey script likho"); test_v0492_byox_feed 9 still green beside it (18 total in the two suites).
+- Ritual 0.497.0 (scripts/ritual_0497.py on the twice-rebased tree): APP_VERSION story line-wise (exactly-one hit), pubspec 0.497.0+541, 86 full-string + 159 assert pin files swept zero residual, 3 story pins moved to the v0.497 story (the frames markers are this story's own tokens; the officehours suite's story tokens ride the Previous line). BONUS HEAL: the dev chain's v0.494 ritual left test_v0475:118 / test_v0480:517 / test_v0485:556 asserting the 0.493.0 story - RED proven on pristine 7c1e5139 (1 failed, 12 passed) BEFORE any change; the story-pin move heals them.
+- Docs: CLAUDE.md one-liner + current-version line + the v0.495 section; WORKLOG Task 30; HISTORY section.
+Stage Summary:
+- The PROG PACK is built and fed: two behavior skills in the seed platform, own stamp, every tenant gets them on the next skills-desk open. Honest NOT VERIFIED: the FTS match is tested, the first real VPS ask is the live proof. NOT TOUCHED: Mera PC (the script lane skill only WRITES files + names the existing gated doors).
+
+---
+Task ID: 31 (FE PACK -> v0.500.0 - the awesome Front-End (85) read turned into three fed skills: HyperFrames template packs + campaign email templates + the UI kit tokens; TWENTY-THIRD COLLISION re-version 0.498.0 -> 0.500.0: the dev's chain took 0.498.0 UIUX PRO MAX + 0.499.0 SUPERPOWERS while this sat unpushed, rebased on their e90e60f1, both lanes kept, their sp wiring restored by hand)
+Agent: main (continuation session)
+Task: owner: "Front-End (85) - awesome-charting + web-animation + CSS frameworks -> HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly into the campaigns engine. Design-systems list -> Hoola's own UI kit consistency. NOW WORK ON IT MAKE THE SKILL. FEED THIS TO HOOLA"
+
+Work Log:
+- Fresh state check: origin/main had moved 7c1e5139 -> 8f110ee2 (then, at push time, e90e60f1) with dev-chain versions we did not
+  ship (0.495.0 OFFICE HOURS, 0.496.0 CODE GRAPH, 0.497.0 PROG PACK) - the Programming Languages (77) ask
+  from the previous turn was already delivered by the dev chain as v0.497.0 (prog-library-registry +
+  prog-windows-script-lane, fed, tested, live per healthz). No new collision to reconcile: our FE PACK is
+  the next read, 0.498.0 free on tags, b543 next after b1485.
+- Template survey: the PROG PACK shape (skillpack files + own stamp + seed twin + desk-route call + config
+  flag) is the exact pattern; HyperFrames = server/app/studio/frames.py (HTML composition -> deterministic
+  MP4, determinism check gate with lint/runtime/layout/motion/contrast/craft sections, hoola_frames tool
+  actions render/check/timeline/snapshot/add/status/avatar_film); the email lane = email_draft
+  (markdown=true, never raw HTML) + email_bulk (approval card) + kalam publish; the UI kit =
+  lib/ui/glass.dart class C (the REAL tokens - read, not invented).
+- Three skillpack files written (desc <=60, body <=4000, all pass parse_skill + validate):
+  fe-frames-templates (CHART PACK: KPI card/CSS bars/SVG line-area draw-on/donut ring; MOTION PACK: kinetic
+  type/lower-third/logo sting/price reveal/countdown/gradient wash; LAYOUT: 1920x1080 or 1080x1920, ~10%
+  safe margins, ek scene ek idea; LAWS: everything INLINE - the determinism gate refuses CDN/webfonts/
+  network, CHECK cheap BEFORE render expensive, fe-ui-kit colors, project-relative assets, existing doors
+  only) and fe-email-templates (six template structures with subject pattern + body skeleton; the lane
+  email_draft markdown=true / email_bulk behind the approval card / kalam publish; her facts only with
+  [blanks]; NEVER OTP/password/card in a mail, no spam shape, no bought lists) and fe-ui-kit (the REAL
+  Night Glass tokens: #0B0A1A->#120E2A bg, #F4F2FF ink, #FFB15C saffron action, #7C5CFF violet, house
+  gradient #FFD9A8->#FF9A3C->#C055F5, Sora display + 16px/1.5 serif body; tokens first, >=7:1 contrast,
+  ONE accent per screen, motion one family).
+- Feed wired: skill_packs.fe_files() + FE_STAMP skills:fepack:{} + seed_fepack(tenant) (the seed_progpack
+  twin; own once-ever stamp so already-seeded+byox+prog tenants still get it); desk route calls it right
+  after seed_progpack; seed_files() excludes the fe- prefix (starter 10, byox 31, prog 2, fe 3);
+  config.py fepack_enabled default ON.
+- Tests test_v0498_fepack.py (10) green: counts (10/31/2/3), once-ever on an all-three-stamps tenant,
+  hers-win, FEPACK_ENABLED=false, desk-route source pin, lint gate, frames law pins, email law pins,
+  ui-kit REAL-token pins CROSS-CHECKED against lib/ui/glass.dart itself (a wrong hex in the skill can
+  never pass again), injection FTS match on three Hinglish asks; test_v0485 desk-route live count
+  43 -> 46 healed.
+- Ritual 0.498.0 then the TWENTY-THIRD COLLISION re-version 0.500.0 (scripts/ritual_0498.py + ritual_0500.py): APP_VERSION story line-wise (exactly-one hit), pubspec
+  0.500.0+542, 87 full-string + 163 assert pin occurrences swept across 162 py files, zero residual
+  outside the story's Previous chain; story pins (test_v0475:118/128, test_v0480:517, test_v0485:556)
+  now ride the v0.498 story.
+- Docs: CLAUDE.md one-liner + current-version line + the v0.498 section; HISTORY section; WORKLOG Task 31.
+Stage Summary:
+- The FE PACK is built and fed: three behavior skills in the seed platform, own stamp, every tenant gets
+  them on the next skills-desk open. Honest NOT VERIFIED: the FTS match is tested, the first real VPS ask
+  ('reels ke liye chart video banao' / 'diwali offer ka email') is the live proof. NOT TOUCHED: Mera PC,
+  desktop/, lib/ (the pack only NAMES existing doors and tokens - zero runtime code change outside the feed).
+
+---
+Task ID: 32 (HOOLA CONTEXT7 - the upstash/context7 port -> v0.501.0; owner: "FEED CONTEXT7 TO HOOLA")
+Agent: main (Z.ai, self-teach session)
+Task: The context7 repo was read end-to-end first (the owner's "NOW READ THIS REPO PROPERLY"), then fed to Hoola.
+
+Work Log:
+- THE READ (upstash/context7 @ 193e4bb, @upstash/context7-mcp v4.5.0): a pnpm monorepo (605 files) - packages/mcp is the product (the MCP server, exactly 3 tools: query-docs, resolve-library-id, submit-docs-feedback[research-preview]); packages/sdk the TS client (searchLibrary/getContext/search over https://context7.com/api, Bearer ctx7sk keys, 5-retry exp backoff on {408,425,429,500,502,503,504}); packages/cli the ctx7 installer; admin-mcp/tools-ai-sdk/pi/opencode satellites; plugins/+skills/+rules the distribution layer. Core API: GET /v2/libs/search (api.ts:142-146) + GET /v2/context (api.ts:214-218; empty body = a VALID not-found answer api.ts:231-243); 60s ceiling (api.ts:23, p99.9 ~3.2s); 429/404/401 semantics (api.ts:44-52); the LLM-facing formatting law (utils.ts:22-84: reputation >=7 High / >=4 Medium / else Low / negative-or-None Unknown, snippets hidden at -1, benchmark only >0, the ---------- divider).
+- NEW server/app/coder/docs7.py: ONE docs7 tool with two ops (the skill_manage/delegate_task law) - op=resolve formats byte-faithful to upstream; op=query lands EVERY successful fetch in the vault as a docs7 observation, so FTS5 search, the primer, the dedup ladder and the curator all see the same rows. THE VAULT IS THE CACHE: the same library+query within coder_docs7_ttl_hours (default 168h) answers with ZERO network (upstream SDK defaults no-store). DOCS ARE LIVING ROWS: a post-TTL re-fetch REFRESHES the docs7 row in place (narrative + content_hash + created_epoch, type='docs7' only) - the only narrative-updating writer in the coder, because a doc row mirrors an upstream page, not a memory of an event; without it Tier-0 would reinforce the row and keep year-old text under an up-to-date title.
+- PINNED DEVIATIONS (voice-box law): ONE attempt drop-don't-wait (upstream retries 5x; coder_docs7_timeout_s default 20s); a per-tenant rolling-hour courtesy window (coder_docs7_max_per_hour default 12 - the <=3-per-question description law made enforceable; 429 messages ported verbatim); REDACTION BEFORE EGRESS (upstream warns 'no secrets in the query' at index.ts:358-360 - Hoola warns AND enforces: strip_private + redact_secrets before the box is left, sent AND stored redacted); voice never sees it (out of voice.VOICE_TOOL_NAMES like delegate_task). Config: context7_api_url default https://context7.com/api, context7_api_key optional Bearer (the zoo BYOK pattern - keys never in chat), timeout/window/TTL knobs. Kill switch coder_docs7 default OFF (outbound network - bake on the VPS, then flip).
+- Flip slot pre-built: the reviewed docs7_flip vps-ops branch (the coder_flip one-boolean shape: idempotent $CORE/.env upsert, restart 12000, wait_up health gate, the EFFECTIVE value printed from a fresh process) + the dispatch option. mem restart-count pin 8 -> 9 (+ docs7_flip); engine_attach slice untouched (branch after coder_flip, before the catch-all). Package-export law honored (docs7 on the app/coder import list - the v0.478 lesson extended); agent/tools.py mounts the ONE tool last; registry 535 -> 536 (both count pins healed with the +1 note). Coexists with the dev's Claude-skills merges (seed_all, folder skills, the skill_manage callability fix) - their lane is seeds, ours is a tool.
+- Tests: NEW test_v0501_hoola_docs7.py (26): one-tool-two-ops shape, registry mount, voice absence, package export, config defaults, version, byte-faithful resolve formatting, reputation thresholds verbatim, snippets-hidden-at--1/benchmark-at-0, empty-match wording, resolve-requires-name, 429-no-key + 404 + 401 verbatim, API-json-message-wins, the resolve-first law, vault landing (title/narrative/tenant/URL), RETURN_CAP 6000/8000, the vault-cache hit with the network SEALED OFF + tenant-scoping, the post-TTL living-row refresh, redaction before egress, timeout drop, empty-body = valid not-found, the courtesy window, cache-hits-are-free, language forwarded, unknown op. Every network test rides the ONE seam (docs7._http) - no test touches the real network.
+- THE TWENTY-FOURTH + TWENTY-FIFTH COLLISIONS: the dev chain took 0.482.0-0.500.0 (OFFICE HOURS / CODE GRAPH / PROG PACK / UIUX PRO MAX / SUPERPOWERS / FE PACK) while this work sat unpushed through TWO rejected pushes; rebuilt on their fresh bases e90e60f1 then acc90bc1 (REBASE PROTOCOL, both works kept), then their Claude-skills merges landed (f7d6af48) and the final rebase onto it was CLEAN. Story pins moved to the v0.501 story (test_v0475 + test_v0495_officehours, the newest-story precedent). Bonus heal carried: their stale pubspec inconsistency (0.497.0+541 file vs 0.499.0+543 pins, RED on their own main) re-cohered.
+- Sweeps green on the FINAL base: docs7 26 + curator 28 + selfteach 24 + coder 24 + swarm 17 + home 24 = 143/143 (one process); desk + mem + lab + console-frames + fepack + superpowers + progpack + byox + officehours green (the crawl 10 + uiux-engine 5 reds STASH-PROVEN pre-existing on their pristine bases - the documented env/data class, their own commit messages agree); the recycled sandbox's lost venv packages (sqlalchemy/anthropic/google-genai) restored from requirements.txt. Version 0.501.0 (APP_VERSION story, pubspec 0.501.0+543, pins swept, zero residuals except deliberate history); console stamps STAY 0.487.0 x21 (the dev's maintained convention); Mera PC freeze respected; desktop untouched - server-only deploy, old APKs keep working.
+
+Stage Summary:
+- v0.501.0 HOOLA CONTEXT7 shipped at 94c0d679: Santosh pulls up-to-date, version-specific library docs mid-conversation (the hallucinated-API fix), and every fetch becomes memory she can search, prime with, dedup and consolidate. Deploy = the vps-ops deploy dispatch (healthz should say 0.501.0), then the owner's docs7_flip dispatch when ready (CONTEXT7_API_KEY optional in the VPS .env for higher rate limits - the zoo pattern, never in chat). Rollback = one flip; NO schema migration (docs7 rows are ordinary observations typed 'docs7'). Previous: v0.500.0 FE PACK, v0.499.0 SUPERPOWERS, v0.498.0 UIUX PRO MAX [full chain in git history].
+
+## Task 33 — v0.502.0 DHARA (owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END ---- MAKE A PERFECT PLAN" -> "BUILD END TO END")
+
+- The READ first (house law): n8n v2.47.0 read end to end (404 MB, 33,263 files, 710 .node.ts; fair-code Sustainable
+  Use License) — ZERO n8n code enters this tree (license + house); the IDEA is rebuilt house-sized. The plan the owner
+  approved by ordering the build: DHARA (धारा, the stream) — her workflows.
+- THE LANE (new server/app/agent/dhara_tools.py beside crawl_jobs; registry 536 -> 541, five tools dhara_save /
+  dhara_run / dhara_runs / dhara_control / dhara_list): per-tenant data/dhara/<tenant>/dhara.db (workflows + runs).
+  THE AGENT IS THE CANVAS: she describes the recurring job once, dhara_save validates the graph HARD and stores it —
+  9 step types: tool (ANY registered tool with its args — the 5-tool registry is the node library, every future tool
+  auto-joins), code (the pylab sandbox), condition (left/op/right + then/else; eq/ne/gt/lt/contains/empty), loop
+  (items + body, cap 50), wait (duration_s / until HH:MM IST), notify (cap 5/run), approval (parks the run), set,
+  http (SSRF-guarded GET/POST through the scrape lane's guard). Expressions {{steps.id.output.f}} / {{vars.x}} /
+  {{item}} / {{now}} — a safe dotted-path resolver, NEVER eval(); injection-shaped paths dig to None.
+- TRIGGERS: manual (dhara_run) | schedule (every_hours + at["HH:MM"] IST; next_due computed at save and advanced on
+  fire — missed-while-down fires ONCE with missed=true, never a burst) | webhook (POST /api/dhara/hook/{token}: token
+  minted at save, shown ONCE, stored sha256-hashed; body lands as vars.body; one run per 6 s per workflow; 401 on
+  unknown token or disabled workflow; 503 on dhara_webhook_enabled=False).
+- THE ENGINE (worker.dhara_jobs tick, the v0.491 crawl-jobs shape): enqueues due schedules, wakes sleepers, claims
+  queued AND stalled runs (heartbeat > dhara_stale_s=180) with ONE conditional UPDATE (tries+1, dhara_tries=3,
+  exhausted = failed honestly), CHECKPOINT after EVERY top-level step (cursor + context + steps_log -> a pm2 restart
+  resumes mid-run, a finished step NEVER runs twice; condition/loop bodies are atomic units), wall clock
+  dhara_run_timeout_s=600, max 1 running per tenant, finished runs forgotten after 30 days (40 kept). Two honest
+  parks: sleeping (auto-wake) and waiting_approval (NEVER auto-resumes: her haan in chat, relayed by the agent via
+  dhara_control action=approve run_id=..., moves the cursor PAST the gate; expires after dhara_approval_hours=24 as
+  failed honestly). THE SAFETY NET n8n DOES NOT HAVE: tool steps run with Ctx(actor="routine") — the house actor
+  gates stand, money/messages/files still need HER the house way; soft:true records a step error and continues,
+  default fail-fast with the exact step + error in the log; outputs pass mask_ids.
+- prompts.py grew the DHARA bullet (before LAMBA KAAM); admit.py grew tight dhara keys (workflow / automation /
+  apne aap chal / webhook... — "kaam" alone stays with kaam, "reminder" with life).
+- Tests: NEW test_v0502_dhara.py (35, all green): registry pin 541 + family map, save validation (11 refusal shapes),
+  resolver (typed dig, mixed text, deep dicts/lists, injection -> None, cmp ops), engine (done-flow with checkpoint
+  fields, else branch, loop/item/iterations, real-registry tool step as routine, unknown tool honest fail, soft vs
+  fail-fast, wall-clock cap), approval park -> approve -> resume PAST the gate + non-waiting honest, stop between
+  steps (idempotent, finished steps stay), wait park -> tick wake, notify cap, CHECKPOINT RESUME (a killed run
+  resumes with zero steps twice), scheduled fire-once + advance + no-burst, missed flag, IST next_due math, tries
+  exhausted, approval expiry, forget-old, webhook (202 + vars.body + 401 + 429 + disabled 401 + kill switch 503),
+  runs shapes + pagination, the list board, enable/disable roundtrip, disabled flag honest, tenant isolation,
+  mask_ids, version pin.
+- BUGS THE SUITE CAUGHT (fixed in the same session): (a) dhara_control approve did not move the cursor past the
+  approval step — the resumed run hit the SAME gate and parked forever (approve = cursor+1 + an approved log row);
+  (b) the wait step parked WITHOUT advancing the cursor — the tick's wake re-ran the same wait and re-parked (same
+  loop class; wait = the step doing its job, park advances); (c) a FAILED run lost its steps_log + cursor (the log
+  is the whole point — the fail path now checkpoints everything); (d) update_run force-stamped updated_at, so the
+  approval-expiry and forget-old sweeps could never see an old row (setdefault: an explicit updated_at wins);
+  (e) the first smoke crossed two asyncio.run loops — the DOCUMENTED v0.488 env class, tests run one loop.
+- Version 0.502.0 (APP_VERSION story, pubspec 0.502.0+544); CLAUDE.md current-version line (healed to 0.502 — the
+  dev chain's v0.501 left it at v0.500.0); pins swept 0.501.0 -> 0.502.0 (165 files) + +543 -> +544 (88) + count pins
+  536 -> 541 (2 suites) zero residual; story pins (test_v0475 + test_v0495_officehours) moved to the v0.502 story
+  (the newest-story precedent); console stamps untouched (the console last changed in the dev chain).
+- Server-only deploy, old APKs keep working (the approval surface is her chat word — no new cards, no client change).
+  NOT VERIFIED (honest): the first real webhook from the internet, the first her-haan resume on the VPS, the first
+  scheduled wake after a pm2 restart — live tests, named in the story. Deploy: no new pip packages; the usual ritual
+  (checkout main + cp -r server/app + pm2 restart santosh --update-env + healthz grep 0.502.0).
+- Previous: v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS, v0.498.0 HOOLA UIUX PRO MAX.
+
+## Task 34 — v0.510.0 HOOLA CORE (owner: "GO BUILD P1" after "PLAN FOR HOOLA AI AGENT ENGINEERING PLATFORM SYSTEM ALL 100 % LANGCHAIN CLONE AND FEATURES")
+
+- The READ first (house law): github.com/langchain-ai/langchain read end to end at aa2528fb (core 1.7.5 / langchain
+  1.4.8; 365 core files 136k LOC; runnables/base.py:134 Runnable, chat_models.py:325 BaseChatModel, content.py 17
+  content blocks, agents/factory.py:824 create_agent + 24 middlewares, typesafe classifier at HEAD). ZERO langchain
+  code enters this tree; the FEATURE SURFACE is cloned by hand.
+- THE SUBSTRATE (new server/app/aep/, 9 modules, ~2.2k LOC, inert library): messages (BaseMessage family + the 17
+  content blocks + AIMessageChunk '+' merge + dict round trip + RemoveMessage), runnable (invoke/batch/stream + '|'
+  composition, RunnableSequence/Parallel/Lambda/Binding/Passthrough, with_retry + with_fallbacks hand-rolled),
+  tools (BaseTool/StructuredTool/@tool - schema from type hints + the docstring Args section, InjectedToolArg
+  excluded from the model-facing tool_call_schema, tool_call in -> ToolMessage out), models (BaseChatModel + BaseLLM
+  contracts - the _generate + _llm_type subclass surface, InMemoryCache, InMemoryRateLimiter token bucket,
+  ModelProfile living-row hook, FakeList fakes), prompts (PromptTemplate + ChatPromptTemplate + MessagesPlaceholder
+  + partials), parsers (Str / Json fenced-tolerant / Pydantic), history (BaseChatMessageHistory), stores
+  (tuple-key InMemoryStore + InMemoryByteStore), serializable (the lc-shaped to_json seed for the P7 loader).
+- INERTNESS LAW (the P1 kill-switch note): a fresh interpreter imports app.aep with ZERO threads, ZERO env reads,
+  ZERO files created; the source carries no network imports and no get_settings - nothing executes unless called,
+  so no flag is needed; the flag law applies from P2 (HOOLA TRACE tracers) on. The AEP train: P1 CORE (this) -> P2
+  TRACE -> P3 GRAPH -> P4 AGENT (create_agent) -> P5 the 24-middlewares (nudge/curator/delegate/skills-primer
+  collapse into hooks) -> P6 RETRIEVE (vectors + index() dedup) -> P7 HUB (init_chat_model router, MCP client,
+  loader, conformance suites) -> P8 the 100% parity audit.
+- Tests: NEW test_v0510_hoola_core.py (79): the sections above + INERTNESS probes + the package-export law
+  (app.aep __all__ all importable) + APP_VERSION/pubspec pins; no network (async paths ride asyncio.run, the
+  documented one-loop law). Sweeps: core 314/314 one run (79 core + dhara 35 + docs7 26 + curator 28 + selfteach 24
+  + coder 24 + swarm 17 + home 24 + frames 14 + officehours + mem). Bugs the suite caught: (a) ChatMessage role->
+  type mapping lost the type field on the super() call; (b) ToolCall TypedDict required index/extras and rejected
+  every merged chunk (core now required, index/extras optional - the upstream shape); (c) BaseLLM.generate
+  double-nested generations; (d) RunnableSequence.stream tried an async handoff in a sync generator (pure-sync
+  chunk chaining now); (e) pydantic needed a __get_pydantic_core_schema__ any-schema hook on Runnable so
+  Runnable-typed fields (sequence steps, parallel children, bindings) validate.
+- Version ritual: APP_VERSION story (this entry is its marker source), pubspec 0.510.0+545, CLAUDE.md current-version
+  line healed, pins swept 0.502.0 -> 0.510.0 (174 bare + 92 full-string hits across 169 files, zero residual except
+  deliberate history), story pins (test_v0475 + test_v0495_officehours) moved to the v0.510 story (the
+  newest-story precedent); console stamps untouched; registry stays 541 (no agent tool added - aep is library, not
+  a lane); no vps-ops job (nothing to flip); mem restart pin untouched; Mera PC freeze respected (nothing in
+  server/app/pc/, desktop/ or lib/ touched); docs/HISTORY.md section added.
+- Server-only deploy, old APKs keep working. Deploy ritual: checkout main + cp -r server/app + pm2 restart santosh
+  --update-env + healthz grep 0.510.0. NOT VERIFIED (honest): the first voice turn riding a composed aep chain -
+  nothing composes yet by design (P1 is the substrate; the agent loop arrives in P3/P4).
+- Previous: v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK, v0.499.0 HOOLA SUPERPOWERS, v0.498.0 HOOLA
+  UIUX PRO MAX [full chains in git history].
+
+## Task 35 — v0.511.0 HOOLA CS PACK (owner: "Computer Science (38) — awesome-generative-ai → zoo expansion radar (new models/tools for the 436-model BYOK); awesome-conversational-ai → dialogue/QA patterns for the operator loop. ---- DEVLOPE A SKILL AND MAKE IT FUCTIONAL FRO HOOLA AI")
+
+The awesome Computer Science read turned into two fed skills (server/app/coder/skillpack/, the skills_store
+shape: frontmatter name + description <=60, body <=4000):
+
+- cs-zoo-radar — the 436-model zoo BYOK catalog (zoo_catalog.json: 186 image / 221 video / 29 audio; muapi 211
+  + kie 225) is the source of truth; the awesome-generative-ai families (flux / nano-banana / seedream / ideogram
+  / sdxl / imagen / recraft / dall-e; kling / sora / runway / luma / pika / hailuo-minimax / wan / veo / seedance;
+  suno / udio / stable-audio / elevenlabs / whisper / kokoro / xtts / bark) are SEARCH TERMS for
+  `zoo action=models q=`, never model ids. Protocol: catalog first, family variants second, then honestly
+  "unverified - zoo catalog mein nahi". The catalog grows ONLY by the owner's tap - the body carries the REAL
+  append shape; the gateway question (Muapi ya kie) is asked, never assumed; aspects/resolutions/durations only
+  catalog values; make waits for ZOO_MUAPI_KEY / ZOO_KIE_KEY; videos return request_id -> action=status.
+- cs-dialogue-patterns — the operator loop's conversational-AI moves: the SLOT LEDGER (collect a tool's params
+  before the call, never re-ask an answered slot, EK turn EK sawaal), CONFIRM BEFORE IRREVERSIBLE (the house law
+  repeated per loop), the REPAIR LADDER (error in her words, ONE fix attempt, honest fallback, never retry-spam),
+  QA SHAPE (answer first, "mujhe nahi pata" over a plausible guess - the never-invent law, numbers from tool
+  results only), CLOSE THE LOOP (ho gaya / pending / nahi-kyunki - silent failure is the one unforgivable),
+  VOICE BUDGET (call turns short, one idea per turn).
+
+THE FEED (the v0.492/0.500 pattern): skill_packs.cs_files() + CS_STAMP skills:cspack:{} + seed_cspack(tenant) -
+its OWN once-ever stamp; seed_all finds it by name; create-if-missing, hers win; seed_files() excludes cs-
+(starter 11, byox 31, prog 2, sp 15, fe 3, cs 2); config cspack_enabled default ON. Discovery via the coder
+injection block (FTS5 top-2, shown-telemetry), full read via skill_manage before following.
+
+Tests: NEW test_v0502_cspack.py (10, first-run green): counts, once-ever reach, hers-win, kill switch, the
+pack-seeders pin, the lint gate, radar content, dialogue content, the zoo numbers cross-checked against the REAL
+zoo_catalog.json, injection FTS on Hinglish asks. Desk-route live-count pins healed +2 (skill-desk x2, claude-pack,
+seed-on-first-turn x3, skills-card, superpowers, uiux seed-file 62 -> 64).
+
+THE TWENTY-SIXTH + TWENTY-SEVENTH COLLISIONS: the dev chain took 0.502.0 (DHARA) and 0.510.0 (HOOLA CORE) while
+this sat unpushed - REBASE PROTOCOL: rebuilt on their fresh base 0fab4d87, both works kept, the version layer moved
+coherently on top (0.502.0 -> 0.511.0, pins re-swept 0.510.0 -> 0.511.0 + +545 -> +546 zero residual; their core
+314-run and dhara suites re-verified green on the merged tree; registry stays 541). Version 0.511.0 (APP_VERSION
+story, pubspec 0.511.0+546, CLAUDE.md healed; console stamps stay 0.487.0 x21; Mera PC freeze respected - nothing
+in server/app/pc/, desktop/ or lib/ touched; server-only deploy, old APKs keep working). NOT VERIFIED (honest):
+the first real "naya model zoo mein" ask on the VPS is the live proof; the pack lands in a tenant on its next
+skills-desk open or first turn (the feed's own design). Deploy: no new pip packages; the usual vps-ops ritual.
+Previous: v0.510.0 HOOLA CORE, v0.502.0 DHARA, v0.501.0 HOOLA CONTEXT7, v0.500.0 FE PACK [full chains in git history].
+- DEPLOY follow-up: vps-ops run #244 (id 41873690351) SUCCESS -> healthz 0.511.0 ok=True (the CS pack is live; tenants receive it on their next skills-desk open or first turn).
+
+## Task 36 — v0.521.0 DIFY FOR HOOLA (owner: "NOW DIFY FOR HOOLA PLAN POWERFULL AND RELIBLE" -> "BUILD")
+
+After the full READ of langgenius/dify @ a7752e4c52 (1.19.0 line, 887 MB, 15,838 files; modified-Apache 2.0 whose
+condition 1a bans multi-tenant use of the source — the house is multi-tenant by birth, so ZERO Dify code entered
+the tree; the READ also proved HOOLA already IS most of Dify: model gateway, cost ledger, RAG suite, MCP, HITL,
+workflow engine, breaker, zoo). The plan (download/DIFY_FOR_HOOLA_PLAN.md) named the three deltas `git grep`
+proved missing; this build poured them:
+
+- **LANE A — gyaan annotations** (new `gyaan/annotations.py`, the annotation-reply idea): her APPROVED jawabs
+  served BEFORE retrieval spends a token. `gyaan action=save_answer question=... text=...` (owner-only), the match
+  at the top of `gyaan_khojo`: normalized exact, else stdlib difflib fuzzy >= `gyaan_annotation_fuzzy` (0.92); a
+  hit = ONE source "Aapka approved jawab" with the save-date through the normal `[n]` citation numbering; a miss
+  never blocks. Laws in code: `norm.mask` redaction on save, <=200 pairs/tenant (`gyaan_annotation_max`), q<=500 /
+  a<=4000 chars, same normalized question replaces, answer_on/off, per-tenant sqlite, hits/last_hit_at counters.
+  5 actions on the existing gyaan tool — zero new tools.
+- **LANE B — DHARA ops-grade eyes** (the WorkflowRunSummary + PauseReason + node_version + retry ideas): every
+  finished run (done/failed/stopped) carries a summary {steps_total, steps_ran, parks, tries, wall_ms, fail_error,
+  cost{usd,calls,tok_in,tok_out,inr}} — the cost line from usage.run_meter (v0.476): execute_run wraps the run in
+  its own meter and binds feature="dhara"; typed pause_reason (sleeping | waiting_approval | approval_expired;
+  wake clears, expiry sets); the executed step-type version rides every steps_log row (`v`, default 1); 
+  `dhara_control action=retry` re-queues a failed/stopped run FROM ITS CURSOR (checkpoint law = a finished step
+  never runs twice — proven with a flaky tool), approval-expired honestly refused; idempotent ALTER TABLE added
+  summary + pause_reason so pre-0.512 dhara.db tenants keep working.
+- **LANE C — dhara_dsl** (the DSL idea; ONE new tool, registry 541 -> 542): export = a portable JSON envelope,
+  secrets-free by law (webhook token never rides — it lives hashed in its own column; values pass mask_ids);
+  import = the SAME hard validator as dhara_save, lands DISABLED, name-collision honest (+new_name), webhook
+  imports mint a NEW token shown once; size cap dhara_dsl_max_kb=64; roundtrip byte-stable modulo timestamps.
+
+
+Tests: NEW test_v0512_dify_hoola.py (41, the v0512 name is the built-on-0.512 birthmark): annotations (16) + engine summaries/pauses/versions/retry (15) + DSL
+(10) incl. the gyaan_khojo short-circuit proven by a search counter at ZERO, the cost-meter wiring via a probe
+handler, and the retry zero-double-steps proof. Sweeps: 0.511.0 -> 0.512.0 (268) + +546 -> +547 (94) across 168
+files, zero residual; registry count pins 541 -> 542 healed in test_v0488_scrape_crawl_jobs +
+test_v0495_officehours + test_v0502_dhara (family map grew dhara_dsl). Config: dhara_summaries_enabled,
+dhara_dsl_enabled, dhara_dsl_max_kb, gyaan_annotation_enabled/fuzzy/max — all additive, all defaulted ON, zero
+new pip (difflib is stdlib), zero new keys, zero new outbound. prompts.py grew the DHARA + Gyaan bullets; 
+admit.py dhara keys grew the DSL words. Server-only deploy, old APKs keep working. NOT VERIFIED (honest): the
+first real annotation save on the VPS, the first cross-tenant DSL file, the first retry after a real failure.
+Work Log:
+- DEPLOY done first: fetched origin — the dev chain had taken v0.511.0 HOOLA CS PACK (705cca3d) BUILT ON TOP of
+  my P1 HOOLA CORE (0fab4d87), and their deploy follow-up (84b88c6b) said vps-ops run #244 already took the whole
+  chain to the VPS. Dispatched a fresh vps-ops deploy anyway (the directive said DEPLOY): run 41876141774
+  SUCCESS, public healthz `{"ok":true,"app":"Hoola","version":"0.511.0"}` — P1 HOOLA CORE verified live on the
+  VPS. Working clone re-aligned to origin/main (the stale local main ref force-moved; P1 ancestry verified first).
+- Built the tracer layer (ZERO upstream code — the port law): NEW server/app/aep/tracers.py (~590 LOC):
+  Run = the run-tree node (id/name/run_type/inputs/outputs/error/parent_run_id/trace_id/child_ids/ms/status);
+  BaseCallbackHandler = the no-op on_* family; CallbackManager carries handlers + parent_run_id down the
+  config["callbacks"] channel — a span start returns the CHILD manager, which is how the tree assembles with
+  zero registry lookups; Span = the fire-point seam (created ONLY when the config carries callbacks — the P1
+  fast path stays byte-identical, the tracer import stays lazy); RunTreeTracer builds the tree and persists
+  FINISHED runs to sinks (the runs dict a ring that evicts finished roots oldest-first past 2000);
+  InMemoryRunStore thread-safe capped 500; astream_events = the event_stream v2 port (event dicts
+  on_chain_start/on_chat_model_start/on_llm_new_token/on_chain_stream/on_chain_end/on_chain_error/on_tool_*
+  with run_id + parent_ids + data.input/output/chunk; version pinned "v2" with an honest raise); global_tracer()
+  / GLOBAL_STORE = the process store the explorer reads; traced_invoke = the one-liner lanes use.
+- NEW server/app/aep/vault_sink.py — THE FLAG LAW made real: VaultRunSink lands finished runs as ordinary
+  vault observations typed 'aep_run' (no new tables; FTS5 search/dedup/curator see the rows); REDACTION BEFORE
+  STORAGE (strip_private + redact_secrets over the serialized row; aep_trace_redact a test seam, prod True);
+  fail-closed (every fault returns None — telemetry never breaks the run it watches); honest STATS counters
+  (saved / skipped_flag / skipped_error).
+- Fire points wired into the P1 substrate (all guarded by the no-callbacks fast path): runnable.py —
+  Sequence/Parallel/Lambda chain spans on invoke/ainvoke, stream/astream fire chain_stream per chunk and close
+  with the last chunk; models.py — BaseChatModel invoke/stream/astream chat_model spans with llm_new_token per
+  streamed chunk, BaseLLM llm spans; tools.py — tool spans named by the TOOL name (not the class). P1's 79
+  tests re-ran green unchanged except two guards healed (below).
+- Explorer: GET /api/aep/runs (limit, source=memory|vault) + GET /api/aep/runs/{run_id} (the nested tree;
+  a numeric id falls back to the vault row) — require_key + the aep_trace flag fail-closed {"ok": false};
+  /api/agent/stats grew the honest aep_trace block (enabled/store/saved/skipped).
+- Config: aep_trace default OFF (bake on the VPS, then flip), aep_trace_redact True. Pre-built the trace_flip
+  vps-ops job (the coder_flip/docs7_flip one-boolean shape: idempotent .env upsert, restart --kill-timeout
+  12000, wait_up health gate, effective value printed from a fresh process). Mem restart pin 9 -> 10 (the
+  test_v0208 pin moved with it). Registry rides their 542 (the magic21 tool took 541 -> 542 in v0.512; tracers are library + routes, no new tools); voice
+  untouched by construction (no tool surface, VOICE_TOOL_NAMES moot this phase).
+- Tests: NEW test_v0520_hoola_trace.py (39, zero network, the asyncio one-loop law): manager child propagation,
+  broken-handler swallow, callbacks_from_config shapes, chain/model/llm/tool/tool-error spans, stream closes,
+  tree nesting (parallel children), trace_id shared across an invocation, Run node shape, dumps_safe on messages
+  + junk, astream_events full sequence + parent wiring + bare-model shape + version guard + error surfaced
+  without hanging, store ring cap, tracer ring eviction, global tracer + reset, vault sink flag-off noop /
+  flag-on 'aep_run' row / redaction-before-storage (a secret lands ***redacted***) / the redact seam honestly
+  off / fail-closed / attach idempotent, routes fail-closed + memory shapes + vault source + the agent-stats
+  block, the inertness probe re-run, the package-export law, the trace_flip job shape, the restart pin 10,
+  the version pins, no new registry tools. BUGS the suite caught: (a) astream over a sequence iterated the
+  sync _stream_bare with async for (TypeError) — the bare stream is sync; (b) get_settings is lru_cached
+  house-wide — a flag test that setenv's MUST cache_clear or the previous test's cached instance answers
+  (the docs7 lesson, now written into the suite as _clear_settings_cache); (c) the P1 guards healed per
+  precedent: test_no_config_reads_in_aep now exempts vault_sink.py (the P2 flag lane, lazy imports only —
+  the inertness probe still proves the fresh-interpreter import), test_main_story_markers moved to the
+  newest story (the house precedent).
+- Version ritual: APP_VERSION story (the full P2 story, exactly-one hit), pubspec 0.520.0+549, CLAUDE.md
+  healed, mechanical pin sweep 0.511.0 -> 0.520.0 + +546 -> +547 across 166 test files (259 bare + 91
+  full-string hits) zero residual outside the deliberate (v0.511) history comment; console stamps stay
+  0.487.0 x21 (the dev's convention); docs7 SERVER_VERSION twin untouched (the v0.501 birth-mark).
+- Sweeps: trace 39/39 + core 79/79 one run; docs7 26 + cspack 10 + dhara 35 = 71 green; coder 24 + selfteach
+  24 + curator 28 + swarm 17 = 93 green; home 24 + frames 14 + officehours 38 = 76 green; mem 13 green
+  (the restart pin 10 + version). Recycled-sandbox venv gaps restored from requirements.txt again
+  (sqlalchemy/anthropic/google-genai).
+
+Stage Summary:
+- P2 DONE: the AEP train has its nervous system — chains/models/tools emit the tree, the vault keeps the
+  runs (one flip away), the explorer reads them. The train continues: P3 GRAPH (StateGraph engine) -> P4
+  AGENT (create_agent) -> P5 the 24-middlewares -> P6 RETRIEVE -> P7 HUB -> P8 the 100% parity audit.
+  Deploy is one dispatch (healthz should say 0.520.0); the trace_flip job is pre-built and dispatch-ready
+  when the owner wants runs persisting. Rollback = one flip; no schema migration (aep_run rows are
+  ordinary observations).
+
+## Task 37 — v0.530.0 HOOLA GRAPH (owner: "P3 HOOLA GRAPH")
+
+Agent: main (Z.ai, self-teach session)
+Task: build Phase 3 of the HOOLA AEP plan (Task 22): the state-graph engine — the langgraph
+feature surface hand-built as house code, ZERO upstream code (the port law).
+
+Work Log:
+- Grounding: the P2 state (v0.520.0 HOOLA TRACE on main as a51ea087, origin in sync 0/0,
+  tree clean) re-verified first; the trace-layer deploy stays the owner's call (healthz
+  still says 0.511.0 on the VPS).
+- Built server/app/aep/graph.py (~1k LOC): StateGraph (add_node / add_edge /
+  add_conditional_edges / set_entry_point / compile — duplicates, reserved names and
+  unknown endpoints refused at BUILD time; no-node / no-entry / bad-path-map refused at
+  compile), channels (plain = last-value-wins; Annotated[T, reducer] merges through the
+  reducer — operator.add works; a FIRST-EVER value seeds the channel because operator.add
+  has no identity for a missing left side), the walk (super-steps; every node sees the
+  SAME pre-step state; static multi-edges fan out; a node with several inbound edges joins
+  only after ALL its parents ran — the barrier; routing is ADDITIVE — routers + static
+  edges both fire, the upstream law; routers see the POST-node state; dict path_map maps
+  by answer, list path_map maps by index; recursion_limit default 25 with an honest
+  GraphRecursionError; fn(state) and fn(state, config) both accepted; async nodes run
+  natively in ainvoke and via asyncio.run in sync invoke when no loop is running),
+  AgentState + add_messages (append, replace-by-id, RemoveMessage drop,
+  REMOVE_ALL_MESSAGES clear, dict/str coercion — the P4 create_agent substrate),
+  interrupt/Command (interrupt(value) PARKS the graph — checkpointed, invoke returns the
+  state carrying __interrupt__; Command(resume=...) re-enters, the node re-runs FROM ITS
+  TOP, answered slots replay in call order, open slots re-park with the earlier answers
+  preserved; parking without a checkpointer refuses honestly), checkpointers
+  (BaseCheckpointSaver / MemorySaver thread-safe capped ring / SqliteSaver stdlib sqlite3
+  WAL — a path OR the vault's sqlalchemy Engine used lazily via raw_connection; a
+  checkpoint lands after EVERY super-step; get_state / update_state(as_node re-derives
+  next); invoke(None) resumes the stored walk — the crash path, the dhara lesson;
+  Command.update_only / goto_nodes reshape a stored walk), the tracer seam
+  (CompiledStateGraph is a Runnable — composes with |; every invocation fires a ROOT chain
+  span named StateGraph and every node a chain span NAMED BY THE NODE, so the P2 run tree
+  nests nodes under the graph with ONE trace_id per walk; the no-callback fast path stays
+  run-free), store wiring (compile(store=...) rides config["store"] into every node).
+- INERTNESS LAW re-proven: a fresh interpreter imports app.aep (graph rides along) with
+  zero threads / env reads / files; checkpointers write only when a compiled graph with
+  one actually runs — a library module, so no kill switch (no routes, no jobs, no tools).
+  Registry stays 542; voice untouched by construction; mem restart pin untouched (no new
+  vps-ops job); console stamps stay 0.487.0 (the dev's convention).
+- Tests: NEW server/tests/test_v0530_hoola_graph.py (42, zero network, the asyncio
+  one-loop law). Bugs the smoke caught: (a) parallel fan-out updates must fold
+  SEQUENTIALLY through the reducer — a merge-by-setdefault dropped the second writer's
+  write; (b) _node_config swallowed 1-arg async fns into a sync lambda — the walk saw a
+  coroutine object, not a dict; (c) the engine-path SqliteSaver never created its table
+  (lazy ensure added); (d) parking without a checkpointer was silent — now the honest
+  RuntimeError; (e) dict path_maps fell through to positional-index lookups — a router
+  returning END would misroute (the positional fallback is gone; dict maps by answer,
+  list maps by index, the upstream law).
+- Version ritual: APP_VERSION story (the full P3 story, exactly-one hit), pubspec
+  0.530.0+550, CLAUDE.md healed (HOOLA GRAPH leads the current-version line), mechanical
+  pin sweep 0.520.0 -> 0.530.0 + +549 -> +550 across 169 test files (173 bare + 94
+  full-string hits) with the birth-mark lines ("v0.520.0 HOOLA TRACE" references)
+  protected — zero residual outside deliberate history; the newest-story pin
+  (test_v0512_hoola_magic21) moved to the v0.530 story tokens per the newest-story
+  precedent; docs/WORKLOG.md Task 37 + docs/HISTORY.md v0.530.0 section.
+
+Stage Summary:
+- P3 DONE: the AEP train has its state machine — graphs compile, walk, fan out, join at
+  barriers, park on interrupts and resume with answers, and checkpoint every super-step.
+  The train continues: P4 AGENT (create_agent compiled onto the graph) -> P5 the
+  24-middlewares -> P6 RETRIEVE -> P7 HUB -> P8 the 100% parity audit. Deploy is the
+  owner's dispatch (v0.520.0 + v0.530.0 ride it together; healthz should say 0.530.0);
+  the trace_flip job stays pre-built and dispatch-ready. Rollback = one flip; no schema
+  migration (checkpoints live in their own table / saver).
+

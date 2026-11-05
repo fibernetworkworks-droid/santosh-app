@@ -72,7 +72,7 @@ VOICE_TOOL_NAMES = {
     "email_forwarding", "email_alias",
     "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_cancel_event",
     "calendar_update_event", "calendar_respond", "calendar_free_slots", "calendar_settings",
-    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "paisa", "paisa_dekho", "audit", "audit_dekho", "bima", "bima_dekho", "telecall", "telecall_dekho", "seo", "seo_dekho", "thok", "thok_dekho", "niryat", "niryat_dekho", "franchise", "franchise_dekho", "theka", "theka_dekho", "ads", "ads_dekho", "brand", "brand_dekho", "seva", "seva_dekho", "helpdesk", "helpdesk_dekho", "shikayat", "shikayat_dekho", "service_desk", "service_desk_dekho", "feedback", "feedback_dekho", "wapsi", "wapsi_dekho", "samudaay", "samudaay_dekho", "call_centre", "call_centre_dekho", "dev", "dev_dekho", "qa", "qa_dekho", "it_admin", "it_admin_dekho", "noc", "noc_dekho", "cyber", "cyber_dekho", "devops", "devops_dekho", "docs_writer", "docs_writer_dekho", "app_review_dekho", "product", "product_dekho", "customs", "customs_dekho", "travel", "travel_dekho", "warehouse", "warehouse_dekho", "fleet", "fleet_dekho", "courier", "courier_dekho", "drivers", "drivers_dekho", "logistics", "logistics_dekho", "propagent", "propagent_dekho", "rentdesk", "rentdesk_dekho", "sitesup", "sitesup_dekho", "interior", "interior_dekho", "archassist", "archassist_dekho", "society", "society_dekho", "vakil", "vakil_dekho", "legalres", "legalres_dekho", "compliance", "compliance_dekho", "contracts", "contracts_dekho", "cosec", "cosec_dekho", "notary", "notary_dekho", "pidesk", "pidesk_dekho", "dpo", "dpo_dekho", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "edit_desk", "edit_desk_dekho", "motion_desk", "motion_desk_dekho", "film_desk", "film_desk_dekho", "patrakar", "patrakar_dekho", "photo_assist", "photo_assist_dekho", "graphic", "graphic_dekho", "artist_manager", "artist_manager_dekho", "kitab", "kitab_dekho", "podcast", "podcast_dekho", "influencer", "influencer_dekho", "kalam", "kalam_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder", "seo_dekho", "doc_desk", "sheet_milaan", "yaad_khojo", "gyaan_khojo", "gyaan",
+    "google_status", "order_karo", "darzi", "darzi_dekho", "chai", "chai_dekho", "office", "office_dekho", "lekhak", "lekhak_dekho", "mobile_shop", "mobile_shop_dekho", "phone_doctor", "gst", "gst_dekho", "payroll", "payroll_dekho", "paisa", "paisa_dekho", "audit", "audit_dekho", "bima", "bima_dekho", "telecall", "telecall_dekho", "seo", "seo_dekho", "thok", "thok_dekho", "niryat", "niryat_dekho", "franchise", "franchise_dekho", "theka", "theka_dekho", "ads", "ads_dekho", "brand", "brand_dekho", "seva", "seva_dekho", "helpdesk", "helpdesk_dekho", "shikayat", "shikayat_dekho", "service_desk", "service_desk_dekho", "feedback", "feedback_dekho", "wapsi", "wapsi_dekho", "samudaay", "samudaay_dekho", "call_centre", "call_centre_dekho", "dev", "dev_dekho", "qa", "qa_dekho", "it_admin", "it_admin_dekho", "noc", "noc_dekho", "cyber", "cyber_dekho", "devops", "devops_dekho", "docs_writer", "docs_writer_dekho", "app_review_dekho", "product", "product_dekho", "customs", "customs_dekho", "travel", "travel_dekho", "warehouse", "warehouse_dekho", "fleet", "fleet_dekho", "courier", "courier_dekho", "drivers", "drivers_dekho", "logistics", "logistics_dekho", "propagent", "propagent_dekho", "rentdesk", "rentdesk_dekho", "sitesup", "sitesup_dekho", "interior", "interior_dekho", "archassist", "archassist_dekho", "society", "society_dekho", "vakil", "vakil_dekho", "legalres", "legalres_dekho", "compliance", "compliance_dekho", "contracts", "contracts_dekho", "cosec", "cosec_dekho", "notary", "notary_dekho", "pidesk", "pidesk_dekho", "dpo", "dpo_dekho", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "edit_desk", "edit_desk_dekho", "motion_desk", "motion_desk_dekho", "film_desk", "film_desk_dekho", "patrakar", "patrakar_dekho", "photo_assist", "photo_assist_dekho", "graphic", "graphic_dekho", "artist_manager", "artist_manager_dekho", "kitab", "kitab_dekho", "podcast", "podcast_dekho", "influencer", "influencer_dekho", "kalam", "kalam_dekho", "drive_find", "drive_list_folder", "drive_read_file", "drive_send_file", "drive_upload", "drive_create_folder", "doc_desk", "sheet_milaan", "yaad_khojo", "gyaan_khojo", "gyaan",
     "drive_organize", "drive_create_doc", "doc_create", "drive_share", "drive_trash", "drive_storage",
     "sheet_read", "sheet_append",
     "form_create", "form_find", "form_summary", "form_responses", "form_settings", "form_alerts",
@@ -95,6 +95,12 @@ VOICE_TOOL_NAMES = {
     "motion_video",                # Hoola Motion: animated reels made as code
     "id_locker",                   # v0.73 Pehchaan Locker (ID numbers she says)
     "bazar_run", "bazar_mcp",       # the owner's MCP servers (their own tools are added per call, see agent/mcp_live)
+    # v0.491 EQUAL POWER: the everyday HEAD of every suite is declared on a call (the bodies stay on santosh_kaam).
+    # WhatsApp campaigns: create + status + controls direct (auto_send=False on a call; the SEND itself still waits
+    # for her card tap - confirm_send and the templates stay fenced). Ghar (Home Assistant, v0.479) full five.
+    "create_campaign", "get_campaign_status", "control_campaign", "check_template_status",
+    "home_link", "home_devices", "home_on", "home_off", "home_state",
+    "scrape_page", "research_status", "skill_manage",
 }
 
 DELEGATE = {
@@ -176,7 +182,7 @@ Doing real work
 - Use your tools instead of only talking about it. Before a tool that takes a moment, say ONE short, varied line ("ek sec", "dekhta hoon", "ruko, check karta hoon"), then call it; not while the user is still talking. When the result comes, lead with the answer and do not repeat the filler.
 - Slow tools (a website, her PC, a search, mail, Drive, santosh_kaam) run in the background: say ONE short line ("dekh raha hoon"), keep talking with her normally, and give the result only when it arrives - never guess or invent it meanwhile. Quick tools (reminders, lists, weather, alarms) answer at once.
 - Never say something is done before the tool says so. If a tool fails, say "ek sec, doosra tareeka try karta hoon" and actually try the next way (a known fix in the result, other input, another tool; a bigger job goes to santosh_kaam). Never read an error out.
-- ANY job you have no tool for on this call - Sheets formatting / tabs / sharing, Drive access / comments / versions, Forms edits, YouTube upload / edits / replies, Slides arranging, WhatsApp campaigns and templates, ERP / CRM / business desks, data files, official statistics (MoSPI), IndiaMART prices, Tally entries, documents, games, CAD - goes to santosh_kaam with her exact words: Hoola can do it, the full brain has every tool. Never say 'nahi kar sakta' or 'yeh call pe nahi hota' before santosh_kaam has tried; anything that sends, deletes, shares or pays still comes to her phone as a card.
+- ANY job you have no tool for on this call - Sheets formatting / tabs / sharing, Drive access / comments / versions, Forms edits, YouTube upload / edits / replies, Slides arranging, WhatsApp campaign TEMPLATES and the SEND itself, desk CHANGES, ERP / CRM writes, data files, official statistics (MoSPI), IndiaMART prices, Tally entries, documents, games, CAD - goes to santosh_kaam with her exact words: Hoola can do it, the full brain has every tool. Never say 'nahi kar sakta' or 'yeh call pe nahi hota' before santosh_kaam has tried; anything that sends, deletes, shares or pays still comes to her phone as a card.
 - A MULTI-STEP goal ("order kar do...", "ye pura kaam kar do...") goes to santosh_kaam as ONE request with the WHOLE goal and its details — never split it into piecewise asks, never say "nahi ho paya" before santosh_kaam has tried. It keeps going after this call ends if it must, and the result lands in chat + a note.
 - A result that arrives late: first say what it is about ("woh jo aapne poochha tha, kal ki meeting..."), then the answer.
 - If santosh_kaam says the job is still working, carry on chatting. When a note says it is done or could not be finished, tell the user in a line or two.
@@ -185,8 +191,8 @@ Doing real work
 
 Which tool (details are in each tool's description)
 - Reminders, phone alarms and timers, lists, memory, weather, daily routines: call them directly.
-- Business work in a call (her Sahayaks: tailor, chai, office, GST, payroll, accounts, audit, insurance, telecaller, SEO, wholesale, export, franchise, contractor, ads, brand, support / helpdesk / complaints / returns / community / call centre, developer / QA / IT / NOC / cyber / DevOps / docs / product, logistics / fleet / godown / courier / travel / drivers / customs, real estate / society / interior / architect, website, app design, 3D, video studio, Hoola Deals / bookings / compare, Postgres, Document desk / Sheet Milaan, letters / translation, hotel / homestay / banquet / events / weddings / tours, legal / compliance / company secretary / notary / data protection, journalism / photo / design / podcast / influencer / artist / book / film / video editing desks, SEO, export, wholesale, franchise, contractor, insurance, App Jaanch / REA, bank-data or health-record consent checks, DigiLocker, ONDC): those tools are not in this call. Hand the job to santosh_kaam with her words and the details ("darzi: Riya ka blouse order, 15 tareekh"); say one line that it is being done, and the result comes back as a note / card. Tool names in these notes for such work = santosh_kaam.
-- Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, WhatsApp campaigns, multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
+- Business work in a call (her Sahayaks: tailor, chai, office, GST, payroll, accounts, audit, insurance, telecaller, SEO, wholesale, export, franchise, contractor, ads, brand, support / helpdesk / complaints / returns / community / call centre, developer / QA / IT / NOC / cyber / DevOps / docs / product, logistics / fleet / godown / courier / travel / drivers / customs, real estate / society / interior / architect, website, app design, 3D, video studio, Hoola Deals / bookings / compare, Postgres, Document desk / Sheet Milaan, letters / translation, hotel / homestay / banquet / events / weddings / tours, legal / compliance / company secretary / notary / data protection, journalism / photo / design / podcast / influencer / artist / book / film / video editing desks, SEO, export, wholesale, franchise, contractor, insurance, App Jaanch / REA, bank-data or health-record consent checks, DigiLocker, ONDC): the STATE readers of the main desks ARE on this call - darzi_dekho, gst_dekho, payroll_dekho, paisa_dekho, vakil_dekho and the rest of the *_dekho heads: ask them DIRECTLY for orders, status, hisaab, today's haal ("darzi_dekho action=today"). Any CHANGE (new order, status move, price, rule, message) goes to santosh_kaam with her words and the details ("darzi: Riya ka blouse order, 15 tareekh"); say one line that it is being done, and the result comes back as a note / card. Tool names in notes for such work = santosh_kaam.
+- Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, the SENDING of a WhatsApp campaign (creating one and watching its status you do directly with create_campaign / get_campaign_status - always auto_send=False on a call; the send itself waits for her card tap), multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
 - A PC/browser step of a running job waits on a 'Haan, karo' card and she says yes in her own words ("haan karo", "kar do", "theek hai", any clear yes): call haan_karo so the step moves at once (a note confirms it). ONLY when such a card is really pending; if the tool says none, don't insist. Money / UPI / bank-OTP / password cards are NEVER approved by voice — she taps them in the app; say that plainly.
 - Something to use, keep, see or share (a calculator, tracker, hisaab, checklist, chart, quiz, poster, price list, plan, simple game): artifact_make with a complete brief (purpose, every number and detail, language, style); it pops up on their screen in under a minute. To change one: artifact_list for the id, then artifact_make with artifact_id and the change.
 - TV channels: tv_channel to play a free channel on the phone or on the TV ("DD Sahyadri lagao", "TV pe Aaj Tak chalao", "BBC News lagao"; ~4,300 free channels from 140 countries, country= for one country). Paid channels (Star, Sony, Colors) aren't there. If the TV can't be cast to, use youtube_play on=tv query="<channel> live".
@@ -206,7 +212,9 @@ Which tool (details are in each tool's description)
 - Places and travel: maps_nearby for a KIND of place near her (chemist, petrol pump, bank), maps_search for a place she names, maps_place for one place's phone / timings, maps_nearest for which of her own list is closest by road, maps_directions, maps_navigate.
 - Calendar: calendar_agenda, calendar_free_slots, calendar_add_event (meet=true for a Google Meet link), calendar_update_event, calendar_find_event, calendar_cancel_event, calendar_respond. Invites, changes to shared meetings, cancels and declines show a confirm card; say so.
 - Email: email_triage for what is important, email_check / email_read, email_thread (the whole conversation), email_draft (approved in the app with Bhejo; say so), email_forward, email_action, email_delete (approval card), email_follow_up, email_snooze (mail comes back later), email_drafts (her Gmail drafts: list / read / edit / send with a card). Labels, archiving whole conversations, bulk mail and its progress, Gmail filters, inbox rules, out-of-office, forwarding, send-as addresses and signature go through santosh_kaam with her exact words (one line that it is being done; any card comes to her phone). Give a mail's gist in a line; never read out OTPs or codes.
-- Google Drive, Sheets, Docs, Forms, Slides, Photos, Santosh Notebook, YouTube: use the matching tool. Sheet totals come from sheet_query, never your own maths. Photos: you cannot browse the library; photos_pick shows a card for the user to choose. Read out the gist, not every cell.
+- Google Drive, Sheets, Docs, Forms, Slides, Photos, Santosh Notebook, YouTube: use the matching tool. The suite READ heads are on this call: form_find / form_responses, slides_find / slides_read, doc_create, photos_pick / photos_picked, notebook_open / notebook_ask - their edits, creates and heavy parts still go to santosh_kaam. Sheet totals come from sheet_query, never your own maths. Photos: you cannot browse the library; photos_pick shows a card for the user to choose. Read out the gist, not every cell.
+- Ghar ke smart devices (Home Assistant): home_devices lists them, home_state shows them, home_on / home_off switch a light / fan / plug (AC only 20-28 degree, speaker volume max 90, geyser / fridge / washer never), home_link joins a new Home Assistant (one-time setup, she does it in chat).
+- A public web page's quick read: scrape_page (never a login or a paywall). A Deep Research job's live state: research_status. Her reusable skills: skill_manage - read / list to follow one exactly, create / update when she asks to save a way of working.
 - REA Khoj (reverse-engineering on call): when she asks how a feature WORKS in an app / program / file she has ("yeh app ka payment kaise karta hai", "is exe mein kya hai", "feature samjha de saboot ke saath"), it goes to santosh_kaam (REA Khoj, via kaam): say "file khangal raha hoon, ek-do minute" and keep the call natural. The file is never run - only read. The full brain comes back with the evidence; tell her the 2-3 key lines in plain words. Never crack a licence / unlock paid features / bypass anti-cheat - say no to that.
 - Running jobs (app, website, video, Studio, motion, website jobs in your browser): KAAM KI HAALAT in your brief and
   kaam_status give the real live state. Asked "kya hua?", say it straight: ho gaya / abhi yeh chal raha hai (kitna) /
@@ -251,6 +259,7 @@ VOICE_VIA_KAAM = {
     "wapsi", "samudaay", "call_centre", "dev", "qa", "it_admin", "noc", "cyber", "devops", "docs_writer", "app_review",
     "product", "customs", "travel", "warehouse", "fleet", "courier", "drivers", "logistics", "propagent", "rentdesk",
     "sitesup", "interior", "archassist", "society", "vakil", "legalres", "compliance", "contracts", "cosec", "notary", "pidesk", "dpo", "front_office", "front_office_dekho", "event_plan", "event_plan_dekho", "shaadi", "shaadi_dekho", "tour_guide", "tour_guide_dekho", "homestay", "homestay_dekho", "banquet", "banquet_dekho", "edit_desk", "edit_desk_dekho", "motion_desk", "motion_desk_dekho", "film_desk", "film_desk_dekho", "patrakar", "patrakar_dekho", "photo_assist", "photo_assist_dekho", "graphic", "graphic_dekho", "artist_manager", "artist_manager_dekho", "kitab", "kitab_dekho", "podcast", "podcast_dekho", "influencer", "influencer_dekho", "kalam", "website", "app_banao", "app_dekho", "video_studio",
+    "const_store", "const_store_dekho", "const_labour", "const_labour_dekho", "const_customer", "const_customer_dekho", "const_quality", "const_quality_dekho", "const_meet", "const_meet_dekho",   # v0.512 construction Wave 1 (heavy desks ride santosh_kaam, never declared to the live call)
     "blender_3d", "postgres", "hoola_market", "hoola_booking", "hoola_deal", "hoola_pick", "a2a_bahar", "consent_jaanch",
     "ondc_listing", "digilocker", "agent_army", "doc_desk", "sheet_milaan", "employee", "notebook_make", "notebook_audio", "notebook_studio", "notebook_output", "notebook_discover",
     "notebook_sources", "notebook_chat_config", "notebook_note",
@@ -261,12 +270,15 @@ VOICE_VIA_KAAM = {
     "kaam_plan",   # v0.186 the goal plan tool belongs to the full brain; the call hears the progress as notes
     # v0.230 PHASE 3 tool diet: making / editing documents and admin settings is not conversation. These still work
     # in a call (santosh_kaam runs them on the full brain); they just stop costing every call ~30k characters of JSON.
-    "form_create", "form_find", "form_summary", "form_responses", "slides_find", "slides_read", "slides_create",
+    # v0.491 EQUAL POWER unfenced the everyday READ heads again (form_find/form_responses, slides_find/slides_read,
+    # notebook_open/notebook_ask, photos_pick/photos_picked, doc_create): the call can now LOOK into every suite
+    # directly; the writes / heavy bodies stay here.
+    "form_create", "form_summary", "slides_create",
     "slides_add", "sheet_update", "sheet_create", "sheet_export", "sheet_append", "sheet_info", "notebook_create",
-    "notebook_add", "notebook_ask", "notebook_open", "notebook_list", "photos_upload", "photos_send", "photos_albums",
-    "photos_pick", "photos_picked", "pdf_tools", "video_edit", "api_find", "api_docs", "api_call", "hoola_make",
+    "notebook_add", "notebook_list", "photos_upload", "photos_send", "photos_albums",
+    "pdf_tools", "video_edit", "api_find", "api_docs", "api_call", "hoola_make",
     "hoola_business", "hoola_groups", "hoola_group_post", "hoola_group_digest", "tally_report", "drive_organize",
-    "drive_share", "drive_create_doc", "doc_create", "drive_create_folder", "drive_upload", "drive_trash", "id_photo",
+    "drive_share", "drive_create_doc", "drive_create_folder", "drive_upload", "drive_trash", "id_photo",
     "photo_clean", "make_document", "email_accounts", "calendar_settings", "seekhe_kaam", "gyaan",
     # v0.439 Gmail settings + bulk work on a call: the full brain runs them, cards still come to her phone
     "email_label", "email_threads", "email_bulk", "email_bulk_status", "email_filters", "email_rule", "email_vacation",
@@ -275,8 +287,22 @@ VOICE_VIA_KAAM = {
 # a name ending in _dekho goes with its base tool (darzi_dekho with darzi ...)
 VOICE_TOOL_BUDGET = 150_000   # characters of tool JSON sent to Gemini Live (v0.119, the last version that worked well: ~213k)
 
+# v0.491 EQUAL POWER: these are DECLARED on a call even though their base desk stays fenced. They are the desks'
+# READ heads ("darzi ke aaj ke orders", "GST desk ka haal") - the state any coworker would ask about out loud.
+# The desk's CHANGES (new order, status, prices, rules) still ride santosh_kaam, and any card still comes to her.
+VOICE_HEADS = {
+    "darzi_dekho", "chai_dekho", "office_dekho", "gst_dekho", "payroll_dekho", "vakil_dekho",
+    "seo_dekho", "thok_dekho", "telecall_dekho", "seva_dekho", "helpdesk_dekho", "shikayat_dekho",
+    "service_desk_dekho", "dev_dekho", "drivers_dekho", "fleet_dekho", "courier_dekho",
+    "warehouse_dekho", "lekhak_dekho", "paisa_dekho", "audit_dekho", "bima_dekho", "brand_dekho",
+    "ads_dekho", "front_office_dekho", "society_dekho", "travel_dekho", "customs_dekho",
+    "kalam_dekho", "product_dekho",
+}
+
 
 def via_kaam(name: str) -> bool:
+    if name in VOICE_HEADS:   # v0.491 the desk readers stay declared even though the desk itself is fenced
+        return False
     base = name[:-6] if name.endswith("_dekho") else name
     return name in VOICE_VIA_KAAM or base in VOICE_VIA_KAAM
 
@@ -285,9 +311,9 @@ _REGISTRY: set[str] = set()
 
 
 def registered(name: str) -> bool:
-    """v0.442 SAB KAAM CALL PAR: is `name` one of Hoola's chat tools at all? A call reaches EVERY one of them - the 105
-    declared ones directly, everything else through santosh_kaam (the full brain) - never 'Unknown tool'. The list is
-    read once from the chat registry (the tools the full brain really has)."""
+    """v0.442 SAB KAAM CALL PAR: is `name` one of Hoola's chat tools at all? A call reaches EVERY one of them - the
+    ~130 declared ones (suite heads + desk readers since v0.491) directly, everything else through santosh_kaam (the
+    full brain) - never 'Unknown tool'. The list is read once from the chat registry (the tools the full brain really has)."""
     if not _REGISTRY:
         try:
             from .agent import tools as _t
@@ -384,7 +410,8 @@ def _tool_specs() -> list[dict]:
         from .sidetalk import TOOL as SIDE_TALK
         extra.append(SIDE_TALK)
     from .agent.tools import VOICE_SPECS   # v0.313 the call keeps the short descriptions (chat got the full ones)
-    specs = [_compact(t) for t in VOICE_SPECS if t["name"] in VOICE_TOOL_NAMES and not via_kaam(t["name"])] + [DELEGATE] + extra
+    specs = [_compact(t) for t in VOICE_SPECS
+             if (t["name"] in VOICE_TOOL_NAMES and not via_kaam(t["name"])) or t["name"] in VOICE_HEADS] + [DELEGATE] + extra
     size = len(json.dumps(specs, ensure_ascii=False))
     if size > VOICE_TOOL_BUDGET:
         # never again a call that dies of its own tool list: say it loudly in the log (a test also checks it)
@@ -437,7 +464,7 @@ def client_content_ok() -> bool:
 
 # A setup Gemini refuses without naming a field ("1007 None. Request contains an invalid argument."): connect again
 # with one extra less each time; the step that works is remembered (per model + tool list, 7 days) for later calls.
-SETUP_STEPS = ("mcp", "vocab", "langcodes", "compression", "core_tools", "no_tools")
+SETUP_STEPS = ("vocab", "langcodes", "mcp", "compression", "core_tools", "no_tools")   # v0.491 her MCP tools are sacrificed THIRD, not first - they are real power; vocab / langcodes are quality, not doors
 SETUP_SAY = {"mcp": "aapke MCP tools", "vocab": "aapke shabdon ki list", "langcodes": "bhasha ka hint",
              "compression": "lambi call ki yaad", "core_tools": "kai tools", "no_tools": "saare tools"}
 CORE_TOOLS = {"create_reminder", "list_reminders", "set_phone_alarm", "set_phone_timer", "remember", "get_weather",
@@ -2749,7 +2776,7 @@ class Call:
         from .agent import mcp_live
         try:
             snap = await asyncio.to_thread(mcp_live.snapshot, self.tenant)
-            defs, route = mcp_live.tool_defs(snap, 0 if self._mcp_off else min(25, get_settings().mcp_native_tools))
+            defs, route = mcp_live.tool_defs(snap, 0 if self._mcp_off else min(40, get_settings().mcp_native_tools))   # v0.491 was 25 - the chat default is 40, the call now matches
             self._mcp_snap, self._mcp_route = snap, route
             self._mcp_block = mcp_live.prompt_block(snap, route)
             return defs
@@ -3161,9 +3188,13 @@ class Call:
                         continue
                     if (get_settings().voice_safe_setup and not self._safe_worked and loop.time() - started < 30
                             and self._safe < len(SETUP_STEPS)):
-                        if self._safe == 0 and not mcp_defs:
-                            self._safe = 1            # no MCP tools were declared: nothing to drop there
                         self._safe += 1
+                        # v0.491: her MCP tools are the THIRD rung now (they were the first). On a call with no MCP
+                        # tools declared that rung changes nothing, so the climb skips straight past it - the old
+                        # step-0 shortcut, generalized to wherever 'mcp' sits in the ladder.
+                        if (self._safe <= len(SETUP_STEPS) and SETUP_STEPS[self._safe - 1] == "mcp"
+                                and not mcp_defs):
+                            self._safe += 1
                         log.warning("Gemini refused the call setup (%s); retrying without %s", str(err)[:160],
                                     ", ".join(SETUP_STEPS[:self._safe]))
                         self.stats["setup_step"] = self._safe

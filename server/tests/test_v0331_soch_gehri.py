@@ -5,12 +5,23 @@
 3. SAAF KATAI - a too-long tool result shrinks its lists first (valid JSON, a "how to get the rest" note), never a
    mid-JSON cut with no hint.
 4. NAAP - the held-out FRESH ask set + `tools --live --fresh` + the vps-ops `tool_card` job."""
+import pytest
 import asyncio
 import json
 from pathlib import Path
 
 from tests.test_bazar import bz  # noqa: F401
 from tests.test_v0186_long_goal import FakeBrain, _set_brain, gz, tu, txt  # noqa: F401
+
+@pytest.fixture(autouse=True)
+def _no_plan_gate(monkeypatch):
+    """v0.472 R1: a big research ask now shows its plan and waits for her Haan. This file tests what happens AFTER
+    that (long-job mode / effort / plan card), so the gate steps aside; test_v0472_research_plan.py covers the gate."""
+    from app.agent import research_plan
+
+    async def _off(*a, **k):
+        return None
+    monkeypatch.setattr(research_plan, "gate", _off)
 
 ROOT = Path(__file__).resolve().parents[2]
 

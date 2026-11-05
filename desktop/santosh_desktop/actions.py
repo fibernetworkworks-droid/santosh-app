@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import __version__, axtree, browser, extract
+from . import __version__, axtree, app_paths, browser, ext_install, extract, pt_run
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
@@ -33,6 +33,9 @@ class Actions:
         self.tally = tally or Tally(cfg.tally_host, cfg.tally_port)
         self._tally_cache: tuple[float, dict[str, Any]] = (0.0, {})
         self.control = Control()
+        # v1.8.0: the window app wires set_hotkey (headless stays None) - the Ctrl+Alt+H
+        # fallback door lives with the window that owns the events queue (control.on_activity pattern)
+        self.set_hotkey: Callable[[bool], dict] | None = None
 
     # ---------------- info ----------------
     def tally_status(self) -> dict[str, Any]:
@@ -322,6 +325,59 @@ class Actions:
         except axtree.AxError as e:
             raise ActionError(str(e))
         self.log(f"AX wait: {'text' if text else 'window'} ({out.get('waited', 0)}s)")
+        return out
+
+    # ---------------- v1.7.0 WIN+R LAUNCHER (HKCU App Paths - user-level alias, no admin) --------
+    # W2a of the Platforms plan: 'Win+R se hoola' - Windows ka apna App Paths alias, isliye Start menu
+    # search bhi 'hoola' dhoondh leta hai. Koi Run-key nahi, kuch auto-start nahi, doosra user untouched.
+    # Same gate as every control action; on=false alias hata deta hai (undo, like autostart).
+    def do_app_paths(self, on: bool = True, **_) -> dict[str, Any]:
+        """v1.7 Win+R 'hoola': HKCU App Paths alias SantoshDesktop.exe par (user-level, no admin)."""
+        self._control_on()
+        out = app_paths.set_enabled(bool(on))
+        self.log("Win+R alias 'hoola' joda" if out.get("on") else
+                 ("Win+R alias 'hoola' hata diya" if out.get("ok") else "Win+R alias nahi bana"))
+        return out
+
+    # ---------------- v1.8.0 POWERTRYS RUN DOOR (W2b: plugin install + hotkey fallback) --------
+    # W2b of the Platforms plan: 'Alt+Space, hoola, Enter' - PowerToys Run ka plugin (user-level
+    # %LOCALAPPDATA% install, the pt_run.py twin of app_paths.py). PowerToys na ho to wahi dwar
+    # Ctrl+Alt+H global hotkey ban jaata hai (quickkey.py) - dono sirf desktop window laate hain.
+    # Same gate as every control action; on=false dono doors undo karta hai.
+    def do_pt_run(self, on: bool = True, **_) -> dict[str, Any]:
+        """v1.8 PowerToys Run 'hoola' plugin (user-level, no admin); PowerToys absent -> Ctrl+Alt+H hotkey."""
+        self._control_on()
+        on = bool(on)
+        out = pt_run.set_enabled(on)
+        if on and not out.get("pt_present") and self.set_hotkey is not None:
+            out["hotkey"] = self.set_hotkey(True)      # PowerToys nahi -> hotkey door
+        elif not on and self.set_hotkey is not None:
+            out["hotkey"] = self.set_hotkey(False)     # undo hoti doors dono
+        if out.get("plugin"):
+            self.log("PowerToys Run plugin 'hoola' joda")
+        elif on and out.get("ok") and not out.get("pt_present"):
+            self.log("PowerToys nahi mila - Ctrl+Alt+H hotkey door on")
+        elif out.get("ok"):
+            self.log("PowerToys Run plugin 'hoola' hata diya")
+        else:
+            self.log("PowerToys Run plugin nahi laga")
+        return out
+
+    # ---------------- v1.9.0 W3 BROWSER EXTENSION (the 'send page to Hoola' door) --------
+    # W3 of the Platforms plan: the MV3 extension rides INSIDE the exe (ext_payload) and lands
+    # in Hoola's own %LOCALAPPDATA% folder - chrome://extensions 'Load unpacked' picks it from
+    # there (the honest off-store path; no browser policy, no registry, nothing auto-starts).
+    # Same gate as every control action; on=false files hata deta hai (the browser Remove is hers).
+    def do_ext(self, on: bool = True, **_) -> dict[str, Any]:
+        r"""v1.9 browser extension files jodo/hatao (user-level %LOCALAPPDATA%\Hoola)."""
+        self._control_on()
+        out = ext_install.set_enabled(bool(on))
+        if out.get("ok") and on:
+            self.log("Browser extension files lag gayi (chrome://extensions > Load unpacked)")
+        elif out.get("ok"):
+            self.log("Browser extension files hata di")
+        else:
+            self.log("Browser extension nahi lagi: " + str(out.get("message", ""))[:80])
         return out
 
     def do_status(self, **_) -> dict[str, Any]:

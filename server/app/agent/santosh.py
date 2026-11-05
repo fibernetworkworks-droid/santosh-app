@@ -322,6 +322,10 @@ def _pending_worker_notes(conversation_id: str) -> list[str]:
 TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 
 
+# v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
+RESULT_LIMIT = {"research_run": 40000}
+
+
 def _short(obj, limit: int = 6000) -> str:
     """A tool result for the model, at most `limit` characters.
     v0.331 SAAF KATAI: it used to be cut mid-JSON with "…(truncated)" - broken JSON, ids / links lost, and no hint how
@@ -410,7 +414,20 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
         full, _ = _hardc.evidence(history, limit=400_000, per=200_000)   # v0.437 every link a tool returned
         why = ((state.get("hard_why") or {}).get("why")) or []
         problems = _hardc.code_check(state.get("request", ""), draft, why, names, full)
-        if not problems:
+        reviewed = False
+        if not problems and ("research_run" in names or "research_status" in names or "research_watch" in names):
+            try:    # v0.474 R3 SABOOT: every figure in the report must be carried by a note's own words or a calculation
+                from ..research import claims as _claims, engine as _reng
+                _d = _reng.recall(conversation_id)
+                if _d is not None and float(_d.get("_delivered", 0)) >= float(state.get("t0", 0)):   # handed to the model in THIS turn
+                    problems = _claims.check_report(draft, _d)
+                    if not problems:    # v0.480 R9: then a reviewer reads the WORDING against the dossier's notes (the generic one only sees a truncated tail)
+                        from ..research import review as _rrev
+                        problems = await _rrev.review_report(state.get("request", ""), draft, _d, settings)
+                        reviewed = bool(getattr(settings, "research_review", True)) and bool(_d.get("fields"))
+            except Exception:
+                log.exception("claim check failed")
+        if not problems and not reviewed:
             problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
         state["hard_check"] = {"problems": problems, "tools": names[:12]}
         return problems
@@ -817,6 +834,15 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                           int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
         except Exception:
             log.exception("hard check failed")
+    elif ctx.actor == "wake":
+        try:    # v0.475 R4: the wake turn that WRITES a finished research report is a hard, held answer (Opus, room, the R3 check)
+            from ..research import runner as _rrun
+            if _rrun.is_report_due(user_text):
+                # a WATCH change is a short message citing [n]: the link-list rule of a full report does not apply to it (the figure check + the review still do)
+                state["hard"], state["hard_why"] = True, {"hard": True, "why": ["research_change" if _rrun.is_change_due(user_text) else "research"], "score": 3}
+                state["max_tokens"] = max(state.get("max_tokens") or 0, int(getattr(settings, "agent_hard_max_tokens", 16000) or 16000))
+        except Exception:
+            log.exception("research report wake setup failed")
     if settings.agent_goal:
         g0 = _goal.active_for(conversation_id)
         if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step
@@ -1040,6 +1066,12 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 adm.why.update({f: "chat" for f in _sticky})
     if adm is not None and state.get("hard"):
         adm.extra.add("pylab")      # v0.430 a hard ask the judge (not the rules) found also gets the sandbox
+    if adm is not None:             # v0.494 a LEARNED SKILL matched this ask: skill_manage must be callable to read it
+        try:
+            from .. import coder as _coder_adm
+            await asyncio.to_thread(_coder_adm.inject.admit_tool, adm, tenant_id, state.get("request", "") or "")
+        except Exception:
+            log.exception("skill tool admission failed")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
     _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
@@ -1223,7 +1255,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
                 fine = not (isinstance(out, dict) and out.get("error"))
                 breaker.after(b["name"], fine)
-                content = _short(out)
+                content = _short(out, RESULT_LIMIT.get(b["name"], 6000))
                 call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
                         "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else content[:300]}
                 if not fine:
@@ -1674,6 +1706,23 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
+        if not voice and save_user and not str(user_text or "").lstrip().startswith(("[", "(")):
+            try:   # v0.472 R1 PLAN PEHLE: a big research ask shows its plan and waits for her Haan; her Haan starts it
+                from . import research_plan as _rplan
+                _rp = await _rplan.gate(tenant_id, conversation_id, user_text, settings)
+            except Exception:
+                log.exception("research plan gate failed")      # a broken gate never blocks her ask
+                _rp = None
+            if _rp and _rp["action"] == "say":
+                _save(conversation_id, "user", user_text, display=user_text)
+                _save(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": _rp["text"], "source": "research_plan"})
+                bus.publish(conversation_id, "typing", {"on": False})
+                return _rp["text"]
+            if _rp and _rp["action"] == "start":
+                # her words are what the chat shows; the SAME turn gets the ask + the plan she approved (never saved twice)
+                _save(conversation_id, "user", _rp["words"], display=_rp["words"])
+                user_text, save_user = _rp["text"], False
         try:   # v0.191 SAMAJHDAR CARD: PC/browser step uski haan ka intezaar hai aur usne LIKH diya ('haan karo',
                # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
                # Sirf POORA uttar hi manzoori ho tabhi ('haan, address yeh raha' ka baaki hissa brain dekhega).

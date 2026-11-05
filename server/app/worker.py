@@ -355,6 +355,9 @@ async def tick() -> None:
     goal_resume_jobs()
     await inbox_jobs()
     await team_jobs()
+    await research_jobs()
+    await scrape_crawl_jobs()
+    await dhara_jobs()
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
@@ -504,6 +507,61 @@ async def team_jobs() -> None:
         log.exception("agent team tick failed")
 
 
+_rs_last = 0.0
+
+
+async def research_jobs() -> None:
+    """v0.475 R4 background research runs: start queued ones, pick a stalled one up again from its checkpoint, forget old rows."""
+    global _rs_last
+    import time
+    if time.time() - _rs_last < 20:
+        return
+    _rs_last = time.time()
+    try:
+        from .research import runner, watch
+        await runner.tick()
+        await watch.tick()                              # v0.480 R9: watched topics that are due
+    except Exception:
+        log.exception("research tick failed")
+
+
+_crawl_last = 0.0
+
+
+_dhara_last = 0.0
+
+
+async def dhara_jobs() -> None:
+    """v0.502 DHARA: due scheduled workflows enqueue, slept runs wake, queued/stalled runs claim from
+    their checkpoint, old finished runs are forgotten (the crawl-jobs tick shape, on the dhara lane)."""
+    global _dhara_last
+    import time
+    if time.time() - _dhara_last < 20:
+        return
+    _dhara_last = time.time()
+    try:
+        from .agent import dhara_tools
+        await dhara_tools.tick()
+    except Exception:
+        log.exception("dhara tick failed")
+
+
+async def scrape_crawl_jobs() -> None:
+    """v0.486 CRAWL JOBS: queued background crawls start, a stalled one is picked up again from its
+    checkpoint, old finished ones are forgotten (the research tick shape, on the scrape lane's own
+    per-tenant crawl.db queue)."""
+    global _crawl_last
+    import time
+    if time.time() - _crawl_last < 20:
+        return
+    _crawl_last = time.time()
+    try:
+        from .agent import crawl_jobs
+        await crawl_jobs.tick()
+    except Exception:
+        log.exception("scrape crawl tick failed")
+
+
 _el_last = 0.0
 
 
@@ -538,6 +596,8 @@ async def coder_jobs() -> None:
         if not getattr(get_settings(), "coder_enabled", True):
             return
         await coder.observer.tick(get_settings())
+        await coder.curator.tick(get_settings())   # v0.480: the weekly consolidation, due-gated
+        await coder.dreams.tick(get_settings())    # v0.484 SAPNE: the nightly curator, due-gated
     except Exception:
         log.exception("coder tick failed")
 

@@ -27,6 +27,8 @@ on:
           - ack_refresh
           - deploy
           - rollback_stable
+          - trace_flip
+          - trace_flip
           - pc_deploy
           - pc_pair
           - pc_logs
@@ -40,6 +42,8 @@ on:
           - tool_card
           - hard_card
           - maps_card
+          - research_card
+          - research_runoff_check
           - long_jobs
           - long_card_try
           - long_card
@@ -58,6 +62,8 @@ on:
           - zoo_key
           - zoo_check
           - engine_attach
+          - coder_flip
+          - docs7_flip
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -402,6 +408,21 @@ jobs:
                 echo 'echo "== usage before"; cd $CORE && timeout 60 .venv/bin/python -c "from app.mapsbill import usage; import json; print(json.dumps(usage(\"__quality__\"), default=str))" 2>&1 | tail -2'
                 echo 'echo "== live, geo answers (arithmetic key)"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind geo --label vps-ops 2>&1 | tail -20'
                 echo 'echo "== live, the guards"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind rule --label vps-ops 2>&1 | tail -20' ;;
+              research_card)
+                # v0.471 R0 NAAP: the RESEARCH card. The free part (scorer calibration: it must pass an honest report and
+                # catch every planted fault; research recognised; tools in view) then a SHORT live run - 4 topic asks and
+                # the 3 trap asks (a company / scheme / standard invented for the card) - each scored IN CODE against the
+                # pages and pylab results that turn really fetched, with minutes and rupees per report. All 20 live: on
+                # the VPS itself - python -m app.quality research --live [--judge]. A live run spends model calls + web.
+                echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality research 2>&1 | tail -20'
+                echo 'echo "== live, 4 topics"; cd $CORE && timeout 1500 .venv/bin/python -m app.quality research --live --only official_cpi,rule_gst_einvoice,calc_smartphones,scholarly_rag --label vps-ops 2>&1 | tail -30'
+                echo 'echo "== live, the traps"; cd $CORE && timeout 900 .venv/bin/python -m app.quality research --live --kind trap --label vps-ops 2>&1 | tail -20' ;;
+              research_runoff_check)
+                # v0.478 R7: the FREE part of the run-off - which engines may run (every R6 gate), what the card would cost for the engine alone, the newest saved table and
+                # its decision. A LIVE run-off spends real model / web / vendor money: run it on the VPS with an explicit budget -
+                # python -m app.quality research runoff --engines hoola,parallel --budget-inr 800
+                echo 'cd $CORE && echo "== can it run, and what would it cost"; timeout 120 .venv/bin/python -m app.quality research runoff --check --engines hoola,parallel,exa,openai,linkup 2>&1 | tail -12'
+                echo 'echo "== newest saved run-off"; cd $CORE && timeout 120 .venv/bin/python -m app.quality research runoff --status 2>&1 | tail -20' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
@@ -538,6 +559,45 @@ jobs:
                 echo 'print("error:", str(r.get("error", ""))[:200])'
                 echo 'raise SystemExit(0 if r["status"] == "done" else 3)'
                 echo 'PY' ;;
+              coder_flip)
+                # v0.480.0 Phase D - the owner's FLIP: CODER_NUDGE=true in $CORE/.env, the opt-in for the
+                # self-teaching reflection fork (coder/nudge.py). The code default stays OFF and the tests
+                # pin it - the deployment opts in here, the zoo_key pattern minus the secret (a boolean
+                # hides nothing). Idempotent upsert, restart, health, then the EFFECTIVE value is printed
+                # back from a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^CODER_NUDGE=" $CORE/.env; then sed -i "s#^CODER_NUDGE=.*#CODER_NUDGE=true#" $CORE/.env; else printf "CODER_NUDGE=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^CODER_NUDGE=true$" $CORE/.env && echo "== CODER_NUDGE=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_nudge =\", get_settings().coder_nudge)"' ;;
+              docs7_flip)
+                # v0.501.0 - the owner's flip slot for the Context7 surface: CODER_DOCS7=true in
+                # $CORE/.env, the same reviewed one-boolean shape as coder_flip (the code default
+                # stays OFF and the tests pin it - the deployment opts in here, not in config.py).
+                # Idempotent upsert, restart, health, then the EFFECTIVE value printed back from
+                # a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^CODER_DOCS7=" $CORE/.env; then sed -i "s#^CODER_DOCS7=.*#CODER_DOCS7=true#" $CORE/.env; else printf "CODER_DOCS7=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^CODER_DOCS7=true$" $CORE/.env && echo "== CODER_DOCS7=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_docs7 =\", get_settings().coder_docs7)"' ;;
+              trace_flip)
+                # v0.520.0 HOOLA TRACE - the owner's flip slot for the run persistence + explorer:
+                # AEP_TRACE=true in $CORE/.env, the same reviewed one-boolean shape as
+                # coder_flip/docs7_flip (the code default stays OFF and the tests pin it - the
+                # deployment opts in here, not in config.py). Idempotent upsert, restart, health,
+                # then the EFFECTIVE value printed back from a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^AEP_TRACE=" $CORE/.env; then sed -i "s#^AEP_TRACE=.*#AEP_TRACE=true#" $CORE/.env; else printf "AEP_TRACE=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^AEP_TRACE=true$" $CORE/.env && echo "== AEP_TRACE=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective aep_trace =\", get_settings().aep_trace)"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

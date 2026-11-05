@@ -51,7 +51,9 @@ def _run(coro):
 
 def test_registry_wired():
     names = {t["name"] for t in st.SCRAPE_TOOLS}
-    assert names == {"scrape_page", "scrape_extract", "scrape_many", "scrape_site", "scrape_stealth"}
+    # v0.481 grew the lane: scrape (auto-waterfall door), scrape_map, scrape_extract_json joined
+    assert names == {"scrape_page", "scrape_extract", "scrape_many", "scrape_site", "scrape_stealth",
+                     "scrape", "scrape_map", "scrape_extract_json"}
     assert set(st.SCRAPE_LABELS) == set(st.SCRAPE_HANDLERS) == names
     global_names = {t["name"] for t in TOOLS}
     assert names <= global_names, "scrape tools must be registered in the global registry"
@@ -61,10 +63,10 @@ def test_registry_wired():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.479.0"
+    assert APP_VERSION == "0.530.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.479.0+524" in pub.read_text()
+    assert "0.530.0+553" in pub.read_text()
 
 
 # ---------------------------------------------------------------- SSRF guard

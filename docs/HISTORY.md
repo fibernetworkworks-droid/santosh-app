@@ -2,6 +2,73 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.530.0 HOOLA GRAPH — the state-graph engine, P3 of the HOOLA AEP plan (5 Nov 2026)
+
+The langgraph idea hand-built as `server/app/aep/graph.py` (zero upstream code). StateGraph
+compiles a TypedDict state schema + nodes + edges + conditional edges into a
+CompiledStateGraph that is itself a Runnable (it composes with `|`). Channels:
+last-value-wins for plain keys, `Annotated[T, reducer]` merges through the reducer
+(operator.add works; `add_messages` is the messages reducer), first-ever values seed the
+channel. The walk runs super-steps — every node sees the same pre-step state, static
+multi-edges fan out, a join node waits for ALL its parents (the barrier), routing is
+additive (routers + static edges both fire), recursion_limit 25 with an honest
+GraphRecursionError. `interrupt(value)` parks the graph (checkpointed, the state carries
+`__interrupt__`); `Command(resume=...)` re-enters — the node re-runs from its top, answered
+slots replay in call order, open slots re-park with earlier answers preserved.
+Checkpointers: MemorySaver (thread-safe ring) and SqliteSaver (stdlib sqlite3 WAL, or the
+vault's sqlalchemy Engine used lazily) — a checkpoint after EVERY super-step, invoke(None)
+resumes the stored walk (the crash path). Tracer seam: one root chain span named
+StateGraph per invocation, one chain span per node named by the node — the P2 run tree
+nests the walk with a single trace_id. Registry stays 542 (library module — no tools, no
+routes, no flag; the inertness law re-proven). Tests: test_v0530_hoola_graph.py (42).
+
+## v0.502.0 DHARA — her workflows (4 Nov 2026)
+
+The n8n idea, house-sized, END TO END (owner: "DEVLOPE A N8N CLONE FOR HOOLA AI END TO END" after the
+full READ of n8n v2.47.0; zero n8n code — fair-code license). The agent is the canvas: she describes a
+recurring job once, `dhara_save` validates and stores the workflow graph (9 step types — tool / code /
+condition / loop / wait / notify / approval / set / http), triggers fire it (manual / schedule IST /
+webhook with a one-time token), the worker tick runs it with a checkpoint after every step (a pm2
+restart resumes mid-run, no step runs twice), and a mid-flow `approval` step parks the run until HER
+word in chat — relayed via `dhara_control approve` — moves it past the gate. Tool steps run as
+actor="routine": the house's own actor gates are the safety n8n never had. Registry 536 -> 541
+(dhara_save / dhara_run / dhara_runs / dhara_control / dhara_list). Tests: test_v0502_dhara.py (35).
+
+## v0.520.0 HOOLA TRACE — the LangSmith layer self-hosted, P2 of the HOOLA AEP plan (5 Nov 2026)
+
+The callbacks/tracers/event-stream idea and the LangSmith run-tree idea hand-built as
+`server/app/aep/tracers.py` + `vault_sink.py` after the deploy verified P1 HOOLA CORE live on the VPS
+(vps-ops run 41876141774, healthz 0.511.0). CallbackManager carries handlers + parent_run_id down the
+`config["callbacks"]` channel — a span start returns the CHILD manager, so the tree assembles with zero
+registry lookups; Span is the fire-point seam (created only when callbacks ride the config — the P1 fast
+path stays byte-identical). RunTreeTracer builds the run tree and persists FINISHED runs to sinks;
+astream_events is the event_stream v2 port (run_id + parent_ids + data.input/output/chunk, version pinned
+"v2"). THE FLAG LAW made real: `aep_trace` default OFF gates the VaultRunSink — finished runs land as
+ordinary vault observations typed `aep_run` (redaction BEFORE storage, fail-closed, honest counters), the
+pre-built `trace_flip` vps-ops job flips it, rollback is one flip, no schema migration. Explorer:
+`/api/aep/runs` (+ `source=vault`) and `/api/aep/runs/{run_id}` (the nested tree), `/api/agent/stats`
+grew the aep_trace block. Registry rides their 542 (the magic21 tool moved 541 -> 542 in v0.512); voice untouched by construction. Tests:
+test_v0520_hoola_trace.py (39) + the P1 core suite re-run green. Bugs the suite caught: async-for over the
+sync bare stream; the lru_cached get_settings vs flag setenv (cache_clear law). Version 0.520.0
+(pubspec 0.520.0+549), pins swept 0.511.0 -> 0.520.0 across 166 files; restart pin 9 -> 10.
+
+## v0.511.0 HOOLA CS PACK — the zoo radar + the operator loop's dialogue patterns (4 Nov 2026)
+
+The awesome Computer Science read turned into two fed skills (owner: "Computer Science (38) — 
+awesome-generative-ai → zoo expansion radar; awesome-conversational-ai → dialogue/QA patterns for 
+the operator loop"). cs-zoo-radar: the 436-model zoo BYOK catalog is the source of truth (186 image 
+/ 221 video / 29 audio; muapi 211 + kie 225), the awesome-generative-ai families are SEARCH TERMS 
+for `zoo action=models`, never invented model ids; the catalog grows only by the owner's tap (the 
+real append shape is in the skill body), the gateway question is asked, never assumed. 
+cs-dialogue-patterns: the operator loop's proven moves — slot ledger (never re-ask an answered slot, 
+ek turn ek sawaal), confirm-before-irreversible, the repair ladder (one fix attempt, honest fallback, 
+never retry-spam), QA shape (answer first, "mujhe nahi pata" over a guess), close-the-loop, voice 
+budget. Fed via its own once-ever stamp `skills:cspack:{}` (the v0.492 pattern), seed_all finds it 
+by name, cspack_enabled default ON. Tests: test_v0502_cspack.py (10) with the zoo numbers 
+cross-checked against the real zoo_catalog.json. Rebuilt on the dev chain's v0.510.0 base after the 
+26th+27th collisions (DHARA took 0.502.0, HOOLA CORE took 0.510.0). Registry stays 541. 
+Server-only deploy; old APKs keep working.
+
 ## 🔒 FROZEN BY OWNER — MERA PC / PC OPERATOR / SANTOSH DESKTOP (25 Oct 2026)
 The owner froze ALL Mera PC code and its AI side. DO NOT touch, edit, refactor, "improve", reformat
 or upgrade any of these until the owner EXPLICITLY asks in chat:
@@ -18261,3 +18328,948 @@ Phase 1 made Hoola render animated films. Phase 2 gives them a VOICE and a FACE:
 
 - `test_v0_frames.py` pins moved to 7 actions (22 green), `test_v0475_console_frames.py` 14 (stamps stay 0.475.0 x20 - server-only release, the Phase 1 precedent; APP_VERSION story now v0.476), mem 13, interactive-lab 21, scrapling 27, sample swept suites 21 green; `test_v0400_fast_reliable` 5 reds STASH-PROVEN on pristine HEAD (Playwright chromium cache missing in the recycled sandbox + site-service state - environment-only).
 - Version ritual 0.476.0: pubspec 0.476.0+521, APP_VERSION story, pins ->0.476.0(+521) in 146 suites, console stamps unchanged. Server-only deploy; desktop untouched, old APKs keep working.
+## v0.471.0 - RESEARCH Phase R0 NAAP (the scorecard first)
+
+Owner: "GO R0" (plan: `docs/RESEARCH_PRO_PLAN.md`). Nothing in that plan may be called "perfect" until a number exists.
+
+- `server/app/quality/research_asks.py` - 20 asks, set v1: 17 topics in her world (official numbers via MoSPI/TRAI, rules that
+  change - DPDP, GST e-invoice, PM Surya Ghar, GeM tenders -, market / supplier / competitor, a literature review, official health
+  guidance, a syllabus, a workshop machine, two that need CAGR in pylab) and 3 TRAPS - a company, a scheme and a BIS standard invented
+  for the card. The set stores NO answer: a research answer's value is never a fact remembered about the world.
+- `server/app/quality/researchcard.py` - the scorer `score_report(report, docs, ask, tools, opened)` (pure). Hard checks:
+  sources_enough, links_opened (a link no tool returned/opened in THIS run fails), numbers_traced (<=10% of key figures may be
+  untraceable to a fetched page or a pylab result; years, dates, [n], list numerals, small counts and numbers already in the ask are
+  not key figures), refs_match, as_of, sources_dated (a year inside a URL is not a date), uncertainty, calc_in_pylab, first_stop_tool.
+  Traps: not_found_said + no_untraced_figure + links_opened. Measured only: corroborated share (a figure two different websites carry)
+  and primary-looking share of cited domains (by domain NAME, said so). Thresholds are constants at the top; `RUBRIC_V` moves with
+  the scorer so two cards are only compared at equal rubric.
+- CALIBRATION (free): 11 reports written from fixtures with their own made-up facts - one honest report that must pass, and one per
+  planted fault that must fail for its own reason. First run found a REAL scorer bug (the URL's `/2025` counted as a source date);
+  fixed and pinned.
+- Live card: one real turn per ask on tenant `__quality__`, the evidence read back with `yaad.full_history` (tool_use inputs +
+  tool_result bodies of THIS turn), minutes, rupees (month usage delta x usd_inr), optional Opus usefulness judge (`--judge`).
+  HER verdict: `python -m app.quality research verdict <id> right|wrong "why"` - stored in data/quality/research_verdicts.json, shown on the card,
+  outranks every number.
+- Wiring: CLI `research`, `GET /api/quality/research`, vps-ops `research_card` (free part + 4 topics + the 3 traps).
+- Tests: `test_v0471_research_card.py` (13).
+- FINDING, not fixed here (R1): `hard.research_wanted` recognises only 9 of the 20 asks. The pattern needs "deep research" or
+  "research karo/on/about/into/report/paper"; "Research the cotton situation...", "Research India's...", "Compare Razorpay..." are not
+  seen as research, so they get no research recipe and no `research_check`. Everything else the free card checks is green: first-stop tools
+  and the document tool are in view for 20/20.
+- NOT VERIFIED: no live card has run. The free card proves the scorer, not the engine.
+
+## v0.472.0 - RESEARCH Phase R1 PLAN PEHLE
+
+Owner: "GO R1". Parts 1 (SAMAJHO) and 2 (PLAN) of `docs/RESEARCH_PRO_PLAN.md`; the shape is Google's `collaborative_planning` on Hoola's
+own house pattern (`devsahayak/plan.py`: score in code, a LARGE ask waits for her Haan, her note rides along).
+
+- `server/app/agent/research_plan.py`: `assess(text)` -> tier small / standard / large from deep-report words, number of things asked, figures
+  to work out, length (no model call; a lookup never waits). `build()` = the plan card: 4-6 sub-questions (one cheap Haiku call, JSON; a template
+  fallback by corpus official / scholarly / web when the call fails, so the card always comes), where to look, as-of, minutes + rupees
+  (ASSUMED sizes x the model's list price via `usage.cost`; the card says "andaza"). `card_text()` in her language (Hinglish or English).
+  `gate()` = the four outcomes: new plan / Haan (start) / Haan + a change (`approve_lead`; the change rides in the block) / no (`is_pure_rejection`);
+  other short words revise the plan and show it again; a different big research ask supersedes; a plan older than 24 h expires; per tenant + chat.
+  Table `research_plans` (ResearchPlan, `ensure_table()` + registered in `db.init_db`). Switch `research_plan_gate` (config).
+- `santosh._run_turn`: the gate runs before the pure-approval shortcut, only for her typed chat words (not voice, not `[`/`(` system notes).
+  Plan shown -> user bubble + plan saved, turn ends, NOTHING runs. Haan -> her words saved as her bubble, `user_text` becomes the ask +
+  `<approved_research_plan>` and `save_user=False` (the v0.213 in-memory path), so the SAME turn researches it and the chat never shows the block.
+  A gate that throws never blocks her ask.
+- `hard.py` research signal: the R0 card found it recognised only 9 of the 20 asks. Added the verb at a sentence start ("Research the...",
+  "Research India's..."), "do / need / want research", "research chahiye", "official sources / guidance / documents", "sources and dates",
+  "date every price", "own pricing page", "cite the" - with a no-list so "research notes / team / folder / file / gate / lab / dept" stay plain asks.
+  Free research card: recognised 20/20.
+- Tests: `test_v0472_research_plan.py` (15, incl. a run_turn end to end: plan first with zero steps run, Haan -> same turn gets the plan, her bubbles are
+  only her words, a broken gate does not block the ask). Eight existing tests that send big research asks through `run_turn` to test what happens AFTER the
+  gate (v0437 research, v0311, v0315, v0331) now step the gate aside with an autouse fixture. 5 other failures in the files touched
+  (v0268 x1, v0311 campaign, v155 notebook x3) fail identically on the commit before this change.
+- NOT BUILT: a tappable card with buttons on the phone / console (the Haan is typed, which works on every surface); the estimates are ASSUMED until the live
+  research card runs; no live research run has happened.
+
+## v0.473.0 - RESEARCH Phase R2 APNA ENGINE
+
+Owner: "GO R2". Parts 3-6 of `docs/RESEARCH_PRO_PLAN.md` (BAANTO, KAHAN DEKHO, PADHO, GINO); the loop is Exa's own (planner -> tasks ->
+goal-tagged search / read / think -> more tasks or stop, `docs/research/research_apis/01_techniques.md` s5) with the best of the others.
+
+- `server/app/research/engine.py` (pure loop; every outside part injected as `Deps`, so it is tested with no model / network / clock):
+  `Policy` (the source policy as data: include / exclude domains, after_date, budgets - `from_settings` lets a caller only LOWER a budget, Valyu's
+  "max_calls can only be lowered"), `State` (admitted links, pages read, counts), `run_worker` (<= `research_steps` steps; tools search / read / note /
+  calc / finish; words instead of a tool call = the summary; a crash = a task with an error), `replan` (JSON more-tasks-or-stop, never repeats a done goal,
+  a failing planner = stop), `run` (round 1 = the approved goals in parallel behind a semaphore, then <= rounds-1 re-plans; ends on stop / time / page budget /
+  round limit), `dossier` + `render`.
+- URL DISCIPLINE (Anthropic `web_fetch.url_sources`, our "data is never instructions"): `read` only accepts a link that came from her ask, a search of THIS run, or
+  the SAME site as a page already read (`admit_from_page`, last two labels / three for gov.in-style); an off-site link inside a page is refused and counted.
+- NOTE CHECK: `note(claim, url, excerpt)` - the excerpt must be found on the page that was read (or in the search excerpt for that url): every fragment >= 12 chars,
+  split at an ellipsis, whitespace / case aside. Not found = KEPT but `verified: false` and rendered "NOT VERIFIED - do not state as fact" (dropping it would hide the fault).
+- `calc` = pylab (`PL.run(..., publish=False)`) with the code and output kept on the dossier; a failed calc is a result the worker reads.
+- `agent/research_tools.py`: tool `research_run(question, sub_questions, include_domains, exclude_domains, after_date)`, owner / goal / routine only, family `research`
+  (registered in `tools.py`; `admit.plan_for` brings the family in for a research ask via `hard.research_wanted`), the real Deps (model = `santosh._think`,
+  search = Parallel then Google, fetch = `web.open_website`, calc = pylab), live step events per goal. `santosh.RESULT_LIMIT = {"research_run": 40000}`: the dossier
+  ends with its source list and the usual 6,000-char cut would lose it (and the research_check would then call real links invented).
+- R1 hand-off: the approved-plan block now tells the model to call `research_run` with EXACTLY the approved sub-questions (+ her change); `RECIPE_KIND["research"]` (b) names it, with
+  deploy_agents kept as the fallback. The R0 free card checks `research_run` is in view for all 20 asks.
+- Config: `research_engine_on`, `research_engine` ("hoola"; R6 adds the paid ones), `research_tasks_max` 6, `research_steps` 8, `research_pages_per_task` 6, `research_pages_total` 30,
+  `research_calcs_max` 8, `research_rounds` 2, `research_parallel` 3, `research_soft_s` 420, `research_read_chars` 12000.
+- BUG FOUND BY ITS OWN FIRST TEST RUN: the re-plan prompt holds JSON braces and went through `str.format()`, which raised and was swallowed, so the planner ALWAYS answered stop. Fixed
+  (`.replace("{n}", ...)`) and pinned by a test on the prompt itself.
+- Tests: `test_v0473_research_engine.py` (20).
+- NOT BUILT: claims as per-field evidence with a page re-read (R3); a background run that survives a restart (R4 - today the whole run lives inside ONE turn, capped by the 900 s turn clock, soft
+  stop at 420 s); a rupee ceiling and cost per run (R5 - only counts so far); the paid engines (R6). NOT VERIFIED: the engine has only run against scripted fakes; no live research run, no live card.
+
+## v0.474.0 - RESEARCH Phase R3 SABOOT
+
+Owner: "GO R3". Part 7 of `docs/RESEARCH_PRO_PLAN.md`: the report is built from FIELDS and checked against them before she sees it
+(Parallel's `field_basis`: reasoning + citations with excerpts + a confidence, per field - here all computed in code).
+
+- `server/app/research/figures.py` (new, shared): `numbers` (Indian way), `key_figures`, `near`, `split_report`, `norm_url`, `host_of`, `UNSURE` words. The R0 card
+  now delegates to it, so the card and the live check can never disagree about what a key figure is.
+- `server/app/research/claims.py` (new): `build_fields(tasks, sources, page_text, calc_numbers, is_primary)` = one field per note: claim, url, [n], excerpt, verified (R2),
+  `supported` (every key figure of the CLAIM is in the quoted words or in a calculation of the run), `unsupported_figures`, primary-looking, read, dated (the year of its date is on the
+  page), `corroborated_by` (different websites carrying the same figure in their own words). `confidence()` = unconfirmed (words not on the page) / low (verified but the figure is not in
+  the words, or the page was never read) / high (verified + supported + corroborated by another site, or primary-looking and dated) / medium (the rest), each with printed reasons.
+  `check_report(report, dossier)`: a link that is not a source of the run; a figure carried by no verified+supported field and no calc ("from memory"); a figure cited to [n] whose
+  source's words do not carry it (names the right one); a figure only a NOT VERIFIED / unsupported note carries; gaps hidden (dossier has unresolved / unverified items, report says nothing
+  uncertain). Max 5 findings, written as fix notes.
+- `engine.py` (ENGINE_V 2): the dossier carries `fields` + `stats.confidence`, notes carry confidence / supported / why; `render` shows confidence per note, "FIGURE NOT IN THE QUOTED WORDS"
+  and a confidence line; `note()` tells the worker at once when the claim's figure is not in its quoted words (run `calc`, or quote the sentence that carries it); `remember` / `recall` keep
+  the newest dossier per conversation (50, in memory).
+- `research_tools.research_run` remembers the dossier; its `say` tells the model every figure must be a note's or a calc's. `santosh._hard_check`: after the free code check and when
+  `research_run` ran, `claims.check_report(draft, recall(conv))` - a problem list = ONE fix round, the draft never shown (the v0.436 mechanism); a failing check is logged and never blocks the answer.
+- `quality/researchcard.py` RUBRIC_V 2: when the turn used the engine the live row gains `claims_supported` (+ the claim findings + field confidence) and a finding fails the row.
+- Tests: `test_v0474_research_claims.py` (21). First run of them found no code fault; three failures were test mistakes (a play with no date is "medium", `99999` prints without a comma, a card
+  test cited a link its dossier did not have).
+- NOT DONE, said plainly: it cannot tell whether a page is RIGHT (traceable is not true); it does not re-open the live page (the worker's read is the evidence); it does not detect two sources that
+  disagree; the dossier lives in memory per conversation (a restart drops it and the check falls back to the older link-only check - R4 persists runs). NOT VERIFIED live: the check has only run on scripted fakes.
+
+## v0.475.0 - RESEARCH Phase R4 LAMBA KAAM
+
+Owner: "GO R4". Part 8 of `docs/RESEARCH_PRO_PLAN.md` (Google's `continuation_token` / OpenAI `background` / Anthropic `clear_tool_uses`): a real report is 10-40 minutes; inside one turn it was
+capped at 900 s and died with the process.
+
+- `research/store.py` (new, table `research_runs`): question, goals, policy `{over, hi, asked}`, status queued / running / done / failed / stopped, tries, CHECKPOINT, progress, DOSSIER. `ensure_table()` + registered in `db.init_db`.
+  `candidates()` = queued runs within the per-tenant cap + running runs whose heartbeat is older than the stale limit (tries left); a stalled run out of tries is marked failed with the reason. `finish()` leaves a stopped run stopped and clears the checkpoint.
+- `research/engine.py` (ENGINE_V 3): `snapshot` / `restore` (finished goals, admitted links, page texts trimmed to 4,000 chars, counts, elapsed), `run(..., resume=cp)` (a `while` over rounds; only the unfinished goals of the saved round run; the elapsed clock is restored),
+  `Deps.checkpoint` called after each goal and at each re-plan (a failing checkpoint is logged, never fatal), `Deps.step` narration, `prune_history(keep=2)` before every worker model call, the page budget counts DISTINCT pages (re-reading is free), `Policy.from_settings(bg=True)` uses the 1,500 s background clock.
+- `research/runner.py` (new): `start` / `stop` / `status`, `run_background` (never raises; failed = nothing readable or a crash, both reported), `tick` (the worker slot), narration lines in her language, `REPORT_MARK`.
+  The finish event is `research_run` -> kaamwatch (new KIND, queued = working) -> kaam_followup. `worker.research_jobs` calls `runner.tick` every ~20 s.
+- `kaam_followup._wake_text` for a finished research run: the report is written HERE - `research_status action=result id=...`, only from the dossier, [n] + dates, a NOT CONFIRMED section, her language, doc_studio PDF when asked. `santosh._steps`: a wake turn carrying `<research_report_due>` is a hard, held answer
+  (Opus, room, the R3 claim check); `_hard_check` applies the claim check only to a dossier stamped `_delivered` at or after the turn's start (a stale dossier from an earlier run of the chat can never fail a short "started" line); it also fires for `research_status`.
+- `research_tools`: `research_run(mode=background|inline)` (default from `research_background`; background returns `{started, run_id, say}` - one short line, end the turn), new `research_status(check | result | stop)`; admit brings the family in when a text names `research_status`.
+- R0 card: `live_card` switches `research_background` and `research_plan_gate` off while it runs and restores them (R1's plan wait would have stopped every live row at the plan card - a hole in R1 found here).
+- Tests: `test_v0475_research_background.py` (26, incl. a run_turn(actor='wake') end to end: the brain fetches the dossier, drafts a made-up figure, the check sends it back once, the corrected report is what she gets). R2 / R3 tests that call `research_run` directly now pass `mode="inline"`.
+  Bugs found by the tests: the narration total read 1/1 on the first step (seeded from the goals now); the first draft of the tick tests started tasks in a loop that `asyncio.run` closed.
+- NOT VERIFIED: no live run; the restart path is tested by a faked checkpoint + stale heartbeat, not a real pm2 restart. NOT BUILT: the rupee ceiling and per-run cost (R5), paid engines (R6), a tappable card / console view of a running research.
+
+## v0.476.0 - RESEARCH Phase R5 KHARCHA
+
+Owner: "GO R5". Part 9 of `docs/RESEARCH_PRO_PLAN.md` (Valyu `data_max_price` / Exa's itemised cost), built like `mapsbill.py` and shipped BEFORE any paid engine (R6).
+
+- `usage.py`: `run_meter()` + `_RUN` contextvar; `record()` adds each call's usd / tokens / model to the bound meter. Context-scoped, so tasks started inside a run count into it and a sibling task or a chat does not.
+  Feature label `research`.
+- `research/bill.py` (new): `Meter` (model rupees = list price x `usd_inr`, web calls counted, `afford()`, `day_spent_inr()`, `breakdown()`), `preflight()`, `caps()`, `format_line()` (an unpriced part is SAID),
+  `measured_per_goal()` (median over her last finished runs that cost something, needs 3), `usage_report()` with an `assumed` list. Config: `research_run_cap_inr` 150, `research_daily_inr` 600, `research_call_reserve_inr` 3,
+  `research_search_inr` 0, `research_fetch_inr` 0 (= unknown; say so).
+- `research/store.py`: columns `cost_inr` / `cost` (nullable, old rows work), `set_cost` (written at every checkpoint), `spent_since(tenant, since, exclude)`, `costs()`; `finish(..., cost=)` and a STOPPED run still records its spend.
+- `engine.py` (ENGINE_V 4): `Deps.afford` / `Deps.cost`; asked before every worker model call and before a re-plan; a refusal ends the goal with "stopped at the cost ceiling", the run with `cost ceiling: <why>` (no re-plan), the dossier carries `cost` and `stats.cost_inr`, `render` prints the cost line.
+- `runner.py`: a Meter per run seeded from the run's saved cost on a restart (money already spent before the crash counts against the ceiling); `usage.bind(tenant, "research")` + `usage.run_meter(meter.acc)` around `E.run`; the done event says when the ceiling stopped it; `status` shows cost.
+- `research_tools.py`: `preflight` before any run (background or inline; refusal names `RESEARCH_DAILY_INR`), the inline path is metered + ceilinged + written to the ledger, a cost-stopped inline result tells the model to say what is and is not covered.
+- `research_plan.py`: `estimate(n, settings, tenant)` uses the measured median per goal once 3 runs exist (`assumed: False`, "from your last N runs"), else the assumed sizes; the card shows the per-run ceiling and what is left today; `gate` / `build` pass the tenant.
+- `research/api.py` (new, mounted in `main.py`): `GET /api/research/usage`, `GET /api/research/runs`, `POST /api/research/runs/{id}/stop`.
+- Tests: `test_v0476_research_bill.py` (24). No code fault found by the first run of them.
+- NOT VERIFIED: no live run, so no measured cost per goal exists yet and the 150 / 600 defaults are guesses; the web price is unknown (counted, unpriced); rupees are list price x the server's rate, not an invoice.
+  NOT BUILT: the paid engines (R6) and any console / phone view of research cost.
+
+## v0.477.0 - RESEARCH Phase R6 PARAYA ENGINE
+
+Owner: "GO R60" (read as R6). The one phase this plan said must not be built blind; it is built the only honest way: every vendor off by default, a price required before any may spend, every vendor claim re-checked by Hoola's own fetch.
+
+- CORRECTION first: reading each vendor's SDK for its wire format showed **Exa's Research API is RETIRED** (`exa_py/research/*` raises "The Exa Research API has been retired... Use the Agent API"). `01_techniques.md` s5 and `00_what_exists.md` were wrong
+  to present `/research/v1` as callable and are corrected; the callable one is the Agent API (`POST /agent/runs`: `effort`, `budget.maxCostDollars` 1-100 USD, `outputSchema`, `output.grounding[]` with url + title and NO excerpt, `costDollars`).
+- `research/vendors.py` (new): `REGISTRY` (parallel / exa / openai / linkup built; perplexity / valyu / gemini registered with why-not), `check(engine, tenant)` = the gate (built, `research_engines_allowed`, key, `research_vendor_terms_ack`, a per-run price > 0, price + reserve <= the run ceiling, room today;
+  each refusal says which env var to set), `status_table()`. Adapters (all `httpx`, injectable `_transport` for tests): **Parallel** `POST /v1/tasks/runs` (`x-api-key`, `processor`, `task_spec.output_schema` json = the findings schema, `source_policy`), poll `GET /v1/tasks/runs/{id}` then `/result`,
+  per-finding basis `findings.N` -> citations + excerpts + confidence. **Exa** `POST /agent/runs` with `budget.maxCostDollars` (clamped 1-100) + `effort`, poll `GET /agent/runs/{id}`, structured findings + grounding, `costDollars.total` x USD->INR = the REAL cost, cancel `/cancel`.
+  **OpenAI** `POST /v1/responses` (`background`, `max_tool_calls`, `web_search_preview`), poll `GET /v1/responses/{id}`, only lines carrying a `url_citation` become claims, `NOT FOUND:` lines -> unresolved, cost from usage tokens only when the model's price is known, cancel. **Linkup** `POST /v1/research` structured (`reasoningDepth`, `mode`, `includeDomains` / `excludeDomains` / `fromDate`), poll `GET /v1/research/{id}`.
+  `run_vendor`: the create is NEVER retried (it may have succeeded), a read is retried once; the vendor run id goes to `on_id` at once; a resume id skips the create; stop -> cancel + `StoppedByHer`; a wait over `research_vendor_wait_s` -> cancel + "may still bill". Errors never carry the key.
+  `to_dossier`: fetches every cited page itself (url discipline + source policy), a claim is VERIFIED only by Hoola's read - the vendor's own quote if it is really on the page, else `best_sentence` (a page sentence with ALL the claim's key figures, or a strong word overlap) - else NOT VERIFIED; a claim with no usable source is dropped and counted;
+  the vendor's prose is not carried at all; the result is `engine.dossier(...)`, the same R3 fields / confidence / claim check as the own engine.
+- `runner._vendor_job` + `research_run(engine=...)`: vendor runs are always background; the vendor line of the meter starts as the price she set ("an ESTIMATE") and becomes the vendor's reported cost when it reports one (`Meter.set_vendor` REPLACES, never adds, so a restart does not count it twice);
+  the gate is re-checked at the start of the run; a gate closed after the ask fails the run with the reason. Narration kind `wait`. `usage_report` gains an `engines` table.
+- Config: `research_engines_allowed` ("hoola"), `research_vendor_terms_ack` (""), `exa_api_key`, `linkup_api_key`, `research_{parallel,exa,openai,linkup}_run_inr` (0), `research_parallel_processor` (core), `research_exa_effort` (auto), `research_openai_model` (o4-mini-deep-research), `research_openai_search_tool`, `research_openai_max_tool_calls` 40, `research_linkup_depth` L / `_mode` research, `research_vendor_poll_s` 10, `research_vendor_wait_s` 1500.
+- R3 check refinement (found by these tests): an honest report that names a figure only to say "could not be confirmed" was flagged; a figure carried only by a weak note is now accepted when its own sentence says it is unconfirmed (a figure stated as fact still fails).
+- Tests: `test_v0477_research_vendors.py` (27; responses shaped like each SDK's own models through `httpx.MockTransport`). Two failures on the first run: a test typo, and the R3 false positive above. A fixture mistake (a citation span running into the next line) also showed that sloppy vendor indices could credit an uncited line - the parser trusts the indices; they are the vendor's.
+- NOT BUILT: perplexity, valyu, gemini (wire format not read). NOT VERIFIED: no vendor has answered; Parallel's supported JSON-schema subset, Exa's grounding field naming for list items (an unmatched field falls back to every citation of the run with no confidence claimed), the OpenAI deep-research tool type and
+  `web_search_preview` filters, Linkup's key spellings are all read from SDK source only. The vendors' terms and prices have not been read by anyone - the gate makes that her act. Also still unread: whether the Parallel Task API accepts the same key as its MCP search (`parallel_api_key`).
+
+## v0.478.0 - RESEARCH Phase R7 THE RUN-OFF
+
+Owner: "GO R7". The measurement and the rule for "which engine researches best", built so it refuses to name a winner the numbers do not support. Never run live: there is no table, no measured cost and no winner yet.
+
+- `quality/runoffcard.py` (new). `run_one(engine, ask)`: the engine gathers (Hoola's own `E.run`, or `vendors.gather` = vendor + Hoola's own page fetch) -> a dossier -> the SAME writer (`WRITER_SYSTEM`, same model, one fix round on the R3 claim check) -> the SAME scorer; the
+  scorer's evidence = every page / search excerpt / calculation THAT run fetched (`fetch` / `search` are wrapped to capture them); the cost = the R5 meter (+ the R6 vendor line); a failure is an ERROR row with its reason; each run is also a ledger row so the budget holds.
+  `run_card(engines, asks, budget_inr, k)`: refuses without `--budget-inr`, sets the day ceiling to that budget (restored after) and turns the plan wait + background off, runs INTERLEAVED (ask 1 on every engine, then ask 2...), stops when the budget is gone and flags the table partial, records a vendor whose gate is closed as `not_run` with the reason.
+  `build_table`: per engine right (her verdicts applied), `right_non_calc`, traps, per-check shares, claims backed, primary / corroborated, median minutes, rupees a report, judge, errors, her-verdict count. `decide` = the rule (see CLAUDE.md): eligible only with >= 80% answered and NO trap invented; a challenger displaces the incumbent only by >= 15 points on `right`, ties within 2 points -> the cheaper; the incumbent disqualified -> the best eligible; nothing eligible / no lead -> no winner.
+  `rebuild(card)` re-decides a saved card with her CURRENT verdicts; `apply_default` / `reset_default` (her act); `check_free` (which engines may run + what the card would cost for the engine alone, labelled an estimate).
+- `researchcard.set_verdict(..., engine=)` / `verdict_for`: her verdict on ONE engine's report (`engine:ask` key) beats her general verdict on the ask; verdicts are only accepted for real ask ids.
+- `vendors.gather` (new): the single vendor path (gate re-check, price on the meter, run, verification, dossier + cost) used by `runner._vendor_job` and the card; `effective_engine` / `read_default` / `default_file`. Config `research_engine` = "auto" by default; `research_tools` resolves it (a default whose gate is closed falls back to hoola with an `engine_note`; a named engine that cannot run is a ToolError).
+- CLI `research runoff --check | --status | --decide | --apply | --reset | --budget-inr N [--engines ..] [--only] [--limit] [--k] [--judge]`; `GET /api/research/runoff` (latest table re-decided with her verdicts, history, the default in force, every engine's gate); vps-ops `research_runoff_check` (free).
+- Tests: `test_v0478_research_runoff.py` (21). Four first-run failures were all in the tests: a wrong median in my expectation, and verdict calls with made-up ask ids (correctly rejected); a vendor test whose canned report carried a derived figure no calculation backs - the scorer was right and the test now asserts that difference explicitly.
+- NOT VERIFIED / NOT BUILT: no live run-off has happened; the 15-point margin, 2-point tie and 80% floor are judgement, not measurements; the writer's own cost is the same for every engine but unknown until run. Perplexity / valyu / gemini are still not engines (R6).
+
+## v0.479.0 - RESEARCH Phase R8 KAAGAZ
+
+Owner: "GO R8". Part 10 of `docs/RESEARCH_PRO_PLAN.md`: "a perfect research doc is a document, not a chat reply". The existing Document Studio (HOOLA PRINT PDF, Word, workbook) is reused; the new part is WHAT goes into it and that none of it depends on the model remembering to include it.
+
+- `research/document.py` (new): `title_of`, `figure_text`, `key_cards` (the glance figures by rule), `figures_rows`, `unconfirmed` (the full list, de-duplicated), `sources_rows`, `series_from_calcs` (a real printed series only), `method_rows`, `build_markdown` (the Document Studio mini-language: `[stat: value | label]`, `[!note]`, `[!important]`, pipe tables; sections At a glance / The report / Key figures / Not confirmed / Sources / How this was made),
+  `brand_art(brand)` (a stand-in for the art-direction call: her kit's colours + name as the fixed parts `htmlpdf._sane` accepts, NO model call), `workbook_sheets` (Figures / Sources / Not confirmed / Method / Series N + chart specs), `build_files` (PDF via HOOLA PRINT with the ReportLab fallback, Word, workbook).
+  The cells are made safe (no pipes / newlines; nothing that a sheet would read as a formula).
+- tool `research_document` (family `research`): needs a dossier delivered in THIS chat (`engine.recall`), a real report (>= 200 chars), and the same `claims.check_report` the chat answer passes - a failing report is refused with the findings named and nothing is built or sent; her brand kit is read (`brand.service.kit`; a missing kit never blocks); each file goes through the existing `_deliver` path as a file card.
+  `research_status result`, the wake text and `RECIPE_KIND["research"]` now point to it instead of plain doc_studio.
+- Tests: `test_v0479_research_document.py` (18; the three files are really built and read back: PDF text via pypdf, Word headings + tables via python-docx, workbook sheets via openpyxl). One failure on the first run: Document Studio lower-cases hex colours (test fixed); a positional `maxsplit` deprecation fixed.
+- NOT BUILT: a Google Doc; charts in the PDF / Word. NOT VERIFIED: HOOLA PRINT (Chromium is not installed in this sandbox, so the PDF was built by the ReportLab fallback and the brand-coloured HOOLA PRINT path was only checked at the `_sane` spec level); how the glance stat row and the tables look in the printed PDF has not been seen by anyone.
+
+## v0.480.0 - RESEARCH Phase R9 NIGRANI + the held review (the last phase of the research plan)
+
+Owner: "GO R9". Part of the plan the document calls optional, built because it is what turns research into a standing employee: a topic that watches itself and speaks only when something changed - plus the model review of a report's wording against its own sources.
+
+- `research/watch.py` (new, table `research_watches`, registered in `db.init_db`, `ensure_table()`): `add / get / list_for / set_status / spent_this_month / tick / on_run_done / result_for / diff / snapshot_of / check_dossier / render_change`. `tick` (called from `worker.research_jobs` after `runner.tick`): at most 2 starts a pass, only active + due, never while the watch's last run is queued / running,
+  monthly cap -> pause + one event, engine gate re-checked (skip a day with the reason), `bill.preflight` (skip 6 h with the reason), then `runner.start(..., watch=id)` and the next check is one period away. `on_run_done` (the runner calls it for a watch run instead of the normal report events): baseline -> silent; no material change -> silent, counted; material change -> counters, `last_diff`, and a `research_watch` event
+  ("N badlaav mile"); failed / unreadable -> fail_count, the 3rd in a row pauses it with one event; stopped -> nothing.
+- `diff`: CHANGED / NEW / GONE (not seen this time) / UNCHANGED, one-to-one claim matching by word overlap (>= 0.6, a same-site tie-break), figures compared with the 1.5% rounding tolerance; GONE alone is never material. `check_dossier` appends the EARLIER values as prior fields (a changed finding's earlier value takes the new finding's [n]; a no-longer-seen one has none) so "was 388.0, now 412.5" passes the figure check and an invented number still fails. `render_change` prints the digest with figures as the claim writes them.
+- `runner.start(watch=)`: a watch run is quiet (no start line, no step lines, no progress events); `is_change_due` / `CHANGE_MARK`; `_watch_done`. `kaamwatch` kind `research_watch`; `kaam_followup._wake_text` for it (a SHORT message, "nahi dikha" not "badal gaya", no invented causes, offer the full report or stop); `santosh._steps` marks that wake turn hard + held with why `research_change` (the older rule that a research answer must carry LINKS belongs to full reports; found by the end-to-end test); `admit` brings the family in when a text names `research_watch`.
+- tool `research_watch` (family `research`; owner only; `GET /api/research/watches`): `add` without `confirm` returns a PROPOSAL (cost per check and per month - measured median per goal once 3 runs exist, else "not measured" - ceilings, monthly cap, the say-nothing promise), `confirm=true` creates (vendor engines still need every R6 gate), `baseline="last"` starts from the research just delivered in this chat (first check after one period), `delete` needs a yes, `check_now` respects the daily ceiling, `result` hands the brain the digest and remembers the check dossier.
+- `research/review.py` (new): `digest(dossier)` (notes with the page's own words + confidence + NOT VERIFIED flags, calculations, the NOT CONFIRMED list) and `review_report` (one call, `hard_check_model`, <= 4 named problems, never blocks). `santosh._hard_check`: for research answers, after the R3 code checks pass the research reviewer runs INSTEAD of the generic one (whose evidence is the truncated tail of the chat's tool results). Config `research_review` (True), `research_watch_month_inr` (300).
+- Tests: `test_v0480_research_watch.py` (33). First run: a bug (every=0 became weekly because 0 is falsy; now clamps to daily) and a fixture mistake (the scripted note hard-coded the old figure, so a changed page left no verified finding to compare - the play now follows the page's value); the end-to-end wake test then found the link-rule problem above.
+- NOT VERIFIED: never run live - no watch has ever fired in production; the 0.6 overlap, the 300-rupee month cap and the 3-failure pause are judgement; a vendor engine on a schedule has only been run against fakes. NOT BUILT: a console / phone screen for watches (list via the tool or `GET /api/research/watches`); per-watch quiet hours; delivery of the change message by anything other than the chat.
+
+
+## v0.483.0 FIRECRAWL CORE (2026-11-03) — our own Firecrawl for Hoola, house-sized
+
+Owner: "CAN WE BUILD OUR OWN FIRECRAWL FOR HOOLA" -> "BUILD". Preceded by an end-to-end read of github.com/firecrawl/firecrawl
+(engine waterfall with snipe-abort, AddFeatureError engine-set mutation, NuQ, /map, /extract, index engine with maxAge,
+ZDR/US-only/Exchange) - ONLY the design was taken; the engine is AGPL-3.0 and never enters this tree. Everything lives in
+`agent/scrape_tools.py` beside the five v0.474 tools (5 -> 8), on the BSD-3 Scrapling lane, no new pip packages.
+
+### The four ideas
+
+- `scrape` (the auto-waterfall door): fast HTTP first; block detection = 401/403/429, challenge TITLES ("just a moment",
+  "attention required", "access denied", "unusual traffic", "are you a robot", "verify you are human", "bot verification"),
+  or challenge SCRIPT fingerprints ("challenge-platform", "cf-browser-verification", "cf_chl_opt", "enable javascript and
+  cookies to continue") gated on a SMALL (<2500 char) body so a long article that merely mentions captcha never escalates.
+  On a block with stealth enabled: one stealth attempt (semaphore(1), ms-timeout discipline). stealth=never = HTTP-only;
+  stealth=always = direct browser (still needs the setting). Escalated-but-still-blocked = honest ToolError; blocked-marker
+  with a 200 body = served with block_note. When stealth is disabled the refusal names the exact setting to flip.
+- `scrape_map`: at most 8 pages fetched, same-host urls harvested (seed included), cap 200, include-regex, robots gate with
+  skipped counter, 0.3 s politeness, javascript/mailto/tel/# fragments dropped. Note: it returns DISCOVERED links; the
+  follow-up scrape_extract re-gates robots itself.
+- Page cache: `data/scraping/<tenant>/cache.db`, table page_cache(url PK, fetched_at, status, title, markdown, text),
+  write-through on every 2xx page read (both formats, 60k caps), read BEFORE the fetch, LRU cap 300 (delete beyond
+  OFFSET), settings scrape_cache_enabled / scrape_cache_max_age=1800. max_age None = never read (scrape_page legacy),
+  0 = always fresh; the scrape door defaults to the setting. css/include_links bypass (live DOM needed). Read falls back
+  to the other stored format when one is empty (markdownify-missing servers still serve).
+- `scrape_extract_json`: fetch -> markdown (14k cap) -> ONE brain call (cheap first, Claude fallback - the coder-observer
+  pattern; max_tokens 2000) -> loose JSON (direct, fenced block anywhere, first balanced run) -> rows cap 50. Honest
+  ToolError when the brain returns no JSON, pointing at scrape_extract/scrape_page alternatives.
+
+### Sweeps + known reds
+
+- `test_v0481_scrape_firecrawl.py` 28 green (offline: fetches are local Responses, robots prefilled, brain stubbed);
+  `test_v0474_scrapling.py` 27 green beside it (registry pin grew 5 -> 8 names). One pytest process per suite.
+- Version ritual 0.481.0: pubspec 0.481.0+526, APP_VERSION story, pins ->0.481.0(+526) in 151 suites (idempotent batch,
+  second run = 0 residual), console stamps stay 0.475.0 x20 (server-only release, the v0.476/v0.480 precedent).
+- The scrapling-10-reds class noted by the v0.480 sweep is sandbox-environment-only (missing scrapling/playwright stack
+  in that recycled box); this sandbox has the stack and runs the lane green.
+
+---
+
+## v0.484.0 HOOLA SAPNE — the NIGHTLY curator (OpenClaw's dreaming sweep ported; MOAT PLAN Phase 1)
+
+Owner: "USE THIS 2 REPO --- MOAT AND PREPARE PERFECT POWERFULL HOOLA AI PLAN FIRST" (OpenClaw @ b3487e66 +
+mattpocock/skills @ 4ae2317 read in full first) -> plan written FIRST (docs/HOOLA_AI_MOAT_PLAN.md, six phases,
+commodity-vs-moat, not-ported list with the rule that forbids each) -> simple-English Phase 1 explainer -> "GO".
+
+**FIFTEENTH COLLISION, re-versioned 0.479.0 -> 0.484.0**: the dev's parallel chain took 0.479.0 (Smart Home W1),
+0.480.0 (their HOOLA CURATOR), 0.481.0 (Launcher), 0.482.0 (research merge) and 0.483.0 (Firecrawl Core) while
+this built. REBASE PROTOCOL respected: rebuilt on their fresh base f9bf4db6, both curators kept and COMPLEMENTARY
+— the v0.480 curator merges near-duplicate ROWS (Tier-1 arbitration, soft revivable merges); SAPNE distills TIME
+WINDOWS into new curated memory (the dreaming half). Neither needs the other; both ride the same vault.
+
+### What ships (server-only; no Flutter, no desktop, no PC files)
+
+- NEW `server/app/coder/dreams.py`: two consolidation passes per tenant. **LIGHT** nightly (window
+  `coder_dreams_light_hours`=26h - catches the slow clock): the window's raw session observations become at most
+  `coder_dreams_max_writes`=4 curated memory rows. **DEEP** weekly (`coder_dreams_deep_days`=7, subsumes light when
+  both are due): may also REWRITE existing LIVE curated rows whose normalized title it restates - each rewrite
+  stores the EXACT preimage first, so every consolidation is undoable. Curated rows ride `store.store_observation`
+  (actor=`dreams`) - the dedup ladder, the primer, `yaad_khojo` and the three-layer search reach them with zero new
+  plumbing; the Tier-0 normalized-title merge means a restated fact REINFORCES the old row instead of duplicating.
+- OpenClaw's safeguards, ported (the deviations are pinned decisions):
+  - **Preimages**: `obs_preimages` table (`obs_preimage` / `_preimage_sql` shared by `obs_update_curated` /
+    `obs_restore_preimage` = the undo line). File level too: every digest rewrite saves the previous text as
+    `dreams.md.pre` beside it.
+  - **Reviewable**: every run appends a dated section to `<coder_dir>/dreams/<tenant>/dreams.md`; GET
+    `/api/coder/dreams` returns the digest + per-pass state + stats (loopback-keyed like every house router).
+  - **Privacy**: the observer's per-conv rule lifted one level - `latest_prompt_private_for_tenant` skips the whole
+    pass when the tenant's most recent prompt was `<private>`; private turns never produced vault rows anyway.
+  - **No self-recursion**: the input digest NEVER includes `actor='dreams'` rows; the curator has no tools.
+  - **v0.480 respected**: dreams never reads superseded rows (`superseded_by=0` in both window queries) and never
+    rewrites a superseded row - a soft-merged memory is absorbed history, not raw material.
+  - **One brain call per pass**: the same cheap path as the observer/nudge/curator (`observer._call_brain`), STABLE
+    `prompts.dreams_system` prefix (cache shape), the SAME `<observation>` XML `parser.parse_observations` already
+    knows - no new output format. Usage gate `usage.allowed(tenant, "coder")` first.
+  - **Quiet by law**: candidates = one indexed `DISTINCT tenant` query over rows newer than the light window; an
+    empty window books the run and moves on; at most ONE consolidation per worker tick (a thousand tenants cost at
+    most one brain call per tick). Tenant conv bucket `dreams-<tenant>` keeps the `(conv, content_hash)` dedup pair
+    from ever meeting another tenant's row.
+- `store.py`: additive `dreams_state` + `obs_preimages` tables (CREATE IF NOT EXISTS - old vaults self-heal at
+  `ensure()`, no migration) + the SAPNE helpers. `worker.coder_jobs` awaits `dreams.tick` beside the curator's.
+- `config.py`: `coder_dreams` (default OFF - bake on the VPS, then flip) + `coder_dreams_light_hours` /
+  `coder_dreams_deep_days` / `coder_dreams_max_writes`.
+
+### Tests
+
+`server/tests/test_v0484_hoola_dreams.py` (19): state clock round-trip, preimage save/restore exact-text round-trip
+(two undo lines: the explicit one + the rewrite's mandatory one), candidates exclude dreams-only tenants, kill
+switches (default OFF + coder_enabled), light pass writes curated rows through the funnel, budget cap (6 blocks -> 4),
+empty window books the run without a brain call, private-window skip, usage gate, deep rewrite keeps id + preimage,
+failed update falls through to a reinforce, digest append + `.pre` file, two tenants never share a curated row, light
+throttle, deep-wins-when-both-due, worker awaits dreams.tick, the route (on + off), version 0.484.0.
+
+### Sweeps
+
+- On the rebased base: dreams 19 + their curator 28 + coder 24 = 71 green; selfteach 24 + swarm 17 + v0475 + v0179 +
+  v0221 + routines = 70 green. The dashboard / live_features reds are the documented Playwright-cache env class.
+- **Stale-guard heals** (both stash-proven red on pristine main since the v0.476 stamps precedent):
+  `test_v0179_search` + `test_v0221_console_r1` cache-buster guards now pin the maintained convention (ONE coherent
+  app stamp at the last console change, 0.482.0; vendor qrcode.js 1.4.4 excepted) instead of demanding v=APP_VERSION.
+- Version ritual 0.484.0: pubspec 0.484.0+529, APP_VERSION story (double-collision preamble), equality pins
+  ->0.484.0, full-string pubspec pins +528 -> +529, story pins (v0475/v0480/v0481/v0482 suites) moved to the
+  newest-story convention. Console stamps stay 0.482.0 x20 (console unchanged by this release).
+- Mera PC freeze respected; desktop untouched; server-only deploy - old APKs keep working.
+
+### Not verified (said plainly)
+
+- Consolidation QUALITY on real tenant data (the prompts are shape-correct, 19 pins, but no live cheap-brain run has
+  curated a real night yet). The dreams digest is exactly where she judges it.
+- The 26h/7d cadence is assumed right; `coder_dreams_light_hours` / `coder_dreams_deep_days` retune without a deploy.
+- The dreams + curator passes run BESIDE each other; their combined brain cost (light nightly + curator weekly) is
+  bounded but unobserved on a real tenant count - watch `GET /api/coder/stats` after the flip.
+
+
+## v0.485.0 HOOLA SKILL DESK — the skills platform (owner: "NOW LETS WORK ON SKILLS FOR HOOLA" + "MAKE IT VERY POWERFULL BIGGER THEN HOW CLAUDE HANDDLE SKILLS"; the plan she chose: ALL, PHASED; SIXTEENTH COLLISION - the dev's chain took 0.481.0 Launcher / 0.482.0 research / 0.483.0 Firecrawl / 0.484.0 SAPNE, REBASE PROTOCOL respected, rebuilt on their fresh base 3beb5a9f, both curators + dreams kept beside the desk)
+
+What v0.477 taught (skill_manage), v0.478 delegated, and v0.480 promoted now gets its own surface, its telemetry, its seeds, its travel papers and its reach. Five pieces, all fail-open, every hop through the SAME atomic skills_store funnel:
+
+### 1. The Desk (web console, server-only)
+
+Account menu > **Skills** (also the `/skills` slash command; an open-book icon; NO sidebar row - her v0.456 no-desk-rows ask respected). New `static/console/skills.js`, `#v-skills` view. Three tabs:
+- **Meri skills** - the library with its usage (shown / read counts, last-read date per skill), search, create/edit (frontmatter lint mirrored client-side), Read (expands the body through the real read op), **Park/Unpark** (see 2), Delete (solo, confirmed). New / Import (paste a SKILL.md file or a JSON array) / Export (downloads the library as JSON - the same shape import takes, so a round-trip is a no-op).
+- **Pack bazaar** - the anonymised share shelf (see 4): read a pack, Install into her own library (create-if-missing - hers win).
+- **Shares** - the curator's nominations awaiting her tap, the decided ledger under it.
+
+### 2. Telemetry + the parked flag
+
+NEW vault table `skill_uses` (shown / read / published / installed per tenant+skill, one row per event):
+- **shown** is marked by `inject.skills_block` on every matched injection (surface chat/voice) - the desk's usage column.
+- **read** is marked by `skills_store.read` - the follow signal (read-before-follow made measurable).
+- **Recency boost**: a skill the telemetry saw in the last 30 days outranks an equally-ranked cold one (`inject._matched` - used beats written).
+- **Park**: `skills.enabled` (frontmatter `enabled: false`) - `skills_store.set_enabled` is the ONE writer and the model has NO such operation (parking is the owner's judgement). A parked skill vanishes from search and injection but stays listed; a content update never flips her flag. ADDITIVE migration: pragma-lifted for legacy vaults, `schema_version -> 3`, never destructive (SAPNE's dreams_state + obs_preimages tables ride beside it, additive both ways).
+- `store.stats()` carries skills_live / skill_uses / skill_reads / skill_shares_pending.
+
+### 3. Seeds, import, export (`coder/skill_packs.py`)
+
+- **SEED**: 10 class-level starters shipped under `coder/skillpack/` (deploy-flask-app, whatsapp-campaign, gst-invoice, meeting-minutes, morning-briefing, excel-data-clean, upi-payment-chase, seo-page-audit, hindi-reply-tone, pdf-fill-form) copied ONCE ever per tenant on the desk's first open - create-if-missing (hers win), the consumed stamp, `coder_skills_seed` gate. Seeds are ordinary SKILL.md files she can edit or delete.
+- **IMPORT**: raw SKILL.md markdown (the Claude Code / ClawHub file shape - same `---` frontmatter) or JSON rows, <=25 per call, linted through the same funnel, create-if-missing, NEVER overwrites (a collision reports 'exists').
+- **EXPORT**: the library as JSON rows; raw files are read directly so the follow telemetry stays honest.
+
+### 4. The share lane - auto-anonymised, the owner's hand on the tap
+
+The curator NOMINATES a skill only when the telemetry proves it was followed (`>= coder_skills_share_min_reads` real reads, default 3; parked never; no dups; pending cap `coder_skills_share_max_pending`). Nominations run FIRST in `curator.consolidate` and need NO brain call - a quiet week with no pending dedup pairs must not starve the shelf. The body is RE-REDACTED at nomination and again at publish (`strip_private` + `redact_secrets` - the shelf is a wire). **Nothing leaves the tenant without the owner's tap** (`share_decide`) - the same law as money. Published packs land in the RESERVED tenant `_packs` with NO trace of the source tenant (no name, no row, nowhere - anonymous by construction); a same-name different-body collision refuses (rename to publish); any avatar installs from the shelf into its own tenant.
+
+### 5. The reach (her two picks)
+
+- **Swarm**: `delegate.run_child` prepends `inject.child_skills` - the parent's matched-skills lines (<=400 chars) into the CHILD's own system prompt; the read-before-follow law survives delegation because a child owns `skill_manage`.
+- **DevSahayak**: `loop._skills_block` puts the top-2 matched skills WHOLE into the first message of the edit loop AND the read-only plan pass (1600 budget - the loop has no skill_manage tool, so the bodies ride). Zero model cost, fail-open, gated by coder_enabled+coder_skills.
+
+### Routes + tests
+
+Routes: GET `/api/coder/skills` (index + usage + the once-ever seed), POST `/skills` (the atomic ops), POST `/skills/enabled`, POST `/skills/import`, GET `/skills/export`, GET `/skills/shares`, POST `/skills/shares/decide` (THE TAP), GET `/skills/packs`, POST `/skills/packs/read`, POST `/skills/packs/install` - beside SAPNE's `/api/coder/dreams`. Package-export law: `skill_packs` rides the `app/coder` import list beside `dreams`.
+
+`server/tests/test_v0485_hoola_skill_desk.py` (41): telemetry shown/read/counts/last-activity + recency boost, park hidden-but-listed + file flag + update-preserves-flag + no-model-op, the legacy v2-schema lift to v3, seed once-ever + respects-hers + switch-off + every shipped file passes the lint + tenant law, import markdown/JSON/skip/cap/lint-refusal, export round-trip, nomination gates (reads evidence, parked, dup, cap, switch-off), the tap publish/reject + redaction at publish + NO tenant trace on the shelf + collision rename + install hers-win, the curator nomination wiring end-to-end (no brain call), `child_skills` + the child system prompt carries skills, DevSahayak `_skills_block` + first-message source pins, ten routes mounted + live, kill switches, version layer.
+
+### Sweeps + version
+
+Sweeps green on the merged base: desk 41 + frames 14 + curator 28 + launcher 16 + selfteach 24 + swarm 17 + coder 24 = 164, devsahayak + sampled swept suites 49; the dev's dreams 19 rides beside (firecrawl's 17 reds STASH-PROVEN pre-existing on pristine main - the sandbox's missing scrapling stack, the documented red class, untouched by this diff). Version 0.485.0 (APP_VERSION story + collision preamble, pubspec 0.485.0+530, pins ->0.485.0 in 151 asserting suites, full-string +529 -> +530 coherent on the rebased base; console stamps `v=0.485.0` x21 and the v0179/r1 stale-guards re-pointed to the new maintained convention). Mera PC freeze respected; desktop untouched by this release (the launcher's desktop 1.7.0 rides untouched) - server-only deploy, old APKs keep working.
+
+---
+
+++ b/docs/HISTORY.md
+
+## v0.486.0 BYOX SKILL PACK — Build-Your-Own-X: 31 categories, seed default on
+
+Owner: "Read https://github.com/codecrafters-io/build-your-own-x — build the unified BYOX skill pack for Hoola: full depth, all 31 categories, seed default on."
+
+### What was built
+
+**`server/app/byox/__init__.py`** — 31-entry category registry dict (CATEGORIES + SLUGS). Each entry carries: slug (`byox-<name>`), display_name, description, core_concepts (3-5 bullets), best_languages, phases (5 ordered build milestones), and reference_url (top tutorial from the BYOX README). All 31 codecrafters categories covered: 3D Renderer, AI Model, Augmented Reality, BitTorrent, Blockchain, Bot, CLI Tool, Database, Distributed Systems, Docker, Emulator, Frontend Framework, Game, Git, Memory Allocator, Network Stack, Neural Network, Operating System, Physics Engine, Processor, Programming Language, Regex Engine, Search Engine, Shell, Template Engine, Text Editor, Visual Recognition, Voxel Engine, Web Browser, Web Server, Misc Systems.
+
+**`server/app/byox/guide.py`** — three pure functions:
+- `list_categories(q)` — returns all 31 categories, optionally filtered by keyword
+- `get_guide(slug_or_name, level)` — full guide for one category; level=quick/standard/deep; fuzzy match via difflib
+- `plan_learning(want, background, time_weeks)` — personalised week-by-week learning plan matching want against category keywords
+
+**`server/app/agent/byox_tools.py`** — exports BYOX_TOOLS / BYOX_LABELS / BYOX_HANDLERS for three agent tools:
+- `byox_list` — list categories (optionally filtered)
+- `byox_guide` — full guide for one category
+- `byox_plan` — personalised BYOX learning plan
+
+**31 SKILL.md seed files** in `server/app/coder/skillpack/byox-*.md` — one per category, each with valid frontmatter (name ≤64 chars, description ≤60 chars), 5 build phases, core concepts, language guidance, and a VERIFY criterion. Seeded once-ever per tenant on the skill desk's first open (coder_skills_seed=True, existing skills win, byox_enabled default ON).
+
+**`server/app/agent/tools.py`** — BYOX tools registered after home_tools block (same pattern).
+
+**`server/app/agent/admit.py`** — "byox" family keywords: "build your own", "from scratch", language-specific build phrases, all 3 tool names.
+
+**`server/app/config.py`** — `byox_enabled: bool = True` (seed default on).
+
+**`server/app/main.py`** — APP_VERSION bumped to "0.486.0"; two new routes: `GET /api/byox/categories` and `GET /api/byox/guide/{slug}`.
+
+**`pubspec.yaml`** — bumped to 0.486.0+531.
+
+**`server/tests/test_v0486_byox.py`** — 26 tests: registry completeness, every-category field coverage, slug prefix, list/filter/no-match, get_guide exact/name/fuzzy/quick/deep/missing, plan_learning basic/background/fallback, tool exports, tools.py registration, admit family, config default, 31 seed files exist + valid frontmatter, routes, version.
+
+### NOT BUILT (explicitly out of scope)
+- Interactive BYOX course UI (a future Prayogshala-style phase)
+- Automated progress tracking per user per category
+- Code execution sandbox for BYOX exercises (would need the devlab gate)
+
+### Version ritual
+- APP_VERSION 0.485.0 → 0.486.0
+- pubspec 0.485.0+530 → 0.486.0+531
+- 153 version-pin test files updated (excluding test_v0485_hoola_skill_desk.py and test_v0179_search.py)
+- Console stamps stay at 0.485.0 (server-only release, no console change — v0.479/v0.483 precedent)
+- Mera PC freeze respected; desktop untouched; server-only deploy, old APKs keep working
+
+
+## v0.487.0 BYOX FULL DATASET — 415 tutorials, language filtering (2026-11-04)
+
+Owner: "YES BUILD IT WITH ALL 389 LINKS" (actual count: 415 tutorials across 31 categories from github.com/codecrafters-io/build-your-own-x).
+
+### What changed
+- `server/app/byox/__init__.py` — added `TUTORIALS: dict[str, list[dict]]` (415 entries, 31 slugs); each entry has `lang`, `title`, `url`, `video` fields; a post-import loop stamps `tutorial_count` onto every CATEGORIES entry.
+- `server/app/byox/guide.py` — `get_guide()` gains `language=""` param: filters `tutorials` list to matching language (case-insensitive); if no match, returns all with `language_note`; returns `tutorials` and `tutorial_count` in every response level; `list_categories()` now includes `tutorial_count`; `plan_learning()` includes `tutorial_count` per project step.
+- `server/app/agent/byox_tools.py` — `byox_guide` tool schema gains `language` property; handler passes it through.
+- `server/tests/test_v0486_byox.py` — updated to v0.487.0; added tests: `test_get_guide_tutorials_count_matches`, `test_get_guide_language_filter`, `test_get_guide_language_filter_no_match_returns_all`, `test_byox_guide_tool_has_language_param`, `test_tutorials_dict_has_31_keys`, `test_tutorials_total_count`.
+
+### Numbers
+- 415 tutorials total (71 web-server, 60 misc-systems, 41 programming-language, 34 game, 21 blockchain…)
+- 22/30 runnable tests pass in sandbox (8 fail on sqlalchemy/pydantic_settings not installed — same as v0.486)
+- pubspec 0.486.0+531 → 0.487.0+532
+- Console stamps updated 0.485.0 × 21 → 0.487.0 × 21
+- Mera PC freeze respected; desktop untouched; server-only deploy, old APKs keep working
+
+# v0.489.0 — HOOLA POWERTOYS RUN (W2b, 2026-11-04; SEVENTEENTH then EIGHTEENTH COLLISION — the dev's parallel chain took 0.484.0/0.485.0 while this built and 0.486.0 (BYOX SKILL PACK) + 0.487.0 (BYOX FULL DATASET) + 0.488.0 (CRAWL JOBS) while it sat unpushed; REBASE PROTOCOL respected twice, rebuilt on their fresh base fdc7c402, all five works kept, the version layer moved coherently on top)
+
+Owner: "W2b - PowerToys Run plugin". The Platforms plan's W2 full step: the 'hoola' door inside PowerToys Run
+(`Alt+Space`, `hoola`, `Enter` → Hoola Desktop), built fresh on f9bf4db6 (v0.483.0) after an ff-only rebase;
+0.484 was free on tags (no collision this time).
+
+## What shipped
+
+- **The plugin** `desktop/ptrun_plugin/Community.PowerToys.Run.Plugin.Hoola/`: .NET 9 class library
+  (`net9.0-windows10.0.26100.0`, UseWPF, x64-only with the AnyCPU→x64 property pin) referencing the community
+  reference package `Community.PowerToys.Run.Plugin.Dependencies` 0.97.0. `Main : IPlugin, IDisposable`:
+  static `PluginID = "162E72D3C1D7464E865293A276993A7B"` (32-hex, = plugin.json ID, never changes), Name
+  "Hoola", ActionKeyword `hoola`, one result per query (empty query = "Hoola Desktop kholo", else the query
+  echoed in the title), Score 100. The launch reads the W2a alias back (HKCU `App Paths\hoola.exe` default,
+  quote-trimmed, `File.Exists`) and `Process.Start(UseShellExecute=true)` on the full path — ONE launch truth,
+  no second mechanism; alias missing → `Context.API.ShowMsg` guidance (the desktop app owns that switch), alias
+  stale → the Win32 error is caught and shown. Dark/light icons follow `API.ThemeChanged` (subscribed in Init,
+  unsubscribed in Dispose). `plugin.json` in Microsoft's documented community shape; `DynamicLoading: false`
+  (only Wox.Plugin + BCL are used, nothing extra ships in the folder).
+- **The ride** `.github/workflows/build-desktop.yml`: setup-dotnet 9.0.x → `dotnet publish
+  desktop/ptrun_plugin/... -c Release -p:Platform=x64` → stage `desktop/ptrun_payload/` (only the plugin DLL +
+  plugin.json + Images — never the reference-assembly copies) → the PyInstaller spec's conditional `datas`
+  carry the payload INSIDE `SantoshDesktop.exe` (onefile → `%TEMP%\_MEIxxxx\ptrun` at runtime) so Hoola can
+  install it herself with no extra download; the desktop release additionally ships
+  `Hoola-PowerToysRun-plugin.zip` for manual installs (extract into
+  `%LOCALAPPDATA%\Microsoft\PowerToys\PowerToys Run\Plugins`, restart PowerToys).
+- **The installer** `desktop/santosh_desktop/pt_run.py` (the `app_paths.py` twin): `plugins_root()` /
+  `plugin_dir()` under LOCALAPPDATA (`...\Microsoft\PowerToys\PowerToys Run\Plugins\Hoola` — Microsoft's
+  documented user-level community-plugin location), `power_toys_present()` (per-user `%LOCALAPPDATA%\PowerToys`
+  exe, machine `%ProgramFiles%\PowerToys` exe, or the Run plugins root itself), `installed()` (plugin.json +
+  its ExecuteFileName), `install()` (whole-folder replace = upgrade; only Hoola's own folder ever touched;
+  Images copied through), `uninstall()` (calm idempotent undo), honest error dicts for missing payload /
+  unreadable plugin.json / missing DLL, and the PowerToys-absent branch that installs nothing and points at
+  the hotkey door.
+- **The fallback** `desktop/santosh_desktop/quickkey.py`: `Ctrl+Alt+H` (MOD_CONTROL|MOD_ALT + VK 'H') via
+  `RegisterHotKey` on a daemon message-loop thread (ctypes `_MSG`, `GetMessageW`, `PostThreadMessageW(WM_QUIT)`
+  for a clean stop, `UnregisterHotKey` on exit). `start()` polls briefly for an honest registered/error answer
+  (the combo may already belong to another app — that is a message, not a crash). The window app owns the
+  QuickKey (its events queue is the thread-safe bridge: WM_HOTKEY → `("focus", "")` → deiconify/lift/
+  focus_force on the Tk main loop); registered silently at app start ONLY when PowerToys is absent; Quit
+  unregisters. Hoola never presses keys herself — win+r stays in BLOCKED_KEYS; the doors open windows, the
+  USER presses.
+- **Desktop 1.8.0** `actions.do_pt_run(on)` behind the SAME `_control_on()` switch: install (PowerToys present)
+  or install + hotkey (PowerToys absent, via the injected `actions.set_hotkey`); `on=false` undoes both doors;
+  log lines for every outcome. `App` wires `set_hotkey = self._set_quickkey`.
+- **Server** pc operator: `pt_run` tool (ONE-TIME SETUP, ALWAYS ask_approval FIRST — settings change; on=false;
+  no admin; mentions Ctrl+Alt+H), `_do` branch (plugin-ready line with the folder + restart note / hotkey-door
+  line / honest not-ok line with the desktop's message / `_desktop_says` upgrade line for old desktops),
+  `_say` line ("PowerToys Run ka 'hoola' plugin jod raha hoon" / "hata raha hoon").
+
+## Sweeps + known state
+
+- `test_v0484_ptrun.py` 33 green; launcher 16 + frames 14 + pc-pins 19 beside it (82/82), then ax/bridge/kinds/
+  curator 83 and home/coder/selfteach 72 — 237 green, one pytest process per suite. One test-side fix on first
+  run: plugin.json's IcoPath* carry Windows separators; the repo-file existence check swaps them on Linux.
+- Version ritual 0.484.0 (`scripts/ritual_0484.py`, line-wise): APP_VERSION story (line 36 replaced whole),
+  pubspec 0.484.0+529, pins →0.484.0(+529) in 153 bare + 82 full-string suites (zero residual), desktop pins
+  1.7.0→1.8.0 (test_v0185 + test_v0481), frames story pin → the v0.484 story, console stamps stay 0.482.0 x20
+  (console untouched this release).
+- Deliberately NOT built (named for W3): the PC→Hoola text lane — a typed quick-ask that lands in the Hoola
+  conversation needs a new server surface (the desktop bridge is a job channel only today); W3's "send page to
+  Hoola" builds exactly that lane and both doors will ride it. NOT VERIFIED: the dotnet compile runs for the
+  first time on the next push; the plugin has not yet been loaded by a real PowerToys.
+
+---
+
+# v0.490.0 — HOOLA WEB EXTENSION (W3, 2026-11-04; EIGHTEENTH COLLISION — re-versioned 0.487.0 -> 0.490.0: the dev's parallel chain took 0.486.0 (BYOX SKILL PACK) + 0.487.0 (BYOX FULL DATASET) + 0.488.0 (CRAWL JOBS) while W2b+W3 sat unpushed; REBASE PROTOCOL respected, rebuilt on W2b's 0.489.0 rebase of fdc7c402, all five works kept)
+
+Owner: "W3 (web extension)". The Platforms plan's W3 step: the MV3 'send page to Hoola' browser extension + the PC→Hoola
+TEXT LANE the v0.486 W2b release had explicitly named for it ("both doors will ride it" - kept). Built on branch w3-webext,
+which sits on the REBASED W2b (713e2a1c, v0.486.0 on the dev's e2a57481 base - the SEVENTEENTH-COLLISION story lives in the
+v0.486 entry and Task 25).
+
+THE LANE (`server/app/quicklane.py`, NEW - the surface the whole W-line was missing; the desktop bridge was a job channel
+only): POST /api/pc/quickask - a PAIRED device (the SAME spc_ token the bridge holds; the extension pairs through the SAME
+/api/pc/pair 6-digit flow and shows on her Mera PC list) sends {text?, url?, title?, selection?, client_id?}; the server
+composes ONE honest Hinglish user message (title + link, her selection quoted, her ask or the honest default) and rides the
+SAME turn pipeline the phone's POST /messages uses (convs.mark + bus.publish + turn_inbox.accept + run_owned) - Hoola answers
+in her conversation with every tool she already has, and reads the page with her OWN v0.483 scrape lane (this lane never
+fetches anything itself). GET /api/pc/quickask/messages reads the last display rows back for the asker. Guards: device-token
+auth (401 on revoked), the conversation must belong to the device's tenant, 30/hour/device rate cap, client_id dedup.
+Mounted beside the PC block with ONE include_router - no frozen endpoint, setting or behaviour touched (exception recorded
+in CLAUDE.md's freeze block, the W2b precedent).
+
+THE EXTENSION (`desktop/ext/hoola-extension`, MV3 Chrome/Edge/Brave): service worker + popup (pair line, ask box, page send,
+last replies, console link) + the right-click "Hoola ko bhejiye" + Ctrl+Shift+H; activeTab+scripting selection capture
+(chrome:// pages honestly skip); pairing in Options with the phone's 6-digit code, a custom server asks its host permission
+first; no eval, no remote code; version rides the desktop (1.9.0). THE RIDE: build-desktop.yml stages desktop/ext_payload/
+and the spec walks it INSIDE SantoshDesktop.exe (%TEMP%\_MEIxxxx\ext); the release ships Hoola-Chrome-extension.zip. THE
+INSTALLER (`ext_install.py`, the pt_run.py twin): copies ONLY Hoola's own folder to %LOCALAPPDATA%\Hoola\chrome-extension
+(user-level, no admin, NO browser policy, nothing auto-starts), whole-folder replace = upgrade, MV3 checked, calm undo,
+honest errors; the window's "Browser extension" card installs on HER click and names the 3 steps. Desktop 1.9.0 do_ext
+behind the SAME _control_on() switch.
+
+THE DOORS RIDE IT: Main.cs 'hoola <sawaal>' -> "Hoola se poochho: <sawaal>" -> the alias target launched with --ask
+(quoted; the W2a alias launch truth and the plugin ID unchanged; plugin 1.9.0); the desktop's single-instance lock port now
+RECEIVES ASK: lines (second instance hands over, the running window sends through its events queue - the W2b pattern); the
+window's own ask box; desktop quickask.py (paired token, client_id always, honest dicts). SERVER: pc operator ext tool
+(ONE-TIME SETUP, ask_approval PEHLE - "Hoola extension lagao") + _do/_say/_desktop_says; win+r still BLOCKED_KEYS.
+
+Tests: NEW test_v0487_webext.py (30): lane (page/ask/compose/422s/bad-url, device auth incl. revoked, tenant-checked
+read-back, dedup, rate cap, the no-pc-settings pin), extension (manifest MV3 + version-rides-desktop + no-remote-code +
+pairing), installer (fake-%LOCALAPPDATA% round trips, neighbours untouched, upgrade, calm undo, honest missing/bad/MV2
+payload, non-Windows), desktop (MockTransport honest dicts, --ask handover pins, window wiring pins, do_ext gate), Main.cs
+ask door, operator (spec/_do/_say/_desktop_says, win+r blocked), CI/spec pins, versions. Sweeps green: webext 30 + ptrun 33
++ launcher 16 + frames 14 + v0179/r1 12 + dreams/desk/curator 88 + routines 3 + pc kinds/bridge 20 + home/coder/ax 83;
+test_pc_operator 3 reds STASH-PROVEN on the committed W2b tree AND WORKTREE-PROVEN on pristine main (pre-existing, the
+sandbox's async/env class, untouched). Version ritual 0.487.0 (ritual_0487.py): pubspec 0.487.0+532, pins →0.487.0(+532)
+in 84 full-string + 153 assert suites (zero residual), desktop/plugin pins 1.8.0→1.9.0, story pins → the v0.487 story,
+console stamps stay 0.485.0 x21. Mera PC freeze respected.
+
+NOT VERIFIED (honest): the extension has not been loaded into a real Chrome yet, and the C# ask-door compiles first on the
+next push (CI-only) - her first right-click "Hoola ko bhejiye" after deploy is the live test. Deploy: server via the usual
+vps-ops ritual; desktop 1.9.0 exe publishes via build-desktop. Next in the plan: W4 (the flutter pass).
+
+---
+
+# v0.494.0 EQUAL POWER — the call gets native eyes on every suite, the phone can type into a call, and a test holds all three surfaces equal forever (4 Nov 2026; NINETEENTH COLLISION — re-versioned 0.491.0 -> 0.494.0: the dev's parallel chain took 0.491.0 (CRAWL JOBS), 0.492.0 (BYOX FEED) and 0.493.0 (THE FLUTTER PASS, their W4 — the curated pubspec upgrade) while EQUAL POWER sat unpushed; REBASE PROTOCOL respected, rebuilt on their fresh base 8e3339fe, all four works kept, the version layer moved coherently on top)
+
+(Version note: this section shipped as v0.491.0 and was re-versioned to v0.494.0 at the push — the dev's chain
+had taken 0.491/0.492/0.493 in the meantime; the version layer (pubspec 0.494.0+538, APP_VERSION, the 85
+full-string + 155 assert pins, console untouched) moved coherently on top of their base; pins re-verified green.)
+
+The owner: "GIVE EQUAL POWER TO ALL --- WIRE ALL AI FUNCTIONALITIES, TOOLS, SKILLS ETC TO ALL THUS CALL SECTION CAN
+WORK PROPERLY. FIND THE DIFFRENCE". The difference was found first (a full surface audit, report kept outside the
+repo): mobile chat and web console chat share ONE brain by construction — both POST the identical
+`/api/conversations/{id}/messages` (`lib/api.dart:516`, `static/console/v2.js:759` → `main.py` post_message) into the
+same `turn_inbox.run_owned` → `agent/santosh.py run_turn` and the same ~500-tool registry; there is NO server branch
+on client type. Their differences are client-side only (the console renders most of the phone's 404 event kinds
+through one generic read-only card; no mailbox UI; no per-app Google connects; `upi_result` unhandled; goal
+stop / compact / bootstrap missing; `/api/coder/dreams` an orphan route). The VOICE CALL was the unequal surface ON
+PURPOSE: `VOICE_TOOL_NAMES` lists 368 tools but exactly 200 are fenced into `VOICE_VIA_KAAM` and only ~111 were ever
+declared to Gemini Live, because 280 tools (~395 KB, ~110k tokens) filled the live model's context before she said a
+word (v0.149) and sessions died. The learned walls stay: `VOICE_TOOL_BUDGET` 150k chars, ≤170 specs.
+
+### W1 — declare the heads, delegate the bodies (server/app/voice.py)
+- NEW suite heads declared: WhatsApp campaigns `create_campaign` / `get_campaign_status` / `control_campaign` /
+  `check_template_status` (a call ALWAYS sends `auto_send=False`; `confirm_send` and the template tools stay fenced;
+  the SEND itself still waits for her card tap — the money/bulk rule is untouched); Ghar Home Assistant all five
+  `home_link` / `home_devices` / `home_on` / `home_off` / `home_state` (v0.479 had NO voice declaration and NO phone
+  screen); the suite READ heads unfenced `form_find` / `form_responses` / `slides_find` / `slides_read` /
+  `notebook_open` / `notebook_ask` / `photos_pick` / `photos_picked` / `doc_create`; plus `scrape_page` (public
+  pages only), `research_status`, `skill_manage` (read/list to follow one, create/update on her ask).
+- NEW `VOICE_HEADS` set: the STATE readers (`X_dekho`) of the 30 main desks — darzi, chai, office, gst, payroll,
+  vakil, seo, thok, telecall, seva, helpdesk, shikayat, service_desk, dev, drivers, fleet, courier, warehouse,
+  lekhak, paisa, audit, bima, brand, ads, front_office, society, travel, customs, kalam, product — are DECLARED even
+  though the desk's base (and so its CHANGES: new order, status moves, prices, rules) stays fenced. `via_kaam()`
+  returns False for a head; `_tool_specs()` includes them; `_execute()` dispatches them directly; `call_route()` says
+  "declared". `registered()` docstring updated (~130 declared now).
+- The `seo_dekho` duplicate in `VOICE_TOOL_NAMES` (line 75, listed twice since v0.38x) is gone.
+- PERSONA updated so the model knows its new eyes: the desk paragraph now says the readers are ON the call and the
+  changes go to santosh_kaam; the campaign line says create/status direct, send by card, `auto_send=False` on a call;
+  the Drive/Sheets/Forms/Slides/Photos/Notebook line names the declared heads; a new Ghar line carries the safety
+  band (AC only 20–28°, speaker ≤90%, geyser/fridge/washer never); a new line covers scrape/research/skills.
+
+### W2 — first-class doors (voice.py)
+- Her MCP servers on a call: cap `min(25, …)` → `min(40, …)` of `mcp_native_tools` — the chat default was always 40;
+  the call now matches.
+- The SETUP ladder (1007-refusal self-heal) sacrifices her MCP tools THIRD instead of FIRST:
+  `("mcp", "vocab", "langcodes", …)` → `("vocab", "langcodes", "mcp", "compression", "core_tools", "no_tools")`. The
+  persisted gentle three (SETUP_SOFT_MAX=3) are exactly {vocab, langcodes, mcp} — still gentle, so the v0.211 rule
+  (heavy losses never persisted) still holds, and test_v0211's `SETUP_STEPS[3:] == ("compression", "core_tools",
+  "no_tools")` pin still passes. Stored step numbers from before this change mean one step off for ≤7 days
+  (self-heals; `_setup_key` changes anyway because the tool list changed).
+- Looked at raising `voice_tool_wait_s` 12 → 20 and decided AGAINST: the 12 s delegate wait is a tuned UX number
+  (was 25, v0.86), kaamwatch already narrates progress mid-delegation, and the wall that actually mattered was
+  declarations — fixed in W1.
+
+### W3 — type into the call (lib/live_voice.dart, lib/call_session.dart, lib/ui/live_voice_screen.dart)
+The server has accepted `{"type":"text"}` mid-call since always (it lands as a user turn; `hold` even leaves hold on
+"typed") — but no client could send it, so the repair ladder's only answer was "chat mein likhiye" (hang up). Now:
+`LiveVoice.sendText()` (the WS JSON, same shape as sendFiles), `CallSession.sendText()` (falls back to `app.send` —
+chat — when the socket is gone, with an honest fileNote), and a calm type bar in the call screen: a "Call mein
+likhiye (spelling, address, theek-karo)" door that opens a field + send + close (hidden while she is on hold).
+Her first typed spelling is the live test.
+
+### W6 — the equal-power gate (server/tests/test_v0491_equal_power.py, NEW, 5 tests)
+1. `test_every_voice_listed_tool_exists`: `VOICE_TOOL_NAMES ∪ VOICE_VIA_KAAM ∪ VOICE_HEADS` must all exist in the
+   registry (`TOOLS` + `HANDLERS` + `VOICE_SPECS`) — a rename can never leave a dead name in the voice lists again.
+2. `test_equal_power_heads_are_declared_on_a_call`: the EQUAL_POWER_HEADS (campaigns, Ghar, suite reads,
+   scrape/research/skills, all 30 desk readers) stay listed, stay un-fenced, keep their specs.
+3. `test_desk_changes_stay_fenced_only_readers_are_declared`: the desk bases and the write suite heads stay on
+   santosh_kaam — the card tap remains the gate.
+4. `test_money_and_secret_guards_stay_up`: `confirm_send` never declared; the persona line "Money / UPI / bank-OTP /
+   password cards are NEVER approved by voice" stays; the `auto_send=False on a call` pin stays; `haan_karo`'s
+   description still says non-money; the SETUP ladder's persisted three stay gentle.
+5. `test_equal_power_cards_render_on_both_clients`: bazar_approval / operator_ask / goal / artifact / campaign /
+   studio_approval / employee_ask / email_draft must render on the phone (lib/state.dart) AND the web console
+   (static/console/*.js); ask_form / upi_result / pg_write / photos_pick pinned phone-side (their console renderers
+   are the W4 pass, listed honestly as phone-only today).
+`test_v149_voice_slim` updated to the new contract: darzi/society/app_banao/hoola_deal/form_create/slides_create
+still fenced; darzi_dekho/gst_dekho/photos_pick/form_find/notebook_ask/create_campaign/home_on/skill_manage now
+declared. Both suites green locally with the full import chain; `_tool_specs()` builds well inside the budget.
+
+Version 0.491.0 (pubspec 0.491.0+535; APP_VERSION story updated; all 158 test version pins bumped to 0.491.0/+535;
+desktop pins untouched 1.9.0; console stamps stay 0.485.0 x21 — the console is untouched this version). Mera PC
+freeze respected: nothing in `server/app/pc/`, `desktop/` or `lib/ui/pc_screen.dart` touched.
+
+NOT VERIFIED (honest): no live Gemini call has answered the new declared list yet — the first real call on the VPS
+is the test; if the bigger declared list ever trips a 1007, the SETUP ladder now burns vocab/langcodes before MCP
+(which is the intended order). The Dart type bar compiles first on CI (flutter analyze annotations). W4 (console
+card parity: ask_form/upi_result/pg_write/photos_pick renderers, mailbox UI, Google per-app connects, goal
+stop/compact/bootstrap, the SAPNE page for `/api/coder/dreams`) and W5 (phone: edit/retry/branch/feedback, Skill
+Desk screen, Ghar screen) are the NEXT versions of this plan. Deploy: the usual vps-ops ritual.
+
+### The verification sweep (same day, before the commit)
+
+The build was re-verified end to end before committing, and the sweep caught four things - three test contracts and
+ONE REAL BUG:
+
+- **The version ritual was half-done**: the 155 `APP_VERSION ==` asserts were bumped but the 85 full-string pubspec
+  pins still said `0.490.0+534` - completed to `0.491.0+535`, zero residual (the v0.490 ritual shape: 85 full-string
+  + 155 assert suites).
+- **REAL BUG - the SETUP ladder's MCP skip**: the refusal-climb shortcut (`if self._safe == 0 and not mcp_defs:
+  self._safe = 1`) assumed MCP led the ladder. On the v0.491 order (vocab, langcodes, mcp, ...) a call with no MCP
+  tools declared would have burned vocab AND langcodes in one hop - skipping two quality rungs to reach a rung that
+  drops nothing. Generalized: the climb now skips the mcp rung wherever it sits (`SETUP_STEPS[self._safe - 1] ==
+  "mcp" and not mcp_defs`), so one refusal = one real rung. `test_v150_voice_heal` updated to the new ladder shape
+  (one refusal in a no-MCP env: step 1, `without == ["vocab"]`).
+- `test_v0230_voice_phase3` `test_tool_diet`: the v0.230-era cap (110 specs / 60k chars) was obsolete the moment
+  v0.491 widened the declared set on purpose - moved to the sanctioned v0.149 limits (170 specs / the 150k budget),
+  which `test_v149` already enforces against the real mechanism.
+- `test_v0479_home` `test_voice_never_declares_home_tools`: v0.479's contract, deliberately reversed by v0.491 -
+  flipped to `test_voice_declares_home_tools_v0491` (all five declared, never fenced, the Ghar safety line pinned).
+
+Final local numbers: `_tool_specs()` = 164 specs / 89,782 chars (89,799 escaped) of the 150,000 budget - 162 tools
+declared directly (was ~111), 40% budget headroom left; `seo_dekho` exactly once. Suites green locally: v0491 (5),
+v149 (2), v150/v01851/v01853 heal, v0211 (29), v0219, v0225, v0230, v0232, v0241, v0245, v0264, v0302, v0187,
+v0479 (24), console r1, workspace, launcher, v0481.
+
+
+## v0.495.0 OFFICE HOURS — the gstack THINK/PLAN lane (owner: 'BUILD' right after 'NOW READ THIS REPO FIRST' on github.com/garrytan/gstack)
+
+[Entry reconstructed from commit 571d8ec1's message after the twenty-first collision: the -X theirs
+rebase kept their code but clobbered their docs entries; re-added by hand, the REBASE PROTOCOL's
+reconcile step.]
+
+Garry Tan's open-source software factory: /office-hours writes a design doc, four plan reviews amend it,
+only then anything is built. THE HOUSE HAD THE HANDS (qa, devops, appreview, kaam_plan); IT NEVER HAD THE
+HEAD - a structured think/plan step that decides what is WORTH building before anything is built. Zero
+gstack code rides this tree (their side is all Markdown prompts).
+
+NEW `agent/officehours_tools.py` beside kaam_plan (registry 529 -> 531, two tools: `officehours` /
+`officehours_dekho`): action=start opens a baithak (per-tenant data/officehours/<tenant>/officehours.db,
+office_docs + office_reviews) and returns SIX forcing questions - real pain with a specific example (not
+hypothetical), who does it today and what it costs, the first visible change when fixed, today's jugaad,
+the smallest self-useful wedge, kill criteria - asked ONE at a time, framing pushed back on; same topic
+while open returns the SAME doc honestly (already_open). action=doc writes the design doc: reframe,
+capabilities (max 7), premises challenged + her answers (max 7), 3-4 options each with honest effort
+(hours|day|days|week|weeks, unknown clamps to days), recommendation = the narrowest wedge (gstack: ship
+the narrowest wedge, learn from real usage). action=review appends one lens row ceo|design|devex|eng
+(findings + changes, append-only) - eng ALWAYS last and the eng lens is what flips status to reviewed
+(gstack's autoplan rule); a review on a draft that has no doc is refused. action=decide records HER
+decision in her words (Hoola never decides; decision text required) + optional next_step; action=stop
+closes. officehours_dekho: what=list / doc / reviews - no id = the latest. NOTHING AUTO-RUNS OFF A DOC:
+the wedge/next_step is advisory text; turning it into work happens on later turns through the existing
+doors with her Haan (the house rule gstack cannot have: Hoola never starts building by itself).
+
+Config: officehours_enabled=True, officehours_keep_docs=30 (older docs + their reviews forgotten on
+write). Family + admit keys: the officehours family opens on her big-idea words; tight keys only.
+prompts.py grew the OFFICE HOURS bullet (before LAMBA KAAM - think before plan). Tests
+test_v0495_officehours.py (30) green; a REAL BUG caught by the suite on first run - _con() did not set
+row_factory=sqlite3.Row (fixed once at _con). Version 0.495.0 (pubspec 0.495.0+539 at their ship time;
+swept to 0.497.0+541 by the PROG PACK re-version on top). NOT VERIFIED (honest): the first real baithak
+in her chat is the live test; the voice lane does not declare these tools yet (they ride santosh_kaam on
+calls, same as every other desk head change).
+
+## v0.496.0 CODE GRAPH — Graphify as a read-only lane (their ship, entry re-added by hand after the -X theirs rebase clobbered it)
+
+[Entry reconstructed from commit ad71c841's APP_VERSION story — the TWENTY-SECOND COLLISION reconcile.]
+
+Graphify (Apache-2.0) as a read-only lane: `graph_build` maps a GitHub repo (tarball, safe unpack, local
+AST --code-only, no model call, whitelist env, one build at a time, timeout + process-group kill),
+`graph_ask` answers query/path/explain/affected/god_nodes, `graph_list` lists what is mapped. Per-tenant
+graphs; the source deleted after the build; the optional binary gets a calm install hint; flag-like
+arguments refused; Hinglish routing + 5 card asks. Their own TWENTY-FIRST collision: re-versioned
+0.495.0 -> 0.496.0 when OFFICE HOURS took 0.495.0, both works kept. Tests test_v0496_codegraph.py.
+
+## v0.497.0 PROG PACK — the curated-library registry + the windows script lane (fed to every tenant; TWENTY-FIRST + TWENTY-SECOND COLLISION re-version 0.495.0 -> 0.496.0 -> 0.497.0) — the curated-library registry + the windows script lane (fed to every tenant)
+
+Owner ask (the awesome Programming Languages (77) read): "Programming Languages (77) - awesome-python/vetted
+library lists -> code mode with a curated registry: when Hoola writes a script it picks libraries from
+awesome lists, never hallucinated package names (also a supply-chain safety win). AutoHotkey/AutoIt/VBA lists
+-> Hoola generates AHK/VBA automation scripts as a THIRD lane beside pixels and ax_* - for apps the
+accessibility tree can't reach. NOW CREATE SKILL FOR THIS AND FEED IT TO HOOLA AI."
+
+Built on the skill-pack platform (v0.484 seeds, v0.486 BYOX pack, v0.492 BYOX feed): TWO skills in
+server/app/coder/skillpack/ - prog-library-registry.md (the vetted registry rides IN the body: requests/httpx,
+beautifulsoup4+lxml/scrapy/feedparser, openpyxl/xlsxwriter/pandas, pypdf/reportlab/pdfplumber, python-docx/
+python-pptx, Pillow, python-dateutil, qrcode, pytesseract, flask/fastapi/pytest, STDLIB FIRST; the never-invent
+law: outside the registry = verify on PyPI via the gated run door or say unverified, never a plausible guess;
+install only with her tap, pin what was installed, ek kaam ek library; the pylab sandbox is no-network so the
+registry governs her-PC/server scripts) and prog-windows-script-lane.md (ax first, pixels second, scripts last
+or script-native: AutoHotkey v2 house style #Requires/#SingleInstance Force/WinWaitActive-before-Send/Hinglish
+comments, AutoIt for Win32 controls, VBA when the app IS Office; the delivery law: the script is a FILE shown
+one line per block, nothing self-runs, execution rides the gated run door or her double-click, winget install
+door for a missing runtime, money/delete macros read back before the file lands; the NEVER law: no
+Win+R/Task-Manager/lock-screen keys, no AV/UAC, no registry beyond the app's HKCU).
+
+THE FEED (the v0.492 pattern): skill_packs.prog_files() + PROG_STAMP "skills:progpack:{}" + seed_progpack(tenant)
+- its OWN once-ever stamp so tenants that consumed seed AND byox still get this pack on the next skills-desk
+open; the desk route calls it beside seed_byox; seed_files() excludes prog- (starter 10, byox 31, prog 2);
+config progpack_enabled default ON. She discovers them through the coder injection block (FTS name+description
+match, top 2, shown-telemetry) and reads the full skill via skill_manage before following.
+
+Tests: test_v0495_progpack.py 9 (counts, once-ever, hers-win, switch-off, desk route, lint gate, registry
+content, script-lane law, injection match) + test_v0492_byox_feed 9 still green. BONUS HEAL: the dev chain's
+v0.494 ritual left the three story pins asserting the 0.493.0 story - RED proven on pristine 7c1e5139 before
+any change; moved to the newest story and green again. Version 0.497.0 (pubspec 0.497.0+541, pins zero
+residual; desktop 1.9.0 untouched, console stamps untouched; TWENTY-FIRST + TWENTY-SECOND COLLISION
+re-version - the dev's chain took 0.495.0 OFFICE HOURS then 0.496.0 CODE GRAPH while this sat unpushed,
+rebased -X theirs on 571d8ec1 then ad71c841, all three works kept, their docs re-added by hand).
+Previous: v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS, v0.494.0 EQUAL POWER, v0.493.0 THE
+FLUTTER PASS, v0.492.0 BYOX FEED, v0.491.0 CRAWL JOBS [full chains in git history].
+
+## v0.500.0 FE PACK — the HyperFrames template packs + the campaign email templates + the UI kit tokens, fed to every tenant (2026-11-04; TWENTY-THIRD COLLISION re-version 0.498.0 -> 0.500.0 - the dev's chain took 0.498.0 UIUX PRO MAX + 0.499.0 SUPERPOWERS while this sat unpushed, rebased on their e90e60f1, both lanes kept, their sp wiring restored by hand from their commit)
+
+Owner ask (the awesome Front-End (85) read): "awesome-charting + web-animation + CSS frameworks ->
+HyperFrames template packs (new MP4 styles cheaply). awesome-emails -> campaign email templates directly
+into the campaigns engine. Design-systems list -> Hoola's own UI kit consistency. NOW WORK ON IT MAKE THE
+SKILL. FEED THIS TO HOOLA."
+
+Three insights, three skills (server/app/coder/skillpack/, the skills_store shape: frontmatter name +
+description <=60, body <=4000; the v0.497 PROG PACK pattern exactly - own once-ever stamp, seed on the
+next skills-desk open, create-if-missing, hers win):
+- fe-frames-templates: HyperFrames MP4 styles are ASSEMBLED, not invented. CHART PACK for numbers
+  (big-number KPI card, CSS bar chart, SVG line/area polyline with stroke-dasharray draw-on, donut
+  progress ring), MOTION PACK for movement (kinetic type with 80-120ms stagger, lower-third, logo sting,
+  price/offer reveal, countdown strip, gradient wash on the house gradient), LAYOUT discipline (16:9
+  1920x1080 / 9:16 1080x1920, ~10% safe margins, flex/grid center, ek scene ek idea, 6-12 words per
+  screen). LAWS: everything INLINE (no CDN, no webfont fetch, no network mid-render - the determinism
+  gate refuses), CHECK first (hoola_frames action=check, cheap) and render only on pass (action=render,
+  expensive - minutes), colors and motion from fe-ui-kit so every video is one recognisable family,
+  assets project-relative only, only the existing hoola_frames doors.
+- fe-email-templates: campaign emails ASSEMBLED from the template library (OFFER/SALE, NEWSLETTER,
+  APPOINTMENT/PAYMENT REMINDER, FESTIVAL GREETING, PRODUCT LAUNCH, FEEDBACK REQUEST), her facts inside.
+  The LANE: email_draft markdown=true (markdown, never raw HTML), email_bulk for a list (mail merge,
+  approval card first), kalam action=publish for marketing. LAWS: subject <=45 chars, first line =
+  preheader, ONE CTA, paras 2-3 lines, HER facts only with [blanks] for unknowns (the kalam law), no
+  spam shape (ALL CAPS, !!!, URGENT, fake Re:), consent/unsubscribe on bulk, bought/rented lists never;
+  NEVER OTP/password/card/Aadhaar in a mail, no misleading subject, no bulk without the approval card,
+  no sent-claim before the tool result.
+- fe-ui-kit: the REAL Night Glass tokens from lib/ui/glass.dart class C - bg #0B0A1A -> #120E2A, ink
+  #F4F2FF / muted #B9B3DA / faint #9C96C2, saffron #FFB15C with onAccent #1B1030, violet #7C5CFF,
+  magenta #C055F5, teal #2DD4BF, ok/warn/bad #34D399/#FFC27A/#F87171, chip #D7D2F2, house gradient
+  #FFD9A8 -> #FF9A3C -> #C055F5, panels/lines white 8% (#FFFFFF14); type = Sora display (height 1.12,
+  letterSpacing -1.5%) over a 16px/1.5 serif body. LAWS: tokens first (never invent a shade a token
+  already covers), contrast ink-on-bg >=7:1, ONE accent per screen (saffron = the action), motion one
+  family (150-250ms fades, 80-120ms stagger, ease-out) - composition, email and console card all one
+  family.
+
+THE FEED (the v0.492/v0.495 pattern): skill_packs.fe_files() + FE_STAMP skills:fepack:{} +
+seed_fepack(tenant) - its OWN once-ever stamp, so tenants that already consumed seed AND byox AND prog
+still receive this pack on their next skills-desk open; the desk route calls it right after
+seed_progpack; create-if-missing, hers win; seed_files() excludes the fe- prefix (starter stays 10,
+byox 31, prog 2, fe = 3); config fepack_enabled default ON. Discovery through the coder injection
+block (FTS5 match on name+description, top 2 ride the block, shown-telemetry), the FULL skill read via
+skill_manage before following it (the read-before-follow law).
+
+Tests test_v0498_fepack.py (10): counts (10/31/2/3), once-ever reaches an already-all-three-stamps
+tenant, hers-win, FEPACK_ENABLED=false, the desk-route source pin, the lint gate, frames content
+(check-before-render + determinism + safe margins + doors), email content (email_draft markdown +
+email_bulk card + NEVER), ui-kit content (the REAL hex tokens cross-checked against lib/ui/glass.dart
+itself), injection FTS match on Hinglish asks; the desk-route live counts 43 -> 46 (10+31+2+3) healed
+in test_v0485. Version 0.500.0 (pubspec 0.500.0+542; full-string + assert pin files swept zero
+residual - the story's Previous chain keeps history; desktop 1.9.0 untouched, console stamps
+untouched). Mera PC freeze respected: nothing in server/app/pc/, desktop/ or lib/ touched - the pack
+only NAMES existing doors and tokens. NOT VERIFIED (honest): the first real 'reels ke liye chart video
+banao' ask on the VPS is the live proof; the pack lands in a tenant only when the skills desk is
+opened (the feed's own design). Deploy: the usual vps-ops ritual.
+Previous: v0.497.0 PROG PACK, v0.496.0 CODE GRAPH, v0.495.0 OFFICE HOURS, v0.494.0 EQUAL POWER,
+v0.493.0 THE FLUTTER PASS, v0.492.0 BYOX FEED, v0.491.0 CRAWL JOBS [full chains in git history].
+
+## v0.499.0 HOOLA SUPERPOWERS (the dev chain's ship, entry re-added by hand from commit e90e60f1 after the -X theirs rebase clobbered their docs) — the obra/superpowers v7.0.2 methodology (Jesse Vincent, MIT - LICENSE ships verbatim) fed to Hoola as the fourth seed lane (2026-11-04)
+
+skill_packs gains sp_files() + SP_STAMP "skills:sp:<tenant>" + seed_sp(tenant) (once-ever, the v0.492 BYOX
+pattern), config sp_enabled default ON; FIFTEEN distilled seeds skillpack/sp-*.md (brainstorming,
+diagnosing-superpowers, dispatching-parallel-agents, executing-plans, finishing-a-development-branch,
+receiving-code-review, requesting-code-review, subagent-driven-development, systematic-debugging,
+test-driven-development, using-git-worktrees, ...) under the 4,000-char cap keeping the iron laws (no
+production code without a failing test first / no fixes without root cause / no completion claims without
+fresh verification evidence); upstream rides VERBATIM under skillpack/upstream/obra-superpowers/ (all 15
+skills, references, prompts, templates, scripts, .claude-plugin manifests + PROVENANCE.md recording
+exclusions); seed library now 59 = 11 starters (uiux-pro-max.md joins the starter lane) + 31 byox + 15 sp
++ 2 prog across FOUR lanes. Tests test_v0495_hoola_superpowers.py (their 10). Base: 8f110ee2.
+
+## v0.498.0 HOOLA UIUX PRO MAX (the dev chain's ship, entry re-added by hand from commit e90e60f1) — the uiux_design tool grounds UI/UX answers in a curated corpus instead of taste (2026-11-04)
+
+server/app/coder/uiux_tool.py (the uiux_design tool, registry 534 -> 535) + server/app/coder/uiux/ (the
+vetted design catalog: app-interface, charts, colors, icons, landing, motion, products, react-performance,
+styles, typography, ui-reasoning, ux-guidelines + google-fonts and 21 stack files from angular to wpf, with
+LICENSE + PROVENANCE + data-provenance). Tests test_v0486_hoola_uiux_skill.py (theirs). Base: 8f110ee2.
+
+## v0.521.0 DIFY FOR HOOLA — the three verified deltas from the Dify READ, idea-only (2026-11-05)
+
+The Dify READ (1.19.0, modified-Apache with the multi-tenant ban) proved HOOLA already IS most of Dify — so only
+three lanes were poured, each `git grep`-proven missing first: **gyaan annotations** (her approved jawabs before
+retrieval; exact + difflib fuzzy >= 0.92; redaction; 200/tenant), **DHARA ops-grade eyes** (summary + cost on
+every finished run via the run meter, typed pause reasons, step-type versions in the log, retry from the cursor
+under the checkpoint law), and **dhara_dsl** (portable workflow envelopes: secrets-free export, the same hard
+validator on import, lands disabled, webhook re-token). Registry 541 -> 542 (one tool: dhara_dsl). 41 new tests.
+Zero Dify code, zero new pip, zero new keys, zero new outbound. Server-only deploy.
+
+## v0.510.0 HOOLA CORE — the langchain-core feature clone as server/app/aep, P1 of the HOOLA AEP plan (2026-11-04)
+
+The AEP train opens. langchain read end to end at aa2528fb (core 1.7.5 / langchain 1.4.8); ZERO upstream code — the
+feature surface is hand-built: messages (BaseMessage + the 17 content blocks + chunk merge), runnable (invoke/batch/
+stream + `|` composition with Sequence/Parallel/Lambda/Binding/Passthrough, hand-rolled with_retry/with_fallbacks),
+tools (BaseTool/StructuredTool/@tool with hint+docstring schemas and InjectedToolArg), models (BaseChatModel/BaseLLM
+contracts, InMemoryCache, InMemoryRateLimiter, ModelProfile, FakeList fakes), prompts, parsers, history, stores,
+serializable. Inert library — no network, no threads, no config reads, no kill switch (nothing executes unless
+called); the flag law applies from P2 on. Tests test_v0510_hoola_core.py (79) + core sweep 314/314. P2 TRACE is next;
+then P3 GRAPH, P4 AGENT, P5 the 24-middlewares, P6 RETRIEVE, P7 HUB, P8 the parity audit.
+
+## v0.512.0 HOOLA 21ST — the 21st.dev UI catalog door, the 21st-dev/magic-mcp port (2026-11-05)
+
+magic-mcp read end to end at 6b5299e8: Magic MCP is DEAD as a standalone — it is the unified 21st MCP
+(the npm package is a thin stdio→HTTP proxy to https://21st.dev/api/mcp, x-api-key REQUIRED, old Magic
+keys reset; the proxy IS the protocol documentation: one POST per JSON-RPC message, the Mcp-Session-Id
+echo, notifications get no write-back, empty body = error, NOT_AUTHED verbatim, the 401 latch after the
+~100k doomed initialize retries/hour lesson). NEW server/app/coder/magic21.py: ONE magic21 tool, five
+ops (list = entitlement-aware tools/list; usage = get_usage.aiGenerationEnabled; search; get =
+get_component; call = any tool by its CURRENT name, the legacy table carried), the wire stateless per
+turn (initialize → notifications/initialized → the call), the 401 latch process-wide, no key answers
+locally with zero network, ONE attempt drop-don't-wait (20 s), per-tenant rolling-hour window (12 ops),
+REDACTION BEFORE EGRESS on every string leaf of arguments, the STOP-LAW (ai_subscription_required =
+stop, no retries through aliases or the CLI), voice never sees it, NO vault landing (component code is
+a tool result, not a memory). Kill switch coder_magic21 default OFF. THE SEED: skillpack/mg-21st-ui.md
+(the 21st-ui SKILL.md distilled under the 4,000 cap) + skill_packs mg_files()/MG_STAMP/seed_magicpack
+(once-ever, the v0.492 pattern, found by _pack_seeders by name) + magicpack_enabled default ON — the
+library now 65 = 11 starters + 31 byox + 2 prog + 15 sp + 3 fe + 2 cs + 1 mg across SEVEN lanes. The
+upstream repo rides VERBATIM under skillpack/upstream/21st-magic-mcp/ (ISC (c) 2026 21st.dev, LICENSE
++ PROVENANCE; zero upstream code runs in Hoola). Registry 541 → 542 (the docs7 mount shape, count pins
+healed). Tests test_v0512_hoola_magic21.py (34), all network through the mocked _http seam. TWENTY-SIXTH
+COLLISION: rebuilt on the dev chain's fresh base 84b88c6b (v0.511.0 HOOLA CS PACK), re-versioned
+0.511.0 → 0.512.0, both works kept. Base: 84b88c6b.
+
+## v0.522.0 CONSTRUCTION WAVE 1 — the Construction & Real Estate AI employees: records and money end to end (2026-11-04)
+Owner: "WAVE 1 - RECORDS AND MONEY (TIER A, BUILDERS PAY FOR IT AT ONCE): 61, 62, 64, 67, 70, 71, 75, 78, 85, 87, 88, 90, 91,
+92, 98 - EXTEND THE EXISTING THEKA SAHAYAK / SITE SUPERVISOR -------- END TO END", on the plan shipped this week at
+`docs/CONSTRUCTION_EMPLOYEE_PLAN.md`, built on her register now transcribed into the tree at
+`docs/research/building_industry/07_ai_employees_register.md` (123 AI Employees, 15 fields, tier A/B/C + the human gate; from
+the six sourced reports in the same folder - 276 jobs). THE LAW, riding every tool (`construction/gates.py` + the prompt
+block): PREPARE, never CERTIFY - tier C acts (sign, certify, file, approve, accept work, release payment, decide entitlement)
+refuse with the name of the human who does them; every number carries its formula trail; money never moves without her tap.
+
+THE PACKAGE `server/app/construction/` (models registered in db.init_db on day one, the v0.190.1 lesson):
+- `register.py` - all 123 rows as data (id, name, field, tier, the human who decides, wave) + helpers + WAVE1_HOME mapping
+  register #s to the desk that owns each in Hoola. Waves per the register: 1 = 15 rows, 2 = 29, 3 = 23, later = 56. (76 and 97
+  ride Wave-1 desks as parts of them but stay untagged in the register - the owner's list is verbatim.)
+- `gates.py` - 27 tier-C refusals (`tier_c_check`: broad, order-free keyword match on lowercased text; false refusal costs one
+  clarifying sentence, a missed one costs a forged certificate) + the LAW line. Guard rides every const tool action.
+- `statepacks/` - the state-pack law: rules as DATA with clause + source + checked_on + refresh_by; `maharashtra.json` v0
+  carries the DETERMINED rows (GST works contract 18% from 22 Sep 2025, CGST s.51 TDS 2% > Rs 2.5 lakh, Sec 393(1) TDS
+  1%/2%/20% no-PAN, BOCW cess 1% (Code on Social Security 2020, in force 21 Nov 2025) - cross-cited to theka/rules.py's v0.117
+  research - and RERA escrow 70% s.4(2)(l)(D)); the loader validates schema and refuses a STALE pack with a message instead of
+  answering; minimum wages deliberately NOT parked as numbers (they move; her CLabourWage rows carry the source).
+- `store.py` (#61) - lots with min-max, GRN with challan/invoice, issues (waste written off separately), over-issue refused,
+  reconciliation (received vs issued vs on-hand vs wastage %) with DOBARA MANGWAO reorder alerts.
+- `labour.py` (#85/#87/#90) - muster rolls (site/day/contractor/trade/present/absent/OT), licence + BOCW/EPF/ESIC renewal
+  calendar (30-day morning view), wage rates WITH their source (Hoola never supplies a minimum wage from memory), wage-audit
+  working paper (workers x days x rate + OT 1.5x hourly, trail {rate_row, source, ot_rule}), wage_paid records AFTER her
+  payment, cess_tds from the pack (a stale pack refuses).
+- `books.py` (#91) - project-wise book entries (heads labour/material/hire/subcontract/approval/misc/receipt), in/out/balance,
+  unsettled dues, vendor ageing (0-30/31-60/60+) and settle-after-payment. Khata PATTERN from net/khata.py.
+- `customer.py` (#92/#97/#98) - milestone demand DRAFT, the demand-letter PDF (her facts, her interest clause, the signer line
+  empty), demand_send OWNER ONLY, receipts (cumulative -> part -> paid), handover checklist per unit (ready when all items
+  done, handed when keys recorded), DLP tickets with the window arithmetic (possession + agreement months; a closed window says
+  warranty-only), vendor dispatch recorded after it happens.
+- `quality.py` (#75/#76/#78) - ITPs with HOLD points + approve-on-record, NCRs with severity/close-out, material-test lots
+  (the lab result goes in AS REPORTED; verdict pending until a human says it), IS 456 cl 16.1/Table 11 cube-acceptance DRAFT
+  for M20+ (mean >= fck+4, individual >= fck-4; below M20 the sigma route is REFUSED, never guessed), punch list over sitesup
+  snags (never duplicated), the QA morning (open NCRs, pending verdicts, retests due).
+- `meetings.py` (#67) - OAC/site/coord/client/weekly meetings, minutes as said, action items chased late-first (closed on
+  her/PM word), minutes PDF.
+
+THE HUB: `CONST_GROUP = "Construction & Real Estate"` + five hireable employees (`const_store` Saaman, `const_labour` Mazdoor
+Desk, `const_customer` Grahak Desk, `const_quality` Gunvatta, `const_meet` Baithak) with pitches, does and never-lists; the
+already-live Makaan suite (sitesup / theka / propagent) predates the Hub and keeps its own surfaces.
+
+EXTENSIONS OF THE LIVE DESKS: `sitesup action=voice_log` - the VOICE-FIRST daily log (#70/#64): the spoken evening shaped into
+rows by the brain, written through the SAME service paths (progress / attendance / material / snag / toolbox) so every rule,
+card and Theka mirror holds; returns the summary + the five questions still missing. `sitesup_dekho what=variance` - physical
+% by activity with her behind_pct flagging. `theka action=sub` gains rate_basis (naap kaisa), `sub_advance` (advance RECORD,
+paisa hers), `sub_bill advance_recover` (oldest advances recovered first, partial recovery reduces the row and says so),
+`wage_calc` (the wage working paper with the trail), `theka_dekho what=sub`. RA bills (#88) already lived in theka with the
+full deductions chain - trail noted, nothing rebuilt.
+
+VOICE: the 10 const tools join VOICE_VIA_KAAM (heavy desks ride santosh_kaam, never declared to the live call). Prompt block
+added (the construction law + which tool for which ask).
+
+Tests: NEW `tests/test_v0512_construction_w1.py` (26, the v0512 name is the built-on-0.512 birthmark) - register counts/waves,
+gate hits and legit passes, pack schema/staleness/citations, store GRN-issue-reconcile-reorder, labour muster/licence/
+wage-audit-source/cess-TDS, books/ageing/settle, demand->letter->owner-only-send->receipts->paid, handover/DLP window (open and
+KHATAM), ITP/NCR, test-lot human verdict, cube draft + the M15 sigma refusal, punch over snags, meetings chase, voice_log
+through the service paths + the missing questions, variance behind-flag, theka advances recovered oldest-first + partial +
+wage_calc trail, registry 553, tool dispatch end to end, VOICE_VIA_KAAM + Hub rows + version pins. Registry 543 -> 553 (my 10
+const tools; their magic21/dhara_dsl untouched).
+
+THE THIRTY-FIRST COLLISION: this sat built through FOUR dev ships (v0.512.0 HOOLA 21ST took the number, v0.513.0 BD PACK,
+v0.520.0 HOOLA TRACE, v0.521.0 DIFY) while the owner kept the Wave-1 lane moving - REBASE PROTOCOL: the push rejected, the
+rebase hit 173 version-layer conflicts (both chains swept the same pins), resolved on the documented shape: their fresh base
+0650e7ad kept whole (magic21 + dhara_dsl + TRACE + DIFY all in), my construction package rode in clean, the version layer
+re-applied coherently 0.521.0 -> 0.522.0 + +550 -> +551, both works kept, count-pin notes carry every bump. Server-only deploy
+(old APKs keep working); console untouched (desks open from chat and the Hub shows the hire cards; console desk views are a
+later version). NOT VERIFIED live: the first real site evening on voice, the first RA-bill week, the first demand letter - her
+pilot (one contractor, one project, Maharashtra) is the test. Mera PC freeze respected: nothing in server/app/pc/, desktop/
+or lib/ touched.

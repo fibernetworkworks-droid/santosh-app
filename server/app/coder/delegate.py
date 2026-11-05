@@ -42,6 +42,11 @@ CHILD_SYSTEM = (
     "short final answer (the worker's report the main agent will merge). You cannot ask the user "
     "anything - no greetings, no questions back, just the work and the report. English report.")
 
+# v0.484 the skills reach: a worker gets the parent's matched LEARNED SKILLS lines in its own
+# system prompt (inject.child_skills, <=400 chars) and reads the full skill itself via
+# skill_manage - the read-before-follow law survives delegation.
+CHILD_SKILLS_BUDGET = 400
+
 CHILD_DENIED = frozenset({"delegate_task", "confirm_send", "haan_karo", "pc_do"})
 CHILD_MAX_ITERS = 6
 CHILD_MAX_TOKENS = 2000
@@ -97,12 +102,20 @@ async def run_child(ctx, settings, task: dict, task_index: int) -> dict:
     label = str(task.get("label") or f"task-{task_index + 1}")[:80]
     t0 = time.time()
     brain = llm.cheap_brain()
+    system = CHILD_SYSTEM
+    try:                                     # v0.484 matched skills ride in, fail-open
+        from . import inject as _inj
+        sk = _inj.child_skills(ctx.tenant_id, prompt, budget=CHILD_SKILLS_BUDGET)
+        if sk:
+            system = CHILD_SYSTEM + "\n\n" + sk
+    except Exception:
+        pass
     history: list[dict] = [{"role": "user", "content": [{"type": "text", "text": prompt}]}]
     specs = _child_specs()
     tool_calls = 0
     try:
         for _ in range(CHILD_MAX_ITERS):
-            blocks, stop = await _call_brain(brain, CHILD_SYSTEM, history, settings,
+            blocks, stop = await _call_brain(brain, system, history, settings,
                                              tools=specs, max_tokens=CHILD_MAX_TOKENS)
             text = _blocks_text(blocks)
             if stop != "tool_use" or not any(b.get("type") == "tool_use" for b in blocks or []):
