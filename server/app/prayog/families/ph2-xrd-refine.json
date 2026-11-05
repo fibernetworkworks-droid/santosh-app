@@ -1,0 +1,78 @@
+{
+ "base": "ph2-xrd-refine",
+ "rig": "ph2-xrd-bench",
+ "chapter": "X-ray and electron methods",
+ "variants": [
+  {
+   "key": "perovskite",
+   "title": "Powder XRD refinement: SrTiO3 perovskite oxide",
+   "sample": "Strontium titanate powder, cubic perovskite Pm-3m (the data card lists its atom positions)",
+   "method": "index with the perovskite model, least squares on sin²θ",
+   "unknown": "the lattice parameter of SrTiO3",
+   "note": "a = 3.905 Å. Atomic positions are held at the ideal perovskite values, not refined.",
+   "params": {
+    "t1": 2,
+    "a1": 3.905e-10
+   },
+   "source": {
+    "title": "SrTiO3 bulk lattice parameter 3.905 Å",
+    "note": "as stated in the Wikipedia article 'Strontium titanate' (no inline citation there); not checked against the ICDD card in this build"
+   }
+  },
+  {
+   "key": "spinel",
+   "title": "Powder XRD refinement: CoFe2O4 spinel ferrite",
+   "sample": "Cobalt ferrite powder, inverse spinel Fd-3m (oxygen parameter fixed, illustrative)",
+   "method": "index with the spinel model, least squares on sin²θ",
+   "unknown": "the lattice parameter of CoFe2O4",
+   "note": "a = 8.3919 Å (unsourced / illustrative: handbook value entered from memory, not re-checked). Cation sites use average scattering; oxygen x = 0.256 (origin choice 2) is illustrative. Counts are scaled up because a large cell scatters less per line.",
+   "params": {
+    "t1": 3,
+    "a1": 8.3919e-10,
+    "I0": 1500
+   },
+   "source": {
+    "title": "CoFe2O4 lattice parameter 8.3919 Å (ICDD PDF 22-1086 as remembered)",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  },
+  {
+   "key": "mixture-60",
+   "title": "Powder XRD refinement: two-phase mixture, 60 wt% Si + 40 wt% SrTiO3",
+   "sample": "Silicon (standard) mixed with strontium titanate, 60 : 40 by weight",
+   "method": "index two phases, refine both lattice parameters and both scale factors, Hill-Howard weight fractions",
+   "unknown": "the weight fraction of silicon and the two lattice parameters",
+   "note": "No matrix-absorption correction (the two phases are assumed to absorb alike); the weight fraction shown is the silicon fraction.",
+   "params": {
+    "t1": 1,
+    "a1": 5.43102e-10,
+    "t2": 2,
+    "a2": 3.905e-10,
+    "w1": 0.6
+   },
+   "source": {
+    "title": "Silicon a = 5.43102 Å (as remembered; ICDD PDF 27-1402 lists about 5.4309 Å) and SrTiO3 a = 3.905 Å",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  },
+  {
+   "key": "mixture-30",
+   "title": "Powder XRD refinement: two-phase mixture, 30 wt% Si + 70 wt% SrTiO3",
+   "sample": "Silicon (standard) mixed with strontium titanate, 30 : 70 by weight",
+   "method": "index two phases, refine both lattice parameters and both scale factors, Hill-Howard weight fractions",
+   "unknown": "the weight fraction of silicon and the two lattice parameters",
+   "note": "No matrix-absorption correction; the weight fraction shown is the silicon fraction.",
+   "params": {
+    "t1": 1,
+    "a1": 5.43102e-10,
+    "t2": 2,
+    "a2": 3.905e-10,
+    "w1": 0.3
+   },
+   "source": {
+    "title": "Silicon a = 5.43102 Å (as remembered) and SrTiO3 a = 3.905 Å",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  }
+ ]
+}

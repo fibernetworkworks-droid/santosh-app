@@ -1279,7 +1279,8 @@
       "resistivity"
      ],
      "conditions": [],
-     "kernel": "van_der_pauw"
+     "kernel": "van_der_pauw",
+     "built": "ph2-vdp-sheet"
     },
     {
      "id": "two-probe-conductivity",
@@ -1376,7 +1377,8 @@
       "minority carrier lifetime"
      ],
      "conditions": [],
-     "kernel": "haynes_shockley"
+     "kernel": "haynes_shockley",
+     "built": "ph2-haynes-shockley"
     },
     {
      "id": "pn-ideality-bandgap",
@@ -2384,7 +2386,8 @@
       "resistivity"
      ],
      "conditions": [],
-     "kernel": "four_probe"
+     "kernel": "four_probe",
+     "built": "ph2-fpp-film"
     },
     {
      "id": "solar-simulator",
@@ -2406,7 +2409,8 @@
      "conditions": [
       "several intensities"
      ],
-     "kernel": "solar_cell"
+     "kernel": "solar_cell",
+     "built": "ph2-solar-cell"
     },
     {
      "id": "compton-profile",

@@ -12,6 +12,8 @@
   "quantum-hall": "row lists GaAs/AlGaAs AND graphene; the lab models the GaAs-type 2DEG only",
   "shubnikov-de-haas": "row lists GaAs, bismuth and graphene, and asks for effective mass and quantum lifetime; the lab extracts carrier density from GaAs-type only",
   "esr-research": "row lists DPPH, Mn2+ in MgO and an irradiated radical; the lab models DPPH only",
-  "mossbauer-fe57": "row lists alpha-iron, stainless steel, hematite and nitroprusside; the lab models alpha-iron and hematite only"
+  "mossbauer-fe57": "row lists alpha-iron, stainless steel, hematite and nitroprusside; the lab models alpha-iron and hematite only",
+  "xrd-rietveld": "the lab is a lattice-parameter and scale-factor refinement on a fixed structure, not a Rietveld refinement; atomic positions, a listed unknown, are not refined",
+  "xrr-thin-film": "thickness is measured, but roughness, a listed unknown, is only in the model and is not measured"
  }
 }

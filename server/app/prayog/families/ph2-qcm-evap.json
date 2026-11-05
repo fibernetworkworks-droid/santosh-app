@@ -1,0 +1,58 @@
+{
+ "base": "ph2-qcm-evap",
+ "rig": "ph2-film-chamber",
+ "chapter": "Thin films and vacuum",
+ "variants": [
+  {
+   "key": "aluminium",
+   "title": "Thermal evaporation with a quartz crystal monitor: aluminium",
+   "sample": "Aluminium wire in a tungsten boat",
+   "method": "quartz crystal monitor",
+   "unknown": "deposition rate, thickness and tooling factor",
+   "note": "Aluminium density 2700 kg/m³ (unsourced / illustrative).",
+   "params": {
+    "rho_f": 2700.0,
+    "rate": 5e-10,
+    "tool": 0.7
+   },
+   "source": {
+    "title": "Aluminium density 2700 kg/m³",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  },
+  {
+   "key": "silver",
+   "title": "Thermal evaporation with a quartz crystal monitor: silver",
+   "sample": "Silver pellets in a molybdenum boat",
+   "method": "quartz crystal monitor",
+   "unknown": "deposition rate, thickness and tooling factor",
+   "note": "Silver density 10490 kg/m³ (unsourced / illustrative).",
+   "params": {
+    "rho_f": 10490.0,
+    "rate": 3e-10,
+    "tool": 0.75
+   },
+   "source": {
+    "title": "Silver density 10490 kg/m³",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  },
+  {
+   "key": "copper",
+   "title": "Thermal evaporation with a quartz crystal monitor: copper",
+   "sample": "Copper slug in a molybdenum boat",
+   "method": "quartz crystal monitor",
+   "unknown": "deposition rate, thickness and tooling factor",
+   "note": "Copper density 8960 kg/m³ (unsourced / illustrative).",
+   "params": {
+    "rho_f": 8960.0,
+    "rate": 3e-10,
+    "tool": 0.85
+   },
+   "source": {
+    "title": "Copper density 8960 kg/m³",
+    "note": "unsourced / illustrative: handbook value entered from memory, not re-checked in this build"
+   }
+  }
+ ]
+}

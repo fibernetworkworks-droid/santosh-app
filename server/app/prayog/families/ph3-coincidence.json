@@ -1,0 +1,28 @@
+{
+ "base": "ph3-coincidence",
+ "rig": "ph3-coincidence",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "slow",
+   "title": "Slow coincidence: resolving time with shaped pulses",
+   "sample": "Cs-137 and Co-60 as two unrelated sources",
+   "method": "slow coincidence (shaping amplifiers and single-channel analysers)",
+   "unknown": "the resolving time of the slow coincidence unit",
+   "params": {
+    "A1": 6000,
+    "A2": 5000,
+    "b1": 40,
+    "b2": 35,
+    "tau": 1e-06,
+    "seed": 33,
+    "t": 100
+   },
+   "note": "A slow unit shapes each pulse to about a microsecond before a single-channel analyser makes the logic pulse, so its resolving time is some twenty times that of a fast unit; the singles rates must therefore be kept lower. Rates and unit width are illustrative lab settings.",
+   "source": {
+    "title": "G. F. Knoll, Radiation Detection and Measurement, 4th ed.: slow and fast coincidence circuits, accidental rate 2 tau R1 R2"
+   },
+   "aim": "Count two unrelated sources with a slow coincidence unit (shaping amplifiers and single-channel analysers) at four gate widths, and find its resolving time from the accidental rate, R_acc = 2 tau R1 R2."
+  }
+ ]
+}

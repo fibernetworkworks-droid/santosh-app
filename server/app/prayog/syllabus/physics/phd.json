@@ -1662,7 +1662,8 @@
       "outgassing rate"
      ],
      "conditions": [],
-     "kernel": "pumpdown"
+     "kernel": "pumpdown",
+     "built": "ph2-vac-research"
     },
     {
      "id": "thermal-evaporation-research",
@@ -1683,7 +1684,8 @@
       "tooling factor"
      ],
      "conditions": [],
-     "kernel": "evaporation"
+     "kernel": "evaporation",
+     "built": "ph2-qcm-evap"
     },
     {
      "id": "ebeam-evaporation",

@@ -256,7 +256,7 @@ HoolaStudio.define('comp3-workstation', function (S) {
       var sam = ['1-D chain (periodic ring)', 'square lattice (periodic cluster)', 'graphene (honeycomb, Bloch Hamiltonian on a k mesh)'][CAS];
       return {
         title: 'Tight-binding bands: ' + sam, quantity: W === 1 ? 'ground-state energy per site' : 'band width', unit: 't', digits: 6, nlabel: CAS === 2 ? 'k points per side' : CAS === 1 ? 'cluster side L' : 'sites N',
-        ns: CAS === 0 ? (W === 1 ? [6, 10, 14, 22, 34] : [8, 16, 24, 32]) : CAS === 1 ? (W === 1 ? [4, 6, 8, 10] : [4, 6, 8]) : [6, 12, 18, 24], tol: W === 1 ? 0.03 : 0.001, methods: ['Jacobi diagonalisation'],
+        ns: CAS === 0 ? (W === 1 ? [6, 10, 14, 22, 34] : [8, 16, 24, 32]) : CAS === 1 ? [4, 6, 8, 10] : [6, 12, 18, 24], tol: W === 1 ? 0.03 : 0.001, methods: ['Jacobi diagonalisation'],
         xlabel: 'E / t', ylabel: 'density of states', bars: true, inset: 'bands', nodes: false,
         problem: ['Hopping −t between nearest neighbours, t = ' + fx(p.t, 3) + ' (energy unit)', CAS === 0 ? 'Eigenvalues of the N × N ring matrix by Jacobi rotations' : CAS === 1 ? 'Eigenvalues of the L² × L² torus matrix by Jacobi rotations' : 'Diagonalise the 2 × 2 Bloch Hamiltonian (as a real 4 × 4) at every k',
           W === 1 ? 'Fill the lowest N/2 orbitals twice (half filling with spin)' : 'Band width = largest − smallest eigenvalue',
@@ -467,7 +467,7 @@ HoolaStudio.define('comp3-workstation', function (S) {
   S.contact(0.26, 0.46, 0.66, -0.5, 0.5);
 
   // ---- the printed method card (A5, lying on the bench)
-  var cardLines = SP.problem();
+  var cardLines = SP.problem;
   var cardTex = S.canvasTex(840, 1188, function (x, w, h) {
     x.fillStyle = '#f2e9d2'; x.fillRect(0, 0, w, h);
     x.fillStyle = '#d8ceb2'; x.fillRect(0, 0, w, 170);

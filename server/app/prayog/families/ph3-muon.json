@@ -1,0 +1,30 @@
+{
+ "base": "ph3-muon",
+ "rig": "ph3-muon",
+ "chapter": "Nuclear, particle and cosmic-ray physics",
+ "variants": [
+  {
+   "key": "liquid",
+   "title": "Mean life of cosmic-ray muons stopped in a liquid scintillator tank",
+   "sample": "Mineral-oil liquid scintillator tank, about 1 cubic metre",
+   "method": "stopped-muon delayed coincidence",
+   "unknown": "the muon mean life and the mu- capture effect",
+   "params": {
+    "Rs": 900,
+    "bgr": 0.2,
+    "seed": 54
+   },
+   "note": "A tank of about a cubic metre stops six times as many muons as the plastic block. The carbon of the oil captures negative muons exactly as the plastic does, so the apparent life is the same few per cent below the free value. The stopping rate and floor are illustrative lab settings.",
+   "source": {
+    "title": "MIT Junior Lab, The Speed and Mean Life of Cosmic-Ray Muons: stopped muons in a scintillator"
+   },
+   "check": {
+    "params": {
+     "r": 0.0,
+     "bgr": 0.0
+    }
+   },
+   "aim": "Collect the delays between a muon stopping in a liquid-scintillator tank and its decay electron over three days, find the muon mean life and compare it with the free-muon value to see the effect of captured negative muons."
+  }
+ ]
+}
