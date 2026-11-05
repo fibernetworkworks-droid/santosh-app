@@ -1462,3 +1462,26 @@ Work Log:
   0.557.0 - rebased on f5819dca, re-versioned 0.558.0, both kept.
 Stage Summary:
 - v0.558.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 46 — v0.559.0 REACH MANCH (5 Nov 2026)
+Agent: Z (Owner chain, session web-1162d2ab)
+Task: owner "MAKE A HOOLA AGENT REACH FEATURE, DEVLOPE END TO END" (after the READ of Panniantong/Agent-Reach,
+archived at download/AGENT_REACH_READ.md).
+Work Log:
+- Read Agent-Reach v1.6.1 (MIT) end to end; ported its three ideas IDEA-ONLY onto the house internet stack: the one
+  envelope, the error taxonomy with model-behavioural hints, ordered backends with health memory + cooldowns.
+- NEW server/app/agent/reach_tools.py: the `reach` tool (registry 570) - actions read | search | channels | status;
+  read = house web.open_website -> Parallel free fetch, search = Google (Gemini grounding) -> Parallel free search;
+  backends pause on failure (TIMEOUT 60 s / UPSTREAM_BROKEN 120 s / NEED_SETUP 60 s), a rate limit cools the whole
+  channel 1 h (global: the egress IP is shared), per-tenant minute budget (reach_per_tenant_per_min), 8 Agent-Reach
+  codes + BLOCKED_HOST, FINAL_CODES, attempts trail, empty-is-no-rows, dispatcher-side limit clamp; web.py's SSRF
+  guard stays the wall (reach adds no egress of its own).
+- Wired: config (reach_enabled, reach_per_tenant_per_min), prompts.py bullet, admit.py (reach in CORE_FAMILIES +
+  EXTRA_KEYS), tools.py merge; version ritual (APP_VERSION story, pubspec 0.559.0+582, pins swept 0.558.0 -> 0.559.0
+  / +581 -> +582 / 569 -> 570, zero residual).
+- NEW test_v0559_reach_manch.py (45, zero network; the real doors plug-fail loudly). Bugs caught: a backend returning
+  EMPTY rows was treated as success (now UPSTREAM_BROKEN, next door tried) and the limit clamp was trusted to
+  backends (now enforced in the dispatcher).
+Stage Summary:
+- v0.559.0 server-only. Deploy = owner's vps-ops dispatch.

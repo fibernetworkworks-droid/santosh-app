@@ -764,8 +764,8 @@ def test_debug_prints_the_walk(capsys):
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.558.0"
-    assert "0.558.0+581" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.559.0"
+    assert "0.559.0+582" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
     assert line.startswith('APP_VERSION = "0.558.0"')
     # the story-token pin rides the NEWEST story (the newest-story precedent)

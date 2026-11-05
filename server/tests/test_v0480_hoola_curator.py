@@ -517,4 +517,4 @@ def test_version_stamps():
     assert 'APP_VERSION = "0.558.0"' in main
     pubspec = (root.parent / "pubspec.yaml").read_text(encoding="utf-8")
     m = _re.search(r"version:\s*(\S+)", pubspec)
-    assert m and m.group(1) == "0.558.0+581"
+    assert m and m.group(1) == "0.559.0+582"

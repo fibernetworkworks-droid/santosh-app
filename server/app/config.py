@@ -323,6 +323,9 @@ class Settings(BaseSettings):
     parallel_search: bool = True           # v0.91 Parallel web search (free MCP endpoint): quotes from real pages + links
     parallel_api_key: str = ""             # optional: higher limits (https://platform.parallel.ai); only the query is sent
     parallel_mcp_url: str = "https://search.parallel.ai/mcp"
+    reach_enabled: bool = True             # v0.559 REACH MANCH: the Agent-Reach discipline layer (the `reach` tool)
+    reach_per_tenant_per_min: int = 30     # v0.559 per-tenant reach budget per minute (0 = no limit); channel rate-limit
+                                           # cooldowns stay GLOBAL - the egress IP is shared, so a platform pause is too
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
