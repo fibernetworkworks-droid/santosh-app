@@ -157,8 +157,9 @@ To build one set-up end to end:
    The twin test runs both and demands the same numbers, so write the same formulas, not a rewrite.
    A kernel class needs `PARAMS` (defaults, SI) and the static methods `init(p, cfg)`, `step(s, p, dt, cfg)`,
    `view(s, p)` and `measure(p, cfg)`. Keep it deterministic: no randomness, no wall clock.
-3. **A lab in the catalogue.** Add a builder function to `server/app/prayog/catalog.py` and put it in `BUILDERS`,
-   with its `check` (the reading vs its textbook formula, within 1 %). The LSL checker must pass.
+3. **A lab in a LAB PACK, never in catalog.py.** Add `server/app/prayog/labs/<area>.py` exporting
+   `BUILDERS = (fn, ...)`; import the helpers (`from ..catalog import B, knob, inst, col, lab, board, ...`).
+   Each lab needs its `check` (the reading vs its textbook formula, within 1 %) and must pass the LSL checker.
 4. **A rig** `server/app/static/prayog/exp/<lab-id>.js` (the contract above). Reuse an existing rig when the
    apparatus is the same: a variant needs no new rig at all.
 5. **A family** `server/app/prayog/families/<lab-id>.json` when the set-up has real variants (another sample,
