@@ -430,7 +430,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   run / reached an ending / fps / errors), originality = design-DNA distance from every other game of the run (Apple 4.3(b), not
   taste), independent judge on the first 30 s, run-vs-run compare that says when a comparison is unfair, blind duels vs a rival's
   public game; `fun` always NOT ASSESSED. NOT VERIFIED: no real run built yet, so no numbers for any Hoola version yet.
-- vNEXT PROVENANCE + UNDER-18 SAID OUT LOUD (built as 0.455; GAME_MOAT_PLAN 5.1 items 3+4; `gamedesk/provenance.py`,
+- v0.535 PROVENANCE + UNDER-18 SAID OUT LOUD (built as 0.455; GAME_MOAT_PLAN 5.1 items 3+4; `gamedesk/provenance.py`,
   tool game_provenance, console "Where it came from"): `ai.used()` records the model that ANSWERED (thread-local, a
   fallback named as a different model) and each build writes it down; generated / CODE-MADE (preset+seed sfx, Blender
   mesh - calling these AI would be a FALSE survey statement) / HER OWN uploads are never merged; only APPROVED assets

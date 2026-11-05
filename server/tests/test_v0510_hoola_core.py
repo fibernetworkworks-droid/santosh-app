@@ -806,7 +806,7 @@ def test_package_export_law_all_names_importable():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.534.0"
+    assert APP_VERSION == "0.535.0"
 
 
 def test_pubspec_pin():
