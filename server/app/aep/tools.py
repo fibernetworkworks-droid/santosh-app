@@ -159,7 +159,13 @@ class BaseTool(RunnableSerializable[Any, Any]):
             errored = False
         if as_tool_call:
             call = input  # type: ignore[assignment]
-            content = result[0] if self.response_format == "content_and_artifact" else result
+            if errored:
+                # the P7 lesson (McpTool is the first content_and_artifact tool
+                # with handle_tool_error): an error result is a plain string -
+                # indexing it would land a single character as the content
+                content = result
+            else:
+                content = result[0] if self.response_format == "content_and_artifact" else result
             return ToolMessage(content=_stringify(content), tool_call_id=call.get("id") or "",
                                status="error" if errored else "success")
         if self.response_format == "content_and_artifact" and isinstance(result, tuple):

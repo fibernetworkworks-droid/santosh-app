@@ -1303,9 +1303,9 @@ def test_version_pins():
     main_py = (SERVER / "app" / "main.py").read_text()
     import re as _re
     m = _re.search(r'APP_VERSION = "([0-9.]+)"', main_py)
-    assert m and m.group(1) >= "0.581.0"
+    assert m and m.group(1) >= "0.589.0"
     pubspec = (REPO_ROOT / "pubspec.yaml").read_text()
-    assert "0.581.0" in pubspec
+    assert "0.589.0" in pubspec
     claude_md = (REPO_ROOT / "CLAUDE.md").read_text()
     assert "0.559.0" in claude_md
 

@@ -395,7 +395,7 @@ def test_registry_553_and_dispatch(env):
     for n in ("const_store", "const_store_dekho", "const_labour", "const_labour_dekho", "const_customer",
               "const_customer_dekho", "const_quality", "const_quality_dekho", "const_meet", "const_meet_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 582, "553 (v0.522) + crew_run (v0.523) + game_provenance (v0.535) + 2 from v0.533 CRAWL BRAIN (healed in v0.539: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 581, "553 (v0.522) + crew_run (v0.523) + game_provenance (v0.535) + 2 from v0.533 CRAWL BRAIN (healed in v0.539: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_const_store_tool_end_to_end(env):
@@ -454,7 +454,7 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.588.0"
+    assert APP_VERSION == "0.589.0"
     # v0.535: see test_v0501 - a literal version here broke on every bump. The check that matters is agreement.
     _v = re.search(r'APP_VERSION = "([0-9.]+)"', (REPO / "server" / "app" / "main.py").read_text()).group(1)
     assert _v and f"version: {_v}+" in (REPO / "pubspec.yaml").read_text(), f"pubspec must carry {_v}"

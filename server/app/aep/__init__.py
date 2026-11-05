@@ -50,13 +50,33 @@ from P2 where tracers and agents actually run):
                cleanup), the text splitters (character + recursive), the
                retrievers as Runnables (BaseRetriever/VectorStoreRetriever,
                the P2 "retriever" span) + Docs7Retriever (docs7 as a source)
+- load       : (P7 v0.581.0 HOOLA HUB) the from-dict loader P1's serializable
+               seed reserved - dumpd/dumps + load/loads through the allowlist
+               Reviver, the escape law, the secrets placeholders, no imports
+               on the load path
+- mcp        : (P7) the Model Context Protocol client adapter - stdio +
+               in-memory transports, the initialize handshake, cursor-paginated
+               tools/list, tools/call, the elicitation lane (custom handler
+               honored, default honest refusal), MCP tools as house BaseTools
+- hub        : (P7 v0.581.0 HOOLA HUB) init_chat_model - the provider-string
+               router over Hoola's brains (fake / hoola / openai_compat, the
+               BYOK zoo), the ConfigurableModel declarative mode,
+               OpenAICompatChatModel (the BYOK adapter, transport injectable),
+               HouseBrainChatModel (the server's own brain behind an injected
+               runner) + the model-profiles registry/CLI
+- conformance: (P7) the standard-tests port - ONE suite every house chat model
+               passes (the capability-gated rows, the misattribution law, the
+               serdes round trip, the P2 span row)
 
-P6 (HOOLA RETRIEVE) is the retrieval layer; P7 the hub/loader/conformance suite;
-P8 the 100% parity audit.
+P7 (HOOLA HUB) is the hub/loader/conformance suite; P8 the 100% parity audit.
 """
 from . import (  # noqa: F401 - the package-export law (the v0.478 lesson, extended)
     agent,
+    conformance,
     history,
+    hub,
+    load as _load_mod,  # the module stays reachable - `load` the function rides below
+    mcp,
     messages,
     middleware,
     models,
@@ -89,7 +109,27 @@ from .graph import (
     add_messages,
     interrupt,
 )
+from .conformance import (
+    Capabilities,
+    ConformanceReport,
+    ConformanceRow,
+    assert_conformance,
+    run_standard_tests,
+)
 from .history import BaseChatMessageHistory, InMemoryChatMessageHistory, get_buffer_string
+from .hub import (
+    PROFILE_REGISTRY,
+    ConfigurableModel,
+    HouseBrainChatModel,
+    OpenAICompatChatModel,
+    init_chat_model,
+    known_providers,
+    model_data_to_profile,
+    refresh_profiles,
+    register_provider,
+    summarize_profile_diff,
+)
+from .load import SerializedNotImplemented, dumpd, dumps, load, loads
 from .messages import (
     CONTENT_BLOCK_TYPES,
     REMOVE_ALL_MESSAGES,
@@ -124,6 +164,22 @@ from .messages import (
     messages_to_dict,
     merge_content,
     message_chunk_to_message,
+)
+from .mcp import (
+    BaseTransport,
+    McpClient,
+    McpClientGroup,
+    McpError,
+    McpJsonRpcError,
+    McpTool,
+    McpToolError,
+    McpTools,
+    MemoryTransport,
+    PROTOCOL_VERSION,
+    StdioTransport,
+    blocks_to_content,
+    load_mcp_tools,
+    schema_dict_to_model,
 )
 from .models import (
     BaseCache,
@@ -255,4 +311,17 @@ __all__ = [
     "IndexingResult", "index", "aindex",
     "TextSplitter", "CharacterTextSplitter", "RecursiveCharacterTextSplitter",
     "BaseRetriever", "VectorStoreRetriever", "Docs7Retriever",
+    # P7 load (HOOLA HUB - the loader)
+    "SerializedNotImplemented", "dumpd", "dumps", "load", "loads",
+    # P7 mcp (HOOLA HUB - the MCP client adapter)
+    "BaseTransport", "McpClient", "McpClientGroup", "McpError", "McpJsonRpcError",
+    "McpTool", "McpToolError", "McpTools", "MemoryTransport", "StdioTransport",
+    "load_mcp_tools", "PROTOCOL_VERSION", "blocks_to_content", "schema_dict_to_model",
+    # P7 hub (HOOLA HUB - the router + profiles)
+    "ConfigurableModel", "HouseBrainChatModel", "OpenAICompatChatModel",
+    "init_chat_model", "known_providers", "register_provider",
+    "PROFILE_REGISTRY", "model_data_to_profile", "refresh_profiles",
+    "summarize_profile_diff",
+    # P7 conformance (the standard-tests port)
+    "run_standard_tests", "assert_conformance", "ConformanceReport", "ConformanceRow", "Capabilities",
 ]

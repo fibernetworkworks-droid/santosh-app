@@ -453,7 +453,7 @@ def test_the_tool_is_registered_in_the_house():
     assert names.count("speckit") == 1
     assert "speckit" in tools.HANDLERS and "speckit" in tools.TOOL_LABELS
     assert tools.FAMILY_OF["speckit"] == "speckit"
-    assert len(tools.TOOLS) == 582, ("580 (the dev chain on the merged tree, their v0.568.0 fef8a44ea) + 1 speckit "
+    assert len(tools.TOOLS) == 581, ("580 (the dev chain on the merged tree, their v0.568.0 fef8a44ea) + 1 speckit "
                                      "(v0.569 SPEC SUTRA: the spec-kit ladder - constitution/specify/clarify/plan/"
                                      "tasks/analyze/converge/list, append-only converge, computed verdict, "
                                      "per-tenant sqlite)")
@@ -473,6 +473,6 @@ def test_the_spec_promises_the_ladder():
 
 def test_app_version_is_the_conscious_bump():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.588.0"
+    assert APP_VERSION == "0.589.0"
     root = Path(__file__).resolve().parents[2]
-    assert "0.588.0+603" in (root / "pubspec.yaml").read_text()
+    assert "0.589.0+604" in (root / "pubspec.yaml").read_text()
