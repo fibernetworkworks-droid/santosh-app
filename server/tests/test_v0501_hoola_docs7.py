@@ -137,7 +137,7 @@ def test_config_defaults(env):
 
 def test_version(env):
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.584.0"
+    assert APP_VERSION == "0.585.0"
     # v0.535: was pinned to a literal version, in a spelling the version ritual does not rewrite, so it broke on every
     # bump by any session. Its real job is that main.py and pubspec agree - which is what it now checks.
     _v = re.search(r'APP_VERSION = "([0-9.]+)"', (REPO_ROOT / "server" / "app" / "main.py").read_text()).group(1)
