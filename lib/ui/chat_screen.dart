@@ -1971,7 +1971,7 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
     case 'campaign':
       return _CampaignCard(v: it.data, app: app);
     case 'any_card':   // v0.550 EK JAISA: a kind with no screen of its own still shows, like the console's default card
-      return AnyEventCard(v: it.data);
+      return AnyEventCard(v: it.data, at: it.at);   // v0.555 the time sits in the card's eyebrow
     default:
       return null;
   }

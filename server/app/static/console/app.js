@@ -482,17 +482,22 @@ function renderCard(kind, p, at, live) {
         no: async () => { const r = await api('POST', `/api/panel/share/${encodeURIComponent(p.id)}`, {approve: false}); renderCard(kind, r); }});
       break; }
     default: {
-      const tk = ['title', 'name', 'label', 'what', 'subject'].find(k => p[k]), sk = ['say', 'summary', 'text', 'reason', 'message'].find(k => p[k]);
-      const title = (tk && p[tk]) || LABEL[kind] || kind.replace(/_/g, ' ');
-      const sub = (sk && p[sk]) || '';
       const pit = PN?.itemOf(kind, p);     // v0.163 finished work opens beside the chat, not in a new tab
       const link = pit ? '' : safeLink(p.url || p.link || p.open_url || '');
-      const money = /approval|_pay|deal|studio|payroll|spend|bill/.test(kind) && (p.status === 'pending' || p.waiting);
-      el.innerHTML = head(title, LABEL[kind] && LABEL[kind] !== title ? LABEL[kind] : (p.status || ''), money ? 'warn' : 'v')
-        + (sub ? `<p style="font-size:14px">${esc(String(sub).slice(0, 600))}</p>` : '') + kvRows(p, 8, [tk, sk])
-        + (pit ? `<div class="acts"><button class="btn go" type="button" data-pn>Kholo</button></div>` : '')
-        + (link ? `<div class="acts"><a class="btn soft" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Kholo</a></div>` : '')
-        + (money ? `<p class="faint" style="font-size:12.5px">Is card par Haan Hoola app se hoti hai (fingerprint ya app ka apna screen).</p>` : '');
+      if (window.HoolaCard) {             // v0.555 HOOLA CARD: the premium default card (hcard.js, same rules as the phone)
+        el.classList.add('cd-h');
+        el.innerHTML = window.HoolaCard.html(kind, p, at, {label: LABEL[kind] || '', link, panel: !!pit, told: !!p.told_on_call});
+      } else {
+        const tk = ['title', 'name', 'label', 'what', 'subject'].find(k => p[k]), sk = ['say', 'summary', 'text', 'reason', 'message'].find(k => p[k]);
+        const title = (tk && p[tk]) || LABEL[kind] || kind.replace(/_/g, ' ');
+        const sub = (sk && p[sk]) || '';
+        const money = /approval|_pay|deal|studio|payroll|spend|bill/.test(kind) && (p.status === 'pending' || p.waiting);
+        el.innerHTML = head(title, LABEL[kind] && LABEL[kind] !== title ? LABEL[kind] : (p.status || ''), money ? 'warn' : 'v')
+          + (sub ? `<p style="font-size:14px">${esc(String(sub).slice(0, 600))}</p>` : '') + kvRows(p, 8, [tk, sk])
+          + (pit ? `<div class="acts"><button class="btn go" type="button" data-pn>Kholo</button></div>` : '')
+          + (link ? `<div class="acts"><a class="btn soft" href="${esc(link)}" target="_blank" rel="noopener noreferrer">Kholo</a></div>` : '')
+          + (money ? `<p class="faint" style="font-size:12.5px">Is card par Haan Hoola app se hoti hai (fingerprint ya app ka apna screen).</p>` : '');
+      }
       el.querySelector('[data-pn]')?.addEventListener('click', () => PN.open(pit));
       if (live) PN?.update(kind, p);
     }

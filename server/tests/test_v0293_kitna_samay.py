@@ -81,5 +81,5 @@ def test_the_two_older_clocks_still_exist():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.554.0"
-    assert "0.554.0+577" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.555.0"
+    assert "0.555.0+578" in (ROOT / "pubspec.yaml").read_text()

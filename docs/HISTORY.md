@@ -20303,3 +20303,36 @@ Phone: `lib/call_session.dart` `callCardKinds` gains `any_card` (v0.550's defaul
 Tests: NEW `test_v0554_card_khabar.py` (11, incl. an end-to-end `bus.publish` -> live call); voice / call / approval
 suites 308 passed; the 2 reds (`test_v0221_console_r1`: cache-stamp pin 0.543 + console English) are red on the
 pre-session commit bbdcaa60 too. NOT VERIFIED live: the first approval card that appears during a call is the proof.
+
+## v0.555.0 HOOLA CARD - the premium default card on phone and console (owner: "BUILD THIS" on claude.ai/artifact/NgbT6WLDj63Jhh7MbysuGD)
+
+The owner asked for cards that are more user friendly, then "more sophisticated, professional and premium", approved
+the second design and said BUILD THIS. Built as the DEFAULT card - every card kind that has no screen of its own (game
+desk, CAD project, research run / watch, agent team, Drive file, bulk mail, voice alert, social update, any future
+kind) - with one anatomy on both surfaces:
+- eyebrow: the desk in small capitals, "Call par bataya" when `told_on_call`, the time (phone: FeedItem.at);
+- a 42px tile in the tone + the title (Sora on the phone) + a STATUS SIGNAL: a dot and plain words (Aapki haan
+  chahiye / Chal raha hai / Taiyaar / Ruk gaya, dikkat aayi / Band kar diya; console English) - never a raw code;
+- one sentence (say / summary / text / reason / message / detail / now); for a failure the error IS the sentence;
+- a money card: the amount as the hero (Indian grouping 1,24,000, paise as two digits, a small ₹), the pay method,
+  and a secure band "fingerprint, never by voice" while it asks;
+- up to 3 receipt facts on hairlines with human labels; ids, tenant, conversation, links, status and progress
+  fields never show;
+- progress as 6 step segments (pct, or step / total) with the current one half-toned (no looping animation - the
+  console's CRISP TEXT rule);
+- a docked action bar only when there is somewhere to go (console: side panel "Open" or the safe https link; phone:
+  "Kholo"). Nothing on it approves anything: cards that need her tap keep their own screens and buttons.
+Tones: money saffron/warn, ask violet/pri, ready green, working teal, failed red, stopped muted.
+
+Files: NEW `server/app/static/console/hcard.js` (pure `HoolaCard.html(kind, p, at, opts)`, node-tested; loaded before
+results.js) used by `app.js renderCard` default (old markup kept only as a fallback if the script is missing);
+`v2.css` block "v0.555 HOOLA CARD" (theme tokens only, light + dark); `lib/ui/any_card.dart` rewritten with the
+same rules (`stateOf / isMoney / amountOf / deskOf`); `chat_screen.dart` passes `at: it.at`. Stamps 21 -> 22 (the
+new script) in four suites.
+
+Tests: NEW `test_v0555_hoola_card.py` (8: plain status words, no internal codes, 3-fact cap, money hero + secure band,
+Indian amounts, step segments, progress/error never facts, dock only with a target, escaping, console + phone wiring).
+Console + pin suites 141 passed; the reds (v0221, v0223, v0279 aePulse from another merge, v0285, v142) are red on the
+committed tree before this change. Rendered with the real v2.css in light and dark and checked by eye.
+NOT VERIFIED: the Dart compiles first on CI. NEXT: move the dedicated cards (bill payment, email draft, approvals)
+onto the same anatomy one by one, keeping each one's buttons.

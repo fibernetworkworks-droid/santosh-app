@@ -1429,3 +1429,13 @@ Work Log:
   job states not repeated); call screen lists any_card. NEW test_v0554_card_khabar.py (11); 308 voice suites green.
 Stage Summary:
 - v0.554.0 server + one Dart line. Deploy = owner's vps-ops dispatch; APK from CI.
+
+---
+Task ID: 43 — v0.555.0 HOOLA CARD (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "BUILD THIS" on the premium card design (claude.ai/artifact/NgbT6WLDj63Jhh7MbysuGD).
+Work Log:
+- Console hcard.js (pure) + v2.css tokens in renderCard default; phone any_card.dart rewritten with the same rules.
+- NEW test_v0555_hoola_card.py (8); console + pin suites 141 passed, the reds pre-exist. Rendered light + dark.
+Stage Summary:
+- v0.555.0. Deploy = owner's vps-ops dispatch (console) + the CI APK (phone). Next: dedicated cards onto the same anatomy.

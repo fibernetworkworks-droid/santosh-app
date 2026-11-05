@@ -105,7 +105,7 @@ def test_phone_draws_every_kind_it_does_not_name():
     assert "FeedItem('any_card'" in handle and "anyCardWorthShowing(ev.kind, p)" in handle
     assert "_anyCards.clear();" in state, "the generic cards must reset with the chat like every other card map"
     chat = CHAT_DART.read_text(encoding="utf-8")
-    assert "case 'any_card':" in chat and "AnyEventCard(v: it.data)" in chat and "import 'any_card.dart';" in chat
+    assert "case 'any_card':" in chat and "AnyEventCard(v: it.data" in chat and "import 'any_card.dart';" in chat
     card = ANY_CARD_DART.read_text(encoding="utf-8")
     assert "class AnyEventCard" in card and "launchUrl" in card
     # the kinds that used to vanish on the phone now reach the default (nothing named them)
