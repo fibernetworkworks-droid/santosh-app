@@ -20127,3 +20127,34 @@ the checkout writes (SQLite-safe), unique index kept as the last guard; (2) the 
 with the same cid (as hoola-shop.js does) and names every dropped connection. STILL SLOW, said plainly: checkout p50 1.9 s
 but p95 41 s / max 46 s with 200 buyers at once on ONE shop (the hot product's row lock + 4 workers' DB pools) - every one
 answered, none lost, but a slow tail; next speed pass = a shorter stock transaction + pool size, measured by this same card.
+
+## v0.549.0 SURAKSHA GATES (web Step 7 part 1 = W11 of docs/WEB_PLATFORM_PLAN.md; owner: "GO" on Step 7)
+
+Every website build now passes nine SAFETY GATES read from the real built files before it can go live
+(`server/app/site/gates.py`, the App Sahayak `appmaker/gates.py` row shape reused: gate / check / pass|warn|fail|
+not_checked / say / read). A FAIL is a BLOCKING item in the build report, so `hosting.blockers` refuses launch and the
+fix round gets the exact SECTION (each row carries the `s-<slug>-<type>` ids it was found in, mapped by `_fixable`).
+
+1. **secrets** - the SECRETS patterns over every page / script / css (a key in a public file = fail).
+2. **libraries** - vendored JS version banners -> OSV.dev npm; a known CVE = fail; OSV unreachable = not_checked, said.
+3. **headers** - the `_headers` file: CSP, nosniff, frame-ancestors, referrer, permissions.
+4. **pages** - no inline script, no on* handlers, no javascript: links, no outside scripts (only Cloudflare Turnstile
+   when she turned it on), no http:// resources, no unknown iframes; target=_blank without noopener = warn.
+5. **forms** - endpoint must be her own site's lead route, honeypot box present, no password box on a public form,
+   privacy page linked; bots row (honeypot always, Turnstile when keyed).
+6. **accessibility** - WCAG 2.2 AA rows by name: page language 3.1.1, page title 2.4.2, image alt 1.1.1, labelled
+   boxes 1.3.1/4.1.2, named links + buttons 2.4.4/4.1.2, zoom allowed 1.4.4; plus the axe row from the browser check.
+7. **legal (profession law)** - Drugs & Magic Remedies Act claim words + "cure for <disease>", BCI advertising rule
+   for lawyers, NMC for doctors (registration number), guaranteed-result claims for education, FSSAI licence on a
+   food shop, e-commerce rules pages (grievance / returns / seller details) on a shop.
+8. **trackers** - gtag / fbq / hotjar etc. only behind `data-hoola-consent`; Hoola's own analytics is cookieless.
+9. **limits** - the server's enquiry / shop / login rate caps, stated (they are code, on every site).
+
+Bots: every Hoola form gets a hidden honeypot (`build.HP`, `guard_forms`); Cloudflare Turnstile is OFF until
+`SITE_TURNSTILE_SITE` + `SITE_TURNSTILE_SECRET` are in the VPS .env - then the widget is added, the CSP opens ONLY
+challenges.cloudflare.com, and `_lead_post` verifies the token server-side (siteverify) before saving a lead.
+Console: the build card shows "Safety gates: n passed - warnings - failed - not checked (pages read)". Switch
+`site_gates` (default on). Tests `test_v0549_suraksha_gates.py`: a clean site passes; every planted fault fails for its
+own reason; profession laws; OSV fail + not_checked; launch blocked; Turnstile box / CSP / server check; the failing
+section is named and fed to the fix round. NOT VERIFIED (honest): no live Turnstile key yet; the profession checks are
+word rules (a careful human still reads her claims) - they catch the common breach, not every one.

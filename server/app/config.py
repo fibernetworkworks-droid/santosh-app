@@ -344,8 +344,8 @@ class Settings(BaseSettings):
     site_shop_max_products: int = 20000    # v0.538 BADA CATALOGUE: products one website shop may hold (was 500)
     site_shop_day_cap: int = 300           # orders a website shop takes in a day (spam guard; a big shop raises it)
     site_shop_ip_cap: int = 12             # orders from one address in 10 minutes
-    site_gates: bool = True                # v0.546 SURAKSHA GATES: every website build is checked; a FAIL blocks going live
-    site_turnstile_site: str = ""          # v0.546 Cloudflare Turnstile site key (public) - both keys = forms get the box
+    site_gates: bool = True                # v0.549 SURAKSHA GATES: every website build is checked; a FAIL blocks going live
+    site_turnstile_site: str = ""          # v0.549 Cloudflare Turnstile site key (public) - both keys = forms get the box
     site_turnstile_secret: str = ""        # its secret (VPS .env only): the server checks every form post with Cloudflare
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)
     site_sms_provider: str = ""            # v0.434 website phone-OTP login: "" off | msg91 (DLT registered, her account)
