@@ -1,1 +1,0 @@
-{"kind": "observation", "enqueued_at_epoch": 1793725167, "conv": "c_team", "tenant": "default", "tool": "google_search", "args": {"q": "counter"}, "result": "{\"tool\": \"google_search\", \"data\": \"D\"}", "ok": true, "ms": 810, "turn_id": "team_422b9c7d1a2f", "actor": "team:counter", "at": "2026-11-03T16:59:27+0000", "seq": 1793725167005}
