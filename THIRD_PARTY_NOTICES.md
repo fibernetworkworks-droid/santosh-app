@@ -82,13 +82,19 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
 
-## Claude Code Game Studios (ideas for the Hoola Game Crew and the game-desk fixes, v0.406)
+## Claude Code Game Studios (ideas for the Hoola Game Crew and the game-desk fixes, v0.406; the read guard, v0.455)
 
 Hoola's Game Crew (`server/app/gamedesk/crew.py`), the task acceptance criteria and evidence, the "not assessed" results
 and the Godot 4.5-4.7 notes in `server/app/gamedesk/ai.py` were designed after studying the open-source project
 **Claude Code Game Studios** by Donchitos (https://github.com/Donchitos/Claude-Code-Game-Studios, release 1.2.0, commit
 05ad7c8). No code or prompt text was copied: the role descriptions, checklists, team flows and code are Hoola's own,
 written for Hoola's hosted Game Desk. These ideas came from that project:
+
+v0.455 took one more idea from the same repo's release 1.2.0: its `validate-read.sh` hook, which refuses a
+whole-file read of a large design doc and answers with the doc's headings so the retry reads one section.
+`.claude/hooks/read-guard.sh` is Hoola's own implementation of that idea (different watched paths, different
+size bar, and a headings reply that caps the list because docs/HISTORY.md has 639 headings - printing them all
+would be the waste the guard exists to prevent). No code was copied.
 
 - the studio roster (3 directors, 8 department leads, specialists, plus Godot / Unity / Unreal engine specialists) and
   the team flows (combat, narrative, UI, release, polish, audio, level, live ops, QA)

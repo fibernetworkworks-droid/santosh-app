@@ -1,4 +1,4 @@
-/* v0.531 Hoola catalogue filter: search + her filter columns + price + sort over the list's compact index
+/* v0.534 Hoola catalogue filter: search + her filter columns + price + sort over the list's compact index
    (assets/catalog/<list>.json, fetched only when the visitor first touches the filter). The numbered pages under it
    stay for visitors without JavaScript and for search engines. No data leaves the page. */
 (function () {

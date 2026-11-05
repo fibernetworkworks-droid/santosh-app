@@ -29,7 +29,7 @@ SITE_TOOLS = [
         "online shop: cart, checkout, UPI to HER UPI ID or cash on delivery; only HER prices, never invented. Customers pay in "
         "their own UPI app; YOU never mark money received - action=shop_order + site + number (O-1001) + to (confirmed | packed "
         "| shipped | delivered | cancelled) only on her word (confirmed = she saw the money). website_dekho what=orders. "
-        "CATALOGUE (v0.531, 100s-10,000s of products / doctors / properties from HER data): action=catalog + site + coll "
+        "CATALOGUE (v0.534, 100s-10,000s of products / doctors / properties from HER data): action=catalog + site + coll "
         "(the list address: products / doctors / flats) + sheet (her Google Sheet link / name, + tab) OR dataset (a ds_ id "
         "from data_fetch / an ERP read) -> a PREVIEW only (new / changed / rejected rows, thin + duplicate pages, the column "
         "mapping); nothing is written - SHE taps Apply on the console's Catalogue card (a file she has goes there too). "
@@ -153,7 +153,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return {k: v.get(k) for k in ("settings", "upi", "summary", "say")} | {"products": len(v.get("products") or [])}
     if action == "shop_order":
         return S.shop_move(t, site, str(a.get("number") or ""), str(a.get("to") or ""))
-    if action == "catalog":                       # v0.531 a preview only; her Apply tap writes it (console Catalogue card)
+    if action == "catalog":                       # v0.534 a preview only; her Apply tap writes it (console Catalogue card)
         from ..site import catalog as CAT
         try:
             if a.get("sheet"):

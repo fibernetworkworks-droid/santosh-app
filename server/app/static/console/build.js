@@ -2057,7 +2057,7 @@ window.HoolaBuild = function (C) {
     };
   }
 
-  /* v0.531 BADA CATALOGUE: her products / doctors / properties from her file, Google Sheet or a dataset -> pages by code.
+  /* v0.534 BADA CATALOGUE: her products / doctors / properties from her file, Google Sheet or a dataset -> pages by code.
      Preview first (nothing written, every count + rejected row shown), then her Apply tap writes it. */
   async function catalogBox(o, box) {
     let v; try { v = await api('GET', base(o) + '/catalog'); } catch (er) { return; }

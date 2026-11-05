@@ -1,4 +1,4 @@
-"""v0.531 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed of docs/WEB_PLATFORM_PLAN.md; checkpoint
+"""v0.534 BADA CATALOGUE (web Step 6 part 1 = W8 content at scale + W10 speed of docs/WEB_PLATFORM_PLAN.md; checkpoint
 "5,000-product marketplace, load test passed").
 
 Her file / Sheet / dataset -> preview (nothing written) -> her Apply -> pages BY CODE: 5,000 product pages, listing pages
@@ -27,7 +27,7 @@ KINDS = ["Namkeen", "Sweets", "Biscuits", "Spices", "Tea", "Ghee"]
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.531.0"
+    assert APP_VERSION == "0.534.0"
 
 
 def _csv(n: int, dup_every: int = 0, thin_every: int = 0, bad_rows: bool = True) -> bytes:

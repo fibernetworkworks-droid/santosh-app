@@ -515,7 +515,7 @@ def shop_grid(site: dict[str, Any], rel: str, photos: dict[str, dict[str, Any]])
     if not items:
         return '<p class="muted">Products jald aa rahe hain.</p>'
     lists = [c for c in site.get("catalog") or [] if c.get("items")]
-    if lists:                                    # v0.531 a big catalogue: its products are on their own list pages
+    if lists:                                    # v0.534 a big catalogue: its products are on their own list pages
         own = {f'{c["key"]}/' for c in lists}
         items = [p for p in items if not any(p["slug"].startswith(k) for k in own)]
     more = ""
@@ -543,7 +543,7 @@ def buy_box(site: dict[str, Any], slug: str) -> str:
     """On a product's own page (a list item that is also a product): its price + Add to cart."""
     shop = site.get("shop") or {}
     idx = shop.get("_by_slug")
-    if idx is None:                                  # v0.531 one dict per build (10,000 product pages, not 10,000 scans)
+    if idx is None:                                  # v0.534 one dict per build (10,000 product pages, not 10,000 scans)
         idx = shop["_by_slug"] = {x["slug"]: x for x in shop.get("products") or []} if shop else {}
     p = idx.get(slug)
     if not p:
@@ -733,7 +733,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             f'<meta property="og:type" content="website"><meta property="og:image" content="{rel}assets/og.jpg">',
             '<meta name="twitter:card" content="summary_large_image">',
             '<meta name="generator" content="Hoola">']
-    canon = page.get("canonical") or canon          # v0.531 a duplicate catalogue page points at the original
+    canon = page.get("canonical") or canon          # v0.534 a duplicate catalogue page points at the original
     if canon:
         meta.append(f'<link rel="canonical" href="{esc(canon)}">')
     root_base = (site.get("root_base") if site.get("root_base") is not None else base_url) or ""
@@ -749,7 +749,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
         meta = [m.replace('content="website"', f'content="{esc(page["og_type"])}"') for m in meta]
     if site.get("noindex") or page["slug"] in ("admin", "account"):
         meta.append('<meta name="robots" content="noindex">')
-    elif page.get("robots"):                         # v0.531 a thin / duplicate catalogue page: shown, not indexed
+    elif page.get("robots"):                         # v0.534 a thin / duplicate catalogue page: shown, not indexed
         meta.append(f'<meta name="robots" content="{esc(page["robots"])}">')
     if site.get("app_api"):                      # v0.305 where the app script talks to (Hoola's API, never the site host)
         meta.append(f'<meta name="hoola-app" content="{esc(site["app_api"])}" data-lang="{esc(site.get("language") or "en")}" '
@@ -788,7 +788,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             + (f'<script src="{rel}assets/hoola-chart.js" defer></script>' if uses_charts(body) else "")   # v0.357
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
             + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
-            + (f'<script src="{rel}assets/hoola-catalog.js" defer></script>' if "data-hoola-catalog=" in body else "")   # v0.531
+            + (f'<script src="{rel}assets/hoola-catalog.js" defer></script>' if "data-hoola-catalog=" in body else "")   # v0.534
             + '</body></html>')
 
 
@@ -954,7 +954,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     if site.get("app_api"):
         shutil.copy(ASSETS / "hoola-app.js", out / "assets" / "hoola-app.js")
         shutil.copy(ASSETS / "hoola-push-sw.js", out / "assets" / "hoola-push-sw.js")   # v0.459 browser notifications (her yes)
-    from . import catalog as CAT                    # v0.531 BADA CATALOGUE: her imported lists, pages made by code
+    from . import catalog as CAT                    # v0.534 BADA CATALOGUE: her imported lists, pages made by code
     cats = site["catalog"] if site.get("catalog") is not None else (CAT.load(site.get("site_id") or "") if not site.get("edit") else [])
     cats = [c for c in cats if c.get("items")]
     site = {**site, "catalog": cats}
@@ -1086,14 +1086,14 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             if big and page.get("collection") in cols:     # the listing of its items, made by code
                 body += "\n" + SM.grid(cols[page["collection"]], rel)
             cat_here = next((c for c in cats if c["key"] == slug), None)
-            if cat_here is not None:                 # v0.531 her designed page for an imported list carries its page 1
+            if cat_here is not None:                 # v0.534 her designed page for an imported list carries its page 1
                 body += "\n" + CAT.listing(cat_here, 1, rel)
         dest = out / page_path(slug)
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(page_html(site, plan, page, body, rel, logo, base_url), encoding="utf-8")
         files += 1
     cat_res: dict[str, Any] = {"pages": 0, "urls": [], "noindex": 0}
-    if cats:                                     # v0.531 every catalogue page: listings, items, the filter index
+    if cats:                                     # v0.534 every catalogue page: listings, items, the filter index
         designed = {p["slug"] for p in plan.get("pages", []) if not p.get("template_of")}
 
         def tpl_body(c: dict[str, Any], it: dict[str, Any], rel: str) -> str:
@@ -1119,7 +1119,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     urls = [(base_url.rstrip("/") + "/" + ("" if p["slug"] == "home" else p["slug"] + "/")) for p in every]
     if big:                                  # v0.315 the site search reads this (titles, addresses, one line each)
         (out / "assets" / "search.json").write_text(json.dumps(SM.search_entries(plan), ensure_ascii=False), encoding="utf-8")
-    if base_url and cats:                    # v0.531 a sitemap index + one file per list (each under 45,000 addresses)
+    if base_url and cats:                    # v0.534 a sitemap index + one file per list (each under 45,000 addresses)
         by_coll: dict[str, list[tuple[str, str]]] = {}
         for u, lm in cat_res["urls"]:
             by_coll.setdefault(u[len(base_url.rstrip("/")) + 1:].split("/")[0], []).append((u, lm))
@@ -1134,13 +1134,13 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     (out / "_headers").write_text("/*\n  " + "\n  ".join(f"{k}: {v}" for k, v in security_headers(form_endpoint).items()) + "\n")
     for alt in alts:                         # v0.301 / v0.366 each extra language under /<lang>/, one menu to all of them
         sub = {**site, "language": alt["lang"], "alt": None, "alts": [], "src_root": str(src_root), "root_up": "../",
-               "catalog": [], "_sub": True,                  # v0.531 her imported lists stay in her first language
+               "catalog": [], "_sub": True,                  # v0.534 her imported lists stay in her first language
                "blog": alt.get("blog") if alt.get("blog") is not None else (site.get("blog") or [])}
         res = assemble(sub, alt["plan"], alt["sections"], dict(photos), out / alt["lang"],
                        (base_url.rstrip("/") + "/" + alt["lang"]) if base_url else "", form_endpoint)
         problems += [f'{alt["lang"]}: {x}' for x in res["problems"]]
         files += res["pages"]
-    if not site.get("_sub") and not site.get("edit"):   # v0.531 W10: every text file also pre-compressed (nginx gzip_static)
+    if not site.get("_sub") and not site.get("edit"):   # v0.534 W10: every text file also pre-compressed (nginx gzip_static)
         from . import speed as SPD
         SPD.precompress(out)
     total = sum(p.stat().st_size for p in out.rglob("*") if p.is_file() and p.suffix != ".gz")
@@ -1172,7 +1172,7 @@ def export_zip(out: Path) -> bytes:
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
         for p in sorted(out.rglob("*")):
-            if p.is_file() and p.suffix != ".gz":            # v0.531 the .gz twins are for nginx, not her ZIP
+            if p.is_file() and p.suffix != ".gz":            # v0.534 the .gz twins are for nginx, not her ZIP
                 z.write(p, p.relative_to(out).as_posix())
     return buf.getvalue()
 
