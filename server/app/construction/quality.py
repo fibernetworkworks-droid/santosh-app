@@ -6,13 +6,14 @@ IS 456:2000 cl 16.1 / Table 11). The DRAFT is explicitly a draft: acceptance is 
 duplicated here."""
 from __future__ import annotations
 
+import io
 import re
 
 from sqlalchemy import select
 
 from ..db import session
 from .common import (CstError, _LOCK, _date, _dump, _j, _num, today)
-from .models import CItp, CNcr, CQualPermit, CQualToolbox, CTestLot
+from .models import (CItp, CNcr, CQualIncident, CQualIncRow, CQualPermit, CQualToolbox, CTestLot)
 
 # IS 456:2000 cl 16.1 & Table 11 - M20 and above: mean >= fck + 4, individual >= fck - 4 (N/mm2).
 # Below M20 Table 11 works on the standard deviation route - Hoola refuses and says so (never guesses sigma).
@@ -169,7 +170,8 @@ def punch(tenant: str, site: str = "") -> dict:
 
 
 def day(tenant: str) -> dict:
-    """The QA morning: open NCRs, hold points due, lots pending verdict / retest, permits expiring."""
+    """The QA morning: open NCRs, hold points due, lots pending verdict / retest, permits expiring,
+    incidents open (v0.550: the #82 investigations ride this desk)."""
     t0 = today(tenant)
     with session() as s:
         ncrs = s.scalars(select(CNcr).where(CNcr.tenant_id == tenant, CNcr.status == "open")).all()
@@ -179,11 +181,14 @@ def day(tenant: str) -> dict:
         permits = [p for p in s.scalars(select(CQualPermit).where(CQualPermit.tenant_id == tenant,
                                                           CQualPermit.status == "issued")).all()
                    if p.valid_till and p.valid_till <= t0.isoformat()]
+        incidents = s.scalars(select(CQualIncident).where(CQualIncident.tenant_id == tenant,
+                                                          CQualIncident.status == "open")).all()
     say = (f"Quality: {len(ncrs)} NCR khuli, {len(lots)} lab results verdict-pending"
            + (f", {len(retest)} retest due" if retest else "")
-           + (f", {len(permits)} permit ki validity khatam" if permits else "") + ".")
+           + (f", {len(permits)} permit ki validity khatam" if permits else "")
+           + (f", {len(incidents)} incident investigation khuli" if incidents else "") + ".")
     return {"open_ncrs": len(ncrs), "pending_lots": len(lots), "retest_due": len(retest),
-            "permits_expired": len(permits), "say": say}
+            "permits_expired": len(permits), "incidents_open": len(incidents), "say": say}
 
 
 # ------------------------------------------------------------------ #81 EHS Officer's Assistant (Wave 2 C10)
@@ -260,3 +265,159 @@ def toolbox_log(tenant: str, site: str, topic: str, day: str = "", attendees=Non
     return {"toolbox_id": tid,
             "say": f"Toolbox talk record: {topic[:60]} ({site}, gang {gang or '-'}, {int(_num(attendees))} aadami). "
                    "Safety talk ka hisaab EHS officer ke saath."}
+
+
+# ---------------------------------------------------------------- #82 incident investigation (C13, Wave 3)
+# The register: "timeline, witness question lists, root-cause tools, corrective actions; findings by
+# the safety officer". The record and the 5-why structure are Hoola's; the ROOT CAUSE and the findings
+# are the safety head's word, recorded WITH the name - a closed incident without a name does not exist.
+
+WITNESS_QUESTIONS = [
+    "Aap tab kahan khade the / kya kar rahe the?",
+    "Aapne kya dekha - pehle kya hua, phir kya hua (order mein bataiye)?",
+    "Us waqt kaam / machine / area ke baare mein kya alag (unusual) lag raha tha?",
+    "Kya safety equipment / guard us waqt lagi thi (PPE, railing, lockout)?",
+    "Kya pehle bhi aisi ghatna / lagbhag-ghatna (near miss) hui thi?",
+    "Kisne dekha / suna iske alawa - aur kaun pukaar kar pehle pahuncha?",
+]
+
+
+def incident_open(tenant: str, site: str, kind: str, severity: str, description: str,
+                  day: str = "", reported_by: str = "", conv: str = "") -> dict:
+    """An incident opens (#82): near_miss | injury | property | environmental, severity, what happened
+    as reported. The investigation walks from here; findings close it."""
+    if not str(site or "").strip() or not str(description or "").strip():
+        raise CstError("Site aur ghatna ka varnan bataiye.")
+    if kind not in ("near_miss", "injury", "property", "environmental"):
+        raise CstError("kind: near_miss | injury | property | environmental")
+    if severity not in ("minor", "major", "critical"):
+        raise CstError("severity: minor | major | critical")
+    with _LOCK, session() as s:
+        x = CQualIncident(tenant_id=tenant, site=site.strip()[:160], day=(_date(day) or today(tenant)).isoformat(),
+                          kind=kind, severity=severity, description=description.strip()[:500],
+                          reported_by=reported_by.strip()[:120])
+        s.add(x)
+        s.flush()
+        iid = x.id
+    from .common import publish
+    publish(tenant, "const_ehs", {"kind": "incident_open", "site": site, "sev": severity}, conv)
+    return {"incident_id": iid,
+            "say": f"Incident khula ({kind}, {severity}): {description.strip()[:60]}... Timeline, "
+                   "witness notes, 5-why aur corrective actions isi pe judenge. Findings SAFETY HEAD "
+                   "ke naam se band hongi - Hoola sirf paper rakhta hai."}
+
+
+def incident_row(tenant: str, incident_id: str, kind: str, text: str = "", at: str = "",
+                 answer: str = "", owner: str = "", due: str = "", status: str = "") -> dict:
+    """One row of the investigation: timeline (at + event), witness note, a 5-why step (text = why,
+    answer = answer), or a corrective action (text, owner, due, status)."""
+    if kind not in ("timeline", "witness", "why", "action"):
+        raise CstError("kind: timeline | witness | why | action")
+    text = str(text or "").strip()
+    if not text:
+        raise CstError("Row ka text bataiye (event / note / why / action).")
+    if kind == "action" and status and status not in ("open", "done"):
+        raise CstError("Action ka status: open | done.")
+    with _LOCK, session() as s:
+        inc = s.get(CQualIncident, incident_id)
+        if not inc or inc.tenant_id != tenant:
+            raise CstError("Incident nahi mila.")
+        if inc.status == "closed":
+            raise CstError("Yeh incident band ho chuki hai - nayi rows ke liye pehle findings reopen "
+                           "karna hoga (safety head ke word se).")
+        x = CQualIncRow(tenant_id=tenant, incident_id=incident_id, kind=kind, at=(at or "")[:10],
+                        text=text[:300], answer=str(answer or "").strip()[:300], owner=owner.strip()[:120],
+                        due=(due or "")[:10], status=(status or ("open" if kind == "action" else ""))[:16])
+        s.add(x)
+        s.flush()
+        rid = x.id
+    say = {"timeline": f"Timeline + {at or '-'}: {text[:60]}",
+           "witness": f"Witness note: {text[:60]}",
+           "why": f"5-why: {text[:50]} -> {str(answer or '').strip()[:50] or '(answer baaki)'}",
+           "action": f"Corrective action: {text[:50]} ({owner.strip() or 'owner?'}"
+                     f", due {due or '-'}, {x.status})"}[kind]
+    return {"row_id": rid, "say": say}
+
+
+def incident_questions() -> dict:
+    """The witness question list (#82) - the standard six, in Hinglish, ready to ask. Not legal advice;
+    the interview conduct is the safety head's."""
+    return {"questions": WITNESS_QUESTIONS,
+            "say": f"{len(WITNESS_QUESTIONS)} witness sawaal - sab se pehle jo dekha, order mein. "
+                   "Interview karna aur likhna safety head ka tareeqa hai; yeh list sirf yaad dilati hai."}
+
+
+def incident_close(tenant: str, incident_id: str, root_cause: str, findings_by: str) -> dict:
+    """Close the investigation: ROOT CAUSE and findings recorded - with the SAFETY HEAD'S NAME (tier B
+    edge: without the name the close refuses; the findings are hers, Hoola keeps the paper)."""
+    if not str(root_cause or "").strip():
+        raise CstError("Root cause bataiye - yeh AAPKI (safety head ki) finding hai, Hoola nahi nikalta.")
+    if not str(findings_by or "").strip():
+        raise CstError("Findings kiski? Safety head ka NAAM zaroori hai - bina naam findings kisi ki "
+                       "nahi hoti.")
+    with _LOCK, session() as s:
+        x = s.get(CQualIncident, incident_id)
+        if not x or x.tenant_id != tenant:
+            raise CstError("Incident nahi mila.")
+        open_actions = s.scalars(select(CQualIncRow).where(
+            CQualIncRow.tenant_id == tenant, CQualIncRow.incident_id == incident_id,
+            CQualIncRow.kind == "action", CQualIncRow.status != "done")).all()
+        if open_actions:
+            raise CstError(f"{len(open_actions)} corrective action abhi open hain - pehle unhe done karo, "
+                           "phir findings.")
+        x.root_cause, x.findings_by, x.status = root_cause.strip()[:300], findings_by.strip()[:120], "closed"
+    return {"say": f"Incident band ({findings_by.strip()} ki findings): root cause - "
+                   f"'{root_cause.strip()[:70]}'. Corrective actions sab done. Yeh record hai - "
+                   "reporting / notification ka decision management + consultant ka."}
+
+
+def incident_pack(tenant: str, incident_id: str) -> dict:
+    """The investigation pack PDF: description, timeline, witness notes, the 5-why chain, corrective
+    actions, the root cause and findings line - her name if closed, EMPTY if still open."""
+    with session() as s:
+        x = s.get(CQualIncident, incident_id)
+        if not x or x.tenant_id != tenant:
+            raise CstError("Incident nahi mila.")
+        rows = s.scalars(select(CQualIncRow).where(CQualIncRow.tenant_id == tenant,
+                                                   CQualIncRow.incident_id == incident_id)).all()
+    buf = io.BytesIO()
+
+    def t(a, text, size=10, bold=False):
+        nonlocal y
+        pdf.setFont("Helvetica-Bold" if bold else "Helvetica", size)
+        pdf.drawString(a, y, str(text)[:110])
+        y -= size + 5
+
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas
+    pdf = canvas.Canvas(buf, pagesize=A4)
+    w, h = A4
+    y = h - 50
+    t(50, "INCIDENT INVESTIGATION PACK", 13, True)
+    t(50, f"{x.kind} / {x.severity}    Site: {x.site}    Day: {x.day}    Reported by: {x.reported_by or '-'}")
+    t(50, f"What happened: {x.description[:100]}")
+    y -= 6
+    for kind, label in (("timeline", "TIMELINE"), ("witness", "WITNESS"), ("why", "5-WHY"),
+                        ("action", "CORRECTIVE ACTIONS")):
+        mine = [r for r in rows if r.kind == kind]
+        if not mine:
+            continue
+        t(50, label, 10, True)
+        for r in mine[:12]:
+            line = f"{r.at or '-':10s} {r.text[:60]}" if kind in ("timeline", "witness") else \
+                   f"why: {r.text[:50]} -> {r.answer[:40]}" if kind == "why" else \
+                   f"[{r.status or 'open'}] {r.text[:50]} ({r.owner or '-'}, due {r.due or '-'})"
+            t(56, line, 9)
+        y -= 4
+    y -= 6
+    t(50, f"Root cause: {x.root_cause or '(abhi - safety head likhenge)'}")
+    t(50, f"Findings by: {x.findings_by or '____________________________'}", 10)
+    t(50, "(safety head - yeh findings unke shabd hain; Hoola kabhi findings nahi likhta)", 8.5)
+    pdf.showPage()
+    pdf.save()
+    from .. import chatfiles
+    f = chatfiles.store(tenant, f"INC-{x.site[:16].replace(' ', '-')}-{x.id[:6]}.pdf", buf.getvalue(),
+                        "application/pdf")
+    return {"file": f, "status": x.status,
+            "say": f"Investigation pack: {len(rows)} rows, status {x.status}. Findings line safety head "
+                   "ki hai - khali ya unke naam se."}

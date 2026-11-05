@@ -37,6 +37,10 @@ TIER_C: tuple[tuple[str, str], ...] = (
      "working paper par advocate/counsel ka conclusion hota hai; Hoola as-planned vs as-built ka working paper "
      "banata hai (notice-compliance ka hisaab saath)."),
     ("certify measurement", "Measurement certify karna billing engineer ka kaam hai; naap jaisa likha waisa rehta hai."),
+    ("certify an area statement", "Area statement / carpet area certify karna licensed surveyor / project architect / "
+     "engineer ka kaam hai; Hoola hisaab aur discrepancy report banata hai - sign line khaali rehti hai."),
+    ("certify a survey", "Survey certificate licensed surveyor ke sign se hota hai; Hoola closure, area aur "
+     "discrepancy ka hisaab dikhata hai - certificate nahi banata."),
     ("certify an RA bill", "RA bill ka certification / pass billing engineer / department karta hai; Hoola bill draft karta hai."),
     ("give a safety clearance", "Safety clearance safety officer deti hai; Hoola permit DRAFT + records rakhta hai."),
     ("give a permit-to-work", "Permit-to-work safety officer deti hai; Hoola permit DRAFT + records rakhta hai."),

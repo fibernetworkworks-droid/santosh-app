@@ -130,7 +130,7 @@ def test_agent_research_pins_the_discipline():
             body = b
     for token in ("AGI-CoCoSci", "catalog", "PROBE", "LEDGER", "adopt|park|kill",
                   "StateGraph", "interrupt", "checkpointers", "crew", "dhara",
-                  "stores", "569", "printed", "NEVER", "unverified", "synthetic",
+                  "stores", "580", "printed", "NEVER", "unverified", "synthetic",
                   "PERCEPTION", "MEMORY", "REASONING", "ACTION", "source"):
         assert token in body, token
 
@@ -172,7 +172,7 @@ def test_agent_research_matches_the_real_engine():
         assert door in body, door                       # the skill teaches it
     assert (REPO_ROOT / "server" / "app" / "crew" / "crew.py").exists()
     from app.agent import tools
-    assert len(tools.TOOLS) == 570, ("registry moved - refresh th-agent-research's "
+    assert len(tools.TOOLS) == 580, ("registry moved - refresh th-agent-research's "
                                      "'abhi 569' and this pin in the SAME commit + 1 reach (v0.559 REACH MANCH)")
 
 

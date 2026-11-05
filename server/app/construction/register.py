@@ -194,6 +194,24 @@ WAVE2_HOME: dict[int, str] = {
     81: "const_quality (EHS permits & toolbox)", 93: "const_rera (escrow)",
 }
 
+# register id -> where the work lives after Wave 3 (v0.550.0, C11-C15). The model-level + certificate-
+# adjacent wave: open formats on every card (IFC read / BCF write / IDS subset / LandXML CgPoints /
+# CSV-not-E57), a named licensee on every output, criticality and entitlement never computed.
+# #82 rides the Wave-1 quality desk (the EHS home, like #81); #25,27,74,77,109 stay unwaved.
+WAVE3_HOME: dict[int, str] = {
+    10: "const_predesign (load take-down, cl 39.3 size)", 11: "const_predesign (MEP estimates)",
+    12: "const_predesign (fire rule rows + demand)", 18: "const_bim (health, naming, IDS)",
+    19: "const_bim (CDE, transmittals)", 20: "const_bim (clash, BCF)", 21: "const_bim (4D/5D)",
+    22: "const_survey (LandXML CgPoints, traverse, area)", 23: "const_survey (grid volumes)",
+    24: "const_survey (CSV deviations)", 26: "const_survey (RERA carpet)",
+    47: "const_delay (windows, slips, notice maths)", 82: "const_quality (incident investigation)",
+    104: "const_green (meters, tariff, EPI)", 110: "const_green (credits tracker)",
+    111: "const_green (ECBC checks)", 112: "const_green (model input register)",
+    113: "const_green (daylight WFR)", 114: "const_green (carbon hotspots)",
+    115: "const_green (water demand, RWH)", 116: "const_green (Cx scripts + issues)",
+    117: "const_green (T&C records)", 118: "const_green (M&V baseline + savings)",
+}
+
 
 def get(eid: int) -> dict | None:
     for r in ROWS:
