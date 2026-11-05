@@ -2914,6 +2914,6 @@ body.albon{overflow:hidden}
 .sttable{width:100%;border-collapse:collapse;font-size:14px}
 .sttable td{padding:6px 4px;border-top:1px solid var(--hair)}
 .stgrade{font-size:12.5px;font-weight:500;padding:2px 8px;border-radius:8px;background:var(--chip,rgba(127,127,127,.12))}
-.stgrade.good{color:var(--ok,#1a7f4b)}
-.stgrade.needs-work{color:var(--warn,#a15c00)}
-.stgrade.poor{color:var(--bad,#b42318)}
+.stgrade.good{color:var(--ok)}
+.stgrade.needs-work{color:var(--warn)}
+.stgrade.poor{color:var(--bad)}
