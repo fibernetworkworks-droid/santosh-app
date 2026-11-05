@@ -333,6 +333,12 @@ TOOLS.extend(REACH_TOOLS)
 TOOL_LABELS.update(REACH_LABELS)
 HANDLERS.update(REACH_HANDLERS)
 
+from .speckit_tools import SPECKIT_HANDLERS, SPECKIT_LABELS, SPECKIT_TOOLS  # noqa: E402  v0.560 SPEC SUTRA - the spec-driven ladder (constitution/specify/clarify/plan/tasks/analyze/converge, the spec-kit idea)
+
+TOOLS.extend(SPECKIT_TOOLS)
+TOOL_LABELS.update(SPECKIT_LABELS)
+HANDLERS.update(SPECKIT_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)
