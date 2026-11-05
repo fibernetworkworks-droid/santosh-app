@@ -12,7 +12,7 @@ from .tools import Ctx, ToolError
 
 _ACTIONS = ["settings", "new", "update", "script", "script_set", "script_restore", "cast", "shots", "shot", "storyboard",
             "preview", "spend", "assemble", "person", "consent", "withdraw", "forget", "right", "rating", "cbfc", "tick",
-            "message", "release", "schedule", "callsheet", "budget_plan", "festival", "window", "waterfall"]
+            "message", "release", "schedule", "callsheet", "budget_plan", "festival", "window", "waterfall", "deliverable", "localise"]
 _OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc", "budget_plan", "window", "waterfall"}
 
 FILMDESK_TOOLS = [
@@ -43,7 +43,12 @@ FILMDESK_TOOLS = [
         "avod|tvod|tv|home_video|airline|educational|other, territory 'india, uae' or world, start, end, exclusive, licensee, fee_inr, "
         "holdbacks [{after, before, days}] -> exclusivity overlaps + holdback violations. waterfall*: gross_inr, deductions [{name, kind "
         "fixed_inr|percent_of_gross|percent_of_remaining, value, cap_inr}], investors [{name, invested_inr, premium_pct}], shares "
-        "[{name, pct}] (sum 100) -> tiers that add back to the gross."),
+        "[{name, pct}] (sum 100) -> tiers that add back to the gross. DELIVERY layer (hers to edit, nothing is sent or accepted): "
+        "deliverable: op add|update|remove|starter, entry (d1), label, buyer, due YYYY-MM-DD, status todo|in_progress|delivered|qc_failed|"
+        "accepted|waived, notes; starter: kind festival|ott|theatrical|tv adds a STARTING list of item names (the buyer's own spec is final). "
+        "localise: op add|update|remove, entry (l1), language, kind subtitles|dub|both, dub_mode human|ai_voice, voice_person (P-001, an AI voice "
+        "is flagged unless that person's recorded consent covers ai_voice), vendor, due, status todo|translating|recording|qc|delivered|"
+        "accepted|blocked, qa_rounds, notes."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "project": {"type": "string"}, "title": {"type": "string"},
          "logline": {"type": "string"}, "format": {"type": "string"}, "language": {"type": "string"},
@@ -78,12 +83,14 @@ FILMDESK_TOOLS = [
          "end": {"type": "string"}, "exclusive": {"type": "boolean"}, "licensee": {"type": "string"},
          "holdbacks": {"type": "array", "items": {"type": "object"}}, "gross_inr": {"type": "number"},
          "deductions": {"type": "array", "items": {"type": "object"}}, "investors": {"type": "array", "items": {"type": "object"}},
-         "shares": {"type": "array", "items": {"type": "object"}}},
+         "shares": {"type": "array", "items": {"type": "object"}}, "label": {"type": "string"}, "buyer": {"type": "string"},
+         "due": {"type": "string"}, "dub_mode": {"type": "string"}, "voice_person": {"type": "string"}, "vendor": {"type": "string"},
+         "qa_rounds": {"type": "integer"}},
          "required": ["action"]}},
     {"name": "film_desk_dekho", "description": (
         "Read the film desk (nothing changes). what=day | projects | project (project) | script | shots | budget (studio "
         "estimate per shot in rupees) | release (checklist + blockers + AI disclosure line) | people | person (person) | "
-        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day) | festivals | windows | waterfall."),
+        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day) | festivals | windows | waterfall | deliverables | localisation."),
      "input_schema": {"type": "object", "properties": {"what": {"type": "string"}, "project": {"type": "string"},
                                                        "person": {"type": "string"}, "status": {"type": "string"}},
                       "required": ["what"]}},
@@ -169,6 +176,12 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action == "window":
         keys = ("entry", "medium", "territory", "start", "end", "exclusive", "licensee", "fee_inr", "notes", "holdbacks")
         return S.window_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "deliverable":
+        keys = ("entry", "label", "buyer", "due", "status", "notes", "kind")
+        return S.deliverable_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
+    if action == "localise":
+        keys = ("entry", "language", "kind", "dub_mode", "voice_person", "vendor", "due", "status", "qa_rounds", "notes")
+        return S.localise_op(t, pr, _s(a.get("op")) or "add", actor, **{k: a[k] for k in keys if k in a})
     if action == "waterfall":
         return S.waterfall_run(t, pr, a.get("gross_inr"), a.get("deductions"), a.get("investors"), a.get("shares"), actor)
     raise ToolError(f"action '{action}' nahi pehchana.")
@@ -241,6 +254,10 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.windows_view(t, pr)
     if what == "waterfall":
         return S.waterfall_view(t, pr)
+    if what == "deliverables":
+        return S.deliverables_view(t, pr)
+    if what == "localisation":
+        return S.localisation_view(t, pr)
     raise ToolError(f"what '{what}' nahi pehchana.")
 
 

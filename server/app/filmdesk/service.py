@@ -33,6 +33,7 @@ from urllib.parse import quote as urlq
 from sqlalchemy import select
 
 from ..db import now, session
+from . import delivery as DL
 from . import production as P
 from . import rules as R
 from . import sales as SL
@@ -1703,3 +1704,106 @@ def waterfall_view(tenant: str, ref: str) -> dict:
     if not w:
         raise FilmError("Waterfall abhi nahi bana (action=waterfall, sirf owner).")
     return {"project": head, **w["result"]}
+
+
+# ---------------------------------------------------------------- delivery layer (deliverables / localisation), see delivery.py
+def _simple_list_op(tenant: str, ref: str, key: str, prefix: str, norm, maxn: int, op: str, actor: str, f: dict, fields: tuple,
+                    label_of) -> str:
+    """add | update | remove on one JSON list kept in the film's `plan`; returns the log line."""
+    op = (op or "add").lower()
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        items = [x for x in pl.get(key, []) if isinstance(x, dict)]
+        eid = _s_str(f.get("entry"))
+        cur = next((x for x in items if x["id"] == eid), None)
+        try:
+            if op == "add":
+                if len(items) >= maxn:
+                    raise FilmError(f"{maxn} se zyada nahi.")
+                e = norm(f, _next_id(items, prefix))
+                items.append(e)
+                what = f"{key}: add {label_of(e)}"
+            elif cur is None:
+                raise FilmError("Kaun sa? (entry=" + prefix + "1 jaisa id)")
+            elif op == "remove":
+                items.remove(cur)
+                what = f"{key}: hata {label_of(cur)}"
+            elif op == "update":
+                e = norm({**cur, **{k: v for k, v in f.items() if k in fields}}, 0)
+                e["id"] = cur["id"]
+                items[items.index(cur)] = e
+                what = f"{key}: badla {label_of(e)}"
+            else:
+                raise FilmError("op: add | update | remove")
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        pl[key] = items
+        p.plan = _dump(pl)
+        _log(p, what, actor_name(tenant, actor))
+    return what
+
+
+def deliverable_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | update | remove | starter (adds a kind's starting item names that are not there yet). Hers to edit: no money here."""
+    if (op or "").lower() == "starter":
+        try:
+            names = DL.starter_items(_s_str(f.get("kind")))
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        with _LOCK, session() as s:
+            p = _proj(s, tenant, ref)
+            pl = _j(p.plan, {})
+            items = [x for x in pl.get("deliverables", []) if isinstance(x, dict)]
+            have = {x["label"].lower() for x in items}
+            added = 0
+            for nm in names:
+                if nm.lower() in have or len(items) >= DL.ITEM_MAX:
+                    continue
+                items.append(DL.norm_deliverable({"label": nm, "buyer": f.get("buyer"), "due": f.get("due")}, _next_id(items, "d")))
+                added += 1
+            pl["deliverables"] = items
+            p.plan = _dump(pl)
+            _log(p, f"Deliverables starter ({_s_str(f.get('kind'))}): {added} naye", actor_name(tenant, actor))
+        what = f"{added} item jude (shuruaati list: buyer ki apni spec final)."
+    else:
+        what = _simple_list_op(tenant, ref, "deliverables", "d", DL.norm_deliverable, DL.ITEM_MAX, op, actor, f,
+                               ("label", "buyer", "due", "status", "notes"), lambda e: e["label"])
+    return deliverables_view(tenant, ref) | {"say": what}
+
+
+def deliverables_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        items = [x for x in _j(p.plan, {}).get("deliverables", []) if isinstance(x, dict)]
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **DL.deliverables_view(items, today(tenant))}
+
+
+def localise_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """add | update | remove one language row (subtitles / dub / both)."""
+    what = _simple_list_op(tenant, ref, "localisation", "l", DL.norm_loc, DL.LOC_MAX, op, actor, f,
+                           ("language", "kind", "dub_mode", "voice_person", "vendor", "due", "status", "qa_rounds", "notes"),
+                           lambda e: f"{e['language']} {e['kind']}")
+    return localisation_view(tenant, ref) | {"say": what}
+
+
+def localisation_view(tenant: str, ref: str) -> dict:
+    day = today(tenant)
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        items = [x for x in _j(p.plan, {}).get("localisation", []) if isinstance(x, dict)]
+        head = {"number": p.number, "title": p.title}
+        seen: dict[str, str] = {}
+
+        def check(person_ref: str) -> str:
+            if person_ref not in seen:
+                try:
+                    pe = _person_view(_person(s, tenant, person_ref))
+                except FilmError:
+                    seen[person_ref] = f"{person_ref}: register me vyakti nahi mila."
+                else:
+                    seen[person_ref] = R.consent_problem(pe, "ai_voice", day.isoformat())
+            return seen[person_ref]
+        view = DL.loc_view(items, day, check)
+    return {"project": head, **view}

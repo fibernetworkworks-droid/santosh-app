@@ -20453,3 +20453,23 @@ Register `docs/research/film_industry/00_INDEX.md`: #84 festival strategy, #85 f
 - NOT DONE: version ritual (branch only); no console/phone screen; script coverage, previs, dubbing/subtitle project manager, royalty-by-guild tables, and
   festival/market calendars as data are the next waves. Festival deadlines and market dates are deliberately NOT bundled: they change yearly and would be
   invented data unless a maintained source feeds them.
+
+## FILM DESK DELIVERY LAYER (unreleased, branch claude/youthful-bell-8grvr4; owner: "GO NEXT WAVE", second time)
+
+Register `docs/research/film_industry/00_INDEX.md`: #64 deliverables manager, #93 subtitle and dub localisation project manager, #107/#110
+digital-replica consent. After production (schedule/call sheet/budget) and sales (festivals/windows/waterfall) this closes the loop to "the film leaves the building".
+
+- NEW `filmdesk/delivery.py` (pure code). DELIVERABLES: items (label, buyer, due, status todo|in_progress|delivered|qc_failed|accepted|waived, notes); view = days
+  left, overdue / due-within-7-days flags for open items, QC-failed flagged for resend, progress %, sorted open-and-earliest first. `starter` adds a STARTING list of
+  item NAMES per kind (festival / ott / theatrical / tv), skipping names already there; every view says the buyer's own specification is final. LOCALISATION: one row per
+  language (subtitles | dub | both; dub_mode human | ai_voice - subtitles never carry a voice mode, a dub defaults to a HUMAN voice; vendor, due, status, qa_rounds);
+  flags overdue / due soon / blocked / 3+ QA rounds still open. THE ONE CROSS-CHECK IT MAKES ALONE: an ai_voice row must name a person (P-001) and that person's recorded
+  consent must cover `ai_voice` TODAY - missing consent, a use that is not covered, withdrawn, expired, famous (personality rights), or a person not in the register are
+  all flagged by the film desk's existing `rules.consent_problem` (so a withdrawal AFTER the row was made is caught on the next look); switching the row to a human dubber clears it.
+- Service: `deliverable_op` (add|update|remove|starter), `deliverables_view`, `localise_op` (add|update|remove), `localisation_view` (consent checked in one session with a
+  per-view cache), a shared `_simple_list_op` over the existing `plan` JSON column (ids never collide after a removal). Both are hers to edit: no money in this layer, so the
+  crew may keep them (not owner-only).
+- Tool: `film_desk` actions `deliverable`, `localise`; `film_desk_dekho` what=`deliverables | localisation`. No new tool: registry + voice budget unchanged;
+  test_v0230_voice_phase3 and the v0.550 wiring audit (every tool a handler + a call route) green.
+- Tests: NEW `server/tests/test_film_delivery_layer.py` (8); the three film layers together = 32 new tests; 78 passed, 1 skipped with the existing film desk suites.
+- NOT DONE: version ritual (branch only); no console/phone screen; Hoola does not translate or dub (it only tracks); script coverage, previs and guild royalty tables remain.
