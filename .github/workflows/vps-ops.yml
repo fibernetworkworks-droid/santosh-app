@@ -446,7 +446,7 @@ jobs:
                 echo "LC_ARGS='$LC_ARGS'"
                 echo 'cd $CORE && mkdir -p data/quality'
                 echo 'if pgrep -f "app.quality longcard" >/dev/null; then echo "== a long card is already running:"; pgrep -af "app.quality longcard"; exit 0; fi'
-                echo 'timeout 60 .venv/bin/python -m app.quality longcard --check || exit 1'
+                echo 'timeout 60 .venv/bin/python -m app.quality longcard --check $LC_ARGS || exit 1'
                 echo 'nohup setsid .venv/bin/python -m app.quality longcard $LC_ARGS > data/quality/longcard.log 2>&1 < /dev/null &'
                 echo 'sleep 5; echo "== started (pid $(pgrep -f "app.quality longcard" | head -1)); read it with the long_card_status job"' ;;
               long_card_status)

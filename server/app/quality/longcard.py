@@ -89,8 +89,22 @@ def check_set(asks: list[dict] | None = None) -> list[str]:
     return out
 
 
-def estimate(n_runs: int) -> tuple[int, int]:
-    return n_runs * EST_INR_PER_RUN[0], n_runs * EST_INR_PER_RUN[1]
+# v0.586 the per-run guess above is for Sonnet 5.5; a card on another model scales by its list price
+# (Haiku 5.5 $0.10/$0.50 = 1/20 of Sonnet's $2/$10, Opus 5.5 $4/$20 = 2x)
+MODEL_SCALE = (("haiku", 0.05), ("opus", 2.0), ("sonnet", 1.0))
+
+
+def estimate(n_runs: int, model: str | None = None) -> tuple[int, int]:
+    if model is None:
+        try:
+            from ..config import get_settings
+            model = get_settings().anthropic_model
+        except Exception:   # noqa: BLE001 - an estimate never fails the check
+            model = ""
+    low = (model or "").lower()
+    f = next((x for k, x in MODEL_SCALE if k in low), 1.0)
+    return (max(1, round(n_runs * EST_INR_PER_RUN[0] * f)) if n_runs else 0,
+            max(1, round(n_runs * EST_INR_PER_RUN[1] * f)) if n_runs else 0)
 
 
 # ---------------------------------------------------------------- reading the end state (code, no model)
