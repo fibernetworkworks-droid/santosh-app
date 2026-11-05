@@ -142,3 +142,29 @@ generic spring, an unknown resistor), say so in `sample`, e.g. "Unknown resistor
 Verify a family: `BASE=<id> node tools/prayog_walk.js http://localhost:<port>` must print PASS for every member.
 Serve the pages with `cd server && python -m uvicorn tools.prayog_serve:app --port <port>`. `lsl.run_check` must
 also pass for every variant; the server test suite checks it.
+
+## Building a NEW set-up (the physics build-out to 100 %)
+
+The meter is `cd server && python3 -m app.prayog.count --cover`: a syllabus set-up counts as BUILT only when its
+`built` lab id really opens. Claiming a lab that does not open is counted as BROKEN, never as coverage.
+
+To build one set-up end to end:
+
+1. **Find it** in `server/app/prayog/syllabus/physics/<level>.json`. Its `kernel` field suggests the physics.
+2. **Physics in a PACK, never in kernels.py.** Add `server/app/prayog/packs/<area>.py` with
+   `KERNELS` / `FAMILY` / `TEXTBOOK` / `CALCS` (see `packs/__init__.py`), and its exact JavaScript twin
+   `server/app/static/prayog/packs/<area>.js` calling `HoolaKernels.register({K: {...}, CALCS: {...}})`.
+   The twin test runs both and demands the same numbers, so write the same formulas, not a rewrite.
+   A kernel class needs `PARAMS` (defaults, SI) and the static methods `init(p, cfg)`, `step(s, p, dt, cfg)`,
+   `view(s, p)` and `measure(p, cfg)`. Keep it deterministic: no randomness, no wall clock.
+3. **A lab in the catalogue.** Add a builder function to `server/app/prayog/catalog.py` and put it in `BUILDERS`,
+   with its `check` (the reading vs its textbook formula, within 1 %). The LSL checker must pass.
+4. **A rig** `server/app/static/prayog/exp/<lab-id>.js` (the contract above). Reuse an existing rig when the
+   apparatus is the same: a variant needs no new rig at all.
+5. **A family** `server/app/prayog/families/<lab-id>.json` when the set-up has real variants (another sample,
+   method, unknown or condition), each with a real constant and its source.
+6. **Claim it**: set `"built": "<lab-id>"` on that syllabus row.
+7. **Prove it**: `BASE=<lab-id> node tools/prayog_walk.js http://localhost:<port>` must PASS for every member,
+   and `python3 -m app.prayog.count --cover` must show the set-up counted.
+
+Never invent a physical constant. Never pad a family with near-duplicates. English only.
