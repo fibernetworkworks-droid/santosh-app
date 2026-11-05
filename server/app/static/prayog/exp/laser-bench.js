@@ -36,7 +36,20 @@ HoolaStudio.define('laser-bench', function (S) {
 
   // ---------------------------------------------------------------- physics from the kernel
   function P() { return Object.assign({}, p, { D: st.D }); }
-  function inten(x) { return DSLIT ? K.intenAt(x, P()) : window.HoolaKernels.K.planegrating.intenAt(Math.atan2(x, st.D), Object.assign({}, window.HoolaKernels.K.planegrating.PARAMS, { d: p.d, a: p.a, N: p.N, lam: p.lam })); }
+  var SPOT = 6e-4;                                      // the laser beam's own width on the screen, metres
+  function inten(x) {
+    if (DSLIT) return K.intenAt(x, P());
+    // an order is as wide as the beam, not as the grating's own razor-thin maximum: draw each located order as a
+    // spot of the beam's width, as bright as the single ruling's envelope makes it
+    var tot = 0;
+    orders().forEach(function (o) {
+      var th = Math.atan2(o.x, st.D), b = Math.PI * p.a * Math.sin(th) / p.lam;
+      var env = Math.abs(b) < 1e-12 ? 1 : Math.pow(Math.sin(b) / b, 2);
+      var u = (x - o.x) / SPOT;
+      tot += env * Math.exp(-u * u / 2);
+    });
+    return Math.min(1, tot);
+  }
   function fringeAt(k) {                                // the k-th bright fringe / order, in metres on the screen
     if (DSLIT) return K.brightX(P(), k);
     if (k === 0) return 0;
