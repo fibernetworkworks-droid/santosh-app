@@ -397,6 +397,33 @@ def wipe(t: AppProject) -> dict[str, int]:
 
 
 # ---------------------------------------------------------------- talking to a REAL server
+def local_call() -> Callable:
+    """The real application and the real routes, in this process.
+
+    v0.541: `run()` used to open an HTTP socket to 127.0.0.1:8077 even when it was ITSELF that server - which
+    depends on the listening port, the worker count and the loopback, none of which have anything to do with her
+    app being right. This drives the same FastAPI app through the same routes and middleware, so a scenario is
+    never reported `not_run` because of how Hoola is deployed. `base=` still goes over the wire when she wants a
+    different server tested.
+    """
+    from fastapi.testclient import TestClient
+
+    from ..main import app
+    client = TestClient(app)
+
+    def call(method: str, path: str, body: Any = None, token: str = "") -> tuple[int, Any]:
+        headers = {"Authorization": f"Bearer {token}"} if token else {}
+        try:
+            res = client.request(method, path, json=body, headers=headers)
+        except Exception as e:                                      # noqa: BLE001
+            return 0, {"error": str(e)[:200]}
+        try:
+            return res.status_code, res.json()
+        except ValueError:
+            return res.status_code, {"text": res.text[:300]}
+    return call
+
+
 def http_call(base: str, timeout: float = 20.0) -> Callable:
     """The real thing over the wire. `base` is a running Hoola server (on the VPS: http://127.0.0.1:8077)."""
     import httpx
@@ -523,7 +550,8 @@ def run(r: AppProject, call: Callable | None = None, base: str = "", scenarios: 
                 "stories": [], "pass": 0, "fail": 0, "not_run": 0}
     t = twin(r)
     wipe(t)
-    call = call or http_call(base or "http://127.0.0.1:8077")
+    where = base or "in-process"
+    call = call or (http_call(base) if base else local_call())
     t0 = time.time()
     out: list[dict[str, Any]] = []
     tot = {"pass": 0, "fail": 0, "not_run": 0}
@@ -547,7 +575,7 @@ def run(r: AppProject, call: Callable | None = None, base: str = "", scenarios: 
     STATS["runs"] += 1
     STATS["failed"] += tot["fail"]
     rep = {"ran": True, "at": now().isoformat(), "seconds": round(time.time() - t0, 1), "stories": out,
-           "twin": t.id, **tot, "total": len(items)}
+           "twin": t.id, "where": where, **tot, "total": len(items)}
     rep["says"] = _says(rep)
     BE.patch_backend(r, fn=lambda be: be.__setitem__("jaanch", {**(be.get("jaanch") or {}), "last": _slim(rep)}))
     return rep

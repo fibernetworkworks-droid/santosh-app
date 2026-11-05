@@ -19882,3 +19882,73 @@ the four things it could not see. Credit in THIRD_PARTY_NOTICES.md (ideas + matc
 - Tests: `server/tests/test_v0541_seo_intel.py` (7).
 - NOT VERIFIED against live OpenAI / Gemini / Perplexity / Places / DataForSEO accounts: request + response shapes follow
   each vendor's docs. API answers can differ from what a person sees in the consumer apps - the screen says so.
+
+## v0.542.0 NAKSHA — the architect, App Sahayak Pillar K, Phase 62 (5 Nov 2026)
+
+Owner: "START PILLAR K". Pillars A–J each built an engine. This one is the architect that drives them, and it
+exists because of a failure that has nothing to do with code: **a long plan she nodded at once, built in one go,
+and only understood when it was finished and wrong.**
+
+### The spec may only promise what Hoola can build
+
+Her one line becomes the whole app as data: user types and which app each one uses, user stories, lists and fields
+with their relations, the brain, who may do what, screens, integrations, payments, notifications, and the order to
+build it in. Then `check()` refuses, **in code**, anything the engines have not got — a field type that does not
+exist, an app face v0.435 cannot make, a connector that is not one of v0.424's real packs, a part called
+`chatbot`. A spec that cannot be built is refused at the check, not discovered half-built. That is the whole
+difference between a plan and a brochure.
+
+### She approves module by module
+
+A module says what she GETS (in her words, not what the code does), what it needs built first, and **what it will
+ask of her** — a gateway key, a courier account — *before* she says yes. A module may only need one written before
+it, so the order always works. Her Haan is bound to the hash of the plan she was looking at, and if that module
+changes underneath her, **her approval does not carry over**: it goes back to waiting, because she agreed to a
+different thing.
+
+### A built module is proved, not declared
+
+Each module's own user stories become Pillar J scenario tests and are **run**. A module that does not pass is
+recorded as built-and-failing, never as done. The walk is generated in code and kept deliberately simple — somebody
+signs up, uses the module's list, and somebody else is REFUSED — because a generated test that tries to be clever
+about her words is a test nobody can read when it fails.
+
+### A change edits the spec, not the app
+
+`revise()` re-plans, diffs the parts of every module, and marks **only the ones that really changed**. An untouched
+module is left alone. A new module is added, a dropped one is reported, and every build writes one plain line of
+changelog.
+
+### Questions that change the build, and nothing else
+
+A question must name the module or part its answer changes, or the checker drops it with a warning. Curiosity is
+not a question.
+
+### Nothing is pretended to be done
+
+Anything needing HER credential — a payment gateway, a courier, an SMS sender — is never silently skipped: the
+module builds up to that point and the exact next step is named. v0.541 also taught this to the push part: **a
+thing that is not SET UP is not the module being broken.** On a server with no Firebase key, instant notifications
+become a next step and the app keeps its 15-minute check; before this, every such module would have read as failed.
+
+### Found while building it
+
+Pillar J's runner opened an HTTP socket to `127.0.0.1:8077` **even when it was itself that server** — so whether a
+scenario ran depended on the listening port, the worker count and the loopback, none of which have anything to do
+with her app being right. It now drives the same FastAPI app through the same routes in-process by default, says
+`where` it ran, and still goes over the wire when `base=` names a different server.
+
+### What is where
+
+`server/app/appmaker/architect.py`; routes `/api/apps/{ref}/naksha[/{what}]`; tool `app_banao action=naksha |
+naksha_build | naksha_badlo` + `app_dekho what=naksha` (approving a module is refused to the tool — it is her tap);
+console **The plan** box; phone `lib/ui/app_naksha.dart`. Tests `server/tests/test_v0542_naksha.py` (13), in
+`app-load.yml`.
+
+### Not built, said plainly
+
+The generated proof walk covers one list per module, not a whole multi-role journey — her richer stories are still
+written by Pillar J's own author. `screens` in a module is recorded as a next step, not a redraw: the design flow
+(v0.128) still owns screens. And this is the last pillar of `docs/COMPLEX_APPS_PLAN.md`, which means **every pillar
+A–K is now built and the plan's own gate is still unmet**: no proof app — school ERP, clinic, food delivery,
+marketplace, field-service CRM — has ever been built and used on a real phone. Phase 0 asked for that first.
