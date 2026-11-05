@@ -213,13 +213,13 @@ HoolaStudio.define('fibre-bench', function (S) {
     fibre: [[CX - 0.1, 0.3, CZ + 0.36], [CX - 0.14, 0.02, CZ + 0.12]],
     jig: [[CX + 0.2, 0.2, CZ + 0.26], [CX, 0.06, CZ]],
     screen: [[CX + 0.1, 0.22, CZ + 0.16], [CX, 0.02, CZ]],
-    wide: [[CX + 0.16, 0.6, CZ + 0.78], [CX - 0.1, 0.06, CZ + 0.02]],
+    wide: [[CX + 0.22, 0.66, CZ + 0.88], [CX - 0.17, 0.05, CZ + 0.02]],
     book: [[-0.4, 0.46, 0.6], [-0.45, 0.0, 0.14]]
   };
   update();
 
   return {
-    camera: { pos: [CX + 0.16, 0.6, CZ + 0.78], look: [CX - 0.1, 0.06, CZ + 0.02] },
+    camera: { pos: [CX + 0.22, 0.66, CZ + 0.88], look: [CX - 0.17, 0.05, CZ + 0.02] },
     views: VIEWS,
     theory: {
       principle: 'Light stays inside the core of a fibre only if it strikes the boundary with the cladding beyond the '

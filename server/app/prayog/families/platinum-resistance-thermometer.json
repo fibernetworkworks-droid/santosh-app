@@ -1,0 +1,11 @@
+{
+  "base": "platinum-resistance-thermometer",
+  "chapter": "Heat and thermodynamics",
+  "variants": [
+    {"key": "pt1000", "title": "Temperature coefficient of resistance with a Pt1000 resistance thermometer",
+     "sample": "Pt1000 platinum element (1000 ohm at 0 degC)", "method": "Wheatstone bridge, null method",
+     "unknown": "the temperature coefficient of resistance of platinum", "params": {"R0": 1000, "Rref": 1000},
+     "note": "A Pt1000 has the same coefficients A and B as a Pt100 but ten times the resistance, so the leads matter less. The bridge arms are 1000 ohm.",
+     "source": {"title": "IEC 60751: Pt1000 industrial platinum resistance thermometer, R0 = 1000 ohm, same A and B as Pt100"}}
+  ]
+}

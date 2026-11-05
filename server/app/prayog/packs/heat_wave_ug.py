@@ -129,11 +129,12 @@ class LeesDisc:
     Steady: conduction down the sample equals the loss from B's lower face and edge, with its top face covered:
         G1 (th1 - th2) = G2 (th2 - Ts),   G1 = k pi r^2 / d,   G2 = hc pi (r^2 + 2 r h).
     Bare, B cools by Newton's law over its whole surface: C dT/dt = - hc (2 pi r^2 + 2 pi r h) (T - Ts).
-    `mode` 0 is the heating with the sample on, 1 the bare cooling from T0. Stepped in 0.05 s sub-steps.
+    `mode` 0 is the heating with the sample on, 1 the bare cooling from T0, 2 the bare disc heated by the steam chest
+    laid straight on it (conductance Gd). Stepped in 0.05 s sub-steps.
     """
 
     PARAMS = {"k": 1.05, "d": 0.008, "r": 0.025, "h": 0.010, "rho": 8500.0, "s": 380.0, "hc": 9.0, "Th": 100.0,
-              "Ts": 30.0, "T0": 30.0, "mode": 0.0, "lc": 0.1}
+              "Ts": 30.0, "T0": 30.0, "mode": 0.0, "lc": 0.1, "Gd": 2.0}
     VARS = ["t", "T", "th2", "dTdt", "mB", "C"]
 
     @staticmethod
@@ -164,8 +165,10 @@ class LeesDisc:
         for _ in range(n):
             if p["mode"] < 0.5:
                 rate = (G1 * (p["Th"] - s["T"]) - G2 * (s["T"] - p["Ts"])) / C
-            else:
+            elif p["mode"] < 1.5:
                 rate = -Gb * (s["T"] - p["Ts"]) / C
+            else:
+                rate = (p["Gd"] * (p["Th"] - s["T"]) - Gb * (s["T"] - p["Ts"])) / C
             s["T"] = s["T"] + rate * h
         s["t"] += dt
 
@@ -174,7 +177,12 @@ class LeesDisc:
         C = LeesDisc.mass(p) * p["s"]
         G1, G2 = LeesDisc.conds(p)
         Gb = p["hc"] * (2 * PI * p["r"] * p["r"] + 2 * PI * p["r"] * p["h"])
-        rate = (G1 * (p["Th"] - s["T"]) - G2 * (s["T"] - p["Ts"])) / C if p["mode"] < 0.5 else -Gb * (s["T"] - p["Ts"]) / C
+        if p["mode"] < 0.5:
+            rate = (G1 * (p["Th"] - s["T"]) - G2 * (s["T"] - p["Ts"])) / C
+        elif p["mode"] < 1.5:
+            rate = -Gb * (s["T"] - p["Ts"]) / C
+        else:
+            rate = (p["Gd"] * (p["Th"] - s["T"]) - Gb * (s["T"] - p["Ts"])) / C
         return {"t": s["t"], "T": s["T"], "th2": LeesDisc.th2(p), "dTdt": rate, "mB": LeesDisc.mass(p), "C": C}
 
     @staticmethod
@@ -470,13 +478,21 @@ def _fit2(xs: list[float], ys: list[float]):
     n = len(xs)
     if n < 3:
         return None
-    s1 = sum(xs)
-    s2 = sum(x * x for x in xs)
-    s3 = sum(x * x * x for x in xs)
-    s4 = sum(x * x * x * x for x in xs)
-    t0 = sum(ys)
-    t1 = sum(x * y for x, y in zip(xs, ys))
-    t2 = sum(x * x * y for x, y in zip(xs, ys))
+    s1 = s2 = s3 = s4 = t0 = t1 = t2 = 0.0
+    for x in xs:                                  # plain loops (not sum()): both twins add in the same order
+        s1 += x
+    for x in xs:
+        s2 += x * x
+    for x in xs:
+        s3 += x * x * x
+    for x in xs:
+        s4 += x * x * x * x
+    for y in ys:
+        t0 += y
+    for x, y in zip(xs, ys):
+        t1 += x * y
+    for x, y in zip(xs, ys):
+        t2 += x * x * y
     det = n * (s2 * s4 - s3 * s3) - s1 * (s1 * s4 - s3 * s2) + s2 * (s1 * s3 - s2 * s2)
     if abs(det) < 1e-300:
         return None
