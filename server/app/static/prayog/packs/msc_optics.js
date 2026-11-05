@@ -424,6 +424,40 @@
     }
   });
 
+  function erfc(z) {
+    if (z > 3.6) return 0.0;
+    if (z < -3.6) return 2.0;
+    var term = z, s = z, n = 0;
+    while (Math.abs(term) > 1e-17 && n < 200) { n++; term = -term * z * z / n; s += term / (2 * n + 1); }
+    return 1.0 - 2.0 / Math.sqrt(PI) * s;
+  }
+  var K9010 = 1.2815516;
+  var Beam = mk({
+    PARAMS: { lam: 6.328e-7, w0: 4.0e-4, xc: 0.3e-3, z: 1.0 },
+    VARS: ['sig'], MODES: [], view: specView,
+    CONTROL: { param: 'z', label: 'Knife-edge distance from the laser', unit: 'm', values: [0.2, 0.5, 1.0, 1.5, 2.0], digits: 1, scale: 1.0 },
+    radius: function (p, z) { var zr = PI * p.w0 * p.w0 / p.lam; return p.w0 * Math.sqrt(1.0 + Math.pow(z / zr, 2)); },
+    axis: function (p) {
+      var w = Beam.radius(p, p.z) * 1e3, lo = Math.floor((p.xc * 1e3 - 2.2 * w) * 20.0) / 20.0, hi = Math.ceil((p.xc * 1e3 + 2.2 * w) * 20.0) / 20.0;
+      return { lo: lo, hi: hi, n: 400, xlabel: 'Knife-edge position (mm)', unit: 'mm', ylabel: 'Power past the edge (relative)', ymax: 1.05 };
+    },
+    profile: function (x, p) { var w = Beam.radius(p, p.z); return 0.5 * erfc(Math.sqrt(2.0) * (x * 1e-3 - p.xc) / w); },
+    edges: function (p) {
+      var ax = Beam.axis(p), f = function (lvl) { return bisect(function (x) { return Beam.profile(x, p) - lvl; }, ax.lo, ax.hi); };
+      return [f(0.9), f(0.1)];
+    },
+    lines: function (p) { var e = Beam.edges(p); return [{ k: 1, x: e[0], y: 0.9 }, { k: 2, x: e[1], y: 0.1 }]; },
+    measure: function (p) {
+      var pts = [], zs = [0.2, 0.5, 1.0, 1.5, 2.0], i, q, k, e, w, m;
+      for (i = 0; i < zs.length; i++) {
+        q = {}; for (k in p) q[k] = p[k]; q.z = zs[i];
+        e = Beam.edges(q); w = (e[1] - e[0]) * 1e-3 / K9010; pts.push([zs[i] * zs[i], w * w]);
+      }
+      m = slope(pts);
+      return { theta: m > 0 ? Math.sqrt(m) : 0.0 };
+    }
+  });
+
   // ================================================================== textbook + calcs
   function byK(rs) {
     var d = {}; rows(rs, ['k', 'x']).forEach(function (r) { d[r[0]] = r[1]; }); return d;
@@ -432,7 +466,7 @@
 
   H.register({
     K: { msc_michelson: Mich, msc_gascell: Gas, msc_iodine: Iodine, msc_rovib: Rovib, msc_raman: Raman, msc_fluor: Fluor,
-      msc_tauc: Tauc, msc_varshni: Varshni, msc_decay: Decay, msc_glow: Glow, msc_beer: Beer },
+      msc_tauc: Tauc, msc_varshni: Varshni, msc_decay: Decay, msc_glow: Glow, msc_beer: Beer, msc_beam: Beam },
     TEXTBOOK: {
       msc_mich_lam: function (p) { return p.lam; },
       msc_mich_dline: function (p) { return Math.abs(p.lam2 - p.lam); },
@@ -447,7 +481,8 @@
       msc_vs_dE: function (p) { return Varshni.gap(p, 77.0) - Varshni.gap(p, 300.0); },
       msc_dec_tau: function (p) { return p.tau; },
       msc_tl_E: function (p) { return p.E; },
-      msc_beer_eps: function (p) { return p.eps; }
+      msc_beer_eps: function (p) { return p.eps; },
+      msc_beam_theta: function (p) { return p.lam / (PI * p.w0); }
     },
     CALCS: {
       msc_c_mich_lam: { label: 'wavelength', unit: 'm', needs: ['d', 'N'],
@@ -535,6 +570,15 @@
           var pts = rows(r, ['c', 'x']).filter(function (x) { return x[1] > 0 && x[0] > 0; })
             .map(function (x) { return [1.0 / x[1], Math.log(x[1] * x[1] / x[0])]; });
           return slope(pts) * KB_EV;
+        } },
+      msc_c_beam: { label: 'beam divergence', unit: 'rad', needs: ['k', 'x', 'c'],
+        fn: function (r) {
+          var d = {}, zs = [], pts = [], m;
+          rows(r, ['k', 'x', 'c']).forEach(function (q) { if (!d[q[2]]) { d[q[2]] = {}; zs.push(q[2]); } d[q[2]][q[0]] = q[1]; });
+          zs.sort(function (a, b) { return a - b; });
+          zs.forEach(function (z) { var v = d[z], w; if (v[1] !== undefined && v[2] !== undefined) { w = (v[2] - v[1]) * 1e-3 / K9010; pts.push([z * z, w * w]); } });
+          m = slope(pts);
+          return m > 0 ? Math.sqrt(m) : 0.0;
         } },
       msc_c_beer: { label: 'molar absorptivity', unit: 'L/(mol cm)', needs: ['c', 'y'],
         fn: function (r, p) {

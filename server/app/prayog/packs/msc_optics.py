@@ -782,18 +782,99 @@ def _beer_eps(p) -> float:
     return p["eps"]
 
 
+# ------------------------------------------------------------------------------------------------ laser beam profile
+def _erfc(z: float) -> float:
+    """erfc by its Maclaurin series (|z| <= 3.6), the same sum in the JavaScript twin."""
+    if z > 3.6:
+        return 0.0
+    if z < -3.6:
+        return 2.0
+    term = z
+    s = z
+    n = 0
+    while abs(term) > 1e-17 and n < 200:
+        n += 1
+        term = -term * z * z / n
+        s += term / (2 * n + 1)
+    return 1.0 - 2.0 / math.sqrt(PI) * s
+
+
+class MscBeam(_Spec):
+    """A Gaussian laser beam of waist w0 (m) and wavelength lam, cut by a knife edge at x (mm) at distance z (m) from
+    the waist. The beam radius there is w(z) = w0 sqrt(1 + (z / zR)^2), zR = pi w0^2 / lam, and the power that still
+    gets past the edge is P(x) = erfc(sqrt(2) (x - xc) / w) / 2 of the whole."""
+
+    PARAMS = {"lam": 6.328e-7, "w0": 4.0e-4, "xc": 0.3e-3, "z": 1.0}
+    CONTROL = {"param": "z", "label": "Knife-edge distance from the laser", "unit": "m", "values": [0.2, 0.5, 1.0, 1.5, 2.0],
+               "digits": 1, "scale": 1.0}
+    K9010 = 1.2815516
+
+    @staticmethod
+    def radius(p, z: float) -> float:
+        zr = PI * p["w0"] ** 2 / p["lam"]
+        return p["w0"] * math.sqrt(1.0 + (z / zr) ** 2)
+
+    @staticmethod
+    def axis(p):
+        w = MscBeam.radius(p, p["z"]) * 1e3
+        lo = math.floor((p["xc"] * 1e3 - 2.2 * w) * 20.0) / 20.0
+        hi = math.ceil((p["xc"] * 1e3 + 2.2 * w) * 20.0) / 20.0
+        return {"lo": lo, "hi": hi, "n": 400, "xlabel": "Knife-edge position (mm)", "unit": "mm",
+                "ylabel": "Power past the edge (relative)", "ymax": 1.05}
+
+    @staticmethod
+    def profile(x, p, mode=0):
+        w = MscBeam.radius(p, p["z"])
+        return 0.5 * _erfc(math.sqrt(2.0) * (x * 1e-3 - p["xc"]) / w)
+
+    @staticmethod
+    def edges(p):
+        ax = MscBeam.axis(p)
+        f = lambda lvl: _bisect(lambda x: MscBeam.profile(x, p) - lvl, ax["lo"], ax["hi"])     # noqa: E731
+        return f(0.9), f(0.1)
+
+    @staticmethod
+    def lines(p, mode=0):
+        x90, x10 = MscBeam.edges(p)
+        return [{"k": 1, "x": x90, "y": 0.9}, {"k": 2, "x": x10, "y": 0.1}]
+
+    @staticmethod
+    def measure(p, cfg=None):
+        pts = []
+        for z in (0.2, 0.5, 1.0, 1.5, 2.0):
+            q = dict(p, z=z)
+            x90, x10 = MscBeam.edges(q)
+            w = (x10 - x90) * 1e-3 / MscBeam.K9010
+            pts.append([z * z, w * w])
+        m = _slope(pts)
+        return {"theta": math.sqrt(m) if m > 0 else 0.0}
+
+
+def _beam_theta(p) -> float:
+    return p["lam"] / (PI * p["w0"])
+
+
+def _c_beam(rows, p) -> float:
+    d: dict[float, dict] = {}
+    for k, x, c in _rows(rows, "k", "x", "c"):
+        d.setdefault(c, {})[k] = x
+    pts = [[z * z, ((v[2.0] - v[1.0]) * 1e-3 / MscBeam.K9010) ** 2] for z, v in sorted(d.items()) if 1.0 in v and 2.0 in v]
+    m = _slope(pts)
+    return math.sqrt(m) if m > 0 else 0.0
+
+
 # ================================================================================================ registration
 KERNELS: dict[str, Any] = {
     "msc_michelson": MscMichelson, "msc_gascell": MscGasCell, "msc_iodine": MscIodine, "msc_rovib": MscRovib,
     "msc_raman": MscRaman, "msc_fluor": MscFluor, "msc_tauc": MscTauc, "msc_varshni": MscVarshni,
-    "msc_decay": MscDecay, "msc_glow": MscGlow, "msc_beer": MscBeer,
+    "msc_decay": MscDecay, "msc_glow": MscGlow, "msc_beer": MscBeer, "msc_beam": MscBeam,
 }
 FAMILY = {k: "optics" for k in KERNELS}
 TEXTBOOK = {
     "msc_mich_lam": _mich_lam, "msc_mich_dline": _mich_dline, "msc_mich_n": _mich_n, "msc_gas_dn1": _gas_dn1,
     "msc_iod_wx": _iod_wx, "msc_rv_b0": _rv_b0, "msc_rv_kf": _rv_kf, "msc_ram_s1": _ram_s1,
     "msc_fl_stokes": _fl_stokes, "msc_tauc_eg": _tauc_eg, "msc_vs_dE": _vs_dE, "msc_dec_tau": _dec_tau,
-    "msc_tl_E": _tl_E, "msc_beer_eps": _beer_eps,
+    "msc_tl_E": _tl_E, "msc_beer_eps": _beer_eps, "msc_beam_theta": _beam_theta,
 }
 
 
@@ -916,5 +997,6 @@ CALCS: dict[str, dict] = {
     "msc_c_varshni": {"label": "gap shift", "unit": "eV", "needs": ["c", "x"], "fn": _c_varshni},
     "msc_c_decay": {"label": "lifetime", "unit": "s", "needs": ["x", "y"], "fn": _c_decay},
     "msc_c_glow": {"label": "trap depth", "unit": "eV", "needs": ["c", "x"], "fn": _c_glow},
+    "msc_c_beam": {"label": "beam divergence", "unit": "rad", "needs": ["k", "x", "c"], "fn": _c_beam},
     "msc_c_beer": {"label": "molar absorptivity", "unit": "L/(mol cm)", "needs": ["c", "y"], "fn": _c_beer},
 }

@@ -1,5 +1,6 @@
 {
  "base": "jamin-air-index",
+ "rig": "msc-interferometer",
  "chapter": "Interferometry",
  "variants": [
   {

@@ -1,5 +1,6 @@
 {
  "base": "michelson-wavelength",
+ "rig": "msc-interferometer",
  "chapter": "Interferometry",
  "variants": [
   {

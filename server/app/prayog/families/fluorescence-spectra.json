@@ -1,5 +1,6 @@
 {
  "base": "fluorescence-spectra",
+ "rig": "msc-spectrograph",
  "chapter": "Luminescence",
  "variants": [
   {

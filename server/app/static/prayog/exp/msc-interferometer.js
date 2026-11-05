@@ -154,7 +154,7 @@ HoolaStudio.define('msc-interferometer', function (S) {
     gaugeTex = S.liveTex(300, 300);
     var gauge = new T.Mesh(new T.CircleGeometry(0.04, 36), new T.MeshBasicMaterial({ map: gaugeTex, toneMapped: false })); gauge.position.set(0, 0.11, 0.051); pump.add(gauge);
     var gring = S.mesh(new T.TorusGeometry(0.04, 0.003, 10, 36), M.chrome); gring.position.set(0, 0.11, 0.0505); pump.add(gring);
-    S.wire([[cellG.position.x, Y + 0.045, cellG.position.z], [0.1, 0.12, -0.1], [0.42, 0.06, 0.0]], 'blue');
+    S.wire([[cellG.position.x, Y + 0.045, cellG.position.z], [0.0, 0.13, 0.0], [0.28, 0.1, 0.04], [0.42, 0.06, 0.05]], 'blue');
     S.contact(0.2, 0.14, 0.45, 0.05, 0.4);
     S.addApparatus('pump', pump, 'Pump, gauge and air valve', 'A rotary pump takes the cell down to vacuum; the valve lets air in slowly. The dial shows the pressure in atmospheres.');
   }
@@ -167,7 +167,7 @@ HoolaStudio.define('msc-interferometer', function (S) {
   var sleg = S.mesh(new T.CylinderGeometry(0.01, 0.014, 0.01, 16), M.alu); sleg.position.y = 0.005; scrG.add(sleg);
   S.contact(0.18, 0.1, scrG.position.x, scrG.position.z, 0.4);
   readTex = S.liveTex(480, 300);
-  readG = new T.Group(); S.scene.add(readG); readG.position.set(MICH ? 0.18 : -0.2, 0, MICH ? 0.18 : 0.1);
+  readG = new T.Group(); S.scene.add(readG); readG.position.set(MICH ? 0.18 : 0.0, 0, 0.18);
   var rframe = S.rounded(0.2, 0.125, 0.014, 0.006, dark); rframe.position.set(0, 0.075, 0); readG.add(rframe);
   var rmesh = new T.Mesh(new T.PlaneGeometry(0.19, 0.119), new T.MeshBasicMaterial({ map: readTex, toneMapped: false })); rmesh.position.set(0, 0.075, 0.0075); readG.add(rmesh);
   var rleg = S.mesh(new T.CylinderGeometry(0.01, 0.014, 0.012, 16), M.alu); rleg.position.y = 0.006; readG.add(rleg);
@@ -541,11 +541,11 @@ HoolaStudio.define('msc-interferometer', function (S) {
     } });
 
   return {
-    camera: { pos: [0.0, 0.7, 1.05], look: [-0.02, 0.05, -0.15] },
+    camera: { pos: [0.0, 0.78, 1.3], look: [0.0, 0.04, -0.14] },
     views: { src: [[-0.62, 0.3, 0.3], [-0.62, 0.06, -0.1]], bs: [[-0.15, 0.3, 0.25], [-0.15, 0.06, -0.12]], mov: [[0.2, 0.3, 0.2], [0.2, 0.06, -0.12]], fix: [[-0.15, 0.3, 0.05], [-0.15, 0.06, -0.4]],
       mic: [[0.46, 0.3, 0.2], [0.46, 0.05, -0.12]], plate: [[-0.05, 0.3, 0.1], [-0.15, 0.03, -0.27]], screen: [[scrG.position.x, 0.3, 0.45], [scrG.position.x, 0.08, scrG.position.z]],
       read: [[readG.position.x, 0.3, 0.5], [readG.position.x, 0.08, readG.position.z]], cell: [[-0.05, 0.3, 0.2], [-0.05, 0.06, -0.12]], pump: [[0.45, 0.3, 0.35], [0.45, 0.06, 0.05]],
-      bench: [[0.0, 0.7, 1.05], [-0.02, 0.05, -0.15]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      bench: [[0.0, 0.78, 1.3], [0.0, 0.04, -0.14]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: { principle: S.lab.theory, formula: FORM, formulaNote: 'SI units; the fringe count is read to a tenth of a fringe where a fraction is needed', more: [HINT], precautions: S.lab.safety },
     book: { title: 'Expt. — ' + S.lab.title, lines: ['Aim: ' + S.lab.aim.slice(0, 72) + '...', MICH ? 'Michelson interferometer, micrometer 0.001 mm' : (p.arch >= 0.5 ? 'Jamin interferometer' : 'Mach-Zehnder interferometer') + ', cell ' + (p.L * 100).toFixed(0) + ' cm', 'Gas: ' + GAS, HINT.slice(0, 70)], columns: colsMap },
     graph: graph,

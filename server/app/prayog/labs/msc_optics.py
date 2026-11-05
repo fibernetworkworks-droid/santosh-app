@@ -540,8 +540,40 @@ def uv_vis_electronic() -> dict:
         "solutions as chemical waste.", topic="Molecular spectroscopy")
 
 
+def laser_beam_profile() -> dict:
+    return _spec(
+        "laser-beam-profile", "Beam profile and divergence of a He-Ne laser by the knife-edge method", "msc_beam", {},
+        "Move a razor blade across a He-Ne laser beam at several distances from the laser, find the beam radius at "
+        "each distance from the 10 % and 90 % points, and get the divergence of the beam.",
+        "A laser beam is Gaussian: its intensity falls as exp(-2 r^2 / w^2), with w the radius where it has dropped to 1 / e^2. "
+        "A razor blade pushed across the beam cuts off more and more of the power, and the power that still gets "
+        "past follows P(x) = erfc(sqrt(2) (x - xc) / w) / 2. The blade positions where the power has fallen to 90 % and "
+        "to 10 % are 1.2816 w apart, so w = (x10 - x90) / 1.2816 at each distance. Far from the waist w grows in a "
+        "straight line, so a graph of w squared against z squared is a straight line of slope theta^2 (z measured from the "
+        "waist, which for this laser is at the output mirror); theta = lambda / (pi w0) is the divergence half-angle. "
+        "The laser itself is not adjusted: the student moves the blade stage and the power meter.",
+        ["Mount the knife edge on the micrometer stage 0.2 m from the laser and put the power meter behind it.",
+         "Push the blade across the beam; note the stage readings where the meter falls to 90 % and to 10 % of its open value.",
+         "Repeat at 0.5, 1.0, 1.5 and 2.0 m from the laser.",
+         "Work out w = (x10 - x90) / 1.2816 at each distance.",
+         "Plot w squared against z squared: the slope is theta squared."],
+        [_q("Why does the blade measure the 10 % and 90 % points and not the 50 % point?",
+            ["The distance between them gives the beam radius", "The power meter is more accurate there",
+             "The beam has no centre"], 0, "The 50 % point only tells where the beam is; the spread between 10 % and 90 % "
+                                           "tells how wide it is."),
+         _q("Far from the laser the beam radius", ["grows in proportion to the distance", "stays the same",
+                                                   "shrinks"], 0, "In the far field w = theta z.")],
+        [{"title": "Thorlabs HNL210L He-Ne laser datasheet: 0.8 mm beam diameter (1/e^2), 1.0 mrad full-angle divergence, "
+                   "632.8 nm; Siegman, Lasers, ch. 17; ISO 11146 knife-edge method"}, SIM],
+        {"params": {}, "reading": "theta", "textbook": "msc_beam_theta"}, "msc_c_beam",
+        [col("k", "Edge (90 % = 1, 10 % = 2)", "manual", "", digits=0), col("x", "Blade position", "manual", "mm", digits=3),
+         col("c", "Distance from the laser", "manual", "m", digits=1)], None, result_k=1e3, result_unit="mrad", digits=3,
+        safety="Do not look into the laser beam. Keep the blade and meter below eye level and never let the beam leave the table.",
+        topic="Lasers")
+
+
 BUILDERS = (
     michelson_wavelength, michelson_sodium_doublet, michelson_plate_index, jamin_air_index, mach_zehnder,
     iodine_absorption, hcl_rovibrational, ir_vibrational, laser_raman, fluorescence_spectra, solids_absorption,
-    low_t_optical, pl_lifetime, thermoluminescence, uv_vis_electronic,
+    low_t_optical, pl_lifetime, thermoluminescence, uv_vis_electronic, laser_beam_profile,
 )

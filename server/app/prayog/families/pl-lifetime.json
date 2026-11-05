@@ -1,5 +1,6 @@
 {
  "base": "pl-lifetime",
+ "rig": "msc-spectrograph",
  "chapter": "Luminescence",
  "variants": [
   {

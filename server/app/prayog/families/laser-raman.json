@@ -1,5 +1,6 @@
 {
  "base": "laser-raman",
+ "rig": "msc-spectrograph",
  "chapter": "Molecular spectroscopy",
  "variants": [
   {

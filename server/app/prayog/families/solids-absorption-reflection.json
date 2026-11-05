@@ -1,5 +1,6 @@
 {
  "base": "solids-absorption-reflection",
+ "rig": "msc-spectrograph",
  "chapter": "Solid-state spectroscopy",
  "variants": [
   {

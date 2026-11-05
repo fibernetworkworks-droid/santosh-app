@@ -20,6 +20,7 @@ HoolaStudio.define('msc-spectrograph', function (S) {
     msc_varshni: { sample: 'GaAs wafer on the cryostat cold finger', kind: 'cryo', col: 0x5a5f66, src: '532 nm laser (interlocked)', det: 'Photodiode behind the monochromator', need: 2, xd: 1, cur: 'Wavelength', hint: 'Record the peak at 300 K, cool with liquid nitrogen, then record the peak at 77 K.' },
     msc_decay: { sample: 'Ruby crystal in front of the photodiode', kind: 'crystal', col: 0xc4283c, src: 'Xenon flash lamp', det: 'Photodiode and oscilloscope', need: 6, xd: 2, cur: 'Time', hint: 'Record time and voltage at about eight points along the decay.' },
     msc_glow: { sample: 'Irradiated chip on the heater plate', kind: 'heater', col: 0xe6dfcf, src: 'No lamp: the crystal itself glows', det: 'Photomultiplier', need: 3, xd: 1, cur: 'Temperature', hint: 'Choose a heating rate, heat, record the peak. Use four different rates.' },
+    msc_beam: { sample: 'Razor blade on a micrometer stage', kind: 'knife', col: 0xc9ced2, src: 'He-Ne laser 632.8 nm', det: 'Power meter (silicon photodiode)', need: 10, xd: 3, cur: 'Blade position', hint: 'At each distance record the blade position where the power has fallen to 90 % (edge 1) and to 10 % (edge 2).' },
     msc_beer: { sample: 'Rhodamine 6G in ethanol, 10 mm cell', kind: 'cuvette', col: 0xe0457b, src: 'Deuterium and halogen lamps', det: 'Photodiode', need: 4, xd: 1, cur: 'Wavelength', hint: 'Record the absorbance at the peak for each concentration.' }
   };
   var I = INFO[KNAME] || INFO.msc_fluor;
@@ -107,7 +108,7 @@ HoolaStudio.define('msc-spectrograph', function (S) {
 
   // readout screen
   var scrTex = S.liveTex(900, 520);
-  var scrG = new T.Group(); S.scene.add(scrG); scrG.position.set(0.55, 0, -0.2); scrG.rotation.y = -0.4;
+  var scrG = new T.Group(); S.scene.add(scrG); scrG.position.set(0.5, 0, -0.2); scrG.rotation.y = -0.4;
   var scrBody = S.rounded(0.3, 0.19, 0.03, 0.008, new T.MeshStandardMaterial({ color: 0x2b2f36, roughness: 0.6 })); scrBody.position.set(0, 0.125, 0); scrBody.rotation.x = -0.15; scrG.add(scrBody);
   var scrFace = new T.Mesh(new T.PlaneGeometry(0.28, 0.162), new T.MeshBasicMaterial({ map: scrTex, toneMapped: false })); scrFace.position.set(0, 0.125, 0.0165); scrFace.rotation.x = -0.15; scrG.add(scrFace);
   var scrNeck = S.mesh(new T.CylinderGeometry(0.009, 0.009, 0.06, 16), M.iron); scrNeck.position.y = 0.04; scrG.add(scrNeck);
@@ -138,6 +139,10 @@ HoolaStudio.define('msc-spectrograph', function (S) {
   } else if (I.kind === 'crystal') {
     var rc = S.mesh(new T.BoxGeometry(0.012, 0.012, 0.045), new T.MeshPhysicalMaterial({ color: I.col, transmission: 0.35, roughness: 0.1, thickness: 0.02, transparent: true, opacity: 0.9 })); rc.position.y = 0.018; samp.add(rc);
     var rb = S.mesh(new T.CylinderGeometry(0.018, 0.02, 0.012, 20), M.alu); rb.position.y = 0.006; samp.add(rb);
+  } else if (I.kind === 'knife') {
+    var kb = S.mesh(new T.BoxGeometry(0.05, 0.02, 0.03), M.alu); kb.position.y = 0.01; samp.add(kb);
+    var kbl = S.mesh(new T.BoxGeometry(0.04, 0.03, 0.0006), M.steel); kbl.position.set(0, 0.034, 0); samp.add(kbl);
+    var kmic = S.mesh(new T.CylinderGeometry(0.008, 0.008, 0.05, 18), M.steel); kmic.rotation.z = Math.PI / 2; kmic.position.set(0.05, 0.012, 0); samp.add(kmic);
   } else {
     var hp = S.mesh(new T.CylinderGeometry(0.03, 0.03, 0.01, 30), M.alu); hp.position.y = 0.005; samp.add(hp);
     var hc = S.mesh(new T.BoxGeometry(0.014, 0.004, 0.014), new T.MeshStandardMaterial({ color: I.col, roughness: 0.8 })); hc.position.y = 0.012; samp.add(hc);
@@ -336,6 +341,7 @@ HoolaStudio.define('msc-spectrograph', function (S) {
       }
       return 'Record the anti-Stokes line of the strongest line (k = -1) to get the temperature.';
     }
+    if (KNAME === 'msc_beam') return 'Full-angle divergence 2 theta = ' + (2 * v * 1e3).toFixed(2) + ' mrad (the manufacturer quotes 1.0 mrad).';
     if (KNAME === 'msc_iodine') return 'A Birge-Sponer extrapolation of the straight line to zero spacing would overestimate the dissociation energy; the real curve bends.';
     return '';
   }
@@ -355,6 +361,10 @@ HoolaStudio.define('msc-spectrograph', function (S) {
     line: function (pts) { var f = S.fit.linear(pts); return f ? function (x) { return f.m * x + f.c; } : null; } };
   else if (KNAME === 'msc_glow') graph = { xlabel: '1000 / Tm (1/K)', ylabel: 'ln(Tm^2 / beta)', x: function (r) { return 1000 / r.x; }, y: function (r) { return Math.log(r.x * r.x / r.c); },
     line: function (pts) { var f = S.fit.linear(pts); return f ? function (x) { return f.m * x + f.c; } : null; } };
+  else if (KNAME === 'msc_beam') graph = { xlabel: 'z squared (m²)', ylabel: 'w squared (mm²)', y0: 0, x0: 0,
+    x: function (r) { return r.k === 2 ? r.c * r.c : NaN; },
+    y: function (r) { var q = S.rows.filter(function (a) { return a.k === 1 && a.c === r.c; })[0]; return r.k === 2 && q ? Math.pow((r.x - q.x) / 1.2815516, 2) : NaN; },
+    line: function (pts) { var f = S.fit.linear(pts); return f ? function (x) { return f.m * x + f.c; } : null; } };
   else if (KNAME === 'msc_beer') graph = { xlabel: 'concentration (uM)', ylabel: 'absorbance', x: function (r) { return r.c * 1e6; }, y: function (r) { return r.y; }, y0: 0, x0: 0,
     line: function (pts) { var m = S.fit.origin(pts); return function (x) { return m * x; }; } };
 
@@ -367,6 +377,7 @@ HoolaStudio.define('msc-spectrograph', function (S) {
     msc_varshni: [{ label: 'T (K)', get: function (r) { return r.c; } }, { label: 'λ peak (nm)', get: function (r) { return r.x.toFixed(1); } }, { label: 'E (eV)', get: function (r) { return (1239.84198 / r.x).toFixed(4); } }],
     msc_decay: [{ label: 't (ms)', get: function (r) { return r.x.toFixed(2); } }, { label: 'V (V)', get: function (r) { return r.y.toFixed(3); } }, { label: 'ln V', get: function (r) { return Math.log(r.y).toFixed(3); } }],
     msc_glow: [{ label: 'β (K/s)', get: function (r) { return r.c; } }, { label: 'Tm (K)', get: function (r) { return r.x.toFixed(1); } }, { label: 'ln(Tm²/β)', get: function (r) { return Math.log(r.x * r.x / r.c).toFixed(3); } }],
+    msc_beam: [{ label: 'z (m)', get: function (r) { return r.c.toFixed(1); } }, { label: 'Edge', get: function (r) { return r.k === 1 ? '90 %' : '10 %'; } }, { label: 'x (mm)', get: function (r) { return r.x.toFixed(3); } }],
     msc_beer: [{ label: 'c (µM)', get: function (r) { return (r.c * 1e6).toFixed(0); } }, { label: 'λ (nm)', get: function (r) { return r.x.toFixed(1); } }, { label: 'A', get: function (r) { return r.y.toFixed(3); } }]
   };
   function tracePoints(lo, hi, n) { var o = [], i; for (i = 0; i <= n; i++) o.push(lo + (hi - lo) * i / n); return o; }
@@ -408,10 +419,10 @@ HoolaStudio.define('msc-spectrograph', function (S) {
   }
 
   return {
-    camera: { pos: [0.0, 0.62, 1.0], look: [-0.02, 0.07, -0.1] },
+    camera: { pos: [0.0, 0.72, 1.3], look: [0.0, 0.05, -0.12] },
     views: { mono: [[-0.04, 0.34, 0.5], [-0.04, 0.08, -0.17]], src: [[-0.7, 0.28, 0.3], [-0.7, 0.06, -0.17]], comp: [[-0.42, 0.3, 0.3], [-0.42, 0.07, -0.17]],
       samp: [[-0.34, 0.2, 0.35], [-0.34, 0.03, 0.06]], det: [[0.26, 0.26, 0.28], [0.26, 0.06, -0.17]], screen: [[0.52, 0.3, 0.2], [0.55, 0.1, -0.2]],
-      acc: [[0.12, 0.3, 0.42], [0.12, 0.05, 0.1]], bench: [[0.0, 0.62, 1.0], [-0.02, 0.07, -0.1]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      acc: [[0.12, 0.3, 0.42], [0.12, 0.05, 0.1]], bench: [[0.0, 0.72, 1.3], [0.0, 0.05, -0.12]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: { principle: S.lab.theory, formula: ({
       msc_iodine: 'G(v) = ωe(v + ½) − ωexe(v + ½)²,   Δν(v) = ωe − 2ωexe (v + 1)',
       msc_rovib: 'R(J−1) − P(J+1) = 4B₀(J + ½),   r = √(h / 8π²cμB),   k = 4π²c²ν²μ',
@@ -421,6 +432,7 @@ HoolaStudio.define('msc-spectrograph', function (S) {
       msc_varshni: 'Eg(T) = Eg(0) − αT² / (T + β)',
       msc_decay: 'V = V₀ exp(−t/τ),   ln V = ln V₀ − t/τ',
       msc_glow: 'ln(Tm²/β) = E/(kTm) + constant',
+      msc_beam: 'w = (x₁₀ − x₉₀) / 1.2816,   w² = w₀² + θ² z²,   θ = λ / (π w₀)',
       msc_beer: 'A = ε c l' })[KNAME], formulaNote: 'SI-derived units as printed in the instrument; constants from CODATA 2018',
       more: [I.hint], precautions: S.lab.safety },
     book: { title: 'Expt. — ' + S.lab.title, lines: ['Aim: ' + S.lab.aim.slice(0, 70) + '...', 'Sample: ' + SAMPLE, 'Source: ' + I.src, 'Detector: ' + I.det, I.hint.slice(0, 70)],
@@ -438,7 +450,7 @@ HoolaStudio.define('msc-spectrograph', function (S) {
     steps: [
       { id: 'setup', title: 'Set up', view: 'bench', render: function (u) {
           u.h2('Switch on and load the sample');
-          u.p(I.src + ' and the ' + I.det.toLowerCase() + ' need to be on before a scan. The sample is ' + SAMPLE.toLowerCase() + '.');
+          u.p('Source: ' + I.src + '. Detector: ' + I.det + '. Both must be on before a scan. Sample: ' + SAMPLE + '.');
           u.task('1. Switch the instrument on', st.on, st.on ? 'Lamp and detector are on' : 'Press POWER')
             .add(u.button(st.on ? 'On' : 'Switch on', function () { S.focus('mono'); powerOn(); }, !st.on, st.on || S.hand.busy));
           u.task('2. Load the sample', st.loaded, st.loaded ? 'In the holder' : 'On the bench')
