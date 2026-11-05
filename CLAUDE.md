@@ -67,6 +67,38 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (5 Nov 2026, owner: "SAVE THE STATE FOR GOOGLE MAPS FOR HOOLA"): branch
+  `stable-2026-11-05-maps-v520` = commit a51ea087 = v0.520.0, pubspec 0.520.0+549. **Cut at the commit that is
+  actually LIVE** - the 3 Nov maps checkpoint below is still valid at v0.470.0, but hoola.ainewtika.com now serves
+  **0.520.0**, so this is the maps state she is really running. All eleven maps phases are in it (0.470 is an
+  ancestor of 0.520 - checked, not assumed), plus the other sessions' v0.471-v0.520 (HOOLA CORE / DHARA / CS+BD
+  packs / 21ST / TRACE).
+  **RE-VERIFIED IN THIS EXACT COMMIT before the branch was cut** (extracted it and ran against it, not against
+  main): maps tools **20/20** registered AND with a handler AND reachable on a voice call (`voice.call_route`) -
+  `maps_search/directions/navigate/nearby/place/kharcha/nearest/address_check/pata/route_plan/links`,
+  `gbp_locations/numbers`, `solar_check`, `maps_snap`, `ownmap_import/pin/list/near/delete`; price list default
+  **india**; `MapsPlaceCache` still exactly the six licence-permitted columns (place_id, lat, lng, latlng_at, query,
+  first_seen - no name / address / phone / rating, which would be a ToS 3.2.3(b) breach); `LATLNG_TTL` 30 days;
+  `/api/maps/usage` registered. **126 maps tests run green on it** (0 failed): the 11 maps suites
+  (`test_v0449_maps_paisa`, `v0463_maps_nearest`, `v0463_fleet_nearest`, `v0464_maps_address`, `v0465_route_plan`,
+  `v0466_maps_links`, `v0467_gbp_read`, `v0468_ownmap`, `v0469_solar_roads`, `v0470_maps_card`, `test_maps`).
+  Live checks today: healthz **0.520.0**, `maps` in features, `/api/maps/usage` answers **401** (deployed and
+  key-protected, not missing).
+  **THE ONE THING THAT CHANGED SINCE 3 NOV, and it matters:** `maps` appearing in the live features list is gated on
+  `maps.configured()`, i.e. **GOOGLE_MAPS_API_KEY IS SET on the VPS**. So the live MAPS card is NOT blocked on a key
+  any more - it is blocked only on someone starting it (`vps-ops > maps_card`, or `python -m app.quality maps --live`).
+  **STILL NOT VERIFIED, said plainly:** no live Google Maps call has been made from ANY phase, by anyone, ever. All of
+  Phases 4-10 is built against Google's own published specs and terms and unit-tested, never answered by Google. Three
+  rates stay ASSUMED until that run and `/api/maps/usage` names them: the Routes / matrix tier, Route Optimization's
+  billing unit, the Roads unit. Also still open and only hers: the Business Profile API application (Phase 8's write
+  half - reviews / posts / Q&A - needs a profile verified 60+ days with a website and an Organization account; nothing
+  works there until the quota reads 300 QPM), Phase 5's Cloud project + service account, and two switches (the
+  `business.manage` scope on her Google sign-in, and whether a live Google map may be drawn - Dynamic Maps, billed per
+  load). Deliberately NOT built, each with a written reason: Autocomplete (no typing surface), static map PICTURES in
+  PDFs (licence breach - links instead), Air Quality / Pollen / Elevation / Time Zone, and the lead scraper.
+  APK release `v0.520.0-b1521`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.520.0-b1521/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-05-maps-v520` as the branch.
 - SAVE THE STATE (3 Nov 2026, owner: "NOW DEPLOY ON VPS AND SAVE THE STATE" after the GOOGLE MAPS work): branch
   `stable-2026-11-03-v470` = commit d8160b41 = v0.470.0, pubspec 0.470.0+515. ALL ELEVEN MAPS PHASES are addressed
   (`docs/MAPS_PLAN.md` S11 has the per-phase state and the four things only she can unblock): v0.463 SABSE PAAS
@@ -230,6 +262,11 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `grep -n "Notebook" docs/HISTORY.md`, then `sed -n 'START,ENDp'` only the section you need.
 - When you ship a version: add its detailed section to the END of `docs/HISTORY.md`, and AT MOST one line to the
   "Current state" list below. Never paste long sections into this file again.
+- ENFORCED since v0.455: `.claude/hooks/read-guard.sh` (a PreToolUse hook on Read) REFUSES a whole-file read of a
+  Markdown doc over 40 KB under `docs/` or of CLAUDE.md, and answers with that doc's headings BY LINE so the retry
+  reads one section. A ranged read (`offset` / `limit`), `allow_large: true`, a smaller file and every non-Read tool
+  all pass; it fails open on anything it cannot work out. Off with `HOOLA_READ_GUARD=off`, bar with
+  `HOOLA_READ_GUARD_KB`. The rule above was a sentence for 200 versions; now it is a hook.
 
 ## Current state (latest first, one line each)
 - v0.522 CONSTRUCTION WAVE 1 (owner: 'WAVE 1 - RECORDS AND MONEY ... END TO END' on docs/CONSTRUCTION_EMPLOYEE_PLAN.md): server/app/construction/ (register.py = the 123-row register as data, gates.py = 27 tier-C refusals riding every const tool, statepacks/maharashtra.json v0 with a stale-pack refusal, store/labour/books/customer/quality/meetings services) + 5 hireable Hub employees (const_store/labour/customer/quality/meet) + sitesup voice_log + variance + theka rate_basis/advances/wage_calc; registry 541 -> 551; test_v0512_construction_w1.py 26; server-only deploy. PREPARE never CERTIFY.
