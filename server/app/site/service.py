@@ -1088,8 +1088,16 @@ def _lang_line(lang: str) -> str:
 def _photos_line(r: Site) -> str:
     ph = _j(r.photos, [])
     if not ph:
-        return "PHOTOS: none yet (draw with inline SVG; leave a clear spot where a real photo will go later)."
-    return "PHOTOS (use with data-hoola-img): " + "; ".join(f"{p['name']} = {p.get('about') or 'photo'}" for p in ph)
+        return "PHOTOS: none yet (draw with inline SVG; leave a clear spot where a real photo will go later)." + _lottie_line(r)
+    out = "PHOTOS (use with data-hoola-img): " + "; ".join(f"{p['name']} = {p.get('about') or 'photo'}" for p in ph)
+    return out + _lottie_line(r)
+
+
+def _lottie_line(r: Site) -> str:
+    """v0.566 her own Lottie files, so a section can use them by name."""
+    from . import lottie as LT
+    mine = LT.hers(B.src_dir(r.tenant_id, r.id))
+    return ("\nHER ANIMATIONS (use with data-hoola-lottie): " + ", ".join(mine)) if mine else ""
 
 
 def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], extra: str = "") -> str:
@@ -2026,6 +2034,26 @@ def resume(tenant: str, ref: str) -> dict[str, Any]:
     else:
         _start(r.id, "looks")
     return view(_load(r.id), False)
+
+
+def add_lottie(tenant: str, ref: str, data: bytes | None = None, file_id: str = "", name: str = "") -> dict:
+    """v0.566 her own Lottie animation (JSON), checked and kept with the site's files; sections use it by name."""
+    from . import lottie as LT
+    if file_id and not data:
+        from ..mailbox import service as ms
+        try:
+            _n, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
+        except Exception as e:
+            raise SiteError(f"File {file_id} nahi mili: {e}")
+    with session() as s:
+        r = _find(s, tenant, ref)
+        s.expunge(r)
+    try:
+        out = LT.store(B.src_dir(tenant, r.id), name, data or b"")
+    except LT.LottieError as e:
+        raise SiteError(str(e))
+    return {"ok": True, **out, "say": f"Animation '{out['name']}' rakh li ({out['seconds']} s). Kahan lagani hai bataiye "
+                                      f"(jaise 'hero mein {out['name']} animation lagao')."}
 
 
 def add_photo(tenant: str, ref: str, data: bytes | None = None, file_id: str = "", about: str = "", name: str = "") -> dict:

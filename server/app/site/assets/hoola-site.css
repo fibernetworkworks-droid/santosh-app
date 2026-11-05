@@ -411,3 +411,12 @@ form[data-hoola-config] [data-config-summary]{display:block;color:var(--c-muted)
 @keyframes hs-scrub{from{opacity:.15;transform:translateY(48px)}to{opacity:1;transform:none}}
 @keyframes hs-scrub-x{from{opacity:.15;transform:translateX(-56px)}to{opacity:1;transform:none}}
 @keyframes hs-scrub-scale{from{opacity:.3;transform:scale(.88)}to{opacity:1;transform:none}}
+
+/* v0.566 LOTTIE + 3D HERO: sizes before the scripts arrive (no layout shift), graceful when they never do */
+[data-hoola-lottie]{display:inline-block;width:120px;aspect-ratio:1/1;vertical-align:middle}
+[data-hoola-lottie] svg{display:block;width:100%!important;height:100%!important}
+[data-hoola-lottie-off],[data-hoola-lottie-missing]{visibility:hidden}
+[data-hoola-3d]{position:relative;width:100%;min-height:320px;aspect-ratio:16/10;overflow:hidden;
+  background:radial-gradient(60% 60% at 50% 45%,color-mix(in srgb,var(--c-primary) 22%,transparent),transparent 70%)}
+[data-hoola-3d] canvas{position:absolute;inset:0}
+@media (max-width:640px){[data-hoola-3d]{min-height:240px;aspect-ratio:4/3}}

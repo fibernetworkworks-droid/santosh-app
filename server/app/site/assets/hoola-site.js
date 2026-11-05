@@ -473,7 +473,41 @@
       });
     });
   }
-  function start() { nav(); groups(); search(); forms(); lightbox(); compare(); embeds(); booking(); tabs(); carousel(); filters(); toggles(); calcs(); quizzes(); configs(); compareTables(); motion(); }
+  /* v0.566 LOTTIE: [data-hoola-lottie] plays an animation from the site's own files (light player, SVG, no eval).
+     Hoola's built-ins carry two placeholder colours that become the site's --c-primary / --c-accent here. */
+  function rgb01(css) {
+    var c = d.createElement('canvas').getContext('2d'); if (!c) return null;
+    c.fillStyle = '#000'; c.fillStyle = css; var h = c.fillStyle;
+    if (!/^#[0-9a-f]{6}$/i.test(h)) return null;
+    return [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255, 1];
+  }
+  function recolour(node, from, to) {
+    if (Array.isArray(node)) {
+      if (node.length === 4 && node.every(function (v, i) { return v === from[i]; })) { for (var i = 0; i < 4; i++) node[i] = to[i]; return; }
+      node.forEach(function (x) { recolour(x, from, to); });
+    } else if (node && typeof node === 'object') { for (var k in node) if (Object.prototype.hasOwnProperty.call(node, k)) recolour(node[k], from, to); }
+  }
+  function lotties() {
+    var els = $$('[data-hoola-lottie][data-src]');
+    if (!els.length || !W.lottie || !W.fetch) return;
+    var cs = getComputedStyle(root), pri = rgb01(cs.getPropertyValue('--c-primary').trim()), acc = rgb01(cs.getPropertyValue('--c-accent').trim());
+    els.forEach(function (el) {
+      fetch(el.getAttribute('data-src')).then(function (r) { return r.ok ? r.json() : Promise.reject(r.status); }).then(function (data) {
+        if (pri) recolour(data, [1, 0, 1, 1], pri);
+        if (acc) recolour(data, [0, 1, 1, 1], acc);
+        var loop = el.getAttribute('data-loop') !== 'false';
+        var a = W.lottie.loadAnimation({ container: el, renderer: 'svg', loop: loop, autoplay: false, animationData: data,
+                                         rendererSettings: { preserveAspectRatio: 'xMidYMid meet' } });
+        el.setAttribute('data-hoola-lottie-on', '');
+        a.addEventListener('DOMLoaded', function () {
+          if (still) { a.goToAndStop(loop ? Math.floor(a.totalFrames * 0.6) : a.totalFrames - 1, true); return; }
+          if (!W.IntersectionObserver) { a.play(); return; }
+          new IntersectionObserver(function (es) { if (es[0].isIntersecting) a.play(); else a.pause(); }).observe(el);
+        });
+      }).catch(function () { el.setAttribute('data-hoola-lottie-off', ''); });
+    });
+  }
+  function start() { nav(); groups(); search(); forms(); lightbox(); compare(); embeds(); booking(); tabs(); carousel(); filters(); toggles(); calcs(); quizzes(); configs(); compareTables(); motion(); lotties(); }
   W.HoolaSite = { start: start };      // v0.305 the React export starts it again after a route change
   if (d.readyState === 'loading') d.addEventListener('DOMContentLoaded', start); else start();
 })();

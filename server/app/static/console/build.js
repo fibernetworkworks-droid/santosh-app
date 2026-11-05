@@ -2258,9 +2258,20 @@ window.HoolaBuild = function (C) {
         <div class="acts"><button class="btn soft" type="submit">Read my Figma file</button></div></form>
       <form class="stapp" data-d="site" autocomplete="off"><div class="row"><label><span>Your OWN old website</span><input name="url" placeholder="https://my-old-site.in" required></label></div>
         <div class="acts"><button class="btn soft" type="submit">Read my old site</button></div></form>
+      <form class="stapp" data-d="lottie" autocomplete="off"><div class="row">
+        <label><span>Your own animation (Lottie .json, up to 1.5 MB)</span><input name="file" type="file" accept=".json,application/json" required></label>
+        <label><span>Name for it</span><input name="name" placeholder="my-logo" pattern="[a-z][a-z0-9-]{1,39}" required></label></div>
+        <div class="acts"><button class="btn soft" type="submit">Add animation</button></div>
+        <p class="stnote">Built in, no file needed: animations pulse, check, sparkle, scroll, dots, wave and 3D scenes orb, knot, particles, waves, blocks - ask for them in chat (e.g. "hero mein 3D orb lagao").</p></form>
       <div class="stdpv" aria-live="polite"></div>`;
     box.appendChild(sec);
     const pv = sec.querySelector('.stdpv'), reload = () => { sec.remove(); designBox(o, box); };
+    sec.querySelector('[data-d=lottie]').onsubmit = async e => {
+      e.preventDefault(); const f = e.target, b = f.querySelector('[type=submit]'); b.disabled = true;
+      try { const fd = new FormData(); fd.append('file', f.file.files[0]); fd.append('name', f.elements.namedItem('name').value.trim());
+        const r = await api('POST', base(o) + '/lottie', undefined, {form: fd}); toast(S(r.say) || 'Added.'); f.reset(); }
+      catch (er) { toast(er.message, true); } finally { b.disabled = false; }
+    };
     const post = async (body, form) => {
       const headers = {}; if (TOKEN) headers.Authorization = 'Bearer ' + TOKEN;
       if (!form) headers['Content-Type'] = 'application/json';

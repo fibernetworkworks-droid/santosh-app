@@ -788,11 +788,14 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
     return (f'<!doctype html><html lang="{lang}"{dir_}><head>{"".join(meta)}{links}{ld}</head>'
             f'<body class="look-{esc(site["tokens"]["style"])}">{header(site, plan, page["slug"], rel, logo)}{notice}'
             f'<main id="main">{crumb}{body}</main>{footer(site, plan, rel)}{floats(site)}'
-            f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
+            + (f'<script src="{rel}assets/vendor/lottie_light.min.js" defer></script>'
+               if 'data-hoola-lottie="' in body and "data-src=" in body else "")                                  # v0.566
+            + f'<script src="{rel}assets/hoola-site.js" defer></script><script src="{rel}assets/site.js" defer></script>'
             + (f'<script src="{rel}assets/hoola-chart.js" defer></script>' if uses_charts(body) else "")   # v0.357
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
             + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
             + (f'<script src="{rel}assets/hoola-catalog.js" defer></script>' if "data-hoola-catalog=" in body else "")   # v0.538
+            + (f'<script type="module" src="{rel}assets/vendor/three-hero.js"></script>' if "data-hoola-3d=" in body else "")   # v0.566
             + ('<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
                if 'class="cf-turnstile"' in body else "")                                                       # v0.551
             + '</body></html>')
@@ -1020,6 +1023,9 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
     cols = {c["key"]: c for c in SM.collections(plan)}
     tpls = {p["slug"]: p for p in plan.get("pages", []) if p.get("template_of")}
 
+    from . import lottie as LT                   # v0.566 animations (built-ins + hers) and the 3D hero
+    rich: dict[str, Any] = {"lottie": set(), "three": False, "avail": set(LT.BUILTINS) | set(LT.hers(src_root))}
+
     def render(slug: str, secs: list[dict[str, Any]], rel: str, key_slug: str = "", item: dict[str, Any] | None = None,
                fields: list[dict[str, Any]] | None = None) -> str:
         """The page body from its sections (v0.315: an item page = its collection's template, filled with the item)."""
@@ -1039,6 +1045,12 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             h, mmiss = MD.expand(h, src_root, out, rel)
             if mmiss:
                 problems.append(f"{key}: file not found: {', '.join(mmiss)}")
+            if "data-hoola-lottie" in h:         # v0.566 an animation by name -> the file this page loads
+                h, lused, lprob0 = LT.expand(h, rel, rich["avail"])
+                rich["lottie"] |= lused
+                problems.extend(f"{key}: {x}" for x in lprob0)
+            if "data-hoola-3d=" in h:
+                rich["three"] = True
             if "data-hoola-posts" in h:          # v0.366 the latest posts as cards
                 from . import blog as BL
                 h = BL.latest_cards(h, site.get("blog") or [], rel, lambda n: pic(n).replace("__REL__", rel),
@@ -1149,6 +1161,13 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                        (base_url.rstrip("/") + "/" + alt["lang"]) if base_url else "", form_endpoint)
         problems += [f'{alt["lang"]}: {x}' for x in res["problems"]]
         files += res["pages"]
+    if rich["lottie"]:                       # v0.566 only the animations used, and the player only when one is
+        LT.write(out, rich["lottie"], src_root)
+        (out / "assets" / "vendor").mkdir(parents=True, exist_ok=True)
+        shutil.copy(ASSETS / "vendor" / "lottie_light.min.js", out / "assets" / "vendor" / "lottie_light.min.js")
+    if rich["three"]:
+        (out / "assets" / "vendor").mkdir(parents=True, exist_ok=True)
+        shutil.copy(ASSETS / "vendor" / "three-hero.js", out / "assets" / "vendor" / "three-hero.js")
     if not site.get("_sub") and not site.get("edit"):   # v0.538 W10: every text file also pre-compressed (nginx gzip_static)
         from . import speed as SPD
         SPD.precompress(out)

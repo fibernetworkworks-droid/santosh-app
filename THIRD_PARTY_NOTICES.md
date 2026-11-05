@@ -187,3 +187,11 @@ reason.
 Two of crawl4ai's capabilities were deliberately **not** reproduced, and `server/app/crawl/__init__.py`
 records why: mining robots.txt `Disallow:` entries as a URL-discovery source, and minting rotating
 residential proxies from a commercial provider's API.
+
+## lottie-web 5.13.0 (light player) - MIT
+Copyright (c) 2015 Airbnb, Inc. Vendored as `server/app/site/assets/vendor/lottie_light.min.js` (licence beside it:
+`lottie-web.LICENSE.md`), served from her own website only on pages that show an animation (v0.566).
+
+## three.js r187 - MIT
+Copyright (c) 2010-2026 three.js authors. The parts Hoola's 3D hero scenes use, bundled into
+`server/app/site/assets/vendor/three-hero.js` (licence: `three.LICENSE.txt`; rebuild steps: `vendor/REBUILD.md`) (v0.566).

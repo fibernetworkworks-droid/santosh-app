@@ -20623,3 +20623,40 @@ browser supports it). None of the new forms post anywhere, so the safety gates' 
 - NOT BUILT, said plainly: Lottie and a three.js 3D hero (no library vendored yet - the gates already know their version
   banners for when they are); a video background piece. A screenshot gives a STYLE match, never a pixel copy.
 - NOT VERIFIED live: no real Figma file and no real old website has been read yet; the vision reading has only met test fakes.
+
+## v0.566.0 LOTTIE + 3D HERO (owner: "Lottie animations and a 3D hero -- WORK ON IT")
+
+The two W9 pieces v0.565 listed as not built. Both are served from her own site (never a CDN: the site CSP stays
+`script-src 'self'`), and both load ONLY on pages that use them.
+
+**Lottie** (`server/app/site/lottie.py`, player `assets/vendor/lottie_light.min.js`):
+- lottie-web 5.13.0 LIGHT build (MIT): SVG renderer only, no expressions, so no `eval` / `new Function` (tested). A one-line
+  banner carries the version so the safety gate's OSV check finds it.
+- Six BUILT-IN animations made by code (pulse, check, sparkle, scroll, dots, wave), drawn in two placeholder colours
+  (#FF00FF, #00FFFF) that `hoola-site.js` swaps for the site's own `--c-primary` / `--c-accent` before playing - they always
+  match the chosen look. They pass the same checks as her files.
+- HER OWN Lottie JSON (`add_lottie`, POST /api/sites/{ref}/lottie, console "Add animation", `website action=animation`): must
+  have v / w / h / fr / ip / op / layers, <= 1.5 MB, 1-200 layers; image assets only embedded PNG / JPEG / WebP (a link to
+  another server is refused); expressions stripped and counted. Her names ride the section writer's photo line.
+- A section writes `<div data-hoola-lottie="check" data-loop="false">`; the build adds `data-src`, copies only the animations
+  used plus the player, and reports unknown names (the element is kept but hidden). Plays only while on screen; one still
+  frame (the end for a one-shot, 60% for a loop) under reduced motion; a failed load hides the empty box.
+
+**3D hero** (`assets/src/hero3d.src.js` -> `assets/vendor/three-hero.js`):
+- Five house scenes - orb (a soft, slowly breathing glossy shape), knot, particles, waves (flowing wire grid), blocks - written by
+  Hoola, bundled with the parts of three.js r187 (MIT) they import by esbuild: 541 KB, 139 KB gzipped (the gzip twin is served).
+  The file is deliberately NOT named `hoola-*`, because the library gate skips Hoola's own scripts and this one carries three.js.
+  Rebuild steps in `vendor/REBUILD.md`.
+- A section only NAMES a scene (`data-hoola-3d="orb"`); the writer is told never to write WebGL / canvas code and to use at most
+  one per page. Colours come from the site's CSS variables; renders only while on screen (IntersectionObserver), paused in a
+  hidden tab, pixel ratio <= 2, one frame under reduced motion, and where WebGL is missing the element keeps a soft
+  colour-glow background from the CSS (the words never depend on it). Default size is set in CSS before the script arrives
+  (no layout shift).
+- Measured in headless Chromium (software WebGL): all five scenes draw (600x400 shot: orb 2,596, knot 3,313, blocks 901 distinct
+  colours), no page errors.
+- `THIRD_PARTY_NOTICES.md` + both licences beside the files.
+- Tests `test_v0566_lottie_3d.py` 6: the vendored files are what they say (versions, no eval, size, licences), built-ins are real
+  Lottie, her file checks (expression stripped, outside image refused, size), a real built page in Chromium with motion on AND
+  off (animations play and are recoloured, the 3D canvas is drawn, only used files copied, other pages stay light, OSV gate sees
+  three 0.187.0 + lottie-web 5.13.0), routes + tool + writer rules.
+- NOT VERIFIED: a real phone's GPU (headless is software WebGL), and a real LottieFiles download of hers.

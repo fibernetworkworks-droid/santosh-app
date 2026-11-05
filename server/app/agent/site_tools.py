@@ -80,12 +80,16 @@ SITE_TOOLS = [
         "token (+ site; empty = a NEW site from her old site / Figma words) ONLY after she said haan to that preview: look 1 "
         "becomes her design, the other two stay Hoola alternatives. A screenshot of someone else's site gives only a STYLE, "
         "never their words / logo / photos; 'exactly like their site' stays refused. "
+        "ANIMATION / 3D (v0.566): action=animation + file_id (her Lottie .json file) + name = keep her own animation for "
+        "the site (checked; a link to another server or a file over 1.5 MB is refused); then action=change can put it on a "
+        "page by name. Built-in animations (pulse, check, sparkle, scroll, dots, wave) and 3D hero scenes (orb, knot, "
+        "particles, waves, blocks) need no file: ask for them with action=change (e.g. 'hero mein 3D orb lagao'). "
         "AFTER LAUNCH: action=care (+ days) = visits, enquiries, uptime, SSL / domain dates, what to improve; action=github (+ "
         "repo, private) = card to put the code in HER GitHub (her tap pushes). AGENCY: action=assign* + client / staff (staff "
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -161,6 +165,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return {k: v.get(k) for k in ("settings", "upi", "summary", "say")} | {"products": len(v.get("products") or [])}
     if action == "shop_order":
         return S.shop_move(t, site, str(a.get("number") or ""), str(a.get("to") or ""))
+    if action == "animation":                     # v0.566 her own Lottie file
+        return S.add_lottie(t, site, None, str(a.get("file_id") or ""), str(a.get("name") or ""))
     if action in ("design_from", "design_use"):   # v0.565 KOI BHI DESIGN: her screenshot / Figma / own old site
         from ..site import inspire as IN
         try:

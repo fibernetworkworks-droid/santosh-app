@@ -299,6 +299,18 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   * Comparison tool (v0.565): <div data-hoola-compare-table><button type="button" data-compare-diff aria-pressed="false">Show
     differences only</button> <button type="button" data-compare-col="1">Plan A</button>...<table>...</table></div>
     (first column = the feature, one column per option of HERS).
+- LOTTIE ANIMATIONS (v0.566, Hoola plays them; never write your own animation script): <div data-hoola-lottie="NAME"
+  data-loop="false" aria-hidden="true"></div> (size it inside your #SECTION_ID: width / aspect-ratio). Built-in NAMES, drawn
+  in the site's own colours: pulse (live / open now / call us), check (done / booked / paid - use data-loop="false"),
+  sparkle (new / offer / festive), scroll (scroll for more, under a hero), dots (working / loading), wave (hello /
+  welcome). Her own animation files are listed with the photos when she has any. Decoration only: the words beside it
+  carry the meaning; at most 2 a page.
+- 3D HERO (v0.566, Hoola draws it with three.js; never write WebGL / canvas code): <div data-hoola-3d="orb|knot|particles|
+  waves|blocks" aria-hidden="true"></div> = a slowly moving 3D scene in the site's own colours (orb = soft glossy shape,
+  knot = elegant loop, particles = starfield / tech, waves = flowing grid, blocks = floating cubes). Use it ONLY in a hero
+  or one feature band, at most ONE per page, behind or beside the words (the heading and buttons stay readable over it -
+  put them in their own layer with the scene as a background: position the 3D div absolutely inside a relative wrapper).
+  It shows a soft colour glow where 3D is not available, and one still frame for visitors who turn off motion.
 - SCROLL-DRIVEN MOTION (v0.565, CSS only, off under reduced motion and in browsers without scroll timelines): data-m="scrub"
   (rises in as it scrolls into view), data-m="scrub-x" (slides in from the left), data-m="scrub-scale" (grows in). Use on
   big images / stats / step lists, at most 3 per page; the content is fully visible without it.
