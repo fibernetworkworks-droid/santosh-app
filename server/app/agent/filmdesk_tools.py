@@ -12,8 +12,8 @@ from .tools import Ctx, ToolError
 
 _ACTIONS = ["settings", "new", "update", "script", "script_set", "script_restore", "cast", "shots", "shot", "storyboard",
             "preview", "spend", "assemble", "person", "consent", "withdraw", "forget", "right", "rating", "cbfc", "tick",
-            "message", "release"]
-_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc"}
+            "message", "release", "schedule", "callsheet", "budget_plan"]
+_OWNER_ONLY = {"settings", "consent", "withdraw", "forget", "rating", "cbfc", "budget_plan"}
 
 FILMDESK_TOOLS = [
     {"name": "film_desk", "description": (
@@ -29,7 +29,13 @@ FILMDESK_TOOLS = [
         "own|commissioned|licensed|royalty_free|ai_generated|public_domain, sync, platforms, until, file_id. rating*: rating "
         "U|UA7|UA13|UA16|A. cbfc*: category, number, date. tick: key, done. message: msg_kind consent_request|rights_request|"
         "festival|distributor|custom, person / phone, text, uses, item -> CARD. release: force, reason -> CARD. Every action "
-        "takes project (F-0001). * = owner only."),
+        "takes project (F-0001). * = owner only. PRODUCTION layer (all in code, nothing sent or paid): schedule: "
+        "start_date YYYY-MM-DD, day_hours, setup_hours, hours_per_screen_minute (her real numbers; defaults are ASSUMPTIONS), days_off "
+        "[sun], blocked_dates, unavailable {character: [dates]} -> shooting days grouped by place, day before night + "
+        "day-out-of-days. callsheet: day (shoot day number), call_time HH:MM, cast_calls {name: HH:MM}, location_address {place: "
+        "address}, contacts {role: phone}, notes -> text + PDF; unknown details stay [blanks]; sending to cast is action=message "
+        "(card). budget_plan*: rates {crew, cast, location, equipment, night_allowance, transport, food, post_per_screen_minute, "
+        "'extra:name'} in rupees per unit, ONLY her numbers; contingency_pct -> at-least total, heads without a rate listed as missing."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "project": {"type": "string"}, "title": {"type": "string"},
          "logline": {"type": "string"}, "format": {"type": "string"}, "language": {"type": "string"},
@@ -51,12 +57,18 @@ FILMDESK_TOOLS = [
          "date": {"type": "string"}, "key": {"type": "string"}, "done": {"type": "boolean"}, "msg_kind": {"type": "string"},
          "item": {"type": "string"}, "terms": {"type": "string"}, "force": {"type": "array", "items": {"type": "string"}},
          "reason": {"type": "string"}, "banner": {"type": "string"}, "producer": {"type": "string"},
-         "month_budget_inr": {"type": "number"}, "morning_time": {"type": "string"}, "rules": {"type": "string"}},
+         "month_budget_inr": {"type": "number"}, "morning_time": {"type": "string"}, "rules": {"type": "string"},
+         "start_date": {"type": "string"}, "day_hours": {"type": "number"}, "setup_hours": {"type": "number"},
+         "hours_per_screen_minute": {"type": "number"}, "days_off": {"type": "array", "items": {"type": "string"}},
+         "blocked_dates": {"type": "array", "items": {"type": "string"}}, "unavailable": {"type": "object"},
+         "call_time": {"type": "string"}, "cast_calls": {"type": "object"}, "location_address": {"type": "object"},
+         "contacts": {"type": "object"}, "day": {"type": "integer"}, "rates": {"type": "object"},
+         "contingency_pct": {"type": "number"}},
          "required": ["action"]}},
     {"name": "film_desk_dekho", "description": (
         "Read the film desk (nothing changes). what=day | projects | project (project) | script | shots | budget (studio "
         "estimate per shot in rupees) | release (checklist + blockers + AI disclosure line) | people | person (person) | "
-        "rights | cards | settings | cbfc_note."),
+        "rights | cards | settings | cbfc_note | schedule | dood (day-out-of-days) | plan_budget | callsheet (day)."),
      "input_schema": {"type": "object", "properties": {"what": {"type": "string"}, "project": {"type": "string"},
                                                        "person": {"type": "string"}, "status": {"type": "string"}},
                       "required": ["what"]}},
@@ -129,6 +141,12 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                  "", actor, conv)
     if action == "release":
         return S.release_request(t, pr, a.get("force") or None, _s(a.get("reason")), actor, conv)
+    if action == "schedule":
+        keys = ("start_date", "day_hours", "setup_hours", "hours_per_screen_minute", "days_off", "blocked_dates", "unavailable",
+                "call_time")
+        return S.plan_schedule(t, pr, actor, **{k: a[k] for k in keys if k in a})
+    if action == "budget_plan":
+        return S.plan_budget(t, pr, a.get("rates"), a.get("contingency_pct"), actor)
     raise ToolError(f"action '{action}' nahi pehchana.")
 
 
@@ -150,6 +168,10 @@ async def _film_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
                                  actor, conv)
         if action == "assemble":
             return await S.assemble(t, pr, True, actor)
+        if action == "callsheet":
+            keys = ("call_time", "cast_calls", "location_address", "contacts", "notes")
+            return await asyncio.to_thread(lambda: S.plan_callsheet(t, pr, a.get("day"), actor, conv,
+                                                                    **{k: a[k] for k in keys if k in a}))
         return await asyncio.to_thread(_sync, ctx, action, a)
     except S.FilmError as e:
         raise ToolError(str(e))
@@ -187,6 +209,8 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         return S.settings(t)
     if what == "cbfc_note":
         return {"note": R.CBFC_NOTE}
+    if what in ("schedule", "dood", "plan_budget", "callsheet"):
+        return S.plan_view(t, pr, what, a.get("day"))
     raise ToolError(f"what '{what}' nahi pehchana.")
 
 

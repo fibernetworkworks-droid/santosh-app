@@ -53,6 +53,7 @@ class FilmProject(Base):
     descriptors: Mapped[str] = mapped_column(Text, default="")
     cbfc: Mapped[str] = mapped_column(Text, default="{}")                  # {category, number, date, applied}
     ticks: Mapped[str] = mapped_column(Text, default="{}")                 # manual checklist ticks
+    plan: Mapped[str] = mapped_column(Text, default="{}", nullable=True)   # production layer: {schedule, dood, rates, budget} (old rows: NULL)
     released: Mapped[str] = mapped_column(Text, default="{}")
     log: Mapped[str] = mapped_column(Text, default="[]")
     conv: Mapped[str] = mapped_column(String(40), default="")

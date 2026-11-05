@@ -33,6 +33,7 @@ from urllib.parse import quote as urlq
 from sqlalchemy import select
 
 from ..db import now, session
+from . import production as P
 from . import rules as R
 from .models import FilmAlert, FilmCard, FilmPerson, FilmProject, FilmRight, FilmSettings
 
@@ -938,6 +939,125 @@ def budget(tenant: str, ref: str) -> dict:
             "say": f"Draft ~₹{tot['draft']['inr']}, final ~₹{tot['final']['inr']} (sab shots). Ab tak ₹{spent:.0f} laga."}
 
 
+# ---------------------------------------------------------------- production layer (v0.559): schedule / day-out-of-days / call sheet / rate budget
+def plan_schedule(tenant: str, ref: str, actor: str = "owner", **opts: Any) -> dict:
+    """Shooting schedule + day-out-of-days from the saved scenes, in code (see production.py). Saved on the film; nothing is sent."""
+    keys = ("start_date", "day_hours", "setup_hours", "hours_per_screen_minute", "days_off", "blocked_dates", "unavailable",
+            "call_time")
+    kw = {k: opts[k] for k in keys if k in opts and opts[k] not in (None, "", [], {})}
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        try:
+            sch = P.build_schedule(_j(p.scenes, []), **kw)
+        except ValueError as e:
+            raise FilmError(str(e)) from None
+        dd = P.day_out_of_days(sch)
+        pl = _j(p.plan, {})
+        pl.update({"schedule": sch, "dood": dd, "inputs": kw})
+        pl.pop("budget", None)                    # a new schedule makes an old budget stale: ask again
+        p.plan = _dump(pl)
+        _log(p, f"Schedule: {sch['shoot_days']} shoot din", actor_name(tenant, actor))
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, "shoot_days": sch["shoot_days"], "night_days": sch["night_days"], "company_moves": sch["company_moves"],
+            "days": sch["days"], "dood": dd, "flags": sch["flags"], "assumptions": sch["assumptions"],
+            "say": f"{sch['shoot_days']} shoot din ({sch['night_days']} raat), {sch['company_moves']} jagah badalna. "
+                   "Ghante andaaze hain: apne asli number batayiye."}
+
+
+def _saved_plan(p: FilmProject) -> dict:
+    pl = _j(p.plan, {})
+    if not pl.get("schedule"):
+        raise FilmError("Pehle schedule banao (action=schedule).")
+    return pl
+
+
+def plan_view(tenant: str, ref: str, what: str = "schedule", day: Any = None) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _saved_plan(p)
+        head = {"number": p.number, "title": p.title}
+    if what == "dood":
+        return {"project": head, **pl["dood"]}
+    if what == "plan_budget":
+        if not pl.get("budget"):
+            raise FilmError("Budget abhi nahi bana (action=budget_plan, sirf owner).")
+        return {"project": head, **pl["budget"]}
+    if what == "callsheet":
+        d = _pick_day(pl["schedule"], day)
+        return {"project": head, **P.call_sheet(head, d)}
+    return {"project": head, "days": pl["schedule"]["days"], "flags": pl["schedule"]["flags"],
+            "assumptions": pl["schedule"]["assumptions"]}
+
+
+def _pick_day(sch: dict, day: Any) -> dict:
+    try:
+        n = int(day)
+    except (TypeError, ValueError):
+        raise FilmError("Kaunsa shoot din? (day=1, 2, ...)") from None
+    for d in sch["days"]:
+        if d["order"] == n:
+            return d
+    raise FilmError(f"Shoot din {n} nahi hai (1 se {len(sch['days'])}).")
+
+
+def plan_callsheet(tenant: str, ref: str, day: Any, actor: str = "owner", conv: str = "", **opts: Any) -> dict:
+    """One day's call sheet as text + a PDF file in her chat. Cast are NOT messaged: use action=message (a card for her tap)."""
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _saved_plan(p)
+        head = {"number": p.number, "title": p.title}
+        banner = _st(s, tenant).banner
+    d = _pick_day(pl["schedule"], day)
+    kw = {k: opts[k] for k in ("call_time", "cast_calls", "location_address", "contacts", "notes") if k in opts}
+    cs = P.call_sheet(head, d, **kw)
+    if "call_time" not in kw:
+        cs = P.call_sheet(head, d, **{**kw, "call_time": pl["schedule"]["assumptions"].get("call_time", "")})
+    blocks: list[tuple] = [("h1", f"Call sheet · {head['title']} · Din {d['order']}"),
+                           ("p", " · ".join(x for x in (banner, cs["date"] or "[tareekh bharo]", "Unit call " + cs["unit_call"]) if x)),
+                           ("h", "Jagah"), ("table", [["Jagah", "Pata"]] + [[x["place"], x["address"]] for x in cs["places"]]),
+                           ("h", "Scenes"),
+                           ("table", [["#", "Scene", "Ghante", "Cast"]] + [[str(x["n"]), x["heading"], str(x["hours"]), ", ".join(x["cast"])]
+                                                                           for x in cs["scenes"]]),
+                           ("h", "Cast call"),
+                           ("table", [["Kaun", "Call", "Scenes"]] + [[x["who"], x["call"], ", ".join(str(n) for n in x["scenes"])]
+                                                                      for x in cs["cast"]] or [["-", "-", "-"]]),
+                           ("h", "Sampark"), ("p", "; ".join(f"{r['role']}: {r['phone']}" for r in cs["contacts"]) or " ".join(cs["blanks"])),
+                           ("p", "Mausam, sunrise/sunset aur surakshit raasta yahan nahi bharte: asli source se dekhiye.")]
+    file = None
+    try:
+        pdf = _blocks_pdf(f"{head['title']} call sheet day {d['order']}", blocks, "Call sheet")
+    except Exception:
+        log.exception("filmdesk call sheet pdf failed")
+        pdf = b""
+    if pdf:
+        file = _store(tenant, f"CallSheet_{head['number']}_Day{d['order']}.pdf", pdf, "application/pdf", conv, "Call sheet")
+        with _LOCK, session() as s:
+            q = _proj(s, tenant, ref)
+            _log(q, f"Call sheet din {d['order']}", actor_name(tenant, actor))
+    return {"project": head, **cs, "file": file,
+            "say": f"Din {d['order']} ka call sheet taiyaar" + (" (PDF chat me)." if file else ".")
+                   + " Cast ko bhejna 'message' card se, aapki haan par."}
+
+
+def plan_budget(tenant: str, ref: str, rates: Any = None, contingency_pct: Any = None, actor: str = "owner") -> dict:
+    """Rupees only from HER rate card; quantities from the schedule. Owner only: it holds money numbers."""
+    _need_owner(actor)
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _saved_plan(p)
+        old = pl.get("rates") or {}
+        merged = {**old, **(rates if isinstance(rates, dict) else {})}
+        out = P.budget_from_rates(pl["schedule"], pl["dood"], merged, contingency_pct if contingency_pct is not None
+                                  else pl.get("contingency_pct"))
+        pl["rates"], pl["budget"] = merged, out
+        if contingency_pct is not None:
+            pl["contingency_pct"] = contingency_pct
+        p.plan = _dump(pl)
+        _log(p, f"Budget plan: ₹{out['total_inr']:,.0f} (kam se kam)", actor_name(tenant, actor))
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **out}
+
+
 async def spend(tenant: str, ref: str, quality: str = "draft", shot_ids: list | None = None, variants: int = 1,
                 actor: str = "owner", conv: str = "") -> dict:
     """Ask the studio for paid shots: her film / month caps and consents are checked first; the studio then makes ITS price
@@ -1315,8 +1435,13 @@ def release_pdf(tenant: str, ref: str, sh: dict) -> bytes:
                ("table", [["Line", "Haal"]] + [[i["label"], "Haan" if i["ok"] else ("Owner ne chhoda" if i["key"] in (sh.get("forced") or [])
                                                                                   else "Nahi")] for i in sh.get("items") or []]),
                ("p", "Yeh producer ke record ke liye hai, kanooni salah nahi.")]
+    return _blocks_pdf(f"{sh.get('title')} release", blocks, "Release pack")
+
+
+def _blocks_pdf(title: str, blocks: list[tuple], doc_title: str = "") -> bytes:
+    """Blocks (h1 / h / p / table) to a PDF: Indic fonts through indicpdf when they are installed, else plain ReportLab."""
     from .. import indicpdf
-    pdf = indicpdf.blocks_pdf(f"{sh.get('title')} release", blocks)
+    pdf = indicpdf.blocks_pdf(title, blocks)
     if pdf:
         return pdf
     from reportlab.lib import colors
@@ -1344,7 +1469,7 @@ def release_pdf(tenant: str, ref: str, sh: dict) -> bytes:
             story.append(t)
         story.append(Spacer(1, 6))
     bio = io.BytesIO()
-    SimpleDocTemplate(bio, pagesize=A4, title="Release pack", leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36).build(story)
+    SimpleDocTemplate(bio, pagesize=A4, title=doc_title or title, leftMargin=36, rightMargin=36, topMargin=36, bottomMargin=36).build(story)
     return bio.getvalue()
 
 

@@ -20402,3 +20402,30 @@ FIXED in `server/app/agent/santosh.py`:
 Tests: NEW `test_v0558_sahi_kamra.py` (3); routing / goal / routine / admission suites 204 passed; the 4 reds
 (test_v091 x3 - a stale fake `think()` signature - and test_v0311 hello-size) are red on the committed tree too.
 NOT VERIFIED live: the next morning routine on the VPS is the first real one with the smaller tool set.
+
+## FILM DESK PRODUCTION LAYER (unreleased, branch claude/youthful-bell-8grvr4; owner: "READ THIS PLAN START WORK FOR HOOLA AI EMPLOYEE FOR THIS INDUSTRY")
+
+The plan is `docs/research/film_industry/00_INDEX.md` (122 candidate AI Employees, 12 fields). Reading the code first showed Hoola already HAS a film
+desk (`server/app/filmdesk/`, tool `film_desk`/`film_desk_dekho`, employee `film_producer`): script -> breakdown -> shots -> studio storyboard,
+consent register, rights register, release checklist, cards. What it lacked was the traditional PRODUCER ADMIN layer (register Wave 1:
+#13 line-producer budget, #24-27 breakdown/schedule/day-out-of-days/call sheet). Built on the existing desk, nothing replaced:
+
+- NEW `filmdesk/production.py` (pure, deterministic, no model/network/DB): `build_schedule` (one day-or-night bucket per shoot day, same place together,
+  places in order of first appearance, day closes at `day_hours`, over-long scene flagged, optional dates skipping weekly days off / blocked dates,
+  a day moves to a later date when its cast is unavailable and is listed as unscheduled rather than dropped), `day_out_of_days` (SW/W/WF/SWF/H grid,
+  hold days shown NOT priced), `call_sheet` (unit call, per-cast calls; every unknown address/contact/hospital stays a `[blank]`, weather/sunrise
+  never invented), `budget_from_rates` (quantities from the schedule, rupees ONLY from her rate card; a head with no rate is listed missing and left
+  out of the total; contingency only when she gives a percent; bad/negative rates ignored).
+- Every guessed number (day hours, set-up hours, hours per screen minute, call time) comes back as `assumptions` with `assumed: true`.
+- Service (`filmdesk/service.py`): `plan_schedule`, `plan_view`, `plan_callsheet` (text + PDF into her chat via the existing `_store`), `plan_budget`
+  (OWNER ONLY, rates merge with earlier ones, a new schedule makes the old budget stale). New nullable column `filmdesk_projects.plan` (old rows NULL
+  work, tested). `release_pdf`'s ReportLab fallback was lifted into `_blocks_pdf` so the call sheet reuses it (the Indic fonts are optional).
+- Tool: `film_desk` gains actions `schedule`, `callsheet`, `budget_plan` (budget_plan in `_OWNER_ONLY`); `film_desk_dekho` gains `schedule | dood |
+  plan_budget | callsheet`. No new tool, so the registry count and the voice budget are unchanged. Sending a call sheet to the cast stays the existing
+  `message` CARD (her tap); nothing is sent or paid by this layer.
+- Tests: NEW `server/tests/test_film_production_layer.py` (11) + the existing film desk suites (test_kala_filmdesk, test_v476_avatar_films) green:
+  36 passed, 1 skipped.
+- NOT DONE (said plainly): version ritual (APP_VERSION/pubspec/pins are untouched on purpose - this is on the designated branch, not shipped to main); no
+  console or phone screen for the schedule yet (tool + API-free); Wave 2/3 of the register (script coverage, previs, consent registry as a shared
+  foundation for generative employees, dubbing/subtitle project manager, sales/festival) are the next steps. NOT VERIFIED: no live run; the default
+  hours-per-day assumptions are placeholders until a real 1st AD's numbers replace them.
