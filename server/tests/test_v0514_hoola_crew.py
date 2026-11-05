@@ -483,7 +483,7 @@ def test_cr_files_and_lane_counts():
     cr = skill_packs.cr_files()
     assert len(cr) == 1 and cr[0].stem == "cr-crew-plays"
     seed_dir = Path(skill_packs.SEED_DIR)
-    assert len(list(seed_dir.glob("*.md"))) == 72      # 11+31+2+15+3+2+1+2+1+2+2, ELEVEN lanes (th- v0.547, ed- v0.548)
+    assert len(list(seed_dir.glob("*.md"))) == 99      # 11+31+2+15+3+2+1+2+1+2+2+27, TWENTY-NINE lanes (th- v0.547, ed- v0.548, the 18 omni families v0.561)
 
 
 def test_seed_crewpack_reaches_a_tenant_already_seeded(desk):
@@ -564,8 +564,8 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.560.0"
+    assert main_mod.APP_VERSION == "0.561.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     assert "HOOLA CREW" in story and "crewAI" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.560.0+583" in pub
+    assert "version: 0.561.0+584" in pub

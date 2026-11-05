@@ -101,7 +101,7 @@ def test_desk_route_returns_all_four_lanes(desk):
     assert got.status_code == 200
     names = [s["name"] for s in got.json()["skills"]]
     from app.coder import skill_packs
-    assert len(names) == 59 + len(skill_packs.fe_files()) + len(skill_packs.cs_files()) + len(skill_packs.mg_files()) + len(skill_packs.bd_files()) + len(skill_packs.cr_files()) + len(skill_packs.th_files()) + len(skill_packs.ed_files()) + len(skill_packs.claude_dirs())   # 11 starters + 31 byox + 15 sp + 2 prog + 3 fe + 2 cs + 1 mg + 2 bd + 1 cr (v0.514) + the Claude pack
+    assert len(names) == len(skill_packs.all_seed_files()) + len(skill_packs.claude_dirs())   # 11 starters + 31 byox + 15 sp + 2 prog + 3 fe + 2 cs + 1 mg + 2 bd + 1 cr (v0.514) + the 18 omni families (v0.561) + the Claude pack
     assert len([n for n in names if n.startswith("sp-")]) == 15
     assert len([n for n in names if n.startswith("byox-")]) == 31
 
@@ -136,4 +136,4 @@ def test_seeds_carry_upstream_words_not_the_scripts():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.560.0"
+    assert APP_VERSION == "0.561.0"

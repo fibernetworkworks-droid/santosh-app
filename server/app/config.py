@@ -603,6 +603,26 @@ class Settings(BaseSettings):
 
     # --- EDITORS PACK (v0.548): the VS Code cockpit + the Neovim cockpit - drive Hoola from inside the IDE ---
     edpack_enabled: bool = True            # the ed- seed (the awesome Editors read) seeds on first open under its own stamp (default ON)
+    # --- OMNI PACK (v0.561): the 18 awesome-list lanes, each its own once-ever stamp ---
+    gapack_enabled: bool = True       # the ga- seed (the awesome Gaming read) seeds on first open under its own stamp (default ON)
+    devpack_enabled: bool = True      # the de- seed (the awesome Dev-Environment read) seeds on first open under its own stamp (default ON)
+    enpack_enabled: bool = True       # the en- seed (the awesome Entertainment read) seeds on first open under its own stamp (default ON)
+    dbpack_enabled: bool = True       # the db- seed (the awesome Databases read) seeds on first open under its own stamp (default ON)
+    mepack_enabled: bool = True       # the me- seed (the awesome Media read) seeds on first open under its own stamp (default ON)
+    lepack_enabled: bool = True       # the le- seed (the awesome Learn read) seeds on first open under its own stamp (default ON)
+    secpack_enabled: bool = True      # the se- seed (the awesome Security read) seeds on first open under its own stamp (default ON)
+    cmpack_enabled: bool = True       # the cm- seed (the awesome CMS read) seeds on first open under its own stamp (default ON)
+    hapack_enabled: bool = True       # the ha- seed (the awesome Hardware read) seeds on first open under its own stamp (default ON)
+    bupack_enabled: bool = True       # the bu- seed (the awesome Business read) seeds on first open under its own stamp (default ON)
+    wopack_enabled: bool = True       # the wo- seed (the awesome Work read) seeds on first open under its own stamp (default ON)
+    nepack_enabled: bool = True       # the ne- seed (the awesome Networking read) seeds on first open under its own stamp (default ON)
+    dcpack_enabled: bool = True       # the dc- seed (the Decentralized stance: Tor/privacy only) seeds on first open under its own stamp (default ON)
+    hspack_enabled: bool = True       # the hs- seed (the awesome Health read, non-core) seeds on first open under its own stamp (default ON)
+    evpack_enabled: bool = True       # the ev- seed (the awesome Events read) seeds on first open under its own stamp (default ON)
+    tepack_enabled: bool = True       # the te- seed (the awesome Testing read) seeds on first open under its own stamp (default ON)
+    mipack_enabled: bool = True       # the mi- seed (the awesome Miscellaneous read) seeds on first open under its own stamp (default ON)
+    repack_enabled: bool = True       # the re- seed (the awesome Related read) seeds on first open under its own stamp (default ON)
+
 
     # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
     aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
