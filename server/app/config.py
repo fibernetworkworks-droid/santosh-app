@@ -595,6 +595,9 @@ class Settings(BaseSettings):
     # --- THEORY PACK (v0.547): the vision-lane syllabus + the agent-architecture research loop ---
     thpack_enabled: bool = True            # the th- seed (the awesome Theory read) seeds on first open under its own stamp (default ON)
 
+    # --- EDITORS PACK (v0.548): the VS Code cockpit + the Neovim cockpit - drive Hoola from inside the IDE ---
+    edpack_enabled: bool = True            # the ed- seed (the awesome Editors read) seeds on first open under its own stamp (default ON)
+
     # --- Hoola AEP trace (v0.520): the LangSmith layer self-hosted - tracers, run trees, astream_events ---
     aep_trace: bool = False                # run persistence (vault rows typed 'aep_run') + the /api/aep/runs explorer - bake, then flip
     aep_trace_redact: bool = True          # redaction before storage (strip_private + redact_secrets); a test seam, prod keeps True

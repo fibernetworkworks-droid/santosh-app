@@ -50,6 +50,7 @@ MG_STAMP = "skills:magicpack:{}"        # its OWN once-ever stamp (the v0.492 pa
 BD_STAMP = "skills:bdpack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the Big Data pack, same once-ever law
 CR_STAMP = "skills:crewpack:{}"         # its OWN once-ever stamp (the v0.492 pattern): the crewAI pack, same once-ever law
 TH_STAMP = "skills:thpack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the Theory pack, same once-ever law
+ED_STAMP = "skills:edpack:{}"           # its OWN once-ever stamp (the v0.492 pattern): the Editors pack, same once-ever law
 
 
 # ---------------------------------------------------------------- helpers
@@ -111,7 +112,7 @@ def seed_files() -> list[Path]:
     """The shipped starter library (SKILL.md files beside this module)."""
     try:
         return sorted(f for f in SEED_DIR.glob("*.md")
-                      if not f.name.startswith(("byox-", "prog-", "sp-", "fe-", "cs-", "mg-", "bd-", "cr-", "th-")))
+                      if not f.name.startswith(("byox-", "prog-", "sp-", "fe-", "cs-", "mg-", "bd-", "cr-", "th-", "ed-")))
     except Exception:
         return []
 
@@ -192,6 +193,17 @@ def th_files() -> list[Path]:
     ledger, adopt)."""
     try:
         return sorted(SEED_DIR.glob("th-*.md"))
+    except Exception:
+        return []
+
+
+def ed_files() -> list[Path]:
+    """The Editors pack (the awesome Editors read, v0.548): the VS Code cockpit
+    (palette first, ax tree, never pixels) + the Neovim cockpit (modal grammar,
+    buffers, key lane) - drive Hoola from inside the IDE, editors are already
+    semantically controllable via ax_*."""
+    try:
+        return sorted(SEED_DIR.glob("ed-*.md"))
     except Exception:
         return []
 
@@ -595,6 +607,45 @@ def seed_thpack(tenant: str) -> dict:
     if wrote:
         log.info("th seed: %d skills into %s", wrote, tenant)
     return {"th_seeded": wrote}
+
+
+def seed_edpack(tenant: str) -> dict:
+    """Copy the Editors pack into a tenant once ever, create-if-missing (the seed_thpack twin).
+    Its own stamp: tenants that already consumed seed AND byox AND prog AND sp AND fe AND cs
+    AND mg AND bd AND cr AND th still get this pack."""
+    try:
+        from ..config import get_settings
+        if not getattr(get_settings(), "edpack_enabled", True):
+            return {"ed_seeded": 0}
+    except Exception:
+        return {"ed_seeded": 0}
+    if not _seed_armed():
+        return {"ed_seeded": 0}
+    stamp = ED_STAMP.format(str(tenant or "default"))
+    try:
+        store.ensure()
+        if store.is_consumed(stamp):
+            return {"ed_seeded": 0}
+    except Exception:
+        return {"ed_seeded": 0}
+    wrote = 0
+    for f in ed_files():
+        try:
+            name, desc, body = parse_skill(f.read_text(encoding="utf-8"))
+            skills_store.create(tenant, name or f.stem, desc, body)
+            store.skill_use_mark(tenant, name or f.stem, "installed", surface="seed")
+            wrote += 1
+        except SkillError:
+            continue
+        except Exception:
+            log.exception("ed seed of %s failed for %s", f.name, tenant)
+    try:
+        store.mark_consumed(stamp)
+    except Exception:
+        pass
+    if wrote:
+        log.info("ed seed: %d skills into %s", wrote, tenant)
+    return {"ed_seeded": wrote}
 
 
 def _pack_seeders() -> list:

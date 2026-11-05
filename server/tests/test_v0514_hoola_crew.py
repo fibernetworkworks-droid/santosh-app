@@ -351,7 +351,7 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "crew_run" in tools.HANDLERS and "crew_run" in tools.TOOL_LABELS
     assert any(t["name"] == "crew_run" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 568, ("541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) "
+    assert len(tools.TOOLS) == 569, ("541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) "
                                      "+ 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main)")
 
 
@@ -483,7 +483,7 @@ def test_cr_files_and_lane_counts():
     cr = skill_packs.cr_files()
     assert len(cr) == 1 and cr[0].stem == "cr-crew-plays"
     seed_dir = Path(skill_packs.SEED_DIR)
-    assert len(list(seed_dir.glob("*.md"))) == 68       # 11+31+2+15+3+2+1+2+1, NINE lanes
+    assert len(list(seed_dir.glob("*.md"))) == 72      # 11+31+2+15+3+2+1+2+1+2+2, ELEVEN lanes (th- v0.547, ed- v0.548)
 
 
 def test_seed_crewpack_reaches_a_tenant_already_seeded(desk):
@@ -564,8 +564,8 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.547.0"
+    assert main_mod.APP_VERSION == "0.548.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     assert "HOOLA CREW" in story and "crewAI" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.547.0+570" in pub
+    assert "version: 0.548.0+571" in pub

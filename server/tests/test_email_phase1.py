@@ -341,4 +341,4 @@ def test_gmail_drafts_needs_id(bz, gbox):  # noqa: F811
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.547.0"
+    assert APP_VERSION == "0.548.0"
