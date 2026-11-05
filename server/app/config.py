@@ -360,6 +360,9 @@ class Settings(BaseSettings):
     app_model: str = "claude-opus-5-5"     # v0.140 App Sahayak: EVERY design / screen / fix / change / Kotlin call (owner: Opus 5.5)
     app_model_fallback: bool = False       # v0.140 true = when Opus can't be reached, use the chat model / cheap brain instead
     app_model_tries: int = 5               # v0.140 tries per call when Opus is busy (429 / 5xx / overloaded / timeouts)
+    engine_thinking: str = "adaptive"      # v0.560 EK DARWAZA: adaptive | off for every specialist engine through agent/door.py
+    cad_model: str = "claude-opus-5-5"      # v0.560 CAD engine's model (was written into engineering/ai.py)
+    motion_model: str = ""                 # v0.560 Hoola Motion's HTML plans ('' = anthropic_model, as before)
     app_thinking: str = "adaptive"         # v0.140 adaptive | off: Opus thinks before it designs (Claude decides how much)
     app_effort: str = "high"               # v0.140 effort for screens / Kotlin (low | medium | high | xhigh | max)
     app_art_effort: str = "xhigh"          # v0.140 effort for the art direction of each look
@@ -661,7 +664,7 @@ class Settings(BaseSettings):
     motion_dir: str = "./data/motion"         # Hoola Motion MP4s (kept until the owner deletes them)
     motion_keep: int = 60                      # newest videos kept per owner
     reels_gemini_model: str = ""          # Hoola Reels: understands shared reels ("" = youtube_gemini_model)
-    youtube_gemini_model: str = "gemini-2.5-flash"   # watches public YouTube videos to summarise / answer (official Gemini API)
+    youtube_gemini_model: str = "gemini-flash-latest"   # v0.560 Google's alias for its newest Flash (was 2.5); usage.install falls back to gemini-2.5-flash if it is refused   # watches public YouTube videos to summarise / answer (official Gemini API)
     hivision_url: str = ""                 # v0.51 e.g. http://127.0.0.1:8085 (docker linzeyi/hivision_idphotos): ID photos
     gotenberg_url: str = ""                # v0.49 e.g. http://127.0.0.1:3005 (docker gotenberg): Office files get page-1 previews
     hoola_enrich: bool = True              # avatars look at what arrives (vision / video) and suggest replies

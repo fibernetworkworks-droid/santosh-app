@@ -23,7 +23,7 @@ def _client():
     global _CLIENT
     if _CLIENT is None:
         from anthropic import Anthropic
-        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=240, max_retries=2)
+        _CLIENT = Anthropic(api_key=get_settings().anthropic_api_key, timeout=600, max_retries=2)   # v0.560 thinking needs room
     return _CLIENT
 
 
@@ -40,15 +40,12 @@ def ask(system: str, prompt: str, images: list[bytes] | None = None, max_tokens:
     content: list[dict[str, Any]] = [_img_block(b) for b in (images or [])[:4]] + [{"type": "text", "text": prompt}]
     if st.anthropic_api_key:
         last: Exception | None = None
-        budget = int(os.environ.get("ENG_THINK_TOKENS", "8000") or 0)
-        for model in dict.fromkeys(["claude-opus-5-5", st.anthropic_model]):
+        from ..agent import door   # v0.560 EK DARWAZA: adaptive thinking + effort (the fixed thinking budget is deprecated)
+        for model in dict.fromkeys([door.model_for("cad_model"), st.anthropic_model]):
             for attempt in range(2):
-                kw: dict[str, Any] = {}
-                if think and budget and attempt == 0:
-                    kw = {"thinking": {"type": "enabled", "budget_tokens": budget}}
                 try:
-                    msg = _client().messages.create(model=model, max_tokens=max_tokens + (budget if kw else 0),
-                                                    system=system, messages=[{"role": "user", "content": content}], **kw)
+                    msg = door.create(_client(), door.shape("cad" if think else "cad_look", model, max_tokens, system,
+                                                            [{"role": "user", "content": content}]))
                     return "".join(getattr(b, "text", "") for b in msg.content if getattr(b, "type", "text") == "text")
                 except Exception as e:
                     last = e

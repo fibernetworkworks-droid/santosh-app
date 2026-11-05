@@ -46,16 +46,22 @@ CORE_FAMILIES = frozenset({
     "google",     # google_status (the one-line Google fix)
     "make",       # memory_search + make_document + photo_clean / id_photo
     "life",       # reminders, alarms, lists, profile, weather
-    "maps",       # places / directions
+    # v0.559 "maps" left the core: the family grew to 20 tools over the Maps phases and rode on every "namaste";
+    # her map words open the whole family, and CORE_TOOLS below keeps the two everyday ones always in view
     "file",       # file_read (attachments in chat)
     "id",         # Pehchaan Locker
     "usage",      # ai_kharcha
     "device",     # phone_health
     "docstudio",  # v0.245 doc_studio / doc_preview: a document ask in any words finds the design studio
     "data",       # v0.238 data_fetch / data_read: big data stays in a server file (never escape to the cloud PC)
-    "team",       # v0.193 deploy_agents / agent_status / session_log - the agent team is a first-class tool now
+    # v0.559 "team" left the core too: a BIG ask (several things to make) or her team words open it (plan_for)
     "recall",     # v0.250 haal_ki_chats: her other chats by time (one tiny spec, like Claude's recent-chats tool)
 })
+# v0.559 SAHI GINTI: single tools that stay in view on every turn even though their family is not core - the
+# everyday ones of a family that is otherwise only opened by her words. Anthropic's guidance: tool choice gets worse
+# past 30-50 tools in view; a plain "namaste" carried 75 before this, ~52 after.
+CORE_TOOLS = frozenset({"maps_search", "maps_directions"})
+_LATLNG = re.compile(r"(?<![\d.])-?\d{1,2}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}")
 
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
 # auto-keys below - this map carries the natural language the names cannot cover.
@@ -269,7 +275,16 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "askform": ("ask form", "sawaal form"),
     "a2a": ("a2a",),
     "desk2": ("desk",),
-    "team": ("agents", "agent lagao", "agent banao", "team banao", "team laga", "crew", "deploy",
+    # v0.559 maps left the core, so her place words must open it (before, it rode on every turn and needed none)
+    "maps": ("paas mein", "paas me", "aas paas", "aaspaas", "nazdeek", "najdeek", "kahan hai", "kaha hai", "kahaan hai",
+             "rasta", "raasta", "route", "direction", "map", "location", "kitni door", "kitna door", "kitne km",
+             "km door", "distance", "near me", "nearby", "petrol pump", "pahunchna", "pahuchna", "kaise jaun",
+             "kaise jaaun", "kaise pahunch", "google maps", "kaun si jagah", "jagah batao", "dukaan kahan",
+             "shop near", "my maps", "business profile", "listing", "ghar ke paas", "yahan ke paas",
+             "office ke paas", "dukaan ke paas", "ke aas paas", "sabse paas", "doori", "km ke andar", "km tak",
+             "jagah", "jagahen", "kram mein", "gps", "pins", "pin kiya", "dukaan tak", "google se kitne",
+             "maps ka", "maps par", "maps pe", "delivery kis kram"),
+    "team": ("agents", "agent lagao", "agent banao", "team banao", "team bana", "agent team", "team laga", "crew", "deploy",
              "parallel", "kai agents", "multiple agents", "agents lagao", "madadgar dal", "team se karo"),
     # v0.479 HOOLA SMART HOME: ghar ke devices (Home Assistant). Fridge / geyser words bhi yahin
     # admit hote hain TAAKI Hoola politely refuse kar sake (read-only guard app/home.py mein).
@@ -589,6 +604,7 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     if not getattr(settings, "agent_tool_admission", True):
         return None
     adm = AdmitSet(settings)
+    adm.extra.update(n for n in CORE_TOOLS if n in HANDLERS)     # v0.559 the everyday tools of non-core families
     why = route(text, settings)
     if extra_text:
         for f, w in route(extra_text, settings).items():
@@ -596,6 +612,17 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     if why:
         adm.admit_families(why)
         adm.why = why
+    if "maps" in set(FAMILY_OF.values()) and "maps" not in adm.families and _LATLNG.search(text or ""):
+        adm.admit_families(["maps"])            # v0.559 a latitude, longitude pair in her words is a maps ask
+        adm.why = {**adm.why, "maps": "coordinates"}
+    try:                            # v0.559 a big ask (several things to make) brings the agent team into view
+        from . import goal as _goal
+        if "team" in set(FAMILY_OF.values()) and "team" not in adm.families and \
+                (_goal.looks_big(text) or _goal.looks_big(extra_text or "")):
+            adm.admit_families(["team"])
+            adm.why = {**adm.why, "team": "big ask"}
+    except Exception:               # noqa: BLE001 - routing never fails a turn
+        pass
     if calc_needed(text, why):
         adm.extra.add("pylab")          # v0.430 SOCH KE JAWAB 3: every worked-out number comes from real code
         adm.why = {**adm.why, "pylab": "calculation"}
@@ -604,6 +631,9 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
         if "research" in set(FAMILY_OF.values()) and (_hard.research_wanted(text) or "research_status" in str(text) or "research_watch" in str(text)):
             adm.admit_families(["research"])
             adm.why = {**adm.why, "research": "research ask"}
+            if "team" in set(FAMILY_OF.values()):     # v0.559 team left the core: deep research still gets its crew
+                adm.admit_families(["team"])
+                adm.why.setdefault("team", "research ask")
     except Exception:               # noqa: BLE001 - routing never fails a turn
         pass
     STATS["turns"] += 1
