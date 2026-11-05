@@ -43,8 +43,10 @@ async def _buyer(c, api: str, i: int, slug: str, out: dict[str, Any]) -> None:
     tries = 2 if i % RETRY_EVERY == 0 else 1
 
     async def one():
+        t0 = time.perf_counter()
         try:
             r = await c.post(api + "/order", json=body, headers=hdr)
+            out["otimes"].append(time.perf_counter() - t0)
             return r.status_code, (r.json() if r.headers.get("content-type", "").startswith("application/json") else {})
         except Exception as e:                               # noqa: BLE001 - named, so the report says WHY
             out["errors"][type(e).__name__] = out["errors"].get(type(e).__name__, 0) + 1
@@ -73,7 +75,7 @@ async def run(page_base: str, api: str, item_paths: list[str], buy: list[str], h
               pages_each: int = 3, buyers: int = 500, hot_share: float = 0.4, concurrency: int = 200) -> dict[str, Any]:
     import httpx
     limits = httpx.Limits(max_connections=concurrency, max_keepalive_connections=concurrency)
-    out: dict[str, Any] = {"codes": {}, "ok": {}, "retried": 0, "again": 0, "errors": {}}
+    out: dict[str, Any] = {"codes": {}, "ok": {}, "retried": 0, "again": 0, "errors": {}, "otimes": []}
     vcodes: dict[int, int] = {}
     times: list[float] = []
     sem = asyncio.Semaphore(concurrency)
@@ -91,9 +93,12 @@ async def run(page_base: str, api: str, item_paths: list[str], buy: list[str], h
         await asyncio.gather(*jobs)
     took = time.perf_counter() - t0
     times.sort()
+    ot = sorted(out["otimes"])
+    opct = lambda q: round(ot[min(len(ot) - 1, int(q * len(ot)))] * 1000) if ot else 0  # noqa: E731
     pct = lambda q: round(times[min(len(times) - 1, int(q * len(times)))] * 1000) if times else 0  # noqa: E731
     return {"seconds": round(took, 1), "visitors": visitors, "page_views": len(times), "page_codes": vcodes,
             "page_p50_ms": pct(0.5), "page_p95_ms": pct(0.95), "buyers": buyers, "retried": out["retried"],
+            "order_p50_ms": opct(0.5), "order_p95_ms": opct(0.95), "order_max_ms": opct(1.0),
             "order_codes": out["codes"], "no_answer": out["errors"], "tapped_again": out["again"], "accepted": {k: sorted(v) for k, v in out["ok"].items()}}
 
 

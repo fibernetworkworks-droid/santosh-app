@@ -341,8 +341,9 @@ def test_marketplace_load_proof_four_workers(site_env, monkeypatch, tmp_path):
     class Q(http.server.SimpleHTTPRequestHandler):
         def log_message(self, *a):
             pass
-    socketserver.ThreadingTCPServer.allow_reuse_address = True
-    static = socketserver.ThreadingTCPServer(("127.0.0.1", 0), lambda *a, **k: Q(*a, directory=str(out), **k))
+    class Static(socketserver.ThreadingTCPServer):      # the test's stand-in for Caddy / nginx (Python's default queue is 5)
+        allow_reuse_address, daemon_threads, request_queue_size = True, True, 1024
+    static = Static(("127.0.0.1", 0), lambda *a, **k: Q(*a, directory=str(out), **k))
     threading.Thread(target=static.serve_forever, daemon=True).start()
     s_ = socket.socket()
     s_.bind(("127.0.0.1", 0))
@@ -377,3 +378,4 @@ def test_marketplace_load_proof_four_workers(site_env, monkeypatch, tmp_path):
     hot_orders = sum(1 for nums in res["accepted"].values() if nums) and v["orders"]
     assert hot_orders and next(x for x in SH.products(sid) if x["slug"] == hot)["stock"] == 0     # the hot one sold out exactly
     assert v["orders"] == v["accepted"] and v["sold_out_refusals"] > 0
+    assert not res["no_answer"], res["no_answer"]                     # every checkout answered (none timed out)

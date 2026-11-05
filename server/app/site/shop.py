@@ -90,6 +90,13 @@ class SiteShopOrder(Base):
     cid: Mapped[str | None] = mapped_column(String(40), nullable=True)         # v0.538 the checkout's own id: a retry = the same order
 
 
+class SiteShopCounter(Base):
+    """v0.542 the shop's next order number, handed out in ONE atomic step (count + 1 made every checkout of a crowd collide)."""
+    __tablename__ = "site_shop_counter"
+    site_id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    n: Mapped[int] = mapped_column(Integer, default=0)
+
+
 _TABLES_OK = False
 
 
@@ -102,6 +109,7 @@ def ensure_tables() -> None:
     if eng is not None:
         SiteShopProduct.__table__.create(eng, checkfirst=True)
         SiteShopOrder.__table__.create(eng, checkfirst=True)
+        SiteShopCounter.__table__.create(eng, checkfirst=True)
         try:                                            # v0.446 discount / coupon / pay_id on older databases
             _db._add_missing_columns(eng)
         except Exception:                               # noqa: BLE001
@@ -252,8 +260,33 @@ def _rate(key: str, n: int, per: int) -> None:
 
 
 def _number(s, site_id: str, attempt: int = 0) -> str:
+    """Fallback only (the unique index fired after the counter's number): count + 1 + attempt inside the open checkout."""
     n = s.scalar(select(func.count()).select_from(SiteShopOrder).where(SiteShopOrder.site_id == site_id)) or 0
     return f"O-{1001 + n + attempt}"
+
+
+def next_number(site_id: str) -> str:
+    """The next order number from the shop's counter, in its OWN short transaction, taken BEFORE the checkout writes
+    anything (on SQLite a second writer inside an open write would wait on itself). Committed at once, so no other
+    checkout waits on this one and two never get the same number; a number a refused checkout took is simply not used
+    - an order number is not a tax invoice number (those have their own gap-free series). The unique index
+    (site_id, number) stays as the last guard."""
+    ensure_tables()
+    from sqlalchemy.exc import IntegrityError
+    for _ in range(5):
+        try:
+            with session() as c:
+                got = c.execute(update(SiteShopCounter).where(SiteShopCounter.site_id == site_id)
+                                .values(n=SiteShopCounter.n + 1).returning(SiteShopCounter.n)).scalar()
+                if got is None:                       # the shop's first order since v0.542: start after what it already has
+                    have = c.scalar(select(func.count()).select_from(SiteShopOrder).where(SiteShopOrder.site_id == site_id)) or 0
+                    c.add(SiteShopCounter(site_id=site_id, n=have + 1))
+                    c.flush()
+                    got = have + 1
+            return f"O-{1000 + got}"
+        except IntegrityError:                         # two first orders created the counter at once: read it again
+            continue
+    return ""
 
 
 def _st():
@@ -344,6 +377,7 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
             want[sg] = min(MAX_QTY, want.get(sg, 0) + q)
     if not want:
         raise ShopError("Cart khaali hai.")
+    first_number = next_number(site_id)            # v0.542 before this checkout writes anything (one atomic step)
     with session() as s:
         prods = {p.slug: p for p in s.scalars(select(SiteShopProduct).where(
             SiteShopProduct.site_id == site_id, SiteShopProduct.slug.in_(list(want)), SiteShopProduct.active == 1)).all()}
@@ -385,7 +419,7 @@ def _place(site_id: str, tenant_id: str, cfg: dict[str, Any], body: dict[str, An
                           history=json.dumps([{"at": _iso(), "to": "new"}] + ([{"at": _iso(), "note": cnote}] if cnote else [])))
         from sqlalchemy.exc import IntegrityError
         for attempt in range(60):                     # v0.538 two checkouts at once never share an order number
-            o.number = _number(s, site_id, attempt)
+            o.number = first_number if attempt == 0 and first_number else _number(s, site_id, attempt)
             try:
                 with s.begin_nested():
                     s.add(o)
