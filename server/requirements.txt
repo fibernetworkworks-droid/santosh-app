@@ -61,3 +61,4 @@ tree-sitter>=0.23
 tree-sitter-c-sharp>=0.23
 tree-sitter-cpp>=0.23
 scrapling[fetchers,rag]>=0.5   # v0.474 scrape tools: fast HTTP fetcher + structured/adaptive extraction (BSD-3-Clause; stealth browser is optional: `scrapling install`)
+jsonschema>=4.0   # v0.571 tool schemas checked against draft 2020-12 before they ride a Claude call

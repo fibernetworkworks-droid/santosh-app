@@ -806,6 +806,71 @@ class CBimTakeoff(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+# ---------------------------------- #25 as-built set + #109 digital twin (C11, Wave 3.5, v0.565.0)
+class CBimAsbuilt(Base):
+    """The as-built SET register (#25): one handover set with its required document codes as SHE
+    listed them - completeness is arithmetic on HER list; the set's approval is the site architect's
+    (tier C)."""
+    __tablename__ = "cbim_asbuilts"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cba"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    name: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CBimAsbuiltDoc(Base):
+    """One document of the as-built set: the required code, HER status word (pending | received | na),
+    and the NAME of whoever said it (a received/na without a name is nobody's word)."""
+    __tablename__ = "cbim_asbuilt_docs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cbad"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    set_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    code: Mapped[str] = mapped_column(String(80), default="")
+    title: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(16), default="pending", index=True)  # pending | received | na
+    by: Mapped[str] = mapped_column(String(120), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CTwinAsset(Base):
+    """Digital-twin asset row (#109): the DATA LINK asset_id -> IFC GUID (+ model), the name and the
+    space as fed - the twin is a register Hoola keeps, never a live 3D view."""
+    __tablename__ = "ctwin_assets"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cta"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    asset_id: Mapped[str] = mapped_column(String(80), index=True, default="")
+    guid: Mapped[str] = mapped_column(String(40), default="")             # the IFC GlobalId it maps to
+    model_id: Mapped[str] = mapped_column(String(40), default="")
+    name: Mapped[str] = mapped_column(String(200), default="")
+    kind: Mapped[str] = mapped_column(String(60), default="")             # chiller / lift / pump / ...
+    space: Mapped[str] = mapped_column(String(120), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CTwinReading(Base):
+    """One sensor feed row (#109): HER export as fed (asset, sensor, value, unit); when she feeds a
+    band with its source, out-of-band is flagged - the flag is arithmetic, the act is the FM's."""
+    __tablename__ = "ctwin_readings"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ctr"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    asset_id: Mapped[str] = mapped_column(String(80), index=True, default="")
+    sensor: Mapped[str] = mapped_column(String(80), default="")
+    value: Mapped[float] = mapped_column(Float, default=0.0)
+    unit: Mapped[str] = mapped_column(String(20), default="")
+    band_min: Mapped[float] = mapped_column(Float, default=0.0)
+    band_max: Mapped[float] = mapped_column(Float, default=0.0)
+    band_source: Mapped[str] = mapped_column(String(160), default="")
+    out_band: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 # --------------------------------------------------------- #10-12 Pre-design desk (C12, Wave 3)
 class CpdRule(Base):
     """Pre-design rule rows as DATA: her sourced limits (clause + source REQUIRED) beside the national
@@ -838,6 +903,22 @@ class CpdCalc(Base):
     inputs: Mapped[str] = mapped_column(Text, default="{}")
     result: Mapped[str] = mapped_column(Text, default="{}")
     is_ref: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --------------------------------------------------------- #74 scaffold tags (C12, Wave 3.5)
+class CpdScaffold(Base):
+    """Scaffold inspection TAG register (#74): the competent person's word (name required), the tag
+    state and the next check date - Hoola keeps the register, never the tag itself."""
+    __tablename__ = "cpd_scaffolds"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cpsc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    scaffold_id: Mapped[str] = mapped_column(String(80), index=True, default="")
+    status: Mapped[str] = mapped_column(String(16), default="ok")          # ok | defective | altered
+    checked_by: Mapped[str] = mapped_column(String(120), default="")      # the competent person's NAME
+    next_check: Mapped[str] = mapped_column(String(10), default="")
     note: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
@@ -913,6 +994,40 @@ class CsurCarpetRoom(Base):
     room: Mapped[str] = mapped_column(String(80), default="")
     length_m: Mapped[float] = mapped_column(Float, default=0.0)
     breadth_m: Mapped[float] = mapped_column(Float, default=0.0)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# -------------------------------------------- #27 GIS layers + overlays (C13, Wave 3.5, v0.565.0)
+class CGisLayer(Base):
+    """One GIS layer (#27): GeoJSON read as TEXT for its Polygon/MultiPolygon rings - the CRS is
+    recorded AS FED; areas are computed ONLY in projected metres (a degree has no square metres,
+    and the desk refuses to pretend otherwise)."""
+    __tablename__ = "cgis_layers"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgl"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    name: Mapped[str] = mapped_column(String(160), default="")
+    crs: Mapped[str] = mapped_column(String(80), default="")              # as fed (RFC 7946 default: WGS84)
+    units: Mapped[str] = mapped_column(String(8), default="")             # m | deg - area only when m
+    polygons: Mapped[str] = mapped_column(Text, default="[]")             # [[[x,y],...], ...] outer rings
+    holes: Mapped[int] = mapped_column(Integer, default=0)                # inner rings read, NOT subtracted
+    vertices: Mapped[int] = mapped_column(Integer, default=0)
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CGisOverlay(Base):
+    """One map-layer reading (#27): the flood / seismic / zoning value as READ OFF THE MAP BY A
+    HUMAN, with its source - the map is never interpreted here, the row records her reading."""
+    __tablename__ = "cgis_overlays"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cgo"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    layer_id: Mapped[str] = mapped_column(String(40), default="")
+    hazard: Mapped[str] = mapped_column(String(40), default="")           # flood | seismic | zoning | other
+    zone_value: Mapped[str] = mapped_column(String(160), default="")     # her reading, as text
+    source: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str] = mapped_column(String(200), default="")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 

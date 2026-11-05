@@ -25,11 +25,20 @@ PREDESIGN_TOOLS = [
         "action=mep_water: project, name, occupants -> KLD (CPHEEO pack row). action=mep_hvac: project, name, "
         "area_m2, tr_per_m2, source -> TR. action=fire_check: project, rule_id, declared -> within/breach "
         "(clause cited; faisla fire consultant ka). action=fire_demand: project, name, density_lpm_m2, "
-        "density_source, area_m2, duration_min, hose_add_lpm -> L/min + m3. action=day: desk ka summary."),
+        "density_source, area_m2, duration_min, hose_add_lpm -> L/min + m3. Wave 3.5: action=form_area: "
+        "project, name, rows [kind slab|beam|column|wall, L, B, H, count] -> contact area, geometry AAPKE "
+        "dims se (#74; shuttering DESIGN site engineer ki). action=strike_check: project, element_kind "
+        "vertical|slab_soffit|beam_soffit|props_slab_le4m5|props_beam_le6m|props_slab_gt4m5|props_beam_gt6m, "
+        "cement opc, ambient_c, age_h -> IS 456 Table 10 min (OPC + >15 degC only, warna REFUSE; striking "
+        "ka ORDER site engineer ka, tier C). action=props_check: project, name, declared_kn_m2, "
+        "allowable_kn_m2, source (supplier table) -> within/exceeds. action=scaffold_tag: project, "
+        "scaffold_id, status ok|defective|altered, checked_by (competent person ka NAAM), next_check -> "
+        "tag register (#74, tag competent person lagata hai). action=day: desk ka summary."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["rule_add", "slab_load", "column_load", "column_size",
                                                "beam_depth", "mep_elec", "mep_water", "mep_hvac",
-                                               "fire_check", "fire_demand", "day"]},
+                                               "fire_check", "fire_demand", "form_area", "strike_check",
+                                               "props_check", "scaffold_tag", "day"]},
          "family": {"type": "string"}, "rule_id": {"type": "string"}, "text": {"type": "string"},
          "value": {"type": "number"}, "unit": {"type": "string"}, "direction": {"type": "string"},
          "clause": {"type": "string"}, "source": {"type": "string"}, "checked_on": {"type": "string"},
@@ -44,12 +53,16 @@ PREDESIGN_TOOLS = [
          "occupants": {"type": "number"}, "area_m2": {"type": "number"}, "tr_per_m2": {"type": "number"},
          "declared": {"type": "number"}, "density_lpm_m2": {"type": "number"},
          "density_source": {"type": "string"}, "duration_min": {"type": "number"},
-         "hose_add_lpm": {"type": "number"}},
+         "hose_add_lpm": {"type": "number"}, "rows": {"type": "array", "items": {}},
+         "cement": {"type": "string"}, "ambient_c": {"type": "number"}, "age_h": {"type": "number"},
+         "declared_kn_m2": {"type": "number"}, "allowable_kn_m2": {"type": "number"},
+         "scaffold_id": {"type": "string"}, "checked_by": {"type": "string"}, "next_check": {"type": "string"}},
          "required": ["action"]}},
     {"name": "const_predesign_dekho", "description": (
-        "Read pre-design (nothing changes). what=rules (family optional) | calcs (project/kind optional) | day."),
+        "Read pre-design (nothing changes). what=rules (family optional) | calcs (project/kind optional) | "
+        "scaffolds (project optional) | day."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["rules", "calcs", "day"]},
+         "what": {"type": "string", "enum": ["rules", "calcs", "scaffolds", "day"]},
          "family": {"type": "string"}, "project": {"type": "string"}, "kind": {"type": "string"}},
          "required": ["what"]}},
 ]
@@ -101,6 +114,19 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return P.fire_demand(t, _s(a.get("project")), _s(a.get("name")), a.get("density_lpm_m2"),
                                  a.get("area_m2"), a.get("duration_min"), a.get("hose_add_lpm") or 0.0,
                                  _s(a.get("density_source")))
+        if action == "form_area":
+            return P.form_area(t, _s(a.get("project")), _s(a.get("name")), a.get("rows") or [],
+                               _s(a.get("note")))
+        if action == "strike_check":
+            return P.strike_check(t, _s(a.get("project")), _s(a.get("element_kind")) or _s(a.get("kind")),
+                                  _s(a.get("cement")) or "opc", a.get("ambient_c"), a.get("age_h"))
+        if action == "props_check":
+            return P.props_check(t, _s(a.get("project")), _s(a.get("name")), a.get("declared_kn_m2"),
+                                 a.get("allowable_kn_m2"), _s(a.get("source")), _s(a.get("note")))
+        if action == "scaffold_tag":
+            return P.scaffold_tag(t, _s(a.get("project")), _s(a.get("scaffold_id")), _s(a.get("status")),
+                                  _s(a.get("checked_by")) or _s(a.get("by")), _s(a.get("next_check")),
+                                  _s(a.get("note")))
         if action == "day":
             return P.day(t)
     except (P.CstError, ValueError) as ex:
@@ -113,7 +139,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..construction.common import guard
     from ..db import session
     from sqlalchemy import select
-    from ..construction.models import CpdCalc, CpdRule
+    from ..construction.models import CpdCalc, CpdRule, CpdScaffold
     guard(f"read predesign {what}")
     t = ctx.tenant_id
     try:
@@ -138,6 +164,15 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                 rows = s.scalars(q).all()
             return {"calcs": [{"id": r.id, "project": r.project, "kind": r.kind, "name": r.name,
                                "result": P._j(r.result, {}), "is_ref": r.is_ref[:80]} for r in rows]}
+        if what == "scaffolds":
+            q = select(CpdScaffold).where(CpdScaffold.tenant_id == t)
+            if _s(a.get("project")):
+                q = q.where(CpdScaffold.project == _s(a.get("project")))
+            with session() as s:
+                rows = s.scalars(q).all()
+            return {"scaffolds": [{"id": r.id, "project": r.project, "scaffold_id": r.scaffold_id,
+                                   "status": r.status, "checked_by": r.checked_by, "next_check": r.next_check}
+                                  for r in rows]}
     except (P.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
     raise ToolError("what galat")

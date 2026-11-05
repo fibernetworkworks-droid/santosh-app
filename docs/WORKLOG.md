@@ -1525,3 +1525,37 @@ Work Log:
 Stage Summary:
 - P5 DONE at v0.566.0. Train: P6 RETRIEVE -> P7 HUB -> P8 the parity audit. Deploy = the owner's
   dispatch (healthz should say 0.566.0).
+
+---
+Task ID: 49 — v0.571.0 SAB SCHEMA SAHI hotfix (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: her live hard_card on 0.570 showed every Claude turn 400ing (tools.N.custom.input_schema invalid).
+Work Log:
+- Root cause dhara_save schema (`required` inside `properties`), exposed by v0.565 sending all tools.
+- Fixed the schema, schema_ok filter in toolsearch.build, wider refusal ladder, 2 tests; jsonschema in requirements.
+Stage Summary:
+- v0.571.0 server-only. Deploy NOW = owner's vps-ops deploy, then re-run hard_card.
+---
+Task ID: 27 (GO BUILD P6: HOOLA RETRIEVE - the retrieval layer -> v0.580.0 (built as 0.570.0; the dev chain took 0.570-0.571 while P6 sat built - REBASE PROTOCOL, re-versioned), built, tested 31/31, pushed clean)
+Agent: main (Z.ai)
+Task: Owner directive "P6 RETRIEVE" - Phase 6 of the HOOLA AEP plan (Task 22/37): the langchain retrieval feature surface hand-built as house code (vectors IN SCOPE per the 100% directive).
+Work Log:
+- Grounding re-established after compaction: repo /home/z/my-project/santosh-app (hoola-201 is a stale v202 worktree, untouched), P1-P5 verified on main at ec24fc08b (v0.566.0); synced to origin (v0.569.0 SPEC SUTRA, registry 581, pubspec 0.569.0+592) - the dev took 0.567-0.569 while P6 sat unbuilt, no collision this round (clean fast-forward, P6 built ON TOP of their tree).
+- Upstream re-read at the pinned SHA aa2528fb980a290d2b06c83a1be43e60bc2348f9 (shallow fetch-by-SHA to /tmp/upstream/lc): vectorstores/base.py 1111 lines + in_memory.py 546 + utils.py (the MMR), embeddings/ 78+129, indexing/ base 661 + api 954 + in_memory 104, retrievers.py 328, text-splitters base.py + character.py.
+- Built server/app/aep/retrieve.py (~1.6k LOC, ZERO upstream): Document; Embeddings + DeterministicEmbeddings (sha256-seeded unit vectors, byte-stable, numpy-free); maximal_marginal_relevance pure-python; VectorStore ABC (the honest defaults + search dispatch + the [0,1] relevance contract + score_threshold + as_retriever + a-twins); SqliteVectorStore (the sqlite-first ANN: stdlib sqlite3 WAL, exactly one of path=/engine= the vault engine seam riding raw_connection - the P3 SqliteSaver shape, one table aep_vectors(id,doc,vec,ts), exact cosine kNN scan + the metadata-equality filter, MMR over fetch_k, relevance = cosine clamped [0,1], persists across instances); RecordManager + SqliteRecordManager (aep_index_records(uuid,updated_at,group_id), the time_at_least monotonic gate, chunked IN exists, list_keys filters); index()/aindex() (the dedup flow: content+metadata hashed separately then combined, key_encoder sha1|sha256|sha512|blake2b default sha256, in-order dedup, the store write FIRST the ledger update SECOND, cleanup None|incremental|full|scoped_full, IndexingResult counts, force_update, the delete-override gate); TextSplitter ABC (the _merge_splits overlap pop-loop ported exactly, add_start_index, the per-chunk metadata deep-copy) + CharacterTextSplitter (the lookaround guard) + RecursiveCharacterTextSplitter (the separator ladder, over-cap pieces emitted AS-IS); BaseRetriever (the retriever as a Runnable firing the P2 "retriever" span - RUN_TYPES pre-declared it in P2) + VectorStoreRetriever (search_type similarity|mmr validated, search_kwargs ride every call, add_documents proxy) + Docs7Retriever (docs7 as a source: the same flag/redaction/window/vault-cache gates, the fetch injectable for zero-network tests, the handler imported lazily inside the call - inertness; ok=False = the honest empty list with the raw result on .last_result).
+- P2 seam extension (additive): CallbackManager gained retriever_start/end/error (on_retriever_* fired), RunTreeTracer gained on_retriever_start/_end/_error (Run run_type "retriever"), Span routes the retriever branch - the chain fallback untouched, P2 tests unaffected (verified by sweep).
+- INERTNESS re-proven (fresh interpreter: zero threads/env/files; sqlite opens only on first use; the docs7 import lazy inside the call). Registry stays 581 (library module - no tools/routes/flags). Voice untouched by construction; mem pin untouched; desktop untouched - server-only.
+- Tests: NEW test_v0560_hoola_retrieve.py (31, zero network, tmp sqlite wiped per test, the asyncio one-loop law). Bugs the suite caught: max_marginal_relevance_search_by_vector fed cosine SCORES into the MMR scorer where VECTORS belonged; get_by_ids mis-keyed its parsed rows; chunk_size<=0 lost the overlap-vs-size error race; the source-id assigner raised a raw KeyError on missing metadata instead of the friendly "not assigned a source id" refusal.
+- Version ritual v0.580.0 (the rebase re-run): APP_VERSION story, pubspec 0.580.0+595, CLAUDE.md healed, console stamps 22x, pins swept 0.569.0 -> 0.570.0 / +592 -> +593 across 187 test files, WORKLOG Task 27 + HISTORY.md v0.570.0 section.
+Stage Summary:
+- P6 DONE: the AEP train has its retrieval layer. Train: P7 HUB -> P8 the 100% parity audit. Deploy is the owner's dispatch (server-only: checkout main + cp -r server/app + pm2 restart santosh --update-env; healthz should say 0.570.0).
+
+---
+Task ID: 50 — v0.582.0 SASTI JAANCH (5 Nov 2026)
+Agent: Claude Code (cloud session)
+Task: owner "TESTING IS VERY COSTY" -> "SHIFT TO HAIKU AND TEST ON IT".
+Work Log:
+- quality --model / QUALITY_MODEL moves every Claude setting for the card process; vps-ops *_haiku jobs; status job not red.
+- NEW test_v0582_sasti_jaanch.py (4).
+Stage Summary:
+- v0.582.0 server + workflow only. Owner runs deploy, then tool_card_haiku / hard_card_haiku / long_card_try_haiku.

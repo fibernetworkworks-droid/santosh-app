@@ -23,10 +23,20 @@ SURVEY_TOOLS = [
         "unit_no, wall_policy (AAPKA word, recorded), declared_m2, declared_source -> statement khulti hai. "
         "action=carpet_room: carpet (id), room, length_m, breadth_m. action=carpet_calc: carpet (id), "
         "tolerance_pct (optional; default state pack row) -> computed vs declared, within/exceeds. "
-        "action=carpet_pack: carpet (id) -> discrepancy report PDF, sign line khaali (architect/CE ke liye)."),
+        "action=carpet_pack: carpet (id) -> discrepancy report PDF, sign line khaali (architect/CE ke liye). "
+        "Wave 3.5: action=gis_add: project, name, geojson (GeoJSON text, Polygon/MultiPolygon), crs, units "
+        "m|deg (default deg - RFC 7946; area sirf projected metre CRS par) -> layer (#27, maps fetch/interpret "
+        "NAHI hote). action=gis_area: layer (id), record_m2, record_source, tolerance_pct -> shoelace outer "
+        "rings (deg layers REFUSE). action=gis_overlay: project, layer (id), hazard flood|seismic|zoning|other, "
+        "zone_value (AAPNE map se padhi), source -> reading record. action=setout_add: project, name, "
+        "design_rows [id, x, y(, z)] -> setting-out sheet (#77). action=setout_check: project, job (id), "
+        "aslaid_rows [id, x, y(, z)], tolerance_mm -> plan deviation, RMS, out-of-tolerance. action=level_check: "
+        "project, job (id), obs_rows [id, z_obs], tolerance_mm -> dz sign ke saath (design z sheet points par)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["pts_add", "traverse", "area", "volume", "deviations",
-                                               "carpet_new", "carpet_room", "carpet_calc", "carpet_pack"]},
+                                               "carpet_new", "carpet_room", "carpet_calc", "carpet_pack",
+                                               "gis_add", "gis_area", "gis_overlay", "setout_add",
+                                               "setout_check", "level_check"]},
          "project": {"type": "string"}, "name": {"type": "string"}, "source_kind": {"type": "string"},
          "text": {"type": "string"}, "job": {"type": "string"}, "order": {"type": "array", "items": {"type": "string"}},
          "record_m2": {"type": "number"}, "record_source": {"type": "string"}, "tolerance_pct": {"type": "number"},
@@ -35,13 +45,19 @@ SURVEY_TOOLS = [
          "tolerance_mm": {"type": "number"}, "unit_no": {"type": "string"}, "wall_policy": {"type": "string"},
          "declared_m2": {"type": "number"}, "declared_source": {"type": "string"},
          "carpet": {"type": "string"}, "room": {"type": "string"}, "length_m": {"type": "number"},
-         "breadth_m": {"type": "number"}, "note": {"type": "string"}},
+         "breadth_m": {"type": "number"}, "note": {"type": "string"},
+         "geojson": {"type": "string"}, "crs": {"type": "string"}, "units": {"type": "string"},
+         "layer": {"type": "string"}, "hazard": {"type": "string"}, "zone_value": {"type": "string"},
+         "design_rows": {"type": "array", "items": {}}, "aslaid_rows": {"type": "array", "items": {}},
+         "obs_rows": {"type": "array", "items": {}}, "source": {"type": "string"}},
          "required": ["action"]}},
     {"name": "const_survey_dekho", "description": (
         "Read the survey desk (nothing changes). what=jobs | points (job) | calcs (kind optional) | carpets "
-        "(project optional) | carpet (id - rooms + result)."),
+        "(project optional) | carpet (id - rooms + result) | layers (project optional) | overlays (project "
+        "optional)."),
      "input_schema": {"type": "object", "properties": {
-         "what": {"type": "string", "enum": ["jobs", "points", "calcs", "carpets", "carpet"]},
+         "what": {"type": "string", "enum": ["jobs", "points", "calcs", "carpets", "carpet", "layers",
+                                             "overlays"]},
          "job": {"type": "string"}, "kind": {"type": "string"}, "project": {"type": "string"},
          "carpet": {"type": "string"}},
          "required": ["what"]}},
@@ -87,6 +103,26 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.carpet_calc(t, _s(a.get("carpet")), a.get("tolerance_pct") or 0.0)
         if action == "carpet_pack":
             return S.carpet_pack(t, _s(a.get("carpet")))
+        if action == "gis_add":
+            return S.gis_add(t, _s(a.get("project")), _s(a.get("name")), _s(a.get("geojson")),
+                             _s(a.get("crs")), _s(a.get("units")), _s(a.get("note")), conv)
+        if action == "gis_area":
+            return S.gis_area(t, _s(a.get("layer")), a.get("record_m2") or 0.0, _s(a.get("record_source")),
+                              a.get("tolerance_pct") if a.get("tolerance_pct") is not None else 2.0)
+        if action == "gis_overlay":
+            return S.gis_overlay(t, _s(a.get("project")), _s(a.get("layer")), _s(a.get("hazard")),
+                                 _s(a.get("zone_value")), _s(a.get("source")), _s(a.get("note")))
+        if action == "setout_add":
+            return S.setout_add(t, _s(a.get("project")), _s(a.get("name")), a.get("design_rows") or [],
+                                _s(a.get("note")), conv)
+        if action == "setout_check":
+            return S.setout_check(t, _s(a.get("project")), _s(a.get("job")), a.get("aslaid_rows") or [],
+                                  a.get("tolerance_mm") if a.get("tolerance_mm") is not None else 25.0,
+                                  _s(a.get("note")))
+        if action == "level_check":
+            return S.level_check(t, _s(a.get("project")), _s(a.get("job")), a.get("obs_rows") or [],
+                                 a.get("tolerance_mm") if a.get("tolerance_mm") is not None else 25.0,
+                                 _s(a.get("note")))
     except (S.CstError, ValueError) as ex:
         raise ToolError(str(ex)) from None
     raise ToolError("action galat")
@@ -97,7 +133,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..construction.common import guard
     from ..db import session
     from sqlalchemy import select
-    from ..construction.models import CsurCalc, CsurCarpet, CsurCarpetRoom, CsurJob, CsurPoint
+    from ..construction.models import CGisLayer, CGisOverlay, CsurCalc, CsurCarpet, CsurCarpetRoom, CsurJob, CsurPoint
     guard(f"read survey {what}")
     t = ctx.tenant_id
     try:
@@ -129,6 +165,22 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                                  "policy": r.wall_policy[:60], "declared": r.declared_m2,
                                  "computed": r.computed_m2, "diff_pct": r.diff_pct, "verdict": r.verdict}
                                 for r in rows]}
+        if what == "layers":
+            q = select(CGisLayer).where(CGisLayer.tenant_id == t)
+            if _s(a.get("project")):
+                q = q.where(CGisLayer.project == _s(a.get("project")))
+            with session() as s:
+                rows = s.scalars(q).all()
+            return {"layers": [{"id": r.id, "project": r.project, "name": r.name, "crs": r.crs,
+                                "units": r.units, "vertices": r.vertices, "holes": r.holes} for r in rows]}
+        if what == "overlays":
+            q = select(CGisOverlay).where(CGisOverlay.tenant_id == t)
+            if _s(a.get("project")):
+                q = q.where(CGisOverlay.project == _s(a.get("project")))
+            with session() as s:
+                rows = s.scalars(q).all()
+            return {"overlays": [{"id": r.id, "project": r.project, "hazard": r.hazard,
+                                  "zone_value": r.zone_value, "source": r.source[:60]} for r in rows]}
         if what == "carpet":
             with session() as s:
                 c = s.get(CsurCarpet, _s(a.get("carpet")))

@@ -142,3 +142,26 @@ def test_a_chat_turn_carries_every_skill_description_and_a_call_keeps_its_size()
     assert inject.VOICE_INDEX_BUDGET == 3000
     import inspect
     assert "budget=VOICE_INDEX_BUDGET" in inspect.getsource(inject.voice_block)
+
+
+# ---------------------------------------------------------------- v0.571 SAB SCHEMA SAHI
+def test_every_tool_schema_is_valid_json_schema_2020_12():
+    """The live hard card found it: once every tool rides every Claude call, ONE invalid schema (dhara_save had
+    `required` inside `properties`) 400s every chat turn. Every registered tool must pass the API's own rule."""
+    jsonschema = pytest.importorskip("jsonschema")
+    bad = []
+    for t in TOOLS:
+        try:
+            jsonschema.Draft202012Validator.check_schema(t.get("input_schema") or {})
+        except jsonschema.exceptions.SchemaError as e:
+            bad.append((t["name"], e.message[:80]))
+    assert not bad, bad
+
+
+def test_a_bad_schema_never_rides_the_deferred_list_and_a_tools_400_falls_back():
+    broken = {"name": "zz_broken", "description": "x",
+              "input_schema": {"type": "object", "properties": {"required": ["a"]}}}
+    ts._SCHEMA_OK.pop("zz_broken", None)
+    assert ts.schema_ok(broken) is False
+    assert ts.refused(Exception("Error code: 400 - tools.83.custom.input_schema: JSON schema is invalid"))
+    assert not ts.refused(Exception("Error code: 529 - overloaded"))

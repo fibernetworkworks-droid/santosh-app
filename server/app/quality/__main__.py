@@ -186,7 +186,40 @@ def _longcard(argv: list[str]) -> int:
     return 0
 
 
+CHEAP = {"haiku": "claude-haiku-5-5", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"}
+# v0.582 the Claude model settings a card turn can reach (chat, hard asks, the checker, every engine door, the dev loop):
+# all of them move to ONE model for the card run, so a cheap run never quietly spends Opus somewhere inside
+_CLAUDE_FIELDS = ("anthropic_model", "agent_hard_model", "hard_check_model", "hard_judge_model", "quick_model",
+                  "dev_loop_model", "site_model", "site_edit_model", "app_model", "cad_model", "motion_model",
+                  "blender_model", "notebook_model", "studio_plan_model", "doc_model", "game_model")
+
+
+def test_model(argv: list[str]) -> tuple[list[str], str]:
+    """v0.582 SASTI JAANCH: `--model haiku|sonnet|opus|<id>` (or QUALITY_MODEL=...) runs THIS card process on one
+    Claude model - her live users are untouched (it only sets this process's environment). Haiku 5.5 is ~20x cheaper
+    than Sonnet 5.5 and ~40x cheaper than Opus 5.5: it proves the PIPES (requests accepted, tools found, jobs finish),
+    not the quality of the production model's answers. Returns (argv without the flag, model or '')."""
+    import os
+    want = ""
+    if "--model" in argv and len(argv) > argv.index("--model") + 1:
+        i = argv.index("--model")
+        want = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    want = want or os.environ.get("QUALITY_MODEL", "")
+    if not want:
+        return argv, ""
+    model = CHEAP.get(want.lower(), want)
+    from ..config import Settings, get_settings
+    for f in _CLAUDE_FIELDS:
+        if f in Settings.model_fields:
+            os.environ[f.upper()] = model
+    get_settings.cache_clear()
+    print(f"== card model: {model} (this run only; live chat keeps its own models)")
+    return argv, model
+
+
 def main(argv: list[str]) -> int:
+    argv, _model = test_model(argv)
     if argv and argv[0] == "longcard":      # v0.443 LONG CARD (real long jobs: costs model calls unless --check)
         return _longcard(argv[1:])
     if argv and argv[0] == "review":        # v0.401 PR review card (old vs ECC specialists)

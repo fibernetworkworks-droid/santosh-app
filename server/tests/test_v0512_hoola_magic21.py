@@ -178,14 +178,14 @@ def test_config_defaults(env, monkeypatch):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.570.0"
+    assert main_mod.APP_VERSION == "0.583.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     # the newest-story precedent (established in the v0.520 rebase): the story pin
     # rides the NEWEST story - now the v0.530 HOOLA GRAPH story
     # story pin moved to the newest story (the newest-story precedent)
-    assert "HOOLA MIDDLEWARE" in story and "jump_to" in story and "interrupt" in story
+    assert "HOOLA RETRIEVE" in story and "index()" in story and "retriever" in story  # the newest-story precedent (the P5 markers live in the Previous chain)
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.570.0+593" in pub
+    assert "version: 0.583.0+598" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches
