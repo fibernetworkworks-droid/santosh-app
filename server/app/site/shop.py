@@ -98,12 +98,26 @@ class SiteShopCounter(Base):
 
 
 _TABLES_OK = False
+_TABLES_LOCK = __import__("threading").Lock()
+
+
+class _ShopTables:
+    """v0.551 only the shop's own tables for the missing-column check (the whole database is ~900 tables)."""
+    sorted_tables = (SiteShopProduct.__table__, SiteShopOrder.__table__, SiteShopCounter.__table__)
 
 
 def ensure_tables() -> None:
     global _TABLES_OK
     if _TABLES_OK:
         return
+    with _TABLES_LOCK:                              # v0.551 one thread sets up; the others wait for it, never repeat it
+        if _TABLES_OK:
+            return
+        _ensure_tables()
+
+
+def _ensure_tables() -> None:
+    global _TABLES_OK
     from .. import db as _db
     eng = getattr(_db, "_engine", None)
     if eng is not None:
@@ -111,7 +125,7 @@ def ensure_tables() -> None:
         SiteShopOrder.__table__.create(eng, checkfirst=True)
         SiteShopCounter.__table__.create(eng, checkfirst=True)
         try:                                            # v0.446 discount / coupon / pay_id on older databases
-            _db._add_missing_columns(eng)
+            _db.add_missing_columns_for(eng, *_ShopTables.sorted_tables)  # v0.551 was every table (~900) - minutes under a rush
         except Exception:                               # noqa: BLE001
             pass
         from sqlalchemy import text as _t               # v0.538 one number and one checkout id per order, enforced by the db

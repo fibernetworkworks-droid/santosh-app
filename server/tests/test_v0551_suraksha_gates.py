@@ -230,3 +230,17 @@ def test_a_page_problem_names_its_section_so_the_fix_round_can_rewrite_it(site_e
     assert item["sections"] == [m.group(1)]
     fix = S._fixable(rep, S._ctx(r)["plan"])
     assert any(k.startswith("home__") for k in fix)                         # the fix round will rewrite that section
+
+
+def test_shop_self_heal_checks_only_its_own_tables():
+    """v0.551 the checkout's self-heal inspected every table in the database (~900) on each worker's first checkouts,
+    and every thread repeated it until one finished - CI's load proof timed out 114 checkouts. Own tables only, once."""
+    import inspect as _i
+    from app.site import shop, shoppay, shopplus, webapp
+    from app.appmaker import backup
+    for mod in (shop, shoppay, shopplus, webapp, backup):
+        src = _i.getsource(mod)
+        assert "_add_missing_columns(" not in src, mod.__name__
+        assert "add_missing_columns_for(" in src, mod.__name__
+    for mod, lock in ((shop, "_TABLES_LOCK"), (shoppay, "_LOCK"), (shopplus, "_LOCK"), (webapp, "_TABLES_LOCK")):
+        assert hasattr(getattr(mod, lock), "acquire"), mod.__name__

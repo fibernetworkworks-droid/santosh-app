@@ -20234,3 +20234,23 @@ main.py - a merge before v0.538 shipped dropped the whole block (catalog preview
 their modules, tables and worker tick were all there. Restored from the commit that wrote them; catalogue + CMS suites
 green again. RULE (again): a module's tests passing in one commit says nothing about the merged tree - run the feature's
 suite on the MERGED commit before shipping.
+
+## v0.555.0 TEZ CHECKOUT (the website checkout under a rush: CI's load proof went red on v0.551 - 114 of 600 checkouts timed out)
+
+ROOT CAUSE, found by running the CI load proof against a local Postgres 16 and sampling the workers with py-spy, not
+by guessing: Postgres was idle (no lock waits, ~22 connections "idle in transaction" waiting on PYTHON). Every worker
+thread stood in `shop.ensure_tables()` -> `db._add_missing_columns(engine)`, which inspects EVERY table in the database
+(~900) - and because the "done" flag is set only at the end, every checkout thread that arrived before the first one
+finished ran the whole scan again. Four more self-heals on the checkout path did the same (`shoppay`, `shopplus`,
+`webapp`, `appmaker/backup`). The p95 41 s tail measured at Step 6 was this, not the hot product's row lock.
+
+FIX: `db.add_missing_columns_for(engine, *tables)` = the same column self-heal for ONE module's own tables; all five
+modules use it, and the four on the checkout path take a lock so one thread sets up and the others wait for it.
+Startup (`init_db`) still runs the whole-database check once, as before.
+
+MEASURED on the same machine, same test (5,000-product shop, 2,000 visitors + 600 buyers, 4 workers, Postgres 16):
+before - order p50 3.7 s, p95 50.5 s, 104 checkouts tapped again after no answer, test RED; after - whole run 38.8 s
+(was 97.3), order p50 2.4 s, p95 7.4 s, nothing tapped again, nothing unanswered, orders = confirmed, stock exact.
+SEEN ONCE, harmless: under the rush, two worker PROCESSES creating the web-app tables at the same instant logged
+"web app security tables failed" (a lock cannot coordinate processes; the tables already exist from startup, the
+error is caught). Pin: test_v0551_suraksha_gates::test_shop_self_heal_checks_only_its_own_tables.

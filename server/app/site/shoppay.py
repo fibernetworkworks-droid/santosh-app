@@ -46,16 +46,27 @@ class SiteShopReview(Base):
 _OK = False
 
 
+_LOCK = __import__("threading").Lock()
+
+
 def ensure_tables() -> None:
     global _OK
     if _OK:
         return
+    with _LOCK:                                    # v0.551 one thread sets up, the rest wait (it runs on every checkout)
+        if not _OK:
+            _ensure_tables()
+
+
+def _ensure_tables() -> None:
+    global _OK
     from .. import db as _db
     SH.ensure_tables()
     if _db._engine is not None:
         SiteShopReview.__table__.create(_db._engine, checkfirst=True)
         try:                                       # the order table gains discount / coupon / pay columns on old databases
-            _db._add_missing_columns(_db._engine)
+            _db.add_missing_columns_for(_db._engine, SiteShopReview.__table__, SH.SiteShopOrder.__table__,   # v0.551 own tables only
+                                        SH.SiteShopProduct.__table__)
         except Exception:                          # noqa: BLE001
             log.exception("shop columns")
         _OK = True

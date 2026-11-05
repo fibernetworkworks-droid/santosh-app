@@ -82,6 +82,16 @@ def ensure_tables() -> None:
     global _TABLES_OK
     if _TABLES_OK:
         return
+    with _TABLES_LOCK:                           # v0.551 one thread sets up, the rest wait
+        if not _TABLES_OK:
+            _ensure_tables()
+
+
+_TABLES_LOCK = __import__("threading").Lock()
+
+
+def _ensure_tables() -> None:
+    global _TABLES_OK
     from .. import db as _db
     eng = getattr(_db, "_engine", None)
     if eng is not None:
@@ -90,7 +100,8 @@ def ensure_tables() -> None:
         try:                                     # v0.434 sessions / OTP tables + the new member columns on old databases
             from . import security as SEC
             SEC.ensure_tables(eng)
-            _db._add_missing_columns(eng)
+            _db.add_missing_columns_for(eng, SiteAppMember.__table__, SiteAppRow.__table__,     # v0.551 own tables only
+                                        SEC.SiteAppSession.__table__, SEC.SiteAppOtp.__table__)
         except Exception:                        # noqa: BLE001
             log.exception("web app security tables failed")
         _TABLES_OK = True

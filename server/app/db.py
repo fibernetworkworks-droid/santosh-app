@@ -995,6 +995,13 @@ def _col_default(col):
     return None
 
 
+def add_missing_columns_for(engine, *tables) -> None:
+    """v0.551 the missing-column check for ONE module's own tables. The whole-database form inspects ~900 tables, and a
+    self-heal that ran it on a hot path (a shop checkout) made the first minutes of every worker crawl."""
+    import types
+    _add_missing_columns(engine, types.SimpleNamespace(sorted_tables=list(tables)))
+
+
 def _add_missing_columns(engine, metadata=None) -> None:
     """create_all() makes new tables but never new columns: add columns added in later versions to old tables.
     v0.116.1: NOT NULL columns were skipped before (e.g. hoola_links.trust from v0.112) -> every query on that table
