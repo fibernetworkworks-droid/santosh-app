@@ -143,7 +143,8 @@
       "radius of curvature"
      ],
      "conditions": [],
-     "kernel": "spherometer"
+     "kernel": "spherometer",
+     "built": "spherometer-radius"
     },
     {
      "id": "paper-scale-least-count",
@@ -206,7 +207,8 @@
       "graph of F against R"
      ],
      "conditions": [],
-     "kernel": "friction-block"
+     "kernel": "friction-block",
+     "built": "limiting-friction"
     },
     {
      "id": "rolling-friction-roller",
@@ -218,7 +220,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "rolling-friction"
+     "kernel": "rolling-friction",
+     "built": "rolling-friction"
     },
     {
      "id": "incline-block-friction",
@@ -257,7 +260,8 @@
       "weight of the given body"
      ],
      "conditions": [],
-     "kernel": "vector-forces"
+     "kernel": "vector-forces",
+     "built": "parallelogram-law"
     },
     {
      "id": "projectile-range-angle",
@@ -322,7 +326,8 @@
       "mass of the given body"
      ],
      "conditions": [],
-     "kernel": "moments"
+     "kernel": "moments",
+     "built": "metre-scale-moments"
     }
    ]
   },
@@ -348,7 +353,8 @@
       "loading",
       "unloading"
      ],
-     "kernel": "searle"
+     "kernel": "searle",
+     "built": "searle-young-modulus"
     },
     {
      "id": "helical-spring-load-extension",
@@ -379,7 +385,8 @@
      "samples": [],
      "unknowns": [],
      "conditions": [],
-     "kernel": "beam-bending"
+     "kernel": "beam-bending",
+     "built": "metre-scale-depression"
     }
    ]
   },
@@ -404,7 +411,8 @@
      "conditions": [
       "capillary tubes of different bore"
      ],
-     "kernel": "capillary"
+     "kernel": "capillary",
+     "built": "capillary-rise"
     },
     {
      "id": "detergent-capillary-rise",
@@ -419,7 +427,8 @@
      ],
      "unknowns": [],
      "conditions": [],
-     "kernel": "capillary"
+     "kernel": "capillary",
+     "built": "detergent-capillary"
     },
     {
      "id": "stokes-terminal-velocity",
