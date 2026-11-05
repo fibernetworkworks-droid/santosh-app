@@ -531,8 +531,289 @@ def lagrange_interpolation() -> dict:
                [DU22, SASTRY, SIM], "LAGRANGE INTERPOLATION", digits=8)
 
 
+
+# ============================================================================================= second-order IVP
+ODE2_THEORY = ("m x\u2033 + c x\u2032 + k x = F cos(wt) is the same equation for a mass on a spring and for charge in "
+               "an LCR circuit (m -> L, c -> R, k -> 1/C). To integrate it numerically it is written as two "
+               "first-order equations, x\u2032 = v and v\u2032 = (F cos wt - c v - k x)/m, and the step methods are "
+               "then exactly the ones used for a single equation. Free motion has a closed form in each damping "
+               "regime - undamped, underdamped, critically damped and overdamped - fixed by gamma = c/2m against "
+               "omega0 = sqrt(k/m), so the numerical solution can be checked at any time.")
+ODE2_STEPS = ["Read m, c, k and the initial conditions from the method card; note which damping regime they give.",
+              "Switch the workstation on.",
+              "Choose the method and the number of steps, then press Enter.",
+              "Write down x at the end of the run and its error; double the steps and run again.",
+              "Compare the numerical curve on the screen with the exact one."]
+ODE2_Q = [{"q": "Critical damping is the case", "options": ["gamma = omega0", "gamma = 0", "gamma much greater than omega0"],
+           "answer": 0, "why": "At gamma = omega0 the two roots coincide and the motion returns fastest without overshooting."},
+          {"q": "Euler's method applied to an undamped oscillator typically",
+           "options": ["gains amplitude run after run", "loses amplitude", "is exact"], "answer": 0,
+           "why": "Plain Euler does not conserve energy; the computed amplitude grows."}]
+
+
+def second_order_ivp() -> dict:
+    return _cp("cp-second-order-ivp", "Second-order IVP: the damped harmonic oscillator",
+               "Numerical methods", "Integrate m x'' + c x' + k x = 0 as a pair of first-order equations and "
+               "compare the motion with the closed form of its damping regime.",
+               "cp_ode2", {"cas": 0.0, "method": 2.0, "n": 200.0, "mm": 1.0, "cc": 0.6, "kk": 4.0, "FF": 0.0,
+                           "wf": 1.0, "x0": 0.1, "tmax": 10.0},
+               2000, "cp_ode2_x", ODE2_THEORY, ODE2_STEPS, ODE2_Q, [DU22, SASTRY, SIM],
+               "m x\u2033 + c x\u2032 + k x = 0", unit="m")
+
+
+def oscillator_regimes() -> dict:
+    return _cp("cp-oscillator-regimes", "Displacement of undamped, under-, critically and over-damped oscillators",
+               "Oscillations by computation", "Integrate the same oscillator with four different dampings and see "
+               "the four regimes the closed form predicts.",
+               "cp_ode2", {"cas": 0.0, "method": 2.0, "n": 200.0, "mm": 1.0, "cc": 0.0, "kk": 4.0, "FF": 0.0,
+                           "wf": 1.0, "x0": 0.1, "tmax": 10.0},
+               2000, "cp_ode2_x",
+               "One equation gives four quite different motions, and which one appears is decided by gamma = c/2m "
+               "against omega0 = sqrt(k/m) alone. With c = 0 the motion is a pure cosine. With gamma < omega0 it "
+               "oscillates inside a decaying envelope at the shifted frequency sqrt(omega0^2 - gamma^2). At "
+               "gamma = omega0 the two roots of the auxiliary equation coincide and the motion returns to rest in "
+               "the shortest time without crossing over - the case a galvanometer or a door closer is built for. "
+               "With gamma > omega0 it creeps back as a sum of two exponentials. The practical is to produce all "
+               "four from one program by changing c alone.",
+               ["Read m, k and the damping of this run from the method card.",
+                "Switch the workstation on.",
+                "Integrate with RK4 at several step counts and record x at the end.",
+                "Look at the shape on the screen: does it cross the axis, and how often?",
+                "Name the regime from gamma against omega0 and check it against the shape."],
+               [{"q": "Which damping returns the body to rest in the shortest time without overshoot?",
+                 "options": ["critical", "under", "over"], "answer": 0,
+                 "why": "That is the definition of critical damping."},
+                {"q": "The frequency of a lightly damped oscillator is", "options": [
+                 "a little below the undamped one", "the same", "a little above"], "answer": 0,
+                 "why": "sqrt(omega0^2 - gamma^2) is less than omega0."}],
+               [DU22, SASTRY, SIM], "FOUR DAMPING REGIMES", unit="m")
+
+
+def forced_resonance() -> dict:
+    return _cp("cp-forced-resonance", "Forced oscillator and resonance",
+               "Oscillations by computation", "Drive the damped oscillator, let the transient die, and measure the "
+               "steady-state amplitude against the resonance formula.",
+               "cp_ode2", {"cas": 1.0, "method": 2.0, "n": 500.0, "mm": 1.0, "cc": 0.4, "kk": 4.0, "FF": 1.0,
+                           "wf": 2.0, "x0": 0.0, "tmax": 120.0},
+               4000, "cp_ode2_x",
+               "A driven oscillator settles, after its transient has died away, into a motion at the DRIVING "
+               "frequency with amplitude A = (F/m) / sqrt((omega0^2 - omega^2)^2 + (2 gamma omega)^2). The "
+               "amplitude is largest near omega = omega0, and the smaller the damping the taller and narrower that "
+               "resonance peak is. Numerically the whole motion is integrated from rest; the steady amplitude is "
+               "read from the last part of the run, once the transient is gone, and compared with the formula. The "
+               "same curve is the response of an LCR circuit, where it decides the sharpness of a tuned receiver.",
+               ["Read the drive and the damping from the method card.",
+                "Switch the workstation on.",
+                "Integrate for the full run at several step counts; the transient must die before the amplitude is read.",
+                "Write down the steady amplitude and its error each time.",
+                "Compare with A = (F/m) / sqrt((omega0^2 - omega^2)^2 + (2 gamma omega)^2)."],
+               [{"q": "At resonance the steady amplitude is limited by", "options": ["the damping", "the mass",
+                 "the drive frequency"], "answer": 0,
+                 "why": "With gamma = 0 the formula would give an unbounded amplitude."},
+                {"q": "After the transient dies the oscillator moves at", "options": ["the driving frequency",
+                 "its own natural frequency", "both at once"], "answer": 0,
+                 "why": "The particular solution has the driving frequency; the homogeneous part has decayed."}],
+               [DU22, SASTRY, SIM], "FORCED OSCILLATOR: AMPLITUDE", unit="m")
+
+
+def laplace_lcr() -> dict:
+    return _cp("cp-laplace-lcr", "LCR circuit: the Laplace-transform solution against the integration",
+               "Circuits by computation", "Solve the LCR loop equation numerically and compare it with the closed "
+               "form the Laplace transform gives for the same initial conditions.",
+               "cp_ode2", {"cas": 0.0, "method": 2.0, "n": 400.0, "mm": 0.1, "cc": 20.0, "kk": 10000.0,
+                           "FF": 0.0, "wf": 1.0, "x0": 0.001, "tmax": 0.06},
+               4000, "cp_ode2_x",
+               "For the LCR loop, L q'' + R q' + q/C = 0, the Laplace transform turns the differential equation "
+               "into an algebraic one: (L s^2 + R s + 1/C) Q(s) = L s q0, so Q(s) is a ratio of polynomials whose "
+               "poles are the roots of L s^2 + R s + 1/C = 0. Inverting it gives exactly the same closed form the "
+               "auxiliary equation gives - a decaying oscillation when R < 2 sqrt(L/C), a creeping return when it "
+               "is larger - which is why the transform is a method of solution and not a different physics. The "
+               "practical checks the numerical integration of the loop equation against that inverse transform.",
+               ["Read L, R and C from the method card and work out whether the circuit will ring or creep.",
+                "Switch the workstation on.",
+                "Integrate the loop equation with RK4 at several step counts.",
+                "Write down the charge at the end of the run and its error.",
+                "Compare the computed curve with the inverse-Laplace closed form on the screen."],
+               [{"q": "The Laplace transform helps because it turns the differential equation into",
+                 "options": ["an algebraic equation in s", "an integral equation", "a difference equation"],
+                 "answer": 0, "why": "Differentiation becomes multiplication by s."},
+                {"q": "The circuit stops ringing when R is bigger than", "options": ["2 sqrt(L/C)", "sqrt(LC)",
+                 "1/sqrt(LC)"], "answer": 0, "why": "That is the critical-damping condition for the LCR loop."}],
+               [DULOCF, SASTRY, SIM], "LCR: L q\u2033 + R q\u2032 + q/C = 0", unit="C", digits=8)
+
+
+# ============================================================================================= Monte Carlo
+MC_THEORY = ("A Monte Carlo method answers a question by sampling. Its error has nothing to do with a step size: "
+             "it falls as 1/sqrt(N), whatever the problem and however many dimensions it has, which is why Monte "
+             "Carlo loses to Simpson's rule in one dimension and wins in ten. The random numbers here come from a "
+             "seeded Lehmer generator, so the whole run repeats exactly - a computational practical has to be "
+             "repeatable, and a result that cannot be reproduced is not a result.")
+MC_STEPS = ["Read the problem and the seed from the method card.",
+            "Switch the workstation on.",
+            "Run with N samples, then with four times as many, and again.",
+            "Write down the estimate and the error each time.",
+            "Check that the error falls roughly as 1/sqrt(N): four times the samples, half the error."]
+MC_Q = [{"q": "To halve the error of a Monte Carlo estimate you need", "options": ["four times the samples",
+         "twice the samples", "a better random number generator"], "answer": 0,
+         "why": "The error goes as 1/sqrt(N), so N must be multiplied by four."},
+        {"q": "Why is the generator seeded?", "options": ["So that the run can be repeated exactly",
+         "To make it more random", "To make it faster"], "answer": 0,
+         "why": "A practical must be reproducible; the seed is part of the record."}]
+
+
+def monte_carlo_pi() -> dict:
+    return _cp("cp-monte-carlo-pi", "Monte Carlo acceptance-rejection: the value of pi",
+               "Statistical methods", "Throw random points into a square, count those inside the quarter circle, "
+               "and watch the estimate of pi close in as 1/sqrt(N).",
+               "cp_mc", {"cas": 0.0, "method": 0.0, "n": 4000.0, "seed": 12345.0},
+               200000, "cp_mc_v", MC_THEORY, MC_STEPS, MC_Q, [DU22, SASTRY, SIM],
+               "pi BY ACCEPTANCE-REJECTION", digits=6)
+
+
+def random_clt() -> dict:
+    return _cp("cp-random-clt", "Random numbers and the central limit theorem",
+               "Statistical methods", "Average m uniform random numbers many times and measure the spread of "
+               "those averages against the 1/sqrt(12m) the central limit theorem predicts.",
+               "cp_mc", {"cas": 4.0, "method": 0.0, "n": 4000.0, "seed": 20251105.0, "mtoss": 10.0},
+               200000, "cp_mc_v",
+               "A single uniform random number on (0, 1) has mean 1/2 and standard deviation 1/sqrt(12) = 0.2887. "
+               "The central limit theorem says that the MEAN of m such numbers is distributed almost normally, "
+               "whatever the shape of the parent distribution, with the same mean and a standard deviation smaller "
+               "by sqrt(m): sigma_mean = 1/sqrt(12 m). That is the whole reason a measurement is repeated and "
+               "averaged, and it can be measured here: draw N such means and take their standard deviation. Both "
+               "numbers then converge - the spread to its theoretical value, and the estimate of that spread as "
+               "1/sqrt(N).",
+               ["Read m, the number of uniform numbers in each mean, from the method card.",
+                "Switch the workstation on.",
+                "Run with N samples, then with four times as many.",
+                "Write down the measured spread of the means and its error.",
+                "Compare with 1/sqrt(12 m), and note that the parent distribution is not normal at all."],
+               [{"q": "The mean of m uniform numbers has a standard deviation smaller than one number's by",
+                 "options": ["sqrt(m)", "m", "m squared"], "answer": 0,
+                 "why": "sigma_mean = sigma/sqrt(m) is the standard error of the mean."},
+                {"q": "The central limit theorem requires the parent distribution to be",
+                 "options": ["of finite variance, but any shape", "normal", "uniform"], "answer": 0,
+                 "why": "That is what makes it so useful: the shape of the parent hardly matters."}],
+               [DU22, SASTRY, SIM], "CENTRAL LIMIT THEOREM", digits=6)
+
+
+def coin_toss() -> dict:
+    return _cp("cp-coin-toss", "Macrostate probabilities in coin tossing",
+               "Statistical mechanics by computation", "Toss m coins N times, count how often a macrostate "
+               "appears, and compare with C(m,k)/2^m - the simplest statistical mechanics there is.",
+               "cp_mc", {"cas": 3.0, "method": 0.0, "n": 4000.0, "seed": 777.0, "mtoss": 10.0, "khead": 5.0},
+               200000, "cp_mc_v",
+               "Tossing m coins, a MICROSTATE is which particular coins came up heads and a MACROSTATE is only how "
+               "many did. Every microstate is equally likely, so the probability of the macrostate with k heads is "
+               "the number of microstates in it divided by the total: C(m,k)/2^m. The most probable macrostate is "
+               "k = m/2, and it is more sharply peaked the larger m is - which is exactly why a gas of 10^23 "
+               "particles is never found far from its most probable state, and why the second law looks absolute "
+               "although nothing forbids the opposite. Counting the macrostate frequency by simulation is the "
+               "measurement.",
+               ["Read m and the macrostate k from the method card.",
+                "Switch the workstation on.",
+                "Run N trials, then four times as many, and again.",
+                "Write down the measured frequency of the macrostate and its error.",
+                "Compare with C(m,k)/2^m, and think about how sharp the peak is for m = 10^23."],
+               [{"q": "The most probable macrostate of m tossed coins is", "options": ["k = m/2", "k = 0",
+                 "k = m"], "answer": 0, "why": "C(m,k) is largest in the middle."},
+                {"q": "A microstate and a macrostate differ in that", "options": [
+                 "a macrostate counts only how many heads, not which coins", "a microstate is more probable",
+                 "a macrostate has fewer coins"], "answer": 0,
+                 "why": "Many microstates belong to one macrostate; that count is the probability."}],
+               [DULOCF, SASTRY, SIM], "COIN-TOSS MACROSTATES", digits=6)
+
+
+def descriptive_statistics() -> dict:
+    return _cp("cp-descriptive-statistics", "Sampling a distribution: mean, median and mode",
+               "Statistical methods", "Draw N waiting times from an exponential population by the inverse "
+               "transform and compare the sample mean with the population mean 1/lambda.",
+               "cp_mc", {"cas": 5.0, "method": 0.0, "n": 4000.0, "seed": 4242.0, "rate": 0.5},
+               200000, "cp_mc_v",
+               "A distribution is described by its mean, its median and its mode, and for a skewed distribution "
+               "these are three different numbers. The exponential distribution with rate lambda, which gives the "
+               "waiting time between random events such as radioactive decays, has mean 1/lambda, median "
+               "ln2/lambda = 0.693/lambda and mode 0 - so the most likely waiting time is the shortest one, while "
+               "the average is far to the right of the median. Samples are drawn here by the inverse transform, "
+               "x = -ln(u)/lambda for a uniform u, and the sample mean is compared with 1/lambda; the difference "
+               "falls as 1/sqrt(N).",
+               ["Read the rate lambda from the method card and work out the mean, the median and the mode.",
+                "Switch the workstation on.",
+                "Draw N samples, then four times as many, and again.",
+                "Write down the sample mean and its error each time.",
+                "Note that the mean is larger than the median: the distribution is skewed."],
+               [{"q": "For an exponential distribution the mean is", "options": ["larger than the median",
+                 "equal to the median", "smaller than the median"], "answer": 0,
+                 "why": "1/lambda is larger than 0.693/lambda: the long tail pulls the mean up."},
+                {"q": "The inverse transform x = -ln(u)/lambda works because", "options": [
+                 "u is uniform, so the transformed variable follows the wanted distribution",
+                 "the logarithm is random", "lambda is small"], "answer": 0,
+                 "why": "Setting the cumulative distribution equal to a uniform number and inverting it is the standard method."}],
+               [DU22, SASTRY, SIM], "SAMPLING A DISTRIBUTION", digits=6)
+
+
+def error_propagation() -> dict:
+    return _cp("cp-error-propagation", "Error propagation in a function of two variables",
+               "Error analysis", "Test the propagation formula itself: draw correlated pairs with known "
+               "uncertainties and measure the scatter of f = x y.",
+               "cp_mc", {"cas": 6.0, "method": 0.0, "n": 4000.0, "seed": 31415.0, "mx": 4.0, "my": 2.5,
+                         "sx": 0.08, "sy": 0.05, "rho": 0.0},
+               200000, "cp_mc_v",
+               "The usual rule for a function of two measured quantities, sigma_f^2 = (df/dx)^2 sigma_x^2 + "
+               "(df/dy)^2 sigma_y^2 + 2 (df/dx)(df/dy) sigma_xy, is a first-order Taylor result, and the last term "
+               "- the covariance - is the one most often forgotten. If x and y were measured together on the same "
+               "instrument their errors are correlated, and ignoring that term can make the quoted uncertainty far "
+               "too small or far too large. Here the formula is TESTED: correlated pairs are drawn with known "
+               "sigma_x, sigma_y and correlation rho, and the scatter of f = x y is measured directly. For f = x y "
+               "the formula reads sigma_f = sqrt(y^2 sigma_x^2 + x^2 sigma_y^2 + 2 x y rho sigma_x sigma_y).",
+               ["Read x, y, their uncertainties and the correlation from the method card.",
+                "Switch the workstation on.",
+                "Draw N pairs, then four times as many, and again.",
+                "Write down the measured spread of f and its error.",
+                "Compare with the propagation formula, and repeat with the correlation set to zero."],
+               [{"q": "Two quantities measured on the same instrument usually have", "options": [
+                 "correlated errors, so the covariance term matters", "independent errors", "no errors"],
+                 "answer": 0, "why": "A shared systematic effect correlates them."},
+                {"q": "The propagation formula is", "options": ["a first-order Taylor result",
+                 "exact for every function", "only for sums"], "answer": 0,
+                 "why": "It keeps only the linear terms, so it needs the errors to be small."}],
+               [DU22, SASTRY, SIM], "ERROR PROPAGATION", digits=6)
+
+
+# ============================================================================================= projectile
+def projectile() -> dict:
+    return _cp("cp-projectile", "Projectile trajectory: range, greatest height and time of flight",
+               "Mechanics by computation", "Integrate the equations of a projectile step by step and compare the "
+               "range, the greatest height and the time of flight with the textbook formulas.",
+               "cp_proj", {"cas": 0.0, "method": 2.0, "n": 100.0, "u": 30.0, "th": 0.7854, "g": 9.8},
+               500, "cp_proj_v",
+               "A projectile under gravity alone obeys two second-order equations, x'' = 0 and y'' = -g, which are "
+               "written as four first-order ones in [x, y, vx, vy] and stepped forward together. Nothing about the "
+               "method knows that the answer is a parabola: the range, the greatest height and the time of flight "
+               "have to be READ OFF the computed trajectory, the landing point by interpolating the step in which y "
+               "changes sign. That is why the step size matters, and why the three measured numbers can be compared "
+               "with R = u^2 sin2theta/g, H = u^2 sin^2theta/2g and T = 2u sin theta/g. The same program with a "
+               "drag term has no closed form at all, which is the real reason to write it.",
+               ["Read the launch speed, the angle and g from the method card.",
+                "Switch the workstation on.",
+                "Integrate with RK4 at 10, 20, 50, 100, 200 and 500 steps.",
+                "Write down the quantity this run measures and its error each time.",
+                "Compare with the textbook formula; note that the coarse runs miss the landing point."],
+               [{"q": "The range is largest at a launch angle of", "options": ["45 degrees", "30 degrees",
+                 "60 degrees"], "answer": 0, "why": "sin 2theta is largest at theta = 45 degrees."},
+                {"q": "Why must the landing step be interpolated?", "options": [
+                 "The trajectory crosses the ground between two computed points", "The method is unstable",
+                 "g changes"], "answer": 0,
+                 "why": "No computed point lands exactly on y = 0, so the crossing is found between two of them."}],
+               [DU22, SASTRY, SIM], "PROJECTILE: R, H AND T", unit="m", digits=5)
+
+
+
 BUILDERS = (root_finding, sphere_depth, alpha_tan, nth_root,
             integration, integration_convergence, position_from_acceleration, delta_sequences,
             first_order_ivp, ivp_error_comparison, population_models, rate_equations,
             differentiation, velocity_from_position, difference_tables,
-            taylor_series, lagrange_interpolation)
+            taylor_series, lagrange_interpolation,
+            second_order_ivp, oscillator_regimes, forced_resonance, laplace_lcr,
+            monte_carlo_pi, random_clt, coin_toss, descriptive_statistics, error_propagation,
+            projectile)

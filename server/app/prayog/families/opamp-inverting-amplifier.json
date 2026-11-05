@@ -1,0 +1,27 @@
+{"base": "opamp-inverting-amplifier", "rig": "elec-ug-bench",
+ "chapter": "Analog electronics and devices",
+ "grid": {
+   "title": "Inverting amplifier: {amp}, gain {gain}",
+   "unknown": "the closed-loop voltage gain",
+   "axes": {
+     "amp": [
+       {"key": "ua741", "label": "a uA741", "sample": "uA741 operational amplifier, 8-pin DIL, supplies +-15 V",
+        "params": {"A0": 200000.0, "Vsat": 13.0},
+        "note": "The datasheet's typical large-signal voltage gain is 200 V/mV, which is 200000, and the output swings to about +-13 V into 2 kilohm on +-15 V supplies.",
+        "source": {"title": "Texas Instruments uA741 datasheet: large-signal voltage gain 200 V/mV typical, output voltage swing +-13 V typical at R_L = 2 kohm, V_CC = +-15 V"}},
+       {"key": "lm358", "label": "an LM358", "sample": "LM358 dual operational amplifier, 8-pin DIL",
+        "params": {"A0": 100000.0, "Vsat": 13.0},
+        "note": "Half the open-loop gain of a 741, and the closed-loop gain is still the resistor ratio: that is the point of feedback.",
+        "source": {"title": "Texas Instruments LM358 datasheet: large-signal voltage gain 100 V/mV typical"}}
+     ],
+     "gain": [
+       {"key": "g10", "label": "-10", "params": {"R1": 1000.0, "Rf": 10000.0},
+        "source": {"title": "IEC 60063 preferred values (E24 series) for both resistors"}},
+       {"key": "g22", "label": "-22", "params": {"R1": 1000.0, "Rf": 22000.0},
+        "source": {"title": "IEC 60063 preferred values (E24 series) for both resistors"}},
+       {"key": "g47", "label": "-47", "params": {"R1": 1000.0, "Rf": 47000.0},
+        "note": "At a gain of 47 the finite open-loop gain begins to show: the measured gain falls short of the resistor ratio by about the ratio of the two gains.",
+        "source": {"title": "IEC 60063 preferred values (E24 series) for both resistors"}}
+     ]
+   }
+ }}

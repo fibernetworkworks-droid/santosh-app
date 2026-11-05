@@ -1,0 +1,63 @@
+{
+ "base": "cp-laplace-lcr",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "ringing",
+   "title": "LCR by Laplace: R = 20 ohm (the circuit rings)",
+   "sample": "L = 0.1 H, R = 20 ohm, C = 100 uF",
+   "unknown": "the charge at the end of the run",
+   "source": {
+    "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+   },
+   "params": {
+    "cas": 0,
+    "method": 2,
+    "mm": 0.1,
+    "cc": 20.0,
+    "kk": 10000.0,
+    "x0": 0.001,
+    "tmax": 0.06
+   },
+   "note": "R is below 2 sqrt(L/C) = 63.2 ohm, so the poles are complex and the charge oscillates."
+  },
+  {
+   "key": "critical",
+   "title": "LCR by Laplace: R = 63.2456 ohm (critical)",
+   "sample": "L = 0.1 H, R = 63.2456 ohm, C = 100 uF",
+   "unknown": "the charge at the end of the run",
+   "source": {
+    "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+   },
+   "params": {
+    "cas": 0,
+    "method": 2,
+    "mm": 0.1,
+    "cc": 63.2455532,
+    "kk": 10000.0,
+    "x0": 0.001,
+    "tmax": 0.06
+   },
+   "note": "R = 2 sqrt(L/C): the two poles coincide and the ringing just stops."
+  },
+  {
+   "key": "creeping",
+   "title": "LCR by Laplace: R = 200 ohm (overdamped)",
+   "sample": "L = 0.1 H, R = 200 ohm, C = 100 uF",
+   "unknown": "the charge at the end of the run",
+   "source": {
+    "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+   },
+   "params": {
+    "cas": 0,
+    "method": 2,
+    "mm": 0.1,
+    "cc": 200.0,
+    "kk": 10000.0,
+    "x0": 0.001,
+    "tmax": 0.06
+   },
+   "note": "Two real poles: the charge leaks away without a single oscillation."
+  }
+ ]
+}

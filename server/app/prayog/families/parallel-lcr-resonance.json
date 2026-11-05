@@ -1,5 +1,6 @@
 {
  "base": "parallel-lcr-resonance",
+ "rig": "ac-bench",
  "chapter": "AC circuits and bridges",
  "variants": [
   {

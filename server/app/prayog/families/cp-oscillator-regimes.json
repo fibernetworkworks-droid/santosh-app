@@ -1,0 +1,86 @@
+{
+ "base": "cp-oscillator-regimes",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "undamped",
+   "title": "Oscillator regimes: undamped (c = 0)",
+   "sample": "m = 1, k = 4, c = 0",
+   "unknown": "the displacement at the end of the run",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 0,
+    "method": 2,
+    "mm": 1.0,
+    "cc": 0.0,
+    "kk": 4.0,
+    "x0": 0.1,
+    "tmax": 10.0
+   },
+   "note": "gamma = 0, so the motion is a pure cosine of frequency omega0 = 2 rad/s."
+  },
+  {
+   "key": "under",
+   "title": "Oscillator regimes: underdamped (c = 0.6)",
+   "sample": "m = 1, k = 4, c = 0.6",
+   "unknown": "the displacement at the end of the run",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 0,
+    "method": 2,
+    "mm": 1.0,
+    "cc": 0.6,
+    "kk": 4.0,
+    "x0": 0.1,
+    "tmax": 10.0
+   },
+   "note": "gamma = 0.3 is well below omega0 = 2, so it oscillates inside a decaying envelope."
+  },
+  {
+   "key": "critical",
+   "title": "Oscillator regimes: critically damped (c = 4)",
+   "sample": "m = 1, k = 4, c = 4",
+   "unknown": "the displacement at the end of the run",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 0,
+    "method": 2,
+    "mm": 1.0,
+    "cc": 4.0,
+    "kk": 4.0,
+    "x0": 0.1,
+    "tmax": 10.0
+   },
+   "note": "c = 2 sqrt(mk) exactly, so gamma = omega0: the fastest return without overshoot."
+  },
+  {
+   "key": "over",
+   "title": "Oscillator regimes: overdamped (c = 6)",
+   "sample": "m = 1, k = 4, c = 6",
+   "unknown": "the displacement at the end of the run",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 0,
+    "method": 2,
+    "mm": 1.0,
+    "cc": 6.0,
+    "kk": 4.0,
+    "x0": 0.1,
+    "tmax": 10.0
+   },
+   "note": "gamma = 3 is above omega0 = 2, so it creeps back as a sum of two exponentials."
+  }
+ ]
+}

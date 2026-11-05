@@ -1,5 +1,6 @@
 {
  "base": "superposition-theorem",
+ "rig": "network-board",
  "chapter": "Network theorems and electrical skills",
  "grid": {
   "title": "Superposition on panel network {net}",

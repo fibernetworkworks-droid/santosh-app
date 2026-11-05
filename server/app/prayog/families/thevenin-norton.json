@@ -1,5 +1,6 @@
 {
  "base": "thevenin-norton",
+ "rig": "network-board",
  "chapter": "Network theorems and electrical skills",
  "grid": {
   "title": "Thevenin and Norton on panel network {net}",

@@ -247,7 +247,7 @@ def flywheel_bench() -> dict:
         topic="Rotational motion", chapter="Mechanics",
         aim="Let a known mass fall and spin up a flywheel, time the fall and count the rotations afterwards, and work "
             "out the flywheel's moment of inertia and the work lost to friction.",
-        kernel="flywheel", params={"I": 0.012, "m": 0.5, "ra": 0.012, "n": 8.0, "tf": 0.012},
+        kernel="flywheel", params={"I": 0.012, "m": 0.5, "ra": 0.012, "n": 5.0, "tf": 0.006},
         speeds=[0.5, 1, 2, 4],
         camera={"pos": [0.6, 0.55, 1.05], "look": [0.0, 0.3, -0.12]}, floor=-0.52,
         bodies=[
@@ -276,7 +276,7 @@ def flywheel_bench() -> dict:
             B("lbl", "text", text="Flywheel", size=0.024, pos=[0.0, 0.64, -0.1]),
         ],
         knobs=[knob("m", "Falling mass", "m", 0.2, 1.0, 0.1, 0.5, "kg"),
-               knob("n", "Turns of cord on the axle", "n", 4, 12, 1, 8, "turns"),
+               knob("n", "Turns of cord on the axle", "n", 3, 8, 1, 5, "turns"),
                knob("I", "Flywheel (I hidden)", "I", 0.004, 0.03, 0.0001, 0.012, "kg·m²", hidden=True)],
         instruments=[inst("rpm", "readout", "Flywheel speed", "rpm", unit="rev/min", digits=0),
                      inst("sw", "stopwatch", "Stopwatch"),
@@ -301,7 +301,7 @@ def flywheel_bench() -> dict:
                "lot of energy and takes a long time to stop.",
         tour=[{"say": "A heavy cast-iron flywheel on a wall bracket, with a cord wound on its axle carrying a hanger."},
               {"set": {"m": 1.0}, "say": "A heavier mass spins the wheel up faster, so the fall takes less time."},
-              {"set": {"m": 0.5, "n": 12}, "say": "More turns of cord mean a longer fall and a higher final speed."}],
+              {"set": {"m": 0.5, "n": 8}, "say": "More turns of cord mean a longer fall and a higher final speed."}],
         questions=[{"q": "Why are the rotations after the cord slips off counted?",
                     "options": ["They measure the work lost to friction", "They measure the mass",
                                 "They measure the axle's radius"], "answer": 0,

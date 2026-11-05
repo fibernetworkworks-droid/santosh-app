@@ -138,8 +138,18 @@ HoolaStudio.define('photoelectric-bench', function (S) {
   var t1 = S.terminal([-0.04, 0.0015, -0.1 + 0.05], 'red'), t2 = S.terminal([-0.005, 0.0015, -0.1 + 0.05], 'black');
   S.contact(0.16, 0.12, -0.04, -0.1, 0.45);
 
+  // ================================================================ the beam (only while the lamp is lit)
+  function beam(x0, x1, col, r) {
+    var m = new T.MeshBasicMaterial({ color: col, transparent: true, opacity: 0.0, depthWrite: false,
+      blending: T.AdditiveBlending });
+    var g = S.mesh(new T.CylinderGeometry(r, r, x1 - x0, 20, 1, true), m, false, false);
+    g.rotation.z = Math.PI / 2; g.position.set((x0 + x1) / 2, BEAM_Y, -0.1); S.scene.add(g);
+    return { mesh: g, mat: m };
+  }
+  var beamA = beam(-0.444, -0.308, 0xeef0ff, 0.008), beamB = beam(-0.292, -0.106, 0xffffff, 0.0065);
+
   // ================================================================ photoelectric control unit
-  var unit = new T.Group(); S.scene.add(unit); unit.position.set(0.42, 0, -0.12); unit.rotation.y = -0.3;
+  var unit = new T.Group(); S.scene.add(unit); unit.position.set(0.36, 0, -0.1); unit.rotation.y = -0.34;
   var UW = 0.34, UD = 0.22, UH = 0.12;
   var ucase = S.rounded(UW, UD, UH, 0.012, new T.MeshStandardMaterial({ color: 0xd9d5cb, roughness: 0.5, metalness: 0.12 }));
   ucase.rotation.x = -Math.PI / 2; ucase.position.y = UH / 2 + 0.004; unit.add(ucase);
@@ -205,13 +215,13 @@ HoolaStudio.define('photoelectric-bench', function (S) {
     };
   }
   var showV = lcd(-0.1, -0.012, 0.085, 0.032), showI = lcd(-0.1, 0.03, 0.085, 0.032);
-  var tpos = S.terminal([0.42 - 0.08, 0.0015, -0.12 + 0.12], 'red');
-  var tneg = S.terminal([0.42 - 0.045, 0.0015, -0.12 + 0.12], 'black');
-  S.contact(0.42, 0.3, 0.42, -0.12, 0.55);
+  var tpos = S.terminal([0.36 - 0.08, 0.0015, -0.1 + 0.12], 'red');
+  var tneg = S.terminal([0.36 - 0.045, 0.0015, -0.1 + 0.12], 'black');
+  S.contact(0.42, 0.3, 0.36, -0.1, 0.55);
 
   // ================================================================ wiring, book
-  S.wire([[-0.04, 0.012, -0.05], [0.1, 0.02, 0.0], [0.26, 0.02, 0.0], [0.34, 0.012, 0.0]], 'red');
-  S.wire([[-0.005, 0.012, -0.05], [0.14, 0.014, 0.04], [0.3, 0.014, 0.03], [0.375, 0.012, 0.0]], 'black');
+  S.wire([[-0.04, 0.012, -0.05], [0.1, 0.02, 0.0], [0.2, 0.02, 0.02], [0.28, 0.012, 0.02]], 'red');
+  S.wire([[-0.005, 0.012, -0.05], [0.14, 0.014, 0.04], [0.24, 0.014, 0.05], [0.315, 0.012, 0.02]], 'black');
   S.wire([[-0.52, 0.01, 0.0], [-0.52, 0.006, 0.18], [-0.1, 0.006, 0.2]], 'black');
 
   S.addApparatus('lamp', lampG, 'Mercury lamp (125 W)', 'A high-pressure mercury lamp: its light is a few sharp lines. The rocker on the front switches it on; never look into the port.');
@@ -311,15 +321,15 @@ HoolaStudio.define('photoelectric-bench', function (S) {
     if (pts.length < 3) return null;
     var f = S.fit.linear(pts);
     if (!f) return null;
-    return { label: 'Planck\'s constant h', value: QEL * f.m, unit: 'J·s', digits: 36, truth: HPL,
+    return { label: 'Planck\'s constant h', value: QEL * f.m * 1e34, unit: '× 10⁻³⁴ J·s', digits: 3, truth: HPL * 1e34,
       note: 'Slope of the stopping potential against frequency is h/e = ' + f.m.toExponential(3) + ' V·s; the intercept gives a work function of ' + (-f.c).toFixed(2) + ' eV (true value ' + p.phi.toFixed(2) + ' eV).' };
   }
 
   return {
-    camera: { pos: [-0.02, 0.76, 0.86], look: [-0.1, 0.12, -0.08] },
+    camera: { pos: [0.0, 1.0, 1.3], look: [-0.04, 0.13, -0.08] },
     views: { lamp: [[-0.42, 0.34, 0.18], [-0.52, 0.17, -0.1]], wheel: [[-0.28, 0.3, 0.1], [-0.3, 0.17, -0.1]],
-      cell: [[-0.02, 0.28, 0.08], [-0.04, 0.16, -0.1]], unit: [[0.46, 0.3, 0.16], [0.42, 0.08, -0.12]],
-      bench: [[-0.02, 0.84, 0.92], [-0.1, 0.12, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
+      cell: [[-0.02, 0.28, 0.08], [-0.04, 0.16, -0.1]], unit: [[0.4, 0.3, 0.18], [0.36, 0.08, -0.1]],
+      bench: [[0.0, 1.0, 1.3], [-0.04, 0.13, -0.08]], book: [[-0.46, 0.46, 0.5], [-0.5, 0.0, 0.08]] },
     theory: {
       principle: 'Light gives its energy to the electrons of a metal in whole photons of hf. An electron needs the work function of the metal to get out, so the fastest one leaves with hf minus that, and a retarding voltage on the anode turns back every electron slower than it. The current therefore stops at a definite voltage: the stopping potential.',
       formula: 'e V_s = h f − e φ',
@@ -410,6 +420,9 @@ HoolaStudio.define('photoelectric-bench', function (S) {
         glasses[i].emissive = new T.Color(lit ? FCOL[i % FCOL.length] : 0x000000);
         glasses[i].emissiveIntensity = lit ? 1.6 : 0;
       }
+      var fc = FCOL[st.f % FCOL.length];
+      beamA.mat.opacity = st.lamp ? 0.11 : 0;
+      beamB.mat.color.setHex(fc); beamB.mat.opacity = st.lamp ? 0.16 : 0;
       hudF.set(nm(LAMS[st.f]) + ' nm');
       hudV.set(readV().toFixed(2) + ' V');
       hudI.set(st.lamp ? readI().toFixed(2) + ' nA' : '—');

@@ -1,5 +1,6 @@
 {
  "base": "kirchhoff-laws",
+ "rig": "network-board",
  "chapter": "Network theorems and electrical skills",
  "grid": {
   "title": "Kirchhoff's laws on panel network {net}",

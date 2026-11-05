@@ -15,7 +15,11 @@ HoolaStudio.define('elec-ug-bench', function (S) {
   function fmt(v, d) { return (isFinite(v) ? v : 0).toFixed(d); }
   function wpos(o, x, y, z) { o.updateMatrixWorld(true); return o.localToWorld(new T.Vector3(x || 0, y || 0, z || 0)); }
   function arr(v) { return [v.x, v.y, v.z]; }
-  function ohm(r) { return r >= 1000 ? String(+(r / 1000).toFixed(r >= 10000 ? 0 : 1)) + ' kΩ' : String(+r.toFixed(r < 10 ? 1 : 0)) + ' Ω'; }
+  function ohm(r) {
+    r = +r;
+    if (!isFinite(r)) return '—';
+    return r >= 1000 ? String(+(r / 1000).toFixed(r >= 10000 ? 0 : 1)) + ' kΩ' : String(+r.toFixed(r < 10 ? 1 : 0)) + ' Ω';
+  }
   function slope(pts) {
     var n = pts.length, sx = 0, sy = 0, sxy = 0, sxx = 0, i, den;
     if (n < 2) return 0;
@@ -34,13 +38,13 @@ HoolaStudio.define('elec-ug-bench', function (S) {
   // record book and how the result is worked out. Everything else on this bench is shared.
   var PLANS = {};
 
-  PLANS['bjt-ce-current-gain'] = {
+  PLANS['bjt-ce-current-gain'] = function () { return {
     comp: 'to92', compName: SAMPLE || 'n-p-n transistor (TO-92)',
     parts: [{ r: p.Rb, tag: 'R_B' }, { r: p.Rc, tag: 'R_C' }],
     wiring: 'Base supply → R_B (' + ohm(p.Rb) + ') → base.  Collector supply ' + fmt(p.Vcc, 1) +
       ' V → R_C (' + ohm(p.Rc) + ') → collector.  Emitter → common negative rail.',
     controls: [{ param: 'Vbb', label: 'Base supply V_BB', unit: 'V', digits: 2, vmax: 5,
-      vals: span(0.8, 3.2, 0.1), knob: 'aux' }],
+      vals: span(0.8, 3.2, 0.3), knob: 'aux' }],
     m1: { fn: 'DC µA', label: 'Base current I_B', unit: 'µA', digits: 2, lc: 0.01, get: function (v) { return v.I_b * 1e6; } },
     m2: { fn: 'DC mA', label: 'Collector current I_C', unit: 'mA', digits: 3, lc: 0.001, get: function (v) { return v.I_c * 1000; } },
     extra: [{ key: 'Vbe', label: 'V_BE (V)', digits: 3, get: function (v) { return v.V_be; } },
@@ -68,7 +72,7 @@ HoolaStudio.define('elec-ug-bench', function (S) {
       ['Why is R_B needed in the base lead?', ['The base-emitter diode would take a destructive current without it',
         'It sets the collector voltage', 'It stops oscillation'], 0,
         'A forward-biased junction has almost no resistance of its own.']],
-  };
+  }; };
 
   function fetPlan(isMos) {
     var unk = isMos ? p.Vth : p.Vp;
@@ -113,10 +117,10 @@ HoolaStudio.define('elec-ug-bench', function (S) {
           'A large R_D would drag the drain below the knee and the square law would no longer hold.']],
     };
   }
-  PLANS['jfet-transfer-characteristic'] = fetPlan(false);
-  PLANS['mosfet-transfer-characteristic'] = fetPlan(true);
+  PLANS['jfet-transfer-characteristic'] = function () { return fetPlan(false); };
+  PLANS['mosfet-transfer-characteristic'] = function () { return fetPlan(true); };
 
-  PLANS['zener-shunt-regulator'] = (function () {
+  PLANS['zener-shunt-regulator'] = function () {
     // start the sweep where the diode really is in breakdown: the input at which it carries 8 mA
     var lo = (function () { var a = p.Vz, b = p.Vz + 40, i, mid;
       for (i = 0; i < 60; i++) { mid = (a + b) / 2; if (readAt({ Vin: mid }).I_z < 0.008) a = mid; else b = mid; }
@@ -155,9 +159,9 @@ HoolaStudio.define('elec-ug-bench', function (S) {
         ['Taking the input below the start of your sweep would', ['take the diode out of breakdown and the output would follow the input',
           'raise the output', 'damage the load'], 0, 'With no Zener current there is no regulation left.']],
     };
-  })();
+  };
 
-  PLANS['solar-cell-characteristic'] = {
+  PLANS['solar-cell-characteristic'] = function () { return {
     comp: 'solar', compName: SAMPLE || 'Silicon solar cell',
     parts: [],
     wiring: 'Cell (+) → ammeter → load potentiometer → cell (−).  Voltmeter across the cell.  Lamp fixed above it.',
@@ -193,9 +197,9 @@ HoolaStudio.define('elec-ug-bench', function (S) {
       'It is set by the silicon junction, not by the size of the cell or the light.'],
       ['The maximum power point lies', ['at the knee of the I-V curve', 'at short circuit', 'at open circuit'], 0,
         'Both ends deliver zero power, so the best point is between them.']],
-  };
+  }; };
 
-  PLANS['opamp-inverting-amplifier'] = {
+  PLANS['opamp-inverting-amplifier'] = function () { return {
     comp: 'dip8', compName: SAMPLE || 'Operational amplifier (8-pin DIL)',
     parts: [{ r: p.R1, tag: 'R_1' }, { r: p.Rf, tag: 'R_f' }],
     wiring: 'Input → R_1 (' + ohm(p.R1) + ') → pin 2 (inverting).  R_f (' + ohm(p.Rf) +
@@ -230,19 +234,20 @@ HoolaStudio.define('elec-ug-bench', function (S) {
       ['The voltage at the inverting input stays near zero because', ['the open-loop gain is enormous',
         'it is wired to earth', 'the input resistor is large'], 0,
         'V_o = A_0(V_p − V_n) with A_0 of a few hundred thousand leaves microvolts across the input.']],
-  };
+  }; };
 
-  PLANS['opamp-summing-amplifier'] = {
+  PLANS['opamp-summing-amplifier'] = function () { return {
     comp: 'dip8', compName: SAMPLE || 'Operational amplifier as a summing amplifier',
     parts: [{ r: p.R1, tag: 'R_1' }, { r: p.R2, tag: 'R_2' }, { r: p.R3, tag: 'R_3' }, { r: p.Rf, tag: 'R_f' }],
     wiring: 'Three inputs through equal ' + ohm(p.R1) + ' resistors to pin 2.  R_f (' + ohm(p.Rf) +
       ') from pin 2 to pin 6.  Pin 3 to earth.',
     // each input may go up to a third of what the output can hold, so three of them never reach the rails
     controls: (function () {
-      var vm = round(Math.min(2, 0.7 * p.Vsat * p.R1 / p.Rf / 3), 1), st2 = round(vm / 2, 2);
-      return [{ param: 'V1', label: 'First input V_1', unit: 'V', digits: 2, vmax: 5, vals: span(-vm, vm, st2), knob: 'aux' },
-        { param: 'V2', label: 'Second input V_2', unit: 'V', digits: 2, vmax: 5, vals: span(-vm, vm, st2), knob: 'aux2' },
-        { param: 'V3', label: 'Third input V_3', unit: 'V', digits: 2, vmax: 5, vals: span(-vm, vm, st2), knob: 'aux2' }];
+      var vm = round(Math.min(2, 0.7 * p.Vsat * p.R1 / p.Rf / 3), 2), i, vs = [];
+      for (i = -3; i <= 3; i++) vs.push(round(vm * i / 3, 3));
+      return [{ param: 'V1', label: 'First input V_1', unit: 'V', digits: 2, vmax: 5, vals: vs, knob: 'aux' },
+        { param: 'V2', label: 'Second input V_2', unit: 'V', digits: 2, vmax: 5, vals: vs, knob: 'aux2' },
+        { param: 'V3', label: 'Third input V_3', unit: 'V', digits: 2, vmax: 5, vals: vs, knob: 'aux2' }];
     })(),
     m1: { fn: 'DC V', label: 'Sum of the three inputs', unit: 'V', digits: 3, lc: 0.001,
       get: function (v) { return v.V_1 + v.V_2 + v.V_3; } },
@@ -257,9 +262,10 @@ HoolaStudio.define('elec-ug-bench', function (S) {
     graph: { x: function (r) { return r.m1; }, y: function (r) { return r.m2; }, xlabel: 'ΣV (V)', ylabel: 'V_out (V)' },
     result: function (rows) {
       var pts = rows.map(function (r) { return [r.m1, r.m2]; });
-      var lo = { V1: -1, V2: -1, V3: -1 }, hi = { V1: 1, V2: 1, V3: 1 };
+      var vm = CTRL[0].vals[CTRL[0].vals.length - 1];
+      var lo = { V1: -vm, V2: -vm, V3: -vm }, hi = { V1: vm, V2: vm, V3: vm };
       return { label: 'Gain of the sum, V_out / ΣV', value: slope(pts), unit: '', digits: 3,
-        truth: (readAt(hi).V_o - readAt(lo).V_o) / 6,
+        truth: (readAt(hi).V_o - readAt(lo).V_o) / (6 * vm),
         note: 'Slope of the output against the sum of the inputs; −R_f/R is −' + fmt(p.Rf / p.R1, 2) + '.' };
     },
     resultNote: 'The output follows the plain sum of the three inputs, inverted and scaled by R_f/R, no matter how ' +
@@ -270,9 +276,9 @@ HoolaStudio.define('elec-ug-bench', function (S) {
       'the output voltage'], 0, 'It is a virtual earth, held there by the feedback.'],
       ['With equal input resistors the output is', ['−(R_f/R) times the sum of the inputs', 'the largest input',
         'the mean of the inputs'], 0, 'Each input contributes V/R of current and all of it leaves through R_f.']],
-  };
+  }; };
 
-  var PL = PLANS[BASE] || PLANS['bjt-ce-current-gain'];
+  var PL = (PLANS[BASE] || PLANS['bjt-ce-current-gain'])();
   var CTRL = PL.controls;
 
   // =============================================================================================== the bench
@@ -336,10 +342,10 @@ HoolaStudio.define('elec-ug-bench', function (S) {
     var body = S.mesh(new T.CylinderGeometry(0.0019, 0.0019, 0.015, 20), new T.MeshStandardMaterial({ map: tex, roughness: 0.55 }));
     body.rotation.z = Math.PI / 2; g.add(body);
     [-1, 1].forEach(function (sg) {
-      var ld = S.mesh(new T.CylinderGeometry(0.0004, 0.0004, 0.012, 8), M.chrome, false);
-      ld.rotation.z = Math.PI / 2; ld.position.x = sg * 0.0135; g.add(ld);
-      var dn = S.mesh(new T.CylinderGeometry(0.0004, 0.0004, 0.008, 8), M.chrome, false);
-      dn.position.set(sg * 0.0195, -0.004, 0); g.add(dn);
+      var ld = S.mesh(new T.CylinderGeometry(0.0004, 0.0004, 0.007, 8), M.chrome, false);
+      ld.rotation.z = Math.PI / 2; ld.position.x = sg * 0.011; g.add(ld);
+      var dn = S.mesh(new T.CylinderGeometry(0.0004, 0.0004, 0.006, 8), M.chrome, false);
+      dn.position.set(sg * 0.0145, -0.003, 0); g.add(dn);
     });
     g.position.set(-0.115 + i * 0.075, LY, BZ - 0.035);
     var lb = S.label(q.tag + ' ' + ohm(q.r), { w: 0.034, ratio: 0.26, color: '#3d3528', weight: 700 });
@@ -667,13 +673,13 @@ HoolaStudio.define('elec-ug-bench', function (S) {
     camera: { pos: [0.1, 0.62, 0.86], look: [0.0, 0.03, -0.14] },
     views: {
       psu: [[0.6, 0.24, 0.0], [0.44, 0.07, -0.3]], aux: [[-0.4, 0.2, 0.0], [-0.42, 0.06, -0.28]],
-      bb: [[0.0, 0.26, 0.17], [0.0, 0.01, -0.04]], comp: [[0.06, 0.1, 0.07], [0.04, 0.015, -0.02]],
-      res: [[-0.08, 0.11, 0.06], [-0.08, 0.015, -0.05]], pot: [[0.16, 0.12, 0.08], [0.15, 0.02, -0.03]],
-      dm1: [[-0.24, 0.24, 0.02], [-0.26, 0.05, -0.29]], dm2: [[0.12, 0.24, 0.0], [0.1, 0.05, -0.31]],
+      bb: [[0.0, 0.4, 0.36], [0.0, 0.01, -0.04]], comp: [[0.07, 0.12, 0.09], [0.04, 0.015, -0.02]],
+      res: [[-0.08, 0.14, 0.1], [-0.08, 0.015, -0.05]], pot: [[0.18, 0.15, 0.12], [0.15, 0.02, -0.03]],
+      dm1: [[-0.23, 0.2, -0.06], [-0.26, 0.055, -0.3]], dm2: [[0.11, 0.2, -0.09], [0.1, 0.055, -0.32]],
       bench: [[0.08, 0.46, 0.7], [0.0, 0.03, -0.18]], book: [[-0.42, 0.44, 0.52], [-0.5, 0.0, 0.08]],
     },
     theory: {
-      principle: S.lab.theory.split('. ').slice(0, 3).join('. ') + '.',
+      principle: S.lab.theory.split('. ').slice(0, 3).join('. ').replace(/\.+$/, '') + '.',
       formula: BASE === 'bjt-ce-current-gain' ? 'β = ΔI_C / ΔI_B' :
         BASE === 'jfet-transfer-characteristic' ? 'I_D = I_DSS (1 − V_GS/V_P)²' :
         BASE === 'mosfet-transfer-characteristic' ? 'I_D = (k/2)(V_GS − V_th)²' :
@@ -730,7 +736,7 @@ HoolaStudio.define('elec-ug-bench', function (S) {
     },
 
     steps: [
-      { id: 'setup', title: 'Set up', view: 'bb', render: function (u) {
+      { id: 'setup', title: 'Set up', view: 'bench', render: function (u) {
           u.h2('Check the circuit and switch on');
           u.p(PL.wiring);
           u.task('1. Check the circuit on the board', st.checked,

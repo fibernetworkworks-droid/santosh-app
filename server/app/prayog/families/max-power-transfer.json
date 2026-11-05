@@ -1,5 +1,6 @@
 {
  "base": "max-power-transfer",
+ "rig": "network-board",
  "chapter": "Network theorems and electrical skills",
  "grid": {
   "title": "Maximum power transfer on panel network {net}",

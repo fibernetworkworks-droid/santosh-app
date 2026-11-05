@@ -465,3 +465,139 @@ def rc_response() -> dict:
 
 
 BUILDERS = BUILDERS + (series_resonance, parallel_resonance, series_rc, rc_response)
+
+
+# ============================================================================== alternating-current bridges
+def _bridge_bodies() -> list[dict]:
+    """The bridge bench as LSL data. The studio rig `ac-bridge` draws the real box."""
+    return [board(0.95, 0.52),
+            B("bbox", "box", name="Bridge box", info="A bakelite panel with the four arms of the bridge printed "
+              "on it and a terminal pair for each arm.", size=[0.46, 0.05, 0.3], pos=[0, 0.025, -0.22],
+              color="#17181b"),
+            B("osc", "box", name="Audio oscillator (1 kHz)", info="Feeds one diagonal of the bridge at a few "
+              "volts. Nothing here is at mains voltage.", size=[0.2, 0.1, 0.14], pos=[-0.46, 0.05, -0.4],
+              color="#5f646b"),
+            B("det", "box", name="Tuned detector", info="An amplifier and a null meter, with headphones. At "
+              "balance the note dies away.", size=[0.17, 0.09, 0.13], pos=[0.42, 0.045, -0.38], color="#3c4149"),
+            B("hp", "torus", name="Headphones", r=0.035, tube=0.008, pos=[0.42, 0.012, -0.12],
+              rot=[-1.5708, 0, 0], color="black"),
+            B("rdial", "box", name="Variable resistance arm", size=[0.19, 0.05, 0.11], pos=[-0.24, 0.025, 0.08],
+              color="#2b2f36"),
+            B("cdial", "box", name="Variable capacitance arm", size=[0.19, 0.05, 0.11], pos=[0.06, 0.025, 0.1],
+              color="#2b2f36"),
+            B("unk", "cylinder", name="The unknown", info="Clipped into the arm under test.", r=0.018, h=0.05,
+              pos=[0.3, 0.025, 0.06], rot=[0, 0, 1.5708], color="#c9b07a"),
+            _w("bw1", [[-0.38, 0.03, -0.34], [-0.3, 0.03, -0.26], [-0.2, 0.03, -0.22]]),
+            _w("bw2", [[0.2, 0.03, -0.22], [0.34, 0.03, -0.3], [0.38, 0.03, -0.34]], "black"),
+            _w("bw3", [[-0.16, 0.03, -0.1], [-0.2, 0.03, 0.02], [-0.24, 0.03, 0.04]]),
+            _w("bw4", [[-0.14, 0.03, 0.08], [-0.04, 0.03, 0.1], [0.0, 0.03, 0.1]], "black"),
+            _w("bw5", [[0.14, 0.03, 0.1], [0.24, 0.03, 0.08], [0.28, 0.03, 0.07]], "blue")]
+
+
+_BR_SAFETY = ("Everything here runs from the audio oscillator at a few volts: nothing is at mains voltage. "
+              "Turn the detector's gain down before listening, and keep the oscillator at one frequency while "
+              "balancing, because the balance of a bridge with a coil in it is hunted with two dials at once.")
+
+
+def _brlab(**kw) -> dict:
+    d = dict(lsl=1, field="physics", lang="en-IN", rig="ac-bridge", group="Physics · AC bridges",
+             level="B.Sc. (UG)", topic="Alternating-current bridges", chapter="AC circuits and bridges",
+             kernel="acbridge", autorun=True, camera={"pos": [0.0, 0.95, 0.9], "look": [0, 0.04, -0.16]},
+             floor=-0.03, bodies=_bridge_bodies(), safety=_BR_SAFETY)
+    d.update(kw)
+    return d
+
+
+def de_sauty() -> dict:
+    return _brlab(
+        id="de-sauty-bridge", title="De Sauty's bridge: comparison of capacitances",
+        aim="Balance a De Sauty bridge against a standard capacitor and find the unknown capacitance from the "
+            "ratio of the two resistive arms.",
+        cfg={"measure": {"param": "R2", "lo": 50.0, "hi": 50000.0}},
+        params={"f": 1000.0, "V": 5.0, "Rg": 1000.0,
+                "R1": 1000.0, "L1": 0.0, "C1": 0.0, "R2": 1000.0, "L2": 0.0, "C2": 0.0,
+                "R3": 0.0, "L3": 0.0, "C3": 2.2e-7, "R4": 0.0, "L4": 0.0, "C4": 1e-7, "bal": 1000.0},
+        knobs=[knob("R2", "Variable arm R₂", "R2", 50, 50000, 10, 1000, "Ω"),
+               knob("R1", "Fixed ratio arm R₁", "R1", 100, 10000, 100, 1000, "Ω"),
+               knob("f", "Oscillator frequency", "f", 200, 5000, 100, 1000, "Hz"),
+               knob("C4", "Standard capacitor C₄", "C4", 0.001, 10, 0.001, 0.1, "µF", 1e-6),
+               knob("C3", "Unknown capacitor (C₃ hidden)", "C3", 0.001, 10, 0.001, 0.22, "µF", 1e-6,
+                    hidden=True)],
+        instruments=[inst("G", "readout", "Detector current", "I_G", k=1e6, unit="µA", digits=2),
+                     inst("Z3", "readout", "Reactance of the unknown arm", "Z3", unit="Ω", digits=0)],
+        steps=["Clip the unknown capacitor into arm 3 and the standard capacitor into arm 4.",
+               "Set the fixed ratio arm R₁ to 1000 Ω and switch the oscillator on at 1 kHz.",
+               "Turn the variable arm R₂ while listening: the note in the headphones falls to its quietest at "
+               "balance.",
+               "Record R₂ at balance. C₃ = C₄ R₂ / R₁.",
+               "Change R₁ and balance again: the answer must not change."],
+        theory="A De Sauty bridge compares two capacitances directly. Two resistive arms R₁ and R₂ form one "
+               "pair and the two capacitors the other, and the bridge balances when the products of opposite "
+               "arms are equal: R₂ × (1/jωC₃) = R₁ × (1/jωC₄), which gives C₃ = C₄ R₂/R₁. The frequency has "
+               "cancelled out, so the balance is the same at any frequency, and the comparison is as accurate "
+               "as the standard capacitor and the two resistances. The simple form assumes both capacitors are "
+               "loss-free; a real lossy capacitor needs resistances added in series with the arms (Grover's "
+               "modification), and then the bridge also measures the loss angle.",
+        tour=[{"say": "Two resistive arms on the left, the unknown capacitor and the standard capacitor on the right, the oscillator across one diagonal and the detector across the other."},
+              {"set": {"R2": 2200}, "say": "At two thousand two hundred ohms the detector has gone quiet: the bridge is balanced."},
+              {"set": {"R2": 4000}, "say": "Away from balance the note comes back at once, which is what makes a null method so sensitive."}],
+        questions=[{"q": "At balance the De Sauty bridge gives", "options": ["C₃ = C₄ R₂ / R₁",
+                    "C₃ = C₄ R₁ / R₂", "C₃ = C₄ R₁ R₂"], "answer": 0,
+                    "why": "Equal products of opposite arms, with the capacitive reactances inversely as the "
+                           "capacitances."},
+                   {"q": "The balance of this bridge depends on the frequency", "options": ["Not at all",
+                    "Directly", "As its square"], "answer": 0,
+                    "why": "ω cancels from both sides of the balance equation."}],
+        sources=[UG, AC_BOOK, E24, SIM],
+        check={"params": {}, "reading": "R2", "textbook": "desauty_r2"},
+    )
+
+
+def owen_bridge() -> dict:
+    return _brlab(
+        id="owen-bridge", title="Owen's bridge: self-inductance of a coil",
+        aim="Balance an Owen bridge with its two dials and find the self-inductance of a coil, and its "
+            "resistance, from the standard capacitor and the two resistances.",
+        cfg={"measure": {"param": "R2", "lo": 50.0, "hi": 50000.0,
+                         "param2": "C2", "lo2": 1e-8, "hi2": 1e-5}},
+        params={"f": 1000.0, "V": 5.0, "Rg": 1000.0,
+                "R1": 20.0, "L1": 0.047, "C1": 0.0, "R2": 1000.0, "L2": 0.0, "C2": 1e-6,
+                "R3": 500.0, "L3": 0.0, "C3": 0.0, "R4": 0.0, "L4": 0.0, "C4": 1e-7, "bal": 1000.0},
+        knobs=[knob("R2", "Variable resistance dial R₂", "R2", 50, 50000, 10, 1000, "Ω"),
+               knob("C2", "Variable capacitance dial C₂", "C2", 0.01, 10, 0.01, 1, "µF", 1e-6),
+               knob("f", "Oscillator frequency", "f", 200, 5000, 100, 1000, "Hz"),
+               knob("R3", "Fixed arm R₃", "R3", 100, 5000, 100, 500, "Ω"),
+               knob("C4", "Standard capacitor C₄", "C4", 0.001, 10, 0.001, 0.1, "µF", 1e-6),
+               knob("L1", "Coil (L₁ hidden)", "L1", 1, 1000, 1, 47, "mH", 1e-3, hidden=True),
+               knob("R1", "Coil resistance (hidden)", "R1", 1, 500, 1, 20, "Ω", hidden=True)],
+        instruments=[inst("G", "readout", "Detector current", "I_G", k=1e6, unit="µA", digits=2),
+                     inst("Z1", "readout", "Impedance of the coil arm", "Z1", unit="Ω", digits=1)],
+        steps=["Clip the coil into arm 1, the fixed resistance R₃ into arm 3 and the standard capacitor C₄ "
+               "into arm 4.",
+               "Switch the oscillator on at 1 kHz and turn the resistance dial R₂ for the quietest note.",
+               "Now turn the capacitance dial C₂ for the quietest note, and go back to R₂ again.",
+               "Two or three such rounds bring the detector to a true silence: that is the balance.",
+               "L₁ = R₂ R₃ C₄ and the coil's own resistance R₁ = R₃ C₄ / C₂.",
+               "Change the oscillator's frequency and balance again: the inductance must come out the same."],
+        theory="Owen's bridge measures a self-inductance against a capacitance, with the coil in one arm and a "
+               "resistance in series with a variable capacitor in the arm beside it. Equating the products of "
+               "opposite arms, (R₂ − j/ωC₂) R₃ = (R₁ + jωL₁)(−j/ωC₄), and separating the real and imaginary "
+               "parts gives L₁ = R₂ R₃ C₄ and R₁ = R₃ C₄ / C₂. Neither answer contains the frequency, which is "
+               "the great advantage of this bridge: an imperfect oscillator or a harmonic in its output does "
+               "not shift the balance. Because a coil has both resistance and reactance, two dials must be "
+               "turned alternately: one kills the in-phase part of the detector current and the other the "
+               "quadrature part, and neither alone can silence the detector.",
+        tour=[{"say": "The coil is in the left arm, a resistance and a variable capacitor in the arm beside it, and the standard capacitor below."},
+              {"set": {"R2": 940}, "say": "The resistance dial alone takes the note down but cannot kill it: there is still a quadrature current through the detector."},
+              {"set": {"C2": 2.5}, "say": "Now the capacitance dial. With both dials set the detector is truly silent, and the bridge is balanced."}],
+        questions=[{"q": "Owen's bridge needs two dials because", "options": [
+            "A coil has resistance as well as reactance", "The oscillator drifts", "The detector is deaf"],
+            "answer": 0, "why": "Both the real and the imaginary part of the detector current must be killed."},
+            {"q": "The inductance found from Owen's bridge depends on the frequency", "options": ["Not at all",
+             "Directly", "Inversely"], "answer": 0, "why": "L₁ = R₂R₃C₄ contains no ω."}],
+        sources=[UG, AC_BOOK, E24, SIM],
+        check={"params": {}, "reading": "R2", "textbook": "owen_r2"},
+    )
+
+
+BUILDERS = BUILDERS + (de_sauty, owen_bridge)

@@ -39,7 +39,7 @@ HoolaStudio.define('comp-workstation', function (S) {
     cp_root: {
       quantity: 'root x', unit: '', digits: 6, nlabel: 'iterations', ns: [4, 8, 12, 16, 24], tol: 0.01,
       methods: ['Bisection', 'Newton-Raphson', 'Secant'], xlabel: 'x', ylabel: 'f(x)', zero: true,
-      title: ['x^m − a = 0', 'd³ − 3R d² + 4sR³ = 0', 'tan α − α = 0'][CAS] || 'f(x) = 0',
+      title: ['xᵐ − a = 0', 'd³ − 3R d² + 4sR³ = 0', 'tan α − α = 0'][CAS] || 'f(x) = 0',
       problem: function () {
         if (CAS === 1) return ['A sphere of radius R = ' + fx(p.R * 100, 1) + ' cm and relative density s = ' + fx(p.s, 3),
           'floats in water. The submerged cap of depth d obeys', 'd³ − 3R d² + 4 s R³ = 0  on  0 < d < 2R',
@@ -47,7 +47,7 @@ HoolaStudio.define('comp-workstation', function (S) {
         if (CAS === 2) return ['Solve  tan α = α  for the first root beyond π.',
           'Bracket: [' + fx(p.xa, 2) + ', ' + fx(p.xb, 2) + ']', 'Newton start: x₀ = ' + fx(p.x0, 2) + ', secant x₁ = ' + fx(p.x1, 2),
           'f(α) = tan α − α,  f′(α) = tan²α'];
-        return ['Solve  x^' + fx(p.m, 0) + ' = ' + fx(p.a, 4) + ',  i.e.  f(x) = x^' + fx(p.m, 0) + ' − ' + fx(p.a, 4),
+        return ['Solve  x^' + fx(p.m, 0) + ' = ' + fx(p.a, 4) + ',  that is  f(x) = x^' + fx(p.m, 0) + ' − ' + fx(p.a, 4),
           'f′(x) = ' + fx(p.m, 0) + ' x^' + fx(p.m - 1, 0), 'Bracket: [' + fx(p.xa, 3) + ', ' + fx(p.xb, 3) + ']',
           'Start: x₀ = ' + fx(p.x0, 3) + ',  secant x₁ = ' + fx(p.x1, 3)];
       },
@@ -205,7 +205,7 @@ HoolaStudio.define('comp-workstation', function (S) {
   // ================================================================================= the workstation
   var MX = 0.15, MZ = -0.45;                           // monitor centre
   S.contact(1.0, 0.5, 0.12, -0.14, 0.42);
-  var mat = S.rounded(0.92, 0.46, 0.004, 0.01, new T.MeshStandardMaterial({ color: 0x14161a, roughness: 0.85 }));
+  var mat = S.rounded(0.92, 0.46, 0.004, 0.01, new T.MeshStandardMaterial({ color: 0x0b0d10, roughness: 0.96 }));
   mat.rotation.x = -Math.PI / 2; mat.position.set(0.12, 0.002, -0.14); S.scene.add(mat);
 
   // ---- monitor
@@ -261,11 +261,11 @@ HoolaStudio.define('comp-workstation', function (S) {
 
   // ---- mouse + tower
   var mouse = new T.Group(); mouse.position.set(0.44, 0, -0.1); S.scene.add(mouse);
-  var mb = S.mesh(new T.SphereGeometry(0.035, 24, 16), new T.MeshStandardMaterial({ color: 0x1b1d21, roughness: 0.45 }));
-  mb.scale.set(0.8, 0.42, 1.25); mb.position.y = 0.012; mouse.add(mb);
+  var mb = S.mesh(new T.SphereGeometry(0.033, 24, 16), new T.MeshStandardMaterial({ color: 0x17191d, roughness: 0.75 }));
+  mb.scale.set(0.74, 0.36, 1.2); mb.position.y = 0.009; mouse.add(mb);
   var wheel = S.mesh(new T.TorusGeometry(0.004, 0.0016, 8, 16), M.grey); wheel.rotation.y = Math.PI / 2; wheel.position.set(0, 0.026, 0.012); mouse.add(wheel);
   S.contact(0.1, 0.12, 0.44, -0.1, 0.4);
-  var tower = new T.Group(); tower.position.set(0.82, 0, -0.44); S.scene.add(tower);
+  var tower = new T.Group(); tower.position.set(0.66, 0, -0.5); S.scene.add(tower);
   var tbody = S.rounded(0.18, 0.36, 0.38, 0.008, new T.MeshStandardMaterial({ color: 0x23262b, roughness: 0.5 }));
   tbody.position.y = 0.19; tower.add(tbody);
   var vent = S.canvasTex(256, 512, function (x, w, h) {
@@ -277,28 +277,30 @@ HoolaStudio.define('comp-workstation', function (S) {
   var tled = new T.Mesh(new T.CircleGeometry(0.004, 14), new T.MeshBasicMaterial({ color: 0x14361c }));
   tled.position.set(0.055, 0.345, 0.1912); tower.add(tled);
   var tlbl = S.label('HOOLA WS-4', { w: 0.07, ratio: 0.18, color: '#9aa0a8' }); tlbl.position.set(-0.03, 0.345, 0.1912); tower.add(tlbl);
-  S.contact(0.26, 0.46, 0.82, -0.44, 0.5);
+  S.contact(0.26, 0.46, 0.66, -0.5, 0.5);
 
   // ---- the printed method card (A5, lying on the bench)
   var cardLines = SP.problem();
-  var cardTex = S.canvasTex(760, 1080, function (x, w, h) {
+  var cardTex = S.canvasTex(840, 1188, function (x, w, h) {
     x.fillStyle = '#fbf8f0'; x.fillRect(0, 0, w, h);
-    x.fillStyle = '#e8e2d2'; x.fillRect(0, 0, w, 150);
-    x.fillStyle = '#1f3a8a'; x.font = '700 40px "Public Sans", sans-serif'; x.fillText('METHOD CARD', 44, 70);
-    x.fillStyle = '#3c4654'; x.font = '500 26px "Public Sans", sans-serif'; x.fillText('Computational Physics Laboratory', 44, 112);
-    x.fillStyle = '#121418'; x.font = '700 34px "Public Sans", sans-serif';
-    var y = 214; x.fillText(SP.title, 44, y); y += 24;
-    x.strokeStyle = '#c9c2ae'; x.lineWidth = 2; x.beginPath(); x.moveTo(44, y); x.lineTo(w - 44, y); x.stroke(); y += 50;
-    x.font = '500 27px "Public Sans", sans-serif'; x.fillStyle = '#1b1f26';
-    cardLines.forEach(function (t) { wrap(x, t, 44, y, w - 88, 36); y += 36 * (1 + Math.floor(x.measureText(t).width / (w - 88))); });
-    y += 26; x.fillStyle = '#5a6472'; x.font = '500 23px "Public Sans", sans-serif';
-    x.fillText('Methods available:', 44, y); y += 32;
-    x.fillStyle = '#1b1f26'; METHODS.forEach(function (m2, i) { x.fillText((i + 1) + '.  ' + m2, 60, y); y += 32; });
-    y += 18; x.fillStyle = '#5a6472'; wrap(x, SP.formula, 44, y, w - 88, 30); y += 70;
-    x.fillStyle = '#7a1f1f'; x.font = '600 24px "Public Sans", sans-serif';
-    wrap(x, 'Record for every run: the method, n, the answer and the error. Report the answer at the largest n.', 44, y, w - 88, 32);
-    x.fillStyle = '#9aa0a8'; x.font = '500 20px "Public Sans", sans-serif';
-    x.fillText('Hoola Prayogshala · ' + (VAR.sample || 'standard test problem'), 44, h - 40);
+    x.fillStyle = '#e4ddc9'; x.fillRect(0, 0, w, 170);
+    x.fillStyle = '#1f3a8a'; x.font = '700 58px "Public Sans", sans-serif'; x.fillText('METHOD CARD', 50, 84);
+    x.fillStyle = '#3c4654'; x.font = '600 32px "Public Sans", sans-serif'; x.fillText('Computational Physics Laboratory', 50, 134);
+    x.fillStyle = '#121418'; x.font = '700 46px "Public Sans", sans-serif';
+    var y = 248; y = wrap(x, SP.title, 50, y, w - 100, 54) + 26;
+    x.strokeStyle = '#b9b19a'; x.lineWidth = 3; x.beginPath(); x.moveTo(50, y); x.lineTo(w - 50, y); x.stroke(); y += 62;
+    x.font = '500 34px "Public Sans", sans-serif'; x.fillStyle = '#1b1f26';
+    cardLines.forEach(function (t) { y = wrap(x, t, 50, y, w - 100, 44) + 44; });
+    y += 18; x.fillStyle = '#5a6472'; x.font = '600 30px "Public Sans", sans-serif';
+    x.fillText('Methods available', 50, y); y += 46;
+    x.fillStyle = '#1b1f26'; x.font = '500 34px "Public Sans", sans-serif';
+    METHODS.forEach(function (m2, i) { x.fillText((i + 1) + '.  ' + m2, 68, y); y += 44; });
+    y += 14; x.fillStyle = '#5a6472'; x.font = '500 28px "Public Sans", sans-serif';
+    y = wrap(x, SP.formula, 50, y, w - 100, 38) + 72;
+    x.fillStyle = '#7a1f1f'; x.font = '600 31px "Public Sans", sans-serif';
+    wrap(x, 'Record for every run: the method, n, the answer and the error. Report the answer at the largest n.', 50, y, w - 100, 42);
+    x.fillStyle = '#8a9099'; x.font = '500 26px "Public Sans", sans-serif';
+    x.fillText('Hoola Prayogshala · ' + (VAR.sample || 'standard test problem'), 50, h - 48);
   });
   function wrap(x, text, x0, y0, maxw, lh) {
     var words = String(text).split(' '), line = '', yy = y0, i;
@@ -307,13 +309,13 @@ HoolaStudio.define('comp-workstation', function (S) {
       if (x.measureText(t).width > maxw && line) { x.fillText(line, x0, yy); yy += lh; line = words[i]; } else line = t;
     }
     if (line) x.fillText(line, x0, yy);
-    return yy;
+    return yy;      // the baseline of the last line, so the caller can carry on below it
   }
-  var card = new T.Group(); card.position.set(-0.12, 0, 0.05); card.rotation.y = 0.09; S.scene.add(card);
-  var cardM = new T.Mesh(new T.PlaneGeometry(0.148, 0.21), new T.MeshStandardMaterial({ map: cardTex, roughness: 0.9 }));
-  cardM.rotation.x = -Math.PI / 2; cardM.position.y = 0.0012; card.add(cardM);
-  var cardPad = S.mesh(new T.BoxGeometry(0.152, 0.001, 0.214), M.paper, false); cardPad.position.y = 0.0005; card.add(cardPad);
-  S.contact(0.19, 0.25, -0.12, 0.05, 0.4);
+  var card = new T.Group(); card.position.set(-0.13, 0, 0.03); card.rotation.y = 0.05; S.scene.add(card);
+  var cardPad = S.mesh(new T.BoxGeometry(0.214, 0.002, 0.301), M.paper, false); cardPad.position.y = 0.001; card.add(cardPad);
+  var cardM = new T.Mesh(new T.PlaneGeometry(0.21, 0.297), new T.MeshStandardMaterial({ map: cardTex, roughness: 0.9 }));
+  cardM.rotation.x = -Math.PI / 2; cardM.position.y = 0.0032; card.add(cardM);      // clear of the pad: no z-fighting
+  S.contact(0.26, 0.35, -0.13, 0.03, 0.4);
 
   // ================================================================================= the screen
   function fmtRow(r) {
@@ -325,7 +327,7 @@ HoolaStudio.define('comp-workstation', function (S) {
       // ---- shell
       x.fillStyle = st.on ? '#0b1420' : '#05080c'; x.fillRect(0, 0, W, H);
       if (!st.on) {
-        x.fillStyle = '#1a2430'; x.font = '600 30px "Public Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
+        x.fillStyle = '#44566a'; x.font = '600 30px "Public Sans", sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle';
         x.fillText('HOOLA LABVIEW — press the power button', W / 2, H / 2);
         x.textAlign = 'left'; x.textBaseline = 'alphabetic';
         return;
@@ -374,7 +376,7 @@ HoolaStudio.define('comp-workstation', function (S) {
         for (i = 0; i < cx.length; i++) x.lineTo(X(cx[i]), Y(ce[i]));
         x.lineTo(X(cx[cx.length - 1]), Y(Math.max(y0, Math.min(y1, 0)))); x.closePath(); x.fill();
       }
-      x.strokeStyle = '#59b6ff'; x.lineWidth = 3; x.beginPath();
+      x.strokeStyle = '#59b6ff'; x.lineWidth = 4; x.beginPath();
       for (i = 0; i < cx.length; i++) { if (i) x.lineTo(X(cx[i]), Y(ce[i])); else x.moveTo(X(cx[i]), Y(ce[i])); }
       x.stroke();
       // what the method built
@@ -386,9 +388,11 @@ HoolaStudio.define('comp-workstation', function (S) {
       }
       // the nodes the method used
       var nnodes = Math.max(1, Math.floor(px.length * rev));
+      var stride = Math.max(1, Math.ceil(px.length / 80)), rad = px.length > 40 ? 3.5 : 5.5;
       for (i = 0; i < nnodes; i++) {
         if (!isFinite(px[i]) || !isFinite(py[i])) continue;
-        x.fillStyle = '#ff7b5a'; x.beginPath(); x.arc(X(px[i]), Y(py[i]), 6, 0, Math.PI * 2); x.fill();
+        if (i % stride !== 0 && i !== nnodes - 1) continue;
+        x.fillStyle = '#ff7b5a'; x.beginPath(); x.arc(X(px[i]), Y(py[i]), rad, 0, Math.PI * 2); x.fill();
         if (KNAME === 'cp_root' && i === nnodes - 1) {
           x.strokeStyle = 'rgba(255,123,90,.5)'; x.lineWidth = 2; x.beginPath();
           x.moveTo(X(px[i]), Y(y0)); x.lineTo(X(px[i]), Y(y1)); x.stroke();
@@ -412,10 +416,11 @@ HoolaStudio.define('comp-workstation', function (S) {
       });
       var cur = st.last;
       x.fillStyle = '#132231'; x.fillRect(RX - 14, H - P.b + 4, P.r - 24, 76);
-      x.font = '600 24px "JetBrains Mono", monospace';
+      x.font = '600 23px "JetBrains Mono", monospace';
       if (cur) {
-        x.fillStyle = '#7fe3a1'; x.fillText(SP.quantity + ' = ' + sci(cur.val), RX, H - P.b + 36);
-        x.fillStyle = '#ffd083'; x.fillText('exact ' + sci(cur.exact) + '   err ' + cur.err.toExponential(2), RX, H - P.b + 66);
+        x.fillStyle = '#7fe3a1'; x.fillText(SP.quantity + ' = ' + sci(cur.val), RX, H - P.b + 34);
+        x.font = '600 20px "JetBrains Mono", monospace'; x.fillStyle = '#ffd083';
+        x.fillText('exact ' + sci(cur.exact) + '   err ' + cur.err.toExponential(2), RX, H - P.b + 64);
       } else {
         x.fillStyle = '#5d7791'; x.fillText('press ENTER to run', RX, H - P.b + 46);
       }
@@ -477,16 +482,16 @@ HoolaStudio.define('comp-workstation', function (S) {
   drawScreen();
 
   return {
-    camera: { pos: [0.52, 0.46, 0.72], look: [0.14, 0.18, -0.3] },
+    camera: { pos: [0.72, 0.68, 1.08], look: [0.12, 0.12, -0.3] },
     views: {
       mon: [[0.16, 0.30, 0.16], [0.15, 0.25, -0.42]],
       screen: [[0.15, 0.28, 0.14], [0.15, 0.25, -0.42]],
-      kbd: [[0.17, 0.3, 0.16], [0.16, 0.0, -0.1]],
+      kbd: [[0.17, 0.33, 0.2], [0.16, 0.0, -0.09]],
       mouse: [[0.46, 0.22, 0.1], [0.44, 0.0, -0.1]],
-      tower: [[0.9, 0.42, 0.3], [0.82, 0.18, -0.4]],
-      card: [[-0.1, 0.3, 0.26], [-0.12, 0.0, 0.04]],
+      tower: [[0.78, 0.42, 0.22], [0.66, 0.18, -0.46]],
+      card: [[-0.13, 0.42, 0.2], [-0.13, 0.0, 0.03]],
       book: [[-0.4, 0.44, 0.52], [-0.5, 0.0, 0.08]],
-      bench: [[0.52, 0.46, 0.72], [0.14, 0.18, -0.3]],
+      bench: [[0.72, 0.68, 1.08], [0.12, 0.12, -0.3]],
     },
     theory: {
       principle: 'A numerical method answers a question the algebra cannot, but it answers it only to the accuracy '

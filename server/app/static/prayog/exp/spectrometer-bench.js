@@ -19,7 +19,7 @@ HoolaStudio.define('spectrometer-bench', function (S) {
     if (k.hidden && isFinite(k.value) && p[k.param] !== undefined) p[k.param] = +k.value * (+k.k || 1);
   });
   var LC = 1 / 60;                                      // vernier least count: one minute of arc, in degrees
-  var CX = -0.18, CZ = -0.12, RC = 0.17;                // centre of the instrument, radius of the divided circle
+  var CX = 0.02, CZ = -0.22, RC = 0.17, ROT = -30;   // the optical axis runs across the bench at 30 degrees                // centre of the instrument, radius of the divided circle
   var AXY = 0.118;                                      // height of the optical axis above the bench
   var AD = GRATING ? 60 : p.A * R2D;                     // refracting angle of the prism, degrees
   var HG = [404.656, 435.833, 546.074, 576.960, 579.066];   // mercury lines, nm (NIST)
@@ -89,7 +89,8 @@ HoolaStudio.define('spectrometer-bench', function (S) {
   }
 
   // ---------------------------------------------------------------- the apparatus
-  function arc(r, Tdeg, y) { return new T.Vector3(CX + r * Math.cos(Tdeg * DEG), y === undefined ? AXY : y, CZ + r * Math.sin(Tdeg * DEG)); }
+  function arc(r, Tdeg, y) { var a = (Tdeg + ROT) * DEG;
+    return new T.Vector3(CX + r * Math.cos(a), y === undefined ? AXY : y, CZ + r * Math.sin(a)); }
 
   var base = new T.Group(); S.scene.add(base);
   [0, 120, 240].forEach(function (a) {                   // a cast three-legged base
@@ -148,14 +149,16 @@ HoolaStudio.define('spectrometer-bench', function (S) {
 
   // the prism (or the grating in its frame) standing on the table
   var sample = new T.Group(); sample.position.y = 0.089; tableG.add(sample);
-  var glassM = new T.MeshPhysicalMaterial({ color: 0xdfeeff, roughness: 0.02, metalness: 0, transparent: true,
-    opacity: 0.36, depthWrite: false, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.6, side: T.DoubleSide });
+  var glassM = new T.MeshPhysicalMaterial({ color: 0xcfe6ea, roughness: 0.02, metalness: 0, transparent: true,
+    opacity: 0.58, depthWrite: false, clearcoat: 1, clearcoatRoughness: 0.02, envMapIntensity: 1.8, side: T.DoubleSide });
   if (!GRATING) {
     var side = 0.05, A2 = AD * DEG / 2, sh = new T.Shape();
     sh.moveTo(0, side * Math.cos(A2)); sh.lineTo(-side * Math.sin(A2), 0); sh.lineTo(side * Math.sin(A2), 0); sh.closePath();
     var pg = new T.ExtrudeGeometry(sh, { depth: 0.042, bevelEnabled: true, bevelThickness: 0.0008, bevelSize: 0.0008, bevelSegments: 2 });
     var prism = new T.Mesh(pg, glassM); prism.rotation.x = -Math.PI / 2; prism.renderOrder = 3;
     prism.castShadow = true; sample.add(prism);
+    var edges = new T.LineSegments(new T.EdgesGeometry(pg, 20), new T.LineBasicMaterial({ color: 0xf2f6f8, transparent: true, opacity: 0.85, depthWrite: false, toneMapped: false }));
+    edges.rotation.x = -Math.PI / 2; edges.renderOrder = 4; sample.add(edges);
     var gnd = S.label(fmt(AD, 0) + '°', { w: 0.016, ratio: 0.7, color: '#6b7280', weight: 700 });
     gnd.position.set(0, 0.0425, -0.022); gnd.rotation.x = -Math.PI / 2; sample.add(gnd);
   } else {
@@ -193,10 +196,10 @@ HoolaStudio.define('spectrometer-bench', function (S) {
 
   // collimator: fixed, pointing at the centre from -x, with its slit assembly at the far end
   var coll = tube(0.30, 0.10, 'collimator');
-  coll.rotation.y = Math.PI;                 // its tube runs out towards -x
+  coll.rotation.y = -(180 + ROT) * DEG;      // its tube runs out along the optical axis, away from the centre
   coll.position.set(CX, AXY, CZ);
   S.scene.add(coll);
-  var slitHead = new T.Group(); slitHead.position.set(CX - 0.405, AXY, CZ); S.scene.add(slitHead);
+  var slitHead = new T.Group(); slitHead.position.copy(arc(0.405, 180)); slitHead.rotation.y = -(180 + ROT) * DEG; S.scene.add(slitHead);
   var sh2 = S.mesh(new T.CylinderGeometry(0.026, 0.026, 0.03, 28), M.iron); sh2.rotation.z = Math.PI / 2; slitHead.add(sh2);
   var sKnob = S.mesh(new T.CylinderGeometry(0.008, 0.008, 0.009, 16), M.brass); sKnob.rotation.x = Math.PI / 2; sKnob.position.set(0, 0.026, 0); slitHead.add(sKnob);
   var slitPlate = S.mesh(new T.BoxGeometry(0.002, 0.03, 0.03), M.black); slitPlate.position.x = -0.016; slitHead.add(slitPlate);
@@ -217,7 +220,7 @@ HoolaStudio.define('spectrometer-bench', function (S) {
   var clampK = S.mesh(new T.CylinderGeometry(0.008, 0.008, 0.01, 6), M.black); clampK.position.set(RC + 0.012, 0.072, 0); vern.add(clampK);
 
   // the lamp house behind the slit
-  var lampG = new T.Group(); lampG.position.set(CX - 0.52, 0, CZ); S.scene.add(lampG);
+  var lampG = new T.Group(); lampG.position.copy(arc(0.52, 180, 0)); lampG.rotation.y = -ROT * DEG; S.scene.add(lampG);
   var lBox = S.rounded(0.1, 0.13, 0.1, 0.01, M.iron); lBox.position.y = 0.075; lampG.add(lBox);
   var lFoot = S.mesh(new T.BoxGeometry(0.12, 0.012, 0.11), M.iron); lFoot.position.y = 0.006; lampG.add(lFoot);
   var lHole = new T.Mesh(new T.CircleGeometry(0.016, 24), new T.MeshBasicMaterial({ color: LAMP === 'mercury' ? 0xdbe8ff : 0xffd45e, toneMapped: false }));
@@ -227,7 +230,7 @@ HoolaStudio.define('spectrometer-bench', function (S) {
   var lLab = S.label(LAMP === 'mercury' ? 'MERCURY LAMP' : 'SODIUM LAMP', { w: 0.07, ratio: 0.16, color: '#e8e2cf', weight: 700 });
   lLab.position.set(0, 0.12, 0.051); lampG.add(lLab);
   var lamp = new T.PointLight(LAMP === 'mercury' ? 0xbcd4ff : 0xffcf6a, 0.02, 0, 2); lamp.position.set(0.06, AXY, 0); lampG.add(lamp);
-  S.contact(0.16, 0.15, CX - 0.52, CZ, 0.5);
+  S.contact(0.17, 0.17, lampG.position.x, lampG.position.z, 0.5);
 
   // a faint beam from the collimator to the sample, and out to the telescope
   var beamM = new T.LineBasicMaterial({ color: 0xffd98a, transparent: true, opacity: 0.5, depthWrite: false, toneMapped: false });
@@ -294,9 +297,9 @@ HoolaStudio.define('spectrometer-bench', function (S) {
 
   // ---------------------------------------------------------------- keeping the 3D in step
   function update() {
-    teleArm.rotation.y = -st.tel * DEG;
-    if (!GRATING) sample.rotation.y = MODE === 'angle' ? Math.PI / 2 : (st.iDeg - 50) * DEG;
-    else sample.rotation.y = st.normal ? 0 : 0.5;
+    teleArm.rotation.y = -(st.tel + ROT) * DEG;
+    if (!GRATING) sample.rotation.y = MODE === 'angle' ? -(270 + ROT) * DEG : -(ROT - (st.iDeg - 50)) * DEG;
+    else sample.rotation.y = -ROT * DEG + (st.normal ? 0 : 0.5);
     var hit = arc(0, 0), inStart = arc(0.40, 180);
     beamIn.geometry.setFromPoints([inStart, hit]);
     beamsOut.forEach(function (l) { l.visible = false; });
@@ -496,13 +499,13 @@ HoolaStudio.define('spectrometer-bench', function (S) {
     { label: 'λ / Δλ', get: function (r) { return Math.round(r.rp); } }];
 
   var VIEWS = {
-    circle: [[CX + 0.32, 0.62, CZ + 0.86], [CX + 0.02, 0.07, CZ + 0.06]],
-    coll: [[CX - 0.34, 0.34, CZ + 0.46], [CX - 0.26, AXY, CZ]],
-    tele: [[CX + 0.46, 0.4, CZ + 0.56], [CX + 0.16, AXY, CZ + 0.06]],
-    table: [[CX + 0.13, 0.27, CZ + 0.31], [CX, 0.1, CZ]],
-    lamp: [[CX - 0.4, 0.3, CZ + 0.4], [CX - 0.52, 0.08, CZ]],
-    wide: [[CX + 0.14, 0.95, CZ + 1.4], [CX - 0.14, 0.07, CZ]],
-    book: [[0.62, 0.46, 0.6], [0.6, 0.0, 0.14]]
+    circle: [[CX + 0.3, 0.64, CZ + 0.95], [CX - 0.01, 0.08, CZ]],
+    coll: [[CX - 0.2, 0.32, CZ + 0.5], [CX - 0.3, AXY, CZ + 0.12]],
+    tele: [[CX + 0.5, 0.36, CZ + 0.42], [CX + 0.2, AXY, CZ - 0.12]],
+    table: [[CX + 0.12, 0.26, CZ + 0.3], [CX, 0.095, CZ]],
+    lamp: [[CX - 0.24, 0.28, CZ + 0.62], [CX - 0.42, 0.08, CZ + 0.25]],
+    wide: [[CX + 0.16, 0.82, CZ + 1.28], [CX - 0.05, 0.07, CZ - 0.02]],
+    book: [[0.78, 0.46, 0.68], [0.76, 0.0, 0.16]]
   };
   update();
 
@@ -731,7 +734,7 @@ HoolaStudio.define('spectrometer-bench', function (S) {
   }[MODE];
 
   return {
-    camera: { pos: [CX + 0.14, 0.95, CZ + 1.4], look: [CX - 0.14, 0.07, CZ] },
+    camera: { pos: [CX + 0.16, 0.82, CZ + 1.28], look: [CX - 0.05, 0.07, CZ - 0.02] },
     views: VIEWS,
     theory: THEORY,
     book: { title: 'Expt. — ' + (MODE === 'angle' ? 'Angle of a prism' : MODE === 'index' ? 'Prism: minimum deviation'
@@ -742,7 +745,7 @@ HoolaStudio.define('spectrometer-bench', function (S) {
           ? 'd sin(theta) = m x wavelength' : MODE === 'grp' ? 'Resolving power = wavelength / least difference'
             : 'n = sin((A + Dm)/2) / sin(A/2)',
         'Read both verniers every time.'],
-      columns: COLS, at: [0.62, 0.1, 0.22] },
+      columns: COLS, at: [0.76, 0.1, 0.1] },
     graph: MODE === 'disp' ? { x: function (r) { return 1 / (r.lam * r.lam * 1e-6); }, y: function (r) { return r.n; },
       xlabel: '1 / λ²  (µm⁻²)', ylabel: 'n', line: function (pts) { var L = S.fit.linear(pts); return L ? function (x) { return L.m * x + L.c; } : null; } }
       : MODE === 'glam' ? { x: function (r) { return r.m; }, y: function (r) { return Math.sin(r.theta * DEG); },

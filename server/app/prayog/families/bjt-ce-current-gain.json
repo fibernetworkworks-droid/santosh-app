@@ -1,0 +1,27 @@
+{"base": "bjt-ce-current-gain", "rig": "elec-ug-bench",
+ "chapter": "Analog electronics and devices",
+ "grid": {
+   "title": "BJT current gain: {device} at {supply}",
+   "unknown": "the current gain beta of {device}",
+   "axes": {
+     "device": [
+       {"key": "bc547b", "label": "a BC547B", "sample": "BC547B n-p-n silicon transistor, TO-92",
+        "params": {"beta": 200},
+        "note": "The datasheet's hFE classification B is 200 to 450 at I_C = 2 mA and V_CE = 5 V; the lower limit of that group is used here, so a real specimen can only do better.",
+        "source": {"title": "ON Semiconductor BC546/BC547/BC548 datasheet, hFE classification (group B: 200-450 at I_C = 2 mA, V_CE = 5 V)"}},
+       {"key": "bc547c", "label": "a BC547C", "sample": "BC547C n-p-n silicon transistor, TO-92",
+        "params": {"beta": 420},
+        "note": "The same part sorted into its high-gain group: hFE 420 to 800. One transistor type can differ by a factor of four from bin to bin, which is why beta is measured and not looked up.",
+        "source": {"title": "ON Semiconductor BC546/BC547/BC548 datasheet, hFE classification (group C: 420-800 at I_C = 2 mA, V_CE = 5 V)"}},
+       {"key": "p2n2222a", "label": "a P2N2222A", "sample": "P2N2222A n-p-n silicon transistor, TO-92",
+        "params": {"beta": 100},
+        "note": "The datasheet guarantees hFE of at least 100 at I_C = 10 mA and V_CE = 10 V; that minimum is used here.",
+        "source": {"title": "ON Semiconductor P2N2222A datasheet, DC current gain hFE minimum 100 at I_C = 10 mA, V_CE = 10 V"}}
+     ],
+     "supply": [
+       {"key": "vcc10", "label": "V_CC = 10 V", "params": {"Vcc": 10.0}},
+       {"key": "vcc6", "label": "V_CC = 6 V", "params": {"Vcc": 6.0},
+        "note": "A lower collector supply brings the working point closer to the knee, and the measured gain changes a little with it (the Early effect)."}
+     ]
+   }
+ }}

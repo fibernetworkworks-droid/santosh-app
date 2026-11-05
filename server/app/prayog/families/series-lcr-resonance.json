@@ -1,24 +1,10 @@
 {
  "base": "series-lcr-resonance",
+ "rig": "ac-bench",
  "chapter": "AC circuits and bridges",
  "variants": [
   {
-   "key": "l10-c001",
-   "title": "Series LCR resonance: a 10 mH coil with 0.01 µF",
-   "sample": "Decade inductance box set to an unknown step, with a 0.01 µF capacitor",
-   "unknown": "the inductance of the coil, from the resonant frequency",
-   "params": {
-    "L": 0.01,
-    "C": 1e-08,
-    "R": 51.0
-   },
-   "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
-   }
-  },
-  {
-   "key": "l10-c0047",
+   "key": "l10",
    "title": "Series LCR resonance: a 10 mH coil with 0.047 µF",
    "sample": "Decade inductance box set to an unknown step, with a 0.047 µF capacitor",
    "unknown": "the inductance of the coil, from the resonant frequency",
@@ -28,27 +14,11 @@
     "R": 24.0
    },
    "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
    }
   },
   {
-   "key": "l22-c001",
-   "title": "Series LCR resonance: a 22 mH coil with 0.01 µF",
-   "sample": "Decade inductance box set to an unknown step, with a 0.01 µF capacitor",
-   "unknown": "the inductance of the coil, from the resonant frequency",
-   "params": {
-    "L": 0.022,
-    "C": 1e-08,
-    "R": 75.0
-   },
-   "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
-   }
-  },
-  {
-   "key": "l22-c0047",
+   "key": "l22",
    "title": "Series LCR resonance: a 22 mH coil with 0.047 µF",
    "sample": "Decade inductance box set to an unknown step, with a 0.047 µF capacitor",
    "unknown": "the inductance of the coil, from the resonant frequency",
@@ -58,27 +28,11 @@
     "R": 36.0
    },
    "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
    }
   },
   {
-   "key": "l47-c001",
-   "title": "Series LCR resonance: a 47 mH coil with 0.01 µF",
-   "sample": "Decade inductance box set to an unknown step, with a 0.01 µF capacitor",
-   "unknown": "the inductance of the coil, from the resonant frequency",
-   "params": {
-    "L": 0.047,
-    "C": 1e-08,
-    "R": 110.0
-   },
-   "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
-   }
-  },
-  {
-   "key": "l47-c0047",
+   "key": "l47",
    "title": "Series LCR resonance: a 47 mH coil with 0.047 µF",
    "sample": "Decade inductance box set to an unknown step, with a 0.047 µF capacitor",
    "unknown": "the inductance of the coil, from the resonant frequency",
@@ -88,27 +42,11 @@
     "R": 51.0
    },
    "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
    }
   },
   {
-   "key": "l100-c001",
-   "title": "Series LCR resonance: a 100 mH coil with 0.01 µF",
-   "sample": "Decade inductance box set to an unknown step, with a 0.01 µF capacitor",
-   "unknown": "the inductance of the coil, from the resonant frequency",
-   "params": {
-    "L": 0.1,
-    "C": 1e-08,
-    "R": 160.0
-   },
-   "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
-   }
-  },
-  {
-   "key": "l100-c0047",
+   "key": "l100",
    "title": "Series LCR resonance: a 100 mH coil with 0.047 µF",
    "sample": "Decade inductance box set to an unknown step, with a 0.047 µF capacitor",
    "unknown": "the inductance of the coil, from the resonant frequency",
@@ -118,8 +56,7 @@
     "R": 75.0
    },
    "source": {
-    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps",
-    "note": "the decade boxes are set to standard preferred values"
+    "title": "IEC 60063: preferred number series (E12) for capacitors and decade-box steps"
    }
   }
  ]

@@ -225,7 +225,7 @@ def mosfet_transfer() -> dict:
                                       "been reached."},
          {"set": {"Vgs": 3.0}, "say": "Three volts and the drain current is several milliamperes. The channel has "
                                       "been built by the gate."}],
-        3.0)
+        4.0)
 
 
 # ====================================================================================== Zener shunt regulator

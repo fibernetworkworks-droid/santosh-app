@@ -1,0 +1,14 @@
+{"base": "nand-binary-subtractors", "rig": "digital-trainer",
+ "chapter": "Digital electronics, microprocessors and microcontrollers",
+ "variants": [
+   {"key": "half", "title": "Half subtractor from NAND gates", "method": "half subtractor",
+    "unknown": "the difference and borrow truth table of the half subtractor", "params": {"fn": 3.0},
+    "sample": "2 x SN7400 quad 2-input NAND",
+    "note": "Difference = A xor B, borrow = A'.B: a borrow is needed only when nothing is being taken from something.",
+    "source": {"title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, subtractors"}},
+   {"key": "full", "title": "Full subtractor from NAND gates", "method": "full subtractor",
+    "unknown": "the difference and borrow truth table of the full subtractor", "params": {"fn": 4.0},
+    "sample": "3 x SN7400 quad 2-input NAND",
+    "note": "It also takes a borrow coming in, so there are eight rows; the difference is the same function as an adder's sum.",
+    "source": {"title": "Texas Instruments SN5400/SN7400 datasheet (SDLS025); M. Morris Mano, Digital Design, subtractors"}}
+ ]}

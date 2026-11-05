@@ -1,0 +1,62 @@
+{
+ "base": "cp-error-propagation",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "indep",
+   "title": "Error propagation in x y: independent errors",
+   "sample": "x = 4.00 +/- 0.08, y = 2.50 +/- 0.05, rho = 0",
+   "unknown": "the standard deviation of f = x y",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 6,
+    "mx": 4.0,
+    "my": 2.5,
+    "sx": 0.08,
+    "sy": 0.05,
+    "rho": 0.0
+   }
+  },
+  {
+   "key": "pos",
+   "title": "Error propagation in x y: errors correlated (rho = +0.8)",
+   "sample": "x = 4.00 +/- 0.08, y = 2.50 +/- 0.05, rho = +0.8",
+   "unknown": "the standard deviation of f = x y",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 6,
+    "mx": 4.0,
+    "my": 2.5,
+    "sx": 0.08,
+    "sy": 0.05,
+    "rho": 0.8
+   },
+   "note": "Positively correlated errors make the product's uncertainty LARGER than the independent estimate."
+  },
+  {
+   "key": "neg",
+   "title": "Error propagation in x y: errors anti-correlated (rho = -0.8)",
+   "sample": "x = 4.00 +/- 0.08, y = 2.50 +/- 0.05, rho = -0.8",
+   "unknown": "the standard deviation of f = x y",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 6,
+    "mx": 4.0,
+    "my": 2.5,
+    "sx": 0.08,
+    "sy": 0.05,
+    "rho": -0.8
+   },
+   "note": "Anti-correlated errors partly cancel in the product: the uncertainty is smaller."
+  }
+ ]
+}

@@ -1,0 +1,48 @@
+{
+ "base": "cp-descriptive-statistics",
+ "chapter": "Computational physics",
+ "variants": [
+  {
+   "key": "exp05",
+   "title": "Sampling an exponential population, rate 0.5",
+   "sample": "Exponential, lambda = 0.5 per unit time",
+   "unknown": "the population mean 1/lambda",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 5,
+    "rate": 0.5
+   }
+  },
+  {
+   "key": "exp2",
+   "title": "Sampling an exponential population, rate 2.0",
+   "sample": "Exponential, lambda = 2.0 per unit time",
+   "unknown": "the population mean 1/lambda",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 5,
+    "rate": 2.0
+   }
+  },
+  {
+   "key": "uniform",
+   "title": "Sampling a uniform population on (0, 1)",
+   "sample": "Uniform on (0, 1)",
+   "unknown": "the population mean",
+   "source": {
+    "title": "Undergraduate Programme in Physics under UGCF-2022 (NEP), B.Sc. (Hons.) Physics, University of Delhi",
+    "note": "the practical list names these methods and these functions"
+   },
+   "params": {
+    "cas": 2
+   },
+   "note": "For a symmetric distribution the mean, the median and the mode all fall together at 0.5."
+  }
+ ]
+}

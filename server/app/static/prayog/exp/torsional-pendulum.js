@@ -85,13 +85,13 @@ HoolaStudio.define('torsional-pendulum', function (S) {
   pin.rotation.x = -Math.PI / 2; ptr.add(pin);
   ptr.position.set(XW, 0, ZW + DISC_R + 0.05); S.contact(0.095, 0.085, XW, ZW + DISC_R + 0.05, 0.45);
 
-  // the metre scale: zero at y = RZERO, so a mark at height y reads (y - RZERO) * 100 cm
-  var RLEN = 1.25, RZERO = 0.18, RX = XW - 0.09, RZ = ZW - 0.015;
-  var ruler = S.ruler(RLEN, { title: 'METRE SCALE · cm · LC 1 mm', labelEvery: 10 });
-  ruler.position.set(RX, RZERO, RZ); S.scene.add(ruler);
+  // the metre scale hangs with its zero at the top (y = RTOP), so a mark at height y reads (RTOP - y) * 100 cm
+  var RLEN = 1.42, RTOP = 1.44, RX = XW - 0.09, RZ = ZW - 0.015;
+  var ruler = S.ruler(RLEN, { title: 'VERTICAL SCALE · cm · LC 1 mm', labelEvery: 10 });
+  ruler.position.set(RX, RTOP - RLEN, RZ); S.scene.add(ruler);
   var rfoot = S.rounded(0.085, 0.075, 0.035, 0.008, M.darkWood); rfoot.rotation.x = -Math.PI / 2;
-  rfoot.position.set(RX, 0.017, RZ); S.scene.add(rfoot); S.contact(0.13, 0.12, RX, RZ, 0.5);
-  function cmAt(y) { return (y - RZERO) * 100; }
+  rfoot.position.set(RX, RTOP - RLEN + 0.01, RZ); S.scene.add(rfoot); S.contact(0.13, 0.12, RX, RZ, 0.5);
+  function cmAt(y) { return (RTOP - y) * 100; }
 
   var watch = S.stopwatch([XW + 0.34, 0.035, 0.11], [-1.15, -0.2, -0.12]);
   var kit = S.rounded(0.21, 0.13, 0.05, 0.008, M.darkWood); kit.position.set(XW - 0.42, 0.025, 0.09); S.scene.add(kit);
@@ -145,7 +145,7 @@ HoolaStudio.define('torsional-pendulum', function (S) {
     if (ready) S.render();
   }
   function lengthOk() { return st.read[0] !== null && st.read[1] !== null; }
-  function lengthCm() { return lengthOk() ? Math.round((st.read[0] - st.read[1]) * 10) / 10 : 0; }
+  function lengthCm() { return lengthOk() ? Math.round((st.read[1] - st.read[0]) * 10) / 10 : 0; }
 
   function twist() {
     if (S.hand.busy) return Promise.resolve();
@@ -195,12 +195,12 @@ HoolaStudio.define('torsional-pendulum', function (S) {
   applyLen(st.li);
 
   var EXP = {
-    camera: { pos: [0.75, 0.95, 1.35], look: [0.0, 0.62, -0.18] },
+    camera: { pos: [1.05, 1.15, 1.95], look: [-0.02, 0.66, -0.2] },
     views: {
-      setup: [[0.72, 0.92, 1.3], [0.0, 0.62, -0.18]],
-      wire: [[0.3, 1.2, 0.5], [XW - 0.05, 1.2, -0.2]],
-      ruler: [[0.28, 0.8, 0.52], [XW - 0.07, 0.72, -0.2]],
-      body: [[0.3, 0.52, 0.45], [XW, 0.3, -0.18]],
+      setup: [[1.0, 1.1, 1.9], [-0.02, 0.66, -0.2]],
+      wire: [[0.42, 1.34, 0.6], [XW - 0.04, 1.26, -0.2]],
+      ruler: [[0.72, 0.95, 1.1], [XW - 0.06, 0.74, -0.2]],
+      body: [[0.42, 0.62, 0.62], [XW, 0.34, -0.18]],
       ptr: [[0.2, 0.44, 0.34], [XW, 0.3, -0.12]],
       sw: [[0.32, 0.42, 0.54], [XW + 0.28, 0.1, 0.05]],
       book: [[-0.34, 0.5, 0.56], [-0.5, 0.0, 0.08]]
@@ -311,7 +311,7 @@ HoolaStudio.define('torsional-pendulum', function (S) {
         ok: function () { return lengthsDone() >= 3; },
         auto: function () {
           return [4, 2, 0].reduce(function (pr, i) {
-            return pr.then(function () { return setLen(i); })
+            return pr.then(stopBody).then(function () { return setLen(i); })
               .then(function () { readChuck(0); readChuck(1); return twist(); })
               .then(timeTwenty);
           }, Promise.resolve());

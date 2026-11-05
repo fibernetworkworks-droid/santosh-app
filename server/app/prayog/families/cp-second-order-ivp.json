@@ -1,0 +1,62 @@
+{
+ "base": "cp-second-order-ivp",
+ "chapter": "Computational physics",
+ "grid": {
+  "title": "Second-order IVP: {sys} {method}",
+  "unknown": "the displacement at the end of the run",
+  "axes": {
+   "sys": [
+    {
+     "key": "spring",
+     "label": "a 1 kg mass on a 4 N/m spring, c = 0.6",
+     "sample": "m = 1.0 kg, c = 0.6 N s/m, k = 4.0 N/m",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 0,
+      "mm": 1.0,
+      "cc": 0.6,
+      "kk": 4.0,
+      "x0": 0.1,
+      "tmax": 10.0
+     }
+    },
+    {
+     "key": "lcr",
+     "label": "an LCR loop (L = 0.1 H, R = 20, C = 100 uF)",
+     "sample": "L = 0.1 H, R = 20 ohm, C = 100 uF",
+     "source": {
+      "title": "S. S. Sastry, Introductory Methods of Numerical Analysis, PHI"
+     },
+     "params": {
+      "cas": 0,
+      "mm": 0.1,
+      "cc": 20.0,
+      "kk": 10000.0,
+      "x0": 0.001,
+      "tmax": 0.06
+     }
+    }
+   ],
+   "method": [
+    {
+     "key": "rk4",
+     "label": "by RK4",
+     "method": "Runge-Kutta 4, fourth order",
+     "params": {
+      "method": 2
+     }
+    },
+    {
+     "key": "rk2",
+     "label": "by RK2 (Heun)",
+     "method": "Runge-Kutta 2 (Heun), second order",
+     "params": {
+      "method": 1
+     }
+    }
+   ]
+  }
+ }
+}

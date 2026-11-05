@@ -63,7 +63,7 @@ HoolaStudio.define('ac-bench', function (S) {
     var CW = 0.34, CD = 0.24, CH = 0.21;
     var body = S.rounded(CW, CD, CH, 0.008, new T.MeshStandardMaterial({ color: 0x474c55, roughness: 0.52 }));
     body.rotation.x = -Math.PI / 2; body.position.y = CH / 2; g.add(body);
-    var tilt = new T.Group(); tilt.position.set(-0.055, CH * 0.56, CD / 2 - 0.004); tilt.rotation.x = -0.32; g.add(tilt);
+    var tilt = new T.Group(); tilt.position.set(-0.055, CH * 0.56, CD / 2 + 0.022); tilt.rotation.x = -0.16; g.add(tilt);
     var tex = S.liveTex(640, 500);
     var scr = new T.Mesh(new T.PlaneGeometry(0.17, 0.133), new T.MeshBasicMaterial({ map: tex, toneMapped: false }));
     scr.position.z = 0.006; tilt.add(scr);
@@ -164,7 +164,7 @@ HoolaStudio.define('ac-bench', function (S) {
         dials.forEach(function (d, i) { d.digit = want[i]; }); api.look(); } };
     return api;
   }
-  var rBox = decade(-0.44, 0.08, [1000, 100, 10, 1], 'RESISTANCE BOX', 'Ω', function (m) { return String(m); });
+  var rBox = decade(-0.44, 0.06, [10000, 1000, 100, 10, 1], 'RESISTANCE BOX', 'Ω', function (m) { return String(m); });
   var lBox = decade(-0.13, 0.12, [100, 10, 1], 'INDUCTANCE BOX  mH', 'mH', function (m) { return String(m); });
   var cBox = decade(0.2, 0.12, [1, 0.1, 0.01, 0.001], 'CAPACITANCE BOX  µF', 'µF',
     function (m) { return m >= 1 ? String(m) : m.toFixed(3).replace(/0+$/, ''); });
@@ -431,8 +431,8 @@ HoolaStudio.define('ac-bench', function (S) {
   return {
     camera: { pos: [0.0, 1.0, 1.0], look: [0, 0.06, -0.18] },
     views: { bench: [[0.0, 1.0, 1.0], [0, 0.06, -0.18]], gen: [[-0.3, 0.55, 0.1], [-0.42, 0.08, -0.4]],
-      cro: [[0.24, 0.55, 0.06], [0.22, 0.12, -0.44]], amm: [[-0.2, 0.3, 0.26], [-0.2, 0.05, -0.06]],
-      rbx: [[-0.44, 0.3, 0.36], [-0.44, 0.03, 0.08]], lbx: [[-0.13, 0.3, 0.4], [-0.13, 0.03, 0.12]],
+      cro: [[0.18, 0.46, -0.08], [0.17, 0.13, -0.34]], amm: [[-0.2, 0.3, 0.26], [-0.2, 0.05, -0.06]],
+      rbx: [[-0.44, 0.32, 0.34], [-0.44, 0.03, 0.06]], lbx: [[-0.13, 0.3, 0.4], [-0.13, 0.03, 0.12]],
       cbx: [[0.2, 0.3, 0.4], [0.2, 0.03, 0.12]], book: [[0.56, 0.46, 0.44], [0.56, 0.0, 0.0]] },
     theory: {
       principle: S.lab.theory,
