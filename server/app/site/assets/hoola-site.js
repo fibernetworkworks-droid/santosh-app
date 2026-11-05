@@ -419,7 +419,9 @@
     if (ev && ev.message) push(ev.message, ev.filename, ev.lineno);
   });
   W.addEventListener('unhandledrejection', function (ev) {
-    var r = ev && ev.reason; push(r && r.message ? r.message : String(r), r && r.fileName, 0);
+    var r = ev && ev.reason;
+    if (r && r.name === 'AbortError') return;       // a page animation cut short by the next click: not a fault
+    push(r && r.message ? r.message : String(r), r && r.fileName, 0);
   });
   var has = (W.PerformanceObserver && PerformanceObserver.supportedEntryTypes) || [], cls = 0;
   function watch(type, fn) {      // only what this browser really measures (Safari: no LCP / layout shift -> left out, never 0)

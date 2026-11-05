@@ -121,7 +121,7 @@ def test_built_pages_carry_the_beacon_address_but_edit_builds_do_not(site_env):
     assert f'<meta name="hoola-ops" content="' in home and f"/api/site-ops/{sid}/beacon" in home
     js = (out / "assets" / "hoola-site.js").read_text()
     for must in ("sendBeacon", "supportedEntryTypes", "largest-contentful-paint", "layout-shift", "unhandledrejection",
-                 "meta[name=\"hoola-ops\"]", ">= 5"):
+                 "meta[name=\"hoola-ops\"]", ">= 5", "AbortError"):
         assert must in js, must
     assert "document.cookie" not in js.split("CHALTI WEBSITE")[1] and "localStorage" not in js.split("CHALTI WEBSITE")[1]
     # the beacon rides the address her forms already post to, so the site's CSP + the safety gates still pass
