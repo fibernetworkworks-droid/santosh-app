@@ -241,7 +241,7 @@ HoolaStudio.define('sn-scope-bench', function (S) {
   var SHAPE_NAMES = ['positive clipper', 'negative clipper', 'positive clamper', 'negative clamper'];
   PLANS['sn-waveshaper'] = function () { return {
     compName: SAMPLE || 'Diode wave-shaping board',
-    wiring: 'A 5 V peak, 1 kHz sine from the generator goes to the board. In the clippers a series resistor R = 10 kΩ and the diode go to the bias battery; in the clampers a capacitor C = 1 µF is in series with the signal, with the diode across the output and the load R_L = 1 MΩ.',
+    wiring: 'A 5 V peak, 1 kHz sine from the generator goes to the board. In the clippers a series resistor R = 10 kΩ and the diode go to the bias battery; in the clampers a capacitor C = 1 µF is in series with the signal, with the diode across the output and the load R_L = 10 MΩ (a 10x scope probe).',
     controls: [{ param: 'mode', label: 'Circuit', short: 'CIRCUIT', unit: '', digits: 0, names: SHAPE_NAMES, vals: [0, 1, 2, 3] },
       { param: 'Vb', label: 'Bias voltage', short: 'BIAS', unit: 'V', digits: 1, vals: [-1, 0, 1] }],
     art: function () {
@@ -556,7 +556,7 @@ HoolaStudio.define('sn-scope-bench', function (S) {
   function qNow() { return assign(p, over()); }
   function drawScope(cx, w, h) {
     cx.fillStyle = '#04100a'; cx.fillRect(0, 0, w, h);
-    var PL0 = 14, PT = 14, W = w - 28, H = h - 150, i;
+    var PL0 = 14, PT = 14, W = w - 28, H = h - 176, i;
     cx.strokeStyle = 'rgba(120,220,150,.22)'; cx.lineWidth = 1;
     for (i = 0; i <= 10; i++) { cx.beginPath(); cx.moveTo(PL0 + W * i / 10, PT); cx.lineTo(PL0 + W * i / 10, PT + H); cx.stroke(); }
     for (i = 0; i <= 8; i++) { cx.beginPath(); cx.moveTo(PL0, PT + H * i / 8); cx.lineTo(PL0 + W, PT + H * i / 8); cx.stroke(); }
@@ -579,12 +579,12 @@ HoolaStudio.define('sn-scope-bench', function (S) {
       cx.stroke();
       cx.fillStyle = c.color; cx.beginPath(); var gy = PT + H / 2; cx.moveTo(PL0, gy - 9); cx.lineTo(PL0 + 14, gy); cx.lineTo(PL0, gy + 9); cx.fill();
     });
-    cx.textAlign = 'left'; cx.font = '700 30px "JetBrains Mono", monospace';
-    tr.ch.forEach(function (c, k) { cx.fillStyle = c.color; cx.fillText(c.name + ' ' + eng(vdivs[k], 'V') + '/div', PL0 + 6 + k * 330, h - 100); });
-    cx.fillStyle = '#9fe0b8'; cx.fillText(eng(spanT / 10, 's') + '/div', PL0 + 6 + tr.ch.length * 330, h - 100);
-    cx.font = '600 26px "JetBrains Mono", monospace';
-    if (st.cur) { var ln = PL.meas(q).lines; cx.fillStyle = '#e8fff1'; cx.fillText(ln[0], PL0 + 6, h - 62); if (ln.length > 1) cx.fillText(ln[1], PL0 + 6, h - 34); if (ln.length > 2) cx.fillText(ln.slice(2).join('  '), PL0 + 6, h - 8); }
-    else { cx.fillStyle = '#6fa88a'; cx.fillText('CURSORS OFF  (tap CURSORS to measure)', PL0 + 6, h - 50); }
+    cx.textAlign = 'left'; cx.font = '700 34px "JetBrains Mono", monospace';
+    tr.ch.forEach(function (c, k) { cx.fillStyle = c.color; cx.fillText(c.name + ' ' + eng(vdivs[k], 'V') + '/div', PL0 + 6 + k * 335, h - 126, 330); });
+    cx.fillStyle = '#9fe0b8'; cx.fillText(eng(spanT / 10, 's') + '/div', PL0 + 6 + tr.ch.length * 335, h - 126, 330);
+    cx.font = '600 31px "JetBrains Mono", monospace';
+    if (st.cur) { var ln = PL.meas(q).lines; cx.fillStyle = '#e8fff1'; cx.fillText(ln[0], PL0 + 6, h - 86, W - 12); if (ln.length > 1) cx.fillText(ln[1], PL0 + 6, h - 52, W - 12); if (ln.length > 2) cx.fillText(ln.slice(2).join('  '), PL0 + 6, h - 18, W - 12); }
+    else { cx.fillStyle = '#6fa88a'; cx.fillText('CURSORS OFF  (tap CURSORS to measure)', PL0 + 6, h - 60); }
   }
   var scopeKey = '';
   function paintScope() {

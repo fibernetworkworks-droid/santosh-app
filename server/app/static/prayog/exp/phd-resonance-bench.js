@@ -306,7 +306,33 @@ HoolaStudio.define('phd-resonance-bench', function (S) {
   }
 
   // ---------------- the equipment (rig specific)
-    function equip(S, T, M, h) {
+    function equipMb(S, T, M, h) {
+    var g = new T.Group(); S.scene.add(g); g.position.set(-0.32, 0, -0.12);
+    h.mk(g, h.box(0.32, 0.012, 0.12), M.iron, 0, 0.006, 0);
+    var dr = h.mk(g, h.cyl(0.036, 0.036, 0.1, 32), M.steel, -0.09, 0.05, 0); dr.rotation.z = Math.PI / 2;
+    var cap = h.mk(g, h.cyl(0.03, 0.03, 0.01, 32), M.chrome, -0.145, 0.05, 0); cap.rotation.z = Math.PI / 2;
+    var dl = S.label('DOPPLER DRIVE', { w: 0.07, ratio: 0.14, color: '#e8eaec' }); dl.position.set(-0.09, 0.05, 0.037); g.add(dl);
+    var rod = h.mk(g, h.cyl(0.004, 0.004, 0.05, 12), M.steel, -0.025, 0.05, 0); rod.rotation.z = Math.PI / 2;
+    h.mk(g, h.box(0.03, 0.05, 0.05), M.grey, -0.005, 0.05, 0);
+    var sl = S.label('SOURCE · SIMULATED (none present)', { w: 0.05, ratio: 0.25, color: '#fff', bg: '#8a1f1a' }); sl.position.set(-0.005, 0.085, 0.0255); g.add(sl);
+    h.mk(g, h.box(0.012, 0.07, 0.012), M.black, 0.03, 0.045, 0.03); h.mk(g, h.box(0.012, 0.07, 0.012), M.black, 0.03, 0.045, -0.03);
+    var dt = h.mk(g, h.cyl(0.024, 0.024, 0.06, 28), M.black, 0.1, 0.05, 0); dt.rotation.z = Math.PI / 2;
+    var pm = h.mk(g, h.cyl(0.017, 0.017, 0.07, 24), M.steel, 0.145, 0.05, 0); pm.rotation.z = Math.PI / 2;
+    var tl = S.label('DETECTOR', { w: 0.05, ratio: 0.2, color: '#e8eaec' }); tl.position.set(0.1, 0.05, 0.0245); g.add(tl);
+    h.mk(g, h.box(0.03, 0.05, 0.05), M.grey, 0.065, 0.05, 0);
+    S.contact(0.36, 0.16, -0.32, -0.12, 0.5);
+    var sg = new T.Group(); S.scene.add(sg);
+    h.mk(sg, h.box(0.004, 0.032, 0.032), M.bakelite, 0, 0, 0); h.mk(sg, h.box(0.0035, 0.022, 0.022), M.alu, 0.0005, 0, 0);
+    sg.position.set(-0.2, 0.019, 0.13);
+    h.mk(S.scene, h.box(0.07, 0.006, 0.05), M.bakelite, -0.2, 0.003, 0.13); S.contact(0.1, 0.08, -0.2, 0.13, 0.5);
+    S.addApparatus('equip', g, 'Moessbauer spectrometer (simulated)', 'A Doppler drive moves the gamma source; the gamma rays cross the absorber and are counted by the detector. No radioactive source is present: this is a simulation.');
+    S.addApparatus('sample', sg, 'Absorber foil', 'A thin iron foil in a holder.');
+    return { sample: sg, mountPos: new T.Vector3(-0.29, 0.05, -0.12), lift: 0.1, grip: 0.06, view: [[-0.3, 0.26, 0.45], [-0.32, 0.05, -0.12]],
+      mountButton: 'Fit the absorber foil', mountMsg: 'The absorber foil is in its holder between the source and the detector.',
+      setupText: 'The absorber foil is on its tray. Fit it in the holder between the source and the detector, then switch on the instrument.', formula: '' };
+  }
+  function equip(S, T, M, h) {
+    if (S.lab.kernel === 'phd_mossbauer') return equipMb(S, T, M, h);
     var g = new T.Group(); S.scene.add(g); g.position.set(-0.32, 0, -0.12);
     h.mk(g, h.box(0.3, 0.02, 0.19), M.iron, 0, 0.01, 0);
     h.mk(g, h.box(0.3, 0.03, 0.05), M.iron, 0, 0.215, -0.07);
