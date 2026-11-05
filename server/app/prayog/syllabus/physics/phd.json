@@ -1902,7 +1902,8 @@
       "mu-/mu+ capture effect"
      ],
      "conditions": [],
-     "kernel": "muon_decay"
+     "kernel": "muon_decay",
+     "built": "ph3-muon"
     },
     {
      "id": "muon-speed",
@@ -1961,7 +1962,8 @@
       "differential cross-section vs angle"
      ],
      "conditions": [],
-     "kernel": "compton"
+     "kernel": "compton",
+     "built": "ph3-compton"
     },
     {
      "id": "relativistic-dynamics",
@@ -2208,7 +2210,8 @@
       "local standard of rest velocity"
      ],
      "conditions": [],
-     "kernel": "hi21"
+     "kernel": "hi21",
+     "built": "ph3-hi21"
     },
     {
      "id": "radio-sun-drift",
@@ -2246,7 +2249,8 @@
       "inclination"
      ],
      "conditions": [],
-     "kernel": "transit"
+     "kernel": "transit",
+     "built": "ph3-transit"
     },
     {
      "id": "hubble-law",

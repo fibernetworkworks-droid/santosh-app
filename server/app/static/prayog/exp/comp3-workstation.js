@@ -344,7 +344,7 @@ HoolaStudio.define('comp3-workstation', function (S) {
       var slab = CAS === 0;
       return {
         title: slab ? '1-D FDTD: transmission through a dielectric slab' : '1-D FDTD: a Bragg mirror (' + fx(p.np, 0) + ' pairs)', quantity: 'transmittance T at ω = ' + fx(p.wr, 2) + ' ω₀', digits: 6, nlabel: 'cells per wavelength n',
-        ns: [20, 30, 40, 60, 80], tol: 0.02, methods: ['Yee scheme (Courant number 1)'], xlabel: 'ω / ω₀', ylabel: 'transmittance T', showCurve: true, nodes: true,
+        ns: slab ? [20, 30, 40, 60, 80] : [40, 60, 80, 120, 160], tol: 0.02, methods: ['Yee scheme (Courant number 1)'], xlabel: 'ω / ω₀', ylabel: 'transmittance T', showCurve: true, nodes: true,
         problem: [slab ? 'Slab of index ' + fx(p.n1, 2) + ', a quarter wavelength thick at ω₀, in vacuum' : 'Layers of index ' + fx(p.n1, 2) + ' and ' + fx(p.n2, 2) + ', each a quarter wavelength thick at ω₀',
           'A Gaussian pulse is sent in; T(ω) = |E_out(ω)|² / |E_ref(ω)|² from a second run without the structure', 'Exact: the 2 × 2 characteristic-matrix product at every ω',
           'Reference value at ω = ' + fx(p.wr, 2) + ' ω₀: ' + sci(ex0)],

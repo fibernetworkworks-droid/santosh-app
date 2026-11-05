@@ -3635,7 +3635,8 @@
       "total cross-section"
      ],
      "conditions": [],
-     "kernel": "compton"
+     "kernel": "compton",
+     "built": "ph3-compton-angular"
     },
     {
      "id": "alpha-surface-barrier",
@@ -3656,7 +3657,8 @@
      "conditions": [
       "several chamber pressures"
      ],
-     "kernel": "alpha_stopping"
+     "kernel": "alpha_stopping",
+     "built": "ph3-alpha"
     },
     {
      "id": "proportional-counter-xray",
@@ -3764,7 +3766,8 @@
       "coincidence rate"
      ],
      "conditions": [],
-     "kernel": "coincidence"
+     "kernel": "coincidence",
+     "built": "ph3-pulse-coincidence"
     },
     {
      "id": "fast-scintillator-timing",
@@ -3802,7 +3805,8 @@
       "resolving time"
      ],
      "conditions": [],
-     "kernel": "coincidence"
+     "kernel": "coincidence",
+     "built": "ph3-coincidence"
     },
     {
      "id": "gamma-angular-correlation",
