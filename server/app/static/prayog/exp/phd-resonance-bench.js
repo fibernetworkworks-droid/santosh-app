@@ -314,7 +314,7 @@ HoolaStudio.define('phd-resonance-bench', function (S) {
     var dl = S.label('DOPPLER DRIVE', { w: 0.07, ratio: 0.14, color: '#e8eaec' }); dl.position.set(-0.09, 0.05, 0.037); g.add(dl);
     var rod = h.mk(g, h.cyl(0.004, 0.004, 0.05, 12), M.steel, -0.025, 0.05, 0); rod.rotation.z = Math.PI / 2;
     h.mk(g, h.box(0.03, 0.05, 0.05), M.grey, -0.005, 0.05, 0);
-    var sl = S.label('SOURCE · SIMULATED (none present)', { w: 0.05, ratio: 0.25, color: '#fff', bg: '#8a1f1a' }); sl.position.set(-0.005, 0.085, 0.0255); g.add(sl);
+    var sl = S.label('SOURCE (SIM.)', { w: 0.026, ratio: 0.22, color: '#fff', bg: '#8a1f1a' }); sl.position.set(-0.005, 0.085, 0.0255); g.add(sl);
     h.mk(g, h.box(0.012, 0.07, 0.012), M.black, 0.03, 0.045, 0.03); h.mk(g, h.box(0.012, 0.07, 0.012), M.black, 0.03, 0.045, -0.03);
     var dt = h.mk(g, h.cyl(0.024, 0.024, 0.06, 28), M.black, 0.1, 0.05, 0); dt.rotation.z = Math.PI / 2;
     var pm = h.mk(g, h.cyl(0.017, 0.017, 0.07, 24), M.steel, 0.145, 0.05, 0); pm.rotation.z = Math.PI / 2;

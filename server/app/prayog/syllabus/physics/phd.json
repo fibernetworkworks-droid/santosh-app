@@ -679,7 +679,8 @@
       "SNR vs time constant"
      ],
      "conditions": [],
-     "kernel": "lockin"
+     "kernel": "lockin",
+     "built": "phd-lockin-detection"
     },
     {
      "id": "johnson-noise",
@@ -700,7 +701,8 @@
       "300 K",
       "77 K"
      ],
-     "kernel": "johnson"
+     "kernel": "johnson",
+     "built": "phd-johnson-noise"
     },
     {
      "id": "shot-noise",
@@ -718,7 +720,8 @@
       "noise vs current"
      ],
      "conditions": [],
-     "kernel": "shot_noise"
+     "kernel": "shot_noise",
+     "built": "phd-shot-noise"
     },
     {
      "id": "boxcar-averaging",
@@ -736,7 +739,8 @@
       "decay time"
      ],
      "conditions": [],
-     "kernel": "boxcar"
+     "kernel": "boxcar",
+     "built": "phd-boxcar-averaging"
     },
     {
      "id": "noise-spectral-density",
@@ -757,7 +761,8 @@
       "1/f corner frequency"
      ],
      "conditions": [],
-     "kernel": "noise_psd"
+     "kernel": "noise_psd",
+     "built": "phd-noise-spectrum"
     },
     {
      "id": "poisson-statistics-research",
@@ -778,7 +783,8 @@
       "low rate",
       "high rate"
      ],
-     "kernel": "poisson"
+     "kernel": "poisson",
+     "built": "phd-poisson-counting"
     }
    ]
   },
@@ -880,7 +886,8 @@
       "laser mode structure"
      ],
      "conditions": [],
-     "kernel": "fabry_perot"
+     "kernel": "fabry_perot",
+     "built": "phd-fabry-perot"
     },
     {
      "id": "laser-frequency-lock",
@@ -1080,7 +1087,8 @@
       "coherence time"
      ],
      "conditions": [],
-     "kernel": "g2"
+     "kernel": "g2",
+     "built": "phd-hbt-g2"
     },
     {
      "id": "single-photon-antibunching",
@@ -1097,7 +1105,8 @@
       "heralded g2(0)"
      ],
      "conditions": [],
-     "kernel": "g2"
+     "kernel": "g2",
+     "built": "phd-heralded-antibunching"
     },
     {
      "id": "hong-ou-mandel",
@@ -1190,7 +1199,8 @@
      "conditions": [
       "several laser powers"
      ],
-     "kernel": "tweezers"
+     "kernel": "tweezers",
+     "built": "phd-optical-tweezers"
     }
    ]
   },
@@ -2127,7 +2137,8 @@
       "pd at minimum"
      ],
      "conditions": [],
-     "kernel": "paschen"
+     "kernel": "paschen",
+     "built": "phd-paschen-curve"
     },
     {
      "id": "plasma-oes",

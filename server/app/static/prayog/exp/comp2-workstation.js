@@ -223,7 +223,7 @@ HoolaStudio.define('comp2-workstation', function (S) {
   };
   SPEC.cq_pde = {
     quantity: ['u(½, ½)', 'u(½, T)', 'u(½, T)'][CAS] || 'u', unit: '', digits: 8, nlabel: 'grid intervals n',
-    ns: [[5, 10, 20, 40], [4, 8, 16, 32], [10, 20, 40]][CAS] || [5, 10, 20, 40], tol: 0.01, conv: 'loglog', convM: CAS === 1 ? ['tab', 'loglog', 'loglog'] : null,
+    ns: [[5, 10, 20, 40], [4, 8, 16, 32], [10, 20, 30, 40, 60]][CAS] || [5, 10, 20, 40], tol: 0.01, conv: 'loglog', convM: CAS === 1 ? ['tab', 'loglog', 'loglog'] : null,
     methods: [['Jacobi relaxation', 'Gauss-Seidel', 'SOR'], ['FTCS (explicit)', 'BTCS (implicit)', 'Crank-Nicolson'], ['Leapfrog']][CAS] || ['SOR'],
     xlabel: 'x', ylabel: ['u(x, ½)', 'u(x, T)', 'u(x, T)'][CAS] || 'u', legend: ['— exact', '', '• numerical'],
     title: ['Laplace equation on a square plate', 'Heat equation in a rod', 'Wave equation on a string'][CAS] || 'PDE',
