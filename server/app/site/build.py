@@ -789,6 +789,8 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             + (f'<script src="{rel}assets/hoola-app.js" defer></script>' if site.get("app_api") else "")
             + (f'<script src="{rel}assets/hoola-shop.js" defer></script>' if shop.get("api") else "")
             + (f'<script src="{rel}assets/hoola-catalog.js" defer></script>' if "data-hoola-catalog=" in body else "")   # v0.538
+            + ('<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
+               if 'class="cf-turnstile"' in body else "")                                                       # v0.546
             + '</body></html>')
 
 
@@ -1048,6 +1050,7 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
                 h = strip(h)
             if form_endpoint:          # every enquiry form that has no endpoint yet (v0.301: a booking form may sit beside it)
                 h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
+            h = guard_forms(h)                   # v0.546 every enquiry form: the hidden honeypot (+ Turnstile when on)
             parts.append(h)
         return "\n".join(parts)
 
@@ -1148,14 +1151,48 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             "problems": problems, "photos": photos, "catalog": {"pages": cat_res["pages"], "noindex": cat_res["noindex"]}}
 
 
+HP = '<input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">'
+FORM_OPEN = re.compile(r"<form\b[^>]*data-hoola-form[^>]*>(?P<body>.*?)</form>", re.S | re.I)
+
+
+def turnstile_key() -> str:
+    """v0.546 Cloudflare Turnstile's SITE key (public) when the server has BOTH keys; '' = off."""
+    from . import gates as G
+    if not G.turnstile_on():
+        return ""
+    from ..config import get_settings
+    return str(getattr(get_settings(), "site_turnstile_site", "") or "")
+
+
+def guard_forms(h: str) -> str:
+    """v0.546 every data-hoola-form gets the hidden honeypot it lacks, and the Turnstile box when the server has the keys
+    (the visitor's browser adds `cf-turnstile-response`; the server checks it with Cloudflare before saving the enquiry)."""
+    key = turnstile_key()
+
+    def one(m: re.Match) -> str:
+        block = m.group(0)
+        head_end = block.index(">") + 1
+        head, body = block[:head_end], block[head_end:]
+        if not re.search(r"""name\s*=\s*["']website["']""", body):
+            body = HP + body
+        if key and "cf-turnstile" not in body:
+            body = re.sub(r"(<button\b[^>]*type\s*=\s*[\"']submit[\"'])",
+                          f'<div class="cf-turnstile" data-sitekey="{esc(key)}"></div>\\1', body, count=1) \
+                if re.search(r"<button\b[^>]*type\s*=\s*[\"']submit", body) else \
+                body.replace("</form>", f'<div class="cf-turnstile" data-sitekey="{esc(key)}"></div></form>')
+        return head + body
+    return FORM_OPEN.sub(one, h)
+
+
 def security_headers(form_endpoint: str = "") -> dict[str, str]:
     connect = "'self'"
     m = re.match(r"https?://[^/]+", form_endpoint or "")
     if m:
         connect += " " + m.group(0)
+    ts = " https://challenges.cloudflare.com" if turnstile_key() else ""     # v0.546 Turnstile only when it is on
     return {"Content-Security-Policy": ("default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; "
-                                        f"script-src 'self'; font-src 'self'; connect-src {connect}; frame-ancestors 'self'; "
-                                        "frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com; "
+                                        f"script-src 'self'{ts}; font-src 'self'; connect-src {connect}; frame-ancestors 'self'; "
+                                        f"frame-src https://www.google.com https://maps.google.com https://www.youtube-nocookie.com{ts}; "
                                         "base-uri 'self'; form-action 'self'; object-src 'none'"),
             "X-Content-Type-Options": "nosniff", "Referrer-Policy": "strict-origin-when-cross-origin",
             "Permissions-Policy": "camera=(), microphone=(), geolocation=()", "X-Frame-Options": "SAMEORIGIN"}

@@ -143,7 +143,17 @@ window.HoolaBuild = function (C) {
       ${wa.slice(0, 8).map(x => `<div class="warnc bln">⚠ ${where(x)}${esc(x.text)}</div>`).join('')}
       ${!bl.length && c.passed === true ? '<div class="okc bln" style="font-weight:500">✓ All required checks passed</div>' : ''}
       ${N(c.blanks) ? `<div class="faint bln">${N(c.blanks)} spot(s) still need your details (the […] boxes)</div>` : ''}
-      ${L(c.journeys).length ? `<div class="bln faint" style="margin-top:6px">Visitor tests (Hoola used the site like a customer on a phone):</div>${L(c.journeys).map(j => `<div class="${j.ok ? 'okc' : 'badc'} bln">${j.ok ? '✓' : '✗'} ${esc(JOURNEY[S(j.name)] || S(j.name))}${j.ok ? '' : ' - ' + esc(S(j.detail))}</div>`).join('')}` : ''}</section>`;
+      ${L(c.journeys).length ? `<div class="bln faint" style="margin-top:6px">Visitor tests (Hoola used the site like a customer on a phone):</div>${L(c.journeys).map(j => `<div class="${j.ok ? 'okc' : 'badc'} bln">${j.ok ? '✓' : '✗'} ${esc(JOURNEY[S(j.name)] || S(j.name))}${j.ok ? '' : ' - ' + esc(S(j.detail))}</div>`).join('')}` : ''}
+      ${gatesBlock(M(c.gates))}</section>`;
+  }
+  /* v0.546 SURAKSHA GATES: security, forms, bots, accessibility, legal, trackers - every page; a fail blocks going live */
+  const GATE = {secrets: 'Keys', libraries: 'Libraries', headers: 'Headers', pages: 'Pages', forms: 'Forms', bots: 'Bots',
+                accessibility: 'Accessibility', legal: 'Legal', trackers: 'Trackers', limits: 'Rate limits', gate: 'Gate'};
+  function gatesBlock(g) {
+    const rows = L(g.rows); if (!rows.length) return '';
+    const mark = {pass: ['okc', '✓'], warn: ['warnc', '⚠'], fail: ['badc', '✗'], not_checked: ['faint', '–']};
+    return `<details class="bln" style="margin-top:6px"${N(g.fail) ? ' open' : ''}><summary>Safety gates: ${N(g.pass)} passed · ${N(g.warn)} warnings · ${N(g.fail)} failed${N(g.not_checked) ? ' · ' + N(g.not_checked) + ' not checked' : ''} (${N(g.pages)} pages read)</summary>
+      ${rows.map(r => { const m = mark[S(r.state)] || mark.not_checked; return `<div class="${m[0]} bln" title="${esc(S(r.read))}">${m[1]} <b>${esc(GATE[S(r.gate)] || S(r.gate))}</b> · ${esc(S(r.check))} - ${esc(S(r.say))}</div>`; }).join('')}</details>`;
   }
   const JOURNEY = {menu: 'Phone menu opens and leads to a page', form: 'Enquiry form sends', shop: 'Add to cart → checkout → order',
                    blog: 'Blog post opens', lang: 'Language switch works'};   // v0.400
