@@ -19439,7 +19439,7 @@ then green, the self-review reading the measured evidence, the PR carrying it. T
 
 
 
-## v0.535.0 (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026
+## v0.536.0 (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026
 Owner: "CONTINUE TO OUR MOAT GAME WORK". The last two "fix first" items of the moat plan. New
 `server/app/gamedesk/provenance.py`, tool `game_provenance`, console Game Desk > "Where it came from".
 

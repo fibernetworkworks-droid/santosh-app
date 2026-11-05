@@ -178,7 +178,7 @@ def test_config_defaults(env, monkeypatch):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.535.0"
+    assert main_mod.APP_VERSION == "0.536.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     # the newest-story precedent (established in the v0.520 rebase): the story pin
     # rides the NEWEST story - now the v0.530 HOOLA GRAPH story
