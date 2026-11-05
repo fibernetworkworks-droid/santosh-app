@@ -111,4 +111,4 @@ def test_settings_defaults():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.586.0"
+    assert APP_VERSION == "0.587.0"
