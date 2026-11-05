@@ -11,9 +11,9 @@ be["logic"] = {
   "schedules":  [{name, every: hourly|daily HH:MM|weekly mon HH:MM|monthly D HH:MM, coll, where, do, once_per_row}]
   "functions":  [{name, params, body, tests: [{args, expect} | {args, fails}], callable}]  locked custom logic
   "labels":     {coll: field}                                                            what a row is called
-  "gates":      [{coll, pass, via, pass_field, match: {field: value}}]   v0.570 read only with an active pass (a course)
-  "subscription_list": coll                                             v0.570 her AutoPay plans -> one row per member
-  "documents":  [{coll, title, lines: ["... {{expr}} ..."], signer, when}]  v0.570 a PDF from a row (a certificate)
+  "gates":      [{coll, pass, via, pass_field, match: {field: value}}]   v0.581 read only with an active pass (a course)
+  "subscription_list": coll                                             v0.581 her AutoPay plans -> one row per member
+  "documents":  [{coll, title, lines: ["... {{expr}} ..."], signer, when}]  v0.581 a PDF from a row (a certificate)
 }
 Everything Opus (or the console) writes passes `check()`: every list / field / state / name must exist, every
 formula and function must parse, formulas may not loop on each other, every function's own tests must pass. Only a
@@ -449,7 +449,7 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
         sd["do"] = acts
         out["schedules"].append(sd)
 
-    # ---- v0.570 gates: a list read only through a pass list (enrollment / membership) - courses, members-only content
+    # ---- v0.581 gates: a list read only through a pass list (enrollment / membership) - courses, members-only content
     for i, g in enumerate((raw.get("gates") or [])[:CAPS["gates"]]):
         if not isinstance(g, dict):
             continue
@@ -475,7 +475,7 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
         out["gates"].append({"coll": coll, "pass": pk, "via": via, "pass_field": pf if via else "",
                              "match": {slug(k): str(v)[:60] for k, v in match.items()}})
 
-    # ---- v0.570 subscription_list: her AutoPay plans keep one row per member here (plan + status Active / Ended)
+    # ---- v0.581 subscription_list: her AutoPay plans keep one row per member here (plan + status Active / Ended)
     sl = raw.get("subscription_list")
     if sl:
         coll = slug(sl.get("coll") if isinstance(sl, dict) else sl)
@@ -491,7 +491,7 @@ def check(raw: Any, sch: dict[str, Any], run_tests: bool = True) -> dict[str, An
             else:
                 out["subscription_list"] = coll
 
-    # ---- v0.570 documents: a PDF made from a row (a certificate on completion), only for whoever may read that row
+    # ---- v0.581 documents: a PDF made from a row (a certificate on completion), only for whoever may read that row
     for i, d in enumerate((raw.get("documents") or [])[:CAPS["documents"]]):
         if not isinstance(d, dict):
             continue
@@ -661,7 +661,7 @@ def summary(spec: dict[str, Any]) -> list[str]:
         out.append(f"Samay par ({s['every']}): {s['label']}")
     for f in spec.get("functions", []):
         out.append(f"Custom kaam: {f['label']}({', '.join(f['params'])}) - band dabbe mein, {len(f['tests'])} test")
-    for g in spec.get("gates", []):                     # v0.570
+    for g in spec.get("gates", []):                     # v0.581
         m = ", ".join(f"{k} = {v}" for k, v in g["match"].items())
         out.append(f"Taala: '{g['coll']}' sirf staff ko, ya us member ko jiski '{g['pass']}' entry mein {m} ho"
                    + (f" aur wahi {g['via']} ho" if g["via"] else ""))
@@ -700,7 +700,7 @@ def decorate_schema(sch: dict[str, Any], spec: dict[str, Any] | None) -> dict[st
     for c, fk in (spec.get("labels") or {}).items():
         if c in colls:
             colls[c]["label_field"] = fk
-    for g in spec.get("gates", []):                     # v0.570 the list is read through its pass list
+    for g in spec.get("gates", []):                     # v0.581 the list is read through its pass list
         c = colls.get(g["coll"])
         if c is not None:
             c["rules"] = {**c.get("rules", {}), "read": "gated"}

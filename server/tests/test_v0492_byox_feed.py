@@ -83,7 +83,7 @@ def test_card_has_byox_asks_and_set_is_valid():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.580.0"
+    assert APP_VERSION == "0.581.0"
 
 
 def test_coder_routes_work_with_the_real_sync_require_key(desk):

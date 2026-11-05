@@ -20742,3 +20742,49 @@ out of the deferred list with a warning; (3) `refused` also matches any 400 nami
 `test_every_tool_schema_is_valid_json_schema_2020_12` over all 581 tools + the fallback test. The same deploy's live tool
 card: right first pick 25/26 (fresh15: scrape vs open_website). Lesson: a change that widens what is SENT must validate
 everything it now sends - the free cards never call the API, so only the live card could see this.
+
+## v0.581.0 STEP 7 CHECKPOINT, half 1 - the coaching LMS from one line (owner: "go" on web Step 7's checkpoint; built as 0.570.0; the dev chain took 0.570-0.580 (CONSTRUCTION WAVE 3.5, SAB SCHEMA SAHI, HOOLA RETRIEVE) - REBASE PROTOCOL, all kept)
+
+The Step 7 checkpoint in docs/WEB_PLATFORM_PLAN.md asks for two hard platforms built end to end with every safety gate
+green: a coaching LMS (courses, video lessons, quizzes, certificates, subscriptions, live doubt chat) and a multi-salon
+booking platform. A gap read of the app engine found what the LMS could NOT do yet; this release adds those parts as
+GENERAL engine features (any site's logic can use them), then proves the LMS over HTTP. The salon half is next.
+
+**What was missing and now exists (appmaker/logic + site/webapp):**
+- `gates` - a list read only THROUGH a pass list: `{coll, pass, match, via?, pass_field?}`. Lessons only for a member with
+  an Active membership; notes only for a member enrolled in THAT course (`via` the row's course = the pass row's course).
+  New read rule `gated` (webapp.READ), checked on the server for every row (`_gate_ok`, memoised per request); staff and
+  the owner always read. The spec checker refuses a list that is its own pass, a `via` / `pass_field` that is not a real
+  field, an empty or unknown `match`, and two gates on one list.
+- A lesson's VIDEO follows its lesson: `backend.file_for` also allows a file when a row the person may read NOW carries it
+  in a file-type field (`_readable_via_row`). Cancel the membership and the same video URL answers 404 again.
+- `subscription_list` - her AutoPay plan's state becomes a row (plan + status Active / Ended, owned by the member) from the
+  gateway's SIGNED events only (`pay._sub_event` -> `LE.subscription_event`; activated / charged / resumed = Active,
+  halted / cancelled / completed / paused = Ended; one row per member + plan, never duplicated by repeat charges); the
+  member's own cancel ends it too. A forged webhook changes nothing. A student cannot write the list herself (admin-only
+  create in the spec).
+- `documents` - a PDF made from a row (a certificate): title + up to 12 template lines (`{{field}}` checked like every
+  expression), signer, and `when` (e.g. `score >= quiz.pass_mark`). `GET /api/site-app/{site}/c/{list}/{row}/document`
+  serves it only to someone who may read that row and only when `when` holds (409 otherwise). ReportLab, landscape A4,
+  Helvetica (Latin text only - a Devanagari name prints badly, said plainly).
+- Field types `video` (an MP4 / MOV upload, ftyp-checked, played in the page with `<video controls>`) and `url` (https only;
+  a YouTube link is embedded via youtube-nocookie, anything else is a link). File responses now carry their real type.
+- CSP gains `media-src 'self' blob:` (the lesson video plays from a blob URL fetched with the login header).
+- The logic author's prompt teaches video / url, gates, subscription_list and documents with LMS examples.
+
+**THE PROOF** (`tests/test_v0581_lms_proof.py`, 10): the architect builds "Disha Coaching" from one line (scripted spec +
+logic); a teacher (admin) uploads a lesson video; students see NO lessons and cannot fetch the video; her keys + plan (her
+taps), Riya subscribes, an unsigned event is ignored, the signed `subscription.activated` makes her membership Active ->
+the lesson and its video open; Aman (never paid) still sees nothing; a charge keeps one row; Riya cancels -> Ended ->
+locked, video 404 again. Notes open only for the enrolled course. Quiz answers are `private` fields students never
+receive; the server scores the attempt (a typed score of 99 is overwritten with 2); the passed attempt's certificate PDF
+carries her name + score, the failed one is refused (409), and nobody else gets hers. https-only links. The doubt chat:
+her thread is hers. Finally the built site is scanned by the nine v0.551 gates: ZERO fails.
+
+**Regression:** the web-app / logic / pay / site suites touched by the change were re-run green before the merge: web apps 5, DIMAAG + paisa + app pages 20, EK DIMAAG 7, live 5, EK DIMAAG 2 9,
+rang 4, dukaan paisa / plus + abhi abhi 26, suraksha gates 9, site 6.
+
+**NOT VERIFIED, said plainly:** no real Razorpay subscription has run (FakeRazorpay in the documented shapes); no real
+Opus has authored an LMS spec yet (the scripted spec stands in for it); the video player was not opened in a real browser
+here. The salon half (per-salon staff, per-stylist slots under a lock, booking payments with per-salon payouts) is the
+next release.

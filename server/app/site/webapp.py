@@ -29,9 +29,9 @@ from sqlalchemy.orm import Mapped, mapped_column
 
 from ..db import Base, new_id, now, session
 
-TYPES = ("text", "long_text", "number", "phone", "email", "date", "choice", "yes_no", "url")   # v0.570 url = a https link (a YouTube lesson)
+TYPES = ("text", "long_text", "number", "phone", "email", "date", "choice", "yes_no", "url")   # v0.581 url = a https link (a YouTube lesson)
 CREATE = ("public", "member", "admin")
-READ = ("public", "members", "own", "admin", "gated")   # v0.570 gated = through her pass list (logic `gates`)
+READ = ("public", "members", "own", "admin", "gated")   # v0.581 gated = through her pass list (logic `gates`)
 WRITE = ("own", "admin")
 ROLES = ("member", "staff", "admin")
 MAX_COLLECTIONS, MAX_FIELDS, MAX_ROW = 12, 24, 8000
@@ -342,7 +342,7 @@ def _value(f: dict[str, Any], v: Any) -> Any:
             return datetime.strptime(s[:10], "%Y-%m-%d").date().isoformat()
         except ValueError:
             raise AppError(f"{f['label']}: tareekh YYYY-MM-DD.")
-    if t == "url":                                  # v0.570 https only, no spaces / quotes (it is shown as a link / player)
+    if t == "url":                                  # v0.581 https only, no spaces / quotes (it is shown as a link / player)
         if not re.fullmatch(r"https://[^\s\"'<>]{3,500}", s):
             raise AppError(f"{f['label']}: https:// se shuru hone wala poora link chahiye.")
         return s
@@ -370,13 +370,13 @@ def _clean(c: dict[str, Any], data: dict[str, Any], who: Who, partial: bool = Fa
 
 def _can_read(c: dict[str, Any], who: Who, row: SiteAppRow) -> bool:
     r = c["rules"]["read"]
-    if r == "gated" and not who.staff:                  # v0.570 a lesson only while she holds an active pass for it
+    if r == "gated" and not who.staff:                  # v0.581 a lesson only while she holds an active pass for it
         return bool(who.id) and _gate_ok(c.get("gate") or {}, who, row)
     return who.staff or r == "public" or (r == "members" and who.m is not None) or (r == "own" and who.id and row.owner == who.id)
 
 
 def _gate_ok(g: dict[str, Any], who: Who, row: SiteAppRow) -> bool:
-    """v0.570 GATE: the reader owns a row in the pass list (an enrollment / membership) whose `match` values all hold,
+    """v0.581 GATE: the reader owns a row in the pass list (an enrollment / membership) whose `match` values all hold,
     and - when the gate names `via` - that pass points at the same parent this row points at (one course's lessons).
     No gate written = nobody but staff (never 'open by default')."""
     pk = str(g.get("pass") or "")

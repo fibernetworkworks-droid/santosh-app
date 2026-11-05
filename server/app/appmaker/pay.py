@@ -809,7 +809,7 @@ def _sub_event(r: AppProject, ev: dict[str, Any]) -> int:
         _note(r, f"AutoPay charge aaya: plan {plan}, {_rs(int(ev.get('amount') or 0))} (baar {charges}).")
     if status_ == "halted":
         _note(r, f"Ek subscription ruk gaya (plan {plan}): graahak ke mandate se paisa nahi kat paaya.")
-    try:                                         # v0.570 the member's pass row (a gated course reads it), from the gateway only
+    try:                                         # v0.581 the member's pass row (a gated course reads it), from the gateway only
         from .logic import engine as LE
         name = next((p.get("name") for p in _cfg(r).get("plans") or [] if p.get("key") == plan), plan)
         LE.subscription_event(r, member, str(name or plan), status_)
@@ -849,7 +849,7 @@ def cancel_sub(r: AppProject, w: W.Who, sid: str) -> dict[str, Any]:
         sb = s.get(AppSub, sid)
         sb.status, sb.updated = "cancelled", now()
         member, plan = sb.member, sb.plan
-    try:                                         # v0.570 the pass row ends with it (a gated course locks again)
+    try:                                         # v0.581 the pass row ends with it (a gated course locks again)
         from .logic import engine as LE
         name = next((p.get("name") for p in _cfg(r).get("plans") or [] if p.get("key") == plan), plan)
         LE.subscription_event(r, member, str(name or plan), "cancelled")

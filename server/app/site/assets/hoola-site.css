@@ -421,5 +421,5 @@ form[data-hoola-config] [data-config-summary]{display:block;color:var(--c-muted)
 [data-hoola-3d] canvas{position:absolute;inset:0}
 @media (max-width:640px){[data-hoola-3d]{min-height:240px;aspect-ratio:4/3}}
 
-/* v0.570 a lesson's video / YouTube player in the website's app pages */
+/* v0.581 a lesson's video / YouTube player in the website's app pages */
 .hs-appx-video{display:block;width:100%;max-width:720px;aspect-ratio:16/9;border:0;border-radius:var(--radius);background:#000}

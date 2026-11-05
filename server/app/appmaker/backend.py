@@ -1069,7 +1069,7 @@ def file_for(r: AppProject, fid: str, w: W.Who):
 
 
 def _readable_via_row(r: AppProject, fid: str, w: W.Who) -> bool:
-    """v0.570 a file the teacher uploaded into a lesson is hers to watch exactly while she may read that lesson (a gated
+    """v0.581 a file the teacher uploaded into a lesson is hers to watch exactly while she may read that lesson (a gated
     course: only with an active pass) - the row's own read rule decides, never the file alone."""
     if not w.id or not re.fullmatch(r"[\w-]{6,64}", fid or ""):
         return False

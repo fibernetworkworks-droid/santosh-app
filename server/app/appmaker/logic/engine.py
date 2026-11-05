@@ -1300,7 +1300,7 @@ def _save_ran(r: AppProject, ran: dict[str, str]) -> None:
     BE.patch_backend(r, fn=put)
 
 
-# ---------------------------------------------------------------- v0.570 subscriptions -> a pass row the gates can read
+# ---------------------------------------------------------------- v0.581 subscriptions -> a pass row the gates can read
 SUB_ACTIVE = ("authenticated", "activated", "charged", "resumed")
 SUB_ENDED = ("halted", "cancelled", "completed", "paused")
 
@@ -1332,7 +1332,7 @@ def subscription_event(r: AppProject, member: str, plan_name: str, status: str) 
     return system_create(r, coll, {"plan": plan_name, "status": "Active"}, member, f"subscription {status}")
 
 
-# ---------------------------------------------------------------- v0.570 a document (certificate) made from a row
+# ---------------------------------------------------------------- v0.581 a document (certificate) made from a row
 def document_pdf(r: AppProject, coll: str, row_id: str, w: W.Who) -> tuple[bytes, str]:
     """The row's PDF, only for someone who may read that row now, and only when its `when` holds (a certificate only
     for a passed attempt). Every value comes from the row through the checked template - nothing typed by a model."""

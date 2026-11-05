@@ -1,4 +1,4 @@
-"""v0.570 STEP 7 CHECKPOINT, half 1: a coaching LMS from one line (docs/WEB_PLATFORM_PLAN.md Step 7 checkpoint).
+"""v0.581 STEP 7 CHECKPOINT, half 1: a coaching LMS from one line (docs/WEB_PLATFORM_PLAN.md Step 7 checkpoint).
 
 Courses, video lessons, quizzes, certificates, subscriptions and live doubt chat - and every safety gate green on the
 built site. What the engine needed and now has (general, not LMS-only):
@@ -21,7 +21,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.570.0"
+    assert APP_VERSION == "0.581.0"
 
 
 LMS_SPEC = {

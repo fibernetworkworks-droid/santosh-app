@@ -140,7 +140,7 @@
         opts.forEach(function (o) { var op = el('option', {value: o[0], text: o[1]}); if (String(val || '') === o[0]) op.selected = true; box.appendChild(op); });
       });
     }
-    else if (f.type === 'photo' || f.type === 'file' || f.type === 'video') {   // v0.570 + a lesson's video
+    else if (f.type === 'photo' || f.type === 'file' || f.type === 'video') {   // v0.581 + a lesson's video
       box = el('input', {id: id, name: f.key, type: 'file', accept: {photo: 'image/*', video: 'video/mp4,video/quicktime'}[f.type] || 'image/*,application/pdf', 'data-kind': f.type});
       if (val) box.setAttribute('data-had', String(val));
     }
@@ -645,7 +645,7 @@
         var v = r[f.key];
         if (v === '' || v === null || v === undefined) return;
         var dd = el('dd');
-        if (f.type === 'video' && v) {                  // v0.570 a lesson video plays here (fetched with her login, so a locked course stays locked)
+        if (f.type === 'video' && v) {                  // v0.581 a lesson video plays here (fetched with her login, so a locked course stays locked)
           var vid = el('video', {controls: true, preload: 'metadata', 'class': 'hs-appx-video', 'aria-label': f.label});
           blobOf('/file/' + encodeURIComponent(v)).then(function (b) { vid.src = URL.createObjectURL(b); }).catch(function () { dd.textContent = t.fail; });
           dd.appendChild(vid);
@@ -666,7 +666,7 @@
       });
       if (r.created) { dl.appendChild(el('dt', {text: t.when})); dl.appendChild(el('dd', {text: new Date(r.created).toLocaleString()})); }
       main.appendChild(dl);
-      if (c.document) {                                 // v0.570 the row's PDF (a certificate), only when the server agrees
+      if (c.document) {                                 // v0.581 the row's PDF (a certificate), only when the server agrees
         main.appendChild(el('p', {}, [btn(c.document + ' (PDF)', 'btn-primary', function (ev) {
           var b = ev.target; b.disabled = true;
           blobOf('/c/' + encodeURIComponent(c.key) + '/' + encodeURIComponent(id) + '/document').then(function (bl) {
