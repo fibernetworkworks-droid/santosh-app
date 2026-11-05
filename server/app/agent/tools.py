@@ -775,9 +775,23 @@ from .const_customer_tools import CUSTOMER_HANDLERS, CUSTOMER_LABELS, CUSTOMER_T
 from .const_quality_tools import QUALITY_HANDLERS, QUALITY_LABELS, QUALITY_TOOLS  # noqa: E402
 from .const_meet_tools import MEET_HANDLERS, MEET_LABELS, MEET_TOOLS  # noqa: E402
 
+# v0.531 Construction Wave 2 (file-builders & checkers; plan docs/CONSTRUCTION_EMPLOYEE_PLAN.md C7-C10):
+# Approvals office (#28-32,34,36), QS desk (#37-39,41,49), RERA & escrow (#35,93), Contracts (#44-46,51),
+# Tendering (#52-56,58), Drawing QA + bye-law (#9,16,73). Every tool rides construction/gates.py:
+# PREPARE, never CERTIFY - a named licensee on every output, the pack cites, the pack refuses when stale.
+from .const_approvals_tools import APPROVALS_HANDLERS, APPROVALS_LABELS, APPROVALS_TOOLS  # noqa: E402
+from .const_qs_tools import QS_HANDLERS, QS_LABELS, QS_TOOLS  # noqa: E402
+from .const_rera_tools import RERA_HANDLERS, RERA_LABELS, RERA_TOOLS  # noqa: E402
+from .const_contracts_tools import CONTRACTS_HANDLERS, CONTRACTS_LABELS, CONTRACTS_TOOLS  # noqa: E402
+from .const_tender_tools import TENDER_HANDLERS, TENDER_LABELS, TENDER_TOOLS  # noqa: E402
+from .const_drawqa_tools import DRAWQA_HANDLERS, DRAWQA_LABELS, DRAWQA_TOOLS  # noqa: E402
+
 for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
                    (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
-                   (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS)):
+                   (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS),
+                   (APPROVALS_TOOLS, APPROVALS_LABELS, APPROVALS_HANDLERS), (QS_TOOLS, QS_LABELS, QS_HANDLERS),
+                   (RERA_TOOLS, RERA_LABELS, RERA_HANDLERS), (CONTRACTS_TOOLS, CONTRACTS_LABELS, CONTRACTS_HANDLERS),
+                   (TENDER_TOOLS, TENDER_LABELS, TENDER_HANDLERS), (DRAWQA_TOOLS, DRAWQA_LABELS, DRAWQA_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)

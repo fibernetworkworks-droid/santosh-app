@@ -12,7 +12,7 @@ from sqlalchemy import select
 
 from ..db import session
 from .common import (CstError, _LOCK, _date, _dump, _j, _num, today)
-from .models import CItp, CNcr, CTestLot
+from .models import CItp, CNcr, CQualPermit, CQualToolbox, CTestLot
 
 # IS 456:2000 cl 16.1 & Table 11 - M20 and above: mean >= fck + 4, individual >= fck - 4 (N/mm2).
 # Below M20 Table 11 works on the standard deviation route - Hoola refuses and says so (never guesses sigma).
@@ -169,13 +169,94 @@ def punch(tenant: str, site: str = "") -> dict:
 
 
 def day(tenant: str) -> dict:
-    """The QA morning: open NCRs, hold points due, lots pending verdict / retest."""
+    """The QA morning: open NCRs, hold points due, lots pending verdict / retest, permits expiring."""
     t0 = today(tenant)
     with session() as s:
         ncrs = s.scalars(select(CNcr).where(CNcr.tenant_id == tenant, CNcr.status == "open")).all()
         lots = s.scalars(select(CTestLot).where(CTestLot.tenant_id == tenant, CTestLot.verdict == "pending")).all()
         retest = [r for r in s.scalars(select(CTestLot).where(CTestLot.tenant_id == tenant)).all()
                   if r.retest_due and r.retest_due <= t0.isoformat()]
+        permits = [p for p in s.scalars(select(CQualPermit).where(CQualPermit.tenant_id == tenant,
+                                                          CQualPermit.status == "issued")).all()
+                   if p.valid_till and p.valid_till <= t0.isoformat()]
     say = (f"Quality: {len(ncrs)} NCR khuli, {len(lots)} lab results verdict-pending"
-           + (f", {len(retest)} retest due" if retest else "") + ".")
-    return {"open_ncrs": len(ncrs), "pending_lots": len(lots), "retest_due": len(retest), "say": say}
+           + (f", {len(retest)} retest due" if retest else "")
+           + (f", {len(permits)} permit ki validity khatam" if permits else "") + ".")
+    return {"open_ncrs": len(ncrs), "pending_lots": len(lots), "retest_due": len(retest),
+            "permits_expired": len(permits), "say": say}
+
+
+# ------------------------------------------------------------------ #81 EHS Officer's Assistant (Wave 2 C10)
+def permit_draft(tenant: str, site: str, kind: str, hazard: str, controls: list, valid_from: str = "",
+                 valid_till: str = "", conv: str = "") -> dict:
+    """Permit-to-work DRAFT: hazard + controls as data. The PERMIT ITSELF the safety officer issues
+    (tier C: 'give a permit-to-work') - Hoola prepares the paper and keeps the record."""
+    if not str(site or "").strip() or not str(hazard or "").strip():
+        raise CstError("Site aur hazard bataiye (jaise 'Tower B', '5 m neeche gadda - worker fall').")
+    if kind not in ("height", "confined space", "hot work", "excavation", "electrical"):
+        raise CstError("kind: height | confined space | hot work | excavation | electrical")
+    clean = [{"control": str(c.get("control", ""))[:200], "done": bool(c.get("done"))}
+             for c in (controls or []) if isinstance(c, dict) and str(c.get("control", "")).strip()]
+    if not clean:
+        raise CstError("Controls bhejo [{control, done}] - bina control ka permit kagaz nahi hota.")
+    with _LOCK, session() as s:
+        x = CQualPermit(tenant_id=tenant, site=site.strip()[:160], kind=kind, hazard=hazard.strip()[:300],
+                        controls=_dump(clean), valid_from=(_date(valid_from) or today(tenant)).isoformat(),
+                        valid_till=(_date(valid_till) or "").isoformat() if valid_till else "", status="draft")
+        s.add(x)
+        s.flush()
+        pid = x.id
+    from .common import publish
+    publish(tenant, "const_ehs", {"kind": "permit_draft", "site": site, "permit": kind}, conv)
+    return {"permit_id": pid, "controls": len(clean),
+            "say": f"Permit DRAFT ({kind}): {site} - {hazard[:80]}, {len(clean)} controls. "
+                   "Issue SAFETY OFFICER karegi (main kabhi nahi) - unke naam ke saath 'issued' hota hai."}
+
+
+def permit_issue(tenant: str, permit_id: str, issued_by: str) -> dict:
+    """status -> issued, on the safety officer's NAMED word. Bina naam ke permit issue nahi hota."""
+    who = str(issued_by or "").strip()
+    if not who:
+        raise CstError("Kaun issue kar rahi hai? Safety officer ka naam chahiye - permit unki haan se "
+                       "hoti hai (main DRAFT se aage nahi jaata khud se).")
+    with _LOCK, session() as s:
+        x = s.get(CQualPermit, permit_id)
+        if not x or x.tenant_id != tenant:
+            raise CstError("Permit nahi mili.")
+        x.status = "issued"
+        x.issued_by = who[:120]
+        site, kind = x.site, x.kind
+    from .common import publish
+    publish(tenant, "const_ehs", {"kind": "permit_issued", "site": site, "permit": kind})
+    return {"say": f"Permit ({kind}, {site}) ISSUED - {who} ke naam se record. Validity unki tay ki hui."}
+
+
+def permit_close(tenant: str, permit_id: str, note: str = "") -> dict:
+    with _LOCK, session() as s:
+        x = s.get(CQualPermit, permit_id)
+        if not x or x.tenant_id != tenant:
+            raise CstError("Permit nahi mili.")
+        x.status = "closed"
+        if note:
+            x.note = note[:200]
+        site, kind = x.site, x.kind
+    return {"say": f"Permit ({kind}, {site}) closed. Kaam poora - record band."}
+
+
+def toolbox_log(tenant: str, site: str, topic: str, day: str = "", attendees=None, gang: str = "",
+                note: str = "", conv: str = "") -> dict:
+    """The toolbox talk, recorded as it happened: topic, day, gang, headcount."""
+    if not str(site or "").strip() or not str(topic or "").strip():
+        raise CstError("Site aur topic bataiye (jaise 'Tower B', 'height work - harness').")
+    with _LOCK, session() as s:
+        x = CQualToolbox(tenant_id=tenant, site=site.strip()[:160], topic=topic.strip()[:200],
+                         day=(_date(day) or today(tenant)).isoformat(), gang=gang.strip()[:120],
+                         attendees=int(_num(attendees)), note=note[:300])
+        s.add(x)
+        s.flush()
+        tid = x.id
+    from .common import publish
+    publish(tenant, "const_ehs", {"kind": "toolbox", "site": site, "topic": topic}, conv)
+    return {"toolbox_id": tid,
+            "say": f"Toolbox talk record: {topic[:60]} ({site}, gang {gang or '-'}, {int(_num(attendees))} aadami). "
+                   "Safety talk ka hisaab EHS officer ke saath."}

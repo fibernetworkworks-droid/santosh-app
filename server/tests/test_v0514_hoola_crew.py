@@ -351,7 +351,7 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "crew_run" in tools.HANDLERS and "crew_run" in tools.TOOL_LABELS
     assert any(t["name"] == "crew_run" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 556, ("541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) "
+    assert len(tools.TOOLS) == 568, ("541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) "
                                      "+ 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main)")
 
 
@@ -564,8 +564,8 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.543.0"
+    assert main_mod.APP_VERSION == "0.544.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     assert "HOOLA CREW" in story and "crewAI" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.543.0+566" in pub
+    assert "version: 0.544.0+567" in pub
