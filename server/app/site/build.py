@@ -101,6 +101,8 @@ def tokens(style: str, palette: str, brand: dict[str, str] | None = None, overri
         return out
     primary_text, accent_text = text_safe(pal["primary"]), text_safe(pal["accent"])
     fonts = T.FONTS.get(st["fonts"]) or T.FONTS["poppins_mukta"]
+    if (overrides or {}).get("fonts") in T.FONTS:     # v0.565 her design's type, mapped to a pair Hoola ships
+        fonts = T.FONTS[overrides["fonts"]]
     radius = int((overrides or {}).get("radius", st["radius"]) or 0)
     return {"style": style, "palette": palette, "bg": pal["bg"], "surface": pal["surface"], "ink": pal["ink"],
             "muted": muted, "line": line, "primary": pal["primary"], "on_primary": on_p, "accent": pal["accent"],

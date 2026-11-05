@@ -286,6 +286,22 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
     checkboxes / radios / <option> with data-add="AMOUNT", and <output data-calc-out>; or data-hoola-calc="emi" with
     inputs name="amount", name="rate" (yearly %), name="months" and outputs data-calc-out (EMI), data-calc-total,
     data-calc-interest. Rates and amounts ONLY from FACTS / her words (a loan EMI calculator needs no prices of hers).
+  * Quiz (v0.565, "which product / course / plan is right for me"): <form data-hoola-quiz><fieldset data-q><legend>Question</legend>
+    <label><input type="radio" name="q1" data-result="basic"> Answer</label>...</fieldset>... <p data-quiz-msg></p>
+    <button class="btn btn-primary" type="submit">See my answer</button><div data-result-panel="basic">...result + a link /
+    button to the matching product or her enquiry form...</div>...</form>. Results are HER own products / courses / plans only.
+  * Configurator (v0.565, choose options -> price + "send this choice"): <form data-hoola-config data-base="0" data-whatsapp="91XXXXXXXXXX">
+    <fieldset><legend>Size</legend><label><input type="radio" name="size" data-add="0" data-label="1 kg" data-show="big"> 1 kg</label>...
+    </fieldset> ... <img data-config-show="big" ...> (shown only when that choice is picked) <span data-config-summary></span>
+    <output data-calc-out></output><button class="btn btn-primary" type="submit">Send this choice</button></form>.
+    data-whatsapp only when FACTS has her WhatsApp; without it the choice is put into her enquiry form. Every amount from
+    FACTS / her words; say "estimate" next to the total when the final price can change.
+  * Comparison tool (v0.565): <div data-hoola-compare-table><button type="button" data-compare-diff aria-pressed="false">Show
+    differences only</button> <button type="button" data-compare-col="1">Plan A</button>...<table>...</table></div>
+    (first column = the feature, one column per option of HERS).
+- SCROLL-DRIVEN MOTION (v0.565, CSS only, off under reduced motion and in browsers without scroll timelines): data-m="scrub"
+  (rises in as it scrolls into view), data-m="scrub-x" (slides in from the left), data-m="scrub-scale" (grows in). Use on
+  big images / stats / step lists, at most 3 per page; the content is fully visible without it.
 - CHARTS (v0.357): write a plain table and Hoola draws it (inline SVG in the site's colours, tooltip, keyboard, the
   table kept for screen readers): <figure data-hoola-chart="bar|line|area|donut|hbar" data-unit="₹" data-suffix="%">
   <figcaption>What it shows</figcaption><table><thead><tr><th>Year</th><th>Students</th></tr></thead><tbody>

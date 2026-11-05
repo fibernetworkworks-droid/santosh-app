@@ -1244,7 +1244,15 @@ def _make_looks(r: Site) -> None:
     more = _look_sections(r)
     labels = [T.label_of(s) for s in more]
     briefs = [L.brief(r.field, r.goal, st) for st in styles]
+    from . import inspire as IN
+    mine = IN.look_zero(facts)                 # v0.565 KOI BHI DESIGN: look 1 = her own design (screenshot / Figma / her old site)
+    if mine:
+        styles = [mine["style"]] + [s for s in styles if s != mine["style"]][:2]
+        briefs = [L.brief(r.field, r.goal, st) for st in styles]
+        briefs[0] = {**briefs[0], "text": briefs[0]["text"] + IN.brief_note(mine)}
     toks = [B.tokens(st, br["palettes"][0], facts.get("brand_colors")) for st, br in zip(styles, briefs)]
+    if mine:
+        toks[0] = B.tokens(mine["style"], briefs[0]["palettes"][0], None, mine.get("overrides") or {})
     _work(r, "start", "3 looks soch raha hoon", f"{len(styles)} design ek saath")
 
     def dna_of(i: int, siblings: list) -> dict[str, Any] | None:
@@ -1315,7 +1323,8 @@ def _make_looks(r: Site) -> None:
             shots = rep["pages"].get("home", {}).get("shots", {})
         except C.CheckError as e:
             log.info("look screenshots skipped: %s", e)
-        return {"style": styles[i], "label": T.STYLES[styles[i]]["label"], "tokens": toks[i], "shots": shots, "dna": dnas[i]}
+        return {"style": styles[i], "label": "Aapke design se" if (mine and i == 0) else T.STYLES[styles[i]]["label"],
+                "tokens": toks[i], "shots": shots, "dna": dnas[i], "mine": bool(mine and i == 0)}
     with ThreadPoolExecutor(max_workers=len(styles), thread_name_prefix=f"look-{r.id[:6]}") as ex:
         looks = list(ex.map(_in_ctx(shoot), range(len(styles))))
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",

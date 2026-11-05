@@ -389,3 +389,25 @@ form[data-hoola-calc] output{font-family:var(--font-head),sans-serif;font-weight
 /* v0.551 the hidden honeypot on every enquiry form (bots fill it, people never see it) */
 form[data-hoola-form] .hp{position:absolute;left:-9999px;width:1px;height:1px;min-height:0;padding:0;border:0;opacity:0}
 .cf-turnstile{margin:.5rem 0}
+
+/* v0.565 KOI BHI DESIGN: rich pieces (quiz, configurator, comparison) + scroll-driven motion (CSS only) */
+form[data-hoola-quiz] [data-q],form[data-hoola-config] fieldset{border:1px solid var(--c-line);border-radius:var(--radius);padding:14px 16px;margin:0 0 12px}
+form[data-hoola-quiz] legend,form[data-hoola-config] legend{font-weight:600;padding:0 6px}
+form[data-hoola-quiz] label,form[data-hoola-config] label{display:flex;gap:10px;align-items:center;padding:6px 0;cursor:pointer}
+form[data-hoola-quiz] [data-result-panel]{border-left:4px solid var(--c-primary);padding:12px 16px;margin-top:12px;background:var(--c-surface);border-radius:var(--radius)}
+form[data-hoola-quiz] [data-result-panel]:focus{outline:2px solid var(--c-primary);outline-offset:2px}
+form[data-hoola-config] [data-config-summary]{display:block;color:var(--c-muted);margin:8px 0}
+[data-hoola-compare-table] table{width:100%;border-collapse:collapse}
+[data-hoola-compare-table] th,[data-hoola-compare-table] td{padding:10px 12px;border-bottom:1px solid var(--c-line);text-align:left}
+[data-hoola-compare-table] .hs-pick{background:color-mix(in srgb,var(--c-primary) 10%,transparent)}
+[data-hoola-compare-table] button[aria-pressed="true"]{background:var(--c-primary);color:var(--c-on-primary)}
+@supports (animation-timeline: view()){
+  @media (prefers-reduced-motion: no-preference){
+    [data-m~="scrub"]{animation:hs-scrub linear both;animation-timeline:view();animation-range:entry 0% cover 35%}
+    [data-m~="scrub-x"]{animation:hs-scrub-x linear both;animation-timeline:view();animation-range:entry 0% cover 40%}
+    [data-m~="scrub-scale"]{animation:hs-scrub-scale linear both;animation-timeline:view();animation-range:entry 0% cover 45%}
+  }
+}
+@keyframes hs-scrub{from{opacity:.15;transform:translateY(48px)}to{opacity:1;transform:none}}
+@keyframes hs-scrub-x{from{opacity:.15;transform:translateX(-56px)}to{opacity:1;transform:none}}
+@keyframes hs-scrub-scale{from{opacity:.3;transform:scale(.88)}to{opacity:1;transform:none}}

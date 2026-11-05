@@ -20573,3 +20573,53 @@ dashboard (dash.py), the monthly care note, the nightly backup (backup.py). New 
 - NOT VERIFIED live, said plainly: no visitor beacon has reached the VPS yet (her live sites get the beacon on their NEXT
   build / publish - the script and meta come with the build); the restore test needs `SITES_BACKUP_BUCKET` + keys in the
   VPS `.env` (backup is off without them, and the console says so).
+
+## v0.565.0 KOI BHI DESIGN (web Step 7 part 3 = W9 of docs/WEB_PLATFORM_PLAN.md; owner: "GO")
+
+W9 asked for: custom components, rich pieces (3D / scroll-driven / Lottie / video background / before-after / configurators /
+quizzes / comparison tools) and design inputs (her screenshot, her Figma file, her OWN old website). Custom components
+(`custom_<name>`, v0.332), tabs / slider / filter / switch / calculators (v0.330), before-after (`[data-compare]`) and the motion
+runtime already existed and were not redone.
+
+**Design inputs - `server/app/site/inspire.py`.** Every input ends as ONE design reference in Hoola's words
+(`normalise`): style (one of the 10 house styles), font pair (one Hoola ships, with Devanagari), corner radius, light /
+dark, colour roles bg / surface / ink / primary / accent, section order (mapped onto Hoola's section types), notes in
+Hoola's own words, and (her own sources only) her content.
+1. Screenshot: colours MEASURED by Pillow (fast-octree, 16 colours on a 320 px copy; anti-aliased twins within distance 30
+   merged; anything under 1.5% of the picture dropped as an edge blend; brand colour = the LARGEST vivid area, accent = the
+   next one of a different hue). Opus vision reads only the visual system and is told never to copy text; the reference
+   keeps nothing it might have read (names, phones, slogans). No model -> the measured colours alone still make a look.
+2. Figma: her personal access token is typed in the console (PUT /api/site-design/figma), sealed with accounts.encrypt
+   (`site_figma_keys`), shown only as its last 4 characters, never in chat. GET /v1/files/{key}?depth=4: SOLID fills weighted
+   by area, the largest text style's family (-> font pair), the median corner radius, frame names (-> sections), and her
+   frames' words (her content). 401/403/404 are said plainly.
+3. Her OWN old website: ownership first - already one of her Hoola addresses or domains, else an HMAC token she puts in a TXT
+   record `_hoola-own.<domain>` or a `<meta name="hoola-own">` tag (only the home page is read before the proof). Then up to 12
+   same-site pages (robots.txt honoured, public addresses only via `appmaker.connect._guard_host`), her title / headings /
+   paragraphs / list items, phone / email / WhatsApp (from tel: / mailto: / wa.me links), address (the shortest element holding
+   a 6-digit PIN), About text (her About / story page first), services (headings of the inner pages), her photos (same site,
+   >= 300 px, no logo / icon / sprite files, max 12) and her CSS colours / font / corners.
+- `read` = a PREVIEW (kept 24 h under a token; nothing changes). `use` = her tap (owner-only, like choosing a look): the site's
+  facts get `design_ref`, her contact details fill only EMPTY facts, her photos are added, and the looks are made again with
+  LOOK 1 = hers ("Aapke design se": `service._make_looks` puts her style first, appends her reference to that look's brief and
+  builds its tokens from her colours / type / corners via `B.tokens(..., overrides)` - which now takes a `fonts` pair); the other
+  two looks stay Hoola's alternatives. No site named = a NEW site from her old site's / Figma file's own words. A site that is
+  building is refused until it is done. The copy guard still refuses "exactly like <their> site".
+- Routes: POST /api/site-design/read (multipart screenshot or JSON source=figma|site), POST /api/site-design/use,
+  GET / PUT / DELETE /api/site-design/figma. Console: Website > "Start from your design" (three forms, the ownership-proof
+  instructions on a 403, colour swatches, fonts, sections, "Use this design"). Tool: `website` action=design_from / design_use.
+
+**Rich pieces** (attributes only, in `assets/hoola-site.js` + CSS + the section writer's rules): quiz (`data-hoola-quiz`, most
+picks -> her matching product / course panel, every question must be answered), configurator (`data-hoola-config`: options with
+data-add / data-show, a summary, a total, "send this choice" to her WhatsApp when FACTS has it, else into her enquiry form),
+comparison tool (`data-hoola-compare-table`: differences only + highlight a column), scroll-driven motion (`data-m="scrub"` /
+`scrub-x` / `scrub-scale`: CSS `animation-timeline: view()`, only under `prefers-reduced-motion: no-preference` and where the
+browser supports it). None of the new forms post anywhere, so the safety gates' form rules are untouched.
+
+- Tests `test_v0565_koi_bhi_design.py` 11: measured roles (light + dark), type mapping, screenshot keeps no text + the
+  no-model fallback, Figma with the sealed token + 403 + forget, own-site proof (403 + nothing read) / meta / TXT + robots +
+  photo filter + contact / About / address, preview-then-tap makes look 1 hers with the other two kept, a new site from her old
+  site with her photo, routes + tool, and the quiz / configurator / comparison clicked in real Chromium.
+- NOT BUILT, said plainly: Lottie and a three.js 3D hero (no library vendored yet - the gates already know their version
+  banners for when they are); a video background piece. A screenshot gives a STYLE match, never a pixel copy.
+- NOT VERIFIED live: no real Figma file and no real old website has been read yet; the vision reading has only met test fakes.
