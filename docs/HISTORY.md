@@ -20265,3 +20265,17 @@ identity, a running turn holds the report past 50 s, past the wait the honest li
 `test_v0260` pin updated to the new call. Version 0.552.0 (pubspec 0.552.0+575). Server-only change - the v0.550.0
 APK (`v0.550.0-b1643`) is the phone build. NOT VERIFIED live: the first background job that finishes while she is
 chatting about something else is the live proof.
+
+## v0.553.0 GHANTI - a finished task rings her phone on the normal path too (owner, after deploying v0.552: "NOW ALL SURFACE WILL GIVE PROPER RESULT CALL WHEN TASK DONE")
+
+Checked before saying yes, and it was not true. `kaam_followup._send` has two report paths: the WAKE TURN (the normal
+one - the real brain reads the result and writes the reply) and the one-shot / canned line (the fallback when a wake
+is not allowed: a turn running, the 3-wakes budget spent, or wake off). The v0.211 voice ring (`kind=voice_ring`
+data push -> the phone's native side starts the call) sat ONLY after the fallback; the wake path `return`ed before it.
+So with default settings a finished job almost never rang her phone. Now one `_ring(conv, key, state, title,
+settings)` helper is called by both paths. Every gate is unchanged and still lives in `push.on_event` /
+`_ring_allowed`: her `voice_ring` switch (default on), quiet hours `voice_ring_quiet` 22-8 in her timezone,
+`voice_ring_max_day` 2 rings a day, never while a call is live on that chat (a live call hears the news instead).
+Tests: `test_v0552_natija_pakka.py` +2 (the wake report rings; switch off = no ring on any path; the one-shot path
+still rings); report suites 78 passed. Server-only. NOT VERIFIED live: the first task that finishes outside quiet
+hours with no call open should ring her phone (at most 2 a day by default).

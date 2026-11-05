@@ -1409,3 +1409,13 @@ Work Log:
 
 Stage Summary:
 - v0.552.0 server-only. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 41 — v0.553.0 GHANTI (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner deployed v0.552 and said all surfaces will now call when a task is done - checked first.
+Work Log:
+- Found voice_ring only on the fallback path; the wake turn (normal path) returned before it. One _ring helper
+  for both; gates unchanged. +2 tests; report suites 78 passed. Live healthz read 0.552.0 before this change.
+Stage Summary:
+- v0.553.0 server-only. Deploy = owner's vps-ops dispatch.

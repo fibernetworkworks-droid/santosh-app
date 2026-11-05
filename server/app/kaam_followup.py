@@ -462,6 +462,10 @@ async def _send(fid: str, settings) -> None:
                     r2 = s.get(KaamFollowup, fid)
                     if r2 is not None and r2.status == "pending":
                         r2.status, r2.sent_at = "sent", now()
+                # v0.553 GHANTI: the wake turn is the NORMAL path, and it returned before the ring below - so a
+                # finished job almost never rang her phone. It rings here too (same gates: quiet hours, daily cap,
+                # never over a live call).
+                _ring(conv, snapshot.key, snapshot.state, title, settings)
                 return                   # the wake turn already told her (and the call) in Hoola's own words
             log.info("wake turn declined for %s; the one-shot line goes instead", fid)
         line = ""
@@ -490,20 +494,25 @@ async def _send(fid: str, settings) -> None:
             kaamwatch._voice(tenant, conv, _spoken(line))
         except Exception:
             log.debug("followup voice note failed", exc_info=True)
-        try:   # v0.211 NO live call? the SERVER may ring her phone for this news: kind=voice_ring data push,
-               # gated in push.on_event (quiet hours, daily budget, never while a call is live); v0.219 the
-               # phone's native side learned the kind and the setting flipped ON - 'if we dont give call it
-               # never reply on its own'
-            if settings.voice_ring:
-                from . import push as _push
-                _push.on_event(conv, {"kind": "voice_ring", "id": r3.key, "at": "",
-                                      "payload": {"reason": f"kaam {r3.state}: {title}"[:80], "ref": r3.key,
-                                                  "conv": conv}})
-        except Exception:
-            log.debug("voice ring skipped", exc_info=True)
+        _ring(conv, r3.key, r3.state, title, settings)
         STATS["sent"] += 1
     except Exception:
         log.exception("kaam followup send failed")
+
+
+def _ring(conv: str, key: str, state: str, title: str, settings) -> None:
+    """v0.211 NO live call? the SERVER may ring her phone for this news: kind=voice_ring data push, gated in
+    push.on_event (quiet hours, daily budget, never while a call is live); v0.219 the phone's native side learned
+    the kind and the setting flipped ON - 'if we dont give call it never reply on its own'. v0.553: ONE helper for
+    both report paths (the wake turn and the one-shot line)."""
+    try:
+        if settings.voice_ring:
+            from . import push as _push
+            _push.on_event(conv, {"kind": "voice_ring", "id": key, "at": "",
+                                  "payload": {"reason": f"kaam {state}: {title}"[:80], "ref": key, "conv": conv}})
+            STATS["ring"] = STATS.get("ring", 0) + 1
+    except Exception:
+        log.debug("voice ring skipped", exc_info=True)
 
 
 def pending(tenant: str) -> list[dict[str, Any]]:

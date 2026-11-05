@@ -141,3 +141,44 @@ def test_past_the_wait_the_honest_line_still_goes(env, monkeypatch):
 def test_postpones_can_never_strand_a_report():
     from app import kaam_followup as K
     assert K._MAX_TRIES * 10 > K._wait_s()               # ~10 s ticks: the wait ends before the cap is reached
+
+
+def test_the_normal_wake_report_rings_her_phone_too(env, monkeypatch):
+    """v0.553 GHANTI: the wake turn is the normal path and used to return BEFORE the ring - a finished job almost
+    never rang her phone. Now both paths ring (push.on_event still applies quiet hours, the daily cap, live call)."""
+    import asyncio
+    from types import SimpleNamespace
+    from app import kaam_followup as K, push
+    conv, tenant = _seed("c-ring")
+    fid = _pending_row(conv, tenant, "video_job:g1", age_s=5)
+    rang = []
+    monkeypatch.setattr(push, "on_event", lambda c, ev: rang.append((c, ev["kind"])))
+    monkeypatch.setattr(K, "_wake_allowed", lambda c, st: True)
+
+    async def woke(r, st):
+        return True
+    monkeypatch.setattr(K, "_wake_turn", woke)
+    asyncio.run(K._send(fid, SimpleNamespace(voice_ring=True)))
+    assert rang == [(conv, "voice_ring")]
+    rang.clear()
+    fid2 = _pending_row(conv, tenant, "video_job:g2", age_s=5)
+    asyncio.run(K._send(fid2, SimpleNamespace(voice_ring=False)))
+    assert rang == []                                          # her switch off = no ring, on every path
+
+
+def test_the_one_shot_path_still_rings(env, monkeypatch):
+    import asyncio
+    from types import SimpleNamespace
+    from app import kaam_followup as K, push
+    conv, tenant = _seed("c-ring2")
+    fid = _pending_row(conv, tenant, "video_job:g3", age_s=5)
+    rang, said = [], []
+    monkeypatch.setattr(push, "on_event", lambda c, ev: rang.append(ev["kind"]))
+    monkeypatch.setattr(K, "_wake_allowed", lambda c, st: False)
+    monkeypatch.setattr(K, "notify", lambda c, t: said.append(t))
+
+    async def line(r, st):
+        return "Ad reel taiyaar hai."
+    monkeypatch.setattr(K, "_model_line", line)
+    asyncio.run(K._send(fid, SimpleNamespace(voice_ring=True)))
+    assert said == ["Ad reel taiyaar hai."] and rang == ["voice_ring"]

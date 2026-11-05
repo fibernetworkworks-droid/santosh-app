@@ -62,5 +62,5 @@ def test_console_asks_for_its_own_chat_and_never_mirrors():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.552.0"
-    assert "0.552.0+575" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.553.0"
+    assert "0.553.0+576" in (ROOT / "pubspec.yaml").read_text()
