@@ -386,6 +386,26 @@ GAMEDESK_TOOLS.append(
 
 GAMEDESK_LABELS.update({"game_arena": "Game arena chala raha hoon"})
 
+# v0.455 provenance: what shipped, and what of it is hers
+GAMEDESK_TOOLS.append(
+    {"name": "game_provenance", "description": (
+        "Where every piece of a shipped game came from (part of the Game Developer desk), recorded when it happened and "
+        "never worked out afterwards. Actions: sheet (everything: the model(s) that wrote the code, every APPROVED asset "
+        "with how it was made, her own human record, and the store answers) / steam (a DRAFT answer to Steam's Content "
+        "Survey) / disclosure (one line for a store page, Unity's Asset Store or Fab's CreatedWithAI tag) / human (what "
+        "SHE chose, changed, rejected and uploaded). THREE THINGS NEVER MERGED: generated assets (a model made them - "
+        "these are what a store survey asks about), code-made assets (a sound from a preset and a seed, a Blender-scripted "
+        "mesh - arithmetic, NOT generative AI; calling them AI would be a false statement on her survey), and her own "
+        "uploaded files (hers, and her copyright). Only APPROVED assets ship, so only those are counted. The game calls "
+        "no model while it runs, so Steam's LIVE-generated question is a plain No. NEVER say the declaration is correct "
+        "or give legal advice: she signs it, and the tool prints the judgement calls (the GDScript is one) for her to "
+        "decide. id = S-0001 (optional with one project)."),
+     "input_schema": {"type": "object", "properties": {
+         "action": {"type": "string", "enum": ["sheet", "steam", "disclosure", "human"]}, "id": {"type": "string"}},
+         "required": ["action"]}})
+
+GAMEDESK_LABELS.update({"game_provenance": "Dekh raha hoon kya kahan se aaya"})
+
 
 def _short(v: dict) -> dict:
     out = {k: v.get(k) for k in ("id", "number", "title", "status", "say", "stage", "error", "play_url", "version", "notes",
@@ -984,6 +1004,39 @@ async def game_vfx(ctx: Ctx, action="", words="", plan=None, setup="", **_):
                             {"not_here": "Blender / OpenColorIO / OpenUSD are not installed on the server"})
 
 
+async def game_provenance(ctx: Ctx, action="", id="", **_):
+    from ..employee import hire
+    from ..gamedesk import provenance as P
+    from ..gamedesk import service as G
+    from ..gamedesk import studio as S
+    t = ctx.tenant_id
+    if not await asyncio.to_thread(hire.is_hired, t, KEY):
+        raise ToolError("Game Developer hired nahi hai: Employees mein ek tap mein hire kijiye.")
+    run = asyncio.to_thread
+    try:
+        if not id:
+            mine = await run(S.studios, t)
+            if len(mine) != 1:
+                raise ToolError("Kaunsa project? id (S-0001) dijiye.")
+            id = mine[0]["id"]
+        if action == "sheet":
+            v = await run(P.sheet, t, id)
+            return {"studio": v["studio"], "title": v["title"], "code": v["code"],
+                    "assets": v["assets"]["counts"] | {"procedural_warning": v["assets"]["procedural_warning"]},
+                    "human": v["human"]["counts"] | {"why_it_matters": v["human"]["why_it_matters"],
+                                                     "thin_warning": v["human"]["thin_warning"]},
+                    "disclosure": v["disclosure"], "steam": v["steam"]}
+        if action == "steam":
+            return await run(P.steam_survey, t, id)
+        if action == "disclosure":
+            return await run(P.disclosure_line, t, id)
+        if action == "human":
+            return await run(P.human_record, t, id)
+    except G.GameError as e:
+        raise ToolError(str(e))
+    raise ToolError("action = sheet | steam | disclosure | human")
+
+
 async def game_arena(ctx: Ctx, action="", n=8, seed=1, budget_inr=0, note="", id="", a="", b="", genre="",
                      brief="", rival="", url="", **_):
     from ..gamedesk import arena as A
@@ -1145,4 +1198,4 @@ GAMEDESK_HANDLERS = {"game_desk": game_desk, "game_studio": game_studio, "game_b
                      "game_net": game_net, "game_xr": game_xr, "game_sim": game_sim, "game_twin": game_twin,
                      "game_vfx": game_vfx, "game_runtime": game_runtime,
                      "game_liveops": game_liveops, "game_bigstudio": game_bigstudio,
-                     "game_arena": game_arena}
+                     "game_arena": game_arena, "game_provenance": game_provenance}

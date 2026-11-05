@@ -19273,3 +19273,56 @@ re-applied coherently 0.521.0 -> 0.522.0 + +550 -> +551, both works kept, count-
 later version). NOT VERIFIED live: the first real site evening on voice, the first RA-bill week, the first demand letter - her
 pilot (one contractor, one project, Maharashtra) is the test. Mera PC freeze respected: nothing in server/app/pc/, desktop/
 or lib/ touched.
+
+
+## v0.XXX PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026
+Owner: "CONTINUE TO OUR MOAT GAME WORK". The last two "fix first" items of the moat plan. New
+`server/app/gamedesk/provenance.py`, tool `game_provenance`, console Game Desk > "Where it came from".
+
+### Why it was the highest-leverage item left
+The moat research named provenance "the single highest-leverage thing to build, because it converts an unanswerable
+legal question into a declarable fact", for two reasons that land on the same missing record:
+1. **The stores ask, and SHE signs.** Steam's Content Survey asks the publisher to declare "any kind of content that
+   ships with your game and is consumed by players" made with AI, and separately whether the game generates content
+   WHILE RUNNING (that one carries a guardrails obligation). Unity's Asset Store wants the same disclosure; Fab wants a
+   `CreatedWithAI` tag. Completing Steam's survey is HER promise to Valve, checked in pre-release review - and she
+   could not make it honestly, because nothing recorded which model made which file.
+2. **AI output may not be hers at all.** USCO Jan 2025 Part 2: prompt-only output is not copyrightable. India's
+   Copyright Act s.2(d)(vi) asks for the human who "causes the work to be created", and the Copyright Office rejected
+   an AI as author in 2026. So a game made mostly of generated assets may have little in it she can enforce. What IS
+   protectable is human creative selection, arrangement and modification - every one of which Hoola was ALREADY
+   recording (her approvals, her rejections, her uploads, the decisions log with `by="her"`) and had never collected.
+
+### What was added
+- **The model is written down.** `ai.py` gains a thread-local record (`_mark` / `used()`): `ask` and `ask_with_images`
+  mark the model that actually answered, and a FALLBACK to the cheap brain is named as one, because it is a different
+  model. Thread-local because builds run in parallel, and `used()` clears, so a caller records exactly its own call.
+  `service.py` writes `models` onto each build's version row. A build from before this says so instead of guessing.
+- **Three things that are never merged**, because merging them would put a false statement on her survey:
+  GENERATIVE (photogen / lyria / tts - what a store asks about), CODE-MADE (a sound from `sfx.py`'s preset + seed, a
+  Blender-scripted mesh - arithmetic, no model), and HER OWN uploaded files (hers, and her copyright). The
+  classification is read from `assets.KINDS[kind]["source"]` as declared in code, never from a prompt.
+- **Only what ships counts.** The record follows `approved`, not `created`: an asset made and never approved is in no
+  build, so it is on no survey, and the count of those is printed.
+- **Live-generated = a plain No**, as a fact: the game calls no model while it runs (HoolaRuntime talks only to its own
+  play-link host and the play page's CSP allows nothing else), so Valve's guardrails obligation does not apply.
+- **The judgement call is printed, not decided.** The game's own GDScript: Valve's Jan 2026 rewrite exempts AI dev
+  tools such as code assistants and code is not "consumed by players" the way art is - but a game whose code a model
+  wrote start to finish is not plainly that case. BOTH readings are shown and the answer is "You do. Hoola will not
+  answer this one for you." Nothing anywhere claims the declaration is correct (a test greps for that).
+- **The human record** collects her decisions, the asset versions she chose between, what she rejected, what she
+  uploaded and the tasks she asked for - with a THIN WARNING when there are fewer than five such acts, because then
+  there may be little in the game that is protectable. Creating the project is itself logged as her act, correctly.
+- **The under-18 rule, said out loud** (`runtime.UNDER_18`, in `runtime.settings` and the live-ops dashboard): DPDP
+  s.9(3) forbids tracking, behavioural monitoring and targeted advertising for ANYONE UNDER 18, no consent unlocks it,
+  exposure to Rs 200 crore, and "child" means under 18 not under 13 - which is WHY telemetry is off by default, refused
+  for a children's game, asked per player and never carries a device id. The one narrow exception is named: an
+  educational institution monitoring for its own educational activities or the safety of enrolled children.
+- Routes: GET /api/gamedesk/provenance/{sid} and /steam. Tool actions: sheet / steam / disclosure / human.
+- Tests: `server/tests/test_v0455_provenance.py` (9), each pinning a way the record could lie - thread isolation and
+  the named fallback, code-made never counted as generated, an unclassifiable source named not guessed, her own file
+  counted as neither, made-but-never-approved off the survey, the judgement call carrying both readings, and no claim
+  of correctness anywhere in the output.
+- NOT VERIFIED: no real store survey has been filled from this, and it is not legal advice. The classification is only
+  as good as the `source` each asset kind declares; an asset whose source Hoola cannot place is NAMED rather than
+  guessed at, which is the honest failure.
