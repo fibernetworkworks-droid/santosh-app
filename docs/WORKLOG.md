@@ -1393,3 +1393,19 @@ Work Log:
 
 Stage Summary:
 - v0.550.0 ready; Dart compiles first on CI. Deploy = owner's vps-ops dispatch.
+
+---
+Task ID: 40 — v0.552.0 NATIJA PAKKA (built as 0.551.0) (5 Nov 2026)
+Agent: Claude Code (session claude/hoola-project-review-lzrqhu)
+Task: owner "WHEN RESULT COME FROM ANY TASK DOES IT REPLY RELIABLY" on voice call, console chat, phone chat.
+
+Work Log:
+- Traced kaamwatch -> kaam_followup -> wake / one-shot / canned -> notify (Message + SSE + FCM) + live-call note;
+  call santosh_kaam jobs via turn_inbox + next-call followup.
+- FIXED _answered_since (unrelated replies swallowed the news; proven on old code) and the ~50 s postpone
+  (now KAAM_FOLLOWUP_WAIT_S 300 s, _MAX_TRIES 60 so nothing is stranded).
+- NEW test_v0552_natija_pakka.py (8). COLLISION: the dev's SURAKSHA GATES took 0.551.0 - rebased on b7f0e273,
+  re-versioned 0.552.0, both kept. v0.550.0 APK published: v0.550.0-b1643.
+
+Stage Summary:
+- v0.552.0 server-only. Deploy = owner's vps-ops dispatch.

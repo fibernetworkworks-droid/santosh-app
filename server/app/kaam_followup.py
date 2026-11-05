@@ -251,7 +251,48 @@ async def _model_line(r: KaamFollowup, settings) -> str:
     return " ".join(out.split())[:600]
 
 
-def _answered_since(conv: str, since) -> bool:
+def _job_started(tenant: str, key: str):
+    """When the job behind this report started (kaam_jobs), or None when it is not known."""
+    if not tenant or not key:
+        return None
+    try:
+        from .kaamwatch import KaamJob
+        with session() as s:
+            r = s.scalars(select(KaamJob).where(KaamJob.tenant_id == tenant, KaamJob.key == key)).first()
+            return _aware(r.started_at) if r is not None else None
+    except Exception:
+        log.debug("job start lookup failed", exc_info=True)
+        return None
+
+
+def _turn_began(conv: str, msg_id: int):
+    """When the turn that wrote assistant message `msg_id` began = her last saved words before it (None if none)."""
+    from .db import Message
+    with session() as s:
+        u = s.scalars(select(Message).where(Message.conversation_id == conv, Message.role == "user",
+                                            Message.id < msg_id).order_by(Message.id.desc()).limit(1)).first()
+        return _aware(getattr(u, "created_at", None)) if u is not None else None
+
+
+def _other_jobs_report(conv: str, key: str, at) -> bool:
+    """v0.551 this reply WAS another finished job's own wake report (sent within two minutes after it was saved)."""
+    if at is None:
+        return False
+    try:
+        ensure_table()
+        with session() as s:
+            rows = s.scalars(select(KaamFollowup).where(KaamFollowup.conversation_id == conv,
+                                                        KaamFollowup.status == "sent",
+                                                        KaamFollowup.key != key,
+                                                        KaamFollowup.sent_at >= at - timedelta(seconds=5),
+                                                        KaamFollowup.sent_at <= at + timedelta(seconds=120))).all()
+            return bool(rows)
+    except Exception:
+        log.debug("other-report check failed", exc_info=True)
+        return False
+
+
+def _answered_since(conv: str, since, key: str = "", tenant: str = "") -> bool:
     """v0.260: did a REAL reply land in this chat after the job finished? Then the turn she was watching already
     told her, and waking the brain for a second report is the duplicate she saw on 29 Oct ("Competitor job poora ho
     gaya" under a full answer). _recent_said below only matched the TITLE's words against the reply, so it missed
@@ -276,6 +317,16 @@ def _answered_since(conv: str, since) -> bool:
             if text[:1] in set("\u25b6\U0001f504\u2705\u274c\u23f9\u23f3\u26a0"):
                 continue                                  # a status chip is not an answer either
             if len(text) >= 40:                           # a real reply, not a one-word ack
+                # v0.552 NATIJA PAKKA: a reply is THIS job's report only when its turn ran the job (began before
+                # the job started) and it is not another job's own wake report. Before, ANY reply after the
+                # finish counted, so a job that finished while she asked about something else was never told.
+                if key and _other_jobs_report(conv, key, at):
+                    continue
+                started = _job_started(tenant, key)
+                if started is not None:
+                    began = _turn_began(conv, m.id)
+                    if began is None or began > started + timedelta(seconds=5):
+                        continue                          # she asked something else after the job began
                 return True
     except Exception:
         log.debug("answered-since check failed", exc_info=True)
@@ -325,7 +376,7 @@ async def tick() -> int:
     ensure_table()          # v0.190.1 P0 self-heal (see enqueue)
     out = 0
     with session() as s:
-        rows = s.scalars(select(KaamFollowup).where(KaamFollowup.status == "pending", KaamFollowup.tries < 5)
+        rows = s.scalars(select(KaamFollowup).where(KaamFollowup.status == "pending", KaamFollowup.tries < _MAX_TRIES)
                          .order_by(KaamFollowup.created_at).limit(8)).all()
         rows = [{c: getattr(r, c) for c in ("id", "tenant_id", "conversation_id", "tries")} for r in rows]
     from .config import get_settings
@@ -337,7 +388,11 @@ async def tick() -> int:
                 r = s.get(KaamFollowup, row["id"])
                 if r and r.status == "pending":
                     r.tries += 1
-                    if r.tries >= 5:            # never lose the news: the canned line goes out now
+                    age = (now() - (_aware(r.created_at) or now())).total_seconds()
+                    # v0.552 NATIJA PAKKA: wait for her turn up to KAAM_FOLLOWUP_WAIT_S (5 min), not 5 ticks (~50 s):
+                    # an ordinary multi-tool turn used to get a dry line dropped into its middle and the real report
+                    # never came. A truly long turn still gets the honest line - the news is never lost.
+                    if age >= _wait_s() or r.tries >= _MAX_TRIES - 1:
                         r.status, r.sent_at = "sent", now()
                         notify(conv, _canned(r))
                         STATS["fallback"] += 1
@@ -356,6 +411,14 @@ async def tick() -> int:
 
 _BG: set = set()
 _task_row: dict = {}
+_MAX_TRIES = 60          # v0.552 postpones count here too (every ~10 s), so the cap sits above the 5-minute wait
+
+
+def _wait_s() -> int:
+    try:
+        return max(30, int(os.environ.get("KAAM_FOLLOWUP_WAIT_S", "300")))
+    except ValueError:
+        return 300
 
 
 def _bg_done(t) -> None:
@@ -372,7 +435,7 @@ async def _send(fid: str, settings) -> None:
             r = s.get(KaamFollowup, fid)
             if r is None or r.status != "pending":
                 return
-            conv, tenant, title = r.conversation_id, r.tenant_id, r.title
+            conv, tenant, title, key = r.conversation_id, r.tenant_id, r.title, r.key
             r.tries += 1
         if not conv:
             with session() as s:
@@ -380,7 +443,7 @@ async def _send(fid: str, settings) -> None:
                 if r2:
                     r2.status, r2.sent_at = "skipped", now()
             return
-        if _recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None)):
+        if _recent_said(conv, title) or _answered_since(conv, getattr(r, "created_at", None), key=key, tenant=tenant):
             with session() as s:
                 r2 = s.get(KaamFollowup, fid)
                 if r2:

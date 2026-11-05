@@ -20234,3 +20234,34 @@ main.py - a merge before v0.538 shipped dropped the whole block (catalog preview
 their modules, tables and worker tick were all there. Restored from the commit that wrote them; catalogue + CMS suites
 green again. RULE (again): a module's tests passing in one commit says nothing about the merged tree - run the feature's
 suite on the MERGED commit before shipping.
+
+## v0.552.0 NATIJA PAKKA (built as 0.551.0; the dev's SURAKSHA GATES took 0.551.0 - rebased, both kept) - a finished task's result reliably reaches voice call, console chat and phone chat (owner: "NOW CHECK FOR ALL 3 --- WHEN RESULT COME FROM ANY TASK DOES IT REPLY RELIABLY")
+
+TRACED end to end, and these parts already hold: `kaamwatch.observe` sees every job event (15 named kinds + any kind
+carrying a job status and an id) -> on done / failed / stopped `kaam_followup.enqueue` writes a DURABLE row (survives a
+restart, deduped per job + state) -> the worker tick (~10 s) wakes the real brain (actor wake, tools allowed) or, if
+that cannot run, a one-shot line, or the honest canned line -> `notify` = a saved Message + SSE (the console and the
+phone both stream it) + FCM push (every assistant message pushes) + `kaamwatch._voice` = a quiet note into her live
+call on that chat, else into her live call on another chat. With no live call, `voice_ring` may ring her phone (quiet
+hours + daily budget). A big job a CALL handed to santosh_kaam runs through the durable turn_inbox, so its reply lands
+in the chat as well; a call that ended meanwhile leaves the result for the next call to open with (yaad followup).
+
+TWO GAPS FOUND AND FIXED (`server/app/kaam_followup.py`):
+1. **Unrelated replies swallowed the news.** v0.260's `_answered_since` skipped the report whenever ANY assistant
+   reply of 40+ chars landed after the job finished. A background job finishing while she asked about something
+   else (her GST question) was never told - proven on the old code (`OLD RULE SKIPS THE NEWS: True`); and when two
+   jobs finished together, the first job's wake report swallowed the second's. Now a reply counts as THIS job's
+   report only when the turn that wrote it began before the job started (`_turn_began` vs `kaam_jobs.started_at`:
+   the turn that ran the job - the 29 Oct duplicate stays fixed) and it is not another job's own wake report
+   (`_other_jobs_report`: a sent follow-up of another key within 2 minutes). Unknown start = the old rule.
+2. **A running turn held the report only ~50 s.** The tick postponed 5 times (one per ~10 s tick) and then dropped
+   the dry canned line INTO the running turn, so any ordinary multi-tool turn lost the real report. Now it waits up to
+   `KAAM_FOLLOWUP_WAIT_S` (default 300 s) and then still sends the honest line; the row cap moved to `_MAX_TRIES` 60
+   so postpones can never strand a row (the old `tries < 5` filter would have).
+
+Tests: NEW `test_v0552_natija_pakka.py` (8): the unrelated reply no longer swallows the news, the turn that ran the
+job still counts, another job's wake report does not count, old callers keep working, `_send` passes the job
+identity, a running turn holds the report past 50 s, past the wait the honest line goes, postpones never strand.
+`test_v0260` pin updated to the new call. Version 0.552.0 (pubspec 0.552.0+575). Server-only change - the v0.550.0
+APK (`v0.550.0-b1643`) is the phone build. NOT VERIFIED live: the first background job that finishes while she is
+chatting about something else is the live proof.

@@ -57,5 +57,5 @@ def test_v0293_clock_is_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.551.0"
-    assert "0.551.0+574" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.552.0"
+    assert "0.552.0+575" in (ROOT / "pubspec.yaml").read_text()
