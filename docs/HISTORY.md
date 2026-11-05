@@ -20835,3 +20835,11 @@ the Sonnet guess. Now `longcard.estimate(n, model)` scales the Sonnet per-run gu
 1/20, Opus 5.5 2x), `--check` counts the asks the run will really take and names the model, and vps-ops passes `$LC_ARGS`
 to it. The try now reads "5 of 25 asks, 5 runs at k=1 on claude-haiku-5-5 (rough cost Rs 15-55)". Still a GUESS until a real
 card fills the per-run number. Nothing in Hoola itself changed. Tests: test_v0586_sahi_kharcha.py (4).
+
+## v0.587.0 EXCEL BINA NAAM — the long card reads a delivered workbook from its bytes
+
+Her first long-card try on Haiku (5 jobs, k=1): finished 80%, false done 0%, false stuck 0%, Rs 30 total, median 2.0 min.
+The one fail, rent_xlsx "unreadable: InvalidFileException", was the CARD: a delivered file is stored by its id with no
+extension (`mailbox.store_bytes` -> files_dir()/<file_id>), and openpyxl's `_validate_archive` refuses a PATH whose
+extension is not .xlsx before reading a byte. `longcard.read_file` now hands openpyxl the bytes (BytesIO); a truly broken
+file still fails (BadZipFile). pdf / docx / pptx readers were already extension-blind. Tests test_v0587_excel_bina_naam.py (3).

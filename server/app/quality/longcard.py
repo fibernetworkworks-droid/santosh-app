@@ -28,6 +28,7 @@ import asyncio
 import json
 import logging
 import os
+import io
 import re
 import time
 from datetime import datetime, timezone
@@ -149,7 +150,10 @@ def read_file(path: str, kind: str) -> dict[str, Any]:
             return {"ok": True, "text": text, "pages": len(r.pages), "links": links}
         if kind == "xlsx":
             from openpyxl import load_workbook
-            wb = load_workbook(str(p), read_only=True, data_only=True)
+            # v0.587 opened as BYTES: a delivered file is stored by its id with no extension (mailbox.store_bytes),
+            # and openpyxl refuses a PATH without .xlsx before it reads a byte (InvalidFileException) - so a good
+            # workbook was scored "unreadable". A truly broken file still fails (BadZipFile).
+            wb = load_workbook(io.BytesIO(p.read_bytes()), read_only=True, data_only=True)
             rows, cells, links = 0, [], []
             for ws in wb.worksheets:
                 for row in ws.iter_rows(values_only=True):

@@ -1572,3 +1572,7 @@ Stage Summary:
 ---
 Task ID: v0.586.0 SAHI KHARCHA
 - Owner showed run #283's "Rs 4,500-16,500" line on a 5-job Haiku try; the --check line now prices the run that starts (asks, k, model). vps-ops passes $LC_ARGS. Tests 4.
+
+---
+Task ID: v0.587.0 EXCEL BINA NAAM
+- Haiku long try 4/5, Rs 30; the rent_xlsx fail was the card reading an id-named file by path; now bytes. Tests 3.
