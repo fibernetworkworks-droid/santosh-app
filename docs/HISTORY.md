@@ -20424,7 +20424,7 @@ rows, never one fake row); (2) the search limit was trusted to backends - now cl
 is the contract). Version 0.559.0 (APP_VERSION story, pubspec 0.559.0+582, pins swept 0.558.0 -> 0.559.0 / +581 ->
 +582 / 569 -> 570 across the suites, zero residual; 'reach' joins CORE_FAMILIES + EXTRA_KEYS; server-only, old APKs
 keep working; Mera PC freeze respected).
-## FILM DESK PRODUCTION LAYER (shipped as v0.561.0; owner: "READ THIS PLAN START WORK FOR HOOLA AI EMPLOYEE FOR THIS INDUSTRY")
+## FILM DESK PRODUCTION LAYER (shipped as v0.562.0; owner: "READ THIS PLAN START WORK FOR HOOLA AI EMPLOYEE FOR THIS INDUSTRY")
 
 The plan is `docs/research/film_industry/00_INDEX.md` (122 candidate AI Employees, 12 fields). Reading the code first showed Hoola already HAS a film
 desk (`server/app/filmdesk/`, tool `film_desk`/`film_desk_dekho`, employee `film_producer`): script -> breakdown -> shots -> studio storyboard,
@@ -20451,7 +20451,7 @@ consent register, rights register, release checklist, cards. What it lacked was 
   foundation for generative employees, dubbing/subtitle project manager, sales/festival) are the next steps. NOT VERIFIED: no live run; the default
   hours-per-day assumptions are placeholders until a real 1st AD's numbers replace them.
 
-## FILM DESK SALES LAYER (shipped as v0.561.0; owner: "GO NEXT WAVE" after the production layer)
+## FILM DESK SALES LAYER (shipped as v0.562.0; owner: "GO NEXT WAVE" after the production layer)
 
 Register `docs/research/film_industry/00_INDEX.md`: #84 festival strategy, #85 festival submission packager, #22/#86 rights and distribution windows,
 #21/#23 waterfall maths. On top of the production layer, same Film Desk, nothing replaced.
@@ -20475,7 +20475,7 @@ Register `docs/research/film_industry/00_INDEX.md`: #84 festival strategy, #85 f
   festival/market calendars as data are the next waves. Festival deadlines and market dates are deliberately NOT bundled: they change yearly and would be
   invented data unless a maintained source feeds them.
 
-## FILM DESK DELIVERY LAYER (shipped as v0.561.0; owner: "GO NEXT WAVE", second time)
+## FILM DESK DELIVERY LAYER (shipped as v0.562.0; owner: "GO NEXT WAVE", second time)
 
 Register `docs/research/film_industry/00_INDEX.md`: #64 deliverables manager, #93 subtitle and dub localisation project manager, #107/#110
 digital-replica consent. After production (schedule/call sheet/budget) and sales (festivals/windows/waterfall) this closes the loop to "the film leaves the building".
