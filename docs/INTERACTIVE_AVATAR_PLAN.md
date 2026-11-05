@@ -277,3 +277,15 @@ Actions > Interactive lab > `studio`, which writes `lab_out/REPORT_studio.txt` +
 | Background change / green screen | - | needs a commercially licensed matting model (licence sweep first) | NOT built |
 | Burned-in captions | - | WebVTT file only (Devanagari fonts + libass untested) | NOT built |
 | API / MCP / metering | - | Hoola server door + minute meter | NEXT |
+
+## 14. Voice choice (5 Nov 2026) - Chatterbox stays, by HER ear
+
+Voice card (Interactive lab job `voices`, L40S): the same 8 Hindi teaching lines through every voice we may ship, heard
+back by whisper-small. Character error rate: Indic Parler male 0.27, Indic Parler female 0.32, Chatterbox 0.41;
+Chatterbox was the only one that ran past its text (line 5 babble, line 3 tail 1.8 s) but is the only one faster than
+real time (0.86x vs ~1.55x). The owner listened to the same three lines in each voice and chose **Chatterbox** ("THIS IS
+GOOD") - the ear outranks the card, as the card itself says. So Chatterbox stays the voice for Studio and live; its
+known weaknesses are handled in code: the end-of-speech patch + the ears trim (Studio), and the card's numbers stay the
+baseline for any later voice tuning. whisper-small makes its own Hindi mistakes, so the CER numbers rank voices, they do
+not grade them.
+
