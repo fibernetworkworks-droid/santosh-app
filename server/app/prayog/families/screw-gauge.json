@@ -1,0 +1,32 @@
+{
+  "base": "screw-gauge",
+  "chapter": "Units and Measurement",
+  "variants": [
+    {"key": "cu-swg16", "title": "Screw gauge: diameter of a copper wire, SWG 16", "sample": "Copper wire, SWG 16", "unknown": "the diameter of the copper wire", "params": {"L": 0.001626}, "note": "A thick copper connecting wire.", "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 16 = 0.064 in = 1.626 mm"}},
+    {"key": "cu-swg18", "title": "Screw gauge: diameter of a copper wire, SWG 18", "sample": "Copper wire, SWG 18", "unknown": "the diameter of the copper wire", "params": {"L": 0.001219},
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 18 = 0.048 in = 1.219 mm"}},
+    {"key": "cu-swg20", "title": "Screw gauge: diameter of a copper wire, SWG 20", "sample": "Copper wire, SWG 20", "unknown": "the diameter of the copper wire", "params": {"L": 0.000914},
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 20 = 0.036 in = 0.914 mm"}},
+    {"key": "cu-swg22", "title": "Screw gauge: diameter of a copper wire, SWG 22", "sample": "Copper wire, SWG 22", "unknown": "the diameter of the copper wire", "params": {"L": 0.000711},
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 22 = 0.028 in = 0.711 mm"}},
+    {"key": "cu-swg24", "title": "Screw gauge: diameter of a copper wire, SWG 24", "sample": "Copper wire, SWG 24", "unknown": "the diameter of the copper wire", "params": {"L": 0.000559},
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 24 = 0.022 in = 0.559 mm"}},
+    {"key": "cu-swg26", "title": "Screw gauge: diameter of a copper wire, SWG 26", "sample": "Copper wire, SWG 26", "unknown": "the diameter of the copper wire", "params": {"L": 0.000457},
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 26 = 0.018 in = 0.457 mm"}},
+    {"key": "constantan-swg24", "title": "Screw gauge: diameter of a constantan (eureka) wire, SWG 24", "sample": "Constantan (eureka) resistance wire, SWG 24", "unknown": "the diameter of the resistance wire",
+     "params": {"L": 0.000559}, "note": "The kind of wire stretched on a metre bridge or potentiometer: its diameter gives the area for resistivity.",
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 24 = 0.022 in = 0.559 mm"}},
+    {"key": "manganin-swg26", "title": "Screw gauge: diameter of a manganin wire, SWG 26", "sample": "Manganin resistance wire, SWG 26", "unknown": "the diameter of the resistance wire",
+     "params": {"L": 0.000457}, "note": "Manganin is used for standard resistance coils because its resistance hardly changes with temperature.",
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 26 = 0.018 in = 0.457 mm"}},
+    {"key": "nichrome-swg27", "title": "Screw gauge: diameter of a nichrome wire, SWG 27", "sample": "Nichrome heating wire, SWG 27", "unknown": "the diameter of the nichrome wire",
+     "params": {"L": 0.0004166}, "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 27 = 0.0164 in = 0.417 mm"}},
+    {"key": "steel-swg19", "title": "Screw gauge: diameter of a steel wire, SWG 19", "sample": "Steel wire for a Searle's apparatus, SWG 19", "unknown": "the diameter of the steel wire",
+     "params": {"L": 0.001016}, "note": "In Searle's experiment the wire's diameter sets its cross-section area, and so Young's modulus.",
+     "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 19 = 0.040 in = 1.016 mm"}},
+    {"key": "brass-swg23", "title": "Screw gauge: diameter of a brass wire, SWG 23", "sample": "Brass wire, SWG 23", "unknown": "the diameter of the brass wire",
+     "params": {"L": 0.00061}, "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 23 = 0.024 in = 0.610 mm"}},
+    {"key": "al-swg14", "title": "Screw gauge: diameter of an aluminium wire, SWG 14", "sample": "Aluminium wire, SWG 14", "unknown": "the diameter of the aluminium wire",
+     "params": {"L": 0.002032}, "source": {"title": "Imperial Standard Wire Gauge (BS 3737:1964): SWG 14 = 0.080 in = 2.032 mm"}}
+  ]
+}

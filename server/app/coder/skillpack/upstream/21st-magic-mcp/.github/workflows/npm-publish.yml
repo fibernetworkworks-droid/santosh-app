@@ -1,0 +1,162 @@
+# Publishes the reviewed release archive unchanged. No npm token is stored.
+name: Publish MCP compatibility proxy to npm
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing published release tag (for example v0.2.3)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish-magic
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.repository == '21st-dev/magic-mcp' &&
+      ((github.event_name == 'release' && !github.event.release.prerelease && startsWith(github.event.release.tag_name, 'v')) ||
+       (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      EXPECTED_REPOSITORY: 21st-dev/magic-mcp
+      PACKAGE_NAME: '@21st-dev/magic'
+      PACKAGE_PATH: package.json
+      TAG_PREFIX: v
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          package-manager-cache: false
+
+      - name: Install npm with Trusted Publishing support
+        run: npm install --global npm@11.19.1 --ignore-scripts --no-audit --no-fund
+
+      - name: Validate and download the published release
+        id: artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { execFileSync } from 'node:child_process';
+          import { createHash } from 'node:crypto';
+          import { appendFileSync, mkdtempSync, readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+
+          const { EXPECTED_REPOSITORY: repo, PACKAGE_NAME: name, PACKAGE_PATH: sourcePath,
+            TAG_PREFIX: prefix, RELEASE_TAG: tag, RUNNER_TEMP: temp } = process.env;
+          assert.equal(process.env.GITHUB_REPOSITORY, repo);
+          assert.ok(tag.startsWith(prefix), 'Unexpected release tag prefix');
+          const version = tag.slice(prefix.length);
+          assert.match(version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/, 'Only stable version tags can publish latest');
+          const api = path => JSON.parse(execFileSync('gh', ['api', `repos/${repo}/${path}`], { encoding: 'utf8' }));
+          const release = api(`releases/tags/${tag}`);
+          assert.equal(release.tag_name, tag);
+          assert.equal(release.draft, false);
+          assert.equal(release.prerelease, false);
+          assert.ok(release.published_at, 'Release has not been published');
+          const comparison = api(`compare/${tag}...main`);
+          assert.ok(['ahead', 'identical'].includes(comparison.status), 'Release tag must belong to main history');
+          const source = api(`contents/${sourcePath}?ref=${tag}`);
+          assert.equal(source.encoding, 'base64');
+          const sourcePackage = JSON.parse(Buffer.from(source.content, 'base64').toString());
+          assert.equal(sourcePackage.name, name);
+          assert.equal(sourcePackage.version, version);
+
+          const archive = `21st-dev-magic-${version}.tgz`;
+          const checksum = 'magic-SHA256SUMS.txt';
+          const artifact = release.assets.find(asset => asset.name === archive);
+          assert.ok(artifact?.state === 'uploaded', 'Missing uploaded package archive');
+          assert.ok(release.assets.some(asset => asset.name === checksum && asset.state === 'uploaded'), 'Missing checksum asset');
+          const directory = mkdtempSync(join(temp, 'npm-release-'));
+          execFileSync('gh', ['release', 'download', tag, '--repo', repo, '--dir', directory,
+            '--pattern', archive, '--pattern', checksum], { stdio: 'inherit' });
+          const tarball = join(directory, archive);
+          const bytes = readFileSync(tarball);
+          const sha256 = createHash('sha256').update(bytes).digest('hex');
+          const expectedChecksum = readFileSync(join(directory, checksum), 'utf8').trim();
+          assert.equal(expectedChecksum, `${sha256}  ${archive}`, 'Release checksum does not match the downloaded archive');
+          assert.equal(artifact.size, bytes.length, 'Release asset size changed');
+          if (artifact.digest) assert.equal(artifact.digest, `sha256:${sha256}`, 'GitHub asset digest mismatch');
+          const packaged = JSON.parse(execFileSync('tar', ['-xOf', tarball, 'package/package.json'], { encoding: 'utf8' }));
+          assert.deepEqual(packaged, sourcePackage, 'Packaged manifest differs from the release tag');
+          assert.notEqual(packaged.private, true, 'Package is private');
+          const repositoryUrl = typeof packaged.repository === 'string' ? packaged.repository : packaged.repository?.url;
+          assert.ok(repositoryUrl, 'Public packages need repository metadata for provenance');
+          if (repositoryUrl) {
+            assert.equal(repositoryUrl.replace(/^git\+/, '').replace(/\.git$/, ''), `https://github.com/${repo}`);
+          }
+          const integrity = `sha512-${createHash('sha512').update(bytes).digest('base64')}`;
+          const registry = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`, { signal: AbortSignal.timeout(30000) });
+          assert.equal(registry.status, 200, 'Could not read the existing npm package');
+          const packument = await registry.json();
+          const stableVersion = value => /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(value);
+          const greater = candidate => {
+            const parts = candidate.split('.').map(Number);
+            const target = version.split('.').map(Number);
+            for (let i = 0; i < 3; i++) if (parts[i] !== target[i]) return parts[i] > target[i];
+            return false;
+          };
+          assert.ok(!Object.keys(packument.versions).some(value => stableVersion(value) && greater(value)), 'Refusing to replace latest with an older version');
+          const existing = packument.versions[version];
+          if (existing) {
+            assert.equal(existing.dist.integrity, integrity, 'Version already exists with different package bytes');
+            assert.equal(packument['dist-tags'].latest, version, 'Existing version is not latest; inspect npm tags manually');
+          }
+          for (const [key, value] of Object.entries({ tarball, name, version, integrity, skip: Boolean(existing) })) {
+            appendFileSync(process.env.GITHUB_OUTPUT, `${key}=${value}\n`);
+          }
+          console.log(`Verified ${name}@${version} from ${release.html_url} (sha256:${sha256})`);
+          NODE
+
+      - name: Publish the verified archive with OIDC
+        if: steps.artifact.outputs.skip != 'true'
+        env:
+          TARBALL: ${{ steps.artifact.outputs.tarball }}
+
+        run: npm publish "$TARBALL" --registry https://registry.npmjs.org --access public --tag latest --ignore-scripts
+
+      - name: Verify npm version and archive integrity
+        env:
+          PACKAGE_VERSION: ${{ steps.artifact.outputs.version }}
+          PACKAGE_INTEGRITY: ${{ steps.artifact.outputs.integrity }}
+        shell: bash
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { appendFileSync } from 'node:fs';
+          const { PACKAGE_NAME: name, PACKAGE_VERSION: version, PACKAGE_INTEGRITY: integrity } = process.env;
+          for (let attempt = 0; attempt < 15; attempt++) {
+            const response = await fetch(`https://registry.npmjs.org/${encodeURIComponent(name)}`, {
+              headers: { 'cache-control': 'no-cache' }, signal: AbortSignal.timeout(30000),
+            });
+            if (response.ok) {
+              const packument = await response.json();
+              const published = packument.versions?.[version];
+              if (published && packument['dist-tags']?.latest === version) {
+                assert.equal(published.dist.integrity, integrity, 'Published archive differs from reviewed release');
+                appendFileSync(process.env.GITHUB_STEP_SUMMARY, `Published and verified **${name}@${version}** from the unchanged GitHub release archive.\n`);
+                console.log(`Verified ${name}@${version} as latest with matching SHA-512 integrity.`);
+                process.exit(0);
+              }
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          throw new Error('npm did not return the expected latest version and integrity after publication');
+          NODE

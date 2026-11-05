@@ -151,6 +151,7 @@ class ThekaSub(Base):
     pan_ok: Mapped[bool] = mapped_column(Boolean, default=True)
     work: Mapped[str] = mapped_column(String(160), default="")
     retention_pct: Mapped[float] = mapped_column(Float, default=0.0)
+    rate_basis: Mapped[str] = mapped_column(String(40), default="")   # v0.512 register #62: kaise nap - sqm / cum / running ft / lump
 
 
 class ThekaSubBill(Base):
@@ -166,6 +167,21 @@ class ThekaSubBill(Base):
     retention: Mapped[float] = mapped_column(Float, default=0.0)
     net: Mapped[float] = mapped_column(Float, default=0.0)
     paid: Mapped[bool] = mapped_column(Boolean, default=False)
+    note: Mapped[str] = mapped_column(String(300), default="")
+
+
+class ThekaSubAdvance(Base):
+    """v0.512 register #62: an advance PAID to a petty contractor (her tap moves the money; Hoola records
+    it and recovers it from a later sub_bill when she says how much to recover)."""
+    __tablename__ = "theka_sub_advances"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("tv"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    sub_id: Mapped[str] = mapped_column(String(40), index=True)
+    project_id: Mapped[str] = mapped_column(String(40), default="")
+    day: Mapped[str] = mapped_column(String(10), default="")
+    amount: Mapped[float] = mapped_column(Float, default=0.0)
+    recovered: Mapped[bool] = mapped_column(Boolean, default=False)
+    recovered_on: Mapped[str] = mapped_column(String(10), default="")
     note: Mapped[str] = mapped_column(String(300), default="")
 
 
@@ -845,7 +861,7 @@ def receivables(tenant: str) -> dict:
 
 # ---------------------------------------------------------------- subcontractors (she pays)
 def save_sub(tenant: str, name: str, phone: str = "", individual: bool | None = None, pan_ok: bool | None = None, work: str = "",
-             retention_pct=None) -> dict:
+             retention_pct=None, rate_basis: str = "") -> dict:
     if not str(name).strip():
         raise ThekaError("Naam chahiye.")
     with session() as s:
@@ -864,10 +880,13 @@ def save_sub(tenant: str, name: str, phone: str = "", individual: bool | None = 
             x.work = work[:160]
         if retention_pct not in (None, ""):
             x.retention_pct = _num(retention_pct)
-    return {"say": f"{'Naya' if new else 'Update'} petty contractor: {name}."}
+        if rate_basis:
+            x.rate_basis = str(rate_basis)[:40]
+    return {"say": f"{'Naya' if new else 'Update'} petty contractor: {name}"
+                   + (f" (naap: {rate_basis})" if rate_basis else "") + "."}
 
 
-def sub_bill(tenant: str, sub: str, amount, project: str = "", day: str = "", note: str = "") -> dict:
+def sub_bill(tenant: str, sub: str, amount, project: str = "", day: str = "", note: str = "", advance_recover=None) -> dict:
     amt = _num(amount)
     if amt <= 0:
         raise ThekaError("Bill ki rakam bataiye.")
@@ -882,13 +901,88 @@ def sub_bill(tenant: str, sub: str, amount, project: str = "", day: str = "", no
         prev = s.scalars(select(ThekaSubBill).where(ThekaSubBill.sub_id == x.id, ThekaSubBill.day >= fy0)).all()
         tds = R.it_tds(amt, sum(b.amount for b in prev), x.individual, x.pan_ok, sum(b.tds_on for b in prev))
         ret = round(amt * x.retention_pct / 100, 2)
-        net = round(amt - tds["tds"] - ret, 2)
+        open_adv = sum(a.amount for a in s.scalars(select(ThekaSubAdvance).where(
+            ThekaSubAdvance.tenant_id == tenant, ThekaSubAdvance.sub_id == x.id,
+            ThekaSubAdvance.recovered == False)).all())  # noqa: E712
+        adv_rec = round(min(_num(advance_recover), open_adv), 2) if advance_recover not in (None, "") else 0.0
+        if adv_rec > 0:                                        # recover the OLDEST advances first, in order
+            left = adv_rec
+            for a in s.scalars(select(ThekaSubAdvance).where(ThekaSubAdvance.tenant_id == tenant,
+                                                             ThekaSubAdvance.sub_id == x.id,
+                                                             ThekaSubAdvance.recovered == False)  # noqa: E712
+                               .order_by(ThekaSubAdvance.day, ThekaSubAdvance.id)).all():
+                if left <= 0:
+                    break
+                take = min(a.amount, left)
+                if take >= a.amount - 1e-9:
+                    a.recovered = True
+                    a.recovered_on = d.isoformat()
+                else:
+                    a.amount = round(a.amount - take, 2)     # partial: the row keeps the rest open
+                    a.note = (a.note + f" | {_rs(take)} recovered {d.isoformat()} ko")[:300]
+                left -= take
+        net = round(amt - tds["tds"] - ret - adv_rec, 2)
         s.add(ThekaSubBill(tenant_id=tenant, sub_id=x.id, project_id=pid, day=d.isoformat(), amount=amt, tds=tds["tds"], tds_on=tds.get("on", 0.0),
                            retention=ret, net=net, note=str(note)[:300]))
         name = x.name
     say = f"{name} ka bill {_rs(amt)}: " + (f"TDS {_rs(tds['tds'])} ({tds['rate']:g}%, Sec 393(1)), " if tds["tds"] else "TDS nahi (seema se kam), ") \
-        + (f"retention {_rs(ret)}, " if ret else "") + f"dena {_rs(net)}. Payment aap karengi; TDS agle mahine ki 7 tak jama."
+        + (f"retention {_rs(ret)}, " if ret else "") + (f"advance katuayi {_rs(adv_rec)}, " if adv_rec else "") \
+        + f"dena {_rs(net)}. Payment aap karengi; TDS agle mahine ki 7 tak jama."
     return {"tds": tds, "net": net, "say": say}
+
+
+def sub_advance(tenant: str, sub: str, amount, project: str = "", day: str = "", note: str = "") -> dict:
+    """v0.512 #62: an advance PAID to a petty contractor - recorded here, the money moved by her (never Hoola)."""
+    amt = _num(amount)
+    if amt <= 0:
+        raise ThekaError("Advance ki rakam bataiye.")
+    d = _date(day, today(tenant))
+    with _LOCK, session() as s:
+        rows = s.scalars(select(ThekaSub).where(ThekaSub.tenant_id == tenant)).all()
+        x = next((r for r in rows if r.name.lower() == sub.lower()), None) or next((r for r in rows if sub.lower() in r.name.lower()), None)
+        if not x:
+            raise ThekaError(f"'{sub}' nahi mila; pehle jodiye.")
+        s.add(ThekaSubAdvance(tenant_id=tenant, sub_id=x.id, project_id=_proj(s, tenant, project).id if project else "",
+                              day=d.isoformat(), amount=amt, note=str(note)[:300]))
+        name = x.name
+    return {"say": f"Advance record: {name} ko {_rs(amt)} diye (aapke tap se). Agli sub-bill mein kataoonga jab aap kaho."}
+
+
+def sub_open_advances(tenant: str, sub: str) -> float:
+    """v0.512 #62: total advance still to recover from a petty contractor's future bills."""
+    with session() as s:
+        rows = s.scalars(select(ThekaSub).where(ThekaSub.tenant_id == tenant)).all()
+        x = next((r for r in rows if r.name.lower() == sub.lower()), None) or next((r for r in rows if sub.lower() in r.name.lower()), None)
+        if not x:
+            return 0.0
+        return round(sum(a.amount for a in s.scalars(select(ThekaSubAdvance).where(
+            ThekaSubAdvance.tenant_id == tenant, ThekaSubAdvance.sub_id == x.id,
+            ThekaSubAdvance.recovered == False)).all()), 2)  # noqa: E712
+
+
+def wage_calc(tenant: str, project: str = "", gang: str = "", workers=None, days=None, rate=None, basis: str = "day",
+              ot_hours=None, advance_recover=None, note: str = "") -> dict:
+    """v0.512 #71 the wage working paper, determined arithmetic with the trail: workers x days x rate
+    (+ OT 1.5x hourly), minus the advance she names. The PAYOUT is her tap - Hoola records, never pays."""
+    w = int(workers or 0)
+    dd = int(days or 0)
+    r = _num(rate)
+    if w <= 0 or dd <= 0 or r <= 0:
+        raise ThekaError("Workers, din aur rate teeno bataiye.")
+    if (basis or "day") not in ("day", "hour", "piece"):
+        raise ThekaError("basis: day | hour | piece")
+    base = round(w * dd * r, 2)
+    ot = round((r / 8) * 1.5 * _num(ot_hours) * w, 2) if ot_hours else 0.0      # per worker-hour at 1.5x
+    gross = round(base + ot, 2)
+    adv = round(_num(advance_recover), 2)
+    net = round(gross - adv, 2)
+    trail = {"workers": w, "days": dd, "rate": r, "basis": basis, "ot_hours": _num(ot_hours),
+             "ot_rule": "1.5 x (rate/8) per worker-hour", "advance_recover": adv}
+    say = (f"Wage hisaab" + (f" - {gang}" if gang else "") + f": {w} x {dd} din x {_rs(r)}/{basis} = {_rs(base)}"
+           + (f" + OT {_rs(ot)}" if ot else "") + f" = {_rs(gross)}"
+           + (f" - advance katuayi {_rs(adv)}" if adv else "") + f" -> DENA {_rs(net)}. Payment aapke tap se."
+           + (f" ({note[:80]})" if note else ""))
+    return {"gross": gross, "net": net, "trail": trail, "say": say}
 
 
 # ---------------------------------------------------------------- material, diary, EOT

@@ -128,6 +128,7 @@ import 'attach.dart';
 import 'chat_attach.dart';
 import 'forms_screen.dart';
 import 'glass.dart';
+import 'maps_card.dart';
 import 'notebook_screen.dart';
 import 'pc_screen.dart';
 import 'photos_screen.dart';
@@ -1386,6 +1387,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return SevaTicketCard(app: app, data: it.data);
     case 'gyaan_sources':
       return GyaanSourcesCard(app: app, data: it.data);
+    case 'maps_places':
+      return MapsPlacesCard(app: app, data: it.data);
     case 'seva_day':
       return SevaDayCard(app: app, data: it.data);
     case 'helpdesk_ticket':

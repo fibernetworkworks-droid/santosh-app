@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import httpx
 
-from . import __version__, browser, extract
+from . import __version__, axtree, app_paths, browser, ext_install, extract, pt_run
 from .config import Config
 from .index import Index
 from .safety import Denied, allowed, roots, unique
@@ -33,6 +33,9 @@ class Actions:
         self.tally = tally or Tally(cfg.tally_host, cfg.tally_port)
         self._tally_cache: tuple[float, dict[str, Any]] = (0.0, {})
         self.control = Control()
+        # v1.8.0: the window app wires set_hotkey (headless stays None) - the Ctrl+Alt+H
+        # fallback door lives with the window that owns the events queue (control.on_activity pattern)
+        self.set_hotkey: Callable[[bool], dict] | None = None
 
     # ---------------- info ----------------
     def tally_status(self) -> dict[str, Any]:
@@ -219,6 +222,162 @@ class Actions:
         self._control_on()
         out = browser.downloads(minutes=int(minutes or 15))
         self.log(f"Downloads dekhe ({out.get('count', 0)})")
+        return out
+
+    # ---------------- v1.6.0 SEMANTIC DESKTOP (UIA via agent-desktop): act on ANY app by ref, not pixels --------
+    # The desktop twin of the v1.5.0 semantic browser: ax_snapshot lists every button / field of a DESKTOP app
+    # (Excel, Word, TallyPrime's UI, Explorer dialogs) with a ref like @s8f3k2p9:e12; ax_click / ax_set_value
+    # land on the ref - headless, no focus steal, twin controls refused instead of clicked by luck. Same gates
+    # as every other control action (the 'Hoola ko PC chalane dein' switch), same log lines, and when the
+    # helper binary is missing the clear error tells the server to fall back to the pixel lane.
+    def _ax(self) -> None:
+        """Control gate + helper availability in one place for every ax_* action."""
+        self._control_on()
+        if not axtree.available():
+            raise ActionError("Semantic desktop mode needs the agent-desktop helper beside SantoshDesktop.exe "
+                              "(naya SantoshDesktop.exe install kijiye). Pixel mode abhi bhi chal raha hai.")
+
+    def do_ax_status(self, **_) -> dict[str, Any]:
+        self._ax()
+        return axtree.status()
+
+    def do_ax_apps(self, **_) -> dict[str, Any]:
+        self._ax()
+        out = axtree.list_apps()
+        out.update(axtree.windows())
+        self.log(f"AX apps dekhe ({out.get('count', 0)}, {out.get('windows') and len(out['windows']) or 0} windows)")
+        return out
+
+    def do_ax_snapshot(self, app: str = "", window_id: str = "", skeleton: bool = False, root: str = "",
+                       surface: str = "", timeout_ms: int = 6000, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.snapshot(str(app or "")[:60], str(window_id or "")[:24], bool(skeleton),
+                                  str(root or "")[:40], str(surface or "")[:20], int(timeout_ms or 6000))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX snapshot: {out.get('app') or out.get('window') or app!s:.60} ({out.get('count', 0)} elements)")
+        return out
+
+    def do_ax_text(self, app: str = "", surface: str = "", max_chars: int = 6000, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.read(str(app or "")[:60], str(surface or "")[:20], max_chars=int(max_chars or 6000))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX text padha: {out.get('app')!s:.60}")
+        return out
+
+    def do_ax_find(self, app: str = "", role: str = "", name: str = "", text: str = "", exact: bool = False, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.find(str(app or "")[:60], str(role or "")[:24], str(name or "")[:80],
+                              str(text or "")[:80], bool(exact))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX find: {out.get('count', 0)} matches")
+        return out
+
+    def do_ax_click(self, ref: str = "", **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.click(str(ref or ""))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX click {out.get('ref', '')[:24]} ({out.get('delivery', '')})")
+        return out
+
+    def do_ax_set_value(self, ref: str = "", text: str = "", **_) -> dict[str, Any]:
+        """Type into a desktop-app field BY REF; only length + verification come back (the value never leaves the PC)."""
+        self._ax()
+        try:
+            out = axtree.set_value(str(ref or ""), str(text or "")[:4000])
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX likha {out.get('ref', '')[:24]} ({out.get('length', 0)} akshar)")
+        return out
+
+    def do_ax_press(self, keys: str = "", app: str = "", **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.press(str(keys or ""), str(app or "")[:60])
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX press: {out.get('pressed', '')[:24]}")
+        return out
+
+    def do_ax_launch(self, name: str = "", **_) -> dict[str, Any]:
+        from .control import BLOCKED_APP_WORDS
+        if BLOCKED_APP_WORDS.search(str(name or "")):
+            raise ActionError("Santosh doesn't open command-line or system tools")
+        self._ax()
+        try:
+            out = axtree.launch(str(name or ""))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX khol raha hoon: {out.get('launched', '')[:60]}")
+        return out
+
+    def do_ax_wait(self, app: str = "", text: str = "", window: str = "", seconds: int = 10, **_) -> dict[str, Any]:
+        self._ax()
+        try:
+            out = axtree.wait(str(app or "")[:60], str(text or "")[:80], str(window or "")[:80], int(seconds or 10))
+        except axtree.AxError as e:
+            raise ActionError(str(e))
+        self.log(f"AX wait: {'text' if text else 'window'} ({out.get('waited', 0)}s)")
+        return out
+
+    # ---------------- v1.7.0 WIN+R LAUNCHER (HKCU App Paths - user-level alias, no admin) --------
+    # W2a of the Platforms plan: 'Win+R se hoola' - Windows ka apna App Paths alias, isliye Start menu
+    # search bhi 'hoola' dhoondh leta hai. Koi Run-key nahi, kuch auto-start nahi, doosra user untouched.
+    # Same gate as every control action; on=false alias hata deta hai (undo, like autostart).
+    def do_app_paths(self, on: bool = True, **_) -> dict[str, Any]:
+        """v1.7 Win+R 'hoola': HKCU App Paths alias SantoshDesktop.exe par (user-level, no admin)."""
+        self._control_on()
+        out = app_paths.set_enabled(bool(on))
+        self.log("Win+R alias 'hoola' joda" if out.get("on") else
+                 ("Win+R alias 'hoola' hata diya" if out.get("ok") else "Win+R alias nahi bana"))
+        return out
+
+    # ---------------- v1.8.0 POWERTRYS RUN DOOR (W2b: plugin install + hotkey fallback) --------
+    # W2b of the Platforms plan: 'Alt+Space, hoola, Enter' - PowerToys Run ka plugin (user-level
+    # %LOCALAPPDATA% install, the pt_run.py twin of app_paths.py). PowerToys na ho to wahi dwar
+    # Ctrl+Alt+H global hotkey ban jaata hai (quickkey.py) - dono sirf desktop window laate hain.
+    # Same gate as every control action; on=false dono doors undo karta hai.
+    def do_pt_run(self, on: bool = True, **_) -> dict[str, Any]:
+        """v1.8 PowerToys Run 'hoola' plugin (user-level, no admin); PowerToys absent -> Ctrl+Alt+H hotkey."""
+        self._control_on()
+        on = bool(on)
+        out = pt_run.set_enabled(on)
+        if on and not out.get("pt_present") and self.set_hotkey is not None:
+            out["hotkey"] = self.set_hotkey(True)      # PowerToys nahi -> hotkey door
+        elif not on and self.set_hotkey is not None:
+            out["hotkey"] = self.set_hotkey(False)     # undo hoti doors dono
+        if out.get("plugin"):
+            self.log("PowerToys Run plugin 'hoola' joda")
+        elif on and out.get("ok") and not out.get("pt_present"):
+            self.log("PowerToys nahi mila - Ctrl+Alt+H hotkey door on")
+        elif out.get("ok"):
+            self.log("PowerToys Run plugin 'hoola' hata diya")
+        else:
+            self.log("PowerToys Run plugin nahi laga")
+        return out
+
+    # ---------------- v1.9.0 W3 BROWSER EXTENSION (the 'send page to Hoola' door) --------
+    # W3 of the Platforms plan: the MV3 extension rides INSIDE the exe (ext_payload) and lands
+    # in Hoola's own %LOCALAPPDATA% folder - chrome://extensions 'Load unpacked' picks it from
+    # there (the honest off-store path; no browser policy, no registry, nothing auto-starts).
+    # Same gate as every control action; on=false files hata deta hai (the browser Remove is hers).
+    def do_ext(self, on: bool = True, **_) -> dict[str, Any]:
+        r"""v1.9 browser extension files jodo/hatao (user-level %LOCALAPPDATA%\Hoola)."""
+        self._control_on()
+        out = ext_install.set_enabled(bool(on))
+        if out.get("ok") and on:
+            self.log("Browser extension files lag gayi (chrome://extensions > Load unpacked)")
+        elif out.get("ok"):
+            self.log("Browser extension files hata di")
+        else:
+            self.log("Browser extension nahi lagi: " + str(out.get("message", ""))[:80])
         return out
 
     def do_status(self, **_) -> dict[str, Any]:

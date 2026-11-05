@@ -30,26 +30,90 @@ def labs() -> dict[str, dict]:
 
 def summary(lab: dict) -> dict:
     return {"id": lab["id"], "title": lab["title"], "field": lab["field"], "group": lab.get("group") or lab["field"],
-            "level": lab.get("level", ""), "topic": lab.get("topic", ""), "aim": lab["aim"], "kernel": lab["kernel"]}
+            "level": lab.get("level", ""), "topic": lab.get("topic", ""), "chapter": lab.get("chapter") or lab.get("topic", ""),
+            "aim": lab["aim"], "kernel": lab["kernel"], "base": lab["id"], "sample": ""}
 
 
-def search(q: str = "", field: str = "", limit: int = 50) -> list[dict]:
+@functools.lru_cache(maxsize=1)
+def index() -> list[dict]:
+    """Every experiment as one summary row: the catalogue labs first, then each family's variants (built lazily)."""
+    from . import specs
+    base = labs()
+    out = [summary(l) for l in base.values()]
+    var = specs.rows(base)
+    n: dict[str, int] = {}
+    for r in var:
+        n[r["base"]] = n.get(r["base"], 0) + 1
+    for r in out:
+        r["n_variants"] = n.get(r["id"], 0)
+    out += var
+    for r in out:
+        r["_hay"] = " ".join(str(r.get(k) or "") for k in ("title", "group", "level", "topic", "chapter", "aim", "sample", "id")).lower()
+    return out
+
+
+def search(q: str = "", field: str = "", limit: int = 50, level: str = "", chapter: str = "", base: str = "",
+           page: int = 1, variants: bool = True) -> list[dict]:
+    return search_page(q, field, limit, level, chapter, base, page, variants)["labs"]
+
+
+def search_page(q: str = "", field: str = "", limit: int = 50, level: str = "", chapter: str = "", base: str = "",
+                page: int = 1, variants: bool = True) -> dict:
+    """One page of matching experiments + the total, so 1 lakh never travels in one answer."""
     q = (q or "").strip().lower()
     f = (field or "").strip().lower()
-    rows = []
-    for lab in labs().values():
-        s = summary(lab)
-        hay = " ".join(str(v) for v in s.values()).lower()
-        if f and f not in (s["field"] + " " + s["group"]).lower():
+    lv = (level or "").strip().lower()
+    ch = (chapter or "").strip().lower()
+    bs = (base or "").strip()
+    lim = max(1, min(int(limit or 50), 200))
+    pg = max(1, int(page or 1))
+    hits = []
+    for r in index():
+        if not variants and r["base"] != r["id"]:
             continue
-        if q and not all(w in hay for w in q.split()):
+        if f and f not in (r["field"] + " " + r["group"]).lower():
             continue
-        rows.append(s)
-    return rows[: max(1, min(int(limit or 50), 200))]
+        if lv and lv not in r["level"].lower():
+            continue
+        if ch and ch not in (r["chapter"] + " " + r["topic"]).lower():
+            continue
+        if bs and r["base"] != bs:
+            continue
+        if q and not all(w in r["_hay"] for w in q.split()):
+            continue
+        hits.append(r)
+    rows = [{k: v for k, v in r.items() if k != "_hay"} for r in hits[(pg - 1) * lim: pg * lim]]
+    return {"labs": rows, "total": len(hits), "page": pg, "limit": lim}
+
+
+@functools.lru_cache(maxsize=4096)
+def _variant(lab_id: str) -> dict | None:
+    from . import specs
+    sp = specs.split(lab_id)
+    if not sp:
+        return None
+    b, key = sp
+    base = labs().get(b)
+    fam = specs.families().get(b)
+    if not base or not fam:
+        return None
+    v = next((x for x in fam["variants"] if x["key"] == key), None)
+    if not v:
+        return None
+    try:
+        lab = lsl.check(specs.apply(base, fam, v))
+        res = lsl.run_check(lab)
+        if not res["ok"]:
+            raise lsl.LabError(f"NCERT check {res['error'] * 100:.2f}% > {res['tol'] * 100:.1f}%")
+        return lab
+    except Exception as e:                          # a failing variant is never served
+        log.warning("prayog variant %s left out: %s", lab_id, e)
+        return None
 
 
 def get(lab_id: str) -> dict | None:
-    return labs().get(str(lab_id or ""))
+    lab_id = str(lab_id or "")
+    return labs().get(lab_id) or _variant(lab_id)
 
 
 def _base() -> str:
@@ -88,6 +152,9 @@ class AskError(Exception):
 
 def _system(lab: dict) -> str:
     th = lab.get("theory") or ""
+    v = lab.get("variant") or {}
+    if v:
+        th += "\nTHIS VARIANT: " + "; ".join(f"{k}: {v[k]}" for k in ("sample", "method", "unknown", "note") if v.get(k))
     steps = " / ".join(lab.get("steps") or [])
     return (f"You are Hoola, the AI lab partner inside the virtual practical \"{lab['title']}\" ({lab.get('level', '')}, {lab.get('topic', '')}) "
             "in Prayogshala, Hoola's 3D lab. Answer ONLY questions about this experiment: its aim, theory and formula, apparatus, "

@@ -15,11 +15,39 @@
 
 from PyInstaller.utils.hooks import collect_submodules
 
+import os
+
+# v1.8.0 W2b: the PowerToys Run plugin payload (Community.PowerToys.Run.Plugin.Hoola.dll +
+# plugin.json + Images) is built by build-desktop.yml BEFORE PyInstaller runs and staged at
+# desktop/ptrun_payload/. It rides inside the exe (extracted to %TEMP%\_MEIxxxx\ptrun) so
+# Hoola can install it itself to %LOCALAPPDATA%\...\PowerToys Run\Plugins\Hoola (pt_run.py).
+# Dev machines without the payload build the exe exactly as before.
+_ptrun = os.path.join(SPECPATH, "ptrun_payload")
+datas = []
+# v1.9.0 W3: the browser extension payload (manifest.json + background.js + popup/options +
+# icons) is staged by build-desktop.yml at desktop/ext_payload/ and rides inside the exe
+# (extracted to %TEMP%\_MEIxxxx\ext) so ext_install.py can copy it to
+# %LOCALAPPDATA%\Hoola\chrome-extension for chrome://extensions 'Load unpacked'.
+_ext = os.path.join(SPECPATH, "ext_payload")
+if os.path.isdir(_ext):
+    for _root, _dirs, _files in os.walk(_ext):
+        for _f in _files:
+            _p = os.path.join(_root, _f)
+            _rel = os.path.relpath(_p, _ext)
+            datas.append((_p, os.path.join("ext", os.path.dirname(_rel)) if os.path.dirname(_rel) else "ext"))
+if os.path.isdir(os.path.join(_ptrun, "Images")):
+    for _f in os.listdir(_ptrun):
+        _p = os.path.join(_ptrun, _f)
+        if os.path.isfile(_p):
+            datas.append((_p, "ptrun"))
+    for _f in os.listdir(os.path.join(_ptrun, "Images")):
+        datas.append((os.path.join(_ptrun, "Images", _f), os.path.join("ptrun", "Images")))
+
 a = Analysis(
     ["launcher.py"],
     pathex=[SPECPATH],
     binaries=[],
-    datas=[],
+    datas=datas,
     hiddenimports=[
         # carried over from the old CI command line (websockets 12 lazy-imports these)
         "websockets.asyncio.client",

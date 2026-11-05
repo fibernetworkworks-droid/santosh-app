@@ -327,6 +327,36 @@ TOOLS.extend(WEB_TOOLS)
 TOOL_LABELS.update(WEB_LABELS)
 HANDLERS.update(WEB_HANDLERS)
 
+from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
+
+TOOLS.extend(SCRAPE_TOOLS)
+TOOL_LABELS.update(SCRAPE_LABELS)
+HANDLERS.update(SCRAPE_HANDLERS)
+
+from .crawl_jobs import CRAWL_HANDLERS, CRAWL_LABELS, CRAWL_TOOLS  # noqa: E402  v0.486 background crawl lane
+
+TOOLS.extend(CRAWL_TOOLS)
+TOOL_LABELS.update(CRAWL_LABELS)
+HANDLERS.update(CRAWL_HANDLERS)
+
+from .dhara_tools import DHARA_HANDLERS, DHARA_LABELS, DHARA_TOOLS  # noqa: E402  v0.502 DHARA - her workflows (the n8n lane)
+
+TOOLS.extend(DHARA_TOOLS)
+TOOL_LABELS.update(DHARA_LABELS)
+HANDLERS.update(DHARA_HANDLERS)
+
+from .officehours_tools import OFFICEHOURS_HANDLERS, OFFICEHOURS_LABELS, OFFICEHOURS_TOOLS  # noqa: E402  v0.495 office hours (the gstack THINK/PLAN lane)
+
+TOOLS.extend(OFFICEHOURS_TOOLS)
+TOOL_LABELS.update(OFFICEHOURS_LABELS)
+HANDLERS.update(OFFICEHOURS_HANDLERS)
+
+from .graph_tools import GRAPH_HANDLERS, GRAPH_LABELS, GRAPH_TOOLS  # noqa: E402  v0.496 Graphify code graph
+
+TOOLS.extend(GRAPH_TOOLS)
+TOOL_LABELS.update(GRAPH_LABELS)
+HANDLERS.update(GRAPH_HANDLERS)
+
 from .army_tools import ARMY_HANDLERS, ARMY_LABELS, ARMY_TOOLS  # noqa: E402
 
 TOOLS.extend(ARMY_TOOLS)
@@ -365,6 +395,7 @@ from .photo_tools import PHOTO_HANDLERS, PHOTO_LABELS, PHOTO_TOOLS  # noqa: E402
 from .create_tools import CREATE_HANDLERS, CREATE_LABELS, CREATE_TOOLS  # noqa: E402
 from .appcheck_tools import APPCHECK_HANDLERS, APPCHECK_LABELS, APPCHECK_TOOLS  # noqa: E402
 from .rea_tools import REA_HANDLERS, REA_LABELS, REA_TOOLS  # noqa: E402
+from .frames_tools import FRAMES_HANDLERS, FRAMES_LABELS, FRAMES_TOOLS  # noqa: E402
 from .hoola_tools import HOOLA_HANDLERS, HOOLA_LABELS, HOOLA_TOOLS  # noqa: E402
 
 # Google Sheets and Google Drive have their own full toolsets now (per-user sign-in, service account as fallback);
@@ -377,7 +408,7 @@ for _t, _l, _h in ((SHEETS_TOOLS, SHEETS_LABELS, SHEETS_HANDLERS), (DRIVE_TOOLS,
                    (FORMS_TOOLS, FORMS_LABELS, FORMS_HANDLERS), (SLIDES_TOOLS, SLIDES_LABELS, SLIDES_HANDLERS),
                    (PHOTOS_TOOLS, PHOTOS_LABELS, PHOTOS_HANDLERS), (NOTEBOOK_TOOLS, NOTEBOOK_LABELS, NOTEBOOK_HANDLERS),
                    (YOUTUBE_TOOLS, YOUTUBE_LABELS, YOUTUBE_HANDLERS), (PHOTO_TOOLS, PHOTO_LABELS, PHOTO_HANDLERS), (CREATE_TOOLS, CREATE_LABELS, CREATE_HANDLERS), (APPCHECK_TOOLS, APPCHECK_LABELS, APPCHECK_HANDLERS),
-                   (REA_TOOLS, REA_LABELS, REA_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS)):
+                   (REA_TOOLS, REA_LABELS, REA_HANDLERS), (FRAMES_TOOLS, FRAMES_LABELS, FRAMES_HANDLERS), (HOOLA_TOOLS, HOOLA_LABELS, HOOLA_HANDLERS)):
     TOOLS.extend(_t)
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
@@ -481,6 +512,13 @@ from .mospi_tools import MOSPI_HANDLERS, MOSPI_LABELS, MOSPI_TOOLS  # noqa: E402
 TOOLS.extend(MOSPI_TOOLS)
 TOOL_LABELS.update(MOSPI_LABELS)
 HANDLERS.update(MOSPI_HANDLERS)
+
+# v0.473 R2 APNA ENGINE: Hoola's own research engine (plan -> parallel workers that READ pages -> re-plan or stop -> a dossier)
+from .research_tools import RESEARCH_HANDLERS, RESEARCH_LABELS, RESEARCH_TOOLS  # noqa: E402
+
+TOOLS.extend(RESEARCH_TOOLS)
+TOOL_LABELS.update(RESEARCH_LABELS)
+HANDLERS.update(RESEARCH_HANDLERS)
 
 # v0.381 GAME DESK: the Game Developer employee (Godot 4 games, built + test-played in a locked box)
 from .gamedesk_tools import GAMEDESK_HANDLERS, GAMEDESK_LABELS, GAMEDESK_TOOLS  # noqa: E402
@@ -725,6 +763,25 @@ from .theka_tools import THEKA_HANDLERS, THEKA_LABELS, THEKA_TOOLS  # noqa: E402
 TOOLS.extend(THEKA_TOOLS)
 TOOL_LABELS.update(THEKA_LABELS)
 HANDLERS.update(THEKA_HANDLERS)
+
+# v0.512 Construction & Real Estate Wave 1 (register docs/research/building_industry/07 - the tier gate in
+# construction/gates.py rides every tool: PREPARE, never CERTIFY; tier C refusals carry the human's name).
+# Store (#61), Labour+wages+cess (#85/#87/#90), Customer money+handover+DLP (#92/#97/#98), Quality ITP/NCR/
+# test lots + punch (#75/#76/#78), Meeting secretary (#67). Sitesup voice_log (#64/#70) and theka
+# sub rate-basis + advances + wage calc (#62/#71) ride the existing tools; RA bills (#88) already lived.
+from .const_store_tools import STORE_HANDLERS, STORE_LABELS, STORE_TOOLS  # noqa: E402
+from .const_labour_tools import LABOUR_HANDLERS, LABOUR_LABELS, LABOUR_TOOLS  # noqa: E402
+from .const_customer_tools import CUSTOMER_HANDLERS, CUSTOMER_LABELS, CUSTOMER_TOOLS  # noqa: E402
+from .const_quality_tools import QUALITY_HANDLERS, QUALITY_LABELS, QUALITY_TOOLS  # noqa: E402
+from .const_meet_tools import MEET_HANDLERS, MEET_LABELS, MEET_TOOLS  # noqa: E402
+
+for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
+                   (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
+                   (MEET_TOOLS, MEET_LABELS, MEET_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
 
 # v0.118 Brand Sahayak (brand designer: kit from her logo, posters in every size, final artwork only on her tap)
 from .brand_tools import BRAND_HANDLERS, BRAND_LABELS, BRAND_TOOLS  # noqa: E402
@@ -1005,6 +1062,118 @@ for _t, _l, _h in ((SHIKSHA_TOOLS, SHIKSHA_LABELS, SHIKSHA_HANDLERS), (GURU_TOOL
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
 
+# v0.463 ZOO: the BYOK model zoo (one Muapi gateway, 211 models, registry-driven, app/zoo.py + zoo_catalog.json).
+# Purely ADDITIVE - the curated studios (video_studio / photo_banao / create_studio) keep their exact specs;
+# the zoo only ADDS one tool for the models/styles they don't cover. Same refusals, same usage counting.
+from .zoo_tools import ZOO_HANDLERS, ZOO_LABELS, ZOO_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in ZOO_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(ZOO_LABELS)
+HANDLERS.update(ZOO_HANDLERS)
+del _seen
+
+# v0.477 HOOLA SELF-TEACH: ONE skill_manage tool (the coder/skills_tool surface) - Santosh can
+# author and improve reusable skills mid-conversation; the coder nudge resets its counter on use.
+from ..coder.skills_tool import SKILL_HANDLERS, SKILL_LABELS, SKILL_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in SKILL_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(SKILL_LABELS)
+HANDLERS.update(SKILL_HANDLERS)
+del _seen
+
+# v0.486 HOOLA UIUX PRO MAX: ONE uiux_design tool (the coder/uiux_tool surface over the
+# vendored MIT engine coder/uiux/) - the design database (79 styles, 192 palettes, 74 font
+# pairings, 119 UX guidelines, 22 stacks) behind one local search; the seed skill
+# uiux-pro-max.md teaches when, the tool is how. Zero network, zero brain calls.
+from ..coder.uiux_tool import UIUX_HANDLERS, UIUX_LABELS, UIUX_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in UIUX_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(UIUX_LABELS)
+HANDLERS.update(UIUX_HANDLERS)
+del _seen
+
+# v0.478 HOOLA SWARM: ONE delegate_task tool (the coder/delegate surface) - parallel bounded
+# child agents; every child tool call rides _run_tool so capture sees the whole picture; the
+# voice allowlist never admits it (a call routes it to a kaam job instead).
+from ..coder.delegate import DELEGATE_HANDLERS, DELEGATE_LABELS, DELEGATE_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in DELEGATE_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(DELEGATE_LABELS)
+HANDLERS.update(DELEGATE_HANDLERS)
+del _seen
+
+# v0.479 HOOLA SMART HOME: ghar ke devices Home Assistant ke official REST se - home_link /
+# home_devices / home_on / home_off / home_state. Reads gate-free (link ke bina kabhi nahi
+# chalte), controls `home_control` gate ke peeche (PC se alag). Locks confirm-only, routine
+# turns se kabhi nahi; fridge/washer/geyser read-only; AC 20-28 °C; volume <= 90 %.
+from .home_tools import HOME_HANDLERS, HOME_LABELS, HOME_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in HOME_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(HOME_LABELS)
+HANDLERS.update(HOME_HANDLERS)
+del _seen
+
+# v0.486.0 BYOX SKILL PACK: Build-Your-Own-X — 31 categories, seed default on.
+# byox_list / byox_guide / byox_plan admitted under the "byox" family.
+from .byox_tools import BYOX_HANDLERS, BYOX_LABELS, BYOX_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in BYOX_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(BYOX_LABELS)
+HANDLERS.update(BYOX_HANDLERS)
+del _seen
+
+
+# v0.501 HOOLA CONTEXT7: ONE docs7 tool (the coder/docs7 surface) - the upstash/context7 port:
+# resolve a library NAME to its Context7 ID (/org/project), then pull up-to-date, version-
+# specific docs into the turn. Every successful fetch lands in the vault as a docs7 observation
+# (FTS5 -> search/primer/dedup/curator all see it); the vault answers repeats within the TTL
+# with zero network; queries pass strip_private + redact_secrets BEFORE they leave the box;
+# one attempt, drop-don't-wait (20 s ceiling); voice never sees it (the VOICE_TOOL_NAMES
+# allowlist - a 20 s network stall has no place in a live call), coder_docs7 gates the handler.
+from ..coder.docs7 import DOCS7_HANDLERS, DOCS7_LABELS, DOCS7_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in DOCS7_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(DOCS7_LABELS)
+HANDLERS.update(DOCS7_HANDLERS)
+del _seen
+
+# v0.512 HOOLA 21ST: ONE magic21 tool (the coder/magic21 surface) - the 21st-dev/magic-mcp
+# port: search the 21st.dev UI catalog, fetch a component's full code, generate new UI only
+# when the account's entitlement says so (get_usage.aiGenerationEnabled; a result carrying
+# ai_subscription_required STOPS - no retries through legacy aliases or the CLI). Five ops
+# (list/usage/search/get/call) over the MCP wire (initialize -> initialized -> tools/call,
+# the session echo honoured per turn, stateless between turns); the endpoint's NOT_AUTHED
+# sentence rides verbatim; 401 latches for the process life (upstream saw ~100k doomed
+# initialize retries an hour - src/index.ts:146-152); no key or latched auth answers locally
+# with ZERO network; arguments pass strip_private + redact_secrets before egress; one attempt
+# drop-don't-wait (20 s); per-tenant rolling-hour window; voice never sees it (the
+# VOICE_TOOL_NAMES allowlist); coder_magic21 gates the handler (default OFF - bake, then flip).
+from ..coder.magic21 import MAGIC21_HANDLERS, MAGIC21_LABELS, MAGIC21_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in MAGIC21_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(MAGIC21_LABELS)
+HANDLERS.update(MAGIC21_HANDLERS)
+del _seen
+
+# v0.514 HOOLA CREW: ONE crew_run tool (the coder/crew_run surface) - the crewAIInc/crewAI
+# port: a named team of role agents (role/goal/backstory) working a task list inside one
+# turn - sequential with context threading or hierarchical (a manager with NO tools
+# delegating via DELEGATE/ASK/FINISH lines), guardrails with bounded retries, async tasks
+# joining before the next sync task. The library (app.crew: core/agent/task/crew/engine)
+# is inert and provider-free - the RUNNER here is the house child worker (delegate.py's
+# _call_brain + _run_tool funnel) framed by the identity, so capture/scrub/timeout see
+# every crew worker like every other child. The deny set is structural: a crew member can
+# NEVER delegate, send, approve or start PC jobs (delegate.CHILD_DENIED, money never moves
+# inside a crew). Caps: 6 agents / 12 tasks / 180 s per task / 600 s whole-crew. Voice
+# never sees it (out of the VOICE_TOOL_NAMES allowlist); coder_crew gates the handler
+# (default OFF - bake, then flip). Stateless: the crew IS the tool call (v0.514).
+from ..coder.crew_run import CREW_HANDLERS, CREW_LABELS, CREW_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in CREW_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(CREW_LABELS)
+HANDLERS.update(CREW_HANDLERS)
+del _seen
+
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)
 DIET_STATS: dict[str, int] = {"raw_chars": 0, "diet_chars": 0, "kept_full": 0}
 
@@ -1074,6 +1243,35 @@ DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
 # used, an AI agent can't be expected to do better." Renaming / merging the tools would touch every prompt, voice list
 # and saved procedure, so the lanes are drawn in the descriptions instead - first, so no cap can ever cut them.
 TOOL_LANES: dict[str, str] = {
+    # v0.449 maps: a KIND of place -> maps_nearby; a NAMED place -> maps_search; one place's details -> maps_place
+    "maps_search": "LANE: a place you can NAME ('Haldiram Nagpur', 'Akola station', a particular shop). A CATEGORY "
+                   "near somewhere ('chemist', 'petrol pump', 'hardware shop') -> maps_nearby, which ranks by real "
+                   "distance. Time / distance between two places -> maps_directions.",
+    "maps_nearby": "LANE: what is AROUND a point, by category (pharmacy, bank, gas_station...). A place you can name "
+                   "-> maps_search. Phone / website / rating / timings of one result -> maps_place. Circle only, "
+                   "50 km max, 20 results, no next page.",
+    "maps_nearest": "LANE: which of a LIST she already has is nearest by real road time (godowns, branches, workers vs "
+                    "a customer). Finding places of a kind -> maps_nearby. One trip's route -> maps_directions.",
+    "maps_address_check": "LANE: is THIS delivery address good (PIN, completeness, how far Google matched it). One address "
+                          "per call. Finding places -> maps_nearby / maps_search. A point's address -> maps_pata.",
+    "maps_pata": "LANE: lat/lng -> the address there (reverse geocode). Address -> check it with maps_address_check.",
+    "maps_route_plan": "LANE: the ORDER to visit many stops in a day (time windows, capacity). Which ONE is nearest -> "
+                       "maps_nearest. One trip's route -> maps_directions. Proposes only, assigns nothing.",
+    "maps_links": "LANE: a Google Maps LINK (view / directions / Street View) to put in a PDF, WhatsApp message or bill. "
+                  "Never a map picture. Route steps -> maps_directions; open navigation on her phone -> maps_navigate.",
+    "gbp_locations": "LANE: HER OWN Google Business Profile listing(s) (her shop on Google Maps). Other places -> maps_search / "
+                     "maps_nearby. How people found her -> gbp_numbers.",
+    "gbp_numbers": "LANE: how many people saw / called / asked directions to HER business on Google. Not a competitor "
+                   "or any other place.",
+    "ownmap_import": "LANE: bring HER OWN My Maps export (KML/KMZ) or Takeout 'Saved' file into Hoola once. Not for finding "
+                     "new places (maps_nearby / maps_search).",
+    "ownmap_near": "LANE: which of HER OWN imported pins / areas are near somewhere. Other businesses -> maps_nearby. Her "
+                   "Google listing -> gbp_locations.",
+    "solar_check": "LANE: is rooftop SOLAR workable at one building (roof area, panels, sunshine, kWh). Not electricity "
+                   "prices or payback maths (pylab).",
+    "maps_snap": "LANE: clean a recorded GPS trail onto roads. Finding places / routes -> maps_nearby / maps_directions.",
+    "maps_place": "LANE: phone, website, rating and opening hours of ONE place you already have a place_id for. "
+                  "Finding places -> maps_nearby / maps_search. One at a time: these are the costly fields.",
     # web: answer -> quotes -> one page -> clicks -> forms
     "google_search": "LANE: quick facts that change (prices, news, timings) as a short answer. Need the sources' own "
                      "words -> web_sources; one known page -> open_website; clicking / logging in -> browse_web.",

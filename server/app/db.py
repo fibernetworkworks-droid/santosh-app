@@ -751,6 +751,7 @@ def init_db(url: str | None = None):
     from .reels import models as _reels_models  # noqa: F401
     from .motion import models as _motion_models  # noqa: F401
     from . import idvault as _idvault  # noqa: F401
+    from . import mapsbill as _mapsbill  # noqa: F401  (v0.449 Maps spend, free caps, place_id cache)
     from . import voicestyle as _voicestyle  # noqa: F401  (v0.119 how she speaks, mis-hearings, her words)
     from .site import models as _site_models  # noqa: F401  (v0.121 Website Sahayak)
     from .site import hosting_models as _site_hosting  # noqa: F401  (v0.122 hosts, DNS plans, her keys)
@@ -771,6 +772,7 @@ def init_db(url: str | None = None):
     from .site import shop as _site_shop  # noqa: F401  (v0.351 DUKAAN products + orders)
     from .site import blog as _site_blog  # noqa: F401  (v0.366 BLOG posts on her websites)
     from .site import proof as _site_proof  # noqa: F401  (v0.376 PROOF 100-page runs + rival crawls)
+    from .site import webpush as _site_webpush  # noqa: F401  (v0.459 browser notifications, visitor's yes)
     from . import screen as _screen  # noqa: F401  (v0.127 Hoola Screen revoke versions)
     from . import convs as _convs  # noqa: F401  (v0.158 the chat she is in, chat health reports)
     from .appmaker import models as _app_models  # noqa: F401  (v0.128 App Sahayak designs)
@@ -851,6 +853,10 @@ def init_db(url: str | None = None):
     from .travel import models as _travel  # noqa: F401
     from .warehouse import models as _warehouse  # noqa: F401
     from .fleet import models as _fleet  # noqa: F401
+    from . import ownmap as _ownmap  # noqa: F401  (v0.468 her own pins / areas)
+    from .agent import research_plan as _research_plan  # noqa: F401  (v0.472 research plans waiting for her Haan)
+    from .research import store as _research_store  # noqa: F401  (v0.475 background research runs)
+    from .research import watch as _research_watch  # noqa: F401  (v0.480 watched research topics)
     from .courier import models as _courier  # noqa: F401
     from .drivers import models as _drivers  # noqa: F401
     from .logistics import models as _logistics  # noqa: F401
@@ -908,6 +914,8 @@ def init_db(url: str | None = None):
     from . import turn_inbox as _turn_inbox  # noqa: F401  (v0.192.0 the durable accepted-message inbox - registered
         # HERE on day one, the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table; turn_inbox.ensure_table() self-heals old DBs on the first accept/sweep too)
+    from . import home as _home  # noqa: F401  (v0.479.0 HOOLA SMART HOME the home_audit table - registered
+        # HERE on day one AND self-healing via home.ensure_table(), same lesson)
     from .agent import eventlog as _harness_eventlog  # noqa: F401  (v0.193.0 HARNESS-3 the event-sourced session
         # log - registered HERE on day one AND self-healing via eventlog.ensure_table(), same lesson)
     from .agent import team as _harness_team  # noqa: F401  (v0.193.0 HARNESS-3 the background agent crews'
@@ -947,6 +955,10 @@ def init_db(url: str | None = None):
     from . import callrating as _callrating  # noqa: F401
     from . import yaad as _yaad  # noqa: F401  (v0.108 summaries + memory index)
     from . import docdesk as _docdesk  # noqa: F401  (v0.108 document desk + Sheet Milaan)
+    from .construction import models as _construction_models  # noqa: F401  (v0.512 Construction Wave 1:
+        # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
+        # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
+        # stays without its table)
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables

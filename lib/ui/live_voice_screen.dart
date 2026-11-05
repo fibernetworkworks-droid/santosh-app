@@ -26,6 +26,9 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
   late final AnimationController _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 1600))..repeat();
   bool _cardsOpen = true;
   int _seenCards = 0;
+  bool _typing = false;                       // v0.491 EQUAL POWER: the type-into-the-call bar
+  final TextEditingController _typeCtrl = TextEditingController();
+  final FocusNode _typeFocus = FocusNode();
 
   Santosh get app => widget.app;
   CallSession get call => app.voiceCall;
@@ -48,6 +51,8 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     call.screenOpen = false;
     if (!call.inCall) app.voiceMode = false;
     _pulse.dispose();
+    _typeCtrl.dispose();
+    _typeFocus.dispose();
     super.dispose();
   }
 
@@ -241,6 +246,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               label: Text(call.onHold ? 'Wapas aao' : 'Chup karao (kisi aur se baat)',
                   style: const TextStyle(color: C.chip, fontWeight: FontWeight.w600)),
             ),
+          if (call.inCall && !call.onHold) _typeBar(),
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: TextButton.icon(
@@ -255,6 +261,66 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         ]);
       },
     );
+  }
+
+  /// v0.491 EQUAL POWER: type into the call - a spelling, an address, a correction the voice ladder kept
+  /// getting wrong. The server answers inside the same call; nothing forces her to hang up to chat.
+  Widget _typeBar() {
+    if (!_typing) {
+      return Padding(
+        padding: const EdgeInsets.only(bottom: 4),
+        child: TextButton.icon(
+          onPressed: () => setState(() => _typing = true),
+          icon: const Icon(Icons.keyboard_rounded, color: C.chip, size: 18),
+          label: const Text('Call mein likhiye (spelling, address, theek-karo)',
+              style: TextStyle(color: C.chip, fontWeight: FontWeight.w600)),
+        ),
+      );
+    }
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 4),
+      child: Row(children: [
+        Expanded(
+          child: TextField(
+            controller: _typeCtrl,
+            focusNode: _typeFocus,
+            minLines: 1,
+            maxLines: 3,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              isDense: true,
+              hintText: '${app.aName} ko likhiye…',
+              hintStyle: const TextStyle(color: C.faint, fontSize: 13.5),
+              filled: true,
+              fillColor: const Color(0x14FFFFFF),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+            onSubmitted: (_) => _sendTyped(),
+          ),
+        ),
+        IconButton(
+          onPressed: _sendTyped,
+          icon: const Icon(Icons.send_rounded, color: C.accent),
+          tooltip: 'Bhejiye',
+        ),
+        IconButton(
+          onPressed: () => setState(() {
+            _typing = false;
+            _typeCtrl.clear();
+          }),
+          icon: const Icon(Icons.keyboard_hide_rounded, color: C.muted),
+          tooltip: 'Band kijiye',
+        ),
+      ]),
+    );
+  }
+
+  void _sendTyped() {
+    final t = _typeCtrl.text.trim();
+    if (t.isEmpty) return;
+    _typeCtrl.clear();
+    call.sendText(t);
   }
 
   /// Approvals, downloads, drafts and other cards that came during the call: right here, no need to open Chat.

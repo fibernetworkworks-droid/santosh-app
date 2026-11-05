@@ -2429,6 +2429,9 @@ class Santosh extends ChangeNotifier {
       case 'bazar_open':
         feed.add(FeedItem('open', Map<String, dynamic>.from(p)));
         break;
+      case 'maps_places': // v0.449 Phase 2: Google Maps results as a card, never a wall of addresses
+        feed.add(FeedItem('maps_places', Map<String, dynamic>.from(p)));
+        break;
       case 'bazar_link':
         feed.add(FeedItem('link', Map<String, dynamic>.from(p)));
         break;

@@ -1184,7 +1184,7 @@ def _maps_km(tenant: str, a: str, b: str) -> float | None:
         y = await maps.resolve(b, tenant)
         if not x or not y:
             return None
-        r = await maps.route(x, y, "DRIVE")
+        r = await maps.route(x, y, "DRIVE", tenant_id=tenant)
         return float(r["distance_km"]), int(r["duration_min"])
     try:
         out = asyncio.run(go())

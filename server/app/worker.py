@@ -355,10 +355,14 @@ async def tick() -> None:
     goal_resume_jobs()
     await inbox_jobs()
     await team_jobs()
+    await research_jobs()
+    await scrape_crawl_jobs()
+    await dhara_jobs()
     eventlog_jobs()
     aboutme_jobs()
     applogic_jobs()
     game_studio_jobs()
+    await coder_jobs()
 
 
 _logic_task: "asyncio.Task | None" = None
@@ -503,6 +507,61 @@ async def team_jobs() -> None:
         log.exception("agent team tick failed")
 
 
+_rs_last = 0.0
+
+
+async def research_jobs() -> None:
+    """v0.475 R4 background research runs: start queued ones, pick a stalled one up again from its checkpoint, forget old rows."""
+    global _rs_last
+    import time
+    if time.time() - _rs_last < 20:
+        return
+    _rs_last = time.time()
+    try:
+        from .research import runner, watch
+        await runner.tick()
+        await watch.tick()                              # v0.480 R9: watched topics that are due
+    except Exception:
+        log.exception("research tick failed")
+
+
+_crawl_last = 0.0
+
+
+_dhara_last = 0.0
+
+
+async def dhara_jobs() -> None:
+    """v0.502 DHARA: due scheduled workflows enqueue, slept runs wake, queued/stalled runs claim from
+    their checkpoint, old finished runs are forgotten (the crawl-jobs tick shape, on the dhara lane)."""
+    global _dhara_last
+    import time
+    if time.time() - _dhara_last < 20:
+        return
+    _dhara_last = time.time()
+    try:
+        from .agent import dhara_tools
+        await dhara_tools.tick()
+    except Exception:
+        log.exception("dhara tick failed")
+
+
+async def scrape_crawl_jobs() -> None:
+    """v0.486 CRAWL JOBS: queued background crawls start, a stalled one is picked up again from its
+    checkpoint, old finished ones are forgotten (the research tick shape, on the scrape lane's own
+    per-tenant crawl.db queue)."""
+    global _crawl_last
+    import time
+    if time.time() - _crawl_last < 20:
+        return
+    _crawl_last = time.time()
+    try:
+        from .agent import crawl_jobs
+        await crawl_jobs.tick()
+    except Exception:
+        log.exception("scrape crawl tick failed")
+
+
 _el_last = 0.0
 
 
@@ -518,6 +577,29 @@ def eventlog_jobs() -> None:
         eventlog.forget_old(int(getattr(get_settings(), "event_log_retain_days", 14) or 14))
     except Exception:
         log.exception("event log retention failed")
+
+
+_coder_last = 0.0
+
+
+async def coder_jobs() -> None:
+    """v0.473 HOOLA CODER: drain the memory spool and let the observer compress what the sessions
+    did (batches through the cheap brain). Throttled to 5 s; every failure is the log's problem,
+    never a session's - the spool just keeps the events for the next tick."""
+    global _coder_last
+    if time.time() - _coder_last < 5:
+        return
+    _coder_last = time.time()
+    try:
+        from .config import get_settings
+        from . import coder
+        if not getattr(get_settings(), "coder_enabled", True):
+            return
+        await coder.observer.tick(get_settings())
+        await coder.curator.tick(get_settings())   # v0.480: the weekly consolidation, due-gated
+        await coder.dreams.tick(get_settings())    # v0.484 SAPNE: the nightly curator, due-gated
+    except Exception:
+        log.exception("coder tick failed")
 
 
 _home_last = 0.0
@@ -906,6 +988,11 @@ async def employee_jobs() -> None:
             seo.send_morning(tenant)
     except Exception:
         log.exception("seo weekly failed")
+    try:   # v0.449 the licence's own clock: lat/lng cached from Places must be DELETED after 30 days (SST 14.3)
+        from . import mapsbill
+        mapsbill.sweep()
+    except Exception:
+        log.exception("maps cache sweep failed")
     try:                                   # v0.317 the hired SEO Employee's 24/7 loop (hourly watch ... monthly report)
         from .seo import desk as seo_desk
         if not _SEO_DESK_BUSY["on"]:

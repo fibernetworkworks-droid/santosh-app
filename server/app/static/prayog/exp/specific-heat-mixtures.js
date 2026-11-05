@@ -7,6 +7,14 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
   function labParams(name) { var o = {}; (S.lab.knobs || []).forEach(function (k) { if (k.param) o[k.param] = k.value * (k.k || 1); });
     var lp = S.lab.params || {}; Object.keys(lp).forEach(function (key) { o[key] = lp[key]; }); return HK.paramsFor(name, o); }
   var p = labParams('mixtures');
+  // the solid: from the variant's sample line (colour, name, density for its size); the base lab keeps its plain metal
+  var VAR = S.lab.variant || {}, SAMPLE = String(VAR.sample || '');
+  var METALS = [[/stainless/i, 'Stainless steel', 8000, 0xc8ccd0, 0.3, 0.9], [/alumin/i, 'Aluminium', 2700, 0xd5d8dc, 0.38, 0.85],
+    [/brass/i, 'Brass', 8500, 0xd4ad55, 0.3, 0.9], [/copper/i, 'Copper', 8960, 0xd9865a, 0.3, 0.9], [/lead/i, 'Lead', 11340, 0x4f545b, 0.7, 0.4],
+    [/zinc/i, 'Zinc', 7140, 0xb4bcc4, 0.45, 0.75], [/\btin\b/i, 'Tin', 7265, 0xd3d5d1, 0.3, 0.85], [/iron/i, 'Iron', 7870, 0x6e7276, 0.55, 0.7]];
+  var MET = null; METALS.forEach(function (m) { if (!MET && m[0].test(SAMPLE)) MET = { name: m[1], rho: m[2], col: m[3], rough: m[4], metal: m[5] }; });
+  var SOLID = MET ? MET.name + ' cylinder' : 'Metal cylinder', solidName = MET ? 'the ' + MET.name.toLowerCase() : 'the metal';
+  var TB = p.T1;                                         // the boiling water (and so the solid) reach this temperature
   function r1(v) { return Math.round(v * 10) / 10; }     // water thermometer: read to 0.1 °C
   function r5(v) { return Math.round(v * 2) / 2; }       // boiling-water thermometer: 0.5 °C
   var sim = K.init(p);
@@ -55,8 +63,9 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
     b.userData = { ph: i / 16, x: (((i * 37) % 17) / 17 - 0.5) * 0.06, z: (((i * 53) % 13) / 13 - 0.5) * 0.06 }; b.visible = false; S.scene.add(b); bubbles.push(b); }
   // the metal: a cylinder on a wire gauze platform in the boiling water
   var BLOCK_R = 0.017, BLOCK_H = 0.032;
+  if (MET) { var bs = Math.cbrt((p.m1 / MET.rho) / (Math.PI * BLOCK_R * BLOCK_R * BLOCK_H)); bs = Math.max(0.7, Math.min(1.25, bs)); BLOCK_R *= bs; BLOCK_H *= bs; }   // its real volume m/ρ
   var block = new T.Group(); S.scene.add(block);
-  var bm = S.mesh(new T.CylinderGeometry(BLOCK_R, BLOCK_R, BLOCK_H, 40), new T.MeshStandardMaterial({ color: 0xc9cdd2, roughness: 0.32, metalness: 0.9 })); bm.position.y = BLOCK_H / 2; block.add(bm);
+  var bm = S.mesh(new T.CylinderGeometry(BLOCK_R, BLOCK_R, BLOCK_H, 40), new T.MeshStandardMaterial(MET ? { color: MET.col, roughness: MET.rough, metalness: MET.metal } : { color: 0xc9cdd2, roughness: 0.32, metalness: 0.9 })); bm.position.y = BLOCK_H / 2; block.add(bm);
   var bhook = S.mesh(new T.TorusGeometry(0.004, 0.001, 8, 16), M.steel); bhook.position.y = BLOCK_H + 0.004; block.add(bhook);
   var gauze = S.mesh(new T.CylinderGeometry(0.03, 0.03, 0.002, 24), new T.MeshStandardMaterial({ color: 0x8b8f93, roughness: 0.5, metalness: 0.8, wireframe: true })); gauze.position.set(HX, PLATE + 0.012, HZ); S.scene.add(gauze);
   var BLOCK_HOME = new T.Vector3(HX + 0.006, PLATE + 0.013, HZ);
@@ -84,7 +93,8 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
   var sring = S.mesh(new T.TorusGeometry(0.007, 0.0013, 8, 24), copperM); sring.rotation.x = Math.PI / 2; stir.add(sring);
   var STIR0 = new T.Vector3(-0.014, 0.006, 0.022); stir.position.copy(STIR0);
   var TWX = CX - 0.017, TWZ = CZ - 0.018;
-  var thermoW = S.thermometer({ len: 0.3, min: 0, max: 50, value: p.T2, pos: [TWX, CY + 0.012, TWZ] });
+  var TF_EST = (p.m1 * p.c1 * p.T1 + (p.m2 * p.c2 + p.mc * p.cc) * p.T2) / (p.m1 * p.c1 + p.m2 * p.c2 + p.mc * p.cc), TWMAX = TF_EST > 45 || p.T2 > 40 ? 100 : 50;
+  var thermoW = S.thermometer({ len: 0.3, min: 0, max: TWMAX, value: p.T2, pos: [TWX, CY + 0.012, TWZ] });
   var standW = clampStand(TWX, TWZ, 0.28, 0.3, 0.44);
   var BLOCK_IN = new T.Vector3(CX + 0.012, CY + 0.0025, CZ);
   // tongs lying in front, jaws pointing left
@@ -105,14 +115,14 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
   var steamTex = S.canvasTex(128, 128, function (x) { var g = x.createRadialGradient(64, 64, 2, 64, 64, 62); g.addColorStop(0, 'rgba(255,255,255,.75)'); g.addColorStop(1, 'rgba(255,255,255,0)'); x.fillStyle = g; x.fillRect(0, 0, 128, 128); });
   var wisps = []; for (i = 0; i < 6; i++) { var w = new T.Mesh(new T.PlaneGeometry(0.05, 0.05), new T.MeshBasicMaterial({ map: steamTex, transparent: true, opacity: 0, depthWrite: false })); w.userData.ph = i / 6; S.scene.add(w); wisps.push(w); }
 
-  S.addApparatus('heater', heater, 'Hot plate', 'Keeps the water in the beaker boiling, so the metal is at 100 °C.');
-  S.addApparatus('beaker', beaker, 'Beaker of boiling water', 'The metal sits on a wire gauze in it, never touching the hot bottom.');
-  S.addApparatus('block', block, 'Metal cylinder', 'The solid whose specific heat you find. Mass m₁ = ' + Math.round(p.m1 * 1000) + ' g.');
-  S.addApparatus('thermoB', thermoB, 'Thermometer (boiling water)', 'Range −10 to 110 °C, least count 0.5 °C. Gives T₁, the metal\'s temperature.');
+  S.addApparatus('heater', heater, 'Hot plate', 'Keeps the water in the beaker boiling, so ' + solidName + ' is at ' + Math.round(TB) + ' °C.');
+  S.addApparatus('beaker', beaker, 'Beaker of boiling water', (MET ? 'The ' + MET.name.toLowerCase() + ' cylinder' : 'The metal') + ' sits on a wire gauze in it, never touching the hot bottom.');
+  S.addApparatus('block', block, SOLID, 'The solid whose specific heat you find' + (MET ? ' (' + MET.name.toLowerCase() + ', density ' + (MET.rho / 1000).toFixed(2) + ' g/cm³)' : '') + '. Mass m₁ = ' + Math.round(p.m1 * 1000) + ' g.');
+  S.addApparatus('thermoB', thermoB, 'Thermometer (boiling water)', 'Range −10 to 110 °C, least count 0.5 °C. Gives T₁, the temperature of ' + solidName + '.');
   S.addApparatus('cal', cal, 'Copper calorimeter with stirrer', 'Holds ' + Math.round(p.m2 * 1000) + ' g of water. Calorimeter + stirrer = ' + Math.round(p.mc * 1000) + ' g of copper (c = 385 J/kg K).');
   S.addApparatus('jacket', jacket, 'Wooden insulating jacket', 'Wood and the air gap keep heat from leaking out of the calorimeter.');
-  S.addApparatus('thermoW', thermoW, 'Thermometer (water)', 'Range 0 to 50 °C, read to 0.1 °C with a lens. Gives T₂ and the final temperature.');
-  S.addApparatus('tongs', tongs, 'Tongs', 'Carry the hot metal quickly, so it loses little heat on the way.');
+  S.addApparatus('thermoW', thermoW, 'Thermometer (water)', 'Range 0 to ' + TWMAX + ' °C, read to 0.1 °C with a lens. Gives T₂ and the final temperature.');
+  S.addApparatus('tongs', tongs, 'Tongs', 'Carry ' + solidName + ' quickly, so it loses little heat on the way.');
   S.addApparatus('book', S.book.group, 'Lab record book', 'Every reading you take is written here, as in a real practical file.');
   var hudB = S.hudCard('Boiling water'), hudW = S.hudCard('Water in calorimeter'), hudN = S.hudCard('Readings');
 
@@ -121,7 +131,7 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
   function switchHeater() {
     if (S.hand.busy) return Promise.resolve();
     return S.hand.tap(knob, 'tap').then(function () { st.heater = !st.heater; S.click(700, 0.05);
-      S.say(st.heater ? 'Hot plate on. Let the water boil for a minute so the metal reaches 100 °C.' : 'Hot plate off.'); S.render(); });
+      S.say(st.heater ? 'Hot plate on. Let the water boil for a minute so ' + solidName + ' reaches ' + Math.round(TB) + ' °C.' : 'Hot plate off.'); S.render(); });
   }
   function readT2() { if (st.dropped) { S.say('Too late: T₂ is read before the metal goes in.'); return; }
     st.T2 = r1(p.T2); bookLines[1] = 'Water + calorimeter, initial T₂ = ' + st.T2.toFixed(1) + ' °C'; S.book.draw(); S.focus('thermoW');
@@ -166,7 +176,7 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
     S.addRow({ Tf: r1(Tw()), T1: st.T1, T2: st.T2 });
     S.say('Final (highest steady) temperature θ = ' + S.rows[0].Tf.toFixed(1) + ' °C. Written in your record book.');
   }
-  var bookLines = ['Aim: specific heat of a solid by mixtures.', 'Water + calorimeter, initial T₂ = ……', 'Metal in boiling water, T₁ = ……',
+  var bookLines = ['Aim: specific heat of ' + (MET ? MET.name.toLowerCase() : 'a solid') + ' by mixtures.', 'Water + calorimeter, initial T₂ = ……', 'Metal in boiling water, T₁ = ……',
     'm₁ = ' + Math.round(p.m1 * 1000) + ' g, m_w = ' + Math.round(p.m2 * 1000) + ' g, m_c = ' + Math.round(p.mc * 1000) + ' g', 'Heat lost by metal = heat gained by water + cal.',
     'c = (m_w c_w + m_c c_c)(θ − T₂) / m₁(T₁ − θ)'];
   function cOf(r) { var C = p.m2 * p.c2 + p.mc * p.cc; return C * (r.Tf - r.T2) / (p.m1 * (r.T1 - r.Tf)); }
@@ -181,7 +191,7 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
     theory: { principle: 'When a hot solid is dropped into cold water in a calorimeter, heat flows until all of them reach one final temperature θ. If no heat leaks out, the heat lost by the solid equals the heat gained by the water and the calorimeter.',
       formula: 'm₁c (T₁ − θ) = (m_w c_w + m_c c_c)(θ − T₂)', formulaNote: 'so c = (m_w c_w + m_c c_c)(θ − T₂) / m₁(T₁ − θ) · c_w = 4186, c_c = 385 J/(kg·K)',
       more: ['T₁ is the solid\'s temperature (boiling water), T₂ the starting temperature of the water and calorimeter, θ the highest steady temperature after mixing.'],
-      precautions: 'Let the solid stay in boiling water long enough to reach 100 °C. Transfer it quickly with tongs, without splashing. Stir gently. Read θ as the highest steady reading. Keep the calorimeter in its jacket.' },
+      precautions: 'Let the solid stay in boiling water long enough to reach ' + Math.round(TB) + ' °C. Transfer it quickly with tongs, without splashing. Stir gently. Read θ as the highest steady reading. Keep the calorimeter in its jacket.' },
     book: { title: 'Expt. — Specific Heat (Mixtures)', lines: bookLines,
       columns: [{ label: 'T₁ (°C)', get: function (r) { return r.T1.toFixed(1); } }, { label: 'T₂ (°C)', get: function (r) { return r.T2.toFixed(1); } },
         { label: 'θ (°C)', get: function (r) { return r.Tf.toFixed(1); } }, { label: 'c (J/kg K)', get: function (r) { return Math.round(cOf(r)); } }] },
@@ -192,7 +202,7 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
     chips: ['Why use tongs and move quickly?', 'Why a wooden jacket?', 'Why stir?', 'Check my readings', 'Why is my c different from the table value?'],
     viva: [['Why should the metal be transferred quickly?', ['So that it loses little heat to the air on the way', 'So that the water does not boil', 'So that the stirrer does not move'], 0, 'Any heat lost on the way is not counted in the balance, so c comes out low.'],
       ['What does θ mean in this experiment?', ['The highest steady temperature of the mixture', 'The temperature of the boiling water', 'The room temperature'], 0, 'Read θ when the thermometer stops rising.']],
-    askState: function () { return { heater_on: st.heater, boiling_water_C: r5(st.Tboil), boiled_for_s: Math.round(st.boiled), T1_C: st.T1, T2_C: st.T2, metal_in_calorimeter: st.dropped,
+    askState: function () { return { heater_on: st.heater, boiling_water_C: r5(st.Tboil), boiled_for_s: Math.round(st.boiled), T1_C: st.T1, T2_C: st.T2, solid: MET ? MET.name : 'metal', metal_in_calorimeter: st.dropped,
       water_thermometer_C: r1(st.shownW), times_stirred: st.stirred, time_runs_faster_by: st.speed, final_recorded: S.rows.length ? S.rows[0].Tf : null }; },
 
     steps: [
@@ -239,9 +249,9 @@ HoolaStudio.define('specific-heat-mixtures', function (S) {
 
     tick: function (dt) {
       var ldt = dt * st.speed;
-      // the boiling beaker: heats towards 100 °C while the plate is on, cools slowly when off
-      var boilPt = 100;
-      if (st.heater) st.Tboil = Math.min(boilPt, st.Tboil + ldt * 0.9 * (1 + (boilPt - st.Tboil) / 30)); else st.Tboil += (32 - st.Tboil) * Math.min(1, ldt * 0.004);
+      // the boiling beaker: heats towards its boiling point TB while the plate is on, cools slowly when off
+      var boilPt = TB;
+      if (st.heater) st.Tboil = Math.min(boilPt, st.Tboil + ldt * 0.9 * (1 + Math.max(0, boilPt - st.Tboil) / 30)); else st.Tboil += (32 - st.Tboil) * Math.min(1, ldt * 0.004);
       if (st.heater && st.Tboil >= boilPt - 0.01) st.boiled += ldt; else if (!st.heater) st.boiled = 0;
       thermoB.set(st.Tboil);
       if (!st.moved) st.blockT = st.Tboil;

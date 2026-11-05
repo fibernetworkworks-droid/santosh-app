@@ -53,6 +53,10 @@ ENT_GROUP = "Enterprise Systems & ERP"   # v0.453 the ten enterprise jobs (v0.35
 # v0.453 these employees' tools were open to every user before they joined the Hub, so hiring one only adds its desk;
 # a tool must never start checking is_hired() for them (tested), or users would silently lose what they had.
 EDU_OPEN = True
+CONST_GROUP = "Construction & Real Estate"   # v0.512 the construction Wave-1 employees (plan docs/CONSTRUCTION_EMPLOYEE_PLAN.md);
+# the register lives at docs/research/building_industry/07_ai_employees_register.md (123 employees, tier + human gate).
+# The already-live Makaan suite (sitesup / theka / propagent...) predates the Hub and keeps its own surfaces; these rows
+# are the Wave-1 desks hired from the Hub. PREPARE, never CERTIFY: tier C never ships (construction/gates.py).
 
 # The catalogue. `live` employees can be hired today; the others show as "coming".
 CATALOG: dict[str, dict[str, Any]] = {
@@ -385,6 +389,44 @@ CATALOG: dict[str, dict[str, Any]] = {
         "does": ['Due-date calendar with the source of every date', 'Filing papers prepared', 'Exposure worked out only from penalty figures you gave'],
         "needs": ['The returns and registrations your business has'],
         "never": ['File on a government portal for you - you file', 'Give legal advice: it cites the rule, not an opinion']},
+    # v0.512 CONSTRUCTION & REAL ESTATE - Wave 1 (records and money, register #s in brackets; tier A; the tier-C
+    # refusals ride construction/gates.py and every tool description)
+    "const_store": {"name": 'Material Store Manager (Saaman)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+        "pitch": 'Store ka hisaab: GRN, issue, stock, barbadi - the sheet the store in-charge signs.',
+        "does": ['Goods received notes with challan / invoice numbers (#61)', 'Issues to gangs and sites, min-max reorder alerts',
+                 'Reconciliation: received vs issued vs on-hand with the wastage %'],
+        "needs": ['Your item list and reorder levels (Hoola learns them as you go)'],
+        "never": ['Order anything itself - the indent card waits for your tap', 'Invent a rate, a quantity or a vendor']},
+    "const_labour": {"name": 'Labour & Wages Desk (Mazdoor Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+        "pitch": 'Muster, licences, wage audit and the BOCW cess / TDS arithmetic - determined numbers only.',
+        "does": ['Daily muster rolls (#85), contract-labour licence and BOCW renewal calendar',
+                 'Wage-audit working paper with the trail: workers x days x rate, OT rule stated (#87)',
+                 'BOCW cess 1% and Sec 393(1) TDS from the state pack - a stale pack refuses to answer (#90)'],
+        "needs": ['Your wage rates with their source (Hoola never supplies a minimum wage from memory)'],
+        "never": ['Move money - wages are paid by you, recorded after', 'File a licence or a return for you',
+                  'Give the minimum wage from memory - the pack cites, it never guesses']},
+    "const_customer": {"name": 'Customer Money & Handover Desk (Grahak Desk)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+        "pitch": 'Demand letters, receipts, possession checklists and the DLP clock after handover.',
+        'does': ['Milestone-linked demand drafts with the interest clause from YOUR agreement (#92)',
+                 'Receipts against demands, part-paid tracked', 'Handover checklist per unit, keys and utilities recorded (#97)',
+                 'DLP tickets with the window arithmetic and vendor-dispatch records (#98)'],
+        "needs": ['Your projects, units and payment milestones'],
+        "never": ['Send a demand or a vendor letter itself - sent only on your word',
+                  'Decide a legal entitlement (interest claims ride the letter, not the ledger)']},
+    "const_quality": {"name": 'Quality Records Keeper (Gunvatta)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+        "pitch": 'ITPs with hold points, NCRs, material-test lots, and the IS 456 cube draft - drafts, never verdicts.',
+        "does": ['Inspection & test plans per activity with HOLD points (#75)', 'NCR log with severity and close-out',
+                 'Material test register: lab results as reported, verdict pending until a human says it (#76)',
+                 'IS 456 Table 11 cube-acceptance DRAFT (M20+; below refuses rather than guess sigma)',
+                 'Punch list by trade from the site snags (#78)'],
+        "needs": ['Your QA plan (the sitesup cube_limits ride the same law)'],
+        "never": ['Accept work or a cube - the QA engineer signs', 'Grade a lab result by itself']},
+    "const_meet": {"name": 'Meeting Secretary (Baithak)', "live": True, "icon": "hammer", "group": CONST_GROUP,
+        "pitch": 'OAC / site / coordination meetings: minutes as said, actions chased till closed.',
+        "does": ['Meeting records with attendees and minutes (#67)', 'Action items with owners and due dates, late-first chase',
+                 'One clean minutes PDF to circulate'],
+        "needs": ['Nothing - tell it the meeting happened and what was said'],
+        "never": ['Mark an action done by itself - closed on your word', 'Take a decision the meeting did not take']},
 }
 
 

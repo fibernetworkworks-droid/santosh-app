@@ -1,0 +1,169 @@
+{
+ "base": "hookes-law",
+ "chapter": "Mechanical Properties of Solids",
+ "variants": [
+  {
+   "key": "music-0p6",
+   "title": "Hooke's law: k of a 0.6 mm music wire spring",
+   "sample": "Music wire spring: wire 0.6 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 0.6 mm music wire spring",
+   "params": {
+    "k": 4.79
+   },
+   "note": "For music wire (ASTM A228), G = 81.7 GPa, so k = G d⁴ / (8 D³ N) = 4.8 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "music-0p8",
+   "title": "Hooke's law: k of a 0.8 mm music wire spring",
+   "sample": "Music wire spring: wire 0.8 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 0.8 mm music wire spring",
+   "params": {
+    "k": 15.0
+   },
+   "note": "For music wire (ASTM A228), G = 81.0 GPa, so k = G d⁴ / (8 D³ N) = 15.0 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "music-1p0",
+   "title": "Hooke's law: k of a 1.0 mm music wire spring",
+   "sample": "Music wire spring: wire 1.0 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 1.0 mm music wire spring",
+   "params": {
+    "k": 36.62
+   },
+   "note": "For music wire (ASTM A228), G = 81.0 GPa, so k = G d⁴ / (8 D³ N) = 36.6 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "music-1p2",
+   "title": "Hooke's law: k of a 1.2 mm music wire spring",
+   "sample": "Music wire spring: wire 1.2 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 1.2 mm music wire spring",
+   "params": {
+    "k": 75.94
+   },
+   "note": "For music wire (ASTM A228), G = 81.0 GPa, so k = G d⁴ / (8 D³ N) = 75.9 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "hd-0p8",
+   "title": "Hooke's law: k of a 0.8 mm hard-drawn steel spring",
+   "sample": "Hard-drawn steel spring: wire 0.8 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 0.8 mm hard-drawn steel spring",
+   "params": {
+    "k": 14.69
+   },
+   "note": "For hard-drawn steel wire (ASTM A227), G = 79.3 GPa, so k = G d⁴ / (8 D³ N) = 14.7 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "hd-1p0",
+   "title": "Hooke's law: k of a 1.0 mm hard-drawn steel spring",
+   "sample": "Hard-drawn steel spring: wire 1.0 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 1.0 mm hard-drawn steel spring",
+   "params": {
+    "k": 35.85
+   },
+   "note": "For hard-drawn steel wire (ASTM A227), G = 79.3 GPa, so k = G d⁴ / (8 D³ N) = 35.9 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "ss-0p8",
+   "title": "Hooke's law: k of a 0.8 mm stainless steel spring",
+   "sample": "Stainless steel spring: wire 0.8 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 0.8 mm stainless steel spring",
+   "params": {
+    "k": 12.78
+   },
+   "note": "For stainless steel 302 wire (ASTM A313), G = 69.0 GPa, so k = G d⁴ / (8 D³ N) = 12.8 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "ss-1p0",
+   "title": "Hooke's law: k of a 1.0 mm stainless steel spring",
+   "sample": "Stainless steel spring: wire 1.0 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 1.0 mm stainless steel spring",
+   "params": {
+    "k": 31.2
+   },
+   "note": "For stainless steel 302 wire (ASTM A313), G = 69.0 GPa, so k = G d⁴ / (8 D³ N) = 31.2 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "pb-1p0",
+   "title": "Hooke's law: k of a 1.0 mm phosphor bronze spring",
+   "sample": "Phosphor bronze spring: wire 1.0 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 1.0 mm phosphor bronze spring",
+   "params": {
+    "k": 18.72
+   },
+   "note": "For phosphor bronze wire (ASTM B159), G = 41.4 GPa, so k = G d⁴ / (8 D³ N) = 18.7 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "pb-1p2",
+   "title": "Hooke's law: k of a 1.2 mm phosphor bronze spring",
+   "sample": "Phosphor bronze spring: wire 1.2 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 1.2 mm phosphor bronze spring",
+   "params": {
+    "k": 38.81
+   },
+   "note": "For phosphor bronze wire (ASTM B159), G = 41.4 GPa, so k = G d⁴ / (8 D³ N) = 38.8 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "becu-1p0",
+   "title": "Hooke's law: k of a 1.0 mm beryllium copper spring",
+   "sample": "Beryllium copper spring: wire 1.0 mm, mean coil diameter 24 mm, 20 active turns",
+   "unknown": "the spring constant k of a 1.0 mm beryllium copper spring",
+   "params": {
+    "k": 20.25
+   },
+   "note": "For beryllium copper wire (ASTM B197), G = 44.8 GPa, so k = G d⁴ / (8 D³ N) = 20.3 N/m. You measure k; the formula is only the maker's estimate.",
+   "source": {
+    "title": "Shigley's Mechanical Engineering Design (Budynas, Nisbett), Table 10-5: shear modulus G of spring wires; k = G d⁴ / (8 D³ N)"
+   }
+  },
+  {
+   "key": "unknown-x",
+   "title": "Hooke's law: k of unknown spring X",
+   "sample": "Spring X (unknown k, generic steel spring from the lab drawer)",
+   "unknown": "the spring constant k of spring X",
+   "params": {
+    "k": 26.5
+   },
+   "note": "A generic spring with no maker's data: its k is found only by this experiment."
+  },
+  {
+   "key": "unknown-y",
+   "title": "Hooke's law: k of unknown spring Y",
+   "sample": "Spring Y (unknown k, generic steel spring from the lab drawer)",
+   "unknown": "the spring constant k of spring Y",
+   "params": {
+    "k": 9.4
+   },
+   "note": "A generic spring with no maker's data: its k is found only by this experiment."
+  }
+ ]
+}

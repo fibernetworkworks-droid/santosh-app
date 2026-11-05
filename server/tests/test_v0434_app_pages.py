@@ -16,7 +16,7 @@ from tests.test_v121_site import site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.454.0"
+    assert APP_VERSION == "0.530.0"
 
 
 @pytest.fixture
@@ -214,6 +214,8 @@ def test_app_pages_work_in_a_real_browser(linked):
     def handle(route):
         u = route.request.url
         path = u[len(ORIGIN):]
+        if path.startswith("/api/") and "/live" in path.split("?")[0]:
+            return route.fulfill(status=429, body="{}")       # v0.459: this proxy answers whole bodies, so no open stream
         if path.startswith("/api/"):
             h = {k: v for k, v in route.request.headers.items() if k.lower() in ("authorization", "content-type")}
             r = c.request(route.request.method, path, content=route.request.post_data_buffer, headers=h)

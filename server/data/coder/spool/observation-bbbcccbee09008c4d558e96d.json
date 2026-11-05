@@ -1,0 +1,1 @@
+{"kind": "observation", "enqueued_at_epoch": 1793725167, "conv": "c_team", "tenant": "default", "tool": "google_search", "args": {}, "result": "{\"tool\": \"google_search\", \"data\": \"D\"}", "ok": true, "ms": 0, "turn_id": "team_b64ae79b6288", "actor": "team:good2", "at": "2026-11-03T16:59:27+0000", "seq": 1793725167062}

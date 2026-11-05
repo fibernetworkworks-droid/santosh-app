@@ -27,6 +27,8 @@ on:
           - ack_refresh
           - deploy
           - rollback_stable
+          - trace_flip
+          - trace_flip
           - pc_deploy
           - pc_pair
           - pc_logs
@@ -35,9 +37,13 @@ on:
           - web
           - web_fix
           - rea_setup
+          - hf_setup
           - studio_apis
           - tool_card
           - hard_card
+          - maps_card
+          - research_card
+          - research_runoff_check
           - long_jobs
           - long_card_try
           - long_card
@@ -49,6 +55,15 @@ on:
           - auth_check
           - review_card
           - fix_card_spec
+          - lab_check
+          - lab_setup
+          - lab_images
+          - lab_prune
+          - zoo_key
+          - zoo_check
+          - engine_attach
+          - coder_flip
+          - docs7_flip
       lines:
         description: "Log lines for logs / errors (50-2000); for pc_pair = the 6-digit code from her app"
         required: false
@@ -83,6 +98,8 @@ jobs:
         env:
           JOB: ${{ inputs.job }}
           LINES_IN: ${{ inputs.lines }}
+          ENGINE_KEY_IN: ${{ secrets.HOOLA_ENGINE_KEY }}   # v0.462.x engine_attach: the SAME repo secret the Interactive lab puts in Modal; interpolated runner-side, masked by GitHub
+          ZOO_KIE_KEY_IN: ${{ secrets.ZOO_KIE_KEY }}   # v0.463.1 zoo_key: runner-side interpolation (the pc_pair pattern); GitHub masks the value in every log
         run: |
           # inputs go through env + strict checks, never straight into the script (no injection)
           case "$LINES_IN" in ''|*[!0-9]*) N=300 ;; *) N=$LINES_IN ;; esac
@@ -181,6 +198,7 @@ jobs:
                 echo 'cp $CORE/santosh.db $CORE/santosh.db.bak-$(date +%F-%H%M)'
                 echo 'ls -1t $CORE/santosh.db.bak-* | tail -n +6 | xargs -r rm -f   # keep the newest 5 backups'
                 echo 'cd $REPO && git fetch origin main && git checkout main && git reset --hard origin/main'
+                echo 'cd $REPO/server && $CORE/.venv/bin/pip install -q -r requirements.txt 2>&1 | tail -2   # a release may add deps (the v0.474 SCRAPLING lesson); before cp+restart so a pip failure aborts safely'
                 echo 'git log --oneline -1'
                 echo 'cp -r $REPO/server/app $CORE/'
                 echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
@@ -331,6 +349,33 @@ jobs:
                 echo 'print("rea_khoj READY: tools=%d apk=%s" % (s["tools"], s["apk"]))'
                 echo 'PY'
                 echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
+              hf_setup)
+                # v0.471 HOOLA FRAMES: install HeyGen's open-source HyperFrames engine (pinned 0.9.6,
+                # Apache 2.0) + pre-warm its headless Chromium + wire FRAMES_* into the santosh-core .env
+                # + restart santosh so the hoola_frames tool can render real MP4s from chat. Needs node >= 22
+                # + npm + ffmpeg with libass (already from setup_video.sh). A standalone Node 22 lives fine in
+                # ~/apps/node22 and never touches pm2's runtime; install_hyperframes.sh tells the owner plainly
+                # what is missing and the deploy user has no passwordless sudo, so the owner runs apt installs
+                # from the DigitalOcean console and re-runs this job.
+                echo 'set -e'
+                echo 'echo "== node + ffmpeg (pre-install)"; node --version 2>&1 | head -1; npm --version 2>&1 | head -1; command -v ffmpeg >/dev/null && ffmpeg -version 2>&1 | head -1 || echo "ffmpeg missing: owner runs in DO console: sudo apt install -y ffmpeg"'
+                echo 'echo "== HyperFrames pre-existing?"; [ -x "$HOME/apps/hoola-frames-cli/node_modules/.bin/hyperframes" ] && "$HOME/apps/hoola-frames-cli/node_modules/.bin/hyperframes" --version 2>&1 | head -1 || echo "HyperFrames not yet installed"'
+                echo 'echo "== run install_hyperframes.sh (idempotent; pinned 0.9.6; browser pre-warm)"; bash $REPO/server/deploy/install_hyperframes.sh 2>&1 | tail -20'
+                echo 'echo "== node version on PATH"; echo "node: $(node -v 2>/dev/null || echo MISSING)"; case "$(node -v 2>/dev/null)" in v2[3-9]*|v22*) echo "node ok";; *) echo "NODE 22+ MISSING: owner runs in DO console: curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash - && sudo apt install -y nodejs";; esac'
+                echo 'echo "== wire .env (idempotent)"; touch $CORE/.env'
+                echo 'grep -q "^FRAMES_BIN=" $CORE/.env || { printf "FRAMES_BIN=%s/apps/hoola-frames-cli/node_modules/.bin/hyperframes\n" "$HOME" >> $CORE/.env; printf "FRAMES_ROOT=%s/apps/hoola-frames\n" "$HOME" >> $CORE/.env; printf "FRAMES_TIMEOUT_S=900\n" >> $CORE/.env; printf "FRAMES_DISK_CAP_GB=10\n" >> $CORE/.env; echo added; }'
+                echo 'echo "== .env FRAMES_*"; grep -E "^FRAMES_" $CORE/.env | sed -E "s/(=).*/\1<set>/" 2>/dev/null || echo "no FRAMES_ keys"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?'
+                echo 'echo "== health"; health'
+                echo 'echo "== hoola_frames status (live app, FRAMES_BIN forced for the check only)"; cd $CORE && FRAMES_BIN="$HOME/apps/hoola-frames-cli/node_modules/.bin/hyperframes" FRAMES_ROOT="$HOME/apps/hoola-frames" timeout 120 .venv/bin/python - <<PY 2>&1 | tail -8'
+                echo 'from app.studio import frames'
+                echo 's = frames.status()'
+                echo 'print({k: s.get(k) for k in ("enabled", "bin", "pin", "version", "busy")})'
+                echo 'assert s["enabled"], "hoola_frames not ready on the live app"'
+                echo 'print("hoola_frames READY: pin=%s version=%s" % (s.get("pin"), s.get("version")))'
+                echo 'PY'
+                echo 'if [ "$UP" -ne 0 ]; then echo "::error::santosh did not come healthy within 60s"; exit 1; fi' ;;
               studio_apis)
                 # v0.308 which real engine behind Create is switched on: key NAMES present in the .env (values never
                 # printed), then the running app asks each provider one free question (python -m app.studio.apis)
@@ -352,6 +397,32 @@ jobs:
                 echo 'cd $CORE && echo "== free card"; timeout 120 .venv/bin/python -m app.quality hardcard 2>&1 | head -5'
                 echo 'echo "== ping (v0.440: each model x plain / thinking / effort)"; cd $CORE && timeout 120 .venv/bin/python -m app.quality hardcard --ping 2>&1 | grep -v httpx | tail -10'
                 echo 'echo "== live, quick set"; cd $CORE && timeout 1200 .venv/bin/python -m app.quality hardcard --live --quick --label vps-ops 2>&1 | tail -30' ;;
+              maps_card)
+                # v0.470 Phase 11 PROOF: the free maps card (right tool in view, every maps tool registered AND reachable
+                # from a real ask, the licence / cap guards, and what one of each answer costs at full rate), then the geo
+                # + guard asks through the REAL pipeline on tenant __quality__ with the RUPEES each answer spent. The geo
+                # answers are arithmetic from the ask's own coordinates, so they are checkable. ~5-10 min; the live part
+                # spends real Maps money (a few rupees) and model calls. All 26 live: on the VPS itself -
+                # python -m app.quality maps --live.
+                echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality maps 2>&1 | tail -12'
+                echo 'echo "== usage before"; cd $CORE && timeout 60 .venv/bin/python -c "from app.mapsbill import usage; import json; print(json.dumps(usage(\"__quality__\"), default=str))" 2>&1 | tail -2'
+                echo 'echo "== live, geo answers (arithmetic key)"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind geo --label vps-ops 2>&1 | tail -20'
+                echo 'echo "== live, the guards"; cd $CORE && timeout 900 .venv/bin/python -m app.quality maps --live --kind rule --label vps-ops 2>&1 | tail -20' ;;
+              research_card)
+                # v0.471 R0 NAAP: the RESEARCH card. The free part (scorer calibration: it must pass an honest report and
+                # catch every planted fault; research recognised; tools in view) then a SHORT live run - 4 topic asks and
+                # the 3 trap asks (a company / scheme / standard invented for the card) - each scored IN CODE against the
+                # pages and pylab results that turn really fetched, with minutes and rupees per report. All 20 live: on
+                # the VPS itself - python -m app.quality research --live [--judge]. A live run spends model calls + web.
+                echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality research 2>&1 | tail -20'
+                echo 'echo "== live, 4 topics"; cd $CORE && timeout 1500 .venv/bin/python -m app.quality research --live --only official_cpi,rule_gst_einvoice,calc_smartphones,scholarly_rag --label vps-ops 2>&1 | tail -30'
+                echo 'echo "== live, the traps"; cd $CORE && timeout 900 .venv/bin/python -m app.quality research --live --kind trap --label vps-ops 2>&1 | tail -20' ;;
+              research_runoff_check)
+                # v0.478 R7: the FREE part of the run-off - which engines may run (every R6 gate), what the card would cost for the engine alone, the newest saved table and
+                # its decision. A LIVE run-off spends real model / web / vendor money: run it on the VPS with an explicit budget -
+                # python -m app.quality research runoff --engines hoola,parallel --budget-inr 800
+                echo 'cd $CORE && echo "== can it run, and what would it cost"; timeout 120 .venv/bin/python -m app.quality research runoff --check --engines hoola,parallel,exa,openai,linkup 2>&1 | tail -12'
+                echo 'echo "== newest saved run-off"; cd $CORE && timeout 120 .venv/bin/python -m app.quality research runoff --status 2>&1 | tail -20' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.
@@ -422,6 +493,21 @@ jobs:
                 echo 'if grep -qE "^API_KEY=.+" $CORE/.env 2>/dev/null; then echo "API_KEY in .env: set"; else echo "API_KEY in .env: MISSING or empty"; fi'
                 echo 'for u in http://172.18.0.1:8077 http://127.0.0.1:8077; do c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 $u/api/me); [ "$c" != "000" ] && { echo "Live: $u/api/me with no login -> $c (401 = locked, 200 = OPEN)"; break; }; done'
                 echo 'c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 https://hoola.ainewtika.com/api/me); echo "Public: https://hoola.ainewtika.com/api/me with no login -> $c"' ;;
+              lab_check)
+                # v0.456 PRAYOGSHALA: is the coding lab's Docker box real and SEALED on this VPS? Builds the base image
+                # if missing, then runs a passing test, a failing test, and three wall checks (no network, read-only
+                # root, non-root user). "GADBAD" / "KHATRA" anywhere in the output = do NOT turn dev_lab on.
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab check 2>&1 | tail -40' ;;
+              lab_setup)
+                # ... build (or rebuild) the base image on its own: python + node + jdk + git + ripgrep, ~2-4 minutes.
+                echo 'docker --version || echo "DOCKER NAHI HAI"'
+                echo 'cd $CORE && timeout 2400 .venv/bin/python -m app.devlab setup 2>&1 | tail -25' ;;
+              lab_images)
+                echo 'cd $CORE && .venv/bin/python -m app.devlab images 2>&1 | tail -30'
+                echo 'docker system df 2>&1 | tail -6' ;;
+              lab_prune)
+                # ... drop the oldest per-repo dependency snapshots (the base image is never dropped).
+                echo 'cd $CORE && .venv/bin/python -m app.devlab prune --keep 8 2>&1 | tail -10' ;;
               review_card)
                 # v0.402 ECC PHASE 1: 12 practice PRs (8 planted problems + 4 clean) reviewed by the real exploring review,
                 # OLD (v0.377) vs NEW (+ ECC specialists): caught / quiet on clean / false alarms / verdicts. Nothing is
@@ -432,6 +518,86 @@ jobs:
                 # ECC fixer specialist - must stay at the no-specialist score (hard 12/12, mobile 10/10) before it goes live.
                 echo 'cd $CORE && timeout 600 .venv/bin/python -m app.quality code --set 2 --kind fix --spec --label vps-ops-spec 2>&1 | tail -14'
                 echo 'cd $CORE && timeout 660 .venv/bin/python -m app.quality code --set 3 --kind fix --spec --label vps-ops-spec 2>&1 | tail -14' ;;
+              zoo_key)
+                # v0.463.1 ZOO kie: install/refresh the kie.ai key into $CORE/.env from the repo secret
+                # ZOO_KIE_KEY. The key value is interpolated runner-side (the pc_pair pattern) and GitHub
+                # masks it in every log line (incl. the job.sh cat below); the Run step's sed redacts too.
+                # Idempotent: replaces an existing line. Never echoed by the job itself.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo "if grep -q '^ZOO_KIE_KEY=' \$CORE/.env; then sed -i \"s#^ZOO_KIE_KEY=.*#ZOO_KIE_KEY=$ZOO_KIE_KEY_IN#\" \$CORE/.env; else printf 'ZOO_KIE_KEY=$ZOO_KIE_KEY_IN\\n' >> \$CORE/.env; fi"
+                echo 'grep -qE "^ZOO_KIE_KEY=.+" $CORE/.env && echo "== ZOO_KIE_KEY present in .env (value hidden)"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app import zoo; print(\"zoo keys on server - kie:\", zoo.kie_key() != \"\", \"| muapi:\", zoo.muapi_key() != \"\")"' ;;
+              engine_attach)
+                # v0.462.x HOOLA INTERACTIVE: attach the saved repo secret HOOLA_ENGINE_KEY (and the engine's address) to the
+                # Hoola server's .env as AVATAR_ENGINE_KEY / AVATAR_ENGINE_URL, so the live-talk page can ask the server for
+                # a two-minute ticket and no key is ever typed or shown. Same runner-side pattern as zoo_key.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo "if grep -q '^AVATAR_ENGINE_KEY=' \$CORE/.env; then sed -i \"s#^AVATAR_ENGINE_KEY=.*#AVATAR_ENGINE_KEY=$ENGINE_KEY_IN#\" \$CORE/.env; else printf 'AVATAR_ENGINE_KEY=$ENGINE_KEY_IN\\n' >> \$CORE/.env; fi"
+                echo "if grep -q '^AVATAR_ENGINE_URL=' \$CORE/.env; then :; else printf 'AVATAR_ENGINE_URL=https://fibernetworkworks--hoola-lab-web.us-east.modal.run\\n' >> \$CORE/.env; fi"
+                echo 'grep -qE "^AVATAR_ENGINE_KEY=.+" $CORE/.env && echo "== AVATAR_ENGINE_KEY present in .env (value hidden)"'
+                echo 'grep -E "^AVATAR_ENGINE_URL=" $CORE/.env'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }' ;;
+              zoo_check)
+                # v0.463.1 ZOO kie live proof: catalog counts per gateway, key presence, then ONE REAL cheap
+                # kie image (nano-banana-2-lite, a few credits of the owner's kie balance) on a throw-away
+                # __zoocheck__ tenant. Fixed model + fixed prompt on purpose (no free-typed anything).
+                echo 'cd $CORE && timeout 300 .venv/bin/python - <<"PY" 2>&1 | tail -30'
+                echo 'import asyncio'
+                echo 'from app import zoo'
+                echo 'cat = zoo.load_catalog()["models"]'
+                echo 'print("catalog:", len(cat), "| kie:", sum(1 for m in cat if m.get("gateway") == "kie"), "| muapi:", sum(1 for m in cat if m.get("gateway", "muapi") != "kie"))'
+                echo 'print("kie key on server:", zoo.kie_key() != "")'
+                echo 'm = zoo.model("t2i:kie:nano-banana-2-lite")'
+                echo 'r = asyncio.run(zoo.run(m, "ek laal chhata beach par", tenant="__zoocheck__", wait_s=110.0))'
+                echo 'print("status:", r["status"], "| request_id:", r["request_id"])'
+                echo 'print("urls:", r.get("urls"))'
+                echo 'print("error:", str(r.get("error", ""))[:200])'
+                echo 'raise SystemExit(0 if r["status"] == "done" else 3)'
+                echo 'PY' ;;
+              coder_flip)
+                # v0.480.0 Phase D - the owner's FLIP: CODER_NUDGE=true in $CORE/.env, the opt-in for the
+                # self-teaching reflection fork (coder/nudge.py). The code default stays OFF and the tests
+                # pin it - the deployment opts in here, the zoo_key pattern minus the secret (a boolean
+                # hides nothing). Idempotent upsert, restart, health, then the EFFECTIVE value is printed
+                # back from a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^CODER_NUDGE=" $CORE/.env; then sed -i "s#^CODER_NUDGE=.*#CODER_NUDGE=true#" $CORE/.env; else printf "CODER_NUDGE=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^CODER_NUDGE=true$" $CORE/.env && echo "== CODER_NUDGE=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_nudge =\", get_settings().coder_nudge)"' ;;
+              docs7_flip)
+                # v0.501.0 - the owner's flip slot for the Context7 surface: CODER_DOCS7=true in
+                # $CORE/.env, the same reviewed one-boolean shape as coder_flip (the code default
+                # stays OFF and the tests pin it - the deployment opts in here, not in config.py).
+                # Idempotent upsert, restart, health, then the EFFECTIVE value printed back from
+                # a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^CODER_DOCS7=" $CORE/.env; then sed -i "s#^CODER_DOCS7=.*#CODER_DOCS7=true#" $CORE/.env; else printf "CODER_DOCS7=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^CODER_DOCS7=true$" $CORE/.env && echo "== CODER_DOCS7=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective coder_docs7 =\", get_settings().coder_docs7)"' ;;
+              trace_flip)
+                # v0.520.0 HOOLA TRACE - the owner's flip slot for the run persistence + explorer:
+                # AEP_TRACE=true in $CORE/.env, the same reviewed one-boolean shape as
+                # coder_flip/docs7_flip (the code default stays OFF and the tests pin it - the
+                # deployment opts in here, not in config.py). Idempotent upsert, restart, health,
+                # then the EFFECTIVE value printed back from a fresh process reading the same .env.
+                echo 'set -e'
+                echo 'touch $CORE/.env'
+                echo 'if grep -q "^AEP_TRACE=" $CORE/.env; then sed -i "s#^AEP_TRACE=.*#AEP_TRACE=true#" $CORE/.env; else printf "AEP_TRACE=true\n" >> $CORE/.env; fi'
+                echo 'grep -qE "^AEP_TRACE=true$" $CORE/.env && echo "== AEP_TRACE=true present in .env"'
+                echo 'pm2 restart santosh --kill-timeout 12000 --update-env'
+                echo 'UP=0; wait_up || UP=$?; echo "== health"; health; [ "$UP" -eq 0 ] || { echo "::error::santosh did not come healthy within 60s"; exit 1; }'
+                echo 'cd $CORE && timeout 60 .venv/bin/python -c "from app.config import get_settings; print(\"== effective aep_trace =\", get_settings().aep_trace)"' ;;
               *) echo "::error::unknown job $JOB" >&2; exit 1 ;;
             esac
           } > job.sh

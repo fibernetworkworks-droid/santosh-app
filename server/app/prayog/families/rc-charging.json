@@ -1,0 +1,132 @@
+{
+ "base": "rc-charging",
+ "chapter": "Electrostatic Potential and Capacitance",
+ "variants": [
+  {
+   "key": "caps-large",
+   "title": "Charging a capacitor: 1000, 2200 and 4700 µF with a 100 Ω-step box",
+   "sample": "Electrolytics 1000 / 2200 / 4700 µF, box in 100 Ω steps",
+   "method": "Large capacitors with a box in 100 Ω steps: ten times the capacitance, a tenth of the resistance",
+   "params": {
+    "C1": 1000,
+    "C2": 2200,
+    "C3": 4700,
+    "RU": 100,
+    "Rr": 1000,
+    "Cc": 0.001
+   },
+   "note": "1000, 2200 and 4700 are E6 preferred values. RC is still a few seconds because R is ten times smaller and C ten times larger.",
+   "source": {
+    "title": "IEC 60063: preferred number series (E6: 10, 15, 22, 33, 47, 68)",
+    "note": "Aluminium electrolytic capacitors are sold in E6 values with ±20 % tolerance (IEC 60384-4)."
+   }
+  },
+  {
+   "key": "caps-small",
+   "title": "Charging a capacitor: 10, 22 and 47 µF with a 10 kΩ-step box",
+   "sample": "Electrolytics 10 / 22 / 47 µF, box in 10 kΩ steps",
+   "method": "Small capacitors with large resistances (100-200 kΩ)",
+   "params": {
+    "C1": 10,
+    "C2": 22,
+    "C3": 47,
+    "RU": 10000,
+    "Rr": 100000,
+    "Cc": 2.2e-05
+   },
+   "note": "With R of a hundred kilo-ohms a moving-coil voltmeter would draw a noticeable share of the current; this lab's voltmeter is taken as ideal (like a 10 MΩ digital meter).",
+   "source": {
+    "title": "IEC 60063: preferred number series (E6: 10, 15, 22, 33, 47, 68)",
+    "note": "Aluminium electrolytic capacitors are sold in E6 values with ±20 % tolerance (IEC 60384-4)."
+   }
+  },
+  {
+   "key": "caps-e6",
+   "title": "Charging a capacitor: 330, 470 and 680 µF",
+   "sample": "Electrolytics 330 / 470 / 680 µF, box in kΩ",
+   "method": "Three neighbouring E6 values, so the time constants are close together",
+   "params": {
+    "C1": 330,
+    "C2": 470,
+    "C3": 680,
+    "Rr": 10000,
+    "Cc": 0.00033
+   },
+   "note": "Neighbouring E6 values differ by about 1.5 times; the measured τ must follow RC just as closely.",
+   "source": {
+    "title": "IEC 60063: preferred number series (E6: 10, 15, 22, 33, 47, 68)",
+    "note": "Aluminium electrolytic capacitors are sold in E6 values with ±20 % tolerance (IEC 60384-4)."
+   }
+  },
+  {
+   "key": "unknown-330",
+   "title": "RC charging: find the capacitance of an unknown capacitor X",
+   "sample": "Unknown electrolytic capacitor X (marking hidden)",
+   "method": "τ for several known R; C = slope of τ against R",
+   "unknown": "the capacitance C of capacitor X",
+   "params": {
+    "Cx": 330,
+    "Rr": 10000,
+    "Cc": 0.00033
+   },
+   "note": "A generic capacitor whose marking is covered: its value is found only from the charging time.",
+   "source": {
+    "title": "NCERT Physics Part I, Class XII, Ch 2 Electrostatic Potential and Capacitance",
+    "note": "Generic unknown capacitor; 330 µF is an E6 value (IEC 60063)."
+   }
+  },
+  {
+   "key": "unknown-680",
+   "title": "RC charging: find the capacitance of a second unknown capacitor Y",
+   "sample": "Unknown electrolytic capacitor Y (marking hidden)",
+   "method": "τ for several known R; C = slope of τ against R",
+   "unknown": "the capacitance C of capacitor Y",
+   "params": {
+    "Cx": 680,
+    "Rr": 10000,
+    "Cc": 0.00068
+   },
+   "note": "A generic capacitor whose marking is covered, about twice the size of X.",
+   "source": {
+    "title": "NCERT Physics Part I, Class XII, Ch 2 Electrostatic Potential and Capacitance",
+    "note": "Generic unknown capacitor; 680 µF is an E6 value (IEC 60063)."
+   }
+  },
+  {
+   "key": "marked-470",
+   "title": "RC charging: the real value of a capacitor marked 470 µF",
+   "sample": "Electrolytic marked 470 µF ±20 %",
+   "method": "τ for several known R; C = slope of τ against R, compared with the marking",
+   "unknown": "the real capacitance of the 470 µF capacitor",
+   "params": {
+    "Cx": 412,
+    "Cmark": 470,
+    "Rr": 10000,
+    "Cc": 0.000412
+   },
+   "note": "Electrolytic capacitors are made to ±20 %: anything from 376 to 564 µF meets this marking. Find out where this one lies.",
+   "source": {
+    "title": "IEC 60384-4: aluminium electrolytic capacitors, tolerance code M = ±20 %",
+    "note": "The capacitor in this lab has a real value inside the tolerance band; it is an example, not a measured part."
+   }
+  },
+  {
+   "key": "marked-1000",
+   "title": "RC charging: the real value of a capacitor marked 1000 µF",
+   "sample": "Electrolytic marked 1000 µF ±20 %",
+   "method": "τ for several known R; C = slope of τ against R, compared with the marking",
+   "unknown": "the real capacitance of the 1000 µF capacitor",
+   "params": {
+    "Cx": 1130,
+    "Cmark": 1000,
+    "Rr": 10000,
+    "Cc": 0.00113
+   },
+   "note": "Electrolytic capacitors are made to ±20 %: anything from 800 to 1200 µF meets this marking. Its time constants are long, so be patient at the 63 % mark.",
+   "source": {
+    "title": "IEC 60384-4: aluminium electrolytic capacitors, tolerance code M = ±20 %",
+    "note": "The capacitor in this lab has a real value inside the tolerance band; it is an example, not a measured part."
+   }
+  }
+ ]
+}

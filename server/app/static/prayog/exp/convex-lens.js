@@ -10,6 +10,14 @@ HoolaStudio.define('convex-lens', function (S) {
   var AP = RIM * 0.97;                                          // clear aperture radius
   var CARD_W = 0.11, CARD_H = 0.15, CARD_TOP = 0.03;            // white screen card, centred a little below the axis
   var st = { lit: false, cPos: 40, sPos: 125, cSet: 40, sSet: 125, rays: false, view: null };
+  var FCM = 1 / ((p.n - 1) * (2 / p.R)) * 100;                  // lensmaker's focal length (cm): sets the walk-through's positions
+  function fmt1(v) { return String(Math.round(v * 2) / 2); }
+  var SAMPLE = ((S.lab.variant || {}).sample || '');
+  var GLASS = /flint/i.test(SAMPLE) ? 'flint glass' : /acrylic|pmma/i.test(SAMPLE) ? 'acrylic (PMMA)' : /crown|bk7/i.test(SAMPLE) ? 'crown glass' : 'glass';
+  function autoU() {                                            // object distances a careful student picks: far beyond 2f (a short lens keeps the base set, so the flame stays near the axis), image on the bench
+    var us = [2.25, 2.5, 3, 3.5, 4].map(function (m) { return Math.round(m * Math.max(FCM, 20) * 2) / 2; }), hi = MIR - 6;
+    if (us[us.length - 1] > hi) { var lo = Math.ceil(Math.max(2.05 * FCM, hi * FCM / (hi - FCM) + 0.5) * 2) / 2; us = [0, 1, 2, 3, 4].map(function (k) { return Math.round((lo + (hi - lo) * k / 4) * 2) / 2; }); }
+    return us; }
   function xAt(cm) { return X0 + cm / 100; }
   function uCm() { return MIR - st.cPos; }
   function vCm() { return st.sPos - MIR; }
@@ -63,7 +71,7 @@ HoolaStudio.define('convex-lens', function (S) {
   var prof = [], NS = 24, rr, tt;
   for (var li = 0; li <= NS; li++) { rr = RIM * 0.995 * li / NS; tt = Math.max(0.00025, p.d / 2 - (p.R - Math.sqrt(p.R * p.R - rr * rr))); prof.push(new T.Vector2(rr, -tt)); }
   for (li = NS; li >= 0; li--) { rr = RIM * 0.995 * li / NS; tt = Math.max(0.00025, p.d / 2 - (p.R - Math.sqrt(p.R * p.R - rr * rr))); prof.push(new T.Vector2(rr, tt)); }
-  var glass = new T.MeshPhysicalMaterial({ color: 0xdcefff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.32, depthWrite: false,
+  var glass = new T.MeshPhysicalMaterial({ color: GLASS === 'flint glass' ? 0xf3efd6 : GLASS === 'acrylic (PMMA)' ? 0xe6f3ff : 0xdcefff, roughness: 0.02, metalness: 0, transparent: true, opacity: 0.32, depthWrite: false,
     clearcoat: 1, clearcoatRoughness: 0.02, specularIntensity: 1, envMapIntensity: 1.7, side: T.DoubleSide });   // no transmission pass: cheap and clear
   var face = new T.Mesh(new T.LatheGeometry(prof, 72), glass); face.rotation.z = Math.PI / 2; face.renderOrder = 3; mirror.add(face);
   var ring = S.mesh(new T.TorusGeometry(RIM + 0.0018, 0.0026, 12, 64), M.bakelite); ring.rotation.y = Math.PI / 2; mirror.add(ring);
@@ -120,7 +128,7 @@ HoolaStudio.define('convex-lens', function (S) {
   for (var ri = 0; ri < 6; ri++) { var ln = new T.Line(new T.BufferGeometry(), rayMat); ln.visible = false; ln.renderOrder = 7; S.scene.add(ln); rayLines.push(ln); }
 
   S.addApparatus('bench', bench, 'Optical bench', 'A rigid iron bed, 180 cm long, with a centimetre scale (least count 1 mm). Each upright has an index mark that you read on the scale.');
-  S.addApparatus('lens', mirCar, 'Convex lens', 'A thin biconvex glass lens in a ring holder, clamped with its centre exactly at the 90.0 cm mark.');
+  S.addApparatus('lens', mirCar, 'Convex lens', (SAMPLE ? SAMPLE + '. ' : '') + 'A thin biconvex ' + (GLASS === 'glass' ? 'glass' : GLASS) + ' lens in a ring holder, clamped with its centre exactly at the 90.0 cm mark.');
   S.addApparatus('candle', canCar, 'Candle on an upright', 'The lit flame is the bright object, on the left of the lens, standing on the principal axis.');
   S.addApparatus('screen', scrCar, 'White screen', 'A white card on the right of the lens. Slide it until the inverted image of the flame is sharp.');
   S.addApparatus('box', box, 'Safety matches', 'To light the candle. Keep the box away from the flame.');
@@ -267,8 +275,8 @@ HoolaStudio.define('convex-lens', function (S) {
     views: VIEWS,
     theory: { principle: 'A convex lens bends the light from a bright object so that it meets again on the other side, forming a real, inverted image. A white screen placed exactly there shows a sharp image; anywhere else the light is spread into a blur.',
       formula: '1/v + 1/u = 1/f', formulaNote: 'u, v = distances of the object and the image from the lens (real image, both taken positive) · lensmaker: 1/f = (n − 1)(1/R₁ + 1/R₂)',
-      more: ['With n = 1.5 and both faces R = 20 cm, the lensmaker’s formula gives f = 20 cm. A graph of 1/v against 1/u is a straight line cutting both axes at 1/f.',
-        'The flame tip is a few centimetres off the axis, so keep u well beyond f (40 cm or more here): the image then stays close to the axis and the thin-lens formula holds closely.'],
+      more: ['With n = ' + (+p.n.toFixed(4)) + ' and both faces R = ' + (+(p.R * 100).toFixed(2)) + ' cm, the lensmaker’s formula gives f = ' + (+FCM.toFixed(1)) + ' cm. A graph of 1/v against 1/u is a straight line cutting both axes at 1/f.',
+        'The flame tip is a few centimetres off the axis, so keep u well beyond f (' + fmt1(2 * FCM) + ' cm or more here): the image then stays close to the axis and the thin-lens formula holds closely.'],
       precautions: 'Keep the flame, the centre of the lens and the screen in one line along the bench. Find the sharpest image by moving the screen both ways in small steps. Read each upright at its index mark, with your eye straight above it. Keep paper and the matchbox away from the flame.' },
     book: { title: 'Expt. — Convex Lens (u–v)', lines: ['Aim: to find f of a convex lens.', 'Lens centre at 90.0 cm on the bench scale.', 'u = lens − candle,  v = screen − lens', '1/v + 1/u = 1/f  →  f = uv/(u + v)', 'Precaution: sharpest image, no parallax.'],
       columns: [{ label: 'No.', get: function (r, i) { return i + 1; } }, { label: 'Candle', get: function (r) { return r.c.toFixed(1); } },
@@ -280,7 +288,7 @@ HoolaStudio.define('convex-lens', function (S) {
     result: function (rows) { var f = fMean(rows); if (!isFinite(f) || rows.length < 2) return null;
       return { label: 'f', value: f, unit: 'cm', digits: 1, truth: lensF() * 100, note: 'Mean of uv/(u + v). The straight line of 1/v against 1/u cuts each axis at 1/f.' }; },
     tol: 0.015,
-    chips: ['Why is the image inverted?', 'How do I know the image is sharpest?', 'What happens when u is less than f?', 'Check my readings', 'Why is my f a little less than 20 cm?'],
+    chips: ['Why is the image inverted?', 'How do I know the image is sharpest?', 'What happens when u is less than f?', 'Check my readings', 'Why is my f a little less than ' + fmt1(FCM) + ' cm?'],
     viva: [['Where must the candle be for an image the same size as the object?', ['At 2f', 'At f', 'Between f and the lens'], 0, 'At 2f the image also forms at 2f on the other side, inverted and the same size.'],
       ['If the lower half of the lens is covered, the image on the screen…', ['is complete but dimmer', 'loses its lower half', 'disappears'], 0, 'Every part of the lens forms the whole image; covering half only halves the light.']],
     askState: function () { var v = view || look(); return { lens_centre_at_cm: MIR, candle_at_cm: st.cPos, screen_at_cm: st.sPos, u_cm: +uCm().toFixed(1), v_screen_cm: +vCm().toFixed(1),
@@ -321,7 +329,7 @@ HoolaStudio.define('convex-lens', function (S) {
         },
         ok: function () { return S.rows.length >= 4; },
         auto: function () {
-          return [45, 50, 60, 70, 80].reduce(function (pr, uu) { return pr.then(function () {
+          return autoU().reduce(function (pr, uu) { return pr.then(function () {
             st.cSet = MIR - uu; return moveUpright('c', MIR - uu).then(function () { st.sSet = bestScreen(); return moveUpright('s', st.sSet); }).then(function () { record(); }); }); }, Promise.resolve()); } },
     ],
 

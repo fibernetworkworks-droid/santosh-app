@@ -18,12 +18,15 @@ THEKA_TOOLS = [
         "completed_on, status. action=boq: project, items [{code, description, unit, qty, rate}] or file_id (BOQ Excel / CSV), extra "
         "(true for extra items). action=measure: project, item (BOQ item no or words), qty (as measured), detail (L x B x D / "
         "chainage), day, by. action=ra_bill: project, upto, final. action=bill_status: bill_id, status submitted (ONLY on her haan)|"
-        "passed|paid, amount, on. action=sub: name, phone, individual, pan_ok, work, retention_pct. action=sub_bill: sub, amount, "
-        "project, day. action=material: project, item, qty, rate, used (true when consumed). action=diary: project, labour, work, "
+        "passed|paid, amount, on. action=sub: name, phone, individual, pan_ok, work, retention_pct, rate_basis (naap kaisa - sqm / cum / "
+        "running ft / lump). action=sub_advance: sub, amount (advance), project, day, note. action=sub_bill: sub, amount, "
+        "project, day, advance_recover (kitna advance isi bill se kaatna hai, oldest pehle), note. action=wage_calc: workers, days, "
+        "rate, basis day|hour|piece, gang, ot_hours, advance_recover, note -> wage working paper trail ke saath (payment aapke tap se). "
+        "action=material: project, item, qty, rate, used (true when consumed). action=diary: project, labour, work, "
         "hindrance, lost_hours, by_client (department-side), day. action=eot: project (extension letter draft). action=register (Excel)."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["settings", "tender", "project", "boq", "measure", "ra_bill", "bill_status", "sub", "sub_bill",
-                                               "material", "diary", "eot", "register"]},
+         "action": {"type": "string", "enum": ["settings", "tender", "project", "boq", "measure", "ra_bill", "bill_status", "sub", "sub_advance",
+                                               "sub_bill", "wage_calc", "material", "diary", "eot", "register"]},
          "firm": {"type": "string"}, "gstin": {"type": "string"}, "individual": {"type": "boolean"}, "udyam": {"type": "string"},
          "registration": {"type": "string"}, "registration_valid_to": {"type": "string"}, "address": {"type": "string"},
          "name": {"type": "string"}, "tender": {"type": "string"}, "dept": {"type": "string"}, "portal": {"type": "string"},
@@ -41,7 +44,9 @@ THEKA_TOOLS = [
          "bill_id": {"type": "string"}, "amount": {"type": "number"}, "on": {"type": "string"}, "phone": {"type": "string"},
          "pan_ok": {"type": "boolean"}, "work": {"type": "string"}, "sub": {"type": "string"}, "rate": {"type": "number"},
          "used": {"type": "boolean"}, "labour": {"type": "integer"}, "hindrance": {"type": "string"}, "lost_hours": {"type": "number"},
-         "by_client": {"type": "boolean"}, "note": {"type": "string"}},
+         "by_client": {"type": "boolean"}, "note": {"type": "string"}, "rate_basis": {"type": "string"}, "advance_recover": {"type": "number"},
+         "workers": {"type": "integer"}, "days": {"type": "integer"}, "basis": {"type": "string"}, "ot_hours": {"type": "number"},
+         "gang": {"type": "string"}, "advance": {"type": "number"}},
          "required": ["action"]}},
     {"name": "theka_dekho", "description": (
         "Read contractor work (nothing changes). what=day (tender deadlines, EMD to recover, BG / insurance / registration expiry, "
@@ -94,9 +99,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 raise ToolError("Bill department ko dene ki haan sirf owner.")
             return S.bill_status(t, _s(a.get("bill_id")), _s(a.get("status")), a.get("amount"), _s(a.get("on")))
         if action == "sub":
-            return S.save_sub(t, _s(a.get("name")), _s(a.get("phone")), a.get("individual"), a.get("pan_ok"), _s(a.get("work")), a.get("retention_pct"))
+            return S.save_sub(t, _s(a.get("name")), _s(a.get("phone")), a.get("individual"), a.get("pan_ok"), _s(a.get("work")), a.get("retention_pct"),
+                              _s(a.get("rate_basis")))
+        if action == "sub_advance":
+            return S.sub_advance(t, _s(a.get("sub")), a.get("advance"), pr, _s(a.get("day")), _s(a.get("note")))
         if action == "sub_bill":
-            return S.sub_bill(t, _s(a.get("sub")), a.get("amount"), pr, _s(a.get("day")), _s(a.get("note")))
+            return S.sub_bill(t, _s(a.get("sub")), a.get("amount"), pr, _s(a.get("day")), _s(a.get("note")), a.get("advance_recover"))
+        if action == "wage_calc":
+            return S.wage_calc(t, pr, _s(a.get("gang")), a.get("workers"), a.get("days"), a.get("rate"), _s(a.get("basis")) or "day",
+                               a.get("ot_hours"), a.get("advance_recover"), _s(a.get("note")))
         if action == "material":
             return S.material(t, pr, _s(a.get("item")), a.get("qty"), a.get("rate"), bool(a.get("used")), _s(a.get("day")), _s(a.get("note")))
         if action == "diary":
@@ -130,6 +141,22 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.receivables(t)
         if what == "stock":
             return {"stock": S.stock(t, pr)}
+        if what == "sub":
+            from ..db import session as _sess
+            from sqlalchemy import select as _sel
+            from ..theka.service import ThekaSub, ThekaSubAdvance, ThekaSubBill
+            with _sess() as _s2:
+                subs = _s2.scalars(_sel(ThekaSub).where(ThekaSub.tenant_id == t)).all()
+                x = next((r for r in subs if _s(a.get("sub")).lower() in r.name.lower()), None) if subs else None
+                if not x:
+                    raise ToolError("Petty contractor nahi mila.")
+                advs = _s2.scalars(_sel(ThekaSubAdvance).where(ThekaSubAdvance.tenant_id == t, ThekaSubAdvance.sub_id == x.id)).all()
+                bills = _s2.scalars(_sel(ThekaSubBill).where(ThekaSubBill.tenant_id == t, ThekaSubBill.sub_id == x.id)).all()
+            return {"sub": {"name": x.name, "work": x.work, "rate_basis": x.rate_basis, "retention_pct": x.retention_pct,
+                            "individual": x.individual, "pan_ok": x.pan_ok,
+                            "open_advances": round(sum(a.amount for a in advs if not a.recovered), 2),
+                            "advances": [{"day": a.day, "amount": a.amount, "recovered": a.recovered} for a in advs],
+                            "bills": [{"day": b.day, "amount": b.amount, "net": b.net, "paid": b.paid} for b in bills]}}
         if what == "settings":
             return S.settings(t)
         if what == "rules":

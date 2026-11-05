@@ -100,31 +100,37 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['lab','Lab'],['baat','Voice call']];   // v0.415 Lab = Prayogshala 3D practicals
+const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
+// (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
+// employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
 IC.bana = '<path d="M4 5h16v14H4zM4 10h16M10 10v9"/>';
 IC.arena = '<path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM7 6H4v1a3 3 0 0 0 3 3M17 6h3v1a3 3 0 0 1-3 3"/>';   // v0.312 Design Arena (owner only)
 let AR = null;         // v0.312 the Arena screen (arena.js)
 IC.systems = '<path d="M4 7h16M4 12h16M4 17h16M7 4v16"/>';   // v0.396 CONNECT: her own ERP / CRM systems
 IC.hire = '<path d="M14 20v-1.5a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4V20M8 10.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7M18 2.5l1.1 2.4 2.4 1.1-2.4 1.1L18 9.5l-1.1-2.4L14.5 6l2.4-1.1z"/>';   // v0.443 AI Employees (person + spark)
+IC.skills = '<path d="M4 19.5V6a2 2 0 0 1 2-2h6v16H6a2 2 0 0 0-2 1.5zM12 4h6a2 2 0 0 1 2 2v13.5M12 4v16M8 8h1M8 12h1M15 8h1M15 12h1"/>';   // v0.481 the Skill Desk (an open book)
 IC.seodesk = '<path d="M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35M8 11h6M11 8v6"/>';                     // v0.317 SEO Desk
 IC.caddesk = '<path d="M12 2l9 5v10l-9 5-9-5V7l9-5zM3 7l9 5 9-5M12 12v10"/>';   // v0.357 CAD Desk
 IC.archdesk = '<path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6M9 13h.01M15 13h.01"/>';   // v0.410 Architecture Desk
 IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 0 0 2 9.7v4.1A3.2 3.2 0 0 0 5.2 17c1 0 2-.5 2.6-1.4L9 14h6l1.2 1.6c.6.9 1.6 1.4 2.6 1.4a3.2 3.2 0 0 0 3.2-3.2V9.7A4.7 4.7 0 0 0 17.3 5z"/>';   // v0.370 Game Desk
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
+let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
-function syncEmployees(hired) {                     // v0.317 a desk appears in the sidebar only while its employee is hired
+function syncEmployees(hired) {                     // v0.317 desks exist only while their employee is hired
+  // v0.456 her ask: NO desk rows in the sidebar ("REMOVE THIS FROM SIDE BAR" - Education / Social / SEO Desk). Every desk
+  // opens from AI Employees > Open desk; the sidebar keeps only the AI Employees entry. A desk that is open when its
+  // employee is let go still falls back to the hub.
   if (ME) ME.employees = hired || {};
-  let moved = false;
-  for (const [key, view, label] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk']]) {   // v0.353 + Social Desk
-    const want = !!(hired && (hired[key] || (key === 'edu' && EDU_KEYS.some(k => hired[k])) || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td)))), has = NAV.some(([k]) => k === view);   // v0.420 any Game Desk role opens the Game Desk
-    if (want && !has) NAV.splice(NAV.findIndex(([k]) => k === 'hire') + 1, 0, [view, label]);
-    if (!want && has) NAV.splice(NAV.findIndex(([k]) => k === view), 1);
-    if (want !== has) { moved = true; if (!want && VIEW === view) go('hire'); }
+  for (const [key, view] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk']]) {
+    const want = !!(hired && (hired[key] || (key === 'edu' && EDU_KEYS.some(k => hired[k])) || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td))));   // v0.420 any Game Desk role opens the Game Desk
+    if (!want && VIEW === view) go('hire');
   }
-  if (moved) drawNav();   // hired.social / hired.seo
+  const before = NAV.length;
+  for (let i = NAV.length - 1; i >= 0; i--) if (/desk$/.test(NAV[i][0])) NAV.splice(i, 1);   // never a desk row
+  if (NAV.length !== before) drawNav();
 }
 IC.edudesk = '<path d="M12 6c-2.5-1.4-5.5-1.6-9-1v13c3.5-.6 6.5-.4 9 1 2.5-1.4 5.5-1.6 9-1V5c-3.5-.6-6.5-.4-9 1zM12 6v13"/>';   // v0.453 Education Desk
 IC.lab = '<path d="M9 3h6M10 3v6L4.5 18.5A2 2 0 0 0 6.2 21.5h11.6a2 2 0 0 0 1.7-3L14 9V3M7 15h10"/>';   // Prayogshala
@@ -136,7 +142,7 @@ function navBadge(k) {
   return live + (QUEUE.length ? `<span class="ct txt" title="Waiting for your approval">${QUEUE.length}</span>` : '');
 }
 function drawNav() {
-  $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
+  $('#snav').innerHTML = NAV.map(([k, n]) => `<button class="sn" data-v="${k}" aria-current="${k === VIEW || (k === 'hire' && /desk$/.test(VIEW))}">${svg(IC[k === 'baat' ? 'call' : k])}<span class="txt">${n}</span>${navBadge(k)}</button>`).join('');
   const T = [['chat','Chat'],['aaj','Today'],['baat',''],['kaam','Tools'],['main','Account']];
   $('#tabbar').innerHTML = T.map(([k, n]) => k === 'baat' ? `<div class="mid"><button class="baat" data-v="baat" aria-label="Voice call">${svg(IC.baat).replace('currentColor', '#1B1030')}</button></div>`
     : `<button class="sn" data-v="${k}" aria-current="${k === VIEW}">${svg(IC[k])}<span>${n}</span></button>`).join('');
@@ -144,7 +150,7 @@ function drawNav() {
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -160,6 +166,7 @@ function go(v, arg) {
   if (v === 'gamedesk') EMP?.game($('#gamedesk'));
   if (v === 'archdesk') EMP?.arch($('#archdesk'));   // v0.410
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
+  if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
 }
@@ -189,6 +196,7 @@ $('#model').addEventListener('click', e => {
     {header: ME.email || ME.owner || 'Signed in'},
     {label: 'Settings', icon: 'settings', run: () => go('main')},
     ...(PN ? [{label: 'Library', icon: 'library', run: () => go('bana')}] : []),
+    {label: 'Skills', icon: 'skills', run: () => go('skills')},   // v0.481 the Skill Desk
     {sep: true},
     {label: 'Light', icon: 'sun', checked: t === 'light', run: setT('light')},
     {label: 'Dark', icon: 'moon', checked: t === 'dark', run: setT('dark')},
@@ -251,7 +259,9 @@ async function enter() {
   syncEmployees(ME.employees || {});
   if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
     ENT = HoolaEnterprise({api, esc, toast});
-    if (!NAV.some(([k]) => k === 'systems')) NAV.push(['systems', 'Systems']);
+  }
+  if (window.HoolaSkills && !SK) {             // v0.481 the Skill Desk
+    SK = HoolaSkills({api, esc, toast});
   }
   if (ME.arena && window.HoolaArena && !AR) { AR = HoolaArena({api, esc, toast}); if (!NAV.some(([k]) => k === 'arena')) NAV.push(['arena', 'Arena']); }   // v0.312 owner only
   $('#login').hidden = true; $('#app').hidden = false; drawNav(); drawKaam(); go('chat');
@@ -890,6 +900,36 @@ function renderCard(kind, p, at, live) {
   }
   const el = cardShell(kind, p);
   switch (kind) {
+    // v0.449 Phase 2 NAKSHA DIKHE: places as readable cards instead of a wall of addresses.
+    // Deliberately NO map: Google's terms allow Places content with no map (SST 14.1) and forbid it on a
+    // non-Google map (SST 14.2 / ToS 3.2.3(e)), so free tiles here would be a licence breach. Attribution is
+    // required wherever this content is shown, with or without a map (ToS 3.2.2(b)).
+    case 'maps_places': {
+      const ps = Array.isArray(p.places) ? p.places : [];
+      const bits = x => [x.type, x.distance_km != null ? x.distance_km + ' km' : '',
+                         x.rating != null ? '\u2605 ' + x.rating + (x.reviews ? ' (' + x.reviews + ')' : '') : '',
+                         x.open_now === true ? 'Khula hai' : x.open_now === false ? 'Band hai' : '',
+                         x.status && x.status !== 'OPERATIONAL' ? x.status.replace(/_/g, ' ').toLowerCase() : '']
+                        .filter(Boolean).join(' \u00b7 ');
+      el.innerHTML = head(p.title || 'Jagahein', ps.length ? String(ps.length) : '', 'v') +
+        `<div class="bd">` + (p.near ? `<div class="faint" style="font-size:12.5px">${esc(p.near)} ke aas-paas</div>` : '') +
+        ps.map(x => {
+          const ml = safeLink(x.maps_link), web = safeLink(x.website);
+          return `<div class="ln" style="display:block;padding:7px 0">` +
+            `<b>${esc(x.name || '')}</b>` +
+            (bits(x) ? `<div class="faint" style="font-size:12.5px">${esc(bits(x))}</div>` : '') +
+            (x.address ? `<div style="font-size:13px">${esc(x.address)}</div>` : '') +
+            (Array.isArray(x.hours) && x.hours.length ? `<div class="faint" style="font-size:12px">${esc(x.hours.join(' \u00b7 '))}</div>` : '') +
+            `<div class="row" style="gap:10px;margin-top:3px;font-size:12.5px">` +
+            (x.phone ? `<a href="tel:${esc(String(x.phone).replace(/[^\d+]/g, ''))}">${esc(x.phone)}</a>` : '') +
+            (web ? `<a href="${esc(web)}" target="_blank" rel="noopener noreferrer">Website \u2197</a>` : '') +
+            (ml ? `<a href="${esc(ml)}" target="_blank" rel="noopener noreferrer">Google Maps \u2197</a>` : '') +
+            `</div></div>`;
+        }).join('') +
+        `<div class="faint" style="font-size:11.5px;margin-top:6px">${esc(p.attribution || 'Google')}` +
+        (p.cost_inr ? ` \u00b7 \u20b9${esc(String(p.cost_inr))}` : (p.cost_inr === 0 ? ' \u00b7 free' : '')) +
+        `</div></div>`;
+      break; }
     case 'bazar_approval': {
       el.innerHTML = head(p.title || 'Your approval is required', p.money ? 'paisa' : 'Your approval', p.money ? 'bad' : 'warn')
         + (p.amount ? `<div class="big">${esc(p.amount)}</div>` : '') + (p.payee ? `<div class="faint" style="font-size:13px">${esc(p.payee)}</div>` : '')
@@ -1288,6 +1328,7 @@ const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
+  'maps_places',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {
@@ -1336,6 +1377,7 @@ const SLASH_CMDS = [
   ['tools', 'All tools', 'everything Hoola can do', () => go('kaam')],
   ['call', 'Voice call', 'live voice call', () => go('baat')],
   ['account', 'Account', 'profile, password, AI spend', () => go('main')],
+  ['skills', 'Learned Skills', 'what your Hoola knows', () => go('skills')],   // v0.481
   ['appearance', 'Appearance', 'Light, Dark or System', () => { go('main'); setTimeout(() => $('#appearance')?.scrollIntoView({block: 'center', behavior: SMOOTH()}), 60); }],
   ['light', 'Light theme', 'switch to light', () => TH?.setTheme('light')],
   ['dark', 'Dark theme', 'switch to dark', () => TH?.setTheme('dark')],

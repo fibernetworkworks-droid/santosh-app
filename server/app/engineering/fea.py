@@ -105,6 +105,21 @@ def material(name: str | None) -> tuple[str, dict[str, float]]:
     return "steel", MATERIALS["steel"]
 
 
+# How far these can stretch before they tear, as plastic strain (published elongation at break, taken low and
+# rounded down - it is a ductility ceiling, not a design number). Linear hardening alone would happily carry any
+# load by stretching for ever, which real metal does not do.
+TEAR = {"cast iron": 0.01, "pla": 0.03, "petg": 0.04, "abs": 0.05, "polycarbonate": 0.08, "pom": 0.08,
+        "nylon": 0.15, "wood": 0.01, "titanium": 0.10, "aluminium": 0.08, "aluminum": 0.08, "brass": 0.15,
+        "copper": 0.20, "stainless": 0.30, "mild steel": 0.20, "steel": 0.15}
+
+
+def tear_limit(mname: str) -> float:
+    for k in sorted(TEAR, key=len, reverse=True):
+        if k in (mname or "").lower():
+            return TEAR[k]
+    return 0.15
+
+
 class FeaError(Exception):
     pass
 
@@ -350,6 +365,45 @@ def _solve(K, f, D, xyz=None):
     u = np.zeros(K.shape[0])
     u[I] = x
     return u
+
+
+def _factorise(K, D, xyz=None):
+    """Condense and factorise ONCE, then solve for any right-hand side (the modified-Newton loop needs dozens)."""
+    import scipy.sparse.linalg as sl
+    import skfem
+    z = np.zeros(K.shape[0])
+    Kc, _f0, _x, I = skfem.condense(K, z, D=D)
+    Kc = Kc.tocsc()
+    pre = None
+    try:
+        import pyamg
+        B = None
+        if xyz is not None:
+            comp = I % 3
+            P = xyz[I]
+            B = np.zeros((len(I), 6))
+            for c in range(3):
+                B[comp == c, c] = 1
+            B[comp == 0, 3], B[comp == 1, 3] = -P[comp == 0, 1], P[comp == 1, 0]
+            B[comp == 1, 4], B[comp == 2, 4] = -P[comp == 1, 2], P[comp == 2, 1]
+            B[comp == 0, 5], B[comp == 2, 5] = P[comp == 0, 2], -P[comp == 2, 0]
+        pre = pyamg.smoothed_aggregation_solver(Kc.tocsr(), B=B).aspreconditioner()
+    except ImportError:
+        pass
+    lu = None if pre is not None else sl.splu(Kc)
+
+    def solve(rhs):
+        b = rhs[I]
+        if pre is not None:
+            x, info = sl.cg(Kc, b, M=pre, rtol=1e-10, maxiter=900)
+            if info != 0:
+                x = sl.spsolve(Kc, b)
+        else:
+            x = lu.solve(b)
+        out = np.zeros(K.shape[0])
+        out[I] = x
+        return out
+    return solve, I
 
 
 def _vm(s):
@@ -607,6 +661,213 @@ def buckling(shape, spec: dict) -> dict[str, Any]:
     return res
 
 
+# ---------------------------------------------------------------- v0.450 plasticity (does it take a permanent set?)
+def _return_map(eps, ep_old, al_old, lam, mu, sy, H):
+    """J2 (von Mises) radial return at every quadrature point, vectorised. Elastic-perfectly-plastic by default
+    (H = 0, which is what a limit load is defined on); H > 0 = linear isotropic hardening.
+    Returns the real stress, the new plastic strain / equivalent plastic strain, and the yielding mask."""
+    ee = eps - ep_old                                            # elastic strain = total - plastic
+    tr = ee[0, 0] + ee[1, 1] + ee[2, 2]
+    sig = 2.0 * mu * ee
+    for i in range(3):
+        sig[i, i] = sig[i, i] + lam * tr
+    p = (sig[0, 0] + sig[1, 1] + sig[2, 2]) / 3.0
+    sd = sig.copy()                                              # the deviator, which is what yields
+    for i in range(3):
+        sd[i, i] = sd[i, i] - p
+    nrm = np.sqrt(np.maximum(sum(sd[i, j] ** 2 for i in range(3) for j in range(3)), 0.0))
+    k = math.sqrt(2.0 / 3.0) * (sy + H * al_old)                 # the yield surface radius in deviator space
+    f = nrm - k
+    yielding = f > 0.0
+    dg = np.where(yielding, f / (2.0 * mu + 2.0 * H / 3.0), 0.0)  # the plastic multiplier
+    n = sd / np.maximum(nrm, 1e-30)
+    sig_new = sig - 2.0 * mu * dg * n
+    ep_new = ep_old + dg * n
+    al_new = al_old + math.sqrt(2.0 / 3.0) * dg
+    return sig_new, ep_new, al_new, yielding
+
+
+def plastic(shape, spec: dict) -> dict[str, Any]:
+    """PAST YIELD: the linear stress check only says "it has yielded somewhere". This says what happens next -
+    whether the part keeps a permanent bend after her load comes off, and at what load it COLLAPSES.
+
+    Real elastic-plastic analysis: the load is put on in steps, and at every step the stress at each integration
+    point is brought back onto the von Mises yield surface (J2 radial return), which is what metal actually does.
+    Equilibrium is re-solved until the leftover force is small (modified Newton: the elastic stiffness is factorised
+    ONCE and re-used, so each round is cheap - slower to converge than a full tangent, but the answer it converges
+    to is the same). Then the load is taken off elastically, and whatever displacement is left is the PERMANENT SET.
+    When a load step will not converge, the part has run out of ways to carry the load: that is plastic collapse,
+    and the last step that did converge is the collapse factor (a lower bound, said as one).
+    HOW CLOSE IT IS, measured: against the two textbook limit loads - a bar in tension (collapses at yield, 2.0x
+    here) and a stubby rectangular cantilever (1.5x first yield, the plastic shape factor) - this lands within about
+    20 % either way (1.75 and 1.75 against 2.0 and 1.5), one load step being 0.15. So read the collapse factor as a
+    band, not a number, and use `carries_up_to` (the last load it clearly still held) when something must be safe."""
+    import skfem
+    from skfem.helpers import ddot, sym_grad
+    t0 = time.time()
+    mname, mat = material(spec.get("material"))
+    nodes = int(spec.get("nodes") or 1800)
+    A = _assemble(shape, spec, mat, nodes)
+    m, ib, K, f, D = A["m"], A["ib"], A["K"], A["f"], A["D"]
+    E, nu = A["E"], A["nu"]
+    if float(np.linalg.norm(f)) < 1e-12:
+        raise FeaError("plastic: loads chahiye")
+    mu = E / (2.0 * (1.0 + nu))
+    lam = E * nu / ((1.0 + nu) * (1.0 - 2.0 * nu))
+    sy = float(spec.get("yield_MPa") or mat["yield"])
+    # A modest work-hardening slope by default. Real metals harden much more; zero hardening is the textbook limit
+    # load but lets one singular corner (a fully clamped face is one in ANY mesh) flow away on its own and stop the
+    # solve long before the part is really finished. E/200 barely moves the collapse load and keeps it honest.
+    H = float(spec["hardening_MPa"]) if spec.get("hardening_MPa") is not None else E / 200.0
+    tear = float(spec["max_strain_pct"]) / 100.0 if spec.get("max_strain_pct") else tear_limit(mname)
+    xyz = _vector_dofs_xyz(ib)
+    solve, free = _factorise(K, D, xyz)
+    u_el = solve(f)                                              # the linear answer, for comparison
+    eps_el = sym_grad(ib.interpolate(u_el))
+    vm_el = _vm(_stress_of(eps_el, lam, mu))
+    vm_nod = _nodal(m, vm_el)
+    peak = float(vm_nod.max())                                    # where it starts yielding, clamp included: in a
+    first_yield = sy / max(peak, 1e-12)                           # plastic run the clamp really does yield first
+    shp = np.asarray(eps_el).shape                               # (3, 3, elements, quadrature points)
+    ep = np.zeros(shp)
+    al = np.zeros(shp[2:])
+    u = np.zeros(K.shape[0])
+    top = float(spec.get("max_factor") or 2.0)                    # "does it survive twice her load?"; she can ask more
+
+    @skfem.LinearForm
+    def internal(v, w):
+        return ddot(w["sig"], sym_grad(v))
+
+    steps = [0.5, 1.0] + list(np.arange(1.0, top + 1e-9, 0.15)[1:])
+    hist, collapse, u_at_load, ep_at_load, done = [], None, None, None, 0.0
+    rate0, safe = None, 0.0
+    def resid(u_now, lf):
+        """The out-of-balance force, and the stress state that goes with it."""
+        eps = sym_grad(ib.interpolate(u_now))
+        sig, ep_n, al_n, _y = _return_map(np.asarray(eps), ep, al, lam, mu, sy, H)
+        return skfem.asm(internal, ib, sig=sig) - lf * f, ep_n, al_n
+
+    for lf in steps:
+        ep_try, al_try, u_try = ep.copy(), al.copy(), u.copy()
+        ok_step, fn = False, max(float(np.linalg.norm(lf * f)), 1e-30)
+        r, ep_n, al_n = resid(u_try, lf)
+        rel = float(np.linalg.norm(r[free])) / fn
+        prev = None
+        for _it in range(220):
+            if rel < 2e-3:
+                ep_try, al_try, ok_step = ep_n, al_n, True
+                break
+            du = -solve(r)
+            u_new = u_try + du
+            r_new, ep_n2, al_n2 = resid(u_new, lf)
+            rel_new = float(np.linalg.norm(r_new[free])) / fn
+            # Modified Newton keeps the ELASTIC stiffness, so once part of the body has gone soft every correction
+            # is too small and the residual creeps down by a near-constant ratio. That ratio is measurable, and the
+            # whole remaining geometric series can be added in one go (Aitken). Only kept if it really helps.
+            if prev is not None and rel_new < prev:
+                rho = rel_new / max(prev, 1e-30)
+                if 0.2 < rho < 0.995:
+                    u_x = u_new + du * (rho / (1.0 - rho))
+                    r_x, ep_x, al_x = resid(u_x, lf)
+                    rel_x = float(np.linalg.norm(r_x[free])) / fn
+                    if rel_x < rel_new:
+                        u_new, r_new, ep_n2, al_n2, rel_new = u_x, r_x, ep_x, al_x, rel_x
+            prev = rel
+            u_try, r, ep_n, al_n, rel = u_new, r_new, ep_n2, al_n2, rel_new
+        if not ok_step:
+            collapse = {"factor": round(done, 3), "why": "the load step above it would not balance"}
+            break
+        ep, al, u, done = ep_try, al_try, u_try, lf
+        dmax = float(np.max(np.sqrt(sum(u[ib.nodal_dofs[k]] ** 2 for k in range(3)))))
+        hist.append({"factor": round(float(lf), 3), "max_disp_mm": round(dmax, 5),
+                     "max_plastic_strain_pct": round(100 * float(al.max()), 4),
+                     "yielded_pct": round(100 * float((al > 1e-9).mean()), 2)})
+        if abs(lf - 1.0) < 1e-9:
+            u_at_load, ep_at_load = u.copy(), al.copy()
+        if float(al.max()) > tear:                                # the metal would TEAR, not just bend
+            collapse = {"factor": round(float(lf), 3),
+                        "why": f"the worst spot has stretched {100 * float(al.max()):.1f} % past yield, and this "
+                               f"material tears at about {100 * tear:.0f} % - it does not bend any further, it splits"}
+            if lf <= 1.0:
+                u_at_load, ep_at_load = None, None
+            break
+        if len(hist) >= 2:                                        # COLLAPSE: the part starts running away
+            d1, d0 = hist[-1], hist[-2]
+            rate = (d1["max_disp_mm"] - d0["max_disp_mm"]) / max(d1["factor"] - d0["factor"], 1e-9)
+            if rate0 is None:
+                rate0 = max(rate, 1e-30)
+            else:
+                if rate <= 2.0 * rate0:
+                    safe = round(float(lf), 3)
+                if rate > 4.0 * rate0:
+                    collapse = {"factor": round(float(lf), 3),
+                                "why": f"it started running away: at this load it moves {rate / rate0:.0f} times "
+                                       "further per extra kilo than it did while elastic, which is a plastic hinge "
+                                       "forming"}
+                    break
+    res = {"kind": "plastic", "material": mname, "yield_MPa": sy, "hardening_MPa": H,
+           "first_yield_factor": round(first_yield, 3), "tears_at_pct": round(100 * tear, 1),
+           "collapse_factor": collapse["factor"] if collapse else None,
+           "collapse_at_least": round(done, 3), "carries_up_to": round(max(safe, done if not collapse else safe), 3),
+           "steps": hist,
+           "mesh": {"nodes": int(m.p.shape[1]), "elements": int(m.t.shape[1]), "h_mm": round(A["msh"]["h"], 3),
+                    "element": "quadratic tetra (P2)"},
+           "note": "elastic-plastic (von Mises, " + ("no hardening - the classical limit load" if H == 0 else
+                   f"linear hardening {H:g} MPa") + "); small strains, one load path, no creep and no "
+                   "buckling interaction - a slender part can fold before it collapses this way, so run the buckling "
+                   "check too. The collapse factor is where it began to run away, give or take one load step; "
+                   "carries_up_to is the last load it clearly still held. Within about 20 % of the textbook limit load on the two "
+                   "cases it was checked against.",
+           "seconds": round(time.time() - t0, 1)}
+    if collapse:
+        res["collapse_note"] = (f"collapses at about x{collapse['factor']:g} of her load - {collapse['why']}. "
+                                "Treat it as a LOWER bound: the real collapse load is at or just above it.")
+    if u_at_load is not None:                                    # her own load: permanent set after it comes off
+        u_unload = u_at_load - solve(f)                           # taking the load off is elastic
+        set_mm = float(np.max(np.sqrt(sum(u_unload[ib.nodal_dofs[k]] ** 2 for k in range(3)))))
+        at_load = float(np.max(np.sqrt(sum(u_at_load[ib.nodal_dofs[k]] ** 2 for k in range(3)))))
+        el_mm = float(np.max(np.sqrt(sum(u_el[ib.nodal_dofs[k]] ** 2 for k in range(3)))))
+        res.update({"at_her_load": {
+            "max_disp_mm": round(at_load, 5), "elastic_would_be_mm": round(el_mm, 5),
+            "permanent_set_mm": round(set_mm, 5), "max_plastic_strain_pct": round(100 * float(ep_at_load.max()), 4),
+            "yielded_pct": round(100 * float((ep_at_load > 1e-9).mean()), 2),
+            "holds": bool(set_mm < float(spec.get("max_set_mm") or 1e18))}})
+        lim = spec.get("max_set_mm")
+        res["max_set_mm"] = float(lim) if lim else None
+        res["passes"] = (set_mm <= float(lim)) if lim else (collapse is None or collapse["factor"] > 1.0)
+    else:
+        res["passes"] = False
+        res["at_her_load"] = None
+        res["collapse_note"] = (res.get("collapse_note") or "") + " It collapses BELOW her own load."
+    vmp = _vm(_stress_of(sym_grad(ib.interpolate(u)), lam, mu))
+    lo, hi = 0.0, max(float(np.percentile(vmp, 99.5)), 1e-9)
+    res["scale"] = {"label": "von Mises stress at the last step (MPa)", "lo": lo, "hi": round(hi, 3)}
+    res["surface"] = _surface(m, _nodal(m, vmp), lo, hi)
+    return res
+
+
+def _stress_of(eps, lam, mu):
+    """Linear-elastic stress from a strain field at the quadrature points."""
+    e = np.asarray(eps)
+    tr = e[0, 0] + e[1, 1] + e[2, 2]
+    s = 2.0 * mu * e.copy()
+    for i in range(3):
+        s[i, i] = s[i, i] + lam * tr
+    return s
+
+
+def _nodal(m, q):
+    """A per-quadrature-point scalar averaged onto the nodes (for drawing only)."""
+    val = np.asarray(q)
+    per_el = val.reshape(val.shape[0], -1).mean(axis=1) if val.ndim > 1 else val
+    acc = np.zeros(m.p.shape[1])
+    cnt = np.zeros(m.p.shape[1])
+    for k in range(m.t.shape[0]):
+        np.add.at(acc, m.t[k], per_el)
+        np.add.at(cnt, m.t[k], 1.0)
+    return acc / np.maximum(cnt, 1)
+
+
 # ---------------------------------------------------------------- thermal
 def thermal(shape, spec: dict) -> dict[str, Any]:
     import skfem
@@ -854,7 +1115,8 @@ def _perimeter(shape, faces, idx) -> float:
 def run(shape, spec: dict) -> dict[str, Any]:
     kind = str(spec.get("kind") or "static").lower()
     fn = {"static": static, "stress": static, "thermal": thermal, "heat": thermal, "modal": modal,
-          "vibration": modal, "flow": flow, "cfd": flow, "buckling": buckling, "buckle": buckling}.get(kind)
+          "vibration": modal, "flow": flow, "cfd": flow, "buckling": buckling, "buckle": buckling,
+          "plastic": plastic, "yield": plastic, "collapse": plastic}.get(kind)
     if fn is None:
-        raise FeaError(f"analysis kind '{kind}' nahi hai (static / thermal / modal / flow / buckling)")
+        raise FeaError(f"analysis kind '{kind}' nahi hai (static / thermal / modal / flow / buckling / plastic)")
     return fn(shape, spec)

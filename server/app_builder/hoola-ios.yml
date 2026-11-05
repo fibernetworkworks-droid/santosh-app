@@ -51,7 +51,7 @@ jobs:
         if: inputs.kind == 'sim' || inputs.kind == 'testflight'
         continue-on-error: true
         run: |
-          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" ! -name "*-Runner.app" | head -1)
           bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa $(cat ios/hoola_qa/screens.txt)
       - name: Every button on every screen (flow walk, v0.345)
         if: inputs.kind == 'sim' || inputs.kind == 'testflight'
@@ -62,7 +62,7 @@ jobs:
         if: inputs.kind == 'sim' || inputs.kind == 'testflight'
         continue-on-error: true
         run: |
-          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" ! -name "*-Runner.app" | head -1)
           SIM_KIND=ipad bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa-ipad $(cat ios/hoola_qa/screens.txt)
       - name: Archive + upload to TestFlight
         if: inputs.kind == 'testflight'
@@ -107,7 +107,7 @@ jobs:
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
         run: |
           pip3 install --quiet --break-system-packages cryptography 2>/dev/null || pip3 install --quiet cryptography
-          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" | head -1)
+          APP=$(find ios/dd/Build/Products/Debug-iphonesimulator -maxdepth 1 -name "*.app" ! -name "*-Runner.app" | head -1)
           SHOTS=$(python3 -c "import json; print(' '.join(x for x in json.load(open('ios/hoola_qa/store.json')).get('shots') or [] if x != 'app_start'))")
           SIM_KIND=max bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa/store $SHOTS
           SIM_KIND=ipad bash ios/hoola_qa/sim_check.sh "$APP" "$(cat ios/hoola_qa/bundle.txt)" qa/store-ipad $SHOTS   # v0.364 the 13" iPad set

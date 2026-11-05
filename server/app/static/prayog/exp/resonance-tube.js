@@ -7,6 +7,7 @@ HoolaStudio.define('resonance-tube', function (S) {
     var lp = S.lab.params || {}; Object.keys(lp).forEach(function (key) { o[key] = lp[key]; }); return HK.paramsFor(name, o); }
   var p = labParams('resonance');
   var HMIN = 0.02, HMAX = 0.95;
+  var FSTR = Math.abs(p.f - Math.round(p.f)) > 0.05 ? p.f.toFixed(1) : String(Math.round(p.f));   // as stamped on the fork, e.g. 341.3
   var st = { h: Math.round(p.h * 1000) / 1000, target: 12, roomRead: false, forkRead: false, amp: 0, over: false, lastLoud: null, heardAt: null, sound: true, shownDb: 30 };
   function has(n) { for (var i = 0; i < S.rows.length; i++) if (S.rows[i].n === n) return S.rows[i]; return null; }
   function loudAt(h) { p.h = h; return K.view({}, p).loud; }
@@ -59,7 +60,7 @@ HoolaStudio.define('resonance-tube', function (S) {
   var hose = S.mesh(new T.BufferGeometry(), rubberM); S.scene.add(hose); var hoseAt = -1;
   var resShadow = S.contact(0.1, 0.1, RX, TZ, 0.3, 0.03);
   // tuning fork resting on its felt-lined box, rubber pad, sound-level meter
-  var fork = S.tuningFork([0, 0, 0], Math.round(p.f));
+  var fork = S.tuningFork([0, 0, 0], FSTR);
   var fbox = S.rounded(0.24, 0.07, 0.022, 0.006, M.darkWood); fbox.rotation.x = -Math.PI / 2; fbox.position.set(0.37, 0.011, 0.08); S.scene.add(fbox);
   var felt = S.mesh(new T.BoxGeometry(0.22, 0.002, 0.05), new T.MeshStandardMaterial({ color: 0x7a1f2b, roughness: 1 })); felt.position.set(0.37, 0.0225, 0.08); S.scene.add(felt);
   S.contact(0.3, 0.11, 0.37, 0.08, 0.45);
@@ -76,7 +77,7 @@ HoolaStudio.define('resonance-tube', function (S) {
   S.addApparatus('tube', tube, 'Resonance tube', 'Glass tube about 1 m long, inner diameter ' + (p.d * 100).toFixed(1) + ' cm. Open at the top, closed below by the water.');
   S.addApparatus('ruler', ruler, 'Metre scale', 'Zero at the open end: it reads the length of the air column directly. Least count 1 mm.');
   S.addApparatus('res', res, 'Water reservoir', 'Joined to the tube by rubber tubing. Raise it and the water in the tube rises; lower it and the air column gets longer.');
-  S.addApparatus('fork', fork, 'Tuning fork, ' + Math.round(p.f) + ' Hz', 'Strike it on the rubber pad, never on the bench. Hold it just over the mouth with the prongs one above the other.');
+  S.addApparatus('fork', fork, 'Tuning fork, ' + FSTR + ' Hz', 'Strike it on the rubber pad, never on the bench. Hold it just over the mouth with the prongs one above the other.');
   S.addApparatus('pad', pad, 'Rubber pad', 'Strike the fork on this so it sounds a pure note without damage.');
   S.addApparatus('meter', meter, 'Sound-level meter', 'Shows how loud the tube is. At resonance the sound swells sharply.');
   S.addApparatus('thermo', thermo, 'Room thermometer', 'The speed of sound depends on the air temperature.');
@@ -166,23 +167,23 @@ HoolaStudio.define('resonance-tube', function (S) {
       formula: 'l₁ + e = λ/4,  l₂ + e = 3λ/4', formulaNote: 'so l₂ − l₁ = λ/2 and v = fλ = 2f(l₂ − l₁) · e ≈ 0.3 d cancels out',
       more: ['The speed of sound rises with temperature: v ≈ 331.3 √(1 + t/273.15) m/s, about 0.6 m/s more for each °C.'],
       precautions: 'Strike the fork only on the rubber pad. Hold it just above the mouth, prongs one above the other, without touching the tube. Find each resonance by moving the water in small steps, from both sides. Read the bottom of the meniscus with your eye level with it.' },
-    book: { title: 'Expt. — Resonance Tube', lines: ['Aim: to find the speed of sound in air.', 'Fork f = ' + Math.round(p.f) + ' Hz,  room ' + p.Tc + ' °C', 'Inner diameter d = ' + (p.d * 100).toFixed(1) + ' cm', 'l₂ − l₁ = λ/2  →  v = 2f(l₂ − l₁)', 'End correction e = (l₂ − 3l₁)/2'],
+    book: { title: 'Expt. — Resonance Tube', lines: ['Aim: to find the speed of sound in air.', 'Fork f = ' + FSTR + ' Hz,  room ' + (+p.Tc.toFixed(1)) + ' °C', 'Inner diameter d = ' + (p.d * 100).toFixed(1) + ' cm', 'l₂ − l₁ = λ/2  →  v = 2f(l₂ − l₁)', 'End correction e = (l₂ − 3l₁)/2'],
       columns: [{ label: 'Resonance', get: function (r) { return r.n === 1 ? 'First (l₁)' : 'Second (l₂)'; } }, { label: 'l (cm)', get: function (r) { return (r.h * 100).toFixed(1); } },
         { label: 'Sound', get: function (r) { return r.loud > 0.6 ? 'very loud' : 'loud'; } }] },
     result: function (rows) { var a = rows.filter(function (r) { return r.n === 1; })[0], b = rows.filter(function (r) { return r.n === 2; })[0]; if (!a || !b) return null;
       return { label: 'v (sound)', value: 2 * p.f * (b.h - a.h), unit: 'm/s', digits: 1, truth: vTrue(), note: 'v = 2f(l₂ − l₁); end correction e = ' + ((b.h - 3 * a.h) / 2 * 100).toFixed(2) + ' cm.' }; },
     tol: 0.02,
-    chips: ['Why does the tube get loud at certain lengths?', 'What is the end correction?', 'Why use two resonances?', 'Check my readings', 'Why is my v different from 343 m/s?'],
+    chips: ['Why does the tube get loud at certain lengths?', 'What is the end correction?', 'Why use two resonances?', 'Check my readings', 'Why is my v different from ' + Math.round(vTrue()) + ' m/s?'],
     viva: [['Why is v found from l₂ − l₁ and not from l₁ alone?', ['The end correction cancels in the difference', 'l₁ is too short to measure', 'The fork changes frequency'], 0, 'l₁ + e = λ/4 and l₂ + e = 3λ/4, so l₂ − l₁ = λ/2 has no e in it.'],
       ['At the first resonance, the air column is about', ['a quarter wavelength', 'half a wavelength', 'one wavelength'], 0, 'A tube closed at one end resonates at λ/4, 3λ/4, ...']],
-    askState: function () { return { air_column_cm: +(st.h * 100).toFixed(1), fork_Hz: Math.round(p.f), room_C: p.Tc, fork_sounding: st.amp > 0.05, held_over_mouth: st.over,
+    askState: function () { return { air_column_cm: +(st.h * 100).toFixed(1), fork_Hz: +p.f.toFixed(1), room_C: p.Tc, fork_sounding: st.amp > 0.05, held_over_mouth: st.over,
       last_heard_level_cm: st.heardAt === null ? null : +(st.heardAt * 100).toFixed(1), last_heard_dB: st.lastLoud === null ? null : Math.round(dbOf(st.lastLoud, 1)),
       l1_cm: has(1) ? +(has(1).h * 100).toFixed(1) : null, l2_cm: has(2) ? +(has(2).h * 100).toFixed(1) : null }; },
 
     steps: [
       { id: 'ready', title: 'Get ready', view: 'tube', render: function (u) {
           u.h2('Check the apparatus');
-          u.task('1. Note the fork frequency', st.forkRead, st.forkRead ? 'f = ' + Math.round(p.f) + ' Hz (stamped on the fork)' : 'It is stamped on the fork')
+          u.task('1. Note the fork frequency', st.forkRead, st.forkRead ? 'f = ' + FSTR + ' Hz (stamped on the fork)' : 'It is stamped on the fork')
             .add(u.button('Read the fork', function () { st.forkRead = true; S.focus('fork'); S.render(); }, !st.forkRead, st.forkRead));
           u.task('2. Note the room temperature', st.roomRead, st.roomRead ? 'Room ' + p.Tc.toFixed(0) + ' °C' : 'The thermometer is on the back board')
             .add(u.button('Read the thermometer', function () { st.roomRead = true; S.focus('thermo'); S.render(); }, !st.roomRead, st.roomRead));
@@ -200,7 +201,9 @@ HoolaStudio.define('resonance-tube', function (S) {
           u.next('Next: find the second resonance', !!has(1));
         },
         ok: function () { return !!has(1); },
-        auto: function () { return find(0.1, 0.25).then(function () { mark(1); }); } },
+        auto: function () {     // look around a quarter wavelength, from the textbook estimate v ≈ 331 + 0.6 t (the end correction only shortens it)
+          var est = (331.3 + 0.6 * p.Tc) / (4 * p.f);
+          return find(Math.max(0.05, Math.round((est - 0.07) * 100) / 100), Math.min(0.4, Math.round((est + 0.04) * 100) / 100)).then(function () { mark(1); }); } },
       { id: 'second', title: 'Second resonance', view: 'work2', render: function (u) {
           u.h2('Find l₂, the second resonance');
           u.p('Keep lowering the reservoir. The next loud point is roughly three times as deep as l₁. Find its loudest point and mark it.');
@@ -210,7 +213,7 @@ HoolaStudio.define('resonance-tube', function (S) {
           u.next('Next: work out v', !!has(1) && !!has(2));
         },
         ok: function () { return !!has(1) && !!has(2); },
-        auto: function () { var l1 = has(1).h; return find(Math.round((3 * l1 - 0.03) * 100) / 100, Math.round((3 * l1 + 0.06) * 100) / 100).then(function () { mark(2); }); } },
+        auto: function () { var l1 = has(1).h; return find(Math.round((3 * l1 - 0.03) * 100) / 100, Math.min(HMAX, Math.round((3 * l1 + 0.06) * 100) / 100)).then(function () { mark(2); }); } },
     ],
 
     tick: function (dt) {

@@ -18,6 +18,17 @@ import pytest
 from tests.test_bazar import bz  # noqa: F401
 from tests.test_v0186_long_goal import FakeBrain, _set_brain, gz, tu, txt  # noqa: F401
 
+@pytest.fixture(autouse=True)
+def _no_plan_gate(monkeypatch):
+    """v0.472 R1: a big research ask now shows its plan and waits for her Haan. These tests are about the research
+    engine AFTER that (recipe, crew, source check), so the gate steps aside here; test_v0472_research_plan.py covers it."""
+    from app.agent import research_plan
+
+    async def _off(*a, **k):
+        return None
+    monkeypatch.setattr(research_plan, "gate", _off)
+
+
 RESEARCH = [
     "Do deep research on the Indian EV two-wheeler market and give me a PDF report",
     "Deep research karo AI agents ke market pe aur PDF do",
@@ -187,4 +198,4 @@ def test_settings():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.454.0"
+    assert APP_VERSION == "0.530.0"

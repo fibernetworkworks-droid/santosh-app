@@ -536,8 +536,9 @@ def replay(sub: Sub, last: str) -> tuple[list[dict[str, Any]], int, bool]:
 
 
 async def stream(r: AppProject, w: W.Who, token: str, colls: str = "", last: str = "",
-                 gone=None, seconds: float | None = None) -> AsyncIterator[str]:
-    """The SSE body. `gone` = an async callable that says the phone hung up (request.is_disconnected)."""
+                 gone=None, seconds: float | None = None, check=None) -> AsyncIterator[str]:
+    """The SSE body. `gone` = an async callable that says the phone hung up (request.is_disconnected). `check` (v0.459) =
+    a callable that says the login is still good - a website's own rule (its old site-signed logins, ended sessions)."""
     want = {c.strip() for c in str(colls or "").split(",") if c.strip()} or None
     sub = Sub(r, w, want, asyncio.get_running_loop())
     member, name, staff = _me(w)
@@ -579,7 +580,8 @@ async def stream(r: AppProject, w: W.Who, token: str, colls: str = "", last: str
                 await asyncio.to_thread(_write_signal, sub.site, member, name, staff, "here", sub.sid)
             if not w.owner and tnow - auth >= AUTH_EVERY:
                 auth = tnow
-                if not await asyncio.to_thread(_still_signed_in, r, token, w.id):
+                ok = await asyncio.to_thread(check) if check is not None else await asyncio.to_thread(_still_signed_in, r, token, w.id)
+                if not ok:
                     yield _sse({"type": "bye", "why": "login"})
                     break
         else:
