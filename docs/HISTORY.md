@@ -20116,3 +20116,14 @@ drop in USE — falling orders may be the market, not a fault, and guessing woul
 not the phone's: a slow screen on a weak network looks fine here. And this is the **last pillar** of the plan —
 A to L are now all built, which makes the plan's own gate the only thing left in it: **no proof app has ever been
 built and used on a real phone**, which Phase 0 asked for before any pillar started.
+
+### v0.538 follow-up: the website checkpoint MEASURED (CI run 41964517783, 4 workers, Postgres 16)
+Third full-size run PASSED: 5,000-product marketplace built in 3.3 s; 2,000 visitors x 3 pages = 6,000 page loads all 200
+(p50 537 ms / p95 1.36 s from the test's stand-in static server); 600 buyers + 150 double-sent checkouts: 364 orders = 364
+confirmed to their buyer, 297 honest sold-out refusals, no lost / double order, unique numbers, stock exact (hot product 0),
+no 500, NO checkout unanswered. Found on the way and fixed: (1) order numbers were count + 1 -> every checkout of a crowd
+collided and retried (119 checkouts > 60 s) -> `site_shop_counter` hands the next number in one atomic step, taken before
+the checkout writes (SQLite-safe), unique index kept as the last guard; (2) the harness now re-taps an unanswered checkout
+with the same cid (as hoola-shop.js does) and names every dropped connection. STILL SLOW, said plainly: checkout p50 1.9 s
+but p95 41 s / max 46 s with 200 buyers at once on ONE shop (the hot product's row lock + 4 workers' DB pools) - every one
+answered, none lost, but a slow tail; next speed pass = a shorter stock transaction + pool size, measured by this same card.
