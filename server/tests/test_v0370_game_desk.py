@@ -5,6 +5,7 @@ plays a real game when Godot + its Web templates are installed (the sandbox / VP
 import asyncio
 import gzip
 import json
+import re
 import os
 import zipfile
 from io import BytesIO
@@ -267,14 +268,25 @@ def test_console_and_phone_wiring():
     js = (root / "server/app/static/console/v2.js").read_text()
     emp = (root / "server/app/static/console/employees.js").read_text()
     assert 'id="v-gamedesk"' in html and "['game_dev', 'gamedesk', 'Game Desk']" in js and "EMP?.game(" in js
-    assert "return {hub, desk, social, cad, game, arch};" in emp   # v0.410 + the Architecture Desk and 'sandbox="allow-scripts allow-pointer-lock"' in emp
+    # v0.455: the exact export string broke the moment v0.453 added `edu` (the Education Desk), which was a correct
+    # change - so pin the NAMES this test cares about, not the whole list, and let a new desk be added freely.
+    exported = [m for m in re.findall(r"return \{([^}]*)\};", emp) if "hub" in m]
+    assert exported, "employees.js must export its desks"
+    names = {x.strip() for x in exported[-1].split(",")}
+    assert {"hub", "desk", "social", "cad", "game", "arch"} <= names, names
+    assert 'sandbox="allow-scripts allow-pointer-lock"' in emp
     # the v0.358 merge had dropped these: the Hub, both desks, the Arena and three scripts
     for v in ("v-hire", "v-seodesk", "v-socialdesk", "v-arena"):
         assert f'id="{v}"' in html, v
     for s in ("employees.js?v=", "arena.js?v=", "charts.js?v="):
         assert s in html, s
     dart = (root / "lib/ui/employees_screen.dart").read_text()
-    assert "GameDeskScreen(app: widget.app)" in dart and "_s(e['group'])" in dart and "key == 'game_dev'" in dart
+    # v0.455: this pinned the exact spelling `GameDeskScreen(app: widget.app)`, which v0.453 correctly changed when the
+    # phone started opening every hired employee on its own screen. What the test actually cares about is that the Game
+    # Desk is REACHABLE from the employee list, so assert that instead of one call's punctuation.
+    assert re.search(r"GameDeskScreen\(app:\s*\w+(\.\w+)?\)", dart), "the phone must open the Game Desk"
+    assert "game_dev" in dart, "the Game Developer must be routed"
+    assert "_s(e['group'])" in dart
     assert "gameApprove" in (root / "lib/api.dart").read_text()
 
 
