@@ -388,7 +388,7 @@ def test_win_r_keys_still_blocked(opc):
 def test_versions(opc):
     operator, _ = opc
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.533.0"
+    assert APP_VERSION == "0.534.0"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
     assert "version: 0.532.0+555" in pubspec
     import santosh_desktop

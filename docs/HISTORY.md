@@ -19358,7 +19358,7 @@ disk copy deliberately missing and checks the text handed to `docker build` is t
 actually runs, not only against the repo layout. Anything outside `server/app` is not deployed.
 
 
-## v0.533.0 (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026
+## vNEXT (built as 0.455.0) PROVENANCE + THE UNDER-18 RULE SAID OUT LOUD (GAME_MOAT_PLAN §5.1 items 3 and 4) - 5 Nov 2026
 Owner: "CONTINUE TO OUR MOAT GAME WORK". The last two "fix first" items of the moat plan. New
 `server/app/gamedesk/provenance.py`, tool `game_provenance`, console Game Desk > "Where it came from".
 
