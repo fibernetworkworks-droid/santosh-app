@@ -751,8 +751,8 @@ def check() -> list[str]:
         bad.append("motion presets != 60")
     if len(PALETTES) != 50:
         bad.append(f"palettes != 50 ({len(PALETTES)})")
-    if len(FONTS) != 30:
-        bad.append("font pairs != 30")
+    if len(FONTS) != 33:                     # v0.602 +3 pairs with their own character (style defaults)
+        bad.append("font pairs != 33")
     if len(INDUSTRIES) != 40:
         bad.append(f"industries != 40 ({len(INDUSTRIES)})")
     for k, st in STYLES.items():

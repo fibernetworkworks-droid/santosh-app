@@ -151,7 +151,7 @@ def test_guard_and_sanitize():
     tk = Bd.tokens("bold_modern", "ink_lime", {"primary": "#123456"})
     assert tk["primary"] == "#123456" and tk["on_primary"] in ("#FFFFFF", "#111111")
     css2 = Bd.tokens_css(tk)
-    assert "--c-primary:#123456" in css2 and "space-grotesk-latin-700.woff2" in css2
+    assert "--c-primary:#123456" in css2 and "bricolage-grotesque-latin-700.woff2" in css2   # v0.602 bold_modern default
 
 
 # ---------------------------------------------------------------- 2. the whole flow, real Chromium
