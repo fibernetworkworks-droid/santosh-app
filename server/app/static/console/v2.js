@@ -100,7 +100,7 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['creative','Create'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
+const NAV = [['creative','Create'],['webdev','Web Development'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
 // (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
 // employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
@@ -118,6 +118,8 @@ IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 
 let EMP = null;
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
+let WD = null;         // v0.635 the Web Development panel (webdev.js)
+IC.webdev = '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l-2 2 2 2M15 14l2 2-2 2"/>';   // v0.635 Web Development
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
 function syncEmployees(hired) {                     // v0.317 desks exist only while their employee is hired
@@ -151,7 +153,7 @@ function drawNav() {
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', webdev:'· Web Development'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -168,6 +170,7 @@ function go(v, arg) {
   if (v === 'archdesk') EMP?.arch($('#archdesk'));   // v0.410
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
   if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
+  if (v === 'webdev') WD?.open($('#webdev'), arg);   // v0.635 Web Development panel
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -263,6 +266,9 @@ async function enter() {
     ENT = HoolaEnterprise({api, esc, toast});
   }
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
+  if (window.HoolaWebDev && !WD) WD = HoolaWebDev({api, esc, toast,   // v0.635 Web Development panel: new sites + changes go through chat
+    say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
+    studio: (site, tab, edit) => B?.openSite?.(site, tab, edit)});
   if (window.HoolaSkills && !SK) {             // v0.481 the Skill Desk
     SK = HoolaSkills({api, esc, toast});
   }
