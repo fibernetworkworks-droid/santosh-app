@@ -1,4 +1,4 @@
-"""v0.622 KOI PATA NA KHOYE (from the ai-website-cloner-template read, docs/research/website_cloner/00_READ.md) - only for
+"""v0.623 KOI PATA NA KHOYE (from the ai-website-cloner-template read, docs/research/website_cloner/00_READ.md) - only for
 HER OWN old site, ownership already proved by v0.567:
 
 1. every old address (sitemap + same-site links) is kept; each is matched to a new page; nothing is served until her tap
@@ -20,7 +20,7 @@ from tests.test_v122_hosting import host_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.621.0"
+    assert APP_VERSION == "0.623.0"
 
 
 def _jpeg(size=(800, 600)):

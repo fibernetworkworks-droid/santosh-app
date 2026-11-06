@@ -21344,7 +21344,35 @@ test red on main; they now move to 0.621.
 **NOT VERIFIED on her phone.** The ring for a reminder uses the same native path as job rings (SantoshPush ->
 Notify.ring / wake), which has worked for jobs since v0.219.
 
-## v0.622.0 KOI PATA NA KHOYE - her own old site moves to Hoola without losing an address (owner: "GO 1 TO 4" after the ai-website-cloner-template read)
+
+## v0.622.0 SAHI SAMAY + SIRF GEMINI (owner: "CHECK THE EXACT LOGS - WHY SETTING REMINDER HAVING ISSUE" + "SWITCH VOICE TO GEMINI - CHATGPT IS VERY BAD")
+
+**Evidence.** Read from her VPS, conv_2e28a264be79, 6 Nov 06:16-06:21 UTC, on a live call:
+
+| Time | Her ask | What happened |
+|---|---|---|
+| 06:17:26 | "do minute baad" | refused, "time past ka hai" |
+| 06:17:51 | "do minute baad" | saved for 06:18:00 (9 s ahead) |
+| 06:18:16 | "do minute baad" | refused again, past |
+| 06:18:55 | "paanch minute baad" | saved for 06:21:00 (about 2 min ahead) |
+
+Both reminders that were saved were SPOKEN on the call when due (06:18:02 and 06:21:03), so the v0.618 / v0.621
+delivery works. The fault was in SETTING the time: the call model computed the clock time itself and got it wrong.
+
+**The fix.**
+- `create_reminder` gains `in_minutes`. The server computes `now() + N minutes`, so the model never does the sum.
+  `when` stays for clock times and dates.
+- A `when` in the past now says the current local time and tells the model to retry with `in_minutes`.
+- The tool description and the call persona both say "X minute / ghante baad = in_minutes".
+
+**Voice.** `voice_openai_enabled` (default False) makes `voiceengine.pick` answer Gemini even when her saved choice
+is the OpenAI "real voice". Set it to True to bring the choice back. Conftest keeps it on for the OpenAI suites.
+
+**Tests.** `test_v0622_sahi_samay.py`, 7 tests.
+
+**Pre-existing reds, unchanged.** Six failures in `test_v063_learning` + `test_v091_opendots` were proven to fail on
+the untouched tree too.
+## v0.623.0 KOI PATA NA KHOYE (built as 0.622; their SAHI SAMAY took 0.622.0 - REBASE PROTOCOL, both kept) - her own old site moves to Hoola without losing an address (owner: "GO 1 TO 4" after the ai-website-cloner-template read)
 
 Read note: `docs/research/website_cloner/00_READ.md` (JCodesMore/ai-website-cloner-template, MIT, ideas only; Hoola still
 clones NOTHING it does not own - every piece below works only on HER OWN old site, whose ownership v0.567 already proves

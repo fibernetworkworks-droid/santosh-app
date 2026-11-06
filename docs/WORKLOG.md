@@ -1662,3 +1662,9 @@ Task ID: v0.621.0 YAAD KI GHANTI
 Task: owner - reminder not working via voice.
 Work: traced fire_reminders; live call path proven end to end; no-live-call path had no voice at all -> ring + call opens with the reminder; reminder rings skip job quiet hours.
 Result: test_v0621 6 green; console stamps healed 0.618 -> 0.621. Not verified on her phone.
+
+---
+Task ID: v0.622.0 SAHI SAMAY + SIRF GEMINI
+Task: owner - reminder setting broken on her call (logs) + "switch voice to Gemini".
+Work: her VPS call record: reminders spoken when due, but the call model computed "X minute baad" itself (past / 9 s ahead) -> create_reminder in_minutes counted by the server; voice_openai_enabled False = every call on Gemini.
+Result: test_v0622 7 green + routines/console/openai suites green; 6 pre-existing reds (v063 / v091) proven on the untouched tree.

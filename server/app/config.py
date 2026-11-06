@@ -479,6 +479,7 @@ class Settings(BaseSettings):
     # hmm, light laughs). Gemini stays the default and untouched; OpenAI is used only when the owner picks it, a key is
     # set, and the month's budget / her minutes allow - otherwise the call quietly runs on Gemini.
     openai_api_key: str = ""                          # VPS .env only (OPENAI_API_KEY), never in chat or the repo
+    voice_openai_enabled: bool = False                # v0.622 owner: every call on Gemini; True brings the OpenAI choice back
     voice_openai_model: str = "gpt-realtime-2.1-mini"   # the mini only: the full model costs 4-10x Gemini
     voice_openai_voice_m: str = "cedar"
     voice_openai_voice_f: str = "marin"
