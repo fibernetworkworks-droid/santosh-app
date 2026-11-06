@@ -188,7 +188,8 @@ async def fire_reminders() -> None:
     touched: dict[str, str] = {}
     for rid, tenant, conv, text in due:
         notify(conv, f"Yaad dila raha hoon: {text}")
-        bus.publish(conv, "reminder", {"id": rid, "text": text})
+        bus.publish(conv, "reminder", {"id": rid, "text": text})   # a live call SAYS it (voice.card_news)
+        _ring_for_reminder(tenant, conv, rid, text)                # v0.621 no live call: Hoola rings her and says it
         tz = life.tz_of(tenant)
         with session() as s:
             r = s.get(Reminder, rid)
@@ -203,6 +204,27 @@ async def fire_reminders() -> None:
         touched[conv] = tenant
     for conv, tenant in touched.items():
         bus.publish(conv, "reminders", {"reminders": life.upcoming_reminders(tenant)})
+
+
+def _ring_for_reminder(tenant: str, conv: str, rid: str, text: str) -> None:
+    """v0.621 YAAD KI GHANTI (owner: "REMINDER NOT WORKING VIA VOICE"): with no call live, a due reminder used to be a
+    chat line + a notification only - Hoola never SAID it. Now the server rings her phone (the GHANTI voice_ring the
+    native side already turns into an auto-started call) and the call OPENS with the reminder (call followup note).
+    Her own reminder at her own time: quiet hours and the job-news ring budget do not apply (own cap in push)."""
+    try:
+        from . import voice
+        if voice.tenant_live(tenant):
+            return                                   # a live call (any chat of hers) already heard it via card_news
+        if not get_settings().voice_ring_reminders:
+            return
+        from . import yaad
+        yaad.note_call_followup(conv, tenant, f"REMINDER jo usne khud lagaya tha, abhi due hai: {text[:300]}. "
+                                              "Call uthate hi sabse pehle yahi ek line mein yaad dilao.")
+        # through the bus: an OPEN app rings from its live stream, a closed one from the push (gated in push)
+        bus.publish(conv, "voice_ring", {"reason": f"reminder: {text}"[:80], "ref": f"rem:{rid}", "conv": conv,
+                                         "reminder": True})
+    except Exception:
+        log.exception("reminder ring failed")
 
 
 async def morning_briefings() -> None:
@@ -270,9 +292,16 @@ async def run_routines() -> None:
                 out = f"failed: {e}"
             with session() as s:
                 r = s.get(Routine, rid)
+                title = r.title if r else ""
                 if r:
                     r.last_result = (out or "")[:2000]
             bus.publish(conv, "routines", {"routines": life.active_routines(tenant)})
+            if out and not str(out).startswith("failed:"):   # v0.617 a live call SAYS the result (no new card kind)
+                try:
+                    from . import voice as _voice
+                    _voice.card_news(conv, "routine_done", {"id": rid, "title": title, "text": str(out)[:600]})
+                except Exception:
+                    log.exception("routine result to the live call")
 
         t = asyncio.create_task(_go())
         _routine_tasks.add(t)

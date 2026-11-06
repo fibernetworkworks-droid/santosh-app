@@ -235,12 +235,13 @@ def test_default_model_env():
 
 # ---------------------------------------------------------------- (4) the wiring
 def test_one_tool_registered_routed_and_labelled():
-    assert len(tools.TOOLS) == 605, PIN
+    assert len(tools.TOOLS) == 606, PIN
     assert "kaan" in tools.HANDLERS and tools.FAMILY_OF["kaan"] == "kaan"
     assert "kaan" in tools.TOOL_LABELS and "sun" in tools.TOOL_LABELS["kaan"]
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
-    assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search"]
+    assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
+                    "live_start", "live_chunk", "live_stop", "live_get", "live_list"]  # W2 grew actions
     from app import voice
     assert voice.call_route("kaan") == "kaam" and "kaan" in voice.VOICE_VIA_KAAM
 

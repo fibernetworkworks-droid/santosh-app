@@ -826,7 +826,7 @@ async def shutdown_watchdog(stop: asyncio.Event) -> None:
             log.exception("shutdown drop note failed")
         try:
             await call.send_json({"type": "status", "state": "restarting",
-                                  "message": "Server update ho raha hai - call yahin rukti hai, thodi der mein dobara bulaao."})
+                                  "message": "Server update ho raha hai - call ek minute mein khud dobara jud jaayegi."})
         except Exception:
             pass
         try:
@@ -979,6 +979,9 @@ def stats_summary(tenant: str) -> dict:
         "dropped_replies": sum(c.get("dropped_replies", 0) for c in calls),
         "hold_refused_tools": sum(c.get("hold_refused_tools", 0) for c in calls),
         "hold_minutes": round(sum(c.get("hold_s", 0) for c in calls) / 60, 1),
+        # v0.617 HAMESHA JUDA: minutes a live call spent with Gemini closed (not billed) and how often it woke
+        "parked_minutes": round(sum(c.get("parked_s", 0) for c in calls) / 60, 1),
+        "parks": sum(c.get("parks", 0) for c in calls), "wakes": sum(c.get("wakes", 0) for c in calls),
         "setup": setup_view(),     # v0.150 extras Gemini refused + how quiet notes travel
         "setup_refusals": sum(c.get("setup_refusals", 0) for c in calls),
         "recent": [{k: c[k] for k in ("call_id", "ended", "turns", "latency_ms", "interruptions", "tools", "silent_tools")}
@@ -1336,6 +1339,15 @@ def pool_clips(kind: str, voice: str, gender: str) -> list[bytes]:
     return []
 
 
+def tenant_live(tenant: str) -> bool:
+    """v0.621 is ANY call of this tenant live right now (on any of her chats)?"""
+    for calls in list(ACTIVE.values()):
+        for _loop, c in list(calls):
+            if getattr(c, "tenant", "") == tenant and not c.closed.is_set():
+                return True
+    return False
+
+
 def inject(conversation_id: str, text: str) -> int:
     """Hand a note to every live call on this conversation (thread-safe). Returns how many calls got it."""
     n = 0
@@ -1376,6 +1388,23 @@ def _card_money(kind: str, p: dict) -> bool:
         return False
 
 
+LIVE_KINDS = ("reminder", "briefing", "routine_done")   # v0.617 her time-based news that a live call must SAY
+
+
+def _live_note(kind: str, p: dict) -> str:
+    """v0.617 HAMESHA JUDA: on a 24/7 call the reminder she set must be heard, not only buzz the phone. Before this,
+    a due reminder, the morning briefing and an automatic job's result never reached the call at all."""
+    text = str(p.get("text") or p.get("result") or "").strip()
+    if kind not in LIVE_KINDS or not text:
+        return ""
+    if kind == "reminder":
+        return (f"[Reminder abhi due hua hai - usse turant, apne shabdon mein, ek line mein yaad dilao] {text[:400]}")
+    if kind == "briefing":
+        return (f"[Subah ki briefing ka samay - usse chhote mein, 3-4 line mein, natural tareeke se batao] {text[:1500]}")
+    title = str(p.get("title") or "automatic kaam")[:80]
+    return f"[Automatic kaam '{title}' abhi poora hua - natija ek-do line mein batao] {text[:600]}"
+
+
 def card_note(kind: str, p: dict, title: str, body: str) -> str:
     """The quiet note one card becomes on a live call (spoken by Hoola in its own words at a pause)."""
     st = str(p.get("status") or p.get("state") or "").lower()
@@ -1407,16 +1436,20 @@ def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
             return 0                               # a JOB state: kaamwatch already speaks it to the call
     except Exception:
         pass
-    try:
-        from . import push
-        shown = push.render(kind, p, "Hoola")
-    except Exception:
-        shown = None
-    if not shown:
-        return 0
-    title, body = (str(shown[0] or ""), str(shown[1] or ""))
+    spoken = _live_note(kind, p)        # v0.617 reminders / briefing / routine results: spoken on her live call
+    if spoken:
+        title, body = spoken[:80], ""
+    else:
+        try:
+            from . import push
+            shown = push.render(kind, p, "Hoola")
+        except Exception:
+            shown = None
+        if not shown:
+            return 0
+        title, body = (str(shown[0] or ""), str(shown[1] or ""))
     st = str(p.get("status") or p.get("state") or "").lower()
-    key = f"{conv}:{kind}:{p.get('id') or p.get('key') or p.get('job_id') or title}:{st}"
+    key = f"{conv}:{kind}:{p.get('id') or p.get('key') or p.get('job_id') or p.get('date') or title}:{st}"
     now_ = time.time()
     for k, at in list(_CARD_TOLD.items()):
         if now_ - at > CARD_TOLD_S:
@@ -1424,7 +1457,7 @@ def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
     if key in _CARD_TOLD:
         return 0
     _CARD_TOLD[key] = now_
-    note = card_note(kind, p, title, body)
+    note = spoken or card_note(kind, p, title, body)
     n = inject(conv, note)
     if not n:                                      # her live call is on another chat of hers: it hears it there
         try:
@@ -1441,6 +1474,9 @@ def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
 
 
 class Call:
+    CAN_PARK = True   # v0.617 HAMESHA JUDA: this engine can leave Gemini on a quiet call and come back (the other engine: no)
+    parked = False    # class defaults: an engine that never parks still answers these
+    _parking = False
     def __init__(self, ws: WebSocket, conv: str, voice: str, lang: str, tenant: str | None = None):
         st = get_settings()
         self.ws: WebSocket | None = ws
@@ -1497,6 +1533,15 @@ class Call:
         self._hung_up = False                  # SHE ended the call (the only end that needs no continuation note)
         self._end_reason = ""                  # v0.231 why the call ended (callquality): error | stall | server_restart | hold_timeout
         self._drop_saved = False
+        # v0.617 HAMESHA JUDA: a quiet call leaves Gemini (billed per second of audio, even silence) and stays
+        # connected to Hoola; her voice, a typed line, news or a reminder brings Gemini back on the same memory
+        self.parked = False                    # Gemini closed, the call itself still live
+        self._parking = False                  # the park watcher decided: close this Gemini session
+        self._park_now = ""                    # a reason to park at once (long hold, phone away)
+        self._wake = asyncio.Event()
+        self._parked_at = 0.0
+        self._woke_at = time.monotonic()
+        self._detached_at = 0.0
         # timing, for answering at human speed and for the quality numbers
         self._last_voice_at = 0.0              # last mic chunk with speech in it
         self._last_model_audio = 0.0           # last audio Gemini sent
@@ -1670,6 +1715,77 @@ class Call:
             else:
                 return
         self.audio.put_nowait((kind, data))
+        if kind == "text" and self.parked:
+            self._wake_up("news")
+
+    def _wake_up(self, why: str) -> None:
+        """v0.617 bring Gemini back to a parked call (her voice, a typed line, news, a reminder, hold over)."""
+        if self.parked and not self._wake.is_set():
+            self.stats["wakes"] = self.stats.get("wakes", 0) + 1
+            w = self.stats.setdefault("wake_by", {})
+            w[why] = w.get(why, 0) + 1
+            self._wake.set()
+
+    def _quiet_for(self, now: float) -> float:
+        return now - max(self._last_voice_at, self._last_model_audio, self._last_user_text_at, self._woke_at,
+                         self._turn_end_at)
+
+    def _busy(self) -> bool:
+        """Anything still happening that Gemini must be connected for."""
+        if self.user_buf.strip() or self.reply_buf.strip() or self._turn_audio or self._news:
+            return True
+        if any(k == "text" for k, _ in list(self.audio._queue)):
+            return True
+        if self._goaway_at:
+            return True
+        for t in list(self._tools):
+            if not t.done() and t is not self._hold_timer and t is not self._news_task:
+                return True               # a tool / job answer is still coming back on this session
+        return False
+
+    async def _park_watch(self) -> bool:
+        """v0.617 decide when this Gemini session can close while the call stays connected: nobody spoke and Hoola
+        said nothing for VOICE_PARK_AFTER_S, nothing is running, no news is waiting; or the phone went away; or a
+        long hold. Returns True when the session should close (the run loop then waits for a wake)."""
+        st = get_settings()
+        if not st.voice_park:
+            await self.closed.wait()
+            return False
+        while not self.closed.is_set():
+            await asyncio.sleep(1.0)
+            now = time.monotonic()
+            why = self._park_now
+            if not why and self.ws is None and self._detached_at and now - self._detached_at >= 3:
+                why = "phone_away"
+            if not why and self._quiet_for(now) >= max(1, st.voice_park_after_s) and not self.hold:
+                why = "quiet"
+            if why and (why in ("phone_away", "hold") or not self._busy()):
+                self._park_now = ""
+                self._wake.clear()
+                self.parked, self._parking, self._parked_at = True, True, now
+                self.stats["parks"] = self.stats.get("parks", 0) + 1
+                pb = self.stats.setdefault("park_by", {})
+                pb[why] = pb.get(why, 0) + 1
+                log.info("call %s: parked (%s) - Gemini closed, call still connected", self.call_id, why)
+                return True
+        return False
+
+    async def _park_wait(self) -> None:
+        """The call stays connected with no Gemini session (nothing billed) until something wakes it."""
+        await self.send_json({"type": "status", "state": "resting"})
+        waiter = asyncio.create_task(self._wake.wait())
+        closed = asyncio.create_task(self.closed.wait())
+        try:
+            await asyncio.wait({waiter, closed}, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            for t in (waiter, closed):
+                t.cancel()
+        now = time.monotonic()
+        self.stats["parked_s"] = round(self.stats.get("parked_s", 0.0) + (now - self._parked_at), 1)
+        self.parked, self._parking = False, False
+        self._woke_at = now
+        if not self.closed.is_set():
+            await self.send_json({"type": "status", "state": "live"})
 
     NEWS_QUIET_S = 0.8     # v0.230 both quiet this long = a natural pause: job news may be told now
     NEWS_MAX_WAIT_S = 25.0  # ...but news never waits longer than this (she talks on and on)
@@ -1726,7 +1842,9 @@ class Call:
 
     GAP_KEEP_BYTES = 16000 * 2 * 2   # v0.224 her last 2 s of mic audio survive a Gemini reconnect
 
-    def _drop_stale_audio(self, keep_recent: bool = False) -> None:
+    WAKE_KEEP_BYTES = 16000 * 2 * 5   # v0.617 waking a parked call: her first 5 s of words reach Gemini
+
+    def _drop_stale_audio(self, keep_recent: bool = False, keep_bytes: int | None = None) -> None:
         """Mic audio that waited through a reconnect is old news: Gemini must not hear it as a burst.
         v0.224 keep_recent (a Gemini connection move): her LAST 2 s stay - what she said in the gap is not lost;
         only the older backlog goes. A phone that came back (attach) still drops it all (that audio is from before
@@ -1740,7 +1858,7 @@ class Call:
                 if x[0] != "audio":
                     continue
                 total += len(x[1])
-                if total > self.GAP_KEEP_BYTES:
+                if total > (keep_bytes or self.GAP_KEEP_BYTES):
                     break
                 audio.append(x)
             keep += list(reversed(audio))
@@ -1775,6 +1893,8 @@ class Call:
                         self.meter.add(msg["bytes"])
                         if _loud(msg["bytes"]):
                             self._last_voice_at = time.monotonic()
+                            if self.parked and not self.hold:
+                                self._wake_up("voice")
                         if self.vid is not None and self.vid.add(msg["bytes"]):
                             self._guess_speaker()
                 elif msg.get("text"):
@@ -1828,11 +1948,15 @@ class Call:
         if self.closed.is_set() or ws is not self.ws:
             return
         self.ws = None
+        self._detached_at = time.monotonic()
         log.info("call %s: phone connection dropped, waiting for it to come back", self.call_id)
         self._grace = asyncio.create_task(self._grace_timer())
 
     async def _grace_timer(self) -> None:
-        await asyncio.sleep(max(1, get_settings().voice_resume_grace_s))
+        st = get_settings()
+        # v0.617 a parkable call waits for her phone much longer: while it waits, Gemini is closed (nothing billed)
+        grace = st.voice_park_grace_s if (self.CAN_PARK and st.voice_park) else st.voice_resume_grace_s
+        await asyncio.sleep(max(1, grace))
         if self.ws is None and not self.closed.is_set():
             log.info("call %s: phone did not come back, ending the call", self.call_id)
             try:   # v0.200 the call died mid-air: her exact last words survive for the NEXT call
@@ -3013,6 +3137,7 @@ class Call:
         if not self.hold or (only and self.hold not in only):
             return
         reason, self.hold = self.hold, ""
+        self._wake_up("hold_over")             # v0.617 a hold that parked the call: Gemini comes back now
         self.stats["hold_s"] = round(self.stats["hold_s"] + time.monotonic() - self._hold_at, 1)
         rb = self.stats["released_by"]
         rb[by] = rb.get(by, 0) + 1
@@ -3074,6 +3199,13 @@ class Call:
     async def _hold_watch(self, at: float, limit: int) -> None:
         """A hold that goes on and on: end the Hoola call (an open Gemini session is billed and listens for nothing)."""
         await asyncio.sleep(max(1, limit))
+        if self.hold and self._hold_at == at and not self.closed.is_set() and get_settings().voice_park and self.CAN_PARK:
+            # v0.617 a long hold no longer ends her call: Gemini leaves (nothing billed), the call stays; the
+            # Wapas aao button, a typed line or the end of her other phone call brings it back
+            log.info("call %s: on hold for %s s, parking (call stays connected)", self.call_id, limit)
+            self.stats["hold_parked"] = True
+            self._park_now = "hold"
+            return
         if self.hold and self._hold_at == at and not self.closed.is_set():
             log.info("call %s: on hold for %s s, ending the call", self.call_id, limit)
             self.stats["hold_ended_call"] = True
@@ -3221,7 +3353,8 @@ class Call:
                                 followup=drop if drop_kind == "followup" else ""))
                             first = False
                         else:
-                            self._drop_stale_audio(keep_recent=True)   # v0.224 her last 2 s of the gap survive
+                            self._drop_stale_audio(keep_recent=True, keep_bytes=self.WAKE_KEEP_BYTES
+                                                   if time.monotonic() - self._woke_at < 5 else None)   # v0.224 / v0.617
                             if degraded:
                                 degraded = False
                                 await self.send_json({"type": "status", "state": "live"})
@@ -3236,14 +3369,19 @@ class Call:
                         down = asyncio.create_task(self.downlink(session))
                         closed = asyncio.create_task(self.closed.wait())
                         watch = asyncio.create_task(self._stall_watch(session))   # v0.211 never silently dead
-                        done, _ = await asyncio.wait({up, down, closed, watch}, return_when=asyncio.FIRST_COMPLETED)
-                        for t in (up, down, closed, watch):
+                        park = asyncio.create_task(self._park_watch())            # v0.617 HAMESHA JUDA
+                        done, _ = await asyncio.wait({up, down, closed, watch, park}, return_when=asyncio.FIRST_COMPLETED)
+                        for t in (up, down, closed, watch, park):
                             t.cancel()
-                        await asyncio.gather(up, down, closed, watch, return_exceptions=True)
+                        await asyncio.gather(up, down, closed, watch, park, return_exceptions=True)
                         for t in done:
-                            if t is not closed and not t.cancelled() and t.exception() is not None:
+                            if t is not closed and t is not park and not t.cancelled() and t.exception() is not None:
                                 log.warning("voice stream ended: %r", t.exception())
                                 raise t.exception()
+                    if self._parking and not self.closed.is_set():
+                        await self._park_wait()          # nothing billed until her voice / news / a reminder
+                        failures = 0
+                        continue
                     if not self.closed.is_set() and loop.time() - started < 30:
                         # a session that ends within seconds and without an error is still a failure
                         err = RuntimeError("Gemini ne session turant band kar diya")

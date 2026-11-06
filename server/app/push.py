@@ -657,7 +657,8 @@ def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
     tenant = _tenant(conversation_id)
     if not tenant:
         return
-    if ev["kind"] == "voice_ring" and not _ring_allowed(tenant, conversation_id):
+    if ev["kind"] == "voice_ring" and not _ring_allowed(tenant, conversation_id,
+                                                         reminder=bool((ev.get("payload") or {}).get("reminder"))):
         return
     try:
         _pool.submit(_send, tenant, ev)
@@ -671,10 +672,28 @@ def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
 _RING_DAY: dict[str, tuple[str, int]] = {}
 
 
-def _ring_allowed(tenant: str, conv: str) -> bool:
+_REM_DAY: dict[str, tuple[str, int]] = {}
+
+
+def _ring_allowed(tenant: str, conv: str, reminder: bool = False) -> bool:
     st = get_settings()
     if not st.voice_ring:
         return False
+    if reminder:   # v0.621 her OWN reminder at the time SHE chose: no quiet hours, no job budget - only a sanity cap
+        try:
+            from . import voice
+            if voice.tenant_live(tenant):
+                return False
+            from datetime import datetime, timezone
+            day = datetime.now(timezone.utc).strftime("%Y%m%d")
+            prev_day, n = _REM_DAY.get(tenant, ("", 0))
+            n = n + 1 if prev_day == day else 1
+            if n > max(1, st.voice_ring_reminder_max_day):
+                return False
+            _REM_DAY[tenant] = (day, n)
+            return True
+        except Exception:
+            return False
     try:   # a live call on this chat would hear the phone ring for nothing
         from . import voice
         if voice.ACTIVE.get(conv):

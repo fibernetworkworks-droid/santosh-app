@@ -134,6 +134,12 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                   "apni file", "workspac"),
     "kgmemory": ("kgmemory", "knowledge graph", "graph memory", "kg memory", "long term memory",
                  "long-term memory", "entity banao", "relation banao", "yaad graph", "memory graph"),
+    # v0.618 BHANDAR MANCH: the local-data workbench (read-only over her own beds). Bare "sql" stays
+    # with pgdb (the postgres desk); bare "ast"/"json" too short/loose for substring admit - these
+    # are the bed-shaped keys.
+    "bhandar": ("bhandar", "sqlite", "local beds", "local data", "beds dikhao", "markdown outline",
+                "json get", "json keys", "ast outline", "code skeleton", "time zone", "timezone",
+                "iana"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
     "mshop": ("mobile shop", "sim card", "phone repair", "phone shop"),
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",

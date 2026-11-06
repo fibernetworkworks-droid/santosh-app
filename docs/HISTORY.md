@@ -1,3 +1,22 @@
+## v0.618.0 KAAN W2 — LIVE CAPTIONS (6 Nov 2026)
+
+Owner: "START" on the kaan plan — Wave W2 of the WhisperAI feed. Rolling live captions over a PCM spine,
+hand-built on house primitives (port law, inertness law, local-first).
+
+- **The spine** (`kaan/live.py`): every chunk is decoded by ffmpeg (stdin pipe, any container — MediaRecorder
+  webm/opus, wav, mp3) to 16 kHz mono s16le PCM and appended to one file per session (`data/kaan_live/<id>.pcm`).
+  Windows are cut by byte offset (exact: 16k × 2 bytes) and wrapped into a wav with the stdlib `wave` module —
+  no subprocess for windowing.
+- **The watermark**: one rolling pass per chunk on `[watermark − 0.5 s, end]`; accepted words start at/after the
+  watermark (EPS 0.02 s) so overlap repeats are trimmed; phrases split on a >0.6 s gap or a sentence ender; the
+  watermark advances on every pass that ran, so silence is never re-scanned. MIN_WINDOW 1.5 s; stop catches a
+  ≥0.3 s tail. Caps: chunk 5 MB, 2000 chunks, 2 h session.
+- **The close**: stop is idempotent and writes ONE `kn_` transcript row (source='live') that diarize/minutes
+  already read; optional bounded clean pass `finalize_model=` (≤ 10 min audio) for batch quality.
+- **The gates**: start/chunk = audio ingest → the `kaan_audio` gate owns them (no new switch); stop rides the
+  W1 law (stored bytes are hers); live actions owner/approved-only; registry 605 unchanged (actions, not tools);
+  the kaan description tightened to fit the 1200-char diet. 18 tests (zero network, zero torch).
+
 ## v0.589.0 KAAN PACK — WhisperAI Wave W0, the transcription core (6 Nov 2026)
 
 The owner read whisperai.com end to end (17 features, 10 style presets, ~100-word custom vocabulary, no-bot Meeting
@@ -40,6 +59,24 @@ vendored — the port law) and the wrapper is hand-built on house primitives.
   Hindi/Marathi eval gate) is measured on the VPS after `pip install openai-whisper` + ffmpeg, before W1 exits.
 
 # HOOLA — full version history (moved out of CLAUDE.md on 29 Oct 2026 so sessions stop hitting "context full"). Search it, never read it whole.
+
+## v0.618.0 BHANDAR MANCH — the T2 local-core family, backend-only (6 Nov 2026)
+
+The owner started the T2 tier of the MCP feed ("T2 Local Core -- START") — the zero-network / zero-login /
+zero-key local beds — and it went in the house way: IDEA-ONLY, one tool, backend-only, guard wall first.
+One new tool `bhandar` (registry 605 → 606) with six actions over the tenant's OWN stores, all stdlib
+(sqlite3 / json / ast / zoneinfo), never a write anywhere: `beds` discovers the scraping / kgmemory /
+workspace SQLite stores with table counts; `sql` runs ONE read statement behind three belts (one statement
++ head law, write verbs and write pragmas refused by name with the replace()-function exception kept, then
+mode=ro so SQLite itself is the wall); `md` / `json` / `ast` are the workspace text beds (heading outlines
+with line numbers, deduped links, typed JSON structure with dotted-path get, the Python skeleton — shape,
+never source); `time` reads IANA zones with honest UTC offsets and DST flags, home zone Asia/Kolkata.
+The catalog evidence rows: Aderali06/sqlite-mcp-server, hannesrudolph/sqlite-explorer-fastmcp,
+scoretracker4321/json-mcp-lite, micl2e2/code-to-tree, rafim-dev/mcp-context-condenser,
+EdelmarSchneider/permark, davidan90/time-node-mcp, plus the mcp/servers `time` reference shape. The first
+live smoke caught the UTC +00:00 falsy-offset bug before any test was written. Kill switch
+`bhandar_enabled` (off means off — everything is a read). 33 zero-network tests; pins swept
+0.617.0 → 0.618.0 across 206 files with zero residual. Server-only deploy; desktop untouched.
 
 ## v0.600.0 HOOLA AEP 1.0 — the 100% parity audit + the openwiki analog, P8 of the HOOLA AEP plan (5 Nov 2026)
 
@@ -21233,3 +21270,76 @@ shown on the built page next to the AI-photo note, unsafe links never written.
 **NOT VERIFIED:** no live Pexels call and no live change build with real Opus has run through it; the credit line's
 look on her real sites is unseen. Not built from the read (proposed): endings by page goal, ~11 more AI-look tells,
 the render-tier checks, look rotation across her sites.
+
+## v0.618.0 HAMESHA JUDA - the voice call stays connected until SHE hangs up, and costs nothing while quiet (built as 0.617.0; owner: "VOICE CALL IS SOUL OF OUR PRODUCT ... ONCE CALL CONNECTED IT REMAINS CONNECTED TILL USER DONT DISCONNECT IT ... REPLY WHEN WORK DONE, GIVE REMINDERS ... 24/7" -> "START")
+
+**Why.** Gemini Live bills every second of audio Hoola sends it, and silence counts. The phone's idle gate sends
+silence when nobody talks, so an open call is billed all the time. At Hoola's own price table ($0.005 a minute in,
+₹88 a dollar) that is about ₹26 an hour, or about ₹630 a day, per user. That figure was not re-checked against
+Google's price page. A 24/7 call connected to Google is unaffordable.
+
+**What it does (`server/app/voice.py`).**
+- **Parking.** A quiet call PARKS: `_park_watch` closes the Gemini session after `VOICE_PARK_AFTER_S` (90 s) with
+  nobody speaking, Hoola silent, no tool or job answer pending, no news waiting and no GoAway move under way. The
+  call itself stays in CALLS with the phone attached.
+- **Waking.** `_park_wait` waits for `_wake`, which any of these sets:
+  - her voice (`_loud` mic chunk; not on a held line);
+  - a typed line, a job result, a card note or a reminder (any text note pushed);
+  - the end of a hold.
+  On waking, Gemini reconnects with the saved resumption handle, falling back to a fresh session plus reseed. Her
+  first 5 s of speech are kept (`WAKE_KEEP_BYTES`). The phone gets `status resting` / `live`.
+- **Long hold.** A long hold ("ruko" 15 min, her other phone call 60 min) now parks instead of ending the call.
+  Side talk does not wake it; the Wapas aao button, a typed line or the end of her phone call does.
+- **Phone gone.** When the phone connection drops, the call parks within 3 s and waits `VOICE_PARK_GRACE_S`
+  (900 s) instead of 25 s.
+- **Spoken news.** A due reminder, the morning briefing and an automatic job's result are now SPOKEN on a live call
+  (`_live_note` in `card_news`; `worker.run_routines` hands the result over without a new card kind). Before this,
+  none of them ever reached a call.
+- **Real voice.** The OpenAI engine (`voice_openai._session_limit`) moves its 50-minute session only at a pause,
+  waiting at most 20 s; it was cutting mid-sentence. The OpenAI engine does not park (`CAN_PARK = False`): it keeps
+  the old hold and grace rules.
+- **Scorecard.** It now counts `parked_minutes`, `parks` and `wakes`.
+
+**Phone (`lib/live_voice.dart`, `call_session.dart`).**
+- It keeps trying for 14 minutes after a network loss (was 24 s), with retries backing off to at most 5 s apart.
+- On `status restarting` (a server update) it re-dials a FRESH call on the same chat for up to 4 minutes. The server
+  already saves a drop note at shutdown, so the new call continues the conversation instead of greeting her afresh.
+- The `resting` status shows nothing on screen.
+
+**Settings.** `voice_park` (true), `voice_park_after_s` (90), `voice_park_grace_s` (900). Conftest turns
+`VOICE_PARK` off for the older call suites.
+
+**Tests.** `test_v0617_hamesha_juda.py`, 9 tests: quiet park + voice wake; news and typed wakes; phone-away park
+surviving past the old grace; hold park + Wapas wake; reminder, briefing and routine spoken once each; the OpenAI
+pause move; phone pins; settings; version. Voice suites: 201 + 35 green.
+
+**NOT VERIFIED.** No real phone has run a parked call yet. Three things are unmeasured:
+- the wake delay, i.e. how long between her first word and Gemini being back;
+- whether Google's resumption handle survives a long park (the fresh-session fallback is tested only with fakes);
+- the real cost of an idle hour.
+
+
+## v0.621.0 YAAD KI GHANTI - a reminder is SAID, even when no call is open (owner: "CHECK THE ISSUE REMINDER NOT WORKING VIA VOICE")
+
+**The cause.** A due reminder runs through `worker.fire_reminders`. It wrote a chat line, published the `reminder`
+event and sent a notification. v0.618 made a LIVE call speak that event, which is re-proved end to end in this
+release: the real `fire_reminders` reaches the Gemini session as a note. With NO call live, though, nothing ever
+spoke the reminder or rang her phone. Finished jobs had rung her since v0.553 (GHANTI); reminders never did.
+
+**The fix.** `worker._ring_for_reminder` runs when no call of the tenant is live (`voice.tenant_live`, any chat):
+- it saves a call followup note (`yaad.note_call_followup`);
+- it publishes `voice_ring` with `reminder: true` through the bus, so an OPEN app rings from its live stream and a
+  closed one through the FCM push;
+- the call that starts takes the followup note into its greeting and OPENS with the reminder.
+
+**Ring rules (`push._ring_allowed(..., reminder=True)`).** Her own reminder ignores the job-ring quiet hours and the
+2-a-day job budget. Its own cap is `VOICE_RING_REMINDER_MAX_DAY` (12). It never rings over a live call. Switch:
+`VOICE_RING_REMINDERS` (on).
+
+**Housekeeping.** The console stamps had stayed at 0.618 through v0.619 / v0.620, which turned test_v0475's stamp
+test red on main; they now move to 0.621.
+
+**Tests.** `test_v0621_yaad_ki_ghanti.py`, 6 tests.
+
+**NOT VERIFIED on her phone.** The ring for a reminder uses the same native path as job rings (SantoshPush ->
+Notify.ring / wake), which has worked for jobs since v0.219.

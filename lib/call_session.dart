@@ -380,6 +380,8 @@ class CallSession extends ChangeNotifier {
           'reconnecting' => 'Connection thoda slow hai, sambhal raha hoon…',
           'audio_paused' => 'Dusri awaaz (phone call?) chal rahi hai, call ruki hui hai',
           'call_hold' => null,   // v0.142 the hold banner says it
+          'restarting' => 'Server update ho raha hai, call khud dobara jud jaayegi…',   // v0.617
+          'resting' => null,     // v0.617 quiet call: still connected, Hoola listens and comes back on her voice
           _ => null,
         };
       case 'user_text':

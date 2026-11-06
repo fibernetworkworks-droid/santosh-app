@@ -335,6 +335,9 @@ class Settings(BaseSettings):
     kgmemory_enabled: bool = True          # v0.586 SANDARBH MANCH: the T1 reference memory role (the `kgmemory`
                                            # tool, the knowledge-graph idea) - per-tenant store
                                            # data/kgmemory/<tenant>/kg.db; off stops WRITES, reads stay answerable
+    bhandar_enabled: bool = True           # v0.618 BHANDAR MANCH: the T2 local-core family (the `bhandar` tool,
+                                           # the read-only SQLite/markdown/json/AST/time beds idea) - all reads
+                                           # over the tenant's OWN stores; off means off (honest NEED_SETUP)
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
@@ -511,6 +514,9 @@ class Settings(BaseSettings):
     voiceid_margin: float = 0.06           # and this much ahead of the next closest person
     voiceid_min_speech_s: float = 1.6      # speech needed before the first guess in a call
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
+    voice_park: bool = True                # v0.617 HAMESHA JUDA: a quiet call leaves Gemini (billed per second, even silence) and stays connected
+    voice_park_after_s: int = 90           # ...after this long with nobody speaking and nothing running
+    voice_park_grace_s: int = 900          # ...and a parked call waits this long for her phone to come back (nothing billed)
     focus_user_words: int = 6              # v0.200 her newest messages kept WORD-FOR-WORD in the focus block (a human remembers what you just SAID, not a summary of it)
     focus_word_chars: int = 600            # v0.200 cap per saved message inside the focus block
     focus_max_chars: int = 4000            # v0.200 the whole focus block's cap ("focused" = small and exact, never a dump)
@@ -529,6 +535,8 @@ class Settings(BaseSettings):
     voice_auto_rescue: bool = True         # v0.211 a tool failing twice hands the work to the full agent by itself (the call never just gives up)
     voice_setup_hard_keep_s: int = 3600    # v0.211 heavy setup losses (compression / tools) self-heal after this long - memory and tools come back on their own
     voice_ring: bool = True                # v0.219 ON: the native side learned the kind (SantoshPush turns the push into the wake: path + auto-call); off = the v0.214 behaviour
+    voice_ring_reminders: bool = True      # v0.621 a due reminder with no live call rings her and the call says it
+    voice_ring_reminder_max_day: int = 12  # ...her own reminders: quiet hours do not apply, only this sanity cap
     voice_ring_max_day: int = 2            # v0.211 rings per tenant per day (the phone is not an alarm clock)
     voice_ring_quiet: str = "22-8"         # v0.211 quiet hours in the tenant's own timezone - no rings inside
 
@@ -567,6 +575,7 @@ class Settings(BaseSettings):
     # --- KAAN PACK v0.589 (WhisperAI Wave W0): transcription core, AUDIO gate PC/HOME se alag, default OFF ---
     kaan_audio: bool = False                # the AUDIO gate (default OFF - KAAN_AUDIO=1 on the VPS flips it)
     kaan_diarize: bool = True               # v0.610 KAAN W1: pause-turn diarization (local, CPU-light - kill switch; KAAN_DIARIZE=0 par band)
+    kaan_live_dir: str = "./data/kaan_live"  # v0.618 KAAN W2: live-caption PCM spines (16k mono, sirf uske server par)
     # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---

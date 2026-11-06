@@ -16,6 +16,7 @@ from sqlalchemy import select
 from ..db import new_id, now, session
 from . import diarize as DI
 from . import engine as EN
+from . import live as LV
 from . import meeting as MT
 from .models import KaanTranscript
 
@@ -172,6 +173,33 @@ def minutes(tenant: str, tid: str) -> dict[str, Any]:
     return MT.minutes(get_transcript(tenant, tid))
 
 
+# ---------------------------------------------------------------- W2 live captions
+def live_start(tenant: str, *, model: str = "", language: str = "", conversation_id: str = "",
+              fn: Any = None) -> dict[str, Any]:
+    """W2: open a live-caption session (AUDIO gate owns it)."""
+    return LV.start(tenant, model=model, language=language, conversation_id=conversation_id, fn=fn)
+
+
+def live_chunk(tenant: str, sid: str, data: bytes, *, fn: Any = None) -> dict[str, Any]:
+    """W2: one audio chunk in -> the NEW captions out (one rolling pass per call)."""
+    return LV.chunk(tenant, sid, data, fn=fn)
+
+
+def live_stop(tenant: str, sid: str, *, finalize_model: str = "", fn: Any = None) -> dict[str, Any]:
+    """W2: close the session -> one kn_ transcript row (source='live') for diarize/minutes."""
+    return LV.stop(tenant, sid, finalize_model=finalize_model, fn=fn)
+
+
+def live_get(tenant: str, sid: str) -> dict[str, Any]:
+    """W2: session state (captions tail, watermark, duration) - a read."""
+    return LV.get_session(tenant, sid)
+
+
+def live_list(tenant: str, limit: int = 20) -> list[dict[str, Any]]:
+    """W2: recent sessions (live + done)."""
+    return LV.list_sessions(tenant, limit)
+
+
 def _row(r: KaanTranscript) -> dict[str, Any]:
     segs = (r.segments or {}).get("items", []) if isinstance(r.segments, dict) else (r.segments or [])
     n_words = (r.words or {}).get("count", 0) if isinstance(r.words, dict) else 0
@@ -195,6 +223,9 @@ def status(tenant: str) -> dict[str, Any]:
         "engine": "ready" if ok else "nahi",
         "engine_note": "" if ok else why,
         "default_model": EN.default_model(),
+        "live": {"on": gate_open(), "default_model": LV.LIVE_DEFAULT_MODEL, "active": LV.active_count(tenant),
+                 "note": "live captions (W2): chunks ka PCM spine isi server par banta hai; har chunk par naya hissa "
+                         "transcribe hota hai; stop par kn_ transcript banti hai. Wahi kaan_audio gate lagta hai."},
         "ladder": [{"name": m["name"], "params": m["params"], "note": m["note"]} for m in EN.MODEL_LADDER],
         "stored": n,
         "privacy": "audio + transcript isi server par rehte hain; koi bahar API is path par nahi.",

@@ -67,6 +67,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("NOTEBOOK_TTS_MODEL", "gemini-2.5-flash-preview-tts")   # v0.155: tests use the patched older TTS path
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
     monkeypatch.setenv("GYAAN_GROUND", "false")      # v0.135: no extra grounding call in scripted model tests
+    monkeypatch.setenv("VOICE_PARK", "false")        # v0.617 older call suites expect a live Gemini session; test_v0617 turns it on
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests
     monkeypatch.setenv("SEMANTIC_OFF", "1")
     monkeypatch.setenv("CONNECT_CLEAN", "false")     # v0.303: older suites count the full catalogue; test_v0303 covers clean          # no 40 s embedding-model download attempt (the sandbox has no HF)

@@ -1620,3 +1620,45 @@ Agent: Claude Code session (hoola-project-review)
 Task: owner asked for more places to talk to Hoola - all four channels (WhatsApp, Telegram, Slack, Teams), owner only.
 Work: app/bahar.py core + four webhooks + /api/bahar + worker forward + phone Profile > Bahar se baat; pairing code binds one sender.
 Result: test_v0616_bahar.py 10 green; memory + wiring suites 63/63 green. Not verified live on any channel.
+
+---
+Task ID: v0.618.0 HAMESHA JUDA
+Agent: Claude Code session (hoola-project-review)
+Task: owner - voice call is the soul; stays connected until she hangs up, speaks results and reminders 24/7 -> START.
+Work: quiet Gemini session parks (billed per second even silence), wakes on voice/text/news/reminder; long hold + lost phone park instead of ending; reminders/briefing/routine results spoken on a live call; OpenAI 50-min move at a pause; phone re-dials after server update, 14-min reconnect window.
+Result: test_v0617_hamesha_juda.py 9 green; voice suites green; built as 0.617 (their KUCHH NA CHHOOTE took 0.617), re-versioned 0.618. Site suites red only for missing Playwright browser in the sandbox. Not verified on a real phone.
+Task ID: 17
+Agent: main (kaan lane)
+Task: Owner: "START" - KAAN W2 LIVE CAPTIONS built as v0.618.0 on the v0.617.0 tip (c12a8d45e), no collision this time
+
+Work Log:
+- Tip moved v0.615 -> v0.617 while the lane read it (BAHAR SE BAAT + KUCHH NA CHHOOTE took 0.616, re-versioned to 0.617); next free = 0.618.0, verified via tags.
+- Built the PCM spine (server/app/kaan/live.py): chunks ffmpeg-decode to 16k mono s16le and append per session; windows cut by byte offset + stdlib wave (no subprocess); watermark trims overlap dupes; phrases split on gaps/enders; stop writes a kn_ row (source='live') that W1 diarize/minutes read; optional bounded clean pass (finalize_model, <=10 min).
+- Gate map: start/chunk = audio ingest -> the kaan_audio gate (no new switch); stop = the W1 stored-bytes law; live actions owner/approved-only; registry 605 unchanged (actions, not tools); kaan description tightened inside the 1200 diet.
+- Found + fixed during the suite's own first run: my description blew the 1200-char diet (W2 invisible to the agent - tightened); two tests ran a real pass without an engine patch; n_new counts phrases not words.
+- Tests: NEW test_v0618_kaan_w2.py 18 green (after the ritual sweep).
+- Ritual 0.618.0 (this script, line-wise): APP_VERSION story (chain verbatim), pubspec 0.618.0+624, quoted test pins swept, CLAUDE.md one-liner, HISTORY section, this mirror.
+Stage Summary:
+- W2 engine + tool actions + tests + ritual done in-sandbox; NOT VERIFIED live: the first real phone-chunk session - the bake block rides the vps-ops deploy. W3 (styles + vocab) waits for START.
+
+---
+Task ID: v0.620.0 BHANDAR MANCH (T2 Local Core, built as 0.618.0)
+Agent: main (owner session)
+Task: "T2 Local Core -- START" - the T2 tier of download/HOOLA_MCP_FEED.json ported backend-only into the hoola AI
+
+Work Log:
+- Sandbox recycled mid-task: repo restored from origin/main (fetched fresh - the dev chain had moved 0.493 -> 0.617.0 while the snapshot sat), feed files + upstream clones rebuilt from the pipeline recipes.
+- T2 catalog rows re-derived and evidence-verified (catalog description verbatim): Aderali06/sqlite-mcp-server, hannesrudolph/sqlite-explorer-fastmcp, scoretracker4321/json-mcp-lite, micl2e2/code-to-tree, rafim-dev/mcp-context-condenser, EdelmarSchneider/permark, davidan90/time-node-mcp (+ mcp/servers src/time reference shape). awesome-mcp-servers MIT re-verified; mcp/servers MIT->Apache-2.0 transition noted; zero code taken either way.
+- NEW server/app/agent/bhandar_tools.py: ONE tool `bhandar` (beds | sql | md | json | ast | time), READ-ONLY over the tenant's own beds; three-belt sql gate (one statement + head law / write verbs + write pragmas refused by name / mode=ro); sandarbh root law on md/json/ast; honest envelopes; stdlib only. Name law: 'matka' rejected (ads gambling blocklist beside 'satta'); Bhandar = the storehouse.
+- Wiring: tools.py registry 605 -> 606; config.py bhandar_enabled; admit.py bed-shaped keys (bare 'sql' stays with pgdb); prompts.py bullet beside Sandarbh Manch.
+- Tests: NEW server/tests/test_v0618_bhandar_manch.py (40, zero network; name keeps the first-build number) - discovery + no-create law, the sql gate surface, replace() exception, WITH/EXPLAIN, read pragmas, SQL_ERROR honesty, bed-name law + tenant isolation, md/json/ast lanes + caps + parse positions, time (IST home, UTC +00:00 regression from the first smoke, DST honesty), kill switch, purity, registry/enum/APP_VERSION pins.
+- COLLISION #11 + REBASE PROTOCOL: their HAMESHA JUDA took 0.618.0 (tag v0.618.0-b1789) and their KAAN W2 took 0.619.0 (tag v0.619.0-b1791) while BHANDAR sat built; rebased onto their e522b90b0 tip, their base kept whole, the version layer re-applied coherently (the rebase --theirs flip caught and redone: their tip restored for all shared files, then scripts/ritual_0620.py swept 208 test files 0.619.0 -> 0.620.0, +625 -> +626, registry pins 605 -> 606, ZERO residual).
+- Deploy: server-only = owner's vps-ops dispatch; desktop untouched.
+
+Stage Summary: v0.620.0 BHANDAR MANCH shipped on origin/main - the T2 local-core lane live behind the guard wall, zero keys, zero logins, zero new pip.
+
+---
+Task ID: v0.621.0 YAAD KI GHANTI
+Task: owner - reminder not working via voice.
+Work: traced fire_reminders; live call path proven end to end; no-live-call path had no voice at all -> ring + call opens with the reminder; reminder rings skip job quiet hours.
+Result: test_v0621 6 green; console stamps healed 0.618 -> 0.621. Not verified on her phone.

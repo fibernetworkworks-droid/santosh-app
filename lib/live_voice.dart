@@ -29,7 +29,10 @@ class LiveVoice {
   static const _call = MethodChannel('santosh/call');
 
   /// How long a dropped connection is retried before the call is given up.
-  static const _resumeWindow = Duration(seconds: 24);
+  /// v0.617 HAMESHA JUDA: the server keeps a dropped call 15 minutes (Gemini closed meanwhile, nothing billed), so the
+  /// phone keeps trying that long too; a server update gets a fresh call on the same chat that continues the talk.
+  static const _resumeWindow = Duration(minutes: 14);
+  static const _restartWindow = Duration(minutes: 4);
 
   /// The call in progress (the lock-screen notification's "Call band karein" button ends it).
   static LiveVoice? _current;
@@ -47,6 +50,7 @@ class LiveVoice {
   bool _userEnded = false;
   bool _reconnecting = false;
   bool _noResume = false; // the server said the call is gone
+  bool _restarting = false; // v0.617 the server is updating: re-dial a fresh call on this chat when it is back
   bool _audioPaused = false; // another app (a real phone call...) has the audio for a moment
   bool _callHold = false; // v0.142 she is on another phone / WhatsApp call: Hoola is on hold until it ends
   String? _callId;
@@ -221,7 +225,11 @@ class LiveVoice {
       try {
         final e = Map<String, dynamic>.from(jsonDecode(data) as Map);
         if (e['type'] == 'pong') return;
-        if (e['type'] == 'ready' && e['call_id'] is String) _callId = e['call_id'] as String;
+        if (e['type'] == 'ready' && e['call_id'] is String) {
+          _callId = e['call_id'] as String;
+          _restarting = false;
+        }
+        if (e['type'] == 'status' && e['state'] == 'restarting') _restarting = true;
         if (e['type'] == 'ready' && e['vad'] is Map) {
           final v = Map<String, dynamic>.from(e['vad'] as Map);
           final need = (v['need'] as num?)?.toDouble();
@@ -233,7 +241,7 @@ class LiveVoice {
           if (fast != null && fast > 0.5 && fast < 0.99) _gate.speechFast = fast;
           _idleOn = v['idle_gate'] != false;
         }
-        if (e['type'] == 'error' && e['code'] == 'gone') _noResume = true;
+        if (e['type'] == 'error' && e['code'] == 'gone' && !_restarting) _noResume = true;
         if (e['type'] == 'interrupted') cutSpeech();
         if (e['type'] == 'hold' && e['on'] == true) cutSpeech();
         onEvent(e);
@@ -250,7 +258,7 @@ class LiveVoice {
         await ws.close();
       } catch (_) {}
     }());
-    if (_userEnded || _noResume || _callId == null) {
+    if (_userEnded || (_noResume && !_restarting) || (_callId == null && !_restarting)) {
       _finish(reason);
       return;
     }
@@ -262,11 +270,12 @@ class LiveVoice {
     _reconnecting = true;
     cutSpeech();
     onEvent({'type': 'status', 'state': 'phone_reconnecting'});
-    final until = DateTime.now().add(_resumeWindow);
+    final until = DateTime.now().add(_restarting ? _restartWindow : _resumeWindow);
     var wait = const Duration(milliseconds: 300);
-    while (!_closed && !_noResume && DateTime.now().isBefore(until)) {
+    while (!_closed && (!_noResume || _restarting) && DateTime.now().isBefore(until)) {
       try {
-        final ws = await _open(resume: _callId);
+        // v0.617 after a server update the old call is gone: a fresh call on the same chat continues the talk
+        final ws = await _open(resume: _restarting ? null : _callId);
         if (_closed) {
           unawaited(ws.close());
           break;
@@ -277,7 +286,7 @@ class LiveVoice {
         return;
       } catch (_) {
         await Future.delayed(wait);
-        wait = Duration(milliseconds: math.min(wait.inMilliseconds * 2, 3000));
+        wait = Duration(milliseconds: math.min(wait.inMilliseconds * 2, 5000));
       }
     }
     _reconnecting = false;
