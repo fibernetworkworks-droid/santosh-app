@@ -480,6 +480,7 @@ class Settings(BaseSettings):
     # set, and the month's budget / her minutes allow - otherwise the call quietly runs on Gemini.
     openai_api_key: str = ""                          # VPS .env only (OPENAI_API_KEY), never in chat or the repo
     voice_openai_enabled: bool = False
+    voice_lean_tools: bool = True    # v0.627 the call declares only LEAN_TOOLS (Gemini bills the whole tool list on every reply); the rest via santosh_kaam
     voice_reminder_guard: bool = True   # v0.624 a create_reminder with no reminder ask in her words goes to santosh_kaam                # v0.622 owner: every call on Gemini; True brings the OpenAI choice back
     voice_openai_model: str = "gpt-realtime-2.1-mini"   # the mini only: the full model costs 4-10x Gemini
     voice_openai_voice_m: str = "cedar"

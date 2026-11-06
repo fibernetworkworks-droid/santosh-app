@@ -190,7 +190,7 @@ Doing real work
 - Work out exact dates and times yourself ("kal subah" is tomorrow 8 AM unless they gave a time). The user's local time now is {now}.
 
 Which tool (details are in each tool's description)
-- EVERY job she can give in chat works on this call: its own tool below, else santosh_kaam with her exact words. create_reminder ONLY when she asks to be reminded; never turn another job into one.
+- EVERY job she can give in chat works on this call: its tool if it is in your list, else santosh_kaam with her exact words. create_reminder ONLY when she asks to be reminded; never turn another job into one.
 - Reminders, phone alarms and timers, lists, memory, weather, daily routines: call them directly. 'X minute / ghante baad yaad dilana' = create_reminder in_minutes=X - never work out the clock time yourself.
 - Business work in a call (her Sahayaks: tailor, chai, office, GST, payroll, accounts, audit, insurance, telecaller, SEO, wholesale, export, franchise, contractor, ads, brand, support / helpdesk / complaints / returns / community / call centre, developer / QA / IT / NOC / cyber / DevOps / docs / product, logistics / fleet / godown / courier / travel / drivers / customs, real estate / society / interior / architect, website, app design, 3D, video studio, Hoola Deals / bookings / compare, Postgres, Document desk / Sheet Milaan, letters / translation, hotel / homestay / banquet / events / weddings / tours, legal / compliance / company secretary / notary / data protection, journalism / photo / design / podcast / influencer / artist / book / film / video editing desks, SEO, export, wholesale, franchise, contractor, insurance, App Jaanch / REA, bank-data or health-record consent checks, DigiLocker, ONDC): the STATE readers of the main desks ARE on this call - darzi_dekho, gst_dekho, payroll_dekho, paisa_dekho, vakil_dekho and the rest of the *_dekho heads: ask them DIRECTLY for orders, status, hisaab, today's haal ("darzi_dekho action=today"). Any CHANGE (new order, status move, price, rule, message) goes to santosh_kaam with her words and the details ("darzi: Riya ka blouse order, 15 tareekh"); say one line that it is being done, and the result comes back as a note / card. Tool names in notes for such work = santosh_kaam.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, the SENDING of a WhatsApp campaign (creating one and watching its status you do directly with create_campaign / get_campaign_status - always auto_send=False on a call; the send itself waits for her card tap), multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
@@ -416,6 +416,11 @@ def _tool_specs() -> list[dict]:
     from .agent.tools import VOICE_SPECS   # v0.313 the call keeps the short descriptions (chat got the full ones)
     specs = [_compact(t) for t in VOICE_SPECS
              if (t["name"] in VOICE_TOOL_NAMES and not via_kaam(t["name"])) or t["name"] in VOICE_HEADS] + [DELEGATE] + extra
+    if get_settings().voice_lean_tools:
+        # v0.627 CHHOTA MENU: Gemini Live bills the whole declared tool list on EVERY reply, even when one tool is used.
+        # The call declares only everyday tools; every other job is still done - an undeclared name, or santosh_kaam,
+        # reaches the full chat brain (Call._execute -> _delegate), exactly like chat.
+        specs = [t for t in specs if t["name"] in LEAN_TOOLS]
     size = len(json.dumps(specs, ensure_ascii=False))
     if size > VOICE_TOOL_BUDGET:
         # never again a call that dies of its own tool list: say it loudly in the log (a test also checks it)
@@ -488,6 +493,20 @@ def reminder_wanted(said: str) -> bool:
     return bool(_REMIND_WORDS.search(said or ""))
 
 
+LEAN_TOOLS = {
+    "santosh_kaam", "side_talk", "haan_karo", "kaam_status", "ask_form",
+    "create_reminder", "list_reminders", "cancel_reminder", "set_phone_alarm", "set_phone_timer",
+    "remember", "forget", "yaad_khojo", "memory_search", "list_add", "list_show", "list_done", "get_weather",
+    "google_search", "open_website", "open_on_phone", "browse_web", "browse_result", "computer_operator",
+    "email_triage", "email_check", "email_read", "email_thread", "email_draft", "email_forward", "email_action",
+    "email_drafts", "email_delete",
+    "calendar_agenda", "calendar_add_event", "calendar_find_event", "calendar_update_event", "calendar_cancel_event",
+    "calendar_free_slots",
+    "maps_search", "maps_nearby", "maps_directions", "maps_navigate", "maps_place",
+    "youtube_play", "music_control", "tv_channel", "tv_remote", "bluetooth", "ac_control",
+    "pc_do", "pc_task_result", "order_karo", "file_read", "hoola_send", "gyaan_khojo", "india_info",
+    "artifact_make", "photo_banao", "phone_doctor",
+}   # v0.627 the everyday call menu (owner: "it is going to every tool why --- i just given instruction regarding gmail")
 CORE_TOOLS = {"create_reminder", "list_reminders", "set_phone_alarm", "set_phone_timer", "remember", "get_weather",
               "google_search", "open_on_phone", "music_control", "youtube_play", "calendar_agenda", "kaam_status",
               "list_add", "list_show"}
