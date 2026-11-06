@@ -67,6 +67,25 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (6 Nov 2026, owner: "GEMINI IS PERFECT SAVE THE STATE"): branch `stable-2026-11-06-voice-v622` =
+  commit 743d4cd6 = v0.622.0, pubspec 0.622.0+628 - **cut at the commit that is actually LIVE** (healthz read 0.622.0 at
+  the save; main had already moved to 0.623.0 KOI PATA NA KHOYE, which is NOT in this branch). The voice state she
+  approved on a real call: every call on **Gemini Live** (`voice_openai_enabled` False; OpenAI real voice off), v0.618
+  HAMESHA JUDA (a quiet call PARKS Gemini after 90 s and wakes on her voice / typed line / news / reminder on the same
+  memory; long hold + lost phone park instead of ending; phone waits 15 min and re-dials after a server update),
+  v0.621 YAAD KI GHANTI (a due reminder is spoken on a live call, or rings her when there is none), v0.622 SAHI SAMAY
+  ('X minute baad' = `create_reminder in_minutes`, counted by the SERVER clock).
+  **RE-VERIFIED IN THIS EXACT COMMIT** (extracted with git archive, run there, not on main): markers present
+  (voice_openai_enabled False, in_minutes, CAN_PARK, _ring_for_reminder, APP_VERSION 0.622.0) and **151 tests green, 0
+  failed** across test_voice, v0617 hamesha juda, v0621, v0622, routines, voice ring, voice phases 1-5, openai voice,
+  v149 slim, v150 heal, v0199 voice tool.
+  **NOT VERIFIED / LIVE CAVEATS, said plainly:** the 1011 drop she saw was Gemini "prepayment credits depleted" - a
+  billing state, not code; if it returns, recharge AI Studio. Anthropic credit was low (chat replies fail when it runs
+  out) and her Google sign-in had expired (Drive / Gmail / Calendar refuse until reconnected). Parking cost savings are
+  by design, not yet measured on a bill.
+  APK release `v0.622.0-b1797`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.622.0-b1797/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-06-voice-v622` as the branch.
 - SAVE THE STATE (5 Nov 2026, owner: "SAVE THE STATE FOR GOOGLE MAPS FOR HOOLA"): branch
   `stable-2026-11-05-maps-v520` = commit a51ea087 = v0.520.0, pubspec 0.520.0+549. **Cut at the commit that is
   actually LIVE** - the 3 Nov maps checkpoint below is still valid at v0.470.0, but hoola.ainewtika.com now serves

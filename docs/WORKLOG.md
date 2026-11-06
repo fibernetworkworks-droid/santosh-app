@@ -1668,3 +1668,13 @@ Task ID: v0.622.0 SAHI SAMAY + SIRF GEMINI
 Task: owner - reminder setting broken on her call (logs) + "switch voice to Gemini".
 Work: her VPS call record: reminders spoken when due, but the call model computed "X minute baad" itself (past / 9 s ahead) -> create_reminder in_minutes counted by the server; voice_openai_enabled False = every call on Gemini.
 Result: test_v0622 7 green + routines/console/openai suites green; 6 pre-existing reds (v063 / v091) proven on the untouched tree.
+
+---
+Task ID: save-state-2026-11-06-voice-v622
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "GEMINI IS PERFECT SAVE THE STATE".
+Work Log:
+- Live healthz 0.622.0 = commit 743d4cd6; branch stable-2026-11-06-voice-v622 cut there.
+- Extracted the commit; 151 voice / reminder / routines tests green, markers checked.
+- APK v0.622.0-b1797. CLAUDE.md KNOWN GOOD CHECKPOINT entry added.
+Stage Summary: voice-on-Gemini state saved; rollback = usual VPS commands with this branch.
