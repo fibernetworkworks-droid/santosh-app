@@ -225,6 +225,34 @@ safe), 7 new tables (cbim_asbuilts + docs, ctwin_assets + readings, cgis_layers 
 cpd_scaffolds), registry STILL 580, Hub rows + prompt block + `__init__` carry Wave 3.5, tests
 `test_v0565_construction_w35.py`.
 
+### Wave 4 — the remaining seats (v0.586.0; owner: "GO WAVE 4")
+
+Members: the 47 register rows outside Waves 1–3.5 EXCEPT the four design-discipline rows (8, 14, 15, 17)
+which stay with `DESIGN_DESK_PLAN.md` (§4 anti-duplication — the v0.372 lesson stands). Four rows were
+already shipped elsewhere and are TAGGED ONLY: #7 `architect_assistant`, #13 `interior_designer`,
+#100 `property_manager`, #101 `society_manager`. The FM rows (#102–#108) ride the EXISTING
+property/society seats (§12's own law) as new `const_fm` tools on a new `fm_work` duty — no new hire key.
+Five NEW desks + six desk extensions + the FM tools; same laws everywhere (open honesty on every card,
+marks need names, tier C refuses the reserved acts). **SHIPPED v0.586.0.**
+
+| Desk | Ships | The honest limit printed on every card |
+|---|---|---|
+| **`const_land`** (NEW, #1–#6) | parcel register (area AS FED with its 7/12 source) · title document checklist, marks BY NAME (#2) · land-record reconciliation arithmetic (#3) · development worksheet: FSI fed WITH SOURCE → permissible vs programme (#4) · cost/funding totals, equity:debt, simple interest on HER rate (#5) · JV share register from the deed → entitlement arithmetic (#6) | *"Title opinion = advocate; funding structure = CFO; the deed is signed by you. We do the registers and the arithmetic."* |
+| **`const_plan`** (NEW, #42/#43/#63/#65/#66/#68/#69/#79/#80) | activity register, baseline AS FED, % complete HER word · date variance (criticality NEVER computed — new tier-C row) · resource loading + output ratios (#65) · risk register, score = P × I on HER marks (#66) · site instructions + PMC log (#69) · cash-flow: HER baseline vs HER bills (#42) · EVM: SPI/CPI arithmetic, no EAC forecast (#43) · director's dashboard — only what the registers already said (#68) · specialist-agency register (#79) · plant bookings with double-booking NAMED + utilisation (#80) | *"Dates and P/I are your marks; variance and scores are arithmetic; the critical path is the planner's mark, never our code's."* |
+| **`const_ehs`** (NEW, #83/#84/#86) | training & competency register with expiry arithmetic (#83) · environmental readings AS FED vs limits FED WITH SOURCES → exceedance arithmetic (no sensors seated, #84) · camp register + facilities checklist BY NAME (#86) | *"Your monitoring report is the only reading we accept; 'site safe' is the EHS head's declaration."* |
+| **`const_studio`** (NEW, #119/#120) | shot-brief register + per-shot asset checklists (#119) · report/slide outline register with section status (#120) | *"We keep the register and the checklist; the render and the deck are yours."* |
+| **`const_learn`** (NEW, #121/#122/#123) | trainee/module/assessment registers, pass list = arithmetic on HER pass line (#121) · topic register + quizzes with the key held, score arithmetic (#122) · contractor records-discipline checklist + coaching notes (#123) | *"Marks come from your sheets; certificates come from the training centre; tax/investment advice stays with the CA."* |
+| **Desk extensions** | `const_approvals` + heritage/AAI/CRZ applicability screener, HER yes/no/unsure marks, nothing fetched (#33) · `const_qs` + cost plan vs estimate, VE options, works-contract GST rows with the national-pack rate, net after HER ITC (#40, #89) · `const_contracts` + LD calculator (all four numbers from HER clause; the deduction stays tier C) + arbitration bundle index (#48, #50) · `const_tender` + purchase register, expediting board, EXIM register — customs stays with the CHA (#57, #59, #60) · `const_quality` + material test register: pass/fail arithmetic on FED limits, acceptance stays tier C (#76) · `const_customer` + sales pipeline, unit inventory as HER marks, marketing assets with the RERA number required (new tier-C row), agreement-for-sale checklist BY NAME, handover dues arithmetic, investor/lender pack draft with the sign line EMPTY (#94–#99) | *"Every number is fed with its source; every reserved act stays gated."* |
+| **`const_fm` tools on the EXISTING seats** (#102–#108) | work orders (status change BY NAME) · PPM register with next-due arithmetic (#103) · lift/fire/STP/WTP compliance calendar (#105) · housekeeping/security rosters with gaps named (#106) · structural-audit schedule, cycle FED from HER municipal circular — certificate tier C (#107) · asset & space register (#108) | *"The seats already exist (property/society). The certificate is the agency's / the registered engineer's."* |
+
+Shipped together with: `india.json` 18 → 19 rows (works-contract GST 18% rate row, CBIC Not. 11/2017-IGST
+with a verify-before-reliance note on the row), tier-C gate 33 → 40 rows (certify a clear title / declare
+the critical path / declare a site safe / give tax or investment advice / advertise without the RERA
+number / certify a structural audit / file a GST return), 10 new tables (cland_*, cplan_*, cehs_*,
+cstudio_*, clearn_*, cfm_*, cw4_ext_items), registry 581 → 593 (six new do+dekho tools), the `fm_work`
+duty joins `society_manager` + `property_manager` in roles.py, Hub rows carry the Wave-4 lines, tests
+`test_v0586_construction_w4.py` (20).
+
 ## 8. The voice-first daily log (the wedge, designed now so C1 builds it once)
 
 The supervisor's evening, one flow: he calls (or the scheduled briefing calls him — the morning-briefing
@@ -272,8 +300,9 @@ name printed under it.
 
 ## 12. Not in this plan (said plainly)
 
-Register rows outside Waves 1–3.5 (1–6, 40, 42–43, 57, 63, 65–66, 68–69, 79–80, 83–84, 86, 89, 94–99,
-102–103, 105–108, 119–123) wait for her word or a paying customer; FM/society gaps (102–109 except the
-twin steward #109 and the energy row #104) belong to the existing property/society employees; the Design
-Desk disciplines stay in `DESIGN_DESK_PLAN.md` (§4); nothing here builds a WhatsApp automation beyond
-the official API; and no phase touches the frozen Mera PC / desktop surface.
+After Wave 4 (v0.586.0) exactly FOUR register rows remain unbuilt: 8, 14, 15, 17 — the design &
+consultancy disciplines that `DESIGN_DESK_PLAN.md` (§4) owns; they build there or not at all (the
+anti-duplication law stands). Four rows were Wave-4 TAGS ONLY on already-shipped seats (#7/#13 design
+lane, #100/#101 operations lane). The FM rows ride the existing property/society employees as built
+(§12's own law, honoured). Nothing here builds a WhatsApp automation beyond the official API; and no
+phase touches the frozen Mera PC / desktop surface.

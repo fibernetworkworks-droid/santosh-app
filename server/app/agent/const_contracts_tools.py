@@ -18,10 +18,15 @@ CONTRACTS_TOOLS = [
         "daywork), qty, rate -> DRAFT (approve CLIENT karega; unke naam se record hota hai). action=variation_mark: "
         "variation (id), status draft|submitted|approved|rejected, approved_by (client ka naam). action=claim: contract, "
         "cause, event_on, noticed_on, matrix [{event, clause, effect, evidence}] -> notice-compliance ka hisaab; "
-        "entitlement ka faisla advocate ka. action=insured: contract, note (bonds/insurance yahin record)."),
+        "entitlement ka faisla advocate ka. action=insured: contract, note (bonds/insurance yahin record). "
+        "Wave 4 #48: action=ld_calc: project, contract_ref, delay_days, ld_pct_per_week, contract_value, "
+        "cap_pct, sources (clause no) -> arithmetic + cap check; LD kaatna tier C. #50: action=arb_bundle_add: "
+        "project, claim, rows [date, evidence, exhibit], by -> bundle index (case counsel ka); "
+        "action=arb_bundle: project, claim -> index padho."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["contract", "oblig", "oblig_done", "oblig_due", "variation",
-                                               "variation_mark", "claim", "insured"]},
+                                               "variation_mark", "claim", "insured", "ld_calc",
+                                               "arb_bundle_add", "arb_bundle"]},
          "name": {"type": "string"}, "party": {"type": "string"}, "role": {"type": "string"},
          "value": {"type": "number"}, "signed_on": {"type": "string"}, "start_on": {"type": "string"},
          "end_on": {"type": "string"}, "notice_days": {"type": "number"}, "ref": {"type": "string"},
@@ -30,6 +35,9 @@ CONTRACTS_TOOLS = [
          "on": {"type": "string"}, "days": {"type": "number"}, "desc": {"type": "string"}, "basis": {"type": "string"},
          "qty": {"type": "number"}, "rate": {"type": "number"}, "variation": {"type": "string"},
          "status": {"type": "string"}, "approved_by": {"type": "string"}, "cause": {"type": "string"},
+         "delay_days": {"type": "number"}, "cap_pct": {"type": "number"}, "claim": {"type": "string"},
+         "pct": {"type": "number"},
+         "rows": {"type": "array", "items": {}}, "by": {"type": "string"},
          "event_on": {"type": "string"}, "noticed_on": {"type": "string"},
          "matrix": {"type": "array", "items": {"type": "object"}}},
          "required": ["action"]}},
@@ -77,6 +85,17 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             what = f"insurance/bond: {_s(a.get('note'))[:160]}" if a.get("note") else "insurance/bond"
             return K.oblig_add(t, _s(a.get("contract")), what,
                                _s(a.get("due_on")) or _s(a.get("end_on")), True, "insurance & bonds row")
+
+        if action == "ld_calc":
+            return K.ld_calc(t, _s(a.get("project")), _s(a.get("ref")), int(a.get("delay_days") or 0),
+                             float(a.get("pct") or 0), float(a.get("value") or 0),
+                             float(a.get("cap_pct") or 0) if a.get("cap_pct") is not None else 0.0,
+                             _s(a.get("basis")))
+        if action == "arb_bundle_add":
+            return K.arb_bundle_add(t, _s(a.get("project")), _s(a.get("claim")), a.get("rows") or [],
+                                    _s(a.get("approved_by")), conv)
+        if action == "arb_bundle":
+            return K.arb_bundle(t, _s(a.get("project")), _s(a.get("claim")))
     except (K.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")

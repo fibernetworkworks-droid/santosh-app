@@ -206,3 +206,99 @@ def day(tenant: str, project: str = "") -> dict:
     say = (f"QS desk{' - ' + project if project else ''}: {len(tks)} take-off lines (trail ke saath), "
            f"BOQ value {_rs(val)}, {len(over)} head(s) over budget.")
     return {"takeoffs": len(tks), "boq_lines": len(bos), "boq_value": val, "over_budget": len(over), "say": say}
+
+
+# ---------------------------------------------------------------- Wave 4: #40 cost plan & VE, #89 GST
+def cost_plan(tenant: str, project: str, rows: list, note: str = "") -> dict:
+    """#40: rows [head, planned, estimate] - plan vs estimate variance, arithmetic; the value
+    engineering DECISION stays with the cost manager / owner."""
+    from . import models as WM
+    if not rows:
+        raise CstError("Cost plan rows chahiye [head, planned, estimate].")
+    out, tp, te = [], 0.0, 0.0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 3:
+                continue
+            p, e = _num(r[1]), _num(r[2])
+            tp, te = tp + p, te + e
+            var = round(e - p, 2)
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="cost_plan",
+                                name=str(r[0])[:120],
+                                data=_dump({"planned": p, "estimate": e, "var": var,
+                                            "note": note[:200]})))
+            out.append({"head": str(r[0])[:80], "planned": p, "estimate": e, "var": var,
+                        "verdict": "over" if var > 0 else "under"})
+    return {"ok": True, "rows": out, "total_planned": round(tp, 2), "total_estimate": round(te, 2),
+            "total_var": round(te - tp, 2),
+            "said": (f"Estimate planned se {round(te - tp, 2):,.0f} ka farak - VE options dekho. "
+                     "Cost plan approve karna cost manager/owner ka kaam hai.")}
+
+
+def ve_option(tenant: str, project: str, rows: list) -> dict:
+    """#40: rows [option, saving(FED), risk_note] - the saving is HER number with its basis."""
+    from . import models as WM
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 2:
+                continue
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="ve", name=str(r[0])[:160],
+                                data=_dump({"saving": _num(r[1]), "risk": str(r[2])[:200] if len(r) > 2 else ""})))
+            made += 1
+    return {"ok": True, "rows": made,
+            "said": f"{made} VE option(s) register mein - saving aapka number, basis note do; adopt karna owner ka faisla."}
+
+
+def gst_row(tenant: str, project: str, ref: str, rows: list, source: str = "") -> dict:
+    """#89: works-contract GST rows [taxable_value, rate_pct, rcm(yes/no)] on a bill/RA ref.
+    Rate FED ya pack row se (india.json gst_works_contract_pct); filing the CA's (tier C)."""
+    from . import models as WM
+    from .statepacks import national
+    if not ref:
+        raise CstError("Bill/RA ref do jis par GST lagana hai.")
+    if not rows:
+        raise CstError("rows chahiye [taxable_value, rate_pct, rcm].")
+    if not source:
+        pack = national()
+        row = next((r for r in pack.get("rows", []) if r.get("rule_id") == "gst_works_contract_pct"), None)
+        if not row:
+            raise CstError("Rate ka source do (notification/circular) - pack row bhi nahi mili.")
+        source = f"india pack: {row.get('source', '')}"
+        default_rate = float(row.get("value") or 0)
+    else:
+        default_rate = 0.0
+    out, tot_tax = [], 0.0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 2:
+                continue
+            taxable, rate = _num(r[0]), _num(r[1]) if len(r) > 1 and _num(r[1]) else default_rate
+            rcm = str(r[2])[:4].lower() == "yes" if len(r) > 2 else False
+            tax = round(taxable * rate / 100, 2)
+            tot_tax += tax
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="gst", ref=ref,
+                                name="gst", data=_dump({"taxable": taxable, "rate_pct": rate,
+                                                        "rcm": rcm, "tax": tax}), source=source))
+            out.append({"taxable": taxable, "rate_pct": rate, "rcm": rcm, "tax": tax})
+    return {"ok": True, "ref": ref, "rows": out, "tax_total": round(tot_tax, 2), "rate_source": source,
+            "said": (f"GST {round(tot_tax, 2):,.0f} ({source[:60]}). RCM wali row ka cash flow alag "
+                     "hai. Return file karna CA ka kaam hai.")}
+
+
+def gst_sum(tenant: str, project: str, ref: str, itc: float = 0.0, itc_source: str = "") -> dict:
+    """Net = output tax (fed rows) - ITC (FED with its source). Filing stays the CA's."""
+    from . import models as WM
+    if itc > 0 and not itc_source:
+        raise CstError("ITC ka source do (2B / credit note).")
+    with session() as s:
+        rows = s.scalars(select(WM.Cw4ExtItem).where(WM.Cw4ExtItem.tenant_id == tenant,
+                                                     WM.Cw4ExtItem.project == project,
+                                                     WM.Cw4ExtItem.kind == "gst",
+                                                     WM.Cw4ExtItem.ref == ref)).all()
+    if not rows:
+        raise CstError(f"Ref '{ref}' par GST rows nahi mili - pehle action=gst_row.")
+    out_tax = round(sum(float(_j(r.data, {}).get("tax") or 0) for r in rows), 2)
+    net = round(out_tax - itc, 2)
+    return {"ok": True, "ref": ref, "output_tax": out_tax, "itc_fed": itc, "net_payable": net,
+            "said": "Yeh computation hai - return aur payment CA hi karega (tier C)."}

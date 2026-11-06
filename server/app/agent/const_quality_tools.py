@@ -39,7 +39,7 @@ QUALITY_TOOLS = [
          "action": {"type": "string", "enum": ["itp", "itp_approve", "ncr", "ncr_close", "lot", "lot_verdict",
                                                "cube_draft", "punch", "permit_draft", "permit_issue",
                                                "permit_close", "toolbox", "incident_open", "incident_row",
-                                               "incident_questions", "incident_close", "incident_pack"]},
+                                               "incident_questions", "incident_close", "incident_pack", "mtest_add", "mtest_list"]},
          "site": {"type": "string"}, "activity": {"type": "string"}, "steps": {"type": "array", "items": {"type": "object"}},
          "note": {"type": "string"}, "itp": {"type": "string"}, "approved_by": {"type": "string"}, "defect": {"type": "string"},
          "spec": {"type": "string"}, "severity": {"type": "string"}, "action_taken": {"type": "string"},
@@ -63,6 +63,7 @@ QUALITY_TOOLS = [
          "what": {"type": "string", "enum": ["day", "itps", "ncrs", "lots", "punch", "permits", "toolbox",
                                             "incidents", "incident"]},
          "verdict": {"type": "string"}, "site": {"type": "string"}, "status": {"type": "string"},
+         "rows": {"type": "array", "items": {}}, "project": {"type": "string"},
          "incident": {"type": "string"}},
          "required": ["what"]}},
 ]
@@ -122,6 +123,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return Q.incident_close(t, _s(a.get("incident")), _s(a.get("root_cause")), _s(a.get("findings_by")))
         if action == "incident_pack":
             return Q.incident_pack(t, _s(a.get("incident")))
+
+        if action == "mtest_add":
+            return Q.mtest_add(t, _s(a.get("site")) or _s(a.get("project")), a.get("rows") or [], conv)
+        if action == "mtest_list":
+            return Q.mtest_list(t, _s(a.get("site")) or _s(a.get("project")),
+                                _s(a.get("verdict")) == "FAIL")
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")

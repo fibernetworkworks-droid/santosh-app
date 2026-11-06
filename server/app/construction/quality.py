@@ -421,3 +421,52 @@ def incident_pack(tenant: str, incident_id: str) -> dict:
     return {"file": f, "status": x.status,
             "say": f"Investigation pack: {len(rows)} rows, status {x.status}. Findings line safety head "
                    "ki hai - khali ya unke naam se."}
+
+
+# ---------------------------------------------------------------- Wave 4: #76 material test register
+def mtest_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
+    """#76: rows [material, sample_id, lab, result, limit, op(min|max), limit_source] - pass/fail is
+    ARITHMETIC against the FED limit; ACCEPTANCE stays the QC engineer's (tier C rows cover it)."""
+    from . import models as WM
+    from .common import publish as pub
+    if not rows:
+        raise CstError("Test rows chahiye [material, sample_id, lab, result, limit, op, limit_source].")
+    made, fails = 0, 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 6:
+                continue
+            result, limit = _num(r[3]), _num(r[4])
+            op = str(r[5])[:4].lower()
+            if op not in ("min", "max"):
+                raise CstError(f"Row '{r[0]}': op 'min' (result >= limit pass) ya 'max' (result <= limit pass) do.")
+            if not str(r[6] or "").strip():
+                raise CstError(f"Row '{r[0]}': limit ka source do (IS code / spec).")
+            ok = result >= limit if op == "min" else result <= limit
+            if not ok:
+                fails += 1
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="mtest",
+                                name=str(r[0])[:120],
+                                data=_dump({"sample": str(r[1])[:40], "lab": str(r[2])[:120],
+                                            "result": result, "limit": limit, "op": op,
+                                            "verdict": "pass" if ok else "FAIL"}), source=str(r[6])[:200]))
+            made += 1
+    pub(tenant, "const_quality", {"kind": "mtest", "project": project, "rows": made, "fails": fails}, conv)
+    return {"ok": True, "rows": made, "fails": fails,
+            "said": (f"{fails} test FAIL - NCR/acceptance QC engineer ka decision (Hoola record rakhta hai)."
+                     if fails else f"{made} test pass (arithmetic on fed limits).")}
+
+
+def mtest_list(tenant: str, project: str, only_fails: bool = False) -> dict:
+    from . import models as WM
+    q = select(WM.Cw4ExtItem).where(WM.Cw4ExtItem.tenant_id == tenant,
+                                    WM.Cw4ExtItem.project == project, WM.Cw4ExtItem.kind == "mtest")
+    with session() as s:
+        rows = s.scalars(q).all()
+    out = []
+    for r in rows:
+        d = _j(r.data, {})
+        if only_fails and d.get("verdict") != "FAIL":
+            continue
+        out.append({"material": r.name, **d, "limit_source": r.source})
+    return {"rows": out}

@@ -164,3 +164,82 @@ def vendors(tenant: str, rating: str = "") -> dict:
     say = f"Vendor register: {len(rows)} vendor" + (f", rating {rating}" if rating else "") + "."
     return {"vendors": [{"id": r.id, "vendor": r.vendor, "scope": r.scope, "rating": r.rating,
                          "last_work": r.last_work} for r in rows], "say": say}
+
+
+# ---------------------------------------------------------------- Wave 4: #57 purchase, #59 expediting, #60 EXIM
+def purchase_add(tenant: str, project: str, rows: list, conv: str = "") -> dict:
+    """#57: indent->PO register - rows [item, qty, unit, need_by, po_no, po_date, vendor]."""
+    from . import models as WM
+    from .common import publish as pub
+    if not rows:
+        raise CstError("Purchase rows chahiye [item, qty, unit, need_by, po_no, po_date, vendor].")
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 4:
+                continue
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="purchase",
+                                name=str(r[0])[:120],
+                                data=_dump({"qty": _num(r[1]), "unit": str(r[2])[:12],
+                                            "need_by": str(r[3])[:10],
+                                            "po_no": str(r[4])[:40] if len(r) > 4 else "",
+                                            "po_date": str(r[5])[:10] if len(r) > 5 else "",
+                                            "vendor": str(r[6])[:120] if len(r) > 6 else ""})))
+            made += 1
+    pub(tenant, "const_tender", {"kind": "purchase", "project": project, "rows": made}, conv)
+    no_po = sum(1 for r in rows if isinstance(r, (list, tuple)) and len(r) > 4 and not str(r[4] or "").strip())
+    return {"ok": True, "rows": made, "without_po": no_po,
+            "said": f"{made} indent row(s) ({no_po} bina PO) - PO jaari karna purchase engineer ka kaam."}
+
+
+def expedite_add(tenant: str, project: str, po: str, promised: str, need_by: str,
+                 note: str = "") -> dict:
+    """#59: vendor promise vs need-by - the gap is arithmetic; the call is the expediter's."""
+    from . import models as WM
+    if not po:
+        raise CstError("PO ka ref do.")
+    if not promised or not need_by:
+        raise CstError("Promised date aur need_by dono chahiye.")
+    late = promised > need_by
+    with session() as s:
+        s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="expedite", ref=po[:40],
+                            name="promise",
+                            data=_dump({"promised": promised, "need_by": need_by,
+                                        "late": late, "note": note[:200]})))
+    return {"ok": True, "po": po, "promised": promised, "need_by": need_by,
+            "verdict": "LATE - follow-up karo" if late else "in time",
+            "said": ("Vendor promise need-by ke BAAD ka hai - follow-up log rakho."
+                     if late else "Promise need-by ke andar hai.")}
+
+
+def expedite_board(tenant: str, project: str) -> dict:
+    from . import models as WM
+    with session() as s:
+        rows = s.scalars(select(WM.Cw4ExtItem).where(WM.Cw4ExtItem.tenant_id == tenant,
+                                                     WM.Cw4ExtItem.project == project,
+                                                     WM.Cw4ExtItem.kind == "expedite")).all()
+    out = [{"po": r.ref, **_j(r.data, {})} for r in rows]
+    late = [o for o in out if o.get("late")]
+    return {"rows": out, "late_count": len(late),
+            "said": f"{len(late)} promise(s) late - chase list ready."}
+
+
+def exim_add(tenant: str, project: str, rows: list) -> dict:
+    """#60: shipment register - rows [shipment, bl_date, be_date, docs_missing, note]. Customs act
+    stays with the CHA/broker; Hoola keeps the register and the doc checklist."""
+    from . import models as WM
+    if not rows:
+        raise CstError("EXIM rows chahiye [shipment, bl_date, be_date, docs_missing, note].")
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 3:
+                continue
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="exim",
+                                name=str(r[0])[:80],
+                                data=_dump({"bl_date": str(r[1])[:10], "be_date": str(r[2])[:10],
+                                            "docs_missing": str(r[3])[:200] if len(r) > 3 else "",
+                                            "note": str(r[4])[:160] if len(r) > 4 else ""})))
+            made += 1
+    return {"ok": True, "rows": made,
+            "said": f"{made} shipment row(s) - customs ka kaam CHA/broker karega, Hoola register rakhta hai."}
