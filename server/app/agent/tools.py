@@ -375,6 +375,12 @@ TOOLS.extend(FINGUARD_TOOLS)
 TOOL_LABELS.update(FINGUARD_LABELS)
 HANDLERS.update(FINGUARD_HANDLERS)
 
+from .finops_tools import FINOPS_HANDLERS, FINOPS_LABELS, FINOPS_TOOLS  # noqa: E402  v0.602 Vitt Sahayak (finance desk assists, Wave 2)
+
+TOOLS.extend(FINOPS_TOOLS)
+TOOL_LABELS.update(FINOPS_LABELS)
+HANDLERS.update(FINOPS_HANDLERS)
+
 from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
 
 TOOLS.extend(KAAN_TOOLS)

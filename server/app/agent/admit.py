@@ -232,6 +232,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "finguard": ("emi", "loan", "karz", "qarz", "processing fee", "apr", "prepay", "foreclos", "snowball", "avalanche", "scam", "fraud", "dhokha",
                  "thagi", "fake call", "fake kyc", "kyc expire", "upi collect", "collect request", "ombudsman", "bank complaint", "bank charges",
                  "hidden charges", "sms charges", "min balance", "credit card charges", "paisa_sahayak", "otp maang", "otp mang", "digital arrest"),
+    # v0.602 Vitt Sahayak (finance desk assists, Wave 2). Tight keys.
+    "finops": ("sip", "advance tax", "26as", "ais reconcile", "tds reconcil", "ageing", "aging report", "receivable", "payable", "three way match",
+               "3 way match", "aml", "structuring", "sanction", "pep screening", "credit memo", "dscr", "financial ratio", "vitt_sahayak"),
     # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
     # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",
