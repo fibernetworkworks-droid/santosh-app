@@ -1744,3 +1744,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Owner "DO EVERY THING HAIKU FOR NOW --- SIMPLE TO HARD"; her 10:52 call failed on "credit balance is too low".
 Work Log: claude_one_model lock at the SDK door; credit error said plainly; 3 tests.
 Stage Summary: v0.631.0; she must recharge Anthropic credit for anything Claude to work.
+
+---
+Task ID: v0632-kaan-chhota
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Her 11:11 brain call cost $0.173; 54% was Gemini re-reading the call's audio.
+Work Log: brain calls compress at 8k / 4k; test.
+Stage Summary: v0.632.0.

@@ -848,6 +848,10 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
         language_codes=None if "langcodes" in without else voicelang.transcription_codes(langst),
         custom_vocabulary=None if "vocab" in without else clean_vocab(style.get("vocab")))
     silence = style.get("silence_ms") or st.voice_silence_ms
+    # v0.632 KAAN CHHOTA: Gemini re-reads the call's whole audio on every reply (her 11:11 call: audio_in 31k tokens =
+    # 54% of the bill). With the brain holding memory, the voice keeps only the last few minutes.
+    trig, targ = ((st.voice_brain_compress_trigger, st.voice_brain_compress_target) if st.voice_brain
+                  else (st.voice_compress_trigger, st.voice_compress_target))
     specs = _tool_specs() + ([] if "mcp" in without else
                              [{**t, "input_schema": _compact_schema(t.get("input_schema") or {"type": "object"})}
                               for t in (extra_tools or [])])
@@ -878,9 +882,9 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
         session_resumption=types.SessionResumptionConfig(handle=handle),
         context_window_compression=None if "compression" in without else
         types.ContextWindowCompressionConfig(   # v0.224 compress early: long calls stay fast, never hit the 128k wall
-            trigger_tokens=max(8000, st.voice_compress_trigger) if st.voice_compress_trigger else None,
+            trigger_tokens=max(8000, trig) if trig else None,
             sliding_window=types.SlidingWindow(
-                target_tokens=max(4000, st.voice_compress_target) if st.voice_compress_target else None)),
+                target_tokens=max(4000, targ) if targ else None)),
     )
     # v0.181 affective dialog is back: the model HEARS her tone (laugh, stress, excitement) and answers with a matching
     # one - happy with her, gentle when she is low. If this model generation refuses the field, the first connect

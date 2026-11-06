@@ -107,3 +107,16 @@ def test_brain_context_is_tiny(monkeypatch):
     call = voice.Call.__new__(voice.Call)
     ctx, defs = asyncio.run(call._build_context(True))
     assert defs == [] and len(ctx) < 300
+
+
+def test_brain_call_keeps_only_recent_audio(monkeypatch):
+    """v0.632: her 11:11 call re-read 31k audio tokens (54% of $0.173); a brain call slides at 8k / 4k."""
+    from app import voice, voicelang
+    _brain_on(monkeypatch)
+    cfg = voice.live_config("Puck", "hi", "ctx", None, langst=voicelang.LangState("hi"))
+    c = cfg.context_window_compression
+    assert c.trigger_tokens == 8000 and c.sliding_window.target_tokens == 4000
+    monkeypatch.setenv("VOICE_BRAIN", "false")
+    get_settings.cache_clear()
+    c = voice.live_config("Puck", "hi", "ctx", None, langst=voicelang.LangState("hi")).context_window_compression
+    assert c.trigger_tokens == 60000

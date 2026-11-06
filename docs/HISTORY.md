@@ -21545,3 +21545,13 @@ jobs on Sonnet ~Rs 147, routines ~Rs 94, chat on Haiku ~Rs 27).
   instead of "kuch gadbad (code 400)".
 - Trade-off said plainly: Opus-grade work (websites, apps, CAD, games, hard reasoning) will be weaker on Haiku.
 Tests `test_v0631_sab_haiku.py` (3).
+
+## v0.632.0 KAAN CHHOTA - a brain call keeps only the recent audio
+
+Her 11:11 call on v0.630 (7 asks, all answered by the Haiku brain, 15 Gemini replies): text_in 59,796 + audio_in 31,144
++ text_out 1,856 + audio_out 2,173 tokens = $0.173. At gemini-3.8-live rates the AUDIO INPUT was $0.093 = 54% - Gemini
+re-reads the whole call's audio on every reply, and compression only started at 60k tokens, which a call never reached.
+With `voice_brain` the brain holds the memory, so `live_config` now slides the window at `voice_brain_compress_trigger`
+8,000 / `voice_brain_compress_target` 4,000 (Gemini keeps its system instruction; only old turns drop). A non-brain call
+keeps 60k / 35k. Expected: per-reply context capped near 8k, so a long call stops getting dearer by the minute. NOT
+VERIFIED until her next call's `gemini tokens` line. Test added to `test_v0630_haiku_dimaag.py`.
