@@ -1,6 +1,7 @@
 """Daily-life tools: reminders, phone alarms/timers/calendar, memory, lists, profile, weather."""
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 
 from sqlalchemy import func, select
@@ -45,7 +46,12 @@ LIFE_TOOLS = [
     {"name": "remember", "description": ("Save a fact the user wants you to remember (dates, preferences, people, numbers like policy "
                                          "expiry). Do NOT save passwords, OTPs, card or bank numbers. pin=true only when they say "
                                          "it must ALWAYS be kept in mind ('hamesha yaad rakhna'); pinned facts are few and short."),
-     "input_schema": {"type": "object", "properties": {"fact": {"type": "string"}, "pin": {"type": "boolean"}}, "required": ["fact"]}},
+     "input_schema": {"type": "object", "properties": {"fact": {"type": "string"}, "pin": {"type": "boolean"},
+                                                       "replaces": {"type": "integer", "description": (
+                                                           "id of a remembered fact this one makes OUTDATED (she "
+                                                           "moved / changed it: 'ab', 'now', 'no longer'); that old "
+                                                           "fact is removed. Leave out for a new fact.")}},
+                     "required": ["fact"]}},
     {"name": "forget", "description": "Delete a remembered fact by its id (ids are shown in your context).",
      "input_schema": {"type": "object", "properties": {"fact_id": {"type": "integer"}}, "required": ["fact_id"]}},
     {"name": "list_add", "description": "Add items to a named list (shopping, todo, packing...). Creates the list if needed.",
@@ -186,7 +192,7 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
     return out
 
 
-async def remember(ctx: Ctx, fact, pin=False, **_):
+async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
     from ..fence import is_incognito
     if is_incognito(getattr(ctx, "conversation_id", "") or ""):   # v0.250 an incognito chat saves nothing
         raise ToolError("Yeh incognito chat hai: yahan se kuch yaad nahi rakha jaata. Ise yaad rakhwana ho to "
@@ -205,12 +211,18 @@ async def remember(ctx: Ctx, fact, pin=False, **_):
         s.add(m)
         s.flush()
         fid = m.id
+    replaced = ""
+    if replaces not in (None, "", 0):   # v0.603 the update retires the outdated fact (never a pinned one)
+        from .. import yaad
+        replaced = await asyncio.to_thread(yaad.retire_fact, ctx.tenant_id, replaces,
+                                           getattr(ctx, "conversation_id", "") or "")
+    extra = {"replaced": replaced} if replaced else {}
     if pin:
         try:
             life.pin_fact(ctx.tenant_id, fid, True)
         except ValueError as e:
-            return {"saved": True, "fact_id": fid, "pinned": False, "note": str(e)}
-    return {"saved": True, "fact_id": fid, "pinned": bool(pin)}
+            return {"saved": True, "fact_id": fid, "pinned": False, "note": str(e), **extra}
+    return {"saved": True, "fact_id": fid, "pinned": bool(pin), **extra}
 
 
 async def forget(ctx: Ctx, fact_id, **_):
@@ -220,7 +232,11 @@ async def forget(ctx: Ctx, fact_id, **_):
             raise ToolError(f"No remembered fact with id {fact_id}")
         text = m.text
         s.delete(m)
-    return {"forgotten": text}
+    # v0.603 BHOOL JAO HAR JAGAH: the copies the other memories made of it go too
+    from .. import yaad
+    gone = await asyncio.to_thread(yaad.forget_everywhere, ctx.tenant_id, text)
+    return {"forgotten": text, "also_removed": gone,
+            "note": "Her chats themselves are not deleted; the fact is gone from every memory."}
 
 
 def _norm_list(name: str) -> str:

@@ -105,6 +105,9 @@ def count_turn(tenant: str, conv: str) -> None:
     """One completed turn. Fires the fork at the interval, cooldown-guarded, background."""
     if not conv or not armed():
         return
+    from .capture import secret
+    if secret(conv):               # v0.603 an incognito chat is never reflected on
+        return
     key = (tenant, conv)
     _counts[key] = _counts.get(key, 0) + 1
     if _counts[key] < _every():
