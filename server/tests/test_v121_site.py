@@ -103,7 +103,7 @@ def test_library_counts_and_understanding(monkeypatch):
     assert TX.check() == []
     c = L.counts()
     assert c["fields"] == 1000 and c["briefs"] == 100000 and c["phrases"] == 5000
-    assert (c["section_designs"], c["motion_presets"], c["palettes"], c["font_pairs"], c["hero_types"]) == (300, 60, 50, 30, 24)
+    assert (c["section_designs"], c["motion_presets"], c["palettes"], c["font_pairs"], c["hero_types"]) == (300, 60, 50, 33, 24)
     for q, field in [("mithai dukaan ki website", "sweet_shop"), ("मिठाई की दुकान", "sweet_shop"), ("resturant menu online", "restaurant"),
                      ("dant doctor", "dentist"), ("CA office website", "chartered_accountant"), ("जिम की वेबसाइट", "gym"),
                      ("vakil sahab", "advocate"), ("fiber internet company", "isp"), ("meri bakary ke liye site", "bakery"),
