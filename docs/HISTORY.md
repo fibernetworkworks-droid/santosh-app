@@ -21148,3 +21148,41 @@ lets her remove it from memory; Grok Bot and Dots "learn how you like things don
 
 Tests `server/tests/test_v0612_yaad_se.py` (9). NOT VERIFIED: no live run; the echo rule is a word heuristic (a reply
 that paraphrases a memory completely will not show it); the phone chip compiles first on CI.
+
+## v0.616.0 KUCHH NA CHHOOTE + PEXELS KA NAAM (owner: "go" on the Hallmark read, docs/research/hallmark/00_READ.md)
+
+Source: Nutlope/hallmark (MIT), read at 407fa689. Ideas only, Hoola's own Python; its scripts were not run.
+
+**1. Pexels photos are credited (a real gap, found by checking Pexels' own pages on 6 Nov 2026).** Hallmark claims
+stock sites bar AI tools from picking images; Pexels' licence / ToS / API docs do NOT say that (the ToS bans scraping /
+bulk copying / data mining for machine learning and uploading AI-made content). But the Pexels API guidelines - the
+road Hoola uses - ask for "a prominent link to Pexels" ("Photos provided by Pexels") and the photographers credited
+with a link to the photo page when possible. `pictures._stock_picture` built a credit string and stored it on the
+photo; nothing ever rendered it. Now: the photo record keeps `credit_name`, `credit_url` (the pexels.com photo page) and
+`photographer_url` (only pexels.com links accepted); `service._photo_credits` lists one entry per photographer (older
+photos get the name back from their stored credit text); `build.photo_credits` writes, in every page's footer,
+"Photos provided by Pexels (linked). Photographers: <name linked to the photo page>, ..."; empty when the site has no
+Pexels photo; a non-pexels.com url is never written as a link. Pexels' default API limit is 200 requests / hour and
+20,000 / month (unchanged; Hoola fetches one photo per shot). Not legal advice.
+
+**2. A change in her words is compared with the version before it** (Hallmark's redesign --before / --kept idea).
+`site/kept.py`: the signature of a built site = phone / WhatsApp / email links PER PAGE (the hero's call button can go
+while the footer keeps the number), forms per page, form field names (the honeypot excluded), internal page links,
+and the pieces Hoola wires in (data-hoola-form / posts / product / chart / img / quiz / config / compare-table /
+lottie / hero3d / slots / booking / map / youtube / pay / cart / queue, counted). `service._kept` runs in
+`_run_build` ONLY for a change (`only` set, never the first build), comparing the previous version's files
+(`out_dir(version)`) with the new live build. What she asked to remove is not reported (a removal word in her words
+plus the kind, or the very field she named: 'phone number hatao'); a page the change itself took away is not a lost
+link. Never blocking, never auto-edited: the version report carries `kept.lost`, one warning per item (kind "kept"),
+and her chat gets one line naming them with "wapas lagao". Switch `site_kept`.
+
+Found while building: a version's files are HARD LINKS of the live build (`media.link_or_copy`), which is safe only
+because `build.assemble` deletes and rewrites the live folder; the test now writes the way a rebuild does.
+
+**Tests:** `test_v0616_kuchh_na_chhoote.py` (5): lost items named, asked removals left out, removed pages not
+reported, no earlier version said so, wired into a real change build, Pexels credit kept from the API answer and
+shown on the built page next to the AI-photo note, unsafe links never written.
+
+**NOT VERIFIED:** no live Pexels call and no live change build with real Opus has run through it; the credit line's
+look on her real sites is unseen. Not built from the read (proposed): endings by page goal, ~11 more AI-look tells,
+the render-tier checks, look rotation across her sites.
