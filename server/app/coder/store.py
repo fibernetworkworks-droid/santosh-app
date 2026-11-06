@@ -345,6 +345,61 @@ def prompt_is_private(conv: str, n: int | None) -> bool:
 
 # ---------------------------------------------------------------- observations
 
+def forget_conv(conv: str) -> dict:
+    """v0.603 INCOGNITO SACH: every trace one conversation left in the vault - her asks, tool rows,
+    observations (their FTS rows ride the delete trigger), the summary (its FTS row by hand: there is
+    no delete trigger on summaries), the session row, dedup pairs and preimages. Returns the counts."""
+    ensure()
+    out = {"prompts": 0, "tool_uses": 0, "observations": 0, "summaries": 0, "sessions": 0}
+    with db(write=True) as c:
+        ids = [r[0] for r in c.execute("SELECT id FROM observations WHERE conv=?", (conv,)).fetchall()]
+        if ids:
+            marks = ",".join("?" * len(ids))
+            c.execute(f"DELETE FROM dedup_candidates WHERE observation_id IN ({marks}) "
+                      f"OR duplicate_of_id IN ({marks})", ids + ids)
+            c.execute(f"DELETE FROM obs_preimages WHERE obs_id IN ({marks})", ids)
+        for r in c.execute("SELECT * FROM summaries WHERE conv=?", (conv,)).fetchall():
+            try:
+                c.execute("INSERT INTO sum_fts(sum_fts, rowid, request, investigated, learned, completed, "
+                          "next_steps, notes) VALUES ('delete',?,?,?,?,?,?,?)",
+                          (r["id"], r["request"], r["investigated"], r["learned"], r["completed"],
+                           r["next_steps"], r["notes"]))
+            except Exception:
+                pass   # no FTS5 on this box: nothing to keep in sync
+        for t in ("prompts", "tool_uses", "observations", "summaries", "sessions"):
+            out[t] = c.execute(f"DELETE FROM {t} WHERE conv=?", (conv,)).rowcount or 0
+    return out
+
+
+def forget_carrying(tenant: str, fact: str, carries) -> int:
+    """v0.603 BHOOL JAO HAR JAGAH: the tenant's observations that carry a forgotten fact go (the FTS row
+    rides the delete trigger; dedup pairs and preimages go with them). `carries(fact, text)` decides."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT id, title, subtitle, facts, narrative FROM observations WHERE tenant=?",
+                         (tenant,)).fetchall()
+    ids = [r["id"] for r in rows
+           if carries(fact, " ".join(str(r[k] or "") for k in ("title", "subtitle", "facts", "narrative")))]
+    if not ids:
+        return 0
+    marks = ",".join("?" * len(ids))
+    with db(write=True) as c:
+        c.execute(f"DELETE FROM dedup_candidates WHERE observation_id IN ({marks}) "
+                  f"OR duplicate_of_id IN ({marks})", ids + ids)
+        c.execute(f"DELETE FROM obs_preimages WHERE obs_id IN ({marks})", ids)
+        c.execute(f"DELETE FROM observations WHERE id IN ({marks})", ids)
+    return len(ids)
+
+
+def known_convs() -> list[str]:
+    """Every conversation the vault holds anything for (the incognito sweep reads this)."""
+    ensure()
+    with db() as c:
+        rows = c.execute("SELECT conv FROM prompts UNION SELECT conv FROM tool_uses "
+                         "UNION SELECT conv FROM observations UNION SELECT conv FROM summaries").fetchall()
+    return [r[0] for r in rows if r[0]]
+
+
 def store_observation(conv: str, tenant: str, obs: dict, turn_id: str = "", actor: str = "",
                       discovery_tokens: int = 0) -> int | None:
     """Insert one parsed observation. Exact-content dedupe (session + hash) re-confirms the existing

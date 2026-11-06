@@ -656,6 +656,23 @@ def _do_kg_open(con: sqlite3.Connection, names: Any) -> dict:
                         meta={"found": len(ents), **({"missing": missing} if missing else {})})
 
 
+def kg_forget_carrying(tenant_id: str, fact: str, carries) -> int:
+    """v0.603 BHOOL JAO HAR JAGAH: the graph's observations that carry a forgotten fact go. A tenant
+    with no graph has nothing to forget (the file is never created for this)."""
+    if not _kg_path(tenant_id).exists():
+        return 0
+    con = _kg_con(tenant_id)
+    try:
+        rows = con.execute("SELECT id, entity, text FROM observations").fetchall()
+        ids = [r["id"] for r in rows if carries(fact, f"{r['entity']} {r['text']}")]
+        for i in ids:
+            con.execute("DELETE FROM observations WHERE id=?", (i,))
+        con.commit()
+        return len(ids)
+    finally:
+        con.close()
+
+
 async def kgmemory(ctx: Ctx, action: str = "read", *, entities: list | None = None,
                    relations: list | None = None, observations: list | None = None,
                    names: list | None = None, query: str | None = None, **_) -> dict:
@@ -668,6 +685,14 @@ async def kgmemory(ctx: Ctx, action: str = "read", *, entities: list | None = No
         locked = _kg_write_locked(action)
         if locked:
             return locked
+    if action in ("create", "relate", "observe"):
+        # v0.603 INCOGNITO SACH: an incognito chat may READ her graph but never adds to it
+        # ("yahan ki baatein yaad mein nahi jayengi"); forget stays allowed - removing is always hers
+        from ..fence import is_incognito
+        if is_incognito(getattr(ctx, "conversation_id", "") or ""):
+            return _kg_envelope(action, error=(NEED_SETUP, "this is an incognito chat: nothing from it is "
+                                               "remembered, so the knowledge graph is read-only here",
+                                               "Tell her plainly; if she wants it kept, say it in a normal chat."))
     con = _kg_con(ctx.tenant_id)
     try:
         if action == "create":

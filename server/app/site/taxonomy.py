@@ -459,7 +459,7 @@ FONTS: dict[str, dict[str, Any]] = {
     "josefin_lato": {"head": "Josefin Sans", "body": "Lato", "deva": "Mukta"},
     "spectral_inter": {"head": "Spectral", "body": "Inter", "deva": "Martel"},
     "kalam_mukta": {"head": "Kalam", "body": "Mukta", "deva": "Kalam"},
-    # v0.604 SAAF NAZAR: pairs with their own character for the style defaults (none of Impeccable's overused faces)
+    # v0.606 SAAF NAZAR: pairs with their own character for the style defaults (none of Impeccable's overused faces)
     "bricolage_dm": {"head": "Bricolage Grotesque", "body": "DM Sans", "deva": "Mukta"},
     "archivo_dm": {"head": "Archivo", "body": "DM Sans", "deva": "Mukta"},
     "manrope_dm": {"head": "Manrope", "body": "DM Sans", "deva": "Mukta"},
@@ -751,7 +751,7 @@ def check() -> list[str]:
         bad.append("motion presets != 60")
     if len(PALETTES) != 50:
         bad.append(f"palettes != 50 ({len(PALETTES)})")
-    if len(FONTS) != 33:                     # v0.604 +3 pairs with their own character (style defaults)
+    if len(FONTS) != 33:                     # v0.606 +3 pairs with their own character (style defaults)
         bad.append("font pairs != 33")
     if len(INDUSTRIES) != 40:
         bad.append(f"industries != 40 ({len(INDUSTRIES)})")

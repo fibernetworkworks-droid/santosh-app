@@ -1,4 +1,4 @@
-"""v0.604 SAAF NAZAR - the "AI look" check on every built website (ideas from pbakaus/impeccable, Apache-2.0, own code).
+"""v0.606 SAAF NAZAR - the "AI look" check on every built website (ideas from pbakaus/impeccable, Apache-2.0, own code).
 
 1. CALIBRATED: every rule fires on its own planted fault, and a clean, well-made page gives ZERO findings (a checker
    that cries wolf on good work is worse than none).
@@ -18,7 +18,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.604.0"
+    assert APP_VERSION == "0.606.0"
 
 
 CLEAN_CSS = (":root{--c-bg:#ffffff}"

@@ -20942,7 +20942,51 @@ Wave 3 is the register's reserved zone: an order or a loan decision is a license
 - **Wiring**: ONE tool `risk_desk` (registry 586 -> 587, family `riskdesk`, tight admit words, owner only, voice via `santosh_kaam`) and a hub entry in Finance & Banking whose never-list says no order, no loan decision, no NPA classification, no block, no buy / sell.
 - **Tests**: `test_riskdesk.py` (7). Registry pins 586 -> 587.
 - **NOT built**: order placement itself (it already exists only as her tap through the broker connectors), algo strategy testing (#78, needs exchange approval), PMS client books, merchant-banker and supervisory desks. Not verified: no real portfolio, bureau file or trade book has been through it; SMA / NPA bands and ECL staging are from memory (verify) and PD / LGD are always hers.
-## v0.604.0 SAAF NAZAR (built as 0.602.0) - the "AI look" check on every website (owner: "GO" on the Impeccable read)
+## v0.604.0 YAAD SACH (built as 0.603.0; their v0.603.0 RISK DESK landed mid-push, both kept) — her memory keeps its three promises (owner: "NOW LETS WORK ON HOOLA AI CONTEXT / MEMORY" -> audit -> "GO")
+
+The audit PROBED the real code (throw-away tests on a fresh SQLite) instead of reading it, and found:
+
+1. **INCOGNITO SACH.** An incognito chat's ask ("meri beti Riya ki school fees ka plan"), a tool result ("fees 1.2 lakh")
+   and a model-written observation all landed in the Coder vault: `main.py` skipped `session_started` for incognito, but
+   `capture.turn_prompt` / `tool_observed` never asked, and the observer stores events for a conversation with no session
+   row. The primer reads observations tenant-wide, so they could ride her OTHER chats. The v0.590 knowledge graph had no
+   incognito check either. Now: `capture.secret(conv)` (cached; a read failure = secret, the safe side; a conversation id
+   with no chat row = not a chat) gates turn_prompt / tool_observed / session_started / session_ended / save_memory and
+   the nudge fork; the observer consumes an incognito chat's spooled event unread; a once-per-process sweep
+   (`observer._sweep_incognito` -> `store.forget_conv`) forgets everything earlier versions stored for incognito chats
+   (prompts, tool rows, observations + FTS, summary + its FTS row by hand, session, dedup pairs, preimages); `kgmemory`
+   refuses create / relate / observe in an incognito chat (read + forget stay). The workspace file desk is deliberately
+   unchanged: files she asks for there are work, not memory.
+2. **NAYA PURANA HATAYE.** "Godown Plot 44 Bhosari" then "Godown ab Plot 12 Chakan" (and "City Pune" / "City Mumbai
+   now") rode every system prompt side by side - nothing superseded anything. With meaning search on, an update can
+   also score as a "duplicate" of the fact it replaces and be dropped, so the OLD value won (not measurable here: the
+   sandbox has no embedding model). Now the extractor sees `[id]` beside each known fact and may answer
+   `{"text": ..., "replaces": [id]}`; only an id it was SHOWN counts, never a pinned fact, and with a chat only a fact
+   that chat's Session may see (`yaad.retire_fact`). `save_fact(..., replaces=)` leaves the replaced fact out of the
+   duplicate check, saves the new one, retires the old; the chip says "purana hataya: ...". The `remember` tool gains
+   `replaces=<fact id>` for an update she states directly.
+3. **BHOOL JAO HAR JAGAH.** Forget deleted one `memory_facts` row; the copies stayed in the Coder vault, the knowledge
+   graph, and the "Mere baare mein" page (its daily rebuild only ADDS what is new). Now `yaad.forget_everywhere`
+   (called by the forget tool, the memory screen's DELETE /api/memory/{id}, and every retirement) removes observations /
+   graph observations / page lines that `yaad.carries` the fact (its content words, at least two, at a 0.7 share). Her
+   chat messages are never deleted - the chat is hers.
+
+Tests `server/tests/test_v0603_yaad_sach.py` (13). NOT VERIFIED (honest): no live run yet; the 0.7 word-share rule for
+"carries" is judgement (a paraphrased copy can survive, an unrelated line sharing most words can go); the extractor's
+`replaces` judgement is the cheap model's, so the first real "ab ... shift ho gaya" on the VPS is the live test.
+Server-only; console untouched; Mera PC freeze respected.
+
+
+## v0.605.0 DUKAAN DESK — Retail & e-commerce register Wave 1 (owner: "GO NEXT WAVE", register chosen: Retail & e-commerce)
+
+Wave 1 of `docs/research/retail_ecommerce_industry/00_INDEX.md` is "kirana/shop and small online seller copilots, tier A". Most of the base already exists (Khata, Shop, GST bill, Shiprocket), so this adds the owner-copilot CHECKS as stateless engines on rows the owner gives; nothing is stored, sent, published or paid and no price, order, refund or listing is changed.
+
+- **Shop** (`retaildesk/shop.py`, #1 #81 #2 #7 #10 #36): daily summary (total, cash / UPI / credit split, best hour, top items, credit given); weekly forecast (4-week average + half the trend, festival effect ONLY from her multipliers, with a range note); reorder (daily sales x (lead + cover days) - stock, formula printed) with fast / slow movers, expiring stock, dead stock and the cash stuck in it; margin check (selling above MRP and below cost flagged); licence + GST date calendar (dates from memory, `verify`); oversell check across channels.
+- **Online** (`retaildesk/online.py`, #38 #78 #32 #86 #90 #79): return-risk points from pincode / address / phone / COD / prior RTO with reasons (labelled a heuristic, never a verdict on the customer); settlement vs sales (fee-aware); product-claim check (absolute / health / superlative / scarcity / certification words + missing listing facts); landed cost (price + shipping + COD fee - coupon); shop-scam signals (link analysis reused from finguard, never opens the link); CGST+SGST or IGST split.
+- **Wiring**: ONE tool `dukaan_desk` (registry 587 -> 588, family `retaildesk`, tight admit words, voice via `santosh_kaam`); the two shopper actions (landed, shop_scam) work for a customer actor, everything else is the owner's; a new hub group "Retail & E-commerce" (console DEPT + `RETAIL_GROUP`) with a never-list.
+- **Tests**: `test_retaildesk.py` (6). Registry pins 587 -> 588.
+- **NOT built**: Wave 2 (growth, ops, distributor desks) and Wave 3 (platform trust, pricing-sensitive roles); WhatsApp order taking and catalogue builder (they sit on the existing Shop / app engines). Not verified: no real sales book, marketplace settlement file or order sheet has been through it; RTO points and claim words are heuristics, not measured on real return data.
+## v0.606.0 SAAF NAZAR (built as 0.602.0) - the "AI look" check on every website (owner: "GO" on the Impeccable read)
 
 Source: pbakaus/impeccable (Apache-2.0), read at c8891a9a - `docs/research/impeccable/00_READ.md`. Ideas only, Hoola's
 own Python and wording; attribution in THIRD_PARTY_NOTICES.md. Their npm detector was not run (running downloaded code
@@ -20980,7 +21024,7 @@ small-caps / letter-spaced / numbered labels, marquee strips and gradient glows;
 block and loses `.eyebrow` and "at least two motion attributes per section"; the kit loses `k-eyebrow`; the footer's
 three `<h3>` are `<h2>` (the 404 page went h1 -> h3).
 
-**Tests:** `test_v0604_saaf_nazar.py` (11) - calibrated both ways (every rule fires on its planted fault; a well-made
+**Tests:** `test_v0606_saaf_nazar.py` (11) - calibrated both ways (every rule fires on its planted fault; a well-made
 page gives zero findings), never blocks a built site, the brief wins, modes, round-0 fix mapping to section keys,
 builder defaults, the `mine` / `her_tokens` marks, attribution. Also healed: the console stamp count pin 22 -> 23
 (main had added a stamp and left them at 0.600.0).

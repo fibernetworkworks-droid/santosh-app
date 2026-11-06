@@ -46,6 +46,7 @@ def ensure_table() -> None:
 
 TRUST = ("seekh", "saathi", "bharosa")
 
+RETAIL_GROUP = "Retail & E-commerce"   # v0.604
 FIN_GROUP = "Finance & Banking"   # v0.585 the consumer money-safety employee
 VOICE_GROUP = "Voice, Meetings & Transcription"   # v0.589 the KAAN PACK employee (WhisperAI Wave W0)
 FILM_GROUP = "Film, Media & Entertainment"   # v0.565 the Film Desk employee
@@ -164,6 +165,20 @@ CATALOG: dict[str, dict[str, Any]] = {
                             "Approve or decline a loan, classify an account as NPA, or start recovery",
                             "Block an account or accuse anyone: alerts are evidence for the analyst or compliance officer",
                             "Store your rows: it reads them, answers, and forgets"]},
+    # v0.604 DUKAAN DESK (register docs/research/retail_ecommerce_industry, Wave 1: kirana and small online seller copilots; prepare and check, the owner decides)
+    "dukaan_desk": {"name": "Dukaan Desk (shop and online seller)", "live": True, "icon": "receipt", "group": RETAIL_GROUP,
+                    "pitch": "A copilot for a shop or a small online seller: the day's sales, what to reorder, what is stuck or expiring, margin and MRP checks, oversell and return-risk warnings, settlement matching and GST split. It prepares and checks; you set prices, place orders and publish.",
+                    "does": ["Daily summary: total, cash / UPI / credit split, best hour, top items; weekly sales forecast with your own festival multipliers",
+                             "Reorder quantities with the formula shown, fast and slow movers, expiring stock and the cash stuck in dead stock",
+                             "Margin and MRP check (selling above MRP, selling below cost) and a licence / GST date calendar",
+                             "Oversell check across your website and marketplaces; return-risk score per order with reasons",
+                             "Settlement vs sales matching, product-claim check for listings, GST split, and for shoppers: true landed cost and scam signals"],
+                    "needs": ["Rows you paste or say: sales, stock, orders, settlements, offers. Your own dates, licences and festival multipliers"],
+                    "never": ["Change a price, discount, refund, listing or order, or place a supplier order: those are your tap",
+                              "Block or blacklist a customer: a risk score is a heads-up, not a verdict",
+                              "Publish a product claim or call anything genuine, organic or certified without your proof",
+                              "File GST or issue an invoice: your CA / you do",
+                              "Store your rows: it reads them, answers, and forgets"]},
     # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
     "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
              "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",

@@ -1,4 +1,4 @@
-"""v0.604 SAAF NAZAR - the "AI look" check on every built website (ideas from pbakaus/impeccable, Apache-2.0, re-written
+"""v0.606 SAAF NAZAR - the "AI look" check on every built website (ideas from pbakaus/impeccable, Apache-2.0, re-written
 in Hoola's own Python; no upstream code, see THIRD_PARTY_NOTICES.md).
 
 Impeccable's finding: ask a model for a page with no other guidance and the same tells come back across models and

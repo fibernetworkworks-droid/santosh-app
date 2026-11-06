@@ -332,7 +332,7 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   <button type="submit" class="btn btn-primary">, and <p class="hs-form-msg" role="status"></p>. Hoola adds the endpoint.
 """
 
-# v0.604 SAAF NAZAR: the reflexes that make a page read as AI-made (ideas from pbakaus/impeccable's craft floor, in
+# v0.606 SAAF NAZAR: the reflexes that make a page read as AI-made (ideas from pbakaus/impeccable's craft floor, in
 # Hoola's words). The design STYLE and her own words win over every line here; site/look.py checks the result.
 CRAFT_FLOOR = """
 CRAFT FLOOR (unless the design style or HER words ask for it, never reach for these by reflex):
