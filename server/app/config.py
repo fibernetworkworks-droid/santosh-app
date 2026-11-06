@@ -510,6 +510,9 @@ class Settings(BaseSettings):
     voiceid_margin: float = 0.06           # and this much ahead of the next closest person
     voiceid_min_speech_s: float = 1.6      # speech needed before the first guess in a call
     voice_resume_grace_s: int = 25         # a dropped phone connection can re-join the same call within this time
+    voice_park: bool = True                # v0.617 HAMESHA JUDA: a quiet call leaves Gemini (billed per second, even silence) and stays connected
+    voice_park_after_s: int = 90           # ...after this long with nobody speaking and nothing running
+    voice_park_grace_s: int = 900          # ...and a parked call waits this long for her phone to come back (nothing billed)
     focus_user_words: int = 6              # v0.200 her newest messages kept WORD-FOR-WORD in the focus block (a human remembers what you just SAID, not a summary of it)
     focus_word_chars: int = 600            # v0.200 cap per saved message inside the focus block
     focus_max_chars: int = 4000            # v0.200 the whole focus block's cap ("focused" = small and exact, never a dump)

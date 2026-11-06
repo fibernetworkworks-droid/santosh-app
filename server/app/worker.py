@@ -270,9 +270,16 @@ async def run_routines() -> None:
                 out = f"failed: {e}"
             with session() as s:
                 r = s.get(Routine, rid)
+                title = r.title if r else ""
                 if r:
                     r.last_result = (out or "")[:2000]
             bus.publish(conv, "routines", {"routines": life.active_routines(tenant)})
+            if out and not str(out).startswith("failed:"):   # v0.617 a live call SAYS the result (no new card kind)
+                try:
+                    from . import voice as _voice
+                    _voice.card_news(conv, "routine_done", {"id": rid, "title": title, "text": str(out)[:600]})
+                except Exception:
+                    log.exception("routine result to the live call")
 
         t = asyncio.create_task(_go())
         _routine_tasks.add(t)

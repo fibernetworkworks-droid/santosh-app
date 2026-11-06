@@ -177,6 +177,22 @@ connect = _default_connect   # tests swap this
 
 
 class OpenAICall(v.Call):
+    CAN_PARK = False   # v0.617 parking is built for Gemini sessions only; OpenAI keeps the old rules
+
+    MOVE_WAIT_S = 20.0   # v0.617 the 50-minute move waits at most this long for a pause
+
+    async def _session_limit(self, after_s: float) -> None:
+        """v0.617 the move to a fresh OpenAI session (they end at 60 min) used to fire on a plain timer - mid-sentence.
+        Now it waits for a real pause (nobody speaking, nothing playing, no turn open), at most MOVE_WAIT_S."""
+        await asyncio.sleep(after_s)
+        until = time.monotonic() + self.MOVE_WAIT_S
+        while time.monotonic() < until:
+            now = time.monotonic()
+            if (now - max(self._last_voice_at, self._last_model_audio) >= 1.2 and not self.user_buf.strip()
+                    and not self.reply_buf.strip() and not self._turn_audio):
+                return
+            await asyncio.sleep(0.2)
+        self.stats["move_forced"] = self.stats.get("move_forced", 0) + 1
     engine = "openai"
 
     def __init__(self, *a, **k):
@@ -571,7 +587,7 @@ class OpenAICall(v.Call):
                     down = asyncio.create_task(self.downlink(session))
                     closed = asyncio.create_task(self.closed.wait())
                     watch = asyncio.create_task(self._stall_watch(session))
-                    limit = asyncio.create_task(asyncio.sleep(max(5, st.voice_openai_session_min) * 60))
+                    limit = asyncio.create_task(self._session_limit(max(5, st.voice_openai_session_min) * 60))
                     done, _ = await asyncio.wait({up, down, closed, watch, limit}, return_when=asyncio.FIRST_COMPLETED)
                     for x in (up, down, closed, watch, limit):
                         x.cancel()
