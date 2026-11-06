@@ -96,7 +96,19 @@ def upcoming_reminders(tenant_id: str, limit: int = 50, include_done: bool = Fal
 
 
 PINNED_CHARS = 1500     # "hamesha yaad": always in the prompt, kept short (idea from Hermes Agent)
-RECENT_FACTS = 40       # newest other facts in the prompt; older ones are found with memory_search
+RECENT_FACTS = 40       # v0.605: the default of the `memory_recent_facts` setting (see recent_facts()); kept for callers
+
+
+def recent_facts() -> int:
+    """v0.605 JUST IN TIME: how many of her newest (unpinned) facts ride the system prompt. 40 -> 15 by default:
+    pinned facts all ride, the facts closest IN MEANING to her message ride the turn block (yaad.relevant_facts),
+    and the rest are one yaad_khojo / memory_search away - the Claude shape (a short memory summary in, the rest
+    looked up)."""
+    try:
+        from .config import get_settings
+        return max(0, int(getattr(get_settings(), "memory_recent_facts", 15)))
+    except Exception:
+        return 15
 
 
 def memory_facts(tenant_id: str, limit: int = 60, conversation_id: str = "") -> list[MemoryFact]:
@@ -166,7 +178,7 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
     if jobs:
         lines.append("Your automatic jobs for this user (id: title, repeat, next run):")
         lines += [f"- {j['id']}: {j['title']}, {j['repeat']}, {j['next_run_local']}" for j in jobs]
-    facts = memory_facts(tenant_id, RECENT_FACTS, conversation_id)
+    facts = memory_facts(tenant_id, recent_facts(), conversation_id)
     pins = [f for f in facts if f.pinned]
     if pins:
         lines.append("ALWAYS keep in mind (the user pinned these; id: fact):")
@@ -176,7 +188,8 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
         lines.append("Things the user asked you to remember (id: fact):")
         lines += [f"- {f.id}: {f.text}" for f in others]
     if memory_count(tenant_id) > len(facts):
-        lines.append("Older things the user told you are not listed here: use memory_search to find them when needed.")
+        lines.append("Older things the user told you are not listed here: yaad_khojo (or memory_search for a saved "
+                     "fact) finds them in one call - look them up before saying you do not know or asking her again.")
     return "\n".join(lines)
 
 

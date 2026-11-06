@@ -5277,7 +5277,27 @@ def get_memory(tenant: str = Depends(current_tenant)):
     return {"facts": [{"id": f.id, "text": f.text, "pinned": bool(f.pinned), "auto": getattr(f, "source", None) == "auto",
                        "created_at": f.created_at.isoformat()}   # v0.165 home "aaj kya seekha" filters today's facts
                       for f in facts],
-            "pinned_chars": used, "pinned_max": life.PINNED_CHARS, "in_prompt": life.RECENT_FACTS}
+            "pinned_chars": used, "pinned_max": life.PINNED_CHARS, "in_prompt": life.recent_facts()}
+
+
+@app.get("/api/memory/everything", dependencies=[Depends(require_key)])
+def memory_everything(tenant: str = Depends(current_tenant)):
+    """v0.605 EK YAAD: one view of everything Hoola remembers about her, store by store."""
+    from . import memory
+    return memory.everything(tenant)
+
+
+class MemoryResetIn(BaseModel):
+    confirm: str = ""
+
+
+@app.post("/api/memory/reset", dependencies=[Depends(require_key)])
+def memory_reset(body: MemoryResetIn, tenant: str = Depends(current_tenant)):
+    """v0.605 EK YAAD: Claude's 'reset memory' - every store forgets her (her chats stay). Needs confirm='RESET'."""
+    if (body.confirm or "").strip().upper() != "RESET":
+        raise HTTPException(400, "Sab yaad mitane ke liye confirm='RESET' bhejiye. Aapki chats nahi mitengi.")
+    from . import memory
+    return {"ok": True, "removed": memory.reset_all(tenant)}
 
 
 class PinIn(BaseModel):

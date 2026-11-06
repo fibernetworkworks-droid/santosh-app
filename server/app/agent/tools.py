@@ -1386,8 +1386,8 @@ TOOL_LANES: dict[str, str] = {
     "memory_search": "LANE: find a FACT she asked you to remember. What was said in her chats / calls / jobs -> "
                      "yaad_khojo; her own files and documents -> gyaan_khojo; chats by date ('kal', 'is hafte') -> "
                      "haal_ki_chats.",
-    "yaad_khojo": "LANE: what was said or decided in her chats, calls and jobs, by meaning. A saved fact -> "
-                  "memory_search; her files -> gyaan_khojo; by date -> haal_ki_chats.",
+    "yaad_khojo": "LANE: the ONE memory door - facts, past chats / calls / jobs, work notes, her graph and page in one "
+                  "search. Her documents' contents -> gyaan_khojo; by date -> haal_ki_chats.",
     "gyaan_khojo": "LANE: search inside HER files and documents (Gyaan, Drive folders). A file she attached in this "
                    "chat -> file_read; her chats -> yaad_khojo.",
     "haal_ki_chats": "LANE: her other chats by DATE ('aaj', 'kal', 'is hafte'). By topic -> yaad_khojo.",

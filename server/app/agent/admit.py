@@ -60,7 +60,8 @@ CORE_FAMILIES = frozenset({
 # v0.559 SAHI GINTI: single tools that stay in view on every turn even though their family is not core - the
 # everyday ones of a family that is otherwise only opened by her words. Anthropic's guidance: tool choice gets worse
 # past 30-50 tools in view; a plain "namaste" carried 75 before this, ~52 after.
-CORE_TOOLS = frozenset({"maps_search", "maps_directions"})
+CORE_TOOLS = frozenset({"maps_search", "maps_directions",
+                        "yaad_khojo"})   # v0.605 EK YAAD: the one memory door is always in view (old chats are fetched, not pasted)
 _LATLNG = re.compile(r"(?<![\d.])-?\d{1,2}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}")
 
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
