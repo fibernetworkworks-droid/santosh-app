@@ -21431,3 +21431,20 @@ call model reached for create_reminder on other jobs. The call never logged WHIC
 - Switch `voice_reminder_guard` (default True). Tests `test_v0624_sab_kaam.py` (5). Server-only; console stamps 0.624.0.
 NOT VERIFIED: the first live call after the deploy; the guard's word list is judgement (a reminder said with no time word
 and no reminder word would now go to santosh_kaam, which can still set it).
+
+
+## v0.625.0 EK AWAAZ - one voice on a call (owner: "now when task perfrom suddenly get voice like radio, diffrent voices etc --- check is any hardcoded value or any bug")
+
+Found in the code, not a guess: while a tool ran and the call was silent, `Call._ack_watch` played an "ek second" clip
+after ACK_AFTER_S, `_prog_watch` a progress mutter after 8 s, and `_bc_watch` listener murmurs in her pauses. All three are
+PRE-RENDERED clips (`_tts_clip`) made by a SEPARATE Gemini TTS model (`voice_ack_tts_model`, gemini-3.8-flash-tts), and on
+any failure by the legacy gemini-2.5-flash-preview-tts - which sounds like a different person - and every clip, whichever
+model made it, is written to `data/voice_acks/*.pcm` and replayed in every later call. v0.624 sends more of her jobs to
+santosh_kaam (a long tool), so the clips played more often - "when task perform". Not Gemini Live's voice, so a second
+voice / a radio-like sound in the middle of the call.
+- `voice_tool_ack` and `voice_backchannel` default False: nothing but the call's own Gemini Live audio is played. The
+  persona already tells the model to say ONE short line itself before a slow tool. Both stay as opt-in switches.
+- Tests: `test_v0625_ek_awaaz.py` (2). test_v0206_backchannels + test_v0230's murmur test set the env AFTER settings were
+  cached, so they had only passed because the default was on - they now clear the cache and switch the clips on themselves.
+NOT VERIFIED on a real call. The old clip files stay on the VPS disk unused (harmless; `rm -rf ~/apps/santosh-core/data/voice_acks`
+cleans them).

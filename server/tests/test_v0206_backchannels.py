@@ -60,6 +60,17 @@ class _FakeCall:
         self.sent.append(data)
 
 
+@pytest.fixture(autouse=True)
+def _clips_on(monkeypatch):
+    """v0.625 the TTS clips are opt-in (off by default): these tests switch them on to exercise them."""
+    from app.config import get_settings
+    monkeypatch.setenv("VOICE_BACKCHANNEL", "true")
+    monkeypatch.setenv("VOICE_TOOL_ACK", "true")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 def _run(coro):
     return asyncio.get_event_loop_policy().new_event_loop().run_until_complete(coro)
 
@@ -358,4 +369,4 @@ def test_stats_carry_the_new_clips():
 
 
 def test_version():
-    assert APP_VERSION == "0.624.0"
+    assert APP_VERSION == "0.625.0"

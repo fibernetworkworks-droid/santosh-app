@@ -147,6 +147,8 @@ class _Fake:
 def _pool(monkeypatch):
     monkeypatch.setattr(voice, "pool_clips", lambda kind, v, g: [b"m"])
     monkeypatch.setenv("VOICE_BACKCHANNEL", "true")
+    from app.config import get_settings
+    get_settings.cache_clear()   # v0.625 the murmurs are opt-in now: the env must really be read
 
 
 def test_murmur_in_a_breath_inside_her_sentence(env, monkeypatch):
@@ -175,4 +177,4 @@ def test_no_murmur_on_a_short_turn(env, monkeypatch):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.624.0"
+    assert main.APP_VERSION == "0.625.0"
