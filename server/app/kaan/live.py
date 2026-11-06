@@ -33,6 +33,7 @@ from sqlalchemy import select
 from ..config import get_settings
 from ..db import new_id, now, session
 from . import engine as EN
+from . import vocab as VB
 from .models import KaanLiveSession
 
 LIVE_DEFAULT_MODEL = "base"      # fast on CPU for rolling passes; per-session override via ladder
@@ -148,8 +149,10 @@ def _row(r: KaanLiveSession, tail: int = 10) -> dict[str, Any]:
 
 # ---------------------------------------------------------------- the three doors
 def start(tenant: str, *, model: str = "", language: str = "", conversation_id: str = "",
-          fn: Any = None) -> dict[str, Any]:
-    """Open a caption session. AUDIO GATE owns it (ingest), engine must be ready."""
+          vocab: bool = True, fn: Any = None) -> dict[str, Any]:
+    """Open a caption session. AUDIO GATE owns it (ingest), engine must be ready.
+    W3: vocab=True freezes the tenant's terms into the session prompt (initial_prompt for
+    every rolling pass + the clean pass); the frozen copy keeps a session consistent."""
     if not _gate():
         raise LiveError(GATE_OFF)
     ok, why = EN.available()
@@ -158,15 +161,17 @@ def start(tenant: str, *, model: str = "", language: str = "", conversation_id: 
     m = (model or LIVE_DEFAULT_MODEL).lower()
     if m not in {x["name"] for x in EN.MODEL_LADDER}:
         raise LiveError(f"model '{m}' nahi jaana. Ladder: {', '.join(x['name'] for x in EN.MODEL_LADDER)}.")
+    prompt, n_terms, _trunc = VB.prompt_for(tenant) if vocab else ("", 0, 0)
     sid = new_id("kl")
     pcm_path = _live_dir() / f"{sid}.pcm"
     with session() as s:
         s.add(KaanLiveSession(id=sid, tenant_id=tenant, conversation_id=conversation_id or "",
-                              model=m, language=language or "", pcm_path=str(pcm_path),
+                              model=m, language=language or "", prompt=prompt, pcm_path=str(pcm_path),
                               pcm_seconds=0.0, watermark_s=0.0, n_chunks=0,
                               captions={"items": []}, status="live", note=""))
         s.commit()
     return {"id": sid, "status": "live", "model": m, "language": language or "",
+            "vocab_terms": n_terms, "vocab": "on" if vocab else "off",
             "note": LIVE_NOTE, "privacy": "spine + captions isi server par; koi bahar API nahi."}
 
 
@@ -203,7 +208,7 @@ def chunk(tenant: str, sid: str, data: bytes, *, fn: Any = None) -> dict[str, An
             _window_wav(pcm_path, w_start, end_s, Path(tmp.name))
             transcribe = fn or EN.transcribe
             out = transcribe(tmp.name, model=r.model, language=r.language or "",
-                             task="transcribe", word_timestamps=True)
+                             task="transcribe", word_timestamps=True, initial_prompt=(r.prompt or ""))
         finally:
             try:
                 os.unlink(tmp.name)
@@ -263,7 +268,7 @@ def stop(tenant: str, sid: str, *, finalize_model: str = "", fn: Any = None) -> 
             _window_wav(pcm_path, w_start, end_s, Path(tmp.name))
             transcribe = fn or EN.transcribe
             out = transcribe(tmp.name, model=r.model, language=r.language or "",
-                             task="transcribe", word_timestamps=True)
+                             task="transcribe", word_timestamps=True, initial_prompt=(r.prompt or ""))
         finally:
             try:
                 os.unlink(tmp.name)
@@ -298,7 +303,7 @@ def stop(tenant: str, sid: str, *, finalize_model: str = "", fn: Any = None) -> 
             _window_wav(pcm_path, 0.0, end_s, Path(tmp.name))
             transcribe = fn or EN.transcribe
             out = transcribe(tmp.name, model=fm, language=r.language or "",
-                             task="transcribe", word_timestamps=True)
+                             task="transcribe", word_timestamps=True, initial_prompt=(r.prompt or ""))
             segs_final = out.get("segments") or []
             finalize = "batch"
         finally:

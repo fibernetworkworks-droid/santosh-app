@@ -18,6 +18,8 @@ from . import diarize as DI
 from . import engine as EN
 from . import live as LV
 from . import meeting as MT
+from . import styles as ST
+from . import vocab as VB
 from .models import KaanTranscript
 
 MAX_BYTES = 5 * 1024 * 1024 * 1024        # the whisperai.com ceiling, kept as OUR ceiling too (5 GB)
@@ -63,8 +65,10 @@ def _duration_of(path: str) -> float:
 def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: bytes | None = None,
                     model: str = "", language: str = "", task: str = "transcribe",
                     word_timestamps: bool = True, conversation_id: str = "",
-                    fn: Any = None, store: bool = True) -> dict[str, Any]:
+                    vocab: bool = True, fn: Any = None, store: bool = True) -> dict[str, Any]:
     """The W0 pipeline: guards -> engine -> store -> answer. `fn` swaps the engine (tests).
+    W3: vocab=True (default) seeds the tenant terms as initial_prompt (soft hint) and applies
+    fix_to replacements deterministically AFTER the engine - counted, named in the note.
     Every refusal is one honest line (KaanError / ValueError -> ToolError in the tool layer)."""
     if not gate_open():
         raise EN.KaanError(GATE_OFF)
@@ -84,12 +88,18 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
         raise EN.KaanError(why)
 
     tmp = tempfile.NamedTemporaryFile(suffix=Path(name).suffix, delete=False)
+    prompt, n_terms, n_trunc = ("", 0, 0)
+    fixes: dict[str, str] = {}
+    if vocab:
+        prompt, n_terms, n_trunc = VB.prompt_for(tenant)
+        fixes = VB.fixes_for(tenant)
     try:
         tmp.write(data)
         tmp.close()
         duration = _duration_of(tmp.name)
         fn = fn or EN.transcribe
-        out = fn(tmp.name, model=model, language=language, task=task, word_timestamps=word_timestamps)
+        out = fn(tmp.name, model=model, language=language, task=task, word_timestamps=word_timestamps,
+                 initial_prompt=prompt)
     finally:
         try:
             os.unlink(tmp.name)
@@ -99,9 +109,18 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
     segs = out.get("segments") or []
     text = (out.get("text") or "").strip()
     n_words = sum(len(s.get("words") or []) for s in segs)
+    if fixes and (text or segs):
+        text, segs, applied, n_fix = VB.apply_out(text, segs, fixes)
+    else:
+        applied, n_fix = {}, 0
     status, note = "ready", ""
     if not text and not segs:
         status, note = "empty", "Engine ko khamoshi hi mili - koi baat nahi sunai di (na koi shabd, na segment)."
+    if vocab and (n_terms or n_fix):
+        vnote = f"vocab (W3): {n_terms} term(s) seeded as initial_prompt" + (f" ({n_trunc} over the {VB.PROMPT_CAP}-char cap, oldest kept)" if n_trunc else "")
+        if n_fix:
+            vnote += "; deterministic fix(es) applied (text + segment copies): " + ", ".join(f"{t} x{k}" for t, k in applied.items())
+        note = (note + " " if note else "") + vnote + "."
     row_id = new_id("kn")
     if store:
         with session() as s:
@@ -115,7 +134,8 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
             s.commit()
     return {"id": row_id, "file_name": name, "language": out.get("language", ""), "task": out.get("task", task),
             "model": out.get("model", ""), "duration_s": duration, "n_segments": len(segs), "n_words": n_words,
-            "text": text, "segments": segs, "status": status, "note": note, "stored": store}
+            "text": text, "segments": segs, "status": status, "note": note, "stored": store,
+            "vocab": {"terms": n_terms, "fixes": n_fix} if vocab else {"applied": False}}
 
 
 # ---------------------------------------------------------------- store reads
@@ -173,11 +193,39 @@ def minutes(tenant: str, tid: str) -> dict[str, Any]:
     return MT.minutes(get_transcript(tenant, tid))
 
 
+# ---------------------------------------------------------------- W3 styles + vocab
+def style_render(tenant: str, tid: str, style: str) -> dict[str, Any]:
+    """W3: one deterministic style render of a stored transcript (read-only, gate-free by the W1 law)."""
+    with session() as s:
+        r = s.scalars(select(KaanTranscript).where(KaanTranscript.tenant_id == tenant, KaanTranscript.id == tid)).first()
+        if not r:
+            raise ValueError(f"Transcript {tid} nahi mili (is tenant ka nahi, ya kabhi bani hi nahi).")
+        d = _row(r)
+        d["segments"] = (r.segments or {}).get("items", []) if isinstance(r.segments, dict) else (r.segments or [])
+    return ST.render(style, d)
+
+
+def vocab_add(tenant: str, term: str, fix_to: str = "", note: str = "") -> dict[str, Any]:
+    """W3: add/update one tenant term (hint + optional deterministic replacement)."""
+    return VB.add(tenant, term, fix_to=fix_to, note=note)
+
+
+def vocab_list(tenant: str) -> dict[str, Any]:
+    """W3: the tenant's terms (read-only)."""
+    return VB.list_vocab(tenant)
+
+
+def vocab_remove(tenant: str, term: str) -> dict[str, Any]:
+    """W3: remove one tenant term (honest refusal when absent)."""
+    return VB.remove(tenant, term)
+
+
 # ---------------------------------------------------------------- W2 live captions
 def live_start(tenant: str, *, model: str = "", language: str = "", conversation_id: str = "",
-              fn: Any = None) -> dict[str, Any]:
-    """W2: open a live-caption session (AUDIO gate owns it)."""
-    return LV.start(tenant, model=model, language=language, conversation_id=conversation_id, fn=fn)
+               vocab: bool = True, fn: Any = None) -> dict[str, Any]:
+    """W2: open a live-caption session (AUDIO gate owns it); W3: vocab freezes the tenant prompt."""
+    return LV.start(tenant, model=model, language=language, conversation_id=conversation_id,
+                    vocab=vocab, fn=fn)
 
 
 def live_chunk(tenant: str, sid: str, data: bytes, *, fn: Any = None) -> dict[str, Any]:
@@ -226,6 +274,12 @@ def status(tenant: str) -> dict[str, Any]:
         "live": {"on": gate_open(), "default_model": LV.LIVE_DEFAULT_MODEL, "active": LV.active_count(tenant),
                  "note": "live captions (W2): chunks ka PCM spine isi server par banta hai; har chunk par naya hissa "
                          "transcribe hota hai; stop par kn_ transcript banti hai. Wahi kaan_audio gate lagta hai."},
+        "styles": {"list": list(ST.STYLES),
+                   "note": "W3 styles: deterministic renders of a stored transcript (read-only, gate-free) - "
+                           "kuch generate nahi hota, har line row tak traceable."},
+        "vocab": {"n_terms": VB.count(tenant),
+                  "note": "W3 vocab: term = initial_prompt hint (soft); fix_to = deterministic replacement "
+                          "(counted, named in the note). vocab_add/list/remove se chalta hai."},
         "ladder": [{"name": m["name"], "params": m["params"], "note": m["note"]} for m in EN.MODEL_LADDER],
         "stored": n,
         "privacy": "audio + transcript isi server par rehte hain; koi bahar API is path par nahi.",

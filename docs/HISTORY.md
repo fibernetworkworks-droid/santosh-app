@@ -1,3 +1,39 @@
+## v0.637.0 KAAN W3 — APNI BOLI (7 Nov 2026)
+
+Owner: "START" on the kaan plan + "ALWAYS SHOW RESULT IN ENGLISH" — Wave W3 of the WhisperAI feed.
+Custom vocabulary + style presets, all deterministic, nothing invented (port law, inertness law, local-first).
+
+- **The vocab** (`kaan/vocab.py`, new `kaan_vocab` table): per-tenant terms with two honest mechanisms —
+  the terms seed whisper's `initial_prompt` (a SOFT hint: the upstream repo read shows whisper has no hard
+  vocabulary biasing), and `fix_to` is a DETERMINISTIC word-boundary case-insensitive replacement applied
+  after the engine, every application counted and named in the row note ("vocab (W3): N term(s) seeded...;
+  deterministic fix(es) applied (text + segment copies): term xK") — nothing silent; `vocab_list` is the audit.
+  Case-only fixes are real fixes (case drift); an identical replacement is refused. Upsert is case-insensitive
+  (`term_key`); the prompt is capped at 800 chars with the truncated count honest (oldest kept first).
+- **The wiring**: `transcribe` takes `vocab=true` by default; `live_start` FREEZES the tenant prompt into the
+  session so every rolling pass and the finalize clean pass carry it. `engine.transcribe` grew `initial_prompt`.
+- **The styles** (`kaan/styles.py`): verbatim / clean (whitespace, immediate-duplicate collapse, sentence-start
+  caps — no words added or reworded, counts in the note) / subtitles (the W2 phrase rule: >0.6s word gap or
+  sentence ender; wraps at 12 words when the row has no word timestamps) / minutes (the W1 skeleton) / social
+  (hook + key words + action candidates + stats, extractive only) — all read-only, GATE-FREE by the W1 law
+  (no audio ingest; the text is already hers). `status()` carries the styles + vocab blocks.
+- **The gate map**: NO new switch — transcribe/live stay behind `kaan_audio`; vocab mutations are
+  owner/approved-only; style/vocab_list are reads. Registry 606 UNCHANGED (actions, not tools); the kaan
+  description retightened inside the 1200-char diet (991 chars).
+- **English strings**: new W3 user-facing strings are English (owner instruction); older kaan strings keep
+  the house Hinglish — no churn on shipped lines.
+- **Tests**: NEW `test_v0637_kaan_w3.py` (23, zero network, zero torch): vocab CRUD + case-insensitive upsert +
+  honest validation + tenant isolation + prompt cap + word-boundary counts; transcribe prompt-seed + fix-apply +
+  note + vocab=false raw path; engine signature; all five styles' determinism; gate-free style vs gated
+  transcribe; live prompt freeze across rolling + clean passes; registry 606 + enum 16 + diet; actor lanes;
+  status blocks; module purity; APP_VERSION 0.637.0. Neighbours green: kaan W2 18 + W1 20 + W0 25 +
+  auzaar (JSON-Schema over all 606 tools) + bhandar 40. Ritual: `scripts/ritual_0637.py` swept 210 test files
+  (0.636.0→0.637.0, +642→+643, ZERO residual), 3 kaan enum pins healed to 16 actions, pubspec 0.637.0+643,
+  APP_VERSION story (chain verbatim), CLAUDE.md + HISTORY + WORKLOG mirrors.
+- **NOT VERIFIED live**: the first vocab-seeded transcribe + style render on the VPS — the bake block rides the deploy.
+
+Previous: v0.618.0 KAAN W2 — LIVE CAPTIONS (6 Nov 2026).
+
 ## v0.618.0 KAAN W2 — LIVE CAPTIONS (6 Nov 2026)
 
 Owner: "START" on the kaan plan — Wave W2 of the WhisperAI feed. Rolling live captions over a PCM spine,
@@ -21658,7 +21694,7 @@ prompt 0.8s`, then Haiku 5.9 s. Lock / compaction / history were 0.0 s (no busy 
 - hint 1.8 s: `procedures.hint` skipped on a call brain turn.
 - Chat turns unchanged. Tests `test_v0638_tez_taiyari.py` (3). Expected prep: ~3-4 s (was 19.6 s). NOT VERIFIED on a call.
 
-## v0.639.0 PAKDO — catch what blocks the server during a call
+## v0.640.0 PAKDO (built as 0.639.0; their KAAN W3 took 0.639.0, both kept) — catch what blocks the server during a call
 
 Her 16:52 call (v0.638 live): `brain answered in 17.3s` (first answer inside the wait), but `brain prep 13.0s` with
 memory 5.6 s although `_brain_memory` waits at most 2.5 s, all three parts (even the quick kaamwatch DB read) "not

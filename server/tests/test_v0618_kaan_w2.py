@@ -258,7 +258,8 @@ def test_actions_grew_registry_did_not():
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
-                    "live_start", "live_chunk", "live_stop", "live_get", "live_list"]
+                    "live_start", "live_chunk", "live_stop", "live_get", "live_list",
+                    "style", "vocab_add", "vocab_list", "vocab_remove"]  # W3 grew actions
     assert "live_start" in spec["description"]                          # the diet (<=1200) keeps W2 visible
     assert "live captions" in spec["description"]
     assert "finalize_model" in spec["input_schema"]["properties"]
@@ -302,4 +303,4 @@ def test_live_module_purity_and_laziness():
 
 def test_version_pin_v0618():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.639.0"
+    assert APP_VERSION == "0.640.0"

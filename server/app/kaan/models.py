@@ -38,6 +38,25 @@ class KaanTranscript(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
+class KaanVocab(Base):
+    """W3 custom vocabulary: one row per tenant term.
+
+    term = the initial_prompt hint (soft - whisper has no hard vocab biasing); fix_to = the
+    deterministic replacement ("" = hint only). term_key (lowercased) is the upsert key, so
+    'Gupta ji' and 'gupta ji' are one entry. Nothing is applied silently - the transcribe
+    note names every application count.
+    """
+    __tablename__ = "kaan_vocab"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("kv"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    term: Mapped[str] = mapped_column(String(120), default="")
+    term_key: Mapped[str] = mapped_column(String(120), index=True, default="")
+    fix_to: Mapped[str] = mapped_column(String(120), default="")
+    note: Mapped[str] = mapped_column(Text, default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
 class KaanLiveSession(Base):
     """W2 live captions: one rolling-caption session over a PCM spine on her server.
 
@@ -52,6 +71,7 @@ class KaanLiveSession(Base):
     conversation_id: Mapped[str] = mapped_column(String(40), default="")
     model: Mapped[str] = mapped_column(String(24), default="base")           # the rolling-pass model
     language: Mapped[str] = mapped_column(String(12), default="")
+    prompt: Mapped[str] = mapped_column(Text, default="")                    # W3: vocab initial_prompt for every pass
     pcm_path: Mapped[str] = mapped_column(String(400), default="")           # the spine on her disk
     pcm_seconds: Mapped[float] = mapped_column(Float, default=0.0)
     watermark_s: Mapped[float] = mapped_column(Float, default=0.0)           # transcribed up to here
