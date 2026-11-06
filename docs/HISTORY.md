@@ -21148,3 +21148,51 @@ lets her remove it from memory; Grok Bot and Dots "learn how you like things don
 
 Tests `server/tests/test_v0612_yaad_se.py` (9). NOT VERIFIED: no live run; the echo rule is a word heuristic (a reply
 that paraphrases a memory completely will not show it); the phone chip compiles first on CI.
+
+
+## v0.616.0 BAHAR SE BAAT - her own Hoola from WhatsApp, Telegram, Slack and Microsoft Teams (owner: "More places to talk to Hoola"; answers: all four channels, "Only me")
+
+Dots answers in Slack and Teams. Hoola now answers its OWNER in the apps she already uses. `server/app/bahar.py`
+is one core with four doors:
+
+- **WhatsApp**: HER own WhatsApp Business number (the one already joined for the business inbox), Meta's official
+  Cloud API. `/webhooks/whatsapp` first calls `bahar.whatsapp_take(value)`. That pulls out ONLY her paired number's
+  messages (or a pairing code) and leaves every other sender for `employee.inbox.receive`, so customers stay
+  customers. Replies go out as free-form text with `get_whatsapp().send_text`, only inside Meta's 24 h window.
+  Never personal WhatsApp.
+- **Telegram**: her own bot. The BotFather token is sealed, `getMe` is checked, and `setWebhook` is called with a
+  random `secret_token` that every update must carry. Private chat only.
+- **Slack**: her own Slack app. The `xoxb-` bot token and the signing secret are sealed and checked with
+  `auth.test`. The Events API request signature (v0, within 5 minutes) is checked on every request.
+  `url_verification` is answered. Only `message.im` DMs are read; bot messages and edits are ignored.
+- **Teams**: her own Azure Bot. The app id and secret are sealed, and the client-credentials token is proven at
+  setup. Every activity's Bot Framework JWT is checked: RS256 against the published keys, issuer
+  `api.botframework.com`, audience = her app id, serviceurl matched. Personal chat only. Replies go to
+  `{serviceUrl}/v3/conversations/{id}/activities`. Needs **PyJWT** (added to requirements.txt).
+
+**Only her.** Every channel starts in `pairing`. The app shows a 6-digit code (15 minutes, 5 tries, stored hashed),
+and she sends `HOOLA <code>` from that app once. That binds ONE sender id: her number, her Telegram user, her Slack
+user or her Teams AAD id. Anyone else gets nothing from Hoola.
+
+**The turn.** Each channel has its own chat ("WhatsApp se baat") on the SAME pipeline: `convs.mark` +
+`bus.publish` + `turn_inbox.accept` + `run_owned`, with a context line saying where the message came from (keep it
+short; tap cards are in the app). That means the same memory, tools and cards as the app.
+
+**Replies.** `forward()` sends each new assistant display row once. `last_sent_id` moves even when a send fails, so
+it can never loop. The worker's `bahar_jobs` (every 30 s) forwards jobs that finish later. Markdown bold is mapped
+per channel, long replies are cut into at most 6 parts, and any text carrying OTP / PIN / card details is replaced
+with "Hoola app mein dekhiye".
+
+**Routes.**
+- GET / POST / DELETE `/api/bahar[/{channel}]`. Credentials are sealed on arrival and never returned; the sender is
+  shown masked.
+- `/webhooks/bahar/{telegram|slack|teams}/{hook}`, where the hook is random per link.
+- Phone: `lib/ui/bahar_screen.dart` (Profile > Bahar se baat).
+- Table: `bahar_links` (registered in `db.init_db`, self-heals).
+
+**Tests.** `test_v0616_bahar.py`, 10 tests.
+
+**NOT VERIFIED.** No live channel has answered yet. WhatsApp needs her business number joined. Telegram needs a
+BotFather bot. Slack needs her app's Event Subscriptions URL + `message.im` + the App Home messages tab. Teams needs
+an Azure Bot with the messaging endpoint and the Teams channel on. The Teams JWT path is tested only for refusal;
+a real Bot Framework token has not been checked. Photos and voice notes from outside get a polite "text only" line.
