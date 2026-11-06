@@ -50,6 +50,7 @@ on:
           - long_card_try
           - long_card_try_haiku
           - long_card
+          - long_card_haiku
           - long_card_status
           - proof
           - code_card
