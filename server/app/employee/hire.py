@@ -219,6 +219,18 @@ CATALOG: dict[str, dict[str, Any]] = {
                             "Give legal advice or tell anyone to switch insurers",
                             "Send a message, file an appeal or store your documents: it drafts and checks, you send",
                             "Verify an ID with any authority: format checks only, Aadhaar shown masked"]},
+    # v0.610 BIMA ASSIST (health-insurance register Wave 2: assists with a named human decider)
+    "bima_assist": {"name": "Bima Assist (adviser, claims and compliance desk)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
+                    "pitch": "Drafts and flags for the people who decide: plan side-by-sides, disclosure prompts, coverage and waiting-period checks with the clause shown, pre-auth checks, query replies, medical timelines, rejection and grievance letters, ombudsman packets, wording and mis-selling reviews, FHIR claim skeletons and code maps.",
+                    "does": ["Plan comparison from the numbers you give, material-fact prompts, proposal completeness check",
+                             "Coverage and exclusion checks (waiting periods, moratorium, sub-limits, room-rent proportion) with each line tied to the clause you supplied",
+                             "Pre-auth checks, query-reply drafts from the chart, medical timeline with gaps, rejection and grievance letter drafts (no clause, no letter)",
+                             "Ombudsman packet index and dates, policy-wording and mis-selling reviews, FHIR Claim skeleton, code mapping from your table"],
+                    "needs": ["Policy terms, clause text, package rates and code tables from you; periods are from memory and marked verify"],
+                    "never": ["Approve, deny, reduce or settle a claim, accuse anyone of fraud or mis-selling, or give a medical opinion",
+                              "Sign or send a letter, file with an ombudsman or submit to NHCX",
+                              "Recommend a plan or tell anyone to switch insurers: suitability is the adviser's and the customer's call",
+                              "Store your documents: it reads, drafts and forgets"]},
     # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
     "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
              "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",

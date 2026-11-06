@@ -411,6 +411,12 @@ TOOLS.extend(BIMADESK_TOOLS)
 TOOL_LABELS.update(BIMADESK_LABELS)
 HANDLERS.update(BIMADESK_HANDLERS)
 
+from .bimaassist_tools import BIMAASSIST_HANDLERS, BIMAASSIST_LABELS, BIMAASSIST_TOOLS  # noqa: E402  v0.610 Bima Assist (health-insurance Wave 2)
+
+TOOLS.extend(BIMAASSIST_TOOLS)
+TOOL_LABELS.update(BIMAASSIST_LABELS)
+HANDLERS.update(BIMAASSIST_HANDLERS)
+
 from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
 
 TOOLS.extend(KAAN_TOOLS)

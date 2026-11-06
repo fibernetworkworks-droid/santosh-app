@@ -21084,3 +21084,14 @@ open to a policyholder), hub group "Health Insurance" in `employee/hire.py` + co
 check. NOT BUILT: Wave 2 (assist with a named human: 11-13, 33, 34, 44, 45, 47, 65, 66, 73, 74, 92-94) and Wave 3 (fraud, pricing, underwriting AI).
 NOT VERIFIED: periods (intimation, filing, grievance, ombudsman limitation, portability) are from memory and marked verify; no real claim data has
 gone through it. Tests `test_bimadesk.py` (7).
+
+## v0.610.0 BIMA ASSIST - health-insurance Wave 2 (assists with a named human decider)
+Owner: "GO NEXT WAVE". `server/app/bimaassist/engines.py` (pure): plan_compare (numbers only, no recommendation), material_facts (health questions answered
+no vs history notes; keyword list heuristic), proposal_check, coverage_check (initial / specific / pre-existing waiting, moratorium, sub-limits, room-rent
+proportion, co-pay; every line carries the clause text SHE supplied or a "not given" marker), preauth_checks (pass / fail / unknown, package rates hers),
+query_reply, medical_timeline (gaps and expected-procedure mismatches as questions), rejection_letter + grievance_reply (drafts, refuse without clause ref + text,
+signer blank, never sent), ombudsman_packet (index, missing items, one-year-from-reply and 30-day dates, from memory: verify), wording_review, missell_review
+(phrase hits, free-look days left, DOB discrepancies), fhir_claim (plain R4 Claim skeleton, not submitted, no HCX profile / consent / signing), code_map (her table only).
+ONE tool `bima_assist` (registry 591 -> 592, family bimaassist, voice via santosh_kaam; plan_compare / material_facts / wording_review / ombudsman_packet open to a
+policyholder), hub entry in Health Insurance. NOT BUILT: Wave 3 (fraud, pricing, underwriting AI, needs model governance). NOT VERIFIED: rules and periods from memory; no real
+claim data. Tests `test_bimaassist.py` (6).

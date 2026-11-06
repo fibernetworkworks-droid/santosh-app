@@ -359,7 +359,7 @@ def test_registry_566_and_dispatch(env):
               "const_rera_dekho", "const_contracts", "const_contracts_dekho", "const_tender",
               "const_tender_dekho", "const_drawqa", "const_drawqa_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 591, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 556 (their chain) + 12 construction Wave 2 + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 592, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 556 (their chain) + 12 construction Wave 2 + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_qs_tool_end_to_end(env):
@@ -440,6 +440,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.609.0"
-    assert 'APP_VERSION = "0.609.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.609.0+615" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.610.0"
+    assert 'APP_VERSION = "0.610.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.610.0+616" in (REPO / "pubspec.yaml").read_text()
