@@ -39,6 +39,9 @@ class Project(Base):
     emoji: Mapped[str] = mapped_column(String(8), default="📁")
     instructions: Mapped[str] = mapped_column(Text, default="")
     memory: Mapped[str] = mapped_column(Text, default="")
+    # v0.609 YAAD KE KHAANE (Claude's per-project "Use account memory"): False = this Session uses only ITS OWN
+    # memory (its facts, its chats, its project memory) - none of her general facts, page or graph. None = on.
+    use_main_memory: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -83,6 +86,7 @@ def _view(s, p: Project) -> dict[str, Any]:
                                                                Conversation.deleted.is_not(True))) or 0
     return {"id": p.id, "name": p.name, "emoji": p.emoji or "📁", "instructions": p.instructions or "",
             "memory": p.memory or "", "files": int(files), "chats": int(chats),
+            "use_main_memory": p.use_main_memory is not False,
             "updated_at": (p.updated_at or p.created_at).isoformat() if (p.updated_at or p.created_at) else ""}
 
 
@@ -126,7 +130,7 @@ def create(tenant: str, name: str, instructions: str = "", emoji: str = "") -> d
 
 
 def patch(tenant: str, pid: str, name: str | None = None, instructions: str | None = None, memory: str | None = None,
-          emoji: str | None = None) -> dict[str, Any]:
+          emoji: str | None = None, use_main_memory: bool | None = None) -> dict[str, Any]:
     with session() as s:
         p = _own(s, tenant, pid)
         if name is not None:
@@ -140,6 +144,8 @@ def patch(tenant: str, pid: str, name: str | None = None, instructions: str | No
             p.memory = memory.strip()[:8000]
         if emoji is not None:
             p.emoji = _clean(emoji, 8) or "📁"
+        if use_main_memory is not None:
+            p.use_main_memory = bool(use_main_memory)
         p.updated_at = now()
         return _view(s, p)
 

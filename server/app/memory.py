@@ -110,11 +110,13 @@ def search_all(tenant: str, conversation_id: str, query: str, days: int | None =
     """Every store, one answer. A store that fails is named in `skipped`, never fatal."""
     if not (query or "").strip():
         return {"hits": [], "count": 0, "searched": []}
+    from .fence import main_memory_ok
+    main = main_memory_ok(conversation_id)   # v0.609 a Session on its own memory: no main page, no main graph
     jobs = {"fact": lambda: _facts(tenant, conversation_id, query),
             "chat": lambda: _chats(tenant, conversation_id, query, days),
             "work": lambda: _work(tenant, conversation_id, query),
-            "graph": lambda: _graph(tenant, query),
-            "page": lambda: _page(tenant, query)}
+            "graph": lambda: _graph(tenant, query) if main else [],
+            "page": lambda: _page(tenant, query) if main else []}
     if only and only != "any":
         jobs = {k: v for k, v in jobs.items() if k == only}
     hits: list[dict] = []

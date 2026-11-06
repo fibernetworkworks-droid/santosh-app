@@ -123,7 +123,9 @@ def memory_facts(tenant_id: str, limit: int = 60, conversation_id: str = "") -> 
         q = select(MemoryFact).where(MemoryFact.tenant_id == tenant_id,
                                      (MemoryFact.pinned.is_(None)) | (MemoryFact.pinned.is_(False)))
         if allowed is not None:
-            q = q.where(MemoryFact.conversation_id.is_(None) | MemoryFact.conversation_id.in_(allowed))
+            from .fence import main_memory_ok   # v0.609 a Session with 'use main memory' off: only its own facts
+            q = q.where(MemoryFact.conversation_id.is_(None) | MemoryFact.conversation_id.in_(allowed)) \
+                if main_memory_ok(conversation_id) else q.where(MemoryFact.conversation_id.in_(allowed))
         rest = s.scalars(q.order_by(MemoryFact.id.desc()).limit(max(0, limit))).all()
         for r in list(pinned) + list(rest):
             s.expunge(r)
@@ -160,7 +162,8 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
     lines = []
     try:   # v0.250 "Mere baare mein": her memory page first (unless she turned recall off)
         from .aboutme import block as _about
-        ab = _about(tenant_id)
+        from .fence import main_memory_ok   # v0.609 a Session on its own memory never reads her main page
+        ab = _about(tenant_id) if main_memory_ok(conversation_id) else ""
         if ab:
             lines.append(ab)
     except Exception:

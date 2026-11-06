@@ -192,6 +192,19 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
     return out
 
 
+# v0.609 the chats whose live turn already kept / forgot a fact itself (Claude's way): the background extractor
+# stays out of that turn, so one fact is never written twice by two writers (conversation -> time noted)
+SAVED_THIS_TURN: dict[str, float] = {}
+
+
+def _mark_saved(conv: str) -> None:
+    import time as _t
+    if conv:
+        if len(SAVED_THIS_TURN) > 2000:
+            SAVED_THIS_TURN.clear()
+        SAVED_THIS_TURN[conv] = _t.time()
+
+
 async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
     from ..fence import is_incognito
     if is_incognito(getattr(ctx, "conversation_id", "") or ""):   # v0.250 an incognito chat saves nothing
@@ -211,6 +224,7 @@ async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
         s.add(m)
         s.flush()
         fid = m.id
+    _mark_saved(getattr(ctx, "conversation_id", "") or "")
     replaced = ""
     if replaces not in (None, "", 0):   # v0.603 the update retires the outdated fact (never a pinned one)
         from .. import yaad
@@ -232,6 +246,7 @@ async def forget(ctx: Ctx, fact_id, **_):
             raise ToolError(f"No remembered fact with id {fact_id}")
         text = m.text
         s.delete(m)
+    _mark_saved(getattr(ctx, "conversation_id", "") or "")
     # v0.603 BHOOL JAO HAR JAGAH: the copies the other memories made of it go too
     from .. import yaad
     gone = await asyncio.to_thread(yaad.forget_everywhere, ctx.tenant_id, text)

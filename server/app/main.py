@@ -576,6 +576,7 @@ class AboutBody(BaseModel):
 class MemorySwitches(BaseModel):
     auto: bool | None = None      # "Khud yaad rakhna": Hoola picks up facts / writes her page by itself
     recall: bool | None = None    # "Purani chats se yaad": search, recent chats, her page
+    sensitive: bool | None = None  # v0.609 "Sensitive baatein bhi": health / religion / politics... may be kept
 
 
 @app.get("/api/memory/about", dependencies=[Depends(require_key)])
@@ -624,6 +625,8 @@ def memory_switches_put(body: MemorySwitches, tenant: str = Depends(current_tena
             p.memory_auto = bool(body.auto)
         if body.recall is not None:
             p.memory_recall = bool(body.recall)
+        if body.sensitive is not None:
+            p.memory_sensitive = bool(body.sensitive)
     return {"switches": fence.prefs(tenant)}
 
 
@@ -14827,6 +14830,7 @@ class ProjectIn(BaseModel):
     instructions: str | None = Field(default=None, max_length=8000)
     memory: str | None = Field(default=None, max_length=8000)
     emoji: str | None = Field(default=None, max_length=8)
+    use_main_memory: bool | None = None   # v0.609: off = this Session uses only its own memory
 
 
 @app.get("/api/projects", dependencies=[Depends(require_key)])
@@ -14850,7 +14854,8 @@ def projects_get(pid: str, tenant: str = Depends(current_tenant)):
 @app.patch("/api/projects/{pid}", dependencies=[Depends(require_key)])
 def projects_patch(pid: str, body: ProjectIn, tenant: str = Depends(current_tenant)):
     p = _projects_on()
-    return _proj_call(p.patch, tenant, pid, body.name, body.instructions, body.memory, body.emoji)
+    return _proj_call(p.patch, tenant, pid, body.name, body.instructions, body.memory, body.emoji,
+                      body.use_main_memory)
 
 
 @app.delete("/api/projects/{pid}", dependencies=[Depends(require_key)])

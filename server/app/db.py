@@ -198,6 +198,7 @@ class Profile(Base):
     # v0.250 her memory switches (None = on): Hoola picks up facts by itself / uses her past chats (search, page)
     memory_auto: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     memory_recall: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    memory_sensitive: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.609 opt-in, off by default
 
 
 class Reminder(Base):

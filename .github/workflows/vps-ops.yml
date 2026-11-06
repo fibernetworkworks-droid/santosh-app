@@ -52,6 +52,8 @@ on:
           - long_card
           - long_card_haiku
           - long_card_status
+          - memory_quiz
+          - memory_quiz_haiku
           - proof
           - code_card
           - code_card_hard
@@ -433,6 +435,12 @@ jobs:
                 # python -m app.quality research runoff --engines hoola,parallel --budget-inr 800
                 echo 'cd $CORE && echo "== can it run, and what would it cost"; timeout 120 .venv/bin/python -m app.quality research runoff --check --engines hoola,parallel,exa,openai,linkup 2>&1 | tail -12'
                 echo 'echo "== newest saved run-off"; cd $CORE && timeout 120 .venv/bin/python -m app.quality research runoff --status 2>&1 | tail -20' ;;
+              memory_quiz)
+                # v0.609 the long-chat memory quiz (server/tools/memory_quiz.py): a 300-exchange chat with 10 details
+                # planted far apart, asked back through the REAL pipeline - "full" = the whole chat, "compact" = after
+                # a real checkpoint summary. Throw-away SQLite in /tmp, nothing of hers is touched. Real tokens (~20
+                # turns on a big chat); memory_quiz_haiku is the same run on Haiku 5.5 (~20x cheaper).
+                echo 'cd $CORE && timeout 1350 .venv/bin/python ~/santosh_app/server/tools/memory_quiz.py --modes full,compact --questions 10 2>&1 | grep -vE "httpx|INFO|WARNING" | tail -40' ;;
               long_jobs)
                 # v0.347 how her REAL long jobs went in the last 24 h - finished / partial / stuck / stopped, the plan cards,
                 # the turns that died (timeout / crash) and for each unfinished one where it stopped. Free: reads the records.

@@ -485,8 +485,16 @@ def _scrub(t: str) -> str:
     return t if len(t) < 4000 else mask(t, 4000)
 
 
-def fact_ok(text: str) -> str:
-    """'' when the fact may be kept, else why not (privacy rules, same as Hoola's memory everywhere)."""
+# v0.609 what stays out EVEN when she allows sensitive topics (Claude never stores these either: criminal history,
+# immigration status - and a self-harm line is never memory, it is a moment for care)
+_NEVER_WORDS = re.compile(
+    r"\b(immigra\w*|visa status|citizenship|criminal|police case|fir |arrest|jail|suicide|self.?harm)\b", re.I)
+
+
+def fact_ok(text: str, sensitive: bool = False) -> str:
+    """'' when the fact may be kept, else why not (privacy rules, same as Hoola's memory everywhere).
+    v0.609 `sensitive` = her opt-in 'Sensitive baatein bhi' (Claude's 'Include sensitive topics'): health, religion,
+    caste, politics, sexuality may then be kept. Money, ID numbers, secrets and the _NEVER_WORDS never are."""
     t = (text or "").strip()
     if len(t) < 6:
         return "too_short"
@@ -499,6 +507,10 @@ def fact_ok(text: str) -> str:
         return "money_or_secret"
     if _MONEY.search(t):
         return "money"
+    if _NEVER_WORDS.search(t):
+        return "never"
+    if sensitive:
+        return ""
     if _HEALTH_WORDS.search(t):
         return "health"
     if _SENSITIVE_WORDS.search(t):
@@ -535,8 +547,10 @@ def _known(tenant: str, limit: int = 600, conversation_id: str = "") -> list[tup
     with session() as s:
         q = select(MemoryFact).where(MemoryFact.tenant_id == tenant)
         if allowed is not None:
+            from .fence import main_memory_ok   # v0.609 a Session on its own memory: pinned + its own facts only
             q = q.where(MemoryFact.pinned.is_(True) | MemoryFact.conversation_id.is_(None)
-                        | MemoryFact.conversation_id.in_(allowed))
+                        | MemoryFact.conversation_id.in_(allowed)) if main_memory_ok(conversation_id) else \
+                q.where(MemoryFact.pinned.is_(True) | MemoryFact.conversation_id.in_(allowed))
         rows = s.scalars(q.order_by(MemoryFact.id.desc()).limit(limit)).all()
         return [(r.id, r.text) for r in rows]
 
@@ -586,7 +600,12 @@ def save_fact(tenant: str, text: str, source: str = "auto", conversation_id: str
     counted as a duplicate of the new fact (an update reads like the old one - that is the point), and they
     are retired once the new fact stands. Before this, both versions rode every prompt side by side, or the
     update was dropped as a 'duplicate' and the old value won."""
-    why = fact_ok(text)
+    try:
+        from .fence import prefs as _prefs
+        _sens = bool(_prefs(tenant).get("sensitive"))
+    except Exception:
+        _sens = False
+    why = fact_ok(text, _sens)
     if why:
         STATS["facts_refused"] += 1
         return None
@@ -720,7 +739,13 @@ async def extract_facts(tenant: str, conversation_id: str, user_text: str, reply
     near = [(i, t) for i, t, _ in semantic.rank(user_text, known, top=15, floor=0.2)] if known else []
     prompt = ("Already known (id: fact):\n" + "\n".join(f"- [{i}] {k}" for i, k in near[:15]) + "\n\n" if near else "") + \
         f"Owner said:\n{_clip(user_text, 1500)}\n\nHoola answered:\n{_clip(reply, 700)}"
-    raw = await _ask(FACT_SYSTEM, prompt)
+    from .fence import prefs as _prefs
+    system = FACT_SYSTEM
+    if _prefs(tenant).get("sensitive"):   # v0.609 her opt-in: lasting health / faith / politics facts may be kept
+        system += (" SHE ALLOWED SENSITIVE TOPICS: a lasting fact about health, religion, caste, politics or sexuality "
+                   "MAY be kept when she shared it about herself or her people. Still never money, bank / card, OTP / "
+                   "password / PIN, ID numbers, criminal or immigration matters.")
+    raw = await _ask(system, prompt)
     shown = {i for i, _ in near[:15]}          # a replacement may only name a fact the model was SHOWN
     saved = []
     for f in _parse_fact_items(raw):
@@ -1380,8 +1405,12 @@ def after_turn(tenant: str, conversation_id: str, user_text: str, reply: str, ac
             if not secret:   # v0.250 an incognito chat is never indexed for other chats' recall
                 await asyncio.to_thread(index_recent, tenant, conversation_id)
             await refresh_summary(tenant, conversation_id)   # this chat's own summary (it stays inside the chat)
+            from .agent.life_tools import SAVED_THIS_TURN
+            kept_live = time.time() - SAVED_THIS_TURN.pop(conversation_id, 0.0) < 1800
             if actor == "owner" and user_text and not user_text.lstrip().startswith("[Hoola Network]") \
-                    and not secret and prefs(tenant)["auto"]:   # v0.250 no facts from incognito / when she said no
+                    and not secret and prefs(tenant)["auto"] and not kept_live:
+                # v0.250 no facts from incognito / when she said no; v0.609 nor when the live turn kept its
+                # own memory (Claude's way) - one writer per turn, never the same fact twice
                 await extract_facts(tenant, conversation_id, user_text, reply)
         except Exception:
             log.exception("yaad after_turn failed")

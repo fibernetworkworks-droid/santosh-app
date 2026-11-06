@@ -431,9 +431,15 @@ class Api {
       (await _send('PUT', '/api/memory/about', body: {'text': text}) as Map)['about'] as Map? ?? {});
   Future<Map<String, dynamic>> aboutMeRebuild() async => Map<String, dynamic>.from(
       (await _send('POST', '/api/memory/about/rebuild', timeout: const Duration(seconds: 90)) as Map)['about'] as Map? ?? {});
-  Future<Map<String, dynamic>> memorySwitches({bool? auto, bool? recall}) async => Map<String, dynamic>.from(
-      (await _send('PUT', '/api/memory/settings', body: {if (auto != null) 'auto': auto, if (recall != null) 'recall': recall})
-          as Map)['switches'] as Map? ?? {});
+  Future<Map<String, dynamic>> memorySwitches({bool? auto, bool? recall, bool? sensitive}) async =>
+      Map<String, dynamic>.from((await _send('PUT', '/api/memory/settings', body: {
+        if (auto != null) 'auto': auto,
+        if (recall != null) 'recall': recall,
+        if (sensitive != null) 'sensitive': sensitive,   // v0.609 "Sensitive baatein bhi" (off by default)
+      }) as Map)['switches'] as Map? ?? {});
+  /// v0.609 "Saari yaad mitao" (Claude's reset): every memory store forgets her; her chats stay.
+  Future<Map<String, dynamic>> memoryReset() async => Map<String, dynamic>.from(
+      (await _send('POST', '/api/memory/reset', body: {'confirm': 'RESET'}) as Map)['removed'] as Map? ?? {});
   /// v0.186 Rokiye for the goal only: the plan stops, the chat itself stays free.
   Future<void> stopGoal(String id) async => _send('POST', '/api/conversations/$id/goal/stop');
   // v0.228 the job ran out of budget and ASKS: her tap carries it on with a fresh budget (done steps kept)
