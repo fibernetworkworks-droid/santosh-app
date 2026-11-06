@@ -405,7 +405,7 @@ def test_the_tool_is_registered_in_the_house():
     assert names.count("reach") == 1
     assert "reach" in tools.HANDLERS and "reach" in tools.TOOL_LABELS
     assert tools.FAMILY_OF["reach"] == "reach"                      # REACH_TOOLS -> the "reach" family
-    assert len(tools.TOOLS) == 586, ("581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 569 (v0.558) + 1 reach (v0.559 REACH MANCH: the Agent-Reach "
+    assert len(tools.TOOLS) == 587, ("581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 569 (v0.558) + 1 reach (v0.559 REACH MANCH: the Agent-Reach "
                                      "discipline layer - one envelope, ordered backends, health memory, "
                                      "channel cooldown, tenant budget, status/channels) + 1 speckit (v0.569 SPEC SUTRA)")
     assert "reach" in admit.CORE_FAMILIES                           # always visible: the fallback door
@@ -421,4 +421,4 @@ def test_the_spec_promises_the_envelope_and_the_hints():
 
 def test_app_version_is_the_conscious_bump():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.602.0"
+    assert APP_VERSION == "0.603.0"

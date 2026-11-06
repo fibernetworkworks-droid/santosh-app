@@ -20927,3 +20927,18 @@ Wave 2 of `docs/research/banking_finance_industry/00_INDEX.md` is "institution a
 - **Wiring**: ONE tool `vitt_sahayak` (registry 585 -> 586, family `finops`, admitted on tight words, voice via `santosh_kaam`); aml / sanctions / credit actions owner-only, customers refused; hub entry in Finance & Banking with a never list.
 - **Tests**: `test_finops.py` (10): SIP round-trips to the target, advance-tax dates, TDS statuses, ageing buckets, three-way holds, structuring on her threshold only, sanctions explained scores and no built-in list, memo uses her policy, tool guards, no storage. Registry pins 585 -> 586.
 - **NOT built**: Wave 3 (markets, lending decisions, order placement). Not verified: no real 26AS / AIS export or bank transaction file has been through it, the AML rules and name-match scores are heuristics, and tax dates are from memory.
+
+
+## v0.603.0 RISK DESK — markets and credit papers, Banking & Finance register Wave 3 (owner: "Wave 3 (markets, lending decisions, order placement)")
+
+Wave 3 is the register's reserved zone: an order or a loan decision is a licensed person's act, and money / orders move only on the user's tap. So this builds what a desk PREPARES and CHECKS, with every limit, rule, rate and assumption supplied by the user (nothing built in), and builds none of the deciding.
+
+- **Order ticket** (`riskdesk/orders.py`, #66): symbol / side / qty / type / price -> a prepared ticket, flags (market-order caution, limit price far from last price vs her own tolerance, size vs her own portfolio cap, sell more than held, leveraged product) and the confirm line. `placed` is always false and nothing calls a broker: placing is only ever her explicit tap through the Bazar broker connector. Charges are computed ONLY from rates she gives (GST / STT / stamp are not guessed). No buy / sell view is ever given.
+- **Mandate drift + exposure** (#65 / #75): weights, drift against her targets, breaches of her single-name / group limits, margin utilisation against her alert; rebalance PROPOSALS (value to move) for the portfolio manager, never orders.
+- **Underwriting** (`riskdesk/credit.py`, #32): her rules run over the applicant, FOIR computed, every miss becomes a reason code and an exception; missing inputs listed. Rules on religion, caste, gender, community, marital status, pincode / locality (and proxies) are REFUSED (fair lending). No score, no approve / decline.
+- **KFS draft** (#36, reuses finguard true cost), **past-due ageing** (#39: SMA bands + an NPA SUGGESTION at her days, marked verify), **ECL working paper** (#92: EAD x PD x LGD by stage, stage-2 lifetime PD flagged when missing).
+- **DCF worksheet** (`riskdesk/valuation.py`, #112) with a 5 x 3 sensitivity grid and a terminal-value-share warning; a model of her assumptions, the registered valuer signs.
+- **Surveillance** (`riskdesk/watch.py`, #51 / #76): payment velocity and shared-device rule hits; round-trip (wash-like) trade flags. Evidence for the fraud analyst / compliance, never a block or an accusation.
+- **Wiring**: ONE tool `risk_desk` (registry 586 -> 587, family `riskdesk`, tight admit words, owner only, voice via `santosh_kaam`) and a hub entry in Finance & Banking whose never-list says no order, no loan decision, no NPA classification, no block, no buy / sell.
+- **Tests**: `test_riskdesk.py` (7). Registry pins 586 -> 587.
+- **NOT built**: order placement itself (it already exists only as her tap through the broker connectors), algo strategy testing (#78, needs exchange approval), PMS client books, merchant-banker and supervisory desks. Not verified: no real portfolio, bureau file or trade book has been through it; SMA / NPA bands and ECL staging are from memory (verify) and PD / LGD are always hers.
