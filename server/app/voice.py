@@ -2153,10 +2153,42 @@ class Call:
         """session.receive(), except that the GoAway deadline closing the connection ends it quietly."""
         try:
             async for m in session.receive():
+                um = getattr(m, "usage_metadata", None)
+                if um is not None:
+                    self._usage_add(um)
                 yield m
         except Exception:
             if not self._goaway_force:
                 raise
+
+    def _usage_add(self, um) -> None:
+        """v0.626 PAISA KA HISAAB: Gemini Live bills the WHOLE context (instructions + tool list + the call so far) on
+        every reply, not only the audio minutes the old meter counted. Count what Gemini itself reports, by modality."""
+        try:
+            u = self.__dict__.setdefault("gemini_tokens", {"text_in": 0, "audio_in": 0, "cached": 0, "text_out": 0,
+                                                           "audio_out": 0, "replies": 0})
+            def _split(details, total):
+                text = audio = 0
+                for d in details or []:
+                    mod = str(getattr(d, "modality", "") or "").upper()
+                    n = int(getattr(d, "token_count", 0) or 0)
+                    if "AUDIO" in mod:
+                        audio += n
+                    else:
+                        text += n
+                if not details:
+                    text = int(total or 0)
+                return text, audio
+            ti, ai = _split(getattr(um, "prompt_tokens_details", None), getattr(um, "prompt_token_count", 0))
+            to, ao = _split(getattr(um, "response_tokens_details", None), getattr(um, "response_token_count", 0))
+            u["text_in"] += ti
+            u["audio_in"] += ai
+            u["cached"] += int(getattr(um, "cached_content_token_count", 0) or 0)
+            u["text_out"] += to + int(getattr(um, "thoughts_token_count", 0) or 0)
+            u["audio_out"] += ao
+            u["replies"] += 1
+        except Exception:
+            log.exception("gemini usage count failed")
 
     GOAWAY_MAX_WAIT_S = 8.0   # never hold a dying connection longer than this for a sentence to end
 
@@ -3605,6 +3637,15 @@ class Call:
         """v0.98 Gemini Live is billed per minute of audio each way: 16 kHz in, 24 kHz out (16-bit mono)."""
         from . import usage
         sec_in, sec_out = getattr(self, "audio_in_bytes", 0) / 32000, getattr(self, "audio_out_bytes", 0) / 48000
+        u = self.__dict__.get("gemini_tokens")
+        if u and u.get("replies"):
+            # v0.626 Gemini's own token counts (the whole context, every reply) - the audio-minute estimate missed most of it
+            self.stats["gemini_tokens"] = dict(u)
+            self.stats["cost_usd"] = usage.record(get_settings().gemini_live_model, tok_in=u["text_in"], tok_out=u["text_out"],
+                                                  audio_in=u["audio_in"], audio_out=u["audio_out"],
+                                                  tenant=self.ctx.tenant_id, feature="call")
+            log.info("call %s gemini tokens: %s -> $%.3f", getattr(self, "call_id", "?"), u, self.stats["cost_usd"])
+            return
         if sec_in or sec_out:
             self.stats["cost_usd"] = usage.record(get_settings().gemini_live_model, sec_in=sec_in, sec_out=sec_out,
                                                   tenant=self.ctx.tenant_id, feature="call")

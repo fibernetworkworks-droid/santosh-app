@@ -1693,3 +1693,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Owner: radio-like / different voices during a task on a call.
 Work Log: traced to pre-rendered TTS clips (ack / murmur / progress) from a separate TTS model, cached on disk; defaults OFF; tests.
 Stage Summary: v0.625.0 shipped server-only; live call is the proof.
+
+---
+Task ID: v0626-paisa-ka-hisaab
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Rs 338 Gemini spend in 2 calls.
+Work Log: found Live bills the whole context per reply (tools ~23k tok + persona ~7k); meter counted only audio minutes; now records usage_metadata.
+Stage Summary: v0.626.0 meter fix; cost cut awaiting her choice.

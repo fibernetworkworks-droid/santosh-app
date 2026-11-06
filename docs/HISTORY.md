@@ -21448,3 +21448,19 @@ voice / a radio-like sound in the middle of the call.
   cached, so they had only passed because the default was on - they now clear the cache and switch the clips on themselves.
 NOT VERIFIED on a real call. The old clip files stay on the VPS disk unused (harmless; `rm -rf ~/apps/santosh-core/data/voice_acks`
 cleans them).
+
+
+## v0.626.0 PAISA KA HISAAB - the call meter reads Gemini's own bill (owner: "i just put rs 500 now it is rs 162 --- by just doing 2 calls")
+
+Gemini Live charges for every token in the session's context on EVERY model reply - the system instruction (persona ~27k
+chars), the declared tool list (164 tools, ~91k chars), the call brief (up to ~16k chars) and all the audio of the call so
+far (25 tokens a second each way, sliding window 60k -> 35k tokens) - plus each tool answer and each quiet note causes
+another reply. ~32k text tokens = ~$0.024 (~Rs 2) before any audio, per reply. Hoola's meter (`_record_usage`) priced only
+audio MINUTES ($0.005 + $0.018 a minute), so /api/usage showed cents while the AI Studio balance fell by hundreds of rupees.
+- `Call._receive` now hands every `usage_metadata` to `Call._usage_add` (prompt / response tokens split by modality,
+  thoughts counted as output); `_record_usage` records those real tokens at the model's token prices, logs
+  `call <id> gemini tokens: {...} -> $x`, and falls back to the minute estimate only when Gemini sent no usage.
+- Tests `test_v0626_paisa_ka_hisaab.py` (2).
+NOT VERIFIED: whether Live's usage_metadata is per reply (assumed, summed) or cumulative - the first live call's log line
+against the AI Studio bill settles it. The cost itself is NOT reduced yet - the levers (a smaller tool list, a shorter
+persona, a smaller memory window) need the owner's choice.
