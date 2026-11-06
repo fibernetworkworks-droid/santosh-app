@@ -14,13 +14,17 @@ from typing import Any
 from sqlalchemy import select
 
 from ..db import new_id, now, session
+from . import diarize as DI
 from . import engine as EN
+from . import meeting as MT
 from .models import KaanTranscript
 
 MAX_BYTES = 5 * 1024 * 1024 * 1024        # the whisperai.com ceiling, kept as OUR ceiling too (5 GB)
 AUDIO_EXT = (".mp3", ".m4a", ".wav", ".ogg", ".opus", ".aac", ".flac", ".amr", ".3gp", ".webm", ".wma", ".mp4", ".mkv")
 GATE_OFF = ("Kaan abhi band hai - audio/transcript kaam ke liye owner ne 'kaan_audio' switch on nahi kiya. "
             "VPS .env mein KAAN_AUDIO=1 karein, phir yeh kaam chal jayega.")
+DIARIZE_OFF = ("Diarization band hai - owner ne 'kaan_diarize' switch off kiya hai. "
+               "VPS .env mein KAAN_DIARIZE=1 karke server restart chahiye.")
 
 
 def gate_open() -> bool:
@@ -141,12 +145,40 @@ def search_transcripts(tenant: str, q: str, limit: int = 10) -> list[dict[str, A
         return [_row(r) for r in rows]
 
 
+def diarize_transcript(tenant: str, tid: str, *, names: dict[str, str] | None = None,
+                       pause_s: float | None = None) -> dict[str, Any]:
+    """W1: cut pause turns on a STORED transcript and persist them into row.speakers.
+    Gate-free by design (no audio ingest - the text is already hers); the kaan_diarize kill
+    switch still owns it. Fresh audio rides the tool layer: transcribe_file (gated) first."""
+    from ..config import get_settings
+    if not bool(get_settings().kaan_diarize):
+        raise EN.KaanError(DIARIZE_OFF)
+    with session() as s:
+        r = s.scalars(select(KaanTranscript).where(KaanTranscript.tenant_id == tenant, KaanTranscript.id == tid)).first()
+        if not r:
+            raise ValueError(f"Transcript {tid} nahi mili (is tenant ka nahi, ya kabhi bani hi nahi).")
+        segs = (r.segments or {}).get("items", []) if isinstance(r.segments, dict) else (r.segments or [])
+        out = DI.diarize(segs, names=names, pause_s=pause_s)
+        r.speakers = {"method": out["method"], "n_turns": out["n_turns"], "turns": out["turns"],
+                      "named_turns": out["named_turns"], "note": out["note"]}
+        r.updated_at = now()
+        s.commit()
+    out["id"] = r.id
+    return out
+
+
+def minutes(tenant: str, tid: str) -> dict[str, Any]:
+    """W1: the deterministic minutes skeleton from a stored transcript (read-only, always allowed)."""
+    return MT.minutes(get_transcript(tenant, tid))
+
+
 def _row(r: KaanTranscript) -> dict[str, Any]:
     segs = (r.segments or {}).get("items", []) if isinstance(r.segments, dict) else (r.segments or [])
     n_words = (r.words or {}).get("count", 0) if isinstance(r.words, dict) else 0
     return {"id": r.id, "file_name": r.file_name, "language": r.language, "task": r.task, "model": r.model,
             "duration_s": r.duration_s, "n_segments": r.n_segments, "n_words": n_words, "text": r.text,
-            "status": r.status, "note": r.note, "created_at": r.created_at.isoformat() if r.created_at else ""}
+            "speakers": r.speakers, "status": r.status, "note": r.note,
+            "created_at": r.created_at.isoformat() if r.created_at else ""}
 
 
 # ---------------------------------------------------------------- status
@@ -154,9 +186,12 @@ def status(tenant: str) -> dict[str, Any]:
     ok, why = EN.available()
     with session() as s:
         n = len(s.scalars(select(KaanTranscript.id).where(KaanTranscript.tenant_id == tenant)).all())
+    from ..config import get_settings
     return {
         "gate": "ON" if gate_open() else "OFF",
         "gate_note": "" if gate_open() else "VPS .env mein KAAN_AUDIO=1 karne par chalega (default OFF - recording ka faisla owner ka hai).",
+        "diarize": {"on": bool(get_settings().kaan_diarize), "method": DI.PAUSE_METHOD,
+                    "note": "turns pauses se kate hain (v0.610 W1); speaker pehchaan nahi - audio store nahi hota; names se naam."},
         "engine": "ready" if ok else "nahi",
         "engine_note": "" if ok else why,
         "default_model": EN.default_model(),

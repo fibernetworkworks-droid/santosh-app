@@ -565,6 +565,7 @@ class Settings(BaseSettings):
     home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
     # --- KAAN PACK v0.589 (WhisperAI Wave W0): transcription core, AUDIO gate PC/HOME se alag, default OFF ---
     kaan_audio: bool = False                # the AUDIO gate (default OFF - KAAN_AUDIO=1 on the VPS flips it)
+    kaan_diarize: bool = True               # v0.610 KAAN W1: pause-turn diarization (local, CPU-light - kill switch; KAAN_DIARIZE=0 par band)
     # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---

@@ -25,7 +25,8 @@ from app.kaan import engine as EN
 from app.kaan import service as KS
 from tests.test_life import conv_ctx
 
-PIN = ("their 584 (581 + paisa + 2 sandarbh; P8 AEP 1.0 added no tool) + 1 kaan tool (v0.601 KAAN PACK) = 585")
+PIN = ("their 584 (581 + paisa + 2 sandarbh; P8 AEP 1.0 added no tool) + 1 kaan (v0.601) + vitt_sahayak (0.602) "
+       "+ risk_desk (0.603) + dukaan_desk (0.604) = 588; their retail_growth + retail_trust (0.607) + bima_desk (0.609) + bima_assist (0.610) + bima_risk (0.612) = 593; W1 diarize/minutes are ACTIONS, no new tool = 593")
 
 
 # ---------------------------------------------------------------- fixture helpers
@@ -239,7 +240,7 @@ def test_one_tool_registered_routed_and_labelled():
     assert "kaan" in tools.TOOL_LABELS and "sun" in tools.TOOL_LABELS["kaan"]
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
-    assert acts == ["transcribe", "status", "list", "get", "search"]
+    assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search"]
     from app import voice
     assert voice.call_route("kaan") == "kaam" and "kaan" in voice.VOICE_VIA_KAAM
 

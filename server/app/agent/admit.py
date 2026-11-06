@@ -96,7 +96,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
     "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",
              "sun kar", "sun ke", "audio likh", "likhawat", "srt", "subtitle", "voice note likh", "speech to text",
-             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट"),
+             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट",
+             # v0.607 W1: minutes + kaun-bola keys (TIGHT multiword only - bare "minutes"/"minute" stays OUT,
+             # "10 minute ruko" must never admit this family)
+             "meeting minutes", "minutes bana", "minutes likh", "minutes chahiye", "kaun bola", "kaun bola tha",
+             "kaun kaun bole", "kaun bol raha"),
     # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
     "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
             "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad",
