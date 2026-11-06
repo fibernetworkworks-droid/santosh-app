@@ -266,7 +266,7 @@ def test_omni_skills_match_the_real_doors():
     from app.coder.skills_store import parse_skill
     from app.agent import tools
     real_tools = {t.get("name") for t in tools.TOOLS if isinstance(t, dict)}
-    assert len(tools.TOOLS) == 592        # refresh the same commit when it moves (582 their v0.588 + 2 sandarbh v0.589) (580 after the dev chain + 1 speckit v0.569)
+    assert len(tools.TOOLS) == 605        # refresh the same commit when it moves (582 their v0.588 + 2 sandarbh v0.589) (580 after the dev chain + 1 speckit v0.569)
     bodies = _omni_bodies()
     pairs = [
         ("game_desk", "ga-game-dev"), ("samudaay", "ga-community"),

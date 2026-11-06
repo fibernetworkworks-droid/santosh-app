@@ -57,7 +57,7 @@ def test_register_wave35(env):
 
 def test_gates_wave35(env):
     from app.construction.gates import TIER_C, tier_c_check
-    assert len(TIER_C) == 33, "30 before Wave 3.5 + as-built / striking / scaffold"
+    assert len(TIER_C) == 40, "33 after Wave 3.5 + 7 Wave-4 rows"
     for ask in ("approve the as-built set before handover", "order formwork striking tomorrow",
                 "tag a scaffold safe for use"):
         assert tier_c_check(ask), ask
@@ -69,7 +69,7 @@ def test_gates_wave35(env):
 def test_india_pack_18_rows_with_strike(env):
     from app.construction import statepacks as SP
     pack = SP.load("india")
-    assert len(pack["rows"]) == 18, "11 national rows + 7 IS 456 Table 10 striking rows (Wave 3.5)"
+    assert len(pack["rows"]) == 19, "18 (Waves 3/3.5) + the works-contract GST rate row (Wave 4)"
     r = SP.rule_cited("india", "is456_strike_slab_soffit")
     assert float(r["value"]) == 72.0 and "Table 10" in r["source"]
     assert "OPC" in r["source"]
@@ -233,7 +233,7 @@ def test_registry_580_and_schemas(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho",
               "const_survey", "const_survey_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 592, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
+    assert len(TOOLS) == 605, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
     by_name = {t["name"]: t for t in TOOLS}
     for n in ("const_bim", "const_survey", "const_predesign"):
         assert by_name[n]["input_schema"]["properties"]["action"]["enum"], n
@@ -345,6 +345,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.611.0"
-    assert 'APP_VERSION = "0.611.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.611.0+617" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.614.0"
+    assert 'APP_VERSION = "0.614.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.614.0+620" in (REPO / "pubspec.yaml").read_text()

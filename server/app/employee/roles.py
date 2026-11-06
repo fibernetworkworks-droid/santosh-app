@@ -161,6 +161,8 @@ DUTIES: dict[str, dict] = {
                   "prefix": (), "tools": {"archassist", "archassist_dekho", "file_read", "make_document", "lekhak"}},
     "society_work": {"label": "Housing society", "say": "flats / members register, maintenance bill, receipt, baaki ki yaad, shikayat, notice / AGM / minutes, vendor / AMC, gate register (bill / notice / message / kharcha / penalty aapki haan se)",
                      "prefix": (), "tools": {"society", "society_dekho", "file_read"}},
+    "fm_work": {"label": "Facility management (FM)", "say": "Work orders (status ke saath naam), PPM due-hisaab, lift/fire/STP/WTP compliance calendar, housekeeping/security roster, structural-audit schedule, asset & space register; certificate agency/engineer ki",
+                     "prefix": (), "tools": {"const_fm", "const_fm_dekho"}},
     # v0.150 Kanoon suite
     "legal_junior": {"label": "Lawyer's junior", "say": "court diary, tareekhein, cause list, limitation (andaaza), drafts vakil sahab ke liye, client update drafts, fee hisaab (filing / message / fee maangna aapke tap se)",
                      "prefix": (), "tools": {"vakil", "vakil_dekho", "file_read", "lekhak", "lekhak_dekho"}},
@@ -394,7 +396,7 @@ ROLES: dict[str, dict] = {
     "real_estate_agent": {"label": "Real estate agent", "say": "Listings, graahak se milaan, site visit, deal ke kaagaz, commission; public listing / message / paise ke kaagaz aapki haan se",
                           "duties": ["propagent_work", "telecalling", "appointments", "reminders", "records"]},
     "property_manager": {"label": "Property manager", "say": "Kirayedar, kiraya / deposit, receipt, agreement draft, repair, move-out; message / katauti / kiraya badlav aapki haan se",
-                         "duties": ["rentdesk_work", "reminders", "records", "collections"]},
+                         "duties": ["rentdesk_work", "reminders", "records", "collections", "fm_work"]},
     "site_supervisor": {"label": "Site supervisor", "say": "Roz ka kaam, hazri, maal, safety, cube test, snag, DPR; indent / client report / kaam rokna aapki haan se",
                         "duties": ["site_supervision", "contract_work", "records", "reminders"]},
     "interior_designer": {"label": "Interior designer", "say": "Brief, naap, moodboard, BOQ-quote, vendor order, snag, handover; quote / order / paise maangna aapki haan se",
@@ -402,7 +404,7 @@ ROLES: dict[str, dict] = {
     "architect_assistant": {"label": "Architect's assistant", "say": "Project file, FSI jaanch (andaaza), drawing register, approval, RFI, fee invoice; issue / submit / invoice aapki haan se",
                             "duties": ["arch_work", "records", "reminders", "email"]},
     "society_manager": {"label": "Housing society manager", "say": "Flats, maintenance bill, baaki, shikayat, AGM / notice, vendor, gate; bill / notice / kharcha aapki haan se",
-                        "duties": ["society_work", "reminders", "records"]},
+                        "duties": ["society_work", "fm_work", "reminders", "records"]},
     # v0.150 Kanoon suite
     "lawyer_junior": {"label": "Lawyer's junior", "say": "Court diary, tareekhein, cause list, limitation (andaaza), drafts, fee hisaab; filing / message / fee aapki haan se",
                       "duties": ["legal_junior", "reminders", "records"]},

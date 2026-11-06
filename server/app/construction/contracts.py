@@ -212,3 +212,73 @@ def day(tenant: str) -> dict:
         ks = s.scalars(select(CContrClaim).where(CContrClaim.tenant_id == tenant, CContrClaim.status == "draft")).all()
     say = (f"Contracts: {len(cs)} open, {len(vs)} variation chal rahi, {len(ks)} claim working-paper draft.")
     return {"open_contracts": len(cs), "variations_open": len(vs), "claims_draft": len(ks), "say": say}
+
+
+# ---------------------------------------------------------------- Wave 4: #48 LD calculator, #50 arbitration bundle
+def ld_calc(tenant: str, project: str, contract_ref: str, delay_days: int, ld_pct_per_week: float,
+            contract_value: float, cap_pct: float, sources: str = "") -> dict:
+    """#48: LD = value x pct/week x weeks, capped at cap_pct - ALL four numbers FED from HER
+    contract (sources required). The DEDUCTION decision stays gated (tier C: 'issue an LD
+    deduction')."""
+    from . import models as WM
+    if delay_days <= 0 or contract_value <= 0:
+        raise CstError("Delay days (0 se bade) aur contract value chahiye.")
+    if not sources:
+        raise CstError("LD rate + cap ka source do (contract clause no) - bina clause ke LD nahi.")
+    weeks = round(delay_days / 7, 2)
+    raw = contract_value * ld_pct_per_week / 100 * weeks
+    cap = contract_value * cap_pct / 100
+    applied = min(raw, cap)
+    with session() as s:
+        s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="ld", ref=contract_ref[:120],
+                            data=_dump({"delay_days": delay_days, "weeks": weeks,
+                                        "ld_pct_per_week": ld_pct_per_week, "raw": round(raw, 2),
+                                        "cap_pct": cap_pct, "cap": round(cap, 2),
+                                        "applied": round(applied, 2)}), source=sources))
+    return {"ok": True, "ref": contract_ref, "delay_days": delay_days, "weeks": weeks,
+            "ld_pct_per_week": ld_pct_per_week, "ld_raw": round(raw, 2),
+            "cap_pct": cap_pct, "cap_amount": round(cap, 2), "ld_applied": round(applied, 2),
+            "capped": raw > cap, "sources": sources,
+            "said": ("Arithmetic poora - LD KATNA ekdum aapke/advocate ke haath mein (Hoola kaat nahi "
+                     "sakta, tier C). Clause: " + sources[:60])}
+
+
+def arb_bundle_add(tenant: str, project: str, claim: str, rows: list, by: str = "",
+                   conv: str = "") -> dict:
+    """#50: arbitration bundle index - rows [date, event/evidence, exhibit]. The bundle is FOR the
+    counsel; the argument is the counsel's."""
+    from . import models as WM
+    from .common import publish as pub
+    if not claim:
+        raise CstError("Claim ka naam/ref do.")
+    if not rows:
+        raise CstError("Evidence rows chahiye [date, event/evidence, exhibit].")
+    if not by:
+        raise CstError("Evidence ki entry ke saath US KA NAAM jo rakh raha hai.")
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 2:
+                continue
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="arb", ref=claim[:120],
+                                name="evidence",
+                                data=_dump({"date": str(r[0])[:10], "evidence": str(r[1])[:200],
+                                            "exhibit": str(r[2])[:40] if len(r) > 2 else ""}),
+                                by=by))
+            made += 1
+    pub(tenant, "const_contracts", {"kind": "arb_bundle", "project": project, "claim": claim}, conv)
+    return {"ok": True, "claim": claim, "rows": made, "by": by,
+            "said": f"Bundle index '{claim}' mein {made} evidence row(s) - case counsel ko hi dena hai."}
+
+
+def arb_bundle(tenant: str, project: str, claim: str) -> dict:
+    from . import models as WM
+    with session() as s:
+        rows = s.scalars(select(WM.Cw4ExtItem).where(WM.Cw4ExtItem.tenant_id == tenant,
+                                                     WM.Cw4ExtItem.project == project,
+                                                     WM.Cw4ExtItem.kind == "arb",
+                                                     WM.Cw4ExtItem.ref == claim)).all()
+    return {"claim": claim, "rows": [{"date": _j(r.data, {}).get("date"),
+                                      "evidence": _j(r.data, {}).get("evidence"),
+                                      "exhibit": _j(r.data, {}).get("exhibit"), "by": r.by}
+                                     for r in rows]}

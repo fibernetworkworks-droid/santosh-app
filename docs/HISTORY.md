@@ -21118,3 +21118,13 @@ claim data. Tests `test_bimaassist.py` (6).
 
 Tests `server/tests/test_v0609_yaad_ke_khaane.py` (8). NOT VERIFIED: no live run (her Anthropic credit was empty at the
 v0.608 deploy); the phone page compiles first on CI.
+
+## v0.612.0 BIMA RISK - health-insurance Wave 3 (pricing, underwriting, fraud signals)
+Owner: "GO NEXT WAVE". `server/app/bimarisk/engines.py` (pure): experience (loss ratio / frequency / severity by a neutral group, thin groups marked), price_trend (observed CAGR),
+triangle (volume-weighted chain-ladder working paper; reserve sign-off is the appointed actuary's), pricing_fairness (premium vs cost relativities, unexplained jumps),
+uw_triage (HER rules; rule + manual ref + loading shown; a decline route becomes a human referral), provider_outliers, duplicates (overlapping stays), geo_plausibility
+(haversine), cashless_misuse, case_builder (neutral timeline + evidence, allegation reserved), fraud_audit (flag rate, false positives, human override per group, disparity ratio),
+scheme_anomalies. Protected attributes (religion, caste, gender, locality, name...) refused as rule fields, rating factors, grouping and model columns. ONE tool `bima_risk`
+(registry 592 -> 593, family bimarisk, owner / staff only, voice via santosh_kaam), hub entry in Health Insurance. NOT BUILT: medical report OCR (#23), document authenticity (#57),
+industry blacklist sync (#61), de-identified sandbox (#97), reserving beyond one method. NOT VERIFIED: thresholds are yours, no real claims data has run through it.
+Tests `test_bimarisk.py` (5).

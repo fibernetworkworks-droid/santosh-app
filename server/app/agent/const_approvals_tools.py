@@ -18,10 +18,14 @@ APPROVALS_TOOLS = [
         "name (abhi missing). action=packet: file -> index + gaps + cover PDF (submission OWNER/licensee ki haan se). "
         "action=file_mark: file, status draft|ready|submitted|queried|approved|rejected, ref_no, on, valid_till. "
         "action=cal_add: authority, item, due_on, last_done (statutory calendar). action=cal_done: cal (id), on. "
-        "action=cal_due: days (late pehle, phir aane wale)."),
+        "action=cal_due: days (late pehle, phir aane wale). Wave 4 #33: action=screener_add: project, "
+        "rows [clearance, applies(yes/no/unsure AAPKA mark), trigger, documents], by (liaison ka "
+        "naam) - heritage/AAI/CRZ applicability register; Hoola kuch fetch/decide nahi karta. "
+        "action=screener_list: project."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["file", "checklist", "check_mark", "doc_add", "doc_needed", "packet",
-                                               "file_mark", "cal_add", "cal_done", "cal_due"]},
+                                               "file_mark", "cal_add", "cal_done", "cal_due",
+                                               "screener_add", "screener_list"]},
          "project": {"type": "string"}, "authority": {"type": "string"}, "purpose": {"type": "string"},
          "kind": {"type": "string"}, "licensee": {"type": "string"}, "fee": {"type": "number"},
          "file": {"type": "string"}, "item": {"type": "string"}, "done": {"type": "boolean"}, "note": {"type": "string"},
@@ -74,6 +78,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return A.cal_done(t, _s(a.get("cal")), _s(a.get("on")))
         if action == "cal_due":
             return A.cal_due(t, int(a.get("days") or 30))
+
+        if action == "screener_add":
+            return A.screener_add(t, _s(a.get("project")), a.get("rows") or [], _s(a.get("by")),
+                                  _s(a.get("note")), conv)
+        if action == "screener_list":
+            return A.screener_list(t, _s(a.get("project")))
     except (A.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")

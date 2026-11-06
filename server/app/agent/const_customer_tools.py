@@ -23,11 +23,14 @@ CUSTOMER_TOOLS = [
         "nahi karta - sirf draft + record + hisaab."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["demand", "letter", "demand_send", "receipt", "handover", "dlp_open",
-                                               "dlp_sent", "dlp_close"]},
+                                               "dlp_sent", "dlp_close", "lead_add", "inventory_mark",
+                                               "inventory_sum", "mkt_asset", "afs_doc",
+                                               "handover_unit", "investor_pack"]},
          "project": {"type": "string"}, "unit": {"type": "string"}, "customer": {"type": "string"}, "phone": {"type": "string"},
          "milestone": {"type": "string"}, "amount": {"type": "number"}, "due": {"type": "string"},
          "interest_pct": {"type": "number"}, "note": {"type": "string"}, "demand": {"type": "string"},
          "mode": {"type": "string"}, "day": {"type": "string"}, "items": {"type": "array", "items": {"type": "object"}},
+         "rows": {"type": "array", "items": {}}, "ref": {"type": "string"}, "unit": {"type": "string"}, "status": {"type": "string"}, "approved_by": {"type": "string"},
          "keys_on": {"type": "string"}, "utilities": {"type": "string"}, "status": {"type": "string"},
          "issue": {"type": "string"}, "trade": {"type": "string"}, "vendor": {"type": "string"},
          "dlp_months": {"type": "number"}, "possession_on": {"type": "string"}, "ticket": {"type": "string"}},
@@ -78,6 +81,24 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return C.dlp_sent(t, _s(a.get("ticket")), ctx.actor, _s(a.get("day")))
         if action == "dlp_close":
             return C.dlp_close(t, _s(a.get("ticket")), _s(a.get("day")), _s(a.get("note")))
+
+        if action == "lead_add":
+            return C.lead_add(t, _s(a.get("project")), a.get("rows") or [], conv)
+        if action == "inventory_mark":
+            return C.inventory_mark(t, _s(a.get("project")), _s(a.get("unit")), _s(a.get("status")))
+        if action == "inventory_sum":
+            return C.inventory_sum(t, _s(a.get("project")))
+        if action == "mkt_asset":
+            return C.mkt_asset(t, _s(a.get("project")), a.get("rows") or [])
+        if action == "afs_doc":
+            return C.afs_doc(t, _s(a.get("project")), _s(a.get("unit")), a.get("items") or [],
+                             _s(a.get("approved_by")))
+        if action == "handover_unit":
+            return C.handover_unit(t, _s(a.get("project")), _s(a.get("unit")), a.get("items") or [],
+                                   _s(a.get("ref")))
+        if action == "investor_pack":
+            return C.investor_pack(t, _s(a.get("project")), a.get("items") or [],
+                                   a.get("rows") or [])
     except (C.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")

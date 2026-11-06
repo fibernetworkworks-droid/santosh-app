@@ -96,7 +96,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
     "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",
              "sun kar", "sun ke", "audio likh", "likhawat", "srt", "subtitle", "voice note likh", "speech to text",
-             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट"),
+             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट",
+             # v0.607 W1: minutes + kaun-bola keys (TIGHT multiword only - bare "minutes"/"minute" stays OUT,
+             # "10 minute ruko" must never admit this family)
+             "meeting minutes", "minutes bana", "minutes likh", "minutes chahiye", "kaun bola", "kaun bola tha",
+             "kaun kaun bole", "kaun bol raha"),
     # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
     "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
             "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad",
@@ -254,6 +258,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "bimaassist": ("plan compare", "compare health plans", "material facts", "pre-existing disclosure", "proposal form check", "coverage check", "waiting period check",
                    "pre-auth check", "insurer query", "medical timeline", "rejection letter", "grievance reply", "ombudsman packet", "wording review", "policy wording",
                    "mis-selling", "free look", "fhir claim", "icd mapping", "code mapping", "bima_assist"),
+    # v0.611 Bima Risk (health-insurance Wave 3). Tight keys.
+    "bimarisk": ("loss ratio", "claim frequency", "chain ladder", "run-off triangle", "ibnr", "pricing fairness", "rating factor", "underwriting rule", "proposal triage",
+                 "provider outlier", "upcoding", "duplicate claim", "cashless misuse", "siu case", "fraud model audit", "scheme anomaly", "bima_risk"),
     # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
     # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",

@@ -18,7 +18,7 @@ TENDER_TOOLS = [
         "action=vendor_rate: vendor (id), rating, note."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["tender", "bid_sheet", "pack", "tender_mark", "vendor_add",
-                                               "vendor_rate", "vendors"]},
+                                               "vendor_rate", "vendors", "purchase_add", "expedite_add", "expedite_board", "exim_add"]},
          "name": {"type": "string"}, "authority": {"type": "string"}, "due_on": {"type": "string"},
          "emd": {"type": "number"}, "scope": {"type": "string"}, "tender": {"type": "string"},
          "decision": {"type": "string"}, "reasons": {"type": "array", "items": {"type": "object"}},
@@ -64,6 +64,16 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return T.vendor_rate(t, _s(a.get("vendor_id")), _s(a.get("rating")), _s(a.get("note")))
         if action == "vendors":
             return T.vendors(t, _s(a.get("rating")))
+
+        if action == "purchase_add":
+            return T.purchase_add(t, _s(a.get("project")), a.get("rows") or [], conv)
+        if action == "expedite_add":
+            return T.expedite_add(t, _s(a.get("project")), _s(a.get("ref")), _s(a.get("signed_on")),
+                                  _s(a.get("due_on")), _s(a.get("note")))
+        if action == "expedite_board":
+            return T.expedite_board(t, _s(a.get("project")))
+        if action == "exim_add":
+            return T.exim_add(t, _s(a.get("project")), a.get("rows") or [])
     except (T.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")

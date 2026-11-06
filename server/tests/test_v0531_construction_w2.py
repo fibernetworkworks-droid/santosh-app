@@ -48,8 +48,8 @@ def test_register_wave2_homes():
     for rid in (9, 16, 28, 29, 35, 36, 37, 38, 39, 44, 45, 46, 52, 53, 54, 55, 56, 72, 73, 81, 93):
         assert R.WAVE2_HOME[rid], rid
     assert R.WAVE2_HOME[37] == "const_qs (takeoff)" and R.WAVE2_HOME[93] == "const_rera (escrow)"
-    assert R.get(33)["wave"] == ""           # heritage/AAI/CRZ screener stays out until she says
-    assert R.get(48)["wave"] == "" and R.get(50)["wave"] == ""   # LD calc, dispute bundle unwaved
+    assert R.get(33)["wave"] == "4"          # v0.586.0: shipped on the approvals desk (Wave 4)
+    assert R.get(48)["wave"] == "4" and R.get(50)["wave"] == "4"   # v0.586.0: shipped (Wave 4)
 
 
 def test_wave2_tier_c_edges():
@@ -359,7 +359,7 @@ def test_registry_566_and_dispatch(env):
               "const_rera_dekho", "const_contracts", "const_contracts_dekho", "const_tender",
               "const_tender_dekho", "const_drawqa", "const_drawqa_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 592, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 556 (their chain) + 12 construction Wave 2 + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 605, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 556 (their chain) + 12 construction Wave 2 + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_qs_tool_end_to_end(env):
@@ -440,6 +440,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.611.0"
-    assert 'APP_VERSION = "0.611.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.611.0+617" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.614.0"
+    assert 'APP_VERSION = "0.614.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.614.0+620" in (REPO / "pubspec.yaml").read_text()

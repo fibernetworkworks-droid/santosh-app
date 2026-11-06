@@ -1264,3 +1264,170 @@ class CQualIncRow(Base):
     due: Mapped[str] = mapped_column(String(10), default="")
     status: Mapped[str] = mapped_column(String(16), default="")            # actions: open | done
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# ---------------------------------------------------------------- Wave 4 (v0.586.0): the remaining seats
+# Lean head + JSON-rows pattern on purpose (the Wave-4 rows are registers and arithmetic, not new
+# formats): one head table per domain, one generic rows table per domain (kind + data JSON), one
+# calc table where results land (the CsurCalc shape). Same laws: tenant-scoped, ids prefixed.
+
+class CLandParcel(Base):
+    """#1/#2/#3: the parcel register - survey no, village, area AS FED with its source (7/12 etc)."""
+    __tablename__ = "cland_parcels"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("clp"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    survey_no: Mapped[str] = mapped_column(String(80), default="")
+    village: Mapped[str] = mapped_column(String(120), default="")
+    area: Mapped[float] = mapped_column(Float, default=0.0)
+    area_unit: Mapped[str] = mapped_column(String(12), default="sqm")
+    area_source: Mapped[str] = mapped_column(String(200), default="")   # 7/12 / mutation / agreement
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CLandItem(Base):
+    """One land-desk row: title document (#2), land record (#3), site criterion (#1), development
+    worksheet (#4), finance head (#5) or JV row (#6) - data JSON, the source recorded."""
+    __tablename__ = "cland_items"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cli"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    parcel_id: Mapped[str] = mapped_column(String(40), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(12), index=True, default="")
+    # title | record | criterion | worksheet | finance | funding | jv
+    name: Mapped[str] = mapped_column(String(160), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")               # the row's fields as fed
+    by: Mapped[str] = mapped_column(String(120), default="")            # whoever marked/said it
+    source: Mapped[str] = mapped_column(String(200), default="")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CplanActivity(Base):
+    """#63: one schedule activity - baseline dates AS FED, actual dates and % complete as HER word.
+    No criticality here: the critical path is the planner's mark (gates.py)."""
+    __tablename__ = "cplan_activities"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cpa"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    code: Mapped[str] = mapped_column(String(40), index=True, default="")
+    name: Mapped[str] = mapped_column(String(160), default="")
+    base_start: Mapped[str] = mapped_column(String(10), default="")
+    base_finish: Mapped[str] = mapped_column(String(10), default="")
+    act_start: Mapped[str] = mapped_column(String(10), default="")
+    act_finish: Mapped[str] = mapped_column(String(10), default="")
+    pct: Mapped[float] = mapped_column(Float, default=0.0)              # HER % complete
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CplanItem(Base):
+    """One controls row: risk (#66), resource (#65), site instruction / PMC log (#69), specialist
+    agency (#79), plant or booking (#80) - data JSON as fed."""
+    __tablename__ = "cplan_items"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cpi"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(12), index=True, default="")
+    # risk | resource | productivity | si | pmclog | agency | plant | booking
+    name: Mapped[str] = mapped_column(String(160), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CplanCalc(Base):
+    """A controls result: date variance (#63), cash-flow (#42), EVM (#43), dashboard (#68), plant
+    utilisation (#80) - the inputs said 'as fed', the criticality never computed."""
+    __tablename__ = "cplan_calcs"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cpc"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(16), index=True, default="")
+    name: Mapped[str] = mapped_column(String(160), default="")
+    result: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CEhsItem(Base):
+    """One EHS row: training & competency (#83), environmental reading or limit (#84), labour-camp
+    facility check (#86). Limits and readings are FED with sources - Hoola seats no sensors."""
+    __tablename__ = "cehs_items"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("ceh"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(12), index=True, default="")
+    # training | env_read | env_limit | camp | camp_check
+    name: Mapped[str] = mapped_column(String(160), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")
+    by: Mapped[str] = mapped_column(String(120), default="")
+    source: Mapped[str] = mapped_column(String(200), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CstudioItem(Base):
+    """One studio row: shot brief or shot asset (#119), report section or asset (#120). The render
+    and the deck are hers - Hoola keeps the register and the checklist."""
+    __tablename__ = "cstudio_items"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cst"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(12), index=True, default="")
+    # shot | shot_asset | report | report_asset
+    ref: Mapped[str] = mapped_column(String(40), index=True, default="")   # shot id / report id
+    name: Mapped[str] = mapped_column(String(160), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class ClearnItem(Base):
+    """One learning row: trainee / module / assessment (#121), topic / quiz (#122), coaching check
+    or note (#123). Marks are FED, the pass line is HER policy, the advice stays the CA's."""
+    __tablename__ = "clearn_items"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cle"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(12), index=True, default="")
+    # trainee | module | assess | topic | quiz | attempt | coach | coach_note
+    name: Mapped[str] = mapped_column(String(160), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")
+    note: Mapped[str] = mapped_column(String(300), default="")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class CfmItem(Base):
+    """One FM row for the existing property/society seats (#102-#108): work order, PPM task,
+    compliance calendar row, roster post, structural-audit schedule, asset or space - the
+    certificate is the licensed auditor's / agency's (gates.py)."""
+    __tablename__ = "cfm_items"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cfm"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(12), index=True, default="")
+    # wo | ppm | comp | roster | audit | asset | space
+    name: Mapped[str] = mapped_column(String(160), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")
+    by: Mapped[str] = mapped_column(String(120), default="")
+    status: Mapped[str] = mapped_column(String(16), default="open", index=True)  # wo: open|done
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class Cw4ExtItem(Base):
+    """Wave-4 extension rows on the EXISTING desks (#33 approvals screener, #40/#89 QS cost plan /
+    VE / GST, #48/#50 contracts LD & arbitration, #57/#59/#60 tender purchase / expediting / EXIM,
+    #76 quality material tests, #94-#99 customer sales / handover / investor) - one kind-tagged
+    rows table, data JSON as fed, sources recorded."""
+    __tablename__ = "cw4_ext_items"
+    id: Mapped[str] = mapped_column(String(40), primary_key=True, default=lambda: new_id("cw4"))
+    tenant_id: Mapped[str] = mapped_column(String(64), index=True)
+    project: Mapped[str] = mapped_column(String(160), index=True, default="")
+    kind: Mapped[str] = mapped_column(String(16), index=True, default="")
+    # screener | cost_plan | ve | gst | ld | arb | purchase | expedite | exim | mtest
+    # | lead | inventory | mkt | afs | handover | investor
+    ref: Mapped[str] = mapped_column(String(120), index=True, default="")   # bill / po / unit / claim
+    name: Mapped[str] = mapped_column(String(160), default="")
+    data: Mapped[str] = mapped_column(Text, default="{}")
+    by: Mapped[str] = mapped_column(String(120), default="")
+    source: Mapped[str] = mapped_column(String(200), default="")
+    status: Mapped[str] = mapped_column(String(16), default="", index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)

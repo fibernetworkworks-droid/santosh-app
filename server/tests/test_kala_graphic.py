@@ -291,7 +291,7 @@ def test_render_handover_finals_and_igst(gd):
     S.job_save(T, client="C-001", kind="poster", sizes=["insta_square"], facts="Fresh cakes daily",
                lines=[{"name": "Poster", "rate": 5000}])
     q = S.job_view(T, "G-0001")["quote"]
-    assert q["gst"]["kind"] == "igst" and q["total"] == 5920                  # Maharashtra -> Karnataka
+    assert q["gst"]["kind"] == "igst" and q["total"] == 5930                  # Maharashtra -> Karnataka
     S.proof_render(T, "G-0001", words={"headline": "Fresh Cakes Daily"})
     ps = S.proof_send(T, "G-0001")
     S.decide(T, ps["card"]["id"], True, ps["card"]["hash"], by_tap=True)

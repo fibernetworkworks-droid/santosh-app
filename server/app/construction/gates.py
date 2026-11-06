@@ -54,6 +54,20 @@ TIER_C: tuple[tuple[str, str], ...] = (
      "Table 10 ke against sirf hisaab dikhata hai."),
     ("tag a scaffold safe", "Scaffold ka green tag competent person lagata hai; Hoola inspection REGISTER "
      "rakhta hai, tag nahi lagata."),
+    # Wave 4 (v0.586.0): the remaining seats
+    ("certify a clear title", "Title ka nishkarsh title advocate ka opinion hai; Hoola document checklist "
+     "aur land-record reconciliation banata hai - opinion nahi deta."),
+    ("declare the critical path", "Critical path / extension of time ka mark planner / PMC ka word hai; "
+     "Hoola dates ka variance dikhata hai, criticality code se nahi nikalti."),
+    ("declare a site safe or resume work", "Site safe declare karna / kaam resume karna EHS head ka decision "
+     "hai; Hoola register, checklist aur expiry ka hisaab rakhta hai."),
+    ("give tax or investment advice", "Tax / investment advice CA ya tax consultant ki hai; Hoola sirf "
+     "computation dikhata hai - rate bhi aapke diye source par."),
+    ("advertise a project without its RERA number", "RERA number ke bina project advertise karna RERA 2016 "
+     "s.3 ke under mana hai; Hoola ad asset ke register mein RERA number maangta hai."),
+    ("certify a structural audit", "Structural audit ka certificate registered structural engineer deta hai; "
+     "Hoola sirf schedule aur register rakhta hai."),
+    ("file a GST return", "GST return file karna aapke CA ka kaam hai; Hoola sirf computation dikhata hai."),
 )
 
 

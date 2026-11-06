@@ -330,3 +330,47 @@ def day(tenant: str) -> dict:
     say = (f"Approvals: {len(open_files)} file chal rahi hai, {len(docs)} paper abhi bhi chahiye"
            + (f" ({', '.join(f.authority for f in open_files[:3])})" if open_files else "") + ".")
     return {"open_files": len(open_files), "missing_papers": len(docs), "say": say}
+
+# ---------------------------------------------------------------- Wave 4: #33 Heritage / AAI / CRZ screener
+def screener_add(tenant: str, project: str, rows: list, by: str = "", note: str = "",
+                 conv: str = "") -> dict:
+    """Clearance APPLICABILITY register - rows [clearance, applies(yes/no/unsure), trigger,
+    documents]. `applies` is HER mark (with the liaison officer's name), the trigger her note; the
+    application itself stays the owner's (tier C: 'file a permission application' already gates)."""
+    from . import models as WM
+    from .common import publish as pub
+    if not rows:
+        raise CstError("Screener rows chahiye [clearance, applies, trigger, documents].")
+    if not by:
+        raise CstError("Aplicability ke saath US KA NAAM jo keh raha hai (liaison/consultant).")
+    made = 0
+    with session() as s:
+        for r in rows:
+            if not isinstance(r, (list, tuple)) or len(r) < 2:
+                continue
+            applies = str(r[1])[:8].lower()
+            if applies not in ("yes", "no", "unsure"):
+                raise CstError(f"'{r[0]}': applies yes | no | unsure (aapka mark, recorded).")
+            s.add(WM.Cw4ExtItem(tenant_id=tenant, project=project, kind="screener",
+                                name=str(r[0])[:120],
+                                data=_dump({"applies": applies,
+                                            "trigger": str(r[2])[:160] if len(r) > 2 else "",
+                                            "docs": str(r[3])[:300] if len(r) > 3 else "",
+                                            "note": note[:200]}),
+                                by=by))
+            made += 1
+    pub(tenant, "const_approvals", {"kind": "screener", "project": project, "rows": made}, conv)
+    unsure = sum(1 for r in rows if isinstance(r, (list, tuple)) and len(r) > 1
+                 and str(r[1]).lower() == "unsure")
+    return {"ok": True, "rows": made, "by": by, "unsure": unsure,
+            "said": (f"{made} clearance row(s) ({by}). {unsure} 'unsure' - unpar consultant/liaison "
+                     "confirm karega; Hoola koi clearance fetch/decide nahi karta.")}
+
+
+def screener_list(tenant: str, project: str) -> dict:
+    from . import models as WM
+    with session() as s:
+        rows = s.scalars(select(WM.Cw4ExtItem).where(WM.Cw4ExtItem.tenant_id == tenant,
+                                                     WM.Cw4ExtItem.project == project,
+                                                     WM.Cw4ExtItem.kind == "screener")).all()
+    return {"rows": [{"clearance": r.name, **_j(r.data, {}), "by": r.by} for r in rows]}

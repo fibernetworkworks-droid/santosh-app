@@ -417,6 +417,12 @@ TOOLS.extend(BIMAASSIST_TOOLS)
 TOOL_LABELS.update(BIMAASSIST_LABELS)
 HANDLERS.update(BIMAASSIST_HANDLERS)
 
+from .bimarisk_tools import BIMARISK_HANDLERS, BIMARISK_LABELS, BIMARISK_TOOLS  # noqa: E402  v0.611 Bima Risk (health-insurance Wave 3)
+
+TOOLS.extend(BIMARISK_TOOLS)
+TOOL_LABELS.update(BIMARISK_LABELS)
+HANDLERS.update(BIMARISK_HANDLERS)
+
 from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
 
 TOOLS.extend(KAAN_TOOLS)
@@ -876,6 +882,11 @@ from .const_predesign_tools import PREDESIGN_HANDLERS, PREDESIGN_LABELS, PREDESI
 from .const_survey_tools import SURVEY_HANDLERS, SURVEY_LABELS, SURVEY_TOOLS  # noqa: E402
 from .const_delay_tools import DELAY_HANDLERS, DELAY_LABELS, DELAY_TOOLS  # noqa: E402
 from .const_green_tools import GREEN_HANDLERS, GREEN_LABELS, GREEN_TOOLS  # noqa: E402
+from .const_land_tools import LAND_HANDLERS, LAND_LABELS, LAND_TOOLS  # noqa: E402
+from .const_plan_tools import PLAN_HANDLERS, PLAN_LABELS, PLAN_TOOLS  # noqa: E402
+from .const_ehs_tools import EHS_HANDLERS, EHS_LABELS, EHS_TOOLS  # noqa: E402
+from .const_studio_tools import STUDIO_HANDLERS, STUDIO_LABELS, STUDIO_TOOLS, LEARN_HANDLERS, LEARN_LABELS, LEARN_TOOLS  # noqa: E402
+from .const_fm_tools import FM_HANDLERS, FM_LABELS, FM_TOOLS  # noqa: E402
 
 for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
                    (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
@@ -1055,6 +1066,13 @@ from .society_tools import SOCIETY_HANDLERS, SOCIETY_LABELS, SOCIETY_TOOLS  # no
 for _t, _l, _h in ((PROPAGENT_TOOLS, PROPAGENT_LABELS, PROPAGENT_HANDLERS), (RENTDESK_TOOLS, RENTDESK_LABELS, RENTDESK_HANDLERS),
                    (SITESUP_TOOLS, SITESUP_LABELS, SITESUP_HANDLERS), (INTERIOR_TOOLS, INTERIOR_LABELS, INTERIOR_HANDLERS),
                    (ARCHASSIST_TOOLS, ARCHASSIST_LABELS, ARCHASSIST_HANDLERS), (SOCIETY_TOOLS, SOCIETY_LABELS, SOCIETY_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+for _t, _l, _h in ((LAND_TOOLS, LAND_LABELS, LAND_HANDLERS), (PLAN_TOOLS, PLAN_LABELS, PLAN_HANDLERS),
+                   (EHS_TOOLS, EHS_LABELS, EHS_HANDLERS), (STUDIO_TOOLS, STUDIO_LABELS, STUDIO_HANDLERS),
+                   (LEARN_TOOLS, LEARN_LABELS, LEARN_HANDLERS), (FM_TOOLS, FM_LABELS, FM_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
