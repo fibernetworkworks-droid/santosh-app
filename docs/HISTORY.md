@@ -20975,3 +20975,73 @@ Tests `server/tests/test_v0603_yaad_sach.py` (13). NOT VERIFIED (honest): no liv
 "carries" is judgement (a paraphrased copy can survive, an unrelated line sharing most words can go); the extractor's
 `replaces` judgement is the cheap model's, so the first real "ab ... shift ho gaya" on the VPS is the live test.
 Server-only; console untouched; Mera PC freeze respected.
+
+
+## v0.605.0 DUKAAN DESK — Retail & e-commerce register Wave 1 (owner: "GO NEXT WAVE", register chosen: Retail & e-commerce)
+
+Wave 1 of `docs/research/retail_ecommerce_industry/00_INDEX.md` is "kirana/shop and small online seller copilots, tier A". Most of the base already exists (Khata, Shop, GST bill, Shiprocket), so this adds the owner-copilot CHECKS as stateless engines on rows the owner gives; nothing is stored, sent, published or paid and no price, order, refund or listing is changed.
+
+- **Shop** (`retaildesk/shop.py`, #1 #81 #2 #7 #10 #36): daily summary (total, cash / UPI / credit split, best hour, top items, credit given); weekly forecast (4-week average + half the trend, festival effect ONLY from her multipliers, with a range note); reorder (daily sales x (lead + cover days) - stock, formula printed) with fast / slow movers, expiring stock, dead stock and the cash stuck in it; margin check (selling above MRP and below cost flagged); licence + GST date calendar (dates from memory, `verify`); oversell check across channels.
+- **Online** (`retaildesk/online.py`, #38 #78 #32 #86 #90 #79): return-risk points from pincode / address / phone / COD / prior RTO with reasons (labelled a heuristic, never a verdict on the customer); settlement vs sales (fee-aware); product-claim check (absolute / health / superlative / scarcity / certification words + missing listing facts); landed cost (price + shipping + COD fee - coupon); shop-scam signals (link analysis reused from finguard, never opens the link); CGST+SGST or IGST split.
+- **Wiring**: ONE tool `dukaan_desk` (registry 587 -> 588, family `retaildesk`, tight admit words, voice via `santosh_kaam`); the two shopper actions (landed, shop_scam) work for a customer actor, everything else is the owner's; a new hub group "Retail & E-commerce" (console DEPT + `RETAIL_GROUP`) with a never-list.
+- **Tests**: `test_retaildesk.py` (6). Registry pins 587 -> 588.
+- **NOT built**: Wave 2 (growth, ops, distributor desks) and Wave 3 (platform trust, pricing-sensitive roles); WhatsApp order taking and catalogue builder (they sit on the existing Shop / app engines). Not verified: no real sales book, marketplace settlement file or order sheet has been through it; RTO points and claim words are heuristics, not measured on real return data.
+## v0.606.0 SAAF NAZAR (built as 0.602.0) - the "AI look" check on every website (owner: "GO" on the Impeccable read)
+
+Source: pbakaus/impeccable (Apache-2.0), read at c8891a9a - `docs/research/impeccable/00_READ.md`. Ideas only, Hoola's
+own Python and wording; attribution in THIRD_PARTY_NOTICES.md. Their npm detector was not run (running downloaded code
+was refused in the sandbox), so the rules were re-written from their catalogue, not ported.
+
+**The gap it closes:** the nine v0.551 gates check safety, law and accessibility; nothing checked whether a site reads
+as AI-made, and Hoola's own builder steered toward the tells - 11 of 30 font pairs used an overused face (5 of 10 style
+DEFAULTS did), the section writer was taught an `.eyebrow` class, the kit had a `k-eyebrow` part, and styles defaulted
+to marquees, gradient glows, small-caps and numbered labels.
+
+**`server/app/site/look.py`** - reads every built page + `assets/site.css` (only the section css under `#s-...` and the
+site's design kit `.k-...`; Hoola's own base css is not judged) for 29 tells: overused fonts, cream page, gradient text,
+violet gradients, radial halos, coloured glows, hard offset shadows, thick side borders, nested cards, icon tiles above
+3+ headings, eyebrow / kicker labels (by class, or a short uppercase line right above a heading), 01/02/03 labels on 3+
+sections, bounce / elastic easing (cubic-bezier overshoot), marquee, stripes, grid-line backgrounds, buzzwords,
+"... theater" framing, em-dash saturation (site-wide), emoji as icons, italic hero headline, justified / all-caps /
+tight-leading / tiny / over- and under-tracked body text, skipped heading levels, broken / placeholder images. Every
+finding carries its page, the page's MODE and the section id the fixer rewrites.
+- **Never blocks:** gate 11 "AI look" in `gates.scan` gives WARN rows (or one PASS); `merge` leaves `passed` alone.
+- **Round-0 fix:** `service._look_fixable` adds the per-section tells (17 of the 29, the global ones are only said) to
+  the build's FIRST fix round, once, so the builder cleans its own reflexes before she sees the looks.
+- **The brief wins:** her words pin a tell (neon / glow / marquee / gradient / brutalist / cream / a font name...);
+  her own design (KOI BHI DESIGN look 1 - `choose_look` now keeps `mine`), her brand colours, or colours / type she
+  asked for in chat (`look.her_tokens`) switch the font + colour tells off.
+- **Modes:** persuade (default), operate (account / admin / cart / checkout / cms / dashboard), read (blog / faq / help /
+  guides / policies), experience (gallery / portfolio). Icon tiles are fine on operate pages; numbered labels only
+  judged on persuade / experience.
+- Switches: `site_look` (the gate), `site_look_fix` (the round-0 fix).
+
+**Builder defaults (new sites only; a built site keeps its stored look until rebuilt):** style fonts editorial_calm ->
+DM Serif Display / DM Sans, bold_modern -> Bricolage Grotesque / DM Sans, minimal_swiss -> Archivo / DM Sans,
+tech_gradient -> Urbanist / Mukta, corporate_trust -> Manrope / DM Sans (3 new pairs, all bundled; the old pairs stay
+for existing sites and for her own design to map onto); no default marquee / glow motion or hero; "do" lines lose
+small-caps / letter-spaced / numbered labels, marquee strips and gradient glows; the section writer gets a CRAFT FLOOR
+block and loses `.eyebrow` and "at least two motion attributes per section"; the kit loses `k-eyebrow`; the footer's
+three `<h3>` are `<h2>` (the 404 page went h1 -> h3).
+
+**Tests:** `test_v0606_saaf_nazar.py` (11) - calibrated both ways (every rule fires on its planted fault; a well-made
+page gives zero findings), never blocks a built site, the brief wins, modes, round-0 fix mapping to section keys,
+builder defaults, the `mine` / `her_tokens` marks, attribution. Also healed: the console stamp count pin 22 -> 23
+(main had added a stamp and left them at 0.600.0).
+
+**NOT VERIFIED, said plainly:** no build with real Opus has run through the new prompt and the round-0 look fix yet, so
+how many tells real builds carry - and whether the fix round clears them - is unmeasured. The rendered-page rules
+Impeccable runs in a browser (contrast pairs, line length, text overflow, occlusion) are not ported; the existing
+contrast checks and journeys still run. Not built from the read: the design-word edit commands (bolder / quieter /
+polish...) and a scored page critique.
+
+
+## v0.607.0 RETAIL WAVES 2 + 3 — growth/operations assists and platform trust (owner: "Retail Waves 2 and 3")
+
+Waves 2 and 3 of `docs/research/retail_ecommerce_industry/00_INDEX.md`. Same stateless pattern as Wave 1: rows in, a proposal or rule hit out, a named decider in every answer, nothing stored, sent, banned or changed. Every limit, floor, threshold, multiplier and schedule is the user's; nothing is built in (deadlines and the label list are from memory and marked `verify`).
+
+- **Wave 2 `retail_growth`** (`retailgrowth/engines.py`, #6 #11 #15 #21 #28/#35 #46 #69 #70 #71 #80): loyalty lists (opted-in customers only; lapsed, birthdays this week, top spenders; nothing sent), markdown steps for near-expiry stock held above HER floor margin and below MRP with the waste still at risk, unit economics (contribution, LTV / CAC), ABC + range-review candidates, price rule check on competitor prices she gives (floor and MRP held, large moves flagged for a second look; no scraping), scheme accrual vs retailer claims, retailer credit exposure against HER limit multiple (no personal attributes), beat visit order (straight-line, points to the Maps tools for road time), working-capital cycle, delivery batches by area.
+- **Wave 3 `retail_trust`** (`retailtrust/engines.py`, #52 #55 #57 #58 #59 #67 #100 #102 + pricing fairness): fraud rule hits (order bursts, shared address / device, high-value COD), return-abuse list above her threshold, review authenticity signals (duplicate text, 5-star bursts, unverified, undisclosed incentive), seller KYC checks (GSTIN format + check digit, PAN inside GSTIN, IFSC, bank name vs seller name, missing documents; no registry lookup), dark-pattern text + checklist audit, grievance acknowledge / resolve clock, Legal Metrology label checklist, delivery-promise audit with an honest-promise hint, AI-model override rates, price spread across customer segments.
+- **Wiring**: TWO tools `retail_growth` / `retail_trust` (registry 588 -> 590, families `retailgrowth` / `retailtrust`, tight admit words, owner / staff only, voice via `santosh_kaam`), two hub employees in Retail & E-commerce with never-lists.
+- **Tests**: `test_retail_w23.py` (7). Registry pins 588 -> 590.
+- **NOT built**: WhatsApp order taking and the catalogue builder (they sit on the Shop / app engines), the ONDC participant assistant, ads-policy and content-moderation models. Not verified: no real order sheet, review dump or seller file has been through it; the rule thresholds are the user's, the fraud / review rules are heuristics, and a rule hit is never a verdict.

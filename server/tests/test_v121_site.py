@@ -103,7 +103,7 @@ def test_library_counts_and_understanding(monkeypatch):
     assert TX.check() == []
     c = L.counts()
     assert c["fields"] == 1000 and c["briefs"] == 100000 and c["phrases"] == 5000
-    assert (c["section_designs"], c["motion_presets"], c["palettes"], c["font_pairs"], c["hero_types"]) == (300, 60, 50, 30, 24)
+    assert (c["section_designs"], c["motion_presets"], c["palettes"], c["font_pairs"], c["hero_types"]) == (300, 60, 50, 33, 24)
     for q, field in [("mithai dukaan ki website", "sweet_shop"), ("मिठाई की दुकान", "sweet_shop"), ("resturant menu online", "restaurant"),
                      ("dant doctor", "dentist"), ("CA office website", "chartered_accountant"), ("जिम की वेबसाइट", "gym"),
                      ("vakil sahab", "advocate"), ("fiber internet company", "isp"), ("meri bakary ke liye site", "bakery"),
@@ -151,7 +151,7 @@ def test_guard_and_sanitize():
     tk = Bd.tokens("bold_modern", "ink_lime", {"primary": "#123456"})
     assert tk["primary"] == "#123456" and tk["on_primary"] in ("#FFFFFF", "#111111")
     css2 = Bd.tokens_css(tk)
-    assert "--c-primary:#123456" in css2 and "space-grotesk-latin-700.woff2" in css2
+    assert "--c-primary:#123456" in css2 and "bricolage-grotesque-latin-700.woff2" in css2   # v0.602 bold_modern default
 
 
 # ---------------------------------------------------------------- 2. the whole flow, real Chromium

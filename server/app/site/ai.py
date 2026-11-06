@@ -241,7 +241,7 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   --c-primary-text --c-accent-text (brand colours safe for small TEXT on bg / surface; --c-primary itself is for fills,
   buttons, big shapes) --font-head --font-body --radius --gutter. Use them; never hard-code other colours except subtle tints made with
   color-mix(in srgb, var(--c-primary) 12%, transparent) and pure white / black overlays on photos.
-- Utility classes: .wrap (page width), .hs (section padding), .hs-alt (surface bg), .hs-dark (ink bg), .eyebrow, .lead,
+- Utility classes: .wrap (page width), .hs (section padding), .hs-alt (surface bg), .hs-dark (ink bg), .lead,
   .muted, .grid + .g2/.g3/.g4 (responsive), .card, .btn + .btn-primary/.btn-ghost/.btn-accent, .btns, .pill, .ratio
   (+ --ratio), details.faq (accordion, no JS), .hs-form (forms), [data-lightbox] (gallery zoom), [data-compare] (before/after).
 - Motion runtime (attributes, no JS needed): data-m="reveal" (+ data-m-dir up|left|right|scale|blur, data-m-delay ms),
@@ -323,13 +323,30 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
   no chart. Style the figure (card, padding, width) inside your #SECTION_ID; do not restyle the SVG parts.
 - HER BLOG (v0.366): a blog / updates section never writes posts of its own - put <div data-hoola-posts="3"></div>
   where the cards go and Hoola fills it with her latest real posts (a link to the blog page when she has none yet).
-- Type weights available for both fonts: 400, 500, 600, 700 (use 500 / 600 for UI labels, eyebrows, buttons, sub-heads;
+- Type weights available for both fonts: 400, 500, 600, 700 (use 500 / 600 for UI labels, buttons, sub-heads;
   700 for big display headings).
 - Contact actions: tel:+91..., https://wa.me/91XXXXXXXXXX?text=..., mailto:, https://maps.google.com/?q=... ONLY with values
   given in FACTS. Otherwise write the label with <em class="blank">[phone]</em>.
 - Forms: <form class="hs-form" data-hoola-form> with name / phone (required) / message fields, a hidden honeypot
   <input class="hp" name="website" tabindex="-1" autocomplete="off">, a consent line <p class="hs-consent">, a
   <button type="submit" class="btn btn-primary">, and <p class="hs-form-msg" role="status"></p>. Hoola adds the endpoint.
+"""
+
+# v0.606 SAAF NAZAR: the reflexes that make a page read as AI-made (ideas from pbakaus/impeccable's craft floor, in
+# Hoola's words). The design STYLE and her own words win over every line here; site/look.py checks the result.
+CRAFT_FLOOR = """
+CRAFT FLOOR (unless the design style or HER words ask for it, never reach for these by reflex):
+- No small uppercase / letter-spaced label above a heading (no eyebrow, kicker, overline): the heading speaks for itself.
+- No 01 / 02 / 03 section numbers unless the order is real information (steps she named).
+- No rounded icon tile stacked above every card heading, no grid of identical icon + heading + text cards as the
+  whole section, no card inside a card. Vary the layout; let photos and real words carry the section.
+- No gradient-filled text, no purple / violet gradients, no coloured glow shadows or radial halos, no hard offset
+  block shadows, no decorative stripes or grid-line backgrounds, no bounce / elastic easing, no scrolling marquee.
+- Shadows have an offset and a soft blur; one elevation per element (a border OR a shadow).
+- Copy in her business's own plain words: no streamline / empower / seamless / world-class / cutting-edge /
+  next-level / one-stop-solution, no "X. No Y." slogans, few em dashes, no emoji as icons.
+- Body text: 16px+, line-height 1.5-1.7, lines about 65-75 characters, left-aligned (never justified), sentence case.
+- More space above a heading than below it; tight groups, generous separation between groups.
 """
 
 SECTION_SYSTEM = """You are a world-class web designer and front-end developer (art director level), building ONE section of a
@@ -345,14 +362,15 @@ Rules:
   Animate only transform / opacity. No @import, no url(http...), no fonts other than var(--font-head)/var(--font-body).
 - js: usually empty. If truly needed: one small IIFE scoped to document.getElementById(SECTION_ID); never fetch, XHR,
   WebSocket, eval, Function, cookies, storage, timers that run forever, or anything from the network.
-- Use the motion runtime for the wow: at least two motion attributes per section, matched to the design style's motion.
+- Use the motion runtime with purpose, matched to the design style's motion: one moment the visitor remembers beats the
+  same reveal on every section; a section may move a little or not at all.
 - FACTS are the only truth. Never invent prices, phone numbers, addresses, years, customer counts, awards, ratings,
   reviews, staff names, degrees or registration numbers: write <em class="blank">[what is missing]</em> instead.
 - Respect the RULES lines (profession / advertising law). No famous brand logos or names as decoration, no copied
   artwork, no national emblem / flag, no religious symbol unless the facts ask for it.
 - Accessibility: alt text on images, labels on inputs, buttons with clear words, contrast safe with the tokens,
   tap targets >= 44 px, aria-hidden on decorative SVG.
-""" + RUNTIME_GUIDE
+""" + CRAFT_FLOOR + RUNTIME_GUIDE
 
 FIX_SYSTEM = """You fix ONE section of a website that failed automatic checks. Keep the design and words; change only what the
 problems need. Return the same JSON shape: {"html": "...", "css": "...", "js": "", "notes": "what you fixed"}.

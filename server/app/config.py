@@ -357,6 +357,8 @@ class Settings(BaseSettings):
     site_shop_day_cap: int = 300           # orders a website shop takes in a day (spam guard; a big shop raises it)
     site_shop_ip_cap: int = 12             # orders from one address in 10 minutes
     site_gates: bool = True                # v0.551 SURAKSHA GATES: every website build is checked; a FAIL blocks going live
+    site_look: bool = True                 # v0.606 SAAF NAZAR: the AI-look tells on every build (warn only, never blocks)
+    site_look_fix: bool = True             # v0.606 ...and the per-section ones go into the first fix round once
     site_turnstile_site: str = ""          # v0.551 Cloudflare Turnstile site key (public) - both keys = forms get the box
     site_turnstile_secret: str = ""        # its secret (VPS .env only): the server checks every form post with Cloudflare
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)

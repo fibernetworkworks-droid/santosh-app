@@ -65,7 +65,7 @@ p{margin:0 0 1em;text-wrap:pretty}
 /* footer */
 .hs-foot{background:var(--c-ink);color:color-mix(in srgb,var(--c-bg) 85%,transparent);padding:56px 0 96px;font-size:.95rem}
 .hs-foot a{color:inherit}
-.hs-foot h3{color:var(--c-bg);font-size:1rem;margin-bottom:.8em}
+.hs-foot h2,.hs-foot h3{color:var(--c-bg);font-size:1rem;margin-bottom:.8em}
 .hs-foot ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .hs-foot .hs-legal{margin-top:36px;padding-top:18px;border-top:1px solid color-mix(in srgb,var(--c-bg) 18%,transparent);font-size:.85rem;opacity:.8;display:flex;flex-wrap:wrap;gap:8px 20px;justify-content:space-between}
 /* floating actions */

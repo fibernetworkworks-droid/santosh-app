@@ -46,6 +46,7 @@ def ensure_table() -> None:
 
 TRUST = ("seekh", "saathi", "bharosa")
 
+RETAIL_GROUP = "Retail & E-commerce"   # v0.604
 FIN_GROUP = "Finance & Banking"   # v0.585 the consumer money-safety employee
 VOICE_GROUP = "Voice, Meetings & Transcription"   # v0.589 the KAAN PACK employee (WhisperAI Wave W0)
 FILM_GROUP = "Film, Media & Entertainment"   # v0.565 the Film Desk employee
@@ -164,6 +165,47 @@ CATALOG: dict[str, dict[str, Any]] = {
                             "Approve or decline a loan, classify an account as NPA, or start recovery",
                             "Block an account or accuse anyone: alerts are evidence for the analyst or compliance officer",
                             "Store your rows: it reads them, answers, and forgets"]},
+    # v0.604 DUKAAN DESK (register docs/research/retail_ecommerce_industry, Wave 1: kirana and small online seller copilots; prepare and check, the owner decides)
+    "dukaan_desk": {"name": "Dukaan Desk (shop and online seller)", "live": True, "icon": "receipt", "group": RETAIL_GROUP,
+                    "pitch": "A copilot for a shop or a small online seller: the day's sales, what to reorder, what is stuck or expiring, margin and MRP checks, oversell and return-risk warnings, settlement matching and GST split. It prepares and checks; you set prices, place orders and publish.",
+                    "does": ["Daily summary: total, cash / UPI / credit split, best hour, top items; weekly sales forecast with your own festival multipliers",
+                             "Reorder quantities with the formula shown, fast and slow movers, expiring stock and the cash stuck in dead stock",
+                             "Margin and MRP check (selling above MRP, selling below cost) and a licence / GST date calendar",
+                             "Oversell check across your website and marketplaces; return-risk score per order with reasons",
+                             "Settlement vs sales matching, product-claim check for listings, GST split, and for shoppers: true landed cost and scam signals"],
+                    "needs": ["Rows you paste or say: sales, stock, orders, settlements, offers. Your own dates, licences and festival multipliers"],
+                    "never": ["Change a price, discount, refund, listing or order, or place a supplier order: those are your tap",
+                              "Block or blacklist a customer: a risk score is a heads-up, not a verdict",
+                              "Publish a product claim or call anything genuine, organic or certified without your proof",
+                              "File GST or issue an invoice: your CA / you do",
+                              "Store your rows: it reads them, answers, and forgets"]},
+    # v0.607 RETAIL GROWTH (register docs/research/retail_ecommerce_industry, Wave 2: growth and operations assists with a named owner / manager)
+    "retail_growth": {"name": "Retail Growth (owner / manager copilot)", "live": True, "icon": "receipt", "group": RETAIL_GROUP,
+                      "pitch": "Turns your rows into proposals: markdown steps for near-expiry stock, price checks inside your floor and MRP, scheme accruals, retailer credit exposure, unit economics, visit order and cash cycle. It proposes; you decide and you tap.",
+                      "does": ["Markdown steps for near-expiry stock that never cross your floor or MRP, with the waste still at risk",
+                               "Price rule check against competitor prices you give: proposed price, why, and anything that moves more than your cap",
+                               "Scheme accrual vs retailer claims, retailer credit exposure against your own limit multiple, working-capital days",
+                               "Unit economics (contribution, LTV / CAC), ABC range review, loyalty lists for customers who opted in only",
+                               "Beat visit order and delivery batches by area"],
+                      "needs": ["Rows you paste, and your own floors, caps, schedules and multipliers: nothing is built in"],
+                      "never": ["Change a price, scheme, credit limit, route or listing: those are your tap",
+                                "Message a customer or sell a list: loyalty lists carry only people who said yes, and nothing is sent",
+                                "Scrape marketplaces or competitor sites: competitor prices are only those you give",
+                                "Use caste, religion, area or other personal attributes for credit or pricing",
+                                "Store your rows: it reads them, answers, and forgets"]},
+    # v0.607 RETAIL TRUST (register docs/research/retail_ecommerce_industry, Wave 3: platform trust, fraud, compliance; investigators decide)
+    "retail_trust": {"name": "Retail Trust (fraud and compliance desk)", "live": True, "icon": "receipt", "group": RETAIL_GROUP,
+                     "pitch": "Evidence for the people who decide on a marketplace or store: fraud and return-abuse rule hits, fake-review signals, seller KYC format checks, label and dark-pattern checklists, grievance deadlines, delivery-promise honesty, model override rates and pricing fairness. It flags; a named person decides.",
+                     "does": ["Fraud rule hits (order bursts, shared addresses and devices, high-value COD) with the rule shown, and return-abuse lists above your threshold",
+                              "Review authenticity signals, seller KYC checks (GSTIN check digit, PAN inside GSTIN, IFSC, bank name) and missing documents",
+                              "Dark-pattern text and checklist audit, Legal Metrology label checklist, grievance acknowledge / resolve clock",
+                              "Delivery-promise audit with an honest promise hint, AI-model override rates, price spread between customer segments"],
+                     "needs": ["Rows you paste and your own thresholds; deadlines and label lists are from memory and marked verify"],
+                     "never": ["Ban, block, refund, fine or remove anyone or anything: a rule hit is evidence, not a verdict",
+                               "Accuse a customer, seller or worker, or profile a customer",
+                               "Decide a takedown, a seller approval or a grievance outcome",
+                               "Check that a GSTIN or bank account really exists: only its format and check digit",
+                               "Store your rows: it reads them, answers, and forgets"]},
     # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
     "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
              "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",

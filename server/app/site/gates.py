@@ -29,7 +29,10 @@ NOT CHECKED (OSV.dev unreachable) is said as not checked, never counted as a pas
   9 trackers      - a tracker (Google Analytics / Tag Manager, Meta Pixel, Hotjar, Clarity, DoubleClick...) found in a
                     page needs a consent banner; none found = no banner needed (Hoola counts visits on the server).
  10 rate limits   - the server-side limits the site's forms, shop and logins run behind, stated (they are code, not
-                    a per-site setting)."""
+                    a per-site setting).
+ 11 AI look       - v0.606 SAAF NAZAR (site/look.py, ideas from pbakaus/impeccable): the reflex tells that make a site
+                    read as AI-made (overused fonts, violet gradients, a label above every heading, icon tiles, gradient
+                    text, glow halos, bounce easing, buzzwords...). WARN only - it never blocks; her own choices win."""
 from __future__ import annotations
 
 import json
@@ -502,6 +505,15 @@ def gate_limits() -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------- the scan
+def gate_look(out: Path, site: dict[str, Any]) -> list[dict[str, Any]]:
+    """v0.606 the AI-look tells (site/look.py): warnings with the section to fix, never a fail."""
+    from ..config import get_settings
+    if not getattr(get_settings(), "site_look", True):
+        return []
+    from . import look as LK
+    return LK.rows(LK.scan(out, site))
+
+
 def turnstile_on() -> bool:
     from ..config import get_settings
     st = get_settings()
@@ -516,7 +528,7 @@ def scan(out: Path, site: dict[str, Any], report: dict[str, Any] | None = None, 
     for fn in (lambda: gate_secrets(out), lambda: gate_libraries(out), lambda: gate_headers(out),
                lambda: gate_pages(out, pages), lambda: gate_forms(out, pages, form_endpoint, turnstile_on()),
                lambda: gate_accessibility(out, pages, report), lambda: gate_legal(out, pages, site),
-               lambda: gate_trackers(out, pages), gate_limits):
+               lambda: gate_trackers(out, pages), gate_limits, lambda: gate_look(out, site)):
         try:
             rows += fn()
         except Exception as e:                              # noqa: BLE001 - a broken gate is NOT CHECKED, never a pass

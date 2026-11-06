@@ -195,3 +195,12 @@ Copyright (c) 2015 Airbnb, Inc. Vendored as `server/app/site/assets/vendor/lotti
 ## three.js r187 - MIT
 Copyright (c) 2010-2026 three.js authors. The parts Hoola's 3D hero scenes use, bundled into
 `server/app/site/assets/vendor/three-hero.js` (licence: `three.LICENSE.txt`; rebuild steps: `vendor/REBUILD.md`) (v0.568).
+
+## Impeccable (pbakaus/impeccable) - Apache-2.0
+Copyright (c) Paul Bakaus and contributors. Read at commit c8891a9a (5 Nov 2026); notes in
+`docs/research/impeccable/00_READ.md`. **No upstream code is included.** The website "AI look" check
+(`server/app/site/look.py`, v0.606) and the section writer's CRAFT FLOOR (`server/app/site/ai.py`) are Hoola's own
+Python and wording built from Impeccable's ideas: its anti-pattern catalogue (the reflex tells of AI-generated pages),
+its craft-floor checks, its surface modes (persuade / operate / read / experience) and its rule that the user's own
+brief wins over every warning. Impeccable itself credits ehmo/platform-design-skills (MIT) for its iOS / Android
+references, which Hoola did not use.

@@ -899,6 +899,8 @@ def _ctx(r: Site) -> dict[str, Any]:
             "blog": _blog_ctx(r),                                            # v0.366 her published posts (newest first)
             "app": app_schema(r) or None,                                   # v0.305 the web app (account + staff pages)
             "kit_css": (look.get("kit") or {}).get("css", ""),              # v0.330 the site's design kit
+            "brief": r.brief or "",                                          # v0.606 her words (the brief wins in look.py)
+            "her_look": bool(look.get("mine") or look.get("her_tokens")),      # v0.606 her own design set the type / colours
             "shop": _shop_ctx(r),                                             # v0.351 her shop (None when off)
             "app_api": app_api(r) if app_schema(r) else ""}
 
@@ -1356,7 +1358,8 @@ def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = Non
             src = looks[int(colors_from)]["tokens"]
             for k in ("bg", "surface", "ink", "muted", "line", "primary", "on_primary", "accent", "on_accent", "palette"):
                 tk[k] = src.get(k, tk.get(k))
-        r.style, r.look = lk["style"], _jd({"tokens": tk, "from": int(index), "dna": lk.get("dna")})
+        r.style, r.look = lk["style"], _jd({"tokens": tk, "from": int(index), "dna": lk.get("dna"),
+                                           "mine": bool(lk.get("mine"))})   # v0.606 her own design: the brief wins
         r.status, r.stage, r.stop, r.error = "building", "build", False, ""
         if conv:
             r.conv = conv
@@ -1546,6 +1549,9 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
                       "passed": None, "source": "none", "pages": {}}
             break
         fixable = _fixable(report, plan)
+        if rnd == 0:                          # v0.606 SAAF NAZAR: the builder cleans its own AI-look reflexes once
+            for k, probs in _look_fixable(r, live, plan).items():
+                fixable.setdefault(k, []).extend(probs)
         if not fixable or rnd == MAX_FIX_ROUNDS:
             break
         # v0.400 FAST: every failing section is fixed at the same time (was one Opus call after another)
@@ -1582,6 +1588,20 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     report = _gates(r, report)                # v0.551 SURAKSHA GATES: security / legal / accessibility on every page
     _make_version(r, plan, report, shots, states, note or "pehla version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
+
+
+def _look_fixable(r: Site, live: Path, plan: dict[str, Any]) -> dict[str, list[str]]:
+    """v0.606 the per-section AI-look tells (site/look.py) as fix-round problems - once, before her first look; never
+    blocking, and her own choices (the brief / her design) are never 'fixed' away."""
+    if not getattr(_settings(), "site_look", True) or not getattr(_settings(), "site_look_fix", True):
+        return {}
+    try:
+        from . import look as LK
+        items = LK.fix_items(LK.scan(live, _ctx(_load(r.id))))
+    except Exception:
+        log.exception("look scan failed")
+        return {}
+    return _fixable({"blocking": items}, plan)
 
 
 def _journeys(r: Site, report: dict[str, Any]) -> dict[str, Any]:
@@ -1917,6 +1937,7 @@ def change(tenant: str, ref: str, instruction: str, conv: str = "") -> dict[str,
                       {**{k: tk.get(k) for k in ("primary", "accent", "bg", "surface", "ink")}, **tokens,
                        "radius": tokens.get("radius", tk.get("radius"))})
         look["tokens"] = tk
+        look["her_tokens"] = True             # v0.606 colours / type she asked for are hers (look.py never flags them)
     facts = _j(r.facts, {})
     old_facts = dict(facts)
     for k, v in (res.get("facts") or {}).items():

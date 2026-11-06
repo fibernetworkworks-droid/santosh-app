@@ -239,6 +239,14 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # v0.603 Risk Desk (markets and credit papers, Wave 3). Tight keys.
     "riskdesk": ("order ticket", "rebalance", "portfolio drift", "concentration limit", "margin utilisation", "underwrit", "key fact statement", " kfs",
                  "dpd", "npa", "sma-", "ecl", "expected credit loss", "dcf", "discounted cash", "velocity check", "wash trade", "round trip trade", "risk_desk"),
+    # v0.604 Dukaan Desk (retail Wave 1). Tight keys.
+    "retaildesk": ("dukaan desk", "dukaan_desk", "reorder", "dead stock", "expiry list", "mrp se upar", "oversell", "rto", "cod risk", "settlement reconcil",
+                   "landed cost", "product claim", "gst split", "kirana", "daily sales summary", "stock kam", "margin check"),
+    # v0.607 Retail Growth (Wave 2) + Retail Trust (Wave 3). Tight keys.
+    "retailgrowth": ("markdown schedule", "near expiry price", "loyalty list", "lapsed customer", "unit economics", "ltv", "abc analysis", "range review",
+                     "price rule", "scheme accrual", "retailer credit", "beat route", "cash conversion", "working capital", "delivery batch", "retail_growth"),
+    "retailtrust": ("fraud rule", "return abuse", "dark pattern", "grievance clock", "fake review", "review authenticity", "seller kyc", "gstin check",
+                    "legal metrology", "label check", "delivery promise audit", "override rate", "price fairness", "retail_trust"),
     # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
     # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",

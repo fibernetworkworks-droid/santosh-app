@@ -56,6 +56,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test")
     monkeypatch.setenv("VOICEID_VAD", "false")      # voice-id tests use synthetic tones, which Silero rightly calls "not a voice"
     monkeypatch.setenv("HOOLA_ENRICH", "false")     # no background vision / suggestion calls; tests call enrich.run
+    monkeypatch.setenv("SITE_LOOK_FIX", "false")    # v0.606 the canned site AI writes eyebrows; old build tests keep their rounds
     monkeypatch.setenv("VOICE_TOOL_ACK", "false")
     monkeypatch.setenv("VIDEO_EDIT_WORKER", "false")   # tests call videoedit.run_job themselves
     monkeypatch.setenv("OPERATOR_WORKER", "false")     # tests call operator.run_job themselves
