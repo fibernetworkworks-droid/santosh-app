@@ -485,6 +485,7 @@ class Settings(BaseSettings):
     voice_lean_tools: bool = True    # v0.627 the call declares only LEAN_TOOLS (Gemini bills the whole tool list on every reply); the rest via santosh_kaam
     voice_brain: bool = True         # v0.630 HAIKU DIMAAG: Gemini Live is ONLY the voice (hears + speaks); every ask goes to the Hoola brain (voice_brain_model) with every chat tool
     voice_brain_model: str = "claude-haiku-5-5"
+    voice_brain_memory_s: float = 2.5    # v0.638 a call brain turn waits at most this for diary / job state / coder memory
     voice_brain_result_chars: int = 1500   # v0.636 an earlier exchange's tool result cut to this on a call brain turn (0 = keep)
     voice_brain_history: int = 8      # v0.634 (12) -> v0.636 8: a call brain turn reads the summary + this many recent exchanges (0 = the whole chat)
     voice_brain_wait_s: int = 20      # v0.630 the voice waits this long for the brain's answer, then says it is working   # v0.630 the call's brain ('' = the chat model); hard / long asks still go up (Opus / Sonnet)

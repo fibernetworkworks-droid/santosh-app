@@ -21644,3 +21644,16 @@ the 9-page prototype (canvas artifact) and said PERFECT. Built from Hoola's own 
   Found by the screenshots: the HTTPS line printed `[object Object]` (care sends a per-host map) - fixed before shipping.
   Stamp-count pin in test_v0475 moved 23 -> 24 (the new script tag).
 - NOT VERIFIED on her live console; server unchanged except the version story (console static files ride the usual deploy).
+
+## v0.638.0 TEZ TAIYARI — the call brain's 19.6 s of preparation cut
+
+v0.637's new line on her 16:36 call: `brain prep 19.6s before the first call: ... memory 7.0s, hint 1.8s, mcp 4.5s,
+prompt 0.8s`, then Haiku 5.9 s. Lock / compaction / history were 0.0 s (no busy chat).
+
+- memory 7.0 s: `_brain_memory` reads yaad.turn_block, kaamwatch.block and the coder primer IN PARALLEL in threads and
+  waits at most `voice_brain_memory_s` (2.5 s); a part not ready is left out of that ask and logged (`call brain memory:
+  X not ready`). The open-goal block is not added on a call turn (her question is not a round of the background job).
+- mcp 4.5 s: `mcp_live.snapshot_fast` uses the last snapshot (any age) and refreshes a stale/missing one in a background
+  thread; the first call ask after a restart may have no MCP tools.
+- hint 1.8 s: `procedures.hint` skipped on a call brain turn.
+- Chat turns unchanged. Tests `test_v0638_tez_taiyari.py` (3). Expected prep: ~3-4 s (was 19.6 s). NOT VERIFIED on a call.

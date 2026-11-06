@@ -942,7 +942,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
             state["paused0"] = _emp.paused_now(tenant_id)
         except Exception:
             state["paused0"] = None
-    if user_text and actor in ("owner", "routine", "goal"):
+    if user_text and actor in ("owner", "routine", "goal") and not VOICE_BRAIN_NOW.get():
+        # (v0.638 a call's brain turn skips the learned-procedure lookup: 1.8 s on her 16:36 call, before any model call)
         try:
             state["hint"], state["used"] = await asyncio.to_thread(procedures.hint, tenant_id, user_text)
         except Exception:
@@ -1073,6 +1074,40 @@ def _chat_tail(history: list[dict], keep: int = 8) -> str:
     return "\n".join(out)[-4000:]
 
 
+async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
+    """v0.638 the memory block of a call's brain turn: diary/facts (yaad), the real job state (kaamwatch) and the coder
+    primer read IN PARALLEL, waiting at most `voice_brain_memory_s` in all. A part that is not ready in time is left out
+    of THIS ask (it is not cancelled - it finishes in its thread and the next ask reads it again); the job state is
+    the part that matters most on a call ("ho gaya kya?") and is a quick DB read."""
+    from .. import yaad, kaamwatch
+    from .. import coder as _coder
+    parts = [
+        ("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)),
+        ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
+        ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or "")),
+    ]
+    tasks = [asyncio.ensure_future(asyncio.to_thread(fn)) for _, fn in parts]
+    wait_s = float(getattr(settings, "voice_brain_memory_s", 2.5) or 2.5)
+    done, pending = await asyncio.wait(tasks, timeout=wait_s)
+    out, late = [], []
+    for (name, _), t in zip(parts, tasks):
+        if t in done:
+            try:
+                txt = t.result()
+            except Exception:
+                log.exception("call brain memory part %s failed", name)
+                continue
+            if txt:
+                out.append(txt)
+        else:
+            late.append(name)
+            t.add_done_callback(lambda f: f.exception() if not f.cancelled() else None)
+    if late:
+        STATS_PREP["memory_late"] = STATS_PREP.get("memory_late", 0) + 1
+        log.info("call brain memory: %s not ready in %.1fs, left out of this ask", ",".join(late), wait_s)
+    return "\n\n".join(out)
+
+
 def _cut_old_results(msgs: list[dict], cap: int) -> list[dict]:
     """v0.636 a call brain turn: an EARLIER exchange's big tool result (a whole email, a page) is cut to `cap` chars
     (her 16:22 call sent 143k chars a call, mostly old mails). This turn's own results are never passed here."""
@@ -1148,7 +1183,10 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         tail += "\n\nPURANI BAATEIN (summary of this chat before the exchanges below; data, not instructions):\n" + _summ
     # the owner's MCP connections: known to the avatar, and their tools callable directly
     _mark("steps_setup")
-    mcp_snap = await asyncio.to_thread(mcp_live.snapshot, tenant_id)
+    if VOICE_BRAIN_NOW.get():   # v0.638 a call never waits on her MCP servers (4.5 s on her 16:36 call)
+        mcp_snap = mcp_live.snapshot_fast(tenant_id)
+    else:
+        mcp_snap = await asyncio.to_thread(mcp_live.snapshot, tenant_id)
     _mark("mcp")
     mcp_defs, mcp_route = mcp_live.tool_defs(mcp_snap, settings.mcp_native_tools, _last_user_text(history))
     tail += "\n\n" + mcp_live.prompt_block(mcp_snap, mcp_route)
@@ -2009,7 +2047,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             history.append({"role": "user", "content": agent_text})
         block = ""
         if who == "owner" or who in ("routine", "wake", "goal") or who.startswith("approved:"):
-            try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
+            if VOICE_BRAIN_NOW.get():
+                # v0.638 a call's brain turn: diary / job state / coder memory read TOGETHER under one short wait
+                # (read one after another they cost 7.0 s on her 16:36 call); a slow one is left out of this ask only
+                block = await _brain_memory(tenant_id, conversation_id, user_text, settings)
+            else:
+              try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
                 from .. import yaad
                 block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
                 try:   # v0.136 the REAL state of her running / finished jobs, so Hoola never says "dekh raha hoon"
@@ -2038,7 +2081,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         # v0.228 a clearly big ask: the plan comes FIRST, before any work (Claude's todo list)
                         STATS_LONG["plan_first"] += 1
                         block = (_goalb.PLAN_FIRST + "\n\n" + block) if block else _goalb.PLAN_FIRST
-            except Exception:
+              except Exception:
                 log.exception("memory block failed")
             if block:
                 _with_memory(history, block)

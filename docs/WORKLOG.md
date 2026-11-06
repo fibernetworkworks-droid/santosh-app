@@ -1779,3 +1779,10 @@ Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
 Work Log: stage timer + `brain prep` log line; lock-busy log; compaction skipped on call brain turns; 8 exchanges, old results cut to 1,500 chars; 4 tests; version 0.637.0+643 (re-versioned: their WEB DEVELOPMENT PANEL took 0.636.0).
 Stage Summary: pushed to main + feature branch; next call's `brain prep` line names the slow stage.
+
+---
+Task ID: v0.638.0 TEZ TAIYARI
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her `brain prep 19.6s` line - cut memory 7.0 s / MCP 4.5 s / hint 1.8 s on call brain turns.
+Work Log: parallel memory under 2.5 s, MCP snapshot_fast, hint skipped; 3 tests; version 0.638.0+644.
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line should read ~3-4 s.
