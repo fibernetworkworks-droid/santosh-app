@@ -21509,3 +21509,26 @@ chars** plus a 2,470-char block - more than the whole small menu, and the small-
   tool (as chat). The full menu keeps the old behaviour.
 - Expected: ~29k -> ~14-15k tokens a reply. NOT VERIFIED until her next call's `gemini tokens` line.
 Test added to `test_v0628_chhoti_hidayat.py`.
+
+## v0.630.0 HAIKU DIMAAG - ordinary asks on Haiku, the call's brain on Haiku, Gemini only the voice
+
+Owner: "HAIKU CAN DO ALL BASIC TASK PERFECTLY" then "FINE EVEN SHIFT VOICE BRAIN ON HAIKU -- GEMINI FOR VOICE ONLY".
+Evidence it can: live Haiku cards on her server - tools 26/26 (v0.584), hard 9/9, long jobs 4/5 (v0.587).
+- CHAT: `santosh.model_for` gives an ordinary ask (not hard, not a long job) `chat_simple_model` (claude-haiku-5-5, ~13x
+  cheaper than Sonnet: ~Rs 0.09 vs ~Rs 1.20 a cached turn). Hard asks still Opus 5.5, long jobs still Sonnet 5.5 at
+  xhigh. Any Haiku failure retries the SAME call on Sonnet once; a 404 / unknown model turns Haiku off for the process
+  (`SIMPLE_MODEL`, separate from `HARD_MODEL` so Opus is never switched off by it). Off: `CHAT_SIMPLE_MODEL=`.
+- CALL (`voice_brain`, default on): Gemini Live declares ONE tool, `santosh_kaam` re-described as "Hoola ka dimaag"
+  (BLOCKING - he waits for the answer, never guesses), `PERSONA_BRAIN` (~2.5k chars: call santosh_kaam with her EXACT
+  words for anything that needs an answer, then say what it returns), a one-line context instead of the memory / kaam /
+  coder / MCP brief, no MCP tools. `_delegate` sets `VOICE_BRAIN_NOW` (copied into the turn's task) so the brain turn
+  runs on `voice_brain_model` (Haiku; hard -> Opus, long -> Sonnet as in chat) with `BRAIN_NOTE` (spoken style: 1-3
+  short sentences, Roman Hinglish, no lists / links), and waits `voice_brain_wait_s` (20 s) before saying it is working
+  (the late result is spoken as before). The brain gets HER live words (Gemini's version rides as "Call ne samjha"); a
+  note-driven call with no new words never re-runs her older ask. `finish_turn` skips `_save_turn` / `yaad.after_turn`
+  once a brain turn ran (the brain turn already saved the ask + answer + memory in the chat). Approvals by voice, OTP
+  listening, hold, parking, news and reminder rings are untouched. Off: `VOICE_BRAIN=false` (the v0.629 small menu).
+- Expected cost: Gemini re-reads ~2-3k chars + the call's audio a reply instead of ~14k tokens, two short generations per
+  ask (tool call + speech) + a Haiku turn (~Rs 0.1-0.3). NOT VERIFIED until her next call's `gemini tokens` line; a
+  pause of ~2-5 s while the brain works (no filler sound since v0.625) is the trade-off - not yet heard on a real phone.
+Tests `test_v0630_haiku_dimaag.py` (5); conftest keeps the older suites on Sonnet / the Gemini brain.

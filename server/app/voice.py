@@ -302,6 +302,42 @@ assert "\n\nWhen to speak\n" in PERSONA
 PERSONA = PERSONA.replace("\n\nWhen to speak\n", "\n\n" + _VOICE_RULES + "\nWhen to speak\n", 1)
 PERSONA_LEAN = PERSONA_LEAN.replace("\n\nWhen to speak\n", "\n\n" + _VOICE_RULES + "\nWhen to speak\n", 1)   # v0.628 same rulebook
 
+BRAIN_NOTE = ("[Call: yeh jawab call par BOLA jayega. 1-3 chhote bolne wale vaakya, usi ki bhasha (Roman Hinglish agar woh "
+              "Hinglish bolti hai), koi list / markdown / link / emoji nahi. Kaam ho to tool se karo, phir ek line mein batao.]")
+BRAIN_CONTEXT = "(Uski yaad, kaam aur saari jaankari Hoola ke dimaag (santosh_kaam) ke paas hai - wahi se poochho.)"
+
+# v0.630 HAIKU DIMAAG (owner: "SHIFT VOICE BRAIN ON HAIKU -- GEMINI FOR VOICE ONLY"): Gemini Live only HEARS and SPEAKS.
+# Every ask goes, in her own words, to the Hoola brain (Haiku, every chat tool, her memory) through ONE tool; Gemini
+# says the answer. Gemini re-reads its whole context on every reply, so this prompt + one tool is all it carries.
+BRAIN_DELEGATE = {
+    "name": "santosh_kaam",
+    "description": ("Hoola ka dimaag: her EXACT words go here for EVERY question, task or answer of hers. It has her memory, "
+                    "email, reminders, search and every tool. Returns the reply to speak."),
+    "input_schema": {"type": "object", "properties": {"request": {"type": "string", "description": "Her exact words"}},
+                     "required": ["request"]},
+}
+
+PERSONA_BRAIN = """You are Santosh's VOICE on a live phone call with the user. You hear her and you speak; the thinking is done by Hoola's brain, the tool santosh_kaam.
+
+Who you are
+- You are male: "main kar raha hoon", "maine dekh liya". A warm, sharp Indian voice of about 27 from Pune, native Indian accent and rhythm.
+
+The one rule
+- Whenever she says ANYTHING that needs an answer (a question, a job, a reply to something asked, "haan" / "nahi" to a question), call santosh_kaam with her EXACT words, in her language. Never answer from yourself, never guess a fact, a time, a number or a result, never say a thing is done.
+- Then say the reply it returns, in your natural spoken voice, the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
+- If it says the work is still running, say one short line that it is being done and carry on; when a note arrives with the result, say it in a line or two.
+- Only a greeting, "hello", "ek second" or small talk with no question you may answer yourself, in one short line.
+- Notes in brackets from the system are for you: say what they ask, briefly. Never read a bracket aloud.
+
+How you talk
+- Spoken Hinglish as people really talk; match her mix. Short, warm, never "Certainly" or "How can I help you today".
+
+When to speak
+- Wait for her to finish. If she talks over you, stop.
+
+About the user
+{context}"""
+
 
 # v0.149 The big Sahayak / builder tools are NOT declared to Gemini Live any more: 280 tools (~395 KB of JSON, ~110k
 # tokens) filled the live model's context before she said a word, so sessions died and the call sat on "Connection thoda
@@ -501,6 +537,8 @@ def _tool_specs() -> list[dict]:
     from .agent.tools import VOICE_SPECS   # v0.313 the call keeps the short descriptions (chat got the full ones)
     specs = [_compact(t) for t in VOICE_SPECS
              if (t["name"] in VOICE_TOOL_NAMES and not via_kaam(t["name"])) or t["name"] in VOICE_HEADS] + [DELEGATE] + extra
+    if get_settings().voice_brain:
+        return [BRAIN_DELEGATE] + extra   # v0.630 HAIKU DIMAAG: one tool - the brain has every chat tool
     if get_settings().voice_lean_tools:
         # v0.627 CHHOTA MENU: Gemini Live bills the whole declared tool list on EVERY reply, even when one tool is used.
         # The call declares only everyday tools; every other job is still done - an undeclared name, or santosh_kaam,
@@ -723,6 +761,8 @@ def persona_prompt(name: str = "Santosh", gender: str = "m") -> str:
     from .avatar.service import personalise
     from .avatar.service import gendered
     p = PERSONA_LEAN if get_settings().voice_lean_tools else PERSONA   # v0.628 short persona with the small menu
+    if get_settings().voice_brain:
+        p = PERSONA_BRAIN   # v0.630 HAIKU DIMAAG: Gemini is only the voice
     if get_settings().voice_side_talk:   # v0.142 who is she talking to? (before "About the user", which must stay last)
         from .sidetalk import PERSONA_BLOCK
         p = p.replace("\n\nAbout the user", "\n\n" + PERSONA_BLOCK.replace("{name}", "Santosh") + "\n\nAbout the user", 1)
@@ -786,6 +826,8 @@ def is_slow(name: str) -> bool:
 def _behavior_kw(types, name: str) -> dict:
     if not get_settings().voice_tool_behavior or "behavior" not in types.FunctionDeclaration.model_fields:
         return {}
+    if name == "santosh_kaam" and get_settings().voice_brain:
+        return {"behavior": types.Behavior.BLOCKING}   # v0.630 he waits for the brain's answer, never guesses one
     return {"behavior": types.Behavior.NON_BLOCKING if is_slow(name) else types.Behavior.BLOCKING}
 
 
@@ -2387,6 +2429,10 @@ class Call:
                 log.exception("voice coder block failed")
                 return ""
 
+        if get_settings().voice_brain:
+            # v0.630 HAIKU DIMAAG: memory, jobs and MCP live with the brain (it reads them on every ask); the voice
+            # gets only her name line - Gemini re-reads this on every reply
+            return BRAIN_CONTEXT, []
         if self._safe >= 1:
             self._mcp_off = True      # v0.150 her MCP servers are listed, used through bazar_run
         ymem, kb, cb, mcp_defs = await asyncio.gather(_yaad_block(), _kaam_block(), _coder_blk(), _mcp())
@@ -2822,6 +2868,10 @@ class Call:
             del self.turns_log[:-120]
             if interrupted and reply:
                 reply += " …"   # he was cut off: the chat history shows it
+            if get_settings().voice_brain and self.stats.get("brain_turns"):
+                # v0.630 HAIKU DIMAAG: the brain turn already saved her words + the answer (and its memory) in the
+                # chat - the spoken copy would land twice
+                return
             try:
                 await asyncio.to_thread(_save_turn, self.conv, user, reply)   # v0.221 off the audio loop
             except Exception:
@@ -2867,10 +2917,19 @@ class Call:
         place = self._place(request)     # v0.93 her PC vs Hoola's own browser travels with the job
         # v0.441 PAKKA KAAM: the job is saved in the durable turn inbox BEFORE it starts (like a chat message), so a
         # server restart / deploy / crash mid-job re-runs it once by itself (turn_inbox.sweep) instead of losing it.
-        inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, self.conv, request, False, "", "",
+        brain = bool(get_settings().voice_brain)
+        note = BRAIN_NOTE if brain else ""
+        inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, self.conv, request, False, note, "",
                                            place)
-        job = asyncio.create_task(turn_inbox.run_owned(inbox_id, self.conv, request, self.ctx.tenant_id, False,
-                                                       place=place))
+        from .agent import santosh as _brain
+        tok = _brain.VOICE_BRAIN_NOW.set(brain)   # v0.630 copied into the task: this turn thinks on voice_brain_model
+        try:
+            job = asyncio.create_task(turn_inbox.run_owned(inbox_id, self.conv, request, self.ctx.tenant_id, False,
+                                                           context=note, place=place))
+        finally:
+            _brain.VOICE_BRAIN_NOW.reset(tok)
+        if brain:
+            self.stats["brain_turns"] = self.stats.get("brain_turns", 0) + 1
         _JOBS.add(job)
         job.add_done_callback(_JOBS.discard)
         running = getattr(self, "_kaam_running", None)
@@ -2878,7 +2937,8 @@ class Call:
             running = self._kaam_running = {}
         running[id(job)] = request
         job.add_done_callback(lambda j: running.pop(id(j), None))
-        done, _ = await asyncio.wait({job}, timeout=max(1, get_settings().voice_tool_wait_s))
+        wait = get_settings().voice_brain_wait_s if brain else get_settings().voice_tool_wait_s
+        done, _ = await asyncio.wait({job}, timeout=max(1, wait))
         if job in done:
             return {"result": job.result()}
         job.add_done_callback(lambda j: self._late_result(j, request))
@@ -2974,7 +3034,16 @@ class Call:
             return out
         self.ctx.place = self._place(str(args.get("request") or args.get("task") or ""))
         if name == "santosh_kaam":
-            return await self._delegate(str(args.get("request", "")))
+            req = str(args.get("request", ""))
+            live_words = (getattr(self, "user_buf", "") or "").strip()
+            typed = getattr(self, "_typed", None)
+            if not live_words and typed and time.monotonic() - typed[1] < 30:
+                live_words = typed[0]
+            said = live_words   # v0.630 only THIS turn's words: never an older ask re-run on a note
+            if get_settings().voice_brain and said and said.strip() != req.strip():
+                # v0.630 the brain gets HER words (the voice model may shorten or translate them)
+                req = said + (f"\n(Call ne samjha: {req})" if req.strip() else "")
+            return await self._delegate(req)
         if name in self._mcp_route:   # a tool of one of the owner's MCP servers
             from .agent import mcp_live
             out = await asyncio.wait_for(mcp_live.run(self.ctx, self._mcp_route, name, args),
@@ -3200,6 +3269,9 @@ class Call:
         from .agent import mcp_live
         try:
             snap = await asyncio.to_thread(mcp_live.snapshot, self.tenant)
+            if get_settings().voice_brain:   # v0.630 the brain has every MCP tool; the voice carries nothing
+                self._mcp_snap, self._mcp_route, self._mcp_block = snap, {}, ""
+                return []
             if get_settings().voice_lean_tools:
                 # v0.629 MCP BHI CHHOTA: her MCP servers' tools were declared on top of the small menu (measured on her
                 # server: 32 tools, 52k chars - more than the whole menu) and Gemini re-reads them on every reply. On a

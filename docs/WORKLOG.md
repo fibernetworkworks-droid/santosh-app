@@ -1729,3 +1729,11 @@ Task: Owner "SAVE THE STATE" after the Gemini cost work.
 Work Log: live healthz 0.629.0 = 1dec230f; branch stable-2026-11-06-voice-v629 cut there; markers + voice suites re-run in the
 extracted commit; APK v0.629.0-b1820; measured 09:27 call ~13.5k tokens/reply, $0.054.
 Stage Summary: cheap-call state saved; rollback = usual VPS commands with this branch.
+
+---
+Task ID: v0630-haiku-dimaag
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Haiku for basic tasks + "SHIFT VOICE BRAIN ON HAIKU -- GEMINI FOR VOICE ONLY".
+Work Log: model_for -> chat_simple_model (Haiku) with Sonnet fallback; voice_brain mode (one tool, PERSONA_BRAIN, tiny
+context, brain turn on voice_brain_model with her words); conftest switches; 5 tests.
+Stage Summary: v0.630.0; verify with her next call's `gemini tokens` + chat turn log.

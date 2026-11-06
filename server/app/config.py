@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     agent_hard_effort: str = "high"        # v0.331 Claude effort for a hard reasoning ask (agent/hard.py); '' = model default
     agent_long_on_claude: bool = True       # v0.331 a long job's calls go to Claude even when CHAT_LLM picks a cheaper brain
     agent_hard_model: str = "claude-opus-5-5"   # v0.429 SOCH KE JAWAB 2: a hard reasoning ask runs on the strongest model ('' = anthropic_model)
+    chat_simple_model: str = "claude-haiku-5-5"   # v0.630 HAIKU DIMAAG: an ordinary (not hard, not long) ask runs on Haiku ('' = anthropic_model); a failure answers on Sonnet
     agent_hard_max_tokens: int = 16000      # v0.429 per call for a hard ask (thinking counts; 2000 cut the answer)
     agent_hard_on_claude: bool = True       # v0.429 a hard ask goes to Claude even when CHAT_LLM picks a cheaper brain
     agent_goal_rounds: int = 6              # background continuation turns per goal (v0.473: 3 -> 6; resumes after her tap are free)
@@ -481,6 +482,9 @@ class Settings(BaseSettings):
     openai_api_key: str = ""                          # VPS .env only (OPENAI_API_KEY), never in chat or the repo
     voice_openai_enabled: bool = False
     voice_lean_tools: bool = True    # v0.627 the call declares only LEAN_TOOLS (Gemini bills the whole tool list on every reply); the rest via santosh_kaam
+    voice_brain: bool = True         # v0.630 HAIKU DIMAAG: Gemini Live is ONLY the voice (hears + speaks); every ask goes to the Hoola brain (voice_brain_model) with every chat tool
+    voice_brain_model: str = "claude-haiku-5-5"
+    voice_brain_wait_s: int = 20      # v0.630 the voice waits this long for the brain's answer, then says it is working   # v0.630 the call's brain ('' = the chat model); hard / long asks still go up (Opus / Sonnet)
     voice_reminder_guard: bool = True   # v0.624 a create_reminder with no reminder ask in her words goes to santosh_kaam                # v0.622 owner: every call on Gemini; True brings the OpenAI choice back
     voice_openai_model: str = "gpt-realtime-2.1-mini"   # the mini only: the full model costs 4-10x Gemini
     voice_openai_voice_m: str = "cedar"

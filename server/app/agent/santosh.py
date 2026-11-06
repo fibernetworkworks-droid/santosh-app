@@ -439,12 +439,23 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
                                               "id": "hard-check"})
 
 
+# v0.630 HAIKU DIMAAG: set by a voice call before it hands her words to the brain (copied into the turn's task)
+VOICE_BRAIN_NOW: _cv.ContextVar[bool] = _cv.ContextVar("hoola_voice_brain_now", default=False)
+SIMPLE_MODEL = {"ok": True, "calls": 0, "failed": 0}
+
+
 def model_for(settings, hard: bool, long_job: bool) -> str:
     """'' = the chat model. A hard reasoning ask (not a long job - those run many steps and stay on the chat model at
-    agent_long_effort) gets agent_hard_model."""
+    agent_long_effort) gets agent_hard_model. v0.630 HAIKU DIMAAG: an ordinary ask (not hard, not long) gets
+    chat_simple_model (Haiku, ~13x cheaper than Sonnet); a voice call's brain turn gets voice_brain_model."""
     if hard and not long_job:
         return str(getattr(settings, "agent_hard_model", "") or "")
-    return ""
+    if long_job:
+        return ""
+    if VOICE_BRAIN_NOW.get() and getattr(settings, "voice_brain_model", ""):
+        return str(settings.voice_brain_model) if SIMPLE_MODEL["ok"] else ""
+    simple = str(getattr(settings, "chat_simple_model", "") or "")
+    return simple if simple and SIMPLE_MODEL["ok"] else ""
 EFFORT = {"ok": True, "calls": 0, "refused": 0}
 
 
@@ -525,20 +536,21 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         _ctx.after_call(brain, system, tools, history, usage.get("prompt_tokens"), bool(usage.get("estimated")))
         return blocks, stop
     over = _MODEL_NOW.get()
-    if over and over != settings.anthropic_model and HARD_MODEL["ok"]:
+    stat = HARD_MODEL if over == str(getattr(settings, "agent_hard_model", "") or "") else SIMPLE_MODEL
+    if over and over != settings.anthropic_model and stat["ok"]:
         # v0.429 SOCH KE JAWAB step 2: a hard reasoning ask runs on the strongest model (agent_hard_model, Opus). Any
         # failure there (not available on this key, overloaded, ...) retries the SAME call on the chat model once, so
         # she always gets an answer; a 404 / unknown model turns the switch off for this process.
         try:
-            HARD_MODEL["calls"] += 1
+            stat["calls"] += 1
             return await _claude_call(over, system, history, settings, tools, live, cap, think, api_stream)
         except asyncio.CancelledError:
             raise
         except Exception as e:   # noqa: BLE001 - the chat model answers instead
-            HARD_MODEL["failed"] += 1
+            stat["failed"] += 1
             if _model_refused(e):
-                HARD_MODEL["ok"] = False
-            log.warning("hard model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
+                stat["ok"] = False
+            log.warning("model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
             if live is not None:
                 live.reset()
     return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
