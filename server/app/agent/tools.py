@@ -381,6 +381,12 @@ TOOLS.extend(FINOPS_TOOLS)
 TOOL_LABELS.update(FINOPS_LABELS)
 HANDLERS.update(FINOPS_HANDLERS)
 
+from .riskdesk_tools import RISKDESK_HANDLERS, RISKDESK_LABELS, RISKDESK_TOOLS  # noqa: E402  v0.603 Risk Desk (markets and credit papers, Wave 3)
+
+TOOLS.extend(RISKDESK_TOOLS)
+TOOL_LABELS.update(RISKDESK_LABELS)
+HANDLERS.update(RISKDESK_HANDLERS)
+
 from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
 
 TOOLS.extend(KAAN_TOOLS)

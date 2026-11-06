@@ -14,7 +14,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.603.0"
+    assert APP_VERSION == "0.604.0"
 
 
 def _png(blocks, size=(400, 300)):

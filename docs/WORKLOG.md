@@ -1595,5 +1595,5 @@ Stage Summary:
 - THE AEP TRAIN IS COMPLETE: P1 HOOLA CORE v0.510.0 -> P2 HOOLA TRACE v0.520.0 -> P3 HOOLA GRAPH v0.530.0 -> P4 HOOLA AGENT v0.549.0 -> P5 HOOLA MIDDLEWARE v0.566.0 -> P6 HOOLA RETRIEVE v0.580.0 -> P7 HOOLA HUB v0.589.0 -> P8 HOOLA AEP 1.0 v0.600.0 - eight phases, ~11.5k LOC of hand-built platform, 369 suite tests, every langchain feature a house module + a proving test, the parity verdict COMPUTED. Deploy is the owner's dispatch (server-only: checkout main + cp -r server/app + pm2 restart santosh --update-env; healthz should say 0.600.0).
 
 ---
-Task ID: v0.603.0 YAAD SACH
+Task ID: v0.604.0 YAAD SACH (built as 0.603.0)
 - Memory audit (probes) -> incognito leak into Coder vault + KG fixed with sweep; fact updates replace; forget cleans every memory copy. Tests 13.
