@@ -26,4 +26,4 @@ def test_broken_xlsx_still_fails(tmp_path):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.620.0"
+    assert APP_VERSION == "0.621.0"

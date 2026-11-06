@@ -132,4 +132,4 @@ def test_goal_round_text_is_never_her_words(gz, monkeypatch):  # noqa: F811
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.620.0"
+    assert APP_VERSION == "0.621.0"

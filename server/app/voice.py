@@ -1339,6 +1339,15 @@ def pool_clips(kind: str, voice: str, gender: str) -> list[bytes]:
     return []
 
 
+def tenant_live(tenant: str) -> bool:
+    """v0.621 is ANY call of this tenant live right now (on any of her chats)?"""
+    for calls in list(ACTIVE.values()):
+        for _loop, c in list(calls):
+            if getattr(c, "tenant", "") == tenant and not c.closed.is_set():
+                return True
+    return False
+
+
 def inject(conversation_id: str, text: str) -> int:
     """Hand a note to every live call on this conversation (thread-safe). Returns how many calls got it."""
     n = 0

@@ -1656,3 +1656,9 @@ Work Log:
 - Deploy: server-only = owner's vps-ops dispatch; desktop untouched.
 
 Stage Summary: v0.620.0 BHANDAR MANCH shipped on origin/main - the T2 local-core lane live behind the guard wall, zero keys, zero logins, zero new pip.
+
+---
+Task ID: v0.621.0 YAAD KI GHANTI
+Task: owner - reminder not working via voice.
+Work: traced fire_reminders; live call path proven end to end; no-live-call path had no voice at all -> ring + call opens with the reminder; reminder rings skip job quiet hours.
+Result: test_v0621 6 green; console stamps healed 0.618 -> 0.621. Not verified on her phone.

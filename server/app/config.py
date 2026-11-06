@@ -535,6 +535,8 @@ class Settings(BaseSettings):
     voice_auto_rescue: bool = True         # v0.211 a tool failing twice hands the work to the full agent by itself (the call never just gives up)
     voice_setup_hard_keep_s: int = 3600    # v0.211 heavy setup losses (compression / tools) self-heal after this long - memory and tools come back on their own
     voice_ring: bool = True                # v0.219 ON: the native side learned the kind (SantoshPush turns the push into the wake: path + auto-call); off = the v0.214 behaviour
+    voice_ring_reminders: bool = True      # v0.621 a due reminder with no live call rings her and the call says it
+    voice_ring_reminder_max_day: int = 12  # ...her own reminders: quiet hours do not apply, only this sanity cap
     voice_ring_max_day: int = 2            # v0.211 rings per tenant per day (the phone is not an alarm clock)
     voice_ring_quiet: str = "22-8"         # v0.211 quiet hours in the tenant's own timezone - no rings inside
 

@@ -21317,3 +21317,29 @@ pause move; phone pins; settings; version. Voice suites: 201 + 35 green.
 - the wake delay, i.e. how long between her first word and Gemini being back;
 - whether Google's resumption handle survives a long park (the fresh-session fallback is tested only with fakes);
 - the real cost of an idle hour.
+
+
+## v0.621.0 YAAD KI GHANTI - a reminder is SAID, even when no call is open (owner: "CHECK THE ISSUE REMINDER NOT WORKING VIA VOICE")
+
+**The cause.** A due reminder runs through `worker.fire_reminders`. It wrote a chat line, published the `reminder`
+event and sent a notification. v0.618 made a LIVE call speak that event, which is re-proved end to end in this
+release: the real `fire_reminders` reaches the Gemini session as a note. With NO call live, though, nothing ever
+spoke the reminder or rang her phone. Finished jobs had rung her since v0.553 (GHANTI); reminders never did.
+
+**The fix.** `worker._ring_for_reminder` runs when no call of the tenant is live (`voice.tenant_live`, any chat):
+- it saves a call followup note (`yaad.note_call_followup`);
+- it publishes `voice_ring` with `reminder: true` through the bus, so an OPEN app rings from its live stream and a
+  closed one through the FCM push;
+- the call that starts takes the followup note into its greeting and OPENS with the reminder.
+
+**Ring rules (`push._ring_allowed(..., reminder=True)`).** Her own reminder ignores the job-ring quiet hours and the
+2-a-day job budget. Its own cap is `VOICE_RING_REMINDER_MAX_DAY` (12). It never rings over a live call. Switch:
+`VOICE_RING_REMINDERS` (on).
+
+**Housekeeping.** The console stamps had stayed at 0.618 through v0.619 / v0.620, which turned test_v0475's stamp
+test red on main; they now move to 0.621.
+
+**Tests.** `test_v0621_yaad_ki_ghanti.py`, 6 tests.
+
+**NOT VERIFIED on her phone.** The ring for a reminder uses the same native path as job rings (SantoshPush ->
+Notify.ring / wake), which has worked for jobs since v0.219.
