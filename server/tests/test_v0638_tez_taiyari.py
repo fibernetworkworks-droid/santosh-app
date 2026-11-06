@@ -105,3 +105,15 @@ def test_v0642_fact_extract_embeds_off_the_loop():
     assert "await asyncio.to_thread(_near)" in src
     body = src.split("def _near():")[0]
     assert "semantic.rank(" not in body     # never called directly on the loop
+
+
+def test_v0643_call_brain_is_haiku_even_for_a_big_ask():
+    st = types.SimpleNamespace(voice_brain_model="claude-haiku-5-5", agent_hard_model="opus", chat_simple_model="")
+    tok = santosh.VOICE_BRAIN_NOW.set(True)
+    try:
+        assert santosh.model_for(st, False, True) == "claude-haiku-5-5"     # long job on a call
+        assert santosh.model_for(st, True, False) == "claude-haiku-5-5"     # hard on a call
+    finally:
+        santosh.VOICE_BRAIN_NOW.reset(tok)
+    assert santosh.model_for(st, False, True) == ""                          # chat long job unchanged
+    assert santosh.model_for(st, True, False) == "opus"                      # chat hard unchanged

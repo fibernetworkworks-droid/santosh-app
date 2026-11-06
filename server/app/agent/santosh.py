@@ -470,12 +470,15 @@ def model_for(settings, hard: bool, long_job: bool) -> str:
     """'' = the chat model. A hard reasoning ask (not a long job - those run many steps and stay on the chat model at
     agent_long_effort) gets agent_hard_model. v0.630 HAIKU DIMAAG: an ordinary ask (not hard, not long) gets
     chat_simple_model (Haiku, ~13x cheaper than Sonnet); a voice call's brain turn gets voice_brain_model."""
+    if VOICE_BRAIN_NOW.get() and getattr(settings, "voice_brain_model", ""):
+        # v0.643 FIRST: a call question that LOOKS big ("PDF banao", an open long job in the chat) used to fall into
+        # the long-job branch and ran on Sonnet with a 16k cap - her 17:44 call: 9.1 + 5.8 + 23.0 + 4.3 s. She is
+        # waiting on the line; the call brain is always voice_brain_model (Haiku)
+        return str(settings.voice_brain_model) if SIMPLE_MODEL["ok"] else ""
     if hard and not long_job:
         return str(getattr(settings, "agent_hard_model", "") or "")
     if long_job:
         return ""
-    if VOICE_BRAIN_NOW.get() and getattr(settings, "voice_brain_model", ""):
-        return str(settings.voice_brain_model) if SIMPLE_MODEL["ok"] else ""
     simple = str(getattr(settings, "chat_simple_model", "") or "")
     return simple if simple and SIMPLE_MODEL["ok"] else ""
 EFFORT = {"ok": True, "calls": 0, "refused": 0}
@@ -579,6 +582,15 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
 
 
+def _sent_model(model: str) -> str:
+    """v0.643 the model the SDK door really sends (usage.one_model may rewrite it), for the `claude call` log line."""
+    try:
+        from .. import usage
+        return str(usage.one_model({"model": model}).get("model") or model)
+    except Exception:
+        return model
+
+
 async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
                        think: bool, streaming: bool) -> tuple[list[dict], str]:
     """v0.635 every Claude call's own time + shape in the log (`claude call 4.2s ...`): her call turns spent 20 s before
@@ -596,7 +608,7 @@ async def _claude_call(model: str, system: str, history: list[dict], settings, t
     finally:
         try:
             log.info("claude call %.1fs model=%s msgs=%d chars=%d tools=%d think=%s effort=%s cap=%d voice=%s",
-                     time.monotonic() - t0, model, len(history),
+                     time.monotonic() - t0, _sent_model(model), len(history),
                      len(str(system)) + sum(len(str(m.get("content"))) for m in history),
                      len(tools or []), bool(think and THINK["ok"]), _EFFORT_NOW.get() or "-", cap,
                      VOICE_BRAIN_NOW.get())

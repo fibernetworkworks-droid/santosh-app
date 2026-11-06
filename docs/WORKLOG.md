@@ -1824,3 +1824,10 @@ Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: watchdog: 4.7 s loop freeze in yaad.extract_facts embeddings.
 Work Log: _known + semantic.rank -> asyncio.to_thread; 1 test; version 0.642.0+648.
 Stage Summary: pushed; khata test_reminders red pre-existing (stash-proven).
+
+---
+Task ID: v0.643.0 HAMESHA HAIKU
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: 17:44 call ran on Sonnet 16k for a big-looking ask.
+Work Log: model_for voice-brain first; log prints the sent model; 1 test; version 0.643.0+649.
+Stage Summary: pushed.

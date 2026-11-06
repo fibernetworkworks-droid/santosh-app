@@ -21732,3 +21732,12 @@ async but ran `_known` (DB) and `semantic.rank` (the on-box ONNX embedding model
 freezing everything - her call's audio and the next call ask's prep (memory 5.2 s). Now both run in `asyncio.to_thread`.
 Test `test_v0642_fact_extract_embeds_off_the_loop`. Pre-existing red, unrelated, proven on the stashed tree:
 `test_v0375_khata_yaad.py::test_reminders`.
+
+## v0.643.0 HAMESHA HAIKU — a call question always runs on the call brain's model
+
+Her 17:44 call after v0.642: `brain prep 3.8s` (19.6 s earlier the same day; yaad still left out at 2.5 s), one 1.5 s
+loop stall, then four steps logged as `model=claude-sonnet-5-5 ... cap=16000` (9.1 + 5.8 + 23.0 + 4.3 s). `model_for`
+checked hard -> long-job BEFORE the voice-brain case, so a call ask that looked big (`state["big"]`: "PDF banao", an open
+goal in the chat) got the chat model + the long-job cap. The voice-brain case is now first: always `voice_brain_model`.
+Also: the `claude call` log printed the REQUESTED model; `usage.one_model` may rewrite it at the SDK door, so it now
+prints what is sent (`_sent_model`). Test `test_v0643_call_brain_is_haiku_even_for_a_big_ask`.
