@@ -1737,3 +1737,10 @@ Task: Owner: Haiku for basic tasks + "SHIFT VOICE BRAIN ON HAIKU -- GEMINI FOR V
 Work Log: model_for -> chat_simple_model (Haiku) with Sonnet fallback; voice_brain mode (one tool, PERSONA_BRAIN, tiny
 context, brain turn on voice_brain_model with her words); conftest switches; 5 tests.
 Stage Summary: v0.630.0; verify with her next call's `gemini tokens` + chat turn log.
+
+---
+Task ID: v0631-sab-haiku
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "DO EVERY THING HAIKU FOR NOW --- SIMPLE TO HARD"; her 10:52 call failed on "credit balance is too low".
+Work Log: claude_one_model lock at the SDK door; credit error said plainly; 3 tests.
+Stage Summary: v0.631.0; she must recharge Anthropic credit for anything Claude to work.

@@ -21532,3 +21532,16 @@ Evidence it can: live Haiku cards on her server - tools 26/26 (v0.584), hard 9/9
   ask (tool call + speech) + a Haiku turn (~Rs 0.1-0.3). NOT VERIFIED until her next call's `gemini tokens` line; a
   pause of ~2-5 s while the brain works (no filler sound since v0.625) is the trade-off - not yet heard on a real phone.
 Tests `test_v0630_haiku_dimaag.py` (5); conftest keeps the older suites on Sonnet / the Gemini brain.
+
+## v0.631.0 SAB HAIKU - every Claude call on Haiku, for now
+
+Owner: "DO EVERY THING HAIKU FOR NOW --- SIMPLE TO HARD" (after her Anthropic credit ran out; today's spend: background
+jobs on Sonnet ~Rs 147, routines ~Rs 94, chat on Haiku ~Rs 27).
+- `claude_one_model` (default claude-haiku-5-5): `usage.one_model` rewrites the model of EVERY Claude Messages.create
+  at the SDK wrapper (`usage.install`) - chat, hard asks (were Opus), long jobs, background (coder observer, memory,
+  call receipt), routines, and every engine including models written in their code (site / app / game / CAD / 3D /
+  notebook / studio). Gemini untouched. The usage meter prices the model really used. Off: `CLAUDE_ONE_MODEL=`.
+- `_friendly_error`: "credit balance is too low" now says "Anthropic ka credit khatam ho gaya hai - recharge kijiye"
+  instead of "kuch gadbad (code 400)".
+- Trade-off said plainly: Opus-grade work (websites, apps, CAD, games, hard reasoning) will be weaker on Haiku.
+Tests `test_v0631_sab_haiku.py` (3).

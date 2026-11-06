@@ -361,6 +361,25 @@ def _gemini_fallback(kw: dict, e: Exception) -> str:
     return ""
 
 
+ONE_MODEL = {"moved": 0}
+
+
+def one_model(kw: dict) -> dict:
+    """v0.631 SAB HAIKU: with claude_one_model set, every Claude call (chat, hard asks, long jobs, background jobs,
+    routines, every engine - including the ones with a model written in their code) runs on that one model. Applied
+    at the SDK, the one door every Claude call passes, so nothing can quietly spend Opus or Sonnet."""
+    try:
+        from .config import get_settings
+        one = str(getattr(get_settings(), "claude_one_model", "") or "").strip()
+    except Exception:
+        return kw
+    m = str(kw.get("model") or "")
+    if one and m.startswith("claude-") and m != one:
+        ONE_MODEL["moved"] += 1
+        return {**kw, "model": one}
+    return kw
+
+
 def install() -> None:
     """Wrap the SDKs once (idempotent): every Claude / Gemini call anywhere in Hoola is counted."""
     if _INSTALLED[0]:
@@ -371,12 +390,14 @@ def install() -> None:
         a_orig, s_orig = AsyncMessages.create, Messages.create
 
         async def a_create(self, *a, **kw):
+            kw = one_model(kw)
             r = await a_orig(self, *a, **kw)
             if not kw.get("stream"):
                 from_anthropic(kw.get("model", ""), r)
             return r
 
         def s_create(self, *a, **kw):
+            kw = one_model(kw)
             r = s_orig(self, *a, **kw)
             if not kw.get("stream"):
                 from_anthropic(kw.get("model", ""), r)

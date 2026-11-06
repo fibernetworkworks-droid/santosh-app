@@ -157,5 +157,5 @@ def test_owner_only(site_env):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.630.0"
-    assert "0.630.0+636" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.631.0"
+    assert "0.631.0+637" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

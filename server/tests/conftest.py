@@ -52,6 +52,7 @@ def _full_voice_menu(monkeypatch):
     from app.config import get_settings
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
+    monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku
     get_settings.cache_clear()
     yield
@@ -83,6 +84,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("VOICE_OPENAI_ENABLED", "true")   # v0.622 production is Gemini-only; the OpenAI suites still test that engine
     monkeypatch.setenv("VOICE_BRAIN", "false")       # v0.630 see _full_voice_menu
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")
+    monkeypatch.setenv("CLAUDE_ONE_MODEL", "")
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")  # v0.627 production declares the small menu; older suites pin the full one (test_v0627 checks the small one)
     monkeypatch.setenv("VOICE_PARK", "false")        # v0.617 older call suites expect a live Gemini session; test_v0617 turns it on
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests

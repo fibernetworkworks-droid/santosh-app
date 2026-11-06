@@ -706,7 +706,10 @@ def _friendly_error(e: BaseException) -> str:
     low = s.lower()
     busy = any(x in low for x in ("not reachable", "error 429", "error 5", "overloaded", "rate limit", "timed out", "broken answer"))
     from . import context as _ctx
-    if _ctx.is_overflow(s):
+    if "credit balance is too low" in low or "billing" in low and "anthropic" in low:
+        # v0.631 her account is out of credit: say it plainly, it is not a bug and waiting will not fix it
+        head = "Anthropic ka credit khatam ho gaya hai - console.anthropic.com > Plans & Billing par recharge kijiye, phir dobara boliye."
+    elif _ctx.is_overflow(s):
         head = "Yeh chat bahut lambi ho gayi hai. Naya chat shuru karke wahi baat bolein - pichhli baatein yaad rahengi."
     elif busy:
         head = "Abhi AI service busy ya unreachable hai, thodi der baad phir bolna."
