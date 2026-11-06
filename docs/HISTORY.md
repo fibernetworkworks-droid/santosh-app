@@ -2,6 +2,79 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.544.0 LEADS VENDOR + SCALE — P4 of the leads plan: the vendor lane (config-gated, priced before the run) and the scale half (the graph fan-out enrich + the honest store backend) (6 Nov 2026)
+
+Owner: "P4 (vendor lane + scale)". P4 of docs/LEADS_PLAN.md sections 4 L3, 10 and 12.4.
+The sources ladder of plan section 4 is now COMPLETE: HER_DATA P0 + REGISTRY P1 +
+OFFICIAL_API P1 + SCRAPE P3 + VENDOR P4 — `rules.LANE_ARRIVES` is empty, and an unknown
+lane name is still refused by name ("koi lane hi nahi hai").
+
+THE VENDOR LANE (app/leads/vendor.py + run_vendor in service.py): ONE licensed lead-data
+vendor behind the SAME leads_run job shape (the research R6 pattern). THE HONEST STATE,
+said plainly: no vendor is named yet — plan section 12.4 ("pick the licensed lead vendor in
+P4 — she names the vendor and the budget") is HER decision, so the lane is CONFIG-GATED the
+way SCRAPE is opt-in gated: until she sets LEADS_VENDOR_NAME / _BASE_URL / _API_KEY /
+_PRICE_PER_ROW_INR / _TERMS_ACK, the lane is ABSENT from the plan card and an explicit ask
+refuses with the exact config named — no stub, no pretending. The gate (check()) runs in the
+R6 order: named + base URL + key; per-row price > 0 (0 = refused: a ceiling needs a price);
+terms acked (she reads the vendor's current terms and writes the name into
+LEADS_VENDOR_TERMS_ACK — the act is hers, nothing is assumed, the v0.389 SACH BOLO
+discipline); estimate = rows × price within LEADS_VENDOR_RUN_CAP_INR. THE WIRE: the module
+speaks ONE documented contract (contract(): POST {base}/leads/search, Authorization Bearer —
+the key only ever rides the header, never an error or a log; 200 {"results": [...],
+"cost_inr"?: number}; every row MUST carry name + its OWN source_url — Hoola's provenance
+law extends to vendor rows, a row without its record page is REFUSED, never stored), and
+when she names the vendor the adapter is written to THAT vendor's own documented contract,
+never reverse-engineered. THE RUN: the plan card prices it BEFORE it starts (estimate_inr on
+the card); an estimate over the run cap is a REFUSED card whose numbers are the receipt —
+never a run that starts and then discovers its bill; ONE vendor call per run, NEVER retried
+(the R6 never-pays-twice law — the vendor may bill per call); rows ride the SAME _clean_row
+/ identity ladder / dedup as every other lane (a vendor place_id keys the row like a Maps
+one); 401/403 aborts naming the key refused WITHOUT printing it; the bill uses the vendor's
+OWN reported cost_inr when the vendor gave one (and says so), else the ESTIMATE (rows
+delivered × price) — and says so. Config-gate refusals in plan() EXTEND the card's
+refused_lanes (BOGUS + VENDOR both named), they never replace what the card already refused.
+
+THE SCALE HALF (app/leads/scale.py): store_backend() names the engine the leads tables are
+REALLY on — sqlite | postgresql + country_scale — on leads_status and the API overview,
+never claiming Postgres it is not on (country-scale = DATABASE_URL postgresql+psycopg per
+db.py's own law; dbmove moves her DB checked and repeatable; the HOOLA_TEST_PG convention
+runs the whole suite on Postgres). enrich_fanout() runs the SAME per-row enrich body across
+the HOOLA GRAPH (aep/graph.py v0.530): dispatch → STATIC fan-out edges to FANOUT_CHUNKS=4
+chunk nodes → the JOIN node the graph runs only when ALL chunks have run (the join barrier —
+every row answered before anything folds); at most leads_enrich_fanout_max=4 site passes in
+flight (one shared Semaphore; politeness stays 1 req/s per site inside enrich.site_pass —
+different sites in parallel, the same site never); store writes stay OUT of the graph —
+applied after the barrier ONE WRITER AT A TIME (SQLite-safe; the same apply_enrich calls,
+the same provenance, the same counters as the serial pass — the per-row body is one shared
+_one() closure so the two modes cannot drift, and the test proves serial and fanout agree
+row for row). enrich(fanout=True) wires it; the serial P2 walk is the unchanged default.
+
+Surfaces: leads_run gains action=vendor (registry stays 562 — the lane rode the existing
+tool), leads_enrich gains fanout, leads_status + GET /api/leads carry store_backend; API
+POST /api/leads/runs/vendor + /enrich {fanout:true}; admit's leads family gains the vendor
+finding words; the leads_desk rules carry the vendor wall. leadscard set v5: guards
+vendor_built / vendor_gate_holds (fired for real on default settings) / vendor_price_named +
+vendor_cap_named (both fired for real on fake settings objects) / vendor_provenance_required
+/ vendor_cost_honest / enrich_fanout_built / store_backend_named / ladder_complete — the
+by-name lane refusal witness moved to BOGUS_LANE because no unbuilt lane is left to refuse;
+asks + tool_vendor + rule vendor_off. Config: leads_vendor_name / _base_url / _api_key /
+_price_per_row_inr (0.0) / _run_cap_inr (2000.0) / _terms_ack + leads_enrich_fanout_max (4).
+Tests: NEW test_v0544_leads_scale.py (30, ZERO network — the vendor contract suite against
+an httpx.MockTransport fake speaking the documented contract: the gate order, the
+priced-before-run REFUSED card, provenance + dedup + E.164 on vendor rows, source_url-less
+rows refused, ids through the identity ladder, 401 aborted without the key in the error,
+one-call-never-retried, vendor-reported cost vs ESTIMATE on the bill, the row cap refusing
+the raw ask with zero calls, tool + API; the fan-out suite: the in-flight bound PROVEN with
+a counting compute, join-barrier completeness, error rows riding through, empty honest,
+serial/fanout equivalence row for row, the cap mode-blind, tool + API; store_backend honest
+on SQLite + the PG roundtrip skipif HOOLA_TEST_PG; registry 562 + schemas; card set v5).
+NOT VERIFIED, said plainly: the vendor lane has answered a MockTransport fake only — no live
+vendor has ever answered this code (when she names the vendor, the adapter is re-written to
+that vendor's documented contract and HER first configured run confirms it); the fan-out has
+run against fake site passes only; the Postgres path is proven by the HOOLA_TEST_PG suite on
+her box, not in this sandbox (no Postgres here — the test skips honestly).
+
 ## v0.543.0 LEADS SCRAPE — P3 of the leads plan: the scrape lane, opt-in OFF, and the rule-text amendment (6 Nov 2026)
 
 Owner: "P3 (the scrape lane, per-tenant opt-in OFF + the CLAUDE.md rule-text amendment riding

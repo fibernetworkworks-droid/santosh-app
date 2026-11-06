@@ -569,7 +569,10 @@ PRESETS: dict[str, dict] = {
                              "Har leads row ke saath uska source (lane + URL) - bina source ki row export nahi hoti.",
                              "Cap plan-time par refuse karta hai; cap badalna owner ki haan se.",
                              "Scrape lane (P3, Google Maps public listings) per-tenant opt-in OFF by default hai - "
-                             "owner ki khaas haan se on hota hai (walls: rules.SCRAPE_WALLS, CLAUDE.md amended rule)."]},
+                             "owner ki khaas haan se on hota hai (walls: rules.SCRAPE_WALLS, CLAUDE.md amended rule).",
+                             "Vendor lane (P4) config-gated hai - jab tak owner ne licensed vendor ka naam, key, "
+                             "per-row price aur terms-ack set nahi kiya, lane card par bhi nahi; run PEHLE price "
+                             "hoti hai, estimate cap paar to refuse."]},
     "audit_firm": {"label": "CA / audit firm", "role": "audit_assistant", "kind": "ca", "slot_minutes": 30, "after_hours": "note",
                    "about_hint": "Kaun se audit (statutory, tax, internal, stock), kitne client, partner kaun, client se kaagaz kaise aate hain",
                    "rules": ["Audit report / raay sirf partner sign karega.", "UDIN aur form filing Hoola nahi karega.",

@@ -27,9 +27,11 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.get("")
     async def overview(tenant: str = Depends(current_tenant)):
+        from . import scale as _scale
         return await run(lambda: {"store": S.store_summary(tenant), "usage": leadscap.usage(tenant),
                                   "caps": leadscap.caps(), "lanes": list(R.LANES),
                                   "lanes_built": {k: v for k, v in R.LANE_BUILT.items()},
+                                  "store_backend": _scale.store_backend(),
                                   "never": R.NEVER, "one_question": R.ONE_QUESTION,
                                   "store_boundary": R.STORE_BOUNDARY})
 
@@ -68,14 +70,27 @@ def make_router(require_key, current_tenant) -> APIRouter:
     @r.post("/enrich")
     async def post_enrich(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         """P2 ENRICHMENT: the crawl-brain pass over kept rows' OWN websites - emails + socials, DNS->MX grading,
-        ONE billed model pick per row. The cap refuses at plan time; a refusal is a 400 with the reason."""
+        ONE billed model pick per row. fanout=true (P4) walks the HOOLA GRAPH: bounded in-flight site passes,
+        join barrier, the writes land after it. The cap refuses at plan time; a refusal is a 400."""
         b = _b(body)
         ids = b.get("row_ids") if isinstance(b.get("row_ids"), list) else None
         try:
             return await S.enrich(tenant, str(b.get("ask") or ""), ids, str(b.get("q") or ""),
                                   str(b.get("city") or ""), str(b.get("category") or ""),
                                   str(b.get("lane") or ""), str(b.get("run_id") or ""),
-                                  bool(b.get("use_model", True)))
+                                  bool(b.get("use_model", True)), bool(b.get("fanout")))
+        except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/runs/vendor")
+    async def post_vendor(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """P4 VENDOR lane: the licensed lead-data vendor (config-gated - no vendor named, no lane; the plan
+        card prices the run BEFORE it and the estimate over the run cap refuses at plan time)."""
+        b = _b(body)
+        try:
+            return await S.run_vendor(tenant, str(b.get("ask") or ""), str(b.get("query") or ""),
+                                      str(b.get("city") or ""), int(b.get("max_rows") or 1000),
+                                      str(b.get("place") or ""))
         except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
             raise HTTPException(400, str(e))
 

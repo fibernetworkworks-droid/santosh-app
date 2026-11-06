@@ -19,10 +19,10 @@ from app.leads.models import LeadContact, LeadRun, LeadOutreach, ensure_tables
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.543.0"
+    assert APP_VERSION == "0.544.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.543.0+566" in pub.read_text()
+    assert "0.544.0+567" in pub.read_text()
 
 
 # ---------------------------------------------------------------- the move did not break the old lane
@@ -157,15 +157,15 @@ def test_usage_and_would_exceed(env):
 
 # ---------------------------------------------------------------- lanes: no stub, no pretending
 def test_unbuilt_lanes_refused_by_name(env):
-    # v0.543.0: SCRAPE is BUILT now - its refusal moved to the OPT-IN gate (test_v0543_leads_scrape.py); the
-    # by-name refusal witness here is VENDOR (P4)
-    p = S.plan("t1", "ask", ["VENDOR"], "x")
-    assert p["ok"] is False and p["refused_lanes"] == ["VENDOR"]
-    assert any("P4" in w for w in p["why"])
+    # v0.544.0: VENDOR is BUILT too (config-gated like SCRAPE is opt-in gated) - the plan section 4 ladder is
+    # COMPLETE, so the by-name refusal witness is an UNKNOWN lane name; VENDOR's refusal is the CONFIG gate
     p = S.plan("t1", "ask", ["BOGUS"], "x")
     assert p["ok"] is False and any("koi lane hi nahi" in w for w in p["why"])
+    p = S.plan("t1", "ask", ["VENDOR"], "x")
+    assert p["ok"] is False and p["refused_lanes"] == ["VENDOR"]      # the config gate, the exact fix named
+    assert any("LEADS_VENDOR_NAME" in w for w in p["why"])
     p = S.plan("t1", "ask", ["VENDOR", "BOGUS"], "x")
-    assert p["ok"] is False and {"BOGUS", "VENDOR"} <= set(p["refused_lanes"])   # both named (BOGUS twice is the old shape)
+    assert p["ok"] is False and {"BOGUS", "VENDOR"} <= set(p["refused_lanes"])   # both named
 
 
 def test_official_lanes_now_plan(env):

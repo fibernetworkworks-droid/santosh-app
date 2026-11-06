@@ -430,7 +430,7 @@ def test_card_guards_carry_the_scrape_walls(env):
               "scrape_politeness", "scrape_faces_public_site", "scrape_abort_on_block", "scrape_store_boundary",
               "rule_text_amended", "lane_refused_by_name", "no_second_google_client", "cap_refuses"):
         assert g[k] is True, f"guard {k} = {g[k]}"
-    assert card["set"] == 4 and card["guards_ok"] == len(g)
+    assert card["set"] == 5 and card["guards_ok"] == len(g)   # v0.544.0: set v5 - the vendor + scale walls joined
 
 
 def test_amended_rule_text_is_the_only_scrape_rule():

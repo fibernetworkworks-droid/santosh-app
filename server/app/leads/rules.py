@@ -12,10 +12,14 @@ LANES = ("HER_DATA", "REGISTRY", "OFFICIAL_API", "SCRAPE", "VENDOR")
 # place under the mapsbill cap, NO second Google client). v0.542.0 P2 adds ENRICHMENT (not a source lane - the
 # pass over kept rows' own websites). v0.543.0 P3 adds SCRAPE - the Google Maps PUBLIC LISTING lane behind the
 # per-tenant opt-in that is OFF by default (rules.SCRAPE_OFF / SCRAPE_WALLS; the CLAUDE.md rule text was amended
-# in the same commit that built this lane). P4 VENDOR. The phase names are the plan's, so a refusal can say
-# exactly when it arrives.
-LANE_BUILT: dict[str, str] = {"HER_DATA": "P0", "REGISTRY": "P1", "OFFICIAL_API": "P1", "SCRAPE": "P3"}
-LANE_ARRIVES = {"VENDOR": "P4"}
+# in the same commit that built this lane). v0.544.0 P4 adds VENDOR - one licensed lead-data vendor behind the
+# leads_run job shape (the research R6 pattern, leads/vendor.py), GATED BY CONFIGURATION the way SCRAPE is
+# gated by her opt-in: no vendor named -> the lane is absent from the plan card and an explicit ask is refused
+# with the exact config named (no stub, no pretending). With VENDOR the sources ladder of plan section 4 is
+# COMPLETE - an unknown lane name is still refused by name ("koi lane hi nahi hai").
+LANE_BUILT: dict[str, str] = {"HER_DATA": "P0", "REGISTRY": "P1", "OFFICIAL_API": "P1", "SCRAPE": "P3",
+                              "VENDOR": "P4"}
+LANE_ARRIVES: dict[str, str] = {}
 
 # the amended rule, said where a later session would look for it (CLAUDE.md NON-NEGOTIABLE RULES carries the
 # same text since the v0.543.0 commit - the amendment the plan proposed, word for word)

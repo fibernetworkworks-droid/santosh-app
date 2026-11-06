@@ -34,6 +34,7 @@ PARSER_INDIAMART = "v0.541.0-im1"       # the REGISTRY lane: IndiaMART's own MCP
 PARSER_PLACES = "v0.541.0-pl1"          # the OFFICIAL_API lane: the existing maps tools (nearby + details on tap)
 PARSER_ENRICH = "v0.542.0-en1"          # the P2 enrich pass reads the business's OWN website (enrich.py)
 PARSER_SCRAPE = "v0.543.0-gm1"          # the P3 SCRAPE lane: the Google Maps PUBLIC listing parser (gmaps_parse)
+PARSER_VENDOR = "v0.544.0-vd1"          # the P4 VENDOR lane: the licensed vendor's rows (leads/vendor.py contract)
 
 # mapsbill.MapsCapped arrives here re-raised as maps.MapsError (maps._bill's own law: "a cap hit becomes a
 # MapsError"), with this stable text inside - so the cap and an ordinary MapsError are told apart by MARK,
@@ -78,7 +79,10 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
     """The card BEFORE anything runs: lanes (refused by name if unbuilt), the caps, the one question if her ask
     is vague. Returns {"ok": bool, ...}; a refusal card never raises - the caller shows it and stops.
     v0.543.0: a SCRAPE lane ask first meets the per-tenant opt-in gate (OFF by default - the amended rule;
-    no session may move it) - the refusal names the opt-in and the one act that turns it on."""
+    no session may move it) - the refusal names the opt-in and the one act that turns it on.
+    v0.544.0: a VENDOR lane ask meets the CONFIGURATION gate the same way (the research R6 gate): no vendor
+    named -> the lane is absent and the refusal names the exact config; an estimate over the run cap is a
+    cap refusal whose numbers are the receipt (a REFUSED run card carries them)."""
     lanes = [l.upper() for l in (lanes or ["HER_DATA"])]
     unknown = [l for l in lanes if l not in R.LANES]
     unbuilt = [l for l in lanes if l not in R.LANE_BUILT]
@@ -104,6 +108,26 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
         card["opt_in"] = {"on": False, "default": "OFF",
                           "how": "leads_run action=scrape_optin on=true (ya POST /api/leads/scrape-optin)"}
         return card
+    if "VENDOR" in lanes:
+        from . import vendor as V
+        vok, vwhy, vkind = V.check(tenant, planned_rows)
+        if not vok:
+            card["ok"] = False
+            # the unknown-lane block above may already have named its lanes - the vendor gate EXTENDS the
+            # refusal (BOGUS + VENDOR both named), it never replaces what the card already refused
+            card["refused_lanes"] = list(dict.fromkeys((card.get("refused_lanes") or []) + ["VENDOR"]))
+            card["why"] = (card.get("why") or []) + ([vwhy] if vkind == "config" else [])
+            if vkind == "cap":
+                card["cap_refusal"] = vwhy          # a cap refusal rides cap_refusal (the receipt)
+            card["vendor"] = {**V.config_snapshot(), "absent": "vendor configure nahi hai to lane card par bhi nahi"}
+            card["lanes"] = [l for l in lanes if l != "VENDOR"] or []
+            if not card["lanes"] and not str(place or "").strip():
+                card["need"] = R.ONE_QUESTION
+            return card
+        vs = V.config_snapshot()
+        card["vendor"] = {"name": vs["name"], "price_per_row_inr": vs["price_per_row_inr"],
+                          "estimate_inr": V.estimate_inr(planned_rows), "run_cap_inr": vs["run_cap_inr"],
+                          "priced": "BEFORE the run - estimate crossing the cap refuses at plan time"}
     if not str(ask or "").strip() or (not str(place or "").strip() and any(l != "HER_DATA" for l in card["lanes"])):
         card["ok"] = False
         card["need"] = R.ONE_QUESTION
@@ -492,7 +516,8 @@ def _enrich_targets(tenant: str, row_ids: list[str] | None, q: str, city: str, c
 
 
 async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q: str = "", city: str = "",
-                 category: str = "", lane: str = "", run_id: str = "", use_model: bool = True) -> dict:
+                 category: str = "", lane: str = "", run_id: str = "", use_model: bool = True,
+                 fanout: bool = False) -> dict:
     """P2 ENRICHMENT (docs/LEADS_PLAN.md section 6): a bounded crawl-brain pass over kept rows' OWN websites -
     emails + socials read, deliverability graded (pakka / sadak_tak / galat, DNS -> MX -> disposable, NO SMTP
     probe), the best email picked by ONE billed model call per row (usage.run_meter catches the spend - the
@@ -500,8 +525,15 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
 
     Enrichment is NOT a source lane (the plan says so) - the run's lanes list stays empty and the plan card
     carries kind=enrich. The cap is a PLAN-TIME refusal (the house law): more eligible rows than
-    leads_enrich_rows_per_run and the pass refuses with the number named, never truncates quietly."""
+    leads_enrich_rows_per_run and the pass refuses with the number named, never truncates quietly.
+
+    v0.544.0 P4 SCALE: fanout=True runs the SAME per-row body across the HOOLA GRAPH (leads/scale.py:
+    dispatch -> static chunk fan-out -> join barrier, at most leads_enrich_fanout_max site passes in flight,
+    politeness still 1 req/s per site). The graph only COMPUTES; the store writes happen after the barrier,
+    one writer at a time - the same apply_enrich calls, the same provenance, the same counters as the serial
+    pass. fanout=False (the default) is the P2 walk, unchanged."""
     import asyncio as _asyncio
+    from ..config import get_settings as _gs
     from . import enrich as E
 
     cap = int(leadscap.caps()["enrich_rows_per_run"])
@@ -510,7 +542,10 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
         raise LeadsError(f"Enrich cap: {cap} rows per pass hai (LEADS_ENRICH_ROWS_PER_RUN), aapke filter par "
                          f"{len(targets)} rows bethi hain. Filter ghaatiye ya row_ids dijiye - chupke se "
                          f"truncate nahi hota.")
+    fan_max = max(1, int(_gs().leads_enrich_fanout_max))
     plan_card = {"kind": "enrich", "cap_rows": cap, "targeted": len(targets), "use_model": bool(use_model),
+                 "mode": "graph_fanout" if fanout else "serial",
+                 "max_in_flight": fan_max if fanout else 1,
                  "robots": "scrape_respect_robots (default True)", "politeness": "1 req/s per site",
                  "site_pages_max": E.SITE_PAGES_MAX, "smtp_probe": "NOT BUILT"}
     run = _new_run(tenant, ask or "enrichment pass", "", [], plan_card)
@@ -521,76 +556,107 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
     picks: dict[str, int] = {"ai": 0, "rule": 0, "single": 0, "none": 0}
     details: list[dict] = []
     errors: list[str] = []
+
+    async def _one(row: LeadContact) -> dict | None:
+        """The per-row body, shared verbatim by the serial walk and the graph fan-out: NO store writes here
+        (the fan-out applies after the join barrier - one writer at a time, SQLite-safe)."""
+        site = (row.website or "").strip()
+        if not site:
+            return None
+        try:
+            res = await _asyncio.to_thread(E.site_pass, site, tenant)
+        except Exception as e:                       # noqa: BLE001 - one bad site never kills the pass
+            return {"kind": "error", "error": f"{row.name or row.id}: {e}"}
+        pages = res.get("pages") or []
+        alive = [p for p in pages if p.get("status") and not p.get("blocked")]
+        if not res.get("blocked") and not alive and pages:
+            # the plan's card ask: a dead site yields galat, not a crash - an email whose domain IS the
+            # dead site cannot receive mail any more
+            grade = ""
+            note = f"site dead: {pages[0].get('dead', '')[:150]}"
+            if (row.email or "").strip():
+                dom = (row.email.rsplit("@", 1)[-1] if "@" in row.email else "")
+                sdom = (urlparse(site).hostname or "").replace("www.", "")
+                if dom and sdom and (dom == sdom or dom.endswith("." + sdom) or sdom.endswith("." + dom)):
+                    grade = "galat"
+                    note += " - email_grade galat (site hi mari hui hai)"
+            return {"kind": "dead", "grade": grade,
+                    "apply": {"email_grade": grade, "enriched_from": site, "enrich_note": note, "socials": {}},
+                    "detail": {"id": row.id, "name": row.name, "result": "dead_site", "grade": grade}}
+        if res.get("blocked") and not alive:
+            return {"kind": "blocked",
+                    "apply": {"enriched_from": site, "enrich_note": f"blocked: {res['blocked'][0][:150]}",
+                              "socials": {}},
+                    "detail": {"id": row.id, "name": row.name, "result": "blocked"}}
+        emails = list(res.get("emails") or [])
+        email, reason, pick = "", "", "none"
+        got_email = False
+        if emails:
+            if use_model:
+                be = await E.best_email(emails, row.name or "")
+                email, reason, pick = be.get("email", ""), be.get("reason", ""), be.get("pick", "rule")
+            else:
+                email = E.rank_emails(emails, row.name or "")[0]
+                reason, pick = "use_model=false - rule rank", "rule"
+            got_email = True
+        # the grade belongs to the email the ROW ends up with: the pass's pick only lands in an EMPTY
+        # slot, so a row keeping its own email is graded on ITS email - never on somebody else's
+        final_email = (email if (email and not (row.email or "").strip()) else (row.email or "").strip())
+        grade = E.grade_email(final_email) if final_email else ""
+        socials = res.get("socials") or {}
+        if final_email == (row.email or "").strip() and (row.email or "").strip():
+            note = f"email already tha ({final_email}) - naya email nahi likha, grade taaza kiya"
+        else:
+            note = f"{pick}: {reason}".strip(": ")
+        wrote = bool((email and not (row.email or "").strip()) or grade or socials or note)
+        return {"kind": "normal", "no_email": not got_email, "pick": pick, "wrote": wrote,
+                "apply": ({"email": email, "email_grade": grade, "socials": socials,
+                           "enriched_from": site, "enrich_note": note} if wrote else None),
+                "detail": {"id": row.id, "name": row.name, "result": "enriched" if wrote else "unchanged",
+                           "email": email, "grade": grade, "pick": pick,
+                           "socials": sorted(socials.keys()), "pages": len(alive)}}
+
+    def _absorb(rres: dict | None) -> None:
+        """The fold: counters + the store write + the detail row - identical for both modes."""
+        nonlocal enriched, dead, blocked, no_email
+        if rres is None:
+            return
+        k = rres.get("kind")
+        if k == "error":
+            errors.append(rres["error"])
+            return
+        if k == "dead":
+            dead += 1
+            if rres.get("grade"):
+                enriched += 1
+        elif k == "blocked":
+            blocked += 1
+        else:
+            if rres.get("no_email"):
+                no_email += 1
+            if rres.get("wrote"):
+                enriched += 1
+            picks[rres.get("pick", "none")] = picks.get(rres.get("pick", "none"), 0) + 1
+        if rres.get("apply"):
+            apply_enrich(tenant, rres["detail"]["id"], rres["apply"])
+        details.append(rres["detail"])
+
     meter = None
     if use_model:
         from .. import usage
         meter = usage.run_meter(acc)
         meter.__enter__()
     try:
-        for row in targets:
-            site = (row.website or "").strip()
-            if not site:
-                continue
-            try:
-                res = await _asyncio.to_thread(E.site_pass, site, tenant)
-            except Exception as e:                       # noqa: BLE001 - one bad site never kills the pass
-                errors.append(f"{row.name or row.id}: {e}")
-                continue
-            pages = res.get("pages") or []
-            alive = [p for p in pages if p.get("status") and not p.get("blocked")]
-            if not res.get("blocked") and not alive and pages:
-                dead += 1
-                # the plan's card ask: a dead site yields galat, not a crash - an email whose domain IS the
-                # dead site cannot receive mail any more
-                grade = ""
-                note = f"site dead: {pages[0].get('dead', '')[:150]}"
-                if (row.email or "").strip():
-                    dom = (row.email.rsplit("@", 1)[-1] if "@" in row.email else "")
-                    sdom = (urlparse(site).hostname or "").replace("www.", "")
-                    if dom and sdom and (dom == sdom or dom.endswith("." + sdom) or sdom.endswith("." + dom)):
-                        grade = "galat"
-                        note += " - email_grade galat (site hi mari hui hai)"
-                apply_enrich(tenant, row.id, {"email_grade": grade, "enriched_from": site,
-                                              "enrich_note": note, "socials": {}})
-                if grade:
-                    enriched += 1
-                details.append({"id": row.id, "name": row.name, "result": "dead_site", "grade": grade})
-                continue
-            if res.get("blocked") and not alive:
-                blocked += 1
-                apply_enrich(tenant, row.id, {"enriched_from": site,
-                                              "enrich_note": f"blocked: {res['blocked'][0][:150]}", "socials": {}})
-                details.append({"id": row.id, "name": row.name, "result": "blocked"})
-                continue
-            emails = list(res.get("emails") or [])
-            email, reason, pick = "", "", "none"
-            if emails:
-                if use_model:
-                    be = await E.best_email(emails, row.name or "")
-                    email, reason, pick = be.get("email", ""), be.get("reason", ""), be.get("pick", "rule")
-                else:
-                    email = E.rank_emails(emails, row.name or "")[0]
-                    reason, pick = "use_model=false - rule rank", "rule"
-            else:
-                no_email += 1
-            # the grade belongs to the email the ROW ends up with: the pass's pick only lands in an EMPTY
-            # slot, so a row keeping its own email is graded on ITS email - never on somebody else's
-            final_email = (email if (email and not (row.email or "").strip()) else (row.email or "").strip())
-            grade = E.grade_email(final_email) if final_email else ""
-            socials = res.get("socials") or {}
-            if final_email == (row.email or "").strip() and (row.email or "").strip():
-                note = f"email already tha ({final_email}) - naya email nahi likha, grade taaza kiya"
-            else:
-                note = f"{pick}: {reason}".strip(": ")
-            wrote = bool((email and not (row.email or "").strip()) or grade or socials or note)
-            if wrote:
-                apply_enrich(tenant, row.id, {"email": email, "email_grade": grade, "socials": socials,
-                                              "enriched_from": site, "enrich_note": note})
-                enriched += 1
-            picks[pick] = picks.get(pick, 0) + 1
-            details.append({"id": row.id, "name": row.name, "result": "enriched" if wrote else "unchanged",
-                            "email": email, "grade": grade, "pick": pick,
-                            "socials": sorted(socials.keys()), "pages": len(alive)})
+        fmeta: dict = {}
+        if fanout:
+            from . import scale
+            fres = await scale.enrich_fanout(list(targets), _one, max_in_flight=fan_max)
+            for rres in fres["results"]:                 # after the BARRIER: one writer, same fold
+                _absorb(rres)
+            fmeta = {"chunks": fres.get("chunks"), "seconds": fres.get("seconds")}
+        else:
+            for row in targets:                          # the P2 walk: compute, then apply, row by row
+                _absorb(await _one(row))
         if meter is not None:
             meter.__exit__(None, None, None)
             meter = None
@@ -606,6 +672,7 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
                 r.bill = json.dumps(bill, ensure_ascii=False)[:4000]
         _finish(run, "DONE", "; ".join(errors)[:300])
         return {"ok": True, "run": run_card(run.id),
+                "mode": plan_card["mode"], "max_in_flight": plan_card["max_in_flight"], **fmeta,
                 "enriched": enriched, "dead_site": dead, "blocked": blocked, "no_email": no_email,
                 "picks": picks, "details": details[:50], "errors": errors[:5]}
     except Exception as e:                               # noqa: BLE001 - the run card names what died
@@ -915,6 +982,96 @@ async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: 
                        "lng": (center or {}).get("lng")},
             "cells": {"done": done_cells, "total": len(cells), "zoom": zoom, "cell_km": G.cell_km(zoom)},
             "stopped_by_bound": stopped_by_bound, "ladder": ladder, "errors": errors[:5]}
+
+
+# ---------------------------------------------------------------- the VENDOR lane (P4, the licensed vendor)
+async def run_vendor(tenant: str, ask: str, query: str, city: str = "", max_rows: int = 1000,
+                     place: str = "") -> dict:
+    """P4's VENDOR lane (docs/LEADS_PLAN.md sections 4 L3, 10 P4, 12.4): ONE licensed lead-data vendor behind
+    the same leads_run job shape (the research R6 pattern, leads/vendor.py). The lane is CONFIG-gated the way
+    SCRAPE is opt-in gated: no vendor named (plan 12.4 is HER decision) -> the refusal names the exact config
+    and nothing runs; the per-row price prices the run on the plan card BEFORE it starts and an estimate over
+    the run cap is a REFUSED card whose numbers are the receipt - never a run that starts and then discovers
+    its bill. ONE vendor call per run, never retried (the R6 never-pays-twice law: the vendor may bill per
+    call). Every vendor row must carry its OWN source_url (Hoola's provenance law extends to vendor rows - a
+    row without its record page is refused, never stored), rides the same _clean_row / identity ladder /
+    dedup as every other lane, and lands with source_lane=VENDOR + parser_version. The bill uses the vendor's
+    OWN reported cost when the vendor gave one and says so; otherwise it is the ESTIMATE (rows delivered x
+    price) - and says so (the R6 honest-cost law)."""
+    ensure_tables()
+    from . import vendor as V
+    from ..config import get_settings
+    query = str(query or "").strip()
+    if not query:
+        raise LeadsError("Vendor se kya mangwana hai? Query bataiye (jaise 'dentists Pune', 'LED wholesalers Delhi').")
+    raw_rows = max(1, int(max_rows or 1000))
+    vok, vwhy, vkind = V.check(tenant, raw_rows)
+    if not vok and vkind == "config":
+        raise LeadsError(vwhy)              # nothing ran: no run row, no call, no spend - the fix is named
+    p = plan(tenant, ask, ["VENDOR"], place or str(city or "").strip(), planned_rows=raw_rows)
+    if not p["ok"]:
+        why = "; ".join(p.get("why") or [])
+        if why or p.get("need"):
+            raise LeadsError(why or p.get("need", ""))
+        run0 = _new_run(tenant, ask, place or str(city or "").strip(), ["VENDOR"], p)
+        _finish(run0, "REFUSED", error=p.get("cap_refusal", ""))
+        return {"ok": False, "run": run_card(run0.id), "plan": p}
+    max_rows = min(raw_rows, leadscap.caps()["per_run"])       # the ask was checked RAW; now the working bound
+    run = _new_run(tenant, ask, place or str(city or "").strip(), ["VENDOR"], p)
+    _status(run, "RUNNING")
+    found = kept = duped = refused = 0
+    stopped_by_bound = False
+    try:
+        rows, meta = await V.search(query, str(city or "").strip(), max_rows, tenant)
+    except V.VendorError as e:
+        _finish(run, "ABORTED", str(e))
+        leadscap.record(tenant, kept)
+        _counters(run, found, kept, duped, refused)
+        return {"ok": False, "run": run_card(run.id), "error": str(e)}
+    for raw in rows or []:
+        if found >= max_rows:
+            stopped_by_bound = True
+            break
+        if not isinstance(raw, dict):
+            refused += 1
+            continue
+        src = str(raw.get("source_url") or "").strip()
+        if not src.startswith(("http://", "https://")):
+            refused += 1                       # the provenance gate extends to vendor rows - refused, named
+            continue
+        found += 1
+        row = _clean_row(raw)
+        try:
+            _write_row(tenant, run, *_identity_of(row), row, source_lane="VENDOR",
+                       source_url=src[:500], parser_version=PARSER_VENDOR)
+            kept += 1
+        except LeadsError as e:
+            if "already" in str(e):
+                duped += 1
+            else:
+                refused += 1
+    leadscap.record(tenant, kept)
+    _counters(run, found, kept, duped, refused)
+    st = get_settings()
+    price = float(st.leads_vendor_price_per_row_inr or 0.0)
+    est_before = V.estimate_inr(raw_rows, st)
+    actual = meta["cost_inr"] if meta["reported"] else round(price * found, 4)
+    bill = {"lane": "VENDOR", "vendor": str(st.leads_vendor_name or "").strip(),
+            "rows_returned": found, "rows_kept": kept, "price_per_row_inr": price,
+            "estimate_inr_before": est_before, "inr": actual,
+            "cost_reported_by_vendor": bool(meta["reported"]),
+            "note": ("vendor ne apna khud ka cost_inr bataya - bill uska number hai"
+                     if meta["reported"] else
+                     "ESTIMATE - vendor ne cost report nahi kiya (rows delivered x price; plan-time estimate "
+                     "raw_rows par bana tha)")}
+    with _s() as s:
+        r = s.get(LeadRun, run.id)
+        if r:
+            r.bill = json.dumps(bill, ensure_ascii=False)[:4000]
+    _finish(run, "DONE")
+    return {"ok": True, "run": run_card(run.id),
+            "vendor": {"name": bill["vendor"], "price_per_row_inr": price},
+            "stopped_by_bound": stopped_by_bound}
 
 
 def _new_run(tenant: str, ask: str, place: str, lanes: list[str], plan_card: dict, plan_cap: int = 8000) -> LeadRun:

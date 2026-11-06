@@ -71,12 +71,14 @@ def guards_in_code() -> dict[str, Any]:
     except Exception as e:      # noqa: BLE001 - a card never dies on its own check
         log.info("leadscap check could not run: %s", e)
         out["cap_refuses"] = False
-    # 3. an unbuilt lane is refused BY NAME with its phase (no stub, no pretending). v0.543.0: SCRAPE is BUILT
-    # now - the by-name refusal witness is VENDOR (P4); SCRAPE's refusal is the OPT-IN gate (a different, also
-    # honest refusal - the lane exists, her word is missing) and has its own guards below.
-    p = S.plan("__leadscard__", "Nagpur contractors", ["VENDOR"], "Nagpur")
-    out["lane_refused_by_name"] = (not p["ok"]) and "VENDOR" in json.dumps(p.get("refused_lanes", [])) \
-        and "P4" in json.dumps(p.get("why", []), ensure_ascii=False)
+    # 3. an unbuilt lane is refused BY NAME with its phase (no stub, no pretending). v0.543.0: the by-name
+    # witness was VENDOR (P4). v0.544.0: VENDOR is BUILT - the plan section 4 sources ladder is COMPLETE - so
+    # the refusal witness becomes an UNKNOWN lane name (still refused by name, "koi lane hi nahi hai"), and a
+    # new guard proves the ladder itself: every lane name is built, nothing left promising a later phase.
+    p = S.plan("__leadscard__", "Nagpur contractors", ["BOGUS_LANE"], "Nagpur")
+    out["lane_refused_by_name"] = (not p["ok"]) and "BOGUS_LANE" in json.dumps(p.get("refused_lanes", []))
+    out["ladder_complete"] = (set(R.LANE_BUILT) == set(R.LANES) and not R.LANE_ARRIVES
+                              and all(R.LANE_BUILT.get(l) for l in R.LANES))
     # 3b. v0.541.0: the official lanes are REALLY wired (REGISTRY = IndiaMART MCP, OFFICIAL_API = the existing
     # maps tools) - and the service still holds no second Google client (only maps/indiamart imports, no httpx)
     out["official_lanes_built"] = (R.LANE_BUILT.get("REGISTRY") == "P1" and R.LANE_BUILT.get("OFFICIAL_API") == "P1"
@@ -128,6 +130,48 @@ def guards_in_code() -> dict[str, Any]:
     except Exception as e:      # noqa: BLE001 - a card never dies on its own check
         log.info("scrape guards could not run: %s", e)
         out["scrape_built"] = False
+    # 3e. v0.544.0: the P4 VENDOR lane is REALLY wired (config-gated, priced before the run) and the SCALE
+    # half is real too (the graph fan-out enrich + the honest store-backend answer)
+    try:
+        from ..leads import vendor as _vd, scale as _scale
+        from types import SimpleNamespace as _NS
+        vsrc = inspect.getsource(_vd)
+        out["vendor_built"] = (R.LANE_BUILT.get("VENDOR") == "P4" and hasattr(S, "run_vendor")
+                               and hasattr(_vd, "search") and hasattr(_vd, "contract"))
+        # the gate fired FOR REAL on the default settings: no vendor named -> refusal names the exact config
+        p3 = S.plan("__leadscard__", "Nagpur contractors", ["VENDOR"], "Nagpur")
+        ok_now, ready = p3.get("ok"), p3.get("ok") and "vendor" in p3
+        out["vendor_gate_holds"] = ((not ok_now and "LEADS_VENDOR_" in json.dumps(p3.get("why", []),
+                                                                        ensure_ascii=False))
+                                     or ready)   # configured env: the card proves the gate passed cleanly
+        # the PRICE gate fired FOR REAL on a fake settings object (price 0 -> no ceiling possible)
+        fst = _NS(leads_vendor_name="acme-leads", leads_vendor_base_url="https://api.acme.example",
+                  leads_vendor_api_key="k", leads_vendor_price_per_row_inr=0.0,
+                  leads_vendor_run_cap_inr=2000.0, leads_vendor_terms_ack="acme-leads")
+        okp, whyp, kindp = _vd.check("__leadscard__", 100, fst)
+        out["vendor_price_named"] = (not okp and kindp == "config"
+                                     and "LEADS_VENDOR_PRICE_PER_ROW_INR" in whyp)
+        # the RUN-CAP gate fired FOR REAL: 20,000 x Rs 0.5 = Rs 10,000 > Rs 1,000 cap -> refused at plan time
+        fst2 = _NS(leads_vendor_name="acme-leads", leads_vendor_base_url="https://api.acme.example",
+                   leads_vendor_api_key="k", leads_vendor_price_per_row_inr=0.5,
+                   leads_vendor_run_cap_inr=1000.0, leads_vendor_terms_ack="acme-leads")
+        okc, whyc, kindc = _vd.check("__leadscard__", 20_000, fst2)
+        out["vendor_cap_named"] = (not okc and kindc == "cap" and "LEADS_VENDOR_RUN_CAP_INR" in whyc)
+        # the vendor's rows obey the SAME provenance law: a row without its own source_url is refused
+        out["vendor_provenance_required"] = ("source_url" in json.dumps(_vd.contract())
+                                             and 'raw.get("source_url")' in src)
+        out["vendor_cost_honest"] = ("cost_reported_by_vendor" in src and "reported" in vsrc
+                                     and "ESTIMATE" in vsrc)   # vendor-reported vs estimate, said on the bill
+        # SCALE: the fan-out walk is the HOOLA GRAPH (static fan-out edges + join barrier + bounded in-flight)
+        ssrc = inspect.getsource(_scale)
+        out["enrich_fanout_built"] = ("fanout" in inspect.signature(S.enrich).parameters
+                                      and "StateGraph" in ssrc and "add_edge" in ssrc and "Semaphore" in ssrc
+                                      and "join" in ssrc)
+        out["store_backend_named"] = (_scale.store_backend()["engine"] in ("sqlite", "postgresql")
+                                      and "country_scale" in json.dumps(_scale.store_backend()))
+    except Exception as e:      # noqa: BLE001 - a card never dies on its own check
+        log.info("vendor guards could not run: %s", e)
+        out["vendor_built"] = False
     # 4. the campaign hand-off pre-fills consent False and writes the ledger; the engine itself never sends
     out["consent_false_handoff"] = "opted_in=False" in src.replace(" ", "") or "opted_in=False" in src
     out["engine_never_sends"] = ("httpx" not in src and "requests.post" not in src and "smtplib" not in src
@@ -204,6 +248,11 @@ def _score_rule(ask: dict, reply: str, tools: list[str]) -> dict[str, Any]:
         ok = any(w in low for w in ("dead", "mari", "band", "galat", "nahi khul", "down", "grade", "note",
                                     "record", "crash nahi", "dead_site"))
         return {"right": ok, "misses": [] if ok else ["a dead site must be a recorded result (galat), not a crash"]}
+    if g == "vendor_off":
+        ok = any(w in low for w in ("vendor", "configure", "config", "terms", "price", "key", "cap", "ceiling",
+                                    "set", "nahi", "refuse", "refused", "pehle", "naam"))
+        return {"right": ok and "kar dunga" not in low and "bhej dunga" not in low,
+                "misses": [] if ok else ["acted as if a vendor run could start with no vendor configured"]}
     return {"right": False, "misses": ["unknown guard " + g]}
 
 

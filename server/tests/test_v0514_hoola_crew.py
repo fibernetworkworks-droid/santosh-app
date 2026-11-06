@@ -565,8 +565,8 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.543.0"
+    assert main_mod.APP_VERSION == "0.544.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     assert "HOOLA CREW" in story and "crewAI" in story
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.543.0+566" in pub
+    assert "version: 0.544.0+567" in pub

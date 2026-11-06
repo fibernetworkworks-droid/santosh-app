@@ -714,6 +714,20 @@ class Settings(BaseSettings):
     # and a block page aborts the run - all refused/recorded, never muscled through (docs/LEADS_PLAN.md section 5)
     leads_scrape_max_cells: int = 400
     leads_scrape_pages_per_cell: int = 6
+    # v0.544.0 VENDOR LANE: one licensed lead-data vendor behind the leads_run job shape (the research R6
+    # pattern, leads/vendor.py). Until SHE names the vendor (plan section 12.4) every string stays empty and
+    # the lane is ABSENT from the plan card - an explicit ask is refused with exactly this config named. The
+    # price makes the ceiling possible (0 = refused), the run cap refuses the estimate at PLAN time, and the
+    # terms ack is HER act (she read the vendor's terms; nothing is assumed - the v0.389 SACH BOLO discipline)
+    leads_vendor_name: str = ""                 # she names the vendor (e.g. "acme-leads")
+    leads_vendor_base_url: str = ""             # the vendor's documented API base (e.g. "https://api.vendor.example")
+    leads_vendor_api_key: str = ""              # env LEADS_VENDOR_API_KEY; rides the header only, never a log
+    leads_vendor_price_per_row_inr: float = 0.0 # rupees per row the vendor charges; 0 = the lane refuses
+    leads_vendor_run_cap_inr: float = 2000.0    # one vendor run's rupee ceiling, refused AT PLAN TIME
+    leads_vendor_terms_ack: str = ""            # the vendor's name once SHE has read its terms (CSV)
+    # v0.544.0 SCALE: the P4 fan-out enrich pass (leads/scale.py, the HOOLA GRAPH walk) keeps at most this many
+    # site passes in flight (shared Semaphore; politeness stays 1 req/s per site inside enrich.site_pass)
+    leads_enrich_fanout_max: int = 4
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
     wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech

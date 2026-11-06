@@ -24,8 +24,19 @@ boundary even if a later session loses the plot:
   for PUBLIC BUSINESS LISTING DATA is allowed BY THE OWNER'S EXPLICIT ASK of 5 Nov 2026 under walls no session
   may move (opt-in per tenant and OFF by default, never login-walled, never consumer individuals, robots.txt
   obeyed on every non-Google host, politeness caps refused before the run, provenance on every row, the engine
-  NEVER contacts anyone; anything outside business-listing data stays NOT BUILT). The vendor lane comes in P4.
-  A lane that is not built yet is REFUSED by name ("P4 mein aayega") - no stub, no pretending.
+  NEVER contacts anyone; anything outside business-listing data stays NOT BUILT).
+- v0.544.0 P4 adds THE VENDOR LANE + SCALE. VENDOR (app/leads/vendor.py + run_vendor): ONE licensed lead-data
+  vendor behind the same leads_run job shape (the research R6 pattern), CONFIG-GATED the way SCRAPE is opt-in
+  gated - plan 12.4 (she names the vendor and the budget) is HER decision, so until the config exists the lane
+  is ABSENT from the plan card and an explicit ask refuses with the exact config named (no stub, no pretending).
+  The run is priced on the plan card BEFORE it starts (rows x LEADS_VENDOR_PRICE_PER_ROW_INR; estimate over
+  LEADS_VENDOR_RUN_CAP_INR = a REFUSED card, the numbers are the receipt); ONE vendor call per run, never
+  retried; every vendor row must carry its OWN source_url (the provenance law extends to vendor rows); the bill
+  says whether its number is the vendor's own reported cost or the estimate. SCALE (app/leads/scale.py):
+  store_backend() names the engine the store is really on (country-scale = Postgres via DATABASE_URL/dbmove,
+  never claimed when the engine is SQLite), and enrich(fanout=True) runs the SAME per-row body across the HOOLA
+  GRAPH (dispatch -> static chunk fan-out -> join barrier, bounded in-flight, store writes applied after the
+  barrier one writer at a time). An unknown lane name is still refused by name - no stub, no pretending.
 - EVERY ROW CARRIES ITS PROVENANCE or it is not stored: source_lane + source_url + fetched_at. An export that
   finds a row without provenance REFUSES rather than ships an unexplained row (verify gate).
 - BUSINESS FACTS ONLY. No review text at scale, no photos, no popular times, no consumer individuals
