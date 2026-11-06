@@ -21034,3 +21034,117 @@ how many tells real builds carry - and whether the fix round clears them - is un
 Impeccable runs in a browser (contrast pairs, line length, text overflow, occlusion) are not ported; the existing
 contrast checks and journeys still run. Not built from the read: the design-word edit commands (bolder / quieter /
 polish...) and a scored page critique.
+
+
+## v0.607.0 RETAIL WAVES 2 + 3 — growth/operations assists and platform trust (owner: "Retail Waves 2 and 3")
+
+Waves 2 and 3 of `docs/research/retail_ecommerce_industry/00_INDEX.md`. Same stateless pattern as Wave 1: rows in, a proposal or rule hit out, a named decider in every answer, nothing stored, sent, banned or changed. Every limit, floor, threshold, multiplier and schedule is the user's; nothing is built in (deadlines and the label list are from memory and marked `verify`).
+
+- **Wave 2 `retail_growth`** (`retailgrowth/engines.py`, #6 #11 #15 #21 #28/#35 #46 #69 #70 #71 #80): loyalty lists (opted-in customers only; lapsed, birthdays this week, top spenders; nothing sent), markdown steps for near-expiry stock held above HER floor margin and below MRP with the waste still at risk, unit economics (contribution, LTV / CAC), ABC + range-review candidates, price rule check on competitor prices she gives (floor and MRP held, large moves flagged for a second look; no scraping), scheme accrual vs retailer claims, retailer credit exposure against HER limit multiple (no personal attributes), beat visit order (straight-line, points to the Maps tools for road time), working-capital cycle, delivery batches by area.
+- **Wave 3 `retail_trust`** (`retailtrust/engines.py`, #52 #55 #57 #58 #59 #67 #100 #102 + pricing fairness): fraud rule hits (order bursts, shared address / device, high-value COD), return-abuse list above her threshold, review authenticity signals (duplicate text, 5-star bursts, unverified, undisclosed incentive), seller KYC checks (GSTIN format + check digit, PAN inside GSTIN, IFSC, bank name vs seller name, missing documents; no registry lookup), dark-pattern text + checklist audit, grievance acknowledge / resolve clock, Legal Metrology label checklist, delivery-promise audit with an honest-promise hint, AI-model override rates, price spread across customer segments.
+- **Wiring**: TWO tools `retail_growth` / `retail_trust` (registry 588 -> 590, families `retailgrowth` / `retailtrust`, tight admit words, owner / staff only, voice via `santosh_kaam`), two hub employees in Retail & E-commerce with never-lists.
+- **Tests**: `test_retail_w23.py` (7). Registry pins 588 -> 590.
+- **NOT built**: WhatsApp order taking and the catalogue builder (they sit on the Shop / app engines), the ONDC participant assistant, ads-policy and content-moderation models. Not verified: no real order sheet, review dump or seller file has been through it; the rule thresholds are the user's, the fraud / review rules are heuristics, and a rule hit is never a verdict.
+
+## v0.608.0 EK YAAD + JUST IN TIME — one memory door, memory fetched not pasted (owner: "go 1 and 2"; built as 0.605.0, the dev chain took 0.605-0.607 meanwhile, all kept)
+
+From the Claude vs Hoola memory comparison (claude.ai keeps ONE memory per scope and looks past chats up with a tool
+call; Anthropic's context-engineering post: "the smallest set of high-signal tokens", fetch "just in time").
+
+1. **EK YAAD - one memory door** (`server/app/memory.py`). The six stores stay where they are (moving live rows
+   risks her data for no gain); every question goes through one door: `search_all` (facts by meaning, the chat index,
+   Coder work notes, knowledge-graph observations, her page's lines - each hit labelled with its store; the Session
+   fence, incognito and her "Purani chats se yaad" switch all held; a failing store is named in `skipped`, never fatal),
+   `everything` (`GET /api/memory/everything`, one view per store) and `reset_all` (`POST /api/memory/reset` with
+   `confirm=RESET` - Claude's reset: facts incl. pinned, chat index, the Coder vault's rows for her chats, the graph,
+   the page; her chats and her skills stay). `yaad_khojo` is the door (new `source` filter; the old `kind` filter
+   keeps the old chat-only path) and is in `admit.CORE_TOOLS`, so it rides every turn.
+2. **JUST IN TIME.** `yaad.turn_block` no longer pastes a "maybe related" old chat (score >= 0.62) into every message;
+   only her own pointer at the past (`refers_to_past`) auto-recalls, everything else is one `yaad_khojo` call (the
+   block says so). The system prompt carries the 15 newest facts instead of 40 (`memory_recent_facts`, `life.recent_facts`;
+   measured: under half the old fact block with 60 facts); pinned facts all ride, and the turn block still adds the
+   facts closest in meaning to each message (its "shown" set follows the same number, so no fact falls between).
+   The skills index is deliberately unchanged: listing every skill's name + description IS Claude's level-1 pattern.
+
+Tests `server/tests/test_v0605_ek_yaad.py` (10). The 12 reds in the wider sweep (v0268 / v0270 / v0376 / v0410 /
+v0473 routes / v0567 / v063) fail identically on the pre-change commit 51328175 - not this change. NOT VERIFIED: no
+live run; the real effect on answer quality (fewer facts pasted, more tool lookups) needs her chats on the VPS - the
+FRESH tool card and the long-chat memory quiz (`server/tools/memory_quiz.py`) are the checks. Server-only.
+
+## v0.609.0 BIMA DESK — health-insurance Wave 1 (customer side + admin)
+Owner: "GO NEXT WAVE"; register `docs/research/health_insurance_industry/` (Wave 1 = tier A, no regulated decision).
+`server/app/bimadesk/engines.py` (pure functions, no DB / file / network): claim_checklist (cashless or reimbursement, kind accident / maternity /
+daycare / pre_post / opd, missing documents, filing deadlines), payable (itemised worksheet: non-payable words, tariff cap, room-rent proportion
+cut, deductible, co-pay, sum-insured ceiling, gap to the settled amount + questions to ask), settlement_match (payments vs expected net of TDS,
+short / excess / not received, duplicate UTR), status_message (draft, never sent; a rejection is never a bare text), ageing (claims past a
+timeline she sets), renewals (reminder list + portability note), grievance (keyword category, ack / resolve due, human-now words), appeal
+(insurer reasons -> documents, steps, letter outline, one-year-from-reply date), kyc_check (format only, Aadhaar masked).
+ONE tool `bima_desk` (`agent/bimadesk_tools.py`, registry 590 -> 591, family bimadesk, voice via santosh_kaam; claim_checklist / payable / appeal
+open to a policyholder), hub group "Health Insurance" in `employee/hire.py` + console DEPT. Every answer names its decider and what it did not
+check. NOT BUILT: Wave 2 (assist with a named human: 11-13, 33, 34, 44, 45, 47, 65, 66, 73, 74, 92-94) and Wave 3 (fraud, pricing, underwriting AI).
+NOT VERIFIED: periods (intimation, filing, grievance, ombudsman limitation, portability) are from memory and marked verify; no real claim data has
+gone through it. Tests `test_bimadesk.py` (7).
+
+## v0.610.0 BIMA ASSIST - health-insurance Wave 2 (assists with a named human decider)
+Owner: "GO NEXT WAVE". `server/app/bimaassist/engines.py` (pure): plan_compare (numbers only, no recommendation), material_facts (health questions answered
+no vs history notes; keyword list heuristic), proposal_check, coverage_check (initial / specific / pre-existing waiting, moratorium, sub-limits, room-rent
+proportion, co-pay; every line carries the clause text SHE supplied or a "not given" marker), preauth_checks (pass / fail / unknown, package rates hers),
+query_reply, medical_timeline (gaps and expected-procedure mismatches as questions), rejection_letter + grievance_reply (drafts, refuse without clause ref + text,
+signer blank, never sent), ombudsman_packet (index, missing items, one-year-from-reply and 30-day dates, from memory: verify), wording_review, missell_review
+(phrase hits, free-look days left, DOB discrepancies), fhir_claim (plain R4 Claim skeleton, not submitted, no HCX profile / consent / signing), code_map (her table only).
+ONE tool `bima_assist` (registry 591 -> 592, family bimaassist, voice via santosh_kaam; plan_compare / material_facts / wording_review / ombudsman_packet open to a
+policyholder), hub entry in Health Insurance. NOT BUILT: Wave 3 (fraud, pricing, underwriting AI, needs model governance). NOT VERIFIED: rules and periods from memory; no real
+claim data. Tests `test_bimaassist.py` (6).
+## v0.611.0 YAAD KE KHAANE — the rest of the Claude memory comparison (owner: "FIRST WE COMPLETE MEMORY / CONTEXT WORK"; built as 0.609.0)
+
+3. **The Claude way of writing memory.** claude.ai saves memory "as a set of individual topics as you chat"; Hoola's
+   memory was mostly written AFTER the turn by a cheap side model (max 3 facts). The system prompt now makes the live
+   model the writer (remember ONE short fact; `replaces=<id>` when a fact changes; yaad_khojo before asking again), and
+   `yaad.after_turn` skips the extractor for a turn whose live model already kept or forgot a fact
+   (`life_tools.SAVED_THIS_TURN`) - one writer per turn, never the same fact twice. The extractor stays as the
+   safety net for turns the model did not save.
+4. **The controls Claude has.**
+   - Per-Session "use my main memory" (Claude's per-project "Use account memory"): `Project.use_main_memory`
+     (nullable, None = on), `fence.main_memory_ok`. Off = that Session's chats see only its own facts + her pinned
+     facts; no general facts, no "Mere baare mein" page, no main graph (life.memory_facts, yaad._known, life.context_block,
+     memory.search_all). `PATCH /api/projects/{id}` `use_main_memory`; console Session page checkbox.
+   - "Sensitive baatein bhi" (Claude's "Include sensitive topics"): `Profile.memory_sensitive`, off by default;
+     `yaad.fact_ok(sensitive=)` then keeps health / religion / caste / politics / sexuality facts, and the extractor is
+     told so. Money, ID numbers, secrets and `_NEVER_WORDS` (criminal, immigration, self-harm) are never kept.
+   - "Saari yaad mitao" on the phone memory page (confirm dialog -> `POST /api/memory/reset`), sensitive switch beside
+     the two old ones.
+5. **vps-ops `memory_quiz` / `memory_quiz_haiku`**: the long-chat quiz (300 exchanges, 10 planted details, modes full +
+   compact) in one click; `QUALITY_MODEL` is honoured by the quiz now.
+
+Tests `server/tests/test_v0609_yaad_ke_khaane.py` (8). NOT VERIFIED: no live run (her Anthropic credit was empty at the
+v0.608 deploy); the phone page compiles first on CI.
+
+## v0.612.0 BIMA RISK - health-insurance Wave 3 (pricing, underwriting, fraud signals)
+Owner: "GO NEXT WAVE". `server/app/bimarisk/engines.py` (pure): experience (loss ratio / frequency / severity by a neutral group, thin groups marked), price_trend (observed CAGR),
+triangle (volume-weighted chain-ladder working paper; reserve sign-off is the appointed actuary's), pricing_fairness (premium vs cost relativities, unexplained jumps),
+uw_triage (HER rules; rule + manual ref + loading shown; a decline route becomes a human referral), provider_outliers, duplicates (overlapping stays), geo_plausibility
+(haversine), cashless_misuse, case_builder (neutral timeline + evidence, allegation reserved), fraud_audit (flag rate, false positives, human override per group, disparity ratio),
+scheme_anomalies. Protected attributes (religion, caste, gender, locality, name...) refused as rule fields, rating factors, grouping and model columns. ONE tool `bima_risk`
+(registry 592 -> 593, family bimarisk, owner / staff only, voice via santosh_kaam), hub entry in Health Insurance. NOT BUILT: medical report OCR (#23), document authenticity (#57),
+industry blacklist sync (#61), de-identified sandbox (#97), reserving beyond one method. NOT VERIFIED: thresholds are yours, no real claims data has run through it.
+Tests `test_bimarisk.py` (5).
+
+## v0.615.0 YAAD SE + SUDHAAR YAAD — the memory a reply used, shown and forgettable; corrections remembered (owner: "GO 1 2"; built as 0.612.0)
+
+From the OpenAI Dots / xAI Grok memory comparison: Grok shows a book icon naming the past chat a reply referenced and
+lets her remove it from memory; Grok Bot and Dots "learn how you like things done".
+
+1. **YAAD SE.** `yaad.note_used` records what memory a turn was handed (the turn block's meaning-matched facts and
+   recalled past chats, every `yaad_khojo` hit); at the turn's end `yaad.publish_used` keeps only what the reply ECHOES
+   (`_echoed`: 2-3 of the memory's distinctive 4+ letter words come back), labels each (a past chat by its title) and
+   publishes ONE `memory_used` note (a LOCAL kind). Console: a `<details>` "📖 From memory: ..." note, a Forget button
+   per line. Phone: `MemoryUsedChip` (desk_cards.dart) opens a sheet with "Bhool jao" per line. Both call
+   `POST /api/memory/unremember` (`memory.unremember`): a fact goes with its copies (forget_everywhere); a work note goes;
+   a graph / page line goes by its text; a PAST CHAT gets `Conversation.no_recall` (new nullable column) - the chat stays
+   in her list, its index rows are deleted and `yaad.search` filters it for good (a later re-index stays filtered).
+2. **SUDHAAR YAAD.** The fact extractor's system prompt and the live memory rule both now keep a CORRECTION ("aise
+   nahi", "itna lamba mat likho", "hamesha GST alag line mein") as a standing preference written WHEN / WANT, so she
+   never has to correct the same thing twice. The self-teaching nudge (coder_nudge) stays OFF as before.
+
+Tests `server/tests/test_v0612_yaad_se.py` (9). NOT VERIFIED: no live run; the echo rule is a word heuristic (a reply
+that paraphrases a memory completely will not show it); the phone chip compiles first on CI.

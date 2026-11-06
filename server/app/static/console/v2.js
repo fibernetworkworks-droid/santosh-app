@@ -738,7 +738,7 @@ function live(state) {
 /* ================= cards ================= */
 const LABEL = {bazar_approval:'Your approval is required', employee_ask:'Employee question', operator_ask:'The website job needs you', operator_task:'Website job',
   email_draft:'Email draft', hoola_deal:'Hoola Deal', hoola_knock:'Hoola Network', hoola_msg:'Hoola Network message', calendar_event:'Calendar',
-  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory',
+  reminders:'Reminders', lists:'Lists', gyaan_sources:'Sources', call_receipt:'Call receipt', procedure:'Learned', memory_saved:'Saved to memory', memory_used:'From memory',
   artifact:'Page', pc_file:'File', photo_made:'Picture', motion:'Reel', video_job:'Video', studio_approval:'AI video cost', gst_return:'GST return',
   payroll_run:'Salary run', google_reconnect:'Reconnect Google', campaign:'WhatsApp campaign', share_ask:'Share this?'};
 const CARDS = new Map();      // kind:id -> element (updated in place)
@@ -900,6 +900,25 @@ function renderCard(kind, p, at, live) {
   }
   if (kind === 'memory_saved' || kind === 'procedure') {
     const el = document.createElement('div'); el.className = 'note'; el.textContent = (kind === 'memory_saved' ? '📌 Saved to memory: ' : '🎓 Learned: ') + (p.text || p.title || ''); turn().bd.appendChild(el); return;
+  }
+  // v0.612 YAAD SE (Grok's "which memory did this use"): the memory this reply leaned on, each one forgettable
+  if (kind === 'memory_used') {
+    const items = Array.isArray(p.items) ? p.items : [];
+    if (!items.length) return;
+    const el = document.createElement('details'); el.className = 'note memused';
+    const labels = [...new Set(items.map(i => i.label || 'Memory'))].join(' · ');
+    el.innerHTML = `<summary>📖 From memory: ${esc(labels)}</summary>` + items.map((it, n) =>
+      `<div class="mu" style="display:flex;gap:8px;align-items:flex-start;margin-top:6px;font-size:13px"><span style="flex:1"><b>${esc(it.label || '')}</b> — <span class="faint">${esc(it.text || '')}</span></span><button type="button" class="btn soft" data-mu="${n}" style="padding:2px 8px">Forget</button></div>`).join('');
+    el.addEventListener('click', async e => {
+      const b = e.target.closest('[data-mu]'); if (!b) return;
+      const it = items[Number(b.dataset.mu)]; if (!it) return;
+      const ask = it.source === 'chat' ? 'Stop using this chat as memory? The chat itself stays in your list.' : 'Forget this?';
+      if (!confirm(ask)) return;
+      try { await api('POST', '/api/memory/unremember', {source: it.source, id: it.id, conversation_id: it.conversation_id || '', text: it.text || ''});
+            b.closest('.mu').remove(); if (!el.querySelector('.mu')) el.remove(); }
+      catch (er) { toast(er.message, true); }
+    });
+    turn().bd.appendChild(el); return;
   }
   const el = cardShell(kind, p);
   switch (kind) {
@@ -1330,7 +1349,7 @@ addEventListener('resize', drawRail);
 const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
-  'bazar_link', 'gyaan_sources', 'memory_saved', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
+  'bazar_link', 'gyaan_sources', 'memory_saved', 'memory_used', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
   'maps_places',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;

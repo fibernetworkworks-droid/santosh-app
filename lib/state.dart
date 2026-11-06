@@ -2402,6 +2402,9 @@ class Santosh extends ChangeNotifier {
       case 'memory_saved':
         feed.add(FeedItem('memory_saved', Map<String, dynamic>.from(p)));
         break;
+      case 'memory_used':   // v0.612 YAAD SE: which memory this reply leaned on
+        feed.add(FeedItem('memory_used', Map<String, dynamic>.from(p)));
+        break;
       case 'compact':   // v0.242 FULL CLAUDE MODE Phase 2: older messages folded into one checkpoint summary
         feed.add(FeedItem('compact', Map<String, dynamic>.from(p)));
         break;

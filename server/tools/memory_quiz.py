@@ -109,6 +109,11 @@ def main() -> None:
     ap.add_argument("--questions", type=int, default=20)
     a = ap.parse_args()
     sys.path.insert(0, str(HERE))
+    try:   # v0.609 QUALITY_MODEL=claude-haiku-5-5 (vps-ops memory_quiz_haiku): every Claude setting of THIS run on one
+        from app.quality.__main__ import test_model   # model, like the quality cards - her live server is untouched
+        test_model([])
+    except Exception as e:  # noqa: BLE001 - the quiz still runs on the server's own models
+        print(f"(card model not applied: {e})", flush=True)
     os.environ.setdefault("MEMORY_AUTO", "false")      # the quiz measures the chat window, not the fact picker
     os.environ.setdefault("KAAM_WATCH", "false")
     os.environ["FCM_SERVICE_ACCOUNT_FILE"] = ""         # never a push to her phone from a quiz

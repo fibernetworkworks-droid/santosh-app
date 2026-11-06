@@ -393,6 +393,36 @@ TOOLS.extend(RETAILDESK_TOOLS)
 TOOL_LABELS.update(RETAILDESK_LABELS)
 HANDLERS.update(RETAILDESK_HANDLERS)
 
+from .retailgrowth_tools import RETAILGROWTH_HANDLERS, RETAILGROWTH_LABELS, RETAILGROWTH_TOOLS  # noqa: E402  v0.607 Retail Growth (retail Wave 2)
+
+TOOLS.extend(RETAILGROWTH_TOOLS)
+TOOL_LABELS.update(RETAILGROWTH_LABELS)
+HANDLERS.update(RETAILGROWTH_HANDLERS)
+
+from .retailtrust_tools import RETAILTRUST_HANDLERS, RETAILTRUST_LABELS, RETAILTRUST_TOOLS  # noqa: E402  v0.607 Retail Trust (retail Wave 3)
+
+TOOLS.extend(RETAILTRUST_TOOLS)
+TOOL_LABELS.update(RETAILTRUST_LABELS)
+HANDLERS.update(RETAILTRUST_HANDLERS)
+
+from .bimadesk_tools import BIMADESK_HANDLERS, BIMADESK_LABELS, BIMADESK_TOOLS  # noqa: E402  v0.609 Bima Desk (health-insurance Wave 1)
+
+TOOLS.extend(BIMADESK_TOOLS)
+TOOL_LABELS.update(BIMADESK_LABELS)
+HANDLERS.update(BIMADESK_HANDLERS)
+
+from .bimaassist_tools import BIMAASSIST_HANDLERS, BIMAASSIST_LABELS, BIMAASSIST_TOOLS  # noqa: E402  v0.610 Bima Assist (health-insurance Wave 2)
+
+TOOLS.extend(BIMAASSIST_TOOLS)
+TOOL_LABELS.update(BIMAASSIST_LABELS)
+HANDLERS.update(BIMAASSIST_HANDLERS)
+
+from .bimarisk_tools import BIMARISK_HANDLERS, BIMARISK_LABELS, BIMARISK_TOOLS  # noqa: E402  v0.611 Bima Risk (health-insurance Wave 3)
+
+TOOLS.extend(BIMARISK_TOOLS)
+TOOL_LABELS.update(BIMARISK_LABELS)
+HANDLERS.update(BIMARISK_HANDLERS)
+
 from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
 
 TOOLS.extend(KAAN_TOOLS)
@@ -852,6 +882,11 @@ from .const_predesign_tools import PREDESIGN_HANDLERS, PREDESIGN_LABELS, PREDESI
 from .const_survey_tools import SURVEY_HANDLERS, SURVEY_LABELS, SURVEY_TOOLS  # noqa: E402
 from .const_delay_tools import DELAY_HANDLERS, DELAY_LABELS, DELAY_TOOLS  # noqa: E402
 from .const_green_tools import GREEN_HANDLERS, GREEN_LABELS, GREEN_TOOLS  # noqa: E402
+from .const_land_tools import LAND_HANDLERS, LAND_LABELS, LAND_TOOLS  # noqa: E402
+from .const_plan_tools import PLAN_HANDLERS, PLAN_LABELS, PLAN_TOOLS  # noqa: E402
+from .const_ehs_tools import EHS_HANDLERS, EHS_LABELS, EHS_TOOLS  # noqa: E402
+from .const_studio_tools import STUDIO_HANDLERS, STUDIO_LABELS, STUDIO_TOOLS, LEARN_HANDLERS, LEARN_LABELS, LEARN_TOOLS  # noqa: E402
+from .const_fm_tools import FM_HANDLERS, FM_LABELS, FM_TOOLS  # noqa: E402
 
 for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
                    (CUSTOMER_TOOLS, CUSTOMER_LABELS, CUSTOMER_HANDLERS), (QUALITY_TOOLS, QUALITY_LABELS, QUALITY_HANDLERS),
@@ -1031,6 +1066,13 @@ from .society_tools import SOCIETY_HANDLERS, SOCIETY_LABELS, SOCIETY_TOOLS  # no
 for _t, _l, _h in ((PROPAGENT_TOOLS, PROPAGENT_LABELS, PROPAGENT_HANDLERS), (RENTDESK_TOOLS, RENTDESK_LABELS, RENTDESK_HANDLERS),
                    (SITESUP_TOOLS, SITESUP_LABELS, SITESUP_HANDLERS), (INTERIOR_TOOLS, INTERIOR_LABELS, INTERIOR_HANDLERS),
                    (ARCHASSIST_TOOLS, ARCHASSIST_LABELS, ARCHASSIST_HANDLERS), (SOCIETY_TOOLS, SOCIETY_LABELS, SOCIETY_HANDLERS)):
+    _seen = {t["name"] for t in TOOLS}
+    TOOLS.extend(t for t in _t if t["name"] not in _seen)
+    TOOL_LABELS.update(_l)
+    HANDLERS.update(_h)
+for _t, _l, _h in ((LAND_TOOLS, LAND_LABELS, LAND_HANDLERS), (PLAN_TOOLS, PLAN_LABELS, PLAN_HANDLERS),
+                   (EHS_TOOLS, EHS_LABELS, EHS_HANDLERS), (STUDIO_TOOLS, STUDIO_LABELS, STUDIO_HANDLERS),
+                   (LEARN_TOOLS, LEARN_LABELS, LEARN_HANDLERS), (FM_TOOLS, FM_LABELS, FM_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)
     TOOL_LABELS.update(_l)
@@ -1392,8 +1434,8 @@ TOOL_LANES: dict[str, str] = {
     "memory_search": "LANE: find a FACT she asked you to remember. What was said in her chats / calls / jobs -> "
                      "yaad_khojo; her own files and documents -> gyaan_khojo; chats by date ('kal', 'is hafte') -> "
                      "haal_ki_chats.",
-    "yaad_khojo": "LANE: what was said or decided in her chats, calls and jobs, by meaning. A saved fact -> "
-                  "memory_search; her files -> gyaan_khojo; by date -> haal_ki_chats.",
+    "yaad_khojo": "LANE: the ONE memory door - facts, past chats / calls / jobs, work notes, her graph and page in one "
+                  "search. Her documents' contents -> gyaan_khojo; by date -> haal_ki_chats.",
     "gyaan_khojo": "LANE: search inside HER files and documents (Gyaan, Drive folders). A file she attached in this "
                    "chat -> file_read; her chats -> yaad_khojo.",
     "haal_ki_chats": "LANE: her other chats by DATE ('aaj', 'kal', 'is hafte'). By topic -> yaad_khojo.",

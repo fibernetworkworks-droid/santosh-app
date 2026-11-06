@@ -17,6 +17,7 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
   final _text = TextEditingController();
   bool _auto = true;
   bool _recall = true;
+  bool _sensitive = false;
   bool _loaded = false;
   bool _busy = false;
   String _by = '';
@@ -48,6 +49,7 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
         _take(Map<String, dynamic>.from((r['about'] as Map?) ?? const {}));
         _auto = sw['auto'] != false;
         _recall = sw['recall'] != false;
+        _sensitive = sw['sensitive'] == true;
         _loaded = true;
       });
     } catch (e) {
@@ -73,16 +75,46 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
     if (mounted) setState(() => _busy = false);
   }
 
-  Future<void> _switch({bool? auto, bool? recall}) async {
+  Future<void> _switch({bool? auto, bool? recall, bool? sensitive}) async {
     try {
-      final sw = await widget.app.api!.memorySwitches(auto: auto, recall: recall);
+      final sw = await widget.app.api!.memorySwitches(auto: auto, recall: recall, sensitive: sensitive);
       if (mounted) setState(() {
         _auto = sw['auto'] != false;
         _recall = sw['recall'] != false;
+        _sensitive = sw['sensitive'] == true;
       });
     } catch (e) {
       if (mounted) setState(() => _note = 'Nahi badla: $e');
     }
+  }
+
+  /// v0.609 Claude's "reset memory": asks once, then every store forgets her (her chats are not deleted).
+  Future<void> _resetAll() async {
+    final yes = await showDialog<bool>(
+      context: context,
+      builder: (c) => AlertDialog(
+        title: const Text('Saari yaad mitayein?'),
+        content: const Text('Hoola aapke baare mein jo bhi yaad rakhta hai - facts, yeh page, purani chats ki yaad, kaam '
+            'ke notes - sab mit jayega. Aapki chats nahi mitengi. Yeh wapas nahi hoga.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, mitao')),
+        ],
+      ),
+    );
+    if (yes != true || !mounted) return;
+    setState(() => _busy = true);
+    try {
+      await widget.app.api!.memoryReset();
+      if (!mounted) return;
+      setState(() {
+        _text.text = '';
+        _note = 'Saari yaad mita di. Aapki chats waise hi hain.';
+      });
+    } catch (e) {
+      if (mounted) setState(() => _note = 'Nahi ho saka: $e');
+    }
+    if (mounted) setState(() => _busy = false);
   }
 
   @override
@@ -153,7 +185,22 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
                         style: TextStyle(fontSize: 12)),
                     onChanged: (v) => _switch(recall: v),
                   ),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: _sensitive,
+                    title: const Text('Sensitive baatein bhi', style: TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: const Text(
+                        'Sehat, dharm, rajneeti jaisi pakki baatein bhi yaad rakhe. Paise, ID number, password kabhi nahi.',
+                        style: TextStyle(fontSize: 12)),
+                    onChanged: (v) => _switch(sensitive: v),
+                  ),
                 ]),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: _busy ? null : _resetAll,
+                icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+                label: const Text('Saari yaad mitao'),
               ),
               const SizedBox(height: 12),
               const Text(

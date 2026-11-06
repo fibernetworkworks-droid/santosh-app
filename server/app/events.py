@@ -33,7 +33,7 @@ LOCAL_KINDS = LIVE_ONLY | {
     "message", "upload", "reminders", "routines", "lists", "email_sent", "email_new", "email_snooze", "hoola_update",
     "galla", "mshop", "office",
     "employee", "darzi_order", "phonedoc_open", "phonedoc_check", "device_action", "device_action_result", "home_device",
-    "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "procedure", "compact", "open", "link",
+    "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "memory_used", "procedure", "compact", "open", "link",
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
     "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
 }

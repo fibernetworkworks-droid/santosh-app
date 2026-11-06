@@ -1597,3 +1597,19 @@ Stage Summary:
 ---
 Task ID: v0.604.0 YAAD SACH (built as 0.603.0)
 - Memory audit (probes) -> incognito leak into Coder vault + KG fixed with sweep; fact updates replace; forget cleans every memory copy. Tests 13.
+
+---
+Task ID: v0.608.0 EK YAAD + JUST IN TIME (built as 0.605.0)
+- One memory door (memory.py search_all / everything / reset_all) behind yaad_khojo (always in view); old chats fetched not pasted; 15 facts in the prompt. Tests 10.
+
+---
+Task ID: v0.611.0 YAAD KE KHAANE (built as 0.609.0)
+- Live model writes memory, extractor skips that turn; per-Session main-memory switch; sensitive opt-in; phone reset button; memory_quiz job. Tests 8.
+
+---
+Task ID: v0.610.0 KAAN W1 (TURN KHOJ + MEETING MINUTES)
+- Wave W1 of the WhisperAI feed, built on the shipped W0 kaan tool (v0.601.0): diarize + minutes as TWO ACTIONS on the same ONE tool - registry 588 unchanged (actions, not tools). Diarize is HONEST turn attribution: pauses are the only truthful signal because W0 stores no audio; word/segment gaps > 0.8s cut turns; turns stay UNNAMED until the owner names them (names={'1': 'Gupta ji'}); no voiceprint claim anywhere - acoustic ID needs stored audio, a W6 decision. Minutes are DETERMINISTIC: per-turn stats, en+hi keywords, action-item CANDIDATES by cue words with turn attribution; zero model calls; the prose summary is Santosh's job. Gate map: stored-id diarize gate-free but kill-switched (kaan_diarize default ON, KAAN_DIARIZE=0 par band); fresh-audio diarize rides the AUDIO gate; minutes is a staff-open read; diarize owner/approved-only. Admit keys tight multiword only - bare 'minute' never admits (trap pinned). Tests: 18 new + W0 27 with healed pins; neighbour sweeps 241 passed / 1 skipped; 1 pre-existing red DOCUMENTED untouched (test_v0512/v0514/v0495 story-window markers left the 20k window during the dev chain's own 0.601-0.606 sweeps - stash-proven at clean d7d34ee05). Version ritual: APP_VERSION story, pubspec 0.607.0+613, pins swept across 195 test files (101 full-string + 203 bare), console stamps untouched (server-only, the 0.476 precedent). VPS bake evidence at W1 exit: engine ready, jfk.flac through kaan word-exact, KAAN_AUDIO=1. OPS NOTE: get_settings is @lru_cache - a .env flip reaches the RUNNING server only via `pm2 restart santosh --update-env` (the process name is santosh, not santosh-core).
+
+---
+Task ID: v0.615.0 YAAD SE + SUDHAAR YAAD (built as 0.612.0)
+- memory_used note under replies (only echoed memory), unremember endpoint (no_recall for past chats), corrections kept as WHEN/WANT preferences. Tests 9.

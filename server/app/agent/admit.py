@@ -60,7 +60,8 @@ CORE_FAMILIES = frozenset({
 # v0.559 SAHI GINTI: single tools that stay in view on every turn even though their family is not core - the
 # everyday ones of a family that is otherwise only opened by her words. Anthropic's guidance: tool choice gets worse
 # past 30-50 tools in view; a plain "namaste" carried 75 before this, ~52 after.
-CORE_TOOLS = frozenset({"maps_search", "maps_directions"})
+CORE_TOOLS = frozenset({"maps_search", "maps_directions",
+                        "yaad_khojo"})   # v0.605 EK YAAD: the one memory door is always in view (old chats are fetched, not pasted)
 _LATLNG = re.compile(r"(?<![\d.])-?\d{1,2}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}")
 
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
@@ -95,7 +96,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
     "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",
              "sun kar", "sun ke", "audio likh", "likhawat", "srt", "subtitle", "voice note likh", "speech to text",
-             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट"),
+             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट",
+             # v0.607 W1: minutes + kaun-bola keys (TIGHT multiword only - bare "minutes"/"minute" stays OUT,
+             # "10 minute ruko" must never admit this family)
+             "meeting minutes", "minutes bana", "minutes likh", "minutes chahiye", "kaun bola", "kaun bola tha",
+             "kaun kaun bole", "kaun bol raha"),
     # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
     "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
             "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad",
@@ -241,6 +246,21 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # v0.604 Dukaan Desk (retail Wave 1). Tight keys.
     "retaildesk": ("dukaan desk", "dukaan_desk", "reorder", "dead stock", "expiry list", "mrp se upar", "oversell", "rto", "cod risk", "settlement reconcil",
                    "landed cost", "product claim", "gst split", "kirana", "daily sales summary", "stock kam", "margin check"),
+    # v0.607 Retail Growth (Wave 2) + Retail Trust (Wave 3). Tight keys.
+    "retailgrowth": ("markdown schedule", "near expiry price", "loyalty list", "lapsed customer", "unit economics", "ltv", "abc analysis", "range review",
+                     "price rule", "scheme accrual", "retailer credit", "beat route", "cash conversion", "working capital", "delivery batch", "retail_growth"),
+    "retailtrust": ("fraud rule", "return abuse", "dark pattern", "grievance clock", "fake review", "review authenticity", "seller kyc", "gstin check",
+                    "legal metrology", "label check", "delivery promise audit", "override rate", "price fairness", "retail_trust"),
+    # v0.609 Bima Desk (health-insurance Wave 1). Tight keys.
+    "bimadesk": ("claim checklist", "insurance claim", "cashless claim", "reimbursement claim", "room rent", "proportionate deduction", "claim deduction",
+                 "claim rejected", "rejection appeal", "insurance ombudsman", "policy renewal reminder", "portability", "tpa", "settlement letter", "bima", "bima_desk"),
+    # v0.610 Bima Assist (health-insurance Wave 2). Tight keys.
+    "bimaassist": ("plan compare", "compare health plans", "material facts", "pre-existing disclosure", "proposal form check", "coverage check", "waiting period check",
+                   "pre-auth check", "insurer query", "medical timeline", "rejection letter", "grievance reply", "ombudsman packet", "wording review", "policy wording",
+                   "mis-selling", "free look", "fhir claim", "icd mapping", "code mapping", "bima_assist"),
+    # v0.611 Bima Risk (health-insurance Wave 3). Tight keys.
+    "bimarisk": ("loss ratio", "claim frequency", "chain ladder", "run-off triangle", "ibnr", "pricing fairness", "rating factor", "underwriting rule", "proposal triage",
+                 "provider outlier", "upcoding", "duplicate claim", "cashless misuse", "siu case", "fraud model audit", "scheme anomaly", "bima_risk"),
     # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
     # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",

@@ -1954,6 +1954,8 @@ Widget? feedCard(BuildContext context, Santosh app, FeedItem it) {
       return DocEditCard(key: ValueKey('de${it.data['id']}'), v: it.data, app: app);
     case 'memory_saved':
       return MemorySavedChip(v: it.data, app: app);
+    case 'memory_used':
+      return MemoryUsedChip(v: it.data, app: app);
     case 'compact':
       return CompactChip(v: it.data, app: app);
     case 'pg_write':

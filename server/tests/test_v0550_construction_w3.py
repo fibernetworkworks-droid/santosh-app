@@ -109,8 +109,8 @@ def test_register_wave3_homes():
         assert R.WAVE3_HOME[rid], rid
     assert R.WAVE3_HOME[20] == "const_bim (clash, BCF)" and R.WAVE3_HOME[26] == "const_survey (RERA carpet)"
     assert R.WAVE3_HOME[82] == "const_quality (incident investigation)"
-    for rid in (25, 27, 74, 77, 109):          # the plan's stragglers stay unwaved until she says
-        assert R.get(rid)["wave"] == "", rid
+    for rid in (25, 27, 74, 77, 109):          # the plan's stragglers shipped as Wave 3.5
+        assert R.get(rid)["wave"] == "3.5", rid   # v0.570.0: shipped (re-healed after every collision)
 
 
 def test_wave3_tier_c_edges():
@@ -138,7 +138,7 @@ def test_india_pack_rows():
     from app.construction import statepacks as SP
     pack = SP.load("india")
     assert not SP.stale(pack)
-    assert len(pack["rows"]) == 11
+    assert len(pack["rows"]) == 19        # 11 + 7 striking (Wave 3.5) + 1 GST rate (Wave 4)
     assert SP.value(pack, "is875_p1_rcc") == 25.0 and SP.value(pack, "is875_p2_office") == 3.0
     assert SP.value(pack, "is456_beam_ss") == 20.0 and SP.value(pack, "cpheeo_lpcd") == 135.0
     r = SP.row(pack, "is456_beam_ss")
@@ -535,7 +535,7 @@ def test_registry_579_and_dispatch(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho", "const_survey",
               "const_survey_dekho", "const_delay", "const_delay_dekho", "const_green", "const_green_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 588, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 605, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_bim_tool_end_to_end(env):
@@ -611,6 +611,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.606.0"
-    assert 'APP_VERSION = "0.606.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.606.0+612" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.615.0"
+    assert 'APP_VERSION = "0.615.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.615.0+621" in (REPO / "pubspec.yaml").read_text()

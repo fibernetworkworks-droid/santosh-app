@@ -38,6 +38,9 @@ class Conversation(Base):
     last_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     # v0.250 incognito chat: Hoola reads her memory but writes NOTHING from it (no facts, index, diary, page, recall)
     incognito: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # v0.612 YAAD SE: she tapped "is chat ko yaad se hatao" (Grok's remove-from-memory) - the chat itself stays in
+    # her list, but its old exchanges are never recalled into another chat again
+    no_recall: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
 
 
 class Message(Base):
@@ -198,6 +201,7 @@ class Profile(Base):
     # v0.250 her memory switches (None = on): Hoola picks up facts by itself / uses her past chats (search, page)
     memory_auto: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
     memory_recall: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    memory_sensitive: Mapped[bool | None] = mapped_column(Boolean, nullable=True)   # v0.609 opt-in, off by default
 
 
 class Reminder(Base):

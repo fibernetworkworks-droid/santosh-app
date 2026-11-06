@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     agent_self_check: bool = True          # v0.78 Pakka kaam: check the real results before saying done
     draft_check: bool = True               # v0.223 Draft jaanch: the last look at a reply (free in code + one
     draft_check_max_hour: int = 4          #   small check after the words are out); notes per chat per hour
+    memory_recent_facts: int = 15          # v0.605 JUST IN TIME: newest unpinned facts in the prompt (was 40; the rest via yaad_khojo)
     memory_auto: bool = True               # v0.108 lasting facts picked after her turns ("yaad rakha" chip)
     agent_fix_search: bool = True          # v0.78: a failed step with no known fix -> search the web for the solution
     agent_tool_timeout_s: int = 300         # a tool that hangs never blocks a chat turn longer than this (browser waits go up to 270 s)
@@ -564,6 +565,7 @@ class Settings(BaseSettings):
     home_assistant_token: str = ""          # HA long-lived access token (profile -> Security -> Tokens); never in chat
     # --- KAAN PACK v0.589 (WhisperAI Wave W0): transcription core, AUDIO gate PC/HOME se alag, default OFF ---
     kaan_audio: bool = False                # the AUDIO gate (default OFF - KAAN_AUDIO=1 on the VPS flips it)
+    kaan_diarize: bool = True               # v0.610 KAAN W1: pause-turn diarization (local, CPU-light - kill switch; KAAN_DIARIZE=0 par band)
     # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---

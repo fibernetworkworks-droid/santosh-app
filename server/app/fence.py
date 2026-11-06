@@ -74,9 +74,27 @@ def prefs(tenant: str) -> dict[str, bool]:
         with session() as s:
             p = s.get(Profile, tenant)
             return {"auto": not (p is not None and p.memory_auto is False),
-                    "recall": not (p is not None and p.memory_recall is False)}
+                    "recall": not (p is not None and p.memory_recall is False),
+                    "sensitive": bool(p is not None and getattr(p, "memory_sensitive", None) is True)}
     except Exception:
-        return {"auto": True, "recall": True}
+        return {"auto": True, "recall": True, "sensitive": False}
+
+
+def main_memory_ok(conversation_id: str) -> bool:
+    """v0.609 YAAD KE KHAANE: may this chat use her MAIN memory (general facts, her page, her graph)? False only for a
+    chat in a Session whose 'use main memory' switch she turned off (Claude's per-project 'Use account memory').
+    Pinned facts still ride: 'hamesha yaad' is her own word that they always apply."""
+    scope = scope_of(conversation_id) if conversation_id else None
+    if not scope:
+        return True
+    try:
+        from .projects import Project
+        with session() as s:
+            p = s.get(Project, scope)
+            return not (p is not None and p.use_main_memory is False)
+    except Exception:
+        log.exception("main-memory switch read failed")
+        return True
 
 
 def chats_in(tenant: str, conversation_id: str) -> set[str] | None:

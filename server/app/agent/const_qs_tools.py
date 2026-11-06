@@ -18,10 +18,15 @@ QS_TOOLS = [
         "check. action=rate: item, unit, components [{head, qty, unit, rate, source}], overhead_pct, profit_pct, source "
         "(SOR/quote) -> built-up rate. action=boq: project, item, unit, qty, rate, head. action=abstract: project. "
         "action=budget: project, head, budget, committed, actual (cost controller). action=retention: amount, pct "
-        "(contract ka %). action=pv: amount, workable_pct, base_index, current_index. Working paper kabhi certificate nahi."),
+        "(contract ka %). action=pv: amount, workable_pct, base_index, current_index. Working paper kabhi certificate nahi. "
+        "Wave 4 #40: action=cost_plan: project, rows [head, planned, estimate] -> variance; action=ve_option: "
+        "project, rows [option, saving(FED), risk_note]. #89: action=gst_row: project, ref (bill/RA), rows "
+        "[taxable, rate_pct, rcm], source (ya india pack row) -> tax arithmetic; action=gst_sum: ref, itc, "
+        "itc_source -> net. Return CA hi file karega (tier C)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["takeoff", "bbs", "recompute", "rate", "boq", "abstract", "budget",
-                                               "retention", "pv"]},
+                                               "retention", "pv", "cost_plan", "ve_option",
+                                               "gst_row", "gst_sum"]},
          "project": {"type": "string"}, "item": {"type": "string"}, "kind": {"type": "string"},
          "params": {"type": "object"}, "bars": {"type": "array", "items": {"type": "object"}},
          "takeoff": {"type": "string"}, "unit": {"type": "string"},
@@ -30,7 +35,8 @@ QS_TOOLS = [
          "rate": {"type": "number"}, "head": {"type": "string"}, "budget": {"type": "number"},
          "committed": {"type": "number"}, "actual": {"type": "number"}, "amount": {"type": "number"},
          "pct": {"type": "number"}, "workable_pct": {"type": "number"}, "base_index": {"type": "number"},
-         "current_index": {"type": "number"}, "dwg_ref": {"type": "string"}},
+         "current_index": {"type": "number"}, "dwg_ref": {"type": "string"}, "rows": {"type": "array", "items": {}},
+         "ref": {"type": "string"}, "itc": {"type": "number"}, "itc_source": {"type": "string"}},
          "required": ["action"]}},
     {"name": "const_qs_dekho", "description": (
         "Read QS desk (nothing changes). what=day | takeoffs (project optional) | rates | boq (project) | "
@@ -77,6 +83,17 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "pv":
             return Q.price_variation(a.get("amount"), a.get("workable_pct"), a.get("base_index"),
                                      a.get("current_index"))
+
+        if action == "cost_plan":
+            return Q.cost_plan(t, _s(a.get("project")), a.get("rows") or [], _s(a.get("note")))
+        if action == "ve_option":
+            return Q.ve_option(t, _s(a.get("project")), a.get("rows") or [])
+        if action == "gst_row":
+            return Q.gst_row(t, _s(a.get("project")), _s(a.get("ref")), a.get("rows") or [],
+                             _s(a.get("source")))
+        if action == "gst_sum":
+            return Q.gst_sum(t, _s(a.get("project")), _s(a.get("ref")), a.get("itc") or 0.0,
+                             _s(a.get("itc_source")))
     except (Q.CstError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("action galat")
