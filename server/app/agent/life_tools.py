@@ -13,13 +13,16 @@ from .tools import Ctx, ToolError
 
 LIFE_TOOLS = [
     {"name": "create_reminder", "description": (
-        "Remind the user at a time. Santosh messages them in the chat and their phone shows a notification. "
-        "Use for 'yaad dilana', medicines, bills, calls to make. Time is the user's LOCAL time."),
+        "Remind the user at a time. Santosh messages them in the chat, their phone shows a notification, and a live "
+        "call says it. Use for 'yaad dilana', medicines, bills, calls to make. 'X minute / ghante BAAD' (from now) -> "
+        "ALWAYS in_minutes=X (the server counts from the exact current time - never work out the clock yourself). "
+        "A clock time or a date ('kal 9 baje', '5 tareekh') -> when, in the user's LOCAL time."),
      "input_schema": {"type": "object", "properties": {
          "text": {"type": "string", "description": "What to remind, short, in the user's language, e.g. 'Dawai lena (BP)'"},
-         "when": {"type": "string", "description": "Local date-time ISO, e.g. 2026-10-18T09:00"},
+         "in_minutes": {"type": "number", "description": "Minutes from NOW, e.g. 2 for 'do minute baad', 90 for 'dedh ghante baad'"},
+         "when": {"type": "string", "description": "Only for a clock time / date: local date-time ISO, e.g. 2026-10-18T09:00"},
          "repeat": {"type": "string", "enum": list(life.REPEATS), "description": "none, daily, weekdays, weekly or monthly"}},
-         "required": ["text", "when"]}},
+         "required": ["text"]}},
     {"name": "list_reminders", "description": "The user's upcoming reminders.",
      "input_schema": {"type": "object", "properties": {}}},
     {"name": "cancel_reminder", "description": "Cancel a reminder by id (get ids from list_reminders).",
@@ -117,14 +120,32 @@ def _device_action(ctx: Ctx, type_: str, payload: dict, say: str) -> dict:
     return {"action_id": aid, "sent_to_phone": True, "note": say}
 
 
-async def create_reminder(ctx: Ctx, text, when, repeat="none", **_):
+async def create_reminder(ctx: Ctx, text, when=None, repeat="none", in_minutes=None, **_):
     tz = life.tz_of(ctx.tenant_id)
-    try:
-        due = life.parse_local(when, tz)
-    except ValueError as e:
-        raise ToolError(f"Could not read the time '{when}': {e}. Use local ISO like 2026-10-18T09:00.")
-    if due < now() - timedelta(minutes=1):
-        raise ToolError(f"{life.fmt_local(due, tz)} is already in the past. Ask the user for a future time.")
+    # v0.622 SAHI SAMAY: her live call said "do minute baad" three times and the call model worked out the clock
+    # itself - twice in the PAST (refused), once 9 seconds ahead. A relative ask is now counted by the SERVER from
+    # its own exact clock; the model never does that sum.
+    mins = None
+    if in_minutes not in (None, ""):
+        try:
+            mins = float(in_minutes)
+        except (TypeError, ValueError):
+            raise ToolError(f"in_minutes must be a number of minutes, got {in_minutes!r}.")
+        if not 0 < mins <= 60 * 24 * 366:
+            raise ToolError("in_minutes must be more than 0 (and under a year).")
+    if mins is not None:
+        due = now() + timedelta(minutes=mins)
+    else:
+        if not when:
+            raise ToolError("Give in_minutes for 'X minute baad', or when for a clock time / date.")
+        try:
+            due = life.parse_local(when, tz)
+        except ValueError as e:
+            raise ToolError(f"Could not read the time '{when}': {e}. Use local ISO like 2026-10-18T09:00, "
+                            "or in_minutes for 'X minute baad'.")
+        if due < now() - timedelta(minutes=1):
+            raise ToolError(f"{life.fmt_local(due, tz)} is already in the past (it is {life.fmt_local(now(), tz)} now). "
+                            "If she said 'X minute / ghante baad', call again with in_minutes=X; else ask her the time.")
     repeat = repeat if repeat in life.REPEATS else "none"
     with session() as s:
         r = Reminder(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id, text=text[:500], due_at=due, repeat=repeat)
