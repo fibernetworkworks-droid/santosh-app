@@ -190,7 +190,7 @@ Doing real work
 - Work out exact dates and times yourself ("kal subah" is tomorrow 8 AM unless they gave a time). The user's local time now is {now}.
 
 Which tool (details are in each tool's description)
-- EVERY job she can give in chat works on this call - mail, WhatsApp, files, sheets, search, orders, desks, anything: use its own tool below, else santosh_kaam with her exact words. create_reminder ONLY when she asks to be reminded ('yaad dilana', 'remind', 'X baje bata dena'); a job that is not a reminder is never turned into one.
+- EVERY job she can give in chat works on this call: its own tool below, else santosh_kaam with her exact words. create_reminder ONLY when she asks to be reminded; never turn another job into one.
 - Reminders, phone alarms and timers, lists, memory, weather, daily routines: call them directly. 'X minute / ghante baad yaad dilana' = create_reminder in_minutes=X - never work out the clock time yourself.
 - Business work in a call (her Sahayaks: tailor, chai, office, GST, payroll, accounts, audit, insurance, telecaller, SEO, wholesale, export, franchise, contractor, ads, brand, support / helpdesk / complaints / returns / community / call centre, developer / QA / IT / NOC / cyber / DevOps / docs / product, logistics / fleet / godown / courier / travel / drivers / customs, real estate / society / interior / architect, website, app design, 3D, video studio, Hoola Deals / bookings / compare, Postgres, Document desk / Sheet Milaan, letters / translation, hotel / homestay / banquet / events / weddings / tours, legal / compliance / company secretary / notary / data protection, journalism / photo / design / podcast / influencer / artist / book / film / video editing desks, SEO, export, wholesale, franchise, contractor, insurance, App Jaanch / REA, bank-data or health-record consent checks, DigiLocker, ONDC): the STATE readers of the main desks ARE on this call - darzi_dekho, gst_dekho, payroll_dekho, paisa_dekho, vakil_dekho and the rest of the *_dekho heads: ask them DIRECTLY for orders, status, hisaab, today's haal ("darzi_dekho action=today"). Any CHANGE (new order, status move, price, rule, message) goes to santosh_kaam with her words and the details ("darzi: Riya ka blouse order, 15 tareekh"); say one line that it is being done, and the result comes back as a note / card. Tool names in notes for such work = santosh_kaam.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, the SENDING of a WhatsApp campaign (creating one and watching its status you do directly with create_campaign / get_campaign_status - always auto_send=False on a call; the send itself waits for her card tap), multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
@@ -2791,17 +2791,18 @@ class Call:
 
     def _her_words(self) -> str:
         """v0.624 what SHE asked this turn: live words, else a line she typed in the last 2 minutes, else her last turn."""
-        now_words = (self.user_buf or "").strip()
+        now_words = (getattr(self, "user_buf", "") or "").strip()
         if now_words:
             return now_words
         typed = getattr(self, "_typed", None)
         if typed and time.monotonic() - typed[1] < 120:
             return typed[0]
-        return (self.recent[-1][0] if self.recent else "").strip()
+        recent = getattr(self, "recent", None)
+        return (recent[-1][0] if recent else "").strip()
 
     async def _execute(self, name: str, args: dict) -> dict:
-        said = self._her_words()
-        log.info("call %s tool %s | she said: %s", self.call_id, name, said[-160:].replace("\n", " "))   # v0.624 which tool, for which ask
+        said = Call._her_words(self)
+        log.info("call %s tool %s | she said: %s", getattr(self, "call_id", "?"), name, said[-160:].replace("\n", " "))   # v0.624 which tool, for which ask
         if name == "create_reminder" and get_settings().voice_reminder_guard and said and not reminder_wanted(said):
             # v0.624 SAB KAAM (owner: "ANY JOB GIVEN EVEN EMAIL ... IT IS GOING TO SETTING REMINDER TOOL"): a reminder
             # she never asked for is refused BY CODE and her real ask goes to the full brain - the chat's every tool.
