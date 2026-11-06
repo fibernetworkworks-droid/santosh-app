@@ -46,6 +46,9 @@ def ensure_table() -> None:
 
 TRUST = ("seekh", "saathi", "bharosa")
 
+FIN_GROUP = "Finance & Banking"   # v0.585 the consumer money-safety employee
+VOICE_GROUP = "Voice, Meetings & Transcription"   # v0.589 the KAAN PACK employee (WhisperAI Wave W0)
+FILM_GROUP = "Film, Media & Entertainment"   # v0.565 the Film Desk employee
 GAME_GROUP = "Game Development, Simulation & VR"   # v0.379 the Game Desk employees' heading in the Hub
 SW_GROUP = "Software Architecture, Engineering & Core Systems"   # v0.410 the Architecture Desk employees' heading
 EDU_GROUP = "Education, Research & Lab"   # v0.453 the Shiksha suite + Prayogshala in the Hub (one Education Desk)
@@ -120,6 +123,46 @@ CATALOG: dict[str, dict[str, Any]] = {
               "pitch": "Layout scripts and design-rule checks on GDS files (KLayout)."},
     "iiot": {"name": "Industrial IoT Architect", "live": False, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
              "pitch": "SCADA and factory network design: device list, protocols, security zones, BOM (paper only)."},
+    # v0.585 PAISA SAHAYAK (register docs/research/banking_finance_industry, Wave 1 consumer slice: #1-3, 5-8)
+    "paisa_sahayak": {"name": "Paisa Sahayak (money safety)", "live": True, "icon": "receipt", "group": FIN_GROUP,
+                      "pitch": "On your side with money: reads a loan's real cost, finds hidden bank charges, warns about scams, and drafts the complaint. It calculates and explains; you decide and you tap.",
+                      "does": ["Loan reader: EMI, every fee, the money you actually receive and the true yearly rate (APR); a 'flat rate' turned into its real rate; offers side by side",
+                               "Part-payment check: interest saved against the prepayment charge you typed in",
+                               "Debt planner: snowball vs avalanche vs minimums, and what happens if income drops",
+                               "Statement reader: every fee-like line by kind, GST check, double debits, subscriptions, month by month spending",
+                               "Scam shield: paste a message or what a caller said; it names the scam, shows the words that gave it away, checks the link without opening it",
+                               "UPI safety coach and a complaint letter with an evidence list and the escalation steps (you send it)"],
+                      "needs": ["Your loan offer numbers, or a CSV / Excel statement, or the message you doubt"],
+                      "never": ["Ask for or keep your PIN, OTP, CVV, card number or password",
+                                "Move money, place an order, or recommend a lender or a product",
+                                "Give personalised investment, tax or legal advice, or promise a loan or a score",
+                                "Store your statement: it reads it, answers, and forgets"]},
+    # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
+    "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
+             "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",
+             "does": ["Transcribe an audio / video file from chat into text (mp3, wav, m4a, ogg, flac... up to 5 GB)",
+                      "Detect the language (hi, mr, en... 90+), or you name it; translate-to-English on the capable models",
+                      "Per-word timestamps for subtitles and precise edits",
+                      "Your transcripts are stored, listed, re-opened and searched by what was said",
+                      "Engine status made honest: gate, model ladder (tiny to large-v3), what is missing, all in one status"],
+             "needs": ["The audio / video file sent in chat (or its file id)"],
+             "never": ["Send your audio anywhere: engine and files stay on your server (KAAN_AUDIO=1 turns it on)",
+                       "Record or transcribe while the AUDIO gate is off",
+                       "Guess a transcript it did not hear: silence is reported as silence, never filled in"]},
+    # v0.565 FILM DESK producer layers (script coverage, previs, schedule, budget, festivals, windows, deliverables, royalties)
+    "film": {"name": "AI Film Producer", "live": True, "icon": "game", "group": FILM_GROUP,
+             "pitch": "A film producer's coworker: script facts, shot-list checks, shooting schedule, rate-card budget, festivals, release windows, deliverables and royalty sums.",
+             "does": ["Reads your script and counts it: scenes, characters, who speaks how much, places, night scenes, and flags worth a second look",
+                      "Checks the shot list: timing, missing cameras, scenes with no shot, speech that cannot fit its shot",
+                      "Plans the shoot: days grouped by place, day-out-of-days, call sheet with blanks for what only you know",
+                      "Budget from YOUR rate card only; festival deadlines, release windows and holdbacks from YOUR facts",
+                      "Deliverables and subtitle / dub tracker; an AI voice is held unless that person's recorded consent covers it",
+                      "Royalty sums from the terms you type in from your contract, exact to the paisa"],
+             "needs": ["A film (title and logline) and your script, or let Hoola write a first one from your words"],
+             "never": ["Invent a rate, fee, deadline, holdback or guild table: every number is yours, with its source",
+                       "Give a reader's verdict (pass / consider / recommend) or a rating",
+                       "Send, submit, sign or pay anything: messages and release are cards for your tap",
+                       "Use a real person's face or voice without their recorded consent"]},
     # v0.379 GAME DESK (docs/GAME_DESK_PLAN.md): one shared desk, a pack per role; Phase 1 = the Game Developer
     "game_dev": {"name": "Game Developer", "live": True, "icon": "game", "group": GAME_GROUP,
                  "pitch": "Makes original games from your words with Godot 4, tests them itself and gives you a link to play on any phone.",

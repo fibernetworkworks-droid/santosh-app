@@ -33,7 +33,10 @@ from urllib.parse import quote as urlq
 from sqlalchemy import select
 
 from ..db import now, session
+from . import coverage as CV
 from . import delivery as DL
+from . import guild as GD
+from . import previs as PV
 from . import production as P
 from . import rules as R
 from . import sales as SL
@@ -1807,3 +1810,86 @@ def localisation_view(tenant: str, ref: str) -> dict:
             return seen[person_ref]
         view = DL.loc_view(items, day, check)
     return {"project": head, **view}
+
+
+# ---------------------------------------------------------------- script coverage / previs (read-only) + royalty terms
+def coverage_view(tenant: str, ref: str) -> dict:
+    """Counts and heuristic flags from the saved script. No verdict: a reader's call is a person's."""
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        scenes, text, rt = _j(p.scenes, []), p.script or "", p.runtime_s
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **CV.coverage(scenes, text, rt)}
+
+
+def previs_view(tenant: str, ref: str) -> dict:
+    """The shot list as a timeline with the problems a person would circle (see previs.py for what is NOT checked)."""
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        scenes, shots, rt = _j(p.scenes, []), _j(p.shots, []), p.runtime_s
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, **PV.previs(shots, scenes, rt)}
+
+
+def royalty_op(tenant: str, ref: str, op: str, actor: str = "owner", **f: Any) -> dict:
+    """Owner only (commercial terms). op: add (a contract term, `source` required) | update | remove | receipt (an income line) |
+    unreceipt (remove one) . Nothing is looked up: there is no built-in rate table, every number is hers from her contract."""
+    _need_owner(actor)
+    op = (op or "add").lower()
+    with _LOCK, session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        terms = [x for x in pl.get("guild_terms", []) if isinstance(x, dict)]
+        recs = [x for x in pl.get("receipts", []) if isinstance(x, dict)]
+        eid = _s_str(f.get("entry"))
+        try:
+            if op == "add":
+                if len(terms) >= GD.TERM_MAX:
+                    raise FilmError(f"{GD.TERM_MAX} se zyada shartein nahi.")
+                e = GD.norm_term(f, _next_id(terms, "gt"))
+                terms.append(e)
+                what = f"Royalty shart: {e['party']} ({e['basis']})"
+            elif op in ("update", "remove"):
+                cur = next((x for x in terms if x["id"] == eid), None)
+                if cur is None:
+                    raise FilmError("Kaun si shart? (entry=gt1 jaisa id)")
+                if op == "remove":
+                    terms.remove(cur)
+                    what = f"Royalty shart hata: {cur['party']}"
+                else:
+                    keys = ("party", "role", "guild", "basis", "rate", "threshold_inr", "cap_inr", "floor_inr", "applies_to", "start",
+                            "end", "source", "notes")
+                    e = GD.norm_term({**cur, **{k: v for k, v in f.items() if k in keys}}, 0)
+                    e["id"] = cur["id"]
+                    terms[terms.index(cur)] = e
+                    what = f"Royalty shart badli: {e['party']}"
+            elif op == "receipt":
+                if len(recs) >= GD.RECEIPT_MAX:
+                    raise FilmError(f"{GD.RECEIPT_MAX} se zyada aay-lines nahi.")
+                e = GD.norm_receipt(f, _next_id(recs, "rc"))
+                recs.append(e)
+                what = f"Aay jodi: {e['medium']} Rs {e['amount_inr']:,.2f}"
+            elif op == "unreceipt":
+                cur = next((x for x in recs if x["id"] == eid), None)
+                if cur is None:
+                    raise FilmError("Kaun si aay-line? (entry=rc1 jaisa id)")
+                recs.remove(cur)
+                what = "Aay-line hatayi"
+            else:
+                raise FilmError("op: add | update | remove | receipt | unreceipt")
+        except ValueError as ex:
+            raise FilmError(str(ex)) from None
+        pl["guild_terms"], pl["receipts"] = terms, recs
+        p.plan = _dump(pl)
+        _log(p, what, actor_name(tenant, actor))
+    return royalties_view(tenant, ref) | {"say": what}
+
+
+def royalties_view(tenant: str, ref: str) -> dict:
+    with session() as s:
+        p = _proj(s, tenant, ref)
+        pl = _j(p.plan, {})
+        terms = [x for x in pl.get("guild_terms", []) if isinstance(x, dict)]
+        recs = [x for x in pl.get("receipts", []) if isinstance(x, dict)]
+        head = {"number": p.number, "title": p.title}
+    return {"project": head, "terms": terms, "receipts": recs, **GD.statement(terms, recs)}

@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 
 import '../native.dart';
 import '../state.dart';
+import 'filmdesk_producer.dart';
 import 'glass.dart';
 
 String _s(dynamic v) => v == null ? '' : '$v';
@@ -358,6 +359,23 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
         ]),
       );
 
+  Widget _producerBox() {
+    void go(int tab) => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FilmdeskProducerPage(app: widget.app, ref: widget.ref, tab: tab)));
+    return _section('Producer', [
+      const Text('Script ki ginti, shot list ki jaanch, schedule, paisa, festival, delivery. Sab aapke apne number aur aapki script se.',
+          style: TextStyle(fontSize: 12, color: C.muted)),
+      const SizedBox(height: 6),
+      Wrap(spacing: 8, runSpacing: 6, children: [
+        GlassButton(label: 'Script coverage', icon: Icons.fact_check_rounded, height: 38, onTap: () => go(0)),
+        GlassButton(label: 'Shot jaanch', icon: Icons.movie_filter_rounded, height: 38, onTap: () => go(1)),
+        GlassButton(label: 'Schedule', icon: Icons.event_note_rounded, height: 38, onTap: () => go(2)),
+        GlassButton(label: 'Paisa / royalty', icon: Icons.payments_rounded, height: 38, onTap: () => go(3)),
+        GlassButton(label: 'Festival / windows', icon: Icons.emoji_events_rounded, height: 38, onTap: () => go(4)),
+        GlassButton(label: 'Delivery', icon: Icons.local_shipping_rounded, height: 38, onTap: () => go(5)),
+      ]),
+    ]);
+  }
+
   Widget _scriptBox() {
     final p = _p!;
     final script = _s(p['script']);
@@ -601,6 +619,7 @@ class _FilmdeskProjectPageState extends State<FilmdeskProjectPage> {
                 _scriptBox(),
                 _castBox(),
                 _shotsBox(),
+                _producerBox(),
                 _budgetBox(),
                 _rightsBox(),
                 _releaseBox(),

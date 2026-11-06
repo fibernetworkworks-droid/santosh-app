@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems'};   // v0.420 the Game Desk roles share it
+  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems'};   // v0.420 the Game Desk roles share it
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -34,6 +34,10 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
      desc: 'Architecture, systems and code work on your own repositories. Reads first, changes only on your tap.'},
     {g: 'Education, Research & Lab', id: 'edu', name: 'Education, Research & Lab', art: 'edu',   // v0.453
      desc: 'A tutor, a school office, a paper setter, a research assistant, the register and a 3D science lab. Children only with guardian consent.'},
+    {g: 'Finance & Banking', id: 'fin', name: 'Finance & Banking', art: 'biz',   // v0.585
+     desc: 'Money safety for people: a loan\'s real cost, hidden charges, scam warnings, complaint letters. It explains and calculates; it never moves money or asks for a PIN or OTP.'},
+    {g: 'Film, Media & Entertainment', id: 'film', name: 'Film, Media & Entertainment', art: 'biz',   // v0.565
+     desc: 'A producer\'s coworker: script facts, shot checks, schedule, budget from your rate card, festivals, windows, deliverables, royalties. Nothing is sent or paid without your tap.'},
     {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
      desc: 'ERP, CRM, PLM, supply chain and compliance work on your own systems. Every write is planned, dry-run and waits for your tap.'}];
   const ART = {   // line drawings; every path is drawn on once (pathLength 1 + .ae-draw)

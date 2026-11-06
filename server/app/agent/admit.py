@@ -91,6 +91,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
                "dub", "dubbing", "create studio", "गाना", "डब"),
     "blender": ("blender", "3d", "three d"),
+    # v0.589 KAAN PACK: her words for a transcript job (sunwai stays OUT - it is the vakil desk's court-hearing word;
+    # bare "kaan" stays OUT too - "makaan" contains it, the rentdesk lane does not need our family)
+    "kaan": ("transcript", "transcribe", "transcription", "kaan se", "kaan tool", "kaan pack", "audio sun",
+             "sun kar", "sun ke", "audio likh", "likhawat", "srt", "subtitle", "voice note likh", "speech to text",
+             "meeting ki file", "record sun", "record likh", "ट्रांसक्रिप्ट", "लिखावट"),
     # v0.357 Engineering Desk (CAD Engineer): her words for a part / drawing / CAD files
     "eng": ("cad", "step file", ".step", "stl", "3d print", "cnc", "machin", "bracket", "flange", "enclosure", "mounting",
             "part bana", "drawing", "dimension", "fillet", "chamfer", "solidworks", "fusion 360", "autocad", "freecad",
@@ -117,6 +122,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "speckit": ("speckit", "spec sutra", "spec driven", "spec-driven", "sdd", "user story", "acceptance criteria",
                 "user stories", "traceability", "constitution", "naksha banao", "spec banao", "spec likho",
                 "spec likh", "requirements doc", "requirement list", "converge loop", "convergence"),
+    # v0.586 SANDARBH MANCH: two work lanes (backend-only, the hoola AI's own desks - the T1 reference
+    # family). Bare "file" stays with product's file tools; these are the agent-owns-it shapes.
+    "workspace": ("workspace", "meri files", "file banao", "file likho", "file padho", "file kholo",
+                  "file save karo", "folder banao", "folder dikhao", "file dikhao", "directory tree",
+                  "apni file", "workspac"),
+    "kgmemory": ("kgmemory", "knowledge graph", "graph memory", "kg memory", "long term memory",
+                 "long-term memory", "entity banao", "relation banao", "yaad graph", "memory graph"),
     "shop": ("order", "amazon", "flipkart", "zomato", "swiggy", "kharid", "shopping", "pizza", "grocer"),
     "mshop": ("mobile shop", "sim card", "phone repair", "phone shop"),
     "courier": ("courier", "parcel", "deliver", "track", "shipment", "speed post", "speedpost", "bluedart",
@@ -216,6 +228,10 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "itadmin": ("it admin", "itadmin", "office wifi", "office network"),
     "devops": ("devops", "deploy", "server", "uptime"),
     "dev": ("dev", "developer", "code", "bug", "software"),
+    # v0.585 Paisa Sahayak (consumer money safety): loan / fee / scam / complaint words. Tight keys.
+    "finguard": ("emi", "loan", "karz", "qarz", "processing fee", "apr", "prepay", "foreclos", "snowball", "avalanche", "scam", "fraud", "dhokha",
+                 "thagi", "fake call", "fake kyc", "kyc expire", "upi collect", "collect request", "ombudsman", "bank complaint", "bank charges",
+                 "hidden charges", "sms charges", "min balance", "credit card charges", "paisa_sahayak", "otp maang", "otp mang", "digital arrest"),
     # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
     # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",

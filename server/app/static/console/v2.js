@@ -117,6 +117,7 @@ IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
+let FD = null;         // v0.565 the Film Desk (filmdesk.js)
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
 function syncEmployees(hired) {                     // v0.317 desks exist only while their employee is hired
@@ -124,7 +125,7 @@ function syncEmployees(hired) {                     // v0.317 desks exist only w
   // opens from AI Employees > Open desk; the sidebar keeps only the AI Employees entry. A desk that is open when its
   // employee is let go still falls back to the hub.
   if (ME) ME.employees = hired || {};
-  for (const [key, view] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk']]) {
+  for (const [key, view] of [['seo', 'seodesk', 'SEO Desk'], ['social', 'socialdesk', 'Social Desk'], ['cad', 'caddesk', 'CAD Desk'], ['game_dev', 'gamedesk', 'Game Desk'], ['architect', 'archdesk', 'Architecture Desk'], ['edu', 'edudesk', 'Education Desk'], ['film', 'filmdesk', 'Film Desk']]) {
     const want = !!(hired && (hired[key] || (key === 'edu' && EDU_KEYS.some(k => hired[k])) || (key === 'game_dev' && (hired.procgen_dev || hired.physics_dev || hired.audio_dev || hired.haptics_dev || hired.netcode_dev || hired.xr_dev || hired.sim_dev || hired.twin_arch || hired.vfx_td))));   // v0.420 any Game Desk role opens the Game Desk
     if (!want && VIEW === view) go('hire');
   }
@@ -150,7 +151,7 @@ function drawNav() {
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -166,6 +167,7 @@ function go(v, arg) {
   if (v === 'gamedesk') EMP?.game($('#gamedesk'));
   if (v === 'archdesk') EMP?.arch($('#archdesk'));   // v0.410
   if (v === 'edudesk') EMP?.edu($('#edudesk'));   // v0.453 Education, Research & Lab
+  if (v === 'filmdesk') FD?.open($('#filmdesk'));   // v0.565 Film Desk
   if (v === 'skills') SK?.draw($('#skills'));   // v0.481 the Skill Desk
   if (v === 'creative') WORKSPACE?.open();
   if (v === 'creative') $('#ttl').textContent = '· Creative workspace';
@@ -260,6 +262,7 @@ async function enter() {
   if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
     ENT = HoolaEnterprise({api, esc, toast});
   }
+  if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
   if (window.HoolaSkills && !SK) {             // v0.481 the Skill Desk
     SK = HoolaSkills({api, esc, toast});
   }

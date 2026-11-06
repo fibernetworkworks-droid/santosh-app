@@ -1,4 +1,61 @@
+## v0.589.0 KAAN PACK — WhisperAI Wave W0, the transcription core (6 Nov 2026)
+
+The owner read whisperai.com end to end (17 features, 10 style presets, ~100-word custom vocabulary, no-bot Meeting
+Assistant, Drive sync, Whisper MCP, PDF/DOCX/TXT/SRT exports, ≤5 GB / 30+ formats, tiers Free → Premium $14.99 →
+Business Pro $24.99 → Enterprise $75 → API $99/10k min) and fed it to HOOLA. The verdict held: every feature is
+wrapper-layer around the open model, so the MIT-licensed openai-whisper engine comes in as a DEPENDENCY (never
+vendored — the port law) and the wrapper is hand-built on house primitives.
+
+- **Engine** (`kaan/engine.py`): openai-whisper behind one hand-built interface. Model ladder tiny 39M / base 74M /
+  small 244M / medium 769M / turbo 809M (~8×, NO translate) / large-v3 1550M — from the model card, pinned by test.
+  The engine's own published guards are passed explicitly and testably: temperature fallback 0.0→1.0,
+  compression_ratio_threshold 2.4, logprob_threshold −1.0, no_speech_threshold 0.6. word_timestamps=True rides the
+  DTW alignment heads. LAZY import: `import whisper` lives inside _load(); importing app.kaan loads no model, no
+  threads, no files (inertness law, proven by test). available() caches an honest one-line reason when the package
+  or ffmpeg is missing — never a stack trace to her.
+- **Service** (`kaan/service.py`): the AUDIO gate `kaan_audio` default OFF (the HOME-gate pattern, PC/HOME se alag;
+  KAAN_AUDIO=1 flips it) → transcribe refuses with the bake line while status always answers. Intake guards: the
+  audio extension list (mp3/m4a/wav/ogg/opus/aac/flac/amr/3gp/webm/wma/mp4/mkv), the 5 GB ceiling (whisperai.com's
+  own cap, kept as ours), empty-file refusal, missing file_id honesty. Silence comes back as status "empty" with the
+  khamoshi note — never filled in. Transcripts land in kaan_transcripts (text / segments / words JSON /
+  speakers-for-W1) and read back through get / list / search (tenant-scoped, LIKE on the said words).
+- **One tool** `kaan` (registry 582 → 583; actions transcribe / status / list / get / search; family kaan):
+  customers refused, staff gets reads only, transcribe is owner/approved. Voice rides santosh_kaam
+  (VOICE_VIA_KAAM) — a long file is not call talk, and GHANTI rings her phone when it finishes. Admitted on her
+  transcript words (transcript / transcribe / sun kar / likhawat / srt...); bare "kaan" kept OUT because "makaan"
+  contains it, and "sunwai" stays the vakil desk's court-hearing word. Hub entry "Kaan (transcription)" in the new
+  "Voice, Meetings & Transcription" group (never: audio never leaves the server, gate stays off until the owner
+  flips it, silence is never guessed).
+- **LOCAL FIRST**: no API key anywhere on this path; audio bytes and transcripts stay on the VPS. The scripted-engine
+  swap (fake_engine, the voice_openai connect-swap pattern) keeps the suite zero-network and zero-torch.
+- **Tests**: `test_v0589_kaan.py` (25): the round trip (transcribe → store → get → search → list), word timestamps
+  in and out, silence honesty, tenant isolation, every guard including the 5 GB ceiling, the model card pinned, the
+  guard numbers pinned, turbo-translate refusal, lazy-import proof, admit keys with the sunwai/makaan traps, the hub
+  entry, the table on init, engine-never-touches-DB. The 14 registry-count pins healed 582 → 583.
+- **NOT built (later waves, own START each)**: W1 diarization + meeting notes (sherpa-onnx embeddings already on
+  main are a candidate), W2 live-call captions, W3 style presets + custom vocabulary (initial_prompt /
+  suppress_tokens hooks), W4 exports (SRT/VTT/PDF/DOCX) + translate + the Gyaan audio unlock, W5 Whisper MCP +
+  developer API + extension audio lane, W6 quota counters + retention + a fresh read of whisperai.com's live prices.
+- **Not verified on real hardware yet**: the sandbox suite runs the scripted engine; real-model accuracy (and the
+  Hindi/Marathi eval gate) is measured on the VPS after `pip install openai-whisper` + ffmpeg, before W1 exits.
+
 # HOOLA — full version history (moved out of CLAUDE.md on 29 Oct 2026 so sessions stop hitting "context full"). Search it, never read it whole.
+
+## v0.600.0 HOOLA AEP 1.0 — the 100% parity audit + the openwiki analog, P8 of the HOOLA AEP plan (5 Nov 2026)
+
+Owner: "P7 HUB -> P8 the 100% parity audit" (with v0.589.0 HOOLA HUB the same dispatch). THE TRAIN'S LAST PHASE. server/app/aep/audit.py
+(~600 LOC, ZERO upstream; the upstream analogs read at aa2528fb: openwiki/ = generated evidence pages grounded in the repo,
+standard-tests/base.py = the no-silent-override law). PARITY_MATRIX: 230 rows, one per upstream feature across the eight phases ->
+(phase, feature, upstream ref, hoola module + symbol, proving suite + test needle); audit_parity() verifies every row LIVE (the symbol
+imports, the needle greps) and the 100% verdict is COMPUTED — 'TOTAL: 230/230 - 100% PARITY VERIFIED' (exit 1 on drift, the drifted row
+names itself). phase_checklist(): P1..P8 signed off with LIVING numbers — 11523 LOC of AEP (P1 2201 / P2 786 / P3 1152 / P4 682 /
+P5 2122 / P6 1644 / P7 2340 / P8 596), 369 suite tests (79/39/42/56/68/31/44/10), every phase DONE. generate_wiki(): the openwiki
+analog — deterministic byte-stable markdown evidence pages (index + 9, front-matter, repo:// sources, the feature->symbol->test
+tables), committed as docs/aep-wiki/ + docs/AEP_PARITY_AUDIT.md (the sign-off). The CLI: python -m app.aep.audit
+matrix|checklist|wiki. THE REGISTRY HEAL their v0.588 owed: paisa_sahayak took the registry 581 -> 582 without healing the w35 pin
+(red on their own tree) — the PIN HEAL law applied, a P8 test holds it. AEP TRAIN COMPLETE: P1 HOOLA CORE v0.510.0 -> P2 HOOLA TRACE
+v0.520.0 -> P3 HOOLA GRAPH v0.530.0 -> P4 HOOLA AGENT v0.549.0 -> P5 HOOLA MIDDLEWARE v0.566.0 -> P6 HOOLA RETRIEVE v0.580.0 ->
+P7 HOOLA HUB v0.589.0 -> P8 HOOLA AEP 1.0 v0.600.0. server-only deploy = owner's vps-ops dispatch.
 
 ## v0.570.0 HOOLA RETRIEVE — the retrieval layer, P6 of the HOOLA AEP plan (5 Nov 2026)
 
@@ -20788,3 +20845,71 @@ rang 4, dukaan paisa / plus + abhi abhi 26, suraksha gates 9, site 6.
 Opus has authored an LMS spec yet (the scripted spec stands in for it); the video player was not opened in a real browser
 here. The salon half (per-salon staff, per-stylist slots under a lock, booking payments with per-salon payouts) is the
 next release.
+
+## v0.582.0 SASTI JAANCH — the quality cards on Haiku 5.5 (owner: "TESTING IS VERY COSTY" -> "SHIFT TO HAIKU AND TEST ON IT")
+
+`app/quality/__main__.test_model`: `--model haiku|sonnet|opus|<id>` or `QUALITY_MODEL` sets every Claude model setting a
+card turn can reach (`_CLAUDE_FIELDS`: anthropic / agent_hard / hard_check / hard_judge / quick / dev_loop / site /
+site_edit / app / cad / motion / blender / notebook / studio_plan / doc / game) in THAT process's environment and clears the
+settings cache - the live server is a different process and keeps its models. vps-ops: `tool_card_haiku`,
+`hard_card_haiku`, `long_card_try_haiku` (one `case` strips the suffix and exports QUALITY_MODEL into the job script, so the
+detached long card inherits it); `long_card_status` no longer exits red when no run log exists. Prices (usage.py):
+Haiku 5.5 $0.10 / $0.50 per M tokens vs Sonnet 5.5 $2 / $10 and Opus 5.5 $4 / $20. A Haiku card proves the PIPES (request
+accepted by the API, tools found, jobs reach their end state); it does NOT measure the production model's answer quality.
+Tests: test_v0582_sasti_jaanch.py (4) incl. a hard ask on a Haiku card where every model call is Haiku (no Opus).
+
+
+## v0.583.0 FILM DESK WAVES (built as 0.570.0) — script coverage, previs, royalty terms, producer screens (owner: "film waves (script coverage, previs, guild royalty tables, console and phone screens for the producer layers) --- GO")
+
+The three producer layers shipped in v0.563 (production, sales, delivery) had no screens and no way to read the script or the shot list. This release adds three more engines and the two screens, on the register in `docs/research/film_industry/00_INDEX.md`.
+
+- **Script coverage** (`filmdesk/coverage.py`, `film_desk_dekho what=coverage`, GET `/projects/{ref}/coverage`): COUNTS (scenes, estimated minutes, characters, places, company moves, night share, dialogue share, per-character lines / words / % / longest speech, per-scene table, the quarter marks by runtime) and FLAGS tagged `measured` or `heuristic` (a scene that is a quarter of the film, headings with no INT/EXT or day/night, a one-line one-scene role, a silent character, a speech over 40 words, one character spelled two ways, three talky scenes in a row, a thought no camera can film, the runtime target missed by over 15%). Theme word counts (violence / sexual / substance / abuse) are counts, never a rating. It never says pass / consider / recommend: that is a person's call, and the result says so.
+- **Previs** (`filmdesk/previs.py`, `what=previs`, GET `/previs`): the shot list as a timeline (start / end second, camera, the gear the move asks for) and checks: no camera, a dialogue that cannot fit its shot (2.5 words a second), a speaker not set, a character who is not in the scene, a scene with no shot, shots that disagree with the script's own seconds, four of the same camera in a row, a first shot that is not wide (heuristic), a drone shot (needs permission and a licensed pilot), total vs target. It does NOT check the 180 degree rule, lens or blocking and says so.
+- **Royalty terms** (`filmdesk/guild.py`, action `royalty` (owner-only), `what=royalties`, GET / POST `/royalties`): there is NO built-in guild or society rate table. Agreements are negotiated, change and differ by territory, so every term is typed from HER contract and is refused without its `source` clause. Bases flat_inr / percent_of_gross / percent_of_net / per_unit, with threshold, floor, cap, medium and date windows; income lines carry medium, amount, net, units, period. The statement is exact to the paisa (Decimal), a line that cannot be computed says why instead of showing 0, and totals per party add up. It is a calculation to check against the contract: nothing is filed or paid. Its total can be entered as a deduction in the waterfall.
+- **Routes**: 16 new on `/api/filmdesk/projects/{ref}/...` (coverage, previs, schedule GET+POST with `what=` schedule|dood|plan_budget|callsheet, callsheet, budget-plan, festivals, windows, waterfall, deliverables, localisation, royalties; each with a view and an op route), so the console and phone call the same code as the chat tool.
+- **Console** (`static/console/filmdesk.js`, view `filmdesk`, opened from AI Employees > AI Film Producer > Open desk): one film at a time, six tabs (Script, Shots, Schedule, Money, Sales, Delivery), add / remove forms for festivals, windows, deliverables, languages, royalty terms and income. Every server value is escaped; checked by rendering real service output in headless Chromium, then again with every string poisoned with markup (0 injected nodes across all tabs, the poison shown as text).
+- **Phone** (`lib/ui/filmdesk_producer.dart`, `FilmdeskProducerPage`, a Producer box on each film's page): the same six tabs as lists with add / remove dialogs. No Flutter SDK in the sandbox: it compiles first on CI.
+- **Hub**: `film` joins the catalogue (group Film, Media & Entertainment, "AI Film Producer", does / needs / never lists); hiring gates nothing, the desk page opens from its card. Console stamps 22 -> 23.
+- **Tests**: `test_film_coverage_previs_royalty.py` (13: counts, labelled flags, the double spelling, theme counts are not a rating, previs timeline / flags / monotony, a term without a source refused, exact statement with threshold / cap / window / unknown net, service flow, owner-only, tool schema, API routes) + `test_film_producer_screens.py` (5: every path the console and phone call exists on the server, the console page wired and stamped, the rules drawn (hints, source clause, "rate nahi di", no verdict), the phone page reachable, the hub entry hireable). Broad console / hub sweeps: the only reds are the pre-existing ones on origin/main (type-sweep, crisp-text, console_r1 / r3), proven on a clean worktree of main.
+- **NOT verified**: the Dart file has never been compiled (CI first); no real script has been through coverage on the VPS; the heuristics (talky run, first shot wide, unfilmable word list, theme words) are judgement, not measured; royalty maths is only as right as the terms typed in.
+
+
+## v0.584.0 SAHI PAIMANA — the FRESH tool card made fair
+
+Her live Haiku cards (vps-ops 276 / 279, 5 Nov): hard_card_haiku RIGHT 9/9, pylab 8/9 (equation solved without it), self-check
+9/9, 0 errors, median 11.5 s - the first real turns through v0.565's deferred-tool request after the v0.571 schema fix, so
+the API accepts it. tool_card_haiku 25/26 with the same miss Sonnet had that morning: fresh15 "Is page ko padh ke 5 points
+mein batao: <wikipedia>" -> scrape_page, card wanted open_website. The card (v0.331) predates scrape_page (v0.474) / reach
+(v0.559); reading one public page with them is right. `tool_asks.FRESH` row now lists open_website / scrape_page / reach as
+exact tools; "scrape" deliberately not listed (it is a family name too and would admit scrape_site / scrape_stealth...).
+No Hoola behaviour changed.
+
+## v0.586.0 SAHI KHARCHA — the long card's price line tells the truth about the run that starts
+
+Her `long_card_try_haiku` run (#283) printed "25 asks, 75 runs at k=3 (rough cost Rs 4,500-16,500)" right before starting a
+5-job, k=1 trial on Haiku: `--check` ignored `--only` / `--limit` / `--k` (vps-ops never passed them) and priced every run at
+the Sonnet guess. Now `longcard.estimate(n, model)` scales the Sonnet per-run guess (Rs 60-220) by list price (Haiku 5.5
+1/20, Opus 5.5 2x), `--check` counts the asks the run will really take and names the model, and vps-ops passes `$LC_ARGS`
+to it. The try now reads "5 of 25 asks, 5 runs at k=1 on claude-haiku-5-5 (rough cost Rs 15-55)". Still a GUESS until a real
+card fills the per-run number. Nothing in Hoola itself changed. Tests: test_v0586_sahi_kharcha.py (4).
+
+## v0.587.0 EXCEL BINA NAAM — the long card reads a delivered workbook from its bytes
+
+Her first long-card try on Haiku (5 jobs, k=1): finished 80%, false done 0%, false stuck 0%, Rs 30 total, median 2.0 min.
+The one fail, rent_xlsx "unreadable: InvalidFileException", was the CARD: a delivered file is stored by its id with no
+extension (`mailbox.store_bytes` -> files_dir()/<file_id>), and openpyxl's `_validate_archive` refuses a PATH whose
+extension is not .xlsx before reading a byte. `longcard.read_file` now hands openpyxl the bytes (BytesIO); a truly broken
+file still fails (BadZipFile). pdf / docx / pptx readers were already extension-blind. Tests test_v0587_excel_bina_naam.py (3).
+
+## v0.588.0 PAISA SAHAYAK — consumer finance protection, Wave 1 slice (built as 0.585.0; owner: the Banking & Finance AI Employees register, "now lets work on this")
+
+The register (`docs/research/banking_finance_industry/00_INDEX.md`, 132 candidate employees in 10 fields) names the consumer "Paisa Sahayak" (#1-8) as the first pilot: no regulator signs anything, fraud protection is a daily need, and none of it moves money. This builds that slice, STATELESS by design (the non-negotiable "do not save financial details to memory" rule): it reads what she types or pastes, answers, and forgets.
+
+- **Loan reader and debt planner** (`finguard/loans.py`): EMI (1,000,000 at 10% for 12 months = 87,915.89; 500,000 at 12% for 60 = 11,122.22), a month-by-month schedule whose last instalment absorbs the paise rounding (found by its own test: it ran to month 61), the TRUE cost (every fee, GST on the fee at an ASSUMED 18% unless she gives the rate, insurance, the money actually received, and the APR on that money by IRR), a flat-rate quote turned into its real reducing rate (10% flat for a year = about 18%), offers side by side (says when they are not like for like), part-prepayment (interest saved against the charge SHE typed in), and snowball vs avalanche vs minimums (flags a minimum below the monthly interest, and an income drop that breaks the minimums).
+- **Statement reader** (`finguard/statement.py`): her CSV / rows / a file id -> fee-like lines by kind (SMS, annual fee, minimum balance, ATM, returned cheque, late fee, card interest, forex mark-up), a GST-vs-fee check, double debits, a yearly projection, and spending by category with her overrides and budget, plus recurring payments. Categories and fee words are heuristics and labelled so; nothing is called wrong, it says what to ASK the bank.
+- **Scam shield and UPI coach** (`finguard/scam.py`): 10 scam families (fake KYC, UPI refund / collect trick, OTP ask, loan-app harassment, tip groups, lottery, fake police / customs "digital arrest", remote-access apps, utility threats, task jobs, sextortion) with the triggering words quoted, pressure words, and link analysis on the TEXT of a link only (lookalike brand, punycode, IP host, shortener, .apk, risky endings): the link is never opened. "No known pattern" is never "safe", and every answer ends with the rules that hold whatever the message says.
+- **Complaint drafter** (`finguard/complaint.py`): a letter with [blanks] for what she did not give, account / card numbers cut to the last 4, an evidence checklist per issue, a days-since-last-complaint note, and the escalation ladder. She sends it; Hoola sends nothing.
+- **Facts from memory**: helplines (1930, cybercrime.gov.in), the 3-working-day reporting reference and the Ombudsman ~30-day rule are stated from memory and carry `verify: true` with a source note: re-check on the primary text before relying on them (the register itself says so).
+- **Wiring**: ONE tool `paisa_sahayak` (registry 581 -> 582; actions loan / compare / flat / prepay / debts / charges / spend / scam / url / upi / complaint / facts; family `finguard`, admitted on its money-safety words, voice via `santosh_kaam`), owner-only for statements, never for customers; hub entry "Paisa Sahayak (money safety)" in a new "Finance & Banking" group (does / needs / never lists; never = no PIN / OTP, no moving money, no recommending a lender, no personalised advice, nothing stored).
+- **Tests**: `test_finguard.py` (20): textbook EMI numbers, APR equals the stated rate without fees and rises with them, fee-later vs fee-up-front, flat rate, compare, prepay, debt plan flags, CSV parse + charges audit + spending, each scam family's classic wording, "no pattern is not safe", URL analysis with no network library imported, facts marked verify, complaint masking + blanks + ladder, tool guards, no storage in any engine, hub entry. The 13 registry-count pins moved 581 -> 582.
+- **NOT built**: Wave 2 (institution assist with a named decider) and Wave 3 (markets, lending decisions): portfolio tracker, MF research desk, KYC helper, order placement. Not verified: no real statement from a real bank has been through the parser (bank CSV layouts vary), and the scam wording lists are judgement, not measured against live scam data.

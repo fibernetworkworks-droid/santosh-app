@@ -166,8 +166,16 @@ def _longcard(argv: list[str]) -> int:
     if "--check" in argv:                     # free: the set is valid, nothing runs
         bad = LC.check_set()
         k = int(val("--k") or 3)
-        lo, hi = LC.estimate(len(ASKS) * k)
-        print(f"Long card set {LC.SET_V}: {len(ASKS)} asks, {len(ASKS) * k} runs at k={k} "
+        # v0.586 the line describes THIS run (--only / --limit / --k and the card's model), not the whole set:
+        # a 5-job Haiku try used to print the 75-run Sonnet price (Rs 4,500-16,500)
+        only = [x for x in val("--only").split(",") if x]
+        n = len([a for a in ASKS if not only or a["id"] in only][:int(val("--limit"))] if val("--limit")
+                else [a for a in ASKS if not only or a["id"] in only])
+        from ..config import get_settings
+        model = get_settings().anthropic_model
+        lo, hi = LC.estimate(n * k, model)
+        size = f"{n} of {len(ASKS)} asks" if n != len(ASKS) else f"{len(ASKS)} asks"
+        print(f"Long card set {LC.SET_V}: {size}, {n * k} runs at k={k} on {model} "
               f"(rough cost Rs {lo:,}-{hi:,}).")
         print("\n".join(f"  PROBLEM {b}" for b in bad) or "  set OK")
         return 1 if bad else 0
@@ -186,7 +194,40 @@ def _longcard(argv: list[str]) -> int:
     return 0
 
 
+CHEAP = {"haiku": "claude-haiku-5-5", "sonnet": "claude-sonnet-5-5", "opus": "claude-opus-5-5"}
+# v0.582 the Claude model settings a card turn can reach (chat, hard asks, the checker, every engine door, the dev loop):
+# all of them move to ONE model for the card run, so a cheap run never quietly spends Opus somewhere inside
+_CLAUDE_FIELDS = ("anthropic_model", "agent_hard_model", "hard_check_model", "hard_judge_model", "quick_model",
+                  "dev_loop_model", "site_model", "site_edit_model", "app_model", "cad_model", "motion_model",
+                  "blender_model", "notebook_model", "studio_plan_model", "doc_model", "game_model")
+
+
+def test_model(argv: list[str]) -> tuple[list[str], str]:
+    """v0.582 SASTI JAANCH: `--model haiku|sonnet|opus|<id>` (or QUALITY_MODEL=...) runs THIS card process on one
+    Claude model - her live users are untouched (it only sets this process's environment). Haiku 5.5 is ~20x cheaper
+    than Sonnet 5.5 and ~40x cheaper than Opus 5.5: it proves the PIPES (requests accepted, tools found, jobs finish),
+    not the quality of the production model's answers. Returns (argv without the flag, model or '')."""
+    import os
+    want = ""
+    if "--model" in argv and len(argv) > argv.index("--model") + 1:
+        i = argv.index("--model")
+        want = argv[i + 1]
+        argv = argv[:i] + argv[i + 2:]
+    want = want or os.environ.get("QUALITY_MODEL", "")
+    if not want:
+        return argv, ""
+    model = CHEAP.get(want.lower(), want)
+    from ..config import Settings, get_settings
+    for f in _CLAUDE_FIELDS:
+        if f in Settings.model_fields:
+            os.environ[f.upper()] = model
+    get_settings.cache_clear()
+    print(f"== card model: {model} (this run only; live chat keeps its own models)")
+    return argv, model
+
+
 def main(argv: list[str]) -> int:
+    argv, _model = test_model(argv)
     if argv and argv[0] == "longcard":      # v0.443 LONG CARD (real long jobs: costs model calls unless --check)
         return _longcard(argv[1:])
     if argv and argv[0] == "review":        # v0.401 PR review card (old vs ECC specialists)
