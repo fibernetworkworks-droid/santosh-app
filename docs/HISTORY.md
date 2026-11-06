@@ -21128,3 +21128,23 @@ scheme_anomalies. Protected attributes (religion, caste, gender, locality, name.
 (registry 592 -> 593, family bimarisk, owner / staff only, voice via santosh_kaam), hub entry in Health Insurance. NOT BUILT: medical report OCR (#23), document authenticity (#57),
 industry blacklist sync (#61), de-identified sandbox (#97), reserving beyond one method. NOT VERIFIED: thresholds are yours, no real claims data has run through it.
 Tests `test_bimarisk.py` (5).
+
+## v0.615.0 YAAD SE + SUDHAAR YAAD — the memory a reply used, shown and forgettable; corrections remembered (owner: "GO 1 2"; built as 0.612.0)
+
+From the OpenAI Dots / xAI Grok memory comparison: Grok shows a book icon naming the past chat a reply referenced and
+lets her remove it from memory; Grok Bot and Dots "learn how you like things done".
+
+1. **YAAD SE.** `yaad.note_used` records what memory a turn was handed (the turn block's meaning-matched facts and
+   recalled past chats, every `yaad_khojo` hit); at the turn's end `yaad.publish_used` keeps only what the reply ECHOES
+   (`_echoed`: 2-3 of the memory's distinctive 4+ letter words come back), labels each (a past chat by its title) and
+   publishes ONE `memory_used` note (a LOCAL kind). Console: a `<details>` "📖 From memory: ..." note, a Forget button
+   per line. Phone: `MemoryUsedChip` (desk_cards.dart) opens a sheet with "Bhool jao" per line. Both call
+   `POST /api/memory/unremember` (`memory.unremember`): a fact goes with its copies (forget_everywhere); a work note goes;
+   a graph / page line goes by its text; a PAST CHAT gets `Conversation.no_recall` (new nullable column) - the chat stays
+   in her list, its index rows are deleted and `yaad.search` filters it for good (a later re-index stays filtered).
+2. **SUDHAAR YAAD.** The fact extractor's system prompt and the live memory rule both now keep a CORRECTION ("aise
+   nahi", "itna lamba mat likho", "hamesha GST alag line mein") as a standing preference written WHEN / WANT, so she
+   never has to correct the same thing twice. The self-teaching nudge (coder_nudge) stays OFF as before.
+
+Tests `server/tests/test_v0612_yaad_se.py` (9). NOT VERIFIED: no live run; the echo rule is a word heuristic (a reply
+that paraphrases a memory completely will not show it); the phone chip compiles first on CI.

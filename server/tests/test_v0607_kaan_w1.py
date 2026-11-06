@@ -1,4 +1,4 @@
-"""KAAN W1 (v0.614.0, owner: "START" on the kaan plan - Wave W1: diarization + meeting minutes).
+"""KAAN W1 (v0.615.0, owner: "START" on the kaan plan - Wave W1: diarization + meeting minutes).
 
 (1) THE TURN CUTTER: pause-gap turns from the transcript's own timeline - segment gaps AND word
     gaps inside a segment; deterministic (same in -> same out); no pause = one turn; honest caps.
@@ -281,4 +281,4 @@ def test_laziness_laws_hold_for_the_new_modules():
 
 def test_version_pin_v0607():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.614.0"
+    assert APP_VERSION == "0.615.0"
