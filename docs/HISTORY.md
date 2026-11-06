@@ -1,3 +1,22 @@
+## v0.618.0 KAAN W2 — LIVE CAPTIONS (6 Nov 2026)
+
+Owner: "START" on the kaan plan — Wave W2 of the WhisperAI feed. Rolling live captions over a PCM spine,
+hand-built on house primitives (port law, inertness law, local-first).
+
+- **The spine** (`kaan/live.py`): every chunk is decoded by ffmpeg (stdin pipe, any container — MediaRecorder
+  webm/opus, wav, mp3) to 16 kHz mono s16le PCM and appended to one file per session (`data/kaan_live/<id>.pcm`).
+  Windows are cut by byte offset (exact: 16k × 2 bytes) and wrapped into a wav with the stdlib `wave` module —
+  no subprocess for windowing.
+- **The watermark**: one rolling pass per chunk on `[watermark − 0.5 s, end]`; accepted words start at/after the
+  watermark (EPS 0.02 s) so overlap repeats are trimmed; phrases split on a >0.6 s gap or a sentence ender; the
+  watermark advances on every pass that ran, so silence is never re-scanned. MIN_WINDOW 1.5 s; stop catches a
+  ≥0.3 s tail. Caps: chunk 5 MB, 2000 chunks, 2 h session.
+- **The close**: stop is idempotent and writes ONE `kn_` transcript row (source='live') that diarize/minutes
+  already read; optional bounded clean pass `finalize_model=` (≤ 10 min audio) for batch quality.
+- **The gates**: start/chunk = audio ingest → the `kaan_audio` gate owns them (no new switch); stop rides the
+  W1 law (stored bytes are hers); live actions owner/approved-only; registry 605 unchanged (actions, not tools);
+  the kaan description tightened to fit the 1200-char diet. 18 tests (zero network, zero torch).
+
 ## v0.589.0 KAAN PACK — WhisperAI Wave W0, the transcription core (6 Nov 2026)
 
 The owner read whisperai.com end to end (17 features, 10 style presets, ~100-word custom vocabulary, no-bot Meeting

@@ -1627,3 +1627,16 @@ Agent: Claude Code session (hoola-project-review)
 Task: owner - voice call is the soul; stays connected until she hangs up, speaks results and reminders 24/7 -> START.
 Work: quiet Gemini session parks (billed per second even silence), wakes on voice/text/news/reminder; long hold + lost phone park instead of ending; reminders/briefing/routine results spoken on a live call; OpenAI 50-min move at a pause; phone re-dials after server update, 14-min reconnect window.
 Result: test_v0617_hamesha_juda.py 9 green; voice suites green; built as 0.617 (their KUCHH NA CHHOOTE took 0.617), re-versioned 0.618. Site suites red only for missing Playwright browser in the sandbox. Not verified on a real phone.
+Task ID: 17
+Agent: main (kaan lane)
+Task: Owner: "START" - KAAN W2 LIVE CAPTIONS built as v0.618.0 on the v0.617.0 tip (c12a8d45e), no collision this time
+
+Work Log:
+- Tip moved v0.615 -> v0.617 while the lane read it (BAHAR SE BAAT + KUCHH NA CHHOOTE took 0.616, re-versioned to 0.617); next free = 0.618.0, verified via tags.
+- Built the PCM spine (server/app/kaan/live.py): chunks ffmpeg-decode to 16k mono s16le and append per session; windows cut by byte offset + stdlib wave (no subprocess); watermark trims overlap dupes; phrases split on gaps/enders; stop writes a kn_ row (source='live') that W1 diarize/minutes read; optional bounded clean pass (finalize_model, <=10 min).
+- Gate map: start/chunk = audio ingest -> the kaan_audio gate (no new switch); stop = the W1 stored-bytes law; live actions owner/approved-only; registry 605 unchanged (actions, not tools); kaan description tightened inside the 1200 diet.
+- Found + fixed during the suite's own first run: my description blew the 1200-char diet (W2 invisible to the agent - tightened); two tests ran a real pass without an engine patch; n_new counts phrases not words.
+- Tests: NEW test_v0618_kaan_w2.py 18 green (after the ritual sweep).
+- Ritual 0.618.0 (this script, line-wise): APP_VERSION story (chain verbatim), pubspec 0.618.0+624, quoted test pins swept, CLAUDE.md one-liner, HISTORY section, this mirror.
+Stage Summary:
+- W2 engine + tool actions + tests + ritual done in-sandbox; NOT VERIFIED live: the first real phone-chunk session - the bake block rides the vps-ops deploy. W3 (styles + vocab) waits for START.

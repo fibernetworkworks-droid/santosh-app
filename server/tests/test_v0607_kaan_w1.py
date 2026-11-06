@@ -236,7 +236,8 @@ def test_actions_grew_registry_did_not():
     assert len(tools.TOOLS) == 605, PIN
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
-    assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search"]
+    assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
+                    "live_start", "live_chunk", "live_stop", "live_get", "live_list"]  # W2 grew actions
     assert "diarize" in tools.HANDLERS["kaan"].__code__.co_consts or True  # handler is shared; enum is the pin
     assert "speaker pehchaan NAHI" in spec["description"] or "NAHI" in spec["description"]
 
@@ -281,4 +282,4 @@ def test_laziness_laws_hold_for_the_new_modules():
 
 def test_version_pin_v0607():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.618.0"
+    assert APP_VERSION == "0.619.0"
