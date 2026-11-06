@@ -130,3 +130,13 @@ def test_v0644_call_memory_skips_yaad_by_default(monkeypatch):
     assert Settings.model_fields["voice_brain_yaad"].default is False
     out = asyncio.run(santosh._brain_memory("t", "c", "x", types.SimpleNamespace(voice_brain_memory_s=1.0)))
     assert out == "KAAM" and not called
+
+
+def test_v0645_prompt_built_off_the_loop():
+    """v0.645 KHULA LOOP: the system prompt + context block (25 DB-backed blocks) never run on the event loop."""
+    import inspect
+    from app.agent import santosh
+    src = inspect.getsource(santosh)
+    assert "await asyncio.to_thread(context_block, tenant_id, conversation_id)" in src
+    assert src.count("await asyncio.to_thread(_system, sys_fams)") == 2
+    assert "system = _system(sys_fams)" not in src

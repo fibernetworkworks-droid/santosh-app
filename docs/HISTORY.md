@@ -21750,3 +21750,14 @@ facts / recall block never finishes in time, so each ask paid the full wait for 
 the job state (kaamwatch) + the coder primer, which return in milliseconds, so the wait ends at once; the yaad block is
 behind `voice_brain_yaad` (default False). Old memory stays reachable through yaad_khojo. Next to look at: admit 1.4 s
 + prompt 0.9 s, and the number of steps an email ask takes. Test `test_v0644_call_memory_skips_yaad_by_default`.
+
+
+## v0.645.0 KHULA LOOP - the system prompt is built off the event loop
+
+Her 17:59 call (prep 3.7 s, Haiku steps) still logged `event loop blocked 2.1s ... scalars <- due (aftersales/service.py:1809)`.
+The caller was `prompts.system_prompt`: its job section calls ~25 `prompt_block(tenant)` functions (darzi, office, lekhak,
+telecall, kalam, site, appmaker, aftersales, wapsi, brand, ads...), each a synchronous DB read, and `_run_turn` built it (plus
+`context_block`) directly on the event loop - so one slow block froze every call's audio and every other user. Now
+`context_block` and both `_system(...)` builds (start of the turn + the mid-turn rebuild after tool_search) run through
+`asyncio.to_thread`. No prompt text changed. Test: `test_v0645_prompt_built_off_the_loop` in test_v0638_tez_taiyari.py.
+NOT VERIFIED: her next call log is the proof (the `prompt` stage should drop and no `event loop blocked` line in it).

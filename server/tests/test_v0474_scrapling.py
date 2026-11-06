@@ -64,10 +64,10 @@ def test_registry_wired():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.644.0"
+    assert APP_VERSION == "0.645.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.644.0+650" in pub.read_text()
+    assert "0.645.0+651" in pub.read_text()
 
 
 # ---------------------------------------------------------------- SSRF guard

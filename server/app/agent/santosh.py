@@ -1271,7 +1271,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
     _mark("admit")
     ctx.admit = adm                 # tool_search writes through here (None = admission off)
     ctx.calls = state["calls"]      # v0.443 kaam_plan's `tool:<name>` check reads what really ran this job
-    _ctxb = context_block(tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
+    # v0.645 KHULA LOOP: the context block + the system prompt read ~25 DB-backed blocks (aftersales due list, shop,
+    # site, brand...) - built on the event loop they froze the WHOLE server (her 17:59 call: 2.1 s in aftersales.due)
+    _ctxb = await asyncio.to_thread(context_block, tenant_id, conversation_id)   # v0.246 facts fenced to this chat's Session
 
     def _system(fams) -> str:
         # v0.473 PATLA PROMPT: only the guides of the admitted families ride (None = the full guide, as before)
@@ -1279,7 +1281,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                              families=None if (fams is None or not settings.prompt_slim) else fams) + tail
         return text + (_admit.unloaded_note(text, adm) if adm is not None else "")
     sys_fams = frozenset(adm.families) if adm is not None else None
-    system = _system(sys_fams)
+    system = await asyncio.to_thread(_system, sys_fams)
     tools = (adm.specs()) + mcp_defs if adm is not None else TOOLS + mcp_defs
     _mark("prompt")
     from .. import livereply
@@ -1304,7 +1306,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if adm is not None and not native and frozenset(adm.families) != sys_fams:
             # tool_search opened a family mid-turn: its guide joins the system prompt too (one cache re-write)
             sys_fams = frozenset(adm.families)
-            system = _system(sys_fams)
+            system = await asyncio.to_thread(_system, sys_fams)
         if settings.agent_goal and "goal" not in state:
             # v0.187 the plan can be written mid-turn (kaam_plan set): the goal caps rise from that moment
             g_top = _goal.active_for(conversation_id)

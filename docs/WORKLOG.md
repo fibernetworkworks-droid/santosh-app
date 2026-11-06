@@ -1838,3 +1838,11 @@ Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: call brain memory wait always ran out on yaad.
 Work Log: yaad out of the call brain memory (voice_brain_yaad False); 1 test; version 0.644.0+650.
 Stage Summary: pushed.
+
+---
+Task ID: v0.645.0 KHULA LOOP
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: her 17:59 call log showed a 2.1 s event-loop freeze in aftersales.due during the call brain's prompt stage.
+Work Log: traced due() -> aftersales.prompt_block -> prompts.system_prompt; moved context_block + both _system builds in
+santosh._run_turn to asyncio.to_thread; 1 test; version ritual 0.645.0+651.
+Stage Summary: system prompt no longer built on the event loop. Next: her next call log.
