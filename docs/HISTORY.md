@@ -21034,3 +21034,14 @@ how many tells real builds carry - and whether the fix round clears them - is un
 Impeccable runs in a browser (contrast pairs, line length, text overflow, occlusion) are not ported; the existing
 contrast checks and journeys still run. Not built from the read: the design-word edit commands (bolder / quieter /
 polish...) and a scored page critique.
+
+
+## v0.607.0 RETAIL WAVES 2 + 3 — growth/operations assists and platform trust (owner: "Retail Waves 2 and 3")
+
+Waves 2 and 3 of `docs/research/retail_ecommerce_industry/00_INDEX.md`. Same stateless pattern as Wave 1: rows in, a proposal or rule hit out, a named decider in every answer, nothing stored, sent, banned or changed. Every limit, floor, threshold, multiplier and schedule is the user's; nothing is built in (deadlines and the label list are from memory and marked `verify`).
+
+- **Wave 2 `retail_growth`** (`retailgrowth/engines.py`, #6 #11 #15 #21 #28/#35 #46 #69 #70 #71 #80): loyalty lists (opted-in customers only; lapsed, birthdays this week, top spenders; nothing sent), markdown steps for near-expiry stock held above HER floor margin and below MRP with the waste still at risk, unit economics (contribution, LTV / CAC), ABC + range-review candidates, price rule check on competitor prices she gives (floor and MRP held, large moves flagged for a second look; no scraping), scheme accrual vs retailer claims, retailer credit exposure against HER limit multiple (no personal attributes), beat visit order (straight-line, points to the Maps tools for road time), working-capital cycle, delivery batches by area.
+- **Wave 3 `retail_trust`** (`retailtrust/engines.py`, #52 #55 #57 #58 #59 #67 #100 #102 + pricing fairness): fraud rule hits (order bursts, shared address / device, high-value COD), return-abuse list above her threshold, review authenticity signals (duplicate text, 5-star bursts, unverified, undisclosed incentive), seller KYC checks (GSTIN format + check digit, PAN inside GSTIN, IFSC, bank name vs seller name, missing documents; no registry lookup), dark-pattern text + checklist audit, grievance acknowledge / resolve clock, Legal Metrology label checklist, delivery-promise audit with an honest-promise hint, AI-model override rates, price spread across customer segments.
+- **Wiring**: TWO tools `retail_growth` / `retail_trust` (registry 588 -> 590, families `retailgrowth` / `retailtrust`, tight admit words, owner / staff only, voice via `santosh_kaam`), two hub employees in Retail & E-commerce with never-lists.
+- **Tests**: `test_retail_w23.py` (7). Registry pins 588 -> 590.
+- **NOT built**: WhatsApp order taking and the catalogue builder (they sit on the Shop / app engines), the ONDC participant assistant, ads-policy and content-moderation models. Not verified: no real order sheet, review dump or seller file has been through it; the rule thresholds are the user's, the fraud / review rules are heuristics, and a rule hit is never a verdict.

@@ -234,7 +234,7 @@ def test_default_model_env():
 
 # ---------------------------------------------------------------- (4) the wiring
 def test_one_tool_registered_routed_and_labelled():
-    assert len(tools.TOOLS) == 588, PIN
+    assert len(tools.TOOLS) == 590, PIN
     assert "kaan" in tools.HANDLERS and tools.FAMILY_OF["kaan"] == "kaan"
     assert "kaan" in tools.TOOL_LABELS and "sun" in tools.TOOL_LABELS["kaan"]
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
