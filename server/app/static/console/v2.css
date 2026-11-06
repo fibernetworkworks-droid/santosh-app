@@ -2921,3 +2921,58 @@ body.albon{overflow:hidden}
 /* v0.567 KOI BHI DESIGN: her design's colours in the preview */
 .stsws{display:flex;gap:6px;margin:8px 0}
 .stsw{width:28px;height:28px;border-radius:8px;border:1px solid var(--hair);display:inline-block}
+
+/* v0.635 WEB DEVELOPMENT PANEL (webdev.js) - the owner-approved prototype: console tokens only, so light + dark both hold */
+.wd{display:flex;flex-direction:column;gap:24px;max-width:1160px;margin:0 auto}
+.wd h2{font-size:22px;font-weight:600;margin:0}.wd h3{font-size:28px;font-weight:600;margin:0;letter-spacing:-.01em}
+.wd h4{font-size:15px;font-weight:600;margin:0 0 10px}
+.wd .sp{flex:1 1 auto}
+.wd-top{display:flex;flex-wrap:wrap;align-items:center;gap:12px}
+.wd-mut{color:var(--mut)}.wd-mut.sm,.wd .sm{font-size:13px}
+.wd-row{display:flex;align-items:center;gap:10px;min-width:0}.wd-row.wrap{flex-wrap:wrap}
+.wd-card{background:var(--surface);border:1px solid var(--hair);border-radius:16px;padding:18px;box-sizing:border-box;min-width:0}
+.wd-card.accent{border-color:rgb(var(--acc-rgb) / .38)}.wd-card.danger{border-color:rgb(var(--bad-rgb) / .35)}
+.wd-hero{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center}
+.wd-hero>p{max-width:640px;margin:0;font-size:15px}
+.wd-ask{width:100%;max-width:780px;text-align:left;display:flex;flex-direction:column;gap:10px;box-shadow:var(--sh)}
+.wd-ask textarea,.wd form textarea{width:100%;box-sizing:border-box;border:0;outline:none;resize:vertical;font:inherit;font-size:16px;line-height:1.5;color:var(--ink);background:transparent}
+.wd-card form textarea{border:1px solid var(--hair2);border-radius:12px;padding:10px 12px;margin:6px 0 10px;font-size:15px}
+.wd-lbl{font-size:12.5px;font-weight:500;color:var(--mut)}
+.wd-grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.wd-grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.wd-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.wd-grid2.tight{gap:10px 14px;margin:6px 0 12px}
+@media (max-width:1100px){.wd-grid4{grid-template-columns:repeat(2,minmax(0,1fr))}.wd-grid3{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:640px){.wd-grid4,.wd-grid3,.wd-grid2{grid-template-columns:minmax(0,1fr)}}
+.wd-start,.wd-site{all:unset;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;padding:16px;border:1px solid var(--hair);border-radius:16px;background:var(--surface);color:var(--ink);cursor:pointer;min-height:128px;min-width:0}
+.wd-start:hover,.wd-site:hover{border-color:var(--pri)}.wd-start:focus-visible,.wd-site:focus-visible{outline:2px solid var(--pri);outline-offset:2px}
+.wd-start b,.wd-site b{font-size:14.5px;font-weight:600}
+.wd-ico{width:36px;height:36px;border-radius:10px;background:var(--pri-soft);color:var(--pri-ink);display:inline-flex;align-items:center;justify-content:center;flex:none}
+.wd-thumb{height:120px;border-radius:12px;background:var(--sunk);border:1px solid var(--line);display:flex;flex-direction:column;gap:7px;padding:12px;box-sizing:border-box}
+.wd-thumb i{height:7px;border-radius:4px;background:var(--hair2)}.wd-thumb i:first-child{width:40%;background:var(--pri)}.wd-thumb i:nth-child(2){width:80%}.wd-thumb i:nth-child(3){width:60%}
+.wd-thumb b{flex:1 1 auto;border-radius:8px;background:var(--glass3)}
+.wd-site .wd-row b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.wd-site .wd-row .wd-pill{margin-left:auto}
+.wd-chips{display:flex;flex-wrap:wrap;gap:8px}
+.wd-chip{all:unset;display:inline-flex;align-items:center;height:32px;padding:0 12px;border-radius:999px;border:1px solid var(--hair2);font-size:13.5px;color:var(--lit);background:var(--surface);cursor:pointer}
+.wd-chip:hover{border-color:var(--pri);color:var(--ink)}.wd-chip:focus-visible{outline:2px solid var(--pri)}
+.wd-pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:12.5px;font-weight:500;background:var(--sunk);color:var(--lit);white-space:nowrap}
+.wd-pill.ok{background:var(--ok-soft);color:var(--ok)}.wd-pill.warn{background:var(--warn-soft);color:var(--warn)}
+.wd-pill.bad{background:rgb(var(--bad-rgb) / .12);color:var(--bad)}.wd-pill.v{background:var(--pri-soft);color:var(--pri-ink)}
+.wd-tabs{display:flex;flex-wrap:wrap;gap:2px;border-bottom:1px solid var(--line);margin-top:-8px}
+.wd-tabs button{all:unset;cursor:pointer;padding:11px 12px 9px;font-size:14px;font-weight:500;color:var(--mut);border-bottom:2px solid transparent}
+.wd-tabs button:hover{color:var(--ink)}.wd-tabs button[aria-current=page]{color:var(--ink);border-bottom-color:var(--pri)}
+.wd-tabs button:focus-visible{outline:2px solid var(--pri);outline-offset:-2px}
+.wd-split{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.wd-col{flex:999 1 520px;min-width:0;display:flex;flex-direction:column;gap:18px}.wd-col.narrow{flex:1 1 300px;max-width:400px}
+.wd-say{font-family:var(--fr);font-size:15.5px;line-height:1.55;margin:0 0 12px;color:var(--chat-ink)}
+.wd-kv{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px;min-width:0}
+.wd-kv:last-child{border-bottom:0}.wd-kv code,.wd-mv code{font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.wd-li{margin:6px 0;font-size:14px;line-height:1.5;padding-left:14px;position:relative}
+.wd-li::before{content:'';position:absolute;left:2px;top:.62em;width:5px;height:5px;border-radius:50%;background:var(--dim)}.wd-li.bad::before{background:var(--bad)}
+.wd-mv{display:flex;flex-wrap:wrap;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:14px}
+.wd-mv input{width:18px;height:18px;accent-color:var(--pri)}
+.wd-launch{margin-top:12px;padding:14px;border-radius:12px;background:var(--raise);border:1px solid var(--line);display:flex;flex-direction:column;gap:8px}.wd-launch p{margin:0}
+.wd-int{display:flex;flex-direction:column;gap:10px;min-height:170px}.wd-int p{margin:0}
+.wd-fld{display:flex;flex-direction:column;gap:5px;font-size:12.5px;color:var(--mut);font-weight:500}
+.wd input:not([type=checkbox]){height:38px;border:1px solid var(--hair2);border-radius:10px;padding:0 12px;font:inherit;font-size:14px;color:var(--ink);background:var(--bg);box-sizing:border-box;min-width:0;width:100%}
+.wd form.wd-row input{flex:1 1 auto}
+.wd .btn.bad{color:var(--bad)}.wd .btn.sm{height:30px;padding:0 10px;font-size:13px}

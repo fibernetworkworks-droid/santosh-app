@@ -2554,5 +2554,16 @@ window.HoolaBuild = function (C) {
     kinds: KINDS,
     card(kind, p, el, live) { if (kind === 'site_spec') return specCard(p, el); card(kind, p, el, live); after(kind, p); },
     reset, close, isOpen,
+    // v0.635 the Web Development panel opens THIS studio on a site it fetched (GET /api/sites/{id} = the site_board shape)
+    async openSite(p, tab, editMode) {
+      if (!p || !p.id) return;
+      const o = upsert('site_board', p); o.dismissed = false;
+      open(o.k);
+      if (tab && tabsOf(o).some(x => x[0] === tab)) { o.tab = tab; draw(); }
+      if (editMode && o.type === 'site') {
+        const r = await call(o, '/edit-mode', {}, '');
+        if (r) { o.tab = 'preview'; o.edit = true; o.photos = L(r.photos); o.media = L(r.media); o.tokens = M(r.tokens); o.editPage = ''; o.editY = 0; o.framesFor = ''; draw(); toast('Edit mode: click any words on the page and type. Free, no AI.'); }
+      }
+    },
   };
 };

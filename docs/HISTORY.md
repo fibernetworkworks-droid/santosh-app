@@ -21594,7 +21594,7 @@ its first tool - and nothing in the log said which part was slow (it is not know
 Gmail itself measured 1.5-11 s per email_check and doc_studio 10-12 s per PDF - external, unchanged. Test in
 `test_v0634_tez_dimaag.py`.
 
-## v0.636.0 KAHAN RUKA — find where the call brain waits before its first Claude call
+## v0.637.0 KAHAN RUKA (built as 0.636.0; their WEB DEVELOPMENT PANEL took 0.636.0, both kept) — find where the call brain waits before its first Claude call
 
 Her 16:22 call ("chaar email ka ek-ek detail"): santosh_kaam at 16:22:14, `brain still working in 20.0s`, then the
 first logged `claude call 5.3s ... msgs=47 chars=143056 tools=647` at 16:22:37 and a second at 3.3 s. So Haiku itself
@@ -21609,3 +21609,38 @@ was fast; about 18 s went BEFORE the first model call, and the log could not say
 - `voice_brain_history` 12 -> 8, and `voice_brain_result_chars` 1500: an EARLIER exchange's tool result (whole mails)
   is cut on a call brain turn (`_cut_old_results`); this turn's own results and the saved chat are untouched.
 - Tests `test_v0636_kahan_ruka.py` (4). NOT VERIFIED on a call: the `brain prep` line on her next call names the slow stage.
+## v0.636.0 WEB DEVELOPMENT PANEL - one console section for every website (owner: the 9-page prototype -> "PERFECT")
+
+The owner asked for a "Web Development" section in the console "same as Emergent and Lovable with all features", saw
+the 9-page prototype (canvas artifact) and said PERFECT. Built from Hoola's own brand, never another product's look.
+
+- `server/app/static/console/webdev.js` (`HoolaWebDev`) + a `#v-webdev` view + the sidebar row `['webdev','Web
+  Development']` right after Create (+ `IC.webdev`, title map, `go('webdev', siteId)`).
+- HOME: "What should we build today?" one-line ask (goes to CHAT through the same `say` the AI Employees hub uses, so the
+  plan card, questions and her Haan work exactly as on the phone), four ways to start (describe / move my old site /
+  screenshot or Figma / product sheet - each a pre-filled ask), her websites from `GET /api/sites` with a status pill,
+  and 12 business-type chips that fill the ask.
+- PER SITE, nine tabs: Overview (Hoola's own status line, the next step, pages, checks, facts, ask-for-a-change ->
+  `POST /change`), Build, Edit, Code, Data & logins, Integrations, Publish, Health, Settings.
+- ONE editor, not two: Build / Edit / Code / Data / Shop / Blog / Languages open the EXISTING Website studio beside the
+  panel through the new `build.js openSite(site, tab, editMode)` (upserts the `GET /api/sites/{id}` view as a
+  `site_board` project, opens it on that tab; edit mode calls `/edit-mode` exactly like the studio's own Edit button).
+- PUBLISH (her taps): addresses from `/hosting` (Live / Verifying / Offline), "Check and go live" = `/launch-request`
+  card with its blockers, then `confirm()` + `/launch` with the SERVER's hash; the v0.623 old-site addresses (tick list,
+  `/moves` with hash + drop, compare old vs new); versions with rollback (`/rollback-request` -> confirm -> `/rollback`
+  with its hash); connect a domain (`/domain`); buying a domain is an ask in chat.
+- HEALTH: `/care` + `/ops` - visits, enquiries, uptime, HTTPS days per address, speed bands (p75), visitor errors,
+  backups + restore test, checks summary with a link into the studio's Checks tab.
+- SETTINGS: business details saved through `/answers` (only changed fields), SEO pointer to the SEO employee, team via
+  chat, take down only after `confirm()`.
+- Integrations (shop, payments, booking, blog, languages, visitor chat, map, rich pieces, other apps) start as her words
+  in chat; where the studio has a tab (shop / blog / languages) a Manage button opens it.
+- Styles: a `v0.635 WEB DEVELOPMENT PANEL` block at the end of v2.css using console tokens only (no raw colours - the
+  test checks), so Light / Dark / System all hold; 4-3-2-1 column grids down to phone width.
+- Tests: `test_v0636_webdev_panel.py` (3): wiring (view, script, sidebar row, `openSite`, every write behind confirm + the
+  server's hash, money / domains / new sites through chat, token-only CSS) and a REAL-BROWSER walk (Playwright + Chromium,
+  uvicorn): home, all 9 tabs drawn, studio opens beside the panel, launch check card shown, light + dark, phone 390 px
+  with no sideways scroll, no page errors, her site name stays text (`Sharma <i>Sweets</i>` is shown, never rendered).
+  Found by the screenshots: the HTTPS line printed `[object Object]` (care sends a per-host map) - fixed before shipping.
+  Stamp-count pin in test_v0475 moved 23 -> 24 (the new script tag).
+- NOT VERIFIED on her live console; server unchanged except the version story (console static files ride the usual deploy).
