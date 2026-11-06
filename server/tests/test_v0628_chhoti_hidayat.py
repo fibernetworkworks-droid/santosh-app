@@ -53,3 +53,25 @@ def test_small_brief_is_capped(env):
         s.add(Conversation(id="cv1", tenant_id="default"))
     out = yaad.voice_block("default", "cv1", hard_cap=300)
     assert len(out) <= 300 + 200        # header + clip marker
+
+
+def test_mcp_servers_are_named_not_declared_on_a_small_menu_call(monkeypatch):
+    """v0.629: her 32 MCP tools (52k chars) rode every reply on top of the small menu; now only their names do."""
+    import asyncio
+    from types import SimpleNamespace as N
+    from app.agent import mcp_live
+    snap = [{"name": "Zoho", "pack_id": "zoho-mcp", "status": "ready", "tools": [{"name": "x"}]},
+            {"name": "Supabase", "pack_id": "supabase", "status": "ready", "tools": [{"name": "y"}]}]
+    monkeypatch.setattr(mcp_live, "snapshot", lambda t: snap)
+    monkeypatch.setattr(mcp_live, "tool_defs", lambda s, n: ([{"name": "mcp_zoho__x"}], {"mcp_zoho__x": ("zoho-mcp", "x")}))
+    _lean(monkeypatch)
+    try:
+        c = N(tenant="default", _mcp_off=False)
+        defs = asyncio.run(voice.Call._load_mcp(c))
+        assert defs == [] and c._mcp_route == {}
+        assert "Zoho" in c._mcp_block and "santosh_kaam" in c._mcp_block and len(c._mcp_block) < 300
+    finally:
+        monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
+        get_settings.cache_clear()
+    c2 = N(tenant="default", _mcp_off=False)
+    assert asyncio.run(voice.Call._load_mcp(c2)) == [{"name": "mcp_zoho__x"}]   # the full menu keeps them

@@ -465,6 +465,16 @@ def _compact(t: dict) -> dict:
 LEAN_PARAM_MAX = 90   # v0.628 chars per parameter description on the small menu (names and types never change)
 
 
+def lean_mcp_block(snap: list[dict]) -> str:
+    """v0.629 one short line naming her MCP servers for a small-menu call (their tools are not declared to Gemini)."""
+    names = [str(x.get("name") or x.get("pack_id") or "") for x in (snap or []) if x.get("status") == "ready"]
+    names = [n for n in names if n][:12]
+    if not names:
+        return ""
+    return ("Jude hue MCP servers: " + ", ".join(names) + ". Inka koi bhi kaam santosh_kaam ko uske shabdon ke saath do "
+            "(poore brain ke paas inke saare tools hain).")
+
+
 def _lean_schema(node):
     """v0.628 a copy of a schema with every parameter description cut to one short line - property names, types,
     enums and required lists stay exactly as they are (the schema_problems rule)."""
@@ -3190,6 +3200,13 @@ class Call:
         from .agent import mcp_live
         try:
             snap = await asyncio.to_thread(mcp_live.snapshot, self.tenant)
+            if get_settings().voice_lean_tools:
+                # v0.629 MCP BHI CHHOTA: her MCP servers' tools were declared on top of the small menu (measured on her
+                # server: 32 tools, 52k chars - more than the whole menu) and Gemini re-reads them on every reply. On a
+                # small-menu call they are NAMED only; their work goes to santosh_kaam, which has every MCP tool (as chat).
+                self._mcp_snap, self._mcp_route = snap, {}
+                self._mcp_block = lean_mcp_block(snap)
+                return []
             defs, route = mcp_live.tool_defs(snap, 0 if self._mcp_off else min(40, get_settings().mcp_native_tools))   # v0.491 was 25 - the chat default is 40, the call now matches
             self._mcp_snap, self._mcp_route = snap, route
             self._mcp_block = mcp_live.prompt_block(snap, route)

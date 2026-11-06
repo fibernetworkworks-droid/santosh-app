@@ -21496,3 +21496,16 @@ is what Gemini Live re-reads on every reply: the persona (~27k chars), the tool 
   line; older memory is fetched with yaad_khojo.
 - Estimate: ~22k -> ~12-14k tokens a reply. NOT VERIFIED until her next call's `gemini tokens` line.
 Tests `test_v0628_chhoti_hidayat.py` (3).
+
+
+## v0.629.0 MCP BHI CHHOTA - her MCP tools named, not declared, on a call
+
+Her 09:10 call ran on v0.628 (server restarted 09:06:46, lean persona 7,775 chars and 60 tools / 32,206 chars confirmed on the
+VPS) and still read 147,176 text tokens over 5 replies = ~29k a reply. Measured on her server: the call brief is only ~10.3k
+chars (facts 4,330, memory 4,479, coder 1,500, kaam 0), but `Call._load_mcp` declared **32 of her MCP servers' tools = 52,346
+chars** plus a 2,470-char block - more than the whole small menu, and the small-menu switch did not touch them.
+- With `voice_lean_tools`, `_load_mcp` returns no tool definitions, an empty route, and `lean_mcp_block(snap)`: one line
+  naming her ready servers (max 12) and telling the call to give their work to santosh_kaam, whose full brain has every MCP
+  tool (as chat). The full menu keeps the old behaviour.
+- Expected: ~29k -> ~14-15k tokens a reply. NOT VERIFIED until her next call's `gemini tokens` line.
+Test added to `test_v0628_chhoti_hidayat.py`.

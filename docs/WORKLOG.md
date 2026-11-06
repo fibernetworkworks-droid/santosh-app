@@ -1714,3 +1714,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Owner "GO TRIM": cut what Gemini re-reads per reply.
 Work Log: PERSONA_LEAN 27k -> 7.8k; lean tool / param texts; brief capped 4.5k + primer 1.5k; tests.
 Stage Summary: v0.628.0; measure with her next call.
+
+---
+Task ID: v0629-mcp-bhi-chhota
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: v0.628 call still 29k tokens/reply; measured on VPS: MCP tools 32 / 52k chars on every call.
+Work Log: small-menu calls name MCP servers only (santosh_kaam does their work); test.
+Stage Summary: v0.629.0.
