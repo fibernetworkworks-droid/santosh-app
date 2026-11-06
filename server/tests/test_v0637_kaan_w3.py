@@ -1,4 +1,4 @@
-"""KAAN W3 (v0.643.0, owner: "START" + "always show result in English" - Wave W3: styles + vocabulary).
+"""KAAN W3 (v0.644.0, owner: "START" + "always show result in English" - Wave W3: styles + vocabulary).
 
 (1) THE VOCAB: per-tenant terms with two honest mechanisms - initial_prompt seeding (SOFT: whisper has
     no hard vocab biasing, from the repo read) and fix_to deterministic replacement (word-boundary,
@@ -290,4 +290,4 @@ def test_w3_modules_purity_and_laziness():
 
 def test_version_pin_v0637():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.643.0"
+    assert APP_VERSION == "0.644.0"

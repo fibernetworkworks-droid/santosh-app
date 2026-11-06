@@ -1831,3 +1831,10 @@ Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: 17:44 call ran on Sonnet 16k for a big-looking ask.
 Work Log: model_for voice-brain first; log prints the sent model; 1 test; version 0.643.0+649.
 Stage Summary: pushed.
+
+---
+Task ID: v0.644.0 BINA RUKE
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: call brain memory wait always ran out on yaad.
+Work Log: yaad out of the call brain memory (voice_brain_yaad False); 1 test; version 0.644.0+650.
+Stage Summary: pushed.

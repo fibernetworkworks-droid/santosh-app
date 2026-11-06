@@ -1106,10 +1106,14 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
     from .. import yaad, kaamwatch
     from .. import coder as _coder
     parts = [
-        ("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)),
         ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
         ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or "")),
     ]
+    if getattr(settings, "voice_brain_yaad", False):
+        # v0.644 off by default: on EVERY call ask since v0.638 the diary / facts read missed its wait (17:25, 17:34, 17:44,
+        # 17:51 - "yaad not ready in 2.5s"), so each ask paid the full wait for nothing; old memory stays one
+        # yaad_khojo call away when a question needs it
+        parts.insert(0, ("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)))
     # v0.639 its OWN small pool: on her 16:52 call even the quick job-status read missed 2.5 s, queued behind the
     # shared default pool (every to_thread in the server) - a call's reads never wait behind background work
     loop = asyncio.get_running_loop()

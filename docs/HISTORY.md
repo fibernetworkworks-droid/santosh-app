@@ -21741,3 +21741,12 @@ checked hard -> long-job BEFORE the voice-brain case, so a call ask that looked 
 goal in the chat) got the chat model + the long-job cap. The voice-brain case is now first: always `voice_brain_model`.
 Also: the `claude call` log printed the REQUESTED model; `usage.one_model` may rewrite it at the SDK door, so it now
 prints what is sent (`_sent_model`). Test `test_v0643_call_brain_is_haiku_even_for_a_big_ask`.
+
+## v0.644.0 BINA RUKE — the call brain stops waiting for the diary read
+
+Her 17:51 call (v0.643 live): every step on Haiku (1.9 / 2.3 / 2.4 s), `brain prep 5.0s` = memory 2.5 + admit 1.4 +
+prompt 0.9. On every call ask logged since v0.638 (17:25, 17:34, 17:44, 17:51) `yaad not ready in 2.5s` - the diary /
+facts / recall block never finishes in time, so each ask paid the full wait for nothing. `_brain_memory` now reads only
+the job state (kaamwatch) + the coder primer, which return in milliseconds, so the wait ends at once; the yaad block is
+behind `voice_brain_yaad` (default False). Old memory stays reachable through yaad_khojo. Next to look at: admit 1.4 s
++ prompt 0.9 s, and the number of steps an email ask takes. Test `test_v0644_call_memory_skips_yaad_by_default`.

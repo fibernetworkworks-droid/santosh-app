@@ -35,7 +35,7 @@ def test_brain_memory_leaves_out_a_slow_part(monkeypatch):
     monkeypatch.setattr(yaad, "turn_block", lambda *a, **k: (time.sleep(1.5), "YAAD")[1])
     monkeypatch.setattr(kaamwatch, "block", lambda *a, **k: "KAAM KA HAAL")
     monkeypatch.setattr(_coder.inject, "turn_block", lambda *a, **k: "")
-    st = types.SimpleNamespace(voice_brain_memory_s=0.3)
+    st = types.SimpleNamespace(voice_brain_memory_s=0.3, voice_brain_yaad=True)
     async def go():
         t0 = time.monotonic()
         got = await santosh._brain_memory("t", "c", "ho gaya kya", st)
@@ -117,3 +117,16 @@ def test_v0643_call_brain_is_haiku_even_for_a_big_ask():
         santosh.VOICE_BRAIN_NOW.reset(tok)
     assert santosh.model_for(st, False, True) == ""                          # chat long job unchanged
     assert santosh.model_for(st, True, False) == "opus"                      # chat hard unchanged
+
+
+def test_v0644_call_memory_skips_yaad_by_default(monkeypatch):
+    from app import yaad, kaamwatch
+    from app import coder as _coder
+    called = []
+    monkeypatch.setattr(yaad, "turn_block", lambda *a, **k: called.append(1) or "YAAD")
+    monkeypatch.setattr(kaamwatch, "block", lambda *a, **k: "KAAM")
+    monkeypatch.setattr(_coder.inject, "turn_block", lambda *a, **k: "")
+    from app.config import Settings
+    assert Settings.model_fields["voice_brain_yaad"].default is False
+    out = asyncio.run(santosh._brain_memory("t", "c", "x", types.SimpleNamespace(voice_brain_memory_s=1.0)))
+    assert out == "KAAM" and not called

@@ -51,5 +51,5 @@ def test_styles():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.643.0"
-    assert "0.643.0+649" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.644.0"
+    assert "0.644.0+650" in (ROOT / "pubspec.yaml").read_text()
