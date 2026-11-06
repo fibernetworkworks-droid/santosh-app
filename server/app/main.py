@@ -159,7 +159,8 @@ async def _hosted_sites(request: Request, call_next):
             if request.method in ("GET", "HEAD"):
                 res = await asyncio.to_thread(_hosting.serve, host, request.url.path,
                                               request.headers.get("user-agent") or "",
-                                              request.headers.get("if-none-match") or "")
+                                              request.headers.get("if-none-match") or "",
+                                              request.headers.get("x-hoola-edge") == "1")
                 if res is not None:
                     code, body, ctype, headers = res
                     return Response(content=b"" if request.method == "HEAD" or code == 304 else body, status_code=code,
@@ -10569,7 +10570,53 @@ async def site_design_use(body: dict, tenant: str = Depends(current_tenant)):
     from .site import inspire as IN
     b = body or {}
     return await asyncio.to_thread(_inspire, IN.use, tenant, str(b.get("token") or ""), str(b.get("site") or ""), "",
-                                   str(b.get("brief") or ""))
+                                   str(b.get("brief") or ""), bool(b.get("keep")))
+
+
+def _moved(fn, *a, **k):
+    from .site import moved as MV
+    from .site import service as S
+    try:
+        return fn(*a, **k)
+    except MV.MovedError as e:
+        return JSONResponse({"ok": False, "detail": str(e), "error": str(e)}, status_code=e.code)
+    except S.SiteError as e:
+        raise HTTPException(400, str(e))
+
+
+@app.get("/api/sites/{ref}/moves", dependencies=[Depends(require_key)])
+async def sites_moves(ref: str, tenant: str = Depends(current_tenant)):
+    """v0.622 KOI PATA NA KHOYE: her old site's addresses -> the new pages (a proposal; nothing served until her tap)."""
+    from .site import moved as MV
+    return await asyncio.to_thread(_moved, MV.propose, tenant, ref)
+
+
+@app.post("/api/sites/{ref}/moves", dependencies=[Depends(require_key)])
+async def sites_moves_apply(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """HER tap: the list she saw (hash) becomes live 301s; `drop` = rows she unticked, `change` = {old: new page path}."""
+    from .site import moved as MV
+    b = body or {}
+    return await asyncio.to_thread(_moved, MV.apply, tenant, ref, str(b.get("hash") or ""),
+                                   [str(x) for x in (b.get("drop") or [])][:500],
+                                   {str(k): str(v) for k, v in (b.get("change") or {}).items()} if isinstance(b.get("change"), dict) else None)
+
+
+@app.post("/api/sites/{ref}/compare-old", dependencies=[Depends(require_key)])
+async def sites_compare_old(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.622 her old page next to the new one at the same width; the differences listed for her."""
+    from .site import moved as MV
+    b = body or {}
+    return await asyncio.to_thread(_moved, MV.compare, tenant, ref, str(b.get("old") or "/"), str(b.get("page") or ""))
+
+
+@app.get("/api/sites/{ref}/compare-old/{name}", dependencies=[Depends(require_key)])
+async def sites_compare_old_file(ref: str, name: str, tenant: str = Depends(current_tenant)):
+    from .site import moved as MV
+    try:
+        data = await asyncio.to_thread(MV.compare_file, tenant, ref, name)
+    except MV.MovedError as e:
+        raise HTTPException(e.code, str(e))
+    return Response(content=data, media_type="image/png" if name.endswith(".png") else "application/json")
 
 
 @app.get("/api/site-design/figma", dependencies=[Depends(require_key)])

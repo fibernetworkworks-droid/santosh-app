@@ -148,6 +148,7 @@ server {{
         return 404;
     }}
     location = /_headers {{ return 404; }}
+    location = /_redirects.json {{ return 404; }}
     location ^~ /assets/ {{
         if ($hoola_live = 0) {{
 {proxy}
@@ -163,7 +164,19 @@ server {{
         if (-d $request_filename) {{ rewrite [^/]$ $uri/ permanent; }}
 {hdr}
         add_header Cache-Control "public, max-age=300, stale-while-revalidate=86400" always;   # v0.538 a CDN keeps serving
-        try_files $uri $uri/index.html =404;
+        try_files $uri $uri/index.html @hoola_moved;
+    }}
+    # v0.622 a missing page of a site that moved here from her old site: Hoola answers with the 301 to its new page
+    location @hoola_moved {{
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        proxy_set_header X-Hoola-Edge 1;
+        if (-f $document_root/_redirects.json) {{
+{proxy}
+        }}
+        return 404;
     }}
     error_page 404 /404.html;
     location = /404.html {{

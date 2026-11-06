@@ -21343,3 +21343,43 @@ test red on main; they now move to 0.621.
 
 **NOT VERIFIED on her phone.** The ring for a reminder uses the same native path as job rings (SantoshPush ->
 Notify.ring / wake), which has worked for jobs since v0.219.
+
+## v0.622.0 KOI PATA NA KHOYE - her own old site moves to Hoola without losing an address (owner: "GO 1 TO 4" after the ai-website-cloner-template read)
+
+Read note: `docs/research/website_cloner/00_READ.md` (JCodesMore/ai-website-cloner-template, MIT, ideas only; Hoola still
+clones NOTHING it does not own - every piece below works only on HER OWN old site, whose ownership v0.567 already proves
+with a TXT record / meta tag / one of her Hoola addresses). New module `server/app/site/moved.py`.
+
+1. **Old addresses -> new pages (301).** Before, when she pointed her domain at the new Hoola site, only the bare-domain /
+   www redirect existed: `/about-us.html`, `/services/catering`, `/contact.php` answered "not found", so Google rankings
+   and every link to those pages were lost. Now `inspire.from_site` keeps EVERY old address it can see (her sitemap.xml,
+   sitemaps named in robots.txt, a sitemap index up to 5 files, and every same-site link on the pages it read; admin /
+   feed / file addresses dropped; max 500), `inspire.use` saves them beside the site (`moves_src.json`).
+   `moved.propose` matches each to a NEW page: same slug first, else word overlap >= 0.34 (old slug + old title vs new
+   slug + title, with synonyms: our-story = about, reach-us = contact...), else the home page FLAGGED as a guess. An old
+   address that exists on the new site is left alone. Nothing is served until HER tap: `apply` with the list's hash (409
+   if it changed), she may untick rows (`drop`) or point one elsewhere (`change`, must be a real new page). The approved
+   map is written as `_redirects.json` into the live folder of every address at once, and every later publish
+   (rollback included) carries it. Serving: `hosting.serve` answers a missing page from that map with a 301 (case and a
+   trailing slash forgiven; the map file itself is never served); nginx (`edge.nginx_conf`) now ends `location /` with
+   `try_files ... @hoola_moved`, and that named location hands the request to Hoola ONLY when the site has a map (marked
+   `X-Hoola-Edge: 1` so the visit is not counted twice), else returns its normal 404 page. Routes: `GET/POST
+   /api/sites/{ref}/moves`; tool `website action=moves` (list + hash) / `moves_ok` (her tap; in `_TAP_LIKE`).
+   **VPS:** the nginx block must be regenerated once (`python -m app.site.edge conf`) for nginx-served sites; until then
+   Python serving (the fallback) already answers the 301s.
+2. **"Keep my look" depth.** `inspire.use(..., keep=True)` (tool `design_use keep=true`, route `/api/site-design/use`
+   `keep`), only for HER OWN old site: the old page list and each page's section order (from its headings) ride into look
+   1's brief as KEEP HER LAYOUT; a new site's brief also lists her old pages. Still built in Hoola's kit; her font still
+   maps to a free pair (a commercial font licensed for her domain may not be re-hostable).
+3. **Old page next to the new one.** `moved.compare` (`POST /api/sites/{ref}/compare-old`, tool `compare_old`): the old
+   address is ALWAYS built from the proved host (any other host in the ask is ignored), the new page is read from the
+   current version's files; both screenshotted in Hoola's Chromium at 390 and 1280 px from the top, a "looks different"
+   share computed, and the differences a person would notice listed in words (headings gone, phone / email / WhatsApp
+   missing, fewer forms, far fewer pictures, much shorter). No browser = the words comparison only, said plainly.
+   Screenshots + report kept in the site's `compare/` folder (`GET .../compare-old/{name}`, names checked).
+4. **Photos checked by their bytes.** Imported pictures are fetched without trusting the content-type and checked by
+   magic bytes + Pillow: a `.png` that is really JPEG is kept with the real type named; a web page, an SVG, a broken file
+   or one under 300 px is left out and listed (`ref.photo_checks`, and the read line says how many were left out).
+
+Tests: `test_v0622_koi_pata.py`. NOT VERIFIED live: no real old site has been moved yet; the nginx named-location
+hand-off is tested as generated text, not in a running nginx.

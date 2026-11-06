@@ -79,7 +79,10 @@ SITE_TOOLS = [
         "corners, section order; from her own site also her words, phone, photos) - nothing changes yet; action=design_use + "
         "token (+ site; empty = a NEW site from her old site / Figma words) ONLY after she said haan to that preview: look 1 "
         "becomes her design, the other two stay Hoola alternatives. A screenshot of someone else's site gives only a STYLE, "
-        "never their words / logo / photos; 'exactly like their site' stays refused. "
+        "never their words / logo / photos; 'exactly like their site' stays refused. HER OWN OLD SITE MOVING (v0.622): "
+        "design_use + keep=true when she says 'purana jaisa rakho' (her page list + section order kept); action=moves = her "
+        "old addresses -> new pages (the list + hash, nothing served yet); action=moves_ok + hash (+ drop: old paths she "
+        "unticked) ONLY after her haan = live 301s; action=compare_old + url (old path) = old page vs new at the same width. "
         "ANIMATION / 3D (v0.568): action=animation + file_id (her Lottie .json file) + name = keep her own animation for "
         "the site (checked; a link to another server or a file over 1.5 MB is refused); then action=change can put it on a "
         "page by name. Built-in animations (pulse, check, sparkle, scroll, dots, wave) and 3D hero scenes (orb, knot, "
@@ -89,7 +92,7 @@ SITE_TOOLS = [
         "member id) = whose site it is and who may work on it (a staff member only touches sites given to them); "
         "action=client_report + client. action=delete*. (* owner only)"),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "animation", "stop", "resume",
+         "action": {"type": "string", "enum": ["new", "grow", "shop", "shop_order", "answer", "plan_ok", "look", "change", "photo", "undo", "language", "languages", "blog", "code", "booking", "app", "architect", "architect_data", "architect_change", "architect_ok", "logic", "logic_ok", "phone_app", "catalog", "design_from", "design_use", "moves", "moves_ok", "compare_old", "animation", "stop", "resume",
                                                "export", "launch", "domain", "dns_check", "email_dns", "rollback",
                                                "takedown", "domain_ideas", "domain_check", "domain_buy", "domain_kyc",
                                                "care", "github", "assign", "client_report", "delete"]},
@@ -107,6 +110,8 @@ SITE_TOOLS = [
          "slug": {"type": "string"}, "blog_action": {"type": "string", "enum": ["hide", "show", "cover"]}, "cover": {"type": "string"},
          "file": {"type": "string", "description": "code mode: one code file path (website_dekho what=code lists them)"},
          "source": {"type": "string", "enum": ["", "screenshot", "figma", "site"]}, "url": {"type": "string"}, "token": {"type": "string"},
+         "keep": {"type": "boolean", "description": "design_use from HER OWN old site: keep its page list + section order"},
+         "drop": {"type": "array", "items": {"type": "string"}, "description": "moves_ok: old paths she unticked"},
          "lead": {"type": "string"}, "yes": {"type": "boolean"}, "format": {"type": "string", "enum": ["zip", "react"]}, "domain": {"type": "string"}, "primary": {"type": "string", "enum": ["root", "www"]}, "plan": {"type": "string"},
          "provider": {"type": "string"}, "report_to": {"type": "string"}, "version": {"type": "integer"},
          "city": {"type": "string"}, "domains": {"type": "array", "items": {"type": "string"}},
@@ -134,7 +139,7 @@ SITE_TOOLS = [
 SITE_LABELS = {"website": "Website bana raha hoon", "website_dekho": "Website dekh raha hoon"}
 _OWNER_ONLY = {"delete", "takedown", "domain_buy", "domain_kyc", "assign", "github"}
 _NO_SITE = {"new", "domain_check", "client_report", "architect", "architect_data", "architect_change", "architect_ok", "design_from", "design_use"}
-_TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok", "design_use"}
+_TAP_LIKE = {"plan_ok", "look", "architect_ok", "logic_ok", "design_use", "moves_ok"}
 
 
 def _owner(ctx: Ctx) -> bool:
@@ -175,9 +180,23 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 out["ref"] = {k: v for k, v in out["ref"].items() if k != "content"} | {
                     "content": {k: v for k, v in (out["ref"].get("content") or {}).items() if k != "texts"}}
                 return out
-            return IN.use(t, str(a.get("token") or ""), str(a.get("site") or ""), ctx.conversation_id or "", str(a.get("brief") or ""))
+            return IN.use(t, str(a.get("token") or ""), str(a.get("site") or ""), ctx.conversation_id or "", str(a.get("brief") or ""),
+                          bool(a.get("keep")))
         except IN.InspireError as e:
             return {"error": str(e), **e.extra}
+    if action in ("moves", "moves_ok", "compare_old"):   # v0.622 KOI PATA NA KHOYE: her own old site's addresses
+        from ..site import moved as MV
+        try:
+            if action == "moves":
+                v = MV.propose(t, site)
+                return {**{k: v[k] for k in ("site", "from_host", "hash", "guesses", "approved", "say")},
+                        "rows": v["rows"][:60], "total": len(v["rows"])}
+            if action == "moves_ok":
+                return MV.apply(t, site, str(a.get("hash") or ""), [str(x) for x in (a.get("drop") or [])][:500])
+            v = MV.compare(t, site, str(a.get("url") or "/"), str(a.get("slug") or ""))
+            return {k: v[k] for k in ("old", "new_page", "differences", "widths", "note", "say")}
+        except MV.MovedError as e:
+            return {"error": str(e)}
     if action == "catalog":                       # v0.538 a preview only; her Apply tap writes it (console Catalogue card)
         from ..site import catalog as CAT
         try:

@@ -204,3 +204,9 @@ Python and wording built from Impeccable's ideas: its anti-pattern catalogue (th
 its craft-floor checks, its surface modes (persuade / operate / read / experience) and its rule that the user's own
 brief wins over every warning. Impeccable itself credits ehmo/platform-design-skills (MIT) for its iOS / Android
 references, which Hoola did not use.
+
+## AI Website Cloner Template (JCodesMore/ai-website-cloner-template) - MIT
+Read at commit ee3f5a2f (5 Oct 2026); notes in `docs/research/website_cloner/00_READ.md`. **No upstream code is included.**
+`server/app/site/moved.py` (v0.622) is Hoola's own Python built from two of its ideas - keep a source-URL -> new-route map
+when a site moves, and compare the old page and the new one at the same width - applied ONLY to the user's own old site
+(ownership proved first, v0.567). Hoola does not clone sites the user does not own.

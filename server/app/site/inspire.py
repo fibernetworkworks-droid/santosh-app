@@ -602,6 +602,34 @@ def from_site(tenant: str, url: str) -> dict[str, Any]:
             got = _get(c, base + path, PAGE_BYTES)
             if got:
                 pages.append((path, got[0].decode("utf-8", "replace")))
+        # v0.622 KOI PATA NA KHOYE: every old address she has (sitemap + every same-site link), so none is lost on the move
+        from . import moved as MV
+
+        def host_ok(h: str) -> bool:
+            return h in (host, "www." + apex(host), apex(host))
+        found: list[str] = []
+        maps = [base + "/sitemap.xml"]
+        for sm in re.findall(r"(?im)^\s*sitemap:\s*(\S+)", (_get(c, base + "/robots.txt", 200_000, want="") or (b"", ""))[0]
+                             .decode("utf-8", "replace")):
+            if host_ok((urlparse(sm).hostname or "").lower()) and sm not in maps:
+                maps.insert(0, sm)
+        done_maps: set[str] = set()
+        while maps and len(done_maps) < MV.SITEMAPS_MAX:
+            sm = maps.pop(0)
+            if sm in done_maps:
+                continue
+            done_maps.add(sm)
+            got = _get(c, sm, 3_000_000, want="")
+            if got:
+                pg, nested = MV.sitemap_paths(got[0].decode("utf-8", "replace"), host_ok)
+                found += pg
+                maps += [x for x in nested if x not in done_maps]
+        for path, html in pages:
+            found.append(path)
+            for href in re.findall(r"""<a[^>]+href=["']([^"'#]+)""", html, re.I):
+                pu = urlparse(urljoin(base + path, href))
+                if host_ok((pu.hostname or "").lower()) and allowed(pu.path or "/"):
+                    found.append(pu.path or "/")
         css = ""
         for href in re.findall(r"""<link[^>]+rel=["']stylesheet["'][^>]*href=["']([^"']+)""", home_html, re.I)[:3]:
             full = urljoin(base + "/", href)
@@ -619,20 +647,20 @@ def from_site(tenant: str, url: str) -> dict[str, Any]:
                         not re.search(r"(logo|icon|sprite|pixel|spacer)", src, re.I) and src not in [x for x, _ in imgs]:
                     imgs.append((src, unescape(alt)[:120]))
         photos: list[dict[str, Any]] = []
+        photo_checks: list[dict[str, Any]] = []
         for src, alt in imgs[:IMAGES_MAX * 2]:
             if len(photos) >= IMAGES_MAX:
                 break
-            got = _get(c, src, IMG_BYTES, want="image/")
+            got = _get(c, src, IMG_BYTES, want="")     # v0.622 the BYTES decide, not the name or the content-type
             if not got:
                 continue
-            try:
-                from PIL import Image
-                w, h = Image.open(io.BytesIO(got[0])).size
-            except Exception:
+            chk = MV.sniff(got[0], src)
+            if chk["ok"] and min(chk["w"], chk["h"]) < 300:
+                chk = {**chk, "ok": False, "why": f"too small ({chk['w']}x{chk['h']})"}
+            photo_checks.append({"src": src[:200], **{k: chk[k] for k in ("ok", "type", "named", "w", "h", "bytes", "why")}})
+            if not chk["ok"]:
                 continue
-            if min(w, h) < 300:
-                continue
-            photos.append({"bytes": got[0], "about": alt, "src": src})
+            photos.append({"bytes": got[0], "about": alt, "src": src, "type": chk["type"]})
     read = [read_page(h) for _, h in pages]
     home_r = read[0]
     content = {"name": home_r["site_name"] or home_r["title"].split("|")[0].split("-")[0].strip(),
@@ -644,6 +672,16 @@ def from_site(tenant: str, url: str) -> dict[str, Any]:
                "services": list(dict.fromkeys(h for r in read[1:] for h in r["heads"]))[:20],
                "pages": [{"path": p, "title": r["title"]} for (p, _), r in zip(pages, read)],
                "photos": len(photos)}
+    # v0.622 her page list + each page's section order, for the "keep my look" depth
+    layout = []
+    for (p, _), r in zip(pages, read):
+        secs = []
+        for h in r["heads"]:
+            k = section_of(h)
+            if k and k not in secs:
+                secs.append(k)
+        layout.append({"path": p, "title": r["title"], "sections": secs[:12]})
+    titles = {MV.norm_path(p): r["title"] for (p, _), r in zip(pages, read)}
     cd = css_design(css)
     raw = {"head_family": cd["font"], "radius_px": cd["radius"] if cd["radius"] is not None else 8,
            "sections": [h for h in home_r["heads"]],
@@ -651,6 +689,14 @@ def from_site(tenant: str, url: str) -> dict[str, Any]:
     ref = normalise("site", raw, cd["colours"], content)
     ref["read_by"] = f"{len(pages)} pages of {apex(host)} (robots.txt respected), {len(photos)} of her photos"
     ref["_photos"] = photos
+    ref["layout"] = layout
+    ref["old_site"] = {"host": apex(host), "paths": MV.keep_paths(found, titles)}
+    ref["photo_checks"] = photo_checks
+    bad = [x for x in photo_checks if not x["ok"]]
+    renamed = [x for x in photo_checks if x["ok"] and x["why"]]
+    if bad or renamed:
+        ref["read_by"] += (f"; {len(bad)} picture(s) left out after checking their bytes" if bad else "") + \
+            (f"; {len(renamed)} named wrongly (real type kept)" if renamed else "")
     return ref
 
 
@@ -693,6 +739,7 @@ def read(tenant: str, source: str, value: str = "", file_id: str = "", data: byt
            + (f", rang {', '.join(list(ref['overrides'].get(k, '') for k in ('primary', 'accent') if ref['overrides'].get(k)))}" if ref['overrides'].get('primary') else "")
            + (f"; sections: {', '.join(T.label_of(s) for s in ref['sections'][:6])}" if ref["sections"] else "")
            + (f"; unki site se: naam '{c.get('name')}', {c.get('photos', 0)} photos, {len(c.get('services') or [])} services" if ref["source"] == "site" else "")
+           + (f", {len((ref.get('old_site') or {}).get('paths') or [])} purane pate (naye pages par jodne ke liye)" if ref.get("old_site") else "")
            + ". Pehla look isi design se banega - 'haan, yahi design lagao' kahiye.")
     return {"token": tok, "ref": ref, "say": say}
 
@@ -710,8 +757,10 @@ def _load_preview(tenant: str, token: str) -> tuple[dict[str, Any], Path]:
     return ref, d
 
 
-def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str = "") -> dict[str, Any]:
-    """HER tap: the reference goes on a site (new when none is named) and the looks are made again with look 1 = hers."""
+def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str = "", keep: bool = False) -> dict[str, Any]:
+    """HER tap: the reference goes on a site (new when none is named) and the looks are made again with look 1 = hers.
+    v0.622 keep=True ("purana jaisa rakho", only for HER OWN old site): look 1 follows her old page list and each page's
+    section order too - still built in Hoola's kit, her font mapped to a free pair."""
     from . import service as S
     from .models import Site
     ref, d = _load_preview(tenant, token)
@@ -720,9 +769,13 @@ def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str 
         with session() as s:
             if S._find(s, tenant, ref_site).status == "building":
                 raise InspireError("Website abhi ban rahi hai; banne ke baad design lagaiye.", 409)
+    keep = bool(keep) and ref.get("source") == "site" and bool(ref.get("layout"))
     if not ref_site:
         words = brief or " ".join(x for x in [c.get("name") or "", c.get("about") or "", ", ".join((c.get("services") or [])[:6]),
                                               " ".join((c.get("texts") or [])[:6])] if x)[:1500]
+        if keep:
+            words = (words + " Pages: " + ", ".join(x["title"].split("|")[0].strip() for x in ref["layout"][1:]
+                                                   if x.get("title")))[:1800]
         if not words.strip():
             raise InspireError("Kis cheez ki website hai, ek line mein bataiye (design ke saath).")
         answers = {k: c[k] for k in ("phone", "email", "address", "whatsapp") if c.get(k)}
@@ -733,12 +786,19 @@ def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str 
         facts = S._j(r.facts, {})
         facts["design_ref"] = {k: ref[k] for k in ("source", "style", "fonts", "head", "body", "radius", "dark", "overrides",
                                                    "sections", "notes", "read_by")}
+        facts["design_ref"]["keep"] = keep
+        if keep:
+            facts["design_ref"]["layout"] = ref["layout"][:PAGES_MAX]
         for k in ("phone", "email", "address", "whatsapp"):
             if c.get(k) and not facts.get(k):
                 facts[k] = c[k]
         r.facts = S._jd(facts)
         status, rid = r.status, r.id
         s.flush()
+    old = ref.get("old_site") or {}
+    if old.get("paths"):                                     # v0.622 her old addresses wait beside the site for her tap
+        from . import moved as MV
+        MV.save_source(tenant, rid, old.get("host") or "", old["paths"])
     added = 0
     for p in ref.get("photos") or []:                       # her own photos from her own site
         try:
@@ -756,8 +816,12 @@ def use(tenant: str, token: str, ref_site: str = "", conv: str = "", brief: str 
         remade = True
     say = ("Aapka design lag gaya: " + ("teen naye look ban rahe hain, pehla aapke design se." if remade else
            "plan pakka karte hi teen look banenge, pehla aapke design se.")
-           + (f" Aapki purani site ki {added} photos bhi le li." if added else ""))
-    return {"ok": True, "site": rid, "remade_looks": remade, "photos_added": added, "say": say}
+           + (f" Aapki purani site ki {added} photos bhi le li." if added else "")
+           + (" Pages aur sections ka kram purani site jaisa rakha jayega." if keep else "")
+           + (f" Purani site ke {len(old['paths'])} pate bhi rakhe hain - site taiyaar hone par 'purane pate jodo' kahiye, "
+              "list dekh kar haan kahiye." if old.get("paths") else ""))
+    return {"ok": True, "site": rid, "remade_looks": remade, "photos_added": added, "keep": keep,
+            "old_addresses": len(old.get("paths") or []), "say": say}
 
 
 def look_zero(facts: dict[str, Any]) -> dict[str, Any] | None:
@@ -770,6 +834,15 @@ def look_zero(facts: dict[str, Any]) -> dict[str, Any] | None:
 
 def brief_note(ref: dict[str, Any]) -> str:
     secs = ", ".join(T.label_of(s) for s in (ref.get("sections") or [])[:10])
-    return ("\n\nHER OWN DESIGN REFERENCE (this look must follow it - her colours, her type, her corner shape; built in "
+    note = ("\n\nHER OWN DESIGN REFERENCE (this look must follow it - her colours, her type, her corner shape; built in "
             f"Hoola's kit, never copied): read from her {ref.get('source')}; {ref.get('notes') or ''}"
             + (f" Section order she uses: {secs}." if secs else ""))
+    if ref.get("keep") and ref.get("layout"):               # v0.622 "keep my look": her page list + each page's order
+        rows = []
+        for x in ref["layout"][:PAGES_MAX]:
+            s = ", ".join(T.label_of(k) for k in (x.get("sections") or [])[:8])
+            rows.append(f"{x.get('path')} '{(x.get('title') or '').split('|')[0].strip()[:60]}'" + (f": {s}" if s else ""))
+        note += ("\nKEEP HER LAYOUT (she asked to keep her old site's shape): the same pages in the same order, and on each "
+                 "page the same sections in the same order - " + " | ".join(rows) + ". Words and pictures are hers; the "
+                 "code, components and fonts stay Hoola's kit (her font is mapped to a free pair).")
+    return note

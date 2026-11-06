@@ -226,7 +226,7 @@ def is_bot(ua: str) -> bool:
     return bool(BOTS.search(ua or ""))
 
 
-def serve(host: str, path: str, ua: str = "", inm: str = "") -> tuple[int, bytes, str, dict[str, str]] | None:
+def serve(host: str, path: str, ua: str = "", inm: str = "", edge: bool = False) -> tuple[int, bytes, str, dict[str, str]] | None:
     """(status, body, content type, headers) for a hosted site, or None when this host is not one of ours."""
     host = (host or "").lower().split(":")[0].strip(".")
     m = host_map().get(host)
@@ -250,9 +250,13 @@ def serve(host: str, path: str, ua: str = "", inm: str = "") -> tuple[int, bytes
         if not (path or "").endswith("/"):
             return 301, b"", "text/plain", {"Location": (path or "/") + "/"}
         f = f / "index.html"
-    if not f.is_file() or f.name == "_headers":
+    if not f.is_file() or f.name in ("_headers", "_redirects.json"):
+        from . import moved as MV                        # v0.622 her old address -> its new page (her approved list)
+        to = MV.lookup(root, path or "/")
+        if to and f.name != "_redirects.json":
+            return 301, b"", "text/plain", {"Location": f"https://{host}{to}", "Cache-Control": "public, max-age=3600"}
         nf = root / "404.html"
-        if not is_bot(ua):
+        if not is_bot(ua) and not edge:                  # nginx already logged this one
             _count(m, path, 404)
         return 404, (nf.read_bytes() if nf.exists() else b"not found"), "text/html; charset=utf-8", _sec_headers(m)
     ctype = mimetypes.guess_type(f.name)[0] or "application/octet-stream"
@@ -447,6 +451,7 @@ def _publish_files(r: Site, host: str, version: int) -> None:
     # the sections of this version are the current sources; for older versions copy that version's files
     if version == r.version:
         B.assemble(ctx, ctx["plan"], secs, photos, tmp, f"https://{host}", S.form_endpoint(r))
+        _moves_into(tmp, r)
     else:
         src = B.out_dir(r.tenant_id, r.id, version)
         if not src.exists():
@@ -455,6 +460,7 @@ def _publish_files(r: Site, host: str, version: int) -> None:
             shutil.rmtree(tmp)
         shutil.copytree(src, tmp)
         _make_indexable(tmp, f"https://{host}")
+        _moves_into(tmp, r)
     if old.exists():
         shutil.rmtree(old)
     if live.exists() and not live.is_symlink():
@@ -462,6 +468,15 @@ def _publish_files(r: Site, host: str, version: int) -> None:
     elif live.is_symlink():
         live.unlink()
     tmp.rename(live)
+
+
+def _moves_into(folder: Path, r: Site) -> None:
+    """v0.622 her approved old-address map rides every publish (rollback included)."""
+    try:
+        from . import moved as MV
+        MV.write_into(folder, r.tenant_id, r.id)
+    except Exception:
+        log.exception("moves: map not written")
 
 
 def _make_indexable(out: Path, base_url: str) -> None:
