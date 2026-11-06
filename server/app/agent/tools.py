@@ -351,6 +351,14 @@ TOOLS.extend(KGMEMORY_TOOLS)
 TOOL_LABELS.update(KGMEMORY_LABELS)
 HANDLERS.update(KGMEMORY_HANDLERS)
 
+from .bhandar_tools import (  # noqa: E402  v0.618 BHANDAR MANCH - the T2 local-core family (the no-credential local beds of download/HOOLA_MCP_FEED.json, IDEA-ONLY): read-only SQL over the tenant's own SQLite, markdown/json/AST workbenches + IANA time, backend-only
+    BHANDAR_HANDLERS, BHANDAR_LABELS, BHANDAR_TOOLS,
+)
+
+TOOLS.extend(BHANDAR_TOOLS)
+TOOL_LABELS.update(BHANDAR_LABELS)
+HANDLERS.update(BHANDAR_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)

@@ -60,6 +60,24 @@ vendored — the port law) and the wrapper is hand-built on house primitives.
 
 # HOOLA — full version history (moved out of CLAUDE.md on 29 Oct 2026 so sessions stop hitting "context full"). Search it, never read it whole.
 
+## v0.618.0 BHANDAR MANCH — the T2 local-core family, backend-only (6 Nov 2026)
+
+The owner started the T2 tier of the MCP feed ("T2 Local Core -- START") — the zero-network / zero-login /
+zero-key local beds — and it went in the house way: IDEA-ONLY, one tool, backend-only, guard wall first.
+One new tool `bhandar` (registry 605 → 606) with six actions over the tenant's OWN stores, all stdlib
+(sqlite3 / json / ast / zoneinfo), never a write anywhere: `beds` discovers the scraping / kgmemory /
+workspace SQLite stores with table counts; `sql` runs ONE read statement behind three belts (one statement
++ head law, write verbs and write pragmas refused by name with the replace()-function exception kept, then
+mode=ro so SQLite itself is the wall); `md` / `json` / `ast` are the workspace text beds (heading outlines
+with line numbers, deduped links, typed JSON structure with dotted-path get, the Python skeleton — shape,
+never source); `time` reads IANA zones with honest UTC offsets and DST flags, home zone Asia/Kolkata.
+The catalog evidence rows: Aderali06/sqlite-mcp-server, hannesrudolph/sqlite-explorer-fastmcp,
+scoretracker4321/json-mcp-lite, micl2e2/code-to-tree, rafim-dev/mcp-context-condenser,
+EdelmarSchneider/permark, davidan90/time-node-mcp, plus the mcp/servers `time` reference shape. The first
+live smoke caught the UTC +00:00 falsy-offset bug before any test was written. Kill switch
+`bhandar_enabled` (off means off — everything is a read). 33 zero-network tests; pins swept
+0.617.0 → 0.618.0 across 206 files with zero residual. Server-only deploy; desktop untouched.
+
 ## v0.600.0 HOOLA AEP 1.0 — the 100% parity audit + the openwiki analog, P8 of the HOOLA AEP plan (5 Nov 2026)
 
 Owner: "P7 HUB -> P8 the 100% parity audit" (with v0.589.0 HOOLA HUB the same dispatch). THE TRAIN'S LAST PHASE. server/app/aep/audit.py

@@ -335,6 +335,9 @@ class Settings(BaseSettings):
     kgmemory_enabled: bool = True          # v0.586 SANDARBH MANCH: the T1 reference memory role (the `kgmemory`
                                            # tool, the knowledge-graph idea) - per-tenant store
                                            # data/kgmemory/<tenant>/kg.db; off stops WRITES, reads stay answerable
+    bhandar_enabled: bool = True           # v0.618 BHANDAR MANCH: the T2 local-core family (the `bhandar` tool,
+                                           # the read-only SQLite/markdown/json/AST/time beds idea) - all reads
+                                           # over the tenant's OWN stores; off means off (honest NEED_SETUP)
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)

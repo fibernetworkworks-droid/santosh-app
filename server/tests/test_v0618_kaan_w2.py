@@ -9,7 +9,7 @@
 (4) THE GATES: start/chunk are AUDIO INGEST - the kaan_audio gate owns them (no new switch);
     stop is bookkeeping + an OPTIONAL bounded clean pass (finalize_model, <= 10 min). stop writes
     ONE kn_ row (source='live') that diarize/minutes already read. Live actions are owner/approved;
-    registry stays 605 - actions, not tools. Everything local-first: spine + captions never leave.
+    registry 606 - actions, not tools. Everything local-first: spine + captions never leave.
 """
 import asyncio
 import inspect
@@ -28,7 +28,7 @@ from app.kaan import service as KS
 from tests.test_life import conv_ctx
 
 PIN = ("their 593 + W1 diarize/minutes ACTIONS (0.613) + W2 live_start/live_chunk/live_stop/live_get/"
-       "live_list ACTIONS (0.618) - actions, not tools, registry stays 605")
+       "live_list ACTIONS (0.618) - actions, not tools, registry 606")
 
 SCRIPT = ["pehla", "doosra", "teesra", "chautha."]           # 0.32s cadence from 0.1s, ends on a period
 CHUNK_S = 3.2                                                # one chunk = 3.2s of PCM
@@ -254,7 +254,7 @@ def test_real_ffmpeg_decode_when_present(live_env):
 
 # ---------------------------------------------------------------- (4) the wiring + laws
 def test_actions_grew_registry_did_not():
-    assert len(tools.TOOLS) == 605, PIN
+    assert len(tools.TOOLS) == 606, PIN
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
@@ -302,4 +302,4 @@ def test_live_module_purity_and_laziness():
 
 def test_version_pin_v0618():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.619.0"
+    assert APP_VERSION == "0.620.0"

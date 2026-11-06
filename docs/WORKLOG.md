@@ -1640,3 +1640,19 @@ Work Log:
 - Ritual 0.618.0 (this script, line-wise): APP_VERSION story (chain verbatim), pubspec 0.618.0+624, quoted test pins swept, CLAUDE.md one-liner, HISTORY section, this mirror.
 Stage Summary:
 - W2 engine + tool actions + tests + ritual done in-sandbox; NOT VERIFIED live: the first real phone-chunk session - the bake block rides the vps-ops deploy. W3 (styles + vocab) waits for START.
+
+---
+Task ID: v0.620.0 BHANDAR MANCH (T2 Local Core, built as 0.618.0)
+Agent: main (owner session)
+Task: "T2 Local Core -- START" - the T2 tier of download/HOOLA_MCP_FEED.json ported backend-only into the hoola AI
+
+Work Log:
+- Sandbox recycled mid-task: repo restored from origin/main (fetched fresh - the dev chain had moved 0.493 -> 0.617.0 while the snapshot sat), feed files + upstream clones rebuilt from the pipeline recipes.
+- T2 catalog rows re-derived and evidence-verified (catalog description verbatim): Aderali06/sqlite-mcp-server, hannesrudolph/sqlite-explorer-fastmcp, scoretracker4321/json-mcp-lite, micl2e2/code-to-tree, rafim-dev/mcp-context-condenser, EdelmarSchneider/permark, davidan90/time-node-mcp (+ mcp/servers src/time reference shape). awesome-mcp-servers MIT re-verified; mcp/servers MIT->Apache-2.0 transition noted; zero code taken either way.
+- NEW server/app/agent/bhandar_tools.py: ONE tool `bhandar` (beds | sql | md | json | ast | time), READ-ONLY over the tenant's own beds; three-belt sql gate (one statement + head law / write verbs + write pragmas refused by name / mode=ro); sandarbh root law on md/json/ast; honest envelopes; stdlib only. Name law: 'matka' rejected (ads gambling blocklist beside 'satta'); Bhandar = the storehouse.
+- Wiring: tools.py registry 605 -> 606; config.py bhandar_enabled; admit.py bed-shaped keys (bare 'sql' stays with pgdb); prompts.py bullet beside Sandarbh Manch.
+- Tests: NEW server/tests/test_v0618_bhandar_manch.py (40, zero network; name keeps the first-build number) - discovery + no-create law, the sql gate surface, replace() exception, WITH/EXPLAIN, read pragmas, SQL_ERROR honesty, bed-name law + tenant isolation, md/json/ast lanes + caps + parse positions, time (IST home, UTC +00:00 regression from the first smoke, DST honesty), kill switch, purity, registry/enum/APP_VERSION pins.
+- COLLISION #11 + REBASE PROTOCOL: their HAMESHA JUDA took 0.618.0 (tag v0.618.0-b1789) and their KAAN W2 took 0.619.0 (tag v0.619.0-b1791) while BHANDAR sat built; rebased onto their e522b90b0 tip, their base kept whole, the version layer re-applied coherently (the rebase --theirs flip caught and redone: their tip restored for all shared files, then scripts/ritual_0620.py swept 208 test files 0.619.0 -> 0.620.0, +625 -> +626, registry pins 605 -> 606, ZERO residual).
+- Deploy: server-only = owner's vps-ops dispatch; desktop untouched.
+
+Stage Summary: v0.620.0 BHANDAR MANCH shipped on origin/main - the T2 local-core lane live behind the guard wall, zero keys, zero logins, zero new pip.
