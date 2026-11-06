@@ -91,9 +91,10 @@ def _ffmpeg_ok() -> tuple[bool, str]:
 
 
 def transcribe(path: str, *, model: str = "", language: str = "", task: str = "transcribe",
-               word_timestamps: bool = True) -> dict[str, Any]:
+               word_timestamps: bool = True, initial_prompt: str = "") -> dict[str, Any]:
     """One call into the real engine. Returns a plain dict; raises KaanError with an honest line.
-    Engine-injectable: tests swap engine._load for a fake (the voice_openai `connect` swap pattern)."""
+    Engine-injectable: tests swap engine._load for a fake (the voice_openai `connect` swap pattern).
+    W3: initial_prompt carries the tenant vocabulary hint (soft - whisper may not honor it)."""
     model = (model or default_model()).lower()
     if model not in {m["name"] for m in MODEL_LADDER}:
         raise KaanError(f"model '{model}' nahi jaana. Ladder: {', '.join(m['name'] for m in MODEL_LADDER)}.")
@@ -112,6 +113,7 @@ def transcribe(path: str, *, model: str = "", language: str = "", task: str = "t
             language=language or None,
             task=task,
             word_timestamps=word_timestamps,
+            initial_prompt=initial_prompt or None,
             temperature=TEMPERATURES,
             compression_ratio_threshold=COMPRESSION_RATIO_THRESHOLD,
             logprob_threshold=LOGPROB_THRESHOLD,
@@ -144,7 +146,7 @@ def fake_engine(text: str, language: str = "hi") -> Callable[..., dict[str, Any]
     """A scripted engine for tests and the CI lane (zero network, zero torch).
     Returns a transcribe()-shaped callable with the same guards (model ladder, translate cap, file check)."""
     def _fake(path: str, *, model: str = "", language: str = "", task: str = "transcribe",
-              word_timestamps: bool = True) -> dict[str, Any]:
+              word_timestamps: bool = True, initial_prompt: str = "", **_k) -> dict[str, Any]:
         model = (model or default_model()).lower()
         if model not in {m["name"] for m in MODEL_LADDER}:
             raise KaanError(f"model '{model}' nahi jaana. Ladder: {', '.join(m['name'] for m in MODEL_LADDER)}.")

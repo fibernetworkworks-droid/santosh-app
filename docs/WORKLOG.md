@@ -1,4 +1,21 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.637.0 KAHAN RUKA (built as 0.636.0)
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
+Work Log: stage timer + `brain prep` log line; lock-busy log; compaction skipped on call brain turns; 8 exchanges, old results cut to 1,500 chars; 4 tests; version 0.637.0+643 (re-versioned: their WEB DEVELOPMENT PANEL took 0.636.0).
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line names the slow stage.
+
+---
+Task ID: v0.638.0 TEZ TAIYARI
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her `brain prep 19.6s` line - cut memory 7.0 s / MCP 4.5 s / hint 1.8 s on call brain turns.
+Work Log: parallel memory under 2.5 s, MCP snapshot_fast, hint skipped; 3 tests; version 0.638.0+644.
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line should read ~3-4 s.
+Task ID: v0639-kaan-w3-apni-boli
+Agent: Claude (KAAN lane, session web-f8fcbe11)
+Task: Owner "START" on the kaan plan (+ "always show result in English") - Wave W3: custom vocabulary + style presets.
+Work Log: kaan/vocab.py + kaan_vocab table (initial_prompt soft hint + fix_to deterministic fixes, counted, 800-char cap), transcribe vocab=true default, live_start freezes the prompt for every pass; kaan/styles.py five deterministic renders (verbatim/clean/subtitles/minutes/social, gate-free reads); engine initial_prompt; 4 new actions (registry 606 unchanged); ritual_0637 swept 210 files, 3 enum pins healed, pubspec 0.637.0+643; W3 suite 23 green + neighbours (W2/W1/W0/auzaar/bhandar) 115 green.
+Stage Summary: v0.639.0 (built as 0.637.0; REBASE PROTOCOL onto their 0.638 tip).
 
 > Fresh-environment bootstrap. Original worklog from prior sessions nahi aaya is env mein;
 > yeh file continuation prompt + live repo/API verification se reconstruct ki gayi hai.
@@ -1774,15 +1791,3 @@ Work Log: per-Claude-call timing log; no thinking / effort on call brain turns; 
 Stage Summary: v0.635.0.
 
 ---
-Task ID: v0.637.0 KAHAN RUKA (built as 0.636.0)
-Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
-Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
-Work Log: stage timer + `brain prep` log line; lock-busy log; compaction skipped on call brain turns; 8 exchanges, old results cut to 1,500 chars; 4 tests; version 0.637.0+643 (re-versioned: their WEB DEVELOPMENT PANEL took 0.636.0).
-Stage Summary: pushed to main + feature branch; next call's `brain prep` line names the slow stage.
-
----
-Task ID: v0.638.0 TEZ TAIYARI
-Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
-Task: her `brain prep 19.6s` line - cut memory 7.0 s / MCP 4.5 s / hint 1.8 s on call brain turns.
-Work Log: parallel memory under 2.5 s, MCP snapshot_fast, hint skipped; 3 tests; version 0.638.0+644.
-Stage Summary: pushed to main + feature branch; next call's `brain prep` line should read ~3-4 s.

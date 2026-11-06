@@ -12,22 +12,23 @@ from typing import Any
 from .tools import Ctx, ToolError
 
 _ACTIONS = ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
-            "live_start", "live_chunk", "live_stop", "live_get", "live_list"]
+            "live_start", "live_chunk", "live_stop", "live_get", "live_list",
+            "style", "vocab_add", "vocab_list", "vocab_remove"]
 
 KAAN_TOOLS = [
     {"name": "kaan", "description": (
-        "Audio/video sun-kar likhawat (WhisperAI W0) + W1 diarize/minutes + W2 live captions. "
-        "action=transcribe: file_id (chat ki audio/video) + model (default small; turbo translate NAHI kar sakta) + "
-        "language (khali = khud pehchanega) + task transcribe|translate -> text, segments (per-word timing). "
-        "action=diarize: id YA file_id -> pauses se TURN kate hain (yeh speaker pehchaan NAHI hai - kaun bola audio "
-        "se nahi jaanta, audio store nahi hota); names={\"1\": \"Gupta ji\"} se turn par naam. "
-        "action=minutes: id -> deterministic skeleton - turn stats, keywords, action-item CANDIDATES (faisla aapka). "
-        "W2 live captions: action=live_start (model default base) -> kl_ session; action=live_chunk (id + audio bytes, "
-        "2-5s ke tukde) -> har call par NAYE captions (rolling window); action=live_stop (id, finalize_model khaali ya "
-        "model = 10-min tak ka clean batch pass) -> kn_ transcript jis par diarize/minutes turant chalte hain; "
-        "action=live_get / live_list (reads). status: gate (kaan_audio), diarize switch, engine, model ladder, stored "
-        "count, live block, privacy. Audio + transcript isi server par rehte hain - koi bahar API nahi. Badi file ka "
-        "waqt lagta hai - call par santosh_kaam se chalta hai, kaam poora hone par phone ghanti bajti hai."),
+        "Audio/video sun-kar likhawat (Whisper W0) + W1 diarize/minutes + W2 live captions + W3 styles/vocab. "
+        "transcribe: file_id + model (default small; turbo translate NAHI) + language + task transcribe|translate "
+        "-> text, segments (per-word timing); vocab=true (default) tenant ke shabd initial_prompt hint + fix_to "
+        "deterministic replacement lagata hai (note mein count). "
+        "vocab_add (term, fix_to khaali ya replacement) / vocab_list / vocab_remove. "
+        "diarize: id YA file_id -> pauses se TURN kate hain (speaker pehchaan NAHI); names={\"1\": \"Gupta ji\"}. "
+        "minutes: id -> turn stats, keywords, action CANDIDATES. "
+        "style: id + verbatim|clean|subtitles|minutes|social -> deterministic render, kuch generate nahi. "
+        "live_start (model base) -> kl_ session; live_chunk (id + audio bytes) -> naye captions; "
+        "live_stop (id, finalize_model) -> kn_ transcript; live_get/live_list. "
+        "status: gate, diarize, engine, ladder, styles, vocab, stored, privacy. Audio + text isi server par. "
+        "Badi file santosh_kaam par chalti hai."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "file_id": {"type": "string"},
          "model": {"type": "string", "enum": ["", "tiny", "base", "small", "medium", "turbo", "large-v3"]},
@@ -35,6 +36,11 @@ KAAN_TOOLS = [
          "word_timestamps": {"type": "boolean"}, "id": {"type": "string"}, "q": {"type": "string"},
          "names": {"type": "object", "description": "diarize: turn number -> naam, jaise {\"1\": \"Gupta ji\"}"},
          "pause_s": {"type": "number", "description": "diarize: turn cut ka pause threshold (default 0.8s)"},
+         "style": {"type": "string", "enum": ["", "verbatim", "clean", "subtitles", "minutes", "social"],
+                   "description": "style action: kaunsa deterministic render"},
+         "term": {"type": "string", "description": "vocab_add/remove: kaunsa shabd"},
+         "fix_to": {"type": "string", "description": "vocab_add: khaali = sirf hint; warna deterministic replacement"},
+         "vocab": {"type": "boolean", "description": "transcribe/live_start: tenant vocab lagana hai (default true)"},
          "finalize_model": {"type": "string", "enum": ["", "tiny", "base", "small", "medium", "large-v3"],
                             "description": "live_stop: khaali = captions se transcript; model naam = 10-min tak ka clean batch pass"},
          "limit": {"type": "integer"}}, "required": ["action"]}},
@@ -55,6 +61,7 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                   language=str(a.get("language") or ""), task=str(a.get("task") or "transcribe"),
                                   word_timestamps=a.get("word_timestamps") is not False,
                                   conversation_id=ctx.conversation_id or "",
+                                  vocab=a.get("vocab") is not False,
                                   data=data if isinstance(data, (bytes, bytearray)) else None)
     if action == "status":
         return KS.status(ctx.tenant_id)
@@ -86,7 +93,8 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     if action == "live_start":
         return KS.live_start(ctx.tenant_id, model=str(a.get("model") or ""),
                              language=str(a.get("language") or ""),
-                             conversation_id=ctx.conversation_id or "")
+                             conversation_id=ctx.conversation_id or "",
+                             vocab=a.get("vocab") is not False)
     if action == "live_chunk":
         data = a.get("data") if isinstance(a.get("data"), (bytes, bytearray)) else None
         return KS.live_chunk(ctx.tenant_id, str(a.get("id") or ""), data or b"")
@@ -97,6 +105,14 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return KS.live_get(ctx.tenant_id, str(a.get("id") or ""))
     if action == "live_list":
         return {"items": KS.live_list(ctx.tenant_id, a.get("limit") or 20)}
+    if action == "style":
+        return KS.style_render(ctx.tenant_id, str(a.get("id") or ""), str(a.get("style") or ""))
+    if action == "vocab_add":
+        return KS.vocab_add(ctx.tenant_id, str(a.get("term") or ""), fix_to=str(a.get("fix_to") or ""))
+    if action == "vocab_list":
+        return KS.vocab_list(ctx.tenant_id)
+    if action == "vocab_remove":
+        return KS.vocab_remove(ctx.tenant_id, str(a.get("term") or ""))
     raise ValueError(f"action '{action}' nahi pehchana: {', '.join(_ACTIONS)}")
 
 
@@ -112,6 +128,8 @@ async def _kaan(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
         raise ToolError("Diarize sirf owner ke liye (ya approved kaam) - yeh transcript par likhta bhi hai.")
     if action in ("live_get", "live_list") and actor not in ("owner",) and not actor.startswith("approved:"):
         raise ToolError("Live session ki jankari sirf owner ke liye (ya approved kaam).")
+    if action in ("vocab_add", "vocab_remove") and actor not in ("owner",) and not actor.startswith("approved:"):
+        raise ToolError("Vocab badalna sirf owner ke liye (ya approved kaam) - yeh tenant ka data likhta hai.")
     try:
         return await asyncio.to_thread(_sync, ctx, action, a)
     except ValueError as e:
