@@ -1601,3 +1601,7 @@ Task ID: v0.604.0 YAAD SACH (built as 0.603.0)
 ---
 Task ID: v0.608.0 EK YAAD + JUST IN TIME (built as 0.605.0)
 - One memory door (memory.py search_all / everything / reset_all) behind yaad_khojo (always in view); old chats fetched not pasted; 15 facts in the prompt. Tests 10.
+
+---
+Task ID: v0.610.0 YAAD KE KHAANE (built as 0.609.0)
+- Live model writes memory, extractor skips that turn; per-Session main-memory switch; sensitive opt-in; phone reset button; memory_quiz job. Tests 8.

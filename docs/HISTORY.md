@@ -21084,3 +21084,27 @@ open to a policyholder), hub group "Health Insurance" in `employee/hire.py` + co
 check. NOT BUILT: Wave 2 (assist with a named human: 11-13, 33, 34, 44, 45, 47, 65, 66, 73, 74, 92-94) and Wave 3 (fraud, pricing, underwriting AI).
 NOT VERIFIED: periods (intimation, filing, grievance, ombudsman limitation, portability) are from memory and marked verify; no real claim data has
 gone through it. Tests `test_bimadesk.py` (7).
+
+## v0.610.0 YAAD KE KHAANE — the rest of the Claude memory comparison (owner: "FIRST WE COMPLETE MEMORY / CONTEXT WORK"; built as 0.609.0)
+
+3. **The Claude way of writing memory.** claude.ai saves memory "as a set of individual topics as you chat"; Hoola's
+   memory was mostly written AFTER the turn by a cheap side model (max 3 facts). The system prompt now makes the live
+   model the writer (remember ONE short fact; `replaces=<id>` when a fact changes; yaad_khojo before asking again), and
+   `yaad.after_turn` skips the extractor for a turn whose live model already kept or forgot a fact
+   (`life_tools.SAVED_THIS_TURN`) - one writer per turn, never the same fact twice. The extractor stays as the
+   safety net for turns the model did not save.
+4. **The controls Claude has.**
+   - Per-Session "use my main memory" (Claude's per-project "Use account memory"): `Project.use_main_memory`
+     (nullable, None = on), `fence.main_memory_ok`. Off = that Session's chats see only its own facts + her pinned
+     facts; no general facts, no "Mere baare mein" page, no main graph (life.memory_facts, yaad._known, life.context_block,
+     memory.search_all). `PATCH /api/projects/{id}` `use_main_memory`; console Session page checkbox.
+   - "Sensitive baatein bhi" (Claude's "Include sensitive topics"): `Profile.memory_sensitive`, off by default;
+     `yaad.fact_ok(sensitive=)` then keeps health / religion / caste / politics / sexuality facts, and the extractor is
+     told so. Money, ID numbers, secrets and `_NEVER_WORDS` (criminal, immigration, self-harm) are never kept.
+   - "Saari yaad mitao" on the phone memory page (confirm dialog -> `POST /api/memory/reset`), sensitive switch beside
+     the two old ones.
+5. **vps-ops `memory_quiz` / `memory_quiz_haiku`**: the long-chat quiz (300 exchanges, 10 planted details, modes full +
+   compact) in one click; `QUALITY_MODEL` is honoured by the quiz now.
+
+Tests `server/tests/test_v0609_yaad_ke_khaane.py` (8). NOT VERIFIED: no live run (her Anthropic credit was empty at the
+v0.608 deploy); the phone page compiles first on CI.
