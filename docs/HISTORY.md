@@ -20927,3 +20927,37 @@ Wave 2 of `docs/research/banking_finance_industry/00_INDEX.md` is "institution a
 - **Wiring**: ONE tool `vitt_sahayak` (registry 585 -> 586, family `finops`, admitted on tight words, voice via `santosh_kaam`); aml / sanctions / credit actions owner-only, customers refused; hub entry in Finance & Banking with a never list.
 - **Tests**: `test_finops.py` (10): SIP round-trips to the target, advance-tax dates, TDS statuses, ageing buckets, three-way holds, structuring on her threshold only, sanctions explained scores and no built-in list, memo uses her policy, tool guards, no storage. Registry pins 585 -> 586.
 - **NOT built**: Wave 3 (markets, lending decisions, order placement). Not verified: no real 26AS / AIS export or bank transaction file has been through it, the AML rules and name-match scores are heuristics, and tax dates are from memory.
+
+## v0.603.0 YAAD SACH — her memory keeps its three promises (owner: "NOW LETS WORK ON HOOLA AI CONTEXT / MEMORY" -> audit -> "GO")
+
+The audit PROBED the real code (throw-away tests on a fresh SQLite) instead of reading it, and found:
+
+1. **INCOGNITO SACH.** An incognito chat's ask ("meri beti Riya ki school fees ka plan"), a tool result ("fees 1.2 lakh")
+   and a model-written observation all landed in the Coder vault: `main.py` skipped `session_started` for incognito, but
+   `capture.turn_prompt` / `tool_observed` never asked, and the observer stores events for a conversation with no session
+   row. The primer reads observations tenant-wide, so they could ride her OTHER chats. The v0.590 knowledge graph had no
+   incognito check either. Now: `capture.secret(conv)` (cached; a read failure = secret, the safe side; a conversation id
+   with no chat row = not a chat) gates turn_prompt / tool_observed / session_started / session_ended / save_memory and
+   the nudge fork; the observer consumes an incognito chat's spooled event unread; a once-per-process sweep
+   (`observer._sweep_incognito` -> `store.forget_conv`) forgets everything earlier versions stored for incognito chats
+   (prompts, tool rows, observations + FTS, summary + its FTS row by hand, session, dedup pairs, preimages); `kgmemory`
+   refuses create / relate / observe in an incognito chat (read + forget stay). The workspace file desk is deliberately
+   unchanged: files she asks for there are work, not memory.
+2. **NAYA PURANA HATAYE.** "Godown Plot 44 Bhosari" then "Godown ab Plot 12 Chakan" (and "City Pune" / "City Mumbai
+   now") rode every system prompt side by side - nothing superseded anything. With meaning search on, an update can
+   also score as a "duplicate" of the fact it replaces and be dropped, so the OLD value won (not measurable here: the
+   sandbox has no embedding model). Now the extractor sees `[id]` beside each known fact and may answer
+   `{"text": ..., "replaces": [id]}`; only an id it was SHOWN counts, never a pinned fact, and with a chat only a fact
+   that chat's Session may see (`yaad.retire_fact`). `save_fact(..., replaces=)` leaves the replaced fact out of the
+   duplicate check, saves the new one, retires the old; the chip says "purana hataya: ...". The `remember` tool gains
+   `replaces=<fact id>` for an update she states directly.
+3. **BHOOL JAO HAR JAGAH.** Forget deleted one `memory_facts` row; the copies stayed in the Coder vault, the knowledge
+   graph, and the "Mere baare mein" page (its daily rebuild only ADDS what is new). Now `yaad.forget_everywhere`
+   (called by the forget tool, the memory screen's DELETE /api/memory/{id}, and every retirement) removes observations /
+   graph observations / page lines that `yaad.carries` the fact (its content words, at least two, at a 0.7 share). Her
+   chat messages are never deleted - the chat is hers.
+
+Tests `server/tests/test_v0603_yaad_sach.py` (13). NOT VERIFIED (honest): no live run yet; the 0.7 word-share rule for
+"carries" is judgement (a paraphrased copy can survive, an unrelated line sharing most words can go); the extractor's
+`replaces` judgement is the cheap model's, so the first real "ab ... shift ho gaya" on the VPS is the live test.
+Server-only; console untouched; Mera PC freeze respected.

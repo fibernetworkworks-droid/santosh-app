@@ -234,6 +234,6 @@ def test_seed_feeds_and_matches(desk):
 def test_version_layer():
     server_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))   # server/
     main = open(os.path.join(server_dir, "app", "main.py"), encoding="utf-8").read()
-    assert 'APP_VERSION = "0.602.0"' in main and "UIUX PRO MAX" in main
+    assert 'APP_VERSION = "0.603.0"' in main and "UIUX PRO MAX" in main
     pub = open(os.path.join(server_dir, "..", "pubspec.yaml"), encoding="utf-8").read()
-    assert "version: 0.602.0+608" in pub
+    assert "version: 0.603.0+609" in pub

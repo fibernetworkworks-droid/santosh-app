@@ -34,6 +34,34 @@ def _on() -> bool:
         return False
 
 
+_SECRET: dict[str, bool] = {}
+
+
+def secret(conv: str) -> bool:
+    """v0.603 INCOGNITO SACH: an incognito chat leaves NOTHING in the vault - not her ask, not a tool
+    row, not an observation (her promise: "yahan ki baatein yaad mein nahi jayengi"). A chat cannot
+    change its incognito flag after it is made, so the answer is cached; a read failure says secret
+    (the safe side: skip more, never leak)."""
+    if not conv:
+        return False
+    if conv in _SECRET:
+        return _SECRET[conv]
+    try:
+        from ..db import Conversation, session
+        with session() as s:
+            c = s.get(Conversation, conv)
+            if c is None:          # not a chat row (a call / job bucket): the chat rules do not apply
+                return False
+            val = bool(c.incognito)
+    except Exception:
+        log.exception("coder incognito read failed (treated as incognito)")
+        return True
+    if len(_SECRET) > 5000:
+        _SECRET.clear()
+    _SECRET[conv] = val
+    return val
+
+
 def _brief(args) -> str:
     try:
         return json.dumps(redact(args), ensure_ascii=False, default=str)[:1200]
@@ -53,7 +81,7 @@ def tool_observed(tenant: str, conv: str, tool: str, args, out, ok: bool, ms: in
                   actor: str = "") -> None:
     """One completed tool call -> tool_uses row + spool observation event. Best-effort, always."""
     try:
-        if not conv or tool in _SKIP_TOOLS or not _on():
+        if not conv or tool in _SKIP_TOOLS or not _on() or secret(conv):
             return
         store.ensure()
         store.note_tool_use(conv, tenant, tool, _brief(args), ok, ms, _line(out), turn_id)
@@ -71,7 +99,7 @@ def tool_observed(tenant: str, conv: str, tool: str, args, out, ok: bool, ms: in
 def turn_prompt(tenant: str, conv: str, text: str) -> None:
     """Her ask (redacted at the store). Private turns are marked, never stored with their words."""
     try:
-        if not conv or not _on():
+        if not conv or not _on() or secret(conv):
             return
         store.ensure()
         store.note_prompt(conv, strip_private(text or ""))
@@ -81,7 +109,7 @@ def turn_prompt(tenant: str, conv: str, text: str) -> None:
 
 def session_started(tenant: str, conv: str, platform: str) -> None:
     try:
-        if not conv or not _on():
+        if not conv or not _on() or secret(conv):
             return
         store.ensure()
         store.session_started(conv, tenant, platform)
@@ -92,7 +120,7 @@ def session_started(tenant: str, conv: str, platform: str) -> None:
 def session_ended(tenant: str, conv: str) -> None:
     """The checkpoint trigger: mark the row completed and arm the summary call."""
     try:
-        if not conv or not _on():
+        if not conv or not _on() or secret(conv):
             return
         store.ensure()
         spool.spool_event("session_end", {"conv": conv, "tenant": tenant,
@@ -106,7 +134,7 @@ def save_memory(tenant: str, conv: str, text: str, title: str | None = None) -> 
     """The manual note (claude-mem's save_memory): a durable observation written by the agent
     itself, same redaction, same dedup ladder."""
     try:
-        if not _on():
+        if not _on() or secret(conv):
             return None
         t = strip_private(text or "").strip()
         if not t:
