@@ -360,7 +360,7 @@ def test_unknown_kg_action():
 
 def test_registry_583():
     names = [t["name"] for t in TOOLS]
-    assert len(TOOLS) == 587, ("581 (the v0.585 base incl. reach + speckit) + 2 sandarbh "
+    assert len(TOOLS) == 588, ("581 (the v0.585 base incl. reach + speckit) + 2 sandarbh "
                                "(v0.586 SANDARBH MANCH: workspace + kgmemory, the T1 reference family)")
     assert names.count("workspace") == 1 and names.count("kgmemory") == 1
 
@@ -378,4 +378,4 @@ def test_tools_are_registered_with_families_and_handlers():
 
 def test_app_version_pin():
     import app.main as M
-    assert M.APP_VERSION == "0.603.0"
+    assert M.APP_VERSION == "0.604.0"
