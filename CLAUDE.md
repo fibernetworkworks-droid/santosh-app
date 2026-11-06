@@ -67,6 +67,24 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (6 Nov 2026, later, owner: "SAVE THE STATE" after the Gemini cost work): branch
+  `stable-2026-11-06-voice-v629` = commit 1dec230f = v0.629.0, pubspec 0.629.0+635 - cut at the LIVE commit (healthz 0.629.0).
+  The cheap 24/7 Gemini call: v0.624 a job is never turned into a reminder (code guard -> santosh_kaam) + every call tool
+  logged with her words; v0.625 no pre-rendered TTS clips (one voice); v0.626 the call meter reads Gemini's own
+  usage_metadata (`gemini tokens` log line per call); v0.627 small call menu (60 tools) + no Gemini wake while her phone is
+  away; v0.628 short persona (27k -> 7.8k chars) + one-line tool texts + 4.5k brief; v0.629 her MCP servers named, not
+  declared (they were 32 tools / 52k chars on every reply).
+  **MEASURED ON HER LIVE CALLS (Gemini's own counts):** 07:37 v0.624 Gmail call ~Rs 350 (old meter, 25 turns / 13 tools);
+  08:45 v0.627 ~21.9k text tokens a reply, $0.078; 09:10 + 09:20 v0.628 ~29.4k, $0.132 / $0.103; **09:27 v0.629 ~13.5k a
+  reply, 4 replies, $0.054 = ~Rs 4.8 a call, ~Rs 1.2 a reply.** Remaining biggest part: the 60-tool menu (~9k tokens a reply).
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): markers present (APP_VERSION 0.629.0, voice_lean_tools True,
+  lean_mcp_block, PERSONA_LEAN, voice_tool_ack False, _usage_add, wakes_held_no_phone, reminder_wanted) and the voice + call suites re-run there (result line updated after the run).
+  **NOT VERIFIED / LIVE CAVEATS:** her Google sign-in is still dead (invalid_grant every minute - Gmail / Drive / Calendar
+  refuse until Profile > Google Drive > 'Google Drive jodiye'); per-minute cost of a long call is an estimate (Rs 2-4 / talk
+  minute) until more calls are logged; no per-user daily talk limit yet.
+  APK release `v0.629.0-b1820`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.629.0-b1820/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-06-voice-v629` as the branch.
 - SAVE THE STATE (6 Nov 2026, owner: "GEMINI IS PERFECT SAVE THE STATE"): branch `stable-2026-11-06-voice-v622` =
   commit 743d4cd6 = v0.622.0, pubspec 0.622.0+628 - **cut at the commit that is actually LIVE** (healthz read 0.622.0 at
   the save; main had already moved to 0.623.0 KOI PATA NA KHOYE, which is NOT in this branch). The voice state she

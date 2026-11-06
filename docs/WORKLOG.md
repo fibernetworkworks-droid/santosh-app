@@ -1721,3 +1721,11 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: v0.628 call still 29k tokens/reply; measured on VPS: MCP tools 32 / 52k chars on every call.
 Work Log: small-menu calls name MCP servers only (santosh_kaam does their work); test.
 Stage Summary: v0.629.0.
+
+---
+Task ID: save-state-2026-11-06-voice-v629
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "SAVE THE STATE" after the Gemini cost work.
+Work Log: live healthz 0.629.0 = 1dec230f; branch stable-2026-11-06-voice-v629 cut there; markers + voice suites re-run in the
+extracted commit; APK v0.629.0-b1820; measured 09:27 call ~13.5k tokens/reply, $0.054.
+Stage Summary: cheap-call state saved; rollback = usual VPS commands with this branch.
