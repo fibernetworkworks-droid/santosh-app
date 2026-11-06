@@ -1597,3 +1597,7 @@ Stage Summary:
 ---
 Task ID: v0.604.0 YAAD SACH (built as 0.603.0)
 - Memory audit (probes) -> incognito leak into Coder vault + KG fixed with sweep; fact updates replace; forget cleans every memory copy. Tests 13.
+
+---
+Task ID: v0.608.0 EK YAAD + JUST IN TIME (built as 0.605.0)
+- One memory door (memory.py search_all / everything / reset_all) behind yaad_khojo (always in view); old chats fetched not pasted; 15 facts in the prompt. Tests 10.

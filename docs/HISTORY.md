@@ -21045,3 +21045,28 @@ Waves 2 and 3 of `docs/research/retail_ecommerce_industry/00_INDEX.md`. Same sta
 - **Wiring**: TWO tools `retail_growth` / `retail_trust` (registry 588 -> 590, families `retailgrowth` / `retailtrust`, tight admit words, owner / staff only, voice via `santosh_kaam`), two hub employees in Retail & E-commerce with never-lists.
 - **Tests**: `test_retail_w23.py` (7). Registry pins 588 -> 590.
 - **NOT built**: WhatsApp order taking and the catalogue builder (they sit on the Shop / app engines), the ONDC participant assistant, ads-policy and content-moderation models. Not verified: no real order sheet, review dump or seller file has been through it; the rule thresholds are the user's, the fraud / review rules are heuristics, and a rule hit is never a verdict.
+
+## v0.608.0 EK YAAD + JUST IN TIME — one memory door, memory fetched not pasted (owner: "go 1 and 2"; built as 0.605.0, the dev chain took 0.605-0.607 meanwhile, all kept)
+
+From the Claude vs Hoola memory comparison (claude.ai keeps ONE memory per scope and looks past chats up with a tool
+call; Anthropic's context-engineering post: "the smallest set of high-signal tokens", fetch "just in time").
+
+1. **EK YAAD - one memory door** (`server/app/memory.py`). The six stores stay where they are (moving live rows
+   risks her data for no gain); every question goes through one door: `search_all` (facts by meaning, the chat index,
+   Coder work notes, knowledge-graph observations, her page's lines - each hit labelled with its store; the Session
+   fence, incognito and her "Purani chats se yaad" switch all held; a failing store is named in `skipped`, never fatal),
+   `everything` (`GET /api/memory/everything`, one view per store) and `reset_all` (`POST /api/memory/reset` with
+   `confirm=RESET` - Claude's reset: facts incl. pinned, chat index, the Coder vault's rows for her chats, the graph,
+   the page; her chats and her skills stay). `yaad_khojo` is the door (new `source` filter; the old `kind` filter
+   keeps the old chat-only path) and is in `admit.CORE_TOOLS`, so it rides every turn.
+2. **JUST IN TIME.** `yaad.turn_block` no longer pastes a "maybe related" old chat (score >= 0.62) into every message;
+   only her own pointer at the past (`refers_to_past`) auto-recalls, everything else is one `yaad_khojo` call (the
+   block says so). The system prompt carries the 15 newest facts instead of 40 (`memory_recent_facts`, `life.recent_facts`;
+   measured: under half the old fact block with 60 facts); pinned facts all ride, and the turn block still adds the
+   facts closest in meaning to each message (its "shown" set follows the same number, so no fact falls between).
+   The skills index is deliberately unchanged: listing every skill's name + description IS Claude's level-1 pattern.
+
+Tests `server/tests/test_v0605_ek_yaad.py` (10). The 12 reds in the wider sweep (v0268 / v0270 / v0376 / v0410 /
+v0473 routes / v0567 / v063) fail identically on the pre-change commit 51328175 - not this change. NOT VERIFIED: no
+live run; the real effect on answer quality (fewer facts pasted, more tool lookups) needs her chats on the VPS - the
+FRESH tool card and the long-chat memory quiz (`server/tools/memory_quiz.py`) are the checks. Server-only.
