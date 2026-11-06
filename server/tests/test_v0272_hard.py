@@ -148,4 +148,4 @@ def test_quality_card_lines():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.634.0"
+    assert APP_VERSION == "0.635.0"

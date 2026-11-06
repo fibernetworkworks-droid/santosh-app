@@ -558,6 +558,24 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
 
 async def _claude_call(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
                        think: bool, streaming: bool) -> tuple[list[dict], str]:
+    """v0.635 every Claude call's own time + shape in the log (`claude call 4.2s ...`): her call turns spent 20 s before
+    the first tool and the harness log could not say which part - now it can."""
+    t0 = time.monotonic()
+    try:
+        return await _claude_call_once(model, system, history, settings, tools, live, cap, think, streaming)
+    finally:
+        try:
+            log.info("claude call %.1fs model=%s msgs=%d chars=%d tools=%d think=%s effort=%s cap=%d voice=%s",
+                     time.monotonic() - t0, model, len(history),
+                     len(str(system)) + sum(len(str(m.get("content"))) for m in history),
+                     len(tools or []), bool(think and THINK["ok"]), _EFFORT_NOW.get() or "-", cap,
+                     VOICE_BRAIN_NOW.get())
+        except Exception:
+            pass
+
+
+async def _claude_call_once(model: str, system: str, history: list[dict], settings, tools: list[dict], live, cap: int,
+                            think: bool, streaming: bool) -> tuple[list[dict], str]:
     """One Claude call on `model` (v0.429 split out of _call_brain so a hard ask can try Opus and fall back)."""
     from . import cache, toolsearch as _ts
     deferred = any(isinstance(t, dict) and t.get("defer_loading") for t in (tools or []))
@@ -1175,6 +1193,11 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _MODEL_NOW.set(model_for(settings, bool(state.get("hard")), _long_now) if brain == "claude" else "")
         _THINK_NOW.set(think_wanted(settings, bool(state.get("goal") or state.get("big") or
                                                    (state.get("hard") and getattr(settings, "hard_thinking", True)))))
+        if VOICE_BRAIN_NOW.get():
+            # v0.635 she is waiting on the line: a call's brain turn never thinks out loud or runs at a raised effort
+            # (an open long job in the chat used to switch both on for EVERY call question)
+            _EFFORT_NOW.set("")
+            _THINK_NOW.set(False)
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
             # still streams on the Soch card)
