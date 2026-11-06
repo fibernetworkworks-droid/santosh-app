@@ -1613,3 +1613,10 @@ Task ID: v0.610.0 KAAN W1 (TURN KHOJ + MEETING MINUTES)
 ---
 Task ID: v0.615.0 YAAD SE + SUDHAAR YAAD (built as 0.612.0)
 - memory_used note under replies (only echoed memory), unremember endpoint (no_recall for past chats), corrections kept as WHEN/WANT preferences. Tests 9.
+
+---
+Task ID: v0.616.0 BAHAR SE BAAT
+Agent: Claude Code session (hoola-project-review)
+Task: owner asked for more places to talk to Hoola - all four channels (WhatsApp, Telegram, Slack, Teams), owner only.
+Work: app/bahar.py core + four webhooks + /api/bahar + worker forward + phone Profile > Bahar se baat; pairing code binds one sender.
+Result: test_v0616_bahar.py 10 green; memory + wiring suites 63/63 green. Not verified live on any channel.
