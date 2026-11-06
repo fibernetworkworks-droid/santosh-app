@@ -666,7 +666,7 @@ def footer(site: dict[str, Any], plan: dict[str, Any], rel: str) -> str:
         contact.append(f'<li>{esc(f["hours"])}</li>')
     regs = [f"{k.upper()}: {esc(v)}" for k, v in (f.get("registrations") or {}).items() if v]
     return (f'<footer class="hs-foot"><div class="wrap"><div class="grid g3">'
-            f'<div><h2>{esc(f.get("name") or "")}</h2><p>{esc(f.get("tagline") or "")}</p></div>'   # v0.602 h2: no level skip
+            f'<div><h2>{esc(f.get("name") or "")}</h2><p>{esc(f.get("tagline") or "")}</p></div>'   # v0.604 h2: no level skip
             f'<div><h2>Links</h2><ul>{quick}</ul></div><div><h2>Contact</h2><ul>{"".join(contact)}</ul></div></div>'
             f'<div class="hs-legal"><span>© <span data-year>2026</span> {esc(f.get("name") or "")}'
             f'{" · " + " · ".join(regs) if regs else ""}</span><span>{legal}</span></div>'

@@ -30,7 +30,7 @@ NOT CHECKED (OSV.dev unreachable) is said as not checked, never counted as a pas
                     page needs a consent banner; none found = no banner needed (Hoola counts visits on the server).
  10 rate limits   - the server-side limits the site's forms, shop and logins run behind, stated (they are code, not
                     a per-site setting).
- 11 AI look       - v0.602 SAAF NAZAR (site/look.py, ideas from pbakaus/impeccable): the reflex tells that make a site
+ 11 AI look       - v0.604 SAAF NAZAR (site/look.py, ideas from pbakaus/impeccable): the reflex tells that make a site
                     read as AI-made (overused fonts, violet gradients, a label above every heading, icon tiles, gradient
                     text, glow halos, bounce easing, buzzwords...). WARN only - it never blocks; her own choices win."""
 from __future__ import annotations
@@ -506,7 +506,7 @@ def gate_limits() -> list[dict[str, Any]]:
 
 # ---------------------------------------------------------------- the scan
 def gate_look(out: Path, site: dict[str, Any]) -> list[dict[str, Any]]:
-    """v0.602 the AI-look tells (site/look.py): warnings with the section to fix, never a fail."""
+    """v0.604 the AI-look tells (site/look.py): warnings with the section to fix, never a fail."""
     from ..config import get_settings
     if not getattr(get_settings(), "site_look", True):
         return []

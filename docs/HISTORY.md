@@ -20914,7 +20914,35 @@ The register (`docs/research/banking_finance_industry/00_INDEX.md`, 132 candidat
 - **Tests**: `test_finguard.py` (20): textbook EMI numbers, APR equals the stated rate without fees and rises with them, fee-later vs fee-up-front, flat rate, compare, prepay, debt plan flags, CSV parse + charges audit + spending, each scam family's classic wording, "no pattern is not safe", URL analysis with no network library imported, facts marked verify, complaint masking + blanks + ladder, tool guards, no storage in any engine, hub entry. The 13 registry-count pins moved 581 -> 582.
 - **NOT built**: Wave 2 (institution assist with a named decider) and Wave 3 (markets, lending decisions): portfolio tracker, MF research desk, KYC helper, order placement. Not verified: no real statement from a real bank has been through the parser (bank CSV layouts vary), and the scam wording lists are judgement, not measured against live scam data.
 
-## v0.602.0 SAAF NAZAR - the "AI look" check on every website (owner: "GO" on the Impeccable read)
+
+## v0.602.0 VITT SAHAYAK — finance desk assists, Banking & Finance register Wave 2 (owner: "GO NEXT WAVE")
+
+Wave 2 of `docs/research/banking_finance_industry/00_INDEX.md` is "institution assist with a named decider". This builds the slice that is pure arithmetic or matching on rows she gives, stateless like Paisa Sahayak (nothing stored, sent, filed or paid), and every answer names who decides.
+
+- **Goal planner + advance tax** (`finops/goals.py`, #60 / #11 slice): monthly SIP per low / mid / high scenario (6 / 9 / 12 % ASSUMED, hers to change), inflation-adjusted target, each SIP re-compounded to prove it reaches the target; advance-tax instalment dates and cumulative amounts (15 Jun 15 %, 15 Sep 45 %, 15 Dec 75 %, 15 Mar 100 %, from memory, `verify: true`).
+- **TDS reconcile** (`finops/tax.py`, #103 slice): TDS in her books against the 26AS / AIS rows she pastes, per party + section; match / not in portal / not in books / difference, with what to ask. No rates or sections invented.
+- **Ledger** (`finops/ledger.py`, #110): receivables / payables ageing by bucket and party; PO / goods-receipt / invoice three-way match with her tolerances (hold with reasons). A payment run stays the approver's tap.
+- **AML triage + sanctions** (`finops/aml.py`, #87 / #88): alerts on HER cash threshold (structuring-like, pass-through, many counterparties, round amounts) each tagged heuristic with a draft narrative that leaves the judgement blanks for the analyst; name screening against HER watch list only (no list built in), token-level scores with the reason for each, honest that DOB / ID were not checked. STR filing and true-match decisions stay with the MLRO / compliance.
+- **Credit memo** (`finops/credit.py`, #34): ratios (current, debt/equity, interest cover, DSCR, margins) from her financials, trend, a check against HER policy floors only (none given = none invented), a memo with blanks; no score, no approve / decline.
+- **Wiring**: ONE tool `vitt_sahayak` (registry 585 -> 586, family `finops`, admitted on tight words, voice via `santosh_kaam`); aml / sanctions / credit actions owner-only, customers refused; hub entry in Finance & Banking with a never list.
+- **Tests**: `test_finops.py` (10): SIP round-trips to the target, advance-tax dates, TDS statuses, ageing buckets, three-way holds, structuring on her threshold only, sanctions explained scores and no built-in list, memo uses her policy, tool guards, no storage. Registry pins 585 -> 586.
+- **NOT built**: Wave 3 (markets, lending decisions, order placement). Not verified: no real 26AS / AIS export or bank transaction file has been through it, the AML rules and name-match scores are heuristics, and tax dates are from memory.
+
+
+## v0.603.0 RISK DESK — markets and credit papers, Banking & Finance register Wave 3 (owner: "Wave 3 (markets, lending decisions, order placement)")
+
+Wave 3 is the register's reserved zone: an order or a loan decision is a licensed person's act, and money / orders move only on the user's tap. So this builds what a desk PREPARES and CHECKS, with every limit, rule, rate and assumption supplied by the user (nothing built in), and builds none of the deciding.
+
+- **Order ticket** (`riskdesk/orders.py`, #66): symbol / side / qty / type / price -> a prepared ticket, flags (market-order caution, limit price far from last price vs her own tolerance, size vs her own portfolio cap, sell more than held, leveraged product) and the confirm line. `placed` is always false and nothing calls a broker: placing is only ever her explicit tap through the Bazar broker connector. Charges are computed ONLY from rates she gives (GST / STT / stamp are not guessed). No buy / sell view is ever given.
+- **Mandate drift + exposure** (#65 / #75): weights, drift against her targets, breaches of her single-name / group limits, margin utilisation against her alert; rebalance PROPOSALS (value to move) for the portfolio manager, never orders.
+- **Underwriting** (`riskdesk/credit.py`, #32): her rules run over the applicant, FOIR computed, every miss becomes a reason code and an exception; missing inputs listed. Rules on religion, caste, gender, community, marital status, pincode / locality (and proxies) are REFUSED (fair lending). No score, no approve / decline.
+- **KFS draft** (#36, reuses finguard true cost), **past-due ageing** (#39: SMA bands + an NPA SUGGESTION at her days, marked verify), **ECL working paper** (#92: EAD x PD x LGD by stage, stage-2 lifetime PD flagged when missing).
+- **DCF worksheet** (`riskdesk/valuation.py`, #112) with a 5 x 3 sensitivity grid and a terminal-value-share warning; a model of her assumptions, the registered valuer signs.
+- **Surveillance** (`riskdesk/watch.py`, #51 / #76): payment velocity and shared-device rule hits; round-trip (wash-like) trade flags. Evidence for the fraud analyst / compliance, never a block or an accusation.
+- **Wiring**: ONE tool `risk_desk` (registry 586 -> 587, family `riskdesk`, tight admit words, owner only, voice via `santosh_kaam`) and a hub entry in Finance & Banking whose never-list says no order, no loan decision, no NPA classification, no block, no buy / sell.
+- **Tests**: `test_riskdesk.py` (7). Registry pins 586 -> 587.
+- **NOT built**: order placement itself (it already exists only as her tap through the broker connectors), algo strategy testing (#78, needs exchange approval), PMS client books, merchant-banker and supervisory desks. Not verified: no real portfolio, bureau file or trade book has been through it; SMA / NPA bands and ECL staging are from memory (verify) and PD / LGD are always hers.
+## v0.604.0 SAAF NAZAR (built as 0.602.0) - the "AI look" check on every website (owner: "GO" on the Impeccable read)
 
 Source: pbakaus/impeccable (Apache-2.0), read at c8891a9a - `docs/research/impeccable/00_READ.md`. Ideas only, Hoola's
 own Python and wording; attribution in THIRD_PARTY_NOTICES.md. Their npm detector was not run (running downloaded code
@@ -20952,7 +20980,7 @@ small-caps / letter-spaced / numbered labels, marquee strips and gradient glows;
 block and loses `.eyebrow` and "at least two motion attributes per section"; the kit loses `k-eyebrow`; the footer's
 three `<h3>` are `<h2>` (the 404 page went h1 -> h3).
 
-**Tests:** `test_v0602_saaf_nazar.py` (11) - calibrated both ways (every rule fires on its planted fault; a well-made
+**Tests:** `test_v0604_saaf_nazar.py` (11) - calibrated both ways (every rule fires on its planted fault; a well-made
 page gives zero findings), never blocks a built site, the brief wins, modes, round-0 fix mapping to section keys,
 builder defaults, the `mine` / `her_tokens` marks, attribution. Also healed: the console stamp count pin 22 -> 23
 (main had added a stamp and left them at 0.600.0).

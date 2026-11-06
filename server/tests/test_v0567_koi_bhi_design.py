@@ -14,7 +14,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.602.0"
+    assert APP_VERSION == "0.604.0"
 
 
 def _png(blocks, size=(400, 300)):
@@ -363,5 +363,5 @@ def test_the_writer_is_told_about_the_new_pieces_and_tokens_take_her_fonts():
         assert w in src, w
     tk = B.tokens("editorial_calm", "paper_ink", None, {"fonts": "playfair_lato", "radius": 14, "primary": "#B4231A"})
     assert tk["head"] == "Playfair Display" and tk["radius"] == 14 and tk["primary"] == "#B4231A"
-    assert B.tokens("editorial_calm", "paper_ink", None, {"fonts": "not_a_pair"})["head"] == "DM Serif Display"   # v0.602 style default
+    assert B.tokens("editorial_calm", "paper_ink", None, {"fonts": "not_a_pair"})["head"] == "DM Serif Display"   # v0.604 style default
     assert g is not None
