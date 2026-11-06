@@ -1772,3 +1772,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Call brain turns still 20 s before the first tool; no per-call timing to say why.
 Work Log: per-Claude-call timing log; no thinking / effort on call brain turns; 1 test.
 Stage Summary: v0.635.0.
+
+---
+Task ID: v0.636.0 KAHAN RUKA
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
+Work Log: stage timer + `brain prep` log line; lock-busy log; compaction skipped on call brain turns; 8 exchanges, old results cut to 1,500 chars; 4 tests; version 0.636.0+642.
+Stage Summary: pushed to main + feature branch; next call's `brain prep` line names the slow stage.

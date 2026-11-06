@@ -21593,3 +21593,19 @@ its first tool - and nothing in the log said which part was slow (it is not know
   to switch both on (goal mode) for EVERY call question.
 Gmail itself measured 1.5-11 s per email_check and doc_studio 10-12 s per PDF - external, unchanged. Test in
 `test_v0634_tez_dimaag.py`.
+
+## v0.636.0 KAHAN RUKA — find where the call brain waits before its first Claude call
+
+Her 16:22 call ("chaar email ka ek-ek detail"): santosh_kaam at 16:22:14, `brain still working in 20.0s`, then the
+first logged `claude call 5.3s ... msgs=47 chars=143056 tools=647` at 16:22:37 and a second at 3.3 s. So Haiku itself
+was fast; about 18 s went BEFORE the first model call, and the log could not say where.
+
+- `santosh._PREP` / `_mark(stage)` / `_prep_line()`: on a call brain turn every stage up to the first Claude call is
+  timed (checks, lock, compact, save, history, memory, hint, steps_setup, mcp, admit, prompt) and `_claude_call` logs
+  ONE line `brain prep N s before the first call: lock X s, memory Y s ...`. When the chat lock is already held by
+  another turn (a background goal round, a wake turn) it also logs `call brain turn waits: this chat is busy`.
+- A call brain turn skips `compact.before_turn` (it reads only the recent exchanges, so the whole-chat compaction was a
+  model call she waited for and did not need; the next chat turn compacts as before).
+- `voice_brain_history` 12 -> 8, and `voice_brain_result_chars` 1500: an EARLIER exchange's tool result (whole mails)
+  is cut on a call brain turn (`_cut_old_results`); this turn's own results and the saved chat are untouched.
+- Tests `test_v0636_kahan_ruka.py` (4). NOT VERIFIED on a call: the `brain prep` line on her next call names the slow stage.
