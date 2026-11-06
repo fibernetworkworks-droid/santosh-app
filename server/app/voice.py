@@ -1380,7 +1380,8 @@ def tenant_live(tenant: str) -> bool:
     """v0.621 is ANY call of this tenant live right now (on any of her chats)?"""
     for calls in list(ACTIVE.values()):
         for _loop, c in list(calls):
-            if getattr(c, "tenant", "") == tenant and not c.closed.is_set():
+            if (getattr(c, "tenant", "") == tenant and not c.closed.is_set()
+                    and getattr(c, "ws", True) is not None):   # v0.627 a call waiting for her phone is not one she hears
                 return True
     return False
 
@@ -1753,7 +1754,12 @@ class Call:
                 return
         self.audio.put_nowait((kind, data))
         if kind == "text" and self.parked:
-            self._wake_up("news")
+            if getattr(self, "ws", None) is None:
+                # v0.627 her phone is NOT on the call (dropped / app closed): waking Gemini would bill a full reply
+                # spoken to nobody. The note waits in the queue and is told the moment her phone rejoins (attach).
+                self.stats["wakes_held_no_phone"] = self.stats.get("wakes_held_no_phone", 0) + 1
+            else:
+                self._wake_up("news")
 
     def _wake_up(self, why: str) -> None:
         """v0.617 bring Gemini back to a parked call (her voice, a typed line, news, a reminder, hold over)."""
@@ -2045,6 +2051,8 @@ class Call:
                 await old.close()
         reader = self._start_reader(ws)
         await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "resumed": True, "vad": vad_config()})
+        if self.parked and any(k == "text" for k, _ in list(self.audio._queue)):
+            self._wake_up("news")   # v0.627 notes that waited while her phone was away: told now that she is back
         if self.user_buf.strip():   # show what is being said right now
             await self.send_json({"type": "user_text", "text": self.user_buf.strip()})
         if self.reply_buf.strip():

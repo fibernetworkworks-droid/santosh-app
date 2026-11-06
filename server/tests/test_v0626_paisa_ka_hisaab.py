@@ -27,3 +27,25 @@ def test_no_usage_falls_back_to_audio_minutes(env):
     c = N(call_id="c2", stats={}, ctx=N(tenant_id="default"), audio_in_bytes=32000 * 60, audio_out_bytes=48000 * 60)
     voice.Call._record_usage(c)
     assert 0 < c.stats["cost_usd"] < 0.05 and "gemini_tokens" not in c.stats
+
+
+def test_a_call_with_no_phone_never_wakes_gemini_for_news():
+    """v0.627: notes reaching a call whose phone is away used to reconnect Gemini and bill a reply spoken to nobody."""
+    import asyncio
+    c = N(parked=True, hold=False, ws=None, stats={}, audio=asyncio.Queue(maxsize=10),
+          _wake=asyncio.Event(), _held_texts=[])
+    c._wake_up = lambda why: voice.Call._wake_up(c, why)
+    voice.Call.push(c, "text", "[Kaam update] report ban gayi")
+    assert not c._wake.is_set() and c.stats["wakes_held_no_phone"] == 1
+    c.ws = object()                                         # her phone is on the call
+    voice.Call.push(c, "text", "dusri khabar")
+    assert c._wake.is_set()
+
+
+def test_a_call_waiting_for_her_phone_is_not_live_for_reminders(monkeypatch):
+    import threading
+    away = N(tenant="t1", closed=threading.Event(), ws=None)
+    monkeypatch.setitem(voice.ACTIVE, "conv_x", [(None, away)])
+    assert voice.tenant_live("t1") is False                 # the reminder rings her instead of going unheard
+    away.ws = object()
+    assert voice.tenant_live("t1") is True
