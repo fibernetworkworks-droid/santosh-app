@@ -47,6 +47,7 @@ def ensure_table() -> None:
 TRUST = ("seekh", "saathi", "bharosa")
 
 RETAIL_GROUP = "Retail & E-commerce"   # v0.604
+HEALTHINS_GROUP = "Health Insurance"   # v0.609
 FIN_GROUP = "Finance & Banking"   # v0.585 the consumer money-safety employee
 VOICE_GROUP = "Voice, Meetings & Transcription"   # v0.589 the KAAN PACK employee (WhisperAI Wave W0)
 FILM_GROUP = "Film, Media & Entertainment"   # v0.565 the Film Desk employee
@@ -206,6 +207,18 @@ CATALOG: dict[str, dict[str, Any]] = {
                                "Decide a takedown, a seller approval or a grievance outcome",
                                "Check that a GSTIN or bank account really exists: only its format and check digit",
                                "Store your rows: it reads them, answers, and forgets"]},
+    # v0.609 BIMA DESK (health-insurance register Wave 1: customer side + admin)
+    "bima_desk": {"name": "Bima Desk (health-insurance claims and servicing)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
+                  "pitch": "A coworker for the policyholder, the broker desk and the claims-admin team: what documents a claim needs, a transparent payable worksheet, why a settlement came out lower, appeal outlines, renewals and grievance clocks. It prepares; the insurer, the TPA or a named officer decides.",
+                  "does": ["Claim document checklist (cashless or reimbursement) with missing items and filing deadlines",
+                           "Itemised payable worksheet (non-payables, tariff caps, room-rent proportion, co-pay, deductible) and the gap to the settled amount",
+                           "Settlement vs payment match (UTR, TDS, short / excess / duplicates), claim ageing against a timeline you set",
+                           "Renewal reminders, grievance triage with due dates, rejection-appeal outline, status-update drafts, KYC format checks"],
+                  "needs": ["Rows you paste and the policy terms you read; periods and rules are from memory and marked verify"],
+                  "never": ["Approve, reject, reduce or settle a claim, or give a medical opinion on necessity",
+                            "Give legal advice or tell anyone to switch insurers",
+                            "Send a message, file an appeal or store your documents: it drafts and checks, you send",
+                            "Verify an ID with any authority: format checks only, Aadhaar shown masked"]},
     # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
     "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
              "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",
