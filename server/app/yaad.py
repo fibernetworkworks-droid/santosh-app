@@ -1404,6 +1404,10 @@ def _news_pending(conversation_id: str, minutes: int, skip_newest: bool, limit: 
                          .order_by(FocusNote.id.desc())).all()
         if skip_newest and rows:
             rows = rows[1:]
+        # v0.624 a missed reminder ring is news for 30 minutes, not 12 hours: a pile of them made every call reminder-minded
+        old_rem = datetime.now(timezone.utc) - timedelta(minutes=30)
+        rows = [r for r in rows if not ((r.text or "").startswith("REMINDER jo usne")
+                                        and (r.at if r.at.tzinfo else r.at.replace(tzinfo=timezone.utc)) < old_rem)]
         return [_scrub(_clip(r.text or "", clip)) for r in rows[:limit] if (r.text or "").strip()]
 
 

@@ -13,8 +13,10 @@ from .tools import Ctx, ToolError
 
 LIFE_TOOLS = [
     {"name": "create_reminder", "description": (
-        "Remind the user at a time. Santosh messages them in the chat, their phone shows a notification, and a live "
-        "call says it. Use for 'yaad dilana', medicines, bills, calls to make. 'X minute / ghante BAAD' (from now) -> "
+        "Remind the user at a time - ONLY when she asks to be reminded (yaad dilana / remind / X baje bata dena), "
+        "NEVER a reminder for an email, message, search or any other job; 'X minute BAAD' = in_minutes=X. Any other "
+        "job goes to its own tool or santosh_kaam. Santosh messages them in the chat, their phone shows a notification, and a live "
+        "call says it. 'X minute / ghante BAAD' (from now) -> "
         "ALWAYS in_minutes=X (the server counts from the exact current time - never work out the clock yourself). "
         "A clock time or a date ('kal 9 baje', '5 tareekh') -> when, in the user's LOCAL time."),
      "input_schema": {"type": "object", "properties": {

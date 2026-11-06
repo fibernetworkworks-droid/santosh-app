@@ -21411,3 +21411,23 @@ with a TXT record / meta tag / one of her Hoola addresses). New module `server/a
 
 Tests: `test_v0622_koi_pata.py`. NOT VERIFIED live: no real old site has been moved yet; the nginx named-location
 hand-off is tested as generated text, not in a running nginx.
+
+
+## v0.624.0 SAB KAAM CALL PAR - a job is never turned into a reminder (owner: "ANY JOB GIVEN EVEN EMAIL OR ANY TASK ---- IT IS GOING TO SETTING REMINDER TOOL CHECK LOGS --- MAKE VOCIE CALL GENEARLIZE FOR ALL TASKS")
+
+After v0.621/v0.622 put the reminder at the centre of the call (the ring note "call uthate hi sabse pehle yahi", the
+create_reminder in_minutes rule in the persona and the tool text, her own run of reminder tests in the call brief), the
+call model reached for create_reminder on other jobs. The call never logged WHICH tool it chose, so no log could show it.
+- `voice.reminder_wanted(said)`: an explicit reminder word (yaad, remind, alarm, bata dena ... baje/baad), a relative time
+  ("do minute baad", "in 10 minutes", Devanagari too) or a clock time ("5 baje", "9:30"). Bare day words (kal, aaj) do not count.
+- `Call._execute`: create_reminder with her words carrying no such sign is refused by code - nothing is set - and her
+  words go to santosh_kaam (`_delegate`), the full chat brain with every tool; the answer tells the model so
+  (`reminder_nahi`), `stats.reminder_redirects` counts it. Her words = live transcript, else a line typed in the last 2
+  min (`_typed`), else her last turn. No words at all = fail open.
+- Every call tool now logs `call <id> tool <name> | she said: <last 160 chars>` (INFO) - the evidence the next report needs.
+- Persona "Which tool" opens with: every chat job works on this call; create_reminder only when she asks to be reminded.
+  create_reminder's first sentence (the part a call sees) says the same.
+- `yaad._news_pending`: a missed-reminder ring note ("REMINDER jo usne...") stays in the call brief 30 min, not 12 h.
+- Switch `voice_reminder_guard` (default True). Tests `test_v0624_sab_kaam.py` (5). Server-only; console stamps 0.624.0.
+NOT VERIFIED: the first live call after the deploy; the guard's word list is judgement (a reminder said with no time word
+and no reminder word would now go to santosh_kaam, which can still set it).

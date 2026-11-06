@@ -190,6 +190,7 @@ Doing real work
 - Work out exact dates and times yourself ("kal subah" is tomorrow 8 AM unless they gave a time). The user's local time now is {now}.
 
 Which tool (details are in each tool's description)
+- EVERY job she can give in chat works on this call - mail, WhatsApp, files, sheets, search, orders, desks, anything: use its own tool below, else santosh_kaam with her exact words. create_reminder ONLY when she asks to be reminded ('yaad dilana', 'remind', 'X baje bata dena'); a job that is not a reminder is never turned into one.
 - Reminders, phone alarms and timers, lists, memory, weather, daily routines: call them directly. 'X minute / ghante baad yaad dilana' = create_reminder in_minutes=X - never work out the clock time yourself.
 - Business work in a call (her Sahayaks: tailor, chai, office, GST, payroll, accounts, audit, insurance, telecaller, SEO, wholesale, export, franchise, contractor, ads, brand, support / helpdesk / complaints / returns / community / call centre, developer / QA / IT / NOC / cyber / DevOps / docs / product, logistics / fleet / godown / courier / travel / drivers / customs, real estate / society / interior / architect, website, app design, 3D, video studio, Hoola Deals / bookings / compare, Postgres, Document desk / Sheet Milaan, letters / translation, hotel / homestay / banquet / events / weddings / tours, legal / compliance / company secretary / notary / data protection, journalism / photo / design / podcast / influencer / artist / book / film / video editing desks, SEO, export, wholesale, franchise, contractor, insurance, App Jaanch / REA, bank-data or health-record consent checks, DigiLocker, ONDC): the STATE readers of the main desks ARE on this call - darzi_dekho, gst_dekho, payroll_dekho, paisa_dekho, vakil_dekho and the rest of the *_dekho heads: ask them DIRECTLY for orders, status, hisaab, today's haal ("darzi_dekho action=today"). Any CHANGE (new order, status move, price, rule, message) goes to santosh_kaam with her words and the details ("darzi: Riya ka blouse order, 15 tareekh"); say one line that it is being done, and the result comes back as a note / card. Tool names in notes for such work = santosh_kaam.
 - Payments, bills, shop orders, UPI, cabs, Swiggy/Zomato, the SENDING of a WhatsApp campaign (creating one and watching its status you do directly with create_campaign / get_campaign_status - always auto_send=False on a call; the send itself waits for her card tap), multi-step work, drafting: santosh_kaam with the full request ("MSEDCL ka bill bharna hai, consumer number 1234"). It prepares a confirm card on the phone; tell the user the amount and to tap Approve. Never say it is paid or ordered yourself, and never ask for a UPI PIN or OTP.
@@ -470,6 +471,23 @@ def client_content_ok() -> bool:
 SETUP_STEPS = ("vocab", "langcodes", "mcp", "compression", "core_tools", "no_tools")   # v0.491 her MCP tools are sacrificed THIRD, not first - they are real power; vocab / langcodes are quality, not doors
 SETUP_SAY = {"mcp": "aapke MCP tools", "vocab": "aapke shabdon ki list", "langcodes": "bhasha ka hint",
              "compression": "lambi call ki yaad", "core_tools": "kai tools", "no_tools": "saare tools"}
+_REMIND_WORDS = re.compile(
+    r"yaad|y[ae]ad\s*dil|remind|reminder|alarm|notify|jaga\s*dena|utha\s*dena|"
+    r"(?:bata|bol|keh|kah)\s*(?:dena|dijiye|dijie|do)\s*(?:mujhe|muze)?\s*(?:jab|ki\s+time|time\s+pe|baad|baje)|"
+    r"(?:\d+|ek|do|teen|char|paanch|panch|das|dus|bees|tees|aadh[ae]|dedh|dhai)\s*(?:minute|minat|min|mins|ghant\w*|hour\w*|second|sekand)\w*\s*(?:baad|bad|me|mein|after|later|later)|"
+    r"(?:in|after)\s+\d+\s*(?:minutes?|mins?|hours?)|"
+    r"\d{1,2}\s*(?:baje|bje|am|pm|o'?clock)|\d{1,2}:\d{2}|"
+    r"\u092f\u093e\u0926|\u0930\u093f\u092e\u093e\u0907\u0902\u0921\u0930|\u0905\u0932\u093e\u0930\u094d\u092e|\u092c\u091c\u0947|"
+    r"(?:\u092e\u093f\u0928\u091f|\u0918\u0902\u091f\u0947?)\s*\u092c\u093e\u0926",
+    re.I)
+
+
+def reminder_wanted(said: str) -> bool:
+    """v0.624 does HER ask carry any sign of a reminder (remind / yaad / a time)? No sign = the call model reached for
+    create_reminder on an email, a search, any other job - that is refused by code and the job goes to santosh_kaam."""
+    return bool(_REMIND_WORDS.search(said or ""))
+
+
 CORE_TOOLS = {"create_reminder", "list_reminders", "set_phone_alarm", "set_phone_timer", "remember", "get_weather",
               "google_search", "open_on_phone", "music_control", "youtube_play", "calendar_agenda", "kaam_status",
               "list_add", "list_show"}
@@ -1919,6 +1937,7 @@ class Call:
                         if self.hold:   # she typed to Hoola: that is talking to it
                             await self._leave_hold("typed")
                         self.push("text", str(m["text"])[:2000])
+                        self._typed = (str(m["text"])[:600], time.monotonic())   # v0.624 her typed ask counts as her words
                     elif t == "hold":
                         # v0.142 the phone saw her other call start / end, or she pressed Chup karao / Wapas aao
                         reason = "phone_call" if m.get("reason") == "phone_call" else "button"
@@ -2770,7 +2789,29 @@ class Call:
         p = where.remember(self.conv, self.user_buf) if self.user_buf.strip() else where.current(self.conv)
         return p or (where.place(request) if request else "")
 
+    def _her_words(self) -> str:
+        """v0.624 what SHE asked this turn: live words, else a line she typed in the last 2 minutes, else her last turn."""
+        now_words = (self.user_buf or "").strip()
+        if now_words:
+            return now_words
+        typed = getattr(self, "_typed", None)
+        if typed and time.monotonic() - typed[1] < 120:
+            return typed[0]
+        return (self.recent[-1][0] if self.recent else "").strip()
+
     async def _execute(self, name: str, args: dict) -> dict:
+        said = self._her_words()
+        log.info("call %s tool %s | she said: %s", self.call_id, name, said[-160:].replace("\n", " "))   # v0.624 which tool, for which ask
+        if name == "create_reminder" and get_settings().voice_reminder_guard and said and not reminder_wanted(said):
+            # v0.624 SAB KAAM (owner: "ANY JOB GIVEN EVEN EMAIL ... IT IS GOING TO SETTING REMINDER TOOL"): a reminder
+            # she never asked for is refused BY CODE and her real ask goes to the full brain - the chat's every tool.
+            self.stats["reminder_redirects"] = self.stats.get("reminder_redirects", 0) + 1
+            log.warning("call %s: create_reminder without a reminder ask (%r) - handed to santosh_kaam", self.call_id, said[-160:])
+            out = await self._delegate(said)
+            out["reminder_nahi"] = ("Usne reminder NAHI maanga tha - koi reminder nahi lagaya gaya. Uska asli kaam poore "
+                                    "system (santosh_kaam) ko de diya gaya hai. User ko reminder ka zikr mat karo; bas "
+                                    "batao ki kaam ho raha hai, aur aage aise kaam seedha santosh_kaam ko do.")
+            return out
         self.ctx.place = self._place(str(args.get("request") or args.get("task") or ""))
         if name == "santosh_kaam":
             return await self._delegate(str(args.get("request", "")))

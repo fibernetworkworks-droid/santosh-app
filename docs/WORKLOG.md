@@ -1678,3 +1678,11 @@ Work Log:
 - Extracted the commit; 151 voice / reminder / routines tests green, markers checked.
 - APK v0.622.0-b1797. CLAUDE.md KNOWN GOOD CHECKPOINT entry added.
 Stage Summary: voice-on-Gemini state saved; rollback = usual VPS commands with this branch.
+
+---
+Task ID: v0624-sab-kaam-call-par
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: every job on a call goes to the reminder tool; make the call do all chat work.
+Work Log: reminder guard by code in Call._execute -> santosh_kaam; tool + her words logged per call tool; persona and
+tool text; old reminder notes fade after 30 min; version 0.624.0; tests test_v0624_sab_kaam.py.
+Stage Summary: shipped server-only; live call is the proof.
