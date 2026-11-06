@@ -68,6 +68,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("AGENT_FIX_SEARCH", "false")
     monkeypatch.setenv("GYAAN_GROUND", "false")      # v0.135: no extra grounding call in scripted model tests
     monkeypatch.setenv("VOICE_OPENAI_ENABLED", "true")   # v0.622 production is Gemini-only; the OpenAI suites still test that engine
+    monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")  # v0.627 production declares the small menu; older suites pin the full one (test_v0627 checks the small one)
     monkeypatch.setenv("VOICE_PARK", "false")        # v0.617 older call suites expect a live Gemini session; test_v0617 turns it on
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests
     monkeypatch.setenv("SEMANTIC_OFF", "1")
