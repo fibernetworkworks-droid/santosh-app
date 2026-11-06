@@ -1707,3 +1707,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Owner: Gemini cost per call + money going with the call off.
 Work Log: lean call menu (91k -> 37k chars); no Gemini wake while the phone is away; such a call not live for reminders.
 Stage Summary: v0.627.0; voice suites green; live call is the proof.
+
+---
+Task ID: v0628-chhoti-hidayat
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner "GO TRIM": cut what Gemini re-reads per reply.
+Work Log: PERSONA_LEAN 27k -> 7.8k; lean tool / param texts; brief capped 4.5k + primer 1.5k; tests.
+Stage Summary: v0.628.0; measure with her next call.

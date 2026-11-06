@@ -1416,7 +1416,7 @@ CALL_CHECKPOINT_CHARS = 6000       # the checkpoint's share of it (diary + facts
 
 
 def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000,
-                news_skip_newest: bool = True) -> str:
+                news_skip_newest: bool = True, hard_cap: int = 0) -> str:
     """For a voice call session: everything a coworker who was in the room would know.
     v0.216 KAAM YAAD rides FIRST (news before chat memory, like the greeting: news first): undelivered work
     news with the bring-it-up-once instruction, so the call continues the WORK, not just the talk."""
@@ -1485,6 +1485,8 @@ def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: 
         log.exception("voice facts failed")
     if not parts:
         return ""
+    if hard_cap:   # v0.628 the small call brief: Gemini re-reads it on every reply (older memory = yaad_khojo)
+        max_chars = min(max_chars, hard_cap)
     return "HOOLA KI YAAD (you remember all of this; never ask her to repeat it):\n" + _clip_block("\n\n".join(parts), max_chars)
 
 

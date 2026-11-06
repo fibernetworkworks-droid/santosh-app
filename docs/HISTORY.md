@@ -21480,3 +21480,19 @@ persona, a smaller memory window) need the owner's choice.
    if notes are waiting; `tenant_live` no longer counts such a call, so a due reminder RINGS her instead of going unheard.
    Her 6 Nov log showed this path did not fire in that window - the fix is for when it does.
 Tests `test_v0627_chhota_menu.py` (3) + 2 in `test_v0626_paisa_ka_hisaab.py`. NOT VERIFIED on a live call.
+
+
+## v0.628.0 CHHOTI HIDAYAT - the call's instructions trimmed (owner: "GO TRIM")
+
+Measured on her v0.627 call (`gemini tokens`): 4 replies, 87,646 text tokens in = ~22k per reply, 98% text, $0.078. The text
+is what Gemini Live re-reads on every reply: the persona (~27k chars), the tool menu (~37k chars) and the call brief.
+- `voice.PERSONA_LEAN` (used when `voice_lean_tools`): ~7.8k chars with the shared reply rulebook - the same person
+  (male / female line swapped by FEMALE_LINES), language lock placeholders, honesty, money / OTP / PIN safety, the
+  misheard-words ladder, hold, reminders by in_minutes, "every chat job works on this call", and a line only for tools on
+  the small menu; everything else = santosh_kaam. The full PERSONA stays for the full menu.
+- Small menu: tool descriptions cut to `LEAN_DESC_MAX` 260 chars, parameter descriptions to `LEAN_PARAM_MAX` 90
+  (`_lean_schema`; names, types, enums and required lists unchanged - schema_problems clean). Menu ~32k chars.
+- Call brief: `yaad.voice_block(..., recent=6, hard_cap=LEAN_BRIEF_CHARS 4500)` and the coder primer cut to 1500 chars at a
+  line; older memory is fetched with yaad_khojo.
+- Estimate: ~22k -> ~12-14k tokens a reply. NOT VERIFIED until her next call's `gemini tokens` line.
+Tests `test_v0628_chhoti_hidayat.py` (3).
