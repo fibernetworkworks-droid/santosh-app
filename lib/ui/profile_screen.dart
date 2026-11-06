@@ -40,6 +40,7 @@ import 'travel_screen.dart';
 import 'warehouse_screen.dart';
 import 'archassist_screen.dart';
 import 'memory_page_screen.dart';
+import 'bahar_screen.dart';
 import 'interior_screen.dart';
 import 'propagent_screen.dart';
 import 'rentdesk_screen.dart';
@@ -1358,6 +1359,17 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ]),
       ),
       const SizedBox(height: 18),
+      Glass(   // v0.616 BAHAR SE BAAT: her Hoola from WhatsApp / Telegram / Slack / Teams
+        child: ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: const Icon(Icons.forum_outlined, color: C.teal),
+          title: const Text('Bahar se baat', style: TextStyle(fontWeight: FontWeight.w700)),
+          subtitle: const Text('WhatsApp, Telegram, Slack, Teams se apne Hoola se baat - sirf aap'),
+          trailing: const Icon(Icons.chevron_right_rounded),
+          onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => BaharScreen(app: app))),
+        ),
+      ),
+      const SizedBox(height: 12),
       Glass(   // v0.250 Claude-style memory: her page + switches
         child: ListTile(
           contentPadding: EdgeInsets.zero,

@@ -1,4 +1,4 @@
-"""v0.616 KUCHH NA CHHOOTE + PEXELS KA NAAM (from the Hallmark read, docs/research/hallmark/00_READ.md).
+"""v0.617 KUCHH NA CHHOOTE + PEXELS KA NAAM (from the Hallmark read, docs/research/hallmark/00_READ.md).
 
 1. A change in her words is compared with the version before it: her phone / WhatsApp / email links, forms and their
    fields, page links and the pieces Hoola wires in (shop products, blog posts, charts, booking...) must still be there.
@@ -17,7 +17,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.616.0"
+    assert APP_VERSION == "0.617.0"
 
 
 OLD = """<html><body><nav><a href="./">Home</a><a href="menu/">Menu</a><a href="contact/">Contact</a></nav>

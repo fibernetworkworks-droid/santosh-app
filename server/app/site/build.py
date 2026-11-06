@@ -675,7 +675,7 @@ def footer(site: dict[str, Any], plan: dict[str, Any], rel: str) -> str:
 
 
 def photo_credits(site: dict[str, Any]) -> str:
-    """v0.616 the Pexels API guidelines: 'a prominent link to Pexels' wherever its photos come through the API, and the
+    """v0.617 the Pexels API guidelines: 'a prominent link to Pexels' wherever its photos come through the API, and the
     photographers credited with a link to the photo page when possible. Empty when the site has no Pexels photo."""
     cr = [c for c in (site.get("photo_credits") or []) if isinstance(c, dict) and c.get("name")]
     if not cr:

@@ -5,7 +5,7 @@ place, the products, the food, the work in progress, hands at work - never a mad
 never text or a logo inside the picture), and Hoola's own image models (app/photogen.py, Gemini) make those pictures.
 Her own photos always come first: AI fills only the gap up to SITE_AI_PHOTOS. When the image models cannot make one
 and PEXELS_API_KEY is set, a licensed Pexels photo (official API; free to use, credit kept) takes its place.
-v0.616: the credit is SHOWN - every built page's footer says 'Photos provided by Pexels' (linked) and names the
+v0.617: the credit is SHOWN - every built page's footer says 'Photos provided by Pexels' (linked) and names the
 photographers with a link to each photo page, as the Pexels API guidelines ask.
 
 Every picture lands exactly like one she uploaded (src/photos/<name>.jpg + the photos list), marked `ai` / `source`,
@@ -128,7 +128,7 @@ def _stock_picture(shot: dict[str, str]) -> tuple[bytes, str]:
         p = photos[0]
         img = c.get((p.get("src") or {}).get("large2x") or (p.get("src") or {}).get("large"))
         img.raise_for_status()
-    # v0.616 the Pexels API guidelines: a prominent link to Pexels + the photographer credited with a link to the photo
+    # v0.617 the Pexels API guidelines: a prominent link to Pexels + the photographer credited with a link to the photo
     # page - kept with the photo so every built page can show it (build.footer)
     return img.content, {"credit": f"Photo: {p.get('photographer', 'Pexels')} / Pexels",
                          "credit_name": str(p.get("photographer") or "")[:80],

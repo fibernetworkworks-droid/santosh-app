@@ -437,6 +437,12 @@ class Api {
         if (recall != null) 'recall': recall,
         if (sensitive != null) 'sensitive': sensitive,   // v0.609 "Sensitive baatein bhi" (off by default)
       }) as Map)['switches'] as Map? ?? {});
+  /// v0.616 BAHAR SE BAAT: her own Hoola from WhatsApp / Telegram / Slack / Teams (only her, after a pairing code).
+  Future<List<Map<String, dynamic>>> baharList() async =>
+      ((await _send('GET', '/api/bahar') as Map)['channels'] as List? ?? []).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  Future<Map<String, dynamic>> baharSetup(String channel, Map<String, String> creds) async =>
+      Map<String, dynamic>.from(await _send('POST', '/api/bahar/$channel', body: creds) as Map);
+  Future<void> baharRemove(String channel) async => _send('DELETE', '/api/bahar/$channel');
   /// v0.609 "Saari yaad mitao" (Claude's reset): every memory store forgets her; her chats stay.
   Future<Map<String, dynamic>> memoryReset() async => Map<String, dynamic>.from(
       (await _send('POST', '/api/memory/reset', body: {'confirm': 'RESET'}) as Map)['removed'] as Map? ?? {});

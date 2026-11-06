@@ -1,4 +1,4 @@
-"""v0.616 KUCHH NA CHHOOTE - after a change in her words, did the site keep what it carried? (the idea of Hallmark's
+"""v0.617 KUCHH NA CHHOOTE - after a change in her words, did the site keep what it carried? (the idea of Hallmark's
 redesign `--before / --kept` sweep, Nutlope/hallmark MIT, re-written in Hoola's own Python; docs/research/hallmark/).
 
 When she asks for a change, Opus rewrites the sections the change touches. A rewrite can quietly drop her phone link,

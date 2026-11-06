@@ -363,6 +363,7 @@ async def tick() -> None:
     applogic_jobs()
     game_studio_jobs()
     await coder_jobs()
+    await bahar_jobs()
     app_ops_jobs()
 
 
@@ -619,6 +620,23 @@ def eventlog_jobs() -> None:
 
 
 _coder_last = 0.0
+
+
+_bh_last = 0.0
+
+
+async def bahar_jobs() -> None:
+    """v0.616 BAHAR SE BAAT: a job that finished after her outside-app turn still reaches her there."""
+    global _bh_last
+    import time
+    if time.time() - _bh_last < 30:
+        return
+    _bh_last = time.time()
+    try:
+        from . import bahar
+        await bahar.forward_all()
+    except Exception:
+        log.exception("bahar forward tick failed")
 
 
 async def coder_jobs() -> None:

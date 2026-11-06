@@ -894,7 +894,7 @@ def _ctx(r: Site) -> dict[str, Any]:
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],
             "logo_path": logo, "noindex": True,
             "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
-            "photo_credits": _photo_credits(r),                              # v0.616 Pexels: photographers + the Pexels link
+            "photo_credits": _photo_credits(r),                              # v0.617 Pexels: photographers + the Pexels link
             "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
             "alts": _alts(r),                                                # v0.366 every extra language (was one)
             "blog": _blog_ctx(r),                                            # v0.366 her published posts (newest first)
@@ -907,7 +907,7 @@ def _ctx(r: Site) -> dict[str, Any]:
 
 
 def _photo_credits(r: Site) -> list[dict[str, str]]:
-    """v0.616 the stock photos in her site's photo list, one entry per photographer (name + photo page link). Older photos
+    """v0.617 the stock photos in her site's photo list, one entry per photographer (name + photo page link). Older photos
     kept only the credit text ('Photo: <name> / Pexels'); the name is read back from it."""
     out: dict[str, dict[str, str]] = {}
     for p in _j(r.photos, []):
@@ -1603,7 +1603,7 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     r = _save(r.id, board=_board(r, plan, states, "Visitor ki tarah chala ke dekh raha hoon"))
     report = _journeys(r, report)             # v0.400 Hoola walks the site like a visitor before she sees it
     report = _gates(r, report)                # v0.551 SURAKSHA GATES: security / legal / accessibility on every page
-    if only:                                  # v0.616 KUCHH NA CHHOOTE: a change in her words kept what the site carried
+    if only:                                  # v0.617 KUCHH NA CHHOOTE: a change in her words kept what the site carried
         report = _kept(r, report, " ".join([note or ""] + [str(x) for x in (extra or {}).values()]))
     _make_version(r, plan, report, shots, states, note or "pehla version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
@@ -1624,7 +1624,7 @@ def _look_fixable(r: Site, live: Path, plan: dict[str, Any]) -> dict[str, list[s
 
 
 def _kept(r: Site, report: dict[str, Any], words: str) -> dict[str, Any]:
-    """v0.616 the previous version vs the new build: her phone / WhatsApp / email links, forms and their fields, page
+    """v0.617 the previous version vs the new build: her phone / WhatsApp / email links, forms and their fields, page
     links and the pieces Hoola wires in must still be there unless her words asked to remove them. Named, never blocking,
     never auto-edited - she decides ('wapas lagao')."""
     if not getattr(_settings(), "site_kept", True):
