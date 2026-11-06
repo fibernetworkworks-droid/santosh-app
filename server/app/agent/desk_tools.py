@@ -147,6 +147,7 @@ async def yaad_khojo(ctx: Ctx, query: str, days: int | None = None, kind: str = 
         from .. import memory
         res = await asyncio.to_thread(memory.search_all, ctx.tenant_id, conv, query, days, source or "any")
         hits = res["hits"]
+        yaad.note_used(conv, hits)   # v0.612 YAAD SE: what she can see this reply leaned on
         if not prefs(ctx.tenant_id)["recall"] and not hits:
             return {"hits": [], "count": 0, "off": True,
                     "note": "She turned 'Purani chats se yaad' off: past chats and her page are not searched (her "

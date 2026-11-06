@@ -481,3 +481,74 @@ class _Saved extends StatelessWidget {
     );
   }
 }
+
+
+/// v0.612 YAAD SE (Grok's "which memory did this use"): one small chip under a reply naming the memory it leaned on.
+/// Tap opens the list; each line has "Bhool jao" (a past chat stays in her list - it is only never recalled again).
+class MemoryUsedChip extends StatefulWidget {
+  const MemoryUsedChip({super.key, required this.v, required this.app});
+  final Map<String, dynamic> v;
+  final Santosh app;
+  @override
+  State<MemoryUsedChip> createState() => _MemoryUsedChipState();
+}
+
+class _MemoryUsedChipState extends State<MemoryUsedChip> {
+  final Set<int> _gone = {};
+
+  List<Map<String, dynamic>> get _items =>
+      List<Map<String, dynamic>>.from(((widget.v['items'] as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
+
+  Future<void> _open() async {
+    final items = _items;
+    await showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (c) => StatefulBuilder(builder: (c, setSheet) {
+        return ListView(padding: const EdgeInsets.fromLTRB(16, 0, 16, 24), shrinkWrap: true, children: [
+          const Text('Is jawab mein yeh yaad kaam aayi', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          const SizedBox(height: 8),
+          for (var i = 0; i < items.length; i++)
+            if (!_gone.contains(i))
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.menu_book_rounded, size: 20, color: C.teal),
+                title: Text('${items[i]['label'] ?? 'Yaad'}', style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                subtitle: Text('${items[i]['text'] ?? ''}', maxLines: 3, overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12)),
+                trailing: TextButton(
+                  onPressed: () async {
+                    try {
+                      await widget.app.api!.unremember(items[i]);
+                      setState(() => _gone.add(i));
+                      setSheet(() {});
+                    } catch (_) {}
+                  },
+                  child: const Text('Bhool jao'),
+                ),
+              ),
+        ]);
+      }),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final items = _items;
+    final left = [for (var i = 0; i < items.length; i++) if (!_gone.contains(i)) items[i]];
+    if (left.isEmpty) return const SizedBox.shrink();
+    final labels = {for (final it in left) '${it['label'] ?? 'Yaad'}'}.join(' · ');
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: ActionChip(
+        avatar: const Icon(Icons.menu_book_rounded, size: 16, color: C.teal),
+        label: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 260),
+          child: Text('Yaad se: $labels', overflow: TextOverflow.ellipsis, maxLines: 1, style: const TextStyle(fontSize: 12)),
+        ),
+        onPressed: _open,
+      ),
+    );
+  }
+}
+

@@ -1977,6 +1977,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 from .. import yaad   # a goal round's "[Goal jaari...]" text is never her words: no facts from it
                 yaad.after_turn(tenant_id, conversation_id, user_text, final_text,
                                 "owner" if who == "owner" else ("routine" if who == "goal" else who))
+                if who == "owner":   # v0.612 YAAD SE: which memory this reply leaned on, each forgettable
+                    yaad.publish_used(conversation_id, final_text)
+                else:
+                    yaad.USED.pop(conversation_id, None)
             except Exception:
                 log.exception("memory after turn failed")
             try:   # v0.477 HOOLA NUDGE: the turn counter - at coder_nudge_every turns ONE quiet

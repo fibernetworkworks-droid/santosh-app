@@ -724,6 +724,13 @@ class Api {
   Future<List<Map<String, dynamic>>> memory() async =>
       List<Map<String, dynamic>>.from((await _send('GET', '/api/memory'))['facts'] as List);
   Future<void> forget(int id) async => _send('DELETE', '/api/memory/$id');
+  /// v0.612 YAAD SE: "Bhool jao" on one memory a reply used (a fact, a past chat, a work note, a page / graph line).
+  Future<void> unremember(Map<String, dynamic> item) async => _send('POST', '/api/memory/unremember', body: {
+        'source': '${item['source'] ?? ''}',
+        if (item['id'] != null) 'id': item['id'],
+        'conversation_id': '${item['conversation_id'] ?? ''}',
+        'text': '${item['text'] ?? ''}',
+      });
   /// "Hamesha yaad": pin / unpin a remembered fact (server refuses past its character limit).
   Future<void> pinMemory(int id, bool pinned) async => _send('PATCH', '/api/memory/$id', body: {'pinned': pinned});
   // ---- v0.75 Pehchaan Locker (Aadhaar / PAN / ID numbers, encrypted on the server) ----

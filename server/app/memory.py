@@ -48,7 +48,7 @@ def _chats(tenant: str, conv: str, query: str, days: int | None) -> list[dict]:
     if not prefs(tenant)["recall"]:        # her "Purani chats se yaad" switch
         return []
     hits = yaad.search(tenant, query, CAPS["chat"], days or None, None, conversation_id=conv)
-    return [{"source": "chat", "kind": h.get("kind"), "when": h.get("at"),
+    return [{"source": "chat", "kind": h.get("kind"), "when": h.get("at"), "conversation_id": h.get("conversation_id"),
              "text": str(h.get("text") or "")[:600]} for h in hits]
 
 
@@ -230,3 +230,41 @@ def reset_all(tenant: str) -> dict[str, int]:
         log.exception("memory reset: page failed")
     log.info("memory reset for %s: %s", tenant, out)
     return out
+
+
+def unremember(tenant: str, source: str, id: int | None = None, conversation_id: str = "", text: str = "") -> dict:
+    """v0.612 YAAD SE: the 'Bhool jao' on one memory a reply used (Grok's remove-from-memory).
+    fact = that fact and its copies; chat = that chat is never recalled again (it stays in her list - only its
+    memory index goes); work = that work note; graph / page = the lines carrying the text."""
+    from . import yaad
+    from .db import Conversation, MemoryFact, session
+    from .yaad import YaadItem
+    from sqlalchemy import delete
+    if source == "fact" and id:
+        with session() as s:
+            f = s.get(MemoryFact, int(id))
+            if f is None or f.tenant_id != tenant:
+                return {"ok": False, "why": "not found"}
+            text = f.text
+            s.delete(f)
+        return {"ok": True, "source": "fact", "also_removed": yaad.forget_everywhere(tenant, text)}
+    if source == "chat" and conversation_id:
+        with session() as s:
+            c = s.get(Conversation, conversation_id)
+            if c is None or c.tenant_id != tenant:
+                return {"ok": False, "why": "not found"}
+            c.no_recall = True
+            gone = s.execute(delete(YaadItem).where(YaadItem.tenant_id == tenant,
+                                                    YaadItem.conversation_id == conversation_id)).rowcount or 0
+        return {"ok": True, "source": "chat", "index_rows": gone,
+                "note": "The chat itself stays in her list; it is never recalled into another chat."}
+    if source == "work" and id:
+        from .coder import store as cst
+        cst.ensure()
+        with cst.db(write=True) as c:
+            n = c.execute("DELETE FROM observations WHERE id=? AND tenant=?", (int(id), tenant)).rowcount or 0
+        return {"ok": bool(n), "source": "work"}
+    if text:
+        return {"ok": True, "source": source, "also_removed": yaad.forget_everywhere(tenant, text)}
+    return {"ok": False, "why": "nothing to forget"}
+

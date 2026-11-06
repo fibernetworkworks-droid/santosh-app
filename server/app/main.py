@@ -5290,6 +5290,23 @@ def memory_everything(tenant: str = Depends(current_tenant)):
     return memory.everything(tenant)
 
 
+class UnrememberIn(BaseModel):
+    source: str = Field(default="", max_length=10)
+    id: int | None = None
+    conversation_id: str = Field(default="", max_length=64)
+    text: str = Field(default="", max_length=800)
+
+
+@app.post("/api/memory/unremember", dependencies=[Depends(require_key)])
+def memory_unremember(body: UnrememberIn, tenant: str = Depends(current_tenant)):
+    """v0.612 YAAD SE: 'Bhool jao' on one memory a reply used (a fact, a past chat, a work note, a graph / page line)."""
+    from . import memory
+    out = memory.unremember(tenant, body.source, body.id, body.conversation_id, body.text)
+    if not out.get("ok") and out.get("why") == "not found":
+        raise HTTPException(404, "Yeh yaad nahi mili.")
+    return out
+
+
 class MemoryResetIn(BaseModel):
     confirm: str = ""
 
