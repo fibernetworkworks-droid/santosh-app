@@ -125,12 +125,12 @@ def test_audit_cli_lanes(capsys):
 # ---------------------------------------------------------------------------
 def test_registry_count_holds_the_merged_arithmetic():
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 592, (
+    assert len(TOOLS) == 593, (
         "584 = 581 + 1 paisa_sahayak (their v0.588 PAISA SAHAYAK) + 2 sandarbh "
         "(their v0.590 SANDARBH MANCH: workspace + kgmemory); the merged "
         "arithmetic the w35 pin carries after their PIN REPAIR")
     src = (A.REPO_ROOT / "server" / "tests" / "test_v0565_construction_w35.py").read_text()
-    assert "len(TOOLS) == 592" in src, "the w35 pin must carry the merged arithmetic"
+    assert "len(TOOLS) == 593" in src, "the w35 pin must carry the merged arithmetic"
     assert "paisa_sahayak" in src and "sandarbh" in src
 
 
@@ -167,8 +167,8 @@ def test_version_pins():
     from pathlib import Path
     from app.main import APP_VERSION
     root = Path(__file__).resolve().parents[2]
-    assert APP_VERSION == "0.611.0"
-    assert "0.611.0+617" in (root / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.612.0"
+    assert "0.612.0+618" in (root / "pubspec.yaml").read_text()
     line = (root / "server" / "app" / "main.py").read_text().splitlines()[35]
     assert "HOOLA AEP 1.0" in line and "PARITY" in line.upper()
     assert "HOOLA HUB" in line  # the P7 name rides the Previous chain

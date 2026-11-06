@@ -535,11 +535,11 @@ def test_registry_542_with_dhara_dsl():
     assert names <= global_names
     for n in names:
         assert n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 592, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 541 (v0.502) + 1 magic21 (their v0.512) + 1 dhara_dsl (v0.514) + 10 construction Wave 1 (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 593, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 541 (v0.502) + 1 magic21 (their v0.512) + 1 dhara_dsl (v0.514) + 10 construction Wave 1 (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
     for n in names:
         assert FAMILY_OF.get(n) == "dhara", n
 
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.611.0"
+    assert APP_VERSION == "0.612.0"

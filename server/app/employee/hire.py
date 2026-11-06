@@ -231,6 +231,17 @@ CATALOG: dict[str, dict[str, Any]] = {
                               "Sign or send a letter, file with an ombudsman or submit to NHCX",
                               "Recommend a plan or tell anyone to switch insurers: suitability is the adviser's and the customer's call",
                               "Store your documents: it reads, drafts and forgets"]},
+    # v0.611 BIMA RISK (health-insurance register Wave 3: pricing, underwriting and fraud signals)
+    "bima_risk": {"name": "Bima Risk (actuary, underwriting and SIU desk)", "live": True, "icon": "receipt", "group": HEALTHINS_GROUP,
+                  "pitch": "Worksheets for the people who decide: loss ratio and frequency by group, a run-off triangle working paper, premium-vs-cost fairness checks, underwriting rule routing with the rule shown, provider and duplicate-claim outliers, cashless-upgrade flags, a neutral case file and a fairness audit of the fraud model. Hits are questions, not verdicts.",
+                  "does": ["Experience tables (loss ratio, frequency, severity, thin groups marked), observed price trends, chain-ladder triangle as a working paper",
+                           "Pricing-fairness gaps and jumps on the relativities you give; protected attributes refused as factors",
+                           "Underwriting triage from YOUR manual: which rule fired, the manual page, the loading you set; a decline rule becomes a human referral",
+                           "Provider outliers, overlapping stays, geo plausibility, cashless upgrades, a neutral case file with the allegation left blank, fraud-model flag-rate and false-positive audit, scheme anomalies"],
+                  "needs": ["Your rows, thresholds, rules, loadings and peer sets; nothing is built in except keyword-free arithmetic"],
+                  "never": ["Decline, price, load, reserve, sign off a rate, blacklist or accuse anyone of fraud: those are the actuary's, underwriter's and SIU head's",
+                            "Use religion, caste, gender, locality or name as a rule or rating factor",
+                            "Share data with any industry database or store your rows: it reads, answers and forgets"]},
     # v0.589 KAAN PACK (WhisperAI Wave W0: the transcription core; engine = openai-whisper MIT, local-first)
     "kaan": {"name": "Kaan (transcription)", "live": True, "icon": "ear", "group": VOICE_GROUP,
              "pitch": "Audio sun-kar likhawat: a meeting, voice note or video file becomes a clean transcript with per-word timing, on your own server.",

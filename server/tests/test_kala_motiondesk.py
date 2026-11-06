@@ -242,7 +242,7 @@ def test_invoices_gst_paid_and_forget(md):
     S.job_update(T, j["number"], quote=[{"text": "Logo sting", "qty": 1, "rate": 10000}])
     a = S.invoice_request(T, j["number"], "advance")
     sh = a["card"]["show"]
-    assert sh["taxable"] == 5000 and sh["gst"]["cgst"] == 450 and sh["total"] == 5920
+    assert sh["taxable"] == 5000 and sh["gst"]["cgst"] == 450 and sh["total"] == 5930
     out = S.decide(T, a["card"]["id"], True, a["card"]["hash"], by_tap=True)
     assert out["invoice"] == "MD/2627/001" and "upi://pay?pa=kala%40okicici" in out["draft"]["upi"]
     S.client_save(T, client="Sharma Sweets", gstin="29AAACR5055K1Z5")

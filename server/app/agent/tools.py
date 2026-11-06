@@ -417,6 +417,12 @@ TOOLS.extend(BIMAASSIST_TOOLS)
 TOOL_LABELS.update(BIMAASSIST_LABELS)
 HANDLERS.update(BIMAASSIST_HANDLERS)
 
+from .bimarisk_tools import BIMARISK_HANDLERS, BIMARISK_LABELS, BIMARISK_TOOLS  # noqa: E402  v0.611 Bima Risk (health-insurance Wave 3)
+
+TOOLS.extend(BIMARISK_TOOLS)
+TOOL_LABELS.update(BIMARISK_LABELS)
+HANDLERS.update(BIMARISK_HANDLERS)
+
 from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
 
 TOOLS.extend(KAAN_TOOLS)
