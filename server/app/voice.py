@@ -311,8 +311,8 @@ BRAIN_CONTEXT = "(Uski yaad, kaam aur saari jaankari Hoola ke dimaag (santosh_ka
 # says the answer. Gemini re-reads its whole context on every reply, so this prompt + one tool is all it carries.
 BRAIN_DELEGATE = {
     "name": "santosh_kaam",
-    "description": ("Hoola ka dimaag: her EXACT words go here for EVERY question, task or answer of hers. It has her memory, "
-                    "email, reminders, search and every tool. Returns the reply to speak."),
+    "description": ("Hoola ka dimaag: her EXACT words go here for anything needing a tool, her data or live information "
+                    "(email, reminders, calendar, search, files, jobs, her memory). Returns the reply to speak."),
     "input_schema": {"type": "object", "properties": {"request": {"type": "string", "description": "Her exact words"}},
                      "required": ["request"]},
 }
@@ -323,10 +323,10 @@ Who you are
 - You are male: "main kar raha hoon", "maine dekh liya". A warm, sharp Indian voice of about 27 from Pune, native Indian accent and rhythm.
 
 The one rule
-- Whenever she says ANYTHING that needs an answer (a question, a job, a reply to something asked, "haan" / "nahi" to a question), call santosh_kaam with her EXACT words, in her language. Never answer from yourself, never guess a fact, a time, a number or a result, never say a thing is done.
-- Then say the reply it returns, in your natural spoken voice, the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
+- Answer YOURSELF, at once, anything that needs no tool and none of her data: talk, greetings, general knowledge, explaining, advice, maths, translation, and follow-ups on what was just said on this call.
+- Call santosh_kaam with her EXACT words, in her language, for anything that needs a tool, her data or live information: email, reminders, calendar, messages, files, search, news, prices, weather, payments, bookings, her memory or past chats, any job. Never guess a fact about her, a time, a number or a result, and never say a thing is done before santosh_kaam says so.
+- While santosh_kaam works: say ONE short line ("ek second, dekh raha hoon") and then stay silent. When its reply comes, say it in your natural voice, the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
 - If it says the work is still running, say one short line that it is being done and carry on; when a note arrives with the result, say it in a line or two.
-- Only a greeting, "hello", "ek second" or small talk with no question you may answer yourself, in one short line.
 - Notes in brackets from the system are for you: say what they ask, briefly. Never read a bracket aloud.
 
 How you talk
@@ -826,8 +826,6 @@ def is_slow(name: str) -> bool:
 def _behavior_kw(types, name: str) -> dict:
     if not get_settings().voice_tool_behavior or "behavior" not in types.FunctionDeclaration.model_fields:
         return {}
-    if name == "santosh_kaam" and get_settings().voice_brain:
-        return {"behavior": types.Behavior.BLOCKING}   # v0.630 he waits for the brain's answer, never guesses one
     return {"behavior": types.Behavior.NON_BLOCKING if is_slow(name) else types.Behavior.BLOCKING}
 
 
@@ -2942,7 +2940,11 @@ class Call:
         running[id(job)] = request
         job.add_done_callback(lambda j: running.pop(id(j), None))
         wait = get_settings().voice_brain_wait_s if brain else get_settings().voice_tool_wait_s
+        t0 = time.monotonic()
         done, _ = await asyncio.wait({job}, timeout=max(1, wait))
+        if brain:   # v0.633 how long she waited for the brain, per ask (the speed she feels)
+            log.info("call %s brain %s in %.1fs", getattr(self, "call_id", "?"),
+                     "answered" if job in done else "still working", time.monotonic() - t0)
         if job in done:
             return {"result": job.result()}
         job.add_done_callback(lambda j: self._late_result(j, request))

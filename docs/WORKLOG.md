@@ -1751,3 +1751,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Her 11:11 brain call cost $0.173; 54% was Gemini re-reading the call's audio.
 Work Log: brain calls compress at 8k / 4k; test.
 Stage Summary: v0.632.0.
+
+---
+Task ID: v0633-tez-jawab
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Gemini + Haiku together is slow, Gemini alone was fast.
+Work Log: hybrid persona (Gemini answers talk itself, brain only for tools / her data), brain non-blocking with one filler line, brain wait logged.
+Stage Summary: v0.633.0.

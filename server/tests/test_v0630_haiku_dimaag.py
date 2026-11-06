@@ -68,11 +68,13 @@ def test_voice_carries_one_tool_and_a_short_persona(monkeypatch):
     names = [t["name"] for t in specs]
     assert names[0] == "santosh_kaam" and set(names) <= {"santosh_kaam", "side_talk"}
     assert len(json.dumps(specs)) < 3000 and len(p) < 4000
-    assert "EXACT words" in p and "Never answer from yourself" in p and "{context}" in p
+    assert "EXACT words" in p and "Answer YOURSELF" in p and "{context}" in p
+    assert "ek second, dekh raha hoon" in p and "never say a thing is done" in p
     assert "You are female" in f and "You are male" not in f
     p.format(lang="Hinglish", now="now", context="ctx")
     from google.genai import types as gt
-    assert voice._behavior_kw(gt, "santosh_kaam").get("behavior") in ({}.get("x"), gt.Behavior.BLOCKING)
+    # v0.633 TEZ JAWAB: non-blocking - he says one line while the brain works instead of going silent
+    assert voice._behavior_kw(gt, "santosh_kaam").get("behavior") in (None, gt.Behavior.NON_BLOCKING)
 
 
 def test_brain_gets_her_words_on_haiku(monkeypatch, env):

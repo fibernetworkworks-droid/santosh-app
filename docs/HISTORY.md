@@ -21555,3 +21555,17 @@ With `voice_brain` the brain holds the memory, so `live_config` now slides the w
 8,000 / `voice_brain_compress_target` 4,000 (Gemini keeps its system instruction; only old turns drop). A non-brain call
 keeps 60k / 35k. Expected: per-reply context capped near 8k, so a long call stops getting dearer by the minute. NOT
 VERIFIED until her next call's `gemini tokens` line. Test added to `test_v0630_haiku_dimaag.py`.
+
+## v0.633.0 TEZ JAWAB - Gemini answers what it can, the brain only for tools / her data
+
+Owner: "COMBINE GEMINI AND HAIKU --- COMBINE TAKE TIME TO GIVE RESULT. WHERE AS GEMINI ALONE WAS FAST". v0.630 sent EVERY
+sentence through santosh_kaam (Gemini tool call -> full Haiku chat turn -> back -> Gemini speaks), BLOCKING, so she heard
+silence on every ask, even "kaise ho".
+- `PERSONA_BRAIN`: Gemini answers ITSELF at once anything needing no tool and none of her data (talk, general knowledge,
+  explaining, advice, maths, translation, follow-ups on this call); santosh_kaam only for tools / her data / live info
+  (email, reminders, calendar, messages, files, search, news, prices, weather, payments, her memory, any job). Never guesses
+  a fact about her or a result. Cheaper too: a talk answer is ONE Gemini reply instead of two + a Haiku turn.
+- santosh_kaam is NON_BLOCKING again on a brain call (the v0.630 BLOCKING override removed): he says ONE short line ("ek
+  second, dekh raha hoon") and the answer is spoken when it arrives (WHEN_IDLE).
+- `_delegate` logs `call <id> brain answered|still working in N.Ns` - the wait she feels, per ask.
+NOT VERIFIED on a real call; the log line gives the brain's real time next call. Tests in `test_v0630_haiku_dimaag.py`.
