@@ -38,3 +38,10 @@ def test_brain_turn_is_never_hard():
     import inspect
     src = inspect.getsource(santosh)
     assert 'getattr(settings, "hard_detect", True) and not VOICE_BRAIN_NOW.get()' in src
+
+
+def test_brain_turn_never_thinks_and_every_call_is_timed():
+    import inspect
+    src = inspect.getsource(santosh)
+    assert "if VOICE_BRAIN_NOW.get():" in src and '_THINK_NOW.set(False)' in src
+    assert 'log.info("claude call %.1fs' in src

@@ -74,5 +74,5 @@ def test_the_phone_already_spaces_every_block_the_same():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.634.0"
-    assert "0.634.0+640" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.635.0"
+    assert "0.635.0+641" in (ROOT / "pubspec.yaml").read_text()

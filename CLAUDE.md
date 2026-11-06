@@ -308,6 +308,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `HOOLA_READ_GUARD_KB`. The rule above was a sentence for 200 versions; now it is a hook.
 
 ## Current state (latest first, one line each)
+- v0.635 SAAF NAAP: every Claude call logged with its time + size (`claude call N s ... voice=`), and a call brain turn never thinks / runs at raised effort (an open long job switched both on for every call question); 1 test.
 - v0.634 TEZ DIMAAG: her call brain turns took 8-21 s (3-5 s before every first tool) because each re-read her whole chat; a call brain turn now reads the checkpoint + last 12 exchanges (`voice_brain_history`) and skips hard detection; chat unchanged; 3 tests.
 - v0.633 TEZ JAWAB (owner: Gemini + Haiku slow, Gemini alone fast): on a brain call Gemini answers talk / knowledge itself at once, santosh_kaam (Haiku brain) only for tools / her data / live info; brain call non-blocking with one "ek second" line; `brain answered in N s` logged per ask.
 - v0.632 KAAN CHHOTA: her 11:11 brain call ($0.173, 7 asks all answered by Haiku) spent 54% on Gemini re-reading the call audio; a brain call now compresses at 8k / 4k tokens (`voice_brain_compress_*`), non-brain keeps 60k / 35k; 1 test.

@@ -21582,3 +21582,14 @@ Haiku hard-judge call first.
 - `_run_turn`: no hard detection (no judge call, no thinking, no held answer + reviewer) on a call's brain turn.
 - Chat turns are unchanged (whole chat).
 NOT VERIFIED until her next call's `brain answered in N s` lines. Tests `test_v0634_tez_dimaag.py` (3).
+
+## v0.635.0 SAAF NAAP - every Claude call timed, a call's brain never thinks
+
+Her 15:56 / 16:08 calls (harness events): "kaun sa kaam tha?" took 23 s with NO tool, "10 mail ki summary ka PDF" 20 s before
+its first tool - and nothing in the log said which part was slow (it is not known whether v0.634 was live yet).
+- `_claude_call` now logs every call: `claude call N.Ns model=... msgs=... chars=... tools=... think=... effort=... cap=... voice=...`
+  (the body moved to `_claude_call_once`).
+- With `VOICE_BRAIN_NOW`, effort is cleared and thinking is off for every step of the turn: an open long job in the chat used
+  to switch both on (goal mode) for EVERY call question.
+Gmail itself measured 1.5-11 s per email_check and doc_studio 10-12 s per PDF - external, unchanged. Test in
+`test_v0634_tez_dimaag.py`.
