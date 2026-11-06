@@ -858,7 +858,9 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     # v0.272 SOCH KE JAWAB step 1: a HARD question (analysis, calculation, decision, plan, root cause, proof, deep
     # explanation) is not a long job - looks_big missed 50 of 50 of them - but it needs thinking from its first call
     state["hard"] = False
-    if ctx.actor == "owner" and getattr(settings, "hard_detect", True):
+    # v0.634 TEZ DIMAAG: a voice call's brain turn is never a "hard" turn - thinking, a held answer and a reviewer
+    # call cost her 21 s of silence on "teen email ka detail summary" (her 15:27 call); she is waiting on the line
+    if ctx.actor == "owner" and getattr(settings, "hard_detect", True) and not VOICE_BRAIN_NOW.get():
         try:
             from . import hard as _hard
             _hv = await _hard.decide(user_text or "", settings)
@@ -1033,6 +1035,15 @@ def _request(history: list[dict], system: str, tools, brain: str, conversation_i
     start = state.get("turn_start", len(history))
     if state.get("squeezed"):
         return _sanitize(_ctx.squeeze(pruned, conversation_id, start))
+    keep = int(getattr(settings, "voice_brain_history", 0) or 0)
+    if VOICE_BRAIN_NOW.get() and keep > 0:
+        # v0.634 TEZ DIMAAG: a call's brain turn reads the chat's checkpoint summary + the last few exchanges, not the
+        # whole chat word for word (her 15:27 call: 3-5 s before every first step, 21 s on one ask). Older memory is
+        # still one yaad_khojo away; this turn's own messages are never cut.
+        start = max(0, min(start, len(pruned)))
+        head, old = _ctx._split_head(pruned[:start])
+        recent = [m for ex in _ctx._exchanges(old)[-keep:] for m in ex]
+        return _sanitize(head + recent + pruned[start:])
     msgs, form = _ctx.fit(pruned, system, tools, brain, conversation_id, start, settings)
     return _sanitize(msgs) if form == "net" else msgs
 

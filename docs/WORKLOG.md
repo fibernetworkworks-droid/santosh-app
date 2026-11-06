@@ -1758,3 +1758,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Owner: Gemini + Haiku together is slow, Gemini alone was fast.
 Work Log: hybrid persona (Gemini answers talk itself, brain only for tools / her data), brain non-blocking with one filler line, brain wait logged.
 Stage Summary: v0.633.0.
+
+---
+Task ID: v0634-tez-dimaag
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Her call brain turns took 8-21 s (harness events: 3-5 s before the first tool every time).
+Work Log: brain turn history = checkpoint + last 12 exchanges; no hard detection on call turns; 3 tests.
+Stage Summary: v0.634.0.

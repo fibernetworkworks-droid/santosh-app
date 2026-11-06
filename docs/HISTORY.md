@@ -21569,3 +21569,15 @@ silence on every ask, even "kaise ho".
   second, dekh raha hoon") and the answer is spoken when it arrives (WHEN_IDLE).
 - `_delegate` logs `call <id> brain answered|still working in N.Ns` - the wait she feels, per ask.
 NOT VERIFIED on a real call; the log line gives the brain's real time next call. Tests in `test_v0630_haiku_dimaag.py`.
+
+## v0.634.0 TEZ DIMAAG - the call's brain turn reads the recent chat only
+
+Her 15:27 call on v0.633 (harness events): every brain turn spent 3-5 s BEFORE its first tool, Gmail 1.5-5.5 s, the answer
+2-3 s; "teen email ka detail summary" took 21 s with no tool at all. The brain turn sent her WHOLE chat word for word
+(CHAT_CONTEXT=claude, up to 75% of a 200k window) on every model call - her main chat is long - and a 'maybe' ask paid a
+Haiku hard-judge call first.
+- `_request`: with `VOICE_BRAIN_NOW`, the history is the checkpoint summary (`context._split_head`) + the last
+  `voice_brain_history` (12) exchanges + this turn's own messages, then `_sanitize`. Older memory stays one yaad_khojo away.
+- `_run_turn`: no hard detection (no judge call, no thinking, no held answer + reviewer) on a call's brain turn.
+- Chat turns are unchanged (whole chat).
+NOT VERIFIED until her next call's `brain answered in N s` lines. Tests `test_v0634_tez_dimaag.py` (3).
