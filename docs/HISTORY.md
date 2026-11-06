@@ -21393,8 +21393,9 @@ with a TXT record / meta tag / one of her Hoola addresses). New module `server/a
    `try_files ... @hoola_moved`, and that named location hands the request to Hoola ONLY when the site has a map (marked
    `X-Hoola-Edge: 1` so the visit is not counted twice), else returns its normal 404 page. Routes: `GET/POST
    /api/sites/{ref}/moves`; tool `website action=moves` (list + hash) / `moves_ok` (her tap; in `_TAP_LIKE`).
-   **VPS:** the nginx block must be regenerated once (`python -m app.site.edge conf`) for nginx-served sites; until then
-   Python serving (the fallback) already answers the 301s.
+   **VPS (checked with her, 6 Nov):** no step. Host nginx and host Caddy are inactive; the front door is the Docker
+   container `fnwconnect_caddy`, which hands every request to Hoola, so `hosting.serve` answers the 301s. The
+   `edge.nginx_conf` block is NOT installed on this VPS - do not install it without planning (it is a default_server).
 2. **"Keep my look" depth.** `inspire.use(..., keep=True)` (tool `design_use keep=true`, route `/api/site-design/use`
    `keep`), only for HER OWN old site: the old page list and each page's section order (from its headings) ride into look
    1's brief as KEEP HER LAYOUT; a new site's brief also lists her old pages. Still built in Hoola's kit; her font still
