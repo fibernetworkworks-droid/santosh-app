@@ -20913,3 +20913,52 @@ The register (`docs/research/banking_finance_industry/00_INDEX.md`, 132 candidat
 - **Wiring**: ONE tool `paisa_sahayak` (registry 581 -> 582; actions loan / compare / flat / prepay / debts / charges / spend / scam / url / upi / complaint / facts; family `finguard`, admitted on its money-safety words, voice via `santosh_kaam`), owner-only for statements, never for customers; hub entry "Paisa Sahayak (money safety)" in a new "Finance & Banking" group (does / needs / never lists; never = no PIN / OTP, no moving money, no recommending a lender, no personalised advice, nothing stored).
 - **Tests**: `test_finguard.py` (20): textbook EMI numbers, APR equals the stated rate without fees and rises with them, fee-later vs fee-up-front, flat rate, compare, prepay, debt plan flags, CSV parse + charges audit + spending, each scam family's classic wording, "no pattern is not safe", URL analysis with no network library imported, facts marked verify, complaint masking + blanks + ladder, tool guards, no storage in any engine, hub entry. The 13 registry-count pins moved 581 -> 582.
 - **NOT built**: Wave 2 (institution assist with a named decider) and Wave 3 (markets, lending decisions): portfolio tracker, MF research desk, KYC helper, order placement. Not verified: no real statement from a real bank has been through the parser (bank CSV layouts vary), and the scam wording lists are judgement, not measured against live scam data.
+
+## v0.602.0 SAAF NAZAR - the "AI look" check on every website (owner: "GO" on the Impeccable read)
+
+Source: pbakaus/impeccable (Apache-2.0), read at c8891a9a - `docs/research/impeccable/00_READ.md`. Ideas only, Hoola's
+own Python and wording; attribution in THIRD_PARTY_NOTICES.md. Their npm detector was not run (running downloaded code
+was refused in the sandbox), so the rules were re-written from their catalogue, not ported.
+
+**The gap it closes:** the nine v0.551 gates check safety, law and accessibility; nothing checked whether a site reads
+as AI-made, and Hoola's own builder steered toward the tells - 11 of 30 font pairs used an overused face (5 of 10 style
+DEFAULTS did), the section writer was taught an `.eyebrow` class, the kit had a `k-eyebrow` part, and styles defaulted
+to marquees, gradient glows, small-caps and numbered labels.
+
+**`server/app/site/look.py`** - reads every built page + `assets/site.css` (only the section css under `#s-...` and the
+site's design kit `.k-...`; Hoola's own base css is not judged) for 29 tells: overused fonts, cream page, gradient text,
+violet gradients, radial halos, coloured glows, hard offset shadows, thick side borders, nested cards, icon tiles above
+3+ headings, eyebrow / kicker labels (by class, or a short uppercase line right above a heading), 01/02/03 labels on 3+
+sections, bounce / elastic easing (cubic-bezier overshoot), marquee, stripes, grid-line backgrounds, buzzwords,
+"... theater" framing, em-dash saturation (site-wide), emoji as icons, italic hero headline, justified / all-caps /
+tight-leading / tiny / over- and under-tracked body text, skipped heading levels, broken / placeholder images. Every
+finding carries its page, the page's MODE and the section id the fixer rewrites.
+- **Never blocks:** gate 11 "AI look" in `gates.scan` gives WARN rows (or one PASS); `merge` leaves `passed` alone.
+- **Round-0 fix:** `service._look_fixable` adds the per-section tells (17 of the 29, the global ones are only said) to
+  the build's FIRST fix round, once, so the builder cleans its own reflexes before she sees the looks.
+- **The brief wins:** her words pin a tell (neon / glow / marquee / gradient / brutalist / cream / a font name...);
+  her own design (KOI BHI DESIGN look 1 - `choose_look` now keeps `mine`), her brand colours, or colours / type she
+  asked for in chat (`look.her_tokens`) switch the font + colour tells off.
+- **Modes:** persuade (default), operate (account / admin / cart / checkout / cms / dashboard), read (blog / faq / help /
+  guides / policies), experience (gallery / portfolio). Icon tiles are fine on operate pages; numbered labels only
+  judged on persuade / experience.
+- Switches: `site_look` (the gate), `site_look_fix` (the round-0 fix).
+
+**Builder defaults (new sites only; a built site keeps its stored look until rebuilt):** style fonts editorial_calm ->
+DM Serif Display / DM Sans, bold_modern -> Bricolage Grotesque / DM Sans, minimal_swiss -> Archivo / DM Sans,
+tech_gradient -> Urbanist / Mukta, corporate_trust -> Manrope / DM Sans (3 new pairs, all bundled; the old pairs stay
+for existing sites and for her own design to map onto); no default marquee / glow motion or hero; "do" lines lose
+small-caps / letter-spaced / numbered labels, marquee strips and gradient glows; the section writer gets a CRAFT FLOOR
+block and loses `.eyebrow` and "at least two motion attributes per section"; the kit loses `k-eyebrow`; the footer's
+three `<h3>` are `<h2>` (the 404 page went h1 -> h3).
+
+**Tests:** `test_v0602_saaf_nazar.py` (11) - calibrated both ways (every rule fires on its planted fault; a well-made
+page gives zero findings), never blocks a built site, the brief wins, modes, round-0 fix mapping to section keys,
+builder defaults, the `mine` / `her_tokens` marks, attribution. Also healed: the console stamp count pin 22 -> 23
+(main had added a stamp and left them at 0.600.0).
+
+**NOT VERIFIED, said plainly:** no build with real Opus has run through the new prompt and the round-0 look fix yet, so
+how many tells real builds carry - and whether the fix round clears them - is unmeasured. The rendered-page rules
+Impeccable runs in a browser (contrast pairs, line length, text overflow, occlusion) are not ported; the existing
+contrast checks and journeys still run. Not built from the read: the design-word edit commands (bolder / quieter /
+polish...) and a scored page critique.
