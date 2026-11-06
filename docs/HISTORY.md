@@ -21707,3 +21707,18 @@ DB read that cannot finish point to a BLOCKED event loop or a full shared thread
   the shared pool's queue depth.
 - New prep stages: `step_setup` (the step loop before the call) and `request` (request built, `_call_brain` entry).
 - Tests: 2 more in `test_v0638_tez_taiyari.py` (the watchdog names a sync sleep on the loop by function name).
+
+## v0.641.0 PEHLE SE TAIYAAR — the first turn after a deploy no longer freezes the server
+
+v0.640's watchdog on her 17:25 call (minutes after a deploy): `event loop blocked 8.1s (pool queue 0)` and `brain prep
+12.8s ... step_setup 6.6s`. The first turn after any restart builds the native tool list (`toolsearch.build`), which runs
+`schema_ok` - a jsonschema Draft 2020-12 check - on all 606 tools, ON the event loop (2.1 s in the sandbox, ~6.6 s on her
+VPS). While it ran, everything on the server waited, her call's audio too. The check was cached per tool, so only the
+first turn after a restart paid - and she always tests right after a deploy.
+
+- `toolsearch.warm()`: all schema checks + the BM25 index in a daemon thread, started from `main.lifespan` at server
+  start; logs `tool schemas + search index ready in N s`.
+- `looplag`: the blocked-loop line now shows the 10 innermost frames on one line (the first one showed uvicorn's outer
+  frames only).
+- Test: `test_v0641_tool_schemas_warm_off_the_loop`. Remaining from her log: `yaad` (diary/fact recall) missed the 2.5 s
+  wait - it is left out of that ask, not waited for.

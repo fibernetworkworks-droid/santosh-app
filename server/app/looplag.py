@@ -49,14 +49,17 @@ def start(threshold: float = 1.0) -> bool:
                 return              # the loop is closed
             if not ev.wait(threshold):
                 frame = sys._current_frames().get(tid)
-                stack = "".join(traceback.format_stack(frame, limit=14)) if frame is not None else "?"
+                # v0.641 the INNERMOST frames, on one line (her first log showed only uvicorn's outer frames)
+                frames = traceback.extract_stack(frame)[-10:] if frame is not None else []
+                stack = " <- ".join(f"{fs.name} ({fs.filename.rsplit('/', 2)[-1]}:{fs.lineno})"
+                                    for fs in reversed(frames)) or "?"
                 ev.wait(60)
                 lag = time.monotonic() - t0
                 STATS["stalls"] += 1
                 STATS["worst_s"] = max(STATS["worst_s"], round(lag, 1))
                 if time.monotonic() - last > 10:
                     last = time.monotonic()
-                    log.warning("event loop blocked %.1fs (pool queue %d); it was running:\n%s",
+                    log.warning("event loop blocked %.1fs (pool queue %d); it was running: %s",
                                 lag, pool_queue(loop), stack)
             time.sleep(0.5)
 

@@ -59,6 +59,33 @@ def schema_ok(t: dict) -> bool:
     return ok
 
 
+WARM = {"done": False, "s": 0.0}
+
+
+def warm(sync: bool = False) -> bool:
+    """v0.641 PEHLE SE TAIYAAR: check every tool's schema (and build the search index) ONCE, off the event loop, when the
+    server starts. Her 17:25 call after a deploy: the first turn ran all 606 schema checks ON the loop inside `build`
+    (2.1 s in the sandbox, ~6.6 s on her VPS) and the whole server - her call's audio included - froze for 8.1 s."""
+    def run():
+        import time as _t
+        t0 = _t.monotonic()
+        try:
+            from .tools import TOOLS
+            for t in TOOLS:
+                schema_ok(t)
+            _index()
+        except Exception:
+            log.exception("tool warm-up failed")
+        WARM["done"], WARM["s"] = True, round(_t.monotonic() - t0, 1)
+        log.info("tool schemas + search index ready in %.1fs (%d checked)", WARM["s"], len(_SCHEMA_OK))
+    if sync:
+        run()
+        return True
+    import threading
+    threading.Thread(target=run, name="tool-warm", daemon=True).start()
+    return True
+
+
 def build(shown: list[dict]) -> list[dict]:
     """The turn's whole tool list: what is in view first (unchanged), then every other registered tool deferred."""
     from .tools import TOOLS

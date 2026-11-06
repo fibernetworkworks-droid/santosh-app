@@ -1810,3 +1810,10 @@ Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: her 16:52 log - prep 13 s, 2.5 s wait took 5.6 s: find what blocks the event loop.
 Work Log: looplag watchdog, own pool for call memory, 2 more prep stages; 2 tests; version 0.639.0+645.
 Stage Summary: pushed; next call's `event loop blocked` lines name the blocking code.
+
+---
+Task ID: v0.641.0 PEHLE SE TAIYAAR
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: the watchdog's 8.1 s loop block = 606 tool schema checks on the first turn after a deploy.
+Work Log: toolsearch.warm() at startup in a thread; watchdog innermost frames; 1 test; version 0.641.0+647.
+Stage Summary: pushed; the first call after a deploy should no longer freeze for seconds.

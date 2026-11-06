@@ -88,3 +88,12 @@ def test_v0639_brain_memory_has_its_own_pool():
     src = inspect.getsource(santosh._brain_memory)
     assert "_brain_pool()" in src and "to_thread" not in src.split("tasks =")[1].split("\n")[0]
     assert '_mark("request")' in inspect.getsource(santosh._call_brain)
+
+
+def test_v0641_tool_schemas_warm_off_the_loop():
+    from app.agent import toolsearch, tools
+    toolsearch._SCHEMA_OK.clear()
+    assert toolsearch.warm(sync=True) and toolsearch.WARM["done"]
+    assert len(toolsearch._SCHEMA_OK) >= len({t.get("name") for t in tools.TOOLS}) - 1
+    src = open("app/main.py").read()
+    assert "_ts_warm.warm()" in src
