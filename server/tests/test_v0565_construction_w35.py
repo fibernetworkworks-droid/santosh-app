@@ -233,7 +233,7 @@ def test_registry_580_and_schemas(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho",
               "const_survey", "const_survey_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 591, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
+    assert len(TOOLS) == 592, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 581 = 580 (their 0.569 base, incl. this lane's 10 Wave-3 tools) + 1 speckit v0.569 - Wave 3.5 grows ACTIONS, not tools"
     by_name = {t["name"]: t for t in TOOLS}
     for n in ("const_bim", "const_survey", "const_predesign"):
         assert by_name[n]["input_schema"]["properties"]["action"]["enum"], n
@@ -345,6 +345,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.610.0"
-    assert 'APP_VERSION = "0.610.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.610.0+616" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.611.0"
+    assert 'APP_VERSION = "0.611.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.611.0+617" in (REPO / "pubspec.yaml").read_text()
