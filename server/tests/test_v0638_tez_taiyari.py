@@ -53,3 +53,38 @@ def test_brain_turn_skips_hint_and_slow_mcp():
     assert "_brain_memory(" in inspect.getsource(santosh._run_turn)
     from app.config import Settings
     assert Settings.model_fields["voice_brain_memory_s"].default == 2.5
+
+
+def test_v0639_loop_watchdog_names_a_block():
+    import logging
+    from app import looplag
+
+    class H(logging.Handler):
+        def __init__(self):
+            super().__init__()
+            self.msgs = []
+
+        def emit(self, r):
+            self.msgs.append(r.getMessage())
+    h = H()
+    logging.getLogger("santosh.looplag").addHandler(h)
+
+    def blocking_sleep_on_the_loop():
+        time.sleep(1.6)
+
+    async def go():
+        looplag.STATS["started"] = False
+        assert looplag.start(threshold=0.5)
+        await asyncio.sleep(0.2)
+        blocking_sleep_on_the_loop()      # a sync call ON the loop = the shape her call showed
+        await asyncio.sleep(1.5)
+    asyncio.run(go())
+    logging.getLogger("santosh.looplag").removeHandler(h)
+    assert any("event loop blocked" in m and "blocking_sleep_on_the_loop" in m for m in h.msgs), h.msgs
+    assert looplag.STATS["stalls"] >= 1
+
+
+def test_v0639_brain_memory_has_its_own_pool():
+    src = inspect.getsource(santosh._brain_memory)
+    assert "_brain_pool()" in src and "to_thread" not in src.split("tasks =")[1].split("\n")[0]
+    assert '_mark("request")' in inspect.getsource(santosh._call_brain)

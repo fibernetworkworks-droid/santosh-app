@@ -533,6 +533,7 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     error: 'tool_use ids were found without tool_result blocks immediately after'), mid-array partial pairs
     are rebuilt and orphan results dropped, always on a COPY so no caller's history list is ever mutated
     behind its back (team sub-agents share their history list across steps)."""
+    _mark("request")      # v0.639 the step's request was built (prune / trim / sanitize)
     history = _api_ready(history)
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens
@@ -1074,6 +1075,17 @@ def _chat_tail(history: list[dict], keep: int = 8) -> str:
     return "\n".join(out)[-4000:]
 
 
+_BRAIN_POOL: dict = {}
+
+
+def _brain_pool():
+    import concurrent.futures as _cf
+    p = _BRAIN_POOL.get("p")
+    if p is None:
+        p = _BRAIN_POOL["p"] = _cf.ThreadPoolExecutor(max_workers=6, thread_name_prefix="call-brain")
+    return p
+
+
 async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
     """v0.638 the memory block of a call's brain turn: diary/facts (yaad), the real job state (kaamwatch) and the coder
     primer read IN PARALLEL, waiting at most `voice_brain_memory_s` in all. A part that is not ready in time is left out
@@ -1086,7 +1098,11 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
         ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
         ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or "")),
     ]
-    tasks = [asyncio.ensure_future(asyncio.to_thread(fn)) for _, fn in parts]
+    # v0.639 its OWN small pool: on her 16:52 call even the quick job-status read missed 2.5 s, queued behind the
+    # shared default pool (every to_thread in the server) - a call's reads never wait behind background work
+    loop = asyncio.get_running_loop()
+    import contextvars as _cvs
+    tasks = [asyncio.ensure_future(loop.run_in_executor(_brain_pool(), _cvs.copy_context().run, fn)) for _, fn in parts]
     wait_s = float(getattr(settings, "voice_brain_memory_s", 2.5) or 2.5)
     done, pending = await asyncio.wait(tasks, timeout=wait_s)
     out, late = [], []
@@ -1104,7 +1120,9 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
             t.add_done_callback(lambda f: f.exception() if not f.cancelled() else None)
     if late:
         STATS_PREP["memory_late"] = STATS_PREP.get("memory_late", 0) + 1
-        log.info("call brain memory: %s not ready in %.1fs, left out of this ask", ",".join(late), wait_s)
+        from .. import looplag
+        log.info("call brain memory: %s not ready in %.1fs, left out of this ask (shared pool queue %d)",
+                 ",".join(late), wait_s, looplag.pool_queue())
     return "\n\n".join(out)
 
 
@@ -1299,6 +1317,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
             # still streams on the Soch card)
             live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings)))
+        _mark("step_setup")
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         try:
             try:   # stays on the brain that worked; Rokiye cancels the model call itself, not just the next step
@@ -1872,6 +1891,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     if VOICE_BRAIN_NOW.get():
         _m0 = time.monotonic()
         _PREP.set({"t0": _m0, "last": _m0, "marks": []})
+        try:   # v0.639 PAKDO: name whatever blocks the event loop (logs only)
+            from .. import looplag
+            looplag.start()
+        except Exception:
+            pass
     _evlog.CURRENT.set({"turn_id": _turn_id, "actor": who})
     # v0.222 a background round of HER long job ("goal") is her own chat: never refused by the monthly background limit
     feature = ("call" if usage.current()[1] == "call" else "chat") if (who == "goal" or who.startswith(("owner", "approved:"))) else \

@@ -1786,3 +1786,10 @@ Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: her `brain prep 19.6s` line - cut memory 7.0 s / MCP 4.5 s / hint 1.8 s on call brain turns.
 Work Log: parallel memory under 2.5 s, MCP snapshot_fast, hint skipped; 3 tests; version 0.638.0+644.
 Stage Summary: pushed to main + feature branch; next call's `brain prep` line should read ~3-4 s.
+
+---
+Task ID: v0.639.0 PAKDO
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: her 16:52 log - prep 13 s, 2.5 s wait took 5.6 s: find what blocks the event loop.
+Work Log: looplag watchdog, own pool for call memory, 2 more prep stages; 2 tests; version 0.639.0+645.
+Stage Summary: pushed; next call's `event loop blocked` lines name the blocking code.

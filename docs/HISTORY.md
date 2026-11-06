@@ -21657,3 +21657,17 @@ prompt 0.8s`, then Haiku 5.9 s. Lock / compaction / history were 0.0 s (no busy 
   thread; the first call ask after a restart may have no MCP tools.
 - hint 1.8 s: `procedures.hint` skipped on a call brain turn.
 - Chat turns unchanged. Tests `test_v0638_tez_taiyari.py` (3). Expected prep: ~3-4 s (was 19.6 s). NOT VERIFIED on a call.
+
+## v0.639.0 PAKDO — catch what blocks the server during a call
+
+Her 16:52 call (v0.638 live): `brain answered in 17.3s` (first answer inside the wait), but `brain prep 13.0s` with
+memory 5.6 s although `_brain_memory` waits at most 2.5 s, all three parts (even the quick kaamwatch DB read) "not
+ready", and ~6 s between the last timed stage and the first model call. A sync wait that overruns its own timeout and a
+DB read that cannot finish point to a BLOCKED event loop or a full shared thread pool, not to the stages themselves.
+
+- `app/looplag.py`: a side thread pings the loop every 0.5 s; a ping not answered in 1 s logs `event loop blocked N s
+  (pool queue Q); it was running:` + the loop thread's stack (once per 10 s). Started by the first call brain turn.
+- `_brain_memory` runs on its own 6-thread pool (`_brain_pool`), not the shared default pool; its late line now prints
+  the shared pool's queue depth.
+- New prep stages: `step_setup` (the step loop before the call) and `request` (request built, `_call_brain` entry).
+- Tests: 2 more in `test_v0638_tez_taiyari.py` (the watchdog names a sync sleep on the loop by function name).
