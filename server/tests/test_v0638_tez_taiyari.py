@@ -97,3 +97,11 @@ def test_v0641_tool_schemas_warm_off_the_loop():
     assert len(toolsearch._SCHEMA_OK) >= len({t.get("name") for t in tools.TOOLS}) - 1
     src = open("app/main.py").read()
     assert "_ts_warm.warm()" in src
+
+
+def test_v0642_fact_extract_embeds_off_the_loop():
+    from app import yaad
+    src = inspect.getsource(yaad.extract_facts)
+    assert "await asyncio.to_thread(_near)" in src
+    body = src.split("def _near():")[0]
+    assert "semantic.rank(" not in body     # never called directly on the loop

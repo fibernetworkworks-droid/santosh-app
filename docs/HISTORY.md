@@ -21722,3 +21722,13 @@ first turn after a restart paid - and she always tests right after a deploy.
   frames only).
 - Test: `test_v0641_tool_schemas_warm_off_the_loop`. Remaining from her log: `yaad` (diary/fact recall) missed the 2.5 s
   wait - it is left out of that ask, not waited for.
+
+## v0.642.0 SAAF RAASTA — fact saving no longer freezes the server
+
+v0.641 on her 17:33 deploy: `tool schemas + search index ready in 6.8s` in the background (the 8.1 s freeze is gone).
+The watchdog then named the next one on her 17:34 call: `event loop blocked 4.7s ... onnx_embed <- _vecs (semantic.py:41)
+<- rank (semantic.py:63) <- extract_facts (yaad.py:743) <- job (yaad.py:1517)`. `yaad.after_turn` -> `extract_facts` is
+async but ran `_known` (DB) and `semantic.rank` (the on-box ONNX embedding model) directly on the event loop after a turn,
+freezing everything - her call's audio and the next call ask's prep (memory 5.2 s). Now both run in `asyncio.to_thread`.
+Test `test_v0642_fact_extract_embeds_off_the_loop`. Pre-existing red, unrelated, proven on the stashed tree:
+`test_v0375_khata_yaad.py::test_reminders`.

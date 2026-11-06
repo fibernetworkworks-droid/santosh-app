@@ -18,7 +18,7 @@ CONSOLE = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.641.0"
+    assert APP_VERSION == "0.642.0"
 
 
 def test_console_wiring():

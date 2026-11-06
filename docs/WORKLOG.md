@@ -1817,3 +1817,10 @@ Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: the watchdog's 8.1 s loop block = 606 tool schema checks on the first turn after a deploy.
 Work Log: toolsearch.warm() at startup in a thread; watchdog innermost frames; 1 test; version 0.641.0+647.
 Stage Summary: pushed; the first call after a deploy should no longer freeze for seconds.
+
+---
+Task ID: v0.642.0 SAAF RAASTA
+Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
+Task: watchdog: 4.7 s loop freeze in yaad.extract_facts embeddings.
+Work Log: _known + semantic.rank -> asyncio.to_thread; 1 test; version 0.642.0+648.
+Stage Summary: pushed; khata test_reminders red pre-existing (stash-proven).

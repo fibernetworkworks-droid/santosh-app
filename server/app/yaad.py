@@ -738,9 +738,14 @@ async def extract_facts(tenant: str, conversation_id: str, user_text: str, reply
     if time.time() - last < FACT_GAP_S:
         return []
     _LAST_EXTRACT[tenant] = time.time()
-    known = _known(tenant, conversation_id=conversation_id)   # v0.246 what THIS chat's Session already knows
     from . import semantic
-    near = [(i, t) for i, t, _ in semantic.rank(user_text, known, top=15, floor=0.2)] if known else []
+
+    def _near():
+        known = _known(tenant, conversation_id=conversation_id)   # v0.246 what THIS chat's Session already knows
+        return [(i, t) for i, t, _ in semantic.rank(user_text, known, top=15, floor=0.2)] if known else []
+    # v0.642 in a thread: the on-box embedding model ran ON the event loop here and froze the whole server 4.7 s on
+    # her 17:34 call (the watchdog named onnx_embed <- semantic.rank <- extract_facts) - her call's audio included
+    near = await asyncio.to_thread(_near)
     prompt = ("Already known (id: fact):\n" + "\n".join(f"- [{i}] {k}" for i, k in near[:15]) + "\n\n" if near else "") + \
         f"Owner said:\n{_clip(user_text, 1500)}\n\nHoola answered:\n{_clip(reply, 700)}"
     from .fence import prefs as _prefs
