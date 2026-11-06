@@ -405,6 +405,12 @@ TOOLS.extend(RETAILTRUST_TOOLS)
 TOOL_LABELS.update(RETAILTRUST_LABELS)
 HANDLERS.update(RETAILTRUST_HANDLERS)
 
+from .bimadesk_tools import BIMADESK_HANDLERS, BIMADESK_LABELS, BIMADESK_TOOLS  # noqa: E402  v0.609 Bima Desk (health-insurance Wave 1)
+
+TOOLS.extend(BIMADESK_TOOLS)
+TOOL_LABELS.update(BIMADESK_LABELS)
+HANDLERS.update(BIMADESK_HANDLERS)
+
 from .kaan_tools import KAAN_HANDLERS, KAAN_LABELS, KAAN_TOOLS  # noqa: E402  v0.589 KAAN PACK - WhisperAI Wave W0 (transcription core)
 
 TOOLS.extend(KAAN_TOOLS)

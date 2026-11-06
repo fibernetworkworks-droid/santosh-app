@@ -21070,3 +21070,17 @@ Tests `server/tests/test_v0605_ek_yaad.py` (10). The 12 reds in the wider sweep 
 v0473 routes / v0567 / v063) fail identically on the pre-change commit 51328175 - not this change. NOT VERIFIED: no
 live run; the real effect on answer quality (fewer facts pasted, more tool lookups) needs her chats on the VPS - the
 FRESH tool card and the long-chat memory quiz (`server/tools/memory_quiz.py`) are the checks. Server-only.
+
+## v0.609.0 BIMA DESK — health-insurance Wave 1 (customer side + admin)
+Owner: "GO NEXT WAVE"; register `docs/research/health_insurance_industry/` (Wave 1 = tier A, no regulated decision).
+`server/app/bimadesk/engines.py` (pure functions, no DB / file / network): claim_checklist (cashless or reimbursement, kind accident / maternity /
+daycare / pre_post / opd, missing documents, filing deadlines), payable (itemised worksheet: non-payable words, tariff cap, room-rent proportion
+cut, deductible, co-pay, sum-insured ceiling, gap to the settled amount + questions to ask), settlement_match (payments vs expected net of TDS,
+short / excess / not received, duplicate UTR), status_message (draft, never sent; a rejection is never a bare text), ageing (claims past a
+timeline she sets), renewals (reminder list + portability note), grievance (keyword category, ack / resolve due, human-now words), appeal
+(insurer reasons -> documents, steps, letter outline, one-year-from-reply date), kyc_check (format only, Aadhaar masked).
+ONE tool `bima_desk` (`agent/bimadesk_tools.py`, registry 590 -> 591, family bimadesk, voice via santosh_kaam; claim_checklist / payable / appeal
+open to a policyholder), hub group "Health Insurance" in `employee/hire.py` + console DEPT. Every answer names its decider and what it did not
+check. NOT BUILT: Wave 2 (assist with a named human: 11-13, 33, 34, 44, 45, 47, 65, 66, 73, 74, 92-94) and Wave 3 (fraud, pricing, underwriting AI).
+NOT VERIFIED: periods (intimation, filing, grievance, ombudsman limitation, portability) are from memory and marked verify; no real claim data has
+gone through it. Tests `test_bimadesk.py` (7).

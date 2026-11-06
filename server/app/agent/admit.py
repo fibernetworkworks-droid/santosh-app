@@ -247,6 +247,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                      "price rule", "scheme accrual", "retailer credit", "beat route", "cash conversion", "working capital", "delivery batch", "retail_growth"),
     "retailtrust": ("fraud rule", "return abuse", "dark pattern", "grievance clock", "fake review", "review authenticity", "seller kyc", "gstin check",
                     "legal metrology", "label check", "delivery promise audit", "override rate", "price fairness", "retail_trust"),
+    # v0.609 Bima Desk (health-insurance Wave 1). Tight keys.
+    "bimadesk": ("claim checklist", "insurance claim", "cashless claim", "reimbursement claim", "room rent", "proportionate deduction", "claim deduction",
+                 "claim rejected", "rejection appeal", "insurance ombudsman", "policy renewal reminder", "portability", "tpa", "settlement letter", "bima", "bima_desk"),
     # v0.495 office hours (the gstack THINK/PLAN lane): her big-idea words open a design doc first.
     # Tight keys only - "idea" / "plan" alone would load it on every second turn (kaam_plan is core already).
     "officehours": ("office hours", "officehours", "baithak", "design doc", "plan review", "naya idea",

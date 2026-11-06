@@ -38,6 +38,8 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
      desc: 'Money safety for people: a loan\'s real cost, hidden charges, scam warnings, complaint letters. It explains and calculates; it never moves money or asks for a PIN or OTP.'},
     {g: 'Retail & E-commerce', id: 'retail', name: 'Retail & E-commerce', art: 'biz',   // v0.604
      desc: 'A shop and online-seller copilot: sales, reorder, dead stock, margin and MRP checks, oversell and return risk, settlements. It prepares and checks; you set prices and place orders.'},
+    {g: 'Health Insurance', id: 'healthins', name: 'Health Insurance', art: 'biz',   // v0.609
+     desc: 'Claims and servicing help: documents needed, a payable worksheet, why a settlement was cut, appeal outlines, renewals and grievance clocks. It prepares; the insurer or TPA decides.'},
     {g: 'Film, Media & Entertainment', id: 'film', name: 'Film, Media & Entertainment', art: 'biz',   // v0.565
      desc: 'A producer\'s coworker: script facts, shot checks, schedule, budget from your rate card, festivals, windows, deliverables, royalties. Nothing is sent or paid without your tap.'},
     {g: 'Enterprise Systems & ERP', id: 'ent', name: 'Enterprise Systems & ERP', art: 'ent',     // v0.453
