@@ -78,7 +78,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   08:45 v0.627 ~21.9k text tokens a reply, $0.078; 09:10 + 09:20 v0.628 ~29.4k, $0.132 / $0.103; **09:27 v0.629 ~13.5k a
   reply, 4 replies, $0.054 = ~Rs 4.8 a call, ~Rs 1.2 a reply.** Remaining biggest part: the 60-tool menu (~9k tokens a reply).
   **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): markers present (APP_VERSION 0.629.0, voice_lean_tools True,
-  lean_mcp_block, PERSONA_LEAN, voice_tool_ack False, _usage_add, wakes_held_no_phone, reminder_wanted) and the voice + call suites re-run there (result line updated after the run).
+  lean_mcp_block, PERSONA_LEAN, voice_tool_ack False, _usage_add, wakes_held_no_phone, reminder_wanted) and **91 tests green, 0 failed** (16 voice + call + routines suites, run in the extracted commit).
   **NOT VERIFIED / LIVE CAVEATS:** her Google sign-in is still dead (invalid_grant every minute - Gmail / Drive / Calendar
   refuse until Profile > Google Drive > 'Google Drive jodiye'); per-minute cost of a long call is an estimate (Rs 2-4 / talk
   minute) until more calls are logged; no per-user daily talk limit yet.
