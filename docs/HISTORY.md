@@ -2,6 +2,95 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.543.0 LEADS SCRAPE — P3 of the leads plan: the scrape lane, opt-in OFF, and the rule-text amendment (6 Nov 2026)
+
+Owner: "P3 (the scrape lane, per-tenant opt-in OFF + the CLAUDE.md rule-text amendment riding
+that commit)". P3 of docs/LEADS_PLAN.md sections 4 L2, 5, 8 and 10. The Google Maps PUBLIC
+LISTING grid is BUILT — and the plan's non-negotiable is kept: the CLAUDE.md rule-text
+amendment rode this very commit.
+
+THE RULE TEXT AMENDMENT (the plan's section 0, word for word): CLAUDE.md's NON-NEGOTIABLE
+RULES no longer say "Official routes only: no scraping, no unofficial MCP,
+no consumer-subscription OAuth". They now say: communications and accounts stay
+official-routes-only (no personal WhatsApp automation, no consumer-subscription OAuth, no
+unofficial MCP for messaging), and a LEADS scrape lane for PUBLIC BUSINESS LISTING DATA is
+allowed BY THE OWNER'S EXPLICIT ASK of 5 Nov 2026, under walls NO session may move: opt-in
+per tenant and OFF by default, never behind a login wall, never consumer individuals
+(businesses only), robots.txt obeyed on every non-Google host, politeness caps refused
+before the run, provenance recorded for every row, the engine NEVER contacts anyone —
+outreach stays behind her tap on the campaign / email desks. Anything outside
+business-listing data (reviews text at scale, social-platform profiles, consumer lists)
+stays NOT BUILT. The same text lives in `rules.SCRAPE_RULE_TEXT`, and the free card READS
+CLAUDE.md to prove the amendment stands (`rule_text_amended` guard) — so a later session
+cannot quietly revert it.
+
+NEW `server/app/leads/gmaps_parse.py` (the port law: the gosom/omkarcloud IDEAS
+re-implemented by hand, zero upstream code):
+
+- `search_url()` — the /maps/search GET: query in the path, the cell's @lat,lng,zoom
+  viewport, hl/gl locale, and the pb page step `!7i20!8iNN` (20 listings a page; 6 pages a
+  cell = the known ~120 ceiling). The exact live pb shape is one of the plan's three named
+  unknowns; the builder is ONE function so her first live run can correct it in one line.
+- `places()` — the APP_INITIALIZATION_STATE walker (nested JSON strings decoded once per
+  level, depth-bounded). EVERY field's position is a NAMED CONSTANT with the sample that
+  proves it (IDX_TITLE 11, IDX_ADDRESS 2, IDX_COORDS 3, IDX_RATING 4, IDX_WEBSITE 7,
+  IDX_PLACE_ID 9, IDX_CID 10, IDX_CATEGORIES 14, IDX_PHONE 178, IDX_REVIEW_COUNT 269), and
+  a shape test gates every read — a Google layout change fails LOUD in tests and yields an
+  honest "this cell gave nothing" in production.
+- IDS BY SHAPE, not by position: kgmid (the 0x...:0x... feature id — omkarcloud's field
+  doc: place_id can null, kgmid never) is scanned among the entry's first 20 strings;
+  place_id is ChIJ-prefixed shape-checked; cid is a positive-int shape-check.
+- A string-and-escape-aware bracket scanner finds the init state (a `]` inside a listing
+  title cannot end the scan early); no marker = `GmapsParseError` (loud).
+- THE STORE BOUNDARY IS THE FIELD LIST: review TEXT, photos, popular times, owner PII are
+  never read — review text is planted in the fixture to prove it never reaches the store
+  (rules.STORE_BOUNDARY, plan section 8).
+
+NEW `server/app/leads/grid.py` — the zoom-grid ladder: ZOOMS 13–17, zoom 15 = 1 km cells
+(written, not derived); `bbox_cells()` = square cells over the sweep bbox, 400 max refused
+AT PLAN TIME with the count named; `choose_zoom()` = finer / coarser / stay from the
+MEASURED median yield per cell — never hope.
+
+NEW `server/app/leads/scrape.py` — the fetch boundaries (the reuse law): `_get` through the
+EXISTING stack (scrape_tools._guard_url SSRF gate + _fetch curl_cffi + proxy policy — no
+second fetch client, no browser), per-host politeness `GOOGLE_MIN_INTERVAL = 1s` with
+`MAX_CONCURRENCY = 2` named (one host in P3, so politeness paces), and robots.txt obeyed on
+every NON-Google host (the Google lane rides the owner's explicit ask; the amended rule
+text names the exception).
+
+`run_scrape` in service.py:
+
+- PER-TENANT OPT-IN, OFF BY DEFAULT: NEW `lead_scrape_optins` table; the flip is
+  `set_scrape_optin` — HER act, recorded with actor and the walls quoted into the row's
+  note. Until she flips, the plan card refuses with `rules.SCRAPE_OFF` and names the one
+  act that turns the lane on.
+- CAPS REFUSED AT PLAN TIME: per-run rows (RAW ask then clamp), per-day rows, the 400-cell
+  ceiling, 6 pages/cell, and an unknown zoom is refused with the ladder named.
+- A BLOCK PAGE / CAPTCHA WALL HARD-ABORTS the run with crawl.blocked's vendor name — Hoola
+  backs off and reports, it does NOT muscle through (rules.NEVER; v0.78's her-word CAPTCHA
+  rule is never extended to unattended runs). Two consecutive non-search cells abort with
+  "layout badla" instead of quietly harvesting nothing.
+- RESUME: every cell's status is checkpointed into the run's plan JSON after every cell —
+  `resume_run_id` continues the GRID (a DONE run's resume is a no-op with zero fetches; a
+  blocked/error cell retries clean once she says go again).
+- HONESTY: identity kgmid > cid > place_id > phone_e164 > name+address; provenance = the
+  exact search page + parser v0.543.0-gm1; the bill names http_requests + 0 rupees (+ the
+  ONE geocode when a place name had to be resolved, under mapsbill's own cap); the card
+  carries the measured yield ladder. Her-data rows are PINNED to HER_DATA — a mislabelled
+  source is worse than no source.
+
+Tools: `leads_run` gains action=scrape + action=scrape_optin (registry stays 562); admit's
+leads family gains the scrape finding words. API: POST /api/leads/runs/scrape +
+/scrape-optin (refusals are 400s). leadscard set v4: nine scrape guards + ask tool_scrape;
+lane_refused_by_name re-pointed to VENDOR. Config: leads_scrape_max_cells=400,
+leads_scrape_pages_per_cell=6. Tests: NEW test_v0543_leads_scrape.py (27, recorded-shape
+fixture, zero network — fetch/robots/politeness faked at the module boundaries).
+
+NOT VERIFIED, said plainly: the lane has answered a recorded fixture only — her FIRST LIVE
+SCRAPE RUN (on her word, opt-in on) confirms it, and the three named unknowns stay unknown
+until then: Google's live embedded-JSON layout (the pb paging shape included), block
+behaviour from her VPS IP, and real yield per grid cell per zoom.
+
 ## v0.542.0 LEADS ENRICH — P2 of the leads plan: the enrichment pass (6 Nov 2026)
 
 Owner: "P2 (enrich)". P2 of docs/LEADS_PLAN.md section 6 ("the omkarcloud flow, our own

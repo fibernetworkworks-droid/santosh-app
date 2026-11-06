@@ -27,6 +27,31 @@ LEADS_TOOLS = ("leads_run", "leads_status", "leads_list", "leads_export", "leads
 
 
 # ---------------------------------------------------------------- the guards (present in the code, fired for real)
+def _blocked_mod():
+    from ..crawl import blocked as _b
+    return _b
+
+
+def _claudemd_amended() -> bool:
+    """The plan's non-negotiable: the rule-text amendment rides the commit that builds the lane. The card reads
+    the repo's CLAUDE.md (both layouts: server/ subdir or flat) and demands the amended sentence present AND
+    the old blanket ban gone. The needles are wrap-tolerant (whitespace-collapsed) - editors re-wrap, the rule
+    text itself may not move."""
+    from pathlib import Path
+    here = Path(__file__).resolve()
+    for cand in (here.parents[3] / "CLAUDE.md", here.parents[2] / "CLAUDE.md"):
+        if cand.exists():
+            try:
+                flat = " ".join(cand.read_text(encoding="utf-8", errors="ignore").split())
+            except Exception:        # noqa: BLE001
+                return False
+            return ("A LEADS scrape lane for PUBLIC BUSINESS LISTING DATA is allowed BY THE OWNER'S EXPLICIT ASK"
+                    in flat
+                    and "opt-in per tenant and OFF by default" in flat
+                    and "Official routes only: no scraping, no unofficial MCP" not in flat)
+    return False
+
+
 def guards_in_code() -> dict[str, Any]:
     from .. import leadscap
     from ..agent import leads_tools
@@ -46,10 +71,12 @@ def guards_in_code() -> dict[str, Any]:
     except Exception as e:      # noqa: BLE001 - a card never dies on its own check
         log.info("leadscap check could not run: %s", e)
         out["cap_refuses"] = False
-    # 3. an unbuilt lane is refused BY NAME with its phase (no stub, no pretending)
-    p = S.plan("__leadscard__", "Nagpur contractors", ["SCRAPE"], "Nagpur")
-    out["lane_refused_by_name"] = (not p["ok"]) and "SCRAPE" in json.dumps(p.get("refused_lanes", [])) \
-        and "P3" in json.dumps(p.get("why", []), ensure_ascii=False)
+    # 3. an unbuilt lane is refused BY NAME with its phase (no stub, no pretending). v0.543.0: SCRAPE is BUILT
+    # now - the by-name refusal witness is VENDOR (P4); SCRAPE's refusal is the OPT-IN gate (a different, also
+    # honest refusal - the lane exists, her word is missing) and has its own guards below.
+    p = S.plan("__leadscard__", "Nagpur contractors", ["VENDOR"], "Nagpur")
+    out["lane_refused_by_name"] = (not p["ok"]) and "VENDOR" in json.dumps(p.get("refused_lanes", [])) \
+        and "P4" in json.dumps(p.get("why", []), ensure_ascii=False)
     # 3b. v0.541.0: the official lanes are REALLY wired (REGISTRY = IndiaMART MCP, OFFICIAL_API = the existing
     # maps tools) - and the service still holds no second Google client (only maps/indiamart imports, no httpx)
     out["official_lanes_built"] = (R.LANE_BUILT.get("REGISTRY") == "P1" and R.LANE_BUILT.get("OFFICIAL_API") == "P1"
@@ -73,6 +100,34 @@ def guards_in_code() -> dict[str, Any]:
     except Exception as e:      # noqa: BLE001 - a card never dies on its own check
         log.info("enrich guards could not run: %s", e)
         out["enrich_built"] = False
+    # 3d. v0.543.0: the P3 SCRAPE lane is REALLY wired - and the walls the amended rule names are in the code
+    try:
+        from ..leads import grid as _grid, gmaps_parse as _gp, scrape as _sc
+        gpsrc, scsrc, gsrc = inspect.getsource(_gp), inspect.getsource(_sc), inspect.getsource(_grid)
+        out["scrape_built"] = (R.LANE_BUILT.get("SCRAPE") == "P3" and hasattr(S, "run_scrape")
+                               and hasattr(S, "set_scrape_optin") and hasattr(_gp, "places")
+                               and hasattr(_grid, "bbox_cells") and hasattr(_grid, "choose_zoom"))
+        out["scrape_opt_in_default_off"] = (not S.scrape_opted_in("__leadscard__")
+                                            and hasattr(_sc, "GOOGLE_MIN_INTERVAL"))
+        out["scrape_optin_refused"] = True
+        p2 = S.plan("__leadscard__", "Nagpur contractors", ["SCRAPE"], "Nagpur")
+        out["scrape_optin_refused"] = (not p2["ok"]) and "OFF" in json.dumps(p2.get("why", []), ensure_ascii=False) \
+            and "opt-in" in json.dumps(p2.get("why", []), ensure_ascii=False).lower()
+        out["scrape_uses_existing_stack"] = ("scrape_tools" in scsrc and "_guard_url" in scsrc and "_fetch" in scsrc
+                                             and "httpx" not in scsrc and "requests.get" not in scsrc
+                                             and "aiohttp" not in scsrc and "playwright" not in scsrc.lower())
+        out["scrape_politeness"] = (_sc.GOOGLE_MIN_INTERVAL >= 1.0 and _sc.MAX_CONCURRENCY == 2
+                                    and "robots" in scsrc and "_polite" in scsrc)
+        out["scrape_faces_public_site"] = ("maps/search" in gpsrc and
+                                           "googleapis" not in gpsrc + scsrc + gsrc)   # public website, never the API
+        out["scrape_abort_on_block"] = ("why_blocked" in src and "ABORTED" in src
+                                        and "blocked" in inspect.getsource(_blocked_mod()))
+        out["scrape_store_boundary"] = ("IDX_REVIEW_COUNT" in gpsrc and "review text" in gpsrc.lower()
+                                        and "STORE_BOUNDARY" in gpsrc)   # the parser's own wall, in its source
+        out["rule_text_amended"] = _claudemd_amended()
+    except Exception as e:      # noqa: BLE001 - a card never dies on its own check
+        log.info("scrape guards could not run: %s", e)
+        out["scrape_built"] = False
     # 4. the campaign hand-off pre-fills consent False and writes the ledger; the engine itself never sends
     out["consent_false_handoff"] = "opted_in=False" in src.replace(" ", "") or "opted_in=False" in src
     out["engine_never_sends"] = ("httpx" not in src and "requests.post" not in src and "smtplib" not in src

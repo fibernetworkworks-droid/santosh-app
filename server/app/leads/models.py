@@ -98,6 +98,19 @@ class LeadCapDay(Base):
     runs_started: Mapped[int] = mapped_column(Integer, default=0)
 
 
+class LeadScrapeOptIn(Base):
+    """v0.543.0 P3: the SCRAPE lane's per-tenant opt-in - OFF by default, ON only by the owner's explicit act
+    (the amended CLAUDE.md rule: 'opt-in per tenant and OFF by default, ... which no session may move'). One
+    row per tenant; the flip records WHO flipped and WHEN, because a lane this loud must be able to say who
+    turned it on. It is NOT personal data - it is the lane's permission slip, so leads_forget never deletes it."""
+    __tablename__ = "lead_scrape_optins"
+    tenant_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    on: Mapped[bool] = mapped_column(Boolean, default=False)
+    actor: Mapped[str] = mapped_column(String(64), default="")     # who flipped it (owner tap only)
+    note: Mapped[str] = mapped_column(Text, default="")            # the walls quoted at flip time
+    at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class LeadListRef(Base):
     """A lead_contacts row handed to the campaign desk as a Lead row: the join the export and the opt-out ledger
     both read (a campaign list is a COPY; this is the thread back to the source row)."""
@@ -122,6 +135,6 @@ def ensure_tables() -> None:
     from .. import db as _db
     eng = getattr(_db, "_engine", None)
     if eng is not None:
-        for t in (LeadRun, LeadContact, LeadOutreach, LeadCapDay, LeadListRef):
+        for t in (LeadRun, LeadContact, LeadOutreach, LeadCapDay, LeadScrapeOptIn, LeadListRef):
             t.__table__.create(eng, checkfirst=True)
     _ready = True

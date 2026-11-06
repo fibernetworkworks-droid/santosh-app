@@ -1,9 +1,10 @@
-"""Leads Sahayak tools (v0.540.0 NEEV, v0.541.0 OFFICIAL LANES, v0.542.0 ENRICHMENT). `leads_run` works her
-data (P0), the IndiaMART MCP sellers lane (P1 REGISTRY) and the Places lane through the EXISTING maps tools (P1
-OFFICIAL_API); `leads_enrich` is the P2 pass over kept rows' OWN websites (emails + socials, DNS->MX grading,
-one billed model pick per row). Every tool answers with a CARD that names the caps, the lanes and the
-provenance; the engine never contacts anyone - outreach is her tap on the campaign / email desks, and the
-campaign hand-off pre-fills consent False."""
+"""Leads Sahayak tools (v0.540.0 NEEV, v0.541.0 OFFICIAL LANES, v0.542.0 ENRICHMENT, v0.543.0 SCRAPE LANE).
+`leads_run` works her data (P0), the IndiaMART MCP sellers lane (P1 REGISTRY), the Places lane through the
+EXISTING maps tools (P1 OFFICIAL_API), and - only when SHE has flipped the per-tenant opt-in that is OFF by
+default - the Google Maps PUBLIC LISTING scrape grid (P3 SCRAPE; the CLAUDE.md rule text was amended in the
+same commit that built it). `leads_enrich` is the P2 pass over kept rows' OWN websites. Every tool answers
+with a CARD that names the caps, the lanes and the provenance; the engine never contacts anyone - outreach is
+her tap on the campaign / email desks, and the campaign hand-off pre-fills consent False."""
 from __future__ import annotations
 
 import asyncio
@@ -13,7 +14,7 @@ from .tools import Ctx, ToolError
 
 LEADS_TOOLS = [
     {"name": "leads_run", "description": (
-        "Leads ka run chalao (Leads Sahayak). Teen actions:\n"
+        "Leads ka run chalao (Leads Sahayak). Paanch actions:\n"
         "- action=her_data: uski apni rows (CSV/Excel/purani campaign list) store mein - har row ke saath source, "
         "dedupe, E.164 phone.\n"
         "- action=indiamart: IndiaMART ke SELLERS (official IndiaMART MCP server, muft) - search_term (jaise "
@@ -23,11 +24,19 @@ LEADS_TOOLS = [
         "hardware_store), near (jaise 'Pune'), sweep_km (default 5, 20-ka-Nearby-ceiling tiles se toota), "
         "details (default false - phone/website mehenge hain, sirf details_max jagahon ke liye kharide jaate "
         "hain, mapsbill cap ke neeche), max_rows. Har row ke saath Google Maps link (source).\n"
+        "- action=scrape: Google Maps PUBLIC LISTING grid (P3, SCRAPE lane) - query (jaise 'dentists'), near YA "
+        "center {lat,lng}, sweep_km (default 3), zoom (ladder 13-17, default 15 = 1 km cells), max_rows. "
+        "Per-tenant opt-in OFF hai - pehli baar pehle REFUSE hoga aur bolega ki aapki haan se on karna hai "
+        "(action=scrape_optin on=true). Opt-in ho to: politeness 1 req/s, max 400 cells (plan-time cap), 20 "
+        "listings/page, block page par run ruk jaata hai, har row FACTS only (review text/photos kabhi nahi), "
+        "source = jis search page se read hua, resume_run_id se grid wahin se continue hota hai.\n"
+        "- action=scrape_optin: SCRAPE lane ka per-tenant switch - on=true par walls quote hoti hain (CLAUDE.md "
+        "ka amended rule), off=false par lane phir band. Yeh aapka apna act hai - engine khud kabhi nahi karega.\n"
         "Plan PEHLE banta hai (caps: per-run rows, per-day 20,000) - cap paar hua to refuse, cap ka naam batate "
-        "hue. SCRAPE / VENDOR lanes abhi built nahi - naam se refuse, phase (P3/P4) batate hue. Yeh engine kabhi "
-        "khud kisi ko message NAHI bhejta - outreach sirf aapke tap par, campaign desk se."),
+        "hue. VENDOR lane abhi built nahi - naam se refuse, phase (P4) batate hue. Yeh engine kabhi khud kisi ko "
+        "message NAHI bhejta - outreach sirf aapke tap par, campaign desk se."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["her_data", "indiamart", "places"]},
+         "action": {"type": "string", "enum": ["her_data", "indiamart", "places", "scrape", "scrape_optin"]},
          "ask": {"type": "string"}, "place": {"type": "string"},
          "rows": {"type": "array", "items": {"type": "object"}}, "source_name": {"type": "string"},
          "lane": {"type": "string"},
@@ -35,6 +44,8 @@ LEADS_TOOLS = [
          "cities": {"type": "array", "items": {"type": "string"}}, "biztype": {"type": "string"},
          "kinds": {"type": "array", "items": {"type": "string"}}, "near": {"type": "string"},
          "sweep_km": {"type": "number"}, "cell_km": {"type": "number"}, "details": {"type": "boolean"},
+         "query": {"type": "string"}, "center": {"type": "object"}, "zoom": {"type": "integer"},
+         "resume_run_id": {"type": "string"}, "on": {"type": "boolean"},
          "max_rows": {"type": "integer"}}, "required": ["action", "ask"]}},
     {"name": "leads_status", "description": (
         "Ek leads run ya poore store ka haal (kuch nahi badalta). run_id do to uska card: status, found/kept/"
@@ -127,12 +138,20 @@ async def leads_run(ctx: Ctx, action, **a: Any):
                                       float(a.get("sweep_km") or 5.0), float(a.get("cell_km") or 2.0),
                                       bool(a.get("details")), _s(a.get("place")),
                                       int(a.get("max_rows") or 1000))
+        if action == "scrape":
+            center = a.get("center") if isinstance(a.get("center"), dict) else None
+            return await S.run_scrape(t, _s(a.get("ask")), _s(a.get("query") or _s(a.get("search_term"))),
+                                      _s(a.get("near")), center, float(a.get("sweep_km") or 3.0),
+                                      int(a.get("zoom") or 15), int(a.get("max_rows") or 1000),
+                                      _s(a.get("place")), _s(a.get("resume_run_id")))
+        if action == "scrape_optin":
+            return await asyncio.to_thread(S.set_scrape_optin, t, bool(a.get("on")), _actor(ctx))
         if action == "plan":
             return await asyncio.to_thread(S.plan, t, _s(a.get("ask")), [str(a.get("lane") or "HER_DATA")],
                                            _s(a.get("place")), int(a.get("planned_rows") or 0))
     except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat (her_data | indiamart | places | plan)")
+    raise ToolError("action galat (her_data | indiamart | places | scrape | scrape_optin | plan)")
 
 
 async def leads_status(ctx: Ctx, **a: Any):

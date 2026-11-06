@@ -762,8 +762,8 @@ def test_no_config_reads_in_graph_module():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.542.0"
-    assert "0.542.0+565" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.543.0"
+    assert "0.543.0+566" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.541.0"')
+    assert line.startswith('APP_VERSION = "0.543.0"')   # healed in v0.543: the P2 sweep missed this pin (red on pristine v0.542)
     assert "HOOLA GRAPH" in line and "StateGraph" in line and "interrupt" in line

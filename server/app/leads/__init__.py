@@ -3,8 +3,10 @@ docs/LEADS_PLAN.md, then "P0 BUILD").
 
 THE RULE BOUNDARY, SAID OUT LOUD FIRST. CLAUDE.md's NON-NEGOTIABLE RULES said "Official routes only: no scraping".
 On 5 Nov 2026 the owner explicitly asked for a lead generation engine with a scraper in the backend - that ask IS the
-owner decision the rules require, and the walls below are the scoped amendment the plan proposes (they get written
-into CLAUDE.md in the P3 commit that adds the scrape lane itself). Until then THIS package is the boundary:
+owner decision the rules require. The scoped amendment the plan proposed IS NOW THE RULE TEXT: it was written into
+CLAUDE.md's NON-NEGOTIABLE RULES in the v0.543.0 commit that built the scrape lane itself (the plan's
+non-negotiable: the amendment rides the lane's own commit). The walls, restated here so the package stays the
+boundary even if a later session loses the plot:
 
 - THE ENGINE GATHERS; IT NEVER CONTACTS ANYONE. No message, no email, no call leaves this code. Outreach stays
   behind her tap on the campaign / email desks (LeadOutreach below is the ledger of taps, never an act).
@@ -13,9 +15,17 @@ into CLAUDE.md in the P3 commit that adds the scrape lane itself). Until then TH
   maps.nearby for the list, maps.place_details bought per place under the mapsbill cap, NO second Google client).
   v0.542.0 P2 adds ENRICHMENT - a bounded crawl-brain pass over each kept row's OWN website (emails, socials by
   hostname, DNS->MX grading pakka/sadak_tak/galat, ONE billed model pick per row; NO SMTP probe), through the
-  EXISTING scrape stack (SSRF guard, robots gate, 1 req/s per site). The scrape lane comes in P3 behind a
-  per-tenant opt-in that is OFF by default, the vendor lane in P4. A lane
-  that is not built yet is REFUSED by name ("P3 mein aayega") - no stub, no pretending.
+  EXISTING scrape stack (SSRF guard, robots gate, 1 req/s per site).
+- v0.543.0 P3 adds THE SCRAPE LANE - the Google Maps PUBLIC LISTING grid (app/leads/gmaps_parse.py + grid.py +
+  scrape.py, run_scrape in service.py), behind a PER-TENANT OPT-IN THAT IS OFF BY DEFAULT (lead_scrape_optins;
+  the flip is HER act and is recorded with the walls quoted - rules.SCRAPE_WALLS). The CLAUDE.md rule text was
+  AMENDED IN THE SAME COMMIT that built this lane (the plan's non-negotiable): "Official routes only: no
+  scraping" became the scoped rule - communications and accounts stay official-routes-only; a LEADS scrape lane
+  for PUBLIC BUSINESS LISTING DATA is allowed BY THE OWNER'S EXPLICIT ASK of 5 Nov 2026 under walls no session
+  may move (opt-in per tenant and OFF by default, never login-walled, never consumer individuals, robots.txt
+  obeyed on every non-Google host, politeness caps refused before the run, provenance on every row, the engine
+  NEVER contacts anyone; anything outside business-listing data stays NOT BUILT). The vendor lane comes in P4.
+  A lane that is not built yet is REFUSED by name ("P4 mein aayega") - no stub, no pretending.
 - EVERY ROW CARRIES ITS PROVENANCE or it is not stored: source_lane + source_url + fetched_at. An export that
   finds a row without provenance REFUSES rather than ships an unexplained row (verify gate).
 - BUSINESS FACTS ONLY. No review text at scale, no photos, no popular times, no consumer individuals
@@ -25,8 +35,12 @@ into CLAUDE.md in the P3 commit that adds the scrape lane itself). Until then TH
   (platform ToS + real person-data), consumer B2C individuals from scraping, SMTP RCPT deliverability probing
   (spam infrastructure), bulk CAPTCHA solving / anti-bot muscle, residential-proxy minting, auto-outreach,
   review-text / photo / popular-times hoarding, a second Google API client (Places lanes go through the existing
-  maps tools only), BULK sales-summary generation (the plan allows a per-row, on-demand, billed summary on her
-  tap - a tool for it is NOT built yet; thousands of one-liners would hallucinate quietly).
+  maps tools only; the scrape lane is the ONE new Google-facing code and it faces the PUBLIC website, never the
+  API - the leadscard's scrape_faces_public_site guard proves it), non-Google public directories
+  (JustDial/TradeIndia-style: named in the plan's L2 but NOT built in P3 - a directory ask is refused with that
+  reason; they arrive later, behind robots.txt), BULK sales-summary generation (the plan allows a per-row,
+  on-demand, billed summary on her tap - a tool for it is NOT built yet; thousands of one-liners would
+  hallucinate quietly).
 """
 from __future__ import annotations
 

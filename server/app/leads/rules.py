@@ -9,10 +9,31 @@ LANES = ("HER_DATA", "REGISTRY", "OFFICIAL_API", "SCRAPE", "VENDOR")
 
 # v0.540.0 P0: L0 only. v0.541.0 P1 adds REGISTRY (IndiaMART's own MCP server, the app/indiamart.py lane) and
 # OFFICIAL_API (Places through the EXISTING maps tools - maps.nearby for the list, maps.place_details bought per
-# place under the mapsbill cap, NO second Google client). P2 enrichment, P3 SCRAPE (owner opt-in, OFF by default),
-# P4 VENDOR. The phase names are the plan's, so a refusal can say exactly when it arrives.
-LANE_BUILT: dict[str, str] = {"HER_DATA": "P0", "REGISTRY": "P1", "OFFICIAL_API": "P1"}
-LANE_ARRIVES = {"SCRAPE": "P3 (uski haan chahiye, per-tenant opt-in, OFF)", "VENDOR": "P4"}
+# place under the mapsbill cap, NO second Google client). v0.542.0 P2 adds ENRICHMENT (not a source lane - the
+# pass over kept rows' own websites). v0.543.0 P3 adds SCRAPE - the Google Maps PUBLIC LISTING lane behind the
+# per-tenant opt-in that is OFF by default (rules.SCRAPE_OFF / SCRAPE_WALLS; the CLAUDE.md rule text was amended
+# in the same commit that built this lane). P4 VENDOR. The phase names are the plan's, so a refusal can say
+# exactly when it arrives.
+LANE_BUILT: dict[str, str] = {"HER_DATA": "P0", "REGISTRY": "P1", "OFFICIAL_API": "P1", "SCRAPE": "P3"}
+LANE_ARRIVES = {"VENDOR": "P4"}
+
+# the amended rule, said where a later session would look for it (CLAUDE.md NON-NEGOTIABLE RULES carries the
+# same text since the v0.543.0 commit - the amendment the plan proposed, word for word)
+SCRAPE_RULE_TEXT = (
+    "Communications and accounts stay official-routes-only (no personal WhatsApp automation, no "
+    "consumer-subscription OAuth, no unofficial MCP for messaging). A LEADS scrape lane for PUBLIC BUSINESS "
+    "LISTING DATA is allowed BY THE OWNER'S EXPLICIT ASK of 5 Nov 2026, under these walls, which no session may "
+    "move: opt-in per tenant and OFF by default, never behind a login wall, never consumer individuals "
+    "(businesses only), robots.txt obeyed on every non-Google host, politeness caps refused before the run, "
+    "provenance recorded for every row, the engine NEVER contacts anyone - outreach stays behind her tap on the "
+    "campaign / email desks. Anything outside business-listing data (reviews text at scale, social-platform "
+    "profiles, consumer lists) stays NOT BUILT.")
+
+# the refusal when the lane is asked for while the tenant's opt-in is OFF (the default state - which no session
+# may flip silently; the flip is HER act, recorded in lead_scrape_optins with the walls quoted)
+SCRAPE_OFF = ("SCRAPE lane aapke tenant ke liye OFF hai - per-tenant opt-in, default band. CLAUDE.md ka amended "
+              "rule: 'opt-in per tenant and OFF by default'. Aapki haan se on hota hai: leads_run "
+              "action=scrape_optin on=true (ya POST /api/leads/scrape-optin).")
 
 STATUSES = ("PLANNED", "RUNNING", "PAUSED", "DONE", "REFUSED", "ABORTED")
 
@@ -45,6 +66,18 @@ NEVER = (
     "Social-platform scraping (LinkedIn waghera), review-text hoarding, photos, popular times: NOT BUILT.",
     "Koi bulk CAPTCHA solver, koi residential-proxy minting, koi SMTP probe: NOT BUILT (block hua to run ruk "
     "jaata hai aur batata hai - Hoola muscle nahi karta).",
+)
+
+# the walls quoted at flip time (the note column of lead_scrape_optins keeps them, so the permission slip
+# always carries what it permits). P3 runs the Google Maps PUBLIC listings lane only - non-Google directories
+# (JustDial/TradeIndia-style) stay unbuilt behind robots.txt until a later phase names them.
+SCRAPE_WALLS = (
+    SCRAPE_RULE_TEXT,
+    "P3 Google Maps PUBLIC listings only - JustDial/TradeIndia-style directories aur koi bhi doosra host abhi "
+    "built nahi (aage, robots.txt ke neeche).",
+    " ".join(STORE_BOUNDARY),            # STORE_BOUNDARY is a 1-tuple (the card joins it the same way)
+    NEVER[0],
+    NEVER[5],
 )
 
 # where the cap module lives (leadscap mirrors mapsbill: refuse BEFORE the spend, never after)

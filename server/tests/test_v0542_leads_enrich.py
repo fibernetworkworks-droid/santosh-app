@@ -1,4 +1,4 @@
-"""v0.542.0 P2 ENRICHMENT - the pass over kept rows' OWN websites, tests against RECORDED site fixtures with
+"""v0.543.0 P2 ENRICHMENT - the pass over kept rows' OWN websites, tests against RECORDED site fixtures with
 ZERO network: the fetch / robots / DNS / MX / model boundaries are faked at module level (enrich._get,
 enrich._robots_ok, enrich._resolve_dns, enrich._resolve_mx, llm.cheap_brain/openai_create) while the extraction,
 the grading ladder, the rank, the cap refusal, the store writes, the run card and the card guards run FOR REAL."""
@@ -342,7 +342,7 @@ def test_card_guards_carry_the_enrich_walls(env):
     for k in ("enrich_built", "enrich_uses_existing_stack", "no_smtp_probe", "email_grade_vocab",
               "enrich_cap_named", "cap_refuses"):
         assert g[k] is True, f"guard {k} = {g[k]}"
-    assert card["set"] == 3 and card["guards_ok"] == len(g)
+    assert card["set"] == 4 and card["guards_ok"] == len(g)   # v0.543.0: set v4 - the scrape walls joined
 
 
 def test_no_smtp_probe_in_the_source():

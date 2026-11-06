@@ -283,7 +283,7 @@ def test_places_re_run_is_a_no_op(env, monkeypatch):
 
 # ================================================================ the enrich tool + the API surface
 def test_leads_enrich_is_real_in_p2():
-    # v0.542.0: the P2 skeleton became the real pass - the tool no longer refuses, it enriches (its tests live
+    # v0.543.0: the P2 skeleton became the real pass - the tool no longer refuses, it enriches (its tests live
     # in test_v0542_leads_enrich.py); here we only prove the handler is wired to the service, not to a stub.
     from app.agent.leads_tools import LEADS_HANDLERS
     from app.leads import service as Svc

@@ -568,7 +568,8 @@ PRESETS: dict[str, dict] = {
                    "rules": ["Engine kabhi kisi ko message / email / call nahi bhejta - outreach sirf owner ke tap par.",
                              "Har leads row ke saath uska source (lane + URL) - bina source ki row export nahi hoti.",
                              "Cap plan-time par refuse karta hai; cap badalna owner ki haan se.",
-                             "Scrape lane owner ki khaas haan ke bina OFF rehta hai (P3)."]},
+                             "Scrape lane (P3, Google Maps public listings) per-tenant opt-in OFF by default hai - "
+                             "owner ki khaas haan se on hota hai (walls: rules.SCRAPE_WALLS, CLAUDE.md amended rule)."]},
     "audit_firm": {"label": "CA / audit firm", "role": "audit_assistant", "kind": "ca", "slot_minutes": 30, "after_hours": "note",
                    "about_hint": "Kaun se audit (statutory, tax, internal, stock), kitne client, partner kaun, client se kaagaz kaise aate hain",
                    "rules": ["Audit report / raay sirf partner sign karega.", "UDIN aur form filing Hoola nahi karega.",

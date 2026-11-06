@@ -708,6 +708,12 @@ class Settings(BaseSettings):
     # robots obeyed) and makes at most ONE cheap-model call per row - more eligible rows than this cap and the
     # pass REFUSES at plan time with the number named, never truncates quietly (the leads cap law)
     leads_enrich_rows_per_run: int = 100
+    # v0.543.0 SCRAPE LANE: the Google Maps public-listing grid's plan-time ceilings - the cell count and the
+    # pages walked per cell (6 x 20 = 120 listings/cell, the known ~120 search ceiling). The lane itself is
+    # per-tenant opt-in OFF (lead_scrape_optins), the politeness cap is 1 req/s per host (leads/scrape.py),
+    # and a block page aborts the run - all refused/recorded, never muscled through (docs/LEADS_PLAN.md section 5)
+    leads_scrape_max_cells: int = 400
+    leads_scrape_pages_per_cell: int = 6
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
     wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech

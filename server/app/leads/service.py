@@ -33,6 +33,7 @@ PARSER_VERSION = "v0.540.0-her1"        # the L0 her-data reader; every row name
 PARSER_INDIAMART = "v0.541.0-im1"       # the REGISTRY lane: IndiaMART's own MCP server via app/indiamart.py
 PARSER_PLACES = "v0.541.0-pl1"          # the OFFICIAL_API lane: the existing maps tools (nearby + details on tap)
 PARSER_ENRICH = "v0.542.0-en1"          # the P2 enrich pass reads the business's OWN website (enrich.py)
+PARSER_SCRAPE = "v0.543.0-gm1"          # the P3 SCRAPE lane: the Google Maps PUBLIC listing parser (gmaps_parse)
 
 # mapsbill.MapsCapped arrives here re-raised as maps.MapsError (maps._bill's own law: "a cap hit becomes a
 # MapsError"), with this stable text inside - so the cap and an ordinary MapsError are told apart by MARK,
@@ -75,7 +76,9 @@ def identity_key(row: dict) -> tuple[str, str]:
 # ---------------------------------------------------------------- the plan card (PLAN PEHLE)
 def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "", planned_rows: int = 0) -> dict:
     """The card BEFORE anything runs: lanes (refused by name if unbuilt), the caps, the one question if her ask
-    is vague. Returns {"ok": bool, ...}; a refusal card never raises - the caller shows it and stops."""
+    is vague. Returns {"ok": bool, ...}; a refusal card never raises - the caller shows it and stops.
+    v0.543.0: a SCRAPE lane ask first meets the per-tenant opt-in gate (OFF by default - the amended rule;
+    no session may move it) - the refusal names the opt-in and the one act that turns it on."""
     lanes = [l.upper() for l in (lanes or ["HER_DATA"])]
     unknown = [l for l in lanes if l not in R.LANES]
     unbuilt = [l for l in lanes if l not in R.LANE_BUILT]
@@ -93,6 +96,14 @@ def plan(tenant: str, ask: str, lanes: list[str] | None = None, place: str = "",
             if not str(place or "").strip():
                 card["need"] = R.ONE_QUESTION            # the refusal carries the one question too
             return card
+    if "SCRAPE" in lanes and not scrape_opted_in(tenant):
+        card["ok"] = False
+        card["refused_lanes"] = ["SCRAPE"]
+        card["why"] = [R.SCRAPE_OFF]
+        card["lanes"] = [l for l in lanes if l != "SCRAPE"] or []
+        card["opt_in"] = {"on": False, "default": "OFF",
+                          "how": "leads_run action=scrape_optin on=true (ya POST /api/leads/scrape-optin)"}
+        return card
     if not str(ask or "").strip() or (not str(place or "").strip() and any(l != "HER_DATA" for l in card["lanes"])):
         card["ok"] = False
         card["need"] = R.ONE_QUESTION
@@ -133,10 +144,15 @@ def run_her_data(tenant: str, ask: str, rows: list[dict], source_name: str, plac
                  lanes: list[str] | None = None, actor: str = "owner") -> dict:
     """L0: her own data into the store, one row per business, provenance = the file/list's name. PLAN PEHLE: the
     caps are checked before the first row is written; a cap refusal is a REFUSED run card, an UNBUILT lane or a
-    vague ask raises (nothing to run at all)."""
+    vague ask raises (nothing to run at all). v0.543.0: the lane is pinned to HER_DATA by name - her file's rows
+    are never allowed to ride another lane's provenance (a mislabelled source is worse than no source)."""
     ensure_tables()
-    p = plan(tenant, ask, lanes or ["HER_DATA"], place, planned_rows=len(rows or []))
-    run = _new_run(tenant, ask, place, lanes or ["HER_DATA"], p)
+    lanes = [str(l).upper() for l in (lanes or ["HER_DATA"])]
+    if any(l != "HER_DATA" for l in lanes):
+        raise LeadsError("Her data hamesha HER_DATA lane se jaata hai - doosri lane ki provenance uski file par "
+                         "nahi likhi jaati (galat source bina source se bura hai).")
+    p = plan(tenant, ask, lanes, place, planned_rows=len(rows or []))
+    run = _new_run(tenant, ask, place, lanes, p)
     if not p["ok"]:
         why = "; ".join(p.get("why") or [])
         if why or p.get("need"):
@@ -602,10 +618,309 @@ async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q
         return {"ok": False, "run": run_card(run.id), "error": str(e)}
 
 
-def _new_run(tenant: str, ask: str, place: str, lanes: list[str], plan_card: dict) -> LeadRun:
+# ---------------------------------------------------------------- the SCRAPE opt-in (P3, the permission slip)
+def scrape_opted_in(tenant: str) -> bool:
+    """The lane's permission state for a tenant - OFF unless SHE flipped it (the amended rule: 'opt-in per
+    tenant and OFF by default ... which no session may move'). Reads lead_scrape_optins; no row = OFF."""
+    ensure_tables()
+    from .models import LeadScrapeOptIn
+    with _s() as s:
+        row = s.get(LeadScrapeOptIn, tenant)
+        return bool(row.on) if row is not None else False
+
+
+def set_scrape_optin(tenant: str, on: bool, actor: str = "owner") -> dict:
+    """HER act, recorded: the flip lands in lead_scrape_optins with the actor and the walls quoted (the
+    permission slip always carries what it permits). Turning OFF is the same kind of act - the lane refuses
+    again from that moment; nothing in the store is deleted (rows keep their provenance)."""
+    ensure_tables()
+    from .models import LeadScrapeOptIn
+    walls = " | ".join(R.SCRAPE_WALLS)
+    with _s() as s:
+        row = s.get(LeadScrapeOptIn, tenant)
+        if row is None:
+            row = LeadScrapeOptIn(tenant_id=tenant)
+            s.add(row)
+            s.flush()
+        row.on = bool(on)
+        row.actor = str(actor or "owner")[:64]
+        row.note = walls[:2000]
+        row.at = datetime.now(timezone.utc)
+    return {"ok": True, "tenant": tenant, "scrape_optin": bool(on), "actor": str(actor or "owner"),
+            "walls": R.SCRAPE_WALLS,
+            "note": "on karne par bhi walls wahin rahengi - Google Maps public listings, politeness 1 req/s, "
+                    "provenance har row ka, engine kabhi khud kuch nahi bhejta"}
+
+
+# ---------------------------------------------------------------- the SCRAPE lane (P3, the owner's explicit ask)
+def _checkpoint_scrape(run: LeadRun, plan_dict: dict) -> None:
+    """The resume checkpoint: the plan JSON (cells WITH their statuses) written back after every cell - a
+    crashed run continues the GRID, not just the file (plan 5.5; the research/store.py pattern)."""
+    with _s() as s:
+        r = s.get(LeadRun, run.id)
+        if r:
+            r.plan = json.dumps(plan_dict, ensure_ascii=False, default=str)[:400_000]
+
+
+def _cell_status_cells(cells: list[dict]) -> tuple[int, int]:
+    done = sum(1 for c in cells if c.get("status") == "done")
+    return done, len(cells)
+
+
+async def run_scrape(tenant: str, ask: str, query: str, near: str = "", center: dict | None = None,
+                     sweep_km: float = 3.0, zoom: int = 15, max_rows: int = 1000, place: str = "",
+                     resume_run_id: str = "", hl: str = "en", gl: str = "in") -> dict:
+    """P3's SCRAPE lane (docs/LEADS_PLAN.md sections 4 L2, 5, 8): the Google Maps PUBLIC LISTING lane, behind
+    the per-tenant opt-in that is OFF until she flips it (set_scrape_optin - the amended CLAUDE.md rule rode
+    this lane's own commit).
+
+    THE SHAPE: grid.bbox_cells cuts her sweep into zoom cells; each cell walks PAGES_PER_CELL_MAX search pages
+    (20 listings a page, the ~120 ceiling) through the EXISTING scrape stack (SSRF guard, curl_cffi, proxy
+    policy - scrape.py), paced at 1 req/s per host (MAX_CONCURRENCY 2 named, one host in P3 so politeness
+    paces). gmaps_parse reads the business FACTS only (rules.STORE_BOUNDARY: no review text, no photos, no
+    popular times - the parser's field list is the wall).
+
+    THE HONESTY: caps refused AT PLAN TIME (per-run rows, per-day rows, the cell ceiling - numbers named); a
+    block page / CAPTCHA wall HARD-ABORTS the run with the wall named (crawl.blocked.why_blocked - Hoola backs
+    off and reports, it does NOT muscle through, rules.NEVER); a parse tripwire (no APP_INITIALIZATION_STATE on
+    two consecutive cells) aborts with 'layout badla' instead of quietly harvesting nothing; every row carries
+    source_lane=SCRAPE + the exact search page it was read from + parser_version; the bill names the politeness
+    spend (HTTP requests, zero rupees - one geocode via the existing maps.resolve when a name had to be
+    resolved, billed by mapsbill as it always is); the zoom ladder's next step is chosen from the MEASURED
+    per-cell yields, recorded on the card.
+
+    THE RESUME: every cell's status lands in the run's plan JSON after every cell (plan 5.5). resume_run_id
+    continues THAT grid - done cells are never re-fetched, a DONE run's resume is a no-op card with zero
+    fetches (the BADA CATALOGUE idempotency law)."""
+    ensure_tables()
+    from . import grid as G, gmaps_parse as GP, scrape as SC
+    from ..crawl import blocked as _blocked
+
+    query = str(query or "").strip()
+    if not query:
+        raise LeadsError("Kis dhandhe ki list? Query bataiye (jaise 'dentists', 'hardware store', 'cafe').")
+    if not scrape_opted_in(tenant):
+        raise LeadsError(R.SCRAPE_OFF)              # the opt-in gate BEFORE any plan work - the rule is a wall
+    zoom = int(zoom or G.ZOOM_DEFAULT)
+    try:
+        G.cell_km(zoom)                             # the ladder is written, an unknown zoom is refused
+    except G.GridError as e:
+        raise LeadsError(str(e)) from None
+    raw_rows = max(1, int(max_rows or 1000))
+    # the where-label: her place word, else the near word, else the pin's name/coordinates - a centre pin IS
+    # an answer to the one question's second half (the ask carries the what, the pin carries the where)
+    pin = center if isinstance(center, dict) and center.get("lat") is not None else None
+    where_label = (str(place or "").strip() or str(near or "").strip()
+                   or str((pin or {}).get("name") or "").strip()
+                   or (f"{pin['lat']:.4f},{pin['lng']:.4f}" if pin else ""))
+    p = plan(tenant, ask, ["SCRAPE"], where_label, planned_rows=raw_rows)
+    if not p["ok"]:
+        why = "; ".join(p.get("why") or [])
+        if why or p.get("need"):
+            raise LeadsError(why or p.get("need", ""))     # nothing ran: no run row, no fetch
+        run0 = _new_run(tenant, ask, where_label, ["SCRAPE"], p)
+        _finish(run0, "REFUSED", error=p.get("cap_refusal", ""))
+        return {"ok": False, "run": run_card(run0.id), "plan": p}
+    max_rows = min(raw_rows, leadscap.caps()["per_run"])       # the ask was checked RAW; now the working bound
+    pages_max = max(1, min(leadscap.caps()["scrape_pages_per_cell"], GP.PAGES_PER_CELL_MAX))
+
+    resumed_plan: dict | None = None
+    run: LeadRun | None = None
+    if resume_run_id:
+        with _s() as s:
+            r0 = s.get(LeadRun, str(resume_run_id))
+            if r0 is None or r0.tenant_id != tenant:
+                raise LeadsError("Resume ka run nahi mila (ya doosre tenant ka hai).")
+            lanes0 = json.loads(r0.lanes or "[]")
+            if "SCRAPE" not in lanes0:
+                raise LeadsError("Woh run SCRAPE lane ka nahi hai - resume sirf usi grid par.")
+            resumed_plan = json.loads(r0.plan or "{}")
+        if resumed_plan.get("kind") != "scrape":
+            raise LeadsError("Us run ka plan scrape grid ka nahi hai - resume nahi ho sakta.")
+        run = LeadRun(id=r0.id, tenant_id=r0.tenant_id)      # a detached handle; the row itself stays
+        for k in ("query", "center", "sweep_km", "zoom", "hl", "gl"):
+            if k in resumed_plan:
+                if k == "query":
+                    query = str(resumed_plan[k])
+                elif k == "zoom":
+                    zoom = int(resumed_plan[k])
+                elif k == "center":
+                    center = resumed_plan[k]
+    geocode_inr = 0.0
+    if not resumed_plan:
+        center = dict(center) if isinstance(center, dict) and center.get("lat") is not None else None
+        if center is None:
+            near = str(near or "").strip()
+            if not near:
+                raise LeadsError("Kahan? near (jaise 'Pune', 'Karol Bagh Delhi') ya center {lat, lng} dijiye.")
+            from .. import maps, mapsbill
+            if not maps.configured():
+                raise LeadsError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai) "
+                                 "- center {lat, lng} de dijiye to bina resolve ke bhi chal jaayega.")
+            bill_before = mapsbill.usage(tenant)["inr"]
+            try:
+                c = await maps.resolve(near, tenant, near=None)
+            except maps.MapsError as e:
+                raise LeadsError(f"Jagah resolve nahi hui: {e}") from None
+            if not c or c.get("lat") is None:
+                raise LeadsError(f"'{near}' Google Maps par nahi mila - sheher / area ka naam dobara bataiye.")
+            center = {"lat": c["lat"], "lng": c["lng"], "name": c.get("name") or near}
+            geocode_inr = round(mapsbill.usage(tenant)["inr"] - bill_before, 4)
+        try:
+            cells = G.bbox_cells(center, float(sweep_km or 3.0), zoom, max_cells=leadscap.caps()["scrape_max_cells"])
+        except G.GridError as e:
+            raise LeadsError(str(e)) from None
+        plan_dict: dict[str, Any] = {"kind": "scrape", "query": query, "center": center,
+                                     "sweep_km": float(sweep_km or 3.0), "zoom": zoom,
+                                     "cell_km": G.cell_km(zoom), "hl": str(hl or "en"), "gl": str(gl or "in"),
+                                     "pages_per_cell": pages_max, "page_size": GP.PAGE_SIZE,
+                                     "max_rows": max_rows, "cells": cells,
+                                     "politeness": {"per_host_1s": SC.GOOGLE_MIN_INTERVAL,
+                                                    "max_concurrency": SC.MAX_CONCURRENCY,
+                                                    "robots": "google host: owner ask 5 Nov 2026; doosre hosts: "
+                                                              "robots.txt obeyed (CLAUDE.md amended v0.543.0)"},
+                                     "store_boundary": "facts only - no review text, no photos, no popular times"}
+        run = _new_run(tenant, ask, where_label or (center or {}).get("name") or "", ["SCRAPE"],
+                       plan_dict, plan_cap=400_000)
+    else:
+        plan_dict = resumed_plan
+        cells = plan_dict.get("cells") or []
+        if not cells:
+            raise LeadsError("Resume ke plan mein cells nahi hain - naya run chalaiye.")
+        plan_dict.setdefault("resumed_at", datetime.now(timezone.utc).isoformat())
+    already = _cell_status_cells(cells)
+    if already[0] >= len(cells):
+        return {"ok": True, "run": run_card(run.id), "no_op": True,
+                "note": "yeh plan pehle hi poora ho chuka hai - resume no-op (BADA CATALOGUE idempotency law), "
+                        "ek bhi fetch nahi hua"}
+    _status(run, "RUNNING")
+
+    found = kept = duped = refused = http_calls = 0
+    stopped_by_bound = False
+    errors: list[str] = []
+    parse_dead_streak = 0
+    abort_reason = ""
+    for cell in cells:
+        if found >= max_rows:
+            stopped_by_bound = True
+            break
+        if cell.get("status") == "done":
+            continue                                # the resume law: a done cell is never re-fetched
+        # a retried cell (blocked / error from a previous attempt) starts CLEAN - the resume IS the fresh
+        # attempt, and a cell that succeeds now must land as "done", not carry its old scar forever
+        cell["status"], cell["error"] = "pending", ""
+        cell_found = cell_kept = cell_duped = cell_refused = 0
+        for page in range(pages_max):
+            if found >= max_rows:
+                stopped_by_bound = True
+                break
+            url = GP.search_url(query, cell["lat"], cell["lng"], cell["zoom"], page,
+                                hl=plan_dict.get("hl", "en"), gl=plan_dict.get("gl", "in"))
+            if not SC._robots_ok(url):
+                cell["status"], cell["error"] = "error", "robots: not allowed"
+                break
+            SC._polite(GP.SEARCH_HOST)              # per-host 1 req/s - the politeness cap, BEFORE the fetch
+            try:
+                page_obj = SC._get(url, tenant)
+            except Exception as e:                  # noqa: BLE001 - one dead fetch is one skipped cell, named
+                cell["status"], cell["error"] = "error", f"fetch: {str(e)[:140]}"
+                errors.append(f"cell {cell['i']},{cell['j']}: fetch {str(e)[:80]}")
+                break
+            http_calls += 1
+            html = getattr(page_obj, "html_content", "") or ""
+            status = int(getattr(page_obj, "status", 0) or 0)
+            why = _blocked.why_blocked(html, status, url)
+            if why:
+                # the wall is named and the run STOPS - Hoola backs off and reports, it does not muscle
+                abort_reason = f"block wall: {why} @ {url}"
+                cell["status"], cell["error"] = "blocked", abort_reason[:200]
+                errors.append(abort_reason[:200])
+                break
+            try:
+                entries = GP.places(html)
+            except GP.GmapsParseError as e:
+                cell["status"], cell["error"] = "error", f"parse: {str(e)[:140]}"
+                errors.append(f"cell {cell['i']},{cell['j']}: parse {str(e)[:80]}")
+                parse_dead_streak += 1
+                break
+            parse_dead_streak = 0
+            if not entries:
+                break                               # short/empty page = the cell's last page (honest sparse)
+            cell["pages"] = int(cell.get("pages") or 0) + 1
+            for er in entries:
+                if found >= max_rows:               # the bound is checked PER ROW - a page never overshoots it
+                    stopped_by_bound = True
+                    break
+                found += 1
+                cell_found += 1
+                row = _clean_row({"name": er.get("name"), "category": er.get("category") or query,
+                                  "address": er.get("address"), "city": (center or {}).get("name") or place,
+                                  "phone": er.get("phone"), "website": er.get("website"),
+                                  "kgmid": er.get("kgmid"), "cid": er.get("cid"), "place_id": er.get("place_id"),
+                                  "rating": er.get("rating"), "review_count": er.get("review_count"),
+                                  "lat": er.get("lat"), "lng": er.get("lng")})
+                try:
+                    _write_row(tenant, run, *_identity_of(row), row, source_lane="SCRAPE",
+                               source_url=url[:500], parser_version=PARSER_SCRAPE)
+                    kept += 1
+                    cell_kept += 1
+                except LeadsError as e:
+                    if "already" in str(e):
+                        duped += 1
+                        cell_duped += 1
+                    else:
+                        refused += 1
+                        cell_refused += 1
+            if len(entries) < GP.PAGE_SIZE:
+                break                               # a short page is the last page - no page 2 fetch
+        if cell.get("status") == "pending":
+            cell["status"] = "done"
+        elif cell.get("status") == "error" and cell.get("error", "").startswith("parse"):
+            if parse_dead_streak >= 2:
+                # the LOUD tripwire: two consecutive cells that are not search pages at all - the layout moved
+                # (or the whole lane is being served a wall the blocked check could not name). Abort, say why.
+                abort_reason = (f"layout badla ya page block hai: do lagataar cells ne APP_INITIALIZATION_STATE "
+                                f"nahi diya ({str(cell.get('error'))[:120]})")
+                errors.append(abort_reason)
+        cell["found"], cell["kept"], cell["duped"], cell["refused"] = cell_found, cell_kept, cell_duped, cell_refused
+        _checkpoint_scrape(run, plan_dict)
+        if abort_reason:
+            break
+    _counters(run, found, kept, duped, refused)
+    leadscap.record(tenant, kept)
+    done_cells = sum(1 for c in cells if c.get("status") == "done")
+    yields = [int(c.get("found") or 0) for c in cells if c.get("status") == "done"]
+    ladder = G.choose_zoom(yields, zoom)
+    if abort_reason:
+        _checkpoint_scrape(run, plan_dict)
+        _finish(run, "ABORTED", abort_reason[:600])
+        return {"ok": False, "run": run_card(run.id), "error": abort_reason,
+                "cells": {"done": done_cells, "total": len(cells)}, "bill": {"http_requests": http_calls},
+                "note": "run wahin ruk gaya jahan wall mili - jo rows aayi thi woh provenance ke saath store mein hain"}
+    bill = {"lane": "SCRAPE", "http_requests": http_calls, "cells_done": done_cells, "cells_total": len(cells),
+            "pages_per_cell": pages_max, "page_size": GP.PAGE_SIZE, "inr": 0.0,
+            "geocode_inr": geocode_inr, "yield_per_cell": yields, "ladder": ladder,
+            "politeness": {"per_host_1s": SC.GOOGLE_MIN_INTERVAL, "max_concurrency": SC.MAX_CONCURRENCY},
+            "note": "public listing pages, politeness paced (1 req/s) - API spend sirf ek geocode (resolve), "
+                    "mapsbill ke neeche; scrape rows muft"}
+    with _s() as s:
+        r = s.get(LeadRun, run.id)
+        if r:
+            r.bill = json.dumps(bill, ensure_ascii=False)[:4000]
+            r.error = "; ".join(errors)[:600]
+    _checkpoint_scrape(run, plan_dict)
+    _finish(run, "DONE")
+    return {"ok": True, "run": run_card(run.id),
+            "center": {"name": (center or {}).get("name", ""), "lat": (center or {}).get("lat"),
+                       "lng": (center or {}).get("lng")},
+            "cells": {"done": done_cells, "total": len(cells), "zoom": zoom, "cell_km": G.cell_km(zoom)},
+            "stopped_by_bound": stopped_by_bound, "ladder": ladder, "errors": errors[:5]}
+
+
+def _new_run(tenant: str, ask: str, place: str, lanes: list[str], plan_card: dict, plan_cap: int = 8000) -> LeadRun:
     with _s() as s:
         run = LeadRun(tenant_id=tenant, ask=ask[:3000], place=place[:200], lanes=json.dumps(lanes),
-                      plan=json.dumps(plan_card, ensure_ascii=False, default=str)[:8000],
+                      plan=json.dumps(plan_card, ensure_ascii=False, default=str)[:plan_cap],
                       provenance=json.dumps({"parser_version": PARSER_VERSION, "engine": "hoola-leads", "v": 1}))
         s.add(run)
         s.flush()

@@ -79,6 +79,27 @@ def make_router(require_key, current_tenant) -> APIRouter:
         except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
             raise HTTPException(400, str(e))
 
+    @r.post("/runs/scrape")
+    async def post_scrape(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """P3 SCRAPE lane: the Google Maps PUBLIC LISTING grid (per-tenant opt-in OFF by default - the flip is
+        POST /scrape-optin, her act). Caps refused at plan time; a block wall aborts the run with the reason."""
+        b = _b(body)
+        center = b.get("center") if isinstance(b.get("center"), dict) else None
+        try:
+            return await S.run_scrape(tenant, str(b.get("ask") or ""), str(b.get("query") or ""),
+                                      str(b.get("near") or ""), center, float(b.get("sweep_km") or 3.0),
+                                      int(b.get("zoom") or 15), int(b.get("max_rows") or 1000),
+                                      str(b.get("place") or ""), str(b.get("resume_run_id") or ""))
+        except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
+    @r.post("/scrape-optin")
+    async def post_scrape_optin(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """HER act: flip the SCRAPE lane's per-tenant opt-in (OFF by default; the walls are quoted back - the
+        amended CLAUDE.md rule text, the store boundary, the never-sends wall)."""
+        b = _b(body)
+        return await run(S.set_scrape_optin, tenant, bool(b.get("on")), str(b.get("actor") or "owner"))
+
     @r.post("/rows")
     async def post_row(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
