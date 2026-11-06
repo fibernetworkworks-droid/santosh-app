@@ -45,6 +45,17 @@ def _drop_pg(name):
         pass
 
 
+@pytest.fixture(autouse=True)
+def _full_voice_menu(monkeypatch):
+    """v0.627 production declares the small call menu; the older suites (with or without `env`) pin the full one.
+    test_v0627_chhota_menu switches the small one on for itself."""
+    from app.config import get_settings
+    monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
+    get_settings.cache_clear()
+    yield
+    get_settings.cache_clear()
+
+
 @pytest.fixture()
 def env(tmp_path, monkeypatch):
     """Fresh database, test-mode WhatsApp that approves instantly, no real API keys."""

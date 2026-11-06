@@ -15,6 +15,7 @@ def test_production_declares_the_small_menu(monkeypatch):
         names = {t["name"] for t in voice._tool_specs()}
         size = len(json.dumps(voice._tool_specs()))
     finally:
+        monkeypatch.undo()                    # put the env back BEFORE the cache is cleared
         get_settings.cache_clear()
     assert names == voice.LEAN_TOOLS and "santosh_kaam" in names and "email_draft" in names
     assert size < 45000                       # the full list was ~91k chars, billed on every reply

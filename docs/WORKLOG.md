@@ -1700,3 +1700,10 @@ Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
 Task: Owner: Rs 338 Gemini spend in 2 calls.
 Work Log: found Live bills the whole context per reply (tools ~23k tok + persona ~7k); meter counted only audio minutes; now records usage_metadata.
 Stage Summary: v0.626.0 meter fix; cost cut awaiting her choice.
+
+---
+Task ID: v0627-chhota-menu
+Agent: Claude Code (session 019P5N4aaNdxLca2Dui5D9om)
+Task: Owner: Gemini cost per call + money going with the call off.
+Work Log: lean call menu (91k -> 37k chars); no Gemini wake while the phone is away; such a call not live for reminders.
+Stage Summary: v0.627.0; voice suites green; live call is the proof.

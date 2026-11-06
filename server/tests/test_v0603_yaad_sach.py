@@ -228,4 +228,4 @@ def test_forget_from_the_memory_screen_also_cleans_everywhere(env):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.626.0"
+    assert APP_VERSION == "0.627.0"

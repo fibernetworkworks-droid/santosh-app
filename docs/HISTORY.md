@@ -21464,3 +21464,19 @@ audio MINUTES ($0.005 + $0.018 a minute), so /api/usage showed cents while the A
 NOT VERIFIED: whether Live's usage_metadata is per reply (assumed, summed) or cumulative - the first live call's log line
 against the AI Studio bill settles it. The cost itself is NOT reduced yet - the levers (a smaller tool list, a shorter
 persona, a smaller memory window) need the owner's choice.
+
+
+## v0.627.0 CHHOTA MENU + NO WAKE WITHOUT A PHONE (owner: "it is going to every tool why --- i just given instructio regarding gmail"; "also even call is off --- money is deducting")
+
+1. The call does not RUN every tool - but Gemini Live is SENT the declared tool list (164 tools, ~91k chars, ~23k tokens)
+   and bills it on every reply. `voice.LEAN_TOOLS` (~60: santosh_kaam, reminders/alarms/lists/memory, search/web, the Gmail
+   and Calendar heads, maps, music/TV/home, PC, orders, files, gyaan, artifacts, photos) is all a call declares when
+   `voice_lean_tools` (default True); every other job reaches the full brain through santosh_kaam or the undeclared-name
+   route in `Call._execute`. The persona line says "its tool if it is in your list, else santosh_kaam". ~37k chars.
+   tests/conftest.py autouse `_full_voice_menu` keeps the full list for the older suites that pin it.
+2. A bug that billed with the call off: a call whose phone dropped / app closed waits up to 15 min (v0.618), and EVERY
+   text note (job progress, cards, results, reminders) woke Gemini (`push` -> `_wake_up("news")`) to reply to nobody, with
+   the whole context billed. Now `push` holds the wake while `ws is None` (`stats.wakes_held_no_phone`) and `attach` wakes
+   if notes are waiting; `tenant_live` no longer counts such a call, so a due reminder RINGS her instead of going unheard.
+   Her 6 Nov log showed this path did not fire in that window - the fix is for when it does.
+Tests `test_v0627_chhota_menu.py` (3) + 2 in `test_v0626_paisa_ka_hisaab.py`. NOT VERIFIED on a live call.
