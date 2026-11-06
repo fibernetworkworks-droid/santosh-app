@@ -281,15 +281,17 @@ def test_places_re_run_is_a_no_op(env, monkeypatch):
     assert S.rows("t1")["total"] == 1
 
 
-# ================================================================ the enrich skeleton + the API surface
-def test_leads_enrich_refuses_with_the_phase_named():
+# ================================================================ the enrich tool + the API surface
+def test_leads_enrich_is_real_in_p2():
+    # v0.542.0: the P2 skeleton became the real pass - the tool no longer refuses, it enriches (its tests live
+    # in test_v0542_leads_enrich.py); here we only prove the handler is wired to the service, not to a stub.
     from app.agent.leads_tools import LEADS_HANDLERS
-    from app.agent.tools import ToolError
+    from app.leads import service as Svc
 
-    class _C:                                    # the duck-typed Ctx the handler reads
-        tenant_id, conversation_id, actor = "t1", "c1", "owner"
-    with pytest.raises(ToolError, match="P2"):
-        asyncio.run(LEADS_HANDLERS["leads_enrich"](_C()))
+    assert LEADS_HANDLERS["leads_enrich"].__module__ == "app.agent.leads_tools"
+    assert hasattr(Svc, "enrich") and hasattr(Svc, "apply_enrich")
+    from app.leads import enrich as _en
+    assert hasattr(_en, "site_pass") and hasattr(_en, "grade_email") and hasattr(_en, "best_email")
 
 
 def test_official_lanes_through_the_api(env, monkeypatch):

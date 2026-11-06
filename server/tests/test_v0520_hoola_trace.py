@@ -651,8 +651,8 @@ def test_flags_default_off_and_redact_on():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.541.0"
-    assert "0.541.0+564" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.542.0"
+    assert "0.542.0+565" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
     assert line.startswith('APP_VERSION = "0.541.0"')
     # the story-token pin rides the NEWEST story (the newest-story precedent);

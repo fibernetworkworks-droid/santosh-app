@@ -39,7 +39,8 @@ def _ledgers(tenant: str) -> tuple[int, int]:
 
 def caps() -> dict[str, int]:
     st = get_settings()
-    return {"per_run": int(st.leads_max_rows_per_run), "per_day": int(st.leads_max_rows_per_day)}
+    return {"per_run": int(st.leads_max_rows_per_run), "per_day": int(st.leads_max_rows_per_day),
+            "enrich_rows_per_run": int(st.leads_enrich_rows_per_run)}   # v0.542.0: the P2 pass's own bound
 
 
 def usage(tenant: str) -> dict:

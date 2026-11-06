@@ -2,6 +2,58 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.542.0 LEADS ENRICH — P2 of the leads plan: the enrichment pass (6 Nov 2026)
+
+Owner: "P2 (enrich)". P2 of docs/LEADS_PLAN.md section 6 ("the omkarcloud flow, our own
+hands") and section 10: `leads_enrich` stops being the refusal skeleton and becomes the REAL
+pass over each kept row's OWN website — through code that already existed.
+
+NEW `server/app/leads/enrich.py`:
+
+- `site_pass()` — ONE bounded crawl-brain pass per site, through the EXISTING scrape stack:
+  `scrape_tools._guard_url` (SSRF guard: public http(s) only) + `_robots_allowed` (the
+  robots.txt gate, `scrape_respect_robots` default True) + `_fetch` (curl_cffi, proxy policy).
+  NO second fetch client, NO browser. Text via `crawl.prune`, block pages / CAPTCHA walls
+  named via `crawl.blocked.why_blocked` and recorded honestly. Site-level 1 request/second
+  (`HOST_MIN_INTERVAL`), at most `SITE_PAGES_MAX = 3` pages per site (home + contact-ish
+  links a pass found).
+- `extract_emails()` — mailto: links first, then a regex over the PRUNED text; junk tails,
+  noreply/sentry/example addresses dropped, 24 candidates cap.
+- `extract_socials()` — links BY HOSTNAME on HER site's pages (linkedin / twitter+x /
+  instagram / facebook / youtube), the first handle per platform, platform home pages are not
+  handles. The platforms themselves are NEVER fetched (rules.NEVER).
+- `grade_email()` — DNS exists -> MX exists (dnspython, already a house dep) -> not a
+  disposable domain -> `email_grade` = pakka / sadak_tak / galat (maps_address_check's
+  vocabulary, `rules.EMAIL_GRADES`, named back in P0 so the store never grows a second one).
+  NO SMTP probe — no smtplib anywhere, the leadscard's `no_smtp_probe` guard reads the source.
+- `best_email()` — ONE cheap-brain call per row; the pick is VALIDATED against the
+  candidates; its reason is kept. No model configured, or the model fails -> the deterministic
+  `rank_emails()` answers (role inbox > named-person > other > personal-domain) and the card
+  says pick=rule — never a pretended AI.
+
+`service.py`: `enrich()` orchestrates — targets = kept rows (opt-out honoured) WITH a website;
+the cap `LEADS_ENRICH_ROWS_PER_RUN = 100` (config, leadscap.caps) REFUSES AT PLAN TIME with
+the number named; `apply_enrich()` fills an EMPTY email slot only (never overwrites an email
+another source gave) but always re-grades deliverability (a NOW answer), merges socials, and
+writes the enrichment's own provenance: `enriched_from` + `enrich_note` + `enriched_at` (new
+self-healing columns on lead_contacts). A dead site is a recorded RESULT — note written, and
+the row's email graded galat when the dead domain IS the email's own domain; never a crash.
+The model spend is caught by `usage.run_meter` (the research/bill.py pattern) and lands on the
+run card's bill as model_calls / tok_in / tok_out / inr. Enrichment is NOT a source lane — the
+run's lanes list stays empty, the plan card carries kind=enrich.
+
+`agent/leads_tools.py`: leads_enrich is the real pass (same name, registry stays 562);
+`use_model=false` = the rule rank. `API`: POST /api/leads/enrich (a refusal is a 400 with the
+reason). `leadscard` set v3: guards enrich_built / enrich_uses_existing_stack /
+no_smtp_probe / email_grade_vocab / enrich_cap_named; asks + tool_enrich_rule_pick +
+rule_enrich_smtp (never probe) + rule_enrich_dead_site (galat, not a crash).
+
+Tests: NEW test_v0542_leads_enrich.py (recorded site fixtures, ZERO network — the fetch /
+robots / DNS / MX / model boundaries are faked at module level, everything else real).
+
+NOT VERIFIED, said plainly: the pass has read fixture sites only — her first live enrich pass
+on a real website confirms it, and the grades are unproven against real mail infrastructure.
+
 ## v0.541.0 LEADS OFFICIAL — P1 of the leads plan: the IndiaMART + Places lanes (6 Nov 2026)
 
 Owner: "P1 (IndiaMART + Places lanes through the existing maps tools)". P1 of docs/LEADS_PLAN.md

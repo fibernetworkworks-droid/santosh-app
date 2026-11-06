@@ -70,6 +70,8 @@ class LeadContact(Base):
     parser_version: Mapped[str] = mapped_column(String(20), default="")       # which code read the source
     fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     enriched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    enriched_from: Mapped[str] = mapped_column(String(300), default="")   # the site URL the P2 pass read
+    enrich_note: Mapped[str] = mapped_column(Text, default="")            # the pick's reason / the dead-site note
     opt_out: Mapped[bool] = mapped_column(Boolean, default=False)             # her erasure flag, campaign desk honours it
 
 

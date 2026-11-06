@@ -20,7 +20,7 @@ import json
 import re
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import quote_plus
+from urllib.parse import quote_plus, urlparse
 
 from sqlalchemy.exc import IntegrityError
 
@@ -32,6 +32,7 @@ from . import rules as R
 PARSER_VERSION = "v0.540.0-her1"        # the L0 her-data reader; every row names the code that read its source
 PARSER_INDIAMART = "v0.541.0-im1"       # the REGISTRY lane: IndiaMART's own MCP server via app/indiamart.py
 PARSER_PLACES = "v0.541.0-pl1"          # the OFFICIAL_API lane: the existing maps tools (nearby + details on tap)
+PARSER_ENRICH = "v0.542.0-en1"          # the P2 enrich pass reads the business's OWN website (enrich.py)
 
 # mapsbill.MapsCapped arrives here re-raised as maps.MapsError (maps._bill's own law: "a cap hit becomes a
 # MapsError"), with this stable text inside - so the cap and an ordinary MapsError are told apart by MARK,
@@ -425,6 +426,182 @@ def apply_details(tenant: str, key_value: str, data: dict) -> bool:
         return True
 
 
+# ---------------------------------------------------------------- the enrich pass (P2, the business's OWN site)
+def apply_enrich(tenant: str, row_id: str, data: dict) -> bool:
+    """One site-pass answer onto its stored row: email (only into an EMPTY slot - the pass never overwrites an
+    email another source gave), email_grade (always refreshed - deliverability is a NOW answer), socials, and
+    the enrichment's own provenance (enriched_from + enrich_note + enriched_at)."""
+    ensure_tables()
+    with _s() as s:
+        c = s.query(LeadContact).filter(LeadContact.tenant_id == tenant, LeadContact.id == str(row_id)).first()
+        if c is None:
+            return False
+        new_email = str(data.get("email") or "").strip().lower()
+        if new_email and not (c.email or "").strip():
+            c.email = new_email[:200]
+        grade = str(data.get("email_grade") or "").strip()
+        if grade in R.EMAIL_GRADES:
+            c.email_grade = grade
+        elif not grade and new_email and not (c.email or "").strip():
+            c.email_grade = ""                              # a fresh email with no grade never ships as pakka
+        socials = data.get("socials")
+        if isinstance(socials, dict) and socials:
+            c.socials = {k: str(v)[:300] for k, v in socials.items() if str(v).strip()}
+        c.enriched_from = str(data.get("enriched_from") or "")[:300]
+        c.enrich_note = str(data.get("enrich_note") or "")[:600]
+        c.enriched_at = datetime.now(timezone.utc)
+        return True
+
+
+def _enrich_targets(tenant: str, row_ids: list[str] | None, q: str, city: str, category: str, lane: str,
+                    run_id: str) -> list[LeadContact]:
+    """The rows a pass may read: kept rows (opt-out honoured) WITH a website. Named row_ids win over the
+    filters; with no row_ids the filters pick. Every target is re-read on every pass - deliverability is a NOW
+    answer, so re-grading an old email is work, not waste."""
+    ensure_tables()
+    conds = [LeadContact.tenant_id == tenant, LeadContact.opt_out.is_(False), LeadContact.website != ""]
+    with _s() as s:
+        if row_ids:
+            got = (s.query(LeadContact).filter(*conds, LeadContact.id.in_([r for r in row_ids if r]))
+                   .order_by(LeadContact.fetched_at.desc(), LeadContact.id).all())
+        else:
+            more = _filters(tenant, q, city, category, lane, False, False, False)
+            if run_id:
+                more.append(LeadContact.run_id == str(run_id))
+            got = (s.query(LeadContact).filter(*conds, *more)
+                   .order_by(LeadContact.fetched_at.desc(), LeadContact.id)
+                   .limit(max(1, min(2000, leadscap.caps()["per_run"]))).all())
+        s.expunge_all()
+        return list(got)
+
+
+async def enrich(tenant: str, ask: str = "", row_ids: list[str] | None = None, q: str = "", city: str = "",
+                 category: str = "", lane: str = "", run_id: str = "", use_model: bool = True) -> dict:
+    """P2 ENRICHMENT (docs/LEADS_PLAN.md section 6): a bounded crawl-brain pass over kept rows' OWN websites -
+    emails + socials read, deliverability graded (pakka / sadak_tak / galat, DNS -> MX -> disposable, NO SMTP
+    probe), the best email picked by ONE billed model call per row (usage.run_meter catches the spend - the
+    research/bill.py pattern), every dead site a recorded result and never a crash.
+
+    Enrichment is NOT a source lane (the plan says so) - the run's lanes list stays empty and the plan card
+    carries kind=enrich. The cap is a PLAN-TIME refusal (the house law): more eligible rows than
+    leads_enrich_rows_per_run and the pass refuses with the number named, never truncates quietly."""
+    import asyncio as _asyncio
+    from . import enrich as E
+
+    cap = int(leadscap.caps()["enrich_rows_per_run"])
+    targets = _enrich_targets(tenant, [r for r in (row_ids or []) if str(r).strip()], q, city, category, lane, run_id)
+    if len(targets) > cap:
+        raise LeadsError(f"Enrich cap: {cap} rows per pass hai (LEADS_ENRICH_ROWS_PER_RUN), aapke filter par "
+                         f"{len(targets)} rows bethi hain. Filter ghaatiye ya row_ids dijiye - chupke se "
+                         f"truncate nahi hota.")
+    plan_card = {"kind": "enrich", "cap_rows": cap, "targeted": len(targets), "use_model": bool(use_model),
+                 "robots": "scrape_respect_robots (default True)", "politeness": "1 req/s per site",
+                 "site_pages_max": E.SITE_PAGES_MAX, "smtp_probe": "NOT BUILT"}
+    run = _new_run(tenant, ask or "enrichment pass", "", [], plan_card)
+    _status(run, "RUNNING")
+
+    acc: dict = {}
+    enriched = dead = blocked = no_email = 0
+    picks: dict[str, int] = {"ai": 0, "rule": 0, "single": 0, "none": 0}
+    details: list[dict] = []
+    errors: list[str] = []
+    meter = None
+    if use_model:
+        from .. import usage
+        meter = usage.run_meter(acc)
+        meter.__enter__()
+    try:
+        for row in targets:
+            site = (row.website or "").strip()
+            if not site:
+                continue
+            try:
+                res = await _asyncio.to_thread(E.site_pass, site, tenant)
+            except Exception as e:                       # noqa: BLE001 - one bad site never kills the pass
+                errors.append(f"{row.name or row.id}: {e}")
+                continue
+            pages = res.get("pages") or []
+            alive = [p for p in pages if p.get("status") and not p.get("blocked")]
+            if not res.get("blocked") and not alive and pages:
+                dead += 1
+                # the plan's card ask: a dead site yields galat, not a crash - an email whose domain IS the
+                # dead site cannot receive mail any more
+                grade = ""
+                note = f"site dead: {pages[0].get('dead', '')[:150]}"
+                if (row.email or "").strip():
+                    dom = (row.email.rsplit("@", 1)[-1] if "@" in row.email else "")
+                    sdom = (urlparse(site).hostname or "").replace("www.", "")
+                    if dom and sdom and (dom == sdom or dom.endswith("." + sdom) or sdom.endswith("." + dom)):
+                        grade = "galat"
+                        note += " - email_grade galat (site hi mari hui hai)"
+                apply_enrich(tenant, row.id, {"email_grade": grade, "enriched_from": site,
+                                              "enrich_note": note, "socials": {}})
+                if grade:
+                    enriched += 1
+                details.append({"id": row.id, "name": row.name, "result": "dead_site", "grade": grade})
+                continue
+            if res.get("blocked") and not alive:
+                blocked += 1
+                apply_enrich(tenant, row.id, {"enriched_from": site,
+                                              "enrich_note": f"blocked: {res['blocked'][0][:150]}", "socials": {}})
+                details.append({"id": row.id, "name": row.name, "result": "blocked"})
+                continue
+            emails = list(res.get("emails") or [])
+            email, reason, pick = "", "", "none"
+            if emails:
+                if use_model:
+                    be = await E.best_email(emails, row.name or "")
+                    email, reason, pick = be.get("email", ""), be.get("reason", ""), be.get("pick", "rule")
+                else:
+                    email = E.rank_emails(emails, row.name or "")[0]
+                    reason, pick = "use_model=false - rule rank", "rule"
+            else:
+                no_email += 1
+            # the grade belongs to the email the ROW ends up with: the pass's pick only lands in an EMPTY
+            # slot, so a row keeping its own email is graded on ITS email - never on somebody else's
+            final_email = (email if (email and not (row.email or "").strip()) else (row.email or "").strip())
+            grade = E.grade_email(final_email) if final_email else ""
+            socials = res.get("socials") or {}
+            if final_email == (row.email or "").strip() and (row.email or "").strip():
+                note = f"email already tha ({final_email}) - naya email nahi likha, grade taaza kiya"
+            else:
+                note = f"{pick}: {reason}".strip(": ")
+            wrote = bool((email and not (row.email or "").strip()) or grade or socials or note)
+            if wrote:
+                apply_enrich(tenant, row.id, {"email": email, "email_grade": grade, "socials": socials,
+                                              "enriched_from": site, "enrich_note": note})
+                enriched += 1
+            picks[pick] = picks.get(pick, 0) + 1
+            details.append({"id": row.id, "name": row.name, "result": "enriched" if wrote else "unchanged",
+                            "email": email, "grade": grade, "pick": pick,
+                            "socials": sorted(socials.keys()), "pages": len(alive)})
+        if meter is not None:
+            meter.__exit__(None, None, None)
+            meter = None
+        from .. import usage as _usage
+        bill = {"model_calls": int(acc.get("calls", 0)), "tok_in": int(acc.get("tok_in", 0)),
+                "tok_out": int(acc.get("tok_out", 0)), "inr": round(float(acc.get("usd", 0.0)) * _usage.usd_inr(), 4),
+                "picks": picks, "sites_read": len(targets), "site_pages": E.SITE_PAGES_MAX,
+                "note": "websites muft (scrape stack), model calls run_meter mein naape gaye (research/bill pattern)"}
+        _counters(run, len(targets), enriched, 0, dead + blocked)
+        with _s() as s:
+            r = s.get(LeadRun, run.id)
+            if r:
+                r.bill = json.dumps(bill, ensure_ascii=False)[:4000]
+        _finish(run, "DONE", "; ".join(errors)[:300])
+        return {"ok": True, "run": run_card(run.id),
+                "enriched": enriched, "dead_site": dead, "blocked": blocked, "no_email": no_email,
+                "picks": picks, "details": details[:50], "errors": errors[:5]}
+    except Exception as e:                               # noqa: BLE001 - the run card names what died
+        if meter is not None:
+            try:
+                meter.__exit__(type(e), e, e.__traceback__)
+            except Exception:                            # noqa: BLE001
+                pass
+        _finish(run, "ABORTED", str(e))
+        return {"ok": False, "run": run_card(run.id), "error": str(e)}
+
+
 def _new_run(tenant: str, ask: str, place: str, lanes: list[str], plan_card: dict) -> LeadRun:
     with _s() as s:
         run = LeadRun(tenant_id=tenant, ask=ask[:3000], place=place[:200], lanes=json.dumps(lanes),
@@ -526,7 +703,8 @@ def view_row(c: LeadContact) -> dict:
             "phone": c.phone, "website": c.website, "email": c.email, "email_grade": c.email_grade,
             "socials": c.socials or {}, "rating": c.rating, "review_count": c.review_count, "lat": c.lat,
             "lng": c.lng, "source_lane": c.source_lane, "source_url": c.source_url,
-            "parser_version": c.parser_version, "opt_out": bool(c.opt_out), "fetched_at": _iso(c.fetched_at)}
+            "parser_version": c.parser_version, "opt_out": bool(c.opt_out), "fetched_at": _iso(c.fetched_at),
+            "enriched_at": _iso(c.enriched_at), "enriched_from": c.enriched_from, "enrich_note": c.enrich_note}
 
 
 def _iso(d: datetime | None) -> str | None:

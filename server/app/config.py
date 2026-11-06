@@ -704,6 +704,10 @@ class Settings(BaseSettings):
     # v0.541.0 OFFICIAL LANES: the Places lane buys maps.place_details (Enterprise SKU) for at most this many
     # places per run - the maps_place economics (phone/website are per-place purchases), guarded by mapsbill's cap
     leads_places_details_per_run: int = 50
+    # v0.542.0 ENRICHMENT: the P2 pass reads each kept row's OWN website (site-level 1 req/s, <= 3 pages/site,
+    # robots obeyed) and makes at most ONE cheap-model call per row - more eligible rows than this cap and the
+    # pass REFUSES at plan time with the number named, never truncates quietly (the leads cap law)
+    leads_enrich_rows_per_run: int = 100
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
     wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech

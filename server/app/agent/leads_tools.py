@@ -1,8 +1,9 @@
-"""Leads Sahayak tools (v0.540.0 LEADS NEEV, v0.541.0 OFFICIAL LANES). `leads_run` works her data (P0), the
-IndiaMART MCP sellers lane (P1 REGISTRY) and the Places lane through the EXISTING maps tools (P1 OFFICIAL_API);
-`leads_enrich` is the P2 skeleton - it refuses by name, no pretending. Every tool answers with a CARD that names
-the caps, the lanes and the provenance; the engine never contacts anyone - outreach is her tap on the campaign /
-email desks, and the campaign hand-off pre-fills consent False."""
+"""Leads Sahayak tools (v0.540.0 NEEV, v0.541.0 OFFICIAL LANES, v0.542.0 ENRICHMENT). `leads_run` works her
+data (P0), the IndiaMART MCP sellers lane (P1 REGISTRY) and the Places lane through the EXISTING maps tools (P1
+OFFICIAL_API); `leads_enrich` is the P2 pass over kept rows' OWN websites (emails + socials, DNS->MX grading,
+one billed model pick per row). Every tool answers with a CARD that names the caps, the lanes and the
+provenance; the engine never contacts anyone - outreach is her tap on the campaign / email desks, and the
+campaign hand-off pre-fills consent False."""
 from __future__ import annotations
 
 import asyncio
@@ -66,18 +67,24 @@ LEADS_TOOLS = [
          "run_id": {"type": "string"}, "row_ids": {"type": "array", "items": {"type": "string"}},
          "all_rows": {"type": "boolean"}}, "required": []}},
     {"name": "leads_enrich", "description": (
-        "Store ki ek ya zyada rows ko ENRICH karo (email, socials, website ka check, email_grade) - ABHI BUILT "
-        "NAHI HAI: enrichment P2 mein aayega (plan: docs/LEADS_PLAN.md section 6 - website ka ek crawl-brain pass, "
-        "MX grading pakka/sadak_tak/galat). Yeh tool abhi sirf refuse karta hai, phase ka naam batate hue - "
-        "jhooth bolna (khaali enrichment ka dawa) isse bura hai. Store aur export pehle se kaam kar rahe hain."),
+        "Store ki kept rows ENRICH karo (P2, chalu hai). Har row ke apni WEBSITE ka ek chhota crawl-brain pass: "
+        "email (mailto + page text), socials (uski site ke links - linkedin/twitter/instagram/facebook/youtube), "
+        "email_grade (DNS -> MX -> disposable: pakka / sadak_tak / galat; SMTP probe NAHI hota). Sabse accha "
+        "email ek chhota model call chunta hai (bill run card par) - use_model=false par rule rank. Robots.txt "
+        "maane jaate hain, site par 1 req/second, max 3 page/site; mari hui site galat dikhata hai, crash nahi. "
+        "Cap: LEADS_ENRICH_ROWS_PER_RUN (100/pass) - usse zyada eligible rows par REFUSE (filter ghatao ya "
+        "row_ids do). Naya email sirf KHAALI email slot mein jaata hai - kisi aur ka bhara hua email overwrite "
+        "nahi hota. Social PLATFORMS scrape nahi hote, engine khud kisi se baat nahi karta."),
      "input_schema": {"type": "object", "properties": {
-         "row_ids": {"type": "array", "items": {"type": "string"}}, "run_id": {"type": "string"}},
+         "row_ids": {"type": "array", "items": {"type": "string"}}, "run_id": {"type": "string"},
+         "q": {"type": "string"}, "city": {"type": "string"}, "category": {"type": "string"},
+         "lane": {"type": "string"}, "use_model": {"type": "boolean"}, "ask": {"type": "string"}},
          "required": []}},
 ]
 LEADS_LABELS = {"leads_run": "Leads ka run bana raha hoon", "leads_status": "Leads ka haal dekh raha hoon",
                 "leads_list": "Leads store khoj raha hoon", "leads_export": "Leads export taiyaar kar raha hoon",
                 "leads_forget": "Leads mita raha hoon (aapke kaha se)",
-                "leads_enrich": "Enrichment ka haal dekh raha hoon"}
+                "leads_enrich": "Rows ki website padh ke email/socials bhar raha hoon"}
 
 
 def _s(v: Any) -> str:
@@ -191,12 +198,19 @@ async def leads_forget(ctx: Ctx, **a: Any):
 
 
 async def leads_enrich(ctx: Ctx, **a: Any):
-    """The P2 skeleton: it REFUSES by name - an enrichment that pretends to have run is worse than one that says
-    when it will arrive (the same no-stub law the lanes carry)."""
+    """The P2 pass (app/leads/enrich.py): each kept row's OWN website read once through the EXISTING scrape
+    stack (SSRF guard, robots gate, 1 req/s), deliverability graded honestly, the best email one billed model
+    call. The cap refuses at plan time - a refusal is the answer, never a quiet truncate."""
+    from ..leads import service as S
+    from .. import leadscap
     _actor(ctx)
-    raise ToolError("Enrichment abhi built nahi hai - P2 mein aayega (website ka crawl-brain pass, email_grade "
-                    "pakka/sadak_tak/galat; plan: docs/LEADS_PLAN.md section 6). Store aur export pehle se kaam "
-                    "kar rahe hain.")
+    ids = a.get("row_ids") if isinstance(a.get("row_ids"), list) else None
+    try:
+        return await S.enrich(ctx.tenant_id, _s(a.get("ask")), ids, _s(a.get("q")), _s(a.get("city")),
+                              _s(a.get("category")), _s(a.get("lane")), _s(a.get("run_id")),
+                              bool(a.get("use_model", True)))
+    except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+        raise ToolError(str(e))
 
 
 LEADS_HANDLERS = {"leads_run": leads_run, "leads_status": leads_status, "leads_list": leads_list,

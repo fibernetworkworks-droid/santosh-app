@@ -8,10 +8,13 @@ into CLAUDE.md in the P3 commit that adds the scrape lane itself). Until then TH
 
 - THE ENGINE GATHERS; IT NEVER CONTACTS ANYONE. No message, no email, no call leaves this code. Outreach stays
   behind her tap on the campaign / email desks (LeadOutreach below is the ledger of taps, never an act).
-- P0 RAN L0 ONLY (her own data). v0.541.0 P1 adds the OFFICIAL lanes: REGISTRY (IndiaMART's own MCP server,
+- P0 RAN L0 ONLY (her own data). v0.541.0 P1 added the OFFICIAL lanes: REGISTRY (IndiaMART's own MCP server,
   through the existing app/indiamart.py) and OFFICIAL_API (Google Places through the EXISTING maps tools -
   maps.nearby for the list, maps.place_details bought per place under the mapsbill cap, NO second Google client).
-  The scrape lane comes in P3 behind a per-tenant opt-in that is OFF by default, the vendor lane in P4. A lane
+  v0.542.0 P2 adds ENRICHMENT - a bounded crawl-brain pass over each kept row's OWN website (emails, socials by
+  hostname, DNS->MX grading pakka/sadak_tak/galat, ONE billed model pick per row; NO SMTP probe), through the
+  EXISTING scrape stack (SSRF guard, robots gate, 1 req/s per site). The scrape lane comes in P3 behind a
+  per-tenant opt-in that is OFF by default, the vendor lane in P4. A lane
   that is not built yet is REFUSED by name ("P3 mein aayega") - no stub, no pretending.
 - EVERY ROW CARRIES ITS PROVENANCE or it is not stored: source_lane + source_url + fetched_at. An export that
   finds a row without provenance REFUSES rather than ships an unexplained row (verify gate).
@@ -22,7 +25,8 @@ into CLAUDE.md in the P3 commit that adds the scrape lane itself). Until then TH
   (platform ToS + real person-data), consumer B2C individuals from scraping, SMTP RCPT deliverability probing
   (spam infrastructure), bulk CAPTCHA solving / anti-bot muscle, residential-proxy minting, auto-outreach,
   review-text / photo / popular-times hoarding, a second Google API client (Places lanes go through the existing
-  maps tools only).
+  maps tools only), BULK sales-summary generation (the plan allows a per-row, on-demand, billed summary on her
+  tap - a tool for it is NOT built yet; thousands of one-liners would hallucinate quietly).
 """
 from __future__ import annotations
 

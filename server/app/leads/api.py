@@ -65,6 +65,20 @@ def make_router(require_key, current_tenant) -> APIRouter:
         except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
             raise HTTPException(400, str(e))
 
+    @r.post("/enrich")
+    async def post_enrich(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """P2 ENRICHMENT: the crawl-brain pass over kept rows' OWN websites - emails + socials, DNS->MX grading,
+        ONE billed model pick per row. The cap refuses at plan time; a refusal is a 400 with the reason."""
+        b = _b(body)
+        ids = b.get("row_ids") if isinstance(b.get("row_ids"), list) else None
+        try:
+            return await S.enrich(tenant, str(b.get("ask") or ""), ids, str(b.get("q") or ""),
+                                  str(b.get("city") or ""), str(b.get("category") or ""),
+                                  str(b.get("lane") or ""), str(b.get("run_id") or ""),
+                                  bool(b.get("use_model", True)))
+        except (S.LeadsError, leadscap.LeadsCapped, ValueError) as e:
+            raise HTTPException(400, str(e))
+
     @r.post("/rows")
     async def post_row(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
         b = _b(body)
