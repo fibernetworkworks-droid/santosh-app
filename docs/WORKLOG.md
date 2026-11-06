@@ -1620,3 +1620,10 @@ Agent: Claude Code session (hoola-project-review)
 Task: owner asked for more places to talk to Hoola - all four channels (WhatsApp, Telegram, Slack, Teams), owner only.
 Work: app/bahar.py core + four webhooks + /api/bahar + worker forward + phone Profile > Bahar se baat; pairing code binds one sender.
 Result: test_v0616_bahar.py 10 green; memory + wiring suites 63/63 green. Not verified live on any channel.
+
+---
+Task ID: v0.618.0 HAMESHA JUDA
+Agent: Claude Code session (hoola-project-review)
+Task: owner - voice call is the soul; stays connected until she hangs up, speaks results and reminders 24/7 -> START.
+Work: quiet Gemini session parks (billed per second even silence), wakes on voice/text/news/reminder; long hold + lost phone park instead of ending; reminders/briefing/routine results spoken on a live call; OpenAI 50-min move at a pause; phone re-dials after server update, 14-min reconnect window.
+Result: test_v0617_hamesha_juda.py 9 green; voice suites green; built as 0.617 (their KUCHH NA CHHOOTE took 0.617), re-versioned 0.618. Site suites red only for missing Playwright browser in the sandbox. Not verified on a real phone.

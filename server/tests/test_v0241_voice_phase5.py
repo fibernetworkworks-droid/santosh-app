@@ -220,5 +220,5 @@ def test_phone_screen_wired():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.617.0"
-    assert "0.617.0+623" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.618.0"
+    assert "0.618.0+624" in (ROOT / "pubspec.yaml").read_text()

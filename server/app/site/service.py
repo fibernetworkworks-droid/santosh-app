@@ -894,6 +894,7 @@ def _ctx(r: Site) -> dict[str, Any]:
             "legal": (L.fields().get(r.field) or {}).get("legal", []), "language": _j(r.languages, ["en"])[0],
             "logo_path": logo, "noindex": True,
             "ai_photos": any(p.get("ai") for p in _j(r.photos, [])),       # v0.292 the footer says so
+            "photo_credits": _photo_credits(r),                              # v0.617 Pexels: photographers + the Pexels link
             "src_root": str(B.src_dir(r.tenant_id, r.id)),                 # v0.301 photos always from here (launch too)
             "alts": _alts(r),                                                # v0.366 every extra language (was one)
             "blog": _blog_ctx(r),                                            # v0.366 her published posts (newest first)
@@ -903,6 +904,22 @@ def _ctx(r: Site) -> dict[str, Any]:
             "her_look": bool(look.get("mine") or look.get("her_tokens")),      # v0.606 her own design set the type / colours
             "shop": _shop_ctx(r),                                             # v0.351 her shop (None when off)
             "app_api": app_api(r) if app_schema(r) else ""}
+
+
+def _photo_credits(r: Site) -> list[dict[str, str]]:
+    """v0.617 the stock photos in her site's photo list, one entry per photographer (name + photo page link). Older photos
+    kept only the credit text ('Photo: <name> / Pexels'); the name is read back from it."""
+    out: dict[str, dict[str, str]] = {}
+    for p in _j(r.photos, []):
+        if p.get("source") != "pexels":
+            continue
+        name = str(p.get("credit_name") or "")
+        if not name:
+            m = re.match(r"Photo:\s*(.+?)\s*/\s*Pexels", str(p.get("credit") or ""))
+            name = m.group(1) if m else ""
+        name = name.strip() or "a Pexels photographer"
+        out.setdefault(name, {"name": name, "url": str(p.get("credit_url") or p.get("photographer_url") or "")})
+    return list(out.values())[:40]
 
 
 def _shop_line(r: Site) -> str:
@@ -1586,6 +1603,8 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
     r = _save(r.id, board=_board(r, plan, states, "Visitor ki tarah chala ke dekh raha hoon"))
     report = _journeys(r, report)             # v0.400 Hoola walks the site like a visitor before she sees it
     report = _gates(r, report)                # v0.551 SURAKSHA GATES: security / legal / accessibility on every page
+    if only:                                  # v0.617 KUCHH NA CHHOOTE: a change in her words kept what the site carried
+        report = _kept(r, report, " ".join([note or ""] + [str(x) for x in (extra or {}).values()]))
     _make_version(r, plan, report, shots, states, note or "pehla version", crit)
     _save(r.id, recovered=0)       # v0.223 a finished build earns a fresh auto-restart; queued changes run in _after_job
 
@@ -1602,6 +1621,27 @@ def _look_fixable(r: Site, live: Path, plan: dict[str, Any]) -> dict[str, list[s
         log.exception("look scan failed")
         return {}
     return _fixable({"blocking": items}, plan)
+
+
+def _kept(r: Site, report: dict[str, Any], words: str) -> dict[str, Any]:
+    """v0.617 the previous version vs the new build: her phone / WhatsApp / email links, forms and their fields, page
+    links and the pieces Hoola wires in must still be there unless her words asked to remove them. Named, never blocking,
+    never auto-edited - she decides ('wapas lagao')."""
+    if not getattr(_settings(), "site_kept", True):
+        return report
+    try:
+        from . import kept as KP
+        cur = _load(r.id)
+        res = KP.check(B.out_dir(cur.tenant_id, cur.id, cur.version or 0), B.site_dir(cur.tenant_id, cur.id) / "live", words)
+    except Exception:
+        log.exception("kept check failed")
+        return report
+    out = {**report, "kept": res}
+    if res.get("lost"):
+        out["warnings"] = list(report.get("warnings") or []) + [
+            {"kind": "kept", "text": f"Badlav ke baad nahi mila: {x['say']}", "sections": []} for x in res["lost"]]
+        _work(r, "waiting", "Kuchh cheezein nahi mili", KP.say_line(res["lost"]))
+    return out
 
 
 def _journeys(r: Site, report: dict[str, Any]) -> dict[str, Any]:

@@ -359,6 +359,7 @@ class Settings(BaseSettings):
     site_gates: bool = True                # v0.551 SURAKSHA GATES: every website build is checked; a FAIL blocks going live
     site_look: bool = True                 # v0.606 SAAF NAZAR: the AI-look tells on every build (warn only, never blocks)
     site_look_fix: bool = True             # v0.606 ...and the per-section ones go into the first fix round once
+    site_kept: bool = True                 # v0.617 KUCHH NA CHHOOTE: a change in her words is compared with the version before
     site_turnstile_site: str = ""          # v0.551 Cloudflare Turnstile site key (public) - both keys = forms get the box
     site_turnstile_secret: str = ""        # its secret (VPS .env only): the server checks every form post with Cloudflare
     site_check_parallel: int = 3           # v0.382 browsers that check a site's pages at once (FAST: big sites only)

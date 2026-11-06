@@ -671,7 +671,19 @@ def footer(site: dict[str, Any], plan: dict[str, Any], rel: str) -> str:
             f'<div class="hs-legal"><span>© <span data-year>2026</span> {esc(f.get("name") or "")}'
             f'{" · " + " · ".join(regs) if regs else ""}</span><span>{legal}</span></div>'
             + ('<p class="hs-ai-note">Is website ki kuch tasveeren AI se banayi gayi hain. / Some pictures on this site are '
-               'AI-generated.</p>' if site.get("ai_photos") else "") + '</div></footer>')
+               'AI-generated.</p>' if site.get("ai_photos") else "") + photo_credits(site) + '</div></footer>')
+
+
+def photo_credits(site: dict[str, Any]) -> str:
+    """v0.617 the Pexels API guidelines: 'a prominent link to Pexels' wherever its photos come through the API, and the
+    photographers credited with a link to the photo page when possible. Empty when the site has no Pexels photo."""
+    cr = [c for c in (site.get("photo_credits") or []) if isinstance(c, dict) and c.get("name")]
+    if not cr:
+        return ""
+    names = ", ".join(f'<a href="{esc(c["url"])}" rel="noopener">{esc(c["name"])}</a>'
+                      if str(c.get("url") or "").startswith("https://www.pexels.com/") else esc(c["name"]) for c in cr[:40])
+    return (f'<p class="hs-credits">Photos provided by <a href="https://www.pexels.com" rel="noopener">Pexels</a>. '
+            f'Photographers: {names}.</p>')
 
 
 def floats(site: dict[str, Any]) -> str:

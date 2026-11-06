@@ -21196,3 +21196,87 @@ with "Hoola app mein dekhiye".
 BotFather bot. Slack needs her app's Event Subscriptions URL + `message.im` + the App Home messages tab. Teams needs
 an Azure Bot with the messaging endpoint and the Teams channel on. The Teams JWT path is tested only for refusal;
 a real Bot Framework token has not been checked. Photos and voice notes from outside get a polite "text only" line.
+## v0.617.0 KUCHH NA CHHOOTE (built as 0.616.0) + PEXELS KA NAAM (owner: "go" on the Hallmark read, docs/research/hallmark/00_READ.md)
+
+Source: Nutlope/hallmark (MIT), read at 407fa689. Ideas only, Hoola's own Python; its scripts were not run.
+
+**1. Pexels photos are credited (a real gap, found by checking Pexels' own pages on 6 Nov 2026).** Hallmark claims
+stock sites bar AI tools from picking images; Pexels' licence / ToS / API docs do NOT say that (the ToS bans scraping /
+bulk copying / data mining for machine learning and uploading AI-made content). But the Pexels API guidelines - the
+road Hoola uses - ask for "a prominent link to Pexels" ("Photos provided by Pexels") and the photographers credited
+with a link to the photo page when possible. `pictures._stock_picture` built a credit string and stored it on the
+photo; nothing ever rendered it. Now: the photo record keeps `credit_name`, `credit_url` (the pexels.com photo page) and
+`photographer_url` (only pexels.com links accepted); `service._photo_credits` lists one entry per photographer (older
+photos get the name back from their stored credit text); `build.photo_credits` writes, in every page's footer,
+"Photos provided by Pexels (linked). Photographers: <name linked to the photo page>, ..."; empty when the site has no
+Pexels photo; a non-pexels.com url is never written as a link. Pexels' default API limit is 200 requests / hour and
+20,000 / month (unchanged; Hoola fetches one photo per shot). Not legal advice.
+
+**2. A change in her words is compared with the version before it** (Hallmark's redesign --before / --kept idea).
+`site/kept.py`: the signature of a built site = phone / WhatsApp / email links PER PAGE (the hero's call button can go
+while the footer keeps the number), forms per page, form field names (the honeypot excluded), internal page links,
+and the pieces Hoola wires in (data-hoola-form / posts / product / chart / img / quiz / config / compare-table /
+lottie / hero3d / slots / booking / map / youtube / pay / cart / queue, counted). `service._kept` runs in
+`_run_build` ONLY for a change (`only` set, never the first build), comparing the previous version's files
+(`out_dir(version)`) with the new live build. What she asked to remove is not reported (a removal word in her words
+plus the kind, or the very field she named: 'phone number hatao'); a page the change itself took away is not a lost
+link. Never blocking, never auto-edited: the version report carries `kept.lost`, one warning per item (kind "kept"),
+and her chat gets one line naming them with "wapas lagao". Switch `site_kept`.
+
+Found while building: a version's files are HARD LINKS of the live build (`media.link_or_copy`), which is safe only
+because `build.assemble` deletes and rewrites the live folder; the test now writes the way a rebuild does.
+
+**Tests:** `test_v0617_kuchh_na_chhoote.py` (5): lost items named, asked removals left out, removed pages not
+reported, no earlier version said so, wired into a real change build, Pexels credit kept from the API answer and
+shown on the built page next to the AI-photo note, unsafe links never written.
+
+**NOT VERIFIED:** no live Pexels call and no live change build with real Opus has run through it; the credit line's
+look on her real sites is unseen. Not built from the read (proposed): endings by page goal, ~11 more AI-look tells,
+the render-tier checks, look rotation across her sites.
+
+## v0.618.0 HAMESHA JUDA - the voice call stays connected until SHE hangs up, and costs nothing while quiet (built as 0.617.0; owner: "VOICE CALL IS SOUL OF OUR PRODUCT ... ONCE CALL CONNECTED IT REMAINS CONNECTED TILL USER DONT DISCONNECT IT ... REPLY WHEN WORK DONE, GIVE REMINDERS ... 24/7" -> "START")
+
+**Why.** Gemini Live bills every second of audio Hoola sends it, and silence counts. The phone's idle gate sends
+silence when nobody talks, so an open call is billed all the time. At Hoola's own price table ($0.005 a minute in,
+₹88 a dollar) that is about ₹26 an hour, or about ₹630 a day, per user. That figure was not re-checked against
+Google's price page. A 24/7 call connected to Google is unaffordable.
+
+**What it does (`server/app/voice.py`).**
+- **Parking.** A quiet call PARKS: `_park_watch` closes the Gemini session after `VOICE_PARK_AFTER_S` (90 s) with
+  nobody speaking, Hoola silent, no tool or job answer pending, no news waiting and no GoAway move under way. The
+  call itself stays in CALLS with the phone attached.
+- **Waking.** `_park_wait` waits for `_wake`, which any of these sets:
+  - her voice (`_loud` mic chunk; not on a held line);
+  - a typed line, a job result, a card note or a reminder (any text note pushed);
+  - the end of a hold.
+  On waking, Gemini reconnects with the saved resumption handle, falling back to a fresh session plus reseed. Her
+  first 5 s of speech are kept (`WAKE_KEEP_BYTES`). The phone gets `status resting` / `live`.
+- **Long hold.** A long hold ("ruko" 15 min, her other phone call 60 min) now parks instead of ending the call.
+  Side talk does not wake it; the Wapas aao button, a typed line or the end of her phone call does.
+- **Phone gone.** When the phone connection drops, the call parks within 3 s and waits `VOICE_PARK_GRACE_S`
+  (900 s) instead of 25 s.
+- **Spoken news.** A due reminder, the morning briefing and an automatic job's result are now SPOKEN on a live call
+  (`_live_note` in `card_news`; `worker.run_routines` hands the result over without a new card kind). Before this,
+  none of them ever reached a call.
+- **Real voice.** The OpenAI engine (`voice_openai._session_limit`) moves its 50-minute session only at a pause,
+  waiting at most 20 s; it was cutting mid-sentence. The OpenAI engine does not park (`CAN_PARK = False`): it keeps
+  the old hold and grace rules.
+- **Scorecard.** It now counts `parked_minutes`, `parks` and `wakes`.
+
+**Phone (`lib/live_voice.dart`, `call_session.dart`).**
+- It keeps trying for 14 minutes after a network loss (was 24 s), with retries backing off to at most 5 s apart.
+- On `status restarting` (a server update) it re-dials a FRESH call on the same chat for up to 4 minutes. The server
+  already saves a drop note at shutdown, so the new call continues the conversation instead of greeting her afresh.
+- The `resting` status shows nothing on screen.
+
+**Settings.** `voice_park` (true), `voice_park_after_s` (90), `voice_park_grace_s` (900). Conftest turns
+`VOICE_PARK` off for the older call suites.
+
+**Tests.** `test_v0617_hamesha_juda.py`, 9 tests: quiet park + voice wake; news and typed wakes; phone-away park
+surviving past the old grace; hold park + Wapas wake; reminder, briefing and routine spoken once each; the OpenAI
+pause move; phone pins; settings; version. Voice suites: 201 + 35 green.
+
+**NOT VERIFIED.** No real phone has run a parked call yet. Three things are unmeasured:
+- the wake delay, i.e. how long between her first word and Gemini being back;
+- whether Google's resumption handle survives a long park (the fresh-session fallback is tested only with fakes);
+- the real cost of an idle hour.
