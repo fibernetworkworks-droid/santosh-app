@@ -1905,3 +1905,13 @@ Task: owner GO on the task-monitoring audit's four fixes.
 Work Log: _record_cut + since-checked _late_result; kaamwatch kinds game/CAD/campaign/coding + unwrap; stuck words in block /
 status / Kaam list + 2-day dead told once; Call._still_working check-ins; merged their v0.652.0, re-versioned 0.653.0; 9 tests.
 Stage Summary: shipped; live check pending.
+
+---
+Task ID: v0.654.0 BHEJA TO DIKHA
+Agent: Claude (web studio session)
+Task: owner screenshot - Web Studio plan chat / home send "does nothing"
+Work Log:
+- traced: revise call takes up to a minute with no UI feedback; home ask the same
+- plan chat + home box now show her line / a working row at once, words restored on failure
+- browser test slows /revise, fails on old code, passes now; version ritual 0.654.0+660
+Stage Summary: shipped v0.654.0 on top of their v0.653.0 SACHCHA NATIJA (both kept)
