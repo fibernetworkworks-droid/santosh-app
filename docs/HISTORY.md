@@ -22402,6 +22402,7 @@ Tests: NEW `test_v0665_sahi_jagah.py` (8). NOT VERIFIED live.
 37. **The chat history is read off the event loop** (`asyncio.to_thread(_load_history)`): up to 5,000 rows decoded on the
     loop froze the whole server (live call audio, every stream) on each turn of a long chat.
 
+Also: the channel-chat lookup v0.667 added to every current-chat read (`bahar.chat_ids`) is cached 60 s and cleared when a channel gets a chat (the chat-list query budget test caught the extra query). Full check: 413 related test files run; every failure also run on the commit before these waves (their v0.664) - 231 fail there too (sandbox: website / browser / Playwright / voice suites), the 9 that differed were fixed or pass alone (5 were load-flaky in the 4-way parallel run).
 Tests: NEW `test_v0667_saaf_screen.py` (6; all 6 fail on the old code). The phone change compiles first on CI. NOT VERIFIED
 on a real phone. Found while building: the session's disk filled with pytest temp folders mid-run and cut santosh.py
 short on save - restored and re-checked; test runs now use `-o tmp_path_retention_policy=failed`.

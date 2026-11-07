@@ -452,7 +452,8 @@ def _slim_strings(obj, cap: int, depth: int = 0):
     if isinstance(obj, str):
         if len(obj) <= cap:
             return obj
-        return obj[:cap] + f"…[{len(obj) - cap:,} more characters cut; ask for this part alone to read the rest]"
+        return obj[:cap] + (f"…[{len(obj) - cap:,} more characters cut - for the rest ask for this part alone, a smaller "
+                            "limit or the next page, or save big data with data_fetch and read it with data_read]")
     if isinstance(obj, dict):
         return {k: _slim_strings(v, cap, depth + 1) for k, v in obj.items()}
     if isinstance(obj, list):

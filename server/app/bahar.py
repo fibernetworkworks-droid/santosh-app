@@ -343,6 +343,7 @@ async def incoming(link_id: str, sender: str, text: str, msg_id: str = "", meta:
                 s.add(c)
                 s.flush()
                 l.conversation_id = c.id
+                _CHAT_IDS.pop(l.tenant_id, None)   # v0.667 a channel chat from now on (never her current chat)
             top = s.scalars(select(Message.id).where(Message.conversation_id == l.conversation_id)
                             .order_by(Message.id.desc()).limit(1)).first()
             l.last_sent_id = int(top or 0)
@@ -376,6 +377,7 @@ async def _turn(link_id: str, tenant: str, channel: str, text: str, msg_id: str)
             s.flush()
             conv = c.id
             l.conversation_id = conv
+            _CHAT_IDS.pop(tenant, None)        # v0.667 a channel chat from now on (never her current chat)
     cid = f"{channel}:{msg_id}"[:64] if msg_id else ""
     # v0.667 a channel chat is NEVER "the chat she is in": marking it sent every mail alert, calendar nudge and browser
     # answer out on Telegram / WhatsApp (forward_all forwards every new reply of this chat) and opened her app on it
@@ -659,12 +661,23 @@ def teams_verify(auth_header: str, app_id: str, service_url: str) -> bool:
     return not su or su.rstrip("/") == str(service_url or "").rstrip("/")
 
 
+_CHAT_IDS: dict = {}       # tenant -> (monotonic time, set) - read on every "current chat" lookup, so kept 60 s
+CHAT_IDS_TTL_S = 60
+
+
 def chat_ids(tenant: str) -> set:
-    """v0.667 the conversations that belong to her outside channels (never her 'current' chat)."""
+    """v0.667 the conversations that belong to her outside channels (never her 'current' chat). Cached a minute (it is
+    asked on every chat-list / current-chat lookup); a channel that gets a new chat clears it at once."""
+    import time as _t
+    hit = _CHAT_IDS.get(tenant)
+    if hit and _t.monotonic() - hit[0] < CHAT_IDS_TTL_S:
+        return hit[1]
     try:
         ensure_table()
         with session() as s:
-            return {c for c in s.scalars(select(BaharLink.conversation_id).where(BaharLink.tenant_id == tenant)).all() if c}
+            got = {c for c in s.scalars(select(BaharLink.conversation_id).where(BaharLink.tenant_id == tenant)).all() if c}
     except Exception:   # noqa: BLE001
         log.debug("bahar chat ids failed", exc_info=True)
         return set()
+    _CHAT_IDS[tenant] = (_t.monotonic(), got)
+    return got

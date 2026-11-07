@@ -41,6 +41,7 @@ def test_a_channel_chat_is_never_the_current_chat(env):
     with session() as s:
         s.add(bahar.BaharLink(tenant_id=T, channel="telegram", hook="hk1", status="linked", conversation_id="tg1"))
     convs._CACHE.clear()
+    bahar._CHAT_IDS.clear()
     convs.mark(T, "app1", "message")
     convs._CACHE.clear()
     convs.mark(T, "tg1", "message")             # an old path marking it is refused
