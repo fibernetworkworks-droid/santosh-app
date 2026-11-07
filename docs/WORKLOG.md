@@ -1,4 +1,8 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.682.0 KAAN W6 FIX - the unlock guard's engine seam made honest (voiceprint_ready consumes the real voiceid bool contract; the live box TypeError healed at kaan/status; the three W6 test patches healed + one NEW regression test on the real unpatched contract; ritual_v0682.py 0.681.0 -> 0.682.0 (+681); owner: "W6 (quotas + retention -> unlocks real voiceprint diarization) -- start")
+
+Task ID: v0.681.0 KALA MANCH - the T5 knowledge-skill catalog family (planned at 0.669.0, the dev chain took 0.669-0.680 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept; owner: "GO" on the google/skills deploy plan)
+
 Task ID: v0.670.0 KAAN W6 HISAAB AUR SAFAI (built as 0.667.0; their 0.667.0/0.668.0/0.669.0 took the version numbers while W6 sat built - REBASE PROTOCOL, rebuilt on their tip, all kept)
 
 Task ID: v0.666.0 KAAN W5 BOLI KE TEEN DARWAZE (built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)
@@ -2199,6 +2203,15 @@ tests test_v0610_hoola_adopt.py (15, zero network); the AEP octo 369 + their new
 pristine); deploy is the owner's dispatch.
 
 ---
+Task ID: v0.683.0 EK LAKH PROMPT
+Agent: Claude Code (web session)
+Task: 1,00,000 deep website prompts in the Web Studio Templates
+Work Log:
+- site/templates.py (compose from library.brief, fit to 2,000, guard-safe), /api/site-templates routes, Studio Templates page + dialog + Use
+- all 1,00,000 checked: <= 2,000 chars and guard-clean; built as 0.672, main moved to 0.682 -> re-versioned 0.683.0 (REBASE PROTOCOL)
+- tests: v0683 5 + v121 site + v0671 / v0669 / v0667 / v0663 green
+Stage Summary:
+- shipped v0.683.0 to main
 Task ID: v0681-turant
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)
@@ -2224,3 +2237,11 @@ Task: owner "GO WAVE 12" = third audit items 29-35 (tool choice + skills).
 Work: finguard / phonedoc keys, whole-word ambiguous keys + generic auto-keys, skills matched on name+description with
 2+ words, dead keyword families re-homed, lane rules for overlapping tools, foreign tool names marked in read skills.
 27 new tests.
+
+---
+Task ID: v0685-teesri-jaanch (waves 9-12, built as 0.681)
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: ship waves 9-12 of the third audit as one release after the wide regression run.
+Work: re-versioned 0.681 -> 0.685 on their v0.684 tip; 9 regressions found by the comparison fixed; 67 new tests.
+Not verified live. Wave 13 waits for her GO.

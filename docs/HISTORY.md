@@ -1,3 +1,32 @@
+## v0.684.0 LEADS ENGINE P0–P5 — the lead generation engine, rebuilt on their v0.683.0 tip (8 Nov 2026; REBASE PROTOCOL: the engine was built as v0.540–v0.545 on the v0.539 base while the dev chain shipped its own v0.540–v0.671 — never pushed; rebuilt fresh on their tip, ALL their work kept, the phase stories P0–P5 of docs/LEADS_PLAN.md carried intact)
+
+The whole chain in one release — the engine GATHERS, it never contacts anyone; outreach stays behind her tap.
+
+- **P0 LEADS NEEV** — the `app/leads/` package: `lead_runs / lead_contacts / lead_outreach / lead_cap_days / lead_list_refs` (one business one row; provenance as ROW COLUMNS; the identity ladder kgmid > cid > place_id > phone_e164 > name+address; opt_out the campaign desk honours), the CSV importer moved inside the package (their `from .leads import import_leads / SAMPLE_PREFIX` call sites untouched), `rules.py` (the LANES ladder, LANE_BUILT refusals BY NAME — no stub, no pretending; STORE_BOUNDARY facts only), `service.py` (the plan card first, run_her_data, add_row's provenance gate, campaign_list hand-off, forget = the DPO duty), `leadscap` (LeadsCapped at plan time), five leads tools + the admit family + the leads_sahayak role, `/api/leads/*`, leadscard set v1.
+- **P1 LEADS OFFICIAL** — run_indiamart (IndiaMART's OWN MCP server via the existing app/indiamart.py: sellers by search_term + up to 5 cities, one BUSINESS one row, free) and run_places (Google Places through the EXISTING maps tools ONLY — resolve → nearby → place_details bought per place under `leads_places_details_per_run=50` and the mapsbill cap; NO second Google client, proven by source pin; Nearby's 20-ceiling beaten by place_cells() tiling; a MapsCapped mid-list ABORTS with the cap named, mid-details only stops the buying); `leadscard` set v2 (official_lanes_built, no_second_google_client).
+- **P2 LEADS ENRICH** — `app/leads/enrich.py`: one bounded crawl-brain pass per kept row's OWN website through the EXISTING scrape stack (SSRF guard, robots gate, 1 req/s per site, ≤3 pages/site); emails = mailto + regex over pruned text; socials by hostname on HER site only; DNS→MX grading pakka/sadak_tak/galat, NO SMTP probe; best email = ONE billed cheap-brain pick validated against candidates (no model → deterministic rank, card says pick=rule); fills EMPTY slots only, re-grades deliverability always; `LEADS_ENRICH_ROWS_PER_RUN=100` refuses at plan time; leadscard set v3.
+- **P3 LEADS SCRAPE** — the Google Maps PUBLIC LISTING grid: `gmaps_parse.py` (ideas re-implemented, zero upstream code; every field position a named constant with its proof sample; ids by SHAPE — kgmid > place_id > cid; no APP_INITIALIZATION_STATE = loud GmapsParseError; FACTS ONLY — review text never reaches the store), `grid.py` (zoom ladder 13–17, 400-cell plan-time ceiling, choose_zoom from MEASURED yield), `scrape.py` (existing fetch stack, 1 s politeness, robots on non-Google hosts), run_scrape behind a PER-TENANT OPT-IN OFF BY DEFAULT (set_scrape_optin — her act, walls quoted into the row); grid checkpointed per cell (resume continues the grid; DONE resume = zero fetches); block/CAPTCHA hard-aborts naming the vendor; THE CLAUDE.md RULE TEXT AMENDMENT rode this phase (public business-listing scrape allowed by the owner's explicit ask of 5 Nov 2026 under walls no session may move); leadscard set v4 (rule_text_amended reads CLAUDE.md for real).
+- **P4 LEADS VENDOR + SCALE** — `app/leads/vendor.py`: one licensed vendor behind the SAME leads_run shape, CONFIG-GATED (LEADS_VENDOR_NAME/_BASE_URL/_API_KEY/_PRICE_PER_ROW_INR/_TERMS_ACK — until she names it the lane is ABSENT and asks refuse naming the config); priced on the card BEFORE the run (estimate over `LEADS_VENDOR_RUN_CAP_INR` = refused card); ONE call, never retried; every row MUST carry its own source_url; 401 aborts without printing the key; the bill = the vendor's reported cost, else the estimate, and says which. `app/leads/scale.py`: store_backend() names sqlite | postgresql honestly; enrich_fanout() over the HOOLA GRAPH (dispatch → 4 chunk nodes → the JOIN barrier; ≤ `leads_enrich_fanout_max=4` site passes in flight; writes after the barrier ONE WRITER AT A TIME, serial the default); `rules.LANE_BUILT` = all five lanes — the plan section 4 ladder COMPLETE; leadscard set v5.
+- **P5 OUTREACH HANDOFF + PROOF** — campaign_list is TWO TAPS (first = the CONFIRM CARD creating NOTHING; confirm=true builds); create_campaign re-checks every leads-store copy and an opt_out row NEVER joins the send queue (an all-opted-out ask is a refusal, not an empty campaign); the outreach LEDGER writes at the moment of truth on both desks (worker.send_batches → campaign_sent via note_campaign_sends; mailbox.send_draft → email_sent via note_email_sends matched by the row's own email — an address the store never saw records nothing); the vocabulary lives in rules.OUTREACH_KINDS/DESKS and is checked at every write; readable via `leads.service.outreach_log` + `GET /api/leads/outreach` + `leads_export action=outreach_log`; a forgotten row's events stay. THE CI LOAD PROOF on the DEFAULT caps: 5,000 rows end-to-end (kept, counted, exported with provenance, handed off with consent False, ledger readable; a 5,001-row ask REFUSED at plan time with the cap named); leadscard set v6; registry stays their count + the six leads tools.
+
+**Tests**: test_v0540_leads_store/card (P0) + test_v0541_leads_official + test_v0542_leads_enrich + test_v0543_leads_scrape + test_v0544_leads_scale + test_v0545_leads_outreach — zero network, fakes at the module boundaries (httpx.MockTransport, recorded fixtures), all pins re-set to the merged tree (registry = their 608 + the six leads tools).
+
+**NOT VERIFIED, said plainly**: the whole engine has answered fakes and fixtures only — no live Google query, no live IndiaMART run, no live vendor, no real WhatsApp/email send. Her first live run on each lane is the true confirmation: the scrape lane's live layout, block behaviour from her VPS IP and real yield stay unknown until then; the vendor adapter is written to the documented contract and re-checked when she names the vendor; the desks' first live campaign/email from a leads list confirms the ledger's side.
+## v0.682.0 KAAN W6 FIX — the unlock guard's engine seam made honest (8 Nov 2026)
+
+The first live W6 check on the VPS crashed at kaan/status: limits.voiceprint_ready unpacked `ok, why = VE.available()` but the pre-existing voiceid engine contract is a plain bool (`available() -> bool`; only the kaan engine's `EN.available()` is the tuple pair). The W6 suite stayed 195/195 green because its three engine patches assumed the same wrong tuple shape — the tests inherited the bug.
+
+- **THE FIX** — W6 adapts to their lane as-is: limits.py consumes the bool and composes the honest why itself (sherpa_onnx or the CAM++/TitaNet models in voiceid_models_dir missing); the voiceid lane untouched; the three W6 test patches healed to `lambda: True`; NEW regression test speaking the real unpatched contract.
+- Version ritual: ritual_v0682.py swept 0.681.0 -> 0.682.0 (+681) across the test tokens, pubspec, the console cache-buster stamps; registry 609 stands (no tools); zero pip.
+- Server-only deploy = owner's vps-ops dispatch; the W6 retest on the VPS rides this deploy.
+## v0.681.0 KALA MANCH — the T5 knowledge-skill catalog family (8 Nov 2026, planned at 0.669.0; the dev chain took 0.669.0-0.680.0 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept)
+
+The knowledge tier beside the four capability brothers: Google's public skill catalog (github.com/google/skills, Apache-2.0, fork-and-remix sanctioned) read on demand — IDEA-ONLY.
+
+- **ONE tool `kala`** (registry 608 -> 609), FIVE ACTIONS, one envelope: **catalog** (index.json byte-exact behind a 5-min in-process TTL cache `kala_catalog_ttl_seconds=300`, case-insensitive regex narrowing over name+description, 25-cap with honest totals, the alphabetical-bias note; a broken regex degrades to a literal find) · **read** (one SKILL.md by its EXACT catalog name, fetched fresh every read, 12k cap + honest truncation, unknown name = NOT_FOUND — never inferred from the name) · **references** (the skill's references/<file>.md deep-dive, derived from the entrypoint and re-allowlisted, 8k cap, 404 = NOT_FOUND, ../ traversal refused before any fetch) · **list** (the predictable family prefixes — gke-, agent-platform-, google-cloud-solution-, google-cloud-waf- ... — with the family table, unknown prefixes answered with the table, never invented answers) · **status** (zero network: upstream, cache state incl. the last error, caps, laws).
+- **THE LAWS** — GET only forever; every url crosses TWO walls (the house scrape-lane SSRF guard AND the lane's one-host allowlist: https://raw.githubusercontent.com only, one path shape — index.json | skills/<domain>/<skill>/SKILL.md | .../references/<file>.md — refused by name NOT_ALLOWED; a poisoned catalog entry is refused too); the catalog is cached, the documents are never cached (fetching is the normal path); **NO SKILL.MD SCRIPT EVER EXECUTES** server-side; text passes the id-mask; ONE network seam (`_http_get`) the tests monkeypatch — the suite stays offline; attribution UA `hoola-kala/0.681 (+google-skills catalog; Apache-2.0 remixed; idea-only)`; kill switch `kala_enabled` default on.
+- **Idea provenance (not code)** — the finding-google-skills meta-skill (byte-exact catalog fetch, truncation-bias honesty), the routing rule (predictable families, never infer contents from a name), the SKILL.md anatomy (progressive disclosure), the attribution tag law (append, never overwrite).
+- Tests: **test_v0681_kala_manch.py (34, zero network, autouse cold cache)** — the battery on the swept tree: kala 34 + duniya 39 + sandarbh/bhandar 78 + jharokha 27 = 178.
 ## v0.680.0 HOOLA ADOPT — the product's first live lane ON the AEP, P9 of the HOOLA plan (8 Nov 2026)
 
 Owner: "CURRENTLY HOOLA DONT USE AEP IT NEED USER AUTH" then "CONTINUE". Built as 0.610.0 on the v0.600.0 base; the dev chain took
@@ -13,7 +42,6 @@ the reply lands in the same conversation + SSE feed (the assistant message sourc
 failure fails loudly (502) and the typing dots ALWAYS go away. The yaad law held in testing: the user row saves as a str. THE
 PRODUCTION LOOP IS UNTOUCHED; the lane is opt-in per call; registry stays 584; old APKs keep working. Tests: test_v0610_hoola_adopt.py
 (15, zero network, the brain injected). server-only deploy = owner's vps-ops dispatch.
-
 ## v0.670.0 KAAN W6 — HISAAB AUR SAFAI (7 Nov 2026, built as 0.667.0; their console-stamp + PREMIUM STUDIO 0.667.0, DUNIYA MANCH 0.668.0, HOOLA AURA 0.669.0 - REBASE PROTOCOL, rebuilt on their tip, all kept)
 
 The accountability layer her audio runs on, then the unlock it buys — quotas + retention -> real voiceprint diarization.
@@ -289,7 +317,6 @@ the SqliteSaver engine-path lazy-ensure moved to `_raw()` per instance. Registry
 (INERTNESS re-proven; the dev chain's stale 568 count pins in six suites healed to the real
 569). Tests: NEW `test_v0540_hoola_agent.py` (56). Server-only; old APKs keep working. Train:
 P5 the 24-middlewares → P6 RETRIEVE → P7 HUB → P8 the parity audit.
-
 ## v0.530.0 HOOLA GRAPH — the state-graph engine, P3 of the HOOLA AEP plan (5 Nov 2026)
 
 The langgraph idea hand-built as `server/app/aep/graph.py` (zero upstream code). StateGraph
@@ -22573,7 +22600,19 @@ short on save - restored and re-checked; test runs now use `-o tmp_path_retentio
 
 Waves 5-8 of the second deep audit (37 flaws) were built as 0.663-0.667 and re-versioned twice while other sessions shipped 0.663-0.671; to stop the churn they ship together as v0.672.0 (pubspec 0.672.0+678). Code comments keep the wave numbers they were written with (v0.665-v0.668).
 
-## v0.681.0 TURANT — Wave 9 of the third deep audit: urgent safety, money, privacy and cost (owner: "GO WAVE 9")
+
+## v0.683.0 EK LAKH PROMPT - 1,00,000 deep website prompts in the Web Studio Templates (built as 0.672; the other sessions took 0.672-0.682 meanwhile - REBASE PROTOCOL, all kept)
+
+Owner: "now in template create a 1 lakh deep prompt for website creation, design, development across all possible field in world".
+
+- **What a template is.** One cell of the website library the builder already uses: 1,000 kinds of business in 40 industries x 10 goals (`taxonomy.GOALS`) x 10 design styles (`taxonomy.STYLES`) = exactly 100,000. Numbered #1..#1,00,000 in the library's order (industry, trade, goal, style); id = `field.goal.style`.
+- **`site/templates.py`.** `prompt(n | id)` composes the deep prompt on demand from `library.brief(field, goal, style)` - nothing stored per prompt, the same text on every call, and a prompt can never disagree with the card the builder uses. Sections: business + industry + template number; GOAL (the goal's own brief); MAIN ACTION; PAGES; HOME PAGE in order; DESIGN (grid / do / avoid), hero, fonts (incl. the Hindi face), palette, corners, motion; CONTENT (plain specific words, trust only when she confirms, photos); SEO (title + description per page, LocalBusiness schema, sitemap, the searches to rank for); BUILD QUALITY (mobile-first, lazy sized images, ~100 KB code a page, WCAG 2.2 AA, keyboard + screen reader, forms with consent + spam protection, no trackers without consent); RULES (the trade's own law lines); never-invent (marked samples, v0.671). A 5-level fitter shortens the long library details first so every prompt fits the 2,000-character ask box. The house guard (`guard.brief_problem`) read a few law lines as a trap page by word distance ("no fake 'last 2 seats' ... government", "refund ... page" once lines are joined), so `_guard_safe` softens those words (fake -> made-up, refund -> returns ...) before the length fit; all 1,00,000 were checked once against the guard in both forms (as written and lines joined, the way `service.new` reads it) and the length limit: 0 failures.
+- **`search(q, industry, goal, style, offset, limit)`.** Her words match trade names / Hindi / aliases directly plus the library's phrase + spelling match (`library.match(..., meaning=False)` - new switch: no FastEmbed model load for a search box; this also stopped the template search warming the meaning model for later tests); goal / style words in her search narrow those; counts are arithmetic, paging by offset.
+- **Routes.** `GET /api/site-templates` (list + filters + the industry / goal / style lists), `GET /api/site-templates/{n or id}` (the prompt; 404 when unknown).
+- **Studio (`webstudio.js` / `.css`).** Templates page: '1,00,000 deep prompts' badge, search box (as she types), industry / goal / style selects, count line in Indian digits, card grid (number, trade, Hindi name, industry, goal + style chips), Show more; the old 12 quick starts stay below. A card opens a dialog with the whole prompt (mono, scrolls), characters + pages, Close / Copy / Use this prompt. Use puts the prompt in the home ask box; on send, a prompt still carrying its '[Hoola template #' marker sends field / goal / style with it, so `service.new` builds from the full library card.
+- Tests `test_v0683_ek_lakh_prompt.py` (5): 1,502 prompts sampled (unique, deterministic, every section present, <= 2,000), every trade has its 100, guard-clean sample; search / filters / paging / unknown; routes + Use sends the card through `service.new`; Studio markers; a browser walk (badge, 30 cards, search 'dentist', goal filter, dialog, Use fills the box).
+- NOT VERIFIED: how Opus builds from each of the 1,00,000 (only the shared path was run); 'every field in the world' = the library's 1,000 trades in 40 industries - mostly Indian local business, as the library was built.
+## v0.685.0 TEESRI JAANCH, wave 9: TURANT — Wave 9 of the third deep audit: urgent safety, money, privacy and cost (owner: "GO WAVE 9")
 
 The third deep audit (5 parallel passes: long tasks, tool choice + skills, memory + context, analysis + monitoring,
 reliability + feeling) found 47 flaws in 5 waves; this wave is the urgent nine.
@@ -22610,7 +22649,7 @@ reliability + feeling) found 47 flaws in 5 waves; this wave is the urgent nine.
 Tests: NEW `test_v0681_turant.py` (19; all 19 fail on the old code). NOT VERIFIED live: the cache-read share on a real
 bill, a real overload fallback, a real campaign send.
 
-## v0.681.0 (cont.) LAMBA KAAM — Wave 10 of the third deep audit: a long task finished properly (owner: "GO WAVE 10")
+## v0.685.0 TEESRI JAANCH, wave 10: LAMBA KAAM — Wave 10 of the third deep audit: a long task finished properly (owner: "GO WAVE 10")
 
 10. **A cleared old tool result keeps the facts.** `prune.clear_old` replaced every old result past 40k chars with a bare
     "run the tool again" line - a 5-supplier job lost steps 2-8 before its Excel step. It now keeps a ~2,000-char gist
@@ -22639,7 +22678,7 @@ bill, a real overload fallback, a real campaign send.
 
 Tests: NEW `test_v0682_lamba_kaam.py` (11). NOT VERIFIED live on a real long job.
 
-## v0.681.0 (cont.) YAAD PAKKI — Wave 11 of the third deep audit: memory and context (owner: "GO WAVE 11")
+## v0.685.0 TEESRI JAANCH, wave 11: YAAD PAKKI — Wave 11 of the third deep audit: memory and context (owner: "GO WAVE 11")
 
 20. **A call keeps its small talk.** `voice.finish_turn` skips its own save only for a turn the BRAIN answered
     (`_brain_this_turn`); every turn after the first brain ask was skipped, so Gemini's own answers never reached the chat,
@@ -22662,7 +22701,7 @@ Tests: NEW `test_v0682_lamba_kaam.py` (11). NOT VERIFIED live on a real long job
 
 Tests: NEW `test_v0683_yaad_pakki.py` (10). NOT VERIFIED live.
 
-## v0.681.0 (cont.) SAHI AUZAAR — Wave 12 of the third deep audit: the right tool, the right skill (owner: "GO WAVE 12")
+## v0.685.0 TEESRI JAANCH, wave 12: SAHI AUZAAR — Wave 12 of the third deep audit: the right tool, the right skill (owner: "GO WAVE 12")
 
 29. **"Bank statement check karo" reaches paisa_sahayak** (finguard keys: bank statement, passbook, paise kat gaya, double
     debit, credit card bill...); `bank` is no longer the enterprise bank integrator's auto-key.
@@ -22683,3 +22722,7 @@ Tests: NEW `test_v0683_yaad_pakki.py` (10). NOT VERIFIED live.
 35. **"Mera phone slow hai" reaches the phone doctor** (phonedoc keys: phone slow / hang / garam / battery / storage full).
 
 Tests: NEW `test_v0684_sahi_auzaar.py` (27). NOT VERIFIED live (the tool card on the VPS is the live check).
+
+## v0.685.0 TEESRI JAANCH - waves 9-12 shipped as one release (built as 0.681; their LEADS ENGINE, EK LAKH PROMPT and KALA MANCH took 0.681-0.684 - REBASE PROTOCOL, all kept)
+
+Wave 13 (analysis, monitoring and feeling - 12 items) waits for her GO. The wide regression run (510 related test files, ~7,600 tests) found 9 regressions of these waves; all were fixed (the held research price in the refusal text, the honesty gate on learning only, the sent-model meter, a smaller cleared-result gist, focus words kept in full mode, bulk-offer campaign phrases, per-tenant coder pins, the slot-loop pin); every other failure fails on their own tip too (website / browser / Playwright / voice / sandbox classes).

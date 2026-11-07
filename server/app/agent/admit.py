@@ -75,6 +75,18 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
                  "sabhi ko whatsapp", "whatsapp pe offer", "whatsapp par offer", "whatsapp offer", "customers ko offer",
                  "whatsapp template", "campaign", "template", "broadcast", "lead list", "leads", "contact list",
                  "customer list", "bulk message", "bulk whatsapp", "opt-in", "opt in", "consent", "कैंपेन"),
+    # v0.540 LEADS engine (the run / status / list / export / forget tools): the words that mean FINDING new
+    # business customers, not messaging the ones she has. Deliberately narrower than "campaign"'s "leads" -
+    # both families may come into view together and the model picks; no key here collides with a lane refusal.
+    "leads": ("leads chahiye", "lead banao", "lead generation", "leads dhundho", "leads dhoondo", "customers dhundo",
+              "customers dhoondo", "naye graahak", "naye customers", "new customers", "business list", "sellers dhundo",
+              "prospects", "territory list", "leads store", "leads export", "leads run", "लीड्स", "ग्राहक ढूंढो",
+              # v0.543.0: the scrape lane's finding words (the lane itself refuses politely until her opt-in)
+              "scrape karke", "maps scrape", "google maps se list", "scrape lane",
+              # v0.544.0: the vendor lane's words (config-gated - no vendor named, no lane)
+              "vendor se leads", "licensed vendor", "vendor lane",
+              # v0.545.0: the outreach handoff's words (the confirm card is the right first answer)
+              "outreach", "campaign list banao", "leads ki list campaign", "outreach hisaab"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),

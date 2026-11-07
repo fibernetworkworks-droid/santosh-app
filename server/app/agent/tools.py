@@ -407,6 +407,14 @@ TOOLS.extend(DUNIYA_TOOLS)
 TOOL_LABELS.update(DUNIYA_LABELS)
 HANDLERS.update(DUNIYA_HANDLERS)
 
+from .kala_tools import (  # noqa: E402  v0.681 KALA MANCH - the T5 knowledge-skill catalog family (github.com/google/skills, Apache-2.0, fork-and-remix sanctioned, IDEA-ONLY): ONE GET-only door over Google's public skill catalog - catalog (index.json byte-exact behind a TTL cache, regex-narrowed) + read / references (SKILL.md documents fetched fresh on demand, NEVER executed) + list / status, every url behind the house SSRF guard AND a one-host allowlist, backend-only
+    KALA_HANDLERS, KALA_LABELS, KALA_TOOLS,
+)
+
+TOOLS.extend(KALA_TOOLS)
+TOOL_LABELS.update(KALA_LABELS)
+HANDLERS.update(KALA_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)
@@ -1354,6 +1362,16 @@ _seen = {t["name"] for t in TOOLS}
 TOOLS.extend(t for t in CREW_TOOLS if t["name"] not in _seen)
 TOOL_LABELS.update(CREW_LABELS)
 HANDLERS.update(CREW_HANDLERS)
+del _seen
+
+# v0.540.0 LEADS NEEV: the lead generation engine - five tools (leads_run / leads_status / leads_list /
+# leads_export / leads_forget) over the run store, plan-time caps and the provenance gate. P0 runs L0 (her
+# data) only; the engine gathers and NEVER contacts anyone - outreach stays behind her tap on the desks.
+from .leads_tools import LEADS_HANDLERS, LEADS_LABELS, LEADS_TOOLS  # noqa: E402
+_seen = {t["name"] for t in TOOLS}
+TOOLS.extend(t for t in LEADS_TOOLS if t["name"] not in _seen)
+TOOL_LABELS.update(LEADS_LABELS)
+HANDLERS.update(LEADS_HANDLERS)
 del _seen
 
 _RAW_SPECS: list[dict] = [dict(t) for t in TOOLS]     # kept for tests / size stats only (never sent anywhere)

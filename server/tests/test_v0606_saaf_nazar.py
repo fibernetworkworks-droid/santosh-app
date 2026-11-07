@@ -18,7 +18,7 @@ from tests.test_v121_site import T, site_env  # noqa: F401  (fixture)
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.680.0"
+    assert APP_VERSION == "0.685.0"
 
 
 CLEAN_CSS = (":root{--c-bg:#ffffff}"
