@@ -1,0 +1,1 @@
+HOOLA QA PASS: 14/14 screens opened · cold start 316 ms (ok) · janky frames 13.33% (ok) · APK 1.87 MB (ok) · 42 buttons tapped (0 crashed, 3 did nothing) · 1 accessibility findings

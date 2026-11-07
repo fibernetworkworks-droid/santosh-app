@@ -1,0 +1,42 @@
+home	Menu	1	1	1
+home	Cart	1	1	2
+home	Fresh today Free delivery above ₹499 Ord	1	1	3
+home	Categories	1	1	4
+home	Profile	1	1	5
+categories	Menu	1	1	1
+categories	Open cart	1	1	2
+categories	Home	1	1	3
+categories	Cart	1	1	4
+categories	Profile	1	1	5
+product	Menu	1	1	1
+product	Atta 5 kg Staples ₹265	1	1	2
+product	Toor dal 1 kg Staples ₹158	1	1	3
+product	Amul butter 500 g Dairy ₹285	1	1	4
+product	Open cart	1	1	5
+cart	Menu	1	1	1
+cart	Shop now	1	1	2
+cart	Place order	1	1	3
+cart	Home	1	1	4
+cart	Categories	1	1	5
+orders	Menu	1	1	1
+orders	Open cart	1	1	2
+profile	Menu	1	1	1
+profile	Sign in	1	1	2
+profile	Open cart	1	1	3
+profile	Home	1	1	4
+profile	Categories	1	1	5
+dashboard	Menu	1	1	1
+support	Menu	1	1	1
+support	Open cart	1	1	2
+seller_info	Menu	1	1	1
+privacy	Menu	1	1	1
+delete_account	Menu	1	1	1
+delete_account	Yes, delete my account	1	0	2
+hoola_login	Menu	1	1	1
+hoola_login	item at 40,452	1	0	2
+hoola_login	I agree to the privacy notice	1	0	3
+hoola_login	I already have an account	1	1	4
+hoola_login	Create account	1	1	5
+hoola_account	Menu	1	1	1
+hoola_account	Sign in	1	1	2
+hoola_inbox	Menu	1	1	1
