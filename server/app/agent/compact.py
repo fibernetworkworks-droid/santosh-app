@@ -147,8 +147,8 @@ _LONG_DIGITS = re.compile(r"(?<![\w-])(?:\d[ -]?){9,}\d(?![\w-])")
 def scrub(t: str) -> str:
     """Never into a summary: OTP / PIN / CVV / passwords next to their word, card / bank / Aadhaar-length numbers."""
     t = _SECRET_NEAR.sub(lambda m: m.group(1) + " ****", t or "")
-    t = _LONG_DIGITS.sub("######", t)
-    return t
+    from .. import pii
+    return pii.mask_sensitive(t)   # v0.661 card / Aadhaar / bank / PAN only - her customers' phone numbers stay
 
 
 # ------------------------------------------------------------------ what gets folded
