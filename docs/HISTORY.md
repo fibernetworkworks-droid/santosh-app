@@ -21990,3 +21990,14 @@ the 15 / 45 min turn limit) -> four gaps -> "GO".
 
 Tests `test_v0652_sachcha_natija.py` 9. Related suites 239 passed; the reds (test_v136_kaam x4 "looks", test_campaign_flow
 NoResultFound) fail the same way without this change. NOT VERIFIED on a real call / real background jobs yet.
+
+## v0.654.0 BHEJA TO DIKHA — a sent line shows at once in the Web Studio (owner screenshot: "WHEN CLICK ON SEND ... THE PROMPT IS NOT LANDING ON CHAT ... IT JUST DO NOTHING")
+
+Cause: the plan chat's send ran `POST /api/site-architect/{id}/revise` (a full spec rewrite by the model, often 30-60 s, plus a data
+redraft when the data words moved) and drew NOTHING until it returned - the line stayed in the box, no row, no working sign - so the
+send looked dead. The home ask box in Plan mode had the same silence while the first plan was written. The request itself was fine.
+Fix (`static/console/webstudio.js` only): the plan chat appends her line + a "Updating the plan · about a minute" row with working
+dots at once and clears the box; on success the plan redraws with the line logged; on failure the row turns into the reason and her
+words return to the box. The home box shows "Writing your plan from your words · about a minute" / "Starting your website" under it
+(`#wsAskWork`) and keeps her words with the reason on a failure. Test: `test_v0649_web_studio.py` browser walk slows `/revise` by
+2.5 s and requires her line + the working row within 1.5 s (fails on the old code), and a workspace chat line must land at once.

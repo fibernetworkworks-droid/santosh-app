@@ -169,6 +169,7 @@
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
         </form>
+        <div id="wsAskWork" class="step wrap" role="status" aria-live="polite" style="max-width:780px;margin-top:10px" hidden></div>
         <div id="wsSrc" class="wrap" style="max-width:780px"></div>
         <div class="chips">${TYPES.slice(0, 7).map(([t]) => `<button class="chip" type="button" data-type="${esc(t)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">More templates</a></div>
       </section>
@@ -816,12 +817,31 @@
     const btn = f.querySelector('[type=submit]');
     BUSY = true; if (btn) btn.disabled = true;
     try {
-      if (kind === 'ask') { const t = S(f.querySelector('textarea').value).trim(); if (!t) return toast('Write one line about the website.', true); await startFromAsk(t); }
+      if (kind === 'ask') {
+        const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return toast('Write one line about the website.', true);
+        const plan = store.get(MODE_KEY) === 'plan';
+        const note = $('#wsAskWork');
+        if (note) { note.hidden = false; note.innerHTML = `<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${plan ? 'Writing your plan from your words · about a minute' : 'Starting your website'}</span>`; }
+        ta.readOnly = true;
+        try { await startFromAsk(t); }
+        catch (er) { if (note) { note.hidden = false; note.innerHTML = `<span class="li bad">${esc(er.message)} · your words are still in the box, press send again</span>`; } throw er; }
+        finally { if (ta.isConnected) ta.readOnly = false; }
+      }
       else if (kind === 'old' || kind === 'shot') await readDesign(f, kind);
       else if (kind === 'revise') {
-        const t = S(f.querySelector('textarea').value).trim(); if (!t) return;
+        const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return;
         const pid = parts()[1];
-        CARD = await api('POST', `/api/site-architect/${enc(pid)}/revise`, {words: t});
+        const box = $('#wsPlanMsgs'), work = document.createElement('div');
+        work.className = 'pending';
+        work.innerHTML = `<div class="me">${esc(t)}</div><div class="step" data-work><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Updating the plan · about a minute</div>`;
+        box?.appendChild(work); if (box) box.scrollTop = box.scrollHeight;
+        ta.value = ''; ta.readOnly = true;
+        try { CARD = await api('POST', `/api/site-architect/${enc(pid)}/revise`, {words: t}); }
+        catch (er) {
+          const w = work.querySelector('[data-work]'); if (w) { w.className = 'li bad'; w.textContent = `${er.message} · your words are back in the box`; }
+          if (ta.isConnected) { ta.readOnly = false; if (!ta.value) ta.value = t; }
+          throw er;
+        }
         const key = 'hoola.ws.spec.log.' + pid;
         let log = []; try { log = JSON.parse(sessionStorage.getItem(key) || '[]'); } catch {}
         log.push({me: t, done: 'Plan updated'}); try { sessionStorage.setItem(key, JSON.stringify(log.slice(-20))); } catch {}
