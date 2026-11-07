@@ -1,4 +1,4 @@
-"""v0.682.0 KALA MANCH - the T5 knowledge-skill catalog family, backend-only (owner: "GO" on the
+"""v0.684.0 KALA MANCH - the T5 knowledge-skill catalog family, backend-only (owner: "GO" on the
 google/skills deploy plan; upstream github.com/google/skills, Apache-2.0, fork-and-remix
 sanctioned; IDEA-ONLY: zero upstream code - what ported is the finding-google-skills meta-skill's
 byte-exact catalog fetch, the routing rule's predictable-families + never-infer laws, the SKILL.md
@@ -442,4 +442,4 @@ def test_enum_and_label_pins():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.682.0"                       # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.684.0"                       # conscious-bump guard: moves with every release

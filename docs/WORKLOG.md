@@ -1,4 +1,6 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.682.0 KAAN W6 FIX - the unlock guard's engine seam made honest (voiceprint_ready consumes the real voiceid bool contract; the live box TypeError healed at kaan/status; the three W6 test patches healed + one NEW regression test on the real unpatched contract; ritual_v0682.py 0.681.0 -> 0.682.0 (+681); owner: "W6 (quotas + retention -> unlocks real voiceprint diarization) -- start")
+
 Task ID: v0.681.0 KALA MANCH - the T5 knowledge-skill catalog family (planned at 0.669.0, the dev chain took 0.669-0.680 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept; owner: "GO" on the google/skills deploy plan)
 
 Task ID: v0.670.0 KAAN W6 HISAAB AUR SAFAI (built as 0.667.0; their 0.667.0/0.668.0/0.669.0 took the version numbers while W6 sat built - REBASE PROTOCOL, rebuilt on their tip, all kept)
@@ -2199,3 +2201,14 @@ JAANCH mid-push again), their base kept whole each time, the route + the module 
 0.672.0/+678 -> 0.680.0/+679. server/app/agent/aeptune.py + POST /api/aep/turn/{conversation_id} behind require_key + current_tenant;
 tests test_v0610_hoola_adopt.py (15, zero network); the AEP octo 369 + their newest suites green (the reds proven pre-existing on
 pristine); deploy is the owner's dispatch.
+
+---
+Task ID: v0.683.0 EK LAKH PROMPT
+Agent: Claude Code (web session)
+Task: 1,00,000 deep website prompts in the Web Studio Templates
+Work Log:
+- site/templates.py (compose from library.brief, fit to 2,000, guard-safe), /api/site-templates routes, Studio Templates page + dialog + Use
+- all 1,00,000 checked: <= 2,000 chars and guard-clean; built as 0.672, main moved to 0.682 -> re-versioned 0.683.0 (REBASE PROTOCOL)
+- tests: v0683 5 + v121 site + v0671 / v0669 / v0667 / v0663 green
+Stage Summary:
+- shipped v0.683.0 to main

@@ -1,4 +1,4 @@
-"""v0.682.0 P5 OUTREACH HANDOFF + PROOF - the plan section 10 finale, tests with ZERO network:
+"""v0.684.0 P5 OUTREACH HANDOFF + PROOF - the plan section 10 finale, tests with ZERO network:
 
 - the campaign hand-off is TWO TAPS: the first returns a CONFIRM CARD and creates nothing (no list, no refs,
   no ledger rows), the second (confirm=true) builds - "her tap, confirm card" said in code;
@@ -337,10 +337,10 @@ def test_load_proof_5000_rows_end_to_end_under_caps(env):
 # ================================================================ the card (set v6)
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.682.0"
+    assert APP_VERSION == "0.684.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.682.0+681" in pub.read_text()
+    assert "0.684.0+683" in pub.read_text()
 
 
 def test_card_set_v6_outreach_guards(env):

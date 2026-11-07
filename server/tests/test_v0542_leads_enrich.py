@@ -97,7 +97,7 @@ def test_site_pass_reads_home_then_contact_and_bounds_the_pages(monkeypatch):
     assert len(urls) == E.SITE_PAGES_MAX                  # home + contact-ish pages, the site bound holds
     assert "contact@medplus.in" in out["emails"] and "info@medplus.in" in out["emails"]
     assert out["socials"]["twitter"] == "https://twitter.com/medplus"
-    assert out["blocked"] == [] and out["parser_version"].startswith("v0.682")
+    assert out["blocked"] == [] and out["parser_version"].startswith("v0.684")
 
 
 def test_site_pass_names_the_block_and_the_dead_site_never_crashes(monkeypatch):
@@ -342,7 +342,7 @@ def test_card_guards_carry_the_enrich_walls(env):
     for k in ("enrich_built", "enrich_uses_existing_stack", "no_smtp_probe", "email_grade_vocab",
               "enrich_cap_named", "cap_refuses"):
         assert g[k] is True, f"guard {k} = {g[k]}"
-    assert card["set"] == 6 and card["guards_ok"] == len(g)   # v0.682.0: set v6 - the outreach handoff walls joined
+    assert card["set"] == 6 and card["guards_ok"] == len(g)   # v0.684.0: set v6 - the outreach handoff walls joined
 
 
 def test_no_smtp_probe_in_the_source():
