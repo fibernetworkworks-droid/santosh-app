@@ -2019,3 +2019,13 @@ Work Log:
 - Fixed: real downloads, DNS records + apply / check / undo in Publish, quiet /moves, Live pill in History, care name fallback.
 Stage Summary:
 - v0.663.0, tests/test_v0663_studio_jaanch.py 3 green.
+
+---
+Task ID: v0.664.0 ASLI SAMAY
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked to see the website being built in real time (R1-R5).
+Work Log:
+- Checked first: no streaming anywhere, partial site hidden by the Studio.
+- Built stream.py + streamed Opus sections, the SSE live route, the build canvas pages + hoola-build.js, the Studio live view (canvas, follow, page strip, code tabs, live looks, live changes, before / after).
+Stage Summary:
+- v0.664.0, tests/test_v0664_asli_samay.py 7 green.
