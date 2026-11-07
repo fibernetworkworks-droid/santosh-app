@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import os
 import re
 import threading
@@ -118,7 +119,7 @@ def _aware(d: datetime | None) -> datetime | None:
     return d if d.tzinfo else d.replace(tzinfo=timezone.utc)
 
 
-def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
+def enqueue(tenant: str, conv: str, job: dict[str, Any], dup_ok: bool = False) -> bool:
     """Queue one result report for a finished/failed/stopped job (deduped per job key + state). False = not queued.
     v0.189: stopped jobs report too - she told Hoola to Rokiye a kaam, or the system stopped it; the news is still
     hers, in Hoola's own words, not a dry ⏹ line."""
@@ -139,7 +140,7 @@ def enqueue(tenant: str, conv: str, job: dict[str, Any]) -> bool:
                                                        KaamFollowup.status.in_(("pending", "sent")),
                                                        KaamFollowup.created_at >= cut)).first()
             if dup:
-                return False
+                return bool(dup_ok)     # v0.657 the caller may count "already on its way" as reported
             s.add(KaamFollowup(tenant_id=tenant, conversation_id=conv, key=key, kind=str(job.get("kind") or "")[:40],
                                label=str(job.get("label") or "")[:80], title=str(job.get("title") or "")[:200],
                                state=st, detail=str(job.get("detail") or "")[:400], link=str(job.get("link") or "")[:300]))
@@ -191,9 +192,15 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
                         "mode": "wake_turn"})
     try:
         from .agent import santosh
+        t0 = time.time()
         text = await santosh.run_turn(r.conversation_id, _wake_text(r), tenant_id=r.tenant_id, actor="wake",
                                       save_user=False)
         if not str(text or "").strip():
+            return False
+        if santosh.turn_failed_since(r.conversation_id, t0):
+            # v0.657 PAKKA KAAM: the wake turn crashed / timed out / hit the budget and RETURNED its error line - that
+            # is not the result. False = the honest canned line (with the result's link) goes out, never lost.
+            STATS["wake_failed"] = STATS.get("wake_failed", 0) + 1
             return False
         _wake_spend(r.conversation_id)
         STATS["wake"] += 1
@@ -383,6 +390,10 @@ async def tick() -> int:
     settings = get_settings()
     for row in rows:
         conv = row["conversation_id"]
+        if row["id"] in _SENDING:
+            # v0.657 PAKKA KAAM: checked FIRST - the turn holding the chat may be this row's OWN wake turn; counting
+            # that as "her turn is busy" posted the dry canned line in the middle of the real report (told twice)
+            continue
         if conv and _turn_running(conv):
             with session() as s:
                 r = s.get(KaamFollowup, row["id"])

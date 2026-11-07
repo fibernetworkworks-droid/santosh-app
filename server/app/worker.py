@@ -285,8 +285,15 @@ async def run_routines() -> None:
                   f"in 1-3 short sentences. Do not ask questions and do not create new automatic jobs.]\n{instruction}")
 
         async def _go(rid=rid, tenant=tenant, conv=conv, prompt=prompt):
+            import time as _time
+            t0 = _time.time()
             try:
                 out = await run_turn(conv, prompt, tenant_id=tenant, actor="routine")
+                from .agent import santosh as _sant
+                if _sant.turn_failed_since(conv, t0):
+                    # v0.657 PAKKA KAAM: run_turn RETURNS its error line ('kuch gadbad', 'credit khatam') - it is a
+                    # failure, never the routine's result, and a live call must not read it out as "poora hua"
+                    out = f"failed: {out}"
             except Exception as e:   # never let one job kill the worker
                 log.exception("routine %s failed", rid)
                 out = f"failed: {e}"

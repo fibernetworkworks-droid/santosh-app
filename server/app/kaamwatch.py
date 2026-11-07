@@ -275,8 +275,12 @@ def _update(tenant: str, conv: str, job: dict[str, Any]) -> None:
                 # v0.189: a stopped job reports too (band hone ki khabar bhi uski hai).
                 try:
                     from . import kaam_followup
-                    if kaam_followup.enqueue(tenant, r.conversation_id, job):
+                    # v0.657 PAKKA KAAM: queued (or already queued a moment ago) = the report is on its way, so this job
+                    # state is TOLD - before, `told` stayed '' and the same 'done' was announced again by a later event
+                    # (a second full report after 10 min, or a dry line under the report inside them)
+                    if kaam_followup.enqueue(tenant, r.conversation_id, job, dup_ok=True):
                         say = ""
+                        r.told, r.told_at = r.state, t
                 except Exception:
                     log.debug("followup enqueue failed", exc_info=True)
             young = (t - (_aware(r.started_at) or t)).total_seconds() < 120

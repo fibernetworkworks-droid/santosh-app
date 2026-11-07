@@ -691,6 +691,11 @@ def voice_tool_approve(tenant_id: str, conversation_id: str, heard: str = "") ->
                     "raha hai. Bas ek chhoti line bolo: 'manzoori mil gayi, kaam aage badh gaya'.)")}
 
 
+EXPIRED_SAY = "Yeh card kaafi purana ho gaya; kuch order ya payment nahi hua."
+INTERRUPTED_SAY = ("Aapki haan par yeh kaam shuru hua tha, par beech mein server ruk gaya - order / payment hua ya nahi, "
+                   "pakka nahi pata. Dobara karne se pehle us app ya dukaan mein dekh lijiye, taaki do baar na ho.")
+
+
 def expire_approvals(ttl_h: int = 24) -> int:
     """v0.179 a confirm card nobody tapped goes expired after the TTL (worker tick): her chat stops asking for a
     decision on the same card key. Nothing was ordered, nothing was paid."""
@@ -702,13 +707,24 @@ def expire_approvals(ttl_h: int = 24) -> int:
                                                 Approval.created_at < now() - timedelta(hours=max(1, int(ttl_h))))).all()
         for ap in rows:
             ap.decision, ap.decided_at = "expired", now()
-        cards = [(ap.conversation_id or "", card_of(ap, reg.lookup((ap.action or {}).get("pack_id", "")))) for ap in rows]
+        cards = [(ap.conversation_id or "", card_of(ap, reg.lookup((ap.action or {}).get("pack_id", ""))), EXPIRED_SAY)
+                 for ap in rows]
+        # v0.657 PAKKA KAAM: a card whose Haan began running but never finished (server restart mid-order) is NOT
+        # "nothing was ordered" - it may have reached the shop. Said plainly, once; never tappable again.
+        stuck = s.scalars(select(Approval).where(Approval.decision == "executing",
+                                                 Approval.decided_at < now() - timedelta(minutes=30))).all()
+        for ap in stuck:
+            ap.decision = "interrupted"
+        cards += [(ap.conversation_id or "", card_of(ap, reg.lookup((ap.action or {}).get("pack_id", ""))), INTERRUPTED_SAY)
+                  for ap in stuck]
     n = 0
-    for conv, card in cards:
+    for conv, card, say in cards:
         if not conv:
             continue
         try:
-            bus.publish(conv, "bazar_approval", {**card, "result": {"message": "Yeh card kaafi purana ho gaya; kuch order ya payment nahi hua."}})
+            bus.publish(conv, "bazar_approval", {**card, "result": {"message": say}})
+            if say is INTERRUPTED_SAY:
+                notify(conv, f"{card.get('title') or 'Card'}: {say}")
             n += 1
         except Exception:  # noqa: BLE001
             log.exception("bazar approval expiry publish failed")
