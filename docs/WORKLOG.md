@@ -1874,7 +1874,7 @@ Kotlin intent + Dart link; phone Kaam sheet; console Today > Work; 8 tests.
 Stage Summary: shipped; live check pending on her phone.
 
 ---
-Task ID: v0.649.0 HOOLA WEB STUDIO (7 Nov 2026)
+Task ID: v0.650.0 HOOLA WEB STUDIO (built as 0.649) (7 Nov 2026)
 Agent: Claude (session 019P5N4axTAqHmJWhdzsNhQW)
 Task: owner wanted the website builder as a separate Lovable/Emergent-like app with its own sidebar; approved a 13-screen
 prototype, plan mode optional and written from her words, three full looks (every page, PC / tablet / phone) before any build.
@@ -1882,3 +1882,9 @@ Work Log: /console/web app (webstudio.html/js/css); console Web Development row 
 (wave 4: pages written once, each look = the whole site, build writes nothing again); SITE_FULL_LOOKS / _MAX; test_v0649 (server
 + real browser).
 Stage Summary: shipped; NOT verified on a real Opus build on the VPS.
+Task ID: v0.649.0 SACH MEIN ROKO (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the real-cancel fix (cancel said done, the job kept running and the next call said "chal raha hai").
+Work Log: kaamstop module (stop words + tenant-wide cancel), pre-lock interception in _run_turn, kaamwatch cancelled guard,
+voice late-news drop, kaam_status action=stop, persona lines, 11 tests.
+Stage Summary: shipped; live check on her call pending.

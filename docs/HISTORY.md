@@ -21861,7 +21861,7 @@ Built:
 Tests: `test_v0648_kaam_hisaab.py` 8 (+ the v0.646 pin updated). NOT VERIFIED: the Kotlin / Dart half compiles first on CI;
 the notification tap on a real phone.
 
-## v0.649.0 HOOLA WEB STUDIO — the website builder as its own app, with three full looks before any build (owner: "I WANT IT LIKE LOVABLE AND EMERGENT ... A SEPERATE WEB DEVLOPEMENT PANEL WITH ITS OWN SIDE BAR ... NOT A MERGE WITH A HOOLA CONSOLE HOME PAGE" -> the 13-screen prototype -> plan mode optional + written from her words -> "3 looks, every page clickable, PC / tablet / mobile" -> "PERFECT")
+## v0.650.0 HOOLA WEB STUDIO (built as 0.649; their SACH MEIN ROKO took 0.649.0, both kept) — the website builder as its own app, with three full looks before any build (owner: "I WANT IT LIKE LOVABLE AND EMERGENT ... A SEPERATE WEB DEVLOPEMENT PANEL WITH ITS OWN SIDE BAR ... NOT A MERGE WITH A HOOLA CONSOLE HOME PAGE" -> the 13-screen prototype -> plan mode optional + written from her words -> "3 looks, every page clickable, PC / tablet / mobile" -> "PERFECT")
 
 **Its own app.** `GET /console/web` serves `static/console/webstudio.html` (+ `webstudio.js`, `webstudio.css`) with the console's
 CSP and sign-in (the console token in this browser). The console's Web Development row now opens it (`v2.js go('webdev')` ->
@@ -21897,3 +21897,33 @@ serve every page of each look, the build after the pick writes nothing; off / to
 Plan mode shows the plan document and builds from it, no overlaps, no sideways scroll at 390 px). test_v0475 stamp count 24 -> 23
 (webdev.js gone). NOT VERIFIED live: a real Opus build through the Studio, and how long the full-looks wave takes for a
 7-page site on her VPS (it writes the pages before the looks are shown instead of after the pick).
+
+## v0.649.0 SACH MEIN ROKO - "cancel this task" really cancels it, on every surface
+
+Owner: "IF I TELL ON VOICE CANCLE THIS TASK.... IT SAYS I HAVE CANCLED IT ... STILL WHEN I HAVE COME BACK ON VOICE IT TELL
+... I AM WORKING ON THAT AND IT IS WORKING ON BACKEND" -> root cause + plan -> "GO".
+
+Root cause (code, v0.648): no cancel existed except the chat's Stop button (`santosh.stop`) and a few per-kind stops nothing on
+a call could reach. Her words went to the brain as a new ask on the SAME conversation, so it queued behind the job it should stop
+(the turn lock); the brain had no tool and said "cancel kar diya"; `kaam_jobs`, the long job and the restart inbox still said
+running, so the next call said "chal raha hai" and the finished result was still reported. Since v0.647 the next call is also a
+different record, so a stop has to work per job, tenant-wide.
+
+Built (`app/kaamstop.py`):
+- `wants_stop(text)`: a short stop ask (cancel / roko / band karo / rehne do / stop ...), never a reminder, meeting, device, the
+  call, a draft; `santosh._run_turn` runs `cancel()` BEFORE taking the conversation lock and answers ONLY when something really
+  stopped (nothing running / words naming something else = the normal turn).
+- `cancel(tenant, words, here, skip_turn)`: everything running in ALL her conversations - tracked jobs (`kaam_jobs` working /
+  waiting, 2 days) and running turns (locked conversations, their ask from the restart inbox; an unknown ask ranks below named
+  jobs); her words pick (content words matched to titles), bare = newest, "sab" = all, unmatched = nothing touched.
+- Per pick: the row -> stopped / status "cancelled" FIRST, then the kind's own stop (site, app, browser job, research, long job),
+  the conversation's running turn -> `santosh.stop` + its inbox rows "stopped" (a restart never re-runs it), pending followups
+  skipped. The reply names what stopped, says plainly when an outside part may still finish, and names what still runs.
+- `kaamwatch._update`: a cancelled row stays stopped and silent when a late event arrives (noted on the row).
+- `voice.Call._late_result`: a recently cancelled job's end is not news (no "ho gaya", no orphan note for the next call).
+- `kaam_status action=stop` for the brain (never its own turn; "never say cancelled without `stopped`").
+- PERSONA_BRAIN + PERSONA_LEAN: stopping work always goes to santosh_kaam; Gemini never says it is cancelled itself.
+
+Tests `test_v0649_sach_mein_roko.py` 11 incl. her exact case (job on call 1, cancel from call 2, call 3 reads "band").
+291 of 294 in the related suites pass; the 3 reds (test_glm tool turn, two console r3 pins) fail the same way without this change.
+NOT VERIFIED on a real call yet.

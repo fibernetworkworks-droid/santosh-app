@@ -2004,6 +2004,22 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 _g.reopen(tenant_id, conversation_id)
         except Exception:
             log.exception("goal reopen failed")
+    if who == "owner" and save_user and getattr(settings, "kaam_stop_words", True):
+        # v0.649 SACH MEIN ROKO: her "roko / cancel karo / band karo" stops the work NOW - before this turn waits for the
+        # conversation lock that the very job she is cancelling holds. Only what really stopped is said; nothing
+        # running (or her words name something else) = the normal turn handles it (a draft, a booking...).
+        try:
+            from .. import kaamstop
+            if kaamstop.wants_stop(user_text):
+                _ks = await asyncio.to_thread(kaamstop.cancel, tenant_id, user_text, conversation_id)
+                if _ks.get("stopped"):
+                    _save(conversation_id, "user", user_text, display=user_text)
+                    _save(conversation_id, "assistant", [{"type": "text", "text": _ks["say"]}], display=_ks["say"])
+                    bus.publish(conversation_id, "message", {"role": "assistant", "text": _ks["say"], "source": "kaam_stop"})
+                    bus.publish(conversation_id, "typing", {"on": False})
+                    return _ks["say"]
+        except Exception:
+            log.exception("kaam stop by words failed")   # a broken stop never blocks her ask
     _mark("checks")
     lock = _locks[conversation_id]
     _steer_e = None
