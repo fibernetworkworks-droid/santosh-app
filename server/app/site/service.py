@@ -322,7 +322,11 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
                              "colors": [lk.get("tokens", {}).get(k) for k in ("bg", "primary", "accent", "ink")],
                              "palette": lk.get("tokens", {}).get("palette"),
                              "concept": (lk.get("dna") or {}).get("concept", ""), "idea": (lk.get("dna") or {}).get("idea", ""),
-                             "signature": (lk.get("dna") or {}).get("signature", "")} for i, lk in enumerate(_j(r.looks, []))],
+                             "signature": (lk.get("dna") or {}).get("signature", ""),
+                             # v0.649 WEB STUDIO: the look as a clickable site (every page when `full`, else the page top)
+                             "full": bool(lk.get("full")),
+                             "preview": (preview_url(r) + f"__looks/{i}/{'full' if lk.get('full') else 'site'}/")
+                             if preview_url(r) else ""} for i, lk in enumerate(_j(r.looks, []))],
                   "chosen_look": _j(r.look, {}).get("from"),
                   "design": _dna_view(_j(r.look, {}).get("dna")), "estimate": _estimate(r, plan),
                   "checks": {"blocking": checks.get("blocking", [])[:12], "warnings": checks.get("warnings", [])[:12],
@@ -1354,6 +1358,18 @@ def _make_looks(r: Site) -> None:
                 "tokens": toks[i], "shots": shots, "dna": dnas[i], "mine": bool(mine and i == 0)}
     with ThreadPoolExecutor(max_workers=len(styles), thread_name_prefix=f"look-{r.id[:6]}") as ex:
         looks = list(ex.map(_in_ctx(shoot), range(len(styles))))
+    # wave 4 (v0.649 WEB STUDIO): every other page is written ONCE and each look becomes the whole site in its own design,
+    # so she clicks through every page of all three before she picks; the build then skips what is already written
+    try:
+        full = _full_looks(r, views, toks, secs, dirs)
+    except Exception:
+        log.info("full looks skipped", exc_info=True)
+        full = [False] * len(looks)
+    if _load(r.id).stop:
+        _save(r.id, status="stopped")
+        return
+    for i, lk in enumerate(looks):
+        lk["full"] = bool(full[i]) if i < len(full) else False
     r = _save(r.id, looks=looks, style=styles[0], status="looks", stage="look",
               board=_board(r, now_line="3 looks taiyaar: ek chuniye"))
     _work(r, "waiting", "Look chuniye", "3 looks taiyaar")
@@ -1361,6 +1377,70 @@ def _make_looks(r: Site) -> None:
 
 
 # ---------------------------------------------------------------- 3. she chooses a look -> build
+def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str, Any]]], dirs: list[Path]) -> list[bool]:
+    """v0.649 WEB STUDIO: the rest of the plan's sections are written once (into the site's own sections, so the build
+    never writes them again) and every look is assembled as the WHOLE site with its own tokens + its own home top.
+    Off (SITE_FULL_LOOKS=false), a big site, or more than SITE_FULL_LOOKS_MAX sections: the looks stay page tops."""
+    from concurrent.futures import ThreadPoolExecutor
+    st = _settings()
+    n = len(views)
+    plan = _j(r.plan, {})
+    if not getattr(st, "site_full_looks", True) or plan.get("big") or not plan.get("pages"):
+        return [False] * n
+    have = _sections(r)
+    tops = set().union(*[set(x) for x in secs]) if secs else set()
+    todo = []
+    for p in plan.get("pages", []):
+        others = [T.label_of(s) for s in p.get("sections", [])]
+        for s in p.get("sections", []):
+            k = sec_key(p["slug"], s["type"])
+            if k not in tops and k not in have:
+                todo.append((p, s, k, [o for o in others if o != T.label_of(s)]))
+    total = len(todo) + len(tops)
+    if total > max(1, int(getattr(st, "site_full_looks_max", 40) or 40)):
+        return [False] * n
+    lock = threading.Lock()
+    done = {"n": 0}
+
+    def note() -> None:
+        with lock:
+            cur = _load(r.id)
+            rr = _save(r.id, board=_board(cur, now_line=f"Har page likh raha hoon ({done['n']}/{len(todo)})"))
+        _emit(rr)
+
+    def one(job) -> None:
+        p, s, k, others = job
+        if _load(r.id).stop:
+            return
+        try:
+            _put_sec(r, k, write_section(views[0], p["slug"], s, others))
+        except Exception as e:                 # one page part that fails stays for the real build
+            log.info("full look section %s skipped: %s", k, e)
+        with lock:
+            done["n"] += 1
+        note()
+    if todo:
+        _work(r, "start", "Teeno looks ke har page", f"{len(todo)} hisse ek baar likhe jaa rahe hain")
+        width = max(1, min(12, int(getattr(st, "site_look_parallel", 6) or 1)))
+        with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"lookall-{r.id[:6]}") as ex:
+            list(ex.map(_in_ctx(one), todo))
+    if _load(r.id).stop:
+        return [False] * n
+    shared = {k: v for k, v in _sections(r).items() if k not in tops}
+    photos = {p["name"]: p for p in _j(r.photos, [])}
+    out = []
+    for i in range(n):
+        ctx = _ctx(r)
+        ctx["tokens"], ctx["plan"], ctx["alts"], ctx["blog"] = toks[i], plan, [], []
+        try:
+            B.assemble(ctx, plan, {**shared, **secs[i]}, photos, dirs[i] / "full")
+            out.append(True)
+        except Exception:
+            log.info("full look %s not assembled", i, exc_info=True)
+            out.append(False)
+    return out
+
+
 def choose_look(tenant: str, ref: str, index: int, colors_from: int | None = None, conv: str = "") -> dict[str, Any]:
     with session() as s:
         r = _find(s, tenant, ref)

@@ -1578,6 +1578,16 @@ def console_page(conversation_id: str = "", legacy: bool = False):
         "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(self), camera=(), geolocation=()"})
 
 
+@app.get("/console/web")
+@app.get("/console/web/")
+def web_studio_page():
+    """v0.649 HOOLA WEB STUDIO: the website builder as its own full-screen app (own sidebar, chat + live preview, the
+    three full looks). Same sign-in as the console (its token in this browser), same APIs, same strict CSP."""
+    return FileResponse(STATIC / "console" / "webstudio.html", headers={
+        **_CONSOLE_NOREF, "Content-Security-Policy": _CONSOLE_CSP, "X-Frame-Options": "DENY",
+        "X-Content-Type-Options": "nosniff", "Permissions-Policy": "microphone=(), camera=(), geolocation=()"})
+
+
 @app.get("/api/console/config")
 def console_config():
     from . import accounts
