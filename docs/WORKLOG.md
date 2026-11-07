@@ -1854,3 +1854,12 @@ Task: owner "SAVE THE STATE PERFECT NOW" after the call-speed work.
 Work Log: healthz read 0.645.0 = main 4e6ff005; markers + 71 tests re-run in a git archive of that commit; branch
 stable-2026-11-07-voice-v645 pushed at 4e6ff005; CLAUDE.md checkpoint entry; APK v0.645.0-b1861.
 Stage Summary: rollback point saved. Two older website test reds noted (also red at v0.629).
+
+---
+Task ID: v0.647.0 ALAG CALL, EK YAAD (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on docs/CALL_CHAT_SPLIT_PLAN.md (separate call + chat sections, shared memory, calm notifications).
+Work Log: callconv module + Conversation columns; voice_ws split=1 mapping; dual ACTIVE keys; chat list / focus exclusion;
+memory blocks both ways; receipt summary; yaad notes keyed by chat; events forwarding of phone actions; push quiet on a
+live call; /api/calls; phone Calls sheet + split=1; console Calls group; 14 tests; merged their v0.646.0, re-versioned 0.647.0.
+Stage Summary: shipped server + phone; next = phone app-open heartbeat (chat pushes only when the app is closed).
