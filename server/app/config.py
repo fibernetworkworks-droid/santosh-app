@@ -344,6 +344,7 @@ class Settings(BaseSettings):
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
     site_opus: bool = True                 # v0.225 every website section / fix / change on the App Sahayak Opus path (thinking, effort, retries, no quiet fallback)
+    site_live_stream: bool = True          # v0.664 ASLI SAMAY: section writing streams its words to the Web Studio live canvas (same tokens)
     site_art: bool = True                  # v0.225 Opus writes a design DNA per look before the hero (art direction)
     site_critique: str = "all"             # v0.225 Opus looks at the built screenshots: all (v0.292, every page) | home | off
     site_critique_min: float = 7.5         # v0.225 a section scoring below this (out of 10) is redrawn once with the notes

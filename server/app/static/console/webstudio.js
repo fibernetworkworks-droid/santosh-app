@@ -63,7 +63,7 @@
     phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>', reload: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>',
     ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     hist: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>', sel: '<path d="M4 4l7 17 2-7 7-2z"/>', check: '<path d="M5 12l5 5 9-10"/>',
-    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
     cart: '<path d="M4 6h2l2 10h10l2-7H8"/>', card: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
     cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', blog: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 11h8M8 15h6"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', pin: '<path d="M12 21s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
@@ -105,6 +105,7 @@
   async function route() {
     stopPoll(); clearTimeout(THREAD.timer); EDIT = false;
     const p = parts();
+    if (!(p[0] === 'site' && p[1] && LIVE.site === decodeURIComponent(p[1]))) stopLive();
     try {
       if (p[0] === 'site' && p[1]) return await openSite(decodeURIComponent(p[1]), p[2] || '');
       if (p[0] === 'plan' && p[1]) return await openPlan(decodeURIComponent(p[1]));
@@ -388,7 +389,8 @@
     const v = await api('GET', `/api/sites/${enc(id)}`);
     const same = CUR && CUR.id === v.id;
     CUR = v; VIEW = view || (same ? VIEW : 'preview');
-    if (!same) { LOOK = Math.max(0, Number(M(v).chosen_look) || 0); DEVICE = 'pc'; }
+    if (!same) { LOOK = Math.max(0, Number(M(v).chosen_look) || 0); DEVICE = 'pc'; LIVE.justDone = null; LIVE.compare = false; LIVE.from = 0; LIVE.page = 'home'; }
+    startLive(S(v.id));
     drawShell();
     openThread();
   }
@@ -485,24 +487,29 @@
     const pane = $('#wsPane'); if (!pane || !CUR) return;
     stopPoll();
     const fn = {preview, code, cloud, integrations, health, settings, history: historyView, publish}[VIEW] || preview;
+    if (fn !== preview) delete pane.dataset.live;
     fn(pane, CUR);
     if (WORKING(CUR)) startPoll();
   }
 
   function fit() {
-    const f = APP.querySelector('.frame'); if (!f) return;
-    const doit = () => {
+    const fs = [...APP.querySelectorAll('.frame')]; if (!fs.length) return;
+    const doit = () => fs.forEach(f => {
       const fr = f.querySelector('iframe'); if (!fr) return;
       const w = Number(f.dataset.w), h = Number(f.dataset.h), k = Math.min(1, (f.clientWidth || w) / w);
       fr.style.width = w + 'px'; fr.style.height = h + 'px'; fr.style.transform = `scale(${k})`;
       f.style.height = Math.round(h * k) + 'px';
-    };
+    });
     doit();
-    if (window.ResizeObserver) { RO?.disconnect(); RO = new ResizeObserver(doit); RO.observe(f); }
+    if (window.ResizeObserver) { RO?.disconnect(); RO = new ResizeObserver(doit); fs.forEach(f => RO.observe(f)); }
   }
 
   function preview(pane, v) {
     const st = S(v.status), b = M(v.board);
+    if (WORKING(v) && !EDIT && !v.mapping && st !== 'planned') return liveView(pane, v);
+    if (pane.dataset.live && LIVE.from && st === 'ready' && Number(v.version) > LIVE.from) { LIVE.justDone = {site: S(v.id), from: LIVE.from, to: Number(v.version)}; LIVE.compare = false; }
+    if (pane.dataset.live) LIVE.from = 0;
+    delete pane.dataset.live;
     if (st === 'planned' && !v.mapping) {
       const pages = L(M(v.plan).pages);
       pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><h2>The plan is ready</h2><p class="mut">${esc(S(v.say))}</p>
@@ -529,7 +536,11 @@
     const top = `<div class="url">${ico('lock', 14)}<span>${EDIT ? 'Edit mode · ' : ''}preview</span></div>${devSeg()}
       <button class="ib" type="button" data-act="reload" aria-label="Reload preview">${ico('reload', 16)}</button>
       ${v.preview ? `<a class="ib" href="${esc(S(v.preview))}" target="_blank" rel="noopener" aria-label="Open in a new tab">${ico('ext', 16)}</a>` : ''}`;
+    const jd = LIVE.justDone && LIVE.justDone.site === S(v.id) ? LIVE.justDone : null;
+    if (jd && LIVE.compare) return compareView(pane, v, jd, top);
     pane.innerHTML = viewsBar(top)
+      + (jd ? `<div class="edbar okbar"><b>New version v${esc(S(jd.to))} is ready</b><span class="ell">You are looking at it now. Nothing is live until you publish.</span><span class="sp"></span>
+          <button class="b sm" type="button" data-act="compare">Before / after</button><button class="ib" type="button" data-act="jd-close" aria-label="Close">×</button></div>` : '')
       + (EDIT ? `<div class="edbar"><b>Edit mode</b><span>Click any words to type · click a picture to change it · free, no AI</span><span class="sp"></span>
           <button class="b sm" type="button" data-act="undo">Undo</button><button class="b sm pri" type="button" data-act="edit-done">Done</button></div>` : '')
       + (st === 'failed' || st === 'stopped' ? `<div class="edbar"><b>${st === 'failed' ? 'The last build stopped on a problem' : 'Building is paused'}</b><span class="ell">${esc(S(v.error))}</span><span class="sp"></span><button class="b sm pri" type="button" data-act="resume">${st === 'failed' ? 'Try again' : 'Continue'}</button></div>` : '')
@@ -550,6 +561,188 @@
       + `<div class="stage">${lk.preview ? frame(S(lk.preview), `Look ${LOOK + 1}`) : '<div class="empty">This look has no preview.</div>'}</div>`
       + `<div class="choose"><span class="sm"><b>${LOOK + 1} · ${esc(S(lk.label))}</b>${lk.concept ? ` <span class="mut">· ${esc(S(lk.concept))}</span>` : ''}</span><span class="sp"></span>
           ${est.say ? `<span class="mut sm">${esc(S(est.say))}</span>` : ''}<button class="b pri" type="button" data-act="pick-look">Build in this look</button></div>`;
+    fit();
+  }
+
+  /* ================= v0.664 ASLI SAMAY: the website built in front of her ================= */
+  const LIVE = {site: '', ctl: null, seq: 0, slots: {}, looks: [], page: 'home', follow: true, code: false, codeKey: '',
+    moved: 0, pend: new Set(), timer: null, fin: {}, from: 0, justDone: null, compare: false, retry: null};
+  const pageRel = slug => (!slug || slug === 'home') ? '' : S(slug).replace(/^\/+|\/+$/g, '') + '/';
+  const liveSrc = (v, page, look) => S(v.preview) + (look >= 0 ? `__build/__look/${look}/` : '__build/' + pageRel(page));
+  const writing = s => s.state === 'think' || s.state === 'write';
+
+  function startLive(id) {
+    if (LIVE.site === id && LIVE.ctl) return;
+    stopLive();
+    Object.assign(LIVE, {site: id, seq: 0, slots: {}, looks: [], fin: {}});
+    readLive(id);
+  }
+  function stopLive() { try { LIVE.ctl?.abort(); } catch {} LIVE.ctl = null; clearTimeout(LIVE.retry); LIVE.site = ''; }
+  async function readLive(id) {
+    const ctl = new AbortController(); LIVE.ctl = ctl;
+    try {
+      const r = await fetch(`/api/sites/${enc(id)}/live?since=${LIVE.seq}`, {headers: {Authorization: 'Bearer ' + TOKEN}, signal: ctl.signal, cache: 'no-store'});
+      if (!r.ok || !r.body) throw new Error('live ' + r.status);
+      const rd = r.body.getReader(), dec = new TextDecoder(); let buf = '';
+      for (;;) {
+        const {value, done} = await rd.read(); if (done) break;
+        buf += dec.decode(value, {stream: true});
+        let i;
+        while ((i = buf.indexOf('\n\n')) >= 0) {
+          const block = buf.slice(0, i); buf = buf.slice(i + 2);
+          const data = block.split('\n').filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).join('');
+          if (data && data !== '{}') { try { liveEvent(JSON.parse(data)); } catch {} }
+        }
+      }
+    } catch (e) { if (ctl.signal.aborted) return; }
+    if (LIVE.ctl === ctl && LIVE.site === id) { LIVE.ctl = null; LIVE.retry = setTimeout(() => { if (CUR?.id === id && !LIVE.ctl) { LIVE.site = id; readLive(id); } }, 1500); }
+  }
+  function liveEvent(ev) {
+    LIVE.seq = Math.max(LIVE.seq, Number(ev.seq) || 0);
+    if (L(ev.looks).length) LIVE.looks = L(ev.looks);
+    L(ev.slots).forEach(x => {
+      const k = S(x.key), sl = LIVE.slots[k] || (LIVE.slots[k] = {key: k, html: '', css: ''});
+      if (x.h != null) sl.html = S(x.h); else if (x.ha != null && sl.html.length === Number(x.ho)) sl.html += S(x.ha);
+      if (x.c != null) sl.css = S(x.c); else if (x.ca != null && sl.css.length === Number(x.co)) sl.css += S(x.ca);
+      if (x.state && x.state !== sl.state) sl.final = false;
+      ['label', 'page', 'look', 'kind', 'state', 'at', 'end'].forEach(f => { if (x[f] !== undefined) sl[f] = x[f]; });
+      sl.look = Number(sl.look ?? -1);
+      LIVE.pend.add(k);
+      if (sl.state === 'done') finalSoon(sl);
+    });
+    if (!LIVE.timer) LIVE.timer = setTimeout(flushLive, 110);
+  }
+  function liveFrames() { return [...APP.querySelectorAll('iframe[data-live]')]; }
+  const frameWants = (fr, sl) => sl.look >= 0 ? Number(fr.dataset.look) === sl.look : (Number(fr.dataset.look) < 0 && S(fr.dataset.page) === S(sl.page));
+  const toMsg = (sl, follow) => ({hoola: 'build', t: 'slot', key: sl.key, label: sl.label, state: sl.state, kind: sl.kind,
+    html: sl.html, css: sl.css, follow: follow && LIVE.follow && writing(sl)});
+  function flushLive() {
+    LIVE.timer = null;
+    const keys = [...LIVE.pend]; LIVE.pend.clear();
+    const frames = liveFrames();
+    keys.forEach(k => { const sl = LIVE.slots[k]; frames.forEach(fr => { if (frameWants(fr, sl)) fr.contentWindow?.postMessage(toMsg(sl, frames.length === 1), '*'); }); });
+    followPage();
+    drawLiveBits();
+  }
+  function followPage() {
+    if (!LIVE.follow || !CUR || $('#wsPane')?.dataset.live !== 'site:' + CUR.id) return;
+    const all = Object.values(LIVE.slots).filter(x => x.look < 0);
+    if (all.some(x => writing(x) && S(x.page) === LIVE.page)) return;
+    const next = all.filter(writing).sort((a, b) => Number(b.at) - Number(a.at))[0];
+    if (next && S(next.page) !== LIVE.page && Date.now() - LIVE.moved > 4000) { LIVE.moved = Date.now(); setLivePage(S(next.page)); }
+  }
+  function setLivePage(slug) {
+    LIVE.page = slug || 'home';
+    const fr = APP.querySelector('iframe[data-live]'); if (fr && CUR) { fr.dataset.page = LIVE.page; fr.src = liveSrc(CUR, LIVE.page, -1); }
+    drawLiveBits();
+  }
+  function finalSoon(sl, tries = 0) {          // the finished section, as the real page shows it (photos, icons)
+    const id = sl.look >= 0 ? 'look' + sl.look : 'p:' + S(sl.page);
+    clearTimeout(LIVE.fin[id]);
+    LIVE.fin[id] = setTimeout(async () => {
+      if (!CUR) return;
+      let missing = false;
+      try {
+        const r = await fetch(liveSrc(CUR, sl.page, sl.look), {cache: 'no-store'}); if (!r.ok) return;
+        const doc = new DOMParser().parseFromString(await r.text(), 'text/html');
+        Object.values(LIVE.slots).filter(x => x.state === 'done' && !x.final && x.look === sl.look && (sl.look >= 0 || S(x.page) === S(sl.page))).forEach(x => {
+          const n = [...doc.querySelectorAll('[data-slot]')].find(e => e.getAttribute('data-slot') === x.key);
+          if (n && !n.classList.contains('hb-wait')) { x.html = n.innerHTML; x.final = true; x.end = nowS(); LIVE.pend.add(x.key); } else missing = true;
+        });
+        if (!LIVE.timer) LIVE.timer = setTimeout(flushLive, 50);
+      } catch { missing = true; }
+      if (missing && tries < 3) finalSoon(sl, tries + 1);
+    }, tries ? 2500 : 1200);
+  }
+  addEventListener('message', ev => {
+    const d = ev.data; if (!d || d.hoola !== 'build' || d.t !== 'ready') return;
+    const fr = liveFrames().find(f => f.contentWindow === ev.source); if (!fr) return;
+    // a page read now already has every section finished before it: only what is being written (or just finished) is sent
+    const mine = Object.values(LIVE.slots).filter(sl => frameWants(fr, sl) && (writing(sl) || nowS() - Number(sl.end || 0) < 20));
+    if (mine.length) fr.contentWindow.postMessage({hoola: 'build', t: 'slots', slots: mine.map(sl => toMsg(sl, false))}, '*');
+  });
+
+  function liveFrame(src, title, page, look, dev) {
+    const d = DEV[dev || DEVICE];
+    return `<div class="frame ${dev || DEVICE}" data-w="${d[0]}" data-h="${d[1]}"><iframe title="${esc(title)}" data-live="1" data-page="${esc(page)}" data-look="${look}"
+      sandbox="allow-scripts" referrerpolicy="no-referrer" src="${esc(src)}"></iframe></div>`;
+  }
+  function liveView(pane, v) {
+    const mode = S(v.status) === 'looks' && !L(v.looks).length ? 'looks' : 'site';
+    const sig = mode + ':' + v.id;
+    if (!LIVE.site || LIVE.site !== S(v.id)) startLive(S(v.id));
+    if (pane.dataset.live === sig && pane.dataset.dev === DEVICE && pane.dataset.code === String(LIVE.code)) { drawLiveBits(); return; }
+    if (!pane.dataset.live) LIVE.from = hasVersion(v) ? Number(v.version) : 0;     // a change to a built site: before / after later
+    pane.dataset.live = sig; pane.dataset.dev = DEVICE; pane.dataset.code = String(LIVE.code);
+    const tools = `<span class="sp"></span>${mode === 'site' ? devSeg() : ''}
+      <button class="b sm" type="button" data-live="follow" aria-pressed="${LIVE.follow}" title="Keep the part being written in view">Follow</button>
+      <button class="b sm" type="button" data-live="code" aria-pressed="${LIVE.code}">${ico('code', 14)}<span>Code</span></button>`;
+    let stage;
+    if (mode === 'looks') {
+      const n = Math.max(3, LIVE.looks.length);
+      stage = `<div class="lgrid">${Array.from({length: n}, (_, i) => `<div class="lcol"><div class="lhead"><b>Look ${i + 1}</b><span class="mut sm ell" data-lklabel="${i}">${esc(S(LIVE.looks[i]?.label))}</span><span class="sp"></span><span class="lstate" data-lkstate="${i}"></span></div>
+        ${liveFrame(liveSrc(v, 'home', i), `Look ${i + 1} being made`, 'home', i, 'pc')}</div>`).join('')}</div>`;
+    } else {
+      stage = `<nav class="lpages" id="wsLPages" aria-label="Pages being built"></nav>
+        <div class="stage">${liveFrame(liveSrc(v, LIVE.page, -1), 'Your website being built', LIVE.page, -1)}</div>`;
+    }
+    pane.innerHTML = viewsBar(tools) + `<div class="lbar" id="wsLBar" aria-live="polite"></div>`
+      + `<div class="lwrap${LIVE.code ? ' withcode' : ''}"><div class="lmain">${stage}</div>${LIVE.code ? '<aside class="lcode" aria-label="Code being written"><nav class="ltabs" id="wsLTabs"></nav><pre id="wsLCode" tabindex="0"></pre></aside>' : ''}</div>`;
+    fit(); drawLiveBits(); startTick();
+  }
+  function drawLiveBits() {
+    if (!CUR) return;
+    const pane = $('#wsPane'); if (!pane?.dataset.live) return;
+    const all = Object.values(LIVE.slots), act = all.filter(writing), looksMode = pane.dataset.live.startsWith('looks:');
+    const b = M(CUR.board), a = ACTV(CUR);
+    const bar = $('#wsLBar');
+    if (bar) {
+      const lead = act.sort((x, y) => Number(y.at) - Number(x.at))[0];
+      bar.innerHTML = `<span class="spin" aria-hidden="true"></span><span class="ell sp">${lead ? `${esc(lead.kind === 'fix' ? '' : lead.state === 'think' ? 'Designing ' : 'Writing ')}<b>${esc(S(lead.label))}</b>${act.length > 1 ? ` <span class="mut">· ${act.length} parts at once</span>` : ''}`
+        : esc(S([...L(a.steps)].reverse().find(x => x.state === 'run')?.label) || S(b.now) || 'Working…')}</span>
+        ${Number(b.total) ? `<span class="mut sm">${esc(S(b.done || 0))}/${esc(S(b.total))} parts</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}
+        ${['building', 'checking'].includes(S(CUR.status)) ? '<button class="b sm" type="button" data-act="stop">Pause</button>' : ''}`;
+    }
+    if (looksMode) {
+      LIVE.looks.forEach((lk, i) => { const e = APP.querySelector(`[data-lklabel="${i}"]`); if (e) e.textContent = S(lk.label); });
+      [0, 1, 2].forEach(i => {
+        const mine = all.filter(x => x.look === i), e = APP.querySelector(`[data-lkstate="${i}"]`);
+        if (e) e.innerHTML = mine.some(writing) ? '<span class="dot v"></span>Writing' : mine.length && mine.every(x => x.state === 'done') ? `${tick}Top ready` : '';
+      });
+    }
+    const pg = $('#wsLPages');
+    if (pg) {
+      const pages = L(M(CUR.plan).pages).filter(p => !p.template_of);
+      pg.innerHTML = pages.map(p => {
+        const mine = all.filter(x => x.look < 0 && S(x.page) === S(p.slug)), w = mine.some(writing);
+        const done = mine.length && !w && mine.every(x => x.state === 'done');
+        return `<button type="button" data-lpage="${esc(S(p.slug))}" aria-current="${S(p.slug) === LIVE.page ? 'page' : 'false'}">${w ? '<span class="dot v"></span>' : done ? tick : ''}<span class="ell">${esc(S(p.title) || S(p.slug))}</span></button>`;
+      }).join('');
+    }
+    const tabs = $('#wsLTabs'), pre = $('#wsLCode');
+    if (tabs && pre) {
+      const list = all.filter(x => !looksMode || x.look >= 0).sort((x, y) => Number(x.at) - Number(y.at));
+      const show = [...list.filter(writing), ...list.filter(x => !writing(x)).slice(-6)];
+      if (!LIVE.codeKey || !LIVE.slots[LIVE.codeKey] || (!writing(LIVE.slots[LIVE.codeKey]) && act.length && !LIVE.codePinned)) LIVE.codeKey = S((act[0] || show[show.length - 1] || {}).key);
+      tabs.innerHTML = show.map(x => `<button type="button" data-lcode="${esc(x.key)}" aria-current="${x.key === LIVE.codeKey ? 'page' : 'false'}">${writing(x) ? '<span class="dot v"></span>' : ''}<span class="ell">${esc(S(x.label))}</span></button>`).join('') || '<span class="mut sm">The code shows here as it is written.</span>';
+      const sl = LIVE.slots[LIVE.codeKey];
+      const txt = !sl ? '' : sl.state === 'think' && !sl.html ? '// Opus is designing this section…' : (S(sl.html) + (sl.css ? '\n\n/* styles */\n' + S(sl.css) : ''));
+      const atEnd = pre.scrollTop + pre.clientHeight >= pre.scrollHeight - 30;
+      if (pre.dataset.k !== S(LIVE.codeKey) || pre.textContent.length !== txt.length) {
+        pre.textContent = txt; pre.dataset.k = S(LIVE.codeKey);
+        if (sl && writing(sl)) { const c = document.createElement('span'); c.className = 'hb-cursor'; pre.appendChild(c); }
+        if (atEnd || (sl && writing(sl))) pre.scrollTop = pre.scrollHeight;
+      }
+    }
+  }
+
+  function compareView(pane, v, jd, top) {
+    delete pane.dataset.live;
+    const page = pageRel(LIVE.page);
+    pane.innerHTML = viewsBar(top) + `<div class="edbar okbar"><b>Before and after</b><span class="ell">v${esc(S(jd.from))} on the left, the new v${esc(S(jd.to))} on the right</span><span class="sp"></span>
+        <button class="b sm" type="button" data-act="compare">Show the new one only</button></div>
+      <div class="cmp"><div><div class="lhead"><b>Before · v${esc(S(jd.from))}</b></div>${frame(S(v.preview) + `__v/${Number(jd.from)}/` + page, 'Before')}</div>
+        <div><div class="lhead"><b>After · v${esc(S(jd.to))}</b></div>${frame(S(v.preview) + page, 'After')}</div></div>`;
     fit();
   }
 
@@ -940,6 +1133,15 @@
     if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
       const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
     if (d.src) { if (d.src === 'focus') { drawSource(''); $('#wsAsk')?.focus(); } else { drawSource(d.src); $('#wsSrc input')?.focus(); } return; }
+    if (d.live === 'follow' || d.live === 'code') {        // v0.664 live build toggles
+      if (d.live === 'follow') { LIVE.follow = !LIVE.follow; b.setAttribute('aria-pressed', String(LIVE.follow)); if (LIVE.follow) followPage(); }
+      else { LIVE.code = !LIVE.code; drawPane(); }
+      return;
+    }
+    if (d.lpage) { LIVE.follow = false; APP.querySelector('[data-live="follow"]')?.setAttribute('aria-pressed', 'false'); setLivePage(d.lpage); return; }
+    if (d.lcode) { LIVE.codeKey = d.lcode; LIVE.codePinned = true; drawLiveBits(); return; }
+    if (d.act === 'compare') { LIVE.compare = !LIVE.compare; drawPane(); return; }
+    if (d.act === 'jd-close') { LIVE.justDone = null; LIVE.compare = false; drawPane(); return; }
     if (d.view) { VIEW = d.view; EDIT = false; history.replaceState(null, '', `#/site/${enc(CUR.id)}/${VIEW}`); drawPane(); return; }
     if (d.dev) { DEVICE = d.dev; drawPane(); return; }
     if (d.look) { LOOK = Number(d.look) || 0; drawPane(); return; }

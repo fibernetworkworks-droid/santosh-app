@@ -45,6 +45,7 @@ from . import blog as BL
 from . import code as CD
 from . import taxonomy as T
 from . import activity as ACT
+from . import stream as ST
 from .models import Site, SiteLead, SiteVersion
 
 log = logging.getLogger("santosh.site")
@@ -1200,11 +1201,25 @@ def _big_lines(plan: dict[str, Any], page: dict[str, Any]) -> str:
     return "\n".join(out)
 
 
-def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extra: str = "", system: str = "") -> dict:
-    raw = AI.ask_json(system or AI.SECTION_SYSTEM, _section_prompt(r, slug, s, others, extra), 9000, "build")
-    if not raw.get("html"):
-        raise SiteError(f"{s['type']} section nahi ban paya (model ne khaali diya).")
-    h, css, js, problems = B.sanitize_section(sec_id(slug, s["type"]), raw)
+def _page_title(r: Any, slug: str) -> str:
+    return next((p.get("title") or slug for p in _j(r.plan, {}).get("pages", []) if p.get("slug") == slug), slug.title())
+
+
+def write_section(r: Site, slug: str, s: dict[str, Any], others: list[str], extra: str = "", system: str = "",
+                  live: dict[str, Any] | None = None) -> dict:
+    """One section by Opus. v0.664 ASLI SAMAY: its words stream into the Studio's live canvas while it is written
+    (`live`: {"look": i} for a look's page top; a site that already has a version streams as a change)."""
+    live = live or {}
+    look = int(live.get("look", -1))
+    key = (f"look{look}:" if look >= 0 else "") + sec_key(slug, s["type"])
+    kind = live.get("kind") or ("look" if look >= 0 else "change" if getattr(r, "version", 0) else "build")
+    label = f"{_page_title(r, slug)} → {T.label_of(s['type'])}"
+    with ST.watch(r.id, key, label, slug, look, kind):
+        raw = AI.ask_json(system or AI.SECTION_SYSTEM, _section_prompt(r, slug, s, others, extra), 9000, "build")
+        if not raw.get("html"):
+            raise SiteError(f"{s['type']} section nahi ban paya (model ne khaali diya).")
+        h, css, js, problems = B.sanitize_section(sec_id(slug, s["type"]), raw)
+        ST.finish(r.id, key, True, html=h, css=css)
     h, _n = E.tag(h)                  # v0.295 every word / link / picture she may edit gets its number
     return {"html": h, "css": css, "js": js, "notes": _tidy(raw.get("notes"), 200), "cleaned": problems,
             "at": datetime.now(timezone.utc).isoformat()}
@@ -1330,6 +1345,10 @@ def _make_looks(r: Site) -> None:
     secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
     cnt_lock, cnt = threading.Lock(), {"n": 0}
     ACT.step(r.tenant_id, r.id, "3 looks ban rahe hain", "", key="tops", done=0, total=len(jobs))
+    ST.clear(r.id)                             # v0.664 the three looks' canvases: what each one is drawn with
+    ST.set_looks(r.id, [{"label": "Aapke design se" if (mine and i == 0) else T.STYLES[styles[i]]["label"],
+                         "style": styles[i], "tokens": toks[i], "types": ["hero"] + [x["type"] for x in more]}
+                        for i in range(len(styles))])
 
     def one(job):
         i, sec, hero = job
@@ -1337,8 +1356,8 @@ def _make_looks(r: Site) -> None:
             return
         k = sec_key("home", sec["type"])
         try:
-            out = (write_section(views[i], "home", sec, [], AI.HERO_LOOK_NOTE) if hero else
-                   write_section(views[i], "home", sec, [x for x in labels if x != T.label_of(sec)]))
+            out = (write_section(views[i], "home", sec, [], AI.HERO_LOOK_NOTE, live={"look": i}) if hero else
+                   write_section(views[i], "home", sec, [x for x in labels if x != T.label_of(sec)], live={"look": i}))
         except Exception as e:
             if hero:
                 raise
@@ -1540,6 +1559,65 @@ def _assemble_edit(r: Site) -> Path:
     return out
 
 
+_BUILD_LOCK = threading.Lock()
+_BUILD_MARK: dict[str, tuple] = {}
+
+
+def _files_mark(d: Path) -> tuple:
+    try:
+        fs = [f.stat() for f in d.glob("*.json")]
+    except OSError:
+        return (0, 0)
+    return (len(fs), max((x.st_mtime_ns for x in fs), default=0))
+
+
+def _assemble_build(r: Site) -> Path:
+    """v0.664 ASLI SAMAY: the live canvas = the real site with every section in a slot and the unwritten ones as places
+    they will grow into. Made again only when a section file changed (and at most every 2 s)."""
+    out = B.site_dir(r.tenant_id, r.id) / "build"
+    mark = ("site", r.version, r.updated_at and str(r.updated_at), _files_mark(B.src_dir(r.tenant_id, r.id) / "sections"))
+    with _BUILD_LOCK:
+        old = _BUILD_MARK.get(r.id)
+        if out.exists() and old and (old[0] == mark or time.time() - old[1] < 2):
+            return out
+        ctx = _ctx(r)
+        ctx["building"] = True
+        B.assemble(ctx, ctx["plan"], _sections(r), {p["name"]: p for p in _j(r.photos, [])}, out, "", form_endpoint(r))
+        _BUILD_MARK[r.id] = (mark, time.time())
+    return out
+
+
+def _assemble_build_look(r: Site, i: int) -> Path:
+    """One of the three looks while its page top is written: her home page top in that look's colours and fonts."""
+    metas = ST.looks(r.id)
+    if not (0 <= i < len(metas)):
+        raise SiteError("not found")
+    meta = metas[i]
+    src = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
+    out = B.site_dir(r.tenant_id, r.id) / "buildlooks" / str(i)
+    mark = ("look", i, _files_mark(src), meta.get("style"))
+    with _BUILD_LOCK:
+        old = _BUILD_MARK.get(f"{r.id}:{i}")
+        if out.exists() and old and (old[0] == mark or time.time() - old[1] < 2):
+            return out
+        secs: dict[str, Any] = {}
+        for typ in meta.get("types") or ["hero"]:
+            f = src / ("hero.json" if typ == "hero" else f"{sec_key('home', typ)}.json")
+            if f.is_file():
+                try:
+                    secs[sec_key("home", typ)] = json.loads(f.read_text())
+                except ValueError:
+                    pass
+        plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": t} for t in meta.get("types") or ["hero"]]}],
+                "cta": _j(r.plan, {}).get("cta")}
+        ctx = _ctx(r)
+        ctx.update(tokens=meta.get("tokens") or ctx.get("tokens"), plan=plan, alts=[], blog=[], building=True,
+                   slot_prefix=f"look{i}:")
+        B.assemble(ctx, plan, secs, {p["name"]: p for p in _j(r.photos, [])}, out)
+        _BUILD_MARK[f"{r.id}:{i}"] = (mark, time.time())
+    return out
+
+
 def form_endpoint(r: Site) -> str:
     base = (_settings().public_base_url or "").rstrip("/")
     return f"{base}/api/site-forms/{r.id}"
@@ -1688,12 +1766,16 @@ def _run_build(r: Site, only: list[str] | None, note: str, extra: dict[str, str]
             k, problems = item
             slug, typ = k.split("__", 1)
             old = json.loads(_sec_path(r, k).read_text())
-            fixed = AI.ask_json(AI.FIX_SYSTEM, f"SECTION_ID: {sec_id(slug, typ)}\nPROBLEMS:\n- " + "\n- ".join(problems) +
-                                f"\n\nCURRENT HTML:\n{old['html']}\n\nCURRENT CSS:\n{old['css']}\n\nFACTS (data): "
-                                + _facts_text(_j(r.facts, {})), 9000, "site_edit")
-            if fixed.get("html"):
-                h, css, js, cleaned = B.sanitize_section(sec_id(slug, typ), fixed)
-                _put_sec(r, k, {**old, "html": h, "css": css, "js": js, "cleaned": cleaned, "fixed": problems})
+            with ST.watch(r.id, k, f"Fixing {_page_title(r, slug)} → {T.label_of(typ)}", slug, -1, "fix"):   # v0.664 live
+                fixed = AI.ask_json(AI.FIX_SYSTEM, f"SECTION_ID: {sec_id(slug, typ)}\nPROBLEMS:\n- " + "\n- ".join(problems) +
+                                    f"\n\nCURRENT HTML:\n{old['html']}\n\nCURRENT CSS:\n{old['css']}\n\nFACTS (data): "
+                                    + _facts_text(_j(r.facts, {})), 9000, "site_edit")
+                if fixed.get("html"):
+                    h, css, js, cleaned = B.sanitize_section(sec_id(slug, typ), fixed)
+                    _put_sec(r, k, {**old, "html": h, "css": css, "js": js, "cleaned": cleaned, "fixed": problems})
+                    ST.finish(r.id, k, True, html=h, css=css)
+                else:
+                    ST.finish(r.id, k, True, html=old["html"], css=old["css"])
             return k
         from concurrent.futures import ThreadPoolExecutor
         width = max(1, min(8, int(getattr(_settings(), "site_parallel_big" if plan.get("big") else "site_parallel", 3) or 1)))
@@ -2924,6 +3006,24 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
     elif path.startswith("__looks/"):
         root = base / "looks"
         rel = path[len("__looks/"):]
+    elif path == "__build.js":                      # v0.664 ASLI SAMAY: the live canvas's own script
+        return (B.ASSETS / "hoola-build.js").read_bytes(), "application/javascript", {
+            **B.security_headers(form_endpoint(r)), "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
+    elif path.startswith("__build/__look/"):         # one of the three looks while it is written
+        bits = path[len("__build/__look/"):].split("/", 1)
+        if not bits[0].isdigit():
+            raise SiteError("not found")
+        root = _assemble_build_look(r, int(bits[0]))
+        rel = bits[1] if len(bits) > 1 else ""
+    elif path.startswith("__build/") or path == "__build":
+        root = _assemble_build(r)
+        rel = path[len("__build/"):] if path.startswith("__build/") else ""
+    elif path.startswith("__v/"):                    # v0.664 an earlier version (her before / after)
+        bits = path[len("__v/"):].split("/", 1)
+        if not bits[0].isdigit() or not (0 < int(bits[0]) <= (r.version or 0)):
+            raise SiteError("not found")
+        root = B.out_dir(r.tenant_id, r.id, int(bits[0]))
+        rel = bits[1] if len(bits) > 1 else ""
     elif path == "__edit.js":                       # v0.295 the in-page editor (edit preview only)
         return (B.ASSETS / "hoola-edit.js").read_bytes(), "application/javascript", {
             **B.security_headers(form_endpoint(r)), "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow"}
@@ -2957,6 +3057,8 @@ def preview_file(token: str, path: str) -> tuple[bytes, str, dict[str, str]]:
         ctype = "font/woff2"
     headers = {**B.security_headers(form_endpoint(r)), "X-Robots-Tag": "noindex, nofollow", "Cache-Control": "no-store"}
     data = f.read_bytes()
+    if path.startswith("__build") and f.suffix == ".html":
+        data = data.replace(b"</body>", f'<script src="/api/site-preview/{token}/__build.js"></script></body>'.encode(), 1)
     if path.startswith("__edit") and f.suffix == ".html":
         data = data.replace(b"</body>", f'<script src="/api/site-preview/{token}/__edit.js"></script></body>'.encode(), 1)
     if "frame-ancestors" in headers["Content-Security-Policy"]:

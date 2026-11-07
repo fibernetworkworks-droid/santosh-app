@@ -8849,6 +8849,50 @@ async def sites_export(ref: str, body: dict | None = None, tenant: str = Depends
     return await asyncio.to_thread(_site, S.export, tenant, ref, fmt)
 
 
+@app.get("/api/sites/{ref}/live", dependencies=[Depends(require_key)])
+async def sites_live(ref: str, since: int = 0, tenant: str = Depends(current_tenant)):
+    """v0.664 ASLI SAMAY: the live build stream. Each event = the sections that changed since the last one; a section's
+    HTML only grows while it is written, so after the first event only the new characters travel (`ha` / `ca` = added,
+    a full `h` / `c` when it was rewritten or finished). Ends after ~10 min; the Studio reconnects with `since`."""
+    from .site import service as S
+    from .site import stream as ST
+    v = await asyncio.to_thread(_site, S.get, tenant, ref)
+    sid = v["id"]
+
+    async def gen():
+        sent: dict[str, tuple[str, str, str]] = {}
+        seq, started, quiet = int(since or 0), time.time(), 0.0
+        yield ": open\n\n"
+        while time.time() - started < 600:
+            snap = await asyncio.to_thread(ST.wait, sid, seq, 15.0)
+            if snap["seq"] <= seq:
+                quiet += 15
+                yield ": ping\n\n"
+                continue
+            seq = snap["seq"]
+            out = []
+            for sl in snap["slots"]:
+                k, h, c = sl["key"], sl.get("html") or "", sl.get("css") or ""
+                ev = {kk: sl.get(kk) for kk in ("key", "label", "page", "look", "kind", "state", "at", "end")}
+                h0, c0, st0 = sent.get(k, ("", "", ""))
+                growing = st0 in ("think", "write") and sl["state"] in ("think", "write")
+                if growing and h0 and h.startswith(h0):
+                    ev["ho"], ev["ha"] = len(h0), h[len(h0):]
+                else:
+                    ev["h"] = h
+                if growing and c0 and c.startswith(c0):
+                    ev["co"], ev["ca"] = len(c0), c[len(c0):]
+                else:
+                    ev["c"] = c
+                sent[k] = (h, c, sl["state"])
+                out.append(ev)
+            yield "data: " + ST.dumps({"seq": seq, "slots": out, "looks": snap["looks"]}) + "\n\n"
+        yield "event: end\ndata: {}\n\n"
+
+    return StreamingResponse(gen(), media_type="text/event-stream",
+                             headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+
 @app.get("/api/sites/{ref}/download", dependencies=[Depends(require_key)])
 async def sites_download(ref: str, format: str = "zip", tenant: str = Depends(current_tenant)):
     """v0.663 the Studio's Download ZIP / React + Vite: the zip itself, straight to her computer (with her key)."""

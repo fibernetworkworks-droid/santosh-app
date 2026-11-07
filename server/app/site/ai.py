@@ -114,6 +114,25 @@ def _app_request(model: str, system: str, prompt: str, max_tokens: int, kind: st
     return kw
 
 
+def _live(kind: str) -> bool:
+    """v0.664 ASLI SAMAY: a section being written for the Web Studio's live canvas streams its words to the screen."""
+    from . import stream as ST
+    return kind in SITE_KINDS and ST.current() is not None and bool(getattr(get_settings(), "site_live_stream", True))
+
+
+def _streamed(req: dict[str, Any]):
+    """The same request, streamed: every arriving piece goes to the live slot; the final message is what create() gives."""
+    from . import stream as ST
+    ST.reset()
+    buf: list[str] = []
+    with _app_client().messages.stream(**req) as stm:
+        for piece in stm.text_stream:
+            buf.append(piece)
+            ST.feed("".join(buf))
+        ST.feed("".join(buf), force=True)
+        return stm.get_final_message()
+
+
 def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[bytes] | None = None,
              effort: str = "") -> str:
     """v0.140 Owner's rule: App Sahayak designs and builds with Claude Opus 5.5. Busy / overloaded / timeouts are tried
@@ -133,7 +152,8 @@ def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[
     attempt = 0
     while attempt < tries:
         try:
-            msg = _app_client().messages.create(**_app_request(model, system, prompt, max_tokens, kind, images, effort))
+            req = _app_request(model, system, prompt, max_tokens, kind, images, effort)
+            msg = _streamed(req) if _live(kind) else _app_client().messages.create(**req)
             STATS["app_thinking"] = STATS.get("app_thinking", 0) + sum(1 for b in msg.content if getattr(b, "type", "") == "thinking")
             return "".join(getattr(b, "text", "") or "" for b in msg.content if getattr(b, "type", "text") == "text")
         except Exception as e:
