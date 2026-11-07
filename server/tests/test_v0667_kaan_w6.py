@@ -228,10 +228,26 @@ def test_voiceprint_needs_enrolled_prints(w6_env, monkeypatch):
     from app.config import get_settings
     get_settings.cache_clear()
     from app.voiceid import engine as VE
-    monkeypatch.setattr(VE, "available", lambda: (True, "ok"))
+    monkeypatch.setattr(VE, "available", lambda: True)     # the REAL voiceid contract: a plain bool
     with pytest.raises(ValueError) as e:
         seed_row(w6_env, diarize="voiceprint")
     assert "No enrolled voiceprints" in str(e.value)
+
+
+def test_voiceprint_ready_speaks_the_real_engine_contract(w6_env, monkeypatch):
+    """The W6 FIX regression: the pre-existing voiceid engine contract is a PLAIN BOOL
+    (available() -> bool; only the kaan engine's EN.available() is the tuple pair). voiceprint_ready
+    must consume it UNPATCHED - the live box crashed here (TypeError: cannot unpack non-iterable
+    bool object) while the suite stayed green, because these tests' own patches assumed the same
+    wrong tuple shape. Nothing is patched here but the env."""
+    monkeypatch.setenv("KAAN_VOICEPRINT", "true")
+    monkeypatch.setenv("KAAN_RETENTION_DAYS", "30")
+    from app.config import get_settings
+    get_settings.cache_clear()
+    from app.voiceid import engine as VE
+    assert isinstance(VE.available(), bool)          # their lane's real contract, unpatched
+    ok, why = LM.voiceprint_ready("default")         # the real engine - must not raise TypeError
+    assert ok is False and why                       # engine missing in tests, or no enrolment yet
 
 
 def two_turn_engine(store):
@@ -256,7 +272,7 @@ def test_voiceprint_names_sure_turns_only(w6_env, monkeypatch, tmp_path):
     get_settings.cache_clear()
     from app.voiceid import engine as VE
     from app.voiceid import service as VS
-    monkeypatch.setattr(VE, "available", lambda: (True, "ok"))
+    monkeypatch.setattr(VE, "available", lambda: True)     # the REAL voiceid contract: a plain bool
     people = [{"id": "m1", "name": "Gupta ji", "relation": "family"}]
     monkeypatch.setattr(VS, "call_people", lambda t: people)
     monkeypatch.setattr(VP, "_people", lambda t: people)    # the module's OWN seams
@@ -285,7 +301,7 @@ def test_voiceprint_technical_failure_keeps_the_transcript(w6_env, monkeypatch):
     get_settings.cache_clear()
     from app.voiceid import engine as VE
     from app.voiceid import service as VS
-    monkeypatch.setattr(VE, "available", lambda: (True, "ok"))
+    monkeypatch.setattr(VE, "available", lambda: True)     # the REAL voiceid contract: a plain bool
     monkeypatch.setattr(VS, "call_people", lambda t: [{"id": "m1", "name": "x"}])
     monkeypatch.setattr(VP, "_people", lambda t: [{"id": "m1", "name": "x"}])
     monkeypatch.setattr(VS, "pcm16k", lambda d: (_ for _ in ()).throw(RuntimeError("no ffmpeg")))
@@ -360,4 +376,4 @@ def test_no_new_tables():
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.681.0"
+    assert APP_VERSION == "0.682.0"

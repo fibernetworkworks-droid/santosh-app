@@ -1,3 +1,11 @@
+## v0.682.0 KAAN W6 FIX — the unlock guard's engine seam made honest (8 Nov 2026)
+
+The first live W6 check on the VPS crashed at kaan/status: limits.voiceprint_ready unpacked `ok, why = VE.available()` but the pre-existing voiceid engine contract is a plain bool (`available() -> bool`; only the kaan engine's `EN.available()` is the tuple pair). The W6 suite stayed 195/195 green because its three engine patches assumed the same wrong tuple shape — the tests inherited the bug.
+
+- **THE FIX** — W6 adapts to their lane as-is: limits.py consumes the bool and composes the honest why itself (sherpa_onnx or the CAM++/TitaNet models in voiceid_models_dir missing); the voiceid lane untouched; the three W6 test patches healed to `lambda: True`; NEW regression test speaking the real unpatched contract.
+- Version ritual: ritual_v0682.py swept 0.681.0 -> 0.682.0 (+681) across the test tokens, pubspec, the console cache-buster stamps; registry 609 stands (no tools); zero pip.
+- Server-only deploy = owner's vps-ops dispatch; the W6 retest on the VPS rides this deploy.
+
 ## v0.681.0 KALA MANCH — the T5 knowledge-skill catalog family (8 Nov 2026, planned at 0.669.0; the dev chain took 0.669.0-0.680.0 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept)
 
 The knowledge tier beside the four capability brothers: Google's public skill catalog (github.com/google/skills, Apache-2.0, fork-and-remix sanctioned) read on demand — IDEA-ONLY.

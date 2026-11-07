@@ -142,9 +142,9 @@ def voiceprint_ready(tenant: str) -> tuple[bool, str]:
         return False, ("Voiceprint diarization needs bounded retention first - set KAAN_RETENTION_DAYS "
                        "(audio matched with enrolled voiceprints must have an expiry).")
     from ..voiceid import engine as VE
-    ok, why = VE.available()
-    if not ok:
-        return False, f"The voiceprint engine is not ready: {why}"
+    if not VE.available():                    # the voiceid lane's REAL contract: a plain bool
+        return False, ("The voiceprint engine is not ready on this machine - sherpa_onnx or the "
+                       "CAM++/TitaNet speaker models in voiceid_models_dir are missing.")
     from ..voiceid import service as VS
     if not VS.call_people(tenant):
         return False, ("No enrolled voiceprints for this tenant yet - finish one Awaaz Pehchaan "
