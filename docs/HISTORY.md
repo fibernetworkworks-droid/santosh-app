@@ -21927,3 +21927,29 @@ Built (`app/kaamstop.py`):
 Tests `test_v0649_sach_mein_roko.py` 11 incl. her exact case (job on call 1, cancel from call 2, call 3 reads "band").
 291 of 294 in the related suites pass; the 3 reds (test_glm tool turn, two console r3 pins) fail the same way without this change.
 NOT VERIFIED on a real call yet.
+
+
+## v0.651.0 JAWAB MIL GAYA - a call knows when she answers a card (built as 0.650; their Web Studio took 0.650.0 - both kept)
+
+Owner: "DURING VOICE CALL WHEN CARD APPEARED AND IF USER APPROVE, SEND ETC TAP ON CARD --- VOICE CALL DONT KNOW ... AFTER SOME
+TIME VOICE CALL AGAIN U HAVE A CARD CLICK ON APPROVE, SEND ETC -- THAT EVEN USER DONE THAT".
+
+Root cause (code): v0.554 `voice.card_news` tells a live call about every card through `push.render` - and `push.render`
+returns NOTHING for an answered card (no notification is needed), so the answered state never reached the call. The call kept
+its "card aaya, haan chahiye" note (and a note still waiting for a pause could even be spoken AFTER her tap), and the call brain
+had only the history line "card bheja, approve kijiye" - nothing told either side the card was done.
+
+Built:
+- `voice._CARD_ASKED` (card key -> tenant, the card's own title): filled when a call is told about a card that waits for her.
+- `voice._card_answered`: the SAME card key coming back with an answered state (`events.needs_her` false and not a waiting
+  status) -> every live call of hers (a split call on two keys told once) gets `Call.card_answered(title, word)`: still-unspoken
+  news about that card is dropped, and a QUIET note (`_tell_quietly`, no reply of its own - she knows she tapped) says never to
+  ask her about it again.
+- `events.cards_block(tenant)`: the cards that really still wait (their own latest state, across her chats + call records);
+  a new part of the call brain's parallel memory read, so a brain answer never asks her to tap an answered card.
+- PERSONA_BRAIN + PERSONA_LEAN: a "Card ka jawab mil gaya" note = already tapped, never ask again.
+- Found by an old test while building: `santosh._brain_memory` did `callconv.is_call()` (a DB read) on the event loop - removed;
+  `chat_block` already answers "" for a plain chat inside its thread.
+
+Tests `test_v0650_jawab_mil_gaya.py` 6 (+ the v0.644 memory pin stubs the newer parts). 66 / 66 in the call / card / memory
+suites. NOT VERIFIED on a real call.

@@ -1888,3 +1888,12 @@ Task: owner GO on the real-cancel fix (cancel said done, the job kept running an
 Work Log: kaamstop module (stop words + tenant-wide cancel), pre-lock interception in _run_turn, kaamwatch cancelled guard,
 voice late-news drop, kaam_status action=stop, persona lines, 11 tests.
 Stage Summary: shipped; live check on her call pending.
+
+---
+Task ID: v0.651.0 JAWAB MIL GAYA (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner: a card tapped during a call - the call did not know and asked again.
+Work Log: card asked/answered registry in voice.card_news, Call.card_answered (drop unspoken note + quiet note),
+events.cards_block in the call brain memory, persona lines, sync DB read removed from _brain_memory; merged their
+v0.650.0 Web Studio, re-versioned 0.651.0; 6 tests.
+Stage Summary: shipped; live check pending.
