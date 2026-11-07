@@ -1986,3 +1986,16 @@ Work Log:
 - _search fence + incognito in SQL; diary receipt scan bounded by days; extract_facts defers inside the gap, short self-facts kept
 - tests: test_v0661_yaad_sahi.py 9 (all fail on the old code); pins updated in v0217 (order id kept) + v0603 (pinned in place)
 Stage Summary: shipped v0.661.0 on top of v0.660.0; 2 older reds (v108 _reseed fake, v0473 routes) pre-existing
+
+---
+Task ID: v0.662.0 KAAM SAAF
+Agent: Claude (voice/task session)
+Task: owner "GO" on Wave 4 of the deep audit (coworker polish 9-11, 26-30) - the last wave
+Work Log:
+- worker._slot guard + google_auth.BACKGROUND around every slot; fire_reminders late path (REMINDER_LATE_S, _quiet_now)
+- santosh._STOP_AT / STOPPED_IN_PREP; _say_error dedupe for background turns
+- google_auth._DEAD backoff per refresh token (background only) + _note_dead once-a-day notice
+- draftcheck new _DONE forms + _PROMISE_REMIND / NUDGE_PROMISE; kaamwatch honest stuck line + BOOT_AT
+- kaamlist._is_work + job-start dedupe + waiting cards; events.waiting_cards max_age_h + CARD_STALE_H in cards_block
+- tests: test_v0662_kaam_saaf.py 19 (17 fail on the old code); 320 older passed
+Stage Summary: shipped v0.662.0 on top of v0.661.0; all four audit waves done

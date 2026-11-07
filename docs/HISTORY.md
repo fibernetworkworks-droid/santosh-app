@@ -22184,3 +22184,31 @@ ask, the parking saving, and Gemini's handling of the new brief order.
 Tests `test_v0661_yaad_sahi.py` 9 (all fail on the old code). Pins moved to the new truth: v0217 (an order number
 stays, a card is masked), v0603 (a pinned fact is updated in place). NOT VERIFIED live: the copy-retire threshold on her
 real facts; no live memory quiz has been run on this version.
+
+## v0.662.0 KAAM SAAF — Wave 4 of the deep flaw audit: coworker polish (owner: "GO"; the last wave)
+
+29. **Worker slots.** `tick()` awaited ~30 slots in a row with no guard; a recurring exception in an early slot skipped
+    every later one (reminders, follow-ups, research) on every tick. Each slot now runs in `worker._slot` (logged once a
+    minute per slot, the rest still run).
+27. **Late reminders.** A reminder due during downtime fired whenever the server came back, worded as if on time, and
+    rang her phone (auto-starting a call) at any hour. 20+ min late (`REMINDER_LATE_S`) = "der se - yeh X ka tha", the
+    event carries `late`, and no ring in her night (22-08, `_quiet_now`).
+11. **Stop during preparation.** `_stopped.discard` ran after saving / compaction / memory, wiping a Stop tapped in those
+    seconds. `stop()` now stamps `_STOP_AT`; a Stop after the turn took the lock ends it before anything runs
+    (`STOPPED_IN_PREP`).
+26. **Dead Google sign-in.** The mail watch (60 s) and calendar alerts (120 s) asked Google for ever and nobody told
+    her. `google_auth._DEAD` keys the refusal to the refresh token: BACKGROUND watchers (`google_auth.BACKGROUND`, set by
+    `worker._slot`) wait 30 min -> 2 h -> 6 h; her own chat ask always tries again; a new sign-in (new token) goes at once;
+    she is told in her chat once a day that mail / meeting alerts have stopped.
+28. **Honesty check.** `draftcheck._DONE` gains "place / transfer / set / fix / cancel / update / submit / schedule / save
+    / send / deliver ho gaya", "chala gaya", "pahunch gaya", "appointment / booking / slot / ticket / order le liya"
+    (future forms stay honest); "yaad dila dungi" with no reminder tool this turn gets `NUDGE_PROMISE` once.
+10. **Stuck notice.** "Main dekh kar batata hoon" promised a check nothing made; the line now says what is known (and a
+    server restart since it last moved, `BOOT_AT`) and what she can say.
+9.  **Kaam list.** `kaamlist._is_work` drops routine / goal prompts and read-only questions; a task row whose turn
+    started a tracked job is left to the job's own row (no "ho gaya" beside "chal raha hai"); waiting cards are listed.
+30. **Spam + stale cards.** `santosh._say_error`: a background turn says the same error kind once per tenant per 30 min
+    (her own turn always); `events.cards_block` leaves out cards older than 3 days (`CARD_STALE_H`) and names them as old.
+
+Tests `test_v0662_kaam_saaf.py` 19 (17 fail on the old code); 320 older suites pass. NOT VERIFIED live: the Google
+backoff against her real dead sign-in, the late-reminder wording on a real restart.
