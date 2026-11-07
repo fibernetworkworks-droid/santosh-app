@@ -2921,6 +2921,8 @@ body.albon{overflow:hidden}
 /* v0.567 KOI BHI DESIGN: her design's colours in the preview */
 .stsws{display:flex;gap:6px;margin:8px 0}
 .stsw{width:28px;height:28px;border-radius:8px;border:1px solid var(--hair);display:inline-block}
+<<<<<<< HEAD
+=======
 
 /* v0.646 WEB DEVELOPMENT PANEL 2 (webdev.js) - own `wdp-` prefix (the Game Desk owns `.wd-body`), console tokens only, light + dark.
    Every row that holds text + buttons may wrap; every text that can be long ellipses or breaks; nothing is absolutely placed. */
@@ -3108,3 +3110,4 @@ body.albon{overflow:hidden}
 .wkrow:hover:not(:disabled) span{text-decoration:underline}
 .wkrow b{font-weight:500;color:var(--mut);white-space:nowrap;font-size:12.5px}
 .wkrow:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+>>>>>>> origin/main

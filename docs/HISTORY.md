@@ -21861,6 +21861,42 @@ Built:
 Tests: `test_v0648_kaam_hisaab.py` 8 (+ the v0.646 pin updated). NOT VERIFIED: the Kotlin / Dart half compiles first on CI;
 the notification tap on a real phone.
 
+## v0.650.0 HOOLA WEB STUDIO (built as 0.649; their SACH MEIN ROKO took 0.649.0, both kept) — the website builder as its own app, with three full looks before any build (owner: "I WANT IT LIKE LOVABLE AND EMERGENT ... A SEPERATE WEB DEVLOPEMENT PANEL WITH ITS OWN SIDE BAR ... NOT A MERGE WITH A HOOLA CONSOLE HOME PAGE" -> the 13-screen prototype -> plan mode optional + written from her words -> "3 looks, every page clickable, PC / tablet / mobile" -> "PERFECT")
+
+**Its own app.** `GET /console/web` serves `static/console/webstudio.html` (+ `webstudio.js`, `webstudio.css`) with the console's
+CSP and sign-in (the console token in this browser). The console's Web Development row now opens it (`v2.js go('webdev')` ->
+`location.assign('/console/web')`); the v0.636 / v0.646 in-console panel (`webdev.js`, its view, its CSS) is removed. Routes
+are hashes: `#/` home, `#/sites`, `#/templates`, `#/plan/<spec>`, `#/site/<id>/<view>`.
+
+**Build | Plan on the home.** Build: a conversation of its own first, then `POST /api/sites {brief, conversation_id}` and at once
+`POST /plan` (no plan step) so the three looks start. Plan: `POST /api/site-architect {words}` - the architect (v0.407) writes the
+system from her words (stories, pages by who uses them, users, data, rules, payments, notifications, integrations, features,
+open questions); the Studio shows it as a document with her words quoted; the chat `revise`s it; only "Build this plan"
+approves it with the hash she saw (the architect then creates the site and accepts its plan, so the looks start).
+
+**Three full looks (server, `site/service.py`).** `_make_looks` gained wave 4, `_full_looks`: the plan's other sections (every
+page, and home sections below each look's top) are written ONCE with look 1's view into the site's own sections, then each look
+is assembled as the WHOLE site with its own tokens and its own home top into `looks/<i>/full/`, served by the existing preview
+token at `__looks/<i>/full/`. `view()` gives every look `full` + `preview`. Because the build treats an existing section file
+as done, choosing a look writes no page again (tested: zero section calls after the pick) - the words are paid for once, not
+three times. Off with `SITE_FULL_LOOKS=false`, and skipped for a big site or more than `SITE_FULL_LOOKS_MAX` (40) sections -
+then the looks stay page tops as before and the Studio says so. conftest pins it off for the older site suites.
+
+**Workspace.** Left: the site's own Hoola thread (one conversation per site, never the home chat; Build | Plan in the composer -
+Plan asks Hoola for a short plan and to change nothing until her Haan; a select button opens visual edit). Right: Preview (a
+live, polled progress view while the server works; the three looks with a look switcher and computer 1280 / tablet 820 / phone
+390 frames; the live preview with visual edit through the existing `__edit/` page messages: text, link, picture, remove, add
+below, undo), Code (the site's files, edit and save as a checked version, ZIP / React export), Cloud (lists, rows, members),
+Integrations (asked in the thread), Health (care + ops), Settings (business details, SEO, team, take down), History (versions;
+restore once live), Publish (launch card, addresses, domain, old-site redirects). Every write that matters asks first and sends
+the server's hash.
+
+**Tests** `test_v0649_web_studio.py`: the route + CSP, the console row, no webdev.js; full looks write every section once and
+serve every page of each look, the build after the pick writes nothing; off / too big keeps page tops; a real-browser walk
+(home without an inner focus line, Build mode to three clickable looks at three sizes, look switch serves `__looks/1/full/`,
+Plan mode shows the plan document and builds from it, no overlaps, no sideways scroll at 390 px). test_v0475 stamp count 24 -> 23
+(webdev.js gone). NOT VERIFIED live: a real Opus build through the Studio, and how long the full-looks wave takes for a
+7-page site on her VPS (it writes the pages before the looks are shown instead of after the pick).
 
 ## v0.649.0 SACH MEIN ROKO - "cancel this task" really cancels it, on every surface
 

@@ -51,6 +51,7 @@ def _full_voice_menu(monkeypatch):
     test_v0627_chhota_menu switches the small one on for itself."""
     from app.config import get_settings
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")
+    monkeypatch.setenv("SITE_FULL_LOOKS", "false")    # v0.649 older site suites pin page-top looks; test_v0649 checks the whole site
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku
