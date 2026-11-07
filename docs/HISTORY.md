@@ -22102,3 +22102,36 @@ Rename, Add to / Remove from starred, Delete; keyboard: arrows + Escape), the sa
 the project name in the workspace. Rename = NEW `PATCH /api/sites/{id}` {name} -> `service.rename` (1-80 chars, only the
 list name; pages, address and live site untouched). Delete = the existing server delete (a live site is taken off the
 internet first; confirm names that). Stars are this browser's choice (localStorage). Tests `test_v0655_kaam_dikhe.py` +3.
+
+## v0.659.0 CALL KI YAAD — Wave 2 of the deep flaw audit: call memory and smoothness (owner: "Wave 2 (call memory and smoothness): 3, 4, 13–18, 23 -- WORK ON IT NOW"; built as 0.658, their SAAF DIKHE took 0.658, both kept)
+
+3. **A split call started with no memory.** `yaad.voice_block` keyed every chat read (focus words, checkpoint,
+   summary, recent exchanges, facts' last ask) by the NEW call record. It now reads the chat behind it
+   (`_call_chat`) and merges the call record's own exchanges in. The call brain (`santosh._brain_memory`) gets two
+   new parallel parts: `saar` = the origin chat's checkpoint (head + pending tail, `_call_chat_saar`) and `facts` =
+   her facts by meaning for this ask (`_call_facts`).
+4. **The small brief cut off the pending work.** With `hard_cap` (voice_lean_tools) every part gets its share
+   (`yaad.SMALL_SHARES`); a checkpoint keeps its head AND its tail (`_clip_ends`), recent exchanges keep the newest
+   (`_clip_tail`).
+23. **Silent memory gaps on a call.** A part missing the 2.5 s wait is named to the brain ("check with kaam_status /
+    yaad_khojo, never guess") and its result is KEPT for the next ask (`_BRAIN_CACHE`, 10 min; the job state never,
+    it moves).
+13. **Check-ins kept Gemini billing.** `_still_working` tasks carry `_hoola_checkin` and `_busy()` ignores them.
+14. **A second ask waited behind the first, or got a no-tools answer.** A call brain turn never takes the quick lane;
+    `Call._run_conv` sends an ask to a hidden SIDE record (`callconv.open_side`, call_id `side:...`, same memory scope,
+    out of the Calls list, live under the call) when the call record is busy (2 sides max, then it queues);
+    `_copy_back` writes the side ask's words + answer into the call record once it is free; `_late_result` reads the
+    outcome of the conversation the job really ran in (`_conv_of`).
+15. **Two santosh_kaam calls in one turn ran her whole sentence twice.** The second carries only its own request
+    (`_kaam_said`, reset when her next turn ends).
+16. **Brain-made cards told twice.** santosh_kaam sets `VOICE_DIRECT = "kaam:<call>"`; `card_news` remembers such a
+    card in `_CARD_ASKED` (her tap still reaches the call) but does not inject a note - the brain's answer says it.
+17. **Results lost at the end of a call.** News handed to the audio queue is remembered (`_news_pushed`) and, with
+    hold notes (`_held_texts`, `_after_release`), saved for the next call by `_save_unsent`; the late-result callback
+    is attached BEFORE the first wait, so a hang-up inside it still keeps the result.
+18. **News cut into speech.** `_news_forced`: past the 25 s cap news still waits for a 0.7 s gap in her words and his
+    voice; at 3x the cap (a noisy line) it goes anyway, but never over his voice.
+
+Tests `test_v0659_call_yaad.py` 14. Pins updated: v0230 news cap timing, v0554 VOICE_DIRECT line. Pre-existing reds
+(stash-proven on 66aaed56): v108 `_reseed` fake, v086 x2, v0473 routes. NOT VERIFIED on a real call: the side-record
+ask, the parking saving, and Gemini's handling of the new brief order.

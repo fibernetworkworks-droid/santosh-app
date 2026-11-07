@@ -1955,3 +1955,15 @@ Work Log:
 - sidebar: Search, Starred, per-project menu (open / new tab / rename / star / delete), card + workspace menus; PATCH /api/sites/{id}
 - 11/11 Studio tests green (3 new incl. a slow fake turn in a real browser)
 Stage Summary: shipped v0.658.0 on top of their v0.657.0 (both kept)
+
+---
+Task ID: v0.659.0 CALL KI YAAD
+Agent: Claude (voice/task session)
+Task: owner "Wave 2 (call memory and smoothness): 3, 4, 13-18, 23 -- WORK ON IT NOW"
+Work Log:
+- yaad.voice_block reads the origin chat for a call record; small brief per-part shares + head/tail checkpoint
+- call brain: chat checkpoint + facts by meaning, late parts named + cached (job state never cached)
+- voice: check-in does not block parking, side records for a second ask, split santosh_kaam dedupe,
+  brain-made cards quiet but remembered, unsent news saved at call end, early late-result callback, news gap rule
+- tests: test_v0659_call_yaad.py 14; two old pins updated (v0230 news cap timing, v0554 VOICE_DIRECT line)
+Stage Summary: shipped v0.659.0 on top of their v0.658.0 SAAF DIKHE (both kept); 4 older reds stash-proven pre-existing
