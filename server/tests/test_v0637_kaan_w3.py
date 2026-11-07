@@ -247,7 +247,8 @@ def test_actions_grew_registry_did_not():
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
                     "live_start", "live_chunk", "live_stop", "live_get", "live_list",
-                    "style", "vocab_add", "vocab_list", "vocab_remove"], PIN
+                    "style", "vocab_add", "vocab_list", "vocab_remove",
+                    "export", "to_gyaan"], PIN  # W4 grew actions
     assert len(spec["description"]) <= 1200                           # the diet
     assert "vocab_add" in spec["description"] and "deterministic render" in spec["description"]
     props = spec["input_schema"]["properties"]
@@ -290,4 +291,4 @@ def test_w3_modules_purity_and_laziness():
 
 def test_version_pin_v0637():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.658.0"
+    assert APP_VERSION == "0.659.0"

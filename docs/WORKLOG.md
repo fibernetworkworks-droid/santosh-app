@@ -1,4 +1,12 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.659.0 KAAN W4 BOLI SE KITAAB (built as 0.656.0; their KAAM DIKHE took 0.656.0, PAKKA KAAM took 0.657.0 and SAAF DIKHE took 0.658.0 while W4 sat built - REBASE PROTOCOL twice, rebuilt fresh on their 2361b78a7 tip, all kept)
+Agent: main (kaan lane)
+Task: owner START "W4 (exports + translation + Gyaan unlock)" — Wave W4: deterministic exports, the gyaan unlock, the translate proof.
+Work Log: NEW server/app/kaan/exports.py (srt/vtt/txt/json pure serializations; SRT/VTT cues == the W3 subtitles lines, one code path; hand-rolled timestamps; sort_keys JSON; honest refusals); service.export_transcript + to_gyaan (add_note content-hash idempotent, lazy gyaan import) + status exports block; kaan_tools +export/+to_gyaan (enum 18, diet 1190, to_gyaan owner/approved); translate pinned end-to-end (W0 wiring, row records task, turbo refuses); test_v0656_kaan_w4.py 18 green + neighbours (kaan 86 total on the tree); ritual sweep 0.655.0 -> 0.659.0 (+665) across two rebases, pubspec 0.659.0+665, enum pins healed, APP_VERSION story, CLAUDE.md/HISTORY/WORKLOG mirrors.
+Stage Summary: pushed to main; deploy rides vps-ops; NOT VERIFIED live yet — first export + to_gyaan on the VPS waits for the owner's paste (single-line protocol).
+
+---
+
 Task ID: v0.637.0 KAHAN RUKA (built as 0.636.0)
 Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
