@@ -2077,3 +2077,13 @@ page a data:text/html scratch page, the whole suite offline; the ritual swept th
 
 Stage Summary:
 - v0.665.0, tests/test_v0664_jharokha_manch.py green.
+
+---
+Task ID: v0.667.0 PREMIUM STUDIO
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked for a premium Web Studio design in Figma first, then "GO BUILD THE DESIGN".
+Work Log:
+- Designed 4 frames + a Chip component in Figma (file Yl6AWOsMaD8f2FdHROVbOB).
+- Built it into webstudio.css / .js / .html: tokens, fonts, home, sidebar, top bar, chat, work card, finished state, live pane.
+Stage Summary:
+- v0.667.0, tests/test_v0667_premium_studio.py 2 green; older Studio suites green.

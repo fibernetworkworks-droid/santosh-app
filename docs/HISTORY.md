@@ -22370,3 +22370,22 @@ section. Server-only deploy — old APKs keep working; one new kill switch, defa
 that is the Computer Operator's door, not this one); no persistent browser profiles (ephemeral by
 design); the lane never claims stealth or JS rendering parity with the scrape lane's engines — it
 opens pages as Chromium does, and says BROWSER_ERROR honestly when a page fights back.
+
+
+## v0.667.0 PREMIUM STUDIO — the Figma redesign built into the Web Studio
+
+v0.667.0 PREMIUM STUDIO (owner: "GO THROUGH FIGMA FOR DESIGN MAKE A WEB PANEL MORE PREMIUM ... SHOW ME THE DESIGN FIRST" -> the Figma file 'Hoola Web Studio - Premium redesign' (landing, workspace building live, chat finished, type & colour) -> "GO BUILD THE DESIGN"): the Web Studio rebuilt to that design - one serif (Literata) for the 52 px headline and everything Hoola says, the sans for everything she taps, JetBrains Mono for timers and counts; warm paper + ink palette, violet only for working now, green for done, red only for LIVE; weights stop at 600. Home: 'New - Watch your website being built, live' eyebrow, the serif headline, the ask card with Use my old site / From a screenshot and a dark round send, a dark New website button with Cmd/Ctrl K (a real shortcut from anywhere in the Studio), recent sites with their status under the name, site cards with a tint and 'Edited N ago'. Workspace: mark / name / status, 'Every change is saved as a version', dark Publish; her request opens the chat; Hoola's name + time above each reply; the live work card (what is being built, step n with its own %, the whole clock, progress, every step's own time and count, N parts writing at once, Pause); after a build 'Worked for' + 'Version N is ready' + Go live + three next steps; the live canvas gets a red LIVE tag, page pills and a browser frame. No behaviour removed; light + dark.
+
+**Design source:** Figma file https://www.figma.com/design/Yl6AWOsMaD8f2FdHROVbOB (frames 01 Studio home, 02 Workspace -
+building live, 03 Chat panel - build finished, 04 Type & colour, plus the Chip component). Built into
+`static/console/webstudio.css` (light tokens replaced, dark tokens extended with --live / --solid; the v0.667 layer at the
+end) and `webstudio.js` markup (no route, id or data-attribute removed - the older Studio suites stay green).
+
+**Honest, not invented:** the Figma attach button and the price estimate on the home were left out (no attach flow and
+no estimate exists before a plan); the account block was left out (the Studio does not know her name); the 'Version N
+is ready' card says 'Every check passed' only when the site's checks say so, and appears only in the hour after a build.
+
+**Tests:** `server/tests/test_v0667_premium_studio.py` (2): design markers (three typefaces load, the new pieces exist,
+weights stop at 600) + a browser walk (the headline renders in Literata, Ctrl K comes back to the ask box from another
+page, her request opens the chat, the live work card and its foot, LIVE tag + browser frame, dark Publish
+rgb(23,22,28), Version 1 is ready, Go live opens Publish). Older Studio suites (v0649, v0655, v0663, v0664) green.

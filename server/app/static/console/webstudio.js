@@ -1051,7 +1051,7 @@
         ${steps.length ? stepList({steps}) : ''}</div>${THREAD.live ? who(0) + `<div class="ho">${md(THREAD.live)}</div>` : ''}`;
     })() : '';
     box.innerHTML = rows.length || THREAD.waiting ? html + live
-      : `${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p></div>
+      : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p></div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
     if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
