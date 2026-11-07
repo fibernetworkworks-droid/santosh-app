@@ -1915,3 +1915,11 @@ Work Log:
 - plan chat + home box now show her line / a working row at once, words restored on failure
 - browser test slows /revise, fails on old code, passes now; version ritual 0.654.0+660
 Stage Summary: shipped v0.654.0 on top of their v0.653.0 SACHCHA NATIJA (both kept)
+
+---
+Task ID: v0.655.0 SACH KA PEHRA (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the false-task-reply audit.
+Work Log: draftcheck effect() by result, read names, clause window, new claim phrases, card nudge + line; voice spoken-claim
+correction; merged their v0.654.0, re-versioned 0.655.0; 25 tests.
+Stage Summary: shipped; live check pending.

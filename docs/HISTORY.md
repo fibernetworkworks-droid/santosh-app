@@ -22001,3 +22001,33 @@ dots at once and clears the box; on success the plan redraws with the line logge
 words return to the box. The home box shows "Writing your plan from your words · about a minute" / "Starting your website" under it
 (`#wsAskWork`) and keeps her words with the reason on a failure. Test: `test_v0649_web_studio.py` browser walk slows `/revise` by
 2.5 s and requires her line + the working row within 1.5 s (fails on the old code), and a workspace chat line must land at once.
+
+
+## v0.655.0 SACH KA PEHRA - no false "done" about task work (built as 0.654; their BHEJA TO DIKHA took 0.654.0 - both kept)
+
+Owner: "CKECK IT DOES NOT GIVE FALSE REPLY REDARDING TASK WORK" -> audit with a measured table -> "GO".
+
+The audit fed sample replies to the code check (`draftcheck.fake_done`): "mail bhej diya" after only a DRAFT, "I've sent the
+email" after a draft, "order kar diya, ... aa jayega" after only an approval CARD, "mail bhej diya" after only reading mail and
+"website live ho gayi" with nothing run all PASSED unchecked. Causes: (1) any non-read tool counted as doing, so a draft / card
+waiting for her tap made a send-claim look backed; (2) READS was 23 names - 47 read tools (email_check, list_reminders,
+get_campaign_status ...) counted as actions, so "only reads ran" was almost never true; (3) the not-a-claim test looked +-45
+characters around the claim, so "aa jayega" in the NEXT clause excused "order kar diya"; (4) missing claim phrases; (5) Gemini's
+own spoken words on a call were never checked.
+
+Built (`agent/draftcheck.py`):
+- `effect(call)` from the tool's RESULT: '' (failed), 'read', 'card' (status pending* / draft* / needs_* / awaiting* / waiting* /
+  approval*, needs_approval true, approval_id, "bhejo dabaiye", "aapki haan" ...) or 'did'; `nothing_ran` = no 'did';
+  `only_cards`; a card-only turn gets NUDGE_CARD ("card bheja hai, aapki haan se hoga") and, if it claims again, SAID_CARD /
+  SAID_CARD_EN after the words she read.
+- `_is_read` also by name (`_check / _read / _search / _status / _agenda / _dekho ...`, `list_ / get_ / find_ ...`) unless the name
+  carries a change word (`list_add`, `list_done` stay actions); a test walks all 606 tools.
+- `_clause()`: only the claim's own clause (split on . ! ? ; , newline and dashes) can make it "not a claim".
+- `_DONE` learns live ho gayi, publish / post / schedule / transfer / forward / reply / submit / file kar diya, book / confirm /
+  payment ho gaya, bhej chuka, and English "I've sent / booked / paid ...", "has been sent / booked ...", "is now live".
+- Calls (`voice.Call._check_spoken_claim`, per spoken turn): a claim with NO tool in that turn, no news relayed in the last 90 s
+  and not the call's opening 90 s -> a spoken "Sudhaar" at the next pause (the audio is already out; the truth follows it).
+
+Tests `test_v0654_sach_ka_pehra.py` 25 (10 false replies caught - 6 as cards, 8 honest ones untouched, real tool result shapes,
+the whole registry, the call check incl. news / opening / per-turn counting). 221 / 221 across every suite that uses the check +
+voice / chat. NOT VERIFIED on a real call.
