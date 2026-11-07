@@ -316,6 +316,13 @@ def status(tenant: str) -> dict[str, Any]:
                     "note": "W4 exports: deterministic SRT/VTT/TXT/JSON of a stored transcript (read-only, "
                             "gate-free); to_gyaan puts the text in her gyaan corpus; task=translate: whisper "
                             "translates X->English only (turbo can't)."},
+        "doors": {"api": "/api/kaan (HTTP, W5)",
+                  "mcp": "python -m app.kaan.mcp_server (stdio JSON-RPC, W5)",
+                  "ext": "browser extension tabCapture -> /api/kaan/live (W5)",
+                  "note": "W5 doors: the SAME KS functions and gates behind every door - HTTP API, MCP "
+                          "stdio server, browser extension audio. The tenant rides the auth (API key, "
+                          "product session, or a paired device token); the MCP server is owner by "
+                          "construction (it runs on her box with her env)."},
         "ladder": [{"name": m["name"], "params": m["params"], "note": m["note"]} for m in EN.MODEL_LADDER],
         "stored": n,
         "privacy": "audio + transcript isi server par rehte hain; koi bahar API is path par nahi.",

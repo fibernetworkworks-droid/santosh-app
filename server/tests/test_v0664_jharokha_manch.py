@@ -1,4 +1,4 @@
-"""v0.665.0 JHAROKHA MANCH - the T3 local-browser family, backend-only (built as 0.664.0 - their ASLI SAMAY took 0.664.0 while JHAROKHA sat built - REBASE PROTOCOL #12, both kept; owner: "T3 Local Browser ---
+"""v0.666.0 JHAROKHA MANCH - the T3 local-browser family, backend-only (built as 0.664.0 - their ASLI SAMAY took 0.664.0 while JHAROKHA sat built - REBASE PROTOCOL #12, both kept; owner: "T3 Local Browser ---
 CONTINUE"; the T3 tier of download/HOOLA_MCP_FEED.json - the zero-login / zero-key browser rows,
 catalog-description-verified and ported IDEA-ONLY: microsoft/playwright-mcp "browser automation ...
 through structured accessibility snapshots" + the modelcontextprotocol/servers Puppeteer reference
@@ -348,4 +348,4 @@ def test_enum_and_label_pins():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.665.0"                       # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.666.0"                       # conscious-bump guard: moves with every release

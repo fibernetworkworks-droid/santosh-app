@@ -350,6 +350,7 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `HOOLA_READ_GUARD_KB`. The rule above was a sentence for 200 versions; now it is a hook.
 
 ## Current state (latest first, one line each)
+- v0.666 KAAN W5 BOLI KE TEEN DARWAZE (built as 0.663.0, rebased twice: their 0.664.0 + 0.665.0): one brain, three doors — /api/kaan/* HTTP routes + a stdio MCP server (one tool, 18 actions, dispatch through kaan_tools._sync) + the extension's tab audio (tabCapture + offscreen MediaRecorder -> live chunks); registry 606 and enum 18 unchanged; 23 tests.
 - v0.645 KHULA LOOP: the watchdog caught her 17:59 call's last freeze - 2.1 s in `aftersales.due` (a sync DB query) while the call brain built its instructions; `context_block` + the system prompt (~25 DB-backed blocks) now build via asyncio.to_thread; 1 test.
 - v0.644 BINA RUKE: her 17:51 call - every step on Haiku (1.9 / 2.3 / 2.4 s), prep 5.0 s of which 2.5 s was the memory wait; the diary / facts read (yaad) missed it on EVERY call ask since v0.638, so the call brain no longer reads it (`voice_brain_yaad` False; job state + coder primer stay; old memory via yaad_khojo); 1 test.
 - v0.643 HAMESHA HAIKU: her 17:44 call (prep 3.8 s, was 19.6) asked for Sonnet + 16k cap on 4 steps (9.1 + 5.8 + 23.0 + 4.3 s) because a big-looking call ask fell into `model_for`'s long-job branch first; the call brain check now comes FIRST (always voice_brain_model), and the `claude call` log prints the model the SDK door really sends (`_sent_model`, after `usage.one_model`); 1 test.

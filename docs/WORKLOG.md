@@ -1,4 +1,13 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.666.0 KAAN W5 BOLI KE TEEN DARWAZE (built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)
+Agent: main (kaan lane)
+Task: owner START "W5 — MCP + API + extension audio" — Wave W5: the HTTP door, the MCP door, the extension's ears.
+Work Log: NEW server/app/kaan/api.py (_kaan_router factory, /api/kaan/* full surface, honest 400s, tenant via current_tenant); NEW server/app/kaan/mcp_server.py (stdio JSON-RPC 2.0 protocol 2025-06-18, one tool kaan, dispatch through kaan_tools._sync, isError honesty, lazy imports); extension +tabCapture/+offscreen with NEW offscreen.html/offscreen.js (MediaRecorder 2s slices -> /api/kaan/live/{sid}/chunk), background captions-start/stop, popup live-captions section; status() doors block; registry 606 + enum 18 UNCHANGED; test_v0663_kaan_w5.py 23 green (TestClient HTTP ring + MCP handle ring + subprocess inertness + extension source pins) + kaan chain W0-W4 + webext + api + v0660/v0661/v0662 green (199/200, the 1 red = pre-existing sandbox google-auth environment red, stash-proven); ritual_0663.py swept 212 files 0.662.0->0.663.0 (+669), pubspec 0.663.0+669, APP_VERSION story, webext permission-set pin healed.
+Stage Summary: pushed to main; deploy rides vps-ops; NOT VERIFIED live yet — first /api/kaan call + MCP handshake on the VPS waits (single-line protocol).
+
+---
+
+# HOOLA — Multi-Session Worklog
 Task ID: v0.659.0 KAAN W4 BOLI SE KITAAB (built as 0.656.0; their KAAM DIKHE took 0.656.0, PAKKA KAAM took 0.657.0 and SAAF DIKHE took 0.658.0 while W4 sat built - REBASE PROTOCOL twice, rebuilt fresh on their 2361b78a7 tip, all kept)
 Agent: main (kaan lane)
 Task: owner START "W4 (exports + translation + Gyaan unlock)" — Wave W4: deterministic exports, the gyaan unlock, the translate proof.

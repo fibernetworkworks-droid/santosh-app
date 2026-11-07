@@ -1,3 +1,38 @@
+## v0.666.0 KAAN W5 — BOLI KE TEEN DARWAZE (7 Nov 2026, built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)
+
+Owner: "W5 — MCP + API + extension audio" — Wave W5 of the kaan plan (W0 v0.601.0, W1 v0.613.0,
+W2 v0.619.0, W3 v0.639.0, W4 v0.659.0 all live before it). One brain, three doors: the SAME KS
+functions and gates behind an HTTP API, an MCP stdio server, and the browser extension's tab audio.
+
+- **The HTTP door** (`kaan/api.py`, new): /api/kaan/* — status, list, search, vocab CRUD, transcribe
+  (upload), per-transcript get / export (download=1 = raw bytes with Content-Disposition) / style /
+  minutes / diarize / to_gyaan, live start / chunk / stop / get / list. Mounted with the house router
+  factory (require_key + current_tenant) beside the quicklane, so a paired device token (the
+  extension's /api/pc/pair flow) works on every route. Audio ingest rides kaan_audio; reads stay
+  gate-free by the W1 law; refusals come back as honest 400s with the service's own lines.
+- **The MCP door** (`kaan/mcp_server.py`, new): stdio JSON-RPC 2.0 (protocol 2025-06-18, the wire
+  aep.mcp speaks), zero new pip. Exactly ONE tool `kaan` with the 18-action enum (actions, not
+  tools — the law travels with the door); dispatch THROUGH agent.kaan_tools._sync so it cannot
+  drift from the tool door; actor=owner by construction (it runs on her box with her env); honest
+  refusals return as isError content; imports lazy (no engine/gyaan/kaan_tools at module load).
+  Run: python -m app.kaan.mcp_server (HOOLA_TENANT picks the tenant).
+- **The extension's ears** (desktop/ext/hoola-extension): manifest +tabCapture +offscreen (version
+  rides the desktop, 1.9.0 untouched); NEW offscreen.html/offscreen.js — MV3 workers cannot touch
+  MediaRecorder, so the offscreen document consumes the tabCapture streamId, records audio/webm in
+  2s slices, POSTs each to /api/kaan/live/{sid}/chunk with the device Bearer; background.js grows
+  captions-start/captions-stop; popup grows the Live captions section (start/stop, captions_tail
+  poll every 3s, the transcript link on stop).
+- Registry 606 UNCHANGED — W5 adds transport doors, zero new actions (enum 18, description diet
+  untouched). status() carries the doors block. Tests: NEW test_v0663_kaan_w5.py (23, zero network,
+  zero torch) + the kaan chain W0-W4 + webext + api + their latest lanes green on the tree; the
+  google-auth red is the documented sandbox environment class (pre-existing, stash-proven).
+  Ritual: scripts/ritual_0663.py swept 212 test files 0.662.0 -> 0.663.0 (+668 -> +669), pubspec
+  0.663.0+669, APP_VERSION story, webext permission-set pin healed (versions untouched — the
+  extension rides the desktop). NOT VERIFIED live: the first /api/kaan call + the MCP handshake on
+  the VPS — the bake block rides the deploy.
+
+---
+
 ## v0.659.0 KAAN W4 — BOLI SE KITAAB (7 Nov 2026)
 
 Owner: "W4 (exports + translation + Gyaan unlock)" — Wave W4 of the kaan plan (W0 v0.601.0, W1 v0.613.0,
