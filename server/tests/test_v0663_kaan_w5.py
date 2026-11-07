@@ -1,4 +1,4 @@
-"""KAAN W5 (v0.666.0, owner: "W5 - MCP + API + extension audio" - Wave W5 of the kaan plan).
+"""KAAN W5 (v0.668.0, owner: "W5 - MCP + API + extension audio" - Wave W5 of the kaan plan).
 
 One brain, three doors: the HTTP API (/api/kaan/*), the MCP stdio server
 (python -m app.kaan.mcp_server), and the browser extension's tab audio - all three
@@ -272,7 +272,7 @@ def test_importing_mcp_server_loads_no_engine(w5_env):
 
 def test_registry_607_enum_18(w5_env):
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 607                                   # W5 adds doors, not tools (607 = their jharokha growth)
+    assert len(TOOLS) == 608                                   # W5 adds doors, not tools (608 = 607 + 1 duniya, v0.667 DUNIYA MANCH)
     assert len(_ACTIONS) == 18 and "export" in _ACTIONS and "to_gyaan" in _ACTIONS
     assert KAAN_TOOLS[0]["input_schema"]["properties"]["action"]["enum"] == _ACTIONS
 
@@ -301,4 +301,4 @@ def test_status_function_doors(w5_env):
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.667.0"
+    assert APP_VERSION == "0.668.0"

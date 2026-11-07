@@ -209,7 +209,7 @@ def test_actor_lanes_export_reads_to_gyaan_writes(w4_env):
 
 
 def test_actions_grew_registry_did_not():
-    assert len(tools.TOOLS) == 607, "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
+    assert len(tools.TOOLS) == 608, "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
     assert _ACTIONS[-2:] == ["export", "to_gyaan"] and len(_ACTIONS) == 18
     spec = next(t for t in tools.TOOLS if t["name"] == "kaan")
     assert spec["input_schema"]["properties"]["action"]["enum"] == _ACTIONS
@@ -236,4 +236,4 @@ def test_exports_purity_and_gyaan_laziness():
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.667.0"
+    assert APP_VERSION == "0.668.0"

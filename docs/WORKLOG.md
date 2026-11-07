@@ -2087,3 +2087,40 @@ Work Log:
 - Built it into webstudio.css / .js / .html: tokens, fonts, home, sidebar, top bar, chat, work card, finished state, live pane.
 Stage Summary:
 - v0.667.0, tests/test_v0667_premium_studio.py 2 green; older Studio suites green.
+## Task 40 — v0.668.0 DUNIYA MANCH (owner: "T4" - the T4 tier of download/HOOLA_MCP_FEED.json; built as 0.667.0, their PREMIUM STUDIO took 0.667.0 while T4 sat built and pushed - REBASE PROTOCOL #13, both kept)
+
+The T4 tier of download/HOOLA_MCP_FEED.json - the no-login / no-key public-web rows - lands
+backend-only for the hoola AI, the fourth and last idea-lane of the feed family (Sandarbh v0.586 =
+T1 reference, Bhandar v0.620 = T2 local core, Jharokha v0.665 = T3 local browser, Duniya v0.667 =
+T4 keyless public web). NOTE: the feed file itself was lost to a sandbox recycle; the T4 tier was
+deployed from its recorded definition (the no-login / no-key public-web rows), the same standard
+the first three tiers rode.
+
+**The catalog (catalog-description-verified, ported IDEA-ONLY - zero upstream code, zero new pip,
+zero new keys):** modelcontextprotocol/servers fetch (the official reference: "Web content fetching
+capabilities for LLMs") + the no-key public-API rows (Wikipedia / Open-Meteo / Hacker News /
+Frankfurter / Free Dictionary / arXiv).
+
+**The lane:** ONE tool `duniya` (registry 607 -> 608), eight actions, every answer one envelope
+{schema_version, ok, tool, action, ..., meta{elapsed_ms, backend}, error{code, message, hint}}:
+fetch | wikipedia | weather | hn | currency | dictionary | arxiv | status.
+
+**The laws:** GET only, forever (never POST/PUT/DELETE, never an auth header, never a cookie);
+the named backends' urls are code constants and EVERY url rides the house scrape-lane SSRF guard;
+ONE network seam (`_http_get`) every public byte rides - tests monkeypatch exactly that, the whole
+suite offline; text passes mask_ids; kill switch `duniya_enabled` (off = honest NEED_SETUP).
+
+- Wiring: agent/duniya_tools.py (new); tools.py registry 607 -> 608; config.py duniya_enabled=True;
+  prompts.py Duniya bullet beside the three brothers.
+- Tests: NEW server/tests/test_v0667_duniya_manch.py (39, zero network; the fake seam pops scripted
+  answers): envelope shape, status zero-network, kill switch, fetch (strips scripts/styles, json
+  pretty, redirect final url, honest truncation, TOO_BIG, non-text refused, PAN mask, guard REALLY
+  wired), the SSRF guard itself (loopback / metadata / file:// / ftp://), wikipedia, weather, hn,
+  currency, dictionary, arxiv, upstream mapping, purity (no top-level httpx), registry 608 pin,
+  enum pin, APP_VERSION pin.
+- Ritual: scripts/ritual_0667.py - 0.666.0/+672 -> 0.667.0/+673 across the suites (zero residual),
+  registry pins 607 -> 608 with the note, pubspec, APP_VERSION story (their KAAN W5 chain verbatim
+  in Previous), CLAUDE.md, WORKLOG Task 40, HISTORY section.
+
+Stage Summary:
+- v0.667.0, tests/test_v0667_duniya_manch.py green. Server-only deploy - old APKs keep working.

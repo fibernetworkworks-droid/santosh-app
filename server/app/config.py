@@ -344,6 +344,10 @@ class Settings(BaseSettings):
                                            # tool, the zero-login playwright-mcp + Puppeteer idea) - the agent's
                                            # OWN headless Chromium per tenant, capped and reaped (RAM law);
                                            # off means off (honest NEED_SETUP)
+    duniya_enabled: bool = True            # v0.667 DUNIYA MANCH: the T4 keyless-public-web family (the `duniya`
+                                           # tool, the mcp/servers fetch reference + the no-key public-API rows)
+                                           # - ONE GET-only lane over the no-login/no-key services; off means
+                                           # off (honest NEED_SETUP)
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)

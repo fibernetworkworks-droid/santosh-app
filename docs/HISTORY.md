@@ -1,3 +1,16 @@
+## v0.668.0 DUNIYA MANCH — the T4 keyless-public-web family (built as 0.667.0; their PREMIUM STUDIO took 0.667.0 while T4 sat built - REBASE PROTOCOL #13, both kept): the world outside the walls (owner: "T4")
+
+The fourth and last tier of download/HOOLA_MCP_FEED.json lands backend-only: ONE GET-only tool
+`duniya` (registry 607 -> 608, shipped as 0.668.0) over the parts of the web that answer anyone - no login, no API key.
+Actions: fetch (the mcp/servers fetch reference idea - one public url, readable text, scripts
+stripped, redirects honest, caps honest) | wikipedia | weather (Open-Meteo) | hn (Algolia) |
+currency (Frankfurter) | dictionary (dictionaryapi.dev) | arxiv (Atom, stdlib-parsed) | status.
+Laws: GET only forever; every url - free AND fixed-backends - through the house SSRF guard; ONE
+network seam the tests monkeypatch (suite fully offline); mask_ids on the text; kill switch
+duniya_enabled. Tests: test_v0667_duniya_manch.py (39, zero network). THE FEED'S TIER LADDER IS
+FOUR FOR FOUR: SANDARBH v0.590 (T1 reference) + BHANDAR v0.620 (T2 local core) + JHAROKHA v0.665
+(T3 local browser) + DUNIYA v0.668 (T4 keyless public web).
+
 ## v0.666.0 KAAN W5 — BOLI KE TEEN DARWAZE (7 Nov 2026, built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)
 
 Owner: "W5 — MCP + API + extension audio" — Wave W5 of the kaan plan (W0 v0.601.0, W1 v0.613.0,

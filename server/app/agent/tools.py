@@ -367,6 +367,14 @@ TOOLS.extend(JHAROKHA_TOOLS)
 TOOL_LABELS.update(JHAROKHA_LABELS)
 HANDLERS.update(JHAROKHA_HANDLERS)
 
+from .duniya_tools import (  # noqa: E402  v0.667 DUNIYA MANCH - the T4 keyless-public-web family (the no-login / no-key public-web rows of download/HOOLA_MCP_FEED.json, IDEA-ONLY): ONE GET-only lane over the famous no-key services - fetch (the mcp/servers fetch reference idea) + wikipedia / weather / hn / currency / dictionary / arxiv / status, every free url SSRF-guarded, backend-only
+    DUNIYA_HANDLERS, DUNIYA_LABELS, DUNIYA_TOOLS,
+)
+
+TOOLS.extend(DUNIYA_TOOLS)
+TOOL_LABELS.update(DUNIYA_LABELS)
+HANDLERS.update(DUNIYA_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)
