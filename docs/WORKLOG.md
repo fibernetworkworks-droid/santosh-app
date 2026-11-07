@@ -2018,3 +2018,13 @@ Work: v0.663.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware c
 call claim check by real tools, honest auto-plan close / step cap / empty ending, goal round outcome kept, verify scoped
 to the job, figures from the whole result, guessed facts labelled. 32 new tests.
 Not verified: live. Waves 6-8 (double / lost work, wrong place, smoothness) wait for her GO.
+
+---
+Task ID: v0664-kaam-ek-baar
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 6" = second audit items 15-23 (double / lost work).
+Work: v0.664.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest timeout, durable send dedupe, routines /
+Dobara / edit / form answers on the turn inbox (TurnInbox.actor), pre-lock replies out of history, stop never parallel,
+channel replies advanced after send, reminders advanced before said. 10 new tests.
+Not verified: live. Waves 7-8 wait for her GO.

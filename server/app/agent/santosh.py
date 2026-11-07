@@ -302,10 +302,20 @@ def _no_think(content):
     return content
 
 
-def _save(conversation_id: str, role: str, content, display: str | None = None) -> None:
+def _save(conversation_id: str, role: str, content, display: str | None = None, in_history: bool = True) -> None:
     content = _no_think(content)
     with session() as s:
-        s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display, in_history=True))
+        s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display,
+                      in_history=in_history))
+
+
+def _save_pre(conversation_id: str, role: str, content, display: str | None = None) -> None:
+    """v0.664 a reply given BEFORE the chat lock (a card's "haan", a research plan, a stop by words). When another turn
+    holds the chat, its last saved row may be a tool_use whose tool_result is not written yet - a row saved now would
+    land between them, the real result was dropped as an orphan next turn (TOOL_RESULT_LOST) and the model redid a
+    send it had already done. Then the row is shown, but kept out of the model's history."""
+    lk = _locks.get(conversation_id) if isinstance(_locks, dict) else None
+    _save(conversation_id, role, content, display=display, in_history=not (lk is not None and lk.locked()))
 
 
 # v0.657 PAKKA KAAM: run_turn never raises - a crash / timeout / budget stop RETURNS a friendly line, so callers
@@ -912,6 +922,16 @@ PARALLEL_SAFE = frozenset({
     "indiamart_khoj", "indiamart_detail",      # v0.277 read-only IndiaMART look-ups
     "mospi",                                   # v0.348 read-only MoSPI statistics
 })
+
+
+def _parallel_ok(b: dict) -> bool:
+    """v0.664 by CALL, not only by name: kaam_status is a look-up only for action=status - action=stop cancels jobs
+    across all her chats (DB writes), and two of those side by side were the nested-write race v0.188 keeps serial."""
+    if b.get("name") not in PARALLEL_SAFE:
+        return False
+    if b.get("name") == "kaam_status":
+        return str((b.get("input") or {}).get("action") or "status").strip().lower() != "stop"
+    return True
 
 
 async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
@@ -1697,9 +1717,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
                                        "key": _key(b["name"], args_in)})
-                msg = (f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. "
-                       "Don't stop the task: check this step's status, try a lighter way or another tool, or hand the "
-                       "step to a route that answers faster.")
+                # v0.664 the wait stopped, the WORK may not have: a tool running in a thread (a browser job, a render)
+                # carries on and can still submit the form. "Try another way" made the model start a second one and
+                # the form went twice - now the step's status is checked first and a send / submit is never repeated.
+                msg = (f"{b['name']} did not answer in {settings.agent_tool_timeout_s} seconds. It MAY STILL BE "
+                       "RUNNING or may be half done - the work was not cancelled. Before doing anything again, check "
+                       "what really happened (its own status / result tool, kaam_status, the sent mail / order / "
+                       "booking list). NEVER repeat a send, submit, order, payment or booking until you have seen "
+                       "that it did not happen; if you cannot check, tell her plainly that it may or may not have gone "
+                       "through. For a read-only step, a lighter way or another tool is fine.")
                 log.warning("tool %s timed out", b["name"])
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
                                                       "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
@@ -1719,7 +1745,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         tblocks = [b for b in blocks if b.get("type") == "tool_use"]
         results: list[dict] = []
         if len(tblocks) > 1 and getattr(settings, "agent_parallel_tools", True) \
-                and all(b["name"] in PARALLEL_SAFE for b in tblocks):
+                and all(_parallel_ok(b) for b in tblocks):
             # v0.189 one step asked for several pure look-ups: they run together (dsh's bounded pool, Claude Code's
             # concurrency-safe read batching), results commit strictly in the model's order. Her Rokiye still lands:
             # every _one watches for the halt itself and returns the stopped result.
@@ -2145,8 +2171,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             got = None
         if got:
             shown = ("OTP " if got["kind"] == "otp" else "CAPTCHA ") + got.get("masked", "••••")
-            _save(conversation_id, "user", shown, display=shown)
-            _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
+            _save_pre(conversation_id, "user", shown, display=shown)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
         if not voice and save_user and not str(user_text or "").lstrip().startswith(("[", "(")):
@@ -2157,14 +2183,14 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 log.exception("research plan gate failed")      # a broken gate never blocks her ask
                 _rp = None
             if _rp and _rp["action"] == "say":
-                _save(conversation_id, "user", user_text, display=user_text)
-                _save(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
+                _save_pre(conversation_id, "user", user_text, display=user_text)
+                _save_pre(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
                 bus.publish(conversation_id, "message", {"role": "assistant", "text": _rp["text"], "source": "research_plan"})
                 bus.publish(conversation_id, "typing", {"on": False})
                 return _rp["text"]
             if _rp and _rp["action"] == "start":
                 # her words are what the chat shows; the SAME turn gets the ask + the plan she approved (never saved twice)
-                _save(conversation_id, "user", _rp["words"], display=_rp["words"])
+                _save_pre(conversation_id, "user", _rp["words"], display=_rp["words"])
                 user_text, save_user = _rp["text"], False
         try:   # v0.191 SAMAJHDAR CARD: PC/browser step uski haan ka intezaar hai aur usne LIKH diya ('haan karo',
                # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
@@ -2179,8 +2205,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             log.exception("approval by chat text failed")
             _ap = None
         if _ap:
-            _save(conversation_id, "user", user_text, display=user_text)
-            _save(conversation_id, "assistant", [{"type": "text", "text": _ap["say"]}], display=_ap["say"])
+            _save_pre(conversation_id, "user", user_text, display=user_text)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": _ap["say"]}], display=_ap["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": _ap["say"], "source": "approval"})
             bus.publish(conversation_id, "typing", {"on": False})
             return _ap["say"]
@@ -2214,8 +2240,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             if kaamstop.wants_stop(user_text):
                 _ks = await asyncio.to_thread(kaamstop.cancel, tenant_id, user_text, conversation_id)
                 if _ks.get("stopped"):
-                    _save(conversation_id, "user", user_text, display=user_text)
-                    _save(conversation_id, "assistant", [{"type": "text", "text": _ks["say"]}], display=_ks["say"])
+                    _save_pre(conversation_id, "user", user_text, display=user_text)
+                    _save_pre(conversation_id, "assistant", [{"type": "text", "text": _ks["say"]}], display=_ks["say"])
                     bus.publish(conversation_id, "message", {"role": "assistant", "text": _ks["say"], "source": "kaam_stop"})
                     bus.publish(conversation_id, "typing", {"on": False})
                     return _ks["say"]

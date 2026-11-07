@@ -7,7 +7,7 @@ import time
 import logging
 from datetime import timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 
 from . import campaigns as camp
 from .config import get_settings
@@ -187,6 +187,22 @@ async def fire_reminders() -> None:
         due = [(r.id, r.tenant_id, r.conversation_id, r.text, r.due_at) for r in due]
     touched: dict[str, str] = {}
     for rid, tenant, conv, text, due_at in due:
+        # v0.664 the reminder is ADVANCED (committed) first and said after: a crash between saying and saving used to
+        # say it again on the next tick. The advance is a claim on exactly this due time, so two ticks never both say it.
+        tz = life.tz_of(tenant)
+        with session() as s:
+            r = s.get(Reminder, rid)
+            if r is None or r.status != "active" or r.due_at != due_at:
+                continue
+            nxt = life.next_due(r.due_at, r.repeat, tz)
+            while nxt is not None and nxt <= now():      # catch up after downtime without spamming
+                nxt = life.next_due(nxt, r.repeat, tz)
+            vals = {"fired_count": (r.fired_count or 0) + 1}
+            vals.update({"status": "done"} if nxt is None else {"due_at": nxt})
+            got = s.execute(update(Reminder).where(Reminder.id == rid, Reminder.status == "active",
+                                                   Reminder.due_at == due_at).values(**vals))
+            if got.rowcount != 1:
+                continue
         late = _late_by(due_at)
         if late >= REMINDER_LATE_S:
             # v0.662 the server was down when it was due: say it is LATE (never the plain line as if on time), and a
@@ -200,17 +216,6 @@ async def fire_reminders() -> None:
             notify(conv, f"Yaad dila raha hoon: {text}")
             bus.publish(conv, "reminder", {"id": rid, "text": text})   # a live call SAYS it (voice.card_news)
             _ring_for_reminder(tenant, conv, rid, text)                # v0.621 no live call: Hoola rings her and says it
-        tz = life.tz_of(tenant)
-        with session() as s:
-            r = s.get(Reminder, rid)
-            r.fired_count += 1
-            nxt = life.next_due(r.due_at, r.repeat, tz)
-            while nxt is not None and nxt <= now():      # catch up after downtime without spamming
-                nxt = life.next_due(nxt, r.repeat, tz)
-            if nxt is None:
-                r.status = "done"
-            else:
-                r.due_at = nxt
         touched[conv] = tenant
     for conv, tenant in touched.items():
         bus.publish(conv, "reminders", {"reminders": life.upcoming_reminders(tenant)})
@@ -227,12 +232,21 @@ def _late_by(due_at) -> float:
         return 0.0
 
 
+def _tz(life, tenant: str):
+    """v0.664 her time zone as a ZoneInfo. life.tz_of ALREADY returns one, and ZoneInfo(ZoneInfo) raises TypeError -
+    swallowed, so v0.662's quiet-hours check was always False (a late reminder still rang her at 3 am) and the late
+    line always said 'pehle' instead of the time."""
+    from zoneinfo import ZoneInfo
+    z = life.tz_of(tenant)
+    return z if isinstance(z, ZoneInfo) else ZoneInfo(str(z or "Asia/Kolkata"))
+
+
 def _local_hhmm(tenant: str, due_at) -> str:
     try:
         from . import life
         from zoneinfo import ZoneInfo
         d = due_at if due_at.tzinfo else due_at.replace(tzinfo=timezone.utc)
-        return d.astimezone(ZoneInfo(life.tz_of(tenant))).strftime("%I:%M %p").lstrip("0")
+        return d.astimezone(_tz(life, tenant)).strftime("%I:%M %p").lstrip("0")
     except Exception:
         return "pehle"
 
@@ -243,7 +257,7 @@ def _quiet_now(tenant: str) -> bool:
         from . import life
         from zoneinfo import ZoneInfo
         from datetime import datetime as _dt
-        h = _dt.now(ZoneInfo(life.tz_of(tenant))).hour
+        h = _dt.now(_tz(life, tenant)).hour
         return h >= 22 or h < 8
     except Exception:
         return False
@@ -331,7 +345,14 @@ async def run_routines() -> None:
             import time as _time
             t0 = _time.time()
             try:
-                out = await run_turn(conv, prompt, tenant_id=tenant, actor="routine")
+                # v0.664 the routine rides the turn inbox: a restart mid-run re-runs it (as a routine) instead of the
+                # slot being spent and the result silently lost
+                from . import turn_inbox as _ti
+                ti_id = await asyncio.to_thread(_ti.accept, tenant, conv, prompt, False, "", "", "", "routine")
+                if ti_id:
+                    out = await _ti.run_owned(ti_id, conv, prompt, tenant, False, actor="routine")
+                else:
+                    out = await run_turn(conv, prompt, tenant_id=tenant, actor="routine")
                 from .agent import santosh as _sant
                 if _sant.turn_failed_since(conv, t0):
                     # v0.657 PAKKA KAAM: run_turn RETURNS its error line ('kuch gadbad', 'credit khatam') - it is a

@@ -22261,3 +22261,27 @@ Tests: NEW `test_v0663_sach_ka_hisaab.py` (32; 23 fail on the old code). Updated
 call's tool records now have the real shape), test_v0226 (its scripted "Excel bana diya" after only a read is a false
 claim), test_v0220 (the fake call names its chat). NOT VERIFIED live. Not done in this wave (said plainly): the after-reply
 figure check still runs only on her own turns, not on background reports.
+
+## v0.664.0 KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6")
+
+15. **Late-reminder quiet hours really work.** `worker._tz`: `life.tz_of` already returns a ZoneInfo and `ZoneInfo(ZoneInfo)`
+    raised a swallowed TypeError, so v0.662's night check was always False (a late reminder still rang at 3 am) and the
+    late line said "pehle" instead of the time. My own v0.662 bug; its test had mocked the function away.
+16. **A timed-out tool may still be running.** The model is told the work was NOT cancelled, to check what really happened
+    first, and never to repeat a send / submit / order / payment / booking it has not seen fail (it was told "try
+    another way" and a browser form went twice).
+17. **A retried send runs once across a restart.** `turn_inbox.seen(tenant, conv, client_id)` (6 h) is checked before the
+    in-memory dict in POST /messages.
+18. **Routines ride the turn inbox** (`TurnInbox.actor`, new nullable column; `accept(..., actor=)`, `run_owned(..., actor=)`,
+    the sweep re-runs as the same actor) - a restart mid-run re-runs the routine instead of losing it.
+19. **Dobara, an edited message and a form answer ride the turn inbox** (they were bare BackgroundTasks / awaits).
+20. **A reply given before the chat lock stays out of the model's history while another turn holds the chat**
+    (`santosh._save_pre`): a "haan" for a card, a research plan or a stop-by-words saved between a running job's
+    tool_use and tool_result made the next turn drop the real result as an orphan and redo a send.
+21. **kaam_status action=stop never runs in parallel** (`santosh._parallel_ok` judges by call, not only by name).
+22. **A WhatsApp / Telegram / Slack / Teams reply is marked sent only after it went** (`bahar._advance` per message; a
+    failing one is retried on the next forward, skipped after 3 tries so it never blocks the rest).
+23. **A reminder is advanced (a conditional UPDATE on exactly its due time) before it is said**: a crash between saying
+    and saving no longer says it twice, and two ticks can never both say it.
+
+Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the v0.663 code). NOT VERIFIED live.

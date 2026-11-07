@@ -417,6 +417,17 @@ def _chunks(text: str, size: int) -> list[str]:
     return out[:6]
 
 
+SEND_TRIES = 3
+_FAILS: dict = {}
+
+
+def _advance(link_id: str, mid: int) -> None:
+    with session() as s:
+        l = s.get(BaharLink, link_id)
+        if l is not None and int(mid) > int(l.last_sent_id or 0):
+            l.last_sent_id = int(mid)
+
+
 async def forward(link_id: str) -> int:
     """Send her new Hoola replies (this turn's, or a job that finished later) back on the channel, once each."""
     lock = _LOCKS.setdefault(link_id, asyncio.Lock())
@@ -431,16 +442,27 @@ async def forward(link_id: str) -> int:
                              .order_by(Message.id).limit(10)).all()
             todo = [(m.id, m.display) for m in rows if (m.display or "").strip()]
             channel, last_in = l.channel, _utc(l.last_in_at)
-            if todo:
-                l.last_sent_id = todo[-1][0]               # once each, even if a send fails (no loops)
         if not todo:
             return 0
         if channel == "whatsapp" and (last_in is None or now() - last_in > WA_WINDOW):
+            _advance(link_id, todo[-1][0])
             return 0                                       # Meta's 24 h window: the reply stays in the app
+        # v0.664 a reply is marked sent only AFTER it really went (a Telegram 5xx / a WhatsApp token blip used to lose
+        # it for good: last_sent_id moved before the send). A failing one is tried again on the next forward, at most
+        # SEND_TRIES times, then skipped so one bad message never blocks the rest.
         sent = 0
-        for _mid, text in todo:
+        for mid, text in todo:
             if await _send(link_id, text):
                 sent += 1
+                _FAILS.pop((link_id, mid), None)
+            else:
+                k = (link_id, mid)
+                _FAILS[k] = _FAILS.get(k, 0) + 1
+                if _FAILS[k] < SEND_TRIES:
+                    break                                  # keep this one (and the ones after it) for the next try
+                _FAILS.pop(k, None)
+                log.warning("bahar: reply %s on %s skipped after %s failed sends", mid, link_id, SEND_TRIES)
+            _advance(link_id, mid)
         return sent
 
 

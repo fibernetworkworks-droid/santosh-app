@@ -750,7 +750,9 @@ def harness_events(conversation_id: str, after: int = 0, limit: int = 100, tenan
 @app.post("/api/conversations/{conversation_id}/messages", status_code=202, dependencies=[Depends(require_key)])
 async def post_message(conversation_id: str, body: NewMessage, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
     _conv_or_404(conversation_id, tenant)
-    if _already_sent(tenant, conversation_id, body.client_id):
+    from . import turn_inbox as _ti0
+    if (body.client_id and await asyncio.to_thread(_ti0.seen, tenant, conversation_id, body.client_id)) \
+            or _already_sent(tenant, conversation_id, body.client_id):
         return {"accepted": True, "duplicate": True}
     from . import chatfiles, convs, turn_inbox
     convs.mark(tenant, conversation_id, "message")   # v0.158 this is the chat she is in: notes and cards come here
@@ -876,7 +878,9 @@ async def chat_retry(conversation_id: str, background: BackgroundTasks, tenant: 
     except (livereply.RetryError, chats.ChatError) as e:
         raise HTTPException(e.status, str(e))
     convs.mark(tenant, conversation_id, "message")
-    background.add_task(run_turn, conversation_id, text, tenant, False, context=context)
+    from . import turn_inbox   # v0.664 Dobara rides the inbox: a restart re-runs it instead of losing it
+    ti_id = turn_inbox.accept(tenant, conversation_id, text, False, context or "", "")
+    background.add_task(turn_inbox.run_owned, ti_id, conversation_id, text, tenant, False, context=context or "")
     return {"accepted": True, "text": text}
 
 
@@ -1080,7 +1084,9 @@ class ChatEditIn(BaseModel):
 
 
 async def _edited_turn(conversation_id: str, text: str, tenant: str, parent: int | None) -> None:
-    await run_turn(conversation_id, text, tenant, False)
+    from . import turn_inbox   # v0.664 an edited message rides the inbox: a restart re-runs it instead of losing it
+    ti_id = await asyncio.to_thread(turn_inbox.accept, tenant, conversation_id, text, False, "", "")
+    await turn_inbox.run_owned(ti_id, conversation_id, text, tenant, False)
     if parent:
         from .db import Message
         with session() as s:   # the new version of her message points to the one she edited
@@ -13557,7 +13563,9 @@ def _form_reply(tenant: str, conv: str, agent_text: str, shown: str, background:
     except Exception:
         log.exception("form -> call failed")
     bus.publish(conv, "message", {"role": "user", "text": shown, "source": "form"})
-    background.add_task(run_turn, conv, shown, tenant, False, context=agent_text)
+    from . import turn_inbox   # v0.664 her form answers continue a waiting job: never lost to a restart
+    ti_id = turn_inbox.accept(tenant, conv, shown, False, agent_text or "", "")
+    background.add_task(turn_inbox.run_owned, ti_id, conv, shown, tenant, False, context=agent_text or "")
     return "chat"
 
 
