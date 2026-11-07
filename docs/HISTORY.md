@@ -21963,3 +21963,30 @@ the Build | Plan switch and the send button wrapped onto a second line (measured
 computer, the note shrinks with an ellipsis (`.mnote`), the Plan note is as short as the Build one, and on a phone the row may
 wrap with the note hidden. `test_v0649_web_studio.py` holds the send button's position and the box height still when Build
 and Plan are pressed at 1240 and 1440 px (it fails on the old code).
+
+
+## v0.653.0 SACHCHA NATIJA - every task's state told truthfully, on every surface (built as 0.652; their STUDIO BAR SEEDHA took 0.652.0 - both kept)
+
+Owner: "CHECK IS ANY TASK ON ANY SURFACE VOICE CALL, CHAT ETC DOES IT MONITOR AND IF COMPLETE, INPROGRESS, STUCK ETC DOES HOOLA AI
+HANDLE IT PROPERLY AND SMOOTHLY" -> audit (what works: kaamwatch start / progress / done / failed / waiting lines + quiet call
+notes + push + ring, one result message, a 15-min stuck alert, long-job resume / pause / limit / verified done, the restart inbox,
+the 15 / 45 min turn limit) -> four gaps -> "GO".
+
+1. False "ho gaya" on a call: a turn that hit its time limit (`asyncio.TimeoutError`) or crashed never reached the line that writes
+   `santosh.LAST_OUTCOME`, so a call's `_late_result` read the PREVIOUS ask's outcome (often "done") and spoke "ho gaya" for work
+   that stopped; such turns were also missing from the task log (work diary / Kaam list). Now `_record_cut` (in a thread) writes
+   outcome "stuck" with the reason and a TaskRun row; `_late_result` takes `since` (the job's start) and ignores an older outcome,
+   and its no-record fallback says "jawab aaya ... 'ho gaya' only if the answer says so" instead of assuming done.
+2. Invisible jobs: kaamwatch did not know the status words of game builds (design_ready / testing), CAD jobs (analysing / drawing),
+   WhatsApp campaigns (sending / ready / completed) and coding tasks (status inside {"task": view}) - no start / progress / done /
+   your-turn news, no result message, wrong call answers. New KINDS entries (game_desk, eng_project, campaign, devsahayak_task /
+   _plan / _push) + WORKING words + the devsahayak unwrap; a test drives every mapped status of every kind through `shape`.
+3. Stuck reads as running: after the one-time "atka lag raha hai", `block()` (what chat + call brains read), `status()` and the
+   Kaam list still said "chal raha hai"; a job not moving for KAAM_STUCK_S now reads "ATKA HAI (N min se aage nahi badha)" there,
+   and a job given up after 2 days (stopped / stale) is told ONCE instead of going quiet.
+4. Silence on a long call ask: `Call._still_working` - every `voice_checkin_s` (150 s, above the 120 s news dedup) while the
+   delegated job runs, at most `voice_checkin_max` (3), one "abhi bhi chal raha hai, N minute" line in Gemini's own voice; never on
+   a parked call (no paid wake), never for a cancelled job.
+
+Tests `test_v0652_sachcha_natija.py` 9. Related suites 239 passed; the reds (test_v136_kaam x4 "looks", test_campaign_flow
+NoResultFound) fail the same way without this change. NOT VERIFIED on a real call / real background jobs yet.

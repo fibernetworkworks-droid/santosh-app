@@ -1897,3 +1897,11 @@ Work Log: card asked/answered registry in voice.card_news, Call.card_answered (d
 events.cards_block in the call brain memory, persona lines, sync DB read removed from _brain_memory; merged their
 v0.650.0 Web Studio, re-versioned 0.651.0; 6 tests.
 Stage Summary: shipped; live check pending.
+
+---
+Task ID: v0.653.0 SACHCHA NATIJA (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the task-monitoring audit's four fixes.
+Work Log: _record_cut + since-checked _late_result; kaamwatch kinds game/CAD/campaign/coding + unwrap; stuck words in block /
+status / Kaam list + 2-day dead told once; Call._still_working check-ins; merged their v0.652.0, re-versioned 0.653.0; 9 tests.
+Stage Summary: shipped; live check pending.

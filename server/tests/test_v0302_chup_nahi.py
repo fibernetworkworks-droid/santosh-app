@@ -72,5 +72,5 @@ def test_v0299_layout_is_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.652.0"
-    assert "0.652.0+658" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.653.0"
+    assert "0.653.0+659" in (ROOT / "pubspec.yaml").read_text()
