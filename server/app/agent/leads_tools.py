@@ -71,14 +71,18 @@ LEADS_TOOLS = [
     {"name": "leads_export", "description": (
         "Leads bahar bhejo. action=csv: filters (q/city/category/lane/has_phone/has_email/run_id) -> CSV file "
         "(har row ke saath source_lane + source_url + parser_version - bina provenance ki row ho to export REFUSE). "
-        "opt_out rows default se bahar. action=campaign_list: name + filters -> WhatsApp campaign desk ke liye "
-        "LeadList banti hai (sirf phone waali rows, consent har row par False; engine khud kuch NAHI bhejta - bhejna "
-        "campaign desk ke consent machinery se, aapke tap par)."),
+        "opt_out rows default se bahar. action=campaign_list: WhatsApp campaign desk ke liye LeadList - PEHLE TAP "
+        "sirf CONFIRM CARD laata hai (rows, rows_without_phone, opt_out_excluded - kuch nahi banta); uske tap par "
+        "confirm=true doosra tap jo list banata hai (sirf phone waali rows, consent har row par False; engine khud "
+        "kuch NAHI bhejta - bhejna campaign desk ke consent machinery se, aapke tap par). action=outreach_log: "
+        "lead_outreach hisaab - kaunsi row kab, kis desk (campaign/email), kis list/campaign/draft ke saath gayi."),
      "input_schema": {"type": "object", "properties": {
-         "action": {"type": "string", "enum": ["csv", "campaign_list"]},
+         "action": {"type": "string", "enum": ["csv", "campaign_list", "outreach_log"]},
          "name": {"type": "string"}, "q": {"type": "string"}, "city": {"type": "string"},
          "category": {"type": "string"}, "lane": {"type": "string"}, "has_phone": {"type": "boolean"},
-         "has_email": {"type": "boolean"}, "run_id": {"type": "string"}}, "required": ["action"]}},
+         "has_email": {"type": "boolean"}, "run_id": {"type": "string"}, "confirm": {"type": "boolean"},
+         "kind": {"type": "string", "enum": ["campaign_list", "campaign_sent", "email_sent"]},
+         "limit": {"type": "integer"}}, "required": ["action"]}},
     {"name": "leads_forget", "description": (
         "Leads mitao (DPO duty: purpose limitation + erasure). run_id ya row_ids [] ya all_rows=true. Jo din ka "
         "cap ledger hai woh rehta hai (din ka hisaab, personal data nahi). Engine ke paas jo row thi woh jaati hai "
@@ -215,12 +219,16 @@ async def leads_export(ctx: Ctx, action, **a: Any):
                                            _s(f.get("lane")), bool(f.get("has_phone")), bool(f.get("has_email")),
                                            _s(f.get("run_id")), False)
         if action == "campaign_list":
-            return await asyncio.to_thread(S.campaign_list, t, _s(a.get("name")) or "Leads list", _s(f.get("q")),
-                                           _s(f.get("city")), _s(f.get("category")), _s(f.get("lane")),
-                                           _s(f.get("run_id")))
+            # kwargs on purpose - the old positional call dropped run_id into the has_phone slot (P5 fix)
+            return await asyncio.to_thread(S.campaign_list, t, _s(a.get("name")) or "Leads list",
+                                           q=_s(f.get("q")), city=_s(f.get("city")),
+                                           category=_s(f.get("category")), lane=_s(f.get("lane")),
+                                           run_id=_s(f.get("run_id")), confirm=bool(a.get("confirm")))
+        if action == "outreach_log":
+            return await asyncio.to_thread(S.outreach_log, t, _s(a.get("kind")), int(a.get("limit") or 200))
     except (S.LeadsError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat (csv | campaign_list)")
+    raise ToolError("action galat (csv | campaign_list | outreach_log)")
 
 
 async def leads_forget(ctx: Ctx, **a: Any):

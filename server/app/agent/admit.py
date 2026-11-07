@@ -71,7 +71,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
               # v0.543.0: the scrape lane's finding words (the lane itself refuses politely until her opt-in)
               "scrape karke", "maps scrape", "google maps se list", "scrape lane",
               # v0.544.0: the vendor lane's words (config-gated - no vendor named, no lane)
-              "vendor se leads", "licensed vendor", "vendor lane"),
+              "vendor se leads", "licensed vendor", "vendor lane",
+              # v0.545.0: the outreach handoff's words (the confirm card is the right first answer)
+              "outreach", "campaign list banao", "leads ki list campaign", "outreach hisaab"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),

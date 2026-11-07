@@ -452,19 +452,19 @@ def test_ladder_complete_and_unknown_lane_still_refused_by_name(env):
     assert any("koi lane hi nahi hai" in w for w in p["why"])
 
 
-def test_card_set_v5_all_guards_on(env):
+def test_card_set_v6_all_guards_on(env):
     from app.quality.lead_asks import ASKS, LEADS_SET_V
     from app.quality.leadscard import free_card
-    assert LEADS_SET_V == 5
+    assert LEADS_SET_V == 6
     card = free_card()
     g = card["guards"]
     for k in ("vendor_built", "vendor_gate_holds", "vendor_price_named", "vendor_cap_named",
               "vendor_provenance_required", "vendor_cost_honest", "enrich_fanout_built",
               "store_backend_named", "ladder_complete", "lane_refused_by_name", "rule_text_amended"):
         assert g.get(k) is True, f"guard {k} is off: {g.get(k)}"
-    assert card["set"] == 5 and card["guards_ok"] == len(g)
+    assert card["set"] == 6 and card["guards_ok"] == len(g)   # v0.545.0: the outreach walls joined
     ids = {a["id"] for a in ASKS}
-    assert {"tool_vendor", "rule_vendor_off"} <= ids
+    assert {"tool_vendor", "rule_vendor_off", "tool_outreach_log", "rule_handoff_confirm"} <= ids
 
 
 def test_asks_ok_tools_are_real_and_vendor_rule_scores(env):

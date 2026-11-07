@@ -19,10 +19,10 @@ from app.leads.models import LeadContact, LeadRun, LeadOutreach, ensure_tables
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.544.0"
+    assert APP_VERSION == "0.545.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.544.0+567" in pub.read_text()
+    assert "0.545.0+568" in pub.read_text()
 
 
 # ---------------------------------------------------------------- the move did not break the old lane
@@ -201,7 +201,9 @@ def test_export_has_provenance_and_excludes_opt_out(env):
 
 def test_campaign_handoff_copies_consent_false_and_writes_ledger(env):
     S.run_her_data("t1", "ask", ROWS[:2], "f.csv")
-    out = S.campaign_list("t1", "Dentist test")
+    card = S.campaign_list("t1", "Dentist test")
+    assert card["confirm_required"] is True            # v0.545.0: the first tap is the CONFIRM CARD
+    out = S.campaign_list("t1", "Dentist test", confirm=True)
     assert out["ok"] is True and out["rows"] == 2
     assert "consent=False" in out["consent"]
     from app.db import Lead, LeadList, session
@@ -216,7 +218,8 @@ def test_campaign_handoff_copies_consent_false_and_writes_ledger(env):
         assert ledger == 2                                                 # the act is on the ledger
     # rows without a phone never enter a campaign list
     S.run_her_data("t1", "ask2", [{"name": "NoPhone", "address": "Karve Road Pune"}], "f2.csv")
-    out2 = S.campaign_list("t1", "All")
+    S.campaign_list("t1", "All")                        # the card tap, nothing built
+    out2 = S.campaign_list("t1", "All", confirm=True)
     assert out2["rows"] == 2 and out2["rows_without_phone"] >= 1
 
 
@@ -234,7 +237,7 @@ def test_record_outreach_is_desk_side(env):
 def test_forget_deletes_rows_run_and_refs(env):
     out = S.run_her_data("t1", "ask", ROWS[:2], "f.csv")
     rid = out["run"]["id"]
-    hand = S.campaign_list("t1", "L", run_id=rid)
+    hand = S.campaign_list("t1", "L", run_id=rid, confirm=True)
     with pytest.raises(S.LeadsError):
         S.forget("t1")
     res = S.forget("t1", run_id=rid)

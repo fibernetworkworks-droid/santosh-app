@@ -2,6 +2,43 @@
 
 # HOOLA — project brief for any new session (read fully before working)
 
+## v0.545.0 LEADS OUTREACH HANDOFF + PROOF — P5 of the leads plan: the two-tap hand-off with the confirm card, the opt-out ledger written at the SEND moment on both desks, and the 5,000-row CI load proof (7 Nov 2026)
+
+Owner: "P5 (outreach handoff + CI load proof)". P5 of docs/LEADS_PLAN.md sections 7, 9 and 10.
+The plan's last phase: the engine gathers, the DESKS outreach — and every send lands in
+`lead_outreach`, readable.
+
+THE TWO-TAP HAND-OFF: `campaign_list()` now has `confirm=False` as its default — the first
+tap returns a CONFIRM CARD (rows, rows_without_phone, opt_out_excluded, consent=False on
+every row, rules.HANDOFF_CONFIRM) and creates NOTHING: no list, no refs, no ledger rows.
+`confirm=True` is the second tap that builds the LeadList. (The tool bug that dropped run_id
+into the has_phone slot on the campaign_list action is fixed here — kwargs now.)
+
+OPT-OUT AT SEND TIME, EXTENDED TO LEADS: `create_campaign()` re-checks every leads-store copy
+through LeadListRef; a store row flipped opt_out AFTER the hand-off never joins the send queue,
+the card names `leads_opt_out_skipped`, and "every row opted out" is a refusal — not an empty
+campaign.
+
+THE LEDGER WRITES AT THE MOMENT OF TRUTH, on both desks: `worker.send_batches` records
+kind=campaign_sent per successful WhatsApp send via `leads.service.note_campaign_sends`
+(LeadListRef joins only — her own imported lists were never store rows);
+`mailbox.send_draft` records kind=email_sent via `note_email_sends`, matched by the row's own
+email — an address the store never saw records nothing (no guessed joins). The vocabulary is
+one place (`rules.OUTREACH_KINDS / OUTREACH_DESKS`), checked at every write; the ledger is
+readable (`outreach_log` + GET /api/leads/outreach + `leads_export action=outreach_log`), and
+a forgotten row's events stay — the history is not the person.
+
+THE CI LOAD PROOF rides the DEFAULT caps, no raised limits: 5,000 rows END-TO-END — one
+her-data run keeps exactly 5,000 (the cap number itself), the day ledger counts them, the
+export ships all 5,000 with provenance, the hand-off copies all 5,000 with consent False, the
+ledger reads back 1,000 events, and a 5,001-row ask is REFUSED at plan time with the cap named.
+
+leadscard set v6: guards handoff_confirm_card / opt_out_honoured_at_send / campaign_sent_ledger
+/ email_sent_ledger / outreach_ledger_queryable; asks tool_outreach_log + rule_handoff_confirm.
+Registry stays 562. NOT VERIFIED, said plainly: the WhatsApp send here is the dry-run client
+and the email send a fake box — her first live campaign / email from a leads list confirms the
+desks' side; the ledger code paths themselves are the real ones.
+
 ## v0.544.0 LEADS VENDOR + SCALE — P4 of the leads plan: the vendor lane (config-gated, priced before the run) and the scale half (the graph fan-out enrich + the honest store backend) (6 Nov 2026)
 
 Owner: "P4 (vendor lane + scale)". P4 of docs/LEADS_PLAN.md sections 4 L3, 10 and 12.4.

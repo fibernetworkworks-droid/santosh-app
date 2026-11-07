@@ -342,7 +342,7 @@ def test_card_guards_carry_the_enrich_walls(env):
     for k in ("enrich_built", "enrich_uses_existing_stack", "no_smtp_probe", "email_grade_vocab",
               "enrich_cap_named", "cap_refuses"):
         assert g[k] is True, f"guard {k} = {g[k]}"
-    assert card["set"] == 5 and card["guards_ok"] == len(g)   # v0.544.0: set v5 - the vendor + scale walls joined
+    assert card["set"] == 6 and card["guards_ok"] == len(g)   # v0.545.0: set v6 - the outreach handoff walls joined
 
 
 def test_no_smtp_probe_in_the_source():

@@ -572,7 +572,11 @@ PRESETS: dict[str, dict] = {
                              "owner ki khaas haan se on hota hai (walls: rules.SCRAPE_WALLS, CLAUDE.md amended rule).",
                              "Vendor lane (P4) config-gated hai - jab tak owner ne licensed vendor ka naam, key, "
                              "per-row price aur terms-ack set nahi kiya, lane card par bhi nahi; run PEHLE price "
-                             "hoti hai, estimate cap paar to refuse."]},
+                             "hoti hai, estimate cap paar to refuse.",
+                             "Campaign-list hand-off (P5) do tap ka hai: pehla tap sirf CONFIRM CARD dikhata hai "
+                             "(rows, opt_out_excluded, consent=False) aur kuch nahi banata; confirm=true doosre tap "
+                             "par list banti hai. Send ke waqt bhi opt-out maana jaata hai, aur har send "
+                             "(campaign/email) lead_outreach hisaab mein jaata hai."]},
     "audit_firm": {"label": "CA / audit firm", "role": "audit_assistant", "kind": "ca", "slot_minutes": 30, "after_hours": "note",
                    "about_hint": "Kaun se audit (statutory, tax, internal, stock), kitne client, partner kaun, client se kaagaz kaise aate hain",
                    "rules": ["Audit report / raay sirf partner sign karega.", "UDIN aur form filing Hoola nahi karega.",

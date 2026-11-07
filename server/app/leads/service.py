@@ -1289,19 +1289,33 @@ def export_csv(tenant: str, q: str = "", city: str = "", category: str = "", lan
 
 # ---------------------------------------------------------------- outreach LEDGER + campaign hand-off
 def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category: str = "", lane: str = "",
-                  has_phone: bool = True, run_id: str = "") -> dict:
+                  has_phone: bool = True, run_id: str = "", confirm: bool = False) -> dict:
     """HER tap arrives here: copy selected rows into a LeadList the campaign desk consumes. Only rows WITH a
     phone can go (campaigns call phones), consent is pre-filled False for every copied row (the sending side
-    still needs the desk's consent machinery), and the whole act lands in the LeadOutreach ledger."""
+    still needs the desk's consent machinery), and the whole act lands in the LeadOutreach ledger.
+    v0.545.0 P5: TWO taps - confirm=False (the default) returns the CONFIRM CARD and creates NOTHING (no list,
+    no refs, no ledger rows: the plan's "her tap, confirm card"), confirm=True is the second tap that builds.
+    The card names the numbers BEFORE anything moves: rows that can go, rows without a phone that stay, and
+    the opt_out rows the filter already excluded (the campaign desk honours opt-out again at send time)."""
     ensure_tables()
     conds = _filters(tenant, q, city, category, lane, True, False, False)
     if run_id:
         conds.append(LeadContact.run_id == run_id)
+    all_conds = _filters(tenant, q, city, category, lane, False, False, None)
+    if run_id:
+        all_conds.append(LeadContact.run_id == run_id)
     from ..db import Lead, LeadList
     with _s() as s:
         got = s.query(LeadContact).filter(*conds).order_by(LeadContact.fetched_at.desc()).limit(20000).all()
-        no_phone = (s.query(LeadContact).filter(*_filters(tenant, q, city, category, lane, False, False, False),
-                                                LeadContact.phone == "").count())
+        no_phone = (s.query(LeadContact).filter(*all_conds, LeadContact.phone == "").count())
+        opt_out_excluded = (s.query(LeadContact).filter(*all_conds, LeadContact.opt_out.is_(True)).count())
+        if not confirm:
+            return {"ok": True, "kind": "leads_handoff_confirm", "confirm_required": True,
+                    "list_name": name[:200], "rows": len(got), "rows_without_phone": no_phone,
+                    "opt_out_excluded": opt_out_excluded, "run_id": run_id,
+                    "consent": "har row consent=False - bhejna campaign desk ke consent machinery se hi hoga",
+                    "never": R.NEVER[0],
+                    "confirm": R.HANDOFF_CONFIRM}
         if not got:
             raise LeadsError("Is filter par phone waali koi row nahi - campaign list khaali rahegi.")
         ll = LeadList(tenant_id=tenant, name=name[:200], source_filename=f"leads-store:{run_id or 'store'}",
@@ -1318,20 +1332,89 @@ def campaign_list(tenant: str, name: str, q: str = "", city: str = "", category:
             s.flush()
             s.add(LeadListRef(tenant_id=tenant, contact_id=c.id, lead_row_id=l.id, list_id=ll.id))
             s.add(LeadOutreach(tenant_id=tenant, contact_id=c.id, kind="campaign_list", ref=ll.id, desk="campaign"))
-        return {"ok": True, "list_id": ll.id, "name": ll.name, "rows": len(got), "rows_without_phone": no_phone,
+        return {"ok": True, "kind": "leads_handoff", "confirmed": True, "list_id": ll.id, "name": ll.name,
+                "rows": len(got), "rows_without_phone": no_phone, "opt_out_excluded": opt_out_excluded,
                 "consent": "har row consent=False - bhejna campaign desk ke consent machinery se hi hoga",
-                "note": "engine ne khud kuch nahi bheja; sirf list bani (uske tap par)"}
+                "note": "engine ne khud kuch nahi bheja; sirf list bani (uske doosre tap par)"}
+
+
+def outreach_log(tenant: str, kind: str = "", limit: int = 200) -> dict:
+    """The opt-out ledger, READABLE (P5): every outreach event - which row left the store, through which desk,
+    when, against which list / campaign / draft. A forgotten row's events stay (the history is not the person);
+    its name shows as gone."""
+    ensure_tables()
+    with _s() as s:
+        q = s.query(LeadOutreach).filter(LeadOutreach.tenant_id == tenant)
+        if kind:
+            if kind not in R.OUTREACH_KINDS:
+                raise LeadsError(f"kind '{kind}' koi outreach kind nahi hai - kinds hain: "
+                                 f"{', '.join(R.OUTREACH_KINDS)}")
+            q = q.filter(LeadOutreach.kind == kind)
+        got = q.order_by(LeadOutreach.at.desc(), LeadOutreach.id).limit(min(max(1, int(limit)), 1000)).all()
+        ids = list({r.contact_id for r in got if r.contact_id})
+        live = {c.id: c for c in s.query(LeadContact).filter(LeadContact.id.in_(ids)).all()} if ids else {}
+        items = [{"id": r.id, "kind": r.kind, "desk": r.desk, "ref": r.ref, "at": _iso(r.at),
+                  "contact_id": r.contact_id,
+                  "name": (live[r.contact_id].name or "(naam nahi)") if r.contact_id in live else "(row miti hui)",
+                  "key_type": live[r.contact_id].key_type if r.contact_id in live else "",
+                  "key_value": live[r.contact_id].key_value if r.contact_id in live else "",
+                  "phone": live[r.contact_id].phone if r.contact_id in live else ""} for r in got]
+        by_kind: dict[str, int] = {}
+        for it in items:
+            by_kind[it["kind"]] = by_kind.get(it["kind"], 0) + 1
+        return {"kind": "leads_outreach_log", "events": items, "count": len(items), "by_kind": by_kind,
+                "never": R.NEVER[0]}
 
 
 def record_outreach(tenant: str, contact_ids: list[str], kind: str, ref: str, desk: str) -> int:
-    """The desk-side ledger write (campaign_sent / email_sent) - called BY the desks when SHE taps, never by a run."""
+    """The desk-side ledger write (campaign_sent / email_sent) - called BY the desks when SHE taps, never by a run.
+    v0.545.0: the kind and the desk are CHECKED against rules.OUTREACH_KINDS / OUTREACH_DESKS - a desk cannot
+    invent a ledger kind (the vocabulary is one place, rules.py)."""
     ensure_tables()
+    if kind not in R.OUTREACH_KINDS:
+        raise LeadsError(f"kind '{kind}' koi outreach kind nahi hai - kinds hain: {', '.join(R.OUTREACH_KINDS)}")
+    if desk not in R.OUTREACH_DESKS:
+        raise LeadsError(f"desk '{desk}' koi desk nahi hai - desks hain: {', '.join(R.OUTREACH_DESKS)}")
     with _s() as s:
         n = 0
         for cid in contact_ids:
             s.add(LeadOutreach(tenant_id=tenant, contact_id=cid, kind=kind[:20], ref=ref[:120], desk=desk[:20]))
             n += 1
         return n
+
+
+def note_campaign_sends(tenant: str, campaign_id: str, lead_row_ids: list[int]) -> int:
+    """worker.send_batches calls this AFTER each successful WhatsApp template send: every OutboundMessage whose
+    lead row is a leads-store COPY (LeadListRef) gets its campaign_sent ledger row - the ledger records the
+    moment of truth (the send), not the queueing. Lead rows that are not store copies (her own imported lists)
+    stay out of this ledger - they were never leads-store rows."""
+    ids = [int(x) for x in (lead_row_ids or []) if x]
+    if not ids:
+        return 0
+    ensure_tables()
+    with _s() as s:
+        refs = s.query(LeadListRef).filter(LeadListRef.tenant_id == tenant,
+                                           LeadListRef.lead_row_id.in_(ids)).all()
+        for r in refs:
+            s.add(LeadOutreach(tenant_id=tenant, contact_id=r.contact_id, kind="campaign_sent",
+                               ref=str(campaign_id)[:120], desk="campaign"))
+        return len(refs)
+
+
+def note_email_sends(tenant: str, addrs: list[str], ref: str) -> int:
+    """mailbox.service.send_draft calls this AFTER an email leaves: the lead_contacts rows whose email is one of
+    the draft's recipients get their email_sent ledger row. The match is by the row's own email address - an
+    address the store never saw records nothing (honest ledger, no guessed joins)."""
+    clean = list({str(a or "").strip().lower() for a in (addrs or []) if str(a or "").strip()})
+    if not clean:
+        return 0
+    ensure_tables()
+    with _s() as s:
+        got = s.query(LeadContact).filter(LeadContact.tenant_id == tenant, LeadContact.email.in_(clean)).all()
+        for c in got:
+            s.add(LeadOutreach(tenant_id=tenant, contact_id=c.id, kind="email_sent",
+                               ref=str(ref)[:120], desk="email"))
+        return len(got)
 
 
 def set_opt_out(tenant: str, contact_id: str, opt_out: bool = True) -> dict:

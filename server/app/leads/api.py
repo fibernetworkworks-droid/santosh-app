@@ -147,10 +147,17 @@ def make_router(require_key, current_tenant) -> APIRouter:
 
     @r.post("/campaign-list")
     async def post_campaign_list(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):
+        """P5: two taps - the default (confirm=False) returns the CONFIRM CARD and creates nothing; her second
+        tap (confirm=true) builds the list. Refusals stay 400s."""
         b = _b(body)
         return await run(S.campaign_list, tenant, str(b.get("name") or "Leads list"), str(b.get("q") or ""),
                          str(b.get("city") or ""), str(b.get("category") or ""), str(b.get("lane") or ""),
-                         str(b.get("run_id") or ""))
+                         True, str(b.get("run_id") or ""), bool(b.get("confirm")))
+
+    @r.get("/outreach")
+    async def get_outreach(kind: str = "", limit: int = 200, tenant: str = Depends(current_tenant)):
+        """P5: the outreach ledger, readable - every event that left the store through the campaign / email desks."""
+        return await run(S.outreach_log, tenant, str(kind or ""), int(limit or 200))
 
     @r.post("/opt-out")
     async def post_opt_out(body: dict = Body(default={}), tenant: str = Depends(current_tenant)):

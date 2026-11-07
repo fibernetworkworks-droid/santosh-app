@@ -48,7 +48,17 @@ KEY_TYPES = ("kgmid", "cid", "place_id", "name_address", "phone_e164")
 # (maps_address_check's pakka / sadak_tak / galat, reused as-is).
 EMAIL_GRADES = ("pakka", "sadak_tak", "galat")
 
-# The one-question rule (v0.371 law): a vague ask gets ONE question, everything else has a house default.
+# P5's outreach ledger vocabulary (lead_outreach.kind / .desk) - one place, so a desk cannot invent a kind.
+# campaign_list = the hand-off happened (her confirm tap); campaign_sent / email_sent = the desk actually
+# sent, on her tap, recorded by the desk side (worker / mailbox) - the engine itself never sends.
+OUTREACH_KINDS = ("campaign_list", "campaign_sent", "email_sent")
+OUTREACH_DESKS = ("campaign", "email")
+
+# P5's hand-off card: the FIRST tap returns this card and creates NOTHING; the second tap (confirm=true) builds.
+HANDOFF_CONFIRM = ("Yeh sirf CONFIRM CARD hai - abhi kuch nahi bana. List banwani hai to wahi kaam phir se, "
+                   "confirm=true ke saath.")
+
+# the one-question rule (v0.371 law): a vague ask gets ONE question, everything else has a house default.
 ONE_QUESTION = "Kaunsa business dhandhe ka hai, aur kis sheher / area mein? (jaise: dentists, Pune)"
 
 STORE_BOUNDARY = (
