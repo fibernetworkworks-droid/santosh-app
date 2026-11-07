@@ -1975,3 +1975,14 @@ Work Log:
   brain-made cards quiet but remembered, unsent news saved at call end, early late-result callback, news gap rule
 - tests: test_v0660_call_yaad.py 14; two old pins updated (v0230 news cap timing, v0554 VOICE_DIRECT line)
 Stage Summary: shipped v0.660.0 on top of their v0.659.0 KAAN W4 + v0.658.0 SAAF DIKHE (both kept); 4 older reds stash-proven pre-existing
+
+---
+Task ID: v0.661.0 YAAD SAHI
+Agent: Claude (voice/task session)
+Task: owner "GO" on Wave 3 of the deep audit (memory accuracy 19-22, 24, 25)
+Work Log:
+- pii.mask_sensitive replaces the blunt 9+/10+ digit masks in yaad._scrub + compact.scrub; fact_ok no longer refuses plain numbers
+- yaad.update_pinned / _pinned_ids / retire_copies / is_preference; save_fact + life_tools.remember use them; remember dedupes
+- _search fence + incognito in SQL; diary receipt scan bounded by days; extract_facts defers inside the gap, short self-facts kept
+- tests: test_v0661_yaad_sahi.py 9 (all fail on the old code); pins updated in v0217 (order id kept) + v0603 (pinned in place)
+Stage Summary: shipped v0.661.0 on top of v0.660.0; 2 older reds (v108 _reseed fake, v0473 routes) pre-existing

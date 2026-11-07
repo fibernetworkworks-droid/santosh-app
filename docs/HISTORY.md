@@ -22161,3 +22161,26 @@ internet first; confirm names that). Stars are this browser's choice (localStora
 Tests `test_v0660_call_yaad.py` 14. Pins updated: v0230 news cap timing, v0554 VOICE_DIRECT line. Pre-existing reds
 (stash-proven on 66aaed56): v108 `_reseed` fake, v086 x2, v0473 routes. NOT VERIFIED on a real call: the side-record
 ask, the parking saving, and Gemini's handling of the new brief order.
+
+## v0.661.0 YAAD SAHI — Wave 3 of the deep flaw audit: memory accuracy (owner: "GO")
+
+19. **Numbers.** `yaad._scrub` masked every 9+ digit run and `compact.scrub` every 10+, so "Sharma ji ka number
+    9876543210, order 4500012345" became ###### in the chat summary, the search index and call news. NEW
+    `pii.mask_sensitive` masks only what must never be kept - a Luhn-valid card, a Verhoeff-valid Aadhaar, a bank
+    account next to its word, a PAN, a CVV; both scrubs use it (the OTP/PIN/password-next-to-its-word rule stays).
+20. **Updates with a number.** `fact_ok` refused any 6+ digit run, so "Godown ab Plot 12, Chakan MIDC, Pune 410501" was
+    dropped and the old godown fact stayed; the rule is gone (pii.find still refuses card / Aadhaar / bank / PAN / OTP).
+21. **Pinned facts.** `retire_fact` never touches a pinned fact (still true), so an update left both values riding every
+    prompt. `yaad.update_pinned` now changes the pinned fact IN PLACE (stays pinned, old text on the chip and forgotten in
+    the other memories) from the extractor (`save_fact`) and from `remember replaces=`; `remember` also dedupes.
+22. **Across Sessions.** A standing preference / correction (`is_preference`) is saved global; replacing a fact also
+    retires its same-meaning copies in her other Sessions (`retire_copies`: normalised text or embedding >= 0.92, never
+    pinned, never incognito-born).
+24. **Search blind spot.** `_search` read the newest 5,000 rows and fenced afterwards; the fence + incognito now run in
+    the query. The diary's call-receipt LIKE scan is bounded to the diary's days.
+25. **Timing gates.** A second fact within `FACT_GAP_S` waits its turn instead of being dropped; a short line about
+    herself (mera / main / my...) is no longer skipped as "under 4 words".
+
+Tests `test_v0661_yaad_sahi.py` 9 (all fail on the old code). Pins moved to the new truth: v0217 (an order number
+stays, a card is masked), v0603 (a pinned fact is updated in place). NOT VERIFIED live: the copy-retire threshold on her
+real facts; no live memory quiz has been run on this version.
