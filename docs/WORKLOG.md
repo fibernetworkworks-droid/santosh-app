@@ -1872,3 +1872,13 @@ opens the call, no double call summaries).
 Work Log: kaamlist module + /api/kaam/list; brain memory part "kiya"; recent_block removed from chat turns; push open_conv +
 Kotlin intent + Dart link; phone Kaam sheet; console Today > Work; 8 tests.
 Stage Summary: shipped; live check pending on her phone.
+
+---
+Task ID: v0.649.0 HOOLA WEB STUDIO (7 Nov 2026)
+Agent: Claude (session 019P5N4axTAqHmJWhdzsNhQW)
+Task: owner wanted the website builder as a separate Lovable/Emergent-like app with its own sidebar; approved a 13-screen
+prototype, plan mode optional and written from her words, three full looks (every page, PC / tablet / phone) before any build.
+Work Log: /console/web app (webstudio.html/js/css); console Web Development row opens it, webdev.js removed; service._full_looks
+(wave 4: pages written once, each look = the whole site, build writes nothing again); SITE_FULL_LOOKS / _MAX; test_v0649 (server
++ real browser).
+Stage Summary: shipped; NOT verified on a real Opus build on the VPS.
