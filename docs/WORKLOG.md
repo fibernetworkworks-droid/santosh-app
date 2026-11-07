@@ -2124,3 +2124,13 @@ suite offline; text passes mask_ids; kill switch `duniya_enabled` (off = honest 
 
 Stage Summary:
 - v0.667.0, tests/test_v0667_duniya_manch.py green. Server-only deploy - old APKs keep working.
+
+---
+Task ID: v0.669.0 HOOLA AURA
+Agent: Claude Code (web session)
+Task: animated soft Hoola brand glow behind the Web Studio home (preview first, then GO)
+Work Log:
+- built the aura (webstudio.js + webstudio.css), previewed light / dark / 4x clip, owner said GO
+- test_v0669_hoola_aura.py 2 + test_v0667_premium_studio.py 2 green; version ritual 0.668.0 -> 0.669.0 (+675)
+Stage Summary:
+- shipped v0.669.0 to main

@@ -240,7 +240,8 @@
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">Starred</h2></div>
         ${st.length ? `<div class="grid">${st.map(siteCard).join('')}</div>` : `<div class="panel mut">Nothing starred yet. Open the ${ico('more', 14)} menu on any website and choose Add to starred.</div>`}</section>`;
     } else {
-      main = `<section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1>What should we build today?</h1>
+      main = `<div class="aura" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+      <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1>What should we build today?</h1>
         <p class="mut">Describe your business in one line. Hoola writes every page, shows you three complete designs, and builds the one you pick, right in front of you. Nothing goes live until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="wsAsk" class="sr">Describe your website</label>

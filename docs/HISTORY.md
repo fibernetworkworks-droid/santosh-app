@@ -22402,3 +22402,13 @@ is ready' card says 'Every check passed' only when the site's checks say so, and
 weights stop at 600) + a browser walk (the headline renders in Literata, Ctrl K comes back to the ask box from another
 page, her request opens the chat, the live work card and its foot, LIVE tag + browser frame, dark Publish
 rgb(23,22,28), Version 1 is ready, Go live opens Publish). Older Studio suites (v0649, v0655, v0663, v0664) green.
+
+
+## v0.669.0 HOOLA AURA - the soft animated brand glow behind the Web Studio home
+
+Owner (with a screenshot of the v0.667 home): "now a perfect animated hoola brand shade in background --- smooth, feeling, soft --- show the preview first" -> preview (light / dark stills + a 4x-speed clip) -> "GO".
+
+- `webstudio.js`: the home `main` opens with `<div class="aura" aria-hidden="true">` holding four `<i>` pools.
+- `webstudio.css` (block "v0.669 HOOLA AURA"): `.hmain` isolates; `.aura` sits at z-index -1, pointer-events none, 760 px tall, masked to fade from 55 % down so the cards and text below sit on the plain page. Pools: peach #FFD9A8 (520x420, 34 s), saffron #FF9A3C (460x380, 29 s), magenta #C055F5 (520x440, 38 s), violet #8B6CFF (420x340, 26 s); blur 70 px, translate3d / scale drifts, ease-in-out alternate. Dark: opacity .22. Reduced motion: no animation. Under 760 px: 560 px tall, blur 56 px. Home only - workspace and live build untouched.
+- Tests `test_v0669_hoola_aura.py` (2): markers (colours, slow loops, no clicks, mask, reduced motion, dark) + a browser walk in light and dark (4 pools, animating, blurred, dark <= .25 opacity, the ask box still the element under the pointer, no page errors).
+- NOT VERIFIED on a low-end phone's GPU (four blurred layers animate transform only, the cheapest path).
