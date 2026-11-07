@@ -266,8 +266,7 @@ async function enter() {
     ENT = HoolaEnterprise({api, esc, toast});
   }
   if (window.HoolaFilmDesk && !FD) FD = HoolaFilmDesk({api, esc, toast});   // v0.565
-  if (window.HoolaWebDev && !WD) WD = HoolaWebDev({api, esc, toast,   // v0.635 Web Development panel: new sites + changes go through chat
-    say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); },
+  if (window.HoolaWebDev && !WD) WD = HoolaWebDev({api, esc, toast,   // v0.646 Web Development panel: works on its own, never the home chat
     studio: (site, tab, edit) => B?.openSite?.(site, tab, edit)});
   if (window.HoolaSkills && !SK) {             // v0.481 the Skill Desk
     SK = HoolaSkills({api, esc, toast});
