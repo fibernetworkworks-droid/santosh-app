@@ -232,6 +232,15 @@ def _update(tenant: str, conv: str, job: dict[str, Any]) -> None:
             moved = new or r.state != job["state"] or r.status != job["status"] or (job["pct"] >= 0 and job["pct"] != r.pct) \
                 or (job["stage"] and job["stage"] != (json.loads(r.detail or "{}").get("stage") if (r.detail or "").startswith("{") else ""))
             prev_state = r.state if not new else ""
+            if not new and r.status == "cancelled":
+                # v0.649 SACH MEIN ROKO: she cancelled it - it stays stopped and is never announced again. A late event
+                # (an outside build that kept going) is noted on the row, never told as "chal raha / ho gaya".
+                if job["state"] != "stopped":
+                    r.detail = json.dumps({"detail": f"aapne roka tha; baad mein '{job['state']}' aaya", "stage": "",
+                                           "waiting_say": "", "link": job.get("link", "")}, ensure_ascii=False)
+                    r.updated_at = t
+                _MEM.setdefault(tenant, {})[job["key"]] = _row_view(r)
+                return
             r.conversation_id = conv or r.conversation_id
             r.title, r.state, r.status, r.pct = job["title"][:200], job["state"], job["status"][:40], job["pct"]
             r.detail = json.dumps({"detail": job["detail"], "stage": job["stage"], "waiting_say": job["waiting_say"],

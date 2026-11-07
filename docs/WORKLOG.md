@@ -1872,3 +1872,11 @@ opens the call, no double call summaries).
 Work Log: kaamlist module + /api/kaam/list; brain memory part "kiya"; recent_block removed from chat turns; push open_conv +
 Kotlin intent + Dart link; phone Kaam sheet; console Today > Work; 8 tests.
 Stage Summary: shipped; live check pending on her phone.
+
+---
+Task ID: v0.649.0 SACH MEIN ROKO (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the real-cancel fix (cancel said done, the job kept running and the next call said "chal raha hai").
+Work Log: kaamstop module (stop words + tenant-wide cancel), pre-lock interception in _run_turn, kaamwatch cancelled guard,
+voice late-news drop, kaam_status action=stop, persona lines, 11 tests.
+Stage Summary: shipped; live check on her call pending.

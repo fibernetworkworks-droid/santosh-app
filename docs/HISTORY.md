@@ -21860,3 +21860,34 @@ Built:
 
 Tests: `test_v0648_kaam_hisaab.py` 8 (+ the v0.646 pin updated). NOT VERIFIED: the Kotlin / Dart half compiles first on CI;
 the notification tap on a real phone.
+
+
+## v0.649.0 SACH MEIN ROKO - "cancel this task" really cancels it, on every surface
+
+Owner: "IF I TELL ON VOICE CANCLE THIS TASK.... IT SAYS I HAVE CANCLED IT ... STILL WHEN I HAVE COME BACK ON VOICE IT TELL
+... I AM WORKING ON THAT AND IT IS WORKING ON BACKEND" -> root cause + plan -> "GO".
+
+Root cause (code, v0.648): no cancel existed except the chat's Stop button (`santosh.stop`) and a few per-kind stops nothing on
+a call could reach. Her words went to the brain as a new ask on the SAME conversation, so it queued behind the job it should stop
+(the turn lock); the brain had no tool and said "cancel kar diya"; `kaam_jobs`, the long job and the restart inbox still said
+running, so the next call said "chal raha hai" and the finished result was still reported. Since v0.647 the next call is also a
+different record, so a stop has to work per job, tenant-wide.
+
+Built (`app/kaamstop.py`):
+- `wants_stop(text)`: a short stop ask (cancel / roko / band karo / rehne do / stop ...), never a reminder, meeting, device, the
+  call, a draft; `santosh._run_turn` runs `cancel()` BEFORE taking the conversation lock and answers ONLY when something really
+  stopped (nothing running / words naming something else = the normal turn).
+- `cancel(tenant, words, here, skip_turn)`: everything running in ALL her conversations - tracked jobs (`kaam_jobs` working /
+  waiting, 2 days) and running turns (locked conversations, their ask from the restart inbox; an unknown ask ranks below named
+  jobs); her words pick (content words matched to titles), bare = newest, "sab" = all, unmatched = nothing touched.
+- Per pick: the row -> stopped / status "cancelled" FIRST, then the kind's own stop (site, app, browser job, research, long job),
+  the conversation's running turn -> `santosh.stop` + its inbox rows "stopped" (a restart never re-runs it), pending followups
+  skipped. The reply names what stopped, says plainly when an outside part may still finish, and names what still runs.
+- `kaamwatch._update`: a cancelled row stays stopped and silent when a late event arrives (noted on the row).
+- `voice.Call._late_result`: a recently cancelled job's end is not news (no "ho gaya", no orphan note for the next call).
+- `kaam_status action=stop` for the brain (never its own turn; "never say cancelled without `stopped`").
+- PERSONA_BRAIN + PERSONA_LEAN: stopping work always goes to santosh_kaam; Gemini never says it is cancelled itself.
+
+Tests `test_v0649_sach_mein_roko.py` 11 incl. her exact case (job on call 1, cancel from call 2, call 3 reads "band").
+291 of 294 in the related suites pass; the 3 reds (test_glm tool turn, two console r3 pins) fail the same way without this change.
+NOT VERIFIED on a real call yet.
