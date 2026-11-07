@@ -1120,6 +1120,52 @@ def _brain_pool():
     return p
 
 
+_BRAIN_CACHE: dict = {}
+_LATE_SAY = {"kaam": "kaam ki taaza haalat", "kiya": "is hafte ka kiya hua kaam", "cards": "baaki cards",
+             "chat": "chat ki haal ki baatein", "saar": "chat ka saar", "facts": "jude hue facts",
+             "coder": "coder notes", "yaad": "diary"}
+
+
+def _brain_keep(key, fut) -> None:
+    try:
+        if not fut.cancelled() and fut.exception() is None:
+            _BRAIN_CACHE[key] = (time.time(), fut.result() or "")
+    except Exception:
+        pass
+    if len(_BRAIN_CACHE) > 600:
+        for k in sorted(_BRAIN_CACHE, key=lambda k: _BRAIN_CACHE[k][0])[:300]:
+            _BRAIN_CACHE.pop(k, None)
+
+
+def _call_chat_saar(conversation_id: str, max_chars: int = 2200) -> str:
+    """v0.657 the chat's checkpoint for a call record's brain turn (head + the pending tail)."""
+    from .. import callconv as _cc
+    chat = _cc.origin_of(conversation_id)
+    if not chat:
+        return ""          # a plain chat's brain turn already reads its own checkpoint in its history
+    from . import compact as _compact
+    from .. import yaad as _y
+    cp = _compact.active(chat)
+    if cp and cp.get("summary"):
+        return "CHAT KA SAAR (checkpoint of the chat she called from - open work and promises):\n" + \
+            _y._clip_ends(cp["summary"], max_chars)
+    summ = _y.summary_block(chat)
+    return ("Chat ki purani baaton ka saar:\n" + _y._clip_ends(summ, max_chars)) if summ else ""
+
+
+def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
+    """v0.657 her facts by MEANING for this ask (an older preference / correction too), in the call's memory scope."""
+    if not (user_text or "").strip():
+        return ""
+    from .. import yaad as _y
+    from .. import callconv as _cc
+    from ..life import memory_facts, recent_facts
+    chat = _cc.chat_of(conversation_id)
+    shown = {f.id for f in memory_facts(tenant_id, recent_facts(), chat)}
+    rel = _y.relevant_facts(tenant_id, user_text, shown, top=6, conversation_id=chat)
+    return ("JUDE HUE FACTS (her own, by meaning for this ask):\n" + "\n".join(f"- {t}" for _, t in rel)) if rel else ""
+
+
 async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
     """v0.638 the memory block of a call's brain turn: diary/facts (yaad), the real job state (kaamwatch) and the coder
     primer read IN PARALLEL, waiting at most `voice_brain_memory_s` in all. A part that is not ready in time is left out
@@ -1141,6 +1187,11 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
     # v0.646 ALAG CALL, EK YAAD: a call on its own record still knows what she just wrote in the chat she called from
     # (chat_block itself says "" for a plain chat - checked in its thread, never a DB read on the event loop, v0.650)
     parts.append(("chat", lambda: _callconv.chat_block(conversation_id)))
+    # v0.657 a call record's brain turn reads the ORIGIN chat's checkpoint (open work, promises) - its own history is
+    # the call's few exchanges, so the chat's pending work never reached it - and her facts BY MEANING (an older
+    # standing preference / correction, not only the 15 newest facts in the prompt)
+    parts.append(("saar", lambda: _call_chat_saar(conversation_id)))
+    parts.append(("facts", lambda: _call_facts(tenant_id, conversation_id, user_text)))
     if getattr(settings, "voice_brain_yaad", False):
         # v0.644 off by default: on EVERY call ask since v0.638 the diary / facts read missed its wait (17:25, 17:34, 17:44,
         # 17:51 - "yaad not ready in 2.5s"), so each ask paid the full wait for nothing; old memory stays one
@@ -1161,12 +1212,21 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
             except Exception:
                 log.exception("call brain memory part %s failed", name)
                 continue
+            _BRAIN_CACHE[(conversation_id, name)] = (time.time(), txt or "")
             if txt:
                 out.append(txt)
         else:
             late.append(name)
-            t.add_done_callback(lambda f: f.exception() if not f.cancelled() else None)
+            # v0.657 the part finishes in its thread and is KEPT for the next ask (before, the next ask re-ran it)
+            t.add_done_callback(lambda f, k=(conversation_id, name): _brain_keep(k, f))
+            hit = _BRAIN_CACHE.get((conversation_id, name))
+            if name != "kaam" and hit and time.time() - hit[0] < 600 and hit[1]:
+                out.append(hit[1])        # a few minutes old is far better than nothing (job state never: it moves)
     if late:
+        # v0.657 never a silent gap: the brain is told what it does NOT have, so it checks instead of guessing
+        miss = [_LATE_SAY.get(n, n) for n in late]
+        out.append("(Yaad ka yeh hissa abhi load nahi hua: " + ", ".join(miss) + ". Inke baare mein sawaal ho to pehle "
+                   "tool se dekho - kaam ki haalat kaam_status se, purani baat yaad_khojo se; andaza mat lagao.)")
         STATS_PREP["memory_late"] = STATS_PREP.get("memory_late", 0) + 1
         from .. import looplag
         log.info("call brain memory: %s not ready in %.1fs, left out of this ask (shared pool queue %d)",
@@ -2068,7 +2128,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     _steer_e = None
     if VOICE_BRAIN_NOW.get() and lock.locked():
         log.info("call brain turn waits: this chat is busy with another turn (%s)", conversation_id)
-    if lock.locked() and (actor or "owner") == "owner" and not voice:
+    if lock.locked() and (actor or "owner") == "owner" and not voice and not VOICE_BRAIN_NOW.get():
+        # v0.657 a call's brain ask never takes the no-tools quick lane (it answered "kaam chal raha hai" without
+        # tools); the call sends a second ask to its own side record instead (voice.Call._delegate)
         # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
         from . import quick
         steer_on = bool(getattr(settings, "agent_steer", True)) and not context

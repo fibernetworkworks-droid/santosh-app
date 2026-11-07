@@ -1436,25 +1436,53 @@ CALL_MAX_WITH_CHECKPOINT = 16000   # v0.244 a compacted chat's call brief (the c
 CALL_CHECKPOINT_CHARS = 6000       # the checkpoint's share of it (diary + facts after it must still fit)
 
 
+def _clip_tail(t: str, n: int) -> str:
+    """Keep the END (the newest lines) - for recent exchanges, the newest are the ones that matter."""
+    if len(t) <= n:
+        return t
+    cut = t[-n:]
+    return "…\n" + (cut.split("\n", 1)[1] if "\n" in cut else cut)
+
+
+def _clip_ends(t: str, n: int) -> str:
+    """v0.657 a checkpoint cut short keeps its HEAD (what the chat is about) AND its TAIL (pending work, what was
+    happening right now) - a head-only cut dropped exactly the part a call needs most."""
+    if len(t) <= n:
+        return t
+    head = max(200, n // 3)
+    first = t[:head]
+    cut = first.rsplit("\n", 1)[0] if "\n" in first[head // 2:] else first.rsplit(" ", 1)[0]
+    return cut + " …\n" + _clip_tail(t, n - len(cut) - 4)
+
+
+# v0.657 the small call brief (voice_lean_tools, ~4.5k): each part gets its own share, so a long news list or focus
+# block can never push the checkpoint's pending work and the newest exchanges out of the brief
+SMALL_SHARES = {"news": 800, "checkpoint": 1500, "focus": 600, "recent": 1100, "facts": 400, "diary": 600}
+
+
 def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000,
                 news_skip_newest: bool = True, hard_cap: int = 0) -> str:
     """For a voice call session: everything a coworker who was in the room would know.
     v0.216 KAAM YAAD rides FIRST (news before chat memory, like the greeting: news first): undelivered work
-    news with the bring-it-up-once instruction, so the call continues the WORK, not just the talk."""
-    parts = []
+    news with the bring-it-up-once instruction, so the call continues the WORK, not just the talk.
+    v0.657 a call on its OWN record (v0.646 split) reads the CHAT it came from - its focus words, checkpoint,
+    summary, recent exchanges and facts - plus the call record's own exchanges. Before, every chat read was keyed by
+    the new, empty call record, so the call started with no memory of the chat at all."""
+    chat = _call_chat(conversation_id) if conversation_id else conversation_id
+    parts: list[tuple[str, str]] = []
     try:   # v0.216 undelivered work news first - 'wahi kaam pe chalte hain' needs to know what is pending
         news = _news_pending(conversation_id, get_settings().voice_followup_min, news_skip_newest)
         if news:
-            parts.append(
+            parts.append(("news",
                 "KAAM KA HAAL - yeh news us tak pahunchana ABHI BAAKI hai (pichhli call ke baad aayi, boli nahi ja saki; "
                 "kisi natural pause par EK baar KHUD upar lao, phir chhod do, baar-baar nahi):\n"
-                + "\n".join(f"- {t}" for t in news))
+                + "\n".join(f"- {t}" for t in news)))
     except Exception:
         log.exception("voice work news failed")
     try:   # v0.200 the fresh session now has her EXACT recent words (chat AND calls), not just one-liners
-        fb = focus_block(tenant, conversation_id, for_voice=True)
+        fb = focus_block(tenant, chat, for_voice=True)
         if fb:
-            parts.append(fb)
+            parts.append(("focus", fb))
     except Exception:
         log.exception("voice focus failed")
     # v0.244 PHASE 3A ONE MEMORY: a compacted chat's call starts from the SAME checkpoint the chat reads (Phase 2),
@@ -1462,53 +1490,69 @@ def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: 
     upto = 0
     try:
         from .agent import compact as _compact
-        cp = _compact.active(conversation_id) if conversation_id else None
+        cp = _compact.active(chat) if chat else None
     except Exception:
         log.exception("voice checkpoint read failed")
         cp = None
     if cp and cp.get("summary"):
         upto = int(cp.get("upto_id") or 0)
         max_chars = max(max_chars, CALL_MAX_WITH_CHECKPOINT)
-        parts.append("IS CHAT KA SAAR (checkpoint - chat mein jo kaam hua, uski poori yaad):\n"
-                     + _clip_block(cp["summary"], CALL_CHECKPOINT_CHARS))
+        parts.append(("checkpoint", "IS CHAT KA SAAR (checkpoint - chat mein jo kaam hua, uski poori yaad):\n"
+                      + _clip_ends(cp["summary"], CALL_CHECKPOINT_CHARS)))
     else:
-        summ = summary_block(conversation_id)
+        summ = summary_block(chat)
         if summ:
-            parts.append("Purani baaton ka saar:\n" + summ)
+            parts.append(("checkpoint", "Purani baaton ka saar:\n" + summ))
+    rows: list[dict] = []
     try:
-        rows = _rows(conversation_id, 1500)
+        rows = _rows(chat, 1500)
         if upto:
             rows = [r for r in rows if r["id"] > upto]
+        if chat != conversation_id:   # the call record's own words (a resumed call) join the chat's, oldest first
+            rows = sorted(rows + _rows(conversation_id, 400), key=lambda r: r["id"])
         exs = exchanges(rows)[-recent:]
         if exs:
-            parts.append("Haal ki baatein (chat aur calls, purane se naye; ⟦kiya⟧ = jo kaam hua):\n" +
-                         "\n".join("- " + one_line(ex, 360) for ex in exs))
+            parts.append(("recent", "Haal ki baatein (chat aur calls, purane se naye; ⟦kiya⟧ = jo kaam hua):\n" +
+                          "\n".join("- " + one_line(ex, 360) for ex in exs)))
     except Exception:
         log.exception("voice recent failed")
     try:
-        dia = diary_block(tenant, conversation_id, calls=8, max_chars=3500)
+        dia = diary_block(tenant, chat, calls=8, max_chars=3500)
         if dia:
-            parts.append(dia)
+            parts.append(("diary", dia))
     except Exception:
         log.exception("voice diary failed")
     try:
         from .life import memory_facts, recent_facts
-        shown = {f.id for f in memory_facts(tenant, recent_facts(), conversation_id)}
+        shown = {f.id for f in memory_facts(tenant, recent_facts(), chat)}
         last_user = ""
-        for ex in reversed(exchanges(_rows(conversation_id, 200))):
+        for ex in reversed(exchanges(rows[-200:] if rows else _rows(chat, 200))):
             last_user = _user_text(ex)
             if last_user:
                 break
-        rel = relevant_facts(tenant, last_user, shown, top=6, conversation_id=conversation_id)
+        rel = relevant_facts(tenant, last_user, shown, top=6, conversation_id=chat)
         if rel:
-            parts.append("Jude hue facts:\n" + "\n".join(f"- {t}" for _, t in rel))
+            parts.append(("facts", "Jude hue facts:\n" + "\n".join(f"- {t}" for _, t in rel)))
     except Exception:
         log.exception("voice facts failed")
     if not parts:
         return ""
+    head = "HOOLA KI YAAD (you remember all of this; never ask her to repeat it):\n"
     if hard_cap:   # v0.628 the small call brief: Gemini re-reads it on every reply (older memory = yaad_khojo)
         max_chars = min(max_chars, hard_cap)
-    return "HOOLA KI YAAD (you remember all of this; never ask her to repeat it):\n" + _clip_block("\n\n".join(parts), max_chars)
+        fitted = []
+        for name, text in parts:
+            share = SMALL_SHARES.get(name, 500)
+            if name == "checkpoint":
+                text = _clip_ends(text, share)
+            elif name == "recent":
+                lines = text.split("\n", 1)
+                text = lines[0] + "\n" + _clip_tail(lines[1], share - len(lines[0]) - 1) if len(lines) == 2 else text
+            else:
+                text = _clip_block(text, share)
+            fitted.append(text)
+        return head + _clip_block("\n\n".join(fitted), max_chars)
+    return head + _clip_block("\n\n".join(t for _, t in parts), max_chars)
 
 
 # ---------------------------------------------------------------- after a turn
