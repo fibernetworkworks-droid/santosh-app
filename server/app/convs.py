@@ -73,6 +73,12 @@ def mark(tenant: str, conv: str, source: str = "app") -> None:
     """She is in this chat now (sent a message / opened it / is watching it)."""
     if not tenant or not conv or tenant_of(conv) != tenant:
         return
+    try:   # v0.646 a call record is never "the chat she is in" (background notes must not land in a call record)
+        from .callconv import is_call
+        if is_call(conv):
+            return
+    except Exception:
+        pass
     import time
     hit = _CACHE.get(tenant)
     if hit and hit[0] == conv and time.monotonic() - hit[1] < 30:
@@ -97,9 +103,11 @@ def current(tenant: str) -> str:
         row = s.get(ConvFocus, tenant)
         if row is not None:
             c = s.get(Conversation, row.conversation_id)
-            if c is not None and c.tenant_id == tenant and not c.deleted:
+            if c is not None and c.tenant_id == tenant and not c.deleted and c.kind != "call":
                 return c.id
-        c = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True))
+        from .callconv import not_call   # v0.646
+        c = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True),
+                                                 not_call())
                       .order_by(Conversation.created_at.desc())).first()
         return c.id if c else ""
 
@@ -135,7 +143,8 @@ def chats(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     cur = current(tenant)
     out = []
     with session() as s:
-        convs = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant)
+        from .callconv import not_call   # v0.646 call records are not chats
+        convs = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant, not_call())
                           .order_by(Conversation.created_at.desc()).limit(200)).all()
         for c in convs:
             first = s.scalars(select(Message).where(Message.conversation_id == c.id, Message.role == "user",

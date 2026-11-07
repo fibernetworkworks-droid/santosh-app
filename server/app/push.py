@@ -573,6 +573,12 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
 def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, Any] | None:
     kind, p = ev["kind"], ev.get("payload") or {}
     data: dict[str, str] = {"kind": kind, "event_id": str(ev.get("id", "")), "at": str(ev.get("at", ""))}
+    try:   # v0.648 a notification from a call record opens THAT record when tapped (a chat's opens the app as before)
+        from . import callconv
+        if ev.get("conv") and callconv.is_call(str(ev["conv"])):
+            data["open_conv"] = str(ev["conv"])
+    except Exception:
+        pass
     ttl = "3600s"
     if kind in RAW_KINDS:
         data["payload"] = json.dumps(p, ensure_ascii=False)[:3000]
@@ -648,6 +654,30 @@ PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo
 RAW_KINDS = {"device_action", "home_device", "bt_request", "voice_ring"}   # the phone runs these itself; no notification text (voice_ring: the SERVER calls HER - the native side turns it into the wake: broadcast and the app auto-starts the call; learned in v0.219)
 
 
+STATS_QUIET: dict[str, int] = {"call_message": 0, "call_card": 0}
+
+
+def _heard_on_call(conv: str, kind: str) -> bool:
+    """v0.646 CHUP NOTIFICATION: she is ON a live call there - she hears the answer, and the call screen shows the
+    card. So no phone notification for a reply on a conversation with a live call, and none for a card made by a
+    live call's own record. After the call ended, a late result notifies her as before (that IS news)."""
+    try:
+        import sys as _sys
+        v = _sys.modules.get(__package__ + ".voice")
+        if v is None or not v.ACTIVE.get(conv):
+            return False
+        if kind == "message":
+            STATS_QUIET["call_message"] += 1
+            return True
+        from . import callconv
+        if callconv.is_call(conv):
+            STATS_QUIET["call_card"] += 1
+            return True
+    except Exception:
+        return False
+    return False
+
+
 def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
     """Called for every published event; sends the push in the background (never slows the caller)."""
     if ev.get("kind") not in PUSH_KINDS or not configured():
@@ -656,6 +686,8 @@ def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
         return
     tenant = _tenant(conversation_id)
     if not tenant:
+        return
+    if ev["kind"] not in RAW_KINDS and _heard_on_call(conversation_id, ev["kind"]):
         return
     if ev["kind"] == "voice_ring" and not _ring_allowed(tenant, conversation_id,
                                                          reminder=bool((ev.get("payload") or {}).get("reminder"))):

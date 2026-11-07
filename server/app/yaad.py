@@ -1164,9 +1164,20 @@ def _focus_trim(s, conversation_id: str) -> None:
         s.delete(r)
 
 
+def _call_chat(conversation_id: str) -> str:
+    """v0.646 ALAG CALL: call drop / followup notes are keyed by the CHAT a call came from, so the next call from that
+    chat (a new call record) still opens with them."""
+    try:
+        from . import callconv
+        return callconv.chat_of(conversation_id)
+    except Exception:
+        return conversation_id
+
+
 def note_call_drop(conversation_id: str, tenant: str, text: str) -> None:
     """The phone never came back within the grace window: her last words + the half-said sentence are
     saved so the NEXT call continues the work instead of greeting her like a stranger."""
+    conversation_id = _call_chat(conversation_id)   # v0.646 a call record's notes live on the chat it came from
     ensure_focus_table()
     with session() as s:
         s.add(FocusNote(tenant_id=tenant, conversation_id=conversation_id, kind="call_drop", text=_clip(text, 1200)))
@@ -1175,6 +1186,7 @@ def note_call_drop(conversation_id: str, tenant: str, text: str) -> None:
 
 def recent_call_drop(conversation_id: str, minutes: int = 60) -> str:
     """The note of a call that died mid-air within the last `minutes` ("" = none)."""
+    conversation_id = _call_chat(conversation_id)   # v0.646
     ensure_focus_table()
     since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
     with session() as s:
@@ -1188,6 +1200,7 @@ def note_call_followup(conversation_id: str, tenant: str, text: str) -> None:
     """v0.211 the call is gone, the WORK is not: a result / note that arrived too late to speak (a big job
     finished after she hung up, a tool answer with nowhere to go) is kept here, and the NEXT call on this chat
     OPENS with it - the work is postponed, never lost. Same retention rules as the call-drop notes."""
+    conversation_id = _call_chat(conversation_id)   # v0.646 a call record's notes live on the chat it came from
     ensure_focus_table()
     with session() as s:
         s.add(FocusNote(tenant_id=tenant, conversation_id=conversation_id, kind="call_followup", text=_clip(text, 1200)))
@@ -1197,6 +1210,7 @@ def note_call_followup(conversation_id: str, tenant: str, text: str) -> None:
 def take_call_followup(conversation_id: str, minutes: int = 720) -> str:
     """v0.211 read-AND-consume (the take_call_drop pattern): the next call tells her the pending news and the
     note is used once - her own turns take over from there. ("" = nothing waiting.)"""
+    conversation_id = _call_chat(conversation_id)   # v0.646 a call record's notes live on the chat it came from
     ensure_focus_table()
     since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
     with session() as s:
@@ -1213,6 +1227,7 @@ def take_call_followup(conversation_id: str, minutes: int = 720) -> str:
 def take_call_drop(conversation_id: str, minutes: int = 60) -> str:
     """v0.200 read-AND-consume: the next call continues the dropped one; the note is used ONCE (the new
     call's own turns take over from here). The words also live in Messages either way."""
+    conversation_id = _call_chat(conversation_id)   # v0.646 a call record's notes live on the chat it came from
     ensure_focus_table()
     since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
     with session() as s:
@@ -1401,6 +1416,7 @@ def _news_pending(conversation_id: str, minutes: int, skip_newest: bool, limit: 
     speaks it there), so a fresh call skips it here and he never says the same news twice; a reconnect skip
     nothing (the greeting spoke its news already). Same freshness window as the take - stale news is nobody's
     news. Each line scrubbed like every memory surface."""
+    conversation_id = _call_chat(conversation_id)   # v0.646 a call record's notes live on the chat it came from
     ensure_focus_table()
     since = datetime.now(timezone.utc) - timedelta(minutes=max(1, minutes))
     with session() as s:

@@ -150,6 +150,11 @@ async def make(conv: str, call_id: str, turns: list[tuple[str, str]], did: list[
     except Exception:
         log.exception("could not save call receipt")
     bus.publish(conv, "call_receipt", r)
+    try:   # v0.646 ALAG CALL: a call record keeps its receipt line as its title + summary (Calls list, chat memory)
+        from . import callconv
+        callconv.save_summary(conv, r["text"], seconds)
+    except Exception:
+        log.exception("call summary failed")
     STATS["made"] += 1
     if ai is not None:
         STATS["with_ai"] += 1

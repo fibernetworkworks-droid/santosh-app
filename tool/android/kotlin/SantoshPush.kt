@@ -63,7 +63,9 @@ class SantoshPush : FirebaseMessagingService() {
                     if (MainActivity.visible) return          // the open app shows it in the chat
                     val body = d["body"] ?: ""
                     val title = d["title"] ?: ""
-                    if (body.isNotBlank()) Notify.message(this, if (title.isNotBlank() && title != "Hoola") "$title: $body" else body, eventId)
+                    // v0.648 a call record's news opens that call when tapped
+                    if (body.isNotBlank()) Notify.message(this, if (title.isNotBlank() && title != "Hoola") "$title: $body" else body, eventId,
+                        d["open_conv"] ?: "")
                 }
             }
         } finally {

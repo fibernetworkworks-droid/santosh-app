@@ -90,7 +90,8 @@ class LiveVoice {
     return base.replace(
       scheme: base.scheme == 'https' ? 'wss' : 'ws',
       path: '${base.path}/api/voice/ws',
-      queryParameters: {'conv': conv, 'voice': voice, 'lang': lang, if (resume != null) 'resume': resume},
+      // v0.646 split=1: this app has the Calls section, so the server keeps each call on its own record
+      queryParameters: {'conv': conv, 'voice': voice, 'lang': lang, 'split': '1', if (resume != null) 'resume': resume},
     );
   }
 

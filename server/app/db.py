@@ -41,6 +41,13 @@ class Conversation(Base):
     # v0.612 YAAD SE: she tapped "is chat ko yaad se hatao" (Grok's remove-from-memory) - the chat itself stays in
     # her list, but its old exchanges are never recalled into another chat again
     no_recall: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # v0.646 ALAG CALL: a voice call's own record ("call"), kept out of the chat list; origin_conv = the chat she called
+    # from (shares its memory scope), call_id = the live call, call_summary = the receipt line for the Calls list
+    kind: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    origin_conv: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    call_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    call_summary: Mapped[str | None] = mapped_column(Text, nullable=True)
+    call_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Message(Base):

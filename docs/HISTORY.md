@@ -21795,3 +21795,68 @@ conversation; looks draw 6 swatches (a bad colour dropped) and the concept as te
 buttons overlap and none clips its words on any screen; no sideways scroll at 390 px. test_v142 `recent_and_isolation`
 stays red exactly as on main (pre-existing). NOT VERIFIED live: a real build through the panel on the VPS (the test
 cannot nest a Chromium build); thread replies are polled every 1.5 s, not streamed.
+
+
+## v0.647.0 ALAG CALL, EK YAAD - calls on their own record, chat stays the chat, one memory (built as 0.646; their WEB DEVELOPMENT PANEL 2 took 0.646.0 - both kept)
+
+Owner: "KEEP CHAT AND VOICE CALL SECTION SEPERATE BUT SHARE A MEMORY" -> plan `docs/CALL_CHAT_SPLIT_PLAN.md` -> "GO" (all four
+recommended decisions: one record per call, chat pushes only when the app is closed (phone half next), old calls left in
+their chats, cards from a call on the call screen + Calls + a push only after the call ended).
+
+Before: the phone opened the call ON the open chat, so every brain ask (`[Voice call] ...`), every spoken answer, tool row,
+card and the receipt landed in that chat, and every assistant message became a phone notification, live call or not.
+
+Built:
+- `app/callconv.py`: `Conversation.kind="call"` + `origin_conv` / `call_id` / `call_summary` / `call_seconds` (nullable,
+  self-adding columns). `open_for` copies the chat's `project_id` + incognito, so the fence (`app/fence.py`) puts the record
+  in the SAME memory scope (facts, diary, jobs, `yaad_khojo` shared by construction).
+- `voice_ws` makes the record only when the phone sends `split=1` AND `call_split` (default on); an older APK keeps the call
+  on the chat exactly as before. Resume matches the chat behind both. `ready` carries `conv` (the record id).
+- `Call._register/_unregister`: a split call is live under the record AND its chat (news, cards, reminders, the no-ring rule).
+- Chat list (`chats.chat_list`, `convs.chats`, the empty-chat reuse) leaves call records out; `convs.mark` / `current` never
+  make a call record "the chat she is in" (background notes never land there).
+- Memory both ways: a call brain turn reads `callconv.chat_block` (the origin chat's last 4 exchanges, 1,800 chars) in its
+  parallel memory read; a chat turn reads `callconv.recent_block` (the last 3 calls' receipts in its scope).
+- `callreceipt.make` stores the receipt line as the record's title + summary (`save_summary`).
+- `yaad` call drop / followup notes are keyed by the CHAT (`_call_chat`), so the next call (a new record) still opens with them.
+- `events.CALL_ONLY_KINDS`: a call record's words / tool rows / receipt stay on it; every other LOCAL kind (phone actions -
+  alarm, open app, home devices - list refreshes, places) is also delivered to the origin chat's live streams, because her
+  phone listens there (found while building: without it an alarm set on a split call would never reach the phone live).
+- `push._heard_on_call`: no notification for a message on a conversation with a live call, none for a card made by a live
+  call's record; after the call a late result notifies as before.
+- `GET /api/calls`; phone `lib/ui/calls_sheet.dart` (call button in the chat list header; a record opens in the normal chat
+  view with `openChat(id, remember: false)`, so the app still reopens on her chat and the background stream stays there);
+  phone `live_voice.dart` sends `split=1`; console `chatlist.js` shows a "Calls" group (8 newest) under the chats.
+
+Tests: `server/tests/test_v0646_alag_call.py` 14 incl. a real socket call with `split=1` (0 call lines in the chat, the
+words on the record, the alarm row on the record, the record in /api/calls and not in /api/conversations). 292 of 293 in the
+voice / call / push / chat / memory / routines suites pass; the one red (`test_v142_console::test_conversations_recent_and_isolation`)
+fails the same way without this change (known, older).
+NOT VERIFIED: the Flutter half compiles first on CI; no real call yet. NOT BUILT YET (plan P3 phone half): the app-open
+heartbeat that silences chat-reply pushes while she is in the app.
+
+
+## v0.648.0 KAAM KA HISAAB - past and current work on every surface
+
+Owner: "FIND HOW HOOLA HANDLE THE PAST COMPLETED WORK AND CURRENT WORK IN ALL SURFACES" -> audit -> "GO" on the four fixes.
+
+The audit (v0.647 code): work lives in `kaam_jobs` (kaamwatch; kept 30 days, a turn reads 24 h / done 6 h, `kaam_status` 48 h),
+`TaskRun` (the task log; the chat's diary reads 7 days), `goal_runs` (the open long job), `kaam_followup` (results waiting to be
+told) and the memory index. Gaps: no screen listed finished work (phone + console Today pages = weather / calendar / reminders,
+live strips = running / waiting only); a call's brain saw done work of the last 6 h only (the diary is off on calls since v0.644);
+a call record's late-result notification opened the chat, not the call; the chat got recent calls twice (diary + v0.646 block).
+
+Built:
+- `app/kaamlist.py`: `listing(tenant, days=7)` (GET /api/kaam/list) and `brief(tenant, conv)` - readers only, nothing new stored;
+  every row carries its conversation and `from_call`.
+- Call brain turn: `_brain_memory` part "kiya" = `kaamlist.brief` (TaskRun + finished jobs this week, Session-fenced, 10 lines).
+- Chat turn: the v0.646 `callconv.recent_block` call removed (the diary's "Pichhli calls" already reads call records' receipts).
+- Notifications: `push.build` adds `open_conv` for a call record; `SantoshPush` passes it, `Notify.message` opens
+  `ACTION_OPEN_CONV`, `MainActivity.handleIntent` sends `conv:<id>` on the link channel, `main.dart` opens it with
+  `openChat(id, remember: false)`.
+- Phone `lib/ui/kaam_sheet.dart` ("Aapka kaam": waiting / running / done in 7 days) + a button row (Aapka kaam / Calls) under the
+  chat list header (kept out of the header row so it cannot overflow a small phone); console Today > Work tile (`drawTodayWork`).
+- Found while reading: the phone already does not show a push while the app is open (`if (MainActivity.visible) return`).
+
+Tests: `test_v0648_kaam_hisaab.py` 8 (+ the v0.646 pin updated). NOT VERIFIED: the Kotlin / Dart half compiles first on CI;
+the notification tap on a real phone.

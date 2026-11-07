@@ -10,6 +10,8 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
 import 'any_card.dart';
+import 'calls_sheet.dart';
+import 'kaam_sheet.dart';
 import 'employee_inbox.dart';
 import 'think_card.dart';
 import 'chai_screen.dart';
@@ -734,6 +736,27 @@ class _ChatScreenState extends State<ChatScreen> {
                             app.connect(fresh: true, incognito: true);
                           },
                           child: Text('🕶 ${app.g('Incognito')}'),
+                        ),
+                      ]),
+                    ),
+                    Padding(   // v0.648 her work + her calls, each one tap from the chat list
+                      padding: const EdgeInsets.fromLTRB(10, 0, 10, 4),
+                      child: Row(children: [
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            showKaamSheet(context, app);
+                          },
+                          icon: const Icon(Icons.task_alt_rounded, size: 18),
+                          label: Text(app.g('Aapka kaam')),
+                        ),
+                        TextButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            showCallsSheet(context, app);
+                          },
+                          icon: const Icon(Icons.call_outlined, size: 18),
+                          label: Text(app.g('Calls')),
                         ),
                       ]),
                     ),

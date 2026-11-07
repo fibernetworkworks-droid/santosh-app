@@ -1109,6 +1109,13 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
         ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
         ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or "")),
     ]
+    from .. import kaamlist as _kaamlist
+    # v0.648 KAAM KA HISAAB: what finished this week (two small queries), so "kal jo kaam diya tha" needs no extra step
+    parts.append(("kiya", lambda: _kaamlist.brief(tenant_id, conversation_id)))
+    from .. import callconv as _callconv
+    if _callconv.is_call(conversation_id):
+        # v0.646 ALAG CALL, EK YAAD: a call on its own record still knows what she just wrote in the chat she called from
+        parts.append(("chat", lambda: _callconv.chat_block(conversation_id)))
     if getattr(settings, "voice_brain_yaad", False):
         # v0.644 off by default: on EVERY call ask since v0.638 the diary / facts read missed its wait (17:25, 17:34, 17:44,
         # 17:51 - "yaad not ready in 2.5s"), so each ask paid the full wait for nothing; old memory stays one
@@ -2113,6 +2120,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         block = (block + "\n\n" + cb) if block else cb
                 except Exception:
                     log.exception("coder block failed")
+                # v0.648: her recent calls reach a chat turn through the diary's "Pichhli calls" section (call records are
+                # in the same memory scope) - the separate v0.646 recent-calls block said the same thing twice
                 if settings.agent_goal:   # v0.187 an open goal rides above everything: this turn continues it
                     from . import goal as _goalb
                     gb = _goalb.goal_block(conversation_id)

@@ -2187,7 +2187,8 @@ class Call:
             with contextlib.suppress(Exception):
                 await old.close()
         reader = self._start_reader(ws)
-        await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "resumed": True, "vad": vad_config()})
+        await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "resumed": True, "vad": vad_config(),
+                             "conv": self.conv})
         if self.parked and any(k == "text" for k, _ in list(self.audio._queue)):
             self._wake_up("news")   # v0.627 notes that waited while her phone was away: told now that she is back
         if self.user_buf.strip():   # show what is being said right now
@@ -3560,6 +3561,29 @@ class Call:
         await self.send_audio(matched_clip(self, clips[i]))
 
     # ---- the call ----
+    def _live_keys(self) -> list[str]:
+        """v0.646 ALAG CALL: a split call is live under its own record AND the chat she called from, so news / cards /
+        reminders published on either reach it and the ring never fires over it."""
+        keys = [self.ctx.conversation_id]
+        try:
+            from . import callconv
+            origin = callconv.origin_of(self.ctx.conversation_id)
+            if origin and origin not in keys:
+                keys.append(origin)
+                callconv.set_call_id(self.ctx.conversation_id, self.call_id)
+        except Exception:
+            log.exception("call origin lookup failed")
+        return keys
+
+    def _register(self, me) -> None:
+        for k in self._live_keys():
+            ACTIVE.setdefault(k, []).append(me)
+
+    def _unregister(self, me) -> None:
+        for k in self._live_keys():
+            with contextlib.suppress(ValueError, KeyError):
+                ACTIVE[k].remove(me)
+
     async def run(self) -> None:
         loop = asyncio.get_running_loop()
         from . import usage
@@ -3569,7 +3593,7 @@ class Call:
         failures = 0
         degraded = False
         me = (loop, self)
-        ACTIVE.setdefault(self.ctx.conversation_id, []).append(me)
+        self._register(me)   # v0.646 under the call record + its chat
         CALLS[self.call_id] = self
         await self._setup_voiceid()
         try:   # v0.473 HOOLA CODER: this call becomes a memory session (best-effort, fail-open)
@@ -3617,7 +3641,8 @@ class Call:
                                 raise
                         self._session = session
                         if first:
-                            await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "vad": vad_config()})
+                            await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id, "vad": vad_config(),
+                                                   "conv": self.conv})
                             # live text input (3.x Live models accept client_content only for seeding history)
                             # v0.200 a call that died mid-air within the hour is CONTINUED, not greeted fresh;
                             # v0.211 work finished AFTER the last call (an untellable result) opens the news too
@@ -3763,8 +3788,7 @@ class Call:
     async def _wrap_up(self, me) -> None:
         """The end of every call, whatever engine spoke it (v0.264: moved out of run() unchanged so the second
         engine shares it): drop notes, the last turn, orphan news, stats, the scorecard, usage, the call receipt."""
-        with contextlib.suppress(ValueError, KeyError):
-            ACTIVE[self.ctx.conversation_id].remove(me)
+        self._unregister(me)   # v0.646
         CALLS.pop(self.call_id, None)
         self.closed.set()
         if self._grace is not None:

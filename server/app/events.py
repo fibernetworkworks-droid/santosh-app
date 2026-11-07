@@ -37,6 +37,11 @@ LOCAL_KINDS = LIVE_ONLY | {
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
     "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
 }
+# v0.646 ALAG CALL: what a call does on its own record that stays THERE (her words, tool rows, the receipt...). Every
+# other local kind - phone actions (alarm, open app, home devices), list refreshes, places - also reaches the live
+# streams of the chat she called from, because her phone is listening there.
+CALL_ONLY_KINDS = LIVE_ONLY | {"message", "upload", "call_receipt", "gyaan_sources", "memory_saved", "memory_used",
+                               "procedure", "compact", "speaker", "voice"}
 # phone actions are done once, live (or through pending actions): never replayed as chat history
 ACTIONS = {"device_action", "device_action_result", "home_device", "bt_request", "phonedoc_open", "bazar_open", "bazar_link"}
 _ID_KEYS = ("id", "task_id", "session_id", "job_id", "deal_id", "ticket_id", "card_id", "project", "ref")
@@ -146,6 +151,14 @@ class EventBus:
                 touch(s, conversation_id)
         targets = list(self._subs.get(conversation_id, ()))
         targets += [q for q in self._account(conversation_id) if q not in targets]
+        if kind in LOCAL_KINDS and kind not in CALL_ONLY_KINDS:
+            try:   # v0.646 a call record's phone action / refresh reaches the phone listening on the chat behind it
+                from .callconv import origin_of
+                origin = origin_of(conversation_id)
+                if origin:
+                    targets += [q for q in self._subs.get(origin, ()) if q not in targets]
+            except Exception:
+                pass
         if kind not in LOCAL_KINDS and self._tsubs:
             try:   # v0.158 the card also reaches her other open chats (phone on one chat, console on another)
                 from . import convs

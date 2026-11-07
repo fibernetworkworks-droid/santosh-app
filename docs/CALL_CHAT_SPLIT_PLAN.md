@@ -1,7 +1,7 @@
 # CALL + CHAT: two sections, one memory — the plan
 
 Owner (7 Nov 2026): "KEEP CHAT AND VOICE CALL SECTION SEPERATE BUT SHARE A MEMORY --- FIRST MAKE A PERFECT PLAN".
-Nothing is built yet. This is the plan, read from the real code at v0.645.0.
+**Status (v0.647.0):** P1 SPLIT + P2 SHARED MEMORY + the server half of P3 + P4 (phone Calls sheet, console Calls group) are BUILT; still open: the phone's app-open heartbeat (P3 phone half) and the live proof call (P5). Plan read from the real code at v0.645.0.
 
 ## 1. What happens today (checked in the code)
 

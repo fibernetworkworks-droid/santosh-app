@@ -18,6 +18,7 @@ const $ = s => document.querySelector(s);
 const BUSY = new Set(), UNREAD = new Set();
 let LIST = [], ARCH = false;
 let SECS = [];                        // v0.193 sessions (projects), server order — last-touched first
+let CALLS = [];                       // v0.646 ALAG CALL: her voice calls' own records (Calls group)
 
 const DAY = 86400000;
 function group(c) {
@@ -38,11 +39,13 @@ const setOpen = (pid, closed) => { const st = openState(); if (closed) st[pid] =
 const secOf = c => c.project_id ? SECS.find(p => p.id === c.project_id) : null;
 
 async function load() {
-  const [list, pj] = await Promise.all([          // sessions ride along (skipped in archive view)
+  const [list, pj, calls] = await Promise.all([   // sessions + calls ride along (skipped in archive view)
     api('GET', `/api/console/conversations${ARCH ? '?archived=true' : ''}`).then(r => r.conversations || []).catch(() => null),
     ARCH ? Promise.resolve(null)
          : api('GET', '/api/projects').then(r => r.projects || []).catch(() => SECS),
+    ARCH ? Promise.resolve(CALLS) : api('GET', '/api/calls?limit=8').then(r => r.calls || []).catch(() => CALLS),
   ]);
+  CALLS = calls || [];
   if (list === null) return LIST;                 // the list fetch failed: keep what we had
   LIST = list;
   if (pj) SECS = pj;
@@ -100,6 +103,12 @@ function draw() {
   /* "Baaki chats" is the un-filed home once sessions exist — always visible, so dragging the LAST chat out of
      a session always has a target (it also labels the day groups when they are non-empty) */
   html += (drag ? `<div class="rg sgb" data-rest title="Drop a chat here to take it out of its session">Other chats</div>` : '') + rest;
+  if (CALLS.length) {   // v0.646 ALAG CALL: each voice call has its own record - open one like a chat (no chat menu)
+    html += `<div class="rg">Calls</div>` + CALLS.map(c => {
+      const cur = c.id === ctx.current();
+      return `<div class="rcw${cur ? ' cur' : ''}" data-row="${esc(c.id)}"><a class="rc" href="/console/c/${encodeURIComponent(c.id)}" data-conv="${esc(c.id)}"${cur ? ' aria-current="true"' : ''} title="${esc(c.summary || c.title)}"><span class="rct">${esc(c.title)}</span></a></div>`;
+    }).join('');
+  }
   box.innerHTML = html || `<div class="empty" style="padding:8px 12px">No conversations yet.</div>`;
   box.insertAdjacentHTML('beforeend', `<button type="button" class="rcarch" id="archTog">${IC.archive}<span>Show archived</span></button>`);
   $('#archTog').addEventListener('click', () => { ARCH = !ARCH; load(); });
