@@ -227,3 +227,29 @@ dialog.dlg form{display:flex;flex-direction:column;gap:12px}
 .actd .acts li{padding:5px 0}.actd .acts .sl{font-size:13px}
 @media (prefers-reduced-motion:reduce){.prog.ind i{animation:none}}
 .step .tm{margin-left:auto;font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums}
+
+/* v0.658 project list like Lovable: a menu on every project, starred, search */
+.rec{display:flex;align-items:center;gap:2px;height:32px;padding:0 2px 0 0;border-radius:8px}
+.rec .rl{display:flex;align-items:center;gap:8px;min-width:0;flex:1;height:100%;padding:0 4px 0 10px;color:inherit}
+.rec.on{background:var(--pri-soft);color:var(--pri-ink)}
+.rm{width:28px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;color:var(--mut);flex:none;opacity:0}
+.rec:hover .rm,.rec:focus-within .rm,.rm[aria-expanded=true]{opacity:1}.rm:hover{background:var(--line);color:var(--ink)}
+@media (hover:none){.rm{opacity:1}}
+.cw{position:relative;display:flex}.cw>.card{flex:1;min-width:0}
+.cm{position:absolute;top:10px;right:10px;width:32px;height:32px;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:var(--bg);border:1px solid var(--hair);color:var(--lit);opacity:0}
+.cw:hover .cm,.cw:focus-within .cm{opacity:1}.cm:hover{color:var(--ink);border-color:var(--pri-ring)}
+@media (hover:none){.cm{opacity:1}}
+.stard{color:var(--warn);display:inline-flex;flex:none}
+.wsmenu{position:fixed;z-index:60;min-width:208px;background:var(--bg);border:1px solid var(--hair);border-radius:12px;box-shadow:var(--sh);padding:6px;display:flex;flex-direction:column}
+.wsmenu button{display:flex;align-items:center;gap:10px;height:34px;padding:0 10px;border-radius:8px;font-size:14px;color:var(--ink);text-align:left;width:100%}
+.wsmenu button:hover,.wsmenu button:focus-visible{background:var(--sunk);outline:none}
+.wsmenu button.bad{color:var(--bad)}.wsmenu hr{border:0;border-top:1px solid var(--hair);margin:4px 2px}
+.find{display:flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--hair);border-radius:10px;background:var(--bg);color:var(--mut);max-width:420px;margin-bottom:16px}
+.find input{flex:1;border:0;background:transparent;font:inherit;color:var(--ink);outline:none;min-width:0}
+.find:focus-within{border-color:var(--pri-ring)}
+.working{display:flex;flex-direction:column;gap:4px;padding:6px 12px;border:1px solid var(--hair);border-radius:12px;background:var(--bg)}
+.working .acts li{padding:5px 0}.working .acts .sl{font-size:13px}.working .acts{max-height:260px;overflow:auto}
+.actd.turnw summary{font-size:12.5px}
+.cw[hidden]{display:none}
+.wsmenu button,.rm{border:0;background:transparent;font:inherit;cursor:pointer}.cm{cursor:pointer;font:inherit}
+.wsmenu button:hover,.wsmenu button:focus-visible{background:var(--sunk)}.rm:hover{background:var(--line)}
