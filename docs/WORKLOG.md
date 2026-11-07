@@ -2215,3 +2215,12 @@ Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: owner "GO WAVE 10" = third audit items 10-19 (long tasks end to end).
 Work: gist instead of bare clear, crew shares, budget_at, job-wide tool check, resume on her answer, waiting-on-her
 window, one queued round, file-kind match, stale goals rested, silent failures told. 11 new tests.
+
+---
+Task ID: v0681-sahi-auzaar (wave 12, same release)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 12" = third audit items 29-35 (tool choice + skills).
+Work: finguard / phonedoc keys, whole-word ambiguous keys + generic auto-keys, skills matched on name+description with
+2+ words, dead keyword families re-homed, lane rules for overlapping tools, foreign tool names marked in read skills.
+27 new tests.

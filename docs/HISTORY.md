@@ -22660,3 +22660,25 @@ Tests: NEW `test_v0682_lamba_kaam.py` (11). NOT VERIFIED live on a real long job
 28. **Without embeddings the "same procedure" match keeps its floor** (`max(0.5, floor)`; 0.80 collapsed to 0.5).
 
 Tests: NEW `test_v0683_yaad_pakki.py` (10). NOT VERIFIED live.
+
+## v0.681.0 (cont.) SAHI AUZAAR — Wave 12 of the third deep audit: the right tool, the right skill (owner: "GO WAVE 12")
+
+29. **"Bank statement check karo" reaches paisa_sahayak** (finguard keys: bank statement, passbook, paise kat gaya, double
+    debit, credit card bill...); `bank` is no longer the enterprise bank integrator's auto-key.
+30. **Everyday words stop opening the wrong family.** `admit._hit` matches `_WHOLE_WORD` keys as whole words ("form" in
+    information, "edit" in credit, "press" in pressure / express / WordPress, "shoot" in troubleshoot, "clip" in
+    clipboard, "state" in statement, "link" in LinkedIn, "home" in homework, "format" in information); `_GENERIC` drops
+    page / doctor / land / bank / home / off / link / state / book / press / shoot / short / clip / release as auto-keys;
+    kitab opens on book-writing phrases (not "cab book karo"), reel on shorts / youtube short (not "short mein batao").
+31. **A skill "matches" on its name + description and 2+ of her words** (or one word in its name) - `skills_search`
+    used FTS OR over the whole body, so one shared word pulled unrelated skills in to be read and followed.
+32. **No keyword family points at nothing.** `admit._REHOME` folds website -> site, content / social -> kalam, loan ->
+    finguard, salamat -> society; families with no tools are dropped with a log line (test: every EXTRA_KEYS family
+    exists).
+33. **Overlapping tools carry a lane**: add_calendar_event (phone) vs calendar_add_event (Google), scrape (default
+    reader) / scrape_page / reach / open_website, kgmemory vs remember / yaad_khojo.
+34. **A read skill says which tools it names are not this agent's** (`skills_tool._mark_foreign_tools`: `ask_approval`,
+    `ax_*`, `page_fill_form`... -> `not_your_tools` with what to do instead on chat).
+35. **"Mera phone slow hai" reaches the phone doctor** (phonedoc keys: phone slow / hang / garam / battery / storage full).
+
+Tests: NEW `test_v0684_sahi_auzaar.py` (27). NOT VERIFIED live (the tool card on the VPS is the live check).

@@ -655,19 +655,34 @@ def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: boo
                                 if len(t) >= 3 and t.lower().strip(".,?!;:'\"()") not in _SKILL_STOP)[:400]
             if terms:
                 try:
+                    # wave 12: matched on its NAME + DESCRIPTION, and on 2+ of her words (or one word that is in the
+                    # skill's name). One shared word anywhere in a skill's body pulled unrelated skills in as "LEARNED
+                    # SKILLS matching this ask" ("mera phone slow hai" -> a wellbeing skill) and the model was told to
+                    # read and follow them.
                     rows = c.execute(
                         "SELECT s.name, s.description, s.body, s.enabled FROM skills_fts f "
                         "JOIN skills s ON s.rowid = f.rowid "
                         "WHERE skills_fts MATCH ? AND s.tenant=?" + live +
-                        " ORDER BY rank LIMIT ?", (terms, tenant, limit)).fetchall()
-                    return [dict(r) for r in rows]
+                        " ORDER BY rank LIMIT ?", ("{name description} : (" + terms + ")", tenant, limit * 6)).fetchall()
+                    words = {t.lower().strip(".,?!;:'\"()") for t in q.split()
+                             if len(t) >= 3 and t.lower().strip(".,?!;:'\"()") not in _SKILL_STOP}
+                    out = []
+                    for r in rows:
+                        name = str(r["name"] or "").lower().replace("-", " ")
+                        hay = name + " " + str(r["description"] or "").lower()
+                        hits = {w for w in words if w in hay}
+                        if len(hits) >= 2 or any(w in name for w in hits):
+                            out.append(dict(r))
+                        if len(out) >= limit:
+                            break
+                    return out
                 except sqlite3.Error:
                     pass                       # a malformed match string falls through to LIKE
         like = f"%{q[:200]}%"
         rows = c.execute(
             "SELECT name, description, body, enabled FROM skills WHERE tenant=?" + live +
-            " AND (name LIKE ? OR description LIKE ? OR body LIKE ?) LIMIT ?",
-            (tenant, like, like, like, limit)).fetchall()
+            " AND (name LIKE ? OR description LIKE ?) LIMIT ?",
+            (tenant, like, like, limit)).fetchall()
         return [dict(r) for r in rows]
 
 

@@ -88,7 +88,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "photo": ("photo", "tasveer", "image", "picture", "wish", "greeting", "फोटो", "तस्वीर"),
     "graphic": ("graphic", "banner", "poster", "logo", "thumbnail", "design", "creativ"),
     "video": ("video", "clip", "trim", "subtitle", "edit", "reel"),
-    "reel": ("reel", "short", "instagram", "status video"),
+    "reel": ("reel", "shorts", "youtube short", "short video", "instagram", "status video"),   # wave 12: not "short" ("short mein batao")
     "motion": ("motion", "animat", "animate"),
     "studio": ("studio", "ai video", "video shoot"),
     # v0.259 Create Studio: song / voice-over / dubbing (the Create page names the tool; these cover her own words)
@@ -243,7 +243,9 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "devops": ("devops", "deploy", "server", "uptime"),
     "dev": ("dev", "developer", "code", "bug", "software"),
     # v0.585 Paisa Sahayak (consumer money safety): loan / fee / scam / complaint words. Tight keys.
-    "finguard": ("emi", "loan", "karz", "qarz", "processing fee", "apr", "prepay", "foreclos", "snowball", "avalanche", "scam", "fraud", "dhokha",
+    "finguard": ("bank statement", "statement check", "passbook", "paise kat", "paisa kat", "kat gaya", "double debit",
+                 "extra charge", "hidden charge", "credit card bill",   # wave 12: her statement went to the B2B bank integrator
+                 "emi", "loan", "karz", "qarz", "processing fee", "apr", "prepay", "foreclos", "snowball", "avalanche", "scam", "fraud", "dhokha",
                  "thagi", "fake call", "fake kyc", "kyc expire", "upi collect", "collect request", "ombudsman", "bank complaint", "bank charges",
                  "hidden charges", "sms charges", "min balance", "credit card charges", "paisa_sahayak", "otp maang", "otp mang", "digital arrest"),
     # v0.602 Vitt Sahayak (finance desk assists, Wave 2). Tight keys.
@@ -292,7 +294,11 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "kalam": ("kalam", "writer", "lekha"),
     "lekhak": ("lekhak", "anuvaad", "translate", "translation", "grammar", "application likh", "kruti", "affidavit",
                "अनुवाद", "आवेदन"),
-    "kitab": ("kitab", "book"),
+    "kitab": ("kitab", "kitaab", "ebook", "e-book", "novel", "book likh", "book likhni", "book publish", "book banao",
+              "apni book", "meri book"),   # wave 12: not a bare "book" ("cab book karo", "table book karo")
+    # wave 12: "mera phone slow hai" opened nothing (phone_doctor's only auto-key was "doctor")
+    "phonedoc": ("phone slow", "mobile slow", "phone hang", "hang ho raha", "hang hota", "phone garam", "battery jaldi",
+                 "battery drain", "battery khatam", "storage full", "phone ki jaanch", "phone check karo"),
     "podcast": ("podcast",),
     "telecall": ("telecall", "cold call", "call list"),
     "callcentre": ("call centre", "callcenter", "call center", "inbound", "outbound"),
@@ -398,17 +404,28 @@ _STOP = frozenset({
 _WORD_RE = re.compile(r"[a-z]{3,}")
 
 
+# wave 12: single words that are INSIDE other everyday words match as whole words only: "form" in "information" /
+# "performance", "edit" in "credit", "press" in "pressure" / "express" / "WordPress", "shoot" in "troubleshoot",
+# "clip" in "clipboard", "state" in "statement", "link" in "LinkedIn", "home" in "homework"
+_WHOLE_WORD = frozenset({"format", "form", "forms", "edit", "press", "shoot", "clip", "state", "link", "home", "page", "land",
+                         "book", "short", "doctor", "bank", "off"})
+
+
 def _hit(key: str, text: str) -> bool:
     """Short keys match on word boundaries only ('id' must not live inside 'video', 'app' not inside 'apple');
     longer keys stay substrings so 'mail' finds gmail and 'sheet' finds spreadsheet."""
-    if len(key) <= 3:
-        return re.search(r"\b" + re.escape(key) + r"\b", text) is not None
+    if len(key) <= 3 or key in _WHOLE_WORD:
+        return re.search(r"\b" + re.escape(key) + r"(?:s|es|ing|ed)?\b", text) is not None
     return key in text
 
 
 # v0.245 tags / name-words that are everyday words: never auto-keys ('make' loaded notebook + network + artifact,
 # 'search' / 'phone' / 'report' / 'print' loaded the PC tools, 'file' loaded Drive)
 _GENERIC = frozenset({
+    # wave 12: everyday words that were auto-keys of one family - "yeh link kholo" / "homework" opened smart home,
+    # "bank statement" the enterprise bank integrator, "doctor ka appointment" the phone doctor, "landing page" land
+    "page", "doctor", "land", "bank", "home", "off", "link", "state", "book", "press", "shoot", "short", "clip",
+    "release",
     "make", "file", "files", "life", "desk", "note", "notes", "report", "print", "phone", "search", "task", "entry",
     "photo", "video", "edit", "share", "export", "copy", "upload", "comments", "threads", "thread", "answer", "reply",
     "call", "docs", "doc", "sheet", "form", "event", "cancel", "settings", "sources", "studio", "plan", "office",
@@ -447,6 +464,16 @@ def _auto_keys() -> dict[str, set[str]]:
 
 
 _AUTO = _auto_keys()
+
+# wave 12: EXTRA_KEYS entries that named families with no tools were dropped in silence ("blog likho", "instagram pe post
+# karo", "credit card bill" reached nothing) - folded into the family that really does the work; truly dead ones removed
+_REHOME = {"website": "site", "content": "kalam", "social": "kalam", "loan": "finguard", "salamat": "society"}
+for _old, _new in _REHOME.items():
+    if _old in EXTRA_KEYS and _new in set(FAMILY_OF.values()):
+        EXTRA_KEYS[_new] = tuple(dict.fromkeys(tuple(EXTRA_KEYS.get(_new, ())) + tuple(EXTRA_KEYS.pop(_old))))
+for _dead in [f for f in list(EXTRA_KEYS) if f not in set(FAMILY_OF.values())]:
+    log.info("admit: keyword family %s has no tools - its keys are dropped", _dead)
+    EXTRA_KEYS.pop(_dead, None)
 
 
 class AdmitSet:

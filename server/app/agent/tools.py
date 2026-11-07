@@ -1425,6 +1425,20 @@ DIET_STATS["raw_chars"] = _diet_size(_RAW_SPECS)
 # used, an AI agent can't be expected to do better." Renaming / merging the tools would touch every prompt, voice list
 # and saved procedure, so the lanes are drawn in the descriptions instead - first, so no cap can ever cut them.
 TOOL_LANES: dict[str, str] = {
+    # wave 12: overlapping tools with no rule between them - the model picked at random
+    "add_calendar_event": "LANE: an event on HER PHONE's own calendar (no Google sign-in needed). Her GOOGLE Calendar (shared, "
+                          "invites, Meet link, seen on every device) -> calendar_add_event. Only a reminder to ring -> "
+                          "create_reminder.",
+    "calendar_add_event": "LANE: an event on her GOOGLE Calendar (invites, Meet link, every device). Google not connected or "
+                          "she means the phone's own calendar -> add_calendar_event.",
+    "scrape": "LANE: the DEFAULT way to read a public web page (it escalates past blocks by itself). One known link and a "
+              "plain page -> open_website is fine; clicks / forms / login -> browse_web; many links of a site -> scrape_map; "
+              "a search -> google_search.",
+    "scrape_page": "LANE: one page's text when scrape is not needed (no block expected). The default reader is scrape.",
+    "reach": "LANE: a page or a search with its sources and backend shown (the disciplined envelope) when you need to SAY "
+             "where it came from. Plain reading -> scrape; a plain search -> google_search.",
+    "kgmemory": "LANE: the knowledge GRAPH of people / companies and how they relate (who is whose supplier). A plain fact "
+                "to keep -> remember; finding anything she told you -> yaad_khojo.",
     # v0.449 maps: a KIND of place -> maps_nearby; a NAMED place -> maps_search; one place's details -> maps_place
     "maps_search": "LANE: a place you can NAME ('Haldiram Nagpur', 'Akola station', a particular shop). A CATEGORY "
                    "near somewhere ('chemist', 'petrol pump', 'hardware shop') -> maps_nearby, which ranks by real "
