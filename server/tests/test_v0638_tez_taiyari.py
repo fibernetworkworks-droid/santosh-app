@@ -126,6 +126,9 @@ def test_v0644_call_memory_skips_yaad_by_default(monkeypatch):
     monkeypatch.setattr(yaad, "turn_block", lambda *a, **k: called.append(1) or "YAAD")
     monkeypatch.setattr(kaamwatch, "block", lambda *a, **k: "KAAM")
     monkeypatch.setattr(_coder.inject, "turn_block", lambda *a, **k: "")
+    from app import events, kaamlist   # v0.648 / v0.650 parts of the same read, quiet here: this test pins the yaad skip
+    monkeypatch.setattr(kaamlist, "brief", lambda *a, **k: "")
+    monkeypatch.setattr(events, "cards_block", lambda *a, **k: "")
     from app.config import Settings
     assert Settings.model_fields["voice_brain_yaad"].default is False
     out = asyncio.run(santosh._brain_memory("t", "c", "x", types.SimpleNamespace(voice_brain_memory_s=1.0)))

@@ -1112,10 +1112,13 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
     from .. import kaamlist as _kaamlist
     # v0.648 KAAM KA HISAAB: what finished this week (two small queries), so "kal jo kaam diya tha" needs no extra step
     parts.append(("kiya", lambda: _kaamlist.brief(tenant_id, conversation_id)))
+    from .. import events as _events_cb
+    # v0.650 JAWAB MIL GAYA: the cards that really still wait for her (a tapped card is never asked about again)
+    parts.append(("cards", lambda: _events_cb.cards_block(tenant_id)))
     from .. import callconv as _callconv
-    if _callconv.is_call(conversation_id):
-        # v0.646 ALAG CALL, EK YAAD: a call on its own record still knows what she just wrote in the chat she called from
-        parts.append(("chat", lambda: _callconv.chat_block(conversation_id)))
+    # v0.646 ALAG CALL, EK YAAD: a call on its own record still knows what she just wrote in the chat she called from
+    # (chat_block itself says "" for a plain chat - checked in its thread, never a DB read on the event loop, v0.650)
+    parts.append(("chat", lambda: _callconv.chat_block(conversation_id)))
     if getattr(settings, "voice_brain_yaad", False):
         # v0.644 off by default: on EVERY call ask since v0.638 the diary / facts read missed its wait (17:25, 17:34, 17:44,
         # 17:51 - "yaad not ready in 2.5s"), so each ask paid the full wait for nothing; old memory stays one

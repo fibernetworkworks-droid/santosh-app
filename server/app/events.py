@@ -449,6 +449,22 @@ def waiting_cards(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
     return out
 
 
+def cards_block(tenant: str, limit: int = 8) -> str:
+    """v0.650 JAWAB MIL GAYA: for a call's brain turn - the cards that REALLY still wait for her (their own latest
+    state). An earlier "card bheja, approve kijiye" line in the history is no proof: a card she already tapped is not
+    here, so the brain never asks her to tap it again."""
+    try:
+        ws = waiting_cards(tenant, limit)
+    except Exception:
+        return ""
+    if not ws:
+        return ("CARDS: abhi koi card uski haan ke intezaar mein NAHI hai. Jo card pehle bheja tha uska jawab woh de "
+                "chuki hai - kisi card par tap / approve / bhejne ko mat kehna.")
+    rows = "\n".join(f"- {w['title']} ({w['kind']}, {w['age_h']} ghante se)" for w in ws)
+    return ("CARDS ABHI USKI HAAN KE INTEZAAR MEIN (live, from the cards themselves):\n" + rows +
+            "\nJo card is list mein NAHI hai uska jawab woh de chuki hai: use dobara tap karne ko mat kehna.")
+
+
 def notify(conversation_id: str, text: str, campaign_id: str | None = None) -> None:
     """A message from Santosh produced by the background worker (not by a chat turn)."""
     with session() as s:
