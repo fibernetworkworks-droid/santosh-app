@@ -116,12 +116,15 @@ def test_an_update_that_reads_like_the_old_fact_is_not_dropped_as_a_duplicate(en
 
 
 def test_a_pinned_fact_is_never_retired_by_an_update(env):
+    # v0.661 YAAD SAHI: still never RETIRED - her pinned fact is updated IN PLACE and stays pinned (before, the old
+    # value stayed beside the new one under 'ALWAYS keep in mind')
     from app import life, yaad
     pin = yaad.save_fact(T, "Reports hamesha Marathi mein banana", "auto")
     life.pin_fact(T, pin["id"], True)
     got = yaad.save_fact(T, "Reports ab English mein banana", "auto", replaces=[pin["id"]])
-    assert got["id"] and "replaced" not in got
-    assert "Reports hamesha Marathi mein banana" in _facts()                    # her 'hamesha yaad' is hers to change
+    assert got["id"] == pin["id"] and got["pinned"] and got["replaced"] == ["Reports hamesha Marathi mein banana"]
+    assert _facts().count("Reports ab English mein banana") == 1
+    assert "Reports hamesha Marathi mein banana" not in _facts()
 
 
 def test_extractor_update_retires_only_a_fact_it_was_shown(env, monkeypatch):
