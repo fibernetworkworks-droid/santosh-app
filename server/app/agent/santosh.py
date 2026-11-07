@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import random
 import re
 import time
@@ -32,6 +33,17 @@ log = logging.getLogger("santosh.agent")
 
 _client = None
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+_HOLDER: dict[str, str] = {}   # v0.665 who holds each chat's lock right now (owner / goal / wake / routine ...)
+
+
+@contextlib.asynccontextmanager
+async def _holding(lock: asyncio.Lock, conversation_id: str):
+    """The chat lock; who holds it is forgotten the moment it is released."""
+    async with lock:
+        try:
+            yield
+        finally:
+            _HOLDER.pop(conversation_id, None)
 # v0.187 the truth about the last finished turn of this conversation, for the voice call's late result
 # ({"outcome": done|partial|stuck|stopped|talk|continuing, "left": what remains, "goal": the goal line, "at": ts})
 LAST_OUTCOME: dict[str, dict] = {}
@@ -418,10 +430,37 @@ def _short(obj, limit: int = 6000) -> str:
                 if len(out) <= limit:
                     TRIM_STATS["lists"] += 1
                     return out
+        # v0.665 a dict whose bulk is ONE long string (a page / mail body) lost every key after it in the raw cut - the
+        # ids, the next-page cursor, the error / next hints - and the JSON broke. Long strings are shortened in place
+        # first, so every key survives and the JSON stays valid.
+        for cap in (3000, 1500, 600, 200):
+            slim = _slim_strings(obj, cap)
+            out = json.dumps(slim, ensure_ascii=False, default=str)
+            if len(out) <= limit:
+                TRIM_STATS["strings"] = TRIM_STATS.get("strings", 0) + 1
+                return out
     TRIM_STATS["cut"] += 1
     return (s[:limit] + f"…[cut: showing {limit:,} of {len(s):,} characters. For the rest ask for less - a filter, a "
             "search word, a smaller limit or the next page - or save big data with data_fetch and read it with "
             "data_read.]")
+
+
+def _slim_strings(obj, cap: int, depth: int = 0):
+    """Every string longer than `cap` cut to its head + how much was left out (lists slimmed to 12 too)."""
+    if depth > 8:
+        return obj
+    if isinstance(obj, str):
+        if len(obj) <= cap:
+            return obj
+        return obj[:cap] + f"…[{len(obj) - cap:,} more characters cut; ask for this part alone to read the rest]"
+    if isinstance(obj, dict):
+        return {k: _slim_strings(v, cap, depth + 1) for k, v in obj.items()}
+    if isinstance(obj, list):
+        items = [_slim_strings(v, cap, depth + 1) for v in obj[:12]]
+        if len(obj) > 12:
+            items.append(f"…[{len(obj) - 12} more items left out - ask for fewer / the next page]")
+        return items
+    return obj
 
 
 def _slim_lists(obj, keep: int, depth: int = 0):
@@ -2252,7 +2291,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     _steer_e = None
     if VOICE_BRAIN_NOW.get() and lock.locked():
         log.info("call brain turn waits: this chat is busy with another turn (%s)", conversation_id)
-    if lock.locked() and (actor or "owner") == "owner" and not voice and not VOICE_BRAIN_NOW.get():
+    # v0.665 only a turn that is HERS (her own ask / her long job) may answer or take her new words early: a wake
+    # report or a routine holding the chat used to swallow them (steer.take has no actor check) and her own turn
+    # returned "" and never ran - now she simply waits her turn behind it, like a queued message
+    _holder = _HOLDER.get(conversation_id, "owner")
+    if lock.locked() and (actor or "owner") == "owner" and not voice and not VOICE_BRAIN_NOW.get() \
+            and _holder in ("owner", "goal"):
         # v0.657 a call's brain ask never takes the no-tools quick lane (it answered "kaam chal raha hai" without
         # tools); the call sends a second ask to its own side record instead (voice.Call._delegate)
         # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
@@ -2264,7 +2308,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if steer_on:   # v0.223 the instruction reaches the RUNNING job at its next step (agent.steer)
             from . import steer as _steer
             _steer_e = _steer.offer(conversation_id, user_text, client_id)
-    async with lock:
+    async with _holding(lock, conversation_id):
         if _steer_e is not None:
             from . import steer as _steer
             if _steer.claim(conversation_id, _steer_e):
@@ -2274,6 +2318,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             return ""
         if client_id:
             _active_msg[conversation_id] = client_id   # v0.173 this message's turn runs now (take-back refuses it)
+        _HOLDER[conversation_id] = (actor or "owner") if not str(actor or "").startswith("approved:") else "owner"
         _mark("lock")
         _t_lock = time.time()
         notes = _pending_worker_notes(conversation_id)

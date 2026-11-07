@@ -54,8 +54,10 @@ def fmt_local(dt: datetime, tz: ZoneInfo) -> str:
     return f"{day} {d.strftime('%I:%M %p').lstrip('0')}"
 
 
-def next_due(due: datetime, repeat: str, tz: ZoneInfo) -> datetime | None:
-    """Next occurrence after `due`, keeping the same local clock time."""
+def next_due(due: datetime, repeat: str, tz: ZoneInfo, anchor_day: int | None = None) -> datetime | None:
+    """Next occurrence after `due`, keeping the same local clock time.
+    v0.665 `anchor_day`: a monthly repeat's own day (the 31st stays the 31st where the month has one; it used to clamp
+    from the PREVIOUS due date, so Jan 31 -> Feb 28 -> Mar 28 -> the 28th for ever)."""
     if repeat == "none":
         return None
     if repeat == "hourly":
@@ -71,7 +73,7 @@ def next_due(due: datetime, repeat: str, tz: ZoneInfo) -> datetime | None:
             nxt += timedelta(days=1)
     elif repeat == "monthly":
         y, m = (local.year + (local.month // 12), local.month % 12 + 1)
-        d = min(local.day, calendar.monthrange(y, m)[1])
+        d = min(int(anchor_day or local.day), calendar.monthrange(y, m)[1])
         nxt = local.replace(year=y, month=m, day=d)
     else:
         return None
@@ -351,3 +353,10 @@ def active_routines(tenant_id: str) -> list[dict]:
         rows = s.scalars(select(Routine).where(Routine.tenant_id == tenant_id, Routine.status == "active")
                          .order_by(Routine.next_run)).all()
         return [routine_view(r, tz) for r in rows]
+
+
+def anchor_of(due: datetime, repeat: str, tz: ZoneInfo) -> int | None:
+    """v0.665 the day of the month a monthly repeat keeps (None for any other repeat)."""
+    if repeat != "monthly" or due is None:
+        return None
+    return as_utc(due).astimezone(tz).day

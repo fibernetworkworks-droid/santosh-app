@@ -2028,3 +2028,13 @@ Work: v0.664.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest
 Dobara / edit / form answers on the turn inbox (TurnInbox.actor), pre-lock replies out of history, stop never parallel,
 channel replies advanced after send, reminders advanced before said. 10 new tests.
 Not verified: live. Waves 7-8 wait for her GO.
+
+---
+Task ID: v0665-sahi-jagah
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 7" = second audit items 24-31 (wrong place / inconsistent).
+Work: v0.665.0 SAHI JAGAH - channel chats never current, call-set reminders/routines on the chat, deleted-chat re-home,
+bazar reminders spoken + rung + day kept, monthly anchor_day, lock holder gates steering, honest recovery wording,
+strings slimmed in tool results. 8 new tests.
+Not verified: live. Wave 8 (smoothness on screen) waits for her GO.

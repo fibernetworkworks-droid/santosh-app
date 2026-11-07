@@ -1419,15 +1419,26 @@ def _advance(r: Reminder) -> None:
     step = {"daily": dt.timedelta(days=1), "weekly": dt.timedelta(days=7)}.get(r.repeat)
     if step:
         r.due_at += step
-    elif r.repeat == "monthly":
-        m = r.due_at.month % 12 + 1
-        y = r.due_at.year + (r.due_at.month == 12)
-        r.due_at = r.due_at.replace(year=y, month=m, day=min(r.due_at.day, 28))
-    elif r.repeat == "yearly":
-        try:
-            r.due_at = r.due_at.replace(year=r.due_at.year + 1)
-        except ValueError:
-            r.due_at = r.due_at.replace(year=r.due_at.year + 1, day=28)
+    elif r.repeat in ("monthly", "yearly"):
+        # v0.665 the bill due on the 31st keeps the 31st (it was clamped to the 28th for ever); a 29 Feb birthday keeps
+        # 29 Feb in a leap year. The anchor lives in meta (no new column on bz_reminders).
+        import calendar
+        meta = dict(r.meta or {})
+        day = int(meta.get("day") or r.due_at.day)
+        month0 = int(meta.get("month") or r.due_at.month)
+        meta.update({"day": day, "month": month0})
+        r.meta = meta
+        nowu0 = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
+        d = r.due_at
+        while True:
+            if r.repeat == "monthly":
+                y, m = d.year + (d.month == 12), d.month % 12 + 1
+            else:
+                y, m = d.year + 1, month0
+            d = d.replace(year=y, month=m, day=min(day, calendar.monthrange(y, m)[1]))
+            if d > nowu0:              # catch up after downtime: once, never a backlog
+                break
+        r.due_at = d
     else:
         r.done = True
     # never fire a backlog after downtime: jump daily/weekly repeats past "now"
@@ -1441,17 +1452,35 @@ ICON = {"bill": "Bill yaad dilana", "medicine": "Dawai ka samay", "birthday": "A
 
 
 def fire_due_reminders() -> int:
+    """v0.665 a medicine / bill / birthday reminder behaves like a Hoola reminder: a live call SAYS it (the 'reminder'
+    event), no call = her phone rings, a late one (downtime) is said as late and never rings at night. It used to be a
+    chat line only. Advanced (committed) before it is said, so a crash never says it twice."""
     nowu = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)
     fired = []
     with session() as s:
         rows = s.scalars(select(Reminder).where(Reminder.done.is_(False), Reminder.due_at <= nowu).limit(50)).all()
         for r in rows:
             conv = latest_conversation(s, r.user_id)
-            fired.append((conv, f"{ICON.get(r.kind, 'Yaad dilana')}: {r.text}"))
+            fired.append((conv, r.user_id, r.id, r.kind, r.text, r.due_at))
             _advance(r)
-    for conv, text in fired:
-        if conv:
-            notify(conv, text)
+    from .. import worker as _w
+    from ..events import bus as _bus
+    for conv, tenant, rid, kind, text, due in fired:
+        if not conv:
+            continue
+        head = ICON.get(kind, "Yaad dilana")
+        due_u = due.replace(tzinfo=dt.timezone.utc) if due.tzinfo is None else due
+        late = _w._late_by(due_u) >= _w.REMINDER_LATE_S
+        if late:
+            notify(conv, f"{head} (der se - yeh {_w._local_hhmm(tenant, due_u)} ka tha, us waqt main band tha): {text}")
+        else:
+            notify(conv, f"{head}: {text}")
+        try:
+            _bus.publish(conv, "reminder", {"id": f"bz:{rid}", "text": f"{head}: {text}", **({"late": True} if late else {})})
+            if not (late and _w._quiet_now(tenant)):
+                _w._ring_for_reminder(tenant, conv, f"bz:{rid}", f"{head}: {text}")
+        except Exception:
+            log.exception("bazar reminder voice / ring failed")
     return len(fired)
 
 

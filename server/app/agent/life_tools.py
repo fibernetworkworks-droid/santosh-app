@@ -108,6 +108,18 @@ LIFE_LABELS = {
 SENSITIVE = ("password", "passcode", "otp", "pin ", "cvv", "card number")   # ID numbers go to the Pehchaan Locker (v0.75)
 
 
+
+def _home(ctx) -> str:
+    """v0.665 the chat a reminder / routine / briefing belongs to. Set on a split voice call, ctx.conversation_id is the
+    call RECORD (hidden from her chat list), so every daily run and every 'yaad dila raha hoon' landed where she never
+    looks; it belongs to the chat the call came from."""
+    conv = getattr(ctx, "conversation_id", "") or ""
+    try:
+        from .. import callconv
+        return callconv.chat_of(conv) or conv
+    except Exception:   # noqa: BLE001
+        return conv
+
 def _publish_reminders(ctx: Ctx) -> None:
     bus.publish(ctx.conversation_id, "reminders", {"reminders": life.upcoming_reminders(ctx.tenant_id)})
 
@@ -150,7 +162,7 @@ async def create_reminder(ctx: Ctx, text, when=None, repeat="none", in_minutes=N
                             "If she said 'X minute / ghante baad', call again with in_minutes=X; else ask her the time.")
     repeat = repeat if repeat in life.REPEATS else "none"
     with session() as s:
-        r = Reminder(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id, text=text[:500], due_at=due, repeat=repeat)
+        r = Reminder(tenant_id=ctx.tenant_id, conversation_id=_home(ctx), text=text[:500], due_at=due, repeat=repeat)
         s.add(r)
         s.flush()
         view = life.reminder_view(r, tz)
@@ -208,7 +220,7 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
         r_at = s_utc - timedelta(minutes=int(remind_minutes_before))
         if r_at > now():
             with session() as s:
-                s.add(Reminder(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id,
+                s.add(Reminder(tenant_id=ctx.tenant_id, conversation_id=_home(ctx),
                                text=f"{title} ({int(remind_minutes_before)} min mein)", due_at=r_at))
             _publish_reminders(ctx)
             out["reminder_at"] = life.fmt_local(r_at, tz)
@@ -369,7 +381,7 @@ async def set_profile(ctx: Ctx, name=None, city=None, language=None, timezone=No
                 except Exception:
                     raise ToolError("briefing_time must be HH:MM, e.g. 07:30, or 'off'")
                 p.briefing_time = f"{hh:02d}:{mm:02d}"
-                p.briefing_conversation_id = ctx.conversation_id
+                p.briefing_conversation_id = _home(ctx)
                 p.last_briefing_date = None
         return {"name": p.name, "city": p.city, "language": p.language, "timezone": p.timezone,
                 "briefing_time": p.briefing_time}
@@ -396,7 +408,7 @@ async def create_routine(ctx: Ctx, title, instruction, first_run, repeat="daily"
                                                                      Routine.status == "active")) or 0
         if n >= MAX_ROUTINES:
             raise ToolError(f"The user already has {n} automatic jobs (limit {MAX_ROUTINES}). Ask which one to stop first.")
-        r = Routine(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id, title=title[:200],
+        r = Routine(tenant_id=ctx.tenant_id, conversation_id=_home(ctx), title=title[:200],
                     instruction=instruction[:2000], next_run=due, repeat=repeat)
         s.add(r)
         s.flush()

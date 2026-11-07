@@ -177,6 +177,24 @@ async def pump_simulated_statuses() -> None:
             camp.publish_campaign(cid)
 
 
+def _home_conv(s, tenant: str, conv: str) -> str:
+    """v0.665 the chat a reminder / routine / briefing should speak in: its own, unless that chat was deleted or is a
+    call record - then the chat she is in now (never '' when she has any chat)."""
+    from .db import Conversation
+    c = s.get(Conversation, conv) if conv else None
+    if c is not None and not c.deleted and (c.kind or "") != "call":
+        return conv
+    if c is not None and (c.kind or "") == "call" and c.origin_conv:
+        o = s.get(Conversation, c.origin_conv)
+        if o is not None and not o.deleted:
+            return o.id
+    try:
+        from . import convs
+        return convs.current(tenant) or conv
+    except Exception:   # noqa: BLE001
+        return conv
+
+
 async def fire_reminders() -> None:
     from . import life
     from .db import Reminder
@@ -194,10 +212,14 @@ async def fire_reminders() -> None:
             r = s.get(Reminder, rid)
             if r is None or r.status != "active" or r.due_at != due_at:
                 continue
-            nxt = life.next_due(r.due_at, r.repeat, tz)
+            home = _home_conv(s, tenant, conv)    # v0.665 a deleted chat / a call record -> the chat she is in
+            if home and home != conv:
+                r.conversation_id = conv = home
+            anchor = r.anchor_day or life.anchor_of(r.due_at, r.repeat, tz)
+            nxt = life.next_due(r.due_at, r.repeat, tz, anchor)
             while nxt is not None and nxt <= now():      # catch up after downtime without spamming
-                nxt = life.next_due(nxt, r.repeat, tz)
-            vals = {"fired_count": (r.fired_count or 0) + 1}
+                nxt = life.next_due(nxt, r.repeat, tz, anchor)
+            vals = {"fired_count": (r.fired_count or 0) + 1, "anchor_day": anchor}
             vals.update({"status": "done"} if nxt is None else {"due_at": nxt})
             got = s.execute(update(Reminder).where(Reminder.id == rid, Reminder.status == "active",
                                                    Reminder.due_at == due_at).values(**vals))
@@ -305,6 +327,9 @@ async def morning_briefings() -> None:
                 continue
             p = s.get(Profile, tenant)
             p.last_briefing_date = today   # mark first, so a slow weather call never sends it twice
+            home = _home_conv(s, tenant, conv)   # v0.665 a deleted chat / a call record -> the chat she is in
+            if home != conv:
+                p.briefing_conversation_id = conv = home
         text = await life.compose_briefing(tenant)
         notify(conv, text)
         bus.publish(conv, "briefing", {"text": text, "date": today})
@@ -325,9 +350,10 @@ async def run_routines() -> None:
         jobs = []
         for r in due:
             tz = life.tz_of(r.tenant_id)
-            nxt = life.next_due(r.next_run, r.repeat, tz)
+            r.anchor_day = r.anchor_day or life.anchor_of(r.next_run, r.repeat, tz)   # v0.665 the 31st stays the 31st
+            nxt = life.next_due(r.next_run, r.repeat, tz, r.anchor_day)
             while nxt is not None and nxt <= now():   # after downtime run once, not once per missed slot
-                nxt = life.next_due(nxt, r.repeat, tz)
+                nxt = life.next_due(nxt, r.repeat, tz, r.anchor_day)
             r.run_count += 1
             r.last_run = now()
             if nxt is None:
@@ -335,6 +361,11 @@ async def run_routines() -> None:
             else:
                 r.next_run = nxt
             if s.get(Conversation, r.conversation_id):
+                # v0.665 a routine in a chat she deleted (or a call record) kept spending model calls into a chat she
+                # can never see: it moves to the chat she is in, once, and keeps running there
+                home = _home_conv(s, r.tenant_id, r.conversation_id)
+                if home and home != r.conversation_id:
+                    r.conversation_id = home
                 jobs.append((r.id, r.tenant_id, r.conversation_id, r.title, r.instruction))
     for rid, tenant, conv, title, instruction in jobs:
         prompt = (f'[Automatic job "{title}" is running now at its scheduled time. The user is not in the chat and '

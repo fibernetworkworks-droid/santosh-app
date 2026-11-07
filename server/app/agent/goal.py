@@ -764,6 +764,9 @@ def continue_now(tenant: str, conv: str) -> dict[str, Any] | None:
     return view
 
 
+_BOOT_AT = now()   # v0.665 this process's start (a goal that last moved before it lost its runner to a restart)
+
+
 def recover_tick() -> int:
     """v0.223 restart-proof long jobs: a goal still 'working' that nothing is running any more (the server restarted
     mid-round, or a round died) is picked up again - like Claude, a crash never silently throws the work away.
@@ -805,8 +808,14 @@ def recover_tick() -> int:
         _mutate(tenant, gid, bump)
         try:
             from ..db import Message
-            line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \
-                   f"({view['done']}/{view['total']} steps ho chuke)."
+            # v0.665 "server dobara chalu hua" only when it really restarted (the job last moved before this process
+            # began); a round that simply ended (a wake report, a cut turn) is said as what it is
+            if upd < _BOOT_AT:
+                line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \
+                       f"({view['done']}/{view['total']} steps ho chuke)."
+            else:
+                line = f"Aapka kaam \"{view['goal'][:80]}\" kuch der se ruka tha — wahin se aage badha raha hoon " \
+                       f"({view['done']}/{view['total']} steps ho chuke)."
             with session() as s:
                 s.add(Message(conversation_id=conv, role="assistant", content=line, display=line,
                               in_history=False, delivered_to_agent=True))

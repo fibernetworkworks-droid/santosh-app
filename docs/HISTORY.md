@@ -22285,3 +22285,26 @@ figure check still runs only on her own turns, not on background reports.
     and saving no longer says it twice, and two ticks can never both say it.
 
 Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the v0.663 code). NOT VERIFIED live.
+
+## v0.665.0 SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7")
+
+24. **An outside-channel chat is never "the chat she is in".** `bahar._turn` no longer marks it; `convs.mark` refuses a
+    channel chat and `convs.current` skips it (`bahar.chat_ids`). One Telegram message used to send every mail alert,
+    calendar nudge and browser-extension answer out on Telegram / WhatsApp, and open her app on that chat.
+25. **Set on a call, it belongs to the chat.** `life_tools._home(ctx)` (`callconv.chat_of`) for reminders, routines and the
+    morning briefing - they were bound to the hidden call record.
+26. **A deleted chat does not keep them.** `worker._home_conv`: a reminder, routine or briefing whose chat was deleted (or
+    is a call record) moves to the chat she is in, once, and keeps working there.
+27. **Medicine / bill / birthday reminders behave like Hoola reminders**: `bazar.fire_due_reminders` publishes the
+    `reminder` event (a live call says it), rings her (`worker._ring_for_reminder`), says a late one as late and never
+    rings it at night; monthly / yearly keep their day (meta day / month) and catch up once after downtime.
+28. **A monthly repeat keeps its own day.** `life.next_due(..., anchor_day)` + `life.anchor_of`; new nullable
+    `anchor_day` on reminders and routines, set on the first fire (31 Jan -> 28 Feb -> 31 Mar, not the 28th for ever).
+29. **A background turn never swallows her message.** `santosh._HOLDER` (who holds the chat lock, cleared by
+    `_holding`): the quick lane and steering run only when the holder is HER turn (owner / goal); behind a wake report
+    or a routine she waits her turn like a queued message.
+30. **"Server dobara chalu hua" only after a real restart** (`goal._BOOT_AT`); otherwise "kuch der se ruka tha".
+31. **A long string inside a tool result is shortened in place** (`santosh._slim_strings`) before any raw cut: every key
+    after a page / mail body (ids, cursor, error, next hints) survives and the JSON stays valid.
+
+Tests: NEW `test_v0665_sahi_jagah.py` (8). NOT VERIFIED live.

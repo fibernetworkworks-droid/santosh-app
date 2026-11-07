@@ -377,7 +377,8 @@ async def _turn(link_id: str, tenant: str, channel: str, text: str, msg_id: str)
             conv = c.id
             l.conversation_id = conv
     cid = f"{channel}:{msg_id}"[:64] if msg_id else ""
-    convs.mark(tenant, conv, "message")
+    # v0.665 a channel chat is NEVER "the chat she is in": marking it sent every mail alert, calendar nudge and browser
+    # answer out on Telegram / WhatsApp (forward_all forwards every new reply of this chat) and opened her app on it
     bus.publish(conv, "message", {"role": "user", "text": text, "source": channel, **({"client_id": cid} if cid else {})})
     ti = turn_inbox.accept(tenant, conv, text, False, CONTEXT.format(label=LABEL[channel]), cid)
     await _typing(link_id)
@@ -656,3 +657,14 @@ def teams_verify(auth_header: str, app_id: str, service_url: str) -> bool:
         return False
     su = str(claims.get("serviceurl") or claims.get("serviceUrl") or "")
     return not su or su.rstrip("/") == str(service_url or "").rstrip("/")
+
+
+def chat_ids(tenant: str) -> set:
+    """v0.665 the conversations that belong to her outside channels (never her 'current' chat)."""
+    try:
+        ensure_table()
+        with session() as s:
+            return {c for c in s.scalars(select(BaharLink.conversation_id).where(BaharLink.tenant_id == tenant)).all() if c}
+    except Exception:   # noqa: BLE001
+        log.debug("bahar chat ids failed", exc_info=True)
+        return set()
