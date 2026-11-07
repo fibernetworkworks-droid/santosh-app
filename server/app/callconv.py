@@ -84,6 +84,25 @@ def open_for(tenant: str, origin: str, call_id: str) -> str:
     return cid
 
 
+SIDE_PREFIX = "side:"
+
+
+def open_side(tenant: str, conv: str, call_id: str) -> str:
+    """v0.657 a SIDE record for a call: a second ask while the call's first ask is still running runs here (its own
+    lock, the same memory scope as the chat), instead of waiting behind the first - or getting a no-tools answer.
+    Hidden from the Calls list (call_id 'side:...'); what was asked and answered is copied into the call record."""
+    cid = open_for(tenant, conv, SIDE_PREFIX + (call_id or "")[:30])
+    try:
+        with session() as s:
+            c = s.get(Conversation, cid)
+            if c is not None:
+                c.title = "📞 Call (saath ka kaam)"
+    except Exception:
+        log.exception("side record title failed")
+    STATS["sides"] = STATS.get("sides", 0) + 1
+    return cid
+
+
 def save_summary(conv: str, text: str, seconds: float | None = None) -> None:
     """The call receipt's first line becomes the record's title + summary (the Calls list and the chat's memory)."""
     if not is_call(conv) or not text:
@@ -140,7 +159,8 @@ def recent(tenant: str, origin: str | None = None, limit: int = 20) -> list[dict
     """Her calls, newest first (the Calls list). `origin` = only calls from that chat."""
     with session() as s:
         q = select(Conversation).where(Conversation.tenant_id == tenant, Conversation.kind == "call",
-                                       or_(Conversation.deleted.is_(None), Conversation.deleted.is_(False)))
+                                       or_(Conversation.deleted.is_(None), Conversation.deleted.is_(False)),
+                                       or_(Conversation.call_id.is_(None), ~Conversation.call_id.like(SIDE_PREFIX + "%")))
         if origin:
             q = q.where(Conversation.origin_conv == origin)
         rows = s.scalars(q.order_by(Conversation.created_at.desc()).limit(max(1, min(limit, 200)))).all()

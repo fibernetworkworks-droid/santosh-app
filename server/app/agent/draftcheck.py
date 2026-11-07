@@ -48,6 +48,11 @@ _DONE = re.compile(
     r"|live\s*ho\s*ga(?:ya|yi|ye|i)|publish\s*(?:kar\s*d|ho\s*gay)|post\s*(?:kar\s*d|ho\s*gay)|schedule\s*kar\s*d"
     r"|book\s*ho\s*gay[ai]|confirm\s*ho\s*gaya|payment\s*ho\s*gay[ai]|transfer\s*kar\s*d|forward\s*kar\s*d"
     r"|reply\s*kar\s*d|bhej\s*(?:chuka|chuki|diya\s*gaya)|submit\s*kar\s*d|file\s*kar\s*d"
+    # v0.662 the common Hinglish forms the v0.654 list still missed ("order place ho gaya", "reminder set ho gaya",
+    # "meeting fix ho gayi", "mail chala gaya", "Rahul tak pahunch gaya", "appointment le liya")
+    r"|(?:place|transfer|set|fix|cancel|update|submit|schedule|save|send|deliver)\s*ho\s*gay[aie]"
+    r"|\b(?:chala\s*gaya|chali\s*gayi|chale\s*gaye)\b|pahunch\s*gay[aie]"
+    r"|(?:appointment|booking|slot|ticket|order)\s*le\s*l(?:iya|i|ee)\b"
     r"|\bi(?:'ve|\s+have)\s+(?:just\s+|already\s+)?(?:sent|booked|ordered|paid|posted|published|deleted|scheduled"
     r"|submitted|placed|forwarded|replied|emailed|messaged|cancelled|canceled|filed|transferred)\b"
     r"|\b(?:has|have)\s+(?:now\s+)?been\s+(?:sent|booked|ordered|paid|posted|published|deleted|scheduled|submitted"
@@ -211,6 +216,13 @@ def said_line(text: str) -> str:
     return SAID if _HINGLISH.search(text or "") else SAID_EN
 
 
+_PROMISE_REMIND = re.compile(r"(yaad\s*dila\s*(?:dunga|dungi|doonga|doongi|denge|deta|deti)|i'?ll\s+remind\s+you"
+                             r"|remind\s+you\s+(?:tomorrow|at|in|later))", re.I)
+NUDGE_PROMISE = ("[Sach ki jaanch] Tumne yaad dilane ka WAADA kiya, par koi reminder laga nahi hai - Hoola reminder ke bina "
+                 "kuch yaad nahi rakhta. Abhi create_reminder se sahi samay par laga do (phir batao kab ka laga), ya waada "
+                 "mat karo.")
+
+
 def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
     """Inside the turn, free: returns a nudge the first time the reply claims work that never ran. The second time
     it sets state['correct'] (added after the words she already read) and returns ''.
@@ -219,6 +231,13 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         # it already says it is not done - saying so again is the loop this check used to create
         STATS["quiet"] += 1
         return ""
+    if _PROMISE_REMIND.search(text or "") and not state.get("promise_nudged") \
+            and not any(str((c or {}).get("tool") or "").startswith(("create_reminder", "reminder")) for c in state.get("calls") or []):
+        # v0.662 "kal subah 9 baje yaad dila dungi" with NO reminder set = a promise nothing will keep (Hoola has no memory
+        # of promises outside a reminder). Once: set it now, or do not promise.
+        state["promise_nudged"] = True
+        STATS["promise_nudged"] = STATS.get("promise_nudged", 0) + 1
+        return NUDGE_PROMISE
     if not claims_done(text):
         return ""
     if not nothing_ran(state.get("calls")):

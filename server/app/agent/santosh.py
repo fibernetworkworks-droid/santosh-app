@@ -326,6 +326,25 @@ def _mark_failed(conversation_id: str) -> None:
             _FAILED.pop(k, None)
 
 
+_BG_ERR: dict[str, tuple[str, float]] = {}
+BG_ERROR_QUIET_S = 1800
+
+
+def _say_error(tenant_id: str, who: str, text: str) -> bool:
+    """v0.662 an outage (out of credit, the model down) used to post + push one error line PER background turn -
+    every routine, goal round and job report, each with a new ref. Her own turn always hears it; a background turn
+    says the same kind of error once per tenant per 30 minutes."""
+    if (who or "owner") == "owner":
+        return True
+    kind = re.sub(r"\(ref[^)]*\)|ref[:\s]*\w+|\d+", "", text or "").strip()[:80]
+    last = _BG_ERR.get(tenant_id)
+    if last and last[0] == kind and time.time() - last[1] < BG_ERROR_QUIET_S:
+        STATS_LONG["bg_errors_quiet"] = STATS_LONG.get("bg_errors_quiet", 0) + 1
+        return False
+    _BG_ERR[tenant_id] = (kind, time.time())
+    return True
+
+
 def turn_failed_since(conversation_id: str, since: float) -> bool:
     return _FAILED.get(conversation_id, 0.0) >= since
 
@@ -1120,6 +1139,52 @@ def _brain_pool():
     return p
 
 
+_BRAIN_CACHE: dict = {}
+_LATE_SAY = {"kaam": "kaam ki taaza haalat", "kiya": "is hafte ka kiya hua kaam", "cards": "baaki cards",
+             "chat": "chat ki haal ki baatein", "saar": "chat ka saar", "facts": "jude hue facts",
+             "coder": "coder notes", "yaad": "diary"}
+
+
+def _brain_keep(key, fut) -> None:
+    try:
+        if not fut.cancelled() and fut.exception() is None:
+            _BRAIN_CACHE[key] = (time.time(), fut.result() or "")
+    except Exception:
+        pass
+    if len(_BRAIN_CACHE) > 600:
+        for k in sorted(_BRAIN_CACHE, key=lambda k: _BRAIN_CACHE[k][0])[:300]:
+            _BRAIN_CACHE.pop(k, None)
+
+
+def _call_chat_saar(conversation_id: str, max_chars: int = 2200) -> str:
+    """v0.657 the chat's checkpoint for a call record's brain turn (head + the pending tail)."""
+    from .. import callconv as _cc
+    chat = _cc.origin_of(conversation_id)
+    if not chat:
+        return ""          # a plain chat's brain turn already reads its own checkpoint in its history
+    from . import compact as _compact
+    from .. import yaad as _y
+    cp = _compact.active(chat)
+    if cp and cp.get("summary"):
+        return "CHAT KA SAAR (checkpoint of the chat she called from - open work and promises):\n" + \
+            _y._clip_ends(cp["summary"], max_chars)
+    summ = _y.summary_block(chat)
+    return ("Chat ki purani baaton ka saar:\n" + _y._clip_ends(summ, max_chars)) if summ else ""
+
+
+def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
+    """v0.657 her facts by MEANING for this ask (an older preference / correction too), in the call's memory scope."""
+    if not (user_text or "").strip():
+        return ""
+    from .. import yaad as _y
+    from .. import callconv as _cc
+    from ..life import memory_facts, recent_facts
+    chat = _cc.chat_of(conversation_id)
+    shown = {f.id for f in memory_facts(tenant_id, recent_facts(), chat)}
+    rel = _y.relevant_facts(tenant_id, user_text, shown, top=6, conversation_id=chat)
+    return ("JUDE HUE FACTS (her own, by meaning for this ask):\n" + "\n".join(f"- {t}" for _, t in rel)) if rel else ""
+
+
 async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
     """v0.638 the memory block of a call's brain turn: diary/facts (yaad), the real job state (kaamwatch) and the coder
     primer read IN PARALLEL, waiting at most `voice_brain_memory_s` in all. A part that is not ready in time is left out
@@ -1141,6 +1206,11 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
     # v0.646 ALAG CALL, EK YAAD: a call on its own record still knows what she just wrote in the chat she called from
     # (chat_block itself says "" for a plain chat - checked in its thread, never a DB read on the event loop, v0.650)
     parts.append(("chat", lambda: _callconv.chat_block(conversation_id)))
+    # v0.657 a call record's brain turn reads the ORIGIN chat's checkpoint (open work, promises) - its own history is
+    # the call's few exchanges, so the chat's pending work never reached it - and her facts BY MEANING (an older
+    # standing preference / correction, not only the 15 newest facts in the prompt)
+    parts.append(("saar", lambda: _call_chat_saar(conversation_id)))
+    parts.append(("facts", lambda: _call_facts(tenant_id, conversation_id, user_text)))
     if getattr(settings, "voice_brain_yaad", False):
         # v0.644 off by default: on EVERY call ask since v0.638 the diary / facts read missed its wait (17:25, 17:34, 17:44,
         # 17:51 - "yaad not ready in 2.5s"), so each ask paid the full wait for nothing; old memory stays one
@@ -1161,12 +1231,21 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
             except Exception:
                 log.exception("call brain memory part %s failed", name)
                 continue
+            _BRAIN_CACHE[(conversation_id, name)] = (time.time(), txt or "")
             if txt:
                 out.append(txt)
         else:
             late.append(name)
-            t.add_done_callback(lambda f: f.exception() if not f.cancelled() else None)
+            # v0.657 the part finishes in its thread and is KEPT for the next ask (before, the next ask re-ran it)
+            t.add_done_callback(lambda f, k=(conversation_id, name): _brain_keep(k, f))
+            hit = _BRAIN_CACHE.get((conversation_id, name))
+            if name != "kaam" and hit and time.time() - hit[0] < 600 and hit[1]:
+                out.append(hit[1])        # a few minutes old is far better than nothing (job state never: it moves)
     if late:
+        # v0.657 never a silent gap: the brain is told what it does NOT have, so it checks instead of guessing
+        miss = [_LATE_SAY.get(n, n) for n in late]
+        out.append("(Yaad ka yeh hissa abhi load nahi hua: " + ", ".join(miss) + ". Inke baare mein sawaal ho to pehle "
+                   "tool se dekho - kaam ki haalat kaam_status se, purani baat yaad_khojo se; andaza mat lagao.)")
         STATS_PREP["memory_late"] = STATS_PREP.get("memory_late", 0) + 1
         from .. import looplag
         log.info("call brain memory: %s not ready in %.1fs, left out of this ask (shared pool queue %d)",
@@ -1881,10 +1960,15 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     return ""
 
 
+_STOP_AT: dict[str, float] = {}
+STOPPED_IN_PREP = "Theek hai, rok diya - is baar kuch shuru nahi kiya."
+
+
 def stop(conversation_id: str) -> None:
     """The owner tapped Stop: the running model call / tool call is cancelled at once (v0.91), nothing more runs,
     and an open goal of this chat is marked stopped (v0.187: Rokiye stops the goal, not just the turn)."""
     _stopped.add(conversation_id)
+    _STOP_AT[conversation_id] = time.time()   # v0.662 when: a Stop during a turn's preparation is no longer erased
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
                                           "label": "Roka gaya", "data": {}})
     try:
@@ -1971,7 +2055,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     if not usage.allowed(tenant_id, feature):
         text = usage.blocked_text(tenant_id)
         _mark_failed(conversation_id)
-        bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
+        if _say_error(tenant_id, who, text):
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
         return text
     _gender = persona(tenant_id)[1]
     # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.
@@ -2068,7 +2153,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     _steer_e = None
     if VOICE_BRAIN_NOW.get() and lock.locked():
         log.info("call brain turn waits: this chat is busy with another turn (%s)", conversation_id)
-    if lock.locked() and (actor or "owner") == "owner" and not voice:
+    if lock.locked() and (actor or "owner") == "owner" and not voice and not VOICE_BRAIN_NOW.get():
+        # v0.657 a call's brain ask never takes the no-tools quick lane (it answered "kaam chal raha hai" without
+        # tools); the call sends a second ask to its own side record instead (voice.Call._delegate)
         # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
         from . import quick
         steer_on = bool(getattr(settings, "agent_steer", True)) and not context
@@ -2089,6 +2176,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if client_id:
             _active_msg[conversation_id] = client_id   # v0.173 this message's turn runs now (take-back refuses it)
         _mark("lock")
+        _t_lock = time.time()
         notes = _pending_worker_notes(conversation_id)
         from . import quick as _quick
         notes += _quick.take_notes(conversation_id)
@@ -2202,6 +2290,14 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 _with_memory(history, block)
         _mark("memory")
         final_text = ""
+        if _STOP_AT.get(conversation_id, 0.0) >= _t_lock and (actor or "owner") == "owner":
+            # v0.662 she tapped Stop while this turn was preparing (saving, compaction, memory read): the discard below
+            # used to wipe it and the whole turn ran anyway. Nothing has run yet - say so and end the turn.
+            _stopped.discard(conversation_id)
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": STOPPED_IN_PREP, "source": "stop"})
+            _save(conversation_id, "assistant", [{"type": "text", "text": STOPPED_IN_PREP}], display=STOPPED_IN_PREP)
+            bus.publish(conversation_id, "typing", {"on": False})
+            return STOPPED_IN_PREP
         _stopped.discard(conversation_id)
         from .. import livereply
         # v0.191 a wake turn never streams into an already-open channel (a live call owns its own reply stream);
@@ -2230,9 +2326,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                              turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
-                                                     **_tag(live, True)})
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            if _say_error(tenant_id, who, final_text):
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                         **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         except Exception as e:
             log.exception("agent turn failed")
             _mark_failed(conversation_id)
@@ -2242,9 +2339,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                              turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
-                                                     **_tag(live, True)})
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            if _say_error(tenant_id, who, final_text):
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                         **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         finally:
             _ACKED.discard(conversation_id)   # v0.187 no ack after this turn for any reason
             try:   # v0.315 EK HI FILE: a document draft held for a fix that nobody replaced reaches her now

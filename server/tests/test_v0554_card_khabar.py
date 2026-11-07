@@ -99,7 +99,9 @@ def test_bus_publish_hands_cards_to_the_call():
     assert "_v.card_news(conversation_id, kind, payload, call)" in src
     assert '_sys.modules.get(__package__ + ".voice")' in src        # no voice import when no call can be live
     v = (ROOT / "app" / "voice.py").read_text()
-    assert 'VOICE_DIRECT.set("" if name == "santosh_kaam" else self.call_id)' in v
+    # v0.657: santosh_kaam marks its cards as the call's own brain ask ("kaam:<call>"): remembered for her tap, not
+    # told twice (the brain's own answer says it)
+    assert 'VOICE_DIRECT.set(f"kaam:{self.call_id}" if name == "santosh_kaam" else self.call_id)' in v
 
 
 def test_the_call_screen_shows_the_generic_card():

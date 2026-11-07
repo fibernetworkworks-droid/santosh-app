@@ -13,21 +13,25 @@ from .tools import Ctx, ToolError
 
 _ACTIONS = ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
             "live_start", "live_chunk", "live_stop", "live_get", "live_list",
-            "style", "vocab_add", "vocab_list", "vocab_remove"]
+            "style", "vocab_add", "vocab_list", "vocab_remove",
+            "export", "to_gyaan"]  # W4 grew actions (the newest-enum precedent)
 
 KAAN_TOOLS = [
     {"name": "kaan", "description": (
-        "Audio/video sun-kar likhawat (Whisper W0) + W1 diarize/minutes + W2 live captions + W3 styles/vocab. "
+        "Audio/video sun-kar likhawat (Whisper W0) + W1 diarize/minutes + W2 live captions + W3 styles/vocab "
+        "+ W4 exports/gyaan. "
         "transcribe: file_id + model (default small; turbo translate NAHI) + language + task transcribe|translate "
-        "-> text, segments (per-word timing); vocab=true (default) tenant ke shabd initial_prompt hint + fix_to "
-        "deterministic replacement lagata hai (note mein count). "
+        "(whisper X->English only) -> text, segments (per-word timing); vocab=true (default) tenant ke shabd "
+        "initial_prompt hint + fix_to deterministic replacement lagata hai (note mein count). "
         "vocab_add (term, fix_to khaali ya replacement) / vocab_list / vocab_remove. "
         "diarize: id YA file_id -> pauses se TURN kate hain (speaker pehchaan NAHI); names={\"1\": \"Gupta ji\"}. "
         "minutes: id -> turn stats, keywords, action CANDIDATES. "
-        "style: id + verbatim|clean|subtitles|minutes|social -> deterministic render, kuch generate nahi. "
+        "style: id + verbatim|clean|subtitles|minutes|social -> deterministic render. "
+        "export: id + fmt srt|vtt|txt|json -> deterministic caption/text export (read-only). "
+        "to_gyaan: id -> transcript ke apne shabd uski gyaan corpus mein (gyaan_khojo dhoondhega). "
         "live_start (model base) -> kl_ session; live_chunk (id + audio bytes) -> naye captions; "
         "live_stop (id, finalize_model) -> kn_ transcript; live_get/live_list. "
-        "status: gate, diarize, engine, ladder, styles, vocab, stored, privacy. Audio + text isi server par. "
+        "status: gate, engine, ladder, styles, vocab, exports, stored, privacy. Audio + text isi server par. "
         "Badi file santosh_kaam par chalti hai."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": _ACTIONS}, "file_id": {"type": "string"},
@@ -40,6 +44,8 @@ KAAN_TOOLS = [
                    "description": "style action: kaunsa deterministic render"},
          "term": {"type": "string", "description": "vocab_add/remove: kaunsa shabd"},
          "fix_to": {"type": "string", "description": "vocab_add: khaali = sirf hint; warna deterministic replacement"},
+         "fmt": {"type": "string", "enum": ["", "srt", "vtt", "txt", "json"],
+                 "description": "export: which format"},
          "vocab": {"type": "boolean", "description": "transcribe/live_start: tenant vocab lagana hai (default true)"},
          "finalize_model": {"type": "string", "enum": ["", "tiny", "base", "small", "medium", "large-v3"],
                             "description": "live_stop: khaali = captions se transcript; model naam = 10-min tak ka clean batch pass"},
@@ -113,6 +119,10 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return KS.vocab_list(ctx.tenant_id)
     if action == "vocab_remove":
         return KS.vocab_remove(ctx.tenant_id, str(a.get("term") or ""))
+    if action == "export":
+        return KS.export_transcript(ctx.tenant_id, str(a.get("id") or ""), str(a.get("fmt") or ""))
+    if action == "to_gyaan":
+        return KS.to_gyaan(ctx.tenant_id, str(a.get("id") or ""))
     raise ValueError(f"action '{action}' nahi pehchana: {', '.join(_ACTIONS)}")
 
 
@@ -128,7 +138,7 @@ async def _kaan(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
         raise ToolError("Diarize sirf owner ke liye (ya approved kaam) - yeh transcript par likhta bhi hai.")
     if action in ("live_get", "live_list") and actor not in ("owner",) and not actor.startswith("approved:"):
         raise ToolError("Live session ki jankari sirf owner ke liye (ya approved kaam).")
-    if action in ("vocab_add", "vocab_remove") and actor not in ("owner",) and not actor.startswith("approved:"):
+    if action in ("vocab_add", "vocab_remove", "to_gyaan") and actor not in ("owner",) and not actor.startswith("approved:"):
         raise ToolError("Vocab badalna sirf owner ke liye (ya approved kaam) - yeh tenant ka data likhta hai.")
     try:
         return await asyncio.to_thread(_sync, ctx, action, a)

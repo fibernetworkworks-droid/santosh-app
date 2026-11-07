@@ -1,3 +1,29 @@
+## v0.659.0 KAAN W4 — BOLI SE KITAAB (7 Nov 2026)
+
+Owner: "W4 (exports + translation + Gyaan unlock)" — Wave W4 of the kaan plan (W0 v0.601.0, W1 v0.613.0,
+W2 v0.619.0, W3 v0.639.0 all live before it; built as 0.656.0 — their KAAM DIKHE took 0.656.0, PAKKA KAAM took 0.657.0 and SAAF DIKHE took 0.658.0 while W4 sat built, REBASE PROTOCOL twice, all kept). Exports + the gyaan unlock + the translate proof,
+all deterministic, nothing invented (port law, inertness law, local-first).
+
+- **The exports** (`kaan/exports.py`, new): srt / vtt / txt / json as PURE serializations of a STORED
+  row — SRT/VTT cues are exactly the W3 subtitles lines (one code path, so captions and exports always
+  agree; word rows split on the W2 phrase rule, no-word rows wrap at 12 words, text-only rows get one
+  honest cue), timestamps hand-rolled with the rounding spill carried up, TXT is the stored text
+  verbatim, JSON is the full row with sort_keys (deterministic bytes). Unknown format refuses with the
+  full list; an empty row refuses honestly. Read-only, gate-free by the W1 law.
+- **to_gyaan**: the transcript's own words into her gyaan corpus via `gyaan.ingest.add_note` — the
+  content-hash ref makes it idempotent by construction (re-adding says "same", never a duplicate doc);
+  the import is lazy (kaan never loads gyaan unless used); nothing generated — `gyaan_khojo` finds it.
+- **Translate** was wired at W0 (schema enum → _sync → engine ladder, turbo refuses): W4 proves it
+  end-to-end with a captured engine, the row records task="translate", and the honesty is pinned —
+  whisper translates X→English ONLY; a stored row without audio cannot be re-translated.
+- **Gate map**: no new switch — export is a read (staff ok, customers out), to_gyaan writes tenant data
+  (owner/approved). Registry 606 UNCHANGED; the kaan actions enum grows 16 → 18 (+export/to_gyaan);
+  description inside the 1200-char diet (1190). status() carries the exports block.
+- Tests: NEW test_v0656_kaan_w4.py (18, zero network, zero torch). Neighbours green: kaan W3 23 + W2 18
+  + W1 20 + W0 25 (enum pins healed to the 18-action arithmetic). Ritual: version layer re-titled to
+  0.659.0 (+665) across two rebases, pubspec 0.659.0+665, CLAUDE.md + HISTORY + WORKLOG mirrors. New W4 strings English
+  per owner. NOT VERIFIED live: the first export + to_gyaan on the VPS — the bake block rides the deploy.
+
 ## v0.637.0 KAAN W3 — APNI BOLI (7 Nov 2026)
 
 Owner: "START" on the kaan plan + "ALWAYS SHOW RESULT IN ENGLISH" — Wave W3 of the WhisperAI feed.
@@ -22102,3 +22128,87 @@ Rename, Add to / Remove from starred, Delete; keyboard: arrows + Escape), the sa
 the project name in the workspace. Rename = NEW `PATCH /api/sites/{id}` {name} -> `service.rename` (1-80 chars, only the
 list name; pages, address and live site untouched). Delete = the existing server delete (a live site is taken off the
 internet first; confirm names that). Stars are this browser's choice (localStorage). Tests `test_v0655_kaam_dikhe.py` +3.
+
+## v0.660.0 CALL KI YAAD — Wave 2 of the deep flaw audit: call memory and smoothness (owner: "Wave 2 (call memory and smoothness): 3, 4, 13–18, 23 -- WORK ON IT NOW"; built as 0.658, their SAAF DIKHE took 0.658 and KAAN W4 0.659, all kept)
+
+3. **A split call started with no memory.** `yaad.voice_block` keyed every chat read (focus words, checkpoint,
+   summary, recent exchanges, facts' last ask) by the NEW call record. It now reads the chat behind it
+   (`_call_chat`) and merges the call record's own exchanges in. The call brain (`santosh._brain_memory`) gets two
+   new parallel parts: `saar` = the origin chat's checkpoint (head + pending tail, `_call_chat_saar`) and `facts` =
+   her facts by meaning for this ask (`_call_facts`).
+4. **The small brief cut off the pending work.** With `hard_cap` (voice_lean_tools) every part gets its share
+   (`yaad.SMALL_SHARES`); a checkpoint keeps its head AND its tail (`_clip_ends`), recent exchanges keep the newest
+   (`_clip_tail`).
+23. **Silent memory gaps on a call.** A part missing the 2.5 s wait is named to the brain ("check with kaam_status /
+    yaad_khojo, never guess") and its result is KEPT for the next ask (`_BRAIN_CACHE`, 10 min; the job state never,
+    it moves).
+13. **Check-ins kept Gemini billing.** `_still_working` tasks carry `_hoola_checkin` and `_busy()` ignores them.
+14. **A second ask waited behind the first, or got a no-tools answer.** A call brain turn never takes the quick lane;
+    `Call._run_conv` sends an ask to a hidden SIDE record (`callconv.open_side`, call_id `side:...`, same memory scope,
+    out of the Calls list, live under the call) when the call record is busy (2 sides max, then it queues);
+    `_copy_back` writes the side ask's words + answer into the call record once it is free; `_late_result` reads the
+    outcome of the conversation the job really ran in (`_conv_of`).
+15. **Two santosh_kaam calls in one turn ran her whole sentence twice.** The second carries only its own request
+    (`_kaam_said`, reset when her next turn ends).
+16. **Brain-made cards told twice.** santosh_kaam sets `VOICE_DIRECT = "kaam:<call>"`; `card_news` remembers such a
+    card in `_CARD_ASKED` (her tap still reaches the call) but does not inject a note - the brain's answer says it.
+17. **Results lost at the end of a call.** News handed to the audio queue is remembered (`_news_pushed`) and, with
+    hold notes (`_held_texts`, `_after_release`), saved for the next call by `_save_unsent`; the late-result callback
+    is attached BEFORE the first wait, so a hang-up inside it still keeps the result.
+18. **News cut into speech.** `_news_forced`: past the 25 s cap news still waits for a 0.7 s gap in her words and his
+    voice; at 3x the cap (a noisy line) it goes anyway, but never over his voice.
+
+Tests `test_v0660_call_yaad.py` 14. Pins updated: v0230 news cap timing, v0554 VOICE_DIRECT line. Pre-existing reds
+(stash-proven on 66aaed56): v108 `_reseed` fake, v086 x2, v0473 routes. NOT VERIFIED on a real call: the side-record
+ask, the parking saving, and Gemini's handling of the new brief order.
+
+## v0.661.0 YAAD SAHI — Wave 3 of the deep flaw audit: memory accuracy (owner: "GO")
+
+19. **Numbers.** `yaad._scrub` masked every 9+ digit run and `compact.scrub` every 10+, so "Sharma ji ka number
+    9876543210, order 4500012345" became ###### in the chat summary, the search index and call news. NEW
+    `pii.mask_sensitive` masks only what must never be kept - a Luhn-valid card, a Verhoeff-valid Aadhaar, a bank
+    account next to its word, a PAN, a CVV; both scrubs use it (the OTP/PIN/password-next-to-its-word rule stays).
+20. **Updates with a number.** `fact_ok` refused any 6+ digit run, so "Godown ab Plot 12, Chakan MIDC, Pune 410501" was
+    dropped and the old godown fact stayed; the rule is gone (pii.find still refuses card / Aadhaar / bank / PAN / OTP).
+21. **Pinned facts.** `retire_fact` never touches a pinned fact (still true), so an update left both values riding every
+    prompt. `yaad.update_pinned` now changes the pinned fact IN PLACE (stays pinned, old text on the chip and forgotten in
+    the other memories) from the extractor (`save_fact`) and from `remember replaces=`; `remember` also dedupes.
+22. **Across Sessions.** A standing preference / correction (`is_preference`) is saved global; replacing a fact also
+    retires its same-meaning copies in her other Sessions (`retire_copies`: normalised text or embedding >= 0.92, never
+    pinned, never incognito-born).
+24. **Search blind spot.** `_search` read the newest 5,000 rows and fenced afterwards; the fence + incognito now run in
+    the query. The diary's call-receipt LIKE scan is bounded to the diary's days.
+25. **Timing gates.** A second fact within `FACT_GAP_S` waits its turn instead of being dropped; a short line about
+    herself (mera / main / my...) is no longer skipped as "under 4 words".
+
+Tests `test_v0661_yaad_sahi.py` 9 (all fail on the old code). Pins moved to the new truth: v0217 (an order number
+stays, a card is masked), v0603 (a pinned fact is updated in place). NOT VERIFIED live: the copy-retire threshold on her
+real facts; no live memory quiz has been run on this version.
+
+## v0.662.0 KAAM SAAF — Wave 4 of the deep flaw audit: coworker polish (owner: "GO"; the last wave)
+
+29. **Worker slots.** `tick()` awaited ~30 slots in a row with no guard; a recurring exception in an early slot skipped
+    every later one (reminders, follow-ups, research) on every tick. Each slot now runs in `worker._slot` (logged once a
+    minute per slot, the rest still run).
+27. **Late reminders.** A reminder due during downtime fired whenever the server came back, worded as if on time, and
+    rang her phone (auto-starting a call) at any hour. 20+ min late (`REMINDER_LATE_S`) = "der se - yeh X ka tha", the
+    event carries `late`, and no ring in her night (22-08, `_quiet_now`).
+11. **Stop during preparation.** `_stopped.discard` ran after saving / compaction / memory, wiping a Stop tapped in those
+    seconds. `stop()` now stamps `_STOP_AT`; a Stop after the turn took the lock ends it before anything runs
+    (`STOPPED_IN_PREP`).
+26. **Dead Google sign-in.** The mail watch (60 s) and calendar alerts (120 s) asked Google for ever and nobody told
+    her. `google_auth._DEAD` keys the refusal to the refresh token: BACKGROUND watchers (`google_auth.BACKGROUND`, set by
+    `worker._slot`) wait 30 min -> 2 h -> 6 h; her own chat ask always tries again; a new sign-in (new token) goes at once;
+    she is told in her chat once a day that mail / meeting alerts have stopped.
+28. **Honesty check.** `draftcheck._DONE` gains "place / transfer / set / fix / cancel / update / submit / schedule / save
+    / send / deliver ho gaya", "chala gaya", "pahunch gaya", "appointment / booking / slot / ticket / order le liya"
+    (future forms stay honest); "yaad dila dungi" with no reminder tool this turn gets `NUDGE_PROMISE` once.
+10. **Stuck notice.** "Main dekh kar batata hoon" promised a check nothing made; the line now says what is known (and a
+    server restart since it last moved, `BOOT_AT`) and what she can say.
+9.  **Kaam list.** `kaamlist._is_work` drops routine / goal prompts and read-only questions; a task row whose turn
+    started a tracked job is left to the job's own row (no "ho gaya" beside "chal raha hai"); waiting cards are listed.
+30. **Spam + stale cards.** `santosh._say_error`: a background turn says the same error kind once per tenant per 30 min
+    (her own turn always); `events.cards_block` leaves out cards older than 3 days (`CARD_STALE_H`) and names them as old.
+
+Tests `test_v0662_kaam_saaf.py` 19 (17 fail on the old code); 320 older suites pass. NOT VERIFIED live: the Google
+backoff against her real dead sign-in, the late-reminder wording on a real restart.

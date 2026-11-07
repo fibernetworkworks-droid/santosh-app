@@ -242,7 +242,8 @@ def test_one_tool_registered_routed_and_labelled():
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
                     "live_start", "live_chunk", "live_stop", "live_get", "live_list",
-                    "style", "vocab_add", "vocab_list", "vocab_remove"]  # W3 grew actions  # W2 grew actions
+                    "style", "vocab_add", "vocab_list", "vocab_remove",
+                    "export", "to_gyaan"]  # W4 grew actions  # W3 grew actions  # W2 grew actions
     from app import voice
     assert voice.call_route("kaan") == "kaam" and "kaan" in voice.VOICE_VIA_KAAM
 

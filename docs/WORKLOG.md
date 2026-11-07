@@ -1,4 +1,12 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.659.0 KAAN W4 BOLI SE KITAAB (built as 0.656.0; their KAAM DIKHE took 0.656.0, PAKKA KAAM took 0.657.0 and SAAF DIKHE took 0.658.0 while W4 sat built - REBASE PROTOCOL twice, rebuilt fresh on their 2361b78a7 tip, all kept)
+Agent: main (kaan lane)
+Task: owner START "W4 (exports + translation + Gyaan unlock)" — Wave W4: deterministic exports, the gyaan unlock, the translate proof.
+Work Log: NEW server/app/kaan/exports.py (srt/vtt/txt/json pure serializations; SRT/VTT cues == the W3 subtitles lines, one code path; hand-rolled timestamps; sort_keys JSON; honest refusals); service.export_transcript + to_gyaan (add_note content-hash idempotent, lazy gyaan import) + status exports block; kaan_tools +export/+to_gyaan (enum 18, diet 1190, to_gyaan owner/approved); translate pinned end-to-end (W0 wiring, row records task, turbo refuses); test_v0656_kaan_w4.py 18 green + neighbours (kaan 86 total on the tree); ritual sweep 0.655.0 -> 0.659.0 (+665) across two rebases, pubspec 0.659.0+665, enum pins healed, APP_VERSION story, CLAUDE.md/HISTORY/WORKLOG mirrors.
+Stage Summary: pushed to main; deploy rides vps-ops; NOT VERIFIED live yet — first export + to_gyaan on the VPS waits for the owner's paste (single-line protocol).
+
+---
+
 Task ID: v0.637.0 KAHAN RUKA (built as 0.636.0)
 Agent: Claude Code (session_019P5N4aaNdxLca2Dui5D9om)
 Task: her 16:22 log - 18 s before the first Claude call on a voice brain turn; measure every stage, cut the obvious costs.
@@ -1955,3 +1963,39 @@ Work Log:
 - sidebar: Search, Starred, per-project menu (open / new tab / rename / star / delete), card + workspace menus; PATCH /api/sites/{id}
 - 11/11 Studio tests green (3 new incl. a slow fake turn in a real browser)
 Stage Summary: shipped v0.658.0 on top of their v0.657.0 (both kept)
+
+---
+Task ID: v0.660.0 CALL KI YAAD
+Agent: Claude (voice/task session)
+Task: owner "Wave 2 (call memory and smoothness): 3, 4, 13-18, 23 -- WORK ON IT NOW"
+Work Log:
+- yaad.voice_block reads the origin chat for a call record; small brief per-part shares + head/tail checkpoint
+- call brain: chat checkpoint + facts by meaning, late parts named + cached (job state never cached)
+- voice: check-in does not block parking, side records for a second ask, split santosh_kaam dedupe,
+  brain-made cards quiet but remembered, unsent news saved at call end, early late-result callback, news gap rule
+- tests: test_v0660_call_yaad.py 14; two old pins updated (v0230 news cap timing, v0554 VOICE_DIRECT line)
+Stage Summary: shipped v0.660.0 on top of their v0.659.0 KAAN W4 + v0.658.0 SAAF DIKHE (both kept); 4 older reds stash-proven pre-existing
+
+---
+Task ID: v0.661.0 YAAD SAHI
+Agent: Claude (voice/task session)
+Task: owner "GO" on Wave 3 of the deep audit (memory accuracy 19-22, 24, 25)
+Work Log:
+- pii.mask_sensitive replaces the blunt 9+/10+ digit masks in yaad._scrub + compact.scrub; fact_ok no longer refuses plain numbers
+- yaad.update_pinned / _pinned_ids / retire_copies / is_preference; save_fact + life_tools.remember use them; remember dedupes
+- _search fence + incognito in SQL; diary receipt scan bounded by days; extract_facts defers inside the gap, short self-facts kept
+- tests: test_v0661_yaad_sahi.py 9 (all fail on the old code); pins updated in v0217 (order id kept) + v0603 (pinned in place)
+Stage Summary: shipped v0.661.0 on top of v0.660.0; 2 older reds (v108 _reseed fake, v0473 routes) pre-existing
+
+---
+Task ID: v0.662.0 KAAM SAAF
+Agent: Claude (voice/task session)
+Task: owner "GO" on Wave 4 of the deep audit (coworker polish 9-11, 26-30) - the last wave
+Work Log:
+- worker._slot guard + google_auth.BACKGROUND around every slot; fire_reminders late path (REMINDER_LATE_S, _quiet_now)
+- santosh._STOP_AT / STOPPED_IN_PREP; _say_error dedupe for background turns
+- google_auth._DEAD backoff per refresh token (background only) + _note_dead once-a-day notice
+- draftcheck new _DONE forms + _PROMISE_REMIND / NUDGE_PROMISE; kaamwatch honest stuck line + BOOT_AT
+- kaamlist._is_work + job-start dedupe + waiting cards; events.waiting_cards max_age_h + CARD_STALE_H in cards_block
+- tests: test_v0662_kaam_saaf.py 19 (17 fail on the old code); 320 older passed
+Stage Summary: shipped v0.662.0 on top of v0.661.0; all four audit waves done

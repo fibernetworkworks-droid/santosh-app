@@ -242,17 +242,29 @@ async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
         raise ToolError(f"Isme {describe(found)} hai. Hoola yeh yaad nahi rakhta; password manager mein rakhiye.")
     if any(k in low for k in SENSITIVE):
         raise ToolError("This looks like a password, OTP, PIN or account/card number. Do not store it; tell the user to keep it in a password manager.")
+    from .. import yaad
+    conv = getattr(ctx, "conversation_id", "") or ""
+    if replaces not in (None, "", 0):
+        # v0.661 her PINNED fact changed: updated in place, stays pinned (before: the old pinned value stayed beside the new)
+        old = await asyncio.to_thread(yaad.update_pinned, ctx.tenant_id, replaces, fact, conv)
+        if old:
+            _mark_saved(conv)
+            await asyncio.to_thread(yaad.retire_copies, ctx.tenant_id, old, {int(replaces)})
+            return {"saved": True, "fact_id": int(replaces), "pinned": True, "replaced": old}
+    elif await asyncio.to_thread(yaad.is_dupe, ctx.tenant_id, fact):
+        # v0.661 'yaad rakhna X' twice = one fact, not two
+        return {"saved": True, "already_known": True, "note": "Yeh pehle se yaad hai."}
     with session() as s:
         m = MemoryFact(tenant_id=ctx.tenant_id, text=fact[:500])
         s.add(m)
         s.flush()
         fid = m.id
-    _mark_saved(getattr(ctx, "conversation_id", "") or "")
+    _mark_saved(conv)
     replaced = ""
-    if replaces not in (None, "", 0):   # v0.603 the update retires the outdated fact (never a pinned one)
-        from .. import yaad
-        replaced = await asyncio.to_thread(yaad.retire_fact, ctx.tenant_id, replaces,
-                                           getattr(ctx, "conversation_id", "") or "")
+    if replaces not in (None, "", 0):   # v0.603 the update retires the outdated fact
+        replaced = await asyncio.to_thread(yaad.retire_fact, ctx.tenant_id, replaces, conv)
+        if replaced:
+            await asyncio.to_thread(yaad.retire_copies, ctx.tenant_id, replaced, {fid})
     extra = {"replaced": replaced} if replaced else {}
     if pin:
         try:

@@ -16,6 +16,7 @@ from sqlalchemy import select
 from ..db import new_id, now, session
 from . import diarize as DI
 from . import engine as EN
+from . import exports as EX
 from . import live as LV
 from . import meeting as MT
 from . import styles as ST
@@ -220,6 +221,37 @@ def vocab_remove(tenant: str, term: str) -> dict[str, Any]:
     return VB.remove(tenant, term)
 
 
+# ---------------------------------------------------------------- W4 exports + gyaan
+def export_transcript(tenant: str, tid: str, fmt: str) -> dict[str, Any]:
+    """W4: deterministic SRT/VTT/TXT/JSON export of a stored transcript (read-only, gate-free by the W1 law)."""
+    with session() as s:
+        r = s.scalars(select(KaanTranscript).where(KaanTranscript.tenant_id == tenant, KaanTranscript.id == tid)).first()
+        if not r:
+            raise ValueError(f"Transcript {tid} not found (not this tenant's, or never created).")
+        d = _row(r)
+        d["segments"] = (r.segments or {}).get("items", []) if isinstance(r.segments, dict) else (r.segments or [])
+    return EX.render(fmt, d)
+
+
+def to_gyaan(tenant: str, tid: str) -> dict[str, Any]:
+    """W4: the transcript's own words into her gyaan corpus (idempotent by content; nothing generated)."""
+    with session() as s:
+        r = s.scalars(select(KaanTranscript).where(KaanTranscript.tenant_id == tenant, KaanTranscript.id == tid)).first()
+        if not r:
+            raise ValueError(f"Transcript {tid} not found (not this tenant's, or never created).")
+        d = _row(r)
+    text = (d.get("text") or "").strip()
+    if not text:
+        raise ValueError("This transcript is empty - there is nothing to put into gyaan.")
+    title = f"{d.get('file_name') or 'Transcript'} - {tid}"[:200]
+    from ..gyaan import ingest as GI          # lazy: the gyaan lane loads only when this action runs
+    out = GI.add_note(tenant, title, text)
+    note = (f"to_gyaan (W4): the transcript's own words are in her gyaan corpus "
+            f"(doc {out.get('doc_id')}, {out.get('chunks')} chunk(s), status {out.get('status')}) - "
+            "gyaan_khojo can find them now; nothing was generated.")
+    return {"tid": tid, "title": title, "gyaan": out, "note": note}
+
+
 # ---------------------------------------------------------------- W2 live captions
 def live_start(tenant: str, *, model: str = "", language: str = "", conversation_id: str = "",
                vocab: bool = True, fn: Any = None) -> dict[str, Any]:
@@ -280,6 +312,10 @@ def status(tenant: str) -> dict[str, Any]:
         "vocab": {"n_terms": VB.count(tenant),
                   "note": "W3 vocab: term = initial_prompt hint (soft); fix_to = deterministic replacement "
                           "(counted, named in the note). vocab_add/list/remove se chalta hai."},
+        "exports": {"formats": list(EX.FORMATS),
+                    "note": "W4 exports: deterministic SRT/VTT/TXT/JSON of a stored transcript (read-only, "
+                            "gate-free); to_gyaan puts the text in her gyaan corpus; task=translate: whisper "
+                            "translates X->English only (turbo can't)."},
         "ladder": [{"name": m["name"], "params": m["params"], "note": m["note"]} for m in EN.MODEL_LADDER],
         "stored": n,
         "privacy": "audio + transcript isi server par rehte hain; koi bahar API is path par nahi.",

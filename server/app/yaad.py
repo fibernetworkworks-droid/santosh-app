@@ -481,7 +481,8 @@ _MONEY = re.compile(r"(₹|rs\.?|inr|rupay?e?|rupees?)\s?\d|\d[\d,]*\s?(₹|rs\b
 def _scrub(t: str) -> str:
     from .agent.pakka import mask
     t = re.sub(r"\{id:[^}]*\}", "{id}", t or "")
-    t = re.sub(r"(?<!\d)\d{9,}(?!\d)", lambda m: "#" * 6, t)
+    from . import pii
+    t = pii.mask_sensitive(t)   # v0.661 only card / Aadhaar / bank / PAN - phone and order numbers stay
     return t if len(t) < 4000 else mask(t, 4000)
 
 
@@ -501,8 +502,11 @@ def fact_ok(text: str, sensitive: bool = False) -> str:
     from . import pii
     if pii.find(t):
         return "secret"
-    if "{id" in t or re.search(r"(?<!\d)\d{6,}(?!\d)", t):
+    if "{id" in t:
         return "number"
+    # v0.661 a plain number is NOT a secret: a PIN code, a phone, an order number ("godown ab Plot 12, Pune 410501")
+    # may be remembered - pii.find above already refuses a card / Aadhaar / bank account / PAN / OTP. Before, every
+    # 6+ digit run was refused, so an address or number UPDATE was dropped and the old fact stayed
     if _SECRET_WORDS.search(t):
         return "money_or_secret"
     if _MONEY.search(t):
@@ -538,6 +542,7 @@ FACT_SYSTEM = (
     "'Quotations: she wants GST shown as a separate line' - never the one-off detail of today's task.")
 _LAST_EXTRACT: dict[str, float] = {}
 FACT_GAP_S = 15
+_SELF_FACT = re.compile(r"\b(mera|meri|mere|main|mai|hum|hamara|hamari|i am|i'm|my|mujhe)\b", re.I)
 
 
 def _norm(t: str) -> str:
@@ -597,6 +602,74 @@ def retire_fact(tenant: str, fact_id: int, conversation_id: str = "") -> str:
     return text
 
 
+def update_pinned(tenant: str, fact_id: int, text: str, conversation_id: str = "") -> str:
+    """v0.661 her PINNED fact is updated IN PLACE when her own words change it ('office ab 9 baje khulta hai'):
+    it stays pinned, the old text is returned (and said on the chip). Before, the pinned fact could never be
+    retired, so the old value rode every prompt under 'ALWAYS keep in mind' beside the new one."""
+    try:
+        fid = int(fact_id)
+    except (TypeError, ValueError):
+        return ""
+    if conversation_id and fid not in {i for i, _ in _known(tenant, 2000, conversation_id)}:
+        return ""
+    with session() as s:
+        f = s.get(MemoryFact, fid)
+        if f is None or f.tenant_id != tenant or not f.pinned:
+            return ""
+        old = f.text
+        f.text = text.strip()[:480]
+    STATS["pinned_updated"] = STATS.get("pinned_updated", 0) + 1
+    forget_everywhere(tenant, old)
+    return old
+
+
+def _pinned_ids(ids: set[int]) -> set[int]:
+    if not ids:
+        return set()
+    with session() as s:
+        return set(s.scalars(select(MemoryFact.id).where(MemoryFact.id.in_(list(ids)), MemoryFact.pinned.is_(True))).all())
+
+
+def retire_copies(tenant: str, old_text: str, keep_ids: set[int] | None = None) -> list[str]:
+    """v0.661 when a fact is REPLACED, its copies in her other Sessions go too (the same outdated fact picked up in
+    another Session's chat): before, a correction in one chat left the old value alive in every other Session.
+    Same-meaning only (normalised text or a close embedding); never pinned, never incognito-born facts."""
+    n = _norm(old_text)
+    if len(n) < 8:
+        return []
+    from .fence import incognito_ids
+    hidden = incognito_ids(tenant)
+    with session() as s:
+        rows = s.scalars(select(MemoryFact).where(MemoryFact.tenant_id == tenant,
+                                                  MemoryFact.pinned.is_not(True))).all()
+        cands = [(r.id, r.text) for r in rows if r.id not in (keep_ids or set())
+                 and (r.conversation_id or "") not in hidden]
+    hits = {i for i, t in cands if _norm(t) == n}
+    from . import semantic
+    if semantic.available() and cands:
+        hits |= {i for i, _t, _sc in semantic.rank(old_text, cands, top=5, floor=0.92)}
+    gone = []
+    with session() as s:
+        for i in hits:
+            f = s.get(MemoryFact, i)
+            if f is not None and f.tenant_id == tenant and not f.pinned:
+                gone.append(f.text)
+                s.delete(f)
+    if gone:
+        STATS["copies_retired"] = STATS.get("copies_retired", 0) + len(gone)
+    return gone
+
+
+_PREFERENCE = re.compile(r"\b(she wants|she prefers|she likes|she does not want|she doesn't want|wants|prefers|"
+                         r"hamesha|kabhi (?:bhi )?mat|kabhi nahi|always|never|pasand|napasand|next time|aage se)\b", re.I)
+
+
+def is_preference(text: str) -> bool:
+    """v0.661 a standing preference / correction ('Quotations: she wants GST as a separate line') - hers in EVERY
+    Session, never fenced to the chat it was said in."""
+    return bool(_PREFERENCE.search(text or ""))
+
+
 def save_fact(tenant: str, text: str, source: str = "auto", conversation_id: str = "",
               replaces: list[int] | None = None) -> dict | None:
     """v0.246 `conversation_id` = the chat an AUTO fact was picked up in: it stays inside that chat's Session.
@@ -619,6 +692,17 @@ def save_fact(tenant: str, text: str, source: str = "auto", conversation_id: str
             old_ids.add(int(x))
         except (TypeError, ValueError):
             continue
+    pinned = _pinned_ids(old_ids)
+    if pinned:   # v0.661 her pinned fact changed: updated in place (stays pinned), the other outdated ones retire
+        first = sorted(pinned)[0]
+        old = update_pinned(tenant, first, text, conversation_id)
+        if old:
+            retired = [t for t in (retire_fact(tenant, i, conversation_id) for i in sorted(old_ids - {first})) if t]
+            retire_copies(tenant, old, {first})
+            return {"id": first, "text": text.strip()[:480], "replaced": [old] + retired, "pinned": True}
+        old_ids -= pinned
+    if conversation_id and source == "auto" and is_preference(text):
+        conversation_id = ""          # v0.661 a standing preference is hers everywhere (no Session fence)
     known = _known(tenant, conversation_id=conversation_id) if (conversation_id or old_ids) else None
     if known is not None and old_ids:
         known = [k for k in known if k[0] not in old_ids]
@@ -633,6 +717,8 @@ def save_fact(tenant: str, text: str, source: str = "auto", conversation_id: str
         STATS["facts_saved"] += 1
         out = {"id": row.id, "text": row.text}
     retired = [t for t in (retire_fact(tenant, i, conversation_id) for i in sorted(old_ids)) if t]
+    for t in list(retired):
+        retired += retire_copies(tenant, t, {out["id"]})
     if retired:
         out["replaced"] = retired
     return out
@@ -732,12 +818,17 @@ async def extract_facts(tenant: str, conversation_id: str, user_text: str, reply
     if not getattr(st, "memory_auto", True):
         return []
     words = len((user_text or "").split())
-    if words < 4:
-        return []
+    if words < 4 and not _SELF_FACT.search(user_text or ""):
+        return []                 # v0.661 a short line about herself ("Mera naam Riya", "Main vegetarian hoon") still counts
     last = _LAST_EXTRACT.get(tenant, 0)
-    if time.time() - last < FACT_GAP_S:
-        return []
-    _LAST_EXTRACT[tenant] = time.time()
+    wait = FACT_GAP_S - (time.time() - last)
+    if wait > 0:
+        # v0.661 a second fact inside the 15 s gap (common on a call) WAITS its turn instead of being dropped
+        _LAST_EXTRACT[tenant] = last + FACT_GAP_S
+        STATS["facts_deferred"] = STATS.get("facts_deferred", 0) + 1
+        await asyncio.sleep(min(wait, FACT_GAP_S))
+    else:
+        _LAST_EXTRACT[tenant] = time.time()
     from . import semantic
 
     def _near():
@@ -966,6 +1057,18 @@ def _search(tenant: str, query: str, top: int = 8, days: int | None = None, kind
             q = q.where(YaadItem.at >= since)
         if kinds:
             q = q.where(YaadItem.kind.in_(kinds))
+        # v0.661 the Session fence + incognito run IN the query: the 5,000 newest were read first and filtered after,
+        # so in a busy account an older memory of THIS Session (or any old one) fell outside the window - unfindable
+        # though the prompt promises "yaad_khojo finds anything older"
+        from .fence import chats_in as _ci, incognito_ids as _inc
+        _allowed = _ci(tenant, conversation_id) if conversation_id else None
+        if _allowed is not None:
+            q = q.where(YaadItem.conversation_id.is_(None) | (YaadItem.conversation_id == "")
+                        | YaadItem.conversation_id.in_(list(_allowed)))
+        if conversation_id:
+            _hid = _inc(tenant) - {conversation_id}
+            if _hid:
+                q = q.where(YaadItem.conversation_id.is_(None) | YaadItem.conversation_id.not_in(list(_hid)))
         rows = s.scalars(q.order_by(YaadItem.id.desc()).limit(5000)).all()
         items = [(r.id, r.kind, r.text, as_utc(r.at), r.ref, r.vec, r.conversation_id) for r in rows]
     if before_ref:
@@ -1123,6 +1226,7 @@ def diary(tenant: str, conversation_id: str = "", days: int = DIARY_DAYS) -> dic
             convs = [c for c in convs if c in allowed]
         if convs:
             rec = s.scalars(select(Message).where(Message.conversation_id.in_(convs), Message.role == "assistant",
+                                                  Message.created_at >= since,   # v0.661 a bounded scan, not every message ever
                                                   Message.display.is_not(None), Message.display != "")
                             .where(Message.content.cast(String).like("%[Call receipt]%"))
                             .order_by(Message.id.desc()).limit(CALLS_MAX)).all()
@@ -1436,25 +1540,53 @@ CALL_MAX_WITH_CHECKPOINT = 16000   # v0.244 a compacted chat's call brief (the c
 CALL_CHECKPOINT_CHARS = 6000       # the checkpoint's share of it (diary + facts after it must still fit)
 
 
+def _clip_tail(t: str, n: int) -> str:
+    """Keep the END (the newest lines) - for recent exchanges, the newest are the ones that matter."""
+    if len(t) <= n:
+        return t
+    cut = t[-n:]
+    return "…\n" + (cut.split("\n", 1)[1] if "\n" in cut else cut)
+
+
+def _clip_ends(t: str, n: int) -> str:
+    """v0.657 a checkpoint cut short keeps its HEAD (what the chat is about) AND its TAIL (pending work, what was
+    happening right now) - a head-only cut dropped exactly the part a call needs most."""
+    if len(t) <= n:
+        return t
+    head = max(200, n // 3)
+    first = t[:head]
+    cut = first.rsplit("\n", 1)[0] if "\n" in first[head // 2:] else first.rsplit(" ", 1)[0]
+    return cut + " …\n" + _clip_tail(t, n - len(cut) - 4)
+
+
+# v0.657 the small call brief (voice_lean_tools, ~4.5k): each part gets its own share, so a long news list or focus
+# block can never push the checkpoint's pending work and the newest exchanges out of the brief
+SMALL_SHARES = {"news": 800, "checkpoint": 1500, "focus": 600, "recent": 1100, "facts": 400, "diary": 600}
+
+
 def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: int = 10000,
                 news_skip_newest: bool = True, hard_cap: int = 0) -> str:
     """For a voice call session: everything a coworker who was in the room would know.
     v0.216 KAAM YAAD rides FIRST (news before chat memory, like the greeting: news first): undelivered work
-    news with the bring-it-up-once instruction, so the call continues the WORK, not just the talk."""
-    parts = []
+    news with the bring-it-up-once instruction, so the call continues the WORK, not just the talk.
+    v0.657 a call on its OWN record (v0.646 split) reads the CHAT it came from - its focus words, checkpoint,
+    summary, recent exchanges and facts - plus the call record's own exchanges. Before, every chat read was keyed by
+    the new, empty call record, so the call started with no memory of the chat at all."""
+    chat = _call_chat(conversation_id) if conversation_id else conversation_id
+    parts: list[tuple[str, str]] = []
     try:   # v0.216 undelivered work news first - 'wahi kaam pe chalte hain' needs to know what is pending
         news = _news_pending(conversation_id, get_settings().voice_followup_min, news_skip_newest)
         if news:
-            parts.append(
+            parts.append(("news",
                 "KAAM KA HAAL - yeh news us tak pahunchana ABHI BAAKI hai (pichhli call ke baad aayi, boli nahi ja saki; "
                 "kisi natural pause par EK baar KHUD upar lao, phir chhod do, baar-baar nahi):\n"
-                + "\n".join(f"- {t}" for t in news))
+                + "\n".join(f"- {t}" for t in news)))
     except Exception:
         log.exception("voice work news failed")
     try:   # v0.200 the fresh session now has her EXACT recent words (chat AND calls), not just one-liners
-        fb = focus_block(tenant, conversation_id, for_voice=True)
+        fb = focus_block(tenant, chat, for_voice=True)
         if fb:
-            parts.append(fb)
+            parts.append(("focus", fb))
     except Exception:
         log.exception("voice focus failed")
     # v0.244 PHASE 3A ONE MEMORY: a compacted chat's call starts from the SAME checkpoint the chat reads (Phase 2),
@@ -1462,53 +1594,69 @@ def voice_block(tenant: str, conversation_id: str, recent: int = 14, max_chars: 
     upto = 0
     try:
         from .agent import compact as _compact
-        cp = _compact.active(conversation_id) if conversation_id else None
+        cp = _compact.active(chat) if chat else None
     except Exception:
         log.exception("voice checkpoint read failed")
         cp = None
     if cp and cp.get("summary"):
         upto = int(cp.get("upto_id") or 0)
         max_chars = max(max_chars, CALL_MAX_WITH_CHECKPOINT)
-        parts.append("IS CHAT KA SAAR (checkpoint - chat mein jo kaam hua, uski poori yaad):\n"
-                     + _clip_block(cp["summary"], CALL_CHECKPOINT_CHARS))
+        parts.append(("checkpoint", "IS CHAT KA SAAR (checkpoint - chat mein jo kaam hua, uski poori yaad):\n"
+                      + _clip_ends(cp["summary"], CALL_CHECKPOINT_CHARS)))
     else:
-        summ = summary_block(conversation_id)
+        summ = summary_block(chat)
         if summ:
-            parts.append("Purani baaton ka saar:\n" + summ)
+            parts.append(("checkpoint", "Purani baaton ka saar:\n" + summ))
+    rows: list[dict] = []
     try:
-        rows = _rows(conversation_id, 1500)
+        rows = _rows(chat, 1500)
         if upto:
             rows = [r for r in rows if r["id"] > upto]
+        if chat != conversation_id:   # the call record's own words (a resumed call) join the chat's, oldest first
+            rows = sorted(rows + _rows(conversation_id, 400), key=lambda r: r["id"])
         exs = exchanges(rows)[-recent:]
         if exs:
-            parts.append("Haal ki baatein (chat aur calls, purane se naye; ⟦kiya⟧ = jo kaam hua):\n" +
-                         "\n".join("- " + one_line(ex, 360) for ex in exs))
+            parts.append(("recent", "Haal ki baatein (chat aur calls, purane se naye; ⟦kiya⟧ = jo kaam hua):\n" +
+                          "\n".join("- " + one_line(ex, 360) for ex in exs)))
     except Exception:
         log.exception("voice recent failed")
     try:
-        dia = diary_block(tenant, conversation_id, calls=8, max_chars=3500)
+        dia = diary_block(tenant, chat, calls=8, max_chars=3500)
         if dia:
-            parts.append(dia)
+            parts.append(("diary", dia))
     except Exception:
         log.exception("voice diary failed")
     try:
         from .life import memory_facts, recent_facts
-        shown = {f.id for f in memory_facts(tenant, recent_facts(), conversation_id)}
+        shown = {f.id for f in memory_facts(tenant, recent_facts(), chat)}
         last_user = ""
-        for ex in reversed(exchanges(_rows(conversation_id, 200))):
+        for ex in reversed(exchanges(rows[-200:] if rows else _rows(chat, 200))):
             last_user = _user_text(ex)
             if last_user:
                 break
-        rel = relevant_facts(tenant, last_user, shown, top=6, conversation_id=conversation_id)
+        rel = relevant_facts(tenant, last_user, shown, top=6, conversation_id=chat)
         if rel:
-            parts.append("Jude hue facts:\n" + "\n".join(f"- {t}" for _, t in rel))
+            parts.append(("facts", "Jude hue facts:\n" + "\n".join(f"- {t}" for _, t in rel)))
     except Exception:
         log.exception("voice facts failed")
     if not parts:
         return ""
+    head = "HOOLA KI YAAD (you remember all of this; never ask her to repeat it):\n"
     if hard_cap:   # v0.628 the small call brief: Gemini re-reads it on every reply (older memory = yaad_khojo)
         max_chars = min(max_chars, hard_cap)
-    return "HOOLA KI YAAD (you remember all of this; never ask her to repeat it):\n" + _clip_block("\n\n".join(parts), max_chars)
+        fitted = []
+        for name, text in parts:
+            share = SMALL_SHARES.get(name, 500)
+            if name == "checkpoint":
+                text = _clip_ends(text, share)
+            elif name == "recent":
+                lines = text.split("\n", 1)
+                text = lines[0] + "\n" + _clip_tail(lines[1], share - len(lines[0]) - 1) if len(lines) == 2 else text
+            else:
+                text = _clip_block(text, share)
+            fitted.append(text)
+        return head + _clip_block("\n\n".join(fitted), max_chars)
+    return head + _clip_block("\n\n".join(t for _, t in parts), max_chars)
 
 
 # ---------------------------------------------------------------- after a turn

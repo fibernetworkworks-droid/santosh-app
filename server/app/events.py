@@ -428,7 +428,10 @@ def head(conversation_id: str, tenant: str, n: int = 40) -> dict[str, Any]:
             "last_event_id": bus.last_id(conversation_id, tenant)}
 
 
-def waiting_cards(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
+CARD_STALE_H = 72   # v0.662 a card nobody answered in 3 days is not news on every call ask any more
+
+
+def waiting_cards(tenant: str, limit: int = 40, max_age_h: float | None = None) -> list[dict[str, Any]]:
     """Cards in ANY of her chats whose latest state waits for her (newest first)."""
     from . import convs
     conv = convs.current(tenant)
@@ -441,7 +444,11 @@ def waiting_cards(tenant: str, limit: int = 40) -> list[dict[str, Any]]:
         e = it["latest"]
         if needs_her(e.kind, e.payload):
             age = (now - _utc(it["first"].created_at)).total_seconds() / 3600
+            if max_age_h is not None and age > max_age_h:
+                continue
             out.append({"id": it["first"].id, "kind": e.kind, "key": it["key"], "age_h": round(age, 1),
+                        "conversation_id": getattr(it["first"], "conversation_id", "") or "",
+                        "at": _utc(it["first"].created_at).isoformat(),
                         "title": str((e.payload or {}).get("title") or (e.payload or {}).get("what") or
                                      (e.payload or {}).get("reason") or e.kind)[:80]})
             if len(out) >= limit:
@@ -454,10 +461,17 @@ def cards_block(tenant: str, limit: int = 8) -> str:
     state). An earlier "card bheja, approve kijiye" line in the history is no proof: a card she already tapped is not
     here, so the brain never asks her to tap it again."""
     try:
-        ws = waiting_cards(tenant, limit)
+        ws = waiting_cards(tenant, limit, max_age_h=CARD_STALE_H)
     except Exception:
         return ""
     if not ws:
+        try:
+            old_n = len(waiting_cards(tenant, limit))
+        except Exception:
+            old_n = 0
+        if old_n:
+            return (f"CARDS: koi NAYA card uski haan ke intezaar mein nahi hai; {old_n} purane card (3 din se zyada) pade "
+                    "hain - unka zikr tabhi karna jab woh khud poochhe.")
         return ("CARDS: abhi koi card uski haan ke intezaar mein NAHI hai. Jo card pehle bheja tha uska jawab woh de "
                 "chuki hai - kisi card par tap / approve / bhejne ko mat kehna.")
     rows = "\n".join(f"- {w['title']} ({w['kind']}, {w['age_h']} ghante se)" for w in ws)

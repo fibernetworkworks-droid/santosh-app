@@ -941,6 +941,7 @@ VOICE_DIRECT: "_cv.ContextVar[str]" = _cv.ContextVar("voice_direct", default="")
 # live calls by id: a phone whose network dropped re-joins the same call with ?resume=<call_id>
 CALLS: dict[str, "Call"] = {}
 # big jobs handed over by a call keep running after the call ends; hold a reference so they are not collected
+_BG_COPY: set = set()
 _JOBS: set[asyncio.Task] = set()
 
 # v0.211 auto-rescue skips these: money/consent words (haan_karo is voice-locked and card-backed), talk to other
@@ -1658,6 +1659,9 @@ def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
     direct = VOICE_DIRECT.get()
     if direct and call and direct == call:
         return 0                                   # the call's own direct tool made it: its tool result said so
+    brain_made = bool(direct and call and direct == f"kaam:{call}")
+    # v0.657 a card the call's OWN brain ask made is in that ask's answer ("draft taiyaar, approve kariye") - telling it
+    # as news too said the same card twice, back to back. It is still REMEMBERED below, so her tap reaches the call.
     try:
         from . import kaamwatch
         if kaamwatch.shape(kind, p):
@@ -1699,6 +1703,9 @@ def card_news(conv: str, kind: str, p: dict, call: str | None = None) -> int:
             STATS_CARDS["asked"] += 1
     except Exception:
         log.debug("card asked note failed", exc_info=True)
+    if brain_made:
+        STATS_CARDS["brain_made_quiet"] = STATS_CARDS.get("brain_made_quiet", 0) + 1
+        return 0
     n = inject(conv, note)
     if not n:                                      # her live call is on another chat of hers: it hears it there
         try:
@@ -1841,6 +1848,7 @@ class Call:
         self._hold_turn_audio: list[bytes] = []   # Hoola's voice in a held turn: played only if she called its name
         self._hold_turn_reply = False
         self._held_texts: list[str] = []       # notes that arrived during the hold (a job finished...): told on release
+        self._news_pushed: dict[int, tuple] = {}   # v0.657 news handed to the audio queue, until the call ends
         self._hold_dropped_note = 0.0
         self._hold_timer: asyncio.Task | None = None
         self._after_release: list[str] = []    # those notes, held a little longer when she called Hoola with a question
@@ -1986,7 +1994,10 @@ class Call:
         if self._goaway_at:
             return True
         for t in list(self._tools):
-            if not t.done() and t is not self._hold_timer and t is not self._news_task:
+            if not t.done() and t is not self._hold_timer and t is not self._news_task \
+                    and not getattr(t, "_hoola_checkin", False):
+                # v0.657 a "still working" check-in is not a reason to stay connected: it skips a parked call anyway,
+                # and keeping Gemini open for it billed up to ~7.5 min of dead air on exactly the long jobs
                 return True               # a tool / job answer is still coming back on this session
         return False
 
@@ -2120,22 +2131,46 @@ class Call:
         return (now - self._last_voice_at >= q and now - self._last_user_text_at >= q
                 and now - self._last_model_audio >= q and not self.user_buf.strip())
 
+    def _news_forced(self, now: float) -> bool:
+        """v0.657 the 25 s cap shortens the QUIET wait, it never talks over anyone: news still waits for a short gap -
+        her sentence finished and his voice stopped - before it goes in (before, it cut into the middle of speech)."""
+        waited = now - self._news_since
+        if waited < self.NEWS_MAX_WAIT_S:
+            return False
+        gap = self.NEWS_GAP_S
+        if now - self._last_model_audio < gap:
+            return False                  # never over his own voice
+        if waited >= self.NEWS_MAX_WAIT_S * 3:
+            return True                   # 75 s: a noisy line that never looks "quiet" still gets its news
+        return not self.user_buf.strip() and now - self._last_voice_at >= gap
+
+    NEWS_GAP_S = 0.7
+
     async def _news_watch(self) -> None:
         while self._news and not self.closed.is_set():
             await asyncio.sleep(0.2)
             now = time.monotonic()
-            if self.hold or not (self._news_quiet(now) or now - self._news_since >= self.NEWS_MAX_WAIT_S):
+            if self.hold or not (self._news_quiet(now) or self._news_forced(now)):
                 continue
             items, self._news, self._news_since = self._news, [], 0.0
             self._news_sent_at = now       # v0.654 a "ho gaya" right after relayed news is the news, not a made-up claim
             for x in items:
                 self._news_told.append((now, self._news_words(x)))
             if len(items) == 1:
-                self.push("text", items[0])
+                out = items[0]
             else:
                 self.stats["news_merged"] = self.stats.get("news_merged", 0) + len(items) - 1
-                self.push("text", "(Kai kaam ki khabar ek saath aayi hai - EK natural pause par, ek-ek karke, chhote mein "
-                                  "batao:)\n" + "\n".join(f"- {x}" for x in items))
+                out = ("(Kai kaam ki khabar ek saath aayi hai - EK natural pause par, ek-ek karke, chhote mein "
+                       "batao:)\n" + "\n".join(f"- {x}" for x in items))
+            # v0.657 remembered until Gemini really takes it: news still queued when the call ends (her phone away, a
+            # hang-up) is saved for the next call instead of vanishing with the queue
+            if getattr(self, "_news_pushed", None) is None:
+                self._news_pushed = {}
+            self._news_pushed[id(out)] = (out, items)
+            if len(self._news_pushed) > 50:
+                for k in list(self._news_pushed)[:25]:
+                    self._news_pushed.pop(k, None)
+            self.push("text", out)
 
     GAP_KEEP_BYTES = 16000 * 2 * 2   # v0.224 her last 2 s of mic audio survive a Gemini reconnect
 
@@ -2892,6 +2927,8 @@ class Call:
             self._appr_since = _now()             # the next card she can answer by voice is one that appears after this
         await self._otp_listen(final=True)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
+        if user:
+            self._kaam_said = ""                  # v0.657 her next turn's words may go to the brain again
         name_prompt, self._name_prompt = self._name_prompt, False
         after, self._after_release = self._after_release, []
         if name_prompt and user and not reply and not interrupted:
@@ -3040,16 +3077,31 @@ class Call:
         # server restart / deploy / crash mid-job re-runs it once by itself (turn_inbox.sweep) instead of losing it.
         brain = bool(get_settings().voice_brain)
         note = BRAIN_NOTE if brain else ""
-        inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, self.conv, request, False, note, "",
+        run_conv = self.conv
+        if brain:
+            try:
+                run_conv = await asyncio.to_thread(self._run_conv)
+            except Exception:
+                log.exception("side record failed; the ask waits on the call record")
+                run_conv = self.conv
+        inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, run_conv, request, False, note, "",
                                            place)
         from .agent import santosh as _brain
         t_start = time.time()              # v0.652 only an outcome recorded AFTER this moment is this job's
         tok = _brain.VOICE_BRAIN_NOW.set(brain)   # v0.630 copied into the task: this turn thinks on voice_brain_model
         try:
-            job = asyncio.create_task(turn_inbox.run_owned(inbox_id, self.conv, request, self.ctx.tenant_id, False,
+            job = asyncio.create_task(turn_inbox.run_owned(inbox_id, run_conv, request, self.ctx.tenant_id, False,
                                                            context=note, place=place))
         finally:
             _brain.VOICE_BRAIN_NOW.reset(tok)
+        self._job_conv = getattr(self, "_job_conv", None) or {}
+        self._job_conv[id(job)] = run_conv
+        if len(self._job_conv) > 200:
+            for k in list(self._job_conv)[:100]:
+                self._job_conv.pop(k, None)
+        if run_conv != self.conv:
+            self.stats["side_turns"] = self.stats.get("side_turns", 0) + 1
+            job.add_done_callback(lambda j, rc=run_conv: self._spawn_copy_back(rc, request, j))
         if brain:
             self.stats["brain_turns"] = self.stats.get("brain_turns", 0) + 1
         _JOBS.add(job)
@@ -3061,15 +3113,24 @@ class Call:
         job.add_done_callback(lambda j: running.pop(id(j), None))
         wait = get_settings().voice_brain_wait_s if brain else get_settings().voice_tool_wait_s
         t0 = time.monotonic()
-        done, _ = await asyncio.wait({job}, timeout=max(1, wait))
+        handed = {"v": False}
+        # v0.657 a hang-up inside the first wait cancels this coroutine, so the late-result callback below was never
+        # attached and the job's result was lost. This one covers exactly that case (nobody took the job over).
+        job.add_done_callback(lambda j, t=t_start, h=handed: None if h["v"] else self._late_result(j, request, t))
+        try:
+            done, _ = await asyncio.wait({job}, timeout=max(1, wait))
+        except asyncio.CancelledError:
+            raise
         if brain:   # v0.633 how long she waited for the brain, per ask (the speed she feels)
             log.info("call %s brain %s in %.1fs", getattr(self, "call_id", "?"),
                      "answered" if job in done else "still working", time.monotonic() - t0)
+        handed["v"] = True               # from here this coroutine answers (inline) or hands to _late_result itself
         if job in done:
             return {"result": job.result()}
         job.add_done_callback(lambda j, t=t_start: self._late_result(j, request, t))
         if get_settings().voice_checkin_max > 0:   # v0.652 a long job is never silence: a short "abhi bhi kar raha hoon"
             ck = asyncio.create_task(self._still_working(job, request))
+            ck._hoola_checkin = True
             self._tools.add(ck)
             ck.add_done_callback(self._tools.discard)
         return {"status": "working", "note": "Kaam abhi chal raha hai. User se baat karte raho; pura hote hi tumhe bataya jayega."}
@@ -3111,6 +3172,15 @@ class Call:
         except Exception:
             log.exception("call followup note failed")
 
+    def _conv_of(self, job) -> str:
+        """v0.657 the conversation a brain job ran in (the call record, or one of its side records)."""
+        return (getattr(self, "_job_conv", None) or {}).get(id(job)) or self.conv
+
+    def _spawn_copy_back(self, side: str, request: str, job) -> None:
+        t = asyncio.ensure_future(self._copy_back(side, request, job))   # its own task: never blocks the call
+        _BG_COPY.add(t)
+        t.add_done_callback(_BG_COPY.discard)
+
     def _late_result(self, job: asyncio.Task, request: str = "", since: float = 0.0) -> None:
         if job.cancelled():
             return
@@ -3143,7 +3213,7 @@ class Call:
         oc: dict = {}
         try:
             from .agent import santosh
-            oc = dict(santosh.LAST_OUTCOME.get(self.conv) or {})
+            oc = dict(santosh.LAST_OUTCOME.get(Call._conv_of(self, job)) or {})
             if since and float(oc.get("at") or 0) < since:
                 oc = {}                    # v0.652 an EARLIER ask's outcome is no news about this job
         except Exception:
@@ -3206,6 +3276,14 @@ class Call:
             if not live_words and typed and time.monotonic() - typed[1] < 30:
                 live_words = typed[0]
             said = live_words   # v0.630 only THIS turn's words: never an older ask re-run on a note
+            if said and said.strip() == getattr(self, "_kaam_said", ""):
+                # v0.657 a SECOND santosh_kaam in the same turn ("mail bhejo aur reminder lagao" split in two): her whole
+                # sentence already went with the first one - this one carries only its own part, never the whole
+                # ask again (that ran the full job twice: two drafts, two reminders)
+                said = ""
+                self.stats["kaam_split_asks"] = self.stats.get("kaam_split_asks", 0) + 1
+            elif said:
+                self._kaam_said = said.strip()
             if get_settings().voice_brain and said and said.strip() != req.strip():
                 # v0.630 the brain gets HER words (the voice model may shorten or translate them)
                 req = said + (f"\n(Call ne samjha: {req})" if req.strip() else "")
@@ -3250,7 +3328,7 @@ class Call:
         from .events import CALL
         CALL.set(self.call_id)   # v0.158 every card this tool (and the jobs it starts) makes belongs to this call
         name, args = fc.name, dict(fc.args or {})
-        VOICE_DIRECT.set("" if name == "santosh_kaam" else self.call_id)   # v0.554 own-tool cards are not news
+        VOICE_DIRECT.set(f"kaam:{self.call_id}" if name == "santosh_kaam" else self.call_id)   # v0.554 / v0.657 own cards are not news
         from .avatar.service import gendered
         shown = name
         if name in self._mcp_route:
@@ -3732,9 +3810,57 @@ class Call:
                 callconv.set_call_id(self.ctx.conversation_id, self.call_id)
         except Exception:
             log.exception("call origin lookup failed")
+        for k in getattr(self, "_sides", None) or []:   # v0.657 the call's side records are live under it too
+            if k not in keys:
+                keys.append(k)
         return keys
 
+    MAX_SIDES = 2
+
+    def _run_conv(self) -> str:
+        """v0.657 where this brain ask runs: the call record, or - when the call's earlier ask still holds it - a free
+        side record (made on first need), so a second ask runs NOW with every tool instead of waiting up to 15 min
+        behind the first (or getting the no-tools quick answer)."""
+        from .agent import santosh as _brain
+        if not _brain._locks[self.conv].locked():
+            return self.conv
+        sides = getattr(self, "_sides", None)
+        if sides is None:
+            sides = self._sides = []
+        for k in sides:
+            if not _brain._locks[k].locked():
+                return k
+        if len(sides) >= self.MAX_SIDES:
+            return sides[0]               # three asks at once: this one queues behind the oldest side ask
+        from . import callconv
+        k = callconv.open_side(self.ctx.tenant_id, self.conv, getattr(self, "call_id", ""))
+        sides.append(k)
+        me = getattr(self, "_me", None)
+        if me is not None:
+            ACTIVE.setdefault(k, []).append(me)
+        self.stats["side_asks"] = self.stats.get("side_asks", 0) + 1
+        return k
+
+    async def _copy_back(self, side: str, request: str, job: asyncio.Task) -> None:
+        """v0.657 a side ask's words + answer land in the call record too (its receipt, its next asks), once the call
+        record is free - never in the middle of its running turn's tool steps."""
+        try:
+            reply = job.result() if not job.cancelled() and job.exception() is None else ""
+        except Exception:
+            reply = ""
+        if not str(reply or "").strip():
+            return
+        from .agent import santosh as _brain
+        try:
+            async with _brain._locks[self.conv]:
+                await asyncio.to_thread(_brain._save, self.conv, "user", request, request)
+                await asyncio.to_thread(_brain._save, self.conv, "assistant",
+                                        [{"type": "text", "text": str(reply)}], str(reply))
+        except Exception:
+            log.exception("side ask copy back failed")
+
     def _register(self, me) -> None:
+        self._me = me
         for k in self._live_keys():
             ACTIVE.setdefault(k, []).append(me)
 
@@ -3944,6 +4070,23 @@ class Call:
         finally:
             await self._wrap_up(me)
 
+    def _save_unsent(self) -> None:
+        """v0.657 news already handed to the queue but never sent to Gemini (phone away / hang-up) + notes held during
+        a hold: saved for the next call instead of vanishing with the call."""
+        try:
+            unsent = []
+            pushed = getattr(self, "_news_pushed", None) or {}
+            for k, d in list(self.audio._queue):
+                if k == "text" and id(d) in pushed and pushed[id(d)][0] is d:
+                    unsent += list(pushed[id(d)][1])
+            unsent += list(self._held_texts) + list(self._after_release)
+            if unsent:
+                self.stats["news_saved_at_end"] = len(unsent)
+                self._orphan_note("call ke ant tak yeh kaam ki khabar nahi batayi ja saki: " + " | ".join(map(str, unsent))[:900])
+            self._held_texts, self._after_release = [], []
+        except Exception:
+            log.exception("unsent news save failed")
+
     async def _wrap_up(self, me) -> None:
         """The end of every call, whatever engine spoke it (v0.264: moved out of run() unchanged so the second
         engine shares it): drop notes, the last turn, orphan news, stats, the scorecard, usage, the call receipt."""
@@ -3966,6 +4109,7 @@ class Call:
         if self._news:            # v0.230 job news still waiting for a pause: the next call opens with it
             self._orphan_note("call ke ant tak yeh kaam ki khabar nahi batayi ja saki: " + " | ".join(self._news)[:900])
             self._news.clear()
+        self._save_unsent()
         if self._quiet_pending:   # v0.211 quiet notes that never found a ride: saved for the next call, not lost
             self._orphan_note("call ke ant tak yeh notes useh nahi bataye ja sake: "
                               + " | ".join(self._quiet_pending)[:900])

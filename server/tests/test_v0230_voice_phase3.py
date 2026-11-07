@@ -66,7 +66,7 @@ def test_news_never_waits_forever(env):
         c.NEWS_MAX_WAIT_S = 0.3
         c._last_voice_at = time.monotonic() + 60       # she talks and talks
         c.push_news("(kaam ho gaya: ticket book)")
-        await asyncio.sleep(0.7)
+        await asyncio.sleep(1.3)                       # v0.657: past the cap it still waits for a gap, up to 3x the cap
         return _texts(c)
     assert len(asyncio.run(go())) == 1
 
@@ -177,4 +177,4 @@ def test_no_murmur_on_a_short_turn(env, monkeypatch):
 
 def test_version():
     from app import main
-    assert main.APP_VERSION == "0.658.0"
+    assert main.APP_VERSION == "0.662.0"

@@ -85,8 +85,12 @@ def test_news_pending_capped_clipped_and_scrubbed(env):
     assert len(news[0]) <= 240 and all(len(t) <= 240 for t in news)
     yaad.note_call_followup(conv, "default", "order id 1234567890 ho gaya")
     yaad.note_call_followup(conv, "default", "ek aur")
-    news = _news_pending(conv, 720, skip_newest=False)        # the digit run must never ride the prompt raw
-    assert all("1234567890" not in t for t in news) and any("######" in t for t in news)
+    news = _news_pending(conv, 720, skip_newest=False)
+    # v0.661: an ORDER number is her work and stays (she must be able to quote it); a card number never rides raw
+    assert any("1234567890" in t for t in news)
+    yaad.note_call_followup(conv, "default", "card 4111 1111 1111 1111 se payment")
+    news = _news_pending(conv, 720, skip_newest=False)
+    assert all("4111 1111 1111 1111" not in t for t in news) and any("######" in t for t in news)
 
 
 def test_voice_block_leads_with_kaam_ka_haal(env):
@@ -135,4 +139,4 @@ def test_greeting_fresh_still_carries_the_kaam_line():
 
 
 def test_version():
-    assert APP_VERSION == "0.658.0"
+    assert APP_VERSION == "0.662.0"

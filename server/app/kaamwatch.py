@@ -398,6 +398,9 @@ def _voice(tenant: str, conv: str, say: str) -> None:
 
 
 # ---------------------------------------------------------------- 3. stuck jobs (worker tick)
+BOOT_AT = now()   # v0.662 this process's start: a job that last moved before it may have lost its runner
+
+
 def tick() -> int:
     """A job still 'working' that hasn't moved for KAAM_STUCK_S: tell her once (per stage)."""
     if not _on():
@@ -422,9 +425,13 @@ def tick() -> int:
                 continue
             r.stuck_told = "1"
             mins = int((now() - moved).total_seconds() // 60)
+            # v0.662 honest: "Main dekh kar batata hoon" promised a check that nothing ever made. Say what is KNOWN -
+            # including a server restart since it last moved (its runner may have died with it) - and what she can do.
+            restarted = moved < BOOT_AT
+            why = (" Iske baad server restart hua tha, to ho sakta hai yeh wahin ruk gaya ho." if restarted else "")
             out.append((r.tenant_id, r.conversation_id, {"key": r.key, "title": r.title, "state": "working", "label": r.label},
-                        f"⚠ {r.label} {r.title}: {mins} minute se aage nahi badha, atka lag raha hai. Main dekh kar batata "
-                        f"hoon; chahiye to 'roko' ya 'dobara karo' kahiye."))
+                        f"⚠ {r.label} {r.title}: {mins} minute se aage nahi badha, atka lag raha hai.{why} "
+                        f"'dobara karo' kahiye to phir se shuru karun, ya 'roko' kahiye."))
     for tenant, conv, job, say in out:
         STATS["stuck"] += 1
         try:
