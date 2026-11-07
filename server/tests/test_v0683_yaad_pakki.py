@@ -1,7 +1,7 @@
 """Wave 11 YAAD PAKKI of the third deep audit (owner: "GO WAVE 11" - memory and context).
 
 20 on a call, only a turn the BRAIN answered is skipped by the call's own save (small talk after it is kept)
-21 the memory block keeps facts / recall first; focus words are not repeated in full mode
+21 the memory block keeps facts / recall first (focus and diary after them)
 22 "pin code" / "income tax" / "home loan DSA" are ordinary facts (a PIN / salary still refused)
 23 a fallback checkpoint keeps the previous checkpoint whole
 24 the compaction estimate and the summary refresh read rows off the event loop
@@ -37,7 +37,6 @@ def test_the_relevant_facts_come_before_focus_and_diary():
     from app import yaad
     src = inspect.getsource(yaad.turn_block)
     assert src.index("relevant_facts(") < src.index("focus_block(") < src.index("diary_block(")
-    assert "_ctx.full_mode()" in src
 
 
 def test_pin_code_and_business_words_are_facts():

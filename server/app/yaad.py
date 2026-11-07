@@ -1503,28 +1503,14 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
         log.exception("recall failed")
     # wave 11: the parts that answer THIS message (facts by meaning, recalled past chats) come FIRST and focus / diary
     # after them - the block is clipped at 9,000 chars, and focus (~4k) + diary (~5k) used to push the relevant facts
-    # off the end while the "Yaad se" chip still named them. In full mode her recent words are already in the history
-    # word for word, so the focus block is not repeated.
-    try:
-        from .agent import context as _ctx
-        _full = _ctx.full_mode()
-    except Exception:   # noqa: BLE001
-        _full = False
-    if _full:
-        try:   # only the dropped-call note (her words are in the history already)
-            drop = recent_call_drop(conversation_id, get_settings().voice_continuation_min)
-            if drop:
-                parts.append("PICHHLI CALL NETWORK SE BEECH MEIN KAT GAYI THI - wahi kaam chal raha tha. Wahan se aage "
-                             "badho, puchho mat kaunsa kaam:\n" + drop)
-        except Exception:
-            log.exception("focus drop read failed")
-    else:
-        try:   # v0.200 her exact recent words ride every turn - 'jo maine bola tha' always has the words
-            fb = focus_block(tenant, conversation_id, exclude_text=user_text)
-            if fb:
-                parts.append(fb)
-        except Exception:
-            log.exception("focus block failed")
+    # off the end while the "Yaad se" chip still named them.
+    try:   # v0.200 her exact recent words ride every turn - 'jo maine bola tha' always has the words (kept in full mode
+        # too: after a compaction those words are not in the history)
+        fb = focus_block(tenant, conversation_id, exclude_text=user_text)
+        if fb:
+            parts.append(fb)
+    except Exception:
+        log.exception("focus block failed")
     try:
         dia = diary_block(tenant, conversation_id)
         if dia:

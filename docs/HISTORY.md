@@ -22645,8 +22645,9 @@ Tests: NEW `test_v0682_lamba_kaam.py` (11). NOT VERIFIED live on a real long job
     (`_brain_this_turn`); every turn after the first brain ask was skipped, so Gemini's own answers never reached the chat,
     the index or the fact extractor.
 21. **The memory block keeps what matters first.** `yaad.turn_block`: facts by meaning + recalled past chats come before
-    focus (~4k) and the diary (~5k) - the 9,000-char clip cut the relevant facts while the "Yaad se" chip named them; in
-    full mode her recent words (already in the history word for word) are not repeated, only the dropped-call note is.
+    focus (~4k) and the diary (~5k) - the 9,000-char clip cut the relevant facts while the "Yaad se" chip named them.
+    (Dropping the focus block in full mode was tried and reverted: after a compaction her exact words are not in the
+    history, and test_v0204 pins them.)
 22. **"Pin code", "income tax", "home loan DSA" are ordinary facts** (`yaad._NOT_SECRET`, life_tools `remember`); a PIN
     / salary is still refused.
 23. **A fallback checkpoint keeps the previous one whole** (`compact._plain` trims the oldest NEW lines; it cut the old
