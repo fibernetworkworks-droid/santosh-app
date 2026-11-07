@@ -1999,3 +1999,12 @@ Work Log:
 - kaamlist._is_work + job-start dedupe + waiting cards; events.waiting_cards max_age_h + CARD_STALE_H in cards_block
 - tests: test_v0662_kaam_saaf.py 19 (17 fail on the old code); 320 older passed
 Stage Summary: shipped v0.662.0 on top of v0.661.0; all four audit waves done
+
+---
+Task ID: save-state-audit-v662
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: SAVE THE STATE after the four-wave flaw audit (v0.657 / v0.660 / v0.661 / v0.662).
+Work: branch `stable-2026-11-07-audit-v662` cut at dda3e58f (= v0.662.0 code + one marketing doc); markers re-verified and
+151 tests green in a git-archive extract of that commit; KNOWN GOOD CHECKPOINT entry added to CLAUDE.md.
+Not verified: live restart / call / late reminder; VPS version at save; Google sign-in still dead.

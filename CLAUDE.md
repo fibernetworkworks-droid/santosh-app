@@ -71,6 +71,26 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (7 Nov 2026, later, owner: "SAVE THE STATE" after the four-wave flaw audit): branch
+  `stable-2026-11-07-audit-v662` = commit dda3e58f = v0.662.0, pubspec 0.662.0+668 (code = 78396124 KAAM SAAF; the only
+  later change on main is docs/marketing/HERO_DEMO_AND_30_SHORTS.md). All 30 audit flaws fixed in four waves:
+  v0.657 PAKKA KAAM (restart resumes a cut turn, one-tap cards claimed once / 'interrupted' said plainly, failed turns never
+  'delivered', a finished job told once), v0.660 CALL KI YAAD (a call reads the chat it came from, a second ask on a side record,
+  no dead-air billing, news / hold notes saved at hang-up, news never talks over him), v0.661 YAAD SAHI (only secret numbers
+  masked, number-carrying updates replace, pinned facts update in place, preferences global, search fence in SQL, quick second
+  fact kept), v0.662 KAAM SAAF (guarded worker slots, late reminders said late + no night ring, Stop during prep kept, dead
+  Google sign-in backs off + told once a day, more Hinglish 'done' forms caught, honest Kaam list, outage error once, stale cards
+  not call news).
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): markers present (APP_VERSION 0.662.0, turn_inbox started_at +
+  RESUME_NOTE, runner 'executing' claim, turn_failed_since, callconv.open_side, _news_forced, pii.mask_sensitive,
+  yaad.update_pinned, worker._slot, google_auth.BACKGROUND, STOPPED_IN_PREP, NUDGE_PROMISE, CARD_STALE_H) and **151 tests green,
+  0 failed** (v0657 / v0660 / v0661 / v0662 + routines, voice, harness2, google, v0648-v0654 task-truth suites).
+  **NOT VERIFIED / CAVEATS:** not yet seen on a real restart, a real call or a real late reminder; whether the VPS runs 0.662.0 was
+  not checked at the save; her Google sign-in is still dead (Profile > Google Drive > 'Google Drive jodiye'); older reds proven on
+  earlier commits stay (test_v108 voice memory, test_v086_realtime x2, test_v0473 coder routes, stamp counts v0249/v0234/v0240).
+  APK release `v0.662.0-b1906`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.662.0-b1906/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-07-audit-v662` as the branch.
 - SAVE THE STATE (7 Nov 2026, owner: "SAVE THE STATE PERFECT NOW" after the call-speed work): branch
   `stable-2026-11-07-voice-v645` = commit 4e6ff005 = v0.645.0, pubspec 0.645.0+651 - cut at the LIVE commit (healthz 0.645.0).
   The fast cheap call: Gemini Live only speaks, the Hoola brain on Haiku does the work (v0.630-v0.633), and the slow
