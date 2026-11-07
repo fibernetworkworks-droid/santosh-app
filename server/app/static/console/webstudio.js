@@ -108,6 +108,10 @@
 
   let SITES = [], SPECS = [], CUR = null, CARD = null, VIEW = 'preview', DEVICE = 'pc', LOOK = 0, EDIT = false;
   let POLL = null, SIG = '', PREFILL = '', BUSY = false, RO = null;
+  /* v0.683 the 1,00,000-prompt template library: her filters, the rows shown, the template she picked */
+  const TPL = {q: '', ind: '', goal: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
+  let TPLSEL = null;
+  const lakh = n => Number(n || 0).toLocaleString('en-IN');
   const THREAD = {site: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, timer: null, sig: ''};
 
   /* ================= router ================= */
@@ -227,8 +231,16 @@
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     let main;
     if (page === 'templates') {
-      main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">Templates</h2></div>
-        <p class="mut">A starting point for your kind of business. Hoola still plans your own pages from your details; nothing is copied word for word.</p>
+      main = `<section class="wrap tplw"><div class="sec"><h2 style="font-size:24px">Templates</h2><span class="tplall">${lakh(TPL.all)} deep prompts</span></div>
+        <p class="mut">A deep website prompt for every one of 1,000 kinds of business in 40 industries, each with 10 goals and 10 design styles. Every prompt covers the pages, the design and the build quality. Open one, use it as it is or change any line.</p>
+        <div class="tplbar"><label class="find">${ico('search', 16)}<input id="wsTplQ" type="search" placeholder="Search: dentist, bakery, gym, CA office, wedding…" aria-label="Search templates" autocomplete="off" value="${esc(TPL.q)}"></label>
+          <select id="wsTplInd" aria-label="Industry"><option value="">All industries</option></select>
+          <select id="wsTplGoal" aria-label="Goal"><option value="">Any goal</option></select>
+          <select id="wsTplStyle" aria-label="Design style"><option value="">Any style</option></select></div>
+        <p class="mut sm" id="wsTplCount" aria-live="polite">Loading templates…</p>
+        <div class="tgrid" id="wsTplGrid"></div>
+        <div class="tplmore"><button class="b" type="button" data-act="tpl-more" hidden>Show more</button></div></section>
+      <section class="wrap"><div class="sec"><h2>Quick starts</h2></div>
         <div class="starts">${TYPES.map(([t, d]) => `<button class="st" type="button" data-type="${esc(t)}"><span class="si">${ico('tpl')}</span><span><b>${esc(t)}</b><span class="mut sm">${esc(d)}</span></span></button>`).join('')}</div></section>`;
     } else if (page === 'sites') {
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">All websites</h2><button class="b" type="button" data-act="new">${ico('plus', 16)}New website</button></div>
@@ -271,7 +283,54 @@
     }
     APP.innerHTML = `<div class="home">${sidebar(page)}<main class="hmain">${main}</main></div>`;
     PREFILL = '';
+    if (page === 'templates') loadTpl(true);
     document.title = 'Hoola Web Studio';
+  }
+
+  function tplCard(r) {
+    return `<button class="tcard" type="button" data-tpl="${esc(r.id)}"><span class="tn">#${lakh(r.n)}</span><b>${esc(r.title)}</b>
+      <span class="mut sm">${esc(r.hi)} · ${esc(r.industry_label)}</span><span class="tchips"><i>${esc(r.goal_label)}</i><i>${esc(r.style_label)}</i></span></button>`;
+  }
+  function tplOptions(sel, list, val, first) {
+    const el = $(sel); if (!el || el.options.length > 1) { if (el) el.value = val; return; }
+    el.innerHTML = `<option value="">${first}</option>` + list.map(o => `<option value="${esc(o.id)}">${esc(o.label)}</option>`).join('');
+    el.value = val;
+  }
+  async function loadTpl(reset) {
+    const grid = $('#wsTplGrid'); if (!grid) return;
+    if (reset) TPL.rows = [];
+    const qs = new URLSearchParams({q: TPL.q, industry: TPL.ind, goal: TPL.goal, style: TPL.style, offset: String(TPL.rows.length), limit: '30'});
+    let r;
+    try { r = await api('GET', '/api/site-templates?' + qs); } catch (e) { $('#wsTplCount').textContent = e.message; return; }
+    if (!$('#wsTplGrid')) return;
+    TPL.rows = TPL.rows.concat(r.rows || []); TPL.total = r.total || 0; TPL.all = r.all || TPL.all;
+    tplOptions('#wsTplInd', r.industries || [], TPL.ind, 'All industries');
+    tplOptions('#wsTplGoal', r.goals || [], TPL.goal, 'Any goal');
+    tplOptions('#wsTplStyle', r.styles || [], TPL.style, 'Any style');
+    const all = APP.querySelector('.tplall'); if (all) all.textContent = `${lakh(TPL.all)} deep prompts`;
+    $('#wsTplCount').textContent = TPL.total ? `${lakh(TPL.total)} templates${TPL.q || TPL.ind || TPL.goal || TPL.style ? ' match' : ''} · showing ${lakh(TPL.rows.length)}`
+      : 'No template matches. Try a simpler word, like "clinic" or "shop".';
+    grid.innerHTML = TPL.rows.map(tplCard).join('');
+    const more = APP.querySelector('[data-act="tpl-more"]'); if (more) more.hidden = TPL.rows.length >= TPL.total;
+  }
+  async function openTpl(id) {
+    let p;
+    try { p = await api('GET', '/api/site-templates/' + enc(id)); } catch (e) { return toast(e.message, true); }
+    const d = document.createElement('dialog'); d.className = 'dlg tpld';
+    d.innerHTML = `<div class="tpldh"><span class="tn">Template #${lakh(p.n)} of ${lakh(TPL.all)}</span><b>${esc(p.title)} <span class="mut">${esc(p.hi)}</span></b>
+        <span class="tchips"><i>${esc(p.industry_label)}</i><i>${esc(p.goal_label)}</i><i>${esc(p.style_label)}</i></span></div>
+      <pre class="tpre" tabindex="0">${esc(p.prompt)}</pre>
+      <p class="mut sm">${lakh(p.chars)} characters · ${p.pages.length} pages · you can change any line after you tap Use.</p>
+      <div class="inl" style="justify-content:flex-end"><button class="b" type="button" data-x="close">Close</button><button class="b" type="button" data-x="copy">Copy</button><button class="b pri" type="button" data-x="use">Use this prompt</button></div>`;
+    document.body.appendChild(d);
+    d.addEventListener('close', () => d.remove());
+    d.addEventListener('click', async ev => {
+      const x = ev.target.closest('[data-x]')?.dataset.x; if (!x) return;
+      if (x === 'close') return d.close();
+      if (x === 'copy') { try { await navigator.clipboard.writeText(p.prompt); toast('Prompt copied.'); } catch { toast('Select the text and copy it.', true); } return; }
+      if (x === 'use') { TPLSEL = {field: p.field, goal: p.goal, style: p.style, text: p.prompt}; PREFILL = p.prompt; d.close(); go('#/'); }
+    });
+    d.showModal();
   }
 
   function drawSource(kind) {
@@ -305,7 +364,10 @@
         go('#/plan/' + enc(S(c.id)));
         return;
       }
-      const v = await api('POST', '/api/sites', {brief: text, conversation_id: conv});
+      const body = {brief: text, conversation_id: conv};
+      if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.683
+      TPLSEL = null;
+      const v = await api('POST', '/api/sites', body);
       store.set(convKey(v.id), conv);
       api('PATCH', `/api/conversations/${enc(conv)}`, {title: `Website · ${name(v)}`}).catch(() => {});
       if (S(v.status) === 'planned' && !v.mapping) {         // Build mode: no plan step - the three full looks start now
@@ -1163,6 +1225,8 @@
     const b = e.target.closest('button, a'); if (!b || !APP.contains(b)) return;
     const d = b.dataset;
     if (d.menu) { e.preventDefault(); openMenu(b, d.menu); return; }
+    if (d.tpl) { openTpl(d.tpl); return; }
+    if (d.act === 'tpl-more') { loadTpl(false); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
     if (d.cmode) { store.set(MODE_KEY + '.chat', d.cmode); APP.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cmode === d.cmode))); return; }
@@ -1266,6 +1330,14 @@
     finally { BUSY = false; if (b.isConnected) b.removeAttribute('aria-disabled'); }
   });
 
+  APP.addEventListener('input', e => {             // v0.683 template search, as she types
+    if (e.target.id !== 'wsTplQ') return;
+    clearTimeout(TPL.t); TPL.t = setTimeout(() => { TPL.q = S(e.target.value).trim(); loadTpl(true); }, 250);
+  });
+  APP.addEventListener('change', e => {
+    const k = {wsTplInd: 'ind', wsTplGoal: 'goal', wsTplStyle: 'style'}[e.target.id]; if (!k) return;
+    TPL[k] = S(e.target.value); loadTpl(true);
+  });
   APP.addEventListener('input', e => {
     if (e.target.id !== 'wsFind') return;
     const q = S(e.target.value).trim().toLowerCase(); let shown = 0;
