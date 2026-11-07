@@ -184,23 +184,23 @@ def _final_since(conversation_id: str, since: datetime) -> bool:
         return False
 
 
-def _her_row_since(conversation_id: str, since: datetime, text: str) -> bool:
-    """v0.657: HER words for THIS row are saved (matched by text) - another queued message's row does not count."""
+def _her_row_at(conversation_id: str, since: datetime, text: str) -> datetime | None:
+    """v0.657: when HER words for THIS row were saved (matched by text) - another queued message's row does not
+    count. Also the anchor for a row from before v0.657 (no started_at)."""
     want = " ".join(str(text or "").split())
     if not want:
-        return _user_row_since(conversation_id, since)
+        return None
     try:
         from .db import Message
         with session() as s:
-            for d in s.scalars(select(Message.display).where(Message.conversation_id == conversation_id,
-                                                             Message.role == "user",
-                                                             Message.display.is_not(None),
-                                                             Message.created_at >= since).limit(50)).all():
+            for d, at in s.execute(select(Message.display, Message.created_at).where(
+                    Message.conversation_id == conversation_id, Message.role == "user",
+                    Message.display.is_not(None), Message.created_at >= since).order_by(Message.id).limit(50)).all():
                 if " ".join(str(d or "").split()) == want:
-                    return True
-        return False
+                    return _aware(at)
+        return None
     except Exception:
-        return False
+        return None
 
 
 def _answered_since(conversation_id: str, since: datetime) -> bool:
@@ -256,9 +256,10 @@ async def sweep() -> int:
             if not conv or santosh.turn_running(conv):
                 continue                       # a live turn (maybe queued behind her previous one) owns this chat
             context = r["context"]
-            if r["started_at"] is not None:
-                # v0.657 PAKKA KAAM: the turn REALLY began - answered only by a final reply after that moment
-                if _final_since(conv, r["started_at"]):
+            began = r["started_at"] or _her_row_at(conv, r["created_at"], r["text"])
+            if began is not None:
+                # v0.657 PAKKA KAAM: the turn REALLY began - answered only by a FINAL reply after that moment
+                if _final_since(conv, began):
                     mark(r["id"], "done")
                     STATS["skipped_answered"] += 1
                     continue
@@ -267,8 +268,8 @@ async def sweep() -> int:
                 STATS["resumed"] = STATS.get("resumed", 0) + 1
             else:
                 # never got the lock (queued behind another turn, or died before it): the earlier turn's reply is NOT
-                # this one's answer. Her words for THIS row may still be saved (research-plan path) - never double them.
-                save_user = not _her_row_since(conv, r["created_at"], r["text"])
+                # this one's answer, so it runs now
+                save_user = not _user_row_since(conv, r["created_at"])
             from .agent import eventlog
             eventlog.log_event(r["tenant_id"], conv, "inbox",
                                {"line": f"re-running dead turn (tries {r['tries'] + 1}, save_user={save_user})"})
