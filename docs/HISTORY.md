@@ -1,3 +1,19 @@
+## v0.680.0 HOOLA ADOPT — the product's first live lane ON the AEP, P9 of the HOOLA plan (8 Nov 2026)
+
+Owner: "CURRENTLY HOOLA DONT USE AEP IT NEED USER AUTH" then "CONTINUE". Built as 0.610.0 on the v0.600.0 base; the dev chain took
+0.611-0.670 while P9 sat built — REBASE PROTOCOL onto their v0.670.0 KAAN W6 (their base kept whole, the version layer re-applied
+coherently 0.670.0/+676 -> 0.680.0/+677, their drifted 0.669 console stamps healed to 0.680). server/app/agent/aeptune.py (the
+adoption seam, ZERO new deps) + POST /api/aep/turn/{conversation_id} in main.py — one real turn of HOOLA run ON the AEP behind the
+product's USER AUTH (require_key + current_tenant; anonymous refused the moment the server has a key; the conversation must belong
+to the caller's tenant). The lane: map_history folds the product history rows into AEP messages; build_agent compiles aep.create_agent
+(P4) over hoola_brain_factory (P7 — the production OmniRoute/GLM/Claude brain, lazily imported per call); the default ride is
+Nudge + Curator (P5; delegate/skills-primer opt-in); chat memory rides the SqliteSaver checkpointer on the conversation thread (P3);
+every span lands in the P2 tracer (the explorer sees the root "hoola-aep-turn") and the vault sink joins when aep_trace is flipped;
+the reply lands in the same conversation + SSE feed (the assistant message sourced "aep"); usage.bind meters the lane; a brain
+failure fails loudly (502) and the typing dots ALWAYS go away. The yaad law held in testing: the user row saves as a str. THE
+PRODUCTION LOOP IS UNTOUCHED; the lane is opt-in per call; registry stays 584; old APKs keep working. Tests: test_v0610_hoola_adopt.py
+(15, zero network, the brain injected). server-only deploy = owner's vps-ops dispatch.
+
 ## v0.670.0 KAAN W6 — HISAAB AUR SAFAI (7 Nov 2026, built as 0.667.0; their console-stamp + PREMIUM STUDIO 0.667.0, DUNIYA MANCH 0.668.0, HOOLA AURA 0.669.0 - REBASE PROTOCOL, rebuilt on their tip, all kept)
 
 The accountability layer her audio runs on, then the unlock it buys — quotas + retention -> real voiceprint diarization.
