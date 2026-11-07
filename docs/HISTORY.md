@@ -22087,3 +22087,18 @@ work or touch money. Built as 0.657 (their KAAM DIKHE took 0.656, both kept).
 Tests `test_v0657_pakka_kaam.py` 14 (12 fail on the old code); `test_v0191_harness2` expectation updated (a reply
 must follow THIS row's own words). NOT VERIFIED live: no real pm2 restart mid-turn has been run; the resumed turn's
 "don't redo" relies on the model reading the earlier tool results it is shown.
+
+## v0.658.0 SAAF DIKHE — Studio site chat shows its work live; a project menu like Lovable (owner screenshots: three dots and no timing in the site chat; "NO EDIT, DELETE, PROJECT ETC SECTION ... IT SHOULD BE SAME AS LOVABLE")
+
+(1) The site chat (`webstudio.js` `readSteps` / `drawMsgs`): the conversation timeline with `steps=1` already keeps every
+tool step of a turn as ONE row (`at` = started, `updated_at` = its latest state = the end). While Hoola works the chat shows
+"Working · step N" with a timer ticking every second (server clock, corrected for the screen) and the step list (spinner /
+tick / !, label, own time); every answer keeps "Worked for 42s · 3 steps" (opened lists stay open across refreshes); a page
+reload while she waits picks the feed up again. BUG FOUND by the slow-turn test: a brand-new site chat starts with Hoola's
+greeting, and the answer check (`assistant id > since`, with since = 0 on an empty thread) took the greeting as the answer,
+so waiting stopped at once - only a reply AFTER her newest line counts now. (2) Sidebar like Lovable: Home, Search (All
+websites + a search box), All websites, Starred, Templates; Starred + Recent rows with a ⋯ menu (Open, Open in new tab,
+Rename, Add to / Remove from starred, Delete; keyboard: arrows + Escape), the same menu on every project card and next to
+the project name in the workspace. Rename = NEW `PATCH /api/sites/{id}` {name} -> `service.rename` (1-80 chars, only the
+list name; pages, address and live site untouched). Delete = the existing server delete (a live site is taken off the
+internet first; confirm names that). Stars are this browser's choice (localStorage). Tests `test_v0655_kaam_dikhe.py` +3.

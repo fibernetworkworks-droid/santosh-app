@@ -169,4 +169,4 @@ def test_console_files_carry_the_search_power(env):
     vs = {v for v in re.findall(r"\?v=([0-9.]+)", html) if v.startswith("0.")}   # vendor stamps excluded
     assert len(vs) == 1, f"mixed console cache stamps: {sorted(vs)}"
     assert vs == {APP_VERSION}, f"console stamps {sorted(vs)} are not the app version {APP_VERSION}"
-    assert APP_VERSION == "0.657.0"    # conscious-bump guard: moves with every release (bump with pubspec)
+    assert APP_VERSION == "0.658.0"    # conscious-bump guard: moves with every release (bump with pubspec)

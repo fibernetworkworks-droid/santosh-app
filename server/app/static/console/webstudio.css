@@ -228,7 +228,7 @@ dialog.dlg form{display:flex;flex-direction:column;gap:12px}
 @media (prefers-reduced-motion:reduce){.prog.ind i{animation:none}}
 .step .tm{margin-left:auto;font-size:12.5px;color:var(--mut);font-variant-numeric:tabular-nums}
 
-/* v0.657 project list like Lovable: a menu on every project, starred, search */
+/* v0.658 project list like Lovable: a menu on every project, starred, search */
 .rec{display:flex;align-items:center;gap:2px;height:32px;padding:0 2px 0 0;border-radius:8px}
 .rec .rl{display:flex;align-items:center;gap:8px;min-width:0;flex:1;height:100%;padding:0 4px 0 10px;color:inherit}
 .rec.on{background:var(--pri-soft);color:var(--pri-ink)}

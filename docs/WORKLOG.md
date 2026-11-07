@@ -1945,3 +1945,13 @@ Work Log:
 - kaamwatch marks a queued report told; followup tick checks _SENDING first
 - tests: test_v0657_pakka_kaam.py 14 (12 fail on the old code); harness2 expectation updated (another turn's reply is not this row's answer)
 Stage Summary: shipped v0.657.0 on top of their v0.656.0 KAAM DIKHE (both kept)
+
+---
+Task ID: v0.658.0 SAAF DIKHE
+Agent: Claude (web studio session)
+Task: owner screenshots - no timing / feed in the Studio site chat; no project menu in the Studio sidebar
+Work Log:
+- site chat: live tool steps + ticking timer, 'Worked for N · steps' per answer; greeting-as-answer bug fixed
+- sidebar: Search, Starred, per-project menu (open / new tab / rename / star / delete), card + workspace menus; PATCH /api/sites/{id}
+- 11/11 Studio tests green (3 new incl. a slow fake turn in a real browser)
+Stage Summary: shipped v0.658.0 on top of their v0.657.0 (both kept)

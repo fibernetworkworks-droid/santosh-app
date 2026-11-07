@@ -2833,7 +2833,7 @@ def get(tenant: str, ref: str) -> dict[str, Any]:
 
 
 def rename(tenant: str, ref: str, name: str) -> dict[str, Any]:
-    """v0.657 her own name for the project in the Studio list (Lovable's Rename). Only the label changes: the pages,
+    """v0.658 her own name for the project in the Studio list (Lovable's Rename). Only the label changes: the pages,
     the address and the live site stay as they are (the business name inside the pages is in her details)."""
     name = re.sub(r"\s+", " ", str(name or "")).strip()
     if not 1 <= len(name) <= 80:

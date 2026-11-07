@@ -78,7 +78,7 @@ from tests.test_v0407_ek_dimaag import arch_env  # noqa: E402,F401
 
 
 def test_projects_menu_and_chat_timer_in_a_browser(arena_server, arch_env):
-    """v0.657 her screenshots: no menu on a project (rename / delete / star like Lovable) and no timer while the site
+    """v0.658 her screenshots: no menu on a project (rename / delete / star like Lovable) and no timer while the site
     chat answers. The sidebar + card menus rename, star and delete; search filters; a sent line shows a ticking timer."""
     import os
     base, browser, key = arena_server
@@ -144,7 +144,7 @@ def test_projects_menu_and_chat_timer_in_a_browser(arena_server, arch_env):
 
 
 def test_chat_shows_live_steps_timer_then_worked_for(arena_server, arch_env, monkeypatch):
-    """v0.657 her screenshot: 'NEED MORE PREMIUMNESS' and only three dots. A turn's tool steps now show live with a
+    """v0.658 her screenshot: 'NEED MORE PREMIUMNESS' and only three dots. A turn's tool steps now show live with a
     ticking timer, and the answer keeps 'Worked for N · 3 steps' with each step's own time. Also caught here: a new
     site chat starts with a greeting, which the old answer check took for the answer and stopped waiting at once."""
     import asyncio

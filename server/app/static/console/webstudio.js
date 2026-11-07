@@ -124,7 +124,7 @@
   }
 
   /* ================= home with its own sidebar ================= */
-  /* v0.657 the project list like Lovable: search, starred, and a menu on every project (open, new tab, rename, star,
+  /* v0.658 the project list like Lovable: search, starred, and a menu on every project (open, new tab, rename, star,
      delete). Stars are this browser's own choice (kept in localStorage); rename and delete go to the server. */
   const STAR_KEY = 'hoola.ws.star';
   const starred = () => { try { const x = JSON.parse(localStorage.getItem(STAR_KEY) || '[]'); return Array.isArray(x) ? x.map(String) : []; } catch { return []; } };
@@ -751,7 +751,7 @@
     if (THREAD.conv) await readThread();
   }
   const clean = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
-  /* v0.657 the chat's own work feed, like Lovable: every tool step a turn ran (the timeline's step events), with a live
+  /* v0.658 the chat's own work feed, like Lovable: every tool step a turn ran (the timeline's step events), with a live
      timer while Hoola works and "Worked for 42s · 5 steps" kept above each answer. Times are the server's clock. */
   const tsec = a => { const t = S(a); if (!t) return 0; const ms = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + 'Z'); return isNaN(ms) ? 0 : ms / 1000; };
   async function readSteps(c) {
