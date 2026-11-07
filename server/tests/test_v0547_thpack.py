@@ -172,7 +172,7 @@ def test_agent_research_matches_the_real_engine():
         assert door in body, door                       # the skill teaches it
     assert (REPO_ROOT / "server" / "app" / "crew" / "crew.py").exists()
     from app.agent import tools
-    assert len(tools.TOOLS) == 606, ("582 (their v0.588 base incl. paisa_sahayak) + 2 sandarbh (v0.589 SANDARBH MANCH: workspace + kgmemory). Was: registry moved - refresh th-agent-research's "
+    assert len(tools.TOOLS) == 608, "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + ("582 (their v0.588 base incl. paisa_sahayak) + 2 sandarbh (v0.589 SANDARBH MANCH: workspace + kgmemory). Was: registry moved - refresh th-agent-research's "
                                      "'abhi 569' and this pin in the SAME commit + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)")
 
 

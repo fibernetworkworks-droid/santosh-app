@@ -63,7 +63,8 @@
     phone: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>', reload: '<path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/>',
     ext: '<path d="M14 4h6v6M20 4l-9 9M18 14v5H5V6h5"/>', lock: '<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
     hist: '<path d="M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5M12 7v5l3 2"/>', sel: '<path d="M4 4l7 17 2-7 7-2z"/>', check: '<path d="M5 12l5 5 9-10"/>',
-    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>',
+    stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>', code: '<path d="M8 7l-5 5 5 5M16 7l5 5-5 5"/>', chev: '<path d="M6 9l6 6 6-6"/>', arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>', pause: '<path d="M9 5v14M15 5v14"/>',
     cart: '<path d="M4 6h2l2 10h10l2-7H8"/>', card: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
     cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', blog: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 11h8M8 15h6"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', pin: '<path d="M12 21s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
@@ -85,6 +86,15 @@
   const dotCls = v => ({ready: 'ok', looks: 'warn', planned: 'v', building: 'v', checking: 'v', failed: 'bad'}[S(v.status)] || '');
   const name = v => S(v.name) || S(v.field_label) || 'Website';
   const hasVersion = v => !!Number(v.version);
+  /* v0.667 PREMIUM STUDIO helpers: a site's status in a few words, how long ago, a time of day, the thumbnail tint */
+  const statusText = v => S(v.status) === 'building' && Number(M(v.board).pct) ? `Building · ${Math.round(Number(M(v.board).pct))}%`
+    : S(v.status) === 'looks' && !L(v.looks).length ? 'Making 3 looks' : (STATUS[S(v.status)] || [S(v.status) || 'Draft'])[0] + (S(v.status) === 'ready' && Number(v.version) ? ` · v${v.version}` : '');
+  const isoS = x => { const t = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(S(x)) ? S(x) : S(x) + 'Z'); return isNaN(t) ? 0 : t / 1000; };
+  const ago = x => { const t = isoS(x); if (!t) return ''; const d = Math.max(0, Date.now() / 1000 - t);
+    return d < 60 ? 'just now' : d < 3600 ? `${Math.floor(d / 60)} min ago` : d < 86400 ? `${Math.floor(d / 3600)} h ago` : `${Math.floor(d / 86400)} d ago`; };
+  const clockOf = t => t ? new Date(t * 1000).toLocaleTimeString([], {hour: 'numeric', minute: '2-digit'}) : '';
+  const tint = id => { let h = 0; for (const c of S(id)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return 'g' + (h % 4); };
+  const MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent || '');
   const WORKING = v => ['building', 'checking'].includes(S(v.status)) || (S(v.status) === 'looks' && !L(v.looks).length) || !!v.mapping;
   const TYPES = [['Sweet shop', 'Menu, festival gift boxes, WhatsApp orders'], ['Clinic', 'Doctors, timings, booking slots you confirm'],
     ['Coaching classes', 'Batches, results, parent or student logins'], ['Restaurant', 'Menu with photos, table booking, directions'],
@@ -134,7 +144,7 @@
     const cur = starred().filter(x => x !== S(id));
     try { localStorage.setItem(STAR_KEY, JSON.stringify((on ? [S(id), ...cur] : cur).slice(0, 60))); } catch {}
   }
-  const recRow = v => `<div class="rec${CUR && S(CUR.id) === S(v.id) ? ' on' : ''}"><a class="rl" href="#/site/${enc(S(v.id))}"><span class="dot ${dotCls(v)}" aria-hidden="true"></span><span class="ell">${esc(name(v))}</span></a>
+  const recRow = v => `<div class="rec${CUR && S(CUR.id) === S(v.id) ? ' on' : ''}"><a class="rl" href="#/site/${enc(S(v.id))}"><span class="dot ${dotCls(v)}" aria-hidden="true"></span><span class="rt"><span class="ell">${esc(name(v))}</span><span class="rs">${esc(statusText(v))}</span></span></a>
     <button class="rm" type="button" data-menu="${esc(S(v.id))}" aria-label="More for ${esc(name(v))}" title="Rename, star, delete">${ico('more', 16)}</button></div>`;
   function sidebar(cur) {
     const st = SITES.filter(v => isStar(v.id));
@@ -142,7 +152,7 @@
     const nav = (h, k, label, ic) => `<a class="nav" href="${h}" ${cur === k ? 'aria-current="page"' : ''}>${ico(ic)}${esc(label)}</a>`;
     return `<aside class="side" aria-label="Web Studio">
       <div class="brand"><div class="mark" aria-hidden="true"><span></span></div><div><b>Hoola</b><span>Web Studio</span></div></div>
-      <button class="new" type="button" data-act="new">${ico('plus', 16)}New website</button>
+      <button class="new" type="button" data-act="new" title="New website (${MAC ? '⌘' : 'Ctrl'} K)"><span>${ico('plus', 16)}New website</span><kbd>${MAC ? '⌘ K' : 'Ctrl K'}</kbd></button>
       ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites/search', 'search', 'Search', 'search')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/starred', 'starred', 'Starred', 'star')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
       ${st.length ? `<div class="lbl">Starred</div>${st.map(recRow).join('')}` : ''}
       ${rec ? `<div class="lbl">Recent</div>${rec}` : ''}
@@ -202,9 +212,9 @@
   }
 
   function siteCard(v) {
-    return `<div class="cw"><a class="card" href="#/site/${enc(S(v.id))}"><span class="shot" aria-hidden="true"><i></i><i></i><b></b></span>
+    return `<div class="cw"><a class="card" href="#/site/${enc(S(v.id))}"><span class="shot ${tint(v.id)}" aria-hidden="true"><i></i><i></i><b></b></span>
       <span class="meta"><span style="display:flex;align-items:center;gap:8px;min-width:0"><b class="ell">${esc(name(v))}</b>${isStar(v.id) ? `<span class="stard" title="Starred" aria-label="Starred">${ico('star', 14)}</span>` : ''}${statusPill(v)}</span>
-      <span class="mut sm ell">${esc([S(v.number), S(v.field_label), S(v.goal_label)].filter(Boolean).join(' · '))}</span></span></a>
+      <span class="mut sm ell">${esc([S(v.number), S(v.field_label), S(v.goal_label)].filter(Boolean).join(' · '))}</span>${v.updated_at ? `<span class="ed">Edited ${esc(ago(v.updated_at))}</span>` : ''}</span></a>
       <button class="cm" type="button" data-menu="${esc(S(v.id))}" aria-label="More for ${esc(name(v))}" title="Rename, star, delete">${ico('more', 16)}</button></div>`;
   }
   function specCard(x) {
@@ -230,14 +240,15 @@
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">Starred</h2></div>
         ${st.length ? `<div class="grid">${st.map(siteCard).join('')}</div>` : `<div class="panel mut">Nothing starred yet. Open the ${ico('more', 14)} menu on any website and choose Add to starred.</div>`}</section>`;
     } else {
-      main = `<section class="hero"><h1>What should we build today?</h1>
-        <p class="mut">Describe your business in one line. You get three complete looks of the whole website to click through first; only the one you pick is built, and nothing goes live until you tap.</p>
+      main = `<div class="aura" aria-hidden="true"><i class="a1"></i><i class="a2"></i><i class="a3"></i><i class="a4"></i></div>
+      <section class="hero"><span class="eyebrow"><b>New</b>Watch your website being built, live${ico('arrow', 14)}</span><h1>What should we build today?</h1>
+        <p class="mut">Describe your business in one line. Hoola writes every page, shows you three complete designs, and builds the one you pick, right in front of you. Nothing goes live until you tap.</p>
         <form class="ask" data-form="ask">
           <label for="wsAsk" class="sr">Describe your website</label>
           <textarea id="wsAsk" rows="3" maxlength="2000" placeholder="A website for Sharma Sweets in Akola: menu, Diwali gift boxes and a WhatsApp order button">${esc(PREFILL)}</textarea>
           <div class="bar">
-            <button class="b ghost" type="button" data-src="old">${ico('move', 16)}Move my old site</button>
-            <button class="b ghost" type="button" data-src="shot">${ico('pic', 16)}Design from a picture</button>
+            <button class="b ghost" type="button" data-src="old">${ico('globe', 15)}Use my old site</button>
+            <button class="b ghost" type="button" data-src="shot">${ico('pic', 15)}From a screenshot</button>
             <span class="sp"></span>
             <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
@@ -249,7 +260,7 @@
         <div class="chips">${TYPES.slice(0, 7).map(([t]) => `<button class="chip" type="button" data-type="${esc(t)}">${esc(t)}</button>`).join('')}<a class="chip" href="#/templates">More templates</a></div>
       </section>
       ${SPECS.length ? `<section class="wrap"><div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${SPECS.slice(0, 4).map(specCard).join('')}</div></section>` : ''}
-      <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length > 8 ? '<a class="b ghost" href="#/sites">See all</a>' : ''}</div>
+      <section class="wrap"><div class="sec"><h2>Your websites</h2>${SITES.length ? `<a class="more" href="#/sites">View all ${ico('arrow', 13)}</a>` : ''}</div>
         ${SITES.length ? `<div class="grid">${SITES.slice(0, 8).map(siteCard).join('')}</div>` : '<div class="panel mut">No website yet. Write one line above.</div>'}</section>
       <section class="wrap"><div class="sec"><h2>Or start from</h2></div><div class="starts">
         <button class="st" type="button" data-src="focus"><span class="si">${ico('chat')}</span><span><b>Describe it</b><span class="mut sm">One line in your own words.</span></span></button>
@@ -399,10 +410,11 @@
   function drawShell() {
     const v = CUR, mode = store.get(MODE_KEY + '.chat') === 'plan' ? 'plan' : 'build';
     APP.innerHTML = `<div class="wsp">
-      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a>
-        <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('more', 16)}</button><span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+        <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('chev', 16)}</button>${v.name_by === 'hoola' ? `<button class="namedby" type="button" data-menu="${esc(S(v.id))}" title="Hoola picked this brand name. Tap to rename it.">✦ Named by Hoola</button>` : ''}<span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
+        <span class="tsave">Every change is saved as a version</span>
         <button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>
-        <button class="b pri" type="button" data-view="publish"><span>Publish</span></button></header>
+        <button class="b dark" type="button" data-view="publish"><span>Publish</span></button></header>
       <div class="body">
         <section class="chat" aria-label="Chat with Hoola about this website">
           <div class="msgs" id="wsMsgs" aria-live="polite"></div>
@@ -454,14 +466,29 @@
   function drawState() {
     const box = $('#wsState'); if (!box || !CUR) return;
     const v = CUR, b = M(v.board), a = ACTV(v), st = L(a.steps);
-    if (WORKING(v)) {
+    if (WORKING(v)) {                    // v0.667 the live work card: what is running, every step's own time, the whole clock
       const cur = [...st].reverse().find(x => x.state === 'run');
-      box.innerHTML = `<div class="chatact"><div class="step"><span class="spin" aria-hidden="true"></span><span class="ell sp">${esc(S(cur?.label) || S(b.now) || S(v.say) || 'Working…')}</span>
-          ${cur && Number(cur.total) ? `<span class="cnt">${esc(S(cur.done || 0))}/${esc(S(cur.total))}</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}</div>
-        ${st.length > 1 ? `<details class="actd"${ACT_OPEN ? ' open' : ''}><summary>${st.length} steps so far</summary>${stepList(a, 12)}</details>` : ''}</div>`;
+      const title = S(v.status) === 'looks' ? 'Making three designs' : S(v.status) === 'checking' ? 'Checking every page'
+        : hasVersion(v) ? 'Updating your website' : 'Building your website';
+      const stepPct = cur && Number(cur.total) ? Math.round(100 * Number(cur.done || 0) / Number(cur.total)) : null;
+      const sub = cur ? `Step ${st.indexOf(cur) + 1}${stepPct !== null ? ` · ${stepPct}% of this step` : ''} · ${S(cur.label)}` : S(b.now) || S(v.say) || 'Starting…';
+      const pct = Number(b.pct) ? Math.max(3, Math.min(100, Number(b.pct))) : stepPct;
+      const writingN = LIVE.site === S(v.id) ? Object.values(LIVE.slots).filter(writing).length : 0;
+      const shown = stepList(a, 6);
+      box.innerHTML = `<div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${esc(title)}</b><span>${esc(sub)}</span></span>
+          ${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}</div>
+        <div class="prog${pct === null ? ' ind' : ''}" role="progressbar" aria-label="Progress"${pct === null ? '' : ` aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}"`}><i style="width:${pct === null ? 30 : pct}%"></i></div>
+        ${st.length ? shown : ''}
+        ${st.length > 6 ? `<details class="actd"${ACT_OPEN ? ' open' : ''}><summary>All ${st.length} steps so far</summary>${stepList(a)}</details>` : ''}
+        <div class="wfoot"><span class="ell">${writingN > 1 ? `${writingN} parts writing at once` : writingN === 1 ? '1 part writing now' : 'You can keep chatting; changes wait for this build'}</span><span class="sp"></span>
+          ${['building', 'checking'].includes(S(v.status)) ? `<button class="b sm" type="button" data-act="stop">${ico('pause', 14)}Pause</button>` : ''}</div></div>`;
     } else if (st.length && a.ended) {
-      const ok = !st.some(x => x.state === 'error');
-      box.innerHTML = `<details class="actd done"${ACT_OPEN ? ' open' : ''}><summary>${ok ? 'Worked' : 'Stopped'} for ${dur(Number(a.ended) - Number(a.started))} · ${st.filter(x => !x.final).length} steps</summary>${stepList(a)}</details>`;
+      const ok = !st.some(x => x.state === 'error'), chk = M(v.checks);
+      const fresh = nowS() - Number(a.ended) < 3600 && ok && S(v.status) === 'ready' && hasVersion(v);
+      box.innerHTML = `<details class="actd done"${ACT_OPEN ? ' open' : ''}><summary>${ok ? `<span class="tick" aria-hidden="true">${ico('check', 11)}</span>` : '<span class="xmark" aria-hidden="true">!</span>'}<span><b>${ok ? 'Worked' : 'Stopped'} for ${dur(Number(a.ended) - Number(a.started))} · ${st.filter(x => !x.final).length} steps</b></span><span class="chev" aria-hidden="true">${ico('chev', 14)}</span></summary>${stepList(a)}</details>
+        ${fresh ? `<div class="vcard"><span class="vth" aria-hidden="true"></span><span class="vt"><b>Version ${esc(S(v.version))} is ready</b><span>${chk.passed === true ? 'Every check passed · ' : ''}not live until you publish</span></span>
+          <button class="b dark sm" type="button" data-view="publish">${ico('globe', 14)}Go live…</button></div>
+          <div class="sugg"><span>Next, you could</span>${['Add a shop with cart', 'Add online payments', 'Add a Hindi version'].map(t => `<button type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>` : ''}`;
     } else box.innerHTML = '';
     const p = $('#wsPill'); if (p) p.innerHTML = statusPill(v);
     startTick();
@@ -638,6 +665,7 @@
   function setLivePage(slug) {
     LIVE.page = slug || 'home';
     const fr = APP.querySelector('iframe[data-live]'); if (fr && CUR) { fr.dataset.page = LIVE.page; fr.src = liveSrc(CUR, LIVE.page, -1); }
+    const u = $('#wsLUrl'); if (u) u.textContent = 'preview · ' + LIVE.page;
     drawLiveBits();
   }
   function finalSoon(sl, tries = 0) {          // the finished section, as the real page shows it (photos, icons)
@@ -687,8 +715,9 @@
       stage = `<div class="lgrid">${Array.from({length: n}, (_, i) => `<div class="lcol"><div class="lhead"><b>Look ${i + 1}</b><span class="mut sm ell" data-lklabel="${i}">${esc(S(LIVE.looks[i]?.label))}</span><span class="sp"></span><span class="lstate" data-lkstate="${i}"></span></div>
         ${liveFrame(liveSrc(v, 'home', i), `Look ${i + 1} being made`, 'home', i, 'pc')}</div>`).join('')}</div>`;
     } else {
+      const fr = liveFrame(liveSrc(v, LIVE.page, -1), 'Your website being built', LIVE.page, -1);
       stage = `<nav class="lpages" id="wsLPages" aria-label="Pages being built"></nav>
-        <div class="stage">${liveFrame(liveSrc(v, LIVE.page, -1), 'Your website being built', LIVE.page, -1)}</div>`;
+        <div class="stage">${DEVICE === 'pc' ? `<div class="bwin"><div class="bchrome" aria-hidden="true"><i></i><i></i><i></i><span class="burl">${ico('lock', 12)}<span id="wsLUrl">preview · ${esc(S(LIVE.page))}</span></span></div>${fr}</div>` : fr}</div>`;
     }
     pane.innerHTML = viewsBar(tools) + `<div class="lbar" id="wsLBar" aria-live="polite"></div>`
       + `<div class="lwrap${LIVE.code ? ' withcode' : ''}"><div class="lmain">${stage}</div>${LIVE.code ? '<aside class="lcode" aria-label="Code being written"><nav class="ltabs" id="wsLTabs"></nav><pre id="wsLCode" tabindex="0"></pre></aside>' : ''}</div>`;
@@ -702,7 +731,7 @@
     const bar = $('#wsLBar');
     if (bar) {
       const lead = act.sort((x, y) => Number(y.at) - Number(x.at))[0];
-      bar.innerHTML = `<span class="spin" aria-hidden="true"></span><span class="ell sp">${lead ? `${esc(lead.kind === 'fix' ? '' : lead.state === 'think' ? 'Designing ' : 'Writing ')}<b>${esc(S(lead.label))}</b>${act.length > 1 ? ` <span class="mut">· ${act.length} parts at once</span>` : ''}`
+      bar.innerHTML = `<span class="livetag"><i aria-hidden="true"></i>LIVE</span><span class="ell sp">${lead ? `${esc(lead.kind === 'fix' ? '' : lead.state === 'think' ? 'Designing ' : 'Writing ')}<b>${esc(S(lead.label))}</b>${act.length > 1 ? ` <span class="mut">· ${act.length} parts at once</span>` : ''}`
         : esc(S([...L(a.steps)].reverse().find(x => x.state === 'run')?.label) || S(b.now) || 'Working…')}</span>
         ${Number(b.total) ? `<span class="mut sm">${esc(S(b.done || 0))}/${esc(S(b.total))} parts</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}
         ${['building', 'checking'].includes(S(CUR.status)) ? '<button class="b sm" type="button" data-act="stop">Pause</button>' : ''}`;
@@ -1005,22 +1034,25 @@
     const near = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
     const shown = rows.slice(-40);
     let lastUser = 0;
-    const html = shown.map(r => {
+    const t0 = tsec(shown[0]?.at);
+    const day = t0 ? `<div class="dday">${new Date(t0 * 1000).toDateString() === new Date().toDateString() ? 'Today' : new Date(t0 * 1000).toLocaleDateString([], {day: 'numeric', month: 'short'})} · ${esc(clockOf(t0))}</div>` : '';
+    const who = t => `<div class="who"><span class="hm" aria-hidden="true"></span><b>Hoola</b>${t ? `<span>${esc(clockOf(t))}</span>` : ''}</div>`;
+    const html = day + shown.map(r => {
       if (r.role === 'user') { lastUser = tsec(r.at) || lastUser; return `<div class="me">${esc(clean(r.text))}</div>`; }
       const end = tsec(r.at), steps = lastUser && end ? stepsBetween(lastUser, end) : [];
       const took = lastUser && end > lastUser ? end - lastUser : 0;
       const k = 'turn-' + r.id;
       const head = steps.length || took >= 3 ? `<details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>Worked for ${dur(took)}${steps.length ? ` · ${steps.length} step${steps.length > 1 ? 's' : ''}` : ''}</summary>${steps.length ? stepList({steps}) : ''}</details>` : '';
-      return head + `<div class="ho">${md(S(r.text))}</div>`;
+      return head + who(end) + `<div class="ho">${md(S(r.text))}</div>`;
     }).join('');
     const since = THREAD.startedS || lastUser || nowS();
     const live = THREAD.waiting ? (() => {
       const steps = stepsBetween(since);
-      return `<div class="working" aria-live="polite"><div class="step"><span class="spin" aria-hidden="true"></span><span class="sp">${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</span><span class="tm" data-t0="${since}"></span></div>
-        ${steps.length ? stepList({steps}) : ''}</div>${THREAD.live ? `<div class="ho">${md(THREAD.live)}</div>` : ''}`;
+      return `<div class="working wcard" aria-live="polite"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</b><span>${esc(S(steps[steps.length - 1]?.label) || 'Reading your ask')}</span></span><span class="tm" data-t0="${since}"></span></div>
+        ${steps.length ? stepList({steps}) : ''}</div>${THREAD.live ? who(0) + `<div class="ho">${md(THREAD.live)}</div>` : ''}`;
     })() : '';
     box.innerHTML = rows.length || THREAD.waiting ? html + live
-      : `<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p></div>
+      : `${S(CUR?.brief).trim() ? `<div class="me">${esc(clean(S(CUR.brief)))}</div>` : ''}${who(0)}<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p>${CUR?.name_by === 'hoola' ? `<p class="mut sm">I named it <b>${esc(name(CUR))}</b>. Prefer your own name? Use the menu next to the name and pick Rename.</p>` : ''}</div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
     if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
@@ -1239,6 +1271,13 @@
     const q = S(e.target.value).trim().toLowerCase(); let shown = 0;
     APP.querySelectorAll('#wsAll .cw').forEach(c => { const hit = !q || c.textContent.toLowerCase().includes(q); c.hidden = !hit; shown += hit; });
     const n = $('#wsNone'); if (n) n.hidden = shown > 0;
+  });
+  addEventListener('keydown', e => {                       // v0.667 ⌘K / Ctrl+K: a new website from anywhere in the Studio
+    if ((e.metaKey || e.ctrlKey) && !e.shiftKey && !e.altKey && S(e.key).toLowerCase() === 'k') {
+      e.preventDefault();
+      if (location.hash && location.hash !== '#/') go('#/'); else $('#wsAsk')?.focus();
+      setTimeout(() => $('#wsAsk')?.focus(), 60);
+    }
   });
   APP.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;

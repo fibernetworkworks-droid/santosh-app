@@ -1,3 +1,61 @@
+## v0.670.0 KAAN W6 — HISAAB AUR SAFAI (7 Nov 2026, built as 0.667.0; their console-stamp + PREMIUM STUDIO 0.667.0, DUNIYA MANCH 0.668.0, HOOLA AURA 0.669.0 - REBASE PROTOCOL, rebuilt on their tip, all kept)
+
+The accountability layer her audio runs on, then the unlock it buys — quotas + retention -> real voiceprint diarization.
+
+- **NEW server/app/kaan/limits.py** — `month_usage` (finished kn_ duration_s per calendar month; a live session's seconds count ONCE, by the kn_ row its stop writes), `check_quota_file` (ffprobe estimate BEFORE the engine spends; 0.0 never blocks), `check_quota_live_start` (no new session at cap), `retention_sweep` (kn_ rows past KAAN_RETENTION_DAYS go, **pinned survive** — the column W0 baked for this; live sessions + spine PCM files go with the cutoff), `voiceprint_ready` (the unlock guard). status() grows usage / retention / voiceprint blocks (English notes).
+- **NEW server/app/kaan/voiceprint.py** — `diarize=voiceprint` at transcribe time: pause-cut turns, each turn's audio slice embedded once and scored against HER enrolled Awaaz Pehchaan prints through voiceid.service (identify's threshold+margin law; nothing invented, nothing stored twice); sure matches get the person's name, unsure turns stay unnamed — no guessing; a technical failure degrades to an honest note, the transcript survives; the guard refuses BEFORE the engine burns a run (KAAN_VOICEPRINT=1 AND KAAN_RETENTION_DAYS>0 — voiceprints are biometric, matching audio with them is only allowed where retention is bounded). `pause_turns` also rides fresh audio now.
+- **Wiring** — service.transcribe_file grows the `diarize` param (quota before engine, guard before engine, speakers stored + named in the note); live.start refuses at the cap; api.py transcribe grows the diarize Form field (honest 400 in the service's own words); kaan_tools schema grows the diarize enum (18 actions, registry stays their 608); worker.py `kaan_jobs` (daily throttle, mirrors eventlog_jobs) calls the sweep. Config: `kaan_quota_audio_min=0`, `kaan_retention_days=0`, `kaan_voiceprint=False` — all default OFF. ZERO new tables, ZERO new pip.
+- **The whisperai.com fresh price read (7 Nov 2026)** — Free $0 (5 min/mo), Premium $14.99/mo (120 min, rollover to 360), Business Pro $24.99/mo unlimited, Enterprise $75/mo (5 seats, $15/extra seat), Developer API $99/mo (10k API min, real-time + pre-recorded, translation API 86 languages); single-file cap 10 h, live sessions 12 h, MCP connector is a paid-tier feature. Kaan's answer stays local-first: no per-minute meter unless SHE sets the cap, same 5 GB ceiling, 2 h live sessions, MCP/HTTP doors free, and the one thing no tier sells — speaker names from voiceprints she enrolled and owns.
+- Tests: **test_v0667_kaan_w6.py (26, name keeps the first-build number)** — quota, retention, voiceprint, surfaces, pins; kaan chain W0–W6 green on the merged tree with their suites re-run as the merge proof.
+
+## v0.668.0 DUNIYA MANCH — the T4 keyless-public-web family (built as 0.667.0; their PREMIUM STUDIO took 0.667.0 while T4 sat built - REBASE PROTOCOL #13, both kept): the world outside the walls (owner: "T4")
+
+The fourth and last tier of download/HOOLA_MCP_FEED.json lands backend-only: ONE GET-only tool
+`duniya` (registry 607 -> 608, shipped as 0.668.0) over the parts of the web that answer anyone - no login, no API key.
+Actions: fetch (the mcp/servers fetch reference idea - one public url, readable text, scripts
+stripped, redirects honest, caps honest) | wikipedia | weather (Open-Meteo) | hn (Algolia) |
+currency (Frankfurter) | dictionary (dictionaryapi.dev) | arxiv (Atom, stdlib-parsed) | status.
+Laws: GET only forever; every url - free AND fixed-backends - through the house SSRF guard; ONE
+network seam the tests monkeypatch (suite fully offline); mask_ids on the text; kill switch
+duniya_enabled. Tests: test_v0667_duniya_manch.py (39, zero network). THE FEED'S TIER LADDER IS
+FOUR FOR FOUR: SANDARBH v0.590 (T1 reference) + BHANDAR v0.620 (T2 local core) + JHAROKHA v0.665
+(T3 local browser) + DUNIYA v0.668 (T4 keyless public web).
+
+## v0.666.0 KAAN W5 — BOLI KE TEEN DARWAZE (7 Nov 2026, built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)
+
+Owner: "W5 — MCP + API + extension audio" — Wave W5 of the kaan plan (W0 v0.601.0, W1 v0.613.0,
+W2 v0.619.0, W3 v0.639.0, W4 v0.659.0 all live before it). One brain, three doors: the SAME KS
+functions and gates behind an HTTP API, an MCP stdio server, and the browser extension's tab audio.
+
+- **The HTTP door** (`kaan/api.py`, new): /api/kaan/* — status, list, search, vocab CRUD, transcribe
+  (upload), per-transcript get / export (download=1 = raw bytes with Content-Disposition) / style /
+  minutes / diarize / to_gyaan, live start / chunk / stop / get / list. Mounted with the house router
+  factory (require_key + current_tenant) beside the quicklane, so a paired device token (the
+  extension's /api/pc/pair flow) works on every route. Audio ingest rides kaan_audio; reads stay
+  gate-free by the W1 law; refusals come back as honest 400s with the service's own lines.
+- **The MCP door** (`kaan/mcp_server.py`, new): stdio JSON-RPC 2.0 (protocol 2025-06-18, the wire
+  aep.mcp speaks), zero new pip. Exactly ONE tool `kaan` with the 18-action enum (actions, not
+  tools — the law travels with the door); dispatch THROUGH agent.kaan_tools._sync so it cannot
+  drift from the tool door; actor=owner by construction (it runs on her box with her env); honest
+  refusals return as isError content; imports lazy (no engine/gyaan/kaan_tools at module load).
+  Run: python -m app.kaan.mcp_server (HOOLA_TENANT picks the tenant).
+- **The extension's ears** (desktop/ext/hoola-extension): manifest +tabCapture +offscreen (version
+  rides the desktop, 1.9.0 untouched); NEW offscreen.html/offscreen.js — MV3 workers cannot touch
+  MediaRecorder, so the offscreen document consumes the tabCapture streamId, records audio/webm in
+  2s slices, POSTs each to /api/kaan/live/{sid}/chunk with the device Bearer; background.js grows
+  captions-start/captions-stop; popup grows the Live captions section (start/stop, captions_tail
+  poll every 3s, the transcript link on stop).
+- Registry 606 UNCHANGED — W5 adds transport doors, zero new actions (enum 18, description diet
+  untouched). status() carries the doors block. Tests: NEW test_v0663_kaan_w5.py (23, zero network,
+  zero torch) + the kaan chain W0-W4 + webext + api + their latest lanes green on the tree; the
+  google-auth red is the documented sandbox environment class (pre-existing, stash-proven).
+  Ritual: scripts/ritual_0663.py swept 212 test files 0.662.0 -> 0.663.0 (+668 -> +669), pubspec
+  0.663.0+669, APP_VERSION story, webext permission-set pin healed (versions untouched — the
+  extension rides the desktop). NOT VERIFIED live: the first /api/kaan call + the MCP handshake on
+  the VPS — the bake block rides the deploy.
+
+---
+
 ## v0.659.0 KAAN W4 — BOLI SE KITAAB (7 Nov 2026)
 
 Owner: "W4 (exports + translation + Gyaan unlock)" — Wave W4 of the kaan plan (W0 v0.601.0, W1 v0.613.0,
@@ -22287,7 +22345,95 @@ page strip, the normal preview after, then a change streams over the built site 
 **Not verified, said plainly:** no real Opus stream has been watched yet (the browser test streams the fake answer in
 pieces); how smooth six parts at once are on her VPS and the delay from Opus to the screen are to be measured on the
 first real build. The canvas shows the section's own CSS as it arrives, but its JS runs only on the finished site.
-## v0.665.0 SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5"; built as 0.663 - their STUDIO JAANCH took 0.663.0 and their ASLI SAMAY 0.664.0 while it sat on the branch, REBASE PROTOCOL twice, all kept)
+
+## v0.665.0 JHAROKHA MANCH — the T3 local-browser family: the agent's own window onto the web (owner: "T3 Local Browser --- CONTINUE"; built as 0.664.0 - their ASLI SAMAY took 0.664.0 while JHAROKHA sat built - REBASE PROTOCOL #12, both kept)
+
+The third idea-lane of the MCP-feed family lands backend-only. A jharokha is the overhanging
+window of an old haveli: you open it, look out at the street, point at things, and the street does
+not come inside. ONE tool `jharokha` (registry 606 -> 607), nine deterministic actions, every
+answer one envelope: open / snapshot / click / type / press / console / tabs / screenshot / close.
+
+**Ported IDEA-ONLY (zero upstream code, zero new pip, zero new keys):** microsoft/playwright-mcp
+- "browser automation capabilities using Playwright ... through structured accessibility snapshots,
+bypassing the need for screenshots or visually-tuned models" (MIT) — the lane's whole shape:
+snapshot-with-refs over pixels, a fresh snapshot riding every answer, refs valid until the page
+changes, one deterministic action per call; and the modelcontextprotocol/servers Puppeteer archived
+reference — "Browser automation and web scraping" (MIT) — the headless doors themselves. The
+browser is the house's OWN playwright + chromium stack (Motion v0.63, Computer Operator v0.67).
+
+**The shape:** refs come from a house-sized DOM walk (role + name + nth among the same, 250 max),
+and every act-lane verifies the tag before it lands — a stale ref cannot click a stranger. The
+SSRF guard is the house's own scrape-lane guard (public http(s) only; loopback, RFC1918,
+link-local and the cloud-metadata address never fetched), with inert about:blank /
+data:text/html scratch pages for the lane's own work and the offline tests. RAM discipline: at
+most 2 tenant browsers alive server-wide (an extra tenant = honest BUSY), 4 tabs each, an idle
+reaper at 180 s (and defensively before every action). One owner daemon loop owns playwright
+forever; actions are submitted thread-safe, serialized per tenant, each behind a 60 s belt.
+Ephemeral by design: no profile, no cookies on disk, nothing shared across tenants. The tree
+lines, page text and console tail pass operator.browser mask_ids; page.url, the title and local
+file paths do not. No evaluate, no downloads, no file://, no uploads, no credentials — the
+agentic door for those stays the Computer Operator (browser_worker). Kill switch
+`jharokha_enabled` (default on; off = every action NEED_SETUP); a server without the browser
+stack says NEED_SETUP naming the setup command.
+
+**Tests:** `server/tests/test_v0664_jharokha_manch.py` (27; the file keeps its build-name, the
+bhandar test_v0618 precedent), a real headless Chromium with every page a data:text/html scratch
+page — the whole suite offline: the snapshot shape, real clicks, stale-ref honesty, type + submit
+through a form's onsubmit, the press allowlist, the console tail, the tabs lifecycle and caps, a
+real screenshot on disk, the guard's refusals, no-page honesty, close both ways, the kill switch,
+the reaper, the global cap, tenant isolation, the walk cap, registry 607, enum, APP_VERSION.
+
+**Version ritual:** pubspec 0.665.0+671; pins swept to 0.665.0(+671) (APP_VERSION asserts,
+pubspec-string pins, registry 606 -> 607 with the note appended, console cache-busters; the
+0.664.0 first pass had been swept identically by both chains, so the rebase carried it and this
+pass re-versioned the whole tree); CLAUDE.md bullet + current-version chain; WORKLOG Task 39; this
+section. Server-only deploy — old APKs keep working; one new kill switch, default on.
+
+**Not changed, said plainly:** no evaluate / downloads / credentials lane (deliberately absent —
+that is the Computer Operator's door, not this one); no persistent browser profiles (ephemeral by
+design); the lane never claims stealth or JS rendering parity with the scrape lane's engines — it
+opens pages as Chromium does, and says BROWSER_ERROR honestly when a page fights back.
+
+
+## v0.667.0 PREMIUM STUDIO — the Figma redesign built into the Web Studio
+
+v0.667.0 PREMIUM STUDIO (owner: "GO THROUGH FIGMA FOR DESIGN MAKE A WEB PANEL MORE PREMIUM ... SHOW ME THE DESIGN FIRST" -> the Figma file 'Hoola Web Studio - Premium redesign' (landing, workspace building live, chat finished, type & colour) -> "GO BUILD THE DESIGN"): the Web Studio rebuilt to that design - one serif (Literata) for the 52 px headline and everything Hoola says, the sans for everything she taps, JetBrains Mono for timers and counts; warm paper + ink palette, violet only for working now, green for done, red only for LIVE; weights stop at 600. Home: 'New - Watch your website being built, live' eyebrow, the serif headline, the ask card with Use my old site / From a screenshot and a dark round send, a dark New website button with Cmd/Ctrl K (a real shortcut from anywhere in the Studio), recent sites with their status under the name, site cards with a tint and 'Edited N ago'. Workspace: mark / name / status, 'Every change is saved as a version', dark Publish; her request opens the chat; Hoola's name + time above each reply; the live work card (what is being built, step n with its own %, the whole clock, progress, every step's own time and count, N parts writing at once, Pause); after a build 'Worked for' + 'Version N is ready' + Go live + three next steps; the live canvas gets a red LIVE tag, page pills and a browser frame. No behaviour removed; light + dark.
+
+**Design source:** Figma file https://www.figma.com/design/Yl6AWOsMaD8f2FdHROVbOB (frames 01 Studio home, 02 Workspace -
+building live, 03 Chat panel - build finished, 04 Type & colour, plus the Chip component). Built into
+`static/console/webstudio.css` (light tokens replaced, dark tokens extended with --live / --solid; the v0.667 layer at the
+end) and `webstudio.js` markup (no route, id or data-attribute removed - the older Studio suites stay green).
+
+**Honest, not invented:** the Figma attach button and the price estimate on the home were left out (no attach flow and
+no estimate exists before a plan); the account block was left out (the Studio does not know her name); the 'Version N
+is ready' card says 'Every check passed' only when the site's checks say so, and appears only in the hour after a build.
+
+**Tests:** `server/tests/test_v0667_premium_studio.py` (2): design markers (three typefaces load, the new pieces exist,
+weights stop at 600) + a browser walk (the headline renders in Literata, Ctrl K comes back to the ask box from another
+page, her request opens the chat, the live work card and its foot, LIVE tag + browser frame, dark Publish
+rgb(23,22,28), Version 1 is ready, Go live opens Publish). Older Studio suites (v0649, v0655, v0663, v0664) green.
+
+
+## v0.669.0 HOOLA AURA - the soft animated brand glow behind the Web Studio home
+
+Owner (with a screenshot of the v0.667 home): "now a perfect animated hoola brand shade in background --- smooth, feeling, soft --- show the preview first" -> preview (light / dark stills + a 4x-speed clip) -> "GO".
+
+- `webstudio.js`: the home `main` opens with `<div class="aura" aria-hidden="true">` holding four `<i>` pools.
+- `webstudio.css` (block "v0.669 HOOLA AURA"): `.hmain` isolates; `.aura` sits at z-index -1, pointer-events none, 760 px tall, masked to fade from 55 % down so the cards and text below sit on the plain page. Pools: peach #FFD9A8 (520x420, 34 s), saffron #FF9A3C (460x380, 29 s), magenta #C055F5 (520x440, 38 s), violet #8B6CFF (420x340, 26 s); blur 70 px, translate3d / scale drifts, ease-in-out alternate. Dark: opacity .22. Reduced motion: no animation. Under 760 px: 560 px tall, blur 56 px. Home only - workspace and live build untouched.
+- Tests `test_v0669_hoola_aura.py` (2): markers (colours, slow loops, no clicks, mask, reduced motion, dark) + a browser walk in light and dark (4 pools, animating, blurred, dark <= .25 opacity, the ask box still the element under the pointer, no page errors).
+- NOT VERIFIED on a low-end phone's GPU (four blurred layers animate transform only, the cheapest path).
+
+
+## v0.671.0 NAAM AUR NAMOONA - a Hoola brand name before building + sample values in the preview (built as 0.670; their KAAN W6 took 0.670.0 while it was in testing - REBASE PROTOCOL, both kept)
+
+Owner: "when website show preview it must show some dummy value not empty data ... also before building give a self Hoola AI defined website brand name - like perfectly Lovable does".
+
+1. **Brand name first.** `site/service.py brand_name(brief, field_label, city)`: if her words open with the business name ("Sharma Sweets ki website", "Kale Dental Clinic: ...") that is the name; else one quick model call (`NAME_SYSTEM`, kind "name", the light model) for a short brandable Indian name + tagline (quotes / links / long digit runs / guard problems refused); else a house fallback ("<word> <trade>"). `new()` uses it when no name came from her, the brand kit or her profile: `facts.name`, `facts.name_by = "hoola"`, tagline if none; the "what is the name?" question no longer appears. `view()` returns `name_by`. `rename()` before the site is built (planned / looks, version 0) also changes the business name in her details and clears `name_by`. Studio: "Named by Hoola" chip beside the project name (opens the Rename menu) and one line in the first chat message.
+2. **Samples, not blanks.** The section prompt asks for `<em class="blank" data-eg="a realistic sample">[what]</em>` and never an empty list / menu / price table / review row (ai.py, code.py). `build.samples(html, facts)` (run on every assembled page) turns each blank into `<em class="blank eg" data-blank="label" title="Sample ...">sample</em>`: the model's data-eg, else a house sample by label (phone 98765 43210, email hello@<name>.in, address, hours, ₹299, city, rating, year); unknown labels stay as they were. Still class `blank`, so the launch check counts it and nothing goes live with a sample; the launch line says the preview shows Hoola's samples. `fill_blanks` reads data-eg blanks. The live canvas (`hoola-build.js` + the finished-section HTML) shows samples too. CSS: a sample is plain text with a soft dotted underline.
+- Tests `test_v0671_naam_aur_namoona.py` (6). Updated to the new truth: v0315 (a missing price is now a marked sample), v0663 (a nameless site is named by Hoola; its address follows the name). Console stamps moved 0.669.0 -> 0.671.0 (v0.670 had left them, so the stamp-count pin was red on main).
+- Pre-existing red, unrelated (fails on the unchanged tree too): `test_v0224_site_edge.py::test_daily_backup_prune_and_safe_restore`.
+- NOT VERIFIED on a real Opus build: how often the model writes data-eg, and the names it picks.
+## v0.672.0 DOOSRI JAANCH, wave 5: SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5"; built as 0.663 - their STUDIO JAANCH took 0.663.0 and their ASLI SAMAY 0.664.0 while it sat on the branch, REBASE PROTOCOL twice, all kept)
 
 The second deep audit (4 parallel read-only passes: task loop, hallucination / honesty, consistency / persistence,
 smoothness) found 37 flaws; this wave fixes the 14 where Hoola could tell her something untrue.
@@ -22336,7 +22482,7 @@ call's tool records now have the real shape), test_v0226 (its scripted "Excel ba
 claim), test_v0220 (the fake call names its chat). NOT VERIFIED live. Not done in this wave (said plainly): the after-reply
 figure check still runs only on her own turns, not on background reports.
 
-## v0.666.0 KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6"; built as 0.664)
+## v0.672.0 DOOSRI JAANCH, wave 6: KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6"; built as 0.664)
 
 15. **Late-reminder quiet hours really work.** `worker._tz`: `life.tz_of` already returns a ZoneInfo and `ZoneInfo(ZoneInfo)`
     raised a swallowed TypeError, so v0.662's night check was always False (a late reminder still rang at 3 am) and the
@@ -22360,7 +22506,7 @@ figure check still runs only on her own turns, not on background reports.
 
 Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the SACH KA HISAAB code). NOT VERIFIED live.
 
-## v0.667.0 SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7"; built as 0.665)
+## v0.672.0 DOOSRI JAANCH, wave 7: SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7"; built as 0.665)
 
 24. **An outside-channel chat is never "the chat she is in".** `bahar._turn` no longer marks it; `convs.mark` refuses a
     channel chat and `convs.current` skips it (`bahar.chat_ids`). One Telegram message used to send every mail alert,
@@ -22383,7 +22529,7 @@ Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the SACH KA HISAAB c
 
 Tests: NEW `test_v0665_sahi_jagah.py` (8). NOT VERIFIED live.
 
-## v0.668.0 SAAF SCREEN — Wave 8 of the second deep audit: smoothness on her screen (owner: "GO WAVE 8"; built as 0.667)
+## v0.672.0 DOOSRI JAANCH, wave 8: SAAF SCREEN — Wave 8 of the second deep audit: smoothness on her screen (owner: "GO WAVE 8"; built as 0.667)
 
 32. **A step cut by the turn's time limit ends on its card.** `_one` catches `asyncio.CancelledError`, publishes the step
     as an error ("samay khatam, beech mein roka") and the work line as stopped, then lets the cancel go on - it stayed
@@ -22406,3 +22552,7 @@ Also: the channel-chat lookup v0.667 added to every current-chat read (`bahar.ch
 Tests: NEW `test_v0667_saaf_screen.py` (6; all 6 fail on the old code). The phone change compiles first on CI. NOT VERIFIED
 on a real phone. Found while building: the session's disk filled with pytest temp folders mid-run and cut santosh.py
 short on save - restored and re-checked; test runs now use `-o tmp_path_retention_policy=failed`.
+
+## v0.672.0 DOOSRI JAANCH — the four waves above shipped as ONE release
+
+Waves 5-8 of the second deep audit (37 flaws) were built as 0.663-0.667 and re-versioned twice while other sessions shipped 0.663-0.671; to stop the churn they ship together as v0.672.0 (pubspec 0.672.0+678). Code comments keep the wave numbers they were written with (v0.665-v0.668).

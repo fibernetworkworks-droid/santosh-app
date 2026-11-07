@@ -346,7 +346,7 @@ SITE SYSTEM YOU WRITE FOR (already on every page, do not repeat it):
 - Type weights available for both fonts: 400, 500, 600, 700 (use 500 / 600 for UI labels, buttons, sub-heads;
   700 for big display headings).
 - Contact actions: tel:+91..., https://wa.me/91XXXXXXXXXX?text=..., mailto:, https://maps.google.com/?q=... ONLY with values
-  given in FACTS. Otherwise write the label with <em class="blank">[phone]</em>.
+  given in FACTS. Otherwise write the label with <em class="blank" data-eg="98765 43210">[phone]</em>.
 - Forms: <form class="hs-form" data-hoola-form> with name / phone (required) / message fields, a hidden honeypot
   <input class="hp" name="website" tabindex="-1" autocomplete="off">, a consent line <p class="hs-consent">, a
   <button type="submit" class="btn btn-primary">, and <p class="hs-form-msg" role="status"></p>. Hoola adds the endpoint.
@@ -385,7 +385,10 @@ Rules:
 - Use the motion runtime with purpose, matched to the design style's motion: one moment the visitor remembers beats the
   same reveal on every section; a section may move a little or not at all.
 - FACTS are the only truth. Never invent prices, phone numbers, addresses, years, customer counts, awards, ratings,
-  reviews, staff names, degrees or registration numbers: write <em class="blank">[what is missing]</em> instead.
+  reviews, staff names, degrees or registration numbers: write <em class="blank" data-eg="a realistic sample">[what is
+  missing]</em> instead (v0.671: data-eg = a believable SAMPLE value for the preview, e.g. "₹450 / kg", "10 am - 9 pm",
+  "Priya S., Akola", "4.8 out of 5"; the preview shows it marked as a sample and it never goes live - launch waits until
+  the real value replaces it). Never leave a list, menu, price table or review row empty: fill it with samples this way.
 - Respect the RULES lines (profession / advertising law). No famous brand logos or names as decoration, no copied
   artwork, no national emblem / flag, no religious symbol unless the facts ask for it.
 - Accessibility: alt text on images, labels on inputs, buttons with clear words, contrast safe with the tokens,

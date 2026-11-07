@@ -33,6 +33,7 @@ from sqlalchemy import select
 from ..config import get_settings
 from ..db import new_id, now, session
 from . import engine as EN
+from . import limits as LM
 from . import vocab as VB
 from .models import KaanLiveSession
 
@@ -155,6 +156,7 @@ def start(tenant: str, *, model: str = "", language: str = "", conversation_id: 
     every rolling pass + the clean pass); the frozen copy keeps a session consistent."""
     if not _gate():
         raise LiveError(GATE_OFF)
+    LM.check_quota_live_start(tenant)       # W6: no new session once the monthly cap is hit
     ok, why = EN.available()
     if not ok:
         raise LiveError(why)

@@ -39,6 +39,7 @@ p{margin:0 0 1em;text-wrap:pretty}
 .btns{display:flex;flex-wrap:wrap;gap:12px;margin-top:1.4em}
 .pill{display:inline-flex;align-items:center;gap:.4em;padding:.35em .9em;border-radius:99px;background:color-mix(in srgb,var(--c-primary) 12%,transparent);color:var(--c-primary-text);font-weight:600;font-size:.88rem}
 .blank{background:#fff3b0;color:#5c4400;padding:0 .3em;border-radius:4px;font-style:normal}
+.blank.eg{background:none;color:inherit;padding:0;border-radius:0;font-style:inherit;text-decoration:underline dotted;text-decoration-color:color-mix(in srgb,currentColor 40%,transparent);text-underline-offset:.2em}
 /* header / nav */
 .hs-head{position:sticky;top:0;z-index:50;background:color-mix(in srgb,var(--c-bg) 88%,transparent);backdrop-filter:saturate(1.4) blur(10px);
   -webkit-backdrop-filter:saturate(1.4) blur(10px);transition:box-shadow .3s}

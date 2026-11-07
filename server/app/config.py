@@ -340,6 +340,14 @@ class Settings(BaseSettings):
     bhandar_enabled: bool = True           # v0.618 BHANDAR MANCH: the T2 local-core family (the `bhandar` tool,
                                            # the read-only SQLite/markdown/json/AST/time beds idea) - all reads
                                            # over the tenant's OWN stores; off means off (honest NEED_SETUP)
+    jharokha_enabled: bool = True          # v0.665 JHAROKHA MANCH: the T3 local-browser family (the `jharokha`
+                                           # tool, the zero-login playwright-mcp + Puppeteer idea) - the agent's
+                                           # OWN headless Chromium per tenant, capped and reaped (RAM law);
+                                           # off means off (honest NEED_SETUP)
+    duniya_enabled: bool = True            # v0.667 DUNIYA MANCH: the T4 keyless-public-web family (the `duniya`
+                                           # tool, the mcp/servers fetch reference + the no-key public-API rows)
+                                           # - ONE GET-only lane over the no-login/no-key services; off means
+                                           # off (honest NEED_SETUP)
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
@@ -597,6 +605,9 @@ class Settings(BaseSettings):
     kaan_audio: bool = False                # the AUDIO gate (default OFF - KAAN_AUDIO=1 on the VPS flips it)
     kaan_diarize: bool = True               # v0.610 KAAN W1: pause-turn diarization (local, CPU-light - kill switch; KAAN_DIARIZE=0 par band)
     kaan_live_dir: str = "./data/kaan_live"  # v0.618 KAAN W2: live-caption PCM spines (16k mono, sirf uske server par)
+    kaan_quota_audio_min: int = 0           # v0.667 KAAN W6: per-tenant monthly audio-minutes cap (0 = no cap, default; resets on the 1st)
+    kaan_retention_days: int = 0            # v0.667 KAAN W6: transcripts older than N days are swept daily (pinned survive; 0 = keep forever, default)
+    kaan_voiceprint: bool = False           # v0.667 KAAN W6: voiceprint diarization at transcribe time (biometric - needs KAAN_VOICEPRINT=1 AND KAAN_RETENTION_DAYS>0)
     # --- v0.486.0 BYOX SKILL PACK: Build-Your-Own-X 31 categories, seed default on ---
     byox_enabled: bool = True               # BYOX skill pack seeds on first open (default ON)
     # --- Claude skills pilot (docs/CLAUDE_SKILLS_PILOT_PLAN.md): Apache-2.0 Anthropic skills seeded once per tenant ---

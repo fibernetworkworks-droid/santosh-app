@@ -1,4 +1,15 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.670.0 KAAN W6 HISAAB AUR SAFAI (built as 0.667.0; their 0.667.0/0.668.0/0.669.0 took the version numbers while W6 sat built - REBASE PROTOCOL, rebuilt on their tip, all kept)
+
+Task ID: v0.666.0 KAAN W5 BOLI KE TEEN DARWAZE (built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)
+Agent: main (kaan lane)
+Task: owner START "W5 — MCP + API + extension audio" — Wave W5: the HTTP door, the MCP door, the extension's ears.
+Work Log: NEW server/app/kaan/api.py (_kaan_router factory, /api/kaan/* full surface, honest 400s, tenant via current_tenant); NEW server/app/kaan/mcp_server.py (stdio JSON-RPC 2.0 protocol 2025-06-18, one tool kaan, dispatch through kaan_tools._sync, isError honesty, lazy imports); extension +tabCapture/+offscreen with NEW offscreen.html/offscreen.js (MediaRecorder 2s slices -> /api/kaan/live/{sid}/chunk), background captions-start/stop, popup live-captions section; status() doors block; registry 606 + enum 18 UNCHANGED; test_v0663_kaan_w5.py 23 green (TestClient HTTP ring + MCP handle ring + subprocess inertness + extension source pins) + kaan chain W0-W4 + webext + api + v0660/v0661/v0662 green (199/200, the 1 red = pre-existing sandbox google-auth environment red, stash-proven); ritual_0663.py swept 212 files 0.662.0->0.663.0 (+669), pubspec 0.663.0+669, APP_VERSION story, webext permission-set pin healed.
+Stage Summary: pushed to main; deploy rides vps-ops; NOT VERIFIED live yet — first /api/kaan call + MCP handshake on the VPS waits (single-line protocol).
+
+---
+
+# HOOLA — Multi-Session Worklog
 Task ID: v0.659.0 KAAN W4 BOLI SE KITAAB (built as 0.656.0; their KAAM DIKHE took 0.656.0, PAKKA KAAM took 0.657.0 and SAAF DIKHE took 0.658.0 while W4 sat built - REBASE PROTOCOL twice, rebuilt fresh on their 2361b78a7 tip, all kept)
 Agent: main (kaan lane)
 Task: owner START "W4 (exports + translation + Gyaan unlock)" — Wave W4: deterministic exports, the gyaan unlock, the translate proof.
@@ -2029,6 +2040,113 @@ Work Log:
 - Built stream.py + streamed Opus sections, the SSE live route, the build canvas pages + hoola-build.js, the Studio live view (canvas, follow, page strip, code tabs, live looks, live changes, before / after).
 Stage Summary:
 - v0.664.0, tests/test_v0664_asli_samay.py 7 green.
+
+## Task 39 — v0.665.0 JHAROKHA MANCH (owner: "T3 Local Browser --- CONTINUE"; built as 0.664.0, their ASLI SAMAY took 0.664.0 while it sat built - REBASE PROTOCOL #12, both kept)
+
+The T3 tier of download/HOOLA_MCP_FEED.json - the zero-login / zero-key browser rows - lands
+backend-only for the hoola AI, the third idea-lane of the feed family (Sandarbh v0.586 = T1
+reference, Bhandar v0.620 = T2 local core, Jharokha v0.665 = T3 local browser).
+
+**The catalog (both MIT, both catalog-description-verified, ported IDEA-ONLY - zero upstream code,
+zero new pip, zero new keys):** microsoft/playwright-mcp ("browser automation capabilities using
+Playwright ... through structured accessibility snapshots, bypassing the need for screenshots or
+visually-tuned models") + the modelcontextprotocol/servers Puppeteer archived reference ("Browser
+automation and web scraping").
+
+**The lane:** ONE tool `jharokha` (registry 606 -> 607), nine actions, every answer one envelope
+(the v0.559 discipline shape): `open` (SSRF-guarded public http(s) through the house's own
+scrape-lane guard + inert about:blank / data:text/html scratch pages), `snapshot` (the interactive
+tree with refs e1.. + the visible text; a fresh snapshot rides EVERY answer), `click` (ONE real
+click through a ref, the tag verified first - stale refs are honest NOT_FOUND), `type` (fill /
+select_option, submit=true presses Enter), `press` (ONE named key from a printed allowlist),
+`console` (page logs + uncaught pageerrors, clearable), `tabs` (list | select | new | close, cap 4),
+`screenshot` (ONE PNG into data/jharokha/<tenant>/, never base64, 5 MB cap), `close` (RAM hygiene).
+
+**The laws:** refs from a house-sized DOM walk (playwright 1.57 has no page.accessibility) -
+role + name + nth, re-runnable, tag-verifiable, 250 max; MEM-CURE RAM discipline (max 2 tenant
+browsers server-wide - an extra tenant is an honest BUSY - max 4 tabs, idle reaper at 180 s on a
+30 s tick and again before every action); ONE owner daemon loop owns playwright forever (its
+objects are loop-bound), actions submitted thread-safe, serialized per tenant, 60 s belt each;
+ephemeral (no profile, no cookies on disk, nothing shared across tenants); tree / text / console
+pass operator.browser mask_ids (navigation truth page.url + title and local paths do not); no
+evaluate, no downloads, no file://, no uploads, no credentials - the agentic door for those stays
+the Computer Operator. Kill switch `jharokha_enabled` (default on; off = NEED_SETUP, honest); a
+server without the browser stack also says NEED_SETUP naming the setup command.
+
+**Tests:** NEW server/tests/test_v0664_jharokha_manch.py (27) - a real headless Chromium, every
+page a data:text/html scratch page, the whole suite offline; the ritual swept the pins to
+0.665.0(+671) and registry 607.
+
+Stage Summary:
+- v0.665.0, tests/test_v0664_jharokha_manch.py green.
+
+---
+Task ID: v0.667.0 PREMIUM STUDIO
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked for a premium Web Studio design in Figma first, then "GO BUILD THE DESIGN".
+Work Log:
+- Designed 4 frames + a Chip component in Figma (file Yl6AWOsMaD8f2FdHROVbOB).
+- Built it into webstudio.css / .js / .html: tokens, fonts, home, sidebar, top bar, chat, work card, finished state, live pane.
+Stage Summary:
+- v0.667.0, tests/test_v0667_premium_studio.py 2 green; older Studio suites green.
+## Task 40 — v0.668.0 DUNIYA MANCH (owner: "T4" - the T4 tier of download/HOOLA_MCP_FEED.json; built as 0.667.0, their PREMIUM STUDIO took 0.667.0 while T4 sat built and pushed - REBASE PROTOCOL #13, both kept)
+
+The T4 tier of download/HOOLA_MCP_FEED.json - the no-login / no-key public-web rows - lands
+backend-only for the hoola AI, the fourth and last idea-lane of the feed family (Sandarbh v0.586 =
+T1 reference, Bhandar v0.620 = T2 local core, Jharokha v0.665 = T3 local browser, Duniya v0.667 =
+T4 keyless public web). NOTE: the feed file itself was lost to a sandbox recycle; the T4 tier was
+deployed from its recorded definition (the no-login / no-key public-web rows), the same standard
+the first three tiers rode.
+
+**The catalog (catalog-description-verified, ported IDEA-ONLY - zero upstream code, zero new pip,
+zero new keys):** modelcontextprotocol/servers fetch (the official reference: "Web content fetching
+capabilities for LLMs") + the no-key public-API rows (Wikipedia / Open-Meteo / Hacker News /
+Frankfurter / Free Dictionary / arXiv).
+
+**The lane:** ONE tool `duniya` (registry 607 -> 608), eight actions, every answer one envelope
+{schema_version, ok, tool, action, ..., meta{elapsed_ms, backend}, error{code, message, hint}}:
+fetch | wikipedia | weather | hn | currency | dictionary | arxiv | status.
+
+**The laws:** GET only, forever (never POST/PUT/DELETE, never an auth header, never a cookie);
+the named backends' urls are code constants and EVERY url rides the house scrape-lane SSRF guard;
+ONE network seam (`_http_get`) every public byte rides - tests monkeypatch exactly that, the whole
+suite offline; text passes mask_ids; kill switch `duniya_enabled` (off = honest NEED_SETUP).
+
+- Wiring: agent/duniya_tools.py (new); tools.py registry 607 -> 608; config.py duniya_enabled=True;
+  prompts.py Duniya bullet beside the three brothers.
+- Tests: NEW server/tests/test_v0667_duniya_manch.py (39, zero network; the fake seam pops scripted
+  answers): envelope shape, status zero-network, kill switch, fetch (strips scripts/styles, json
+  pretty, redirect final url, honest truncation, TOO_BIG, non-text refused, PAN mask, guard REALLY
+  wired), the SSRF guard itself (loopback / metadata / file:// / ftp://), wikipedia, weather, hn,
+  currency, dictionary, arxiv, upstream mapping, purity (no top-level httpx), registry 608 pin,
+  enum pin, APP_VERSION pin.
+- Ritual: scripts/ritual_0667.py - 0.666.0/+672 -> 0.667.0/+673 across the suites (zero residual),
+  registry pins 607 -> 608 with the note, pubspec, APP_VERSION story (their KAAN W5 chain verbatim
+  in Previous), CLAUDE.md, WORKLOG Task 40, HISTORY section.
+
+Stage Summary:
+- v0.667.0, tests/test_v0667_duniya_manch.py green. Server-only deploy - old APKs keep working.
+
+---
+Task ID: v0.669.0 HOOLA AURA
+Agent: Claude Code (web session)
+Task: animated soft Hoola brand glow behind the Web Studio home (preview first, then GO)
+Work Log:
+- built the aura (webstudio.js + webstudio.css), previewed light / dark / 4x clip, owner said GO
+- test_v0669_hoola_aura.py 2 + test_v0667_premium_studio.py 2 green; version ritual 0.668.0 -> 0.669.0 (+675)
+Stage Summary:
+- shipped v0.669.0 to main
+
+---
+Task ID: v0.671.0 NAAM AUR NAMOONA
+Agent: Claude Code (web session)
+Task: Hoola brand name before building + sample values instead of blanks in the preview
+Work Log:
+- brand_name + new()/view()/rename(); build.samples + prompts + live canvas; Studio chip
+- built as 0.670; their KAAN W6 took 0.670.0 -> re-versioned 0.671.0 on their tip (REBASE PROTOCOL)
+- tests: v0671 6 + site suites (v121, v0223-v0225, v0292, v0315, v0649, v0663, v0664, v0667, v0669) green; v0224 backup prune red on the unchanged tree too
+Stage Summary:
+- shipped v0.671.0 to main
 Task ID: v0665-sach-ka-hisaab (built as 0.663)
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)

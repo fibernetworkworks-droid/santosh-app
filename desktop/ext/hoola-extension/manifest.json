@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Hoola",
   "version": "1.9.0",
-  "description": "Jis page par padh rahi hain use Hoola ko bhejiye - sawaal ke saath. Jawab Hoola ki conversation mein.",
+  "description": "Jis page par padh rahi hain use Hoola ko bhejiye - sawaal ke saath. Jawab Hoola ki conversation mein. W5: live captions bhi - tab ka audio Hoola ke kaan door par.",
   "default_locale": "en",
   "icons": {
     "16": "icons/hoola16.png",
@@ -10,7 +10,7 @@
     "48": "icons/hoola48.png",
     "128": "icons/hoola128.png"
   },
-  "permissions": ["storage", "contextMenus", "scripting", "activeTab"],
+  "permissions": ["storage", "contextMenus", "scripting", "activeTab", "tabCapture", "offscreen"],
   "host_permissions": ["https://hoola.ainewtika.com/*"],
   "optional_host_permissions": ["http://localhost/*", "http://127.0.0.1/*", "https://*/*", "http://*/*"],
   "background": { "service_worker": "background.js" },

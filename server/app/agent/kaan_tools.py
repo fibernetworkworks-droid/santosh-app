@@ -47,6 +47,10 @@ KAAN_TOOLS = [
          "fmt": {"type": "string", "enum": ["", "srt", "vtt", "txt", "json"],
                  "description": "export: which format"},
          "vocab": {"type": "boolean", "description": "transcribe/live_start: tenant vocab lagana hai (default true)"},
+         "diarize": {"type": "string", "enum": ["", "pause_turns", "voiceprint"],
+                     "description": "transcribe: name the speakers - pause_turns cuts turns at pauses; "
+                                    "voiceprint matches her enrolled Awaaz Pehchaan prints (W6; needs "
+                                    "KAAN_VOICEPRINT=1 + KAAN_RETENTION_DAYS>0, checked BEFORE the engine)"},
          "finalize_model": {"type": "string", "enum": ["", "tiny", "base", "small", "medium", "large-v3"],
                             "description": "live_stop: khaali = captions se transcript; model naam = 10-min tak ka clean batch pass"},
          "limit": {"type": "integer"}}, "required": ["action"]}},
@@ -68,6 +72,7 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                   word_timestamps=a.get("word_timestamps") is not False,
                                   conversation_id=ctx.conversation_id or "",
                                   vocab=a.get("vocab") is not False,
+                                  diarize=str(a.get("diarize") or ""),
                                   data=data if isinstance(data, (bytes, bytearray)) else None)
     if action == "status":
         return KS.status(ctx.tenant_id)

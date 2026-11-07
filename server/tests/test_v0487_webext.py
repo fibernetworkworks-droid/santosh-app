@@ -179,9 +179,9 @@ def test_lane_touches_no_pc_settings():
 def test_manifest_is_mv3_hoola():
     m = json.loads((EXT / "manifest.json").read_text(encoding="utf-8-sig"))
     assert m["manifest_version"] == 3 and m["name"] == "Hoola"
-    assert m["version"] == "1.9.0"                        # the extension version rides the desktop
+    assert m["version"] == "1.9.0"                         # the extension version rides the desktop
     assert m["background"] == {"service_worker": "background.js"}
-    assert set(m["permissions"]) == {"storage", "contextMenus", "scripting", "activeTab"}
+    assert set(m["permissions"]) == {"storage", "contextMenus", "scripting", "activeTab", "tabCapture", "offscreen"}   # W5: the tab audio rides kaan live captions
     assert "https://hoola.ainewtika.com/*" in m["host_permissions"]
     assert m["optional_host_permissions"]                 # a custom server asks first (options page)
     assert m["action"]["default_popup"] == "popup.html"
@@ -225,7 +225,7 @@ def ext_env(monkeypatch, tmp_path):
     monkeypatch.setenv("LOCALAPPDATA", str(la))
     src = tmp_path / "payload" / "ext"
     (src / "icons").mkdir(parents=True)
-    (src / "manifest.json").write_text('{"manifest_version": 3, "version": "1.9.0"}', encoding="utf-8")
+    (src / "manifest.json").write_text('{"manifest_version": 3, "version": "1.10.0"}', encoding="utf-8")
     (src / "background.js").write_text("// sw", encoding="utf-8")
     (src / "popup.html").write_text("<html></html>", encoding="utf-8")
     (src / "icons" / "hoola48.png").write_bytes(b"png")
@@ -459,12 +459,12 @@ def test_spec_rides_the_ext_payload():
 
 def test_versions():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.668.0"
+    assert APP_VERSION == "0.672.0"
     pubspec = (ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.668.0+674" in pubspec
+    assert "version: 0.672.0+678" in pubspec
     import santosh_desktop
-    assert santosh_desktop.__version__ == "1.9.0"          # desktop changed this release (ext + --ask)
+    assert santosh_desktop.__version__ == "1.9.0"           # desktop unchanged by W5 (server + extension files only)
     meta = json.loads((PLUGIN / "plugin.json").read_text(encoding="utf-8-sig"))
-    assert meta["Version"] == "1.9.0"                      # the plugin version rides the desktop
+    assert meta["Version"] == "1.9.0"                       # the plugin version rides the desktop
     man = json.loads((EXT / "manifest.json").read_text(encoding="utf-8-sig"))
-    assert man["version"] == "1.9.0"                       # the extension rides the desktop too
+    assert man["version"] == "1.9.0"                        # the extension rides the desktop (W5 = permissions only)

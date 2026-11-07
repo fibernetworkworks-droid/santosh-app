@@ -140,7 +140,7 @@ def test_registry_mount(env):
     from app.agent import tools
     assert "magic21" in tools.HANDLERS and "magic21" in tools.TOOL_LABELS
     assert any(t["name"] == "magic21" for t in tools.TOOLS)
-    assert len(tools.TOOLS) == 606, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(tools.TOOLS) == 608, "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 541 (v0.502) + 1 magic21 (v0.512) + 1 dhara_dsl (their v0.514) + 10 construction (v0.522) + 1 crew_run (v0.523) + 2 from main's v0.533 CRAWL BRAIN wiring (healed in v0.537: this pin was red on pristine main) + 1 reach (v0.559 REACH MANCH) + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_voice_absence(env):
@@ -178,14 +178,14 @@ def test_config_defaults(env, monkeypatch):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.668.0"
+    assert main_mod.APP_VERSION == "0.672.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     # the newest-story precedent (established in the v0.520 rebase): the story pin
     # rides the NEWEST story - now the v0.530 HOOLA GRAPH story
     # story pin moved to the newest story (the newest-story precedent)
     assert "HOOLA RETRIEVE" in story and "index()" in story and "retriever" in story  # the newest-story precedent (the P5 markers live in the Previous chain)
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.668.0+674" in pub
+    assert "version: 0.672.0+678" in pub
 
 
 # ------------------------------------------------------------------ (7) kill switches
