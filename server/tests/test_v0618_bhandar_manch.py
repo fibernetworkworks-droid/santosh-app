@@ -17,7 +17,7 @@ tenant isolation, bed-name escape refusals), the md/json/ast workspace lanes (th
 refusal, TOO_BIG, parse-error positions, dotted get with array hops and honest missing hops, the
 ast skeleton with bases/methods/arity), the time door (IST home, the UTC +00:00 regression, convert
 with honest offsets, unknown IANA zone refused, an explicit `at` moment), the kill switch (off means
-off - every action NEED_SETUP), unknown actions, the purity law (zero network imports), registry 606
+off - every action NEED_SETUP), unknown actions, the purity law (zero network imports), registry 607
 pin, the enum pin, APP_VERSION pin.
 """
 import asyncio
@@ -343,7 +343,7 @@ def test_purity_no_network_imports():
 
 def test_registry_606_and_enum_pin():
     names = [t["name"] for t in TOOLS]
-    assert len(TOOLS) == 606, len(TOOLS)
+    assert len(TOOLS) == 607, "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + len(TOOLS)
     assert names.count("bhandar") == 1
     tool = next(t for t in TOOLS if t["name"] == "bhandar")
     assert tool["input_schema"]["properties"]["action"]["enum"] == \
@@ -353,4 +353,4 @@ def test_registry_606_and_enum_pin():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.664.0"
+    assert APP_VERSION == "0.665.0"

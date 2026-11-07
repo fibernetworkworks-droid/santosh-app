@@ -27,7 +27,7 @@ from app.kaan import vocab as VB
 from tests.test_life import conv_ctx
 
 PIN = ("their 593 + W1 (0.613) + W2 (0.618) + W3 style/vocab_add/vocab_list/vocab_remove ACTIONS (0.637) "
-       "- actions, not tools, registry 606")
+       "- actions, not tools, registry 607")
 
 
 @pytest.fixture()
@@ -242,7 +242,7 @@ def test_live_freezes_prompt_and_every_pass_carries_it(w3_env, monkeypatch):
 
 # ---------------------------------------------------------------- (5) wiring + laws
 def test_actions_grew_registry_did_not():
-    assert len(tools.TOOLS) == 606, PIN
+    assert len(tools.TOOLS) == 607, "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
@@ -291,4 +291,4 @@ def test_w3_modules_purity_and_laziness():
 
 def test_version_pin_v0637():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.664.0"
+    assert APP_VERSION == "0.665.0"

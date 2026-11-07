@@ -359,6 +359,14 @@ TOOLS.extend(BHANDAR_TOOLS)
 TOOL_LABELS.update(BHANDAR_LABELS)
 HANDLERS.update(BHANDAR_HANDLERS)
 
+from .jharokha_tools import (  # noqa: E402  v0.665 JHAROKHA MANCH - the T3 local-browser family (the no-credential browser rows of download/HOOLA_MCP_FEED.json, IDEA-ONLY): the agent's OWN headless Chromium driven one deterministic action at a time - open/snapshot/click/type/press/console/tabs/screenshot/close through accessibility-style refs, backend-only
+    JHAROKHA_HANDLERS, JHAROKHA_LABELS, JHAROKHA_TOOLS,
+)
+
+TOOLS.extend(JHAROKHA_TOOLS)
+TOOL_LABELS.update(JHAROKHA_LABELS)
+HANDLERS.update(JHAROKHA_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)

@@ -22287,3 +22287,51 @@ page strip, the normal preview after, then a change streams over the built site 
 **Not verified, said plainly:** no real Opus stream has been watched yet (the browser test streams the fake answer in
 pieces); how smooth six parts at once are on her VPS and the delay from Opus to the screen are to be measured on the
 first real build. The canvas shows the section's own CSS as it arrives, but its JS runs only on the finished site.
+
+## v0.665.0 JHAROKHA MANCH — the T3 local-browser family: the agent's own window onto the web (owner: "T3 Local Browser --- CONTINUE"; built as 0.664.0 - their ASLI SAMAY took 0.664.0 while JHAROKHA sat built - REBASE PROTOCOL #12, both kept)
+
+The third idea-lane of the MCP-feed family lands backend-only. A jharokha is the overhanging
+window of an old haveli: you open it, look out at the street, point at things, and the street does
+not come inside. ONE tool `jharokha` (registry 606 -> 607), nine deterministic actions, every
+answer one envelope: open / snapshot / click / type / press / console / tabs / screenshot / close.
+
+**Ported IDEA-ONLY (zero upstream code, zero new pip, zero new keys):** microsoft/playwright-mcp
+- "browser automation capabilities using Playwright ... through structured accessibility snapshots,
+bypassing the need for screenshots or visually-tuned models" (MIT) — the lane's whole shape:
+snapshot-with-refs over pixels, a fresh snapshot riding every answer, refs valid until the page
+changes, one deterministic action per call; and the modelcontextprotocol/servers Puppeteer archived
+reference — "Browser automation and web scraping" (MIT) — the headless doors themselves. The
+browser is the house's OWN playwright + chromium stack (Motion v0.63, Computer Operator v0.67).
+
+**The shape:** refs come from a house-sized DOM walk (role + name + nth among the same, 250 max),
+and every act-lane verifies the tag before it lands — a stale ref cannot click a stranger. The
+SSRF guard is the house's own scrape-lane guard (public http(s) only; loopback, RFC1918,
+link-local and the cloud-metadata address never fetched), with inert about:blank /
+data:text/html scratch pages for the lane's own work and the offline tests. RAM discipline: at
+most 2 tenant browsers alive server-wide (an extra tenant = honest BUSY), 4 tabs each, an idle
+reaper at 180 s (and defensively before every action). One owner daemon loop owns playwright
+forever; actions are submitted thread-safe, serialized per tenant, each behind a 60 s belt.
+Ephemeral by design: no profile, no cookies on disk, nothing shared across tenants. The tree
+lines, page text and console tail pass operator.browser mask_ids; page.url, the title and local
+file paths do not. No evaluate, no downloads, no file://, no uploads, no credentials — the
+agentic door for those stays the Computer Operator (browser_worker). Kill switch
+`jharokha_enabled` (default on; off = every action NEED_SETUP); a server without the browser
+stack says NEED_SETUP naming the setup command.
+
+**Tests:** `server/tests/test_v0664_jharokha_manch.py` (27; the file keeps its build-name, the
+bhandar test_v0618 precedent), a real headless Chromium with every page a data:text/html scratch
+page — the whole suite offline: the snapshot shape, real clicks, stale-ref honesty, type + submit
+through a form's onsubmit, the press allowlist, the console tail, the tabs lifecycle and caps, a
+real screenshot on disk, the guard's refusals, no-page honesty, close both ways, the kill switch,
+the reaper, the global cap, tenant isolation, the walk cap, registry 607, enum, APP_VERSION.
+
+**Version ritual:** pubspec 0.665.0+671; pins swept to 0.665.0(+671) (APP_VERSION asserts,
+pubspec-string pins, registry 606 -> 607 with the note appended, console cache-busters; the
+0.664.0 first pass had been swept identically by both chains, so the rebase carried it and this
+pass re-versioned the whole tree); CLAUDE.md bullet + current-version chain; WORKLOG Task 39; this
+section. Server-only deploy — old APKs keep working; one new kill switch, default on.
+
+**Not changed, said plainly:** no evaluate / downloads / credentials lane (deliberately absent —
+that is the Computer Operator's door, not this one); no persistent browser profiles (ephemeral by
+design); the lane never claims stealth or JS rendering parity with the scrape lane's engines — it
+opens pages as Chromium does, and says BROWSER_ERROR honestly when a page fights back.

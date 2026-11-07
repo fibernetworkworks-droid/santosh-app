@@ -535,7 +535,7 @@ def test_registry_579_and_dispatch(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho", "const_survey",
               "const_survey_dekho", "const_delay", "const_delay_dekho", "const_green", "const_green_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 606, "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 607, "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_bim_tool_end_to_end(env):
@@ -611,6 +611,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.664.0"
-    assert 'APP_VERSION = "0.664.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.664.0+670" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.665.0"
+    assert 'APP_VERSION = "0.665.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.665.0+671" in (REPO / "pubspec.yaml").read_text()

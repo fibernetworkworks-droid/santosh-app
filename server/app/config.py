@@ -340,6 +340,10 @@ class Settings(BaseSettings):
     bhandar_enabled: bool = True           # v0.618 BHANDAR MANCH: the T2 local-core family (the `bhandar` tool,
                                            # the read-only SQLite/markdown/json/AST/time beds idea) - all reads
                                            # over the tenant's OWN stores; off means off (honest NEED_SETUP)
+    jharokha_enabled: bool = True          # v0.665 JHAROKHA MANCH: the T3 local-browser family (the `jharokha`
+                                           # tool, the zero-login playwright-mcp + Puppeteer idea) - the agent's
+                                           # OWN headless Chromium per tenant, capped and reaped (RAM law);
+                                           # off means off (honest NEED_SETUP)
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)

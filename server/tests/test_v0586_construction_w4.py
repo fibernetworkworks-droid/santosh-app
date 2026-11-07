@@ -306,7 +306,7 @@ def test_ext_quality_customer(env):
 # ---------------------------------------------------------------- wiring + pins
 def test_registry_593_and_new_tools(env):
     from app.agent.tools import HANDLERS, TOOLS, TOOL_LABELS
-    assert len(TOOLS) == 606, "581 + const_land/plan/ehs/studio/learn/fm (do + dekho)"
+    assert len(TOOLS) == 607, "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + const_land/plan/ehs/studio/learn/fm (do + dekho)"
     new = ["const_land", "const_land_dekho", "const_plan", "const_plan_dekho", "const_ehs",
            "const_ehs_dekho", "const_studio", "const_studio_dekho", "const_learn",
            "const_learn_dekho", "const_fm", "const_fm_dekho"]
@@ -380,6 +380,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.664.0"
-    assert 'APP_VERSION = "0.664.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.664.0+670" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.665.0"
+    assert 'APP_VERSION = "0.665.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.665.0+671" in (REPO / "pubspec.yaml").read_text()

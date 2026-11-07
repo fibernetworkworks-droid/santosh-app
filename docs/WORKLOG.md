@@ -2029,3 +2029,42 @@ Work Log:
 - Built stream.py + streamed Opus sections, the SSE live route, the build canvas pages + hoola-build.js, the Studio live view (canvas, follow, page strip, code tabs, live looks, live changes, before / after).
 Stage Summary:
 - v0.664.0, tests/test_v0664_asli_samay.py 7 green.
+
+## Task 39 — v0.665.0 JHAROKHA MANCH (owner: "T3 Local Browser --- CONTINUE"; built as 0.664.0, their ASLI SAMAY took 0.664.0 while it sat built - REBASE PROTOCOL #12, both kept)
+
+The T3 tier of download/HOOLA_MCP_FEED.json - the zero-login / zero-key browser rows - lands
+backend-only for the hoola AI, the third idea-lane of the feed family (Sandarbh v0.586 = T1
+reference, Bhandar v0.620 = T2 local core, Jharokha v0.665 = T3 local browser).
+
+**The catalog (both MIT, both catalog-description-verified, ported IDEA-ONLY - zero upstream code,
+zero new pip, zero new keys):** microsoft/playwright-mcp ("browser automation capabilities using
+Playwright ... through structured accessibility snapshots, bypassing the need for screenshots or
+visually-tuned models") + the modelcontextprotocol/servers Puppeteer archived reference ("Browser
+automation and web scraping").
+
+**The lane:** ONE tool `jharokha` (registry 606 -> 607), nine actions, every answer one envelope
+(the v0.559 discipline shape): `open` (SSRF-guarded public http(s) through the house's own
+scrape-lane guard + inert about:blank / data:text/html scratch pages), `snapshot` (the interactive
+tree with refs e1.. + the visible text; a fresh snapshot rides EVERY answer), `click` (ONE real
+click through a ref, the tag verified first - stale refs are honest NOT_FOUND), `type` (fill /
+select_option, submit=true presses Enter), `press` (ONE named key from a printed allowlist),
+`console` (page logs + uncaught pageerrors, clearable), `tabs` (list | select | new | close, cap 4),
+`screenshot` (ONE PNG into data/jharokha/<tenant>/, never base64, 5 MB cap), `close` (RAM hygiene).
+
+**The laws:** refs from a house-sized DOM walk (playwright 1.57 has no page.accessibility) -
+role + name + nth, re-runnable, tag-verifiable, 250 max; MEM-CURE RAM discipline (max 2 tenant
+browsers server-wide - an extra tenant is an honest BUSY - max 4 tabs, idle reaper at 180 s on a
+30 s tick and again before every action); ONE owner daemon loop owns playwright forever (its
+objects are loop-bound), actions submitted thread-safe, serialized per tenant, 60 s belt each;
+ephemeral (no profile, no cookies on disk, nothing shared across tenants); tree / text / console
+pass operator.browser mask_ids (navigation truth page.url + title and local paths do not); no
+evaluate, no downloads, no file://, no uploads, no credentials - the agentic door for those stays
+the Computer Operator. Kill switch `jharokha_enabled` (default on; off = NEED_SETUP, honest); a
+server without the browser stack also says NEED_SETUP naming the setup command.
+
+**Tests:** NEW server/tests/test_v0664_jharokha_manch.py (27) - a real headless Chromium, every
+page a data:text/html scratch page, the whole suite offline; the ritual swept the pins to
+0.665.0(+671) and registry 607.
+
+Stage Summary:
+- v0.665.0, tests/test_v0664_jharokha_manch.py green.
