@@ -2943,6 +2943,8 @@ class Call:
             self._appr_since = _now()             # the next card she can answer by voice is one that appears after this
         await self._otp_listen(final=True)
         user, reply = self.user_buf.strip(), self.reply_buf.strip()
+        brain_saved = bool(getattr(self, "_brain_this_turn", False))   # wave 11: did THIS turn go to the brain?
+        self._brain_this_turn = False
         if user:
             self._kaam_said = ""                  # v0.657 her next turn's words may go to the brain again
         name_prompt, self._name_prompt = self._name_prompt, False
@@ -3042,7 +3044,9 @@ class Call:
             del self.turns_log[:-120]
             if interrupted and reply:
                 reply += " …"   # he was cut off: the chat history shows it
-            if get_settings().voice_brain and self.stats.get("brain_turns"):
+            if get_settings().voice_brain and brain_saved:
+                # wave 11: only a turn the BRAIN answered was saved by the brain - every turn after the first brain ask
+                # used to be skipped, so Gemini's own answers ("Riya ka school ab DPS hai") never reached the chat or memory
                 # v0.630 HAIKU DIMAAG: the brain turn already saved her words + the answer (and its memory) in the
                 # chat - the spoken copy would land twice
                 return
@@ -3120,6 +3124,7 @@ class Call:
             job.add_done_callback(lambda j, rc=run_conv: self._spawn_copy_back(rc, request, j))
         if brain:
             self.stats["brain_turns"] = self.stats.get("brain_turns", 0) + 1
+            self._brain_this_turn = True
         _JOBS.add(job)
         job.add_done_callback(_JOBS.discard)
         running = getattr(self, "_kaam_running", None)

@@ -236,8 +236,20 @@ def _plain(prev: str, exs: list[list[dict]], max_chars: int) -> str:
     """No model answered: the previous summary + one line per exchange, newest kept when it must be cut."""
     from .. import yaad
     lines = [f"- {ex[0]['at'].strftime('%d %b') if ex[0].get('at') else ''} {yaad.one_line(ex)}" for ex in exs]
-    text = ((prev.strip() + "\n") if prev else "") + "\n".join(lines)
-    return text[-max_chars:]
+    # wave 11: the PREVIOUS checkpoint is kept whole (its goal, her exact words, open items) - the oldest NEW lines go
+    # first when it must be cut. Before, text[-max_chars:] cut from the front: ~20 folded exchanges wiped the old
+    # checkpoint, and each new one builds on the last, so the loss was for good.
+    head = (prev.strip() + "\n") if prev else ""
+    if len(head) >= max_chars:
+        return head[:max_chars]
+    room = max_chars - len(head)
+    keep: list[str] = []
+    for ln in reversed(lines):          # newest lines first
+        if len(ln) + 1 > room:
+            break
+        keep.append(ln)
+        room -= len(ln) + 1
+    return head + "\n".join(reversed(keep))
 
 
 async def write(prev: str, exs: list[list[dict]], settings=None) -> tuple[str, str]:
@@ -299,8 +311,8 @@ async def run(conversation_id: str, tenant: str, reason: str = "auto", settings=
     ensure_table()
     keep = max(0, int(getattr(s, "chat_compact_keep", 4)))
     async with _lock(conversation_id):
-        before, brain = estimate(conversation_id, s)
-        fold, upto, cur = _fold_plan(conversation_id, keep)
+        before, brain = await asyncio.to_thread(estimate, conversation_id, s)   # wave 11: off the loop
+        fold, upto, cur = await asyncio.to_thread(_fold_plan, conversation_id, keep)
         if not fold:
             STATS["skipped"] += 1
             return None
@@ -334,7 +346,7 @@ async def run(conversation_id: str, tenant: str, reason: str = "auto", settings=
         if draft:
             STATS["prepared"] += 1
             return _view_id(rid)
-        after, _ = estimate(conversation_id, s)
+        after, _ = await asyncio.to_thread(estimate, conversation_id, s)
         with session() as db:
             r = db.get(ChatCompact, rid)
             r.tokens_after = after
@@ -367,7 +379,7 @@ async def before_turn(conversation_id: str, tenant: str, settings=None) -> dict[
         if not enabled(s):
             return None
         from . import context
-        est, brain = estimate(conversation_id, s)
+        est, brain = await asyncio.to_thread(estimate, conversation_id, s)   # wave 11: off the loop
         line = context.budget(brain, s)
         forced = conversation_id in FORCE
         if est > line or forced:

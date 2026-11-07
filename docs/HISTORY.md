@@ -22638,3 +22638,25 @@ bill, a real overload fallback, a real campaign send.
     (`dhara_tools._runs_tell`); a crawl out of tries notifies her current chat.
 
 Tests: NEW `test_v0682_lamba_kaam.py` (11). NOT VERIFIED live on a real long job.
+
+## v0.681.0 (cont.) YAAD PAKKI — Wave 11 of the third deep audit: memory and context (owner: "GO WAVE 11")
+
+20. **A call keeps its small talk.** `voice.finish_turn` skips its own save only for a turn the BRAIN answered
+    (`_brain_this_turn`); every turn after the first brain ask was skipped, so Gemini's own answers never reached the chat,
+    the index or the fact extractor.
+21. **The memory block keeps what matters first.** `yaad.turn_block`: facts by meaning + recalled past chats come before
+    focus (~4k) and the diary (~5k) - the 9,000-char clip cut the relevant facts while the "Yaad se" chip named them; in
+    full mode her recent words (already in the history word for word) are not repeated, only the dropped-call note is.
+22. **"Pin code", "income tax", "home loan DSA" are ordinary facts** (`yaad._NOT_SECRET`, life_tools `remember`); a PIN
+    / salary is still refused.
+23. **A fallback checkpoint keeps the previous one whole** (`compact._plain` trims the oldest NEW lines; it cut the old
+    checkpoint off the front, for good).
+24. **Compaction estimate / fold plan and the summary refresh read rows off the event loop** (`asyncio.to_thread`).
+25. **A call brain on a never-compacted chat gets the chat's rolling summary** (`_call_chat_saar`), not just 8 exchanges.
+26. **Coder work notes follow her Session** (`coder.inject._scope` = `fence.chats_in` of the chat behind the conv;
+    `store.recent_observations(convs=)`): a chat saw every Session's newest notes, a split call saw none.
+27. **A bare yes is never a procedure** (`procedures._too_short`: under 3 content words / a pure approval is neither
+    learned nor hinted); a turn the honesty check caught or that left work undone is not a good run.
+28. **Without embeddings the "same procedure" match keeps its floor** (`max(0.5, floor)`; 0.80 collapsed to 0.5).
+
+Tests: NEW `test_v0683_yaad_pakki.py` (10). NOT VERIFIED live.

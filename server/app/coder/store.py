@@ -494,15 +494,22 @@ def get_observations(ids: list[int]) -> list[dict]:
     return [by_id[i] for i in ids if i in by_id]
 
 
-def recent_observations(tenant: str, limit: int = 50, conv: str | None = None) -> list[dict]:
+def recent_observations(tenant: str, limit: int = 50, conv: str | None = None,
+                        convs: set | list | None = None) -> list[dict]:
     """The primer's recent block - live rows only (a curator-superseded row is absorbed history,
-    the canonical row it points at is the memory)."""
+    the canonical row it points at is the memory). wave 11 `convs`: only the chats of her Session (the fence)."""
     ensure()
     q = "SELECT * FROM observations WHERE tenant=? AND superseded_by=0"
     args: list = [tenant]
     if conv:
         q += " AND conv=?"
         args.append(conv)
+    elif convs is not None:
+        ids = [str(c) for c in convs if c][:500]
+        if not ids:
+            return []
+        q += " AND conv IN (" + ",".join("?" * len(ids)) + ")"
+        args.extend(ids)
     q += " ORDER BY created_epoch DESC, id DESC LIMIT ?"
     args.append(limit)
     with db() as c:

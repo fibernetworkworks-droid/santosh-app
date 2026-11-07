@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 from datetime import timedelta
 
 from sqlalchemy import func, select
@@ -252,7 +253,7 @@ async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
     found = [k for k in find(str(fact)) if k in ("otp_pin", "password", "card", "cvv")]
     if found:
         raise ToolError(f"Isme {describe(found)} hai. Hoola yeh yaad nahi rakhta; password manager mein rakhiye.")
-    if any(k in low for k in SENSITIVE):
+    if any(k in re.sub(r"pin\s*-?\s*code|pincode", " ", low) for k in SENSITIVE):   # wave 11: a PIN code is an address
         raise ToolError("This looks like a password, OTP, PIN or account/card number. Do not store it; tell the user to keep it in a password manager.")
     from .. import yaad
     conv = getattr(ctx, "conversation_id", "") or ""

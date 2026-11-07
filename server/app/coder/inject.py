@@ -220,6 +220,25 @@ def _fit(items_full: list[str], items_plain: list[str], summary_block: str, head
     return "\n".join(p for p in parts if p)[:budget]
 
 
+def _scope(tenant: str, conv: str | None):
+    """wave 11: the chats whose work notes this turn may see - her Session's chats (the fence), and for a call record the
+    chat it came from. Before: a chat turn saw the newest notes of EVERY Session (Client X's notes in Client Y's), and a
+    split call looked only at its own fresh record (none). None = no fence (everything, as before v0.246)."""
+    if not conv:
+        return None
+    try:
+        from .. import callconv, fence
+        chat = callconv.chat_of(conv) or conv
+        if not fence.main_memory_ok(chat):
+            return {chat, conv}
+        scope = fence.chats_in(tenant, chat)
+        if scope is None:
+            return None
+        return set(scope) | {conv}
+    except Exception:   # noqa: BLE001
+        return None
+
+
 def primer(tenant: str, conv: str | None = None, compact: bool = False, query: str = "") -> str:
     """The block. compact=True is the per-chat-turn version (small); voice uses the full 10k.
     query is her current ask: matched skills ride at the TOP of the coder block (how-to outranks
@@ -244,7 +263,7 @@ def primer(tenant: str, conv: str | None = None, compact: bool = False, query: s
     if work:
         header += "\nStill open:\n" + "\n".join(work[:6])
     limit = 6 if compact else 30
-    rows = store.recent_observations(tenant, limit=limit, conv=conv)
+    rows = store.recent_observations(tenant, limit=limit, convs=_scope(tenant, conv))
     if not rows and not work and not sk:
         return ""
     rows = [_decode(r) for r in rows]
@@ -267,7 +286,7 @@ def turn_block(tenant: str, conv: str, query: str = "") -> str:
         from ..config import get_settings
         if not getattr(get_settings(), "coder_enabled", True):
             return ""
-        out = primer(tenant, conv=None, compact=True, query=query)
+        out = primer(tenant, conv=conv or None, compact=True, query=query)   # wave 11: fenced to her Session
         try:   # v0.559 the always-on list of all her skills rides beside the matched ones (own budget)
             seen = [r["name"] for r in _matched(tenant, query)] if query else []
             idx = skills_index(tenant, exclude=seen)

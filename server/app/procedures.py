@@ -92,13 +92,36 @@ def _match(tenant: str, text: str, floor: float) -> list[tuple[Procedure, float]
     by = {r.id: r for r in rows}
     ranked = semantic.rank(_mask(_request(text), 400), [(r.id, f"{r.title}. {r.trigger}") for r in rows], top=3, floor=floor)
     if not semantic.available():          # word overlap: demand more than half of the words
-        ranked = [x for x in ranked if x[2] >= 0.5]
+        # wave 11: and never LESS than the floor asked for - "the same procedure" (0.80) collapsed to 0.5 here, so a
+        # different ask sharing half its words overwrote an existing procedure's steps
+        ranked = [x for x in ranked if x[2] >= max(0.5, float(floor))]
     return [(by[i], score) for i, _, score in ranked]
 
 
 # ---------------------------------------------------------------- using them
+_STOPWORDS = {"haan", "han", "ha", "ji", "ok", "okay", "theek", "thik", "hai", "kar", "karo", "do", "de", "dijiye", "bhej",
+              "bhejo", "aage", "badho", "chalo", "yes", "sure", "nahi", "mat", "ruko", "please", "plz", "the", "a", "to"}
+
+
+def _too_short(text: str) -> bool:
+    """wave 11: a bare yes / no / carry-on ("Haan bhej do", "theek hai", "aage badho") is not a job to learn from or to
+    match: the yes-turn runs the tools, so a procedure titled "Haan bhej do" was learned and then hinted on every later
+    yes (score 0.79 against "haan theek hai")."""
+    t = _request(text or "").lower()
+    words = [w for w in re.findall(r"[a-z\u0900-\u097f]+", t) if w not in _STOPWORDS]
+    if len(words) < 3:
+        return True
+    try:
+        from . import approval_words
+        return bool(approval_words.is_pure_approval(t))
+    except Exception:   # noqa: BLE001
+        return False
+
+
 def hint(tenant: str, user_text: str, limit: int = 2) -> tuple[str, list[str]]:
     """Prompt block with the best matching procedures, and their ids (to score them after the turn)."""
+    if _too_short(user_text):
+        return "", []
     found = _match(tenant, user_text, MATCH_FLOOR)[:limit]
     if not found:
         return "", []
@@ -138,7 +161,7 @@ def _after_turn(tenant, user_text, calls, used, ok, actor):
                 p.fails += 1
                 if p.fails >= 3 and p.fails > p.wins:
                     p.active = False                      # keeps failing: switched off, the owner can turn it on again
-    if not ok or actor not in ("owner", "routine"):
+    if not ok or actor not in ("owner", "routine") or _too_short(user_text):
         return None
     real = [c for c in calls if c.get("tool") not in SKIP_TOOLS and not str(c.get("tool", "")).startswith("biz_")]
     good = [c for c in real if c.get("ok")]

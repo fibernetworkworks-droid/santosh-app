@@ -427,7 +427,7 @@ async def _ask(system: str, text: str) -> str:
 
 async def refresh_summary(tenant: str, conversation_id: str) -> bool:
     """When the window slid past exchanges not yet in the summary: fold them in. Returns True if it changed."""
-    exs = exchanges(_rows(conversation_id))
+    exs = await asyncio.to_thread(lambda: exchanges(_rows(conversation_id)))   # wave 11: up to 5,000 rows, off the loop
     older, _ = split(exs)
     if not older:
         return False
@@ -467,6 +467,10 @@ _SECRET_WORDS = re.compile(
     r"\b(otp|password|passcode|pass ?word|pin|mpin|upi ?pin|cvv|card (no|number)|debit card|credit card|ifsc|"
     r"account (no|number)|khata (no|number)|net ?banking|balance|bank balance|salary|income|tankhwah|kamai|loan|karz|karza|"
     r"debt|emi|credit score|cibil|net worth|savings|bachat)\b", re.I)
+# wave 11: ordinary words the secret filter refused - "godown ka PIN code ab 410501 hai" (refused as a PIN, so the old
+# address stayed), "she is an income tax consultant", "runs a home-loan DSA" (her business, not her money)
+_NOT_SECRET = re.compile(r"\b(pin\s*-?\s*code|pincode|income\s*-?\s*tax|balance\s*sheet|(?:home\s*-?\s*)?loan\s*-?\s*"
+                         r"(?:dsa|agent|agency|consultant|consultancy|business|advisor|adviser)|emi\s*calculator)\b", re.I)
 _HEALTH_WORDS = re.compile(
     r"\b(diagnos\w*|disease|bimari|beemari|illness|sugar ki|diabet\w*|bp ki|blood pressure|cancer|thyroid|asthma|"
     r"allerg\w*|medicine|dawai|dawa|tablet|therapy|therapist|counsel\w*|depress\w*|anxiety|mental|pregnan\w*|"
@@ -507,7 +511,7 @@ def fact_ok(text: str, sensitive: bool = False) -> str:
     # v0.661 a plain number is NOT a secret: a PIN code, a phone, an order number ("godown ab Plot 12, Pune 410501")
     # may be remembered - pii.find above already refuses a card / Aadhaar / bank account / PAN / OTP. Before, every
     # 6+ digit run was refused, so an address or number UPDATE was dropped and the old fact stayed
-    if _SECRET_WORDS.search(t):
+    if _SECRET_WORDS.search(_NOT_SECRET.sub(" ", t)):
         return "money_or_secret"
     if _MONEY.search(t):
         return "money"
@@ -1469,18 +1473,6 @@ def publish_used(conversation_id: str, reply: str) -> list[dict]:
 def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
     """The volatile memory for THIS message (never saved into the history)."""
     parts = []
-    try:   # v0.200 her exact recent words ride every turn - 'jo maine bola tha' always has the words
-        fb = focus_block(tenant, conversation_id, exclude_text=user_text)
-        if fb:
-            parts.append(fb)
-    except Exception:
-        log.exception("focus block failed")
-    try:
-        dia = diary_block(tenant, conversation_id)
-        if dia:
-            parts.append(dia)
-    except Exception:
-        log.exception("diary failed")
     try:
         from .life import memory_facts, recent_facts
         shown = {f.id for f in memory_facts(tenant, recent_facts(), conversation_id)}
@@ -1509,6 +1501,36 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
                              "\n".join(f"- [{h['kind']}] {_clip(h['text'], 300)}" for h in hits))
     except Exception:
         log.exception("recall failed")
+    # wave 11: the parts that answer THIS message (facts by meaning, recalled past chats) come FIRST and focus / diary
+    # after them - the block is clipped at 9,000 chars, and focus (~4k) + diary (~5k) used to push the relevant facts
+    # off the end while the "Yaad se" chip still named them. In full mode her recent words are already in the history
+    # word for word, so the focus block is not repeated.
+    try:
+        from .agent import context as _ctx
+        _full = _ctx.full_mode()
+    except Exception:   # noqa: BLE001
+        _full = False
+    if _full:
+        try:   # only the dropped-call note (her words are in the history already)
+            drop = recent_call_drop(conversation_id, get_settings().voice_continuation_min)
+            if drop:
+                parts.append("PICHHLI CALL NETWORK SE BEECH MEIN KAT GAYI THI - wahi kaam chal raha tha. Wahan se aage "
+                             "badho, puchho mat kaunsa kaam:\n" + drop)
+        except Exception:
+            log.exception("focus drop read failed")
+    else:
+        try:   # v0.200 her exact recent words ride every turn - 'jo maine bola tha' always has the words
+            fb = focus_block(tenant, conversation_id, exclude_text=user_text)
+            if fb:
+                parts.append(fb)
+        except Exception:
+            log.exception("focus block failed")
+    try:
+        dia = diary_block(tenant, conversation_id)
+        if dia:
+            parts.append(dia)
+    except Exception:
+        log.exception("diary failed")
     if not parts:
         return ""
     return ("[Hoola ki yaad: background for this message, not her words. Use it so she never has to repeat herself. "

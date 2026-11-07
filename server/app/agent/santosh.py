@@ -1174,7 +1174,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                          f"{len(_goal.steps_left(g))} baaki ({g['stage'] or 'aage badhega'})")
     else:
         ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
-              and not state.get("halted")
+              and not state.get("halted") and not state.get("fake_done") and not state.get("left")   # wave 11: a
+              # reply the honesty check caught (or a turn that left work undone) is never learned from as a good run
               and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
     if user_text:
         lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], ok, state.get("lessons_used", []))
@@ -1350,10 +1351,16 @@ def _call_chat_saar(conversation_id: str, max_chars: int = 2200) -> str:
     """v0.657 the chat's checkpoint for a call record's brain turn (head + the pending tail)."""
     from .. import callconv as _cc
     chat = _cc.origin_of(conversation_id)
-    if not chat:
-        return ""          # a plain chat's brain turn already reads its own checkpoint in its history
     from . import compact as _compact
     from .. import yaad as _y
+    if not chat:
+        # a plain chat's brain turn reads its own checkpoint in its history - but a chat that was NEVER compacted has
+        # none, and the call brain reads only the last 8 exchanges: wave 11 gives it the chat's rolling summary instead
+        if _compact.active(conversation_id):
+            return ""
+        summ = _y.summary_block(conversation_id)
+        return ("Chat ki purani baaton ka saar (pichhli 8 baaton se pehle ka):\n" + _y._clip_ends(summ, max_chars)) \
+            if summ else ""
     cp = _compact.active(chat)
     if cp and cp.get("summary"):
         return "CHAT KA SAAR (checkpoint of the chat she called from - open work and promises):\n" + \
