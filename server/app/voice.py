@@ -1740,6 +1740,7 @@ class Call:
         self._prev_reply = ""                  # what Hoola said last (her correction refers to it)
         self._repairs = 0                      # asks-again / her corrections in a row
         self.call_id = secrets.token_urlsafe(12)
+        self._started_at = time.monotonic()   # v0.654 the opening brief may relay finished work: not a made-up claim
         from .avatar import service as av
         a = av.get(self.tenant)
         self.name, self.gender = a["name"], a["gender"]
@@ -2042,6 +2043,33 @@ class Call:
         t = re.sub(r"\[[^\]]{0,400}\]|\(|\)", " ", str(text).lower())
         return {w for w in re.findall(r"[a-z0-9\u0900-\u097f]{4,}", t)}
 
+    _news_sent_at = 0.0
+    _did_mark = 0
+    _started_at = 0.0
+
+    def _check_spoken_claim(self, reply: str) -> None:
+        """v0.654 SACH KA PEHRA: Gemini spoke "ho gaya / bhej diya" in a turn where NO tool ran and no job news had just
+        been relayed - nothing can have been done, so a short spoken correction follows at the next pause (the audio is
+        already out; the truth is said right after, never left standing)."""
+        try:
+            did = list(getattr(self, "did", []) or [])
+            ran = len(did) - self._did_mark
+            self._did_mark = len(did)
+            now = time.monotonic()
+            if ran > 0 or now - max(self._news_sent_at, self._started_at) < 90:
+                return
+            from .agent import draftcheck
+            claim = draftcheck.claims_done(reply)
+            if not claim:
+                return
+            self.stats["voice_fake_done"] = self.stats.get("voice_fake_done", 0) + 1
+            log.warning("call %s: spoken claim %r with no tool behind it - correcting", getattr(self, "call_id", "?"), claim)
+            self.push_news(f"(Sudhaar: tumne abhi '{claim}' kaha, par is baat mein koi kaam chala hi nahi - kuch nahi hua hai. "
+                           f"Ek chhoti line mein saaf bolo ki yeh abhi hua nahi, aur poochho karein? Karna ho to "
+                           f"santosh_kaam se karo.)")
+        except Exception:
+            log.debug("spoken claim check failed", exc_info=True)
+
     def card_answered(self, title: str, word: str) -> None:
         """v0.650 JAWAB MIL GAYA: she answered a card on her phone. A note about it that is still waiting for a pause is
         dropped, and the call learns it QUIETLY (no reply of its own - she knows she tapped), so it never asks her to tap
@@ -2099,6 +2127,7 @@ class Call:
             if self.hold or not (self._news_quiet(now) or now - self._news_since >= self.NEWS_MAX_WAIT_S):
                 continue
             items, self._news, self._news_since = self._news, [], 0.0
+            self._news_sent_at = now       # v0.654 a "ho gaya" right after relayed news is the news, not a made-up claim
             for x in items:
                 self._news_told.append((now, self._news_words(x)))
             if len(items) == 1:
@@ -2943,6 +2972,7 @@ class Call:
         except Exception:
             log.exception("voice style learning failed")
         if reply:
+            self._check_spoken_claim(reply)
             self.stats["turns"] += 1
             self.stats["words"].append(len(reply.split()))
             if reply.rstrip(" .…").endswith("?"):

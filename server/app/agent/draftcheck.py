@@ -43,7 +43,15 @@ _DONE = re.compile(
     r"|book\s*(?:ho\s*gaya|kar\s*diya|kar\s*di)|save\s*kar\s*d|update\s*kar\s*d|add\s*kar\s*d|delete\s*kar\s*d"
     r"|order\s*kar\s*d|pay\s*kar\s*d|cancel\s*kar\s*d|set\s*kar\s*d"
     r"|reminder\s*(?:lag\s*gaya|laga\s*diya)|upload\s*kar\s*d|download\s*kar\s*l|kaam\s*ho\s*gaya"
-    r"|likh\s*kar\s*bhej|draft\s*bhej)", re.I)
+    r"|likh\s*kar\s*bhej|draft\s*bhej"
+    # v0.654 SACH KA PEHRA: the claims the check never knew
+    r"|live\s*ho\s*ga(?:ya|yi|ye|i)|publish\s*(?:kar\s*d|ho\s*gay)|post\s*(?:kar\s*d|ho\s*gay)|schedule\s*kar\s*d"
+    r"|book\s*ho\s*gay[ai]|confirm\s*ho\s*gaya|payment\s*ho\s*gay[ai]|transfer\s*kar\s*d|forward\s*kar\s*d"
+    r"|reply\s*kar\s*d|bhej\s*(?:chuka|chuki|diya\s*gaya)|submit\s*kar\s*d|file\s*kar\s*d"
+    r"|\bi(?:'ve|\s+have)\s+(?:just\s+|already\s+)?(?:sent|booked|ordered|paid|posted|published|deleted|scheduled"
+    r"|submitted|placed|forwarded|replied|emailed|messaged|cancelled|canceled|filed|transferred)\b"
+    r"|\b(?:has|have)\s+(?:now\s+)?been\s+(?:sent|booked|ordered|paid|posted|published|deleted|scheduled|submitted"
+    r"|placed|forwarded|emailed|cancelled|canceled|filed|transferred)\b|\bis\s+now\s+live\b)", re.I)
 # the same words are fine about HER, in the future, or as a condition
 # v0.287: the English half of this list was missing entirely, and that one gap turned the whole check into a loop.
 # "I haven't sent anything" contains `sent`, so a perfectly honest sentence read as a CLAIM; the nudge then told
@@ -71,11 +79,24 @@ _ALREADY_HONEST = re.compile(
     r"|not\s+(?:yet\s+)?(?:sent|saved|created|submitted|done))", re.I)
 
 
+_CLAUSE_END = re.compile(r"[.!?;\n,|]|\s-\s|\s—\s")
+
+
+def _clause(text: str, start: int, end: int) -> str:
+    """v0.654 the clause the claim sits in: "Order kar diya, 20 minute mein aa jayega" - the future word is in the NEXT
+    clause and no longer excuses the claim (the old +-45 character window let it)."""
+    a = 0
+    for m in _CLAUSE_END.finditer(text, 0, start):
+        a = m.end()
+    m2 = _CLAUSE_END.search(text, end)
+    b = m2.start() if m2 else len(text)
+    return text[a:b]
+
+
 def claims_done(text: str) -> str:
     """The claimed action when the reply says something was really done, else ''."""
     for m in _DONE.finditer(text or ""):
-        a, b = max(0, m.start() - 45), min(len(text), m.end() + 30)
-        if _NOT_A_CLAIM.search(text[a:b]):
+        if _NOT_A_CLAIM.search(_clause(text, m.start(), m.end())):
             continue
         return m.group(1)[:60]
     return ""
@@ -89,18 +110,51 @@ READS = {"google_search", "web_sources", "open_website", "parallel_search", "kaa
          "indiamart_khoj", "indiamart_detail", "mospi"}
 
 
+# v0.654 a read is known by its NAME too (47 read tools - email_check, list_reminders, get_campaign_status... - used to
+# count as DOING, so "only reads ran" was almost never true and the check almost never fired); a name that also names
+# a change (list_add, list_done...) is never a read.
+_READ_NAME = re.compile(r"(_check|_read|_search|_find|_status|_agenda|_info|_khoj|_lookup|_preview|_view|_dekho|_thread"
+                        r"|_drafts|_stats|_usage|_kharcha|_show|_detail|_details|_history|_report|_free_slots)$"
+                        r"|^(list_|get_|find_|haal_|search_|read_)")
+_CHANGE_WORD = re.compile(r"_(add|done|delete|remove|set|create|update|send|cancel|book|pay|order|post|publish|run|make"
+                          r"|start|stop|edit|move|rename|mark|archive)\b|_(add|done|delete|remove|set|create|update|send"
+                          r"|cancel|book|pay|order|post|publish|make|start|stop|edit|move|rename|mark|archive)_")
+# a result that is a card / draft waiting for HER tap: nothing has happened in the world yet
+_CARD_RESULT = re.compile(r"[\"']?(?:status|state)[\"']?\s*[:=]\s*[\"']?(?:pending\w*|draft\w*|needs_\w+|awaiting\w*|"
+                          r"waiting\w*|approval\w*|ask)\b|[\"']?needs_approval[\"']?\s*[:=]\s*(?:true|True|1)|approval_id|card\s*(?:bheja|banaya|bana\s*diya|taiyaar|ready|sent\s*to\s*her)"
+                          r"|(?:approval|confirm|haan\s*ka)\s*card|bhejo\s*dabaiye|aapki\s*haan|her\s*tap|needs\s*her", re.I)
+
+
 def _is_read(name: str) -> bool:
     from . import pakka
     n = str(name or "")
-    return n in READS or n in pakka.SKIP or n.endswith("_dekho")
+    if n in READS or n in pakka.SKIP or n.endswith("_dekho"):
+        return True
+    return bool(_READ_NAME.search(n)) and not _CHANGE_WORD.search(n + "_")
+
+
+def effect(call: dict) -> str:
+    """What one tool call really did: 'did' (changed something in the world), 'card' (made a card / draft that waits
+    for her tap), 'read' (only looked), '' (failed - did nothing)."""
+    if not call.get("ok"):
+        return ""
+    if _is_read(call.get("tool")):
+        return "read"
+    if _CARD_RESULT.search(str(call.get("result") or "")):
+        return "card"
+    return "did"
 
 
 def nothing_ran(calls: list[dict] | None) -> bool:
-    """True when this turn did not actually DO anything: every tool that finished ok was a read."""
-    for c in calls or []:
-        if c.get("ok") and not _is_read(c.get("tool")):
-            return False
-    return True
+    """True when this turn did not actually DO anything: no tool that finished ok changed something in the world
+    (reads and cards / drafts waiting for her tap do not count - v0.654)."""
+    return not any(effect(c) == "did" for c in calls or [])
+
+
+def only_cards(calls: list[dict] | None) -> bool:
+    """v0.654 the turn made a card / draft for her tap and did nothing else real."""
+    fx = [effect(c) for c in calls or []]
+    return "card" in fx and "did" not in fx
 
 
 def nothing_ran_in_job(conv: str, since) -> bool:
@@ -139,6 +193,12 @@ NUDGE = ("[System check, not the user] Your message says the work is already don
          "with the right tool (every card, "
          "approval and OTP rule as usual), or say plainly in one line that it is NOT done yet and what the next "
          "step is. Never say done for something that did not happen.")
+NUDGE_CARD = ("[System check, not the user] Your message says it is already done (sent / ordered / paid / booked), but "
+              "this turn only made a CARD or DRAFT that waits for HER tap - nothing has happened yet. Say it plainly in "
+              "one line: the card / draft is ready and it happens only when she taps it (e.g. 'card bheja hai, aapki "
+              "haan se hoga'). Never say done before her tap.")
+SAID_CARD = "(Saaf baat: yeh abhi hua nahi hai - card / draft aapki haan (tap) ke intezaar mein hai.)"
+SAID_CARD_EN = "(To be clear: nothing has happened yet - the card / draft is waiting for your tap.)"
 SAID = "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi karna baaki hai.)"
 # v0.287: the note followed her into English conversations as a Hinglish line. v0.260 made HER LANGUAGE the first
 # rule of a reply, and this note is part of the reply.
@@ -165,14 +225,17 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         return ""
     if since is not None and not nothing_ran_in_job(conv, since):
         return ""          # an earlier round of this job really did it; this round only reported
+    card = only_cards(state.get("calls"))
     seen = state.get("fake_done", 0) + 1
     state["fake_done"] = seen
     if seen == 1:
         STATS["fake_done"] += 1
-        return NUDGE
+        if card:
+            STATS["fake_done_card"] = STATS.get("fake_done_card", 0) + 1
+        return NUDGE_CARD if card else NUDGE
     if seen == 2 and not state.get("correct"):
         STATS["fake_done_said"] += 1
-        state["correct"] = said_line(text)
+        state["correct"] = ((SAID_CARD if _HINGLISH.search(text or "") else SAID_CARD_EN) if card else said_line(text))
     return ""
 
 
