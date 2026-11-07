@@ -222,6 +222,7 @@ def test_live_build_in_a_browser(arena_server, arch_env, monkeypatch):
     base, browser, key = arena_server
     monkeypatch.setenv("SITE_FULL_LOOKS", "false")
     monkeypatch.setenv("SITE_PARALLEL", "2")
+    monkeypatch.setenv("SITE_WORKER", "true")          # jobs in the background, like the server (the canvas is watched while they run)
     from app.config import get_settings
     get_settings.cache_clear()
     from app.site import checks as C
