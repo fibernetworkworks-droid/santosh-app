@@ -112,11 +112,12 @@ async def send_batches(max_seconds: float = 5.0) -> None:
                                                             OutboundMessage.status == "queued",
                                                             OutboundMessage.wa_message_id.is_(None))
                               .order_by(OutboundMessage.id).limit(budget)).all()
-            batch = [(m.id, m.phone, m.params, m.attempts) for m in batch]
+            batch = [(m.id, m.phone, m.params, m.attempts, m.lead_id) for m in batch]
         if not batch:
             continue   # everything is with Meta; finish_campaigns() closes it once statuses settle
         gap = 1.0 / max(st.send_rate_per_sec, 0.1)
-        for mid, phone, params, attempts in batch:
+        sent_lead_ids: list[int] = []   # v0.545.0 P5: leads-store copies that ACTUALLY went out this batch
+        for mid, phone, params, attempts, lead_id in batch:
             with session() as s:
                 if s.get(Campaign, cid).status != "sending":
                     break   # paused or cancelled mid-batch
@@ -126,6 +127,8 @@ async def send_batches(max_seconds: float = 5.0) -> None:
                 with session() as s:
                     m = s.get(OutboundMessage, mid)
                     m.wa_message_id, m.status, m.sent_at, m.attempts = wamid, "sent", now(), attempts + 1
+                if lead_id:
+                    sent_lead_ids.append(int(lead_id))
             except WhatsAppError as e:
                 with session() as s:
                     m = s.get(OutboundMessage, mid)
@@ -142,6 +145,14 @@ async def send_batches(max_seconds: float = 5.0) -> None:
                                           "Maine campaign rok diya hai.")
                 break
             await asyncio.sleep(gap)
+        if sent_lead_ids:
+            # v0.545.0 P5: the outreach ledger records the moment of truth - the SEND, not the queueing. Only
+            # leads-store copies land here (LeadListRef joins); her own imported lists were never store rows.
+            try:
+                from .leads.service import note_campaign_sends
+                note_campaign_sends(tenant, cid, sent_lead_ids)
+            except Exception as e:
+                log.warning("campaign_sent ledger write failed for %s: %s", cid, e)
         camp.publish_campaign(cid)
 
 

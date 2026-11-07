@@ -333,7 +333,7 @@ def test_walk_caps_the_refs():
 # ---------------------------------------------------------------- the pins
 
 def test_registry_607():
-    assert len(TOOLS) == 608, ("607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: T3 local browser, "
+    assert len(TOOLS) == 614, ("607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: T3 local browser, "
                                "owner 'T3 Local Browser --- CONTINUE'). Was: 606 through v0.663 "
                                "(581 + 1 paisa_sahayak + 2 sandarbh + 1 bhandar + the dev chain's desks).")
 
@@ -348,4 +348,4 @@ def test_enum_and_label_pins():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.671.0"                       # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.672.0"                       # conscious-bump guard: moves with every release

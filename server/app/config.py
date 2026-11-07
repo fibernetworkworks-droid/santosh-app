@@ -801,6 +801,37 @@ class Settings(BaseSettings):
     route_opt_sa_file: str = ""             # ... and OAuth (cloud-platform scope) from a service-account JSON on the VPS, NOT the Maps API key
     maps_opt_max_stops: int = 40            # stops in one plan (each is a billed shipment); Google's own sync limit was not read
     maps_cache: bool = True                 # reuse the licence-permitted place_id + 30-day lat/lng instead of re-billing
+    # v0.540.0 LEADS NEEV: the caps the leads engine refuses AT PLAN TIME (docs/LEADS_PLAN.md section 12 asked
+    # once: 5,000 rows/run and 20,000 rows/day per tenant are the first numbers, changeable here, refused early)
+    leads_max_rows_per_run: int = 5000      # a run planning more rows than this is REFUSED with the cap named
+    leads_max_rows_per_day: int = 20000     # per tenant per UTC day, counted from the kept-rows ledger (lead_cap_days)
+    # v0.541.0 OFFICIAL LANES: the Places lane buys maps.place_details (Enterprise SKU) for at most this many
+    # places per run - the maps_place economics (phone/website are per-place purchases), guarded by mapsbill's cap
+    leads_places_details_per_run: int = 50
+    # v0.542.0 ENRICHMENT: the P2 pass reads each kept row's OWN website (site-level 1 req/s, <= 3 pages/site,
+    # robots obeyed) and makes at most ONE cheap-model call per row - more eligible rows than this cap and the
+    # pass REFUSES at plan time with the number named, never truncates quietly (the leads cap law)
+    leads_enrich_rows_per_run: int = 100
+    # v0.543.0 SCRAPE LANE: the Google Maps public-listing grid's plan-time ceilings - the cell count and the
+    # pages walked per cell (6 x 20 = 120 listings/cell, the known ~120 search ceiling). The lane itself is
+    # per-tenant opt-in OFF (lead_scrape_optins), the politeness cap is 1 req/s per host (leads/scrape.py),
+    # and a block page aborts the run - all refused/recorded, never muscled through (docs/LEADS_PLAN.md section 5)
+    leads_scrape_max_cells: int = 400
+    leads_scrape_pages_per_cell: int = 6
+    # v0.544.0 VENDOR LANE: one licensed lead-data vendor behind the leads_run job shape (the research R6
+    # pattern, leads/vendor.py). Until SHE names the vendor (plan section 12.4) every string stays empty and
+    # the lane is ABSENT from the plan card - an explicit ask is refused with exactly this config named. The
+    # price makes the ceiling possible (0 = refused), the run cap refuses the estimate at PLAN time, and the
+    # terms ack is HER act (she read the vendor's terms; nothing is assumed - the v0.389 SACH BOLO discipline)
+    leads_vendor_name: str = ""                 # she names the vendor (e.g. "acme-leads")
+    leads_vendor_base_url: str = ""             # the vendor's documented API base (e.g. "https://api.vendor.example")
+    leads_vendor_api_key: str = ""              # env LEADS_VENDOR_API_KEY; rides the header only, never a log
+    leads_vendor_price_per_row_inr: float = 0.0 # rupees per row the vendor charges; 0 = the lane refuses
+    leads_vendor_run_cap_inr: float = 2000.0    # one vendor run's rupee ceiling, refused AT PLAN TIME
+    leads_vendor_terms_ack: str = ""            # the vendor's name once SHE has read its terms (CSV)
+    # v0.544.0 SCALE: the P4 fan-out enrich pass (leads/scale.py, the HOOLA GRAPH walk) keeps at most this many
+    # site passes in flight (shared Semaphore; politeness stays 1 req/s per site inside enrich.site_pass)
+    leads_enrich_fanout_max: int = 4
     picovoice_access_key: str = ""          # no longer used: "Hey Santosh" runs on Santosh Wake (our own model)
     wake_keyword_file: str = ""             # optional newer hey_santosh.onnx to push to phones (wakeword/train.py)
     wake_sensitivity: float = 0.25          # 0..1; higher = wakes more easily (threshold = 1.1 - sensitivity). 0.25 -> 0.85: ~95% recall, ~2 false wakes/hour on test speech

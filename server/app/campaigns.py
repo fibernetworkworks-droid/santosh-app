@@ -109,6 +109,36 @@ def create_campaign(*, tenant_id: str, conversation_id: str, title: str, lead_li
             if not leads:
                 raise CampaignError("These are the sample numbers from the demo file; they are never messaged in live mode.")
 
+        # v0.545.0 P5: the opt-out ledger the desk honours, EXTENDED TO LEADS. A row copied from the leads store
+        # (LeadListRef is the thread back) whose store row has opt_out=True never joins the send queue - she may
+        # have flipped opt_out AFTER the list was made, and the copy must not outlive her erasure flag.
+        skipped_opt_out = 0
+        try:
+            from .leads.models import LeadContact as _LC, LeadListRef as _LLR, ensure_tables as _lensure
+            _lensure()
+            refs = {r.lead_row_id: r.contact_id
+                    for r in s.query(_LLR).filter(_LLR.tenant_id == tenant_id,
+                                                  _LLR.list_id == lead_list_id).all()}
+            if refs:
+                opted_out = {c.id for c in s.query(_LC).filter(_LC.id.in_(list(refs.values())),
+                                                               _LC.opt_out.is_(True)).all()}
+                if opted_out:
+                    keep = []
+                    for l in leads:
+                        if refs.get(l.id) in opted_out:
+                            skipped_opt_out += 1
+                        else:
+                            keep.append(l)
+                    leads = keep
+                    if not leads:
+                        raise CampaignError("Is list ki saari leads-store rows par opt-out lag chuka hai - koi "
+                                            "message queue nahi hui. (The opt-out ledger is honoured at send "
+                                            "time, not only at hand-off.)")
+        except CampaignError:
+            raise
+        except Exception:
+            pass    # the leads tables not being there yet must never break an ordinary campaign
+
         c = Campaign(tenant_id=tenant_id, conversation_id=conversation_id, title=title[:200],
                      lead_list_id=lead_list_id, template_id=template_id, param_mapping=param_mapping,
                      auto_send=auto_send,
@@ -122,7 +152,12 @@ def create_campaign(*, tenant_id: str, conversation_id: str, title: str, lead_li
                    for l in leads])
         cid = c.id
     publish_campaign(cid)
-    return campaign_view(cid)
+    v = campaign_view(cid)
+    if skipped_opt_out:
+        v["leads_opt_out_skipped"] = skipped_opt_out
+        v["opt_out_note"] = (f"{skipped_opt_out} leads-store rows opt-out par thin - queue nahi hui (ledger "
+                             "send-time par bhi maana jaata hai).")
+    return v
 
 
 def set_campaign_status(campaign_id: str, status: str, reason: str | None = None) -> dict:

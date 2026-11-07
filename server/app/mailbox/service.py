@@ -1147,6 +1147,13 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         view = draft_view(d)
     bus.publish(conv, "email_sent", view)
     people = mime.addr_list(to_addr) + mime.addr_list(cc) + mime.addr_list(bcc)
+    # v0.545.0 P5: the leads outreach ledger's email side - if a recipient's address is a leads-store row's
+    # email, the send lands in lead_outreach (kind=email_sent, desk=email). The ledger never breaks the send.
+    try:
+        from ..leads.service import note_email_sends
+        note_email_sends(tenant, [a for _, a in people], draft_id)
+    except Exception as e:
+        log.warning("email_sent ledger write failed for draft %s: %s", draft_id, e)
     contacts.learn(tenant, people, 1.0, sent=True)
     if follow:
         add_watch(tenant, conv, box, "their_reply", sent.get("message_id", ""), sent.get("thread_id") or thread_id or "",

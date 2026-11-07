@@ -29,6 +29,10 @@ DUTIES: dict[str, dict] = {
                   "prefix": (), "tools": {"list_lead_lists", "get_lead_list", "check_template", "submit_template",
                                           "check_template_status", "create_campaign", "confirm_send", "get_campaign_status",
                                           "control_campaign"}},
+    # v0.540 LEADS NEEV: the engine gathers; it NEVER contacts anyone - outreach is a desk act behind her tap
+    "leads_work": {"label": "Leads dhundhna",
+                   "say": "naye dhandhe ke customers ka list - pehle apna data, phir official/registry lane, ya (uski haan par) public listing; har row ke saath uska source; export CSV/Sheets ya campaign desk ko",
+                   "prefix": ("leads_",), "tools": set()},
     "video": {"label": "Video editing", "say": "reels, shorts, status aur YouTube ke liye video edit (captions, logo, music)",
               "prefix": (), "tools": {"video_edit", "video_studio", "blender_3d"}},
     "operator": {"label": "Computer operator", "say": "websites par form, application, download, status check (OTP / submit / payment aap karti hain)",
@@ -255,6 +259,9 @@ ROLES: dict[str, dict] = {
                       "duties": ["customers", "tickets", "appointments", "reminders", "records"]},
     "sales": {"label": "Sales aur follow-up", "say": "Naye enquiry ka jawab, lead follow-up, quotation draft, offer campaign",
               "duties": ["customers", "campaigns", "email", "records", "reminders", "research"]},
+    "leads_sahayak": {"label": "Leads Sahayak",
+                      "say": "Dhandhe ke customers dhundo: pehle aapka apna data, phir sarkari/official list; har row export-taiyar, har row ke saath uska source; koi message khud nahi - bhejna campaign desk se, aapke tap par",
+                      "duties": ["leads_work", "campaigns", "records", "reminders", "research"]},
     "hr_admin": {"label": "HR aur admin", "say": "Job post, interview, attendance register, roster, renewals",
                  "duties": ["records", "email", "appointments", "reminders"]},
     "marketing": {"label": "Marketing", "say": "Tyohaar ke post ideas, poster, offer campaign, reels, competitor ki khabar",
@@ -557,6 +564,21 @@ PRESETS: dict[str, dict] = {
                     "rules": ["Call sirf insaan karega; Hoola list, script aur log banayega.",
                               "Jo 'call mat karna' kahe use dobara call nahi.", "Kharidi hui / cold list par promotional call nahi.",
                               "Jhoota vaada ya guarantee nahi."]},
+    "leads_desk": {"label": "Leads / business development", "role": "leads_sahayak", "kind": "office", "slot_minutes": 30,
+                   "after_hours": "quiet",
+                   "about_hint": "Kiska dhandha, kis sheher/area ke customers chahiye, kis category mein, purani lists kahan hain",
+                   "rules": ["Engine kabhi kisi ko message / email / call nahi bhejta - outreach sirf owner ke tap par.",
+                             "Har leads row ke saath uska source (lane + URL) - bina source ki row export nahi hoti.",
+                             "Cap plan-time par refuse karta hai; cap badalna owner ki haan se.",
+                             "Scrape lane (P3, Google Maps public listings) per-tenant opt-in OFF by default hai - "
+                             "owner ki khaas haan se on hota hai (walls: rules.SCRAPE_WALLS, CLAUDE.md amended rule).",
+                             "Vendor lane (P4) config-gated hai - jab tak owner ne licensed vendor ka naam, key, "
+                             "per-row price aur terms-ack set nahi kiya, lane card par bhi nahi; run PEHLE price "
+                             "hoti hai, estimate cap paar to refuse.",
+                             "Campaign-list hand-off (P5) do tap ka hai: pehla tap sirf CONFIRM CARD dikhata hai "
+                             "(rows, opt_out_excluded, consent=False) aur kuch nahi banata; confirm=true doosre tap "
+                             "par list banti hai. Send ke waqt bhi opt-out maana jaata hai, aur har send "
+                             "(campaign/email) lead_outreach hisaab mein jaata hai."]},
     "audit_firm": {"label": "CA / audit firm", "role": "audit_assistant", "kind": "ca", "slot_minutes": 30, "after_hours": "note",
                    "about_hint": "Kaun se audit (statutory, tax, internal, stock), kitne client, partner kaun, client se kaagaz kaise aate hain",
                    "rules": ["Audit report / raay sirf partner sign karega.", "UDIN aur form filing Hoola nahi karega.",

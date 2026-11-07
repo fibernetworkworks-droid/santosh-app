@@ -978,6 +978,9 @@ def init_db(url: str | None = None):
         # store / labour / books / customer / quality / meetings tables - registered HERE on day one,
         # the v0.190.1 lesson: a lazily-imported model never reaches create_all() and the live DB
         # stays without its table)
+    from .leads import models as _leads_models  # noqa: F401  (v0.540 LEADS NEEV: lead_runs / lead_contacts /
+        # lead_outreach / lead_cap_days / lead_list_refs - registered HERE on day one, same lesson, AND
+        # self-healing via leads.models.ensure_tables())
     Base.metadata.create_all(_engine)
     _add_missing_columns(_engine)
     from .bazar.db import Base as _BazarBase, init_tables as _bazar_tables
