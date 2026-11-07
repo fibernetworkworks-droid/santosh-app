@@ -55,17 +55,17 @@ _FIG = re.compile(r"(?:rs\.?|₹|inr|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:%|lakh|crore
 
 
 def _gist(text: str) -> str:
-    """Head (900 chars) + every link / id + the figures, capped ~2,000 chars in all."""
+    """Head (600 chars) + every link / id + the figures, capped ~1,500 chars in all."""
     t = str(text or "")
     links = list(dict.fromkeys(_LINK.findall(t)))[:30]
-    figs = [f.strip() for f in _FIG.findall(t[900:]) if any(ch.isdigit() for ch in f) and len(f.strip()) >= 3]
-    figs = list(dict.fromkeys(figs))[:60]
-    out = t[:900]
+    figs = [f.strip() for f in _FIG.findall(t[600:]) if any(ch.isdigit() for ch in f) and len(f.strip()) >= 3]
+    figs = list(dict.fromkeys(figs))[:40]
+    out = t[:600]
     if links:
         out += "\nLinks / ids: " + " ".join(links)
     if figs:
         out += "\nAur figures: " + ", ".join(figs)
-    return out[:2000]
+    return out[:1500]
 
 
 def _trim(text: str) -> str:
@@ -115,7 +115,7 @@ def clear_old(history: list[dict]) -> list[dict]:
         for b in history[i]["content"]:
             if isinstance(b, dict) and b.get("type") == "tool_result" and not str(b.get("content") or "").startswith("[Purana tool natija"):  # (both forms)
                 n = _size(b.get("content"))
-                if n > 2400:
+                if n > 1800:
                     raw = b.get("content")
                     txt = raw if isinstance(raw, str) else " ".join(str(x.get("text") or "") for x in raw or []
                                                                   if isinstance(x, dict))

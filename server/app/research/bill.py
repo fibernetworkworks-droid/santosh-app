@@ -112,12 +112,14 @@ class Meter:
     def afford(self) -> tuple[bool, str]:
         c = caps()
         need = max(float(c["reserve_inr"]), per_call_inr())   # the call about to be made, at its likely price
-        total = self.total_inr() + self.held_inr()
-        if total + need > c["run_inr"]:
-            return False, f"this run has spent Rs {total:.0f} of its Rs {c['run_inr']:.0f} ceiling"
-        day = self.day_spent_inr() + self.held_inr()
-        if day + need > c["day_inr"]:
-            return False, f"today's research has spent Rs {day:.0f} of the Rs {c['day_inr']:.0f} daily ceiling"
+        spent, held = self.total_inr(), self.held_inr()
+        if spent + held + need > c["run_inr"]:
+            return False, (f"this run has spent Rs {spent:.0f} of its Rs {c['run_inr']:.0f} ceiling"
+                           + (f" (Rs {held:.0f} more is held by calls still running)" if held >= 0.5 else ""))
+        day = self.day_spent_inr()
+        if day + held + need > c["day_inr"]:
+            return False, (f"today's research has spent Rs {day:.0f} of the Rs {c['day_inr']:.0f} daily ceiling"
+                           + (f" (Rs {held:.0f} more is held by calls still running)" if held >= 0.5 else ""))
         self._granted += 1
         return True, ""
 

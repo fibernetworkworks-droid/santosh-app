@@ -101,7 +101,7 @@ def test_a_bare_yes_is_never_learned_or_hinted(env):
     assert procedures.hint(T, "haan theek hai") == ("", [])
     from app.agent import santosh
     src = inspect.getsource(santosh._steps)
-    assert 'not state.get("fake_done")' in src
+    assert 'good = ok and not state.get("fake_done")' in src
 
 
 def test_the_same_floor_holds_without_embeddings():

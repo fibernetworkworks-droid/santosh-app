@@ -134,7 +134,7 @@ def test_streamed_calls_are_counted_at_the_real_model():
     from app.agent import santosh
     from app.site import ai
     assert "usage.from_anthropic" in inspect.getsource(ai._streamed)
-    assert 'getattr(msg, "model", "") or _sent_model' in inspect.getsource(santosh._claude_stream)
+    assert 'usage.from_anthropic(_sent_model(kw.get("model", "")), msg)' in inspect.getsource(santosh._claude_stream)
 
 
 # ---------------------------------------------------------------- 5 research ceilings

@@ -892,7 +892,7 @@ async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
                     live.feed_think(getattr(ev.delta, "thinking", "") or "")
         msg = await st.get_final_message()
     from .. import usage   # the SDK wrapper counts messages.create only: a streamed answer is counted here
-    usage.from_anthropic(getattr(msg, "model", "") or _sent_model(kw.get("model", "")), msg)   # wave 9: the model REALLY sent
+    usage.from_anthropic(_sent_model(kw.get("model", "")), msg)   # wave 9: the model the SDK door REALLY sent (SAB HAIKU)
     _learn_claude(kw, msg)
     return [_block_to_dict(b) for b in msg.content], msg.stop_reason
 
@@ -1174,11 +1174,13 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                          f"{len(_goal.steps_left(g))} baaki ({g['stage'] or 'aage badhega'})")
     else:
         ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
-              and not state.get("halted") and not state.get("fake_done") and not state.get("left")   # wave 11: a
-              # reply the honesty check caught (or a turn that left work undone) is never learned from as a good run
+              and not state.get("halted")
               and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
     if user_text:
-        lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], ok, state.get("lessons_used", []))
+        # wave 11: a reply the honesty check caught, or a turn that left work undone, is never LEARNED from as a good run
+        # (the outcome itself is unchanged)
+        good = ok and not state.get("fake_done") and not state.get("left")
+        lessons = await asyncio.to_thread(pakka.learn, tenant_id, state["calls"], good, state.get("lessons_used", []))
         if lessons:
             bus.publish(conversation_id, "procedure", {"event": "lesson", "title": lessons[0][:120], "count": len(lessons)})
         outcome = ("stopped" if conversation_id in _stopped or state.get("halted") else "stuck" if state["breaker"].stopped else
@@ -1189,7 +1191,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         if not await asyncio.to_thread(is_incognito, conversation_id):
             await asyncio.to_thread(pakka.record, tenant_id, user_text, outcome, state["calls"], state,
                                     time.time() - state["t0"], state.get("left", ""))
-        learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], ok,
+        learned = await asyncio.to_thread(procedures.after_turn, tenant_id, user_text, state["calls"], state["used"], good,
                                           "routine" if actor == "goal" else actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
