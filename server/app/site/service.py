@@ -2868,7 +2868,8 @@ def delete(tenant: str, ref: str) -> dict[str, Any]:
     return {"ok": True, "say": f"{name or 'Website'} hata di.{took}"}
 
 
-def export(tenant: str, ref: str, fmt: str = "zip") -> dict[str, Any]:
+def export_bytes(tenant: str, ref: str, fmt: str = "zip") -> tuple[str, bytes]:
+    """v0.663 the site's files as one zip (plain or React + Vite): the name and the bytes. Nothing stored."""
     with session() as s:
         r = _find(s, tenant, ref)
         s.expunge(r)
@@ -2880,8 +2881,13 @@ def export(tenant: str, ref: str, fmt: str = "zip") -> dict[str, Any]:
         data = reactx.react_zip(out, r.name or "website", app_api(r) if app_schema(r) else "")
     else:
         data = B.export_zip(out)
-    from ..chatfiles import store
     name = re.sub(r"[^\w-]+", "-", (r.name or "website").lower()).strip("-") + f"-v{r.version}{'-react' if fmt == 'react' else ''}.zip"
+    return name, data
+
+
+def export(tenant: str, ref: str, fmt: str = "zip") -> dict[str, Any]:
+    name, data = export_bytes(tenant, ref, fmt)
+    from ..chatfiles import store
     meta = store(tenant, name, data, "application/zip")
     return {"ok": True, "file_id": meta.get("file_id"), "name": name, "bytes": len(data),
             "say": f"{name} taiyaar ({len(data) // 1024} KB); kisi bhi hosting par chal jayegi."}

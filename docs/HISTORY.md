@@ -22212,3 +22212,34 @@ real facts; no live memory quiz has been run on this version.
 
 Tests `test_v0662_kaam_saaf.py` 19 (17 fail on the old code); 320 older suites pass. NOT VERIFIED live: the Google
 backoff against her real dead sign-in, the late-reminder wording on a real restart.
+
+
+## v0.663.0 STUDIO JAANCH — every Web Studio section checked end to end
+
+v0.663.0 STUDIO JAANCH (owner: "go to every section of web studio in hoola web console check every section is fuctional or not end to end"): every Web Studio section walked in a real browser (home, all websites, search, starred, templates, Build + Plan, three looks, chat, preview + edit mode, Code, Cloud, Integrations, Health, Settings, History, Publish, project menu) and what did not work is fixed - Code > Download ZIP / React + Vite now saves the zip to her computer (new GET /api/sites/{ref}/download, `service.export_bytes`; before it only filed it in her Hoola files); Publish > Connect your domain now DRAWS the DNS records it made (they only went to the chat), with 'Haan, add them for me' (her tap with the plan's hash), 'I've added them · check' (three public resolvers) and Undo; Publish no longer gets a 404 for every site without an old site (/moves?quiet=1); History marks the version that is really live after a restore; Health no longer opens with ': 30 din' for an unnamed site.
+
+**How it was checked:** a real Chromium walk on a fake-AI server (the v0.649 fixtures): home, All websites, Search, Starred,
+Templates, Build -> three looks -> pick -> built site, preview on computer / tablet / phone, Select (edit mode) + Undo, Code
+(35 files, open + save as a version, both downloads), Cloud, Integrations (Add -> the site chat), Health, Settings (save details
+-> the blanks refilled -> v3), History, Publish (check -> Haan, live karo -> live on the free address), Connect domain (direct
+mode), DNS check, Restore an older version, Take down, the project menu and the site chat; every page error and every API
+answer >= 400 logged per section. All 45 API calls the Studio makes were matched against the server's routes (all exist).
+
+**Found and fixed:** (1) Download ZIP / React + Vite only filed the zip in her Hoola files - `service.export_bytes` + GET
+`/api/sites/{ref}/download?format=zip|react` (attachment), the Studio saves the blob; the chat's POST /export is unchanged.
+(2) Connect your domain made the DNS plan but the Studio never drew it - `dnsCard(host)` from `hosting.status().dns`: the
+records (Add / Change / Remove, type, name, value), risks / errors, "Haan, add them for me" (POST /api/sites-dns/{id}/apply
+with the plan hash, a confirm first) when Hoola can apply, "I've added them · check" (GET /check, seen-by-all-three per
+record) and Undo for an applied plan. (3) GET /moves 404'd for every site without an old site on every Publish open -
+`?quiet=1` answers {"none": true}; the plain route still 404s. (4) History marked the newest version as current after a
+restore - the live version (hosts' live_version) gets a Live pill and Restore is offered on the others. (5) care.report's say
+began ": 30 din" for an unnamed site - falls back to the site number.
+
+**Checked and working as it was:** plan mode + revise + Build this plan (v0.649 walk), looks + devices, edit mode, code save,
+cloud lists, integrations asks, settings save (it rewrites the sections whose blanks it fills, so it takes a while - in the
+background on the server), launch card + go live, rollback, takedown, project menu, search / starred.
+
+**Not changed, said plainly:** server messages (toasts like "Save ho gaya", "Live!") are still Hinglish inside the English
+Studio; the site chat could not be tested for real answers here (no model key in the sandbox, the turn answers 401).
+Tests: `server/tests/test_v0663_studio_jaanch.py` (3: routes + zips + quiet moves + care name, JS markers, a browser walk of
+every section).

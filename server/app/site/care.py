@@ -217,7 +217,7 @@ def report(tenant: str, ref: str = "", days: int = 30) -> dict[str, Any]:
     if chk.get("blocking"):
         tips.append(f"Pichhli jaanch mein {len(chk['blocking'])} zaroori kami thi; 'website theek karo' kahiye.")
     conv = round(100 * leads / views, 1) if views else 0.0
-    say = (f"{r.name}: {days} din mein {views} visit"
+    say = (f"{r.name or r.number or 'Website'}: {days} din mein {views} visit"
            + (f" ({'+' if views >= views_prev else ''}{views - views_prev} pichhle se)" if views_prev else "")
            + f", {leads} enquiry" + (f" ({conv}%)" if views else "")
            + (f", uptime {round(100 * up / (up + down), 1)}%" if up + down else "") + ".")

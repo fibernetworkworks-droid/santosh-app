@@ -674,17 +674,18 @@
     let host = null; try { host = await api('GET', `/api/sites/${enc(v.id)}/hosting`); } catch { host = {hosts: []}; }
     if (VIEW !== 'history' || CUR?.id !== v.id) return;
     const live = L(host.hosts).length > 0, vs = L(v.versions);
+    const onAir = Math.max(0, ...L(host.hosts).filter(h => S(h.stage) !== 'Offline').map(h => Number(h.live_version) || 0));   // v0.663 the version people really see
     pane.innerHTML = viewsBar() + `<div class="main" style="max-width:820px"><h2 style="font-size:18px">History</h2>
       <p class="mut">Every change is a checked version. ${live ? 'Bringing back an older version puts it on your live addresses after you confirm.' : 'Restoring opens once the site is live.'}</p>
-      ${vs.length ? vs.map(x => `<div class="ver">${pill('v' + S(x.version), Number(x.version) === Number(v.version) ? 'ok' : '')}<span class="sp ell">${esc(S(x.note) || 'Version')} <span class="mut sm">· ${esc(S(x.at).slice(0, 16).replace('T', ' '))}</span></span>
-        ${Number(x.version) !== Number(v.version) && live ? `<button class="b sm" type="button" data-act="rollback" data-ver="${esc(S(x.version))}">Restore…</button>` : ''}</div>`).join('') : '<p class="mut">No versions yet.</p>'}</div>`;
+      ${vs.length ? vs.map(x => `<div class="ver">${pill('v' + S(x.version), Number(x.version) === Number(v.version) ? 'ok' : '')}${onAir && Number(x.version) === onAir ? pill('Live', 'ok') : ''}<span class="sp ell">${esc(S(x.note) || 'Version')} <span class="mut sm">· ${esc(S(x.at).slice(0, 16).replace('T', ' '))}</span></span>
+        ${Number(x.version) !== (onAir || Number(v.version)) && live ? `<button class="b sm" type="button" data-act="rollback" data-ver="${esc(S(x.version))}">Restore…</button>` : ''}</div>`).join('') : '<p class="mut">No versions yet.</p>'}</div>`;
   }
 
   async function publish(pane, v) {
     pane.innerHTML = viewsBar() + '<div class="empty">Loading the addresses…</div>';
     let host = null, moves = null;
     try { host = await api('GET', `/api/sites/${enc(v.id)}/hosting`); } catch (e) { host = {hosts: [], error: e.message}; }
-    try { moves = await api('GET', `/api/sites/${enc(v.id)}/moves`); } catch { moves = null; }
+    try { moves = await api('GET', `/api/sites/${enc(v.id)}/moves?quiet=1`); if (moves?.none) moves = null; } catch { moves = null; }
     if (VIEW !== 'publish' || CUR?.id !== v.id) return;
     const hosts = L(host.hosts), rows = L(moves?.rows);
     pane.innerHTML = viewsBar() + `<div class="main"><div class="pc2">
@@ -693,6 +694,7 @@
           <div class="inl"><button class="b pri" type="button" data-act="launch">Check and go live…</button></div><div id="wsLaunch"></div>` : '<p class="mut">There is nothing to put live yet: pick a look first.</p>'}</section>
       <section class="cardp"><h3>Addresses</h3>${host.error ? `<p class="mut">${esc(host.error)}</p>` : ''}
         ${hosts.length ? hosts.map(h => `<div class="kv"><code class="ell">${esc(S(h.host))}</code>${pill(S(h.stage) || S(h.status), S(h.stage) === 'Live' ? 'ok' : S(h.stage) === 'Offline' ? 'bad' : 'warn')}</div>${h.problem ? `<p class="li bad">${esc(S(h.problem))}</p>` : ''}`).join('') : '<p class="mut">Not live yet. Your free address is made when you first go live.</p>'}</section>
+      ${dnsCard(host)}
       <section class="cardp"><h3>Connect your domain</h3><p class="mut sm">Hoola gives you the exact records to add, checks them from three places, then sets up HTTPS.</p>
         <form data-form="domain" class="inl"><input class="in" id="wsDom" aria-label="Your domain" placeholder="yourname.in" autocomplete="off" style="flex:1 1 200px"><button class="b" type="submit">Connect</button></form>
         <div class="inl">${studioBtn('Find a domain to buy', 'Is website ke liye achha domain dhoondho', false)}</div></section>
@@ -701,6 +703,27 @@
         <form data-form="moves" data-hash="${esc(S(moves.hash))}">${rows.slice(0, 200).map(r => `<label class="mv"><input type="checkbox" name="keep" value="${esc(S(r.old))}" ${r.guess ? '' : 'checked'}><code>${esc(S(r.old))}</code><span aria-hidden="true">→</span><code>${esc(S(r.new))}</code>${pill(S(r.how), r.guess ? 'warn' : '')}</label>`).join('') || '<p class="mut">Every old address already exists on the new site.</p>'}
           ${rows.length ? `<div class="inl" style="justify-content:flex-end;margin-top:8px"><button class="b pri" type="submit">Haan, jod do</button></div>` : ''}</form></section>` : ''}
     </div></div>`;
+  }
+
+  // v0.663 the DNS records her domain needs, drawn here (they only went to the chat before), with her tap to apply
+  function dnsCard(host) {
+    const seen = new Set();
+    const plans = L(M(host).dns).filter(p => S(p.purpose) === 'website' && !['undone'].includes(S(p.status)) && !seen.has(S(p.domain)) && seen.add(S(p.domain)));
+    if (!plans.length) return '';
+    return plans.slice(0, 2).map(p => {
+      const st = S(p.status), todo = L(p.changes).filter(c => S(c.op) !== 'keep');
+      const what = {planned: ['Ready to add', 'warn'], manual: ['Add these yourself', 'warn'], applied: ['Added', 'ok'], failed: ['Could not add', 'bad']}[st] || [st, ''];
+      return `<section class="cardp" data-dns="${esc(S(p.id))}"><div style="display:flex;align-items:center;gap:8px"><h3 class="sp">DNS for ${esc(S(p.domain))}</h3>${pill(what[0], what[1])}</div>
+        <p class="mut sm">${st === 'planned' ? `Hoola can add these at ${esc(S(p.provider))} for you after your tap.` : st === 'applied' ? 'Added. It takes 5 to 30 minutes to show everywhere; then HTTPS is set up by itself.'
+          : `Add these at the company where you bought ${esc(S(p.domain))} (GoDaddy, Hostinger, BigRock…): open DNS / Manage DNS, add each record, keep TTL as it is.`}</p>
+        ${todo.length ? `<div class="tbox"><table class="t"><thead><tr><th scope="col">Change</th><th scope="col">Type</th><th scope="col">Name</th><th scope="col">Value</th></tr></thead><tbody>
+          ${todo.map(c => `<tr><td>${esc({add: 'Add', update: 'Change', delete: 'Remove'}[S(c.op)] || S(c.op))}</td><td>${esc(S(c.type))}</td><td><code>${esc(S(c.name))}</code></td><td><code class="ell">${esc(S(c.content))}</code></td></tr>`).join('')}</tbody></table></div>` : '<p class="mut sm">Nothing to change: the records are already right.</p>'}
+        ${L(p.risks).map(r => `<p class="li bad">${esc(S(r))}</p>`).join('')}${p.error ? `<p class="li bad">${esc(S(p.error))}</p>` : ''}
+        <div class="inl" style="justify-content:flex-end">${st === 'planned' && todo.length ? `<button class="b pri" type="button" data-act="dns-apply" data-plan="${esc(S(p.id))}" data-hash="${esc(S(p.hash))}">Haan, add them for me</button>` : ''}
+          ${st === 'applied' ? `<button class="b" type="button" data-act="dns-undo" data-plan="${esc(S(p.id))}">Undo</button>` : ''}
+          ${st !== 'planned' ? `<button class="b" type="button" data-act="dns-check" data-plan="${esc(S(p.id))}">${st === 'manual' ? "I've added them · check" : 'Check now'}</button>` : ''}</div>
+        <div data-dnsout></div></section>`;
+    }).join('');
   }
 
   async function launch() {
@@ -964,7 +987,18 @@
       } else if (act === 'resume') { await api('POST', `/api/sites/${id}/resume`, {}); toast('Building again.'); await reload(); }
       else if (act === 'stop') { await api('POST', `/api/sites/${id}/stop`, {}); toast('Pausing after the current part.'); await reload(); }
       else if (act === 'undo') { const r = await api('POST', `/api/sites/${id}/undo`, {}); toast(S(r?.say) || 'Undone.'); const fr = APP.querySelector('.frame iframe'); if (fr) fr.src = fr.src; }
-      else if (act === 'export') { const r = await api('POST', `/api/sites/${id}/export`, {format: d.fmt}); toast(S(r.say) || 'Ready: it is in your files.'); }
+      else if (act === 'export') {                    // v0.663 the zip lands on her computer, not only in her files
+        toast(d.fmt === 'react' ? 'Packing the React + Vite project…' : 'Packing the website files…');
+        const res = await api('GET', `/api/sites/${id}/download?format=${d.fmt === 'react' ? 'react' : 'zip'}`, undefined, {raw: true})
+          .catch(e => { let x = {}; try { x = JSON.parse(e.message); } catch {} throw new Error(S(x.detail || x.error) || e.message); });
+        const blob = await res.blob();
+        const cd = res.headers.get('Content-Disposition') || '';
+        const fn = decodeURIComponent((cd.match(/filename\*=UTF-8''([^;]+)/) || [])[1] || '') || `website${d.fmt === 'react' ? '-react' : ''}.zip`;
+        const url = URL.createObjectURL(blob), a = document.createElement('a');
+        a.href = url; a.download = fn; document.body.appendChild(a); a.click(); a.remove();
+        setTimeout(() => URL.revokeObjectURL(url), 30000);
+        toast(`Downloaded ${fn} · ${Math.max(1, Math.round(blob.size / 1024))} KB`);
+      }
       else if (act === 'launch') await launch();
       else if (act === 'golive') {
         if (!confirm(`Put ${name(CUR)} v${S(CUR.version)} live now?`)) return;
@@ -973,6 +1007,19 @@
         const card = await api('POST', `/api/sites/${id}/rollback-request`, {version: Number(d.ver)});
         if (!confirm(S(card.say) || `Bring back v${d.ver} on your live addresses?`)) return;
         const r = await api('POST', `/api/sites/${id}/rollback`, {version: Number(d.ver), hash: S(card.hash)}); toast(S(r.say) || 'Restored.'); await reload();
+      } else if (act === 'dns-apply') {
+        if (!confirm('Add these DNS records to your domain now? Undo is there for 7 days.')) return;
+        const r = await api('POST', `/api/sites-dns/${enc(d.plan)}/apply`, {hash: d.hash}); toast(S(r.say) || 'Records added.'); await reload();
+      } else if (act === 'dns-undo') {
+        if (!confirm('Put the DNS back the way it was?')) return;
+        const r = await api('POST', `/api/sites-dns/${enc(d.plan)}/undo`, {}); toast(S(r.say) || 'Undone.'); await reload();
+      } else if (act === 'dns-check') {
+        const out = b.closest('[data-dns]')?.querySelector('[data-dnsout]');
+        if (out) out.innerHTML = '<p class="mut sm">Asking three public DNS servers…</p>';
+        const r = await api('GET', `/api/sites-dns/${enc(d.plan)}/check`);
+        const rows = L(r.checks);
+        if (out) out.innerHTML = `<p class="li ${r.done ? 'ok' : ''}">${r.done ? 'Seen everywhere. HTTPS is set up next, by itself.' : `${rows.filter(x => x.all).length} of ${rows.length} records are seen everywhere so far. New records take 10 to 30 minutes, sometimes a day.`}</p>
+          ${rows.map(x => `<div class="kv"><code class="ell">${esc(S(x.type))} ${esc(S(x.name))}</code>${pill(x.all ? 'Seen' : 'Not yet', x.all ? 'ok' : 'warn')}</div>`).join('')}`;
       } else if (act === 'takedown') {
         if (!confirm(`Take ${name(CUR)} off the internet? Your pages, data and versions are kept.`)) return;
         const r = await api('POST', `/api/sites/${id}/takedown`, {}); toast(S(r.say) || 'Taken down.'); await reload();

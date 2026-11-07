@@ -2008,3 +2008,14 @@ Task: SAVE THE STATE after the four-wave flaw audit (v0.657 / v0.660 / v0.661 / 
 Work: branch `stable-2026-11-07-audit-v662` cut at dda3e58f (= v0.662.0 code + one marketing doc); markers re-verified and
 151 tests green in a git-archive extract of that commit; KNOWN GOOD CHECKPOINT entry added to CLAUDE.md.
 Not verified: live restart / call / late reminder; VPS version at save; Google sign-in still dead.
+
+---
+Task ID: v0.663.0 STUDIO JAANCH
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked to check every Web Studio section end to end.
+Work Log:
+- Matched all 45 Studio API calls against the server routes (all exist).
+- Walked every section in Chromium with page errors + HTTP >= 400 logged per section.
+- Fixed: real downloads, DNS records + apply / check / undo in Publish, quiet /moves, Live pill in History, care name fallback.
+Stage Summary:
+- v0.663.0, tests/test_v0663_studio_jaanch.py 3 green.
