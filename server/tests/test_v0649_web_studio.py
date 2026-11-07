@@ -167,7 +167,19 @@ def test_studio_in_a_real_browser(arena_server, arch_env, monkeypatch):
     # Build mode: one line -> the site's workspace -> three complete looks
     page.fill("#wsAsk", "Sharma Sweets mithai dukaan ki website, online order WhatsApp par")
     page.keyboard.press("Enter")
+    # v0.655 while the looks are made: the real steps with live timers in the work panel and the chat
+    try:
+        page.wait_for_selector("#wsAct .acts li", timeout=30000)
+        assert page.locator("#wsState .chatact .tm").count() == 1
+        if shots:
+            page.screenshot(path=f"{shots}/studio-working.png")
+    except Exception:
+        pass                                   # the fake AI can finish before the screen draws the working state
     page.wait_for_selector("#ws .lks button", timeout=120000)
+    page.wait_for_selector("#wsState details.actd", timeout=15000)
+    assert re.match(r"Worked for \d+(m \d+)?s · \d+ steps", page.inner_text("#wsState details.actd summary"))
+    page.click("#wsState details.actd summary")
+    assert page.locator("#wsState .acts li").count() >= 4 and "Planning three designs" in page.inner_text("#wsState .acts")
     assert page.locator("#ws .lks button").count() == 3 and "every page works" in page.inner_text("#ws .ptop + .ptop")
     assert page.locator("#ws #wsPane .frame iframe").count() == 1
     frame = page.frame_locator("#ws #wsPane .frame iframe")

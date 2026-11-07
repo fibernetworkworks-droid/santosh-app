@@ -44,6 +44,7 @@ from . import shop as SH
 from . import blog as BL
 from . import code as CD
 from . import taxonomy as T
+from . import activity as ACT
 from .models import Site, SiteLead, SiteVersion
 
 log = logging.getLogger("santosh.site")
@@ -106,8 +107,17 @@ def _publish(tenant: str, kind: str, payload: dict, conv: str = "") -> None:
         log.exception("site publish failed")
 
 
-def _work(site: Site, phase: str, label: str, note: str = "", sections: list | None = None) -> None:
-    """Work Theatre 'website' scene + chat step line, from the real build."""
+def _work(site: Site, phase: str, label: str, note: str = "", sections: list | None = None, act: bool = True) -> None:
+    """Work Theatre 'website' scene + chat step line, from the real build. v0.655 every stage is also a timed step in the
+    Studio's own log (`activity`); act=False when the caller writes a finer step itself."""
+    if act:
+        if phase == "start":
+            ACT.step(site.tenant_id, site.id, label, ACT.note_en(label, note), key="photos" if label == "Tasveeren bana raha hoon" else "",
+                     alongside=label == "Tasveeren bana raha hoon")
+        elif phase in ("done", "waiting"):
+            ACT.end(site.tenant_id, site.id, label, ACT.note_en(label, note))
+        elif phase in ("error", "stopped"):
+            ACT.end(site.tenant_id, site.id, label, ACT.note_en(label, note), state="error" if phase == "error" else "done")
     data: dict[str, Any] = {"site": site.name, "note": _tidy(note, 90), "url": preview_url(site, short=True)}
     if sections is not None:
         data["sections"] = sections[:8]
@@ -310,7 +320,8 @@ def view(r: Site, full: bool = True) -> dict[str, Any]:
          "style_label": (T.STYLES.get(r.style) or {}).get("label", ""), "version": r.version,
          "stages": [{"id": a, "label": b} for a, b in STAGES], "board": {k: board.get(k) for k in ("pages", "now", "pct", "total", "done")},
          "preview": preview_url(r), "scores": _j(r.scores, {}), "error": r.error, "queued": len(_j(r.queued, [])),
-         "client": r.client, "updated_at": r.updated_at.isoformat() if r.updated_at else ""}
+         "client": r.client, "updated_at": r.updated_at.isoformat() if r.updated_at else "",
+         "activity": ACT.read(r.tenant_id, r.id)}
     if full:
         plan = _j(r.plan, {})
         checks = _j(r.checks, {})
@@ -1311,12 +1322,14 @@ def _make_looks(r: Site) -> None:
         d = B.site_dir(r.tenant_id, r.id) / "looks" / str(i)
         d.mkdir(parents=True, exist_ok=True)
         dirs.append(d)
-    _work(r, "start", "3 looks ban rahe hain", f"{len(styles) * (1 + len(more))} hisse ek saath")
+    _work(r, "start", "3 looks ban rahe hain", f"{len(styles) * (1 + len(more))} hisse ek saath", act=False)
 
     # wave 2: every look's hero + page-top sections at the same time
     jobs = [(i, {"type": "hero", "design": briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]}, True)
             for i in range(len(styles))] + [(i, s, False) for i in range(len(styles)) for s in more]
     secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
+    cnt_lock, cnt = threading.Lock(), {"n": 0}
+    ACT.step(r.tenant_id, r.id, "3 looks ban rahe hain", "", key="tops", done=0, total=len(jobs))
 
     def one(job):
         i, sec, hero = job
@@ -1333,6 +1346,10 @@ def _make_looks(r: Site) -> None:
             return
         secs[i][k] = out
         (dirs[i] / ("hero.json" if hero else f"{k}.json")).write_text(json.dumps(out))
+        with cnt_lock:
+            cnt["n"] += 1
+            ACT.step(r.tenant_id, r.id, "3 looks ban rahe hain", f"Look {i + 1}: {T.label_of(sec['type'])} written",
+                     key="tops", done=cnt["n"], total=len(jobs))
     width = max(1, min(12, int(getattr(_settings(), "site_look_parallel", 6) or 1)))
     with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"look-{r.id[:6]}") as ex:
         list(ex.map(_in_ctx(one), jobs))   # a hero that fails raises here, as before
@@ -1356,6 +1373,8 @@ def _make_looks(r: Site) -> None:
             log.info("look screenshots skipped: %s", e)
         return {"style": styles[i], "label": "Aapke design se" if (mine and i == 0) else T.STYLES[styles[i]]["label"],
                 "tokens": toks[i], "shots": shots, "dna": dnas[i], "mine": bool(mine and i == 0)}
+    ACT.step(r.tenant_id, r.id, "Putting the 3 looks together and taking screenshots",
+             "computer and phone views of each look", key="shots")
     with ThreadPoolExecutor(max_workers=len(styles), thread_name_prefix=f"look-{r.id[:6]}") as ex:
         looks = list(ex.map(_in_ctx(shoot), range(len(styles))))
     # wave 4 (v0.649 WEB STUDIO): every other page is written ONCE and each look becomes the whole site in its own design,
@@ -1418,14 +1437,19 @@ def _full_looks(r: Site, views: list, toks: list, secs: list[dict[str, dict[str,
             log.info("full look section %s skipped: %s", k, e)
         with lock:
             done["n"] += 1
+            ACT.step(r.tenant_id, r.id, "Teeno looks ke har page", f"{p['title']} page → {T.label_of(s['type'])}",
+                     key="pages", done=done["n"], total=len(todo))
         note()
     if todo:
-        _work(r, "start", "Teeno looks ke har page", f"{len(todo)} hisse ek baar likhe jaa rahe hain")
+        _work(r, "start", "Teeno looks ke har page", f"{len(todo)} hisse ek baar likhe jaa rahe hain", act=False)
+        ACT.step(r.tenant_id, r.id, "Teeno looks ke har page", f"{len(todo)} page parts, written once for all three",
+                 key="pages", done=0, total=len(todo))
         width = max(1, min(12, int(getattr(st, "site_look_parallel", 6) or 1)))
         with ThreadPoolExecutor(max_workers=width, thread_name_prefix=f"lookall-{r.id[:6]}") as ex:
             list(ex.map(_in_ctx(one), todo))
     if _load(r.id).stop:
         return [False] * n
+    ACT.step(r.tenant_id, r.id, "Putting every page of each look together", f"{n} complete sites", key="assemble")
     shared = {k: v for k, v in _sections(r).items() if k not in tops}
     photos = {p["name"]: p for p in _j(r.photos, [])}
     out = []
@@ -1548,7 +1572,8 @@ def _write_sections(r: Site, plan: dict[str, Any], states: dict[str, str], extra
             board = _board(_load(r.id), plan, states, line)
             state["r"] = _save(r.id, board=board)
             if slug:
-                _work(state["r"], "start", line, f"{board['pct']}% · {line}", _work_list(board, slug))
+                _work(state["r"], "start", line, f"{board['pct']}% · {line}", _work_list(board, slug), act=False)
+                ACT.step(r.tenant_id, r.id, "Writing every page", line, key="write", done=board.get("done"), total=board.get("total"))
             _emit(state["r"])
 
     def one(p, s, k, others):
@@ -2261,6 +2286,8 @@ def _ensure_pictures(r: Site) -> int:
             continue
         _store_photo(r.id, jpg, size, shot["about"], shot["name"], {**extra, "for": shot["for"]})
         made += 1
+        ACT.step(r.tenant_id, r.id, "Tasveeren bana raha hoon", shot.get("about") or "", key="photos", done=made,
+                 total=len(shots), alongside=True)
     return made
 
 
