@@ -266,7 +266,7 @@ def test_omni_skills_match_the_real_doors():
     from app.coder.skills_store import parse_skill
     from app.agent import tools
     real_tools = {t.get("name") for t in tools.TOOLS if isinstance(t, dict)}
-    assert len(tools.TOOLS) == 608, "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family)"        # refresh the same commit when it moves (582 their v0.588 + 2 sandarbh v0.589) (580 after the dev chain + 1 speckit v0.569)
+    assert len(tools.TOOLS) == 609, "608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family)"        # refresh the same commit when it moves (582 their v0.588 + 2 sandarbh v0.589) (580 after the dev chain + 1 speckit v0.569)
     bodies = _omni_bodies()
     pairs = [
         ("game_desk", "ga-game-dev"), ("samudaay", "ga-community"),

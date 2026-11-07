@@ -348,6 +348,10 @@ class Settings(BaseSettings):
                                            # tool, the mcp/servers fetch reference + the no-key public-API rows)
                                            # - ONE GET-only lane over the no-login/no-key services; off means
                                            # off (honest NEED_SETUP)
+    kala_enabled: bool = True              # v0.681 KALA MANCH: the T5 knowledge-skill catalog family (the `kala`
+    kala_catalog_ttl_seconds: int = 300    # tool, the google/skills catalog) - index.json fetched byte-exact
+                                           # behind this in-process TTL; documents fetched fresh every read;
+                                           # off means off (honest NEED_SETUP)
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)

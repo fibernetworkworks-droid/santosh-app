@@ -453,7 +453,7 @@ def test_the_tool_is_registered_in_the_house():
     assert names.count("speckit") == 1
     assert "speckit" in tools.HANDLERS and "speckit" in tools.TOOL_LABELS
     assert tools.FAMILY_OF["speckit"] == "speckit"
-    assert len(tools.TOOLS) == 608, "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + ("581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 580 (the dev chain on the merged tree, their v0.568.0 fef8a44ea) + 1 speckit "
+    assert len(tools.TOOLS) == 609, "608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + ("581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 580 (the dev chain on the merged tree, their v0.568.0 fef8a44ea) + 1 speckit "
                                      "(v0.569 SPEC SUTRA: the spec-kit ladder - constitution/specify/clarify/plan/"
                                      "tasks/analyze/converge/list, append-only converge, computed verdict, "
                                      "per-tenant sqlite)")
@@ -473,6 +473,6 @@ def test_the_spec_promises_the_ladder():
 
 def test_app_version_is_the_conscious_bump():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.680.0"
+    assert APP_VERSION == "0.681.0"
     root = Path(__file__).resolve().parents[2]
-    assert "0.680.0+679" in (root / "pubspec.yaml").read_text()
+    assert "0.681.0+680" in (root / "pubspec.yaml").read_text()
