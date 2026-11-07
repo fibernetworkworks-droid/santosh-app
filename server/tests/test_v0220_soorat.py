@@ -43,6 +43,7 @@ class _TonedCall:
         self._tone = tone
         self._tone_at = time.monotonic() - age
         self._quiet_pending = []
+        self.conv = "c220"           # the chat the late result's outcome is read for
         self.closed = asyncio.Event()
         self.stats = {}
         self.notes = []
@@ -351,4 +352,4 @@ def test_scorecard_counts_soorat():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.672.0"
+    assert APP_VERSION == "0.681.0"

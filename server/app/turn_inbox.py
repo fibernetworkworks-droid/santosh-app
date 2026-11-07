@@ -67,6 +67,9 @@ class TurnInbox(Base):
     # only trustworthy anchor. Before it, "answered" meant any assistant row after acceptance, so a queued message
     # was dropped by the PREVIOUS turn's reply, and a turn cut after its first tool step counted as answered.
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # v0.666 who the turn runs as (routine / '' = her own): a routine, a Dobara, an edit and a form answer now ride the
+    # inbox too, so a restart re-runs them as the same kind of turn instead of losing them
+    actor: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, onupdate=now)
 
@@ -78,7 +81,7 @@ def _aware(d: datetime | None) -> datetime | None:
 
 
 def accept(tenant: str, conversation_id: str, text: str, voice: bool, context: str, client_id: str,
-           place: str = "") -> str | None:
+           place: str = "", actor: str = "") -> str | None:
     """Persist the accepted message BEFORE the 202. None = feature off / failed (the old fire-and-forget path)."""
     st = get_settings()
     if not getattr(st, "agent_turn_inbox", True):
@@ -90,7 +93,7 @@ def accept(tenant: str, conversation_id: str, text: str, voice: bool, context: s
         with session() as s:
             row = TurnInbox(tenant_id=tenant, conversation_id=conversation_id, client_id=(client_id or "")[:80],
                             text=text or "", voice=1 if voice else 0, context=context or "",
-                            place=(place or "")[:16] or None)
+                            place=(place or "")[:16] or None, actor=(actor or "")[:40] or None)
             s.add(row)
             s.flush()
             STATS["accepted"] += 1
@@ -98,6 +101,29 @@ def accept(tenant: str, conversation_id: str, text: str, voice: bool, context: s
     except Exception:
         log.exception("turn inbox accept failed (the turn still runs the old way)")
         return None
+
+
+def seen(tenant: str, conversation_id: str, client_id: str, hours: float = 6) -> bool:
+    """v0.666 the phone's send id was already accepted (durably). The old check was a dict in memory, so a send accepted
+    just before a restart, retried by the phone against the new process, ran twice (the retry + the sweep's re-run)."""
+    cid = (client_id or "")[:80]
+    if not cid:
+        return False
+    try:
+        from datetime import timedelta
+        ensure_table()
+        with session() as s:
+            hit = s.scalars(select(TurnInbox.id).where(TurnInbox.tenant_id == tenant,
+                                                       TurnInbox.conversation_id == conversation_id,
+                                                       TurnInbox.client_id == cid,
+                                                       TurnInbox.created_at >= now() - timedelta(hours=hours))
+                            .limit(1)).first()
+        if hit:
+            STATS["duplicate"] = STATS.get("duplicate", 0) + 1
+        return bool(hit)
+    except Exception:
+        log.exception("turn inbox duplicate check failed")
+        return False
 
 
 CURRENT: contextvars.ContextVar = contextvars.ContextVar("turn_inbox_current", default=None)
@@ -137,7 +163,8 @@ def mark(inbox_id: str | None, status: str) -> None:
 
 
 async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenant: str, voice: bool,
-                    context: str = "", client_id: str = "", save_user: bool = True, place: str = "") -> str:
+                    context: str = "", client_id: str = "", save_user: bool = True, place: str = "",
+                    actor: str = "") -> str:
     """The background task: the normal turn, wrapped in the inbox states. Used by the endpoint (fresh) and by
     the sweep's re-run (save_user decided there)."""
     from .agent import run_turn
@@ -147,6 +174,8 @@ async def run_owned(inbox_id: str | None, conversation_id: str, text: str, tenan
         kw = {k: v for k, v in (("context", context), ("client_id", client_id), ("place", place)) if v}
         if not save_user:
             kw["save_user"] = False
+        if actor:
+            kw["actor"] = actor
         out = await run_turn(conversation_id, text, tenant, voice, **kw)
         mark(inbox_id, "done")
         STATS["done"] += 1
@@ -248,7 +277,7 @@ async def sweep() -> int:
                 TurnInbox.status == "running", TurnInbox.updated_at < run_cut, TurnInbox.tries < 2
             ).order_by(TurnInbox.updated_at).limit(5)).all()
             rows = [dict(id=r.id, tenant_id=r.tenant_id, conversation_id=r.conversation_id, client_id=r.client_id,
-                         text=r.text, voice=bool(r.voice), context=r.context, tries=r.tries, place=r.place or "",
+                         text=r.text, voice=bool(r.voice), context=r.context, tries=r.tries, place=r.place or "", actor=r.actor or "",
                          created_at=_aware(r.created_at) or now(), started_at=_aware(r.started_at)) for r in rows]
         from .agent import santosh
         for r in rows:
@@ -284,7 +313,7 @@ async def sweep() -> int:
                         r["id"], conv, r["tries"] + 1, save_user)
             t = asyncio.ensure_future(run_owned(r["id"], conv, r["text"], r["tenant_id"], r["voice"],
                                                 context=context, client_id=r["client_id"],
-                                                save_user=save_user, place=r["place"]))
+                                                save_user=save_user, place=r["place"], actor=r["actor"]))
             _BG.add(t)
             t.add_done_callback(_BG.discard)
         if out == 0:   # light housekeeping on the quiet pass

@@ -1486,7 +1486,9 @@ def turn_block(tenant: str, conversation_id: str, user_text: str) -> str:
         shown = {f.id for f in memory_facts(tenant, recent_facts(), conversation_id)}
         rel = relevant_facts(tenant, user_text, shown, conversation_id=conversation_id)
         if rel:
-            parts.append("Is baat se jude purane facts (her memory):\n" + "\n".join(f"- {i}: {t}" for i, t in rel))
+            _mk = fact_marks([i for i, _ in rel])
+            parts.append("Is baat se jude purane facts (her memory; 'Hoola ne samjha' = your own reading, check it with "
+                         "her before acting on it):\n" + "\n".join(f"- {i}: {t}{_mk.get(i, '')}" for i, t in rel))
             note_used(conversation_id, [{"source": "fact", "id": i, "text": t} for i, t in rel])
     except Exception:
         log.exception("relevant facts failed")
@@ -1710,3 +1712,24 @@ def health(tenant: str) -> dict[str, Any]:
     return {"items": items, "with_meaning": vecs, "facts": facts, "auto_facts": auto, "meaning_search": semantic.available(),
             "auto_memory": bool(getattr(get_settings(), "memory_auto", True)), "window": f"{EX_KEEP}-{EX_KEEP + EX_BLOCK - 1}",
             "stats": dict(STATS)}
+
+
+def fact_marks(ids) -> dict:
+    """v0.665 SACH KA HISAAB: id -> ' (saved 03 Nov 2026)' for her own facts, ' (Hoola ne samjha, 03 Nov 2026)' for one
+    Hoola picked up itself - a fact read by meaning used to reach the model undated and unlabelled, stated as truth."""
+    out: dict = {}
+    ids = [i for i in (ids or []) if i]
+    if not ids:
+        return out
+    try:
+        from sqlalchemy import select
+        with session() as s:
+            for f in s.scalars(select(MemoryFact).where(MemoryFact.id.in_(ids))).all():
+                try:
+                    d = f.created_at.strftime("%d %b %Y")
+                except Exception:   # noqa: BLE001
+                    d = "?"
+                out[f.id] = f" (Hoola ne samjha, {d})" if (f.source or "") == "auto" else f" (saved {d})"
+    except Exception:   # noqa: BLE001
+        log.debug("fact marks failed", exc_info=True)
+    return out

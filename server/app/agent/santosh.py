@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import random
 import re
 import time
@@ -32,6 +33,17 @@ log = logging.getLogger("santosh.agent")
 
 _client = None
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
+_HOLDER: dict[str, str] = {}   # v0.667 who holds each chat's lock right now (owner / goal / wake / routine ...)
+
+
+@contextlib.asynccontextmanager
+async def _holding(lock: asyncio.Lock, conversation_id: str):
+    """The chat lock; who holds it is forgotten the moment it is released."""
+    async with lock:
+        try:
+            yield
+        finally:
+            _HOLDER.pop(conversation_id, None)
 # v0.187 the truth about the last finished turn of this conversation, for the voice call's late result
 # ({"outcome": done|partial|stuck|stopped|talk|continuing, "left": what remains, "goal": the goal line, "at": ts})
 LAST_OUTCOME: dict[str, dict] = {}
@@ -302,10 +314,20 @@ def _no_think(content):
     return content
 
 
-def _save(conversation_id: str, role: str, content, display: str | None = None) -> None:
+def _save(conversation_id: str, role: str, content, display: str | None = None, in_history: bool = True) -> None:
     content = _no_think(content)
     with session() as s:
-        s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display, in_history=True))
+        s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display,
+                      in_history=in_history))
+
+
+def _save_pre(conversation_id: str, role: str, content, display: str | None = None) -> None:
+    """v0.666 a reply given BEFORE the chat lock (a card's "haan", a research plan, a stop by words). When another turn
+    holds the chat, its last saved row may be a tool_use whose tool_result is not written yet - a row saved now would
+    land between them, the real result was dropped as an orphan next turn (TOOL_RESULT_LOST) and the model redid a
+    send it had already done. Then the row is shown, but kept out of the model's history."""
+    lk = _locks.get(conversation_id) if isinstance(_locks, dict) else None
+    _save(conversation_id, role, content, display=display, in_history=not (lk is not None and lk.locked()))
 
 
 # v0.657 PAKKA KAAM: run_turn never raises - a crash / timeout / budget stop RETURNS a friendly line, so callers
@@ -367,6 +389,31 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 RESULT_LIMIT = {"research_run": 40000}
 
 
+_FAIL_STATUS = {"failed", "failure", "error", "refused"}
+
+
+def tool_failure(out) -> str:
+    """v0.665 SACH KA HISAAB: the failure text of a tool result, '' when it went fine. A result like
+    {"ok": False, "stage": "check", "errors": [...]} (a failed video render, a refused promo) used to count as a
+    success because only an "error" key was read - logged ok, outcome "done", and the honesty check switched off."""
+    if not isinstance(out, dict):
+        return ""
+    if out.get("error"):
+        return str(out.get("error"))
+    if out.get("ok") is False or str(out.get("status") or "").strip().lower() in _FAIL_STATUS:
+        for k in ("reason", "message", "say", "detail", "errors", "stage", "status"):
+            if out.get(k):
+                return str(out[k])[:300]
+        return "the tool said it did not succeed"
+    return ""
+
+
+def _facts_of(content) -> str:
+    """The numbers a tool result carries, as one compact string (for the after-reply figure check)."""
+    nums = re.findall(r"\d[\d,.]*\d|\d", str(content or "")[:40000])
+    return " ".join(dict.fromkeys(nums))[:6000]
+
+
 def _short(obj, limit: int = 6000) -> str:
     """A tool result for the model, at most `limit` characters.
     v0.331 SAAF KATAI: it used to be cut mid-JSON with "…(truncated)" - broken JSON, ids / links lost, and no hint how
@@ -383,10 +430,38 @@ def _short(obj, limit: int = 6000) -> str:
                 if len(out) <= limit:
                     TRIM_STATS["lists"] += 1
                     return out
+        # v0.667 a dict whose bulk is ONE long string (a page / mail body) lost every key after it in the raw cut - the
+        # ids, the next-page cursor, the error / next hints - and the JSON broke. Long strings are shortened in place
+        # first, so every key survives and the JSON stays valid.
+        for cap in (3000, 1500, 600, 200):
+            slim = _slim_strings(obj, cap)
+            out = json.dumps(slim, ensure_ascii=False, default=str)
+            if len(out) <= limit:
+                TRIM_STATS["strings"] = TRIM_STATS.get("strings", 0) + 1
+                return out
     TRIM_STATS["cut"] += 1
     return (s[:limit] + f"…[cut: showing {limit:,} of {len(s):,} characters. For the rest ask for less - a filter, a "
             "search word, a smaller limit or the next page - or save big data with data_fetch and read it with "
             "data_read.]")
+
+
+def _slim_strings(obj, cap: int, depth: int = 0):
+    """Every string longer than `cap` cut to its head + how much was left out (lists slimmed to 12 too)."""
+    if depth > 8:
+        return obj
+    if isinstance(obj, str):
+        if len(obj) <= cap:
+            return obj
+        return obj[:cap] + (f"…[{len(obj) - cap:,} more characters cut - for the rest ask for this part alone, a smaller "
+                            "limit or the next page, or save big data with data_fetch and read it with data_read]")
+    if isinstance(obj, dict):
+        return {k: _slim_strings(v, cap, depth + 1) for k, v in obj.items()}
+    if isinstance(obj, list):
+        items = [_slim_strings(v, cap, depth + 1) for v in obj[:12]]
+        if len(obj) > 12:
+            items.append(f"…[{len(obj) - 12} more items left out - ask for fewer / the next page]")
+        return items
+    return obj
 
 
 def _slim_lists(obj, keep: int, depth: int = 0):
@@ -889,6 +964,16 @@ PARALLEL_SAFE = frozenset({
 })
 
 
+def _parallel_ok(b: dict) -> bool:
+    """v0.666 by CALL, not only by name: kaam_status is a look-up only for action=status - action=stop cancels jobs
+    across all her chats (DB writes), and two of those side by side were the nested-write race v0.188 keeps serial."""
+    if b.get("name") not in PARALLEL_SAFE:
+        return False
+    if b.get("name") == "kaam_status":
+        return str((b.get("input") or {}).get("action") or "status").strip().lower() != "stop"
+    return True
+
+
 async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict | None = None):
     """A tool call that can never hang the whole turn.
     v0.193 it also writes the harness session log (tool_call / tool_result, with the turn's context) - best-effort,
@@ -950,7 +1035,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     from . import pakka
     from . import goal as _goal
     state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
-                   "conv": conversation_id}
+                   "conv": conversation_id, "actor": getattr(ctx, "actor", "owner") or "owner"}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
     state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
@@ -1102,12 +1187,39 @@ def _aage_promised(text: str) -> bool:
     return _aage.promised(text)
 
 
-def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str) -> None:
+_ASKS_HER = re.compile(r"\?\s*$|\b(bataiye|batayein|batao|bata\s*dijiye|chahiye|bhej\s*dijiye|share\s*kar|dijiye\s*to"
+                       r"|confirm\s*kar|please\s+(?:share|send|tell|confirm)|could\s+you|can\s+you|let\s+me\s+know"
+                       r"|which\s+one|kaun\s*s[aie]|kis\s+(?:date|din|time))\b", re.I)
+_SAYS_FAILED = re.compile(r"\b(fail|failed|nahi\s*ho\s*pa(?:ya|yi|aya)|nahi\s*hua|nahi\s*ho\s*saka|error|atak\s*gay"
+                          r"|could\s*n[o']t|couldn'?t|was\s+unable|unable\s+to|did\s*n[o']t\s+work)\b", re.I)
+
+
+_OFFER = re.compile(r"[^.!?\n]*\b(aur\s+kuch|kuch\s+aur|aur\s+koi|anything\s+else|something\s+else|kuch\s+bhi\s+aur"
+                    r"|aur\s+madad|more\s+help)\b[^.!?\n]*[.!?]?", re.I)
+
+
+def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str, calls: list | None = None) -> None:
+    """v0.311 the server's own plan closes with the model's final answer.
+    v0.665 SACH KA HISAAB: only a real finish closes it as DONE. A step that failed ("Step b fail ho gaya, API key
+    chahiye") or a question back to her ("Kaunsi date chahiye?") used to tick every remaining step done and show the
+    whole job finished on her card; now the first is `failed`, the second `blocked_on_her`, the steps left as they are."""
     from . import goal as _goal
+    text = " ".join(str(final_text or "").split())
+    did_ok = any(c.get("ok") for c in calls or [])
+    some_failed = any(not c.get("ok") for c in calls or [])
+    failed_only = bool(calls) and not did_ok
+    # a polite closing offer ("Aur kuch karna hai?") is not a question about THIS job
+    core = _OFFER.sub(" ", text).strip()
     try:
+        if core and _ASKS_HER.search(core[-400:]):
+            _goal.finish(tenant_id, g["id"], "blocked_on_her", reason=text[:300], your_turn=text[-300:])
+            return
+        if failed_only or (some_failed and _SAYS_FAILED.search(text)):
+            _goal.finish(tenant_id, g["id"], "failed", reason=text[:300])
+            return
         for x in _goal.steps_left(g):
             _goal.mark_step(tenant_id, g["id"], x["n"], "done", conv=conversation_id)
-        _goal.finish(tenant_id, g["id"], "done", reason=" ".join(str(final_text or "").split())[:300])
+        _goal.finish(tenant_id, g["id"], "done", reason=text[:300])
     except Exception:
         log.exception("auto plan close failed")
 
@@ -1182,7 +1294,11 @@ def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
     chat = _cc.chat_of(conversation_id)
     shown = {f.id for f in memory_facts(tenant_id, recent_facts(), chat)}
     rel = _y.relevant_facts(tenant_id, user_text, shown, top=6, conversation_id=chat)
-    return ("JUDE HUE FACTS (her own, by meaning for this ask):\n" + "\n".join(f"- {t}" for _, t in rel)) if rel else ""
+    if not rel:
+        return ""
+    mk = _y.fact_marks([i for i, _ in rel])   # v0.665 dated; Hoola's own guesses marked as such
+    return ("JUDE HUE FACTS (by meaning for this ask; 'Hoola ne samjha' = your own reading, not her words):\n"
+            + "\n".join(f"- {t}{mk.get(i, '')}" for i, t in rel))
 
 
 async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
@@ -1538,7 +1654,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                         and not _aage_promised(final_text):
                     # v0.311 the server's own one-step plan closes with the model's real final answer (no
                     # "text mein mat ruko" loop over a plan the model never wrote); a mere promise still goes on
-                    _close_auto_plan(tenant_id, conversation_id, g, final_text)
+                    _close_auto_plan(tenant_id, conversation_id, g, final_text, state.get("calls"))
                     g = None
                 if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < 8:
                     state["goal"] = g
@@ -1558,10 +1674,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
             if state.get("correct"):   # the correction is added after the words already shown (never rewrites them)
-                final_text = (final_text + "\n\n" + state.pop("correct")).strip()
-                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
-                                                         **_tag(live)})
-                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+                # v0.668 only the correction line goes out as its own short message and its own row: the whole answer
+                # again (answer + note) showed TWICE on the phone and sat twice in the model's history
+                note = state.pop("correct")
+                final_text = (final_text + "\n\n" + note).strip()
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": note, "source": "agent",
+                                                         "note": True, **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": note}], display=note)
             break
         async def _one(b: dict) -> dict:
             """One tool_use block, run to its tool_result (v0.189: every path RETURNS exactly one result, so the
@@ -1585,13 +1704,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             try:
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
-                fine = not (isinstance(out, dict) and out.get("error"))
+                _fail = tool_failure(out)   # v0.665 {"ok": False} / status failed is a failure too, not only "error"
+                fine = not _fail
                 breaker.after(b["name"], fine)
                 refs = out.get("tool_references") if isinstance(out, dict) and getattr(ctx, "native_search", False) \
                     else None
                 content = refs if refs else _short(out, RESULT_LIMIT.get(b["name"], 6000))   # v0.563 tool_reference
-                call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
-                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else str(content)[:300]}
+                call = {"tool": b["name"], "ok": fine, "error": "" if fine else _fail[:300],
+                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else str(content)[:300],
+                        # v0.665 every figure the tool really returned (the 300-char result above hid row 10's amount,
+                        # so the after-reply check called a correct number unsourced)
+                        "digits": _facts_of(content) if fine else ""}
                 if not fine:
                     content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
@@ -1614,6 +1737,18 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 except Exception:
                     log.debug("say line failed", exc_info=True)
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": content}
+            except asyncio.CancelledError:
+                # v0.668 the turn's time limit (or a stop) cancelled this step: say so on the step card before the
+                # cancel goes on - it used to stay "running" with a spinner for ever (and "running" again on reload)
+                try:
+                    state["calls"].append({"tool": b["name"], "ok": False, "error": "cut off (time limit)",
+                                           "args": args_in, "key": _key(b["name"], args_in)})
+                    bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
+                                                          "id": b["id"], "detail": "samay khatam, beech mein roka"})
+                    _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Samay khatam, roka gaya")
+                except Exception:   # noqa: BLE001
+                    log.debug("cut-off step card failed", exc_info=True)
+                raise
             except _Halted as h:
                 state["halted"] = h.why
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
@@ -1637,9 +1772,15 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
                                        "key": _key(b["name"], args_in)})
-                msg = (f"{b['name']} did not finish in {settings.agent_tool_timeout_s} seconds and was stopped. "
-                       "Don't stop the task: check this step's status, try a lighter way or another tool, or hand the "
-                       "step to a route that answers faster.")
+                # v0.666 the wait stopped, the WORK may not have: a tool running in a thread (a browser job, a render)
+                # carries on and can still submit the form. "Try another way" made the model start a second one and
+                # the form went twice - now the step's status is checked first and a send / submit is never repeated.
+                msg = (f"{b['name']} did not answer in {settings.agent_tool_timeout_s} seconds. It MAY STILL BE "
+                       "RUNNING or may be half done - the work was not cancelled. Before doing anything again, check "
+                       "what really happened (its own status / result tool, kaam_status, the sent mail / order / "
+                       "booking list). NEVER repeat a send, submit, order, payment or booking until you have seen "
+                       "that it did not happen; if you cannot check, tell her plainly that it may or may not have gone "
+                       "through. For a read-only step, a lighter way or another tool is fine.")
                 log.warning("tool %s timed out", b["name"])
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
                                                       "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
@@ -1659,7 +1800,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         tblocks = [b for b in blocks if b.get("type") == "tool_use"]
         results: list[dict] = []
         if len(tblocks) > 1 and getattr(settings, "agent_parallel_tools", True) \
-                and all(b["name"] in PARALLEL_SAFE for b in tblocks):
+                and all(_parallel_ok(b) for b in tblocks):
             # v0.189 one step asked for several pure look-ups: they run together (dsh's bounded pool, Claude Code's
             # concurrency-safe read batching), results commit strictly in the model's order. Her Rokiye still lands:
             # every _one watches for the halt itself and returns the stopped result.
@@ -1784,17 +1925,30 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
             return final_text
-        if not final_text:
-            final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
-                                                     **_tag(live, True)})
-            # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
-        return final_text
+        # v0.665 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
+        # be returned as the final answer and the turn recorded "done"), and the outcome is partial, never done
+        state["left"] = state.get("left") or "steps ki had poori ho gayi, kaam poora nahi hua"
+        honest = "Yeh kaam lamba ho gaya aur abhi poora nahi hua - main yahin ruk raha hoon. Aage badhaun?"
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent",
+                                                 **_tag(live, True)})
+        # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+        _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
+        return (final_text + "\n\n" + honest).strip() if final_text else honest
     if not final_text.strip():
         # the model finished without a word: never leave the user staring at a silent chat
-        final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
-            "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
+        # v0.665 only when a tool really finished: "Kaam ho gaya" after every tool failed was made up
+        _cs = state.get("calls") or []
+        _bad = [c for c in _cs if not c.get("ok")]
+        if ran_tools and _cs and len(_bad) == len(_cs):
+            state["left"] = state.get("left") or "koi kadam poora nahi hua"
+            final_text = ("Maaf kijiye, yeh kaam nahi ho paya - jo kadam chalaye woh atak gaye ("
+                          + (str(_bad[-1].get("error") or "")[:120] or "galti") + "). Dobara koshish karun?")
+        elif ran_tools and _bad:
+            state["left"] = state.get("left") or "kuch kadam atak gaye"
+            final_text = gendered("Kuch hissa ho gaya, par sab nahi - kuch kadam atak gaye. Baaki dobara karun?", gender)
+        else:
+            final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
+                "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
         bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                  **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -2072,8 +2226,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             got = None
         if got:
             shown = ("OTP " if got["kind"] == "otp" else "CAPTCHA ") + got.get("masked", "••••")
-            _save(conversation_id, "user", shown, display=shown)
-            _save(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
+            _save_pre(conversation_id, "user", shown, display=shown)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": got["say"]}], display=got["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": got["say"], "source": "operator"})
             return got["say"]
         if not voice and save_user and not str(user_text or "").lstrip().startswith(("[", "(")):
@@ -2084,14 +2238,14 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 log.exception("research plan gate failed")      # a broken gate never blocks her ask
                 _rp = None
             if _rp and _rp["action"] == "say":
-                _save(conversation_id, "user", user_text, display=user_text)
-                _save(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
+                _save_pre(conversation_id, "user", user_text, display=user_text)
+                _save_pre(conversation_id, "assistant", [{"type": "text", "text": _rp["text"]}], display=_rp["text"])
                 bus.publish(conversation_id, "message", {"role": "assistant", "text": _rp["text"], "source": "research_plan"})
                 bus.publish(conversation_id, "typing", {"on": False})
                 return _rp["text"]
             if _rp and _rp["action"] == "start":
                 # her words are what the chat shows; the SAME turn gets the ask + the plan she approved (never saved twice)
-                _save(conversation_id, "user", _rp["words"], display=_rp["words"])
+                _save_pre(conversation_id, "user", _rp["words"], display=_rp["words"])
                 user_text, save_user = _rp["text"], False
         try:   # v0.191 SAMAJHDAR CARD: PC/browser step uski haan ka intezaar hai aur usne LIKH diya ('haan karo',
                # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
@@ -2106,8 +2260,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             log.exception("approval by chat text failed")
             _ap = None
         if _ap:
-            _save(conversation_id, "user", user_text, display=user_text)
-            _save(conversation_id, "assistant", [{"type": "text", "text": _ap["say"]}], display=_ap["say"])
+            _save_pre(conversation_id, "user", user_text, display=user_text)
+            _save_pre(conversation_id, "assistant", [{"type": "text", "text": _ap["say"]}], display=_ap["say"])
             bus.publish(conversation_id, "message", {"role": "assistant", "text": _ap["say"], "source": "approval"})
             bus.publish(conversation_id, "typing", {"on": False})
             return _ap["say"]
@@ -2141,8 +2295,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             if kaamstop.wants_stop(user_text):
                 _ks = await asyncio.to_thread(kaamstop.cancel, tenant_id, user_text, conversation_id)
                 if _ks.get("stopped"):
-                    _save(conversation_id, "user", user_text, display=user_text)
-                    _save(conversation_id, "assistant", [{"type": "text", "text": _ks["say"]}], display=_ks["say"])
+                    _save_pre(conversation_id, "user", user_text, display=user_text)
+                    _save_pre(conversation_id, "assistant", [{"type": "text", "text": _ks["say"]}], display=_ks["say"])
                     bus.publish(conversation_id, "message", {"role": "assistant", "text": _ks["say"], "source": "kaam_stop"})
                     bus.publish(conversation_id, "typing", {"on": False})
                     return _ks["say"]
@@ -2153,7 +2307,12 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     _steer_e = None
     if VOICE_BRAIN_NOW.get() and lock.locked():
         log.info("call brain turn waits: this chat is busy with another turn (%s)", conversation_id)
-    if lock.locked() and (actor or "owner") == "owner" and not voice and not VOICE_BRAIN_NOW.get():
+    # v0.667 only a turn that is HERS (her own ask / her long job) may answer or take her new words early: a wake
+    # report or a routine holding the chat used to swallow them (steer.take has no actor check) and her own turn
+    # returned "" and never ran - now she simply waits her turn behind it, like a queued message
+    _holder = _HOLDER.get(conversation_id, "owner")
+    if lock.locked() and (actor or "owner") == "owner" and not voice and not VOICE_BRAIN_NOW.get() \
+            and _holder in ("owner", "goal"):
         # v0.657 a call's brain ask never takes the no-tools quick lane (it answered "kaam chal raha hai" without
         # tools); the call sends a second ask to its own side record instead (voice.Call._delegate)
         # v0.86 a long job holds the chat: answer this message NOW from the quick lane; only real work waits
@@ -2165,7 +2324,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if steer_on:   # v0.223 the instruction reaches the RUNNING job at its next step (agent.steer)
             from . import steer as _steer
             _steer_e = _steer.offer(conversation_id, user_text, client_id)
-    async with lock:
+    async with _holding(lock, conversation_id):
         if _steer_e is not None:
             from . import steer as _steer
             if _steer.claim(conversation_id, _steer_e):
@@ -2175,6 +2334,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             return ""
         if client_id:
             _active_msg[conversation_id] = client_id   # v0.173 this message's turn runs now (take-back refuses it)
+        _HOLDER[conversation_id] = (actor or "owner") if not str(actor or "").startswith("approved:") else "owner"
         _mark("lock")
         _t_lock = time.time()
         notes = _pending_worker_notes(conversation_id)
@@ -2237,7 +2397,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             await asyncio.to_thread(_ti.started, conversation_id)
         except Exception:
             log.debug("inbox started stamp failed", exc_info=True)
-        history = _load_history(conversation_id)
+        # v0.668 read in a thread: up to 5,000 rows decoded on the event loop froze the WHOLE server (live call audio,
+        # every SSE stream) for a moment on every turn of a long chat
+        history = await asyncio.to_thread(_load_history, conversation_id)
         _mark("history")
         if not save_user and not saved_wake and agent_text.strip():
             # v0.213 wake / inbox re-run turns: this turn's words were deliberately NOT saved (save_user=False,

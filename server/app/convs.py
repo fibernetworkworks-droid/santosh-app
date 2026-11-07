@@ -77,6 +77,9 @@ def mark(tenant: str, conv: str, source: str = "app") -> None:
         from .callconv import is_call
         if is_call(conv):
             return
+        from .bahar import chat_ids   # v0.667 nor an outside-channel chat
+        if conv in chat_ids(tenant):
+            return
     except Exception:
         pass
     import time
@@ -99,16 +102,22 @@ def current(tenant: str) -> str:
     """The chat she is in (last marked), else her newest chat, else ''. Never makes a new one."""
     if not tenant:
         return ""
+    try:   # v0.667 her WhatsApp / Telegram / Slack / Teams chats are never "the chat she is in"
+        from .bahar import chat_ids
+        outside = chat_ids(tenant)
+    except Exception:   # noqa: BLE001
+        outside = set()
     with session() as s:
         row = s.get(ConvFocus, tenant)
-        if row is not None:
+        if row is not None and row.conversation_id not in outside:
             c = s.get(Conversation, row.conversation_id)
             if c is not None and c.tenant_id == tenant and not c.deleted and c.kind != "call":
                 return c.id
         from .callconv import not_call   # v0.646
-        c = s.scalars(select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True),
-                                                 not_call())
-                      .order_by(Conversation.created_at.desc())).first()
+        q = select(Conversation).where(Conversation.tenant_id == tenant, Conversation.deleted.is_not(True), not_call())
+        if outside:
+            q = q.where(Conversation.id.not_in(list(outside)))
+        c = s.scalars(q.order_by(Conversation.created_at.desc())).first()
         return c.id if c else ""
 
 

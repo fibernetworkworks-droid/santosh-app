@@ -342,7 +342,7 @@ def _verify_done(tenant: str, goal_id: str, conv: str, made: list[str] | None,
         steps = json.loads(r.steps or "[]")
     except ValueError:
         steps = []
-    out = verify.gate(tenant, conv or r.conversation_id, made, steps, calls)
+    out = verify.gate(tenant, conv or r.conversation_id, made, steps, calls, since=_aware(r.started_at))
     if out["ok"]:
         if out["unknown"]:
             STATS["verify_unknown"] += 1
@@ -673,9 +673,14 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
             return                         # v0.223 finished / stopped / replaced while this round waited: nothing to do
         from .santosh import run_turn, LAST_OUTCOME
         out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
-        LAST_OUTCOME[conv] = {"outcome": "continuing", "left": str(out or "")[:300], "goal": goal_id, "at": time.time()}
         v = active_for(conv)
-        if v is not None and steps_left(v):
+        if v is not None and v.get("id") == goal_id and steps_left(v):
+            # v0.665 "continuing" only while the goal really is still open AND this round did not end stuck / stopped -
+            # it used to overwrite a finished or dead job's true outcome, so a live call said "abhi chal raha hai"
+            mine = LAST_OUTCOME.get(conv) or {}
+            if str(mine.get("outcome") or "") not in ("stuck", "stopped"):
+                LAST_OUTCOME[conv] = {"outcome": "continuing", "left": str(out or "")[:300], "goal": goal_id,
+                                      "at": time.time()}
             log.info("goal %s still open after continuation; rounds cap will decide the rest", goal_id)
     except Exception:
         log.exception("goal continuation failed")
@@ -759,6 +764,9 @@ def continue_now(tenant: str, conv: str) -> dict[str, Any] | None:
     return view
 
 
+_BOOT_AT = now()   # v0.667 this process's start (a goal that last moved before it lost its runner to a restart)
+
+
 def recover_tick() -> int:
     """v0.223 restart-proof long jobs: a goal still 'working' that nothing is running any more (the server restarted
     mid-round, or a round died) is picked up again - like Claude, a crash never silently throws the work away.
@@ -800,8 +808,14 @@ def recover_tick() -> int:
         _mutate(tenant, gid, bump)
         try:
             from ..db import Message
-            line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \
-                   f"({view['done']}/{view['total']} steps ho chuke)."
+            # v0.667 "server dobara chalu hua" only when it really restarted (the job last moved before this process
+            # began); a round that simply ended (a wake report, a cut turn) is said as what it is
+            if upd < _BOOT_AT:
+                line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \
+                       f"({view['done']}/{view['total']} steps ho chuke)."
+            else:
+                line = f"Aapka kaam \"{view['goal'][:80]}\" kuch der se ruka tha — wahin se aage badha raha hoon " \
+                       f"({view['done']}/{view['total']} steps ho chuke)."
             with session() as s:
                 s.add(Message(conversation_id=conv, role="assistant", content=line, display=line,
                               in_history=False, delivered_to_agent=True))

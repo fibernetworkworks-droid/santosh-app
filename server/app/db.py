@@ -222,6 +222,8 @@ class Reminder(Base):
     status: Mapped[str] = mapped_column(String(16), default="active")  # active/done/cancelled
     fired_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.667 a monthly repeat remembers the day it was set for (31 Jan -> 28 Feb -> 31 Mar, never the 28th for ever)
+    anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
 
 class Routine(Base):
@@ -239,6 +241,7 @@ class Routine(Base):
     last_run: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_result: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    anchor_day: Mapped[int | None] = mapped_column(Integer, nullable=True)   # v0.667 see Reminder.anchor_day
 
 
 class MemoryFact(Base):

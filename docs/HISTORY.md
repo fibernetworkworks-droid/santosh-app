@@ -1,4 +1,4 @@
-## v0.672.0 LEADS ENGINE P0–P5 — the lead generation engine, rebuilt on their v0.671.0 tip (8 Nov 2026; REBASE PROTOCOL: the engine was built as v0.540–v0.545 on the v0.539 base while the dev chain shipped its own v0.540–v0.671 — never pushed; rebuilt fresh on their tip, ALL their work kept, the phase stories P0–P5 of docs/LEADS_PLAN.md carried intact)
+## v0.681.0 LEADS ENGINE P0–P5 — the lead generation engine, rebuilt on their v0.680.0 tip (8 Nov 2026; REBASE PROTOCOL: the engine was built as v0.540–v0.545 on the v0.539 base while the dev chain shipped its own v0.540–v0.671 — never pushed; rebuilt fresh on their tip, ALL their work kept, the phase stories P0–P5 of docs/LEADS_PLAN.md carried intact)
 
 The whole chain in one release — the engine GATHERS, it never contacts anyone; outreach stays behind her tap.
 
@@ -12,7 +12,21 @@ The whole chain in one release — the engine GATHERS, it never contacts anyone;
 **Tests**: test_v0540_leads_store/card (P0) + test_v0541_leads_official + test_v0542_leads_enrich + test_v0543_leads_scrape + test_v0544_leads_scale + test_v0545_leads_outreach — zero network, fakes at the module boundaries (httpx.MockTransport, recorded fixtures), all pins re-set to the merged tree (registry = their 608 + the six leads tools).
 
 **NOT VERIFIED, said plainly**: the whole engine has answered fakes and fixtures only — no live Google query, no live IndiaMART run, no live vendor, no real WhatsApp/email send. Her first live run on each lane is the true confirmation: the scrape lane's live layout, block behaviour from her VPS IP and real yield stay unknown until then; the vendor adapter is written to the documented contract and re-checked when she names the vendor; the desks' first live campaign/email from a leads list confirms the ledger's side.
+## v0.680.0 HOOLA ADOPT — the product's first live lane ON the AEP, P9 of the HOOLA plan (8 Nov 2026)
 
+Owner: "CURRENTLY HOOLA DONT USE AEP IT NEED USER AUTH" then "CONTINUE". Built as 0.610.0 on the v0.600.0 base; the dev chain took
+0.611-0.670 while P9 sat built — REBASE PROTOCOL onto their v0.670.0 KAAN W6 (their base kept whole, the version layer re-applied
+coherently 0.670.0/+676 -> 0.680.0/+677, their drifted 0.669 console stamps healed to 0.680). server/app/agent/aeptune.py (the
+adoption seam, ZERO new deps) + POST /api/aep/turn/{conversation_id} in main.py — one real turn of HOOLA run ON the AEP behind the
+product's USER AUTH (require_key + current_tenant; anonymous refused the moment the server has a key; the conversation must belong
+to the caller's tenant). The lane: map_history folds the product history rows into AEP messages; build_agent compiles aep.create_agent
+(P4) over hoola_brain_factory (P7 — the production OmniRoute/GLM/Claude brain, lazily imported per call); the default ride is
+Nudge + Curator (P5; delegate/skills-primer opt-in); chat memory rides the SqliteSaver checkpointer on the conversation thread (P3);
+every span lands in the P2 tracer (the explorer sees the root "hoola-aep-turn") and the vault sink joins when aep_trace is flipped;
+the reply lands in the same conversation + SSE feed (the assistant message sourced "aep"); usage.bind meters the lane; a brain
+failure fails loudly (502) and the typing dots ALWAYS go away. The yaad law held in testing: the user row saves as a str. THE
+PRODUCTION LOOP IS UNTOUCHED; the lane is opt-in per call; registry stays 584; old APKs keep working. Tests: test_v0610_hoola_adopt.py
+(15, zero network, the brain injected). server-only deploy = owner's vps-ops dispatch.
 ## v0.670.0 KAAN W6 — HISAAB AUR SAFAI (7 Nov 2026, built as 0.667.0; their console-stamp + PREMIUM STUDIO 0.667.0, DUNIYA MANCH 0.668.0, HOOLA AURA 0.669.0 - REBASE PROTOCOL, rebuilt on their tip, all kept)
 
 The accountability layer her audio runs on, then the unlock it buys — quotas + retention -> real voiceprint diarization.
@@ -22447,3 +22461,126 @@ Owner: "when website show preview it must show some dummy value not empty data .
 - Tests `test_v0671_naam_aur_namoona.py` (6). Updated to the new truth: v0315 (a missing price is now a marked sample), v0663 (a nameless site is named by Hoola; its address follows the name). Console stamps moved 0.669.0 -> 0.671.0 (v0.670 had left them, so the stamp-count pin was red on main).
 - Pre-existing red, unrelated (fails on the unchanged tree too): `test_v0224_site_edge.py::test_daily_backup_prune_and_safe_restore`.
 - NOT VERIFIED on a real Opus build: how often the model writes data-eg, and the names it picks.
+## v0.672.0 DOOSRI JAANCH, wave 5: SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5"; built as 0.663 - their STUDIO JAANCH took 0.663.0 and their ASLI SAMAY 0.664.0 while it sat on the branch, REBASE PROTOCOL twice, all kept)
+
+The second deep audit (4 parallel read-only passes: task loop, hallucination / honesty, consistency / persistence,
+smoothness) found 37 flaws; this wave fixes the 14 where Hoola could tell her something untrue.
+
+1. **A failed tool is a failure.** `santosh.tool_failure(out)`: a result with `ok: False` or status failed / failure /
+   error / refused (a failed video render, a refused promo) counted as success because only an `error` key was read -
+   logged ok, outcome "done", the honesty check switched off, a failing procedure learned as good. The call side
+   (`voice._fails`) reads it the same way.
+2. **A true report is not called a lie.** `draftcheck.ran_before(conv, family)`: on a wake turn, a status ask ("mail gaya
+   kya?") or a past-tense claim ("bhej diya tha"), a tool of that kind that really succeeded in this chat (or the chat
+   behind a call record) in the last 7 days backs the claim. With nothing behind it, the claim is still caught.
+3. **A claim needs a tool of ITS kind.** `all_claims` judges every claim in the reply (not only the first) and
+   `family_of` / `_backs_claim` map it to send / money / book / remind / publish tools (sub-agents, browser, PC, MCP and
+   workflows back any). "Mail bhej diya aur reminder laga diya" with only `create_reminder` run now gets `NUDGE_PART`.
+4. **The quick lane (no tools) never says done or swallows work.** A reply that claims done, or her message with a doing
+   verb (`quick._ACTION`), goes to the running job / queue; a claiming reply is replaced by the honest queue line.
+5. **The call corrects a claim after a failed or unrelated tool.** `_check_spoken_claim` counts only tools that finished
+   ok, did something (not a read) and are of the claim's kind; a running count (`n`) replaces the capped list length
+   (after 60 tools the old count was always 0).
+6. **Excuse words no longer hide a claim.** Future / offer / condition words excuse a claim only BEFORE it (or in the same
+   word: "kar dunga"); after it only a negation / tap / approval does; "aapne jo ... thi" (a relative clause) is cut off.
+   New claims: "order place kar diya", "PDF / invoice / website ... bana diya / ban gayi / taiyaar ho gayi", "I've created".
+   A plan or list written in the reply itself is never a claim.
+7. **A call job that only talked is not "ho gaya".** `_late_result` relays "done" only for outcome done; "talk" goes to
+   the neutral line.
+8. **The server's own plan closes with the truth.** `_close_auto_plan`: a question back to her = `blocked_on_her`, every
+   call failed (or a failed call + failure words) = `failed`, steps left as they are; only a real finish ticks them done.
+   A polite "Aur kuch karna hai?" is not a question about the job.
+9. **The step cap always says it.** The honest "abhi poora nahi hua" line is added even when a mid-task line exists, and
+   `state["left"]` makes the outcome partial, never done.
+10. **"Kaam ho gaya" is never made up.** An empty reply after tools says the job did not happen (all failed) or only part
+    of it did (some failed).
+11. **A goal round keeps a stuck outcome.** `_continuation` writes "continuing" only while the goal is still open and the
+    round did not end stuck / stopped.
+12. **Done = verified counts only this job's rows.** `verify.gate(..., since=goal.started_at)` (`verify.SINCE`): files,
+    pages, reminders, routines and list items made before the job no longer pass it.
+13. **A correct figure deep in a result is backed.** Each call keeps every number its result carried (`digits`, from
+    `_facts_of`), read by `sources_text`, so row 10's amount is not flagged as unsourced.
+14. **Guessed facts are labelled and dated.** `life.context_block` lists her own facts ("saved <date>") apart from facts
+    Hoola picked up ("noted <date>", check with her first); facts read by meaning carry `yaad.fact_marks`
+    ("Hoola ne samjha, <date>") on chat and call.
+
+Also fixed: `voice.Call._conv_of` no longer crashes on a call object without `conv` (test_v0220 was red since v0.660).
+Tests: NEW `test_v0663_sach_ka_hisaab.py` (32; 23 fail on the old code). Updated to the new truth: test_v0654 (the fake
+call's tool records now have the real shape), test_v0226 (its scripted "Excel bana diya" after only a read is a false
+claim), test_v0220 (the fake call names its chat). NOT VERIFIED live. Not done in this wave (said plainly): the after-reply
+figure check still runs only on her own turns, not on background reports.
+
+## v0.672.0 DOOSRI JAANCH, wave 6: KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6"; built as 0.664)
+
+15. **Late-reminder quiet hours really work.** `worker._tz`: `life.tz_of` already returns a ZoneInfo and `ZoneInfo(ZoneInfo)`
+    raised a swallowed TypeError, so v0.662's night check was always False (a late reminder still rang at 3 am) and the
+    late line said "pehle" instead of the time. My own v0.662 bug; its test had mocked the function away.
+16. **A timed-out tool may still be running.** The model is told the work was NOT cancelled, to check what really happened
+    first, and never to repeat a send / submit / order / payment / booking it has not seen fail (it was told "try
+    another way" and a browser form went twice).
+17. **A retried send runs once across a restart.** `turn_inbox.seen(tenant, conv, client_id)` (6 h) is checked before the
+    in-memory dict in POST /messages.
+18. **Routines ride the turn inbox** (`TurnInbox.actor`, new nullable column; `accept(..., actor=)`, `run_owned(..., actor=)`,
+    the sweep re-runs as the same actor) - a restart mid-run re-runs the routine instead of losing it.
+19. **Dobara, an edited message and a form answer ride the turn inbox** (they were bare BackgroundTasks / awaits).
+20. **A reply given before the chat lock stays out of the model's history while another turn holds the chat**
+    (`santosh._save_pre`): a "haan" for a card, a research plan or a stop-by-words saved between a running job's
+    tool_use and tool_result made the next turn drop the real result as an orphan and redo a send.
+21. **kaam_status action=stop never runs in parallel** (`santosh._parallel_ok` judges by call, not only by name).
+22. **A WhatsApp / Telegram / Slack / Teams reply is marked sent only after it went** (`bahar._advance` per message; a
+    failing one is retried on the next forward, skipped after 3 tries so it never blocks the rest).
+23. **A reminder is advanced (a conditional UPDATE on exactly its due time) before it is said**: a crash between saying
+    and saving no longer says it twice, and two ticks can never both say it.
+
+Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the SACH KA HISAAB code). NOT VERIFIED live.
+
+## v0.672.0 DOOSRI JAANCH, wave 7: SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7"; built as 0.665)
+
+24. **An outside-channel chat is never "the chat she is in".** `bahar._turn` no longer marks it; `convs.mark` refuses a
+    channel chat and `convs.current` skips it (`bahar.chat_ids`). One Telegram message used to send every mail alert,
+    calendar nudge and browser-extension answer out on Telegram / WhatsApp, and open her app on that chat.
+25. **Set on a call, it belongs to the chat.** `life_tools._home(ctx)` (`callconv.chat_of`) for reminders, routines and the
+    morning briefing - they were bound to the hidden call record.
+26. **A deleted chat does not keep them.** `worker._home_conv`: a reminder, routine or briefing whose chat was deleted (or
+    is a call record) moves to the chat she is in, once, and keeps working there.
+27. **Medicine / bill / birthday reminders behave like Hoola reminders**: `bazar.fire_due_reminders` publishes the
+    `reminder` event (a live call says it), rings her (`worker._ring_for_reminder`), says a late one as late and never
+    rings it at night; monthly / yearly keep their day (meta day / month) and catch up once after downtime.
+28. **A monthly repeat keeps its own day.** `life.next_due(..., anchor_day)` + `life.anchor_of`; new nullable
+    `anchor_day` on reminders and routines, set on the first fire (31 Jan -> 28 Feb -> 31 Mar, not the 28th for ever).
+29. **A background turn never swallows her message.** `santosh._HOLDER` (who holds the chat lock, cleared by
+    `_holding`): the quick lane and steering run only when the holder is HER turn (owner / goal); behind a wake report
+    or a routine she waits her turn like a queued message.
+30. **"Server dobara chalu hua" only after a real restart** (`goal._BOOT_AT`); otherwise "kuch der se ruka tha".
+31. **A long string inside a tool result is shortened in place** (`santosh._slim_strings`) before any raw cut: every key
+    after a page / mail body (ids, cursor, error, next hints) survives and the JSON stays valid.
+
+Tests: NEW `test_v0665_sahi_jagah.py` (8). NOT VERIFIED live.
+
+## v0.672.0 DOOSRI JAANCH, wave 8: SAAF SCREEN — Wave 8 of the second deep audit: smoothness on her screen (owner: "GO WAVE 8"; built as 0.667)
+
+32. **A step cut by the turn's time limit ends on its card.** `_one` catches `asyncio.CancelledError`, publishes the step
+    as an error ("samay khatam, beech mein roka") and the work line as stopped, then lets the cancel go on - it stayed
+    "running" with a spinner for ever, and "running" again on a reload.
+33. **A corrected reply is shown once.** The honesty note is published and saved as its OWN short message (`note: True`);
+    the whole answer + note used to go out a second time (twice on the phone, twice in the model's history).
+34. **Typing dots refreshed on the clock.** The SSE stream re-sends `typing on` every ~45 s while a turn really runs; it
+    did so only after four idle 15 s waits, and a busy turn's step events kept it from ever being idle - the phone cleared
+    the dots at 75 s and she thought Hoola had stopped.
+35. **The "Ek second..." line is a placeholder on the phone** (`lib/state.dart` `_ackItem` / `_ackDrop`): removed by the
+    real reply or the end of the turn, never spoken aloud, never counted as a reply; and `selfCheck` ignores live-only
+    rows (id 0) so it no longer reloads the chat and files a false chatHeal.
+36. **A late event is read back in order.** On an id gap the stream reads the events in between from the database before
+    the new one; an event published from a worker thread that reached the queue after a newer loop event was dropped by
+    the high-water mark (server and phone) and only appeared on a full reload.
+37. **The chat history is read off the event loop** (`asyncio.to_thread(_load_history)`): up to 5,000 rows decoded on the
+    loop froze the whole server (live call audio, every stream) on each turn of a long chat.
+
+Also: the channel-chat lookup v0.667 added to every current-chat read (`bahar.chat_ids`) is cached 60 s and cleared when a channel gets a chat (the chat-list query budget test caught the extra query). Full check: 413 related test files run; every failure also run on the commit before these waves (their v0.664) - 231 fail there too (sandbox: website / browser / Playwright / voice suites), the 9 that differed were fixed or pass alone (5 were load-flaky in the 4-way parallel run).
+Tests: NEW `test_v0667_saaf_screen.py` (6; all 6 fail on the old code). The phone change compiles first on CI. NOT VERIFIED
+on a real phone. Found while building: the session's disk filled with pytest temp folders mid-run and cut santosh.py
+short on save - restored and re-checked; test runs now use `-o tmp_path_retention_policy=failed`.
+
+## v0.672.0 DOOSRI JAANCH — the four waves above shipped as ONE release
+
+Waves 5-8 of the second deep audit (37 flaws) were built as 0.663-0.667 and re-versioned twice while other sessions shipped 0.663-0.671; to stop the churn they ship together as v0.672.0 (pubspec 0.672.0+678). Code comments keep the wave numbers they were written with (v0.665-v0.668).

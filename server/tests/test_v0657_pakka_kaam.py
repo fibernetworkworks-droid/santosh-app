@@ -113,7 +113,7 @@ def test_the_turn_stamps_its_own_inbox_row(env):
 def test_the_real_turn_calls_the_stamp():
     import inspect
     src = inspect.getsource(santosh._run_turn)
-    assert "_ti.started" in src and src.index("_ti.started") < src.index("_load_history(conversation_id)")
+    assert "_ti.started" in src and src.index("_ti.started") < src.index("_load_history, conversation_id")   # v0.668 read in a thread
 
 
 # ---------------------------------------------------------------- 6 + 7 job reports

@@ -92,7 +92,7 @@ def _fake_call(did=0, news_ago=1000.0, started_ago=1000.0):
     from app import voice
     said = []
     now = time.monotonic()
-    c = types.SimpleNamespace(did=[{"tool": "x"}] * did, _did_mark=0, _news_sent_at=now - news_ago,
+    c = types.SimpleNamespace(did=[{"tool": "email_send", "ok": True, "n": i + 1} for i in range(did)], _did_mark=0, _news_sent_at=now - news_ago,
                               _started_at=now - started_ago, stats={}, push_news=said.append, call_id="t")
     return c, said, voice
 

@@ -33,7 +33,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name
 log = logging.getLogger("santosh.api")
 STATIC = Path(__file__).parent / "static"
 MAX_UPLOAD = 10 * 1024 * 1024
-APP_VERSION = "0.672.0"   # v0.672.0 LEADS ENGINE P0-P5 (owner: "P5 (outreach handoff + CI load proof)"; docs/LEADS_PLAN.md; built as v0.540-v0.545 on the v0.539 base while the dev chain shipped its own v0.540-v0.671, never pushed - REBASE PROTOCOL: rebuilt fresh on their tip, ALL their work kept, the six leads tools ride their registry): the engine GATHERS, it never contacts anyone. P0 the app/leads/ package (lead_runs/lead_contacts/lead_outreach/lead_cap_days/lead_list_refs - one business one row, provenance as ROW COLUMNS, the identity ladder kgmid > cid > place_id > phone_e164 > name+address, opt_out the campaign desk honours, forget = the DPO duty, LeadsCapped at plan time) + rules.py (the LANES ladder, LANE_BUILT refusals BY NAME - no stub, no pretending; STORE_BOUNDARY facts only) + the CSV importer inside the package (their import_leads/SAMPLE_PREFIX call sites untouched). P1 the OFFICIAL lanes: run_indiamart (IndiaMART's OWN MCP server via the existing app/indiamart.py, one BUSINESS one row, free) + run_places (Google Places through the EXISTING maps tools ONLY - resolve, nearby, place_details bought per place under leads_places_details_per_run=50 and the mapsbill cap, NO second Google client proven by source pin; Nearby's 20-ceiling beaten by place_cells() tiling; MapsCapped mid-list ABORTS with the cap named, mid-details only stops the buying). P2 ENRICH: one bounded crawl-brain pass per kept row's OWN website through the EXISTING scrape stack (SSRF guard, robots gate, 1 req/s/site, 3 pages/site), emails + hostname socials, DNS->MX grades pakka/sadak_tak/galat, NO SMTP probe, ONE billed cheap-brain pick validated against candidates (no model = deterministic rank, pick=rule), fills EMPTY slots only, LEADS_ENRICH_ROWS_PER_RUN=100 refuses at plan time. P3 SCRAPE: the Google Maps PUBLIC LISTING grid (gmaps_parse - every field position a named constant, ids by SHAPE kgmid>place_id>cid, loud tripwire, FACTS ONLY; grid.py zoom ladder + 400-cell ceiling + MEASURED choose_zoom; scrape.py existing fetch stack, 1 s politeness, robots on non-Google hosts) behind a PER-TENANT OPT-IN OFF BY DEFAULT (set_scrape_optin - her act), grid checkpointed per cell (resume continues, DONE resume = zero fetches), block/CAPTCHA hard-aborts naming the vendor, and THE CLAUDE.md RULE TEXT AMENDMENT (public business-listing scrape allowed by the owner's explicit ask of 5 Nov 2026 under walls no session may move; the free card reads CLAUDE.md to prove it - rule_text_amended). P4 VENDOR + SCALE: vendor.py config-gated (LEADS_VENDOR_NAME/_BASE_URL/_API_KEY/_PRICE_PER_ROW_INR/_TERMS_ACK - until she names it the lane is ABSENT and asks refuse naming the config), priced on the card BEFORE the run (estimate over LEADS_VENDOR_RUN_CAP_INR = refused card), ONE call never retried, every row MUST carry its own source_url, 401 aborts without printing the key, bill = vendor-reported cost else the estimate and says which; scale.py store_backend() names sqlite | postgresql honestly, enrich_fanout() over the HOOLA GRAPH (dispatch -> 4 chunks -> the JOIN barrier, <= leads_enrich_fanout_max=4 in flight, writes after the barrier ONE WRITER AT A TIME, serial the default); rules.LANE_BUILT = all five lanes, the plan section 4 ladder COMPLETE. P5 OUTREACH HANDOFF + PROOF: campaign_list is TWO TAPS (first = the CONFIRM CARD creating NOTHING, confirm=true builds), create_campaign re-checks every leads-store copy and an opt_out row NEVER joins the send queue (all-opted-out = a refusal, not an empty campaign); the outreach LEDGER writes at the moment of truth on both desks (worker.send_batches -> campaign_sent via note_campaign_sends, mailbox.send_draft -> email_sent via note_email_sends matched by the row's own email - an address the store never saw records nothing), vocabulary rules.OUTREACH_KINDS/DESKS checked at every write, readable via outreach_log + GET /api/leads/outreach + leads_export action=outreach_log, a forgotten row's events stay (the history is not the person); THE CI LOAD PROOF on the DEFAULT caps: 5,000 rows end-to-end - kept, counted by the day ledger, exported with provenance, handed off with consent False, ledger readable - and a 5,001-row ask REFUSED at plan time with the cap named; leadscard sets v1-v6; tests test_v0540_leads_store/card + test_v0541_leads_official + test_v0542_leads_enrich + test_v0543_leads_scrape + test_v0544_leads_scale + test_v0545_leads_outreach, zero network, fakes at the module boundaries. NOT VERIFIED, said plainly: the engine has answered fakes and fixtures only - no live Google query, no live IndiaMART run, no live vendor, no real WhatsApp/email send; her first live run on each lane is the true confirmation. Previous: v0.671.0 NAAM AUR NAMOONA (a Hoola brand name before building + believable sample values in previews; built as 0.670, their KAAN W6 took 0.670.0 - REBASE PROTOCOL, both kept); AEP train so far: HOOLA CORE (P1), HOOLA TRACE (P2), HOOLA GRAPH (P3, interrupt/checkpointers), HOOLA AGENT (P4), HOOLA MIDDLEWARE (P5, server/app/aep/middleware.py), HOOLA RETRIEVE (P6, aep/retrieve.py + aep_vectors: the index()/aindex() dedup flow, the retrievers as Runnables firing the retriever span) - P7 HUB -> P8 the 100% parity audit next; their dev chain, verbatim subjects: v0.671.0 NAAM AUR NAMOONA; v0.670.0 KAAN W6; v0.669.0 HOOLA AURA; v0.668.0 DUNIYA MANCH; v0.667.0 console stamps to 0.667.0; v0.666.0 KAAN W5; v0.665.0 JHAROKHA MANCH; v0.664.0 ASLI SAMAY; v0.663.0 STUDIO JAANCH; v0.658.0 SAAF DIKHE; v0.656.0 KAAM DIKHE; v0.655.0 SACH KA PEHRA; v0.653.0 SACHCHA NATIJA; v0.651.0 JAWAB MIL GAYA; v0.649.0 SACH MEIN ROKO; v0.648.0 KAAM KA HISAAB; v0.647.0 ALAG CALL, EK YAAD; v0.645.0 KHULA LOOP; v0.644.0 BINA RUKE; v0.643.0 HAMESHA HAIKU; v0.642.0 SAAF RAASTA; v0.641.0 PEHLE SE TAIYAAR; v0.640.0 PAKDO; v0.639.0 PAKDO; v0.638.0 TEZ TAIYARI; v0.637.0 KAHAN RUKA; v0.636.0 KAHAN RUKA; v0.635.0 SAAF NAAP; v0.634.0 TEZ DIMAAG; v0.633.0 TEZ JAWAB; v0.632.0 KAAN CHHOTA; v0.631.0 SAB HAIKU; v0.630.0 HAIKU DIMAAG; v0.629.0 MCP BHI CHHOTA; v0.628.0 CHHOTI HIDAYAT; v0.627.0 CHHOTA MENU; v0.626.0 PAISA KA HISAAB; v0.625.0 EK AWAAZ; v0.624.0 persona fits its size budget; guard tolerant of call stand; v0.623.0 KOI PATA NA KHOYE; v0.617.0 KUCHH NA CHHOOTE + PEXELS KA NAAM re; v0.616.0 v0292 picture test reads the new credit fields; v0.606.0 SAAF NAZAR re; v0.604.0 SAAF NAZAR re; v0.602.0 library font_pairs pin 30; v0.581.0 STEP 7 CHECKPOINT half 1; v0.569.0 SPEC SUTRA; v0.566.0 LOTTIE + 3D HERO; v0.564.0 CHALTI WEBSITE; v0.563.0 CHALTI WEBSITE; v0.561.0 CHALTI WEBSITE; v0.559.0 CHALTI WEBSITE; v0.557.0 TEZ CHECKOUT; v0.551.0 SURAKSHA GATES; v0.550.0 SURAKSHA GATES; v0.549.0 SURAKSHA GATES; v0.548.0 HOOLA ED PACK; v0.474.0 SCRAPLING; v0.462.16 live face = ONE student per GPU container; v0.462.15 live face; v0.462.14 live face overlaps CPU with GPU; v0.462.13 lab Live face; v0.462.12 lab bench report names the GPU the run asked for; v0.462.11 lab bench job; v0.462.10 lab face image; v0.462.9 lab 'face' job; v0.462.8 lab IndicF5 image; v0.462.7 lab face; v0.462.6 lab IndicF5 + Parler images; v0.462.5 lab IndicF5 image; the leads-plan chain this rides on: v0.539.0 PRAYOGSHALA SACH, v0.538.0 BADA CATALOGUE + HOOLA CMS, v0.537.0 CRAWL BRAIN, v0.536.0 PROVENANCE, v0.600.0 HOOLA AEP 1.0 (the AEP PARITY train - HOOLA HUB is P7, the 100% parity audit P8), v0.590.0 SANDARBH MANCH, v0.530.0 HOOLA GRAPH, v0.523.0 HOOLA CREW, v0.520.0 HOOLA TRACE, v0.510.0 HOOLA CORE (the langchain-core feature clone as server/app/aep), v0.502.0 [full chains in git history].
+APP_VERSION = "0.681.0"   # v0.681.0 LEADS ENGINE P0-P5 (owner: "P5 (outreach handoff + CI load proof)"; docs/LEADS_PLAN.md; built as v0.540-v0.545 on the v0.539 base while the dev chain shipped its own v0.540-v0.680, never pushed - REBASE PROTOCOL twice: rebuilt fresh on their v0.671.0 tip, then re-merged onto their v0.680.0 tip as they pushed on, ALL their work kept, the six leads tools ride their registry): the engine GATHERS, it never contacts anyone. P0 the app/leads/ package (lead_runs/lead_contacts/lead_outreach/lead_cap_days/lead_list_refs - one business one row, provenance as ROW COLUMNS, the identity ladder kgmid > cid > place_id > phone_e164 > name+address, opt_out the campaign desk honours, forget = the DPO duty, LeadsCapped at plan time) + rules.py (the LANES ladder, LANE_BUILT refusals BY NAME - no stub, no pretending; STORE_BOUNDARY facts only) + the CSV importer inside the package (their import_leads/SAMPLE_PREFIX call sites untouched). P1 the OFFICIAL lanes: run_indiamart (IndiaMART's OWN MCP server via the existing app/indiamart.py, one BUSINESS one row, free) + run_places (Google Places through the EXISTING maps tools ONLY - resolve, nearby, place_details bought per place under leads_places_details_per_run=50 and the mapsbill cap, NO second Google client proven by source pin; Nearby's 20-ceiling beaten by place_cells() tiling; MapsCapped mid-list ABORTS with the cap named, mid-details only stops the buying). P2 ENRICH: one bounded crawl-brain pass per kept row's OWN website through the EXISTING scrape stack (SSRF guard, robots gate, 1 req/s/site, 3 pages/site), emails + hostname socials, DNS->MX grades pakka/sadak_tak/galat, NO SMTP probe, ONE billed cheap-brain pick validated against candidates (no model = deterministic rank, pick=rule), fills EMPTY slots only, LEADS_ENRICH_ROWS_PER_RUN=100 refuses at plan time. P3 SCRAPE: the Google Maps PUBLIC LISTING grid (gmaps_parse - every field position a named constant, ids by SHAPE kgmid>place_id>cid, loud tripwire, FACTS ONLY; grid.py zoom ladder + 400-cell ceiling + MEASURED choose_zoom; scrape.py existing fetch stack, 1 s politeness, robots on non-Google hosts) behind a PER-TENANT OPT-IN OFF BY DEFAULT (set_scrape_optin - her act), grid checkpointed per cell (resume continues, DONE resume = zero fetches), block/CAPTCHA hard-aborts naming the vendor, and THE CLAUDE.md RULE TEXT AMENDMENT (public business-listing scrape allowed by the owner's explicit ask of 5 Nov 2026 under walls no session may move; the free card reads CLAUDE.md to prove it - rule_text_amended). P4 VENDOR + SCALE: vendor.py config-gated (LEADS_VENDOR_NAME/_BASE_URL/_API_KEY/_PRICE_PER_ROW_INR/_TERMS_ACK - until she names it the lane is ABSENT and asks refuse naming the config), priced on the card BEFORE the run (estimate over LEADS_VENDOR_RUN_CAP_INR = refused card), ONE call never retried, every row MUST carry its own source_url, 401 aborts without printing the key, bill = vendor-reported cost else the estimate and says which; scale.py store_backend() names sqlite | postgresql honestly, enrich_fanout() over the HOOLA GRAPH (dispatch -> 4 chunks -> the JOIN barrier, <= leads_enrich_fanout_max=4 in flight, writes after the barrier ONE WRITER AT A TIME, serial the default); rules.LANE_BUILT = all five lanes, the plan section 4 ladder COMPLETE. P5 OUTREACH HANDOFF + PROOF: campaign_list is TWO TAPS (first = the CONFIRM CARD creating NOTHING, confirm=true builds), create_campaign re-checks every leads-store copy and an opt_out row NEVER joins the send queue (all-opted-out = a refusal, not an empty campaign); the outreach LEDGER writes at the moment of truth on both desks (worker.send_batches -> campaign_sent via note_campaign_sends, mailbox.send_draft -> email_sent via note_email_sends matched by the row's own email - an address the store never saw records nothing), vocabulary rules.OUTREACH_KINDS/DESKS checked at every write, readable via outreach_log + GET /api/leads/outreach + leads_export action=outreach_log, a forgotten row's events stay (the history is not the person); THE CI LOAD PROOF on the DEFAULT caps: 5,000 rows end-to-end - kept, counted by the day ledger, exported with provenance, handed off with consent False, ledger readable - and a 5,001-row ask REFUSED at plan time with the cap named; leadscard sets v1-v6; tests test_v0540_leads_store/card + test_v0541_leads_official + test_v0542_leads_enrich + test_v0543_leads_scrape + test_v0544_leads_scale + test_v0545_leads_outreach, zero network, fakes at the module boundaries. NOT VERIFIED, said plainly: the engine has answered fakes and fixtures only - no live Google query, no live IndiaMART run, no live vendor, no real WhatsApp/email send; her first live run on each lane is the true confirmation. Previous: v0.680.0 HOOLA ADOPT (the product's first live lane ON the AEP, P9 of the HOOLA plan); v0.672.0 DOOSRI JAANCH (waves 5-8 of the second deep audit); AEP train so far: HOOLA CORE (P1), HOOLA TRACE (P2), HOOLA GRAPH (P3, interrupt/checkpointers), HOOLA AGENT (P4), HOOLA MIDDLEWARE (P5, server/app/aep/middleware.py), HOOLA RETRIEVE (P6, aep/retrieve.py + aep_vectors: the index()/aindex() dedup flow, the retrievers as Runnables firing the retriever span) - P7 HUB -> P8 the 100% PARITY audit, P9 ADOPT; their dev chain, verbatim subjects: v0.680.0 HOOLA ADOPT; v0.672.0 DOOSRI JAANCH; v0.668.0 chat_ids cached; v0.666.0 SAHI JAGAH + KAAM EK BAAR + SACH KA HISAAB; v0.658.0 SAAF DIKHE; v0.656.0 KAAM DIKHE; v0.655.0 SACH KA PEHRA; v0.653.0 SACHCHA NATIJA; v0.651.0 JAWAB MIL GAYA; v0.649.0 SACH MEIN ROKO; v0.648.0 KAAM KA HISAAB; v0.647.0 ALAG CALL, EK YAAD; v0.645.0 KHULA LOOP; v0.644.0 BINA RUKE; v0.643.0 HAMESHA HAIKU; v0.642.0 SAAF RAASTA; v0.641.0 PEHLE SE TAIYAAR; v0.640.0 PAKDO; v0.639.0 PAKDO; v0.638.0 TEZ TAIYARI; v0.637.0 KAHAN RUKA; v0.636.0 KAHAN RUKA; v0.635.0 SAAF NAAP; v0.634.0 TEZ DIMAAG; v0.633.0 TEZ JAWAB; v0.632.0 KAAN CHHOTA; v0.631.0 SAB HAIKU; v0.630.0 HAIKU DIMAAG; v0.629.0 MCP BHI CHHOTA; v0.628.0 CHHOTI HIDAYAT; v0.627.0 CHHOTA MENU; v0.626.0 PAISA KA HISAAB; v0.625.0 EK AWAAZ; v0.624.0 persona fits its size budget; guard tolerant of call stand; v0.623.0 KOI PATA NA KHOYE; v0.617.0 KUCHH NA CHHOOTE + PEXELS KA NAAM re; v0.616.0 v0292 picture test reads the new credit fields; v0.606.0 SAAF NAZAR re; v0.604.0 SAAF NAZAR re; v0.602.0 library font_pairs pin 30; v0.581.0 STEP 7 CHECKPOINT half 1; v0.569.0 SPEC SUTRA; v0.566.0 LOTTIE + 3D HERO; v0.564.0 CHALTI WEBSITE; v0.563.0 CHALTI WEBSITE; v0.561.0 CHALTI WEBSITE; v0.559.0 CHALTI WEBSITE; v0.557.0 TEZ CHECKOUT; v0.551.0 SURAKSHA GATES; v0.550.0 SURAKSHA GATES; v0.549.0 SURAKSHA GATES; v0.548.0 HOOLA ED PACK; v0.474.0 SCRAPLING; v0.462.16 live face = ONE student per GPU container; v0.462.15 live face; v0.462.14 live face overlaps CPU with GPU; v0.462.13 lab Live face; v0.462.12 lab bench report names the GPU the run asked for; v0.462.11 lab bench job; v0.462.10 lab face image; v0.462.9 lab 'face' job; v0.462.8 lab IndicF5 image; v0.462.7 lab face; v0.462.6 lab IndicF5 + Parler images; v0.462.5 lab IndicF5 image; v0.462.4 lab smoke test; v0.462.3 lab Chatterbox loads on the pinned 0.1.7; v0.462.1 lab face image; v0.461.1 lab face image on Python 3.11; v0.461.0 merge main; the leads-plan chain this rides on: v0.539.0 PRAYOGSHALA SACH, v0.538.0 BADA CATALOGUE + HOOLA CMS, v0.537.0 CRAWL BRAIN, v0.536.0 PROVENANCE, v0.600.0 HOOLA AEP 1.0 (the AEP PARITY train - HOOLA HUB is P7, P9 ADOPT), v0.590.0 SANDARBH MANCH, v0.530.0 HOOLA GRAPH, v0.523.0 HOOLA CREW, v0.520.0 HOOLA TRACE, v0.510.0 HOOLA CORE (the langchain-core feature clone as server/app/aep), v0.502.0 [full chains in git history].
 
 def _quiet_http_logs() -> None:
     """v0.190.1 P0: every TV-catalog health probe logged an INFO line to stderr - thousands per refresh,
@@ -750,7 +750,9 @@ def harness_events(conversation_id: str, after: int = 0, limit: int = 100, tenan
 @app.post("/api/conversations/{conversation_id}/messages", status_code=202, dependencies=[Depends(require_key)])
 async def post_message(conversation_id: str, body: NewMessage, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
     _conv_or_404(conversation_id, tenant)
-    if _already_sent(tenant, conversation_id, body.client_id):
+    from . import turn_inbox as _ti0
+    if (body.client_id and await asyncio.to_thread(_ti0.seen, tenant, conversation_id, body.client_id)) \
+            or _already_sent(tenant, conversation_id, body.client_id):
         return {"accepted": True, "duplicate": True}
     from . import chatfiles, convs, turn_inbox
     convs.mark(tenant, conversation_id, "message")   # v0.158 this is the chat she is in: notes and cards come here
@@ -822,23 +824,26 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
             else:
                 sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant)   # the app loads /timeline first
             yield f"data: {json.dumps({'id': 0, 'kind': 'replay_end', 'payload': {'last': sent}})}\n\n"
-            ticks = 0
+            typed_at = time.monotonic()
             while True:
                 if await request.is_disconnected():
                     break
+                # v0.668 the typing refresh runs on the CLOCK (every ~45 s while a turn really runs), not only after
+                # four idle 15 s waits: a busy turn sends step events every few seconds, so the stream was never idle
+                # and the phone cleared the dots at 75 s while Hoola was still working - she thought it had stopped
+                if live and time.monotonic() - typed_at >= 45:
+                    typed_at = time.monotonic()
+                    try:                      # (a crashed turn stops refreshing -> they clear)
+                        from .agent.santosh import turn_running
+                        if turn_running(conversation_id):
+                            yield f"data: {json.dumps({'id': 0, 'kind': 'typing', 'payload': {'on': True}, 'live': True})}\n\n"
+                    except Exception:
+                        pass
                 try:
                     ev = await asyncio.wait_for(q.get(), timeout=15)
                 except asyncio.TimeoutError:
                     from . import offline
                     offline.touch(tenant)   # the stream is still open: the phone is online
-                    ticks += 1
-                    if live and ticks % 4 == 0:   # v0.178 every ~60 s: while a turn really runs, refresh its typing
-                        try:                      # dots on the phone (a crashed turn stops refreshing -> they clear)
-                            from .agent.santosh import turn_running
-                            if turn_running(conversation_id):
-                                yield f"data: {json.dumps({'id': 0, 'kind': 'typing', 'payload': {'on': True}, 'live': True})}\n\n"
-                        except Exception:
-                            pass
                     yield ": ping\n\n"
                     continue
                 if ev.get("live"):
@@ -847,6 +852,18 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
                     continue
                 if ev["id"] <= sent:
                     continue
+                if ev["id"] > sent + 1:
+                    # v0.668 an event published from a worker thread can reach this queue AFTER a newer one published on
+                    # the loop - the high-water mark then dropped it for good (a card / message seen only on a reload).
+                    # On a gap the events in between are read back from the database first, in order.
+                    try:
+                        gap = await asyncio.to_thread(bus.backlog, conversation_id, sent, 50, tenant)
+                    except Exception:
+                        gap = []
+                    for g in gap:
+                        if sent < g["id"] < ev["id"]:
+                            sent = g["id"]
+                            yield f"id: {g['id']}\ndata: {json.dumps(g, ensure_ascii=False)}\n\n"
                 sent = ev["id"]
                 yield f"id: {ev['id']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
         finally:
@@ -876,7 +893,9 @@ async def chat_retry(conversation_id: str, background: BackgroundTasks, tenant: 
     except (livereply.RetryError, chats.ChatError) as e:
         raise HTTPException(e.status, str(e))
     convs.mark(tenant, conversation_id, "message")
-    background.add_task(run_turn, conversation_id, text, tenant, False, context=context)
+    from . import turn_inbox   # v0.666 Dobara rides the inbox: a restart re-runs it instead of losing it
+    ti_id = turn_inbox.accept(tenant, conversation_id, text, False, context or "", "")
+    background.add_task(turn_inbox.run_owned, ti_id, conversation_id, text, tenant, False, context=context or "")
     return {"accepted": True, "text": text}
 
 
@@ -1080,7 +1099,9 @@ class ChatEditIn(BaseModel):
 
 
 async def _edited_turn(conversation_id: str, text: str, tenant: str, parent: int | None) -> None:
-    await run_turn(conversation_id, text, tenant, False)
+    from . import turn_inbox   # v0.666 an edited message rides the inbox: a restart re-runs it instead of losing it
+    ti_id = await asyncio.to_thread(turn_inbox.accept, tenant, conversation_id, text, False, "", "")
+    await turn_inbox.run_owned(ti_id, conversation_id, text, tenant, False)
     if parent:
         from .db import Message
         with session() as s:   # the new version of her message points to the one she edited
@@ -5635,6 +5656,43 @@ def aep_run_tree(run_id: str, tenant: str = Depends(current_tenant)):
     if obs is None:
         return {"ok": False, "error": "no such run"}
     return {"ok": True, "source": "vault", "run": obs}
+
+
+class AepTurnIn(BaseModel):
+    text: str = Field(min_length=1, max_length=8000)
+    brain: str = Field(default="auto", max_length=20)
+
+
+@app.post("/api/aep/turn/{conversation_id}", dependencies=[Depends(require_key)])
+async def aep_turn_route(conversation_id: str, body: AepTurnIn, tenant: str = Depends(current_tenant)):
+    """v0.680.0 HOOLA ADOPT: one real turn of HOOLA run ON the AEP - create_agent over the house
+    graph (P4), the production brain injected through hoola_brain_factory (P7), nudge+curator
+    riding every model call (P5), the P2 tracer attached, chat memory through the conversation's
+    thread. THE AUTH LAW the owner named: require_key + current_tenant - a signed-in product user
+    or the legacy owner key; anonymous callers refused the moment the server has a key; the
+    conversation must belong to the caller's tenant. The reply lands in the same conversation +
+    SSE feed like any other turn; the production loop (run_turn) is untouched - this lane is
+    opt-in per call, never a silent behavior change."""
+    _conv_or_404(conversation_id, tenant)
+    from . import usage
+    from .agent import aeptune
+    from .agent.santosh import _load_history, _save
+    usage.bind(tenant, "chat")
+    history = _load_history(conversation_id)   # BEFORE the user row lands - never doubled
+    _save(conversation_id, "user", body.text, display=body.text)   # the yaad law: a user row starts the exchange as a str
+    bus.publish(conversation_id, "message", {"role": "user", "text": body.text})
+    bus.publish(conversation_id, "typing", {"on": True})
+    try:
+        turn = await aeptune.aep_turn(conversation_id, body.text, tenant,
+                                      brain=body.brain, history=history)
+    except Exception as e:   # noqa: BLE001 - the lane fails loudly, typing always goes away
+        bus.publish(conversation_id, "typing", {"on": False})
+        raise HTTPException(502, f"aep turn failed: {e}")
+    bus.publish(conversation_id, "typing", {"on": False})
+    _save(conversation_id, "assistant", [{"type": "text", "text": turn.reply}], display=turn.reply)
+    bus.publish(conversation_id, "message", {"role": "assistant", "text": turn.reply, "source": "aep"})
+    return {"ok": True, "reply": turn.reply, "run_id": turn.run_id, "thread_id": turn.thread_id,
+            "ms": turn.ms, "middleware": turn.middleware, "tools": turn.tools}
 
 
 class ShopOrderIn(BaseModel):
@@ -13630,7 +13688,9 @@ def _form_reply(tenant: str, conv: str, agent_text: str, shown: str, background:
     except Exception:
         log.exception("form -> call failed")
     bus.publish(conv, "message", {"role": "user", "text": shown, "source": "form"})
-    background.add_task(run_turn, conv, shown, tenant, False, context=agent_text)
+    from . import turn_inbox   # v0.666 her form answers continue a waiting job: never lost to a restart
+    ti_id = turn_inbox.accept(tenant, conv, shown, False, agent_text or "", "")
+    background.add_task(turn_inbox.run_owned, ti_id, conv, shown, tenant, False, context=agent_text or "")
     return "chat"
 
 

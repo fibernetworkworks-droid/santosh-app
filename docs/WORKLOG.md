@@ -2147,3 +2147,53 @@ Work Log:
 - tests: v0671 6 + site suites (v121, v0223-v0225, v0292, v0315, v0649, v0663, v0664, v0667, v0669) green; v0224 backup prune red on the unchanged tree too
 Stage Summary:
 - shipped v0.671.0 to main
+Task ID: v0665-sach-ka-hisaab (built as 0.663)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: second deep audit (37 flaws found, 4 waves proposed) -> owner "GO WAVE 5" = the 14 false-statement flaws.
+Work: v0.665.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware claim check, quick lane forced queue,
+call claim check by real tools, honest auto-plan close / step cap / empty ending, goal round outcome kept, verify scoped
+to the job, figures from the whole result, guessed facts labelled. 32 new tests.
+Not verified: live. Waves 6-8 (double / lost work, wrong place, smoothness) wait for her GO.
+
+---
+Task ID: v0666-kaam-ek-baar (built as 0.664)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 6" = second audit items 15-23 (double / lost work).
+Work: v0.666.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest timeout, durable send dedupe, routines /
+Dobara / edit / form answers on the turn inbox (TurnInbox.actor), pre-lock replies out of history, stop never parallel,
+channel replies advanced after send, reminders advanced before said. 10 new tests.
+Not verified: live. Waves 7-8 wait for her GO.
+
+---
+Task ID: v0667-sahi-jagah (built as 0.665)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 7" = second audit items 24-31 (wrong place / inconsistent).
+Work: v0.667.0 SAHI JAGAH - channel chats never current, call-set reminders/routines on the chat, deleted-chat re-home,
+bazar reminders spoken + rung + day kept, monthly anchor_day, lock holder gates steering, honest recovery wording,
+strings slimmed in tool results. 8 new tests.
+Not verified: live. Wave 8 (smoothness on screen) waits for her GO.
+
+---
+Task ID: v0668-saaf-screen (built as 0.667)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 8" = second audit items 32-37 (smoothness on screen). Also: their ASLI SAMAY took 0.664.0 -> waves 5-8
+re-versioned 0.665-0.668 (REBASE PROTOCOL), all kept.
+Work: v0.668.0 SAAF SCREEN - cut-off step cards end, correction sent once, typing on the clock, phone ack placeholder,
+late stream events read back, history off the loop. 6 new tests.
+Not verified: live / on a real phone.
+
+
+---
+
+## Task: GO BUILD P9 HOOLA ADOPT -> v0.680.0 (the authed AEP turn lane; the train's first product adoption)
+
+Owner: "CURRENTLY HOOLA DONT USE AEP IT NEED USER AUTH" + "CONTINUE". Built as 0.610.0; the dev chain took 0.611-0.672 while P9 sat
+built - REBASE PROTOCOL THREE TIMES (v0.670.0 KAAN W6: 200 conflicts; v0.671.0 NAAM AUR NAMOONA mid-push: 221; v0.672.0 DOOSRI
+JAANCH mid-push again), their base kept whole each time, the route + the module re-applied, the version layer re-applied coherently
+0.672.0/+678 -> 0.680.0/+679. server/app/agent/aeptune.py + POST /api/aep/turn/{conversation_id} behind require_key + current_tenant;
+tests test_v0610_hoola_adopt.py (15, zero network); the AEP octo 369 + their newest suites green (the reds proven pre-existing on
+pristine); deploy is the owner's dispatch.
