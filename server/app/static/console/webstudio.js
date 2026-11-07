@@ -164,7 +164,7 @@
             <button class="b ghost" type="button" data-src="old">${ico('move', 16)}Move my old site</button>
             <button class="b ghost" type="button" data-src="shot">${ico('pic', 16)}Design from a picture</button>
             <span class="sp"></span>
-            <span class="mut sm" id="wsModeNote">${mode === 'plan' ? 'Plan: Hoola asks and writes a plan for you to check' : 'Build: 3 full looks first'}</span>
+            <span class="mut sm mnote" id="wsModeNote">${mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'}</span>
             <div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="build" aria-pressed="${mode === 'build'}">Build</button><button type="button" data-mode="plan" aria-pressed="${mode === 'plan'}">Plan</button></div>
             <button class="go" type="submit" aria-label="Start">${ico('up', 18)}</button>
           </div>
@@ -733,7 +733,7 @@
     const b = e.target.closest('button, a'); if (!b || !APP.contains(b)) return;
     const d = b.dataset;
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
-      const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: Hoola asks and writes a plan for you to check' : 'Build: 3 full looks first'; return; }
+      const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
     if (d.cmode) { store.set(MODE_KEY + '.chat', d.cmode); APP.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cmode === d.cmode))); return; }
     if (d.type) { if (location.hash && location.hash !== '#/') { PREFILL = `${d.type} ki website banao: `; go('#/'); return; }
       const t = $('#wsAsk'); if (t) { t.value = `${d.type} ki website banao: `; t.focus(); t.setSelectionRange(t.value.length, t.value.length); } return; }
