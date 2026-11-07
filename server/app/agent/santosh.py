@@ -1673,10 +1673,13 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
             if state.get("correct"):   # the correction is added after the words already shown (never rewrites them)
-                final_text = (final_text + "\n\n" + state.pop("correct")).strip()
-                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
-                                                         **_tag(live)})
-                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+                # v0.667 only the correction line goes out as its own short message and its own row: the whole answer
+                # again (answer + note) showed TWICE on the phone and sat twice in the model's history
+                note = state.pop("correct")
+                final_text = (final_text + "\n\n" + note).strip()
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": note, "source": "agent",
+                                                         "note": True, **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": note}], display=note)
             break
         async def _one(b: dict) -> dict:
             """One tool_use block, run to its tool_result (v0.189: every path RETURNS exactly one result, so the
@@ -1733,6 +1736,18 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 except Exception:
                     log.debug("say line failed", exc_info=True)
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": content}
+            except asyncio.CancelledError:
+                # v0.667 the turn's time limit (or a stop) cancelled this step: say so on the step card before the
+                # cancel goes on - it used to stay "running" with a spinner for ever (and "running" again on reload)
+                try:
+                    state["calls"].append({"tool": b["name"], "ok": False, "error": "cut off (time limit)",
+                                           "args": args_in, "key": _key(b["name"], args_in)})
+                    bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
+                                                          "id": b["id"], "detail": "samay khatam, beech mein roka"})
+                    _work(conversation_id, b["id"], shown, label, "stopped", args_in, error="Samay khatam, roka gaya")
+                except Exception:   # noqa: BLE001
+                    log.debug("cut-off step card failed", exc_info=True)
+                raise
             except _Halted as h:
                 state["halted"] = h.why
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "stopped by the owner", "args": args_in,
@@ -2381,7 +2396,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             await asyncio.to_thread(_ti.started, conversation_id)
         except Exception:
             log.debug("inbox started stamp failed", exc_info=True)
-        history = _load_history(conversation_id)
+        # v0.667 read in a thread: up to 5,000 rows decoded on the event loop froze the WHOLE server (live call audio,
+        # every SSE stream) for a moment on every turn of a long chat
+        history = await asyncio.to_thread(_load_history, conversation_id)
         _mark("history")
         if not save_user and not saved_wake and agent_text.strip():
             # v0.213 wake / inbox re-run turns: this turn's words were deliberately NOT saved (save_user=False,

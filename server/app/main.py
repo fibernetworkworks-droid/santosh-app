@@ -824,23 +824,26 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
             else:
                 sent = await asyncio.to_thread(bus.last_id, conversation_id, tenant)   # the app loads /timeline first
             yield f"data: {json.dumps({'id': 0, 'kind': 'replay_end', 'payload': {'last': sent}})}\n\n"
-            ticks = 0
+            typed_at = time.monotonic()
             while True:
                 if await request.is_disconnected():
                     break
+                # v0.667 the typing refresh runs on the CLOCK (every ~45 s while a turn really runs), not only after
+                # four idle 15 s waits: a busy turn sends step events every few seconds, so the stream was never idle
+                # and the phone cleared the dots at 75 s while Hoola was still working - she thought it had stopped
+                if live and time.monotonic() - typed_at >= 45:
+                    typed_at = time.monotonic()
+                    try:                      # (a crashed turn stops refreshing -> they clear)
+                        from .agent.santosh import turn_running
+                        if turn_running(conversation_id):
+                            yield f"data: {json.dumps({'id': 0, 'kind': 'typing', 'payload': {'on': True}, 'live': True})}\n\n"
+                    except Exception:
+                        pass
                 try:
                     ev = await asyncio.wait_for(q.get(), timeout=15)
                 except asyncio.TimeoutError:
                     from . import offline
                     offline.touch(tenant)   # the stream is still open: the phone is online
-                    ticks += 1
-                    if live and ticks % 4 == 0:   # v0.178 every ~60 s: while a turn really runs, refresh its typing
-                        try:                      # dots on the phone (a crashed turn stops refreshing -> they clear)
-                            from .agent.santosh import turn_running
-                            if turn_running(conversation_id):
-                                yield f"data: {json.dumps({'id': 0, 'kind': 'typing', 'payload': {'on': True}, 'live': True})}\n\n"
-                        except Exception:
-                            pass
                     yield ": ping\n\n"
                     continue
                 if ev.get("live"):
@@ -849,6 +852,18 @@ async def events(conversation_id: str, request: Request, after: int = 0, live: i
                     continue
                 if ev["id"] <= sent:
                     continue
+                if ev["id"] > sent + 1:
+                    # v0.667 an event published from a worker thread can reach this queue AFTER a newer one published on
+                    # the loop - the high-water mark then dropped it for good (a card / message seen only on a reload).
+                    # On a gap the events in between are read back from the database first, in order.
+                    try:
+                        gap = await asyncio.to_thread(bus.backlog, conversation_id, sent, 50, tenant)
+                    except Exception:
+                        gap = []
+                    for g in gap:
+                        if sent < g["id"] < ev["id"]:
+                            sent = g["id"]
+                            yield f"id: {g['id']}\ndata: {json.dumps(g, ensure_ascii=False)}\n\n"
                 sent = ev["id"]
                 yield f"id: {ev['id']}\ndata: {json.dumps(ev, ensure_ascii=False)}\n\n"
         finally:

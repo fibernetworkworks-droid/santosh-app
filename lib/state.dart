@@ -1163,7 +1163,9 @@ class Santosh extends ChangeNotifier {
     try {
       final h = await api!.timelineHead(conv, n: 40);
       final want = List<int>.from(((h['ids'] as List?) ?? const []).map((e) => (e as num).toInt()));
-      final mine = [for (final f in feed) if (f.eid != null) f.eid!];
+      // v0.667 a live-only row (the "Ek second..." ack, id 0) has no place in the story: it was counted as out of order
+      // and reloaded the whole chat + sent a false chatHeal report
+      final mine = [for (final f in feed) if (f.eid != null && f.eid! > 0) f.eid!];
       final have = mine.toSet();
       final floor = mine.isEmpty ? 0 : mine.first;
       final missing = want.where((i) => i >= floor && !have.contains(i)).length;
@@ -1241,11 +1243,29 @@ class Santosh extends ChangeNotifier {
     }
   }
 
+  FeedItem? _ackItem;   // v0.667 the live "Ek second..." placeholder, removed when the real reply arrives
+
+  void _ackDrop() {
+    final a = _ackItem;
+    if (a == null) return;
+    _ackItem = null;
+    feed.remove(a);
+  }
+
   Future<void> _handle(SantoshEvent ev) async {
     final p = ev.payload;
     if (ev.id > lastEventId) lastEventId = ev.id;
     switch (ev.kind) {
       case 'message':
+        if (p['ack'] == true) {
+          // v0.667 the "Ek second..." line is a placeholder: shown while Hoola starts, gone when the real reply (or the
+          // end of the turn) comes, never spoken aloud and never counted as a reply
+          _ackDrop();
+          _ackItem = FeedItem('message', {...Map<String, dynamic>.from(p), 'at': ev.at.toIso8601String()});
+          feed.add(_ackItem!);
+          break;
+        }
+        if (p['role'] == 'assistant') _ackDrop();
         if (p['role'] == 'user') _steps = null;
         // v0.178 the bubble knows when it arrived: day separators and time stamps come from this
         feed.add(FeedItem('message', {...Map<String, dynamic>.from(p), 'at': ev.at.toIso8601String()}));
@@ -1334,6 +1354,7 @@ class Santosh extends ChangeNotifier {
           });
         } else {
           _typingGuard?.cancel();
+          _ackDrop();                    // v0.667 the turn is over: its placeholder line goes too
         }
         if (p['on'] != true && !_replaying) _scheduleWorkHide(const Duration(seconds: 4));
         typing = p['on'] == true && !_replaying;
