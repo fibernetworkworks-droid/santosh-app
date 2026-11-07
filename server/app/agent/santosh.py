@@ -33,7 +33,7 @@ log = logging.getLogger("santosh.agent")
 
 _client = None
 _locks: dict[str, asyncio.Lock] = defaultdict(asyncio.Lock)
-_HOLDER: dict[str, str] = {}   # v0.666 who holds each chat's lock right now (owner / goal / wake / routine ...)
+_HOLDER: dict[str, str] = {}   # v0.667 who holds each chat's lock right now (owner / goal / wake / routine ...)
 
 
 @contextlib.asynccontextmanager
@@ -322,7 +322,7 @@ def _save(conversation_id: str, role: str, content, display: str | None = None, 
 
 
 def _save_pre(conversation_id: str, role: str, content, display: str | None = None) -> None:
-    """v0.665 a reply given BEFORE the chat lock (a card's "haan", a research plan, a stop by words). When another turn
+    """v0.666 a reply given BEFORE the chat lock (a card's "haan", a research plan, a stop by words). When another turn
     holds the chat, its last saved row may be a tool_use whose tool_result is not written yet - a row saved now would
     land between them, the real result was dropped as an orphan next turn (TOOL_RESULT_LOST) and the model redid a
     send it had already done. Then the row is shown, but kept out of the model's history."""
@@ -393,7 +393,7 @@ _FAIL_STATUS = {"failed", "failure", "error", "refused"}
 
 
 def tool_failure(out) -> str:
-    """v0.664 SACH KA HISAAB: the failure text of a tool result, '' when it went fine. A result like
+    """v0.665 SACH KA HISAAB: the failure text of a tool result, '' when it went fine. A result like
     {"ok": False, "stage": "check", "errors": [...]} (a failed video render, a refused promo) used to count as a
     success because only an "error" key was read - logged ok, outcome "done", and the honesty check switched off."""
     if not isinstance(out, dict):
@@ -430,7 +430,7 @@ def _short(obj, limit: int = 6000) -> str:
                 if len(out) <= limit:
                     TRIM_STATS["lists"] += 1
                     return out
-        # v0.666 a dict whose bulk is ONE long string (a page / mail body) lost every key after it in the raw cut - the
+        # v0.667 a dict whose bulk is ONE long string (a page / mail body) lost every key after it in the raw cut - the
         # ids, the next-page cursor, the error / next hints - and the JSON broke. Long strings are shortened in place
         # first, so every key survives and the JSON stays valid.
         for cap in (3000, 1500, 600, 200):
@@ -964,7 +964,7 @@ PARALLEL_SAFE = frozenset({
 
 
 def _parallel_ok(b: dict) -> bool:
-    """v0.665 by CALL, not only by name: kaam_status is a look-up only for action=status - action=stop cancels jobs
+    """v0.666 by CALL, not only by name: kaam_status is a look-up only for action=status - action=stop cancels jobs
     across all her chats (DB writes), and two of those side by side were the nested-write race v0.188 keeps serial."""
     if b.get("name") not in PARALLEL_SAFE:
         return False
@@ -1199,7 +1199,7 @@ _OFFER = re.compile(r"[^.!?\n]*\b(aur\s+kuch|kuch\s+aur|aur\s+koi|anything\s+els
 
 def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str, calls: list | None = None) -> None:
     """v0.311 the server's own plan closes with the model's final answer.
-    v0.664 SACH KA HISAAB: only a real finish closes it as DONE. A step that failed ("Step b fail ho gaya, API key
+    v0.665 SACH KA HISAAB: only a real finish closes it as DONE. A step that failed ("Step b fail ho gaya, API key
     chahiye") or a question back to her ("Kaunsi date chahiye?") used to tick every remaining step done and show the
     whole job finished on her card; now the first is `failed`, the second `blocked_on_her`, the steps left as they are."""
     from . import goal as _goal
@@ -1295,7 +1295,7 @@ def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
     rel = _y.relevant_facts(tenant_id, user_text, shown, top=6, conversation_id=chat)
     if not rel:
         return ""
-    mk = _y.fact_marks([i for i, _ in rel])   # v0.664 dated; Hoola's own guesses marked as such
+    mk = _y.fact_marks([i for i, _ in rel])   # v0.665 dated; Hoola's own guesses marked as such
     return ("JUDE HUE FACTS (by meaning for this ask; 'Hoola ne samjha' = your own reading, not her words):\n"
             + "\n".join(f"- {t}{mk.get(i, '')}" for i, t in rel))
 
@@ -1673,7 +1673,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
             if state.get("correct"):   # the correction is added after the words already shown (never rewrites them)
-                # v0.667 only the correction line goes out as its own short message and its own row: the whole answer
+                # v0.668 only the correction line goes out as its own short message and its own row: the whole answer
                 # again (answer + note) showed TWICE on the phone and sat twice in the model's history
                 note = state.pop("correct")
                 final_text = (final_text + "\n\n" + note).strip()
@@ -1703,7 +1703,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             try:
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
-                _fail = tool_failure(out)   # v0.664 {"ok": False} / status failed is a failure too, not only "error"
+                _fail = tool_failure(out)   # v0.665 {"ok": False} / status failed is a failure too, not only "error"
                 fine = not _fail
                 breaker.after(b["name"], fine)
                 refs = out.get("tool_references") if isinstance(out, dict) and getattr(ctx, "native_search", False) \
@@ -1711,7 +1711,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 content = refs if refs else _short(out, RESULT_LIMIT.get(b["name"], 6000))   # v0.563 tool_reference
                 call = {"tool": b["name"], "ok": fine, "error": "" if fine else _fail[:300],
                         "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else str(content)[:300],
-                        # v0.664 every figure the tool really returned (the 300-char result above hid row 10's amount,
+                        # v0.665 every figure the tool really returned (the 300-char result above hid row 10's amount,
                         # so the after-reply check called a correct number unsourced)
                         "digits": _facts_of(content) if fine else ""}
                 if not fine:
@@ -1737,7 +1737,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     log.debug("say line failed", exc_info=True)
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": content}
             except asyncio.CancelledError:
-                # v0.667 the turn's time limit (or a stop) cancelled this step: say so on the step card before the
+                # v0.668 the turn's time limit (or a stop) cancelled this step: say so on the step card before the
                 # cancel goes on - it used to stay "running" with a spinner for ever (and "running" again on reload)
                 try:
                     state["calls"].append({"tool": b["name"], "ok": False, "error": "cut off (time limit)",
@@ -1771,7 +1771,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 breaker.after(b["name"], False)
                 state["calls"].append({"tool": b["name"], "ok": False, "error": "timeout", "args": args_in,
                                        "key": _key(b["name"], args_in)})
-                # v0.665 the wait stopped, the WORK may not have: a tool running in a thread (a browser job, a render)
+                # v0.666 the wait stopped, the WORK may not have: a tool running in a thread (a browser job, a render)
                 # carries on and can still submit the form. "Try another way" made the model start a second one and
                 # the form went twice - now the step's status is checked first and a send / submit is never repeated.
                 msg = (f"{b['name']} did not answer in {settings.agent_tool_timeout_s} seconds. It MAY STILL BE "
@@ -1924,7 +1924,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
             return final_text
-        # v0.664 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
+        # v0.665 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
         # be returned as the final answer and the turn recorded "done"), and the outcome is partial, never done
         state["left"] = state.get("left") or "steps ki had poori ho gayi, kaam poora nahi hua"
         honest = "Yeh kaam lamba ho gaya aur abhi poora nahi hua - main yahin ruk raha hoon. Aage badhaun?"
@@ -1935,7 +1935,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         return (final_text + "\n\n" + honest).strip() if final_text else honest
     if not final_text.strip():
         # the model finished without a word: never leave the user staring at a silent chat
-        # v0.664 only when a tool really finished: "Kaam ho gaya" after every tool failed was made up
+        # v0.665 only when a tool really finished: "Kaam ho gaya" after every tool failed was made up
         _cs = state.get("calls") or []
         _bad = [c for c in _cs if not c.get("ok")]
         if ran_tools and _cs and len(_bad) == len(_cs):
@@ -2306,7 +2306,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     _steer_e = None
     if VOICE_BRAIN_NOW.get() and lock.locked():
         log.info("call brain turn waits: this chat is busy with another turn (%s)", conversation_id)
-    # v0.666 only a turn that is HERS (her own ask / her long job) may answer or take her new words early: a wake
+    # v0.667 only a turn that is HERS (her own ask / her long job) may answer or take her new words early: a wake
     # report or a routine holding the chat used to swallow them (steer.take has no actor check) and her own turn
     # returned "" and never ran - now she simply waits her turn behind it, like a queued message
     _holder = _HOLDER.get(conversation_id, "owner")
@@ -2396,7 +2396,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             await asyncio.to_thread(_ti.started, conversation_id)
         except Exception:
             log.debug("inbox started stamp failed", exc_info=True)
-        # v0.667 read in a thread: up to 5,000 rows decoded on the event loop froze the WHOLE server (live call audio,
+        # v0.668 read in a thread: up to 5,000 rows decoded on the event loop froze the WHOLE server (live call audio,
         # every SSE stream) for a moment on every turn of a long chat
         history = await asyncio.to_thread(_load_history, conversation_id)
         _mark("history")

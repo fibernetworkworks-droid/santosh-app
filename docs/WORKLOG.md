@@ -2019,31 +2019,51 @@ Work Log:
 - Fixed: real downloads, DNS records + apply / check / undo in Publish, quiet /moves, Live pill in History, care name fallback.
 Stage Summary:
 - v0.663.0, tests/test_v0663_studio_jaanch.py 3 green.
-Task ID: v0664-sach-ka-hisaab (built as 0.663)
+
+---
+Task ID: v0.664.0 ASLI SAMAY
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked to see the website being built in real time (R1-R5).
+Work Log:
+- Checked first: no streaming anywhere, partial site hidden by the Studio.
+- Built stream.py + streamed Opus sections, the SSE live route, the build canvas pages + hoola-build.js, the Studio live view (canvas, follow, page strip, code tabs, live looks, live changes, before / after).
+Stage Summary:
+- v0.664.0, tests/test_v0664_asli_samay.py 7 green.
+Task ID: v0665-sach-ka-hisaab (built as 0.663)
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: second deep audit (37 flaws found, 4 waves proposed) -> owner "GO WAVE 5" = the 14 false-statement flaws.
-Work: v0.664.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware claim check, quick lane forced queue,
+Work: v0.665.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware claim check, quick lane forced queue,
 call claim check by real tools, honest auto-plan close / step cap / empty ending, goal round outcome kept, verify scoped
 to the job, figures from the whole result, guessed facts labelled. 32 new tests.
 Not verified: live. Waves 6-8 (double / lost work, wrong place, smoothness) wait for her GO.
 
 ---
-Task ID: v0665-kaam-ek-baar (built as 0.664)
+Task ID: v0666-kaam-ek-baar (built as 0.664)
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: owner "GO WAVE 6" = second audit items 15-23 (double / lost work).
-Work: v0.665.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest timeout, durable send dedupe, routines /
+Work: v0.666.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest timeout, durable send dedupe, routines /
 Dobara / edit / form answers on the turn inbox (TurnInbox.actor), pre-lock replies out of history, stop never parallel,
 channel replies advanced after send, reminders advanced before said. 10 new tests.
 Not verified: live. Waves 7-8 wait for her GO.
 
 ---
-Task ID: v0666-sahi-jagah (built as 0.665)
+Task ID: v0667-sahi-jagah (built as 0.665)
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: owner "GO WAVE 7" = second audit items 24-31 (wrong place / inconsistent).
-Work: v0.666.0 SAHI JAGAH - channel chats never current, call-set reminders/routines on the chat, deleted-chat re-home,
+Work: v0.667.0 SAHI JAGAH - channel chats never current, call-set reminders/routines on the chat, deleted-chat re-home,
 bazar reminders spoken + rung + day kept, monthly anchor_day, lock holder gates steering, honest recovery wording,
 strings slimmed in tool results. 8 new tests.
 Not verified: live. Wave 8 (smoothness on screen) waits for her GO.
+
+---
+Task ID: v0668-saaf-screen (built as 0.667)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 8" = second audit items 32-37 (smoothness on screen). Also: their ASLI SAMAY took 0.664.0 -> waves 5-8
+re-versioned 0.665-0.668 (REBASE PROTOCOL), all kept.
+Work: v0.668.0 SAAF SCREEN - cut-off step cards end, correction sent once, typing on the clock, phone ack placeholder,
+late stream events read back, history off the loop. 6 new tests.
+Not verified: live / on a real phone.

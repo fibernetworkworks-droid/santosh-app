@@ -675,7 +675,7 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
         out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
         v = active_for(conv)
         if v is not None and v.get("id") == goal_id and steps_left(v):
-            # v0.664 "continuing" only while the goal really is still open AND this round did not end stuck / stopped -
+            # v0.665 "continuing" only while the goal really is still open AND this round did not end stuck / stopped -
             # it used to overwrite a finished or dead job's true outcome, so a live call said "abhi chal raha hai"
             mine = LAST_OUTCOME.get(conv) or {}
             if str(mine.get("outcome") or "") not in ("stuck", "stopped"):
@@ -764,7 +764,7 @@ def continue_now(tenant: str, conv: str) -> dict[str, Any] | None:
     return view
 
 
-_BOOT_AT = now()   # v0.666 this process's start (a goal that last moved before it lost its runner to a restart)
+_BOOT_AT = now()   # v0.667 this process's start (a goal that last moved before it lost its runner to a restart)
 
 
 def recover_tick() -> int:
@@ -808,7 +808,7 @@ def recover_tick() -> int:
         _mutate(tenant, gid, bump)
         try:
             from ..db import Message
-            # v0.666 "server dobara chalu hua" only when it really restarted (the job last moved before this process
+            # v0.667 "server dobara chalu hua" only when it really restarted (the job last moved before this process
             # began); a round that simply ended (a wake report, a cut turn) is said as what it is
             if upd < _BOOT_AT:
                 line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \

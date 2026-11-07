@@ -1715,7 +1715,7 @@ def health(tenant: str) -> dict[str, Any]:
 
 
 def fact_marks(ids) -> dict:
-    """v0.664 SACH KA HISAAB: id -> ' (saved 03 Nov 2026)' for her own facts, ' (Hoola ne samjha, 03 Nov 2026)' for one
+    """v0.665 SACH KA HISAAB: id -> ' (saved 03 Nov 2026)' for her own facts, ' (Hoola ne samjha, 03 Nov 2026)' for one
     Hoola picked up itself - a fact read by meaning used to reach the model undated and unlabelled, stated as truth."""
     out: dict = {}
     ids = [i for i in (ids or []) if i]

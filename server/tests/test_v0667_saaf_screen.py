@@ -1,4 +1,4 @@
-"""v0.667 SAAF SCREEN (owner: "GO WAVE 8" of the second deep audit - smoothness on her screen).
+"""v0.668 SAAF SCREEN (owner: "GO WAVE 8" of the second deep audit - smoothness on her screen).
 
 32 a step cut by the turn's time limit says so on its card (no spinner for ever)
 33 a corrected reply is shown once: only the correction line goes out and is saved

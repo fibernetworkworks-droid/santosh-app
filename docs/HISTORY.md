@@ -22243,7 +22243,51 @@ background on the server), launch card + go live, rollback, takedown, project me
 Studio; the site chat could not be tested for real answers here (no model key in the sandbox, the turn answers 401).
 Tests: `server/tests/test_v0663_studio_jaanch.py` (3: routes + zips + quiet moves + care name, JS markers, a browser walk of
 every section).
-## v0.664.0 SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5"; built as 0.663 - their STUDIO JAANCH took 0.663.0 while it sat on the branch, REBASE PROTOCOL, both kept)
+
+
+## v0.664.0 ASLI SAMAY — the website built in front of her
+
+v0.664.0 ASLI SAMAY (owner: "WHEN WEBSITE IS BUILDING CAN USER SEE REALTIME WEBSITE BUILD VISUALLY" -> "NOT JUST A PREVIEW A REAL TIME BUILDING" -> "GO R1 TO R5"): the website is built in front of her - R1 every section Opus writes (page parts, look tops, fix rounds, changes) is STREAMED (same request, same tokens; `site/stream.py` pulls the half-written html / css out of the arriving JSON into a live slot, a retry clears it, the saved section is checked exactly as before) and GET /api/sites/{ref}/live sends only the added characters; R2 the Studio's live canvas = the real site (preview `__build/`) with every section in a slot and the unwritten ones as places they will grow into, each section growing word by word with a cursor and a 'Writing: Menu' tag, half-written code never runs (scripts / handlers / javascript: links removed, sandboxed frame, `assets/hoola-build.js`), Follow keeps the part being written in view, a page strip; R3 Code shows each part typing out, parallel parts each in a tab, 'Designing this section…' while Opus thinks; R4 the three looks grow side by side (`__build/__look/<i>/` in each look's own colours) and the chosen look stays on screen through the build; R5 a change to a built site (her chat, a fix round) switches the screen to the live build at its first word, then 'New version vN is ready' + Before / after (preview `__v/<n>/`). Switch SITE_LIVE_STREAM.
+
+**Found first (the check before the plan):** a first build showed a progress box and no website until v1. The server already
+re-assembled a partial site every 20 s (and the preview link served it), but the Studio hid it; and every section came from
+ONE non-streaming Opus call (`ai._ask_app` -> `messages.create`), so even shown it would have popped in whole after 30-90 s.
+
+**How it works:**
+- `ai._live(kind)` / `ai._streamed(req)`: when a section is written inside `stream.watch(...)` (write_section, fix rounds) the
+  same request goes through `messages.stream`; each arriving piece -> `stream.feed(text_so_far)` (throttled to ~5 a second),
+  `stream.partial()` decodes the half-arrived JSON string (an escape that has not fully arrived is never shown half-decoded,
+  tested prefix by prefix). The final message is what create() would have returned; nothing saved changes.
+- Slots: key = the section key (`look<i>:` prefix for a look), label 'Products → Menu', page, look, kind
+  build / look / fix / change, state think -> write -> done / error, the CHECKED html / css on done. In memory, one process,
+  forgotten an hour after the last change; a condition variable wakes the readers.
+- GET `/api/sites/{ref}/live?since=N` (SSE, her key in the header): events carry only the characters added since the last
+  event (`ho`/`ha`, checked as a true prefix), a full `h` when a section is rewritten or finished; ends after 10 min, the
+  Studio reconnects with `since`.
+- Canvas pages: `__build/<page>/` = `build.assemble` with `building` (every section wrapped in `data-slot`, the missing ones
+  as shimmering places), made again only when a section file changed and at most every 2 s; `__build/__look/<i>/` = a
+  look's page top in that look's tokens (`stream.set_looks`); `__build.js` = the canvas script; `__v/<n>/` = an earlier
+  version for before / after. The saved site / live preview carry none of it (tested).
+- `assets/hoola-build.js` (inside the sandboxed preview): reads only the parent window's messages; scripts, frames,
+  objects, embeds, meta / base / link, every on* handler, srcdoc / formaction and javascript: / data:text links are removed
+  before anything is shown; a cursor at the end, a 'Writing: …' tag, follow-scroll, a green flash when a part lands.
+- Studio (`webstudio.js` liveView): a live bar (what is being written, N parts at once, n/total, the timer, Pause), the
+  page strip (writing dot / tick), the canvas (follows the page being written unless she picks a page), Code panel with a
+  tab per part typing out, the three looks side by side; a finished part is replaced by the real assembled section
+  (photos, icons) read from the canvas page; a change that starts while she looks at a finished site (her chat) switches
+  the screen at its first word; when it ends: 'New version vN is ready' + Before / after side by side.
+
+**Tests:** `server/tests/test_v0664_asli_samay.py` (7): partial JSON only grows; a streamed request feeds the slot and
+returns the same answer, nothing streams outside a live section, SITE_LIVE_STREAM=false turns it off; retry clears and a
+failure shows as failed; looks + build leave slots, the canvas pages (look canvas in its own colours, places before the
+build, all written after, no canvas marks on the saved site, `__v/1/`); the live route sends additions then the checked
+html; canvas + Studio markers; a browser walk (three looks grow, the site grows - text length rising, the code types out,
+page strip, the normal preview after, then a change streams over the built site -> New version v2 -> Before / after).
+
+**Not verified, said plainly:** no real Opus stream has been watched yet (the browser test streams the fake answer in
+pieces); how smooth six parts at once are on her VPS and the delay from Opus to the screen are to be measured on the
+first real build. The canvas shows the section's own CSS as it arrives, but its JS runs only on the finished site.
+## v0.665.0 SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5"; built as 0.663 - their STUDIO JAANCH took 0.663.0 and their ASLI SAMAY 0.664.0 while it sat on the branch, REBASE PROTOCOL twice, all kept)
 
 The second deep audit (4 parallel read-only passes: task loop, hallucination / honesty, consistency / persistence,
 smoothness) found 37 flaws; this wave fixes the 14 where Hoola could tell her something untrue.
@@ -22292,7 +22336,7 @@ call's tool records now have the real shape), test_v0226 (its scripted "Excel ba
 claim), test_v0220 (the fake call names its chat). NOT VERIFIED live. Not done in this wave (said plainly): the after-reply
 figure check still runs only on her own turns, not on background reports.
 
-## v0.665.0 KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6"; built as 0.664)
+## v0.666.0 KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6"; built as 0.664)
 
 15. **Late-reminder quiet hours really work.** `worker._tz`: `life.tz_of` already returns a ZoneInfo and `ZoneInfo(ZoneInfo)`
     raised a swallowed TypeError, so v0.662's night check was always False (a late reminder still rang at 3 am) and the
@@ -22316,7 +22360,7 @@ figure check still runs only on her own turns, not on background reports.
 
 Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the SACH KA HISAAB code). NOT VERIFIED live.
 
-## v0.666.0 SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7"; built as 0.665)
+## v0.667.0 SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7"; built as 0.665)
 
 24. **An outside-channel chat is never "the chat she is in".** `bahar._turn` no longer marks it; `convs.mark` refuses a
     channel chat and `convs.current` skips it (`bahar.chat_ids`). One Telegram message used to send every mail alert,
@@ -22338,3 +22382,26 @@ Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the SACH KA HISAAB c
     after a page / mail body (ids, cursor, error, next hints) survives and the JSON stays valid.
 
 Tests: NEW `test_v0665_sahi_jagah.py` (8). NOT VERIFIED live.
+
+## v0.668.0 SAAF SCREEN — Wave 8 of the second deep audit: smoothness on her screen (owner: "GO WAVE 8"; built as 0.667)
+
+32. **A step cut by the turn's time limit ends on its card.** `_one` catches `asyncio.CancelledError`, publishes the step
+    as an error ("samay khatam, beech mein roka") and the work line as stopped, then lets the cancel go on - it stayed
+    "running" with a spinner for ever, and "running" again on a reload.
+33. **A corrected reply is shown once.** The honesty note is published and saved as its OWN short message (`note: True`);
+    the whole answer + note used to go out a second time (twice on the phone, twice in the model's history).
+34. **Typing dots refreshed on the clock.** The SSE stream re-sends `typing on` every ~45 s while a turn really runs; it
+    did so only after four idle 15 s waits, and a busy turn's step events kept it from ever being idle - the phone cleared
+    the dots at 75 s and she thought Hoola had stopped.
+35. **The "Ek second..." line is a placeholder on the phone** (`lib/state.dart` `_ackItem` / `_ackDrop`): removed by the
+    real reply or the end of the turn, never spoken aloud, never counted as a reply; and `selfCheck` ignores live-only
+    rows (id 0) so it no longer reloads the chat and files a false chatHeal.
+36. **A late event is read back in order.** On an id gap the stream reads the events in between from the database before
+    the new one; an event published from a worker thread that reached the queue after a newer loop event was dropped by
+    the high-water mark (server and phone) and only appeared on a full reload.
+37. **The chat history is read off the event loop** (`asyncio.to_thread(_load_history)`): up to 5,000 rows decoded on the
+    loop froze the whole server (live call audio, every stream) on each turn of a long chat.
+
+Tests: NEW `test_v0667_saaf_screen.py` (6; all 6 fail on the old code). The phone change compiles first on CI. NOT VERIFIED
+on a real phone. Found while building: the session's disk filled with pytest temp folders mid-run and cut santosh.py
+short on save - restored and re-checked; test runs now use `-o tmp_path_retention_policy=failed`.

@@ -1045,7 +1045,11 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
         for i, s in enumerate(secs):
             key = f"{key_slug or slug}__{s['type']}"
             sec = sections.get(key)
+            slot = (site.get("slot_prefix") or "") + key
             if not sec:
+                if site.get("building") and item is None:     # v0.664 ASLI SAMAY: where this section will grow
+                    parts.append(f'<div class="hb-slot hb-wait" data-slot="{esc(slot)}" data-type="{esc(s["type"])}">'
+                                 f'<div class="hb-ph"><span>{esc(s["type"].replace("_", " ").title())}</span></div></div>')
                 continue
             h = sec["html"]
             if item is not None:
@@ -1081,6 +1085,8 @@ def assemble(site: dict[str, Any], plan: dict[str, Any], sections: dict[str, dic
             if form_endpoint:          # every enquiry form that has no endpoint yet (v0.301: a booking form may sit beside it)
                 h = re.sub(r'data-hoola-form(?![^>]*data-endpoint)', f'data-hoola-form data-endpoint="{esc(form_endpoint)}"', h)
             h = guard_forms(h)                   # v0.551 every enquiry form: the hidden honeypot (+ Turnstile when on)
+            if site.get("building") and item is None:
+                h = f'<div class="hb-slot" data-slot="{esc(slot)}" data-type="{esc(s["type"])}">{h}</div>'
             parts.append(h)
         return "\n".join(parts)
 

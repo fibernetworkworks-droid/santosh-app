@@ -49,7 +49,7 @@ from .events import bus
 
 
 def _fails(out) -> bool:
-    """v0.664 a tool result that says it failed without an "error" key ({"ok": False}, status failed / refused)."""
+    """v0.665 a tool result that says it failed without an "error" key ({"ok": False}, status failed / refused)."""
     from .agent.santosh import tool_failure
     return bool(tool_failure(out)) if isinstance(out, dict) and "error" not in out else False
 
@@ -2077,7 +2077,7 @@ class Call:
             if now - max(self._news_sent_at, self._started_at) < 90:
                 return          # a job's own news was just relayed: "ho gaya" may be that news, truthfully
             from .agent import draftcheck
-            # v0.664 only a tool that FINISHED OK and DID something (not a read, not a failed / still-running one) of the
+            # v0.665 only a tool that FINISHED OK and DID something (not a read, not a failed / still-running one) of the
             # claim's own kind backs the claim - "mail bhej diya" after email_send errored, or after only email_check,
             # used to pass because ANY tool in the turn switched the check off
             claim = ""
@@ -3237,7 +3237,7 @@ class Call:
             oc = {}
         outcome = str(oc.get("outcome") or "")
         left = str(oc.get("left") or "")[:220]
-        if outcome == "done":   # v0.664 "talk" (no tool ran: a question back, a promise) is NOT done - the neutral line below
+        if outcome == "done":   # v0.665 "talk" (no tool ran: a question back, a promise) is NOT done - the neutral line below
             self.push_news(f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
                               f"mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.){tail}")
         elif outcome in ("partial", "continuing"):
@@ -3441,7 +3441,7 @@ class Call:
                 _JOBS.add(t)
                 t.add_done_callback(_JOBS.discard)
         running = name == "santosh_kaam" and isinstance(out, dict) and out.get("status") == "working"
-        self._did_n = getattr(self, "_did_n", 0) + 1   # v0.664 a running count: `did` is capped at 60, its length is not
+        self._did_n = getattr(self, "_did_n", 0) + 1   # v0.665 a running count: `did` is capped at 60, its length is not
         self.did.append({"tool": name, "label": raw if name != "santosh_kaam" else
                          (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error",
                          "n": self._did_n})

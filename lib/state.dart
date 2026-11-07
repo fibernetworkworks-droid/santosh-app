@@ -1163,7 +1163,7 @@ class Santosh extends ChangeNotifier {
     try {
       final h = await api!.timelineHead(conv, n: 40);
       final want = List<int>.from(((h['ids'] as List?) ?? const []).map((e) => (e as num).toInt()));
-      // v0.667 a live-only row (the "Ek second..." ack, id 0) has no place in the story: it was counted as out of order
+      // v0.668 a live-only row (the "Ek second..." ack, id 0) has no place in the story: it was counted as out of order
       // and reloaded the whole chat + sent a false chatHeal report
       final mine = [for (final f in feed) if (f.eid != null && f.eid! > 0) f.eid!];
       final have = mine.toSet();
@@ -1243,7 +1243,7 @@ class Santosh extends ChangeNotifier {
     }
   }
 
-  FeedItem? _ackItem;   // v0.667 the live "Ek second..." placeholder, removed when the real reply arrives
+  FeedItem? _ackItem;   // v0.668 the live "Ek second..." placeholder, removed when the real reply arrives
 
   void _ackDrop() {
     final a = _ackItem;
@@ -1258,7 +1258,7 @@ class Santosh extends ChangeNotifier {
     switch (ev.kind) {
       case 'message':
         if (p['ack'] == true) {
-          // v0.667 the "Ek second..." line is a placeholder: shown while Hoola starts, gone when the real reply (or the
+          // v0.668 the "Ek second..." line is a placeholder: shown while Hoola starts, gone when the real reply (or the
           // end of the turn) comes, never spoken aloud and never counted as a reply
           _ackDrop();
           _ackItem = FeedItem('message', {...Map<String, dynamic>.from(p), 'at': ev.at.toIso8601String()});
@@ -1354,7 +1354,7 @@ class Santosh extends ChangeNotifier {
           });
         } else {
           _typingGuard?.cancel();
-          _ackDrop();                    // v0.667 the turn is over: its placeholder line goes too
+          _ackDrop();                    // v0.668 the turn is over: its placeholder line goes too
         }
         if (p['on'] != true && !_replaying) _scheduleWorkHide(const Duration(seconds: 4));
         typing = p['on'] == true && !_replaying;

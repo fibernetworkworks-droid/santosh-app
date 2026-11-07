@@ -377,7 +377,7 @@ async def _turn(link_id: str, tenant: str, channel: str, text: str, msg_id: str)
             conv = c.id
             l.conversation_id = conv
     cid = f"{channel}:{msg_id}"[:64] if msg_id else ""
-    # v0.666 a channel chat is NEVER "the chat she is in": marking it sent every mail alert, calendar nudge and browser
+    # v0.667 a channel chat is NEVER "the chat she is in": marking it sent every mail alert, calendar nudge and browser
     # answer out on Telegram / WhatsApp (forward_all forwards every new reply of this chat) and opened her app on it
     bus.publish(conv, "message", {"role": "user", "text": text, "source": channel, **({"client_id": cid} if cid else {})})
     ti = turn_inbox.accept(tenant, conv, text, False, CONTEXT.format(label=LABEL[channel]), cid)
@@ -448,7 +448,7 @@ async def forward(link_id: str) -> int:
         if channel == "whatsapp" and (last_in is None or now() - last_in > WA_WINDOW):
             _advance(link_id, todo[-1][0])
             return 0                                       # Meta's 24 h window: the reply stays in the app
-        # v0.665 a reply is marked sent only AFTER it really went (a Telegram 5xx / a WhatsApp token blip used to lose
+        # v0.666 a reply is marked sent only AFTER it really went (a Telegram 5xx / a WhatsApp token blip used to lose
         # it for good: last_sent_id moved before the send). A failing one is tried again on the next forward, at most
         # SEND_TRIES times, then skipped so one bad message never blocks the rest.
         sent = 0
@@ -660,7 +660,7 @@ def teams_verify(auth_header: str, app_id: str, service_url: str) -> bool:
 
 
 def chat_ids(tenant: str) -> set:
-    """v0.666 the conversations that belong to her outside channels (never her 'current' chat)."""
+    """v0.667 the conversations that belong to her outside channels (never her 'current' chat)."""
     try:
         ensure_table()
         with session() as s:
