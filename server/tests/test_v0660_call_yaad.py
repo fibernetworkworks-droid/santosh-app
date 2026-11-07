@@ -1,4 +1,4 @@
-"""v0.659 CALL KI YAAD (owner: "Wave 2 (call memory and smoothness): 3, 4, 13-18, 23 -- WORK ON IT NOW").
+"""v0.660 CALL KI YAAD (owner: "Wave 2 (call memory and smoothness): 3, 4, 13-18, 23 -- WORK ON IT NOW").
 
 3  a call on its own record reads the CHAT it came from (brief + brain)      4  the small brief keeps pending work
 13 a "still working" check-in never keeps Gemini connected                  14 a second ask runs on a side record

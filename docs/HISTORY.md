@@ -1,3 +1,29 @@
+## v0.659.0 KAAN W4 — BOLI SE KITAAB (7 Nov 2026)
+
+Owner: "W4 (exports + translation + Gyaan unlock)" — Wave W4 of the kaan plan (W0 v0.601.0, W1 v0.613.0,
+W2 v0.619.0, W3 v0.639.0 all live before it; built as 0.656.0 — their KAAM DIKHE took 0.656.0, PAKKA KAAM took 0.657.0 and SAAF DIKHE took 0.658.0 while W4 sat built, REBASE PROTOCOL twice, all kept). Exports + the gyaan unlock + the translate proof,
+all deterministic, nothing invented (port law, inertness law, local-first).
+
+- **The exports** (`kaan/exports.py`, new): srt / vtt / txt / json as PURE serializations of a STORED
+  row — SRT/VTT cues are exactly the W3 subtitles lines (one code path, so captions and exports always
+  agree; word rows split on the W2 phrase rule, no-word rows wrap at 12 words, text-only rows get one
+  honest cue), timestamps hand-rolled with the rounding spill carried up, TXT is the stored text
+  verbatim, JSON is the full row with sort_keys (deterministic bytes). Unknown format refuses with the
+  full list; an empty row refuses honestly. Read-only, gate-free by the W1 law.
+- **to_gyaan**: the transcript's own words into her gyaan corpus via `gyaan.ingest.add_note` — the
+  content-hash ref makes it idempotent by construction (re-adding says "same", never a duplicate doc);
+  the import is lazy (kaan never loads gyaan unless used); nothing generated — `gyaan_khojo` finds it.
+- **Translate** was wired at W0 (schema enum → _sync → engine ladder, turbo refuses): W4 proves it
+  end-to-end with a captured engine, the row records task="translate", and the honesty is pinned —
+  whisper translates X→English ONLY; a stored row without audio cannot be re-translated.
+- **Gate map**: no new switch — export is a read (staff ok, customers out), to_gyaan writes tenant data
+  (owner/approved). Registry 606 UNCHANGED; the kaan actions enum grows 16 → 18 (+export/to_gyaan);
+  description inside the 1200-char diet (1190). status() carries the exports block.
+- Tests: NEW test_v0656_kaan_w4.py (18, zero network, zero torch). Neighbours green: kaan W3 23 + W2 18
+  + W1 20 + W0 25 (enum pins healed to the 18-action arithmetic). Ritual: version layer re-titled to
+  0.659.0 (+665) across two rebases, pubspec 0.659.0+665, CLAUDE.md + HISTORY + WORKLOG mirrors. New W4 strings English
+  per owner. NOT VERIFIED live: the first export + to_gyaan on the VPS — the bake block rides the deploy.
+
 ## v0.637.0 KAAN W3 — APNI BOLI (7 Nov 2026)
 
 Owner: "START" on the kaan plan + "ALWAYS SHOW RESULT IN ENGLISH" — Wave W3 of the WhisperAI feed.
@@ -22103,7 +22129,7 @@ the project name in the workspace. Rename = NEW `PATCH /api/sites/{id}` {name} -
 list name; pages, address and live site untouched). Delete = the existing server delete (a live site is taken off the
 internet first; confirm names that). Stars are this browser's choice (localStorage). Tests `test_v0655_kaam_dikhe.py` +3.
 
-## v0.659.0 CALL KI YAAD — Wave 2 of the deep flaw audit: call memory and smoothness (owner: "Wave 2 (call memory and smoothness): 3, 4, 13–18, 23 -- WORK ON IT NOW"; built as 0.658, their SAAF DIKHE took 0.658, both kept)
+## v0.660.0 CALL KI YAAD — Wave 2 of the deep flaw audit: call memory and smoothness (owner: "Wave 2 (call memory and smoothness): 3, 4, 13–18, 23 -- WORK ON IT NOW"; built as 0.658, their SAAF DIKHE took 0.658 and KAAN W4 0.659, all kept)
 
 3. **A split call started with no memory.** `yaad.voice_block` keyed every chat read (focus words, checkpoint,
    summary, recent exchanges, facts' last ask) by the NEW call record. It now reads the chat behind it
@@ -22132,6 +22158,6 @@ internet first; confirm names that). Stars are this browser's choice (localStora
 18. **News cut into speech.** `_news_forced`: past the 25 s cap news still waits for a 0.7 s gap in her words and his
     voice; at 3x the cap (a noisy line) it goes anyway, but never over his voice.
 
-Tests `test_v0659_call_yaad.py` 14. Pins updated: v0230 news cap timing, v0554 VOICE_DIRECT line. Pre-existing reds
+Tests `test_v0660_call_yaad.py` 14. Pins updated: v0230 news cap timing, v0554 VOICE_DIRECT line. Pre-existing reds
 (stash-proven on 66aaed56): v108 `_reseed` fake, v086 x2, v0473 routes. NOT VERIFIED on a real call: the side-record
 ask, the parking saving, and Gemini's handling of the new brief order.
