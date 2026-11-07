@@ -542,7 +542,7 @@ class OpenAICall(v.Call):
         self._start_reader(self.ws)
         first, failures = True, 0
         me = (loop, self)
-        v.ACTIVE.setdefault(self.ctx.conversation_id, []).append(me)
+        self._register(me)   # v0.646 under the call record + its chat
         v.CALLS[self.call_id] = self
         await self._setup_voiceid()
         st = get_settings()
@@ -559,7 +559,7 @@ class OpenAICall(v.Call):
                     await session.send({"type": "session.update", "session": session_config(self, context, mcp_defs)})
                     if first:
                         await self.send_json({"type": "ready", "voice": self.voice, "call_id": self.call_id,
-                                              "vad": v.vad_config(), "engine": "openai"})
+                                              "vad": v.vad_config(), "engine": "openai", "conv": self.conv})
                         drop, kind = "", ""
                         try:
                             from . import yaad

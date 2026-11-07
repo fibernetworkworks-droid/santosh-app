@@ -543,7 +543,8 @@ def _untouched_chat(tenant: str, project_id: str = "") -> str:
     from sqlalchemy import or_
     from .db import Event
     with session() as s:
-        q = select(Conversation.id).where(Conversation.tenant_id == tenant,
+        from .callconv import not_call   # v0.646 a call record is never reused as an empty chat
+        q = select(Conversation.id).where(Conversation.tenant_id == tenant, not_call(),
                                           or_(Conversation.archived.is_(None), Conversation.archived.is_(False)),
                                           or_(Conversation.deleted.is_(None), Conversation.deleted.is_(False)))
         q = q.where(Conversation.project_id == project_id) if project_id else \
@@ -996,6 +997,14 @@ def chat_list(limit: int = 40, archived: bool = False, tenant: str = Depends(cur
     if chats.enabled():
         return {"conversations": chats.chat_list(tenant, archived, limit), "current": convs.current(tenant)}
     return {"conversations": convs.chats(tenant, limit), "current": convs.current(tenant)}
+
+
+@app.get("/api/calls", dependencies=[Depends(require_key)])
+def calls_list(limit: int = 40, origin: str = "", tenant: str = Depends(current_tenant)):
+    """v0.646 ALAG CALL: the Calls section - each voice call's own record (newest first). Open one like a chat
+    (GET /api/conversations/<id>/events): transcript, tool rows, cards and the receipt are all there."""
+    from . import callconv
+    return {"calls": callconv.recent(tenant, origin=origin[:40] or None, limit=limit)}
 
 
 @app.get("/api/conversations/search", dependencies=[Depends(require_key)])
@@ -2140,7 +2149,8 @@ def usage_all(days: int = 30, tenant: str = Depends(current_tenant)):
 
 
 @app.websocket("/api/voice/ws")
-async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "hi-IN", resume: str = ""):
+async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "hi-IN", resume: str = "",
+                   split: str = ""):
     """Realtime voice call (Baat tab). See app/voice.py for the protocol. `resume` re-joins a call whose phone
     connection dropped (network change) instead of starting a new one."""
     from . import voice as v
@@ -2170,7 +2180,8 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
     await ws.accept(subprotocol=sub)
     if resume:
         call = v.CALLS.get(resume)
-        if call is None or call.tenant != tenant or call.conv != conv or call.closed.is_set():
+        from . import callconv as _cc   # v0.646 a split call lives on its own record: match the chat behind both
+        if call is None or call.tenant != tenant or _cc.chat_of(call.conv) != _cc.chat_of(conv) or call.closed.is_set():
             await ws.send_text(json.dumps({"type": "error", "code": "gone", "message": "Pichli call ab chalu nahi hai."}))
             await ws.close(code=4410)
             return
@@ -2180,6 +2191,14 @@ async def voice_ws(ws: WebSocket, conv: str = "", voice: str = "", lang: str = "
         except Exception:
             pass
         return
+    # v0.646 ALAG CALL: a phone that knows the Calls section (split=1) gets the call on its OWN record; the chat she
+    # called from stays the chat (same memory scope). An older APK (no split) keeps the call on the chat, as before.
+    if split == "1" and st.call_split:
+        from . import callconv as _cc
+        try:
+            conv = await asyncio.to_thread(_cc.open_for, tenant, conv, "")
+        except Exception:
+            log.exception("call record could not be made; the call runs on the chat")
     from . import voiceengine   # v0.264 two engines: OpenAI "real voice" only when she picked it and it is allowed
     engine, why = voiceengine.pick(tenant)
     if engine == "openai":

@@ -1109,6 +1109,10 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
         ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
         ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or "")),
     ]
+    from .. import callconv as _callconv
+    if _callconv.is_call(conversation_id):
+        # v0.646 ALAG CALL, EK YAAD: a call on its own record still knows what she just wrote in the chat she called from
+        parts.append(("chat", lambda: _callconv.chat_block(conversation_id)))
     if getattr(settings, "voice_brain_yaad", False):
         # v0.644 off by default: on EVERY call ask since v0.638 the diary / facts read missed its wait (17:25, 17:34, 17:44,
         # 17:51 - "yaad not ready in 2.5s"), so each ask paid the full wait for nothing; old memory stays one
@@ -2113,6 +2117,13 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         block = (block + "\n\n" + cb) if block else cb
                 except Exception:
                     log.exception("coder block failed")
+                try:   # v0.646 ALAG CALL, EK YAAD: her recent calls' receipts, so the chat knows what was said on a call
+                    from .. import callconv as _callconv
+                    rb = await asyncio.to_thread(_callconv.recent_block, tenant_id, conversation_id)
+                    if rb:
+                        block = (block + "\n\n" + rb) if block else rb
+                except Exception:
+                    log.exception("recent calls block failed")
                 if settings.agent_goal:   # v0.187 an open goal rides above everything: this turn continues it
                     from . import goal as _goalb
                     gb = _goalb.goal_block(conversation_id)

@@ -10,6 +10,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 
 import '../state.dart';
 import 'any_card.dart';
+import 'calls_sheet.dart';
 import 'employee_inbox.dart';
 import 'think_card.dart';
 import 'chai_screen.dart';
@@ -712,6 +713,14 @@ class _ChatScreenState extends State<ChatScreen> {
                       padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
                       child: Row(children: [
                         Expanded(child: Text(app.g('Aapki chats'), style: display(18, w: FontWeight.w700))),
+                        IconButton(   // v0.646 ALAG CALL: every voice call has its own record, here
+                          tooltip: app.g('Aapki calls'),
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            showCallsSheet(context, app);
+                          },
+                          icon: const Icon(Icons.call_outlined, color: C.chip),
+                        ),
                         IconButton(   // v0.248 this chat's checkpoint summary + "Chat chhoti karo"
                           tooltip: app.g('Is chat ka saar'),
                           onPressed: () {

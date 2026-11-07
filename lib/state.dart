@@ -1202,13 +1202,14 @@ class Santosh extends ChangeNotifier {
   }
 
   /// Open one of her old chats.
-  Future<void> openChat(String id) async {
+  /// v0.646 `remember: false` = a call record from the Calls section: shown now, but the app still reopens on her chat.
+  Future<void> openChat(String id, {bool remember = true}) async {
     if (id == conversationId || api == null) return;
     conversationId = id;
     incognito = chatList.any((c) => c['id'] == id && c['incognito'] == true);   // v0.250
-    await _prefs.setString('conv', id);
+    if (remember) await _prefs.setString('conv', id);
     unawaited(api!.openChat(id).catchError((_) {}));
-    unawaited(Native.chatLink(serverUrl, apiKey, id));
+    if (remember) unawaited(Native.chatLink(serverUrl, apiKey, id));   // v0.646 the background stream stays on her chat
     _storyLimit = 60;
     lastEventId = 0;
     await _openStory();
