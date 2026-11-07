@@ -67,7 +67,7 @@ class TurnInbox(Base):
     # only trustworthy anchor. Before it, "answered" meant any assistant row after acceptance, so a queued message
     # was dropped by the PREVIOUS turn's reply, and a turn cut after its first tool step counted as answered.
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    # v0.664 who the turn runs as (routine / '' = her own): a routine, a Dobara, an edit and a form answer now ride the
+    # v0.665 who the turn runs as (routine / '' = her own): a routine, a Dobara, an edit and a form answer now ride the
     # inbox too, so a restart re-runs them as the same kind of turn instead of losing them
     actor: Mapped[str | None] = mapped_column(String(40), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
@@ -104,7 +104,7 @@ def accept(tenant: str, conversation_id: str, text: str, voice: bool, context: s
 
 
 def seen(tenant: str, conversation_id: str, client_id: str, hours: float = 6) -> bool:
-    """v0.664 the phone's send id was already accepted (durably). The old check was a dict in memory, so a send accepted
+    """v0.665 the phone's send id was already accepted (durably). The old check was a dict in memory, so a send accepted
     just before a restart, retried by the phone against the new process, ran twice (the retry + the sweep's re-run)."""
     cid = (client_id or "")[:80]
     if not cid:

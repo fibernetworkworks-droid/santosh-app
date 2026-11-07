@@ -2010,31 +2010,40 @@ Work: branch `stable-2026-11-07-audit-v662` cut at dda3e58f (= v0.662.0 code + o
 Not verified: live restart / call / late reminder; VPS version at save; Google sign-in still dead.
 
 ---
-Task ID: v0663-sach-ka-hisaab
+Task ID: v0.663.0 STUDIO JAANCH
+Agent: Claude Code session (claude/vigilant-lamport-0hvbp3)
+Task: owner asked to check every Web Studio section end to end.
+Work Log:
+- Matched all 45 Studio API calls against the server routes (all exist).
+- Walked every section in Chromium with page errors + HTTP >= 400 logged per section.
+- Fixed: real downloads, DNS records + apply / check / undo in Publish, quiet /moves, Live pill in History, care name fallback.
+Stage Summary:
+- v0.663.0, tests/test_v0663_studio_jaanch.py 3 green.
+Task ID: v0664-sach-ka-hisaab (built as 0.663)
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: second deep audit (37 flaws found, 4 waves proposed) -> owner "GO WAVE 5" = the 14 false-statement flaws.
-Work: v0.663.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware claim check, quick lane forced queue,
+Work: v0.664.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware claim check, quick lane forced queue,
 call claim check by real tools, honest auto-plan close / step cap / empty ending, goal round outcome kept, verify scoped
 to the job, figures from the whole result, guessed facts labelled. 32 new tests.
 Not verified: live. Waves 6-8 (double / lost work, wrong place, smoothness) wait for her GO.
 
 ---
-Task ID: v0664-kaam-ek-baar
+Task ID: v0665-kaam-ek-baar (built as 0.664)
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: owner "GO WAVE 6" = second audit items 15-23 (double / lost work).
-Work: v0.664.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest timeout, durable send dedupe, routines /
+Work: v0.665.0 KAAM EK BAAR - tz fix for late reminders (own v0.662 bug), honest timeout, durable send dedupe, routines /
 Dobara / edit / form answers on the turn inbox (TurnInbox.actor), pre-lock replies out of history, stop never parallel,
 channel replies advanced after send, reminders advanced before said. 10 new tests.
 Not verified: live. Waves 7-8 wait for her GO.
 
 ---
-Task ID: v0665-sahi-jagah
+Task ID: v0666-sahi-jagah (built as 0.665)
 Date: 2026-11-07
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: owner "GO WAVE 7" = second audit items 24-31 (wrong place / inconsistent).
-Work: v0.665.0 SAHI JAGAH - channel chats never current, call-set reminders/routines on the chat, deleted-chat re-home,
+Work: v0.666.0 SAHI JAGAH - channel chats never current, call-set reminders/routines on the chat, deleted-chat re-home,
 bazar reminders spoken + rung + day kept, monthly anchor_day, lock holder gates steering, honest recovery wording,
 strings slimmed in tool results. 8 new tests.
 Not verified: live. Wave 8 (smoothness on screen) waits for her GO.

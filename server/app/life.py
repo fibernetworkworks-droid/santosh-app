@@ -56,7 +56,7 @@ def fmt_local(dt: datetime, tz: ZoneInfo) -> str:
 
 def next_due(due: datetime, repeat: str, tz: ZoneInfo, anchor_day: int | None = None) -> datetime | None:
     """Next occurrence after `due`, keeping the same local clock time.
-    v0.665 `anchor_day`: a monthly repeat's own day (the 31st stays the 31st where the month has one; it used to clamp
+    v0.666 `anchor_day`: a monthly repeat's own day (the 31st stays the 31st where the month has one; it used to clamp
     from the PREVIOUS due date, so Jan 31 -> Feb 28 -> Mar 28 -> the 28th for ever)."""
     if repeat == "none":
         return None
@@ -189,7 +189,7 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
         lines.append("ALWAYS keep in mind (the user pinned these; id: fact):")
         lines += [f"- {f.id}: {f.text}" for f in pins]
     others = [f for f in facts if not f.pinned]
-    # v0.663 SACH KA HISAAB: a fact Hoola picked up by itself (source auto) is NOT her instruction, and an old fact may be
+    # v0.664 SACH KA HISAAB: a fact Hoola picked up by itself (source auto) is NOT her instruction, and an old fact may be
     # out of date - both used to sit under "the user asked you to remember", undated, and were stated to her as truth
     hers = [f for f in others if (f.source or "") != "auto"]
     guessed = [f for f in others if (f.source or "") == "auto"]
@@ -356,7 +356,7 @@ def active_routines(tenant_id: str) -> list[dict]:
 
 
 def anchor_of(due: datetime, repeat: str, tz: ZoneInfo) -> int | None:
-    """v0.665 the day of the month a monthly repeat keeps (None for any other repeat)."""
+    """v0.666 the day of the month a monthly repeat keeps (None for any other repeat)."""
     if repeat != "monthly" or due is None:
         return None
     return as_utc(due).astimezone(tz).day

@@ -1,4 +1,4 @@
-"""v0.665 SAHI JAGAH (owner: "GO WAVE 7" of the second deep audit - every thing in its right place, the same everywhere).
+"""v0.666 SAHI JAGAH (owner: "GO WAVE 7" of the second deep audit - every thing in its right place, the same everywhere).
 
 24 a WhatsApp / Telegram chat never becomes "the chat she is in"
 25 a reminder / routine / briefing set on a voice call belongs to the chat the call came from

@@ -1,4 +1,4 @@
-"""v0.664 KAAM EK BAAR (owner: "GO WAVE 6" of the second deep audit - work never done twice, never lost).
+"""v0.665 KAAM EK BAAR (owner: "GO WAVE 6" of the second deep audit - work never done twice, never lost).
 
 15 the late-reminder quiet hours really work (her time zone was read wrong, so it never did)
 16 a timed-out tool is said to be maybe still running - never "try another way" for a send

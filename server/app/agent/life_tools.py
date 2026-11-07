@@ -110,7 +110,7 @@ SENSITIVE = ("password", "passcode", "otp", "pin ", "cvv", "card number")   # ID
 
 
 def _home(ctx) -> str:
-    """v0.665 the chat a reminder / routine / briefing belongs to. Set on a split voice call, ctx.conversation_id is the
+    """v0.666 the chat a reminder / routine / briefing belongs to. Set on a split voice call, ctx.conversation_id is the
     call RECORD (hidden from her chat list), so every daily run and every 'yaad dila raha hoon' landed where she never
     looks; it belongs to the chat the call came from."""
     conv = getattr(ctx, "conversation_id", "") or ""

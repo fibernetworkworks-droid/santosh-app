@@ -153,7 +153,7 @@ def check_link(url: str) -> dict[str, Any]:
     return _ok(url, str(r.status_code))
 
 
-# v0.663 SACH KA HISAAB: the gate looks only at what THIS job made. "Q3 report.pdf" from last month, or three old
+# v0.664 SACH KA HISAAB: the gate looks only at what THIS job made. "Q3 report.pdf" from last month, or three old
 # reminders, used to pass a job that claimed them - every row the tenant ever had was counted.
 import contextvars as _cv
 from datetime import timedelta as _td, timezone as _tz

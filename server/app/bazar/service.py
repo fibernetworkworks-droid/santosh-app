@@ -1420,7 +1420,7 @@ def _advance(r: Reminder) -> None:
     if step:
         r.due_at += step
     elif r.repeat in ("monthly", "yearly"):
-        # v0.665 the bill due on the 31st keeps the 31st (it was clamped to the 28th for ever); a 29 Feb birthday keeps
+        # v0.666 the bill due on the 31st keeps the 31st (it was clamped to the 28th for ever); a 29 Feb birthday keeps
         # 29 Feb in a leap year. The anchor lives in meta (no new column on bz_reminders).
         import calendar
         meta = dict(r.meta or {})
@@ -1452,7 +1452,7 @@ ICON = {"bill": "Bill yaad dilana", "medicine": "Dawai ka samay", "birthday": "A
 
 
 def fire_due_reminders() -> int:
-    """v0.665 a medicine / bill / birthday reminder behaves like a Hoola reminder: a live call SAYS it (the 'reminder'
+    """v0.666 a medicine / bill / birthday reminder behaves like a Hoola reminder: a live call SAYS it (the 'reminder'
     event), no call = her phone rings, a late one (downtime) is said as late and never rings at night. It used to be a
     chat line only. Advanced (committed) before it is said, so a crash never says it twice."""
     nowu = dt.datetime.now(dt.timezone.utc).replace(tzinfo=None)

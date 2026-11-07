@@ -53,7 +53,7 @@ _DONE = re.compile(
     r"|(?:place|transfer|set|fix|cancel|update|submit|schedule|save|send|deliver)\s*ho\s*gay[aie]"
     r"|\b(?:chala\s*gaya|chali\s*gayi|chale\s*gaye)\b|pahunch\s*gay[aie]"
     r"|(?:appointment|booking|slot|ticket|order)\s*le\s*l(?:iya|i|ee)\b"
-    # v0.663 "invoice / PDF bana diya", "file ban gayi", "taiyaar kar diya" - a made thing with nothing that made it
+    # v0.664 "invoice / PDF bana diya", "file ban gayi", "taiyaar kar diya" - a made thing with nothing that made it
     # (only a FILE-like thing: a plan or a list written right here in the reply is really made - never a claim)
     r"|(?:pdf|file|invoice|bill|document|doc|docx|sheet|excel|ppt|presentation|website|site|page|video|image|photo"
     r"|poster|logo|report|app|form|quotation|link|backup|zip)\b[^.!?\n]{0,24}?(?:bana\s*(?:diya|di|diye|dia|chuka|chuki)\b"
@@ -104,7 +104,7 @@ def _clause(text: str, start: int, end: int) -> str:
     return text[a:b]
 
 
-# v0.663 words that excuse a claim only when they come AFTER it are the ones that GOVERN it (a negation, "aapne" as the
+# v0.664 words that excuse a claim only when they come AFTER it are the ones that GOVERN it (a negation, "aapne" as the
 # doer). A future / offer / condition word AFTER the claim is about something else: "order place kar diya hai jo kal tak
 # aa jayega", "I have sent the invoice and you can track it here" were both excused, so the false claim went through.
 _AFTER_OK = re.compile(r"(nahi\s*bhej|nahi\s*hua|nahi\s*kiya|\bnot\b|n't\b|\bnothing\b|\bnever\b|\byet\b"
@@ -122,7 +122,7 @@ def claims_done(text: str) -> str:
 
 
 def all_claims(text: str) -> list[tuple[str, str, str]]:
-    """v0.663 EVERY claim in the reply as (claimed phrase, the words just before it, its clause) - "Mail bhej diya aur reminder
+    """v0.664 EVERY claim in the reply as (claimed phrase, the words just before it, its clause) - "Mail bhej diya aur reminder
     laga diya" is two claims, and only the first used to be judged."""
     t = text or ""
     out: list[tuple[str, str, str]] = []
@@ -139,7 +139,7 @@ def all_claims(text: str) -> list[tuple[str, str, str]]:
     return out
 
 
-# v0.663 SACH KA HISAAB: a claim is backed only by a tool of ITS kind. "Rahul ko mail bhejo aur kal yaad dilana" with only
+# v0.664 SACH KA HISAAB: a claim is backed only by a tool of ITS kind. "Rahul ko mail bhejo aur kal yaad dilana" with only
 # create_reminder run used to pass "Mail bhej diya aur reminder laga diya" - any doing tool switched the whole check off.
 _FAMILIES = (
     ("send", re.compile(r"bhej|send|sent|mail|whatsapp|message|forward|reply|replied|emailed|messaged|pahunch|chal[aie]\s*ga", re.I),
@@ -183,7 +183,7 @@ _STATUS_ASK = re.compile(r"(gay[aie]|hu[aie]|hue|bhej[aie]|kiya|aaya|pahunch[aie
 
 
 def ran_before(conv: str, tools, days: int = 7) -> bool:
-    """v0.663 did a tool of this kind really succeed in this chat in the last few days? (her "mail gaya kya?" is
+    """v0.664 did a tool of this kind really succeed in this chat in the last few days? (her "mail gaya kya?" is
     answered truthfully by "haan, bhej diya tha" - the per-turn check used to call that a lie). Trouble reading the log
     answers True (never accuse on a guess)."""
     try:
@@ -369,7 +369,7 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         if since is not None and not nothing_ran_in_job(conv, since):
             continue                       # an earlier round of this job really did it; this round only reported
         if conv and (report or _PAST.search(clause)) and ran_before(conv, tools):
-            continue                       # v0.663 a true report of work done earlier ("haan, bhej diya tha")
+            continue                       # v0.664 a true report of work done earlier ("haan, bhej diya tha")
         bad.append(phrase)
         card = card or any(effect(c) == "card" for c in mine)
     if not bad:
@@ -433,7 +433,7 @@ def sources_text(request: str, calls: list[dict] | None, chat_tail: str = "") ->
     for c in calls or []:
         parts.append(str(c.get("args") or ""))
         parts.append(str(c.get("result") or ""))
-        parts.append(str(c.get("digits") or ""))   # v0.663 every figure the tool returned, not only its first 300 chars
+        parts.append(str(c.get("digits") or ""))   # v0.664 every figure the tool returned, not only its first 300 chars
         parts.append(str(c.get("error") or ""))
     return "\n".join(parts)
 

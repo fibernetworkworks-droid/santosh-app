@@ -762,10 +762,10 @@ def test_no_config_reads_in_graph_module():
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.662.0"
-    assert "0.662.0+668" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.666.0"
+    assert "0.666.0+672" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.662.0"')
+    assert line.startswith('APP_VERSION = "0.666.0"')
     # story pin moved to the newest story (the newest-story precedent; the P3
     # markers live in the Previous chain and git history)
     # the P6 story pins moved to the P7 suite (the newest-story precedent;

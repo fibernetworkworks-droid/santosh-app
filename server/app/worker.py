@@ -178,7 +178,7 @@ async def pump_simulated_statuses() -> None:
 
 
 def _home_conv(s, tenant: str, conv: str) -> str:
-    """v0.665 the chat a reminder / routine / briefing should speak in: its own, unless that chat was deleted or is a
+    """v0.666 the chat a reminder / routine / briefing should speak in: its own, unless that chat was deleted or is a
     call record - then the chat she is in now (never '' when she has any chat)."""
     from .db import Conversation
     c = s.get(Conversation, conv) if conv else None
@@ -205,14 +205,14 @@ async def fire_reminders() -> None:
         due = [(r.id, r.tenant_id, r.conversation_id, r.text, r.due_at) for r in due]
     touched: dict[str, str] = {}
     for rid, tenant, conv, text, due_at in due:
-        # v0.664 the reminder is ADVANCED (committed) first and said after: a crash between saying and saving used to
+        # v0.665 the reminder is ADVANCED (committed) first and said after: a crash between saying and saving used to
         # say it again on the next tick. The advance is a claim on exactly this due time, so two ticks never both say it.
         tz = life.tz_of(tenant)
         with session() as s:
             r = s.get(Reminder, rid)
             if r is None or r.status != "active" or r.due_at != due_at:
                 continue
-            home = _home_conv(s, tenant, conv)    # v0.665 a deleted chat / a call record -> the chat she is in
+            home = _home_conv(s, tenant, conv)    # v0.666 a deleted chat / a call record -> the chat she is in
             if home and home != conv:
                 r.conversation_id = conv = home
             anchor = r.anchor_day or life.anchor_of(r.due_at, r.repeat, tz)
@@ -255,7 +255,7 @@ def _late_by(due_at) -> float:
 
 
 def _tz(life, tenant: str):
-    """v0.664 her time zone as a ZoneInfo. life.tz_of ALREADY returns one, and ZoneInfo(ZoneInfo) raises TypeError -
+    """v0.665 her time zone as a ZoneInfo. life.tz_of ALREADY returns one, and ZoneInfo(ZoneInfo) raises TypeError -
     swallowed, so v0.662's quiet-hours check was always False (a late reminder still rang her at 3 am) and the late
     line always said 'pehle' instead of the time."""
     from zoneinfo import ZoneInfo
@@ -327,7 +327,7 @@ async def morning_briefings() -> None:
                 continue
             p = s.get(Profile, tenant)
             p.last_briefing_date = today   # mark first, so a slow weather call never sends it twice
-            home = _home_conv(s, tenant, conv)   # v0.665 a deleted chat / a call record -> the chat she is in
+            home = _home_conv(s, tenant, conv)   # v0.666 a deleted chat / a call record -> the chat she is in
             if home != conv:
                 p.briefing_conversation_id = conv = home
         text = await life.compose_briefing(tenant)
@@ -350,7 +350,7 @@ async def run_routines() -> None:
         jobs = []
         for r in due:
             tz = life.tz_of(r.tenant_id)
-            r.anchor_day = r.anchor_day or life.anchor_of(r.next_run, r.repeat, tz)   # v0.665 the 31st stays the 31st
+            r.anchor_day = r.anchor_day or life.anchor_of(r.next_run, r.repeat, tz)   # v0.666 the 31st stays the 31st
             nxt = life.next_due(r.next_run, r.repeat, tz, r.anchor_day)
             while nxt is not None and nxt <= now():   # after downtime run once, not once per missed slot
                 nxt = life.next_due(nxt, r.repeat, tz, r.anchor_day)
@@ -361,7 +361,7 @@ async def run_routines() -> None:
             else:
                 r.next_run = nxt
             if s.get(Conversation, r.conversation_id):
-                # v0.665 a routine in a chat she deleted (or a call record) kept spending model calls into a chat she
+                # v0.666 a routine in a chat she deleted (or a call record) kept spending model calls into a chat she
                 # can never see: it moves to the chat she is in, once, and keeps running there
                 home = _home_conv(s, r.tenant_id, r.conversation_id)
                 if home and home != r.conversation_id:
@@ -376,7 +376,7 @@ async def run_routines() -> None:
             import time as _time
             t0 = _time.time()
             try:
-                # v0.664 the routine rides the turn inbox: a restart mid-run re-runs it (as a routine) instead of the
+                # v0.665 the routine rides the turn inbox: a restart mid-run re-runs it (as a routine) instead of the
                 # slot being spent and the result silently lost
                 from . import turn_inbox as _ti
                 ti_id = await asyncio.to_thread(_ti.accept, tenant, conv, prompt, False, "", "", "", "routine")

@@ -77,7 +77,7 @@ def mark(tenant: str, conv: str, source: str = "app") -> None:
         from .callconv import is_call
         if is_call(conv):
             return
-        from .bahar import chat_ids   # v0.665 nor an outside-channel chat
+        from .bahar import chat_ids   # v0.666 nor an outside-channel chat
         if conv in chat_ids(tenant):
             return
     except Exception:
@@ -102,7 +102,7 @@ def current(tenant: str) -> str:
     """The chat she is in (last marked), else her newest chat, else ''. Never makes a new one."""
     if not tenant:
         return ""
-    try:   # v0.665 her WhatsApp / Telegram / Slack / Teams chats are never "the chat she is in"
+    try:   # v0.666 her WhatsApp / Telegram / Slack / Teams chats are never "the chat she is in"
         from .bahar import chat_ids
         outside = chat_ids(tenant)
     except Exception:   # noqa: BLE001

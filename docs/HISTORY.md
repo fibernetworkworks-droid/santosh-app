@@ -22213,7 +22213,37 @@ real facts; no live memory quiz has been run on this version.
 Tests `test_v0662_kaam_saaf.py` 19 (17 fail on the old code); 320 older suites pass. NOT VERIFIED live: the Google
 backoff against her real dead sign-in, the late-reminder wording on a real restart.
 
-## v0.663.0 SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5")
+
+## v0.663.0 STUDIO JAANCH — every Web Studio section checked end to end
+
+v0.663.0 STUDIO JAANCH (owner: "go to every section of web studio in hoola web console check every section is fuctional or not end to end"): every Web Studio section walked in a real browser (home, all websites, search, starred, templates, Build + Plan, three looks, chat, preview + edit mode, Code, Cloud, Integrations, Health, Settings, History, Publish, project menu) and what did not work is fixed - Code > Download ZIP / React + Vite now saves the zip to her computer (new GET /api/sites/{ref}/download, `service.export_bytes`; before it only filed it in her Hoola files); Publish > Connect your domain now DRAWS the DNS records it made (they only went to the chat), with 'Haan, add them for me' (her tap with the plan's hash), 'I've added them · check' (three public resolvers) and Undo; Publish no longer gets a 404 for every site without an old site (/moves?quiet=1); History marks the version that is really live after a restore; Health no longer opens with ': 30 din' for an unnamed site.
+
+**How it was checked:** a real Chromium walk on a fake-AI server (the v0.649 fixtures): home, All websites, Search, Starred,
+Templates, Build -> three looks -> pick -> built site, preview on computer / tablet / phone, Select (edit mode) + Undo, Code
+(35 files, open + save as a version, both downloads), Cloud, Integrations (Add -> the site chat), Health, Settings (save details
+-> the blanks refilled -> v3), History, Publish (check -> Haan, live karo -> live on the free address), Connect domain (direct
+mode), DNS check, Restore an older version, Take down, the project menu and the site chat; every page error and every API
+answer >= 400 logged per section. All 45 API calls the Studio makes were matched against the server's routes (all exist).
+
+**Found and fixed:** (1) Download ZIP / React + Vite only filed the zip in her Hoola files - `service.export_bytes` + GET
+`/api/sites/{ref}/download?format=zip|react` (attachment), the Studio saves the blob; the chat's POST /export is unchanged.
+(2) Connect your domain made the DNS plan but the Studio never drew it - `dnsCard(host)` from `hosting.status().dns`: the
+records (Add / Change / Remove, type, name, value), risks / errors, "Haan, add them for me" (POST /api/sites-dns/{id}/apply
+with the plan hash, a confirm first) when Hoola can apply, "I've added them · check" (GET /check, seen-by-all-three per
+record) and Undo for an applied plan. (3) GET /moves 404'd for every site without an old site on every Publish open -
+`?quiet=1` answers {"none": true}; the plain route still 404s. (4) History marked the newest version as current after a
+restore - the live version (hosts' live_version) gets a Live pill and Restore is offered on the others. (5) care.report's say
+began ": 30 din" for an unnamed site - falls back to the site number.
+
+**Checked and working as it was:** plan mode + revise + Build this plan (v0.649 walk), looks + devices, edit mode, code save,
+cloud lists, integrations asks, settings save (it rewrites the sections whose blanks it fills, so it takes a while - in the
+background on the server), launch card + go live, rollback, takedown, project menu, search / starred.
+
+**Not changed, said plainly:** server messages (toasts like "Save ho gaya", "Live!") are still Hinglish inside the English
+Studio; the site chat could not be tested for real answers here (no model key in the sandbox, the turn answers 401).
+Tests: `server/tests/test_v0663_studio_jaanch.py` (3: routes + zips + quiet moves + care name, JS markers, a browser walk of
+every section).
+## v0.664.0 SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5"; built as 0.663 - their STUDIO JAANCH took 0.663.0 while it sat on the branch, REBASE PROTOCOL, both kept)
 
 The second deep audit (4 parallel read-only passes: task loop, hallucination / honesty, consistency / persistence,
 smoothness) found 37 flaws; this wave fixes the 14 where Hoola could tell her something untrue.
@@ -22262,7 +22292,7 @@ call's tool records now have the real shape), test_v0226 (its scripted "Excel ba
 claim), test_v0220 (the fake call names its chat). NOT VERIFIED live. Not done in this wave (said plainly): the after-reply
 figure check still runs only on her own turns, not on background reports.
 
-## v0.664.0 KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6")
+## v0.665.0 KAAM EK BAAR — Wave 6 of the second deep audit: work never done twice, never lost (owner: "GO WAVE 6"; built as 0.664)
 
 15. **Late-reminder quiet hours really work.** `worker._tz`: `life.tz_of` already returns a ZoneInfo and `ZoneInfo(ZoneInfo)`
     raised a swallowed TypeError, so v0.662's night check was always False (a late reminder still rang at 3 am) and the
@@ -22284,9 +22314,9 @@ figure check still runs only on her own turns, not on background reports.
 23. **A reminder is advanced (a conditional UPDATE on exactly its due time) before it is said**: a crash between saying
     and saving no longer says it twice, and two ticks can never both say it.
 
-Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the v0.663 code). NOT VERIFIED live.
+Tests: NEW `test_v0664_kaam_ek_baar.py` (10; all 10 fail on the SACH KA HISAAB code). NOT VERIFIED live.
 
-## v0.665.0 SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7")
+## v0.666.0 SAHI JAGAH — Wave 7 of the second deep audit: every thing in its right place (owner: "GO WAVE 7"; built as 0.665)
 
 24. **An outside-channel chat is never "the chat she is in".** `bahar._turn` no longer marks it; `convs.mark` refuses a
     channel chat and `convs.current` skips it (`bahar.chat_ids`). One Telegram message used to send every mail alert,
