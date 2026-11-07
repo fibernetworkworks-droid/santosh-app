@@ -21953,3 +21953,13 @@ Built:
 
 Tests `test_v0650_jawab_mil_gaya.py` 6 (+ the v0.644 memory pin stubs the newer parts). 66 / 66 in the call / card / memory
 suites. NOT VERIFIED on a real call.
+
+
+## v0.652.0 STUDIO BAR SEEDHA - the Web Studio ask row stays one line
+
+Her screenshot: pressing Plan on the Studio home moved the send button down. The mode note under the ask box grew from
+'Build: 3 full looks first' to 'Plan: Hoola asks and writes a plan for you to check', the row had flex-wrap, so at ~1240 px
+the Build | Plan switch and the send button wrapped onto a second line (measured 42 px). Now `.ask .bar` never wraps on a
+computer, the note shrinks with an ellipsis (`.mnote`), the Plan note is as short as the Build one, and on a phone the row may
+wrap with the note hidden. `test_v0649_web_studio.py` holds the send button's position and the box height still when Build
+and Plan are pressed at 1240 and 1440 px (it fails on the old code).

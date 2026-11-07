@@ -28,7 +28,7 @@ CONSOLE = Path(__file__).resolve().parents[1] / "app" / "static" / "console"
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.651.0"
+    assert APP_VERSION == "0.652.0"
 
 
 def test_studio_is_its_own_app():
@@ -153,6 +153,15 @@ def test_studio_in_a_real_browser(arena_server, arch_env, monkeypatch):
         return [s.outlineStyle, s.borderTopWidth, getComputedStyle(t.closest('.ask')).boxShadow]; }""")
     assert st[0] == "none" and st[1] == "0px" and st[2] != "none", st
     _no_overlap(page, "studio home")
+    # v0.651 her screenshot: pressing Plan dropped the send button to a new line - the row must not move
+    pos = lambda: page.evaluate("JSON.stringify([document.querySelector('#ws .go').getBoundingClientRect().top, document.querySelector('#ws .ask').getBoundingClientRect().height])")
+    for width in (1240, 1440):
+        page.set_viewport_size({"width": width, "height": 900})
+        before = pos()
+        page.click("#ws [data-mode='plan']")
+        assert pos() == before, (width, before, pos())
+        page.click("#ws [data-mode='build']")
+        assert pos() == before, width
     if shots:
         page.screenshot(path=f"{shots}/studio-home.png", full_page=True)
     # Build mode: one line -> the site's workspace -> three complete looks

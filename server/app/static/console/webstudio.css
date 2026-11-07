@@ -69,6 +69,9 @@ button,input,textarea,select{font:inherit;color:inherit}
 .ask:focus-within{border-color:var(--pri-ring);box-shadow:var(--sh),0 0 0 4px var(--pri-soft)}
 .ask textarea,.ask textarea:focus,.ask textarea:focus-visible{border:0;outline:none;box-shadow:none;resize:none;font-size:16px;line-height:1.55;min-height:80px;max-height:260px;background:transparent;padding:0;color:var(--ink)}
 .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+/* v0.651 the ask row stays ONE line whatever the mode note says (Plan's longer note wrapped it and dropped the button) */
+.ask .bar{flex-wrap:nowrap}.ask .bar>.b,.ask .bar>.seg,.ask .bar>.go{flex:none}
+.ask .bar .mnote{flex:1 1 0;min-width:0;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .go{width:40px;height:40px;border-radius:50%;background:var(--pri);color:var(--on-pri);border:0;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:none}
 .go:hover{background:var(--pri-h)}.go:disabled{opacity:.6;cursor:default}
 .chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;max-width:800px}
@@ -200,6 +203,7 @@ dialog.dlg form{display:flex;flex-direction:column;gap:12px}
   .home{flex-direction:column}.side{width:auto;height:auto;position:static;flex-direction:row;flex-wrap:wrap;align-items:center}
   .side .lbl,.side .rec{display:none}.brand{padding:4px 8px}.new{margin:0}
   .hmain{padding:28px 16px}.hero h1{font-size:27px}
+  .ask .bar{flex-wrap:wrap}.ask .bar .mnote{display:none}.ask .bar>.b{padding:0 8px}
   .body{flex-direction:column}.chat{width:auto;border-right:0;border-bottom:1px solid var(--line);max-height:46vh}
   .pname{max-width:150px}.top .b span{display:none}.subnav{width:150px}
 }
