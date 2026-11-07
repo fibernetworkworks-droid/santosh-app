@@ -1846,3 +1846,11 @@ Task: her 17:59 call log showed a 2.1 s event-loop freeze in aftersales.due duri
 Work Log: traced due() -> aftersales.prompt_block -> prompts.system_prompt; moved context_block + both _system builds in
 santosh._run_turn to asyncio.to_thread; 1 test; version ritual 0.645.0+651.
 Stage Summary: system prompt no longer built on the event loop. Next: her next call log.
+
+---
+Task ID: SAVE THE STATE v0.645.0 (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner "SAVE THE STATE PERFECT NOW" after the call-speed work.
+Work Log: healthz read 0.645.0 = main 4e6ff005; markers + 71 tests re-run in a git archive of that commit; branch
+stable-2026-11-07-voice-v645 pushed at 4e6ff005; CLAUDE.md checkpoint entry; APK v0.645.0-b1861.
+Stage Summary: rollback point saved. Two older website test reds noted (also red at v0.629).
