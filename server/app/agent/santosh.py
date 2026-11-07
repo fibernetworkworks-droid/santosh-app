@@ -403,7 +403,9 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 
 
 # v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
-RESULT_LIMIT = {"research_run": 40000}
+RESULT_LIMIT = {"research_run": 40000,
+                # wave 10: a crew's deliverables ARE the evidence of the job: at 6,000 the list-slimming cut agents 4+
+                "deploy_agents": 24000, "agent_status": 24000}
 
 
 _FAIL_STATUS = {"failed", "failure", "error", "refused"}
@@ -2360,6 +2362,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             from . import goal as _g
             if settings.agent_goal and _g.held_for_limit(conversation_id) and _g.wants_continue(user_text):
                 _g.reopen(tenant_id, conversation_id)
+            elif settings.agent_goal and _hers and str(user_text or "").strip():
+                _g.resume_on_answer(tenant_id, conversation_id, user_text)   # wave 10: her answer to a job that asked her
         except Exception:
             log.exception("goal reopen failed")
     if who == "owner" and save_user and getattr(settings, "kaam_stop_words", True):

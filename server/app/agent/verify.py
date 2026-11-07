@@ -171,6 +171,36 @@ def _new(at) -> bool:
     return a >= b - _td(seconds=90)
 
 
+def _ran_in_job(conv: str, tool: str) -> bool:
+    """wave 10: did `tool` finish ok in this chat since the job began (SINCE)? The harness log holds every round."""
+    since = SINCE.get()
+    if not conv or since is None:
+        return False
+    try:
+        import json as _json
+
+        from sqlalchemy import select
+
+        from ..db import session
+        from .eventlog import HarnessEvent, ensure_table
+        ensure_table()
+        with session() as s:
+            rows = s.scalars(select(HarnessEvent).where(HarnessEvent.conversation_id == conv,
+                                                        HarnessEvent.kind == "tool_result")).all()
+            for r in rows:
+                if not _new(r.created_at):
+                    continue
+                try:
+                    p = _json.loads(r.payload or "{}")
+                except ValueError:
+                    continue
+                if p.get("ok") and str(p.get("tool") or "") == tool:
+                    return True
+    except Exception:   # noqa: BLE001
+        log.debug("job tool lookup failed", exc_info=True)
+    return False
+
+
 def _delivered(tenant: str) -> list[tuple[str, str]]:
     from sqlalchemy import select
 
@@ -230,7 +260,11 @@ def check_made(tenant: str, made: list[str] | None) -> list[dict[str, Any]]:
 
 
 # ---------------------------------------------------------------- what a plan step demands
-def _file_info(tenant: str, hint: str) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+_FITS = {"file_pages": ("pdf", "docx", "doc", "pptx"), "file_rows": ("xlsx", "xls", "csv", "tsv"),
+         "file_slides": ("pptx", "ppt", "pdf")}
+
+
+def _file_info(tenant: str, hint: str, check: str = "") -> tuple[dict[str, Any] | None, dict[str, Any]]:
     """The file a step points at (by id, link or name; else the newest delivered one) + what is inside it."""
     from ..quality.longcard import read_file           # the long card's reader: pypdf / openpyxl / docx / pptx
     fid = _PC_LINK.search(hint or "") or _FILE_ID.search(hint or "")
@@ -245,7 +279,11 @@ def _file_info(tenant: str, hint: str) -> tuple[dict[str, Any] | None, dict[str,
             want = fn.group(0).lower()
             pick = next((x for x in names if want in x[0].lower()), None)
         if pick is None and names:
-            pick = names[-1]
+            # wave 10: no file named - the newest file of the KIND this check reads (a page count is a PDF / Word file,
+            # a row count a sheet); the newest file of any kind made a PDF step read the later Excel and fail
+            fits = _FITS.get(check)
+            typed = [x for x in names if fits and x[0].rsplit(".", 1)[-1].lower() in fits]
+            pick = (typed or names)[-1]
         if pick is None:
             return None, {"ok": False, "why": "koi file nahi mili"}
         name, path = pick
@@ -270,6 +308,10 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
     where = f"step {step.get('n')} ({str(step.get('text') or '')[:40]})"
     if kind == "tool":
         hit = [c for c in (calls or []) if c.get("ok") and str(c.get("tool") or "") == arg]
+        if not hit and _ran_in_job(conv, arg):
+            # wave 10: `calls` is THIS round only - a mail sent in round 2 failed the round-4 finish, the step reopened
+            # and the model was told to really do it (a second mail); the whole job's harness log is asked as well
+            return _ok(where, f"{arg} is kaam mein pehle chala tha")
         return _ok(where, f"{arg} chala") if hit else _bad(where, f"{arg} is kaam mein chala hi nahi")
     if kind == "link_ok":
         url = _URL.search(note)
@@ -311,7 +353,7 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
                 else _bad(where, f"list mein sirf {len(rows)} items, {want} chahiye the"))
     # the file family
     hint = (arg + " " + note) if kind == "file" else note
-    f, info = _file_info(tenant, hint)
+    f, info = _file_info(tenant, hint, kind)
     if f is None or not info.get("ok"):
         return _bad(where, str(info.get("why") or "file nahi mili"))
     if kind == "file":

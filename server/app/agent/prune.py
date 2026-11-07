@@ -21,6 +21,7 @@ the next turn reloads them from the DB fresh. Nothing is lost; the model just st
 from __future__ import annotations
 
 import os
+import re
 
 MARK = "\n[…beech ka hissa hata diya gaya hai; poora natija pehle hi padh liya gaya tha…]\n"
 
@@ -44,6 +45,27 @@ CLEAR_TRIGGER = _env_int("PRUNE_CLEAR_TRIGGER_CHARS", 40000)
 CLEAR_KEEP = _env_int("PRUNE_CLEAR_KEEP_STEPS", 3)
 CLEAR_BATCH = _env_int("PRUNE_CLEAR_BATCH_STEPS", 4)
 CLEARED = "[Purana tool natija hata diya gaya ({tool}, {n} chars) - jo kaam ka tha woh upar jawab mein aa chuka; zaroorat ho to tool dobara chalao]"
+# wave 10: a cleared result keeps what a long job needs later - its head, every link / id and every figure. The bare marker
+# above threw away the supplier pages of steps 2-8 before the Excel step: the model fetched them all again or invented
+# the numbers (a 200-char step note was all that remained).
+CLEARED_KEEP = ("[Purana tool natija chhota kiya gaya ({tool}, {n} chars) - neeche iska saar, links / ids aur saare figures "
+                "hain; poora chahiye to tool dobara chalao]\n{gist}")
+_LINK = re.compile(r"https?://[^\s\"'<>)\]]+|\b[a-z]{2,6}_[A-Za-z0-9]{6,}\b")
+_FIG = re.compile(r"(?:rs\.?|₹|inr|\$)?\s?\d[\d,]*(?:\.\d+)?\s?(?:%|lakh|crore|k\b)?", re.I)
+
+
+def _gist(text: str) -> str:
+    """Head (900 chars) + every link / id + the figures, capped ~2,000 chars in all."""
+    t = str(text or "")
+    links = list(dict.fromkeys(_LINK.findall(t)))[:30]
+    figs = [f.strip() for f in _FIG.findall(t[900:]) if any(ch.isdigit() for ch in f) and len(f.strip()) >= 3]
+    figs = list(dict.fromkeys(figs))[:60]
+    out = t[:900]
+    if links:
+        out += "\nLinks / ids: " + " ".join(links)
+    if figs:
+        out += "\nAur figures: " + ", ".join(figs)
+    return out[:2000]
 
 
 def _trim(text: str) -> str:
@@ -91,10 +113,14 @@ def clear_old(history: list[dict]) -> list[dict]:
     for i in clear:
         blocks, changed = [], False
         for b in history[i]["content"]:
-            if isinstance(b, dict) and b.get("type") == "tool_result" and not str(b.get("content") or "").startswith("[Purana tool natija"):
+            if isinstance(b, dict) and b.get("type") == "tool_result" and not str(b.get("content") or "").startswith("[Purana tool natija"):  # (both forms)
                 n = _size(b.get("content"))
-                if n > 200:
-                    blocks.append({**b, "content": CLEARED.format(tool=names.get(str(b.get("tool_use_id")), "tool"), n=n)})
+                if n > 2400:
+                    raw = b.get("content")
+                    txt = raw if isinstance(raw, str) else " ".join(str(x.get("text") or "") for x in raw or []
+                                                                  if isinstance(x, dict))
+                    blocks.append({**b, "content": CLEARED_KEEP.format(tool=names.get(str(b.get("tool_use_id")), "tool"),
+                                                                       n=n, gist=_gist(txt))})
                     STATS["cleared"] += 1
                     STATS["chars_saved"] += n
                     changed = True

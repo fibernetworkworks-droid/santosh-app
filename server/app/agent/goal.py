@@ -77,6 +77,9 @@ class GoalRun(Base):
     hold: Mapped[str | None] = mapped_column(String(16), nullable=True)        # v0.223 "limit" = waiting for her "aage badho"
     report: Mapped[str | None] = mapped_column(Text, nullable=True)            # v0.228 the four-part final report (JSON)
     milestones: Mapped[int | None] = mapped_column(Integer, nullable=True)     # v0.228 milestone pushes sent for this job
+    # wave 10: when the CURRENT minutes budget began. "Haan aage badho" used to reset started_at itself - and started_at
+    # is also "what this job made" for the done-check, so a file made before her yes no longer counted and was rebuilt
+    budget_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
 
 
@@ -375,10 +378,22 @@ def active_for(conv: str) -> dict[str, Any] | None:
     """The working goal of this conversation, or None. `goal is on` for the turn = this returns a row."""
     if conv in _STOPPED:
         return None
+    from datetime import timedelta
     with session() as s:
         r = s.scalars(select(GoalRun).where(GoalRun.conversation_id == conv, GoalRun.status == "working")
                       .order_by(GoalRun.updated_at.desc())).first()
-        return _row_view(r) if r is not None else None
+        if r is None:
+            return None
+        # wave 10: a job that has waited (paused on a card she never answered) longer than resume_hours is put to rest:
+        # it stayed "working" for days, so every later turn in the chat got its GOAL block and a plain answer to an
+        # unrelated question was pushed back to work up to 8 times
+        hours = max(1, int(getattr(get_settings(), "agent_goal_resume_hours", 24) or 24))
+        upd = _aware(r.updated_at)
+        if r.paused_at is not None and upd is not None and upd < now() - timedelta(hours=hours):
+            r.status, r.reason = "blocked", "Kaafi der se ruka tha (aapke jawab ka intezaar) - aaram par rakha gaya"
+            STATS["stale_rested"] = STATS.get("stale_rested", 0) + 1
+            return None
+        return _row_view(r)
 
 
 def started_at(goal_id: str) -> datetime | None:
@@ -507,12 +522,22 @@ def _waiting_on_her(conv: str) -> bool:
     try:
         from ..events import needs_her, card_key
         from ..db import Event
+        # wave 10: the newest 40 events used to be all it read - every step / work / message event is a stored row, so a
+        # "Bhejun?" card shown at step 30 fell out of the window after ten more tool calls and background rounds ran on
+        # past her un-tapped card. The step / work / message chatter is skipped and 600 rows are read; a goal card of
+        # an OLDER goal no longer holds this one.
+        cur = active_for(conv)
+        cur_id = (cur or {}).get("id")
         with session() as s:
-            rows = s.scalars(select(Event).where(Event.conversation_id == conv)
-                             .order_by(Event.id.desc()).limit(40)).all()
+            rows = s.scalars(select(Event).where(Event.conversation_id == conv,
+                                                 Event.kind.not_in(("step", "work", "message", "typing", "think",
+                                                                    "procedure", "reminders", "routines")))
+                             .order_by(Event.id.desc()).limit(600)).all()
         seen: set[str] = set()
         for e in rows:
             p = e.payload if isinstance(e.payload, dict) else {}
+            if e.kind == "goal" and cur_id and str(p.get("id") or "") not in ("", str(cur_id)):
+                continue
             k = card_key(e.kind, p, e.id)
             if k in seen:
                 continue
@@ -572,7 +597,7 @@ def maybe_continue(conv: str, tenant: str, actor: str = "owner") -> bool:
 
 def _working_minutes(r: GoalRun) -> float:
     """v0.221 minutes the goal really worked: time spent waiting on her (paused) never counts."""
-    total = (now() - (_aware(r.started_at) or now())).total_seconds()
+    total = (now() - (_aware(getattr(r, "budget_at", None)) or _aware(r.started_at) or now())).total_seconds()
     waited = int(r.paused_s or 0)
     if r.paused_at is not None:
         waited += max(0, int((now() - _aware(r.paused_at)).total_seconds()))
@@ -589,6 +614,11 @@ def _pause(goal_id: str) -> None:
 
 def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -> bool:
     st = get_settings()
+    if _PENDING.get(view["id"]):
+        # wave 10: a round of this job is already queued (her message mid-job ran its own turn, which scheduled again):
+        # two rounds ran back to back, the second from a stale step list, each spending one of the rounds
+        STATS["already_queued"] = STATS.get("already_queued", 0) + 1
+        return True
     rounds, mins, who = 0, 0.0, "routine"
     with session() as s:               # bookkeeping txn closes BEFORE finish() opens its own (SQLite one writer)
         r = s.get(GoalRun, view["id"])
@@ -672,6 +702,11 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
         if v0 is None or v0["id"] != goal_id or not steps_left(v0):
             return                         # v0.223 finished / stopped / replaced while this round waited: nothing to do
         from .santosh import run_turn, LAST_OUTCOME
+        # wave 10: the step list is read NOW (her own turn may have finished some while this round waited for the chat)
+        left0 = steps_left(v0)
+        ask = (f"[Goal jaari: {v0['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left0[:8])
+               + ". Aage badho, har step kaam_plan se likho, poora hone par finish done.]") \
+            if (left0 and ask.startswith("[Goal jaari:") and "Owner ne kaha" not in ask) else ask
         out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
         v = active_for(conv)
         if v is not None and v.get("id") == goal_id and steps_left(v):
@@ -714,6 +749,38 @@ def held_for_limit(conv: str) -> dict[str, Any] | None:
         return _row_view(r)
 
 
+def waiting_for_answer(conv: str) -> dict[str, Any] | None:
+    """wave 10: the newest goal of this chat when it stopped to wait for HER (finish blocked_on_her: a GST number, a
+    choice, a fact only she knows) - not a limit hold - and it is fresh (resume_hours)."""
+    from datetime import timedelta
+    with session() as s:
+        r = s.scalars(select(GoalRun).where(GoalRun.conversation_id == conv)
+                      .order_by(GoalRun.updated_at.desc())).first()
+        if r is None or r.status != "blocked" or r.hold == LIMIT:
+            return None
+        hours = max(1, int(getattr(get_settings(), "agent_goal_resume_hours", 24) or 24))
+        upd = _aware(r.updated_at)
+        if upd is None or upd < now() - timedelta(hours=hours):
+            return None
+        return _row_view(r)
+
+
+def resume_on_answer(tenant: str, conv: str, words: str) -> dict[str, Any] | None:
+    """wave 10: her reply to a job that stopped to ask her puts the SAME job back to work (it stayed `blocked` for ever:
+    active_for / resume_tick / recover_tick only see `working`, so the next turn had no GOAL block and either half-did it
+    from the chat or set a new plan and redid steps 1-3). The budget is left as it was."""
+    view = waiting_for_answer(conv)
+    if view is None:
+        return None
+    _STOPPED.discard(conv)
+
+    def fn(r: GoalRun):
+        r.status, r.reason, r.paused_at = "working", ("Uska jawab: " + str(words or ""))[:400], None
+    out = _mutate(tenant, view["id"], fn)
+    STATS["answered_resumed"] = STATS.get("answered_resumed", 0) + 1
+    return out
+
+
 CONTINUE_WORDS = ("aage badh", "aage badho", "aage chalo", "continue", "jaari rakho", "chalu rakho", "karte raho",
                   "poora karo", "khatam karo", "aage karo", "keep going", "go on", "आगे बढ़", "जारी रखो")
 
@@ -741,7 +808,7 @@ def reopen(tenant: str, conv: str) -> dict[str, Any] | None:
 
     def fn(r: GoalRun):
         r.status, r.hold, r.reason = "working", None, ""
-        r.rounds, r.started_at, r.paused_at, r.paused_s = 1, now(), None, 0
+        r.rounds, r.budget_at, r.paused_at, r.paused_s = 1, now(), None, 0   # wave 10: started_at stays the job's start
     out = _mutate(tenant, view["id"], fn)
     STATS["limit_reopened"] += 1
     return out

@@ -474,7 +474,9 @@ async def agent_status(ctx, action: str = "check", id: str = "", **_) -> dict:
             spec = {}
         out.append({"id": r.id, "mission": _clip(r.mission, 120), "status": r.status,
                     "agents": [_clip(a.get("name"), 30) for a in spec.get("agents", [])][:6],
-                    "deliverables": (_clip(r.result, 1500) if r.status in ("done", "failed", "stopped") else ""),
+                    # wave 10: one team asked for by id gets its deliverables WHOLE (newlines kept); the list stays short
+                    "deliverables": ((str(r.result or "")[:24000] if id else _clip(r.result, 1500))
+                                     if r.status in ("done", "failed", "stopped") else ""),
                     "error": _clip(r.error, 200) if r.status == "failed" else "",
                     "updated": (_aware(r.updated_at) or now()).isoformat()})
     return {"teams": out,
@@ -560,7 +562,9 @@ async def run_background(team_id: str) -> None:
         log.exception("background team %s failed", team_id)
     _RUNNING.discard(team_id)
     final_status = "failed" if err else "done"
-    digest = _digest(results)
+    # wave 10: each agent's deliverable keeps its share of 24k chars (it was 340 chars per agent, 1,500 in all, and a
+    # 5-supplier price table came back as fragments for the comparison step)
+    digest = _digest(results, per=max(600, 24000 // max(1, len(results))))
     with session() as s:
         r = s.get(AgentTeam, team_id)
         if r is None:
@@ -568,7 +572,7 @@ async def run_background(team_id: str) -> None:
         if r.status == "stopped":
             return                      # owner Rokiye'd it mid-flight: the stopped event already went out
         r.status = final_status
-        r.result = digest[:8000]
+        r.result = digest[:24000]
         r.error = err
         r.updated_at = now()
     _evlog.log_event(tenant, conv, "team_synthesized",

@@ -2207,3 +2207,11 @@ Work: v0.681.0 TURANT - per-tenant coder work lists + tenant-filtered batch rout
 SAB HAIKU on streams + real-model metering, studio stream counted, research in-flight price held, operator-only
 recharge line, one-model fallback bypass + quiet wake failures, staff failures honest, minute out of the cached prompt.
 19 new tests. Not verified live. Waves 10-13 wait for her GO.
+
+---
+Task ID: v0681-lamba-kaam (wave 10, same release)
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: owner "GO WAVE 10" = third audit items 10-19 (long tasks end to end).
+Work: gist instead of bare clear, crew shares, budget_at, job-wide tool check, resume on her answer, waiting-on-her
+window, one queued round, file-kind match, stale goals rested, silent failures told. 11 new tests.

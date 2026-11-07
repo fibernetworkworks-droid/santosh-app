@@ -22609,3 +22609,32 @@ reliability + feeling) found 47 flaws in 5 waves; this wave is the urgent nine.
 
 Tests: NEW `test_v0681_turant.py` (19; all 19 fail on the old code). NOT VERIFIED live: the cache-read share on a real
 bill, a real overload fallback, a real campaign send.
+
+## v0.681.0 (cont.) LAMBA KAAM — Wave 10 of the third deep audit: a long task finished properly (owner: "GO WAVE 10")
+
+10. **A cleared old tool result keeps the facts.** `prune.clear_old` replaced every old result past 40k chars with a bare
+    "run the tool again" line - a 5-supplier job lost steps 2-8 before its Excel step. It now keeps a ~2,000-char gist
+    (`_gist`: the head, every link / id, every figure), and only results over 2,400 chars are cleared.
+11. **Crew deliverables keep their share.** `RESULT_LIMIT` deploy_agents / agent_status 24,000 (list-slimming at 6,000
+    cut agents 4+ of an inline crew); a background crew stores 24,000 chars split across its agents (was 340 per agent,
+    1,500 in all) and `agent_status id=` returns them whole.
+12. **"Haan aage badho" moves only the budget.** New `GoalRun.budget_at` is the minutes budget's start; `reopen` no
+    longer resets `started_at`, which is also what the done-check counts as "made in this job" (a file made before her
+    yes was rebuilt). My own Wave 5 gap.
+13. **A `tool:` check reads the whole job** (`verify._ran_in_job`: the harness log since the goal began) - a mail sent
+    in round 2 failed the round-4 finish and could be sent again.
+14. **Her answer resumes a job that stopped to ask her** (`goal.waiting_for_answer` / `resume_on_answer`, called on her
+    own turn): a `blocked_on_her` goal stayed blocked for ever (only `working` goals are ever picked up).
+15. **"Waiting on her" sees past the chatter.** `_waiting_on_her` skips step / work / message / typing rows and reads 600
+    (it read the newest 40 of everything, so a card at step 30 fell out after ten tool calls); an older goal's card no
+    longer holds a new goal.
+16. **One queued round at a time.** `_schedule` returns early while a round is pending (her message mid-job added a
+    second round from a stale step list); `_continuation` rebuilds the step list when it runs.
+17. **A page / row check reads a file of the right kind** (`verify._FITS`) when no file is named - a PDF step read the
+    later Excel and failed. (Files are tenant-wide: there is no conversation column on PcFile - not changed.)
+18. **A job paused longer than resume_hours is put to rest** in `active_for` (it took over every later reply).
+19. **Giving up is told.** A research run out of tries publishes `research_run failed` (the job board said "atka hai"
+    for days); a Dhara run that crashed, waited out its approval or used up its tries notifies her chat
+    (`dhara_tools._runs_tell`); a crawl out of tries notifies her current chat.
+
+Tests: NEW `test_v0682_lamba_kaam.py` (11). NOT VERIFIED live on a real long job.

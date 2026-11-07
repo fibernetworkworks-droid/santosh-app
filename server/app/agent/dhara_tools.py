@@ -514,6 +514,22 @@ def _save_checkpoint(tenant_id: str, run: dict) -> None:
                next_wake_at=run.get("next_wake_at"), pause_reason=run.get("pause_reason"))
 
 
+def _runs_tell(tenant_id: str, where: str, args: tuple, line: str) -> None:
+    """wave 10: tell her about runs a bulk UPDATE is about to fail (approval waited out, tries used up) - they used to go
+    'failed' in silence. `line` gets {name}."""
+    try:
+        con = _con(tenant_id)
+        try:
+            rows = con.execute("SELECT r.id, r.wf_name, w.conversation_id FROM runs r LEFT JOIN workflows w "
+                               "ON w.id = r.workflow_id WHERE " + where, args).fetchall()
+        finally:
+            con.close()
+        for rid, name, conv in rows:
+            _notify(conv or "", line.format(name=name or "workflow", run=rid))
+    except Exception:   # noqa: BLE001
+        pass
+
+
 def _notify(conv: str, text: str) -> None:
     try:
         from .. import events
@@ -681,6 +697,8 @@ async def execute_run(tenant_id: str, run_id: str) -> None:
     except Exception as e:  # the lane never breaks the worker
         try:
             update_run(tenant_id, run_id, status="failed", error=f"{type(e).__name__}: {e}"[:800])
+            _runs_tell(tenant_id, "r.id = ?", (run_id,),   # wave 10: a crashed run is told, never silent
+                       'DHARA "{name}" beech mein ruk gaya (andar ki galti) - run {run}. Dobara chalaun?')
         except Exception:
             pass
     finally:
@@ -873,6 +891,9 @@ async def tick() -> int:
                             (time.time(), time.time()))
                 # expire approvals that waited too long
                 cut = time.time() - int(getattr(s, "dhara_approval_hours", 24)) * 3600
+                _runs_tell(tenant, "r.status = 'waiting_approval' AND r.updated_at < ?", (cut,),
+                           'DHARA "{name}" ruk gaya: aapki haan ka intezaar bahut lamba ho gaya (run {run}). '
+                           'Chahein to dobara chalaiye.')
                 con.execute("UPDATE runs SET status = 'failed', pause_reason = 'approval_expired', "
                             "error = 'approval ka intezaar khatam (dhara_approval_hours paar)', updated_at = ? "
                             "WHERE status = 'waiting_approval' AND updated_at < ?", (time.time(), cut))
@@ -890,6 +911,8 @@ async def tick() -> int:
                     t.add_done_callback(lambda _t: _TASKS.discard(_t))
                     budget -= 1
                     started += 1
+            _runs_tell(tenant, "r.status = 'queued' AND r.tries >= ?", (int(tries_max),),
+                       'DHARA "{name}" kai baar koshish ke baad bhi nahi chala, isliye chhod diya (run {run}).')
             con = _con(tenant)
             try:
                 con.execute("UPDATE runs SET status = 'failed', error = 'tries poore (dhara_tries) — run chhoda gaya', "

@@ -185,10 +185,21 @@ def candidates(stale_before: datetime, per_tenant_running_max: int, tries_max: i
             if running.get(r.tenant_id, 0) < per_tenant_running_max:
                 running[r.tenant_id] = running.get(r.tenant_id, 0) + 1
                 out.append(r.id)
+        gave_up: list[tuple[str, str, str]] = []
         for r in s.scalars(select(ResearchRun).where(ResearchRun.status == "running")).all():   # out of tries: give up, say so
             u = aware(r.updated_at)
             if u is not None and u < stale_before and r.tries >= tries_max:
                 r.status, r.error, r.updated_at = "failed", "the run stopped moving and was restarted too many times", now()
+                gave_up.append((r.conversation_id or "", r.id, r.question or ""))
+    for conv, rid, q in gave_up:
+        # wave 10: the row went "failed" in silence - the job board kept it "working", so she got "atka lag raha hai" and
+        # later "2 din se band", never the real reason; the failure now reaches the job board (and her) at once
+        try:
+            from .runner import _publish
+            _publish(conv, rid, q, "failed", "Research beech mein ruk gaya aur kai baar dobara chalane par bhi aage nahi "
+                                            "badha - isliye band kar diya. Kahein to naye sire se shuru karun?")
+        except Exception:   # noqa: BLE001
+            pass
     return out
 
 

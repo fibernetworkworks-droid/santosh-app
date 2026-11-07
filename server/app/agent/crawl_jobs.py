@@ -232,10 +232,21 @@ def claim(tenant_id: str, job_id: str, tries_max: int) -> bool:
         con.commit()
         if cur.rowcount > 0:
             return True
-        con.execute("UPDATE crawl_jobs SET status = 'failed', error = ?, updated_at = ? "
-                    "WHERE id = ? AND status IN ('queued','running')",
-                    ("tries bhar gaye — site baar baar crawl nahi ho payi", time.time(), job_id))
+        cur2 = con.execute("UPDATE crawl_jobs SET status = 'failed', error = ?, updated_at = ? "
+                           "WHERE id = ? AND status IN ('queued','running')",
+                           ("tries bhar gaye — site baar baar crawl nahi ho payi", time.time(), job_id))
         con.commit()
+        if cur2.rowcount > 0:
+            # wave 10: a crawl that used up its tries went "failed" in silence - she learned it only by asking crawl_status
+            try:
+                row = con.execute("SELECT seed FROM crawl_jobs WHERE id = ?", (job_id,)).fetchone()
+                from .. import convs, events
+                conv = convs.current(tenant_id)
+                if conv:
+                    events.notify(conv, f"Crawl ({(row[0] if row else '')[:80]}) kai baar ki koshish ke baad bhi nahi "
+                                        f"ho paya, isliye band kar diya (job {job_id}).")
+            except Exception:   # noqa: BLE001
+                pass
         return False
     finally:
         con.close()
