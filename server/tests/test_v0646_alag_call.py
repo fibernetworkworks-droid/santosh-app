@@ -113,7 +113,8 @@ def test_brain_turn_reads_the_chat_and_chat_turn_reads_calls():
     from app.agent import santosh
     src = inspect.getsource(santosh._brain_memory)
     assert '("chat", lambda: _callconv.chat_block(conversation_id))' in src
-    assert "_callconv.recent_block, tenant_id, conversation_id" in inspect.getsource(santosh)
+    # v0.648: the chat reads recent calls through the diary's call section (the separate block was a duplicate)
+    assert "_callconv.recent_block, tenant_id, conversation_id" not in inspect.getsource(santosh)
 
 
 def test_no_notification_for_what_she_heard_on_a_call(env, monkeypatch):

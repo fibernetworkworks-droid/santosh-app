@@ -121,6 +121,10 @@ class _SantoshAppState extends State<SantoshApp> with WidgetsBindingObserver {
     _linkSub = _linkCh.receiveBroadcastStream().listen((token) async {
       final t = token?.toString() ?? '';
       if (t.isEmpty) return;
+      if (t.startsWith('conv:')) {   // v0.648 a call record's notification: open that call (the app still reopens on her chat)
+        unawaited(widget.app.openChat(t.substring(5), remember: false));
+        return;
+      }
       if (t.startsWith('wake:')) {
         widget.app.wake(locked: t == 'wake:locked');
         return;

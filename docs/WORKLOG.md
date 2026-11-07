@@ -1863,3 +1863,12 @@ Work Log: callconv module + Conversation columns; voice_ws split=1 mapping; dual
 memory blocks both ways; receipt summary; yaad notes keyed by chat; events forwarding of phone actions; push quiet on a
 live call; /api/calls; phone Calls sheet + split=1; console Calls group; 14 tests; merged their v0.646.0, re-versioned 0.647.0.
 Stage Summary: shipped server + phone; next = phone app-open heartbeat (chat pushes only when the app is closed).
+
+---
+Task ID: v0.648.0 KAAM KA HISAAB (7 Nov 2026)
+Agent: Claude (session 019P5N4aaNdxLca2Dui5D9om)
+Task: owner GO on the past/current work audit (work list on phone + console, call knows this week's work, call notification
+opens the call, no double call summaries).
+Work Log: kaamlist module + /api/kaam/list; brain memory part "kiya"; recent_block removed from chat turns; push open_conv +
+Kotlin intent + Dart link; phone Kaam sheet; console Today > Work; 8 tests.
+Stage Summary: shipped; live check pending on her phone.

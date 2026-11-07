@@ -21834,3 +21834,29 @@ voice / call / push / chat / memory / routines suites pass; the one red (`test_v
 fails the same way without this change (known, older).
 NOT VERIFIED: the Flutter half compiles first on CI; no real call yet. NOT BUILT YET (plan P3 phone half): the app-open
 heartbeat that silences chat-reply pushes while she is in the app.
+
+
+## v0.648.0 KAAM KA HISAAB - past and current work on every surface
+
+Owner: "FIND HOW HOOLA HANDLE THE PAST COMPLETED WORK AND CURRENT WORK IN ALL SURFACES" -> audit -> "GO" on the four fixes.
+
+The audit (v0.647 code): work lives in `kaam_jobs` (kaamwatch; kept 30 days, a turn reads 24 h / done 6 h, `kaam_status` 48 h),
+`TaskRun` (the task log; the chat's diary reads 7 days), `goal_runs` (the open long job), `kaam_followup` (results waiting to be
+told) and the memory index. Gaps: no screen listed finished work (phone + console Today pages = weather / calendar / reminders,
+live strips = running / waiting only); a call's brain saw done work of the last 6 h only (the diary is off on calls since v0.644);
+a call record's late-result notification opened the chat, not the call; the chat got recent calls twice (diary + v0.646 block).
+
+Built:
+- `app/kaamlist.py`: `listing(tenant, days=7)` (GET /api/kaam/list) and `brief(tenant, conv)` - readers only, nothing new stored;
+  every row carries its conversation and `from_call`.
+- Call brain turn: `_brain_memory` part "kiya" = `kaamlist.brief` (TaskRun + finished jobs this week, Session-fenced, 10 lines).
+- Chat turn: the v0.646 `callconv.recent_block` call removed (the diary's "Pichhli calls" already reads call records' receipts).
+- Notifications: `push.build` adds `open_conv` for a call record; `SantoshPush` passes it, `Notify.message` opens
+  `ACTION_OPEN_CONV`, `MainActivity.handleIntent` sends `conv:<id>` on the link channel, `main.dart` opens it with
+  `openChat(id, remember: false)`.
+- Phone `lib/ui/kaam_sheet.dart` ("Aapka kaam": waiting / running / done in 7 days) + a button row (Aapka kaam / Calls) under the
+  chat list header (kept out of the header row so it cannot overflow a small phone); console Today > Work tile (`drawTodayWork`).
+- Found while reading: the phone already does not show a push while the app is open (`if (MainActivity.visible) return`).
+
+Tests: `test_v0648_kaam_hisaab.py` 8 (+ the v0.646 pin updated). NOT VERIFIED: the Kotlin / Dart half compiles first on CI;
+the notification tap on a real phone.

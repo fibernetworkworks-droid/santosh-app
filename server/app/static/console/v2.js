@@ -1771,10 +1771,28 @@ async function drawToday() {
     <div class="grid2">
       <div class="tile gl"><h3>Reminders</h3>${d.reminders.length ? `<div class="ag">${d.reminders.map(r => `<div><time>${esc(timeOf(r.due_at))}</time><span>${esc(r.text)}</span></div>`).join('')}</div>` : '<div class="empty">No reminders.</div>'}</div>
       <div class="tile gl"><h3>Lists</h3>${Object.keys(d.lists).length ? Object.entries(d.lists).map(([n, items]) => `<b style="font-size:13px" class="acc">${esc(n)}</b><div class="lst">${items.map(i => `<label><input type="checkbox" disabled> ${esc(i.text)}</label>`).join('')}</div>`).join('') : '<div class="empty">No lists yet. Ask in chat, for example: "doodh shopping list mein daalo".</div>'}</div>
+      <div class="tile gl" id="todayWork"><h3>Work</h3><div class="empty">Loading…</div></div>
       <div class="tile gl"><h3>Your approval is required <span class="tag warn">${d.pending.length}</span></h3>${d.pending.length ? d.pending.map(q => `<div class="ln"><span>${esc(q.title)}</span><b>${q.money ? '📱 phone' : 'console'}</b></div>`).join('') + '<button class="btn soft" type="button" id="toQueue">Open cards</button>' : '<div class="empty">Nothing yet.</div>'}</div>
     </div>`;
   $('#toQueue')?.addEventListener('click', () => { $('#app').classList.add('open'); go('chat'); });
+  drawTodayWork();
 }
+/* v0.648 KAAM KA HISAAB: running / waiting for her / finished in the last 7 days; a row opens its chat or call */
+async function drawTodayWork() {
+  const box = $('#todayWork'); if (!box) return;
+  let d; try { d = await api('GET', '/api/kaam/list'); } catch (e) { box.innerHTML = `<h3>Work</h3><p class="badc">${esc(e.message)}</p>`; return; }
+  const when = iso => { try { return new Date(iso).toLocaleString('en-IN', {weekday: 'short', hour: '2-digit', minute: '2-digit'}); } catch { return ''; } };
+  const row = r => `<button type="button" class="ln wkrow" data-wconv="${esc(r.conversation_id || '')}" ${r.conversation_id ? '' : 'disabled'}>
+      <span>${esc(r.title || r.label || 'Work')}${r.from_call ? ' <span class="tag v">call</span>' : ''}</span>
+      <b>${esc(r.say || r.state || '')}${r.at ? ' · ' + esc(when(r.at)) : ''}</b></button>`;
+  const sec = (name, rows) => rows.length ? `<b style="font-size:13px" class="acc">${esc(name)} (${rows.length})</b>${rows.slice(0, 12).map(row).join('')}` : '';
+  const html = sec('Waiting for you', d.waiting || []) + sec('Running now', d.running || []) + sec('Done in the last 7 days', d.done || []);
+  box.innerHTML = '<h3>Work</h3>' + (html || '<div class="empty">No work this week yet.</div>');
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('#todayWork [data-wconv]'); if (!b || !b.dataset.wconv) return;
+  go('chat'); openConv(b.dataset.wconv);
+});
 
 /* ================= Main (profile + console password) ================= */
 const gOn = m => { const g = m.google_apps || {}; return !!(g.gmail && g.calendar && g.drive); };

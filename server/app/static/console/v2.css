@@ -3100,3 +3100,11 @@ body.albon{overflow:hidden}
 #app .wdp-inline input:not([type=checkbox]):not([type=file]){width:auto}
 @media (max-width:640px){#app .wdp h3{font-size:24px}#app .wdp-card{padding:16px}#app .wdp-send span{display:none}#app .wdp-send{width:40px;padding:0;justify-content:center}
   #app .wdp-head-acts{width:100%}#app .wdp-head-acts .wdp-btn{flex:1 1 auto}}
+
+/* v0.648 KAAM KA HISAAB: Today > Work rows (one per job / task, opens its chat or call) */
+.wkrow{display:flex;justify-content:space-between;align-items:baseline;gap:12px;width:100%;padding:6px 0;background:none;border:0;
+  border-bottom:1px dashed var(--line);color:inherit;font:inherit;font-size:13.5px;text-align:left;cursor:pointer}
+.wkrow:disabled{cursor:default}
+.wkrow:hover:not(:disabled) span{text-decoration:underline}
+.wkrow b{font-weight:500;color:var(--mut);white-space:nowrap;font-size:12.5px}
+.wkrow:focus-visible{outline:2px solid var(--violet);outline-offset:2px}

@@ -362,6 +362,8 @@ class Api {
       await _send('GET', '/api/conversations/$conv/timeline/head', query: {'n': '$n'}) as Map);
   Future<Map<String, dynamic>> chats() async => Map<String, dynamic>.from(await _send('GET', '/api/conversations') as Map);
   Future<void> openChat(String conv) async => _send('POST', '/api/conversations/$conv/open');
+  /// v0.648 KAAM KA HISAAB: running / waiting for her / finished in the last 7 days (each row names its chat or call).
+  Future<Map<String, dynamic>> kaamList() async => Map<String, dynamic>.from(await _send('GET', '/api/kaam/list') as Map);
   /// v0.646 ALAG CALL: the Calls section (each voice call's own record, newest first).
   Future<List<Map<String, dynamic>>> calls() async {
     final r = Map<String, dynamic>.from(await _send('GET', '/api/calls') as Map);

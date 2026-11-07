@@ -573,6 +573,12 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
 def build(token: str, ev: dict[str, Any], name: str = "Santosh") -> dict[str, Any] | None:
     kind, p = ev["kind"], ev.get("payload") or {}
     data: dict[str, str] = {"kind": kind, "event_id": str(ev.get("id", "")), "at": str(ev.get("at", ""))}
+    try:   # v0.648 a notification from a call record opens THAT record when tapped (a chat's opens the app as before)
+        from . import callconv
+        if ev.get("conv") and callconv.is_call(str(ev["conv"])):
+            data["open_conv"] = str(ev["conv"])
+    except Exception:
+        pass
     ttl = "3600s"
     if kind in RAW_KINDS:
         data["payload"] = json.dumps(p, ensure_ascii=False)[:3000]

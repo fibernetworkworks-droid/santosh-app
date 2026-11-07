@@ -500,6 +500,16 @@ class MainActivity : FlutterActivity() {
 
     private fun handleIntent(intent: Intent?) {
         val action = intent?.action
+        if (action == Notify.ACTION_OPEN_CONV) {   // v0.648 a call record's notification was tapped
+            val conv = intent!!.getStringExtra("conv") ?: ""
+            intent.action = null
+            if (conv.isNotEmpty()) {
+                val msg = "conv:$conv"
+                val sink = linkSink
+                if (sink != null) main.post { sink.success(msg) } else pendingLink = msg
+            }
+            return
+        }
         if (action == ACTION_ASSIST_SCREEN || action == AppUpdate.ACTION_STATUS) {
             // v0.62 the assistant session's screen (screenshot + text as pending files) / the installer's answer
             val it0 = intent!!
