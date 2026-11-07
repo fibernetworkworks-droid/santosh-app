@@ -611,6 +611,10 @@
       if (sl.state === 'done') finalSoon(sl);
     });
     if (!LIVE.timer) LIVE.timer = setTimeout(flushLive, 110);
+    // a change started elsewhere (her chat, a fix round): the first word written switches the screen to the live build
+    if (CUR && S(CUR.id) === LIVE.site && !WORKING(CUR) && L(ev.slots).some(x => x.state === 'think' || x.state === 'write')) {
+      clearTimeout(LIVE.wake); LIVE.wake = setTimeout(() => { if (CUR && !WORKING(CUR)) reload(); }, 300);
+    }
   }
   function liveFrames() { return [...APP.querySelectorAll('iframe[data-live]')]; }
   const frameWants = (fr, sl) => sl.look >= 0 ? Number(fr.dataset.look) === sl.look : (Number(fr.dataset.look) < 0 && S(fr.dataset.page) === S(sl.page));
