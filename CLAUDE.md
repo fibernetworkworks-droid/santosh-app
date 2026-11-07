@@ -70,6 +70,24 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (7 Nov 2026, owner: "SAVE THE STATE PERFECT NOW" after the call-speed work): branch
+  `stable-2026-11-07-voice-v645` = commit 4e6ff005 = v0.645.0, pubspec 0.645.0+651 - cut at the LIVE commit (healthz 0.645.0).
+  The fast cheap call: Gemini Live only speaks, the Hoola brain on Haiku does the work (v0.630-v0.633), and the slow
+  steps before Haiku's first call were measured stage by stage and removed (v0.634-v0.645): reads only the last few exchanges
+  with old tool results cut, no compaction / thinking / hint lookup / MCP wait on a call turn, memory read in parallel with a
+  2.5 s limit, no diary read, always Haiku, and no work left on the event loop (tool schema checks at startup, fact-saving
+  embeddings, the system prompt). An event-loop watchdog (`app/looplag.py`) logs anything that still freezes the server.
+  **MEASURED ON HER LIVE CALLS:** brain prep 19.6 s (16:36) -> 13 s -> 3.8 s -> 3.7 s (17:59), Haiku steps 1.9-3.7 s;
+  the 17:59 call's last 2.1 s freeze (aftersales.due in the prompt build) is what v0.645 fixed.
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): markers present (APP_VERSION 0.645.0, 2x to_thread(_system),
+  voice_brain_yaad False, voice_brain_memory_s 2.5, voice_brain_result_chars 1500, toolsearch.warm, looplag.py) and 71 tests
+  green across the v0630-v0645 voice-brain suites, routines, voice, v0617 hamesha juda (full checkout), v0621, v0622.
+  **NOT VERIFIED / CAVEATS:** no call log has been read since v0.645 went live (the `prompt` stage drop is expected, not
+  seen); two website tests (test_v0617_kuchh_na_chhoote change-build / Pexels credit) fail here AND at v0.629 - older, not
+  voice. Gemini's bill vs the Hoola meter not compared yet.
+  APK release `v0.645.0-b1861`:
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.645.0-b1861/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-07-voice-v645` as the branch.
 - SAVE THE STATE (6 Nov 2026, later, owner: "SAVE THE STATE" after the Gemini cost work): branch
   `stable-2026-11-06-voice-v629` = commit 1dec230f = v0.629.0, pubspec 0.629.0+635 - cut at the LIVE commit (healthz 0.629.0).
   The cheap 24/7 Gemini call: v0.624 a job is never turned into a reminder (code guard -> santosh_kaam) + every call tool
