@@ -17,10 +17,12 @@ from ..db import new_id, now, session
 from . import diarize as DI
 from . import engine as EN
 from . import exports as EX
+from . import limits as LM
 from . import live as LV
 from . import meeting as MT
 from . import styles as ST
 from . import vocab as VB
+from . import voiceprint as VP
 from .models import KaanTranscript
 
 MAX_BYTES = 5 * 1024 * 1024 * 1024        # the whisperai.com ceiling, kept as OUR ceiling too (5 GB)
@@ -66,10 +68,14 @@ def _duration_of(path: str) -> float:
 def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: bytes | None = None,
                     model: str = "", language: str = "", task: str = "transcribe",
                     word_timestamps: bool = True, conversation_id: str = "",
-                    vocab: bool = True, fn: Any = None, store: bool = True) -> dict[str, Any]:
+                    vocab: bool = True, diarize: str = "", fn: Any = None,
+                    store: bool = True) -> dict[str, Any]:
     """The W0 pipeline: guards -> engine -> store -> answer. `fn` swaps the engine (tests).
     W3: vocab=True (default) seeds the tenant terms as initial_prompt (soft hint) and applies
     fix_to replacements deterministically AFTER the engine - counted, named in the note.
+    W6: diarize='' | 'pause_turns' | 'voiceprint' - the voiceprint pass names speakers from her
+    enrolled Awaaz Pehchaan prints (guarded: KAAN_VOICEPRINT + bounded retention, checked BEFORE
+    the engine runs); the quota dial is estimated with ffprobe BEFORE the engine spends.
     Every refusal is one honest line (KaanError / ValueError -> ToolError in the tool layer)."""
     if not gate_open():
         raise EN.KaanError(GATE_OFF)
@@ -87,6 +93,11 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
     ok, why = EN.available()
     if not ok:
         raise EN.KaanError(why)
+    dm = (diarize or "").strip().lower()
+    if dm and dm not in ("pause_turns", "voiceprint"):
+        raise ValueError(f"diarize must be '', 'pause_turns' or 'voiceprint' - '{diarize}' is not known.")
+    if dm == "voiceprint":
+        VP.guard(tenant)          # W6: honest refusal BEFORE the engine burns a transcription
 
     tmp = tempfile.NamedTemporaryFile(suffix=Path(name).suffix, delete=False)
     prompt, n_terms, n_trunc = ("", 0, 0)
@@ -98,6 +109,7 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
         tmp.write(data)
         tmp.close()
         duration = _duration_of(tmp.name)
+        LM.check_quota_file(tenant, duration)          # W6: the monthly cap bites before the spend
         fn = fn or EN.transcribe
         out = fn(tmp.name, model=model, language=language, task=task, word_timestamps=word_timestamps,
                  initial_prompt=prompt)
@@ -122,6 +134,11 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
         if n_fix:
             vnote += "; deterministic fix(es) applied (text + segment copies): " + ", ".join(f"{t} x{k}" for t, k in applied.items())
         note = (note + " " if note else "") + vnote + "."
+    speakers: dict[str, Any] | None = None
+    if dm and status == "ready" and segs:
+        speakers = (VP.diarize_voiceprint(tenant, data, segs) if dm == "voiceprint"
+                    else DI.diarize(segs))
+        note = (note + " " if note else "") + "diarize (W6): " + str(speakers.get("note") or "")
     row_id = new_id("kn")
     if store:
         with session() as s:
@@ -130,12 +147,13 @@ def transcribe_file(tenant: str, *, file_id: str = "", name: str = "", data: byt
                 file_id=file_id or "", file_name=name, language=out.get("language", ""), task=out.get("task", task),
                 model=out.get("model", ""), duration_s=duration, n_segments=len(segs), text=text,
                 segments={"items": segs}, words={"count": n_words} if n_words else None,
-                status=status, note=note,
+                speakers=speakers, status=status, note=note,
             ))
             s.commit()
     return {"id": row_id, "file_name": name, "language": out.get("language", ""), "task": out.get("task", task),
             "model": out.get("model", ""), "duration_s": duration, "n_segments": len(segs), "n_words": n_words,
-            "text": text, "segments": segs, "status": status, "note": note, "stored": store,
+            "text": text, "segments": segs, "speakers": speakers, "status": status, "note": note,
+            "stored": store,
             "vocab": {"terms": n_terms, "fixes": n_fix} if vocab else {"applied": False}}
 
 
@@ -285,11 +303,19 @@ def _row(r: KaanTranscript) -> dict[str, Any]:
     n_words = (r.words or {}).get("count", 0) if isinstance(r.words, dict) else 0
     return {"id": r.id, "file_name": r.file_name, "language": r.language, "task": r.task, "model": r.model,
             "duration_s": r.duration_s, "n_segments": r.n_segments, "n_words": n_words, "text": r.text,
-            "speakers": r.speakers, "status": r.status, "note": r.note,
+            "speakers": r.speakers, "pinned": bool(r.pinned), "status": r.status, "note": r.note,
             "created_at": r.created_at.isoformat() if r.created_at else ""}
 
 
 # ---------------------------------------------------------------- status
+def _voiceprint_block(tenant: str) -> dict[str, Any]:
+    ok, why = LM.voiceprint_ready(tenant)
+    return {"on": ok, "note": why if not ok else
+            "voiceprint diarization ready (W6): transcribe with diarize=voiceprint and every pause-cut "
+            "turn gets its speaker's name from her enrolled Awaaz Pehchaan prints; unsure turns stay "
+            "unnamed - no guessing. Runs under the same KAAN_AUDIO gate as every ingest."}
+
+
 def status(tenant: str) -> dict[str, Any]:
     ok, why = EN.available()
     with session() as s:
@@ -316,6 +342,9 @@ def status(tenant: str) -> dict[str, Any]:
                     "note": "W4 exports: deterministic SRT/VTT/TXT/JSON of a stored transcript (read-only, "
                             "gate-free); to_gyaan puts the text in her gyaan corpus; task=translate: whisper "
                             "translates X->English only (turbo can't)."},
+        "usage": LM.usage_block(tenant),
+        "retention": LM.retention_block(),
+        "voiceprint": _voiceprint_block(tenant),
         "doors": {"api": "/api/kaan (HTTP, W5)",
                   "mcp": "python -m app.kaan.mcp_server (stdio JSON-RPC, W5)",
                   "ext": "browser extension tabCapture -> /api/kaan/live (W5)",

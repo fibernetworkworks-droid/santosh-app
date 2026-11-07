@@ -442,7 +442,7 @@ async def tick() -> None:
         check_approvals, send_batches, pump_simulated_statuses, finish_campaigns, fire_reminders, morning_briefings,
         run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
         home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
-        team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, aboutme_jobs, applogic_jobs,
+        team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, kaan_jobs, aboutme_jobs, applogic_jobs,
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs,
     ):
         await _slot(fn)
@@ -697,6 +697,23 @@ def eventlog_jobs() -> None:
         eventlog.forget_old(int(getattr(get_settings(), "event_log_retain_days", 14) or 14))
     except Exception:
         log.exception("event log retention failed")
+
+
+_kaan_last = 0.0
+
+
+def kaan_jobs() -> None:
+    """v0.667 KAAN W6: the daily retention sweep - kaan_transcripts older than kaan_retention_days
+    go (pinned rows survive), live spines past the cutoff go with their sessions. 0 = no-op."""
+    global _kaan_last
+    if time.time() - _kaan_last < 86400:
+        return
+    _kaan_last = time.time()
+    try:
+        from .kaan import limits
+        limits.retention_sweep()
+    except Exception:
+        log.exception("kaan retention sweep failed")
 
 
 _coder_last = 0.0

@@ -1,4 +1,4 @@
-"""KAAN W5 (v0.668.0, owner: "W5 - MCP + API + extension audio" - Wave W5 of the kaan plan).
+"""KAAN W5 (v0.670.0, owner: "W5 - MCP + API + extension audio" - Wave W5 of the kaan plan).
 
 One brain, three doors: the HTTP API (/api/kaan/*), the MCP stdio server
 (python -m app.kaan.mcp_server), and the browser extension's tab audio - all three
@@ -301,4 +301,4 @@ def test_status_function_doors(w5_env):
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.669.0"
+    assert APP_VERSION == "0.670.0"

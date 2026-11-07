@@ -129,11 +129,13 @@ def _kaan_router(require_key: Callable, current_tenant: Callable) -> APIRouter:
     @r.post("/transcribe")
     async def kaan_transcribe(file: UploadFile, model: str = Form(""), language: str = Form(""),
                               task: str = Form("transcribe"), word_timestamps: bool = Form(True),
-                              vocab: bool = Form(True), tenant: str = Depends(current_tenant)):
+                              vocab: bool = Form(True), diarize: str = Form(""),
+                              tenant: str = Depends(current_tenant)):
         try:
             return KS.transcribe_file(tenant, name=file.filename or "upload",
                                       data=await file.read(), model=model, language=language,
-                                      task=task, word_timestamps=word_timestamps, vocab=vocab)
+                                      task=task, word_timestamps=word_timestamps, vocab=vocab,
+                                      diarize=diarize)
         except Exception as e:                                  # noqa: BLE001
             raise _err(e) from e
 

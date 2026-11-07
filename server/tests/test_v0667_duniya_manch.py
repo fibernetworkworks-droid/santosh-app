@@ -1,4 +1,4 @@
-"""v0.668.0 DUNIYA MANCH - the T4 keyless-public-web family, backend-only (owner: "T4"; the T4 tier
+"""v0.670.0 DUNIYA MANCH - the T4 keyless-public-web family, backend-only (owner: "T4"; the T4 tier
 of download/HOOLA_MCP_FEED.json - the no-login / no-key public-web rows, catalog-description-verified
 and ported IDEA-ONLY: the modelcontextprotocol/servers fetch reference "Web content fetching
 capabilities for LLMs" + the no-key public-API rows (Wikipedia / Open-Meteo / Hacker News /
@@ -450,4 +450,4 @@ def test_enum_and_label_pins():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.669.0"                       # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.670.0"                       # conscious-bump guard: moves with every release
