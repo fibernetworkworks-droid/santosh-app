@@ -8709,6 +8709,13 @@ async def sites_get(ref: str, tenant: str = Depends(current_tenant)):
     return await asyncio.to_thread(_site, S.get, tenant, ref)
 
 
+@app.patch("/api/sites/{ref}", dependencies=[Depends(require_key)])
+async def sites_rename(ref: str, body: dict, tenant: str = Depends(current_tenant)):
+    """v0.657 rename a project in the Web Studio list ({name}); nothing on the website itself changes."""
+    from .site import service as S
+    return await asyncio.to_thread(_site, S.rename, tenant, ref, str(body.get("name") or ""))
+
+
 @app.delete("/api/sites/{ref}", dependencies=[Depends(require_key)])
 async def sites_delete(ref: str, tenant: str = Depends(current_tenant)):
     from .site import service as S

@@ -67,6 +67,10 @@
     cart: '<path d="M4 6h2l2 10h10l2-7H8"/>', card: '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 10h18"/>',
     cal: '<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/>', blog: '<path d="M5 4h11l3 3v13H5z"/><path d="M8 11h8M8 15h6"/>',
     globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', pin: '<path d="M12 21s-7-6-7-12a7 7 0 0 1 14 0c0 6-7 12-7 12z"/><circle cx="12" cy="9" r="2.5"/>',
+    more: '<circle cx="5" cy="12" r="1.3"/><circle cx="12" cy="12" r="1.3"/><circle cx="19" cy="12" r="1.3"/>',
+    star: '<path d="M12 3.5l2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+    edit: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>', trash: '<path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/>',
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/>',
     spark: '<path d="M12 3l2.5 6.5L21 12l-6.5 2.5L12 21l-2.5-6.5L3 12l6.5-2.5z"/>', link: '<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>'};
   const ico = (k, n = 18) => `<svg width="${n}" height="${n}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ''}</svg>`;
   const tick = `<span class="tick" aria-hidden="true"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M5 12l5 5 9-10"/></svg></span>`;
@@ -106,7 +110,8 @@
       if (p[0] === 'plan' && p[1]) return await openPlan(decodeURIComponent(p[1]));
       CUR = null; CARD = null;
       await loadLists();
-      drawHome(p[0] === 'sites' ? 'sites' : p[0] === 'templates' ? 'templates' : 'home');
+      drawHome(p[0] === 'sites' ? 'sites' : p[0] === 'starred' ? 'starred' : p[0] === 'templates' ? 'templates' : 'home');
+      if (p[0] === 'sites' && p[1] === 'search') $('#wsFind')?.focus();
     } catch (e) { APP.innerHTML = `<div class="empty">${esc(e.message)} · <a href="#/">Studio home</a></div>`; }
   }
   addEventListener('hashchange', route);
@@ -119,23 +124,87 @@
   }
 
   /* ================= home with its own sidebar ================= */
+  /* v0.657 the project list like Lovable: search, starred, and a menu on every project (open, new tab, rename, star,
+     delete). Stars are this browser's own choice (kept in localStorage); rename and delete go to the server. */
+  const STAR_KEY = 'hoola.ws.star';
+  const starred = () => { try { const x = JSON.parse(localStorage.getItem(STAR_KEY) || '[]'); return Array.isArray(x) ? x.map(String) : []; } catch { return []; } };
+  const isStar = id => starred().includes(S(id));
+  function setStar(id, on) {
+    const cur = starred().filter(x => x !== S(id));
+    try { localStorage.setItem(STAR_KEY, JSON.stringify((on ? [S(id), ...cur] : cur).slice(0, 60))); } catch {}
+  }
+  const recRow = v => `<div class="rec${CUR && S(CUR.id) === S(v.id) ? ' on' : ''}"><a class="rl" href="#/site/${enc(S(v.id))}"><span class="dot ${dotCls(v)}" aria-hidden="true"></span><span class="ell">${esc(name(v))}</span></a>
+    <button class="rm" type="button" data-menu="${esc(S(v.id))}" aria-label="More for ${esc(name(v))}" title="Rename, star, delete">${ico('more', 16)}</button></div>`;
   function sidebar(cur) {
-    const rec = SITES.slice(0, 6).map(v => `<a class="rec" href="#/site/${enc(S(v.id))}"><span class="dot ${dotCls(v)}" aria-hidden="true"></span>${esc(name(v))}</a>`).join('');
+    const st = SITES.filter(v => isStar(v.id));
+    const rec = SITES.filter(v => !isStar(v.id)).slice(0, 8).map(recRow).join('');
     const nav = (h, k, label, ic) => `<a class="nav" href="${h}" ${cur === k ? 'aria-current="page"' : ''}>${ico(ic)}${esc(label)}</a>`;
     return `<aside class="side" aria-label="Web Studio">
       <div class="brand"><div class="mark" aria-hidden="true"><span></span></div><div><b>Hoola</b><span>Web Studio</span></div></div>
       <button class="new" type="button" data-act="new">${ico('plus', 16)}New website</button>
-      ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
+      ${nav('#/', 'home', 'Home', 'home')}${nav('#/sites/search', 'search', 'Search', 'search')}${nav('#/sites', 'sites', 'All websites', 'grid')}${nav('#/starred', 'starred', 'Starred', 'star')}${nav('#/templates', 'templates', 'Templates', 'tpl')}
+      ${st.length ? `<div class="lbl">Starred</div>${st.map(recRow).join('')}` : ''}
       ${rec ? `<div class="lbl">Recent</div>${rec}` : ''}
       <div class="sp"></div>
       <a class="nav" href="/console/">${ico('back')}Back to Hoola</a>
     </aside>`;
   }
 
+  function closeMenu() { document.getElementById('wsMenu')?.remove(); }
+  function openMenu(btn, id) {
+    const open = document.getElementById('wsMenu'); closeMenu();
+    if (open && open.dataset.for === id) return;               // the same button again closes it
+    const v = SITES.find(x => S(x.id) === id) || (CUR && S(CUR.id) === id ? CUR : null); if (!v) return;
+    const star = isStar(id);
+    const m = document.createElement('div');
+    m.id = 'wsMenu'; m.className = 'wsmenu'; m.dataset.for = id; m.setAttribute('role', 'menu'); m.setAttribute('aria-label', `${name(v)} options`);
+    const it = (k, ic, label, cls = '') => `<button type="button" role="menuitem" class="${cls}" data-mi="${k}">${ico(ic, 16)}<span>${label}</span></button>`;
+    m.innerHTML = it('open', 'chat', 'Open') + it('tab', 'ext', 'Open in new tab') + it('rename', 'edit', 'Rename') +
+      it('star', 'star', star ? 'Remove from starred' : 'Add to starred') + '<hr>' + it('delete', 'trash', 'Delete', 'bad');
+    document.body.appendChild(m);
+    const r = btn.getBoundingClientRect(), w = m.offsetWidth, h = m.offsetHeight;
+    m.style.left = Math.max(8, Math.min(innerWidth - w - 8, r.right - w)) + 'px';
+    m.style.top = (r.bottom + h + 8 > innerHeight ? Math.max(8, r.top - h - 4) : r.bottom + 4) + 'px';
+    m.querySelector('button')?.focus();
+    m.addEventListener('click', ev => { const b = ev.target.closest('[data-mi]'); if (!b) return; closeMenu(); menuAct(b.dataset.mi, v); });
+    m.addEventListener('keydown', ev => {
+      const items = [...m.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+      if (ev.key === 'Escape') { closeMenu(); btn.focus(); }
+      else if (ev.key === 'ArrowDown' || ev.key === 'ArrowUp') { ev.preventDefault(); items[(i + (ev.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus(); }
+    });
+  }
+  document.addEventListener('click', e => { const m = document.getElementById('wsMenu'); if (m && !m.contains(e.target) && !e.target.closest('[data-menu]')) closeMenu(); });
+  addEventListener('resize', closeMenu); addEventListener('hashchange', closeMenu);
+  async function menuAct(k, v) {
+    const id = S(v.id), inSite = CUR && S(CUR.id) === id;
+    try {
+      if (k === 'open') return go('#/site/' + enc(id));
+      if (k === 'tab') return void window.open(location.pathname + '#/site/' + enc(id), '_blank', 'noopener');
+      if (k === 'star') { const on = !isStar(id); setStar(id, on); toast(on ? 'Added to starred.' : 'Removed from starred.'); if (!inSite) route(); return; }
+      if (k === 'rename') {
+        const fd = await dialog('Rename project', `<label class="sm mut" for="wsRename">Name in your project list</label><input class="in" id="wsRename" name="name" maxlength="80" required value="${esc(name(v))}">
+          <p class="mut sm">Only the name in this list changes. Your pages and your address stay the same.</p>`);
+        const nm = S(fd?.get('name')).trim(); if (!nm || nm === name(v)) return;
+        const nv = await api('PATCH', `/api/sites/${enc(id)}`, {name: nm});
+        toast('Renamed.');
+        if (inSite) { CUR = nv; const p = APP.querySelector('.pname'); if (p) p.textContent = name(nv); document.title = `${name(nv)} · Hoola Web Studio`; }
+        else route();
+        return;
+      }
+      if (k === 'delete') {
+        if (!confirm(`Delete "${name(v)}"?\n\nIts pages, data and versions are removed. If it is live, it is taken off the internet first. This cannot be undone.`)) return;
+        await api('DELETE', `/api/sites/${enc(id)}`);
+        setStar(id, false); toast('Deleted.');
+        if (inSite) go('#/sites'); else route();
+      }
+    } catch (er) { toast(er.message, true); }
+  }
+
   function siteCard(v) {
-    return `<a class="card" href="#/site/${enc(S(v.id))}"><span class="shot" aria-hidden="true"><i></i><i></i><b></b></span>
-      <span class="meta"><span style="display:flex;align-items:center;gap:8px;min-width:0"><b>${esc(name(v))}</b>${statusPill(v)}</span>
-      <span class="mut sm ell">${esc([S(v.number), S(v.field_label), S(v.goal_label)].filter(Boolean).join(' · '))}</span></span></a>`;
+    return `<div class="cw"><a class="card" href="#/site/${enc(S(v.id))}"><span class="shot" aria-hidden="true"><i></i><i></i><b></b></span>
+      <span class="meta"><span style="display:flex;align-items:center;gap:8px;min-width:0"><b class="ell">${esc(name(v))}</b>${isStar(v.id) ? `<span class="stard" title="Starred" aria-label="Starred">${ico('star', 14)}</span>` : ''}${statusPill(v)}</span>
+      <span class="mut sm ell">${esc([S(v.number), S(v.field_label), S(v.goal_label)].filter(Boolean).join(' · '))}</span></span></a>
+      <button class="cm" type="button" data-menu="${esc(S(v.id))}" aria-label="More for ${esc(name(v))}" title="Rename, star, delete">${ico('more', 16)}</button></div>`;
   }
   function specCard(x) {
     return `<a class="card" href="#/plan/${enc(S(x.id))}"><span class="shot" aria-hidden="true"><i></i><i></i><b></b></span>
@@ -152,8 +221,13 @@
         <div class="starts">${TYPES.map(([t, d]) => `<button class="st" type="button" data-type="${esc(t)}"><span class="si">${ico('tpl')}</span><span><b>${esc(t)}</b><span class="mut sm">${esc(d)}</span></span></button>`).join('')}</div></section>`;
     } else if (page === 'sites') {
       main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">All websites</h2><button class="b" type="button" data-act="new">${ico('plus', 16)}New website</button></div>
+        <label class="find">${ico('search', 16)}<input id="wsFind" type="search" placeholder="Search your websites" aria-label="Search your websites" autocomplete="off"></label>
         ${SPECS.length ? `<div class="sec"><h2>Plans waiting for your Haan</h2></div><div class="grid">${SPECS.map(specCard).join('')}</div>` : ''}
-        ${SITES.length ? `<div class="grid">${SITES.map(siteCard).join('')}</div>` : '<div class="panel mut">No website yet. Write one line on the Studio home.</div>'}</section>`;
+        ${SITES.length ? `<div class="grid" id="wsAll">${SITES.map(siteCard).join('')}</div><p class="mut" id="wsNone" hidden>No website matches.</p>` : '<div class="panel mut">No website yet. Write one line on the Studio home.</div>'}</section>`;
+    } else if (page === 'starred') {
+      const st = SITES.filter(v => isStar(v.id));
+      main = `<section class="wrap"><div class="sec"><h2 style="font-size:24px">Starred</h2></div>
+        ${st.length ? `<div class="grid">${st.map(siteCard).join('')}</div>` : `<div class="panel mut">Nothing starred yet. Open the ${ico('more', 14)} menu on any website and choose Add to starred.</div>`}</section>`;
     } else {
       main = `<section class="hero"><h1>What should we build today?</h1>
         <p class="mut">Describe your business in one line. You get three complete looks of the whole website to click through first; only the one you pick is built, and nothing goes live until you tap.</p>
@@ -324,7 +398,7 @@
     const v = CUR, mode = store.get(MODE_KEY + '.chat') === 'plan' ? 'plan' : 'build';
     APP.innerHTML = `<div class="wsp">
       <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a>
-        <span class="pname">${esc(name(v))}</span><span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
+        <span class="pname">${esc(name(v))}</span><button class="ib" type="button" data-menu="${esc(S(v.id))}" aria-label="Project options" title="Rename, star, delete">${ico('more', 16)}</button><span id="wsPill">${statusPill(v)}</span><span class="sp"></span>
         <button class="b" type="button" data-view="history">${ico('hist', 15)}<span>History</span></button>
         <button class="b pri" type="button" data-view="publish"><span>Publish</span></button></header>
       <div class="body">
@@ -390,7 +464,11 @@
     const p = $('#wsPill'); if (p) p.innerHTML = statusPill(v);
     startTick();
   }
-  APP.addEventListener('toggle', e => { if (e.target.matches?.('details.actd')) ACT_OPEN = e.target.open; }, true);
+  const OPEN_T = new Set();
+  APP.addEventListener('toggle', e => {
+    const t = e.target; if (!t.matches?.('details.actd')) return;
+    if (t.dataset.k) { if (t.open) OPEN_T.add(t.dataset.k); else OPEN_T.delete(t.dataset.k); } else ACT_OPEN = t.open;
+  }, true);
   function drawActivity() {
     const el = $('#wsAct'); if (el && CUR) el.innerHTML = actPanel(CUR);
     drawState();
@@ -668,27 +746,65 @@
   }
   async function openThread() {
     clearTimeout(THREAD.timer);
-    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false, since: 0});
+    Object.assign(THREAD, {site: CUR.id, conv: store.get(convKey(CUR.id)), rows: [], live: '', sig: '', waiting: false, since: 0, steps: [], stepsRead: false, startedS: 0});
     drawMsgs();
     if (THREAD.conv) await readThread();
   }
   const clean = t => S(t).replace(/(?:\n\n\[Web console [^\]\n]*\])+$/, '');
+  /* v0.657 the chat's own work feed, like Lovable: every tool step a turn ran (the timeline's step events), with a live
+     timer while Hoola works and "Worked for 42s · 5 steps" kept above each answer. Times are the server's clock. */
+  const tsec = a => { const t = S(a); if (!t) return 0; const ms = Date.parse(/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? t : t + 'Z'); return isNaN(ms) ? 0 : ms / 1000; };
+  async function readSteps(c) {
+    try {
+      const r = await api('GET', `/api/conversations/${enc(c)}/timeline?limit=200&steps=1`);
+      const by = new Map();
+      for (const ev of L(r.events)) {
+        if (ev.kind !== 'step') continue;
+        // the timeline keeps one row per step: `at` = when it started, `updated_at` = its latest state (the end)
+        const pl = M(ev.payload), k = S(pl.id) || ('e' + ev.id), at = tsec(ev.at), upd = tsec(ev.updated_at) || at;
+        const x = by.get(k) || {label: S(pl.label) || S(pl.tool), at, state: 'run'};
+        x.at = Math.min(x.at || at, at);
+        if (pl.state !== 'running') { x.state = pl.state === 'error' ? 'error' : 'done'; x.end = Math.max(x.end || 0, upd); }
+        if (pl.label) x.label = S(pl.label);
+        by.set(k, x);
+      }
+      THREAD.steps = [...by.values()].filter(x => x.at).sort((a, b) => a.at - b.at);
+    } catch { /* the feed is extra: the chat still works without it */ }
+  }
+  const stepsBetween = (a, b) => L(THREAD.steps).filter(x => x.at >= a - 2 && (!b || x.at <= b + 2));
   const md = t => window.HoolaMD ? window.HoolaMD.render(t, false) : `<p>${esc(t)}</p>`;
   function drawMsgs() {
     const box = $('#wsMsgs'); if (!box) return;
     const all = THREAD.rows.filter(r => (r.role === 'user' || r.role === 'assistant') && S(r.text).trim());
     const first = all.findIndex(r => r.role === 'user');
     const rows = first < 0 ? [] : all.slice(first);
-    const s = rows.map(r => r.id).join(',') + '|' + THREAD.live.length + '|' + THREAD.waiting;
+    const st = L(THREAD.steps), lastSt = st[st.length - 1] || {};
+    const s = rows.map(r => r.id).join(',') + '|' + THREAD.live.length + '|' + THREAD.waiting + '|' + st.length + lastSt.state + (lastSt.end || '');
     if (s === THREAD.sig) return;
     THREAD.sig = s;
     const near = box.scrollHeight - box.scrollTop - box.clientHeight < 60;
-    box.innerHTML = rows.length || THREAD.waiting ? rows.slice(-40).map(r => r.role === 'user' ? `<div class="me">${esc(clean(r.text))}</div>` : `<div class="ho">${md(S(r.text))}</div>`).join('')
-        + (THREAD.waiting ? `<div class="ho">${THREAD.live ? md(THREAD.live) : '<span class="dots" aria-label="Hoola is working"><i></i><i></i><i></i></span>'}</div>` : '')
+    const shown = rows.slice(-40);
+    let lastUser = 0;
+    const html = shown.map(r => {
+      if (r.role === 'user') { lastUser = tsec(r.at) || lastUser; return `<div class="me">${esc(clean(r.text))}</div>`; }
+      const end = tsec(r.at), steps = lastUser && end ? stepsBetween(lastUser, end) : [];
+      const took = lastUser && end > lastUser ? end - lastUser : 0;
+      const k = 'turn-' + r.id;
+      const head = steps.length || took >= 3 ? `<details class="actd turnw" data-k="${k}"${OPEN_T.has(k) ? ' open' : ''}><summary>Worked for ${dur(took)}${steps.length ? ` · ${steps.length} step${steps.length > 1 ? 's' : ''}` : ''}</summary>${steps.length ? stepList({steps}) : ''}</details>` : '';
+      return head + `<div class="ho">${md(S(r.text))}</div>`;
+    }).join('');
+    const since = THREAD.startedS || lastUser || nowS();
+    const live = THREAD.waiting ? (() => {
+      const steps = stepsBetween(since);
+      return `<div class="working" aria-live="polite"><div class="step"><span class="spin" aria-hidden="true"></span><span class="sp">${steps.length ? `Working · step ${steps.length}` : 'Hoola is working'}</span><span class="tm" data-t0="${since}"></span></div>
+        ${steps.length ? stepList({steps}) : ''}</div>${THREAD.live ? `<div class="ho">${md(THREAD.live)}</div>` : ''}`;
+    })() : '';
+    box.innerHTML = rows.length || THREAD.waiting ? html + live
       : `<div class="ho"><p>${esc(S(CUR?.say) || 'Ask for anything on this website.')}</p></div>
          <div class="mut sm">This chat is only about ${esc(name(CUR || {}))}. It stays here, not in your home chat.</div>
          <div style="display:flex;flex-wrap:wrap;gap:6px">${['Add a shop with cart', 'Add online payments', 'Add a Hindi version', 'Add booking slots'].map(t => `<button class="chip" type="button" data-ask="${esc(t)}">${esc(t)}</button>`).join('')}</div>`;
     if (near || THREAD.waiting) box.scrollTop = box.scrollHeight;
+    if (THREAD.waiting) startTick();
   }
   async function readThread() {
     const c = THREAD.conv; if (!c) return;
@@ -697,12 +813,24 @@
       if (c !== THREAD.conv) return;
       THREAD.rows = L(r.messages);
     } catch { return; }
+    if (!THREAD.waiting) {                                   // a reload while Hoola is still answering: pick it up again
+      const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+      const last = talk[talk.length - 1];
+      if (last && last.role === 'user' && nowS() - tsec(last.at) < 900) {
+        THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = tsec(last.at);
+        THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
+      }
+    }
+    if (THREAD.waiting || !THREAD.stepsRead) { await readSteps(c); THREAD.stepsRead = true; if (c !== THREAD.conv) return; }
     if (THREAD.waiting) {
       let snap = null;
       try { const res = await api('GET', `/api/conversations/${enc(c)}/live`, undefined, {raw: true}); if (res.status === 200) snap = await res.json(); } catch {}
       THREAD.live = S(snap?.text);
-      const answered = THREAD.rows.some(m => m.role === 'assistant' && Number(m.id) > THREAD.since && S(m.text).trim());
-      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; reload(); }
+      // answered = a reply AFTER her own newest line (a new chat starts with a greeting, which is not the answer)
+      const talk = THREAD.rows.filter(m => (m.role === 'user' || m.role === 'assistant') && S(m.text).trim());
+      let lu = -1; talk.forEach((m, i) => { if (m.role === 'user') lu = i; });
+      const answered = lu >= 0 && Number(talk[lu].id) > THREAD.since && talk.slice(lu + 1).some(m => m.role === 'assistant');
+      if (answered && !snap) { THREAD.waiting = false; THREAD.live = ''; THREAD.startedS = 0; await readSteps(c); reload(); }
       else if (Date.now() - THREAD.started > 15 * 60e3) THREAD.waiting = false;
     }
     drawMsgs();
@@ -715,7 +843,7 @@
       const c = await ensureConv();
       THREAD.since = Math.max(0, ...THREAD.rows.map(m => Number(m.id) || 0));
       THREAD.rows.push({id: 'local-' + Date.now(), role: 'user', text});
-      THREAD.waiting = true; THREAD.started = Date.now(); THREAD.live = ''; drawMsgs();
+      THREAD.waiting = true; THREAD.started = Date.now(); THREAD.startedS = nowS(); THREAD.live = ''; drawMsgs();
       const hints = [`Web Studio: this chat is only about website ${S(v.number)} "${name(v)}" (site id ${S(v.id)}). Work on THIS website with the website tool; never start a new website unless I ask for one.`];
       if (plan) hints.push('Plan mode: reply with a short plan for this change (what changes, what stays the same, anything you need from me) and change NOTHING until I say Haan.');
       await api('POST', `/api/conversations/${enc(c)}/messages`, {text, client_id: 'ws-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8), hints});
@@ -782,6 +910,7 @@
   APP.addEventListener('click', async e => {
     const b = e.target.closest('button, a'); if (!b || !APP.contains(b)) return;
     const d = b.dataset;
+    if (d.menu) { e.preventDefault(); openMenu(b, d.menu); return; }
     if (d.mode) { store.set(MODE_KEY, d.mode); APP.querySelectorAll('[data-mode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.mode === d.mode)));
       const n = $('#wsModeNote'); if (n) n.textContent = d.mode === 'plan' ? 'Plan: a plan for you to check first' : 'Build: 3 full looks first'; return; }
     if (d.cmode) { store.set(MODE_KEY + '.chat', d.cmode); APP.querySelectorAll('[data-cmode]').forEach(x => x.setAttribute('aria-pressed', String(x.dataset.cmode === d.cmode))); return; }
@@ -852,6 +981,12 @@
     finally { BUSY = false; if (b.isConnected) b.removeAttribute('aria-disabled'); }
   });
 
+  APP.addEventListener('input', e => {
+    if (e.target.id !== 'wsFind') return;
+    const q = S(e.target.value).trim().toLowerCase(); let shown = 0;
+    APP.querySelectorAll('#wsAll .cw').forEach(c => { const hit = !q || c.textContent.toLowerCase().includes(q); c.hidden = !hit; shown += hit; });
+    const n = $('#wsNone'); if (n) n.hidden = shown > 0;
+  });
   APP.addEventListener('keydown', e => {
     if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;
     if (e.target.matches?.('#wsAsk, #wsTh, #wsRev')) { e.preventDefault(); e.target.form?.requestSubmit(); }
