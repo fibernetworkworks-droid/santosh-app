@@ -71,6 +71,8 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # wave 9: NOT a bare "whatsapp" - "Rahul ko whatsapp karo" (one person) opened the BULK campaign tools and
     # tool_search ranked create_campaign first; only bulk / campaign words open it now
     "campaign": ("whatsapp campaign", "whatsapp broadcast", "whatsapp pe sabko", "whatsapp par sabko", "sabko whatsapp",
+                 "customers ko whatsapp", "clients ko whatsapp", "grahakon ko whatsapp", "logon ko whatsapp",
+                 "sabhi ko whatsapp", "whatsapp pe offer", "whatsapp par offer", "whatsapp offer", "customers ko offer",
                  "whatsapp template", "campaign", "template", "broadcast", "lead list", "leads", "contact list",
                  "customer list", "bulk message", "bulk whatsapp", "opt-in", "opt in", "consent", "कैंपेन"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
