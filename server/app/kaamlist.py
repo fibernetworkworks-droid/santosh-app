@@ -69,6 +69,24 @@ def _runs(tenant: str, since: datetime, limit: int = 60) -> list[Any]:
         return rows
 
 
+def _is_work(r) -> bool:
+    """v0.662 a finished task row that is real work: not a routine / goal / worker prompt ("[Automatic job...", "[Goal
+    jaari..."), and not a question answered only by READ tools (weather, 'mera calendar batao')."""
+    req = (getattr(r, "request", "") or "").lstrip()
+    if req.startswith("["):
+        return False
+    try:
+        import json as _json
+        tools = [t for t in _json.loads(getattr(r, "tools", "") or "[]") if isinstance(t, str)]
+    except Exception:
+        tools = []
+    if tools:
+        from .agent import draftcheck
+        if all(draftcheck._is_read(t) for t in tools):
+            return False
+    return True
+
+
 def listing(tenant: str, days: int = 7) -> dict[str, Any]:
     """Running, waiting for her, and finished in the last `days` days, newest first."""
     since = datetime.now(timezone.utc) - timedelta(days=max(1, min(int(days), 30)))
@@ -76,17 +94,40 @@ def listing(tenant: str, days: int = 7) -> dict[str, Any]:
     for j in _jobs(tenant, since):
         stuck = j["state"] == "working" and j["minutes_since_change"] >= 15
         row = {"source": "job", "kind": j["kind"], "label": j["label"], "title": j["title"] or j["label"],
+               "started_at": j.get("started_at") or j["updated_at"],
                "state": j["state"], "stuck": stuck,
                "say": (f"atka hai ({j['minutes_since_change']} min se)" if stuck else STATE.get(j["state"], j["state"])),
                "detail": j["stage"] or j["detail"],
                "pct": j["pct"], "link": j["link"], "conversation_id": j["conversation_id"], "at": j["updated_at"]}
         (running if j["state"] == "working" else waiting if j["state"] == "waiting" else done).append(row)
+    jobs_by_conv: dict[str, list[datetime]] = {}
+    for x in running + waiting + done:
+        if x["conversation_id"]:
+            try:
+                jobs_by_conv.setdefault(x["conversation_id"], []).append(datetime.fromisoformat(x.get("started_at") or x["at"]))
+            except Exception:
+                pass
     for r in _runs(tenant, since):
+        if not _is_work(r):
+            continue          # v0.662 a question answered by reading, or a routine / goal round prompt, is not "her work done"
+        rat = _utc(r.created_at)
+        if any(timedelta(seconds=-60) <= (j - rat) <= timedelta(seconds=(r.seconds or 0) + 180)
+               for j in jobs_by_conv.get(getattr(r, "conversation_id", "") or "", [])):
+            continue          # v0.662 this turn STARTED a tracked job - the job's own row tells its true state (no "ho gaya" twice)
         done.append({"source": "task", "kind": "task", "label": "Kaam", "title": _clip(r.request, 160) or "Kaam",
                      "state": "done" if r.outcome == "done" else ("failed" if r.outcome == "stuck" else r.outcome),
                      "say": OUTCOME.get(r.outcome, r.outcome), "detail": _clip(r.left, 160) and f"baaki: {_clip(r.left, 150)}",
                      "pct": -1, "link": "", "conversation_id": getattr(r, "conversation_id", "") or "",
                      "at": _utc(r.created_at).isoformat()})
+    try:   # v0.662 the cards that wait for HER tap are her waiting work too (they were missing from this list)
+        from .events import waiting_cards
+        for c in waiting_cards(tenant, 20, max_age_h=days * 24):
+            waiting.append({"source": "card", "kind": c["kind"], "label": "Card", "title": c["title"], "state": "waiting",
+                            "stuck": False, "say": f"aapki haan chahiye ({c['age_h']} ghante se)", "detail": "",
+                            "pct": -1, "link": "", "conversation_id": c.get("conversation_id", ""),
+                            "at": c.get("at", "")})
+    except Exception:
+        log.exception("kaam list: waiting cards failed")
     done.sort(key=lambda x: x["at"], reverse=True)
     done = done[:60]
     calls = _calls({x["conversation_id"] for x in running + waiting + done if x["conversation_id"]})

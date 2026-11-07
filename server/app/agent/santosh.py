@@ -326,6 +326,25 @@ def _mark_failed(conversation_id: str) -> None:
             _FAILED.pop(k, None)
 
 
+_BG_ERR: dict[str, tuple[str, float]] = {}
+BG_ERROR_QUIET_S = 1800
+
+
+def _say_error(tenant_id: str, who: str, text: str) -> bool:
+    """v0.662 an outage (out of credit, the model down) used to post + push one error line PER background turn -
+    every routine, goal round and job report, each with a new ref. Her own turn always hears it; a background turn
+    says the same kind of error once per tenant per 30 minutes."""
+    if (who or "owner") == "owner":
+        return True
+    kind = re.sub(r"\(ref[^)]*\)|ref[:\s]*\w+|\d+", "", text or "").strip()[:80]
+    last = _BG_ERR.get(tenant_id)
+    if last and last[0] == kind and time.time() - last[1] < BG_ERROR_QUIET_S:
+        STATS_LONG["bg_errors_quiet"] = STATS_LONG.get("bg_errors_quiet", 0) + 1
+        return False
+    _BG_ERR[tenant_id] = (kind, time.time())
+    return True
+
+
 def turn_failed_since(conversation_id: str, since: float) -> bool:
     return _FAILED.get(conversation_id, 0.0) >= since
 
@@ -1941,10 +1960,15 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     return ""
 
 
+_STOP_AT: dict[str, float] = {}
+STOPPED_IN_PREP = "Theek hai, rok diya - is baar kuch shuru nahi kiya."
+
+
 def stop(conversation_id: str) -> None:
     """The owner tapped Stop: the running model call / tool call is cancelled at once (v0.91), nothing more runs,
     and an open goal of this chat is marked stopped (v0.187: Rokiye stops the goal, not just the turn)."""
     _stopped.add(conversation_id)
+    _STOP_AT[conversation_id] = time.time()   # v0.662 when: a Stop during a turn's preparation is no longer erased
     bus.publish(conversation_id, "work", {"id": "stop", "tool": "", "scene": "work", "phase": "stopped",
                                           "label": "Roka gaya", "data": {}})
     try:
@@ -2031,7 +2055,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     if not usage.allowed(tenant_id, feature):
         text = usage.blocked_text(tenant_id)
         _mark_failed(conversation_id)
-        bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
+        if _say_error(tenant_id, who, text):
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
         return text
     _gender = persona(tenant_id)[1]
     # v0.75 ID numbers the OWNER writes go into her Pehchaan Locker; the model and the saved chat get references.
@@ -2151,6 +2176,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         if client_id:
             _active_msg[conversation_id] = client_id   # v0.173 this message's turn runs now (take-back refuses it)
         _mark("lock")
+        _t_lock = time.time()
         notes = _pending_worker_notes(conversation_id)
         from . import quick as _quick
         notes += _quick.take_notes(conversation_id)
@@ -2264,6 +2290,14 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 _with_memory(history, block)
         _mark("memory")
         final_text = ""
+        if _STOP_AT.get(conversation_id, 0.0) >= _t_lock and (actor or "owner") == "owner":
+            # v0.662 she tapped Stop while this turn was preparing (saving, compaction, memory read): the discard below
+            # used to wipe it and the whole turn ran anyway. Nothing has run yet - say so and end the turn.
+            _stopped.discard(conversation_id)
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": STOPPED_IN_PREP, "source": "stop"})
+            _save(conversation_id, "assistant", [{"type": "text", "text": STOPPED_IN_PREP}], display=STOPPED_IN_PREP)
+            bus.publish(conversation_id, "typing", {"on": False})
+            return STOPPED_IN_PREP
         _stopped.discard(conversation_id)
         from .. import livereply
         # v0.191 a wake turn never streams into an already-open channel (a live call owns its own reply stream);
@@ -2292,9 +2326,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                              turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
-                                                     **_tag(live, True)})
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            if _say_error(tenant_id, who, final_text):
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                         **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         except Exception as e:
             log.exception("agent turn failed")
             _mark_failed(conversation_id)
@@ -2304,9 +2339,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                              turn_id=_turn_id, actor=who)
             if live is not None:
                 live.reset()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
-                                                     **_tag(live, True)})
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
+            if _say_error(tenant_id, who, final_text):
+                bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "error",
+                                                         **_tag(live, True)})
+                _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         finally:
             _ACKED.discard(conversation_id)   # v0.187 no ack after this turn for any reason
             try:   # v0.315 EK HI FILE: a document draft held for a fix that nobody replaced reaches her now

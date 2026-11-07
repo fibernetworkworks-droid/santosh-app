@@ -6,6 +6,7 @@ signed in with Google; your single-user instance keeps using the .env app passwo
 from __future__ import annotations
 
 import logging
+import time
 
 from sqlalchemy import select
 
@@ -56,10 +57,49 @@ def mark_error(tenant_id: str, err: str | None) -> None:
             conn.last_error = (err or None) and str(err)[:500]
 
 
+_DEAD: dict[str, dict] = {}
+DEAD_BACKOFF_S = (1800, 7200, 21600)     # 30 min, 2 h, then every 6 h
+TELL_EVERY_S = 24 * 3600
+
+
+def _tok_key(creds) -> str:
+    import hashlib
+    return hashlib.sha256(str(getattr(creds, "refresh_token", "") or "").encode()).hexdigest()[:16]
+
+
+def _note_dead(tenant_id: str, tok: str, msg: str) -> None:
+    """v0.662 remember the refusal (backoff grows) and TELL her - once a day, in her chat - that mail alerts and meeting
+    nudges have stopped. Before, only a chat tool that happened to touch Google said anything; the watchers failed
+    in silence."""
+    prev = _DEAD.get(tenant_id) or {}
+    n = (prev.get("n", 0) + 1) if prev.get("tok") == tok else 1
+    told = prev.get("told", 0.0) if prev.get("tok") == tok else 0.0
+    _DEAD[tenant_id] = {"tok": tok, "n": n, "msg": msg, "told": told,
+                        "until": time.time() + DEAD_BACKOFF_S[min(n, len(DEAD_BACKOFF_S)) - 1]}
+    if time.time() - told < TELL_EVERY_S:
+        return
+    _DEAD[tenant_id]["told"] = time.time()
+    try:
+        from . import convs
+        from .events import bus, notify
+        conv = convs.current(tenant_id)
+        if conv:
+            notify(conv, msg + " Tab tak naye mail aur meeting ki khabar nahi aa payegi.")
+            bus.publish(conv, "google_reconnect", {"text": msg})
+    except Exception:
+        log.exception("google reconnect notice failed")
+
+
 def refresh(creds, tenant_id: str, email: str = "") -> None:
     """creds.refresh, but a refused refresh becomes GoogleReconnect (and is remembered for the status screen)."""
     from google.auth.exceptions import RefreshError
     from google.auth.transport.requests import Request
+    tok = _tok_key(creds)
+    dead = _DEAD.get(tenant_id)
+    if dead and dead["tok"] == tok and time.time() < dead["until"]:
+        # v0.662 a refused sign-in is not asked again every minute (mail watch 60 s, calendar 120 s: her log showed
+        # invalid_grant forever) - the same dead token waits out its backoff; a NEW sign-in has a new token and goes
+        raise GoogleReconnect(dead["msg"])
     try:
         creds.refresh(Request())
     except RefreshError as e:
@@ -69,7 +109,10 @@ def refresh(creds, tenant_id: str, email: str = "") -> None:
             with session() as s:
                 c = _google_conn(s, tenant_id)
                 email = c.account_email if c else ""
-        raise GoogleReconnect(reconnect_message(email, str(e))) from None
+        msg = reconnect_message(email, str(e))
+        _note_dead(tenant_id, tok, msg)
+        raise GoogleReconnect(msg) from None
+    _DEAD.pop(tenant_id, None)
 
 
 def has_google(tenant_id: str) -> bool:

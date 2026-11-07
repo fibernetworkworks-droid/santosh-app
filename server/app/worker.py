@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 import logging
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 from sqlalchemy import func, select
 
@@ -184,12 +184,22 @@ async def fire_reminders() -> None:
     with session() as s:
         due = s.scalars(select(Reminder).where(Reminder.status == "active", Reminder.due_at <= now())
                         .order_by(Reminder.due_at).limit(100)).all()
-        due = [(r.id, r.tenant_id, r.conversation_id, r.text) for r in due]
+        due = [(r.id, r.tenant_id, r.conversation_id, r.text, r.due_at) for r in due]
     touched: dict[str, str] = {}
-    for rid, tenant, conv, text in due:
-        notify(conv, f"Yaad dila raha hoon: {text}")
-        bus.publish(conv, "reminder", {"id": rid, "text": text})   # a live call SAYS it (voice.card_news)
-        _ring_for_reminder(tenant, conv, rid, text)                # v0.621 no live call: Hoola rings her and says it
+    for rid, tenant, conv, text, due_at in due:
+        late = _late_by(due_at)
+        if late >= REMINDER_LATE_S:
+            # v0.662 the server was down when it was due: say it is LATE (never the plain line as if on time), and a
+            # late one never rings her phone in the night - a 21:30 reminder must not auto-start a call at 3 am
+            when = _local_hhmm(tenant, due_at)
+            notify(conv, f"Yaad dila raha hoon (der se - yeh {when} ka tha, us waqt main band tha): {text}")
+            bus.publish(conv, "reminder", {"id": rid, "text": text, "late": True, "was_due": when})
+            if not _quiet_now(tenant):
+                _ring_for_reminder(tenant, conv, rid, text)
+        else:
+            notify(conv, f"Yaad dila raha hoon: {text}")
+            bus.publish(conv, "reminder", {"id": rid, "text": text})   # a live call SAYS it (voice.card_news)
+            _ring_for_reminder(tenant, conv, rid, text)                # v0.621 no live call: Hoola rings her and says it
         tz = life.tz_of(tenant)
         with session() as s:
             r = s.get(Reminder, rid)
@@ -204,6 +214,39 @@ async def fire_reminders() -> None:
         touched[conv] = tenant
     for conv, tenant in touched.items():
         bus.publish(conv, "reminders", {"reminders": life.upcoming_reminders(tenant)})
+
+
+REMINDER_LATE_S = 20 * 60   # v0.662 a reminder fired this long after its time is said as LATE
+
+
+def _late_by(due_at) -> float:
+    try:
+        d = due_at if due_at.tzinfo else due_at.replace(tzinfo=timezone.utc)
+        return (now() - d).total_seconds()
+    except Exception:
+        return 0.0
+
+
+def _local_hhmm(tenant: str, due_at) -> str:
+    try:
+        from . import life
+        from zoneinfo import ZoneInfo
+        d = due_at if due_at.tzinfo else due_at.replace(tzinfo=timezone.utc)
+        return d.astimezone(ZoneInfo(life.tz_of(tenant))).strftime("%I:%M %p").lstrip("0")
+    except Exception:
+        return "pehle"
+
+
+def _quiet_now(tenant: str) -> bool:
+    """Her night (22:00-08:00 in her time zone) - the same quiet hours the job ring keeps."""
+    try:
+        from . import life
+        from zoneinfo import ZoneInfo
+        from datetime import datetime as _dt
+        h = _dt.now(ZoneInfo(life.tz_of(tenant))).hour
+        return h >= 22 or h < 8
+    except Exception:
+        return False
 
 
 def _ring_for_reminder(tenant: str, conv: str, rid: str, text: str) -> None:
@@ -370,38 +413,35 @@ async def expire_stale_asks() -> None:
         log.exception("studio approval expiry failed")
 
 
-async def tick() -> None:
-    await check_approvals()
-    await send_batches()
-    await pump_simulated_statuses()
-    await finish_campaigns()
-    await fire_reminders()
-    await morning_briefings()
-    await run_routines()
-    expire_device_actions()
-    await expire_stale_asks()
-    await bazar_reminders()
-    await offline_digests()
-    await pc_cleanup()
-    await home_device_alerts()
-    await mail_jobs()
-    await employee_jobs()
-    kaam_jobs()
-    await followup_jobs()
-    goal_resume_jobs()
-    await inbox_jobs()
-    await team_jobs()
-    await research_jobs()
-    await scrape_crawl_jobs()
-    await dhara_jobs()
-    eventlog_jobs()
-    aboutme_jobs()
-    applogic_jobs()
-    game_studio_jobs()
-    await coder_jobs()
-    await bahar_jobs()
-    app_ops_jobs()
+_SLOT_FAIL: dict[str, float] = {}
 
+
+async def _slot(fn) -> None:
+    """v0.662 one worker slot, guarded: an exception that keeps recurring in an EARLY slot (campaigns come first)
+    used to skip every slot after it on every tick - reminders, follow-ups, research - silently. Now it is logged
+    (once a minute per slot) and the next slot still runs."""
+    try:
+        r = fn()
+        if asyncio.iscoroutine(r):
+            await r
+    except asyncio.CancelledError:
+        raise
+    except Exception:
+        name = getattr(fn, "__name__", "slot")
+        if time.time() - _SLOT_FAIL.get(name, 0.0) >= 60:
+            _SLOT_FAIL[name] = time.time()
+            log.exception("worker slot %s failed (the other slots still run)", name)
+
+
+async def tick() -> None:
+    for fn in (
+        check_approvals, send_batches, pump_simulated_statuses, finish_campaigns, fire_reminders, morning_briefings,
+        run_routines, expire_device_actions, expire_stale_asks, bazar_reminders, offline_digests, pc_cleanup,
+        home_device_alerts, mail_jobs, employee_jobs, kaam_jobs, followup_jobs, goal_resume_jobs, inbox_jobs,
+        team_jobs, research_jobs, scrape_crawl_jobs, dhara_jobs, eventlog_jobs, aboutme_jobs, applogic_jobs,
+        game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs,
+    ):
+        await _slot(fn)
 
 _ops_last = 0.0
 
