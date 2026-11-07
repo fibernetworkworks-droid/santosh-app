@@ -74,8 +74,11 @@ def listing(tenant: str, days: int = 7) -> dict[str, Any]:
     since = datetime.now(timezone.utc) - timedelta(days=max(1, min(int(days), 30)))
     running, waiting, done = [], [], []
     for j in _jobs(tenant, since):
+        stuck = j["state"] == "working" and j["minutes_since_change"] >= 15
         row = {"source": "job", "kind": j["kind"], "label": j["label"], "title": j["title"] or j["label"],
-               "state": j["state"], "say": STATE.get(j["state"], j["state"]), "detail": j["stage"] or j["detail"],
+               "state": j["state"], "stuck": stuck,
+               "say": (f"atka hai ({j['minutes_since_change']} min se)" if stuck else STATE.get(j["state"], j["state"])),
+               "detail": j["stage"] or j["detail"],
                "pct": j["pct"], "link": j["link"], "conversation_id": j["conversation_id"], "at": j["updated_at"]}
         (running if j["state"] == "working" else waiting if j["state"] == "waiting" else done).append(row)
     for r in _runs(tenant, since):

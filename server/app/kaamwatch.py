@@ -31,7 +31,8 @@ from .db import Base, Conversation, Message, new_id, now, session
 
 log = logging.getLogger("santosh.kaam")
 
-WORKING = {"queued", "running", "working", "writing", "building", "fixing", "designing", "checking", "watching", "planning",
+WORKING = {"analysing", "analyzing", "drawing", "testing", "sending", "ci_running",   # v0.652 game / CAD / campaign / coding words
+           "queued", "running", "working", "writing", "building", "fixing", "designing", "checking", "watching", "planning",
            "rendering", "generating", "uploading", "compiling", "started", "in_progress", "processing", "assembling"}
 WAITING = {"waiting", "needs_tap", "waiting_payment", "waiting_sign", "asking", "planned", "looks", "approval"}
 DONE = {"done", "completed", "complete", "approved", "live", "placed", "finished", "delivered", "success", "ok", "zip",
@@ -58,6 +59,20 @@ KINDS: dict[str, dict[str, Any]] = {
     "research_watch": {"label": "Research watch", "map": {}},               # v0.480 R9 a watched topic found a change (research/watch.py)
     "research_run": {"label": "Research", "map": {"queued": "working"}},   # v0.475 R4 background research runs (research/runner.py)
     "agent_team": {"label": "Agent team", "map": {}},   # v0.193 background agent crews (agent/team.py)
+    # v0.652 SACHCHA NATIJA: jobs whose status words the watch did not know (they were never started / done / your-turn)
+    "game_desk": {"label": "Game", "map": {"design_ready": "waiting", "designing": "working", "queued": "working",
+                                           "writing": "working", "building": "working", "testing": "working",
+                                           "done": "done", "cancelled": "stopped", "failed": "failed"},
+                  "waiting_say": "design taiyaar hai: padh kar 'theek hai' boliye"},
+    "eng_project": {"label": "CAD part", "map": {"analysing": "working", "drawing": "working", "designing": "working",
+                                                 "building": "working", "checking": "working", "queued": "working"}},
+    "campaign": {"label": "WhatsApp campaign", "map": {"awaiting_approval": "working", "ready": "waiting", "paused": "waiting",
+                                                       "sending": "working", "completed": "done"},
+                 "waiting_say": "campaign taiyaar: bhejne ke liye aapki haan chahiye"},
+    "devsahayak_task": {"label": "Coding kaam", "map": {"new": "working", "draft": "working", "ci_running": "working", "ready": "waiting", "plan_wait": "waiting", "pr_open": "waiting", "checks_failed": "failed", "refused": "failed", "merged": "done", "posted": "done", "explained": "done", "closed": "stopped", "discarded": "stopped", "stale": "stopped", "cancelled": "stopped", "failed": "failed"},
+                        "waiting_say": "PR / plan par aapki haan chahiye"},
+    "devsahayak_plan": {"label": "Coding kaam", "map": {"new": "working", "draft": "working", "ci_running": "working", "ready": "waiting", "plan_wait": "waiting", "pr_open": "waiting", "checks_failed": "failed", "refused": "failed", "merged": "done", "posted": "done", "explained": "done", "closed": "stopped", "discarded": "stopped", "stale": "stopped", "cancelled": "stopped", "failed": "failed"}, "waiting_say": "plan par aapki haan chahiye"},
+    "devsahayak_push": {"label": "Coding kaam", "map": {"new": "working", "draft": "working", "ci_running": "working", "ready": "waiting", "plan_wait": "waiting", "pr_open": "waiting", "checks_failed": "failed", "refused": "failed", "merged": "done", "posted": "done", "explained": "done", "closed": "stopped", "discarded": "stopped", "stale": "stopped", "cancelled": "stopped", "failed": "failed"}, "waiting_say": "PR par aapki haan chahiye"},
     # v0.191 SAMAJHDAR CARD: aapka PC (source='pc') aur Hoola ka browser dono kind='browser' bolte hain — jab step
     # uski manzoori par atakti hai (needs_confirm), woh sun'ti hai 'aapki baari' aur bas 'haan karo' bol deti hai
     # (card khud resolve). Start lines shant (live card already dikhta hai); chat line bhi nahi — CARD hi kahani hai.
@@ -143,6 +158,9 @@ def shape(kind: str, p: dict[str, Any]) -> dict[str, Any] | None:
     conf = KINDS.get(kind)
     if kind == "studio":
         p = _studio(p)
+    if kind.startswith("devsahayak_") and isinstance(p.get("task"), dict):
+        # v0.652 a coding task's own state rides inside {"task": view, "say": ...}
+        p = {**p["task"], "say": p.get("say") or p["task"].get("say") or p["task"].get("status_label")}
     status = str(p.get("status") or p.get("state") or "").lower().strip()
     if conf is None:
         # an unknown kind counts only when it clearly carries a job status
@@ -390,6 +408,11 @@ def tick() -> int:
             moved = _aware(r.moved_at) or now()
             if moved < old:
                 r.state, r.status = "stopped", "stale"
+                # v0.652 SACHCHA NATIJA: given up as dead - said ONCE (it used to go quiet for ever)
+                out.append((r.tenant_id, r.conversation_id, {"key": r.key, "title": r.title, "state": "stopped",
+                                                             "label": r.label},
+                            f"⏹ {r.label} {r.title}: 2 din se aage nahi badha, isliye maine ise band maan liya. "
+                            f"Chahiye to 'dobara karo' kahiye."))
                 continue
             if r.stuck_told:
                 continue
@@ -446,7 +469,8 @@ def status(tenant: str, q: str = "") -> dict[str, Any]:
     for k in ("waiting", "working", "failed", "done"):
         for j in groups[k][:6]:
             extra = j["stage"] if k == "working" else j["detail"]
-            lines.append(f"{j['label']} {j['title']}: {STATE_WORD[k]}" + (f" ({extra})" if extra else "")
+            stuck = k == "working" and j["minutes_since_change"] >= max(1, _secs("KAAM_STUCK_S", 900) // 60)
+            lines.append(f"{j['label']} {j['title']}: {'atka hai' if stuck else STATE_WORD[k]}" + (f" ({extra})" if extra else "")
                          + (f" {j['pct']}%" if k == "working" and 0 <= j["pct"] < 100 else "")
                          + (f", {j['minutes_since_change']} min se nahi badla" if k == "working" and j["minutes_since_change"] >= 10 else ""))
     return {"counts": {k: len(v) for k, v in groups.items()}, "jobs": js[:20], "say": "; ".join(lines[:8]) or
@@ -468,7 +492,11 @@ def block(tenant: str, conversation_id: str = "") -> str:
              and (now() - datetime.fromisoformat(j["updated_at"])).total_seconds() < 6 * 3600]
     if not live and not fresh:
         return ""
-    rows = [f"- {j['label']} {j['title']}: {STATE_WORD[j['state']]}"
+    stuck_min = max(1, _secs("KAAM_STUCK_S", 900) // 60)
+    rows = [f"- {j['label']} {j['title']}: "
+            + (f"ATKA HAI ({j['minutes_since_change']} min se aage nahi badha - 'chal raha hai' mat kehna; roko ya dobara "
+               f"karne ka poochho)" if j["state"] == "working" and j["minutes_since_change"] >= stuck_min
+               else STATE_WORD[j['state']])
             + (f" (abhi: {j['stage']})" if j["state"] == "working" and j["stage"] else "")
             + (f" ({j['detail'][:120]})" if j["state"] != "working" and j["detail"] else "") for j in (live + fresh)[:10]]
     return ("KAAM KI HAALAT (live, from the jobs themselves; checked " + datetime.now(timezone.utc).strftime("%H:%M UTC") + "):\n"

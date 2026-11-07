@@ -1702,6 +1702,22 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
 
 _stopped: set[str] = set()
 
+
+def _record_cut(tenant_id: str, conversation_id: str, user_text: str, why: str, t0: float) -> None:
+    """v0.652 SACHCHA NATIJA: a turn that hit its time limit or crashed used to leave NO outcome - a call then read the
+    PREVIOUS ask's outcome (often "done") and said "ho gaya" for work that stopped, and the work diary / Kaam list never
+    showed it. Now it is "stuck" in LAST_OUTCOME (fresh `at`) and in the task log."""
+    LAST_OUTCOME[conversation_id] = {"outcome": "stuck", "left": why, "goal": "", "at": time.time()}
+    if not user_text or str(user_text).lstrip().startswith(("[", "(")):
+        return
+    try:
+        from ..fence import is_incognito
+        from . import pakka
+        if not is_incognito(conversation_id):
+            pakka.record(tenant_id, user_text, "stuck", [], {"conv": conversation_id}, time.time() - t0, why)
+    except Exception:
+        log.exception("cut turn record failed")
+
 # v0.191 wake turns never stream: a live call on this chat owns its own reply stream (livereply), and the
 # wake turn's words must publish as plain messages instead of feeding into it.
 _NO_STREAM: set[str] = set()
@@ -2177,6 +2193,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
             final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"
+            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)
             if live is not None:
@@ -2187,6 +2204,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         except Exception as e:
             log.exception("agent turn failed")
             final_text = _friendly_error(e)
+            await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, f"galti: {str(e)[:120]}", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": str(e)[:200]},
                              turn_id=_turn_id, actor=who)
             if live is not None:

@@ -487,6 +487,8 @@ class Settings(BaseSettings):
     voice_lean_tools: bool = True    # v0.627 the call declares only LEAN_TOOLS (Gemini bills the whole tool list on every reply); the rest via santosh_kaam
     voice_brain: bool = True         # v0.630 HAIKU DIMAAG: Gemini Live is ONLY the voice (hears + speaks); every ask goes to the Hoola brain (voice_brain_model) with every chat tool
     voice_brain_model: str = "claude-haiku-5-5"
+    voice_checkin_s: int = 150    # v0.652 a call ask still running: one 'abhi bhi kar raha hoon' line this often
+    voice_checkin_max: int = 3    # ...at most this many times (0 = off)
     kaam_stop_words: bool = True   # v0.649 SACH MEIN ROKO: her 'roko / cancel karo' stops running work before the turn waits
     call_split: bool = True   # v0.646 ALAG CALL: a phone that asks (split=1) gets each call on its own record (Calls section)
     voice_brain_yaad: bool = False       # v0.644 diary / facts block on a call brain turn (never ready in time on her calls)

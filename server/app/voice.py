@@ -3013,6 +3013,7 @@ class Call:
         inbox_id = await asyncio.to_thread(turn_inbox.accept, self.ctx.tenant_id, self.conv, request, False, note, "",
                                            place)
         from .agent import santosh as _brain
+        t_start = time.time()              # v0.652 only an outcome recorded AFTER this moment is this job's
         tok = _brain.VOICE_BRAIN_NOW.set(brain)   # v0.630 copied into the task: this turn thinks on voice_brain_model
         try:
             job = asyncio.create_task(turn_inbox.run_owned(inbox_id, self.conv, request, self.ctx.tenant_id, False,
@@ -3036,8 +3037,38 @@ class Call:
                      "answered" if job in done else "still working", time.monotonic() - t0)
         if job in done:
             return {"result": job.result()}
-        job.add_done_callback(lambda j: self._late_result(j, request))
+        job.add_done_callback(lambda j, t=t_start: self._late_result(j, request, t))
+        if get_settings().voice_checkin_max > 0:   # v0.652 a long job is never silence: a short "abhi bhi kar raha hoon"
+            ck = asyncio.create_task(self._still_working(job, request))
+            self._tools.add(ck)
+            ck.add_done_callback(self._tools.discard)
         return {"status": "working", "note": "Kaam abhi chal raha hai. User se baat karte raho; pura hote hi tumhe bataya jayega."}
+
+    async def _still_working(self, job: asyncio.Task, request: str = "") -> None:
+        """v0.652 SACHCHA NATIJA: a call ask still running past the first wait used to go silent until it ended (up to
+        the 15 min turn limit). Every `voice_checkin_s` (150 s) while it runs, at most `voice_checkin_max` (3) times, the
+        voice says ONE short line that it is still working - in its own voice, never a clip; never on a parked call
+        (that would wake Gemini and bill for it) and never for a job she cancelled."""
+        st = get_settings()
+        gap = max(60, int(st.voice_checkin_s or 150))
+        about = f" ('{request[:120]}')" if request else ""
+        t0 = time.monotonic()
+        for _ in range(int(st.voice_checkin_max or 0)):
+            done, _p = await asyncio.wait({job}, timeout=gap)
+            if done or job.done() or self.closed.is_set():
+                return
+            try:
+                from . import kaamstop
+                if kaamstop.recently_cancelled(self.conv):
+                    return
+            except Exception:
+                pass
+            if getattr(self, "parked", False):
+                continue
+            mins = max(1, int((time.monotonic() - t0) // 60))
+            self.stats["still_working"] = self.stats.get("still_working", 0) + 1
+            self.push_news(f"(Woh kaam{about} abhi bhi chal raha hai, {mins} minute ho gaye. Ek chhoti line mein bolo ki "
+                           f"kaam chal raha hai aur khatam hote hi bataoge. 'Ho gaya' bilkul mat kehna.)")
 
     def _orphan_note(self, text: str) -> None:
         """v0.211 the call is already closed: a result / note that would have been spoken is saved as a call
@@ -3050,7 +3081,7 @@ class Call:
         except Exception:
             log.exception("call followup note failed")
 
-    def _late_result(self, job: asyncio.Task, request: str = "") -> None:
+    def _late_result(self, job: asyncio.Task, request: str = "", since: float = 0.0) -> None:
         if job.cancelled():
             return
         try:   # v0.649 SACH MEIN ROKO: she cancelled it - its end is not news (no "ho gaya", no "chal raha hai")
@@ -3083,6 +3114,8 @@ class Call:
         try:
             from .agent import santosh
             oc = dict(santosh.LAST_OUTCOME.get(self.conv) or {})
+            if since and float(oc.get("at") or 0) < since:
+                oc = {}                    # v0.652 an EARLIER ask's outcome is no news about this job
         except Exception:
             log.warning("voice: last outcome unreadable", exc_info=True)
             oc = {}
@@ -3099,9 +3132,10 @@ class Call:
             self.push_news(f"(Woh bada kaam{about} atka hai: {why}. Sach batao ek line mein — kya ho gaya, kya baaki, "
                               f"aapse kya chahiye. 'Ho gaya' bilkul mat kehna.){tail}")
         else:
-            # no goal record (a plain short job, or the record lost): the classic done wording stays
-            self.push_news(f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
-                              f"mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.){tail}")
+            # v0.652 SACHCHA NATIJA: no outcome recorded for THIS job - never assume "ho gaya"; say what its answer says
+            self.push_news(f"(Woh bada kaam{about} ka jawab aaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis "
+                              f"baare mein hai ('woh jo aapne kaha tha...'), phir jawab mein jo likha hai wahi ek-do lines "
+                              f"mein. 'Ho gaya' sirf tab kehna jab jawab mein saaf likha ho ki kaam poora hua.){tail}")
 
     def _place(self, request: str = "") -> str:
         """v0.93 where she said the job runs (her PC / Hoola's own browser / phone): her words in this turn, else what
