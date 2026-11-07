@@ -153,6 +153,24 @@ def check_link(url: str) -> dict[str, Any]:
     return _ok(url, str(r.status_code))
 
 
+# v0.663 SACH KA HISAAB: the gate looks only at what THIS job made. "Q3 report.pdf" from last month, or three old
+# reminders, used to pass a job that claimed them - every row the tenant ever had was counted.
+import contextvars as _cv
+from datetime import timedelta as _td, timezone as _tz
+
+SINCE: "_cv.ContextVar" = _cv.ContextVar("verify_since", default=None)
+
+
+def _new(at) -> bool:
+    """Was this row made after the job began? (no start known = every row counts, the old behaviour)"""
+    since = SINCE.get()
+    if since is None or at is None:
+        return True
+    a = at if at.tzinfo else at.replace(tzinfo=_tz.utc)
+    b = since if since.tzinfo else since.replace(tzinfo=_tz.utc)
+    return a >= b - _td(seconds=90)
+
+
 def _delivered(tenant: str) -> list[tuple[str, str]]:
     from sqlalchemy import select
 
@@ -160,7 +178,8 @@ def _delivered(tenant: str) -> list[tuple[str, str]]:
     with session() as s:
         return [(r.name or "", r.stored_path or "")
                 for r in s.scalars(select(PcFile).where(PcFile.tenant_id == tenant,
-                                                        PcFile.direction == "to_phone")).all()]
+                                                        PcFile.direction == "to_phone")
+                                   .order_by(PcFile.created_at)).all() if _new(r.created_at)]
 
 
 def check_filename(tenant: str, name: str) -> dict[str, Any]:
@@ -266,7 +285,7 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
             a = s.scalars(select(Artifact).where(Artifact.tenant_id == tenant, Artifact.status == "ready",
                                                  Artifact.deleted.is_(False))
                           .order_by(Artifact.updated_at.desc())).first()
-            aid2 = a.id if a is not None else ""
+            aid2 = a.id if a is not None and _new(a.updated_at) else ""
         return check_artifact(tenant, aid2) if aid2 else _bad(where, "koi tayyar page nahi hai")
     if kind in ("reminder", "routine"):
         from sqlalchemy import select
@@ -277,6 +296,7 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
             rows = s.scalars(select(Reminder if kind == "reminder" else Routine)
                              .where((Reminder if kind == "reminder" else Routine).tenant_id == tenant,
                                     (Reminder if kind == "reminder" else Routine).status == "active")).all()
+            rows = [x for x in rows if _new(x.created_at)]
         return (_ok(where, f"{len(rows)} active") if len(rows) >= want
                 else _bad(where, f"sirf {len(rows)} {kind} lage, {want} chahiye the"))
     if kind == "list":
@@ -286,7 +306,7 @@ def check_step(tenant: str, conv: str, step: dict[str, Any], calls: list[dict] |
         want = max(1, num)
         with session() as s:
             rows = [x for x in s.scalars(select(ListItem).where(ListItem.tenant_id == tenant)).all()
-                    if not arg or arg.lower() in (x.list_name or "").lower()]
+                    if (not arg or arg.lower() in (x.list_name or "").lower()) and _new(x.created_at)]
         return (_ok(where, f"{len(rows)} items") if len(rows) >= want
                 else _bad(where, f"list mein sirf {len(rows)} items, {want} chahiye the"))
     # the file family
@@ -315,9 +335,18 @@ def line_for(failures: list[dict], unknown: list[dict]) -> str:
 
 
 def gate(tenant: str, conv: str, made: list[str] | None, steps: list[dict] | None,
-         calls: list[dict] | None = None) -> dict[str, Any]:
+         calls: list[dict] | None = None, since=None) -> dict[str, Any]:
     """Can this job close as done? Never raises: a broken check must not break her job (it reads as unknown)."""
     STATS["gates"] += 1
+    tok = SINCE.set(since)
+    try:
+        return _gate(tenant, conv, made, steps, calls)
+    finally:
+        SINCE.reset(tok)
+
+
+def _gate(tenant: str, conv: str, made: list[str] | None, steps: list[dict] | None,
+          calls: list[dict] | None = None) -> dict[str, Any]:
     rows: list[dict[str, Any]] = []
     try:
         rows += check_made(tenant, made)

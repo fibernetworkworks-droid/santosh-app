@@ -47,6 +47,12 @@ from .agent.tools import TOOL_LABELS, TOOLS, Ctx, ToolError, dispatch
 from .config import get_settings
 from .events import bus
 
+
+def _fails(out) -> bool:
+    """v0.663 a tool result that says it failed without an "error" key ({"ok": False}, status failed / refused)."""
+    from .agent.santosh import tool_failure
+    return bool(tool_failure(out)) if isinstance(out, dict) and "error" not in out else False
+
 log = logging.getLogger("santosh.voice")
 
 # Gemini's male voices (all speak Hindi and other Indian languages)
@@ -2064,13 +2070,23 @@ class Call:
         already out; the truth is said right after, never left standing)."""
         try:
             did = list(getattr(self, "did", []) or [])
-            ran = len(did) - self._did_mark
-            self._did_mark = len(did)
+            mark = self._did_mark
+            new = [d for d in did if int(d.get("n") or 0) > mark]
+            self._did_mark = max([mark] + [int(d.get("n") or 0) for d in did])
             now = time.monotonic()
-            if ran > 0 or now - max(self._news_sent_at, self._started_at) < 90:
-                return
+            if now - max(self._news_sent_at, self._started_at) < 90:
+                return          # a job's own news was just relayed: "ho gaya" may be that news, truthfully
             from .agent import draftcheck
-            claim = draftcheck.claims_done(reply)
+            # v0.663 only a tool that FINISHED OK and DID something (not a read, not a failed / still-running one) of the
+            # claim's own kind backs the claim - "mail bhej diya" after email_send errored, or after only email_check,
+            # used to pass because ANY tool in the turn switched the check off
+            claim = ""
+            for phrase, window, _cl in draftcheck.all_claims(reply):
+                _f, tools = draftcheck.family_of(phrase, window)
+                if not any(d.get("ok") is True and not draftcheck._is_read(d.get("tool"))
+                           and draftcheck._backs_claim(d, tools) for d in new):
+                    claim = phrase
+                    break
             if not claim:
                 return
             self.stats["voice_fake_done"] = self.stats.get("voice_fake_done", 0) + 1
@@ -3174,7 +3190,7 @@ class Call:
 
     def _conv_of(self, job) -> str:
         """v0.657 the conversation a brain job ran in (the call record, or one of its side records)."""
-        return (getattr(self, "_job_conv", None) or {}).get(id(job)) or self.conv
+        return (getattr(self, "_job_conv", None) or {}).get(id(job)) or getattr(self, "conv", "")
 
     def _spawn_copy_back(self, side: str, request: str, job) -> None:
         t = asyncio.ensure_future(self._copy_back(side, request, job))   # its own task: never blocks the call
@@ -3221,7 +3237,7 @@ class Call:
             oc = {}
         outcome = str(oc.get("outcome") or "")
         left = str(oc.get("left") or "")[:220]
-        if outcome in ("done", "talk"):
+        if outcome == "done":   # v0.663 "talk" (no tool ran: a question back, a promise) is NOT done - the neutral line below
             self.push_news(f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
                               f"mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.){tail}")
         elif outcome in ("partial", "continuing"):
@@ -3392,7 +3408,7 @@ class Call:
             out = await self._execute(name, args)
             from .scrub import scrub   # v0.91 no key a service echoes back ever reaches the call model
             out = scrub(out)
-            state = "error" if "error" in out else "done"
+            state = "error" if ("error" in out or _fails(out)) else "done"
         except ToolError as e:
             out, state = {"error": str(e)}, "error"
         except asyncio.TimeoutError:
@@ -3425,8 +3441,10 @@ class Call:
                 _JOBS.add(t)
                 t.add_done_callback(_JOBS.discard)
         running = name == "santosh_kaam" and isinstance(out, dict) and out.get("status") == "working"
+        self._did_n = getattr(self, "_did_n", 0) + 1   # v0.663 a running count: `did` is capped at 60, its length is not
         self.did.append({"tool": name, "label": raw if name != "santosh_kaam" else
-                         (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error"})
+                         (str(args.get("request", ""))[:80] or raw), "ok": None if running else state != "error",
+                         "n": self._did_n})
         del self.did[:-60]
         if state == "error" and name != "santosh_kaam":
             # v0.78 Pakka kaam: a fix that worked before for this failure goes back with the error (no web search here:

@@ -342,7 +342,7 @@ def _verify_done(tenant: str, goal_id: str, conv: str, made: list[str] | None,
         steps = json.loads(r.steps or "[]")
     except ValueError:
         steps = []
-    out = verify.gate(tenant, conv or r.conversation_id, made, steps, calls)
+    out = verify.gate(tenant, conv or r.conversation_id, made, steps, calls, since=_aware(r.started_at))
     if out["ok"]:
         if out["unknown"]:
             STATS["verify_unknown"] += 1
@@ -673,9 +673,14 @@ async def _continuation(conv: str, tenant: str, ask: str, goal_id: str, actor: s
             return                         # v0.223 finished / stopped / replaced while this round waited: nothing to do
         from .santosh import run_turn, LAST_OUTCOME
         out = await run_turn(conv, ask, tenant_id=tenant, actor=actor)
-        LAST_OUTCOME[conv] = {"outcome": "continuing", "left": str(out or "")[:300], "goal": goal_id, "at": time.time()}
         v = active_for(conv)
-        if v is not None and steps_left(v):
+        if v is not None and v.get("id") == goal_id and steps_left(v):
+            # v0.663 "continuing" only while the goal really is still open AND this round did not end stuck / stopped -
+            # it used to overwrite a finished or dead job's true outcome, so a live call said "abhi chal raha hai"
+            mine = LAST_OUTCOME.get(conv) or {}
+            if str(mine.get("outcome") or "") not in ("stuck", "stopped"):
+                LAST_OUTCOME[conv] = {"outcome": "continuing", "left": str(out or "")[:300], "goal": goal_id,
+                                      "at": time.time()}
             log.info("goal %s still open after continuation; rounds cap will decide the rest", goal_id)
     except Exception:
         log.exception("goal continuation failed")

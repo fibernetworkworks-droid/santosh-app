@@ -367,6 +367,31 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 RESULT_LIMIT = {"research_run": 40000}
 
 
+_FAIL_STATUS = {"failed", "failure", "error", "refused"}
+
+
+def tool_failure(out) -> str:
+    """v0.663 SACH KA HISAAB: the failure text of a tool result, '' when it went fine. A result like
+    {"ok": False, "stage": "check", "errors": [...]} (a failed video render, a refused promo) used to count as a
+    success because only an "error" key was read - logged ok, outcome "done", and the honesty check switched off."""
+    if not isinstance(out, dict):
+        return ""
+    if out.get("error"):
+        return str(out.get("error"))
+    if out.get("ok") is False or str(out.get("status") or "").strip().lower() in _FAIL_STATUS:
+        for k in ("reason", "message", "say", "detail", "errors", "stage", "status"):
+            if out.get(k):
+                return str(out[k])[:300]
+        return "the tool said it did not succeed"
+    return ""
+
+
+def _facts_of(content) -> str:
+    """The numbers a tool result carries, as one compact string (for the after-reply figure check)."""
+    nums = re.findall(r"\d[\d,.]*\d|\d", str(content or "")[:40000])
+    return " ".join(dict.fromkeys(nums))[:6000]
+
+
 def _short(obj, limit: int = 6000) -> str:
     """A tool result for the model, at most `limit` characters.
     v0.331 SAAF KATAI: it used to be cut mid-JSON with "…(truncated)" - broken JSON, ids / links lost, and no hint how
@@ -950,7 +975,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     from . import pakka
     from . import goal as _goal
     state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
-                   "conv": conversation_id}
+                   "conv": conversation_id, "actor": getattr(ctx, "actor", "owner") or "owner"}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
     state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
@@ -1102,12 +1127,39 @@ def _aage_promised(text: str) -> bool:
     return _aage.promised(text)
 
 
-def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str) -> None:
+_ASKS_HER = re.compile(r"\?\s*$|\b(bataiye|batayein|batao|bata\s*dijiye|chahiye|bhej\s*dijiye|share\s*kar|dijiye\s*to"
+                       r"|confirm\s*kar|please\s+(?:share|send|tell|confirm)|could\s+you|can\s+you|let\s+me\s+know"
+                       r"|which\s+one|kaun\s*s[aie]|kis\s+(?:date|din|time))\b", re.I)
+_SAYS_FAILED = re.compile(r"\b(fail|failed|nahi\s*ho\s*pa(?:ya|yi|aya)|nahi\s*hua|nahi\s*ho\s*saka|error|atak\s*gay"
+                          r"|could\s*n[o']t|couldn'?t|was\s+unable|unable\s+to|did\s*n[o']t\s+work)\b", re.I)
+
+
+_OFFER = re.compile(r"[^.!?\n]*\b(aur\s+kuch|kuch\s+aur|aur\s+koi|anything\s+else|something\s+else|kuch\s+bhi\s+aur"
+                    r"|aur\s+madad|more\s+help)\b[^.!?\n]*[.!?]?", re.I)
+
+
+def _close_auto_plan(tenant_id: str, conversation_id: str, g: dict, final_text: str, calls: list | None = None) -> None:
+    """v0.311 the server's own plan closes with the model's final answer.
+    v0.663 SACH KA HISAAB: only a real finish closes it as DONE. A step that failed ("Step b fail ho gaya, API key
+    chahiye") or a question back to her ("Kaunsi date chahiye?") used to tick every remaining step done and show the
+    whole job finished on her card; now the first is `failed`, the second `blocked_on_her`, the steps left as they are."""
     from . import goal as _goal
+    text = " ".join(str(final_text or "").split())
+    did_ok = any(c.get("ok") for c in calls or [])
+    some_failed = any(not c.get("ok") for c in calls or [])
+    failed_only = bool(calls) and not did_ok
+    # a polite closing offer ("Aur kuch karna hai?") is not a question about THIS job
+    core = _OFFER.sub(" ", text).strip()
     try:
+        if core and _ASKS_HER.search(core[-400:]):
+            _goal.finish(tenant_id, g["id"], "blocked_on_her", reason=text[:300], your_turn=text[-300:])
+            return
+        if failed_only or (some_failed and _SAYS_FAILED.search(text)):
+            _goal.finish(tenant_id, g["id"], "failed", reason=text[:300])
+            return
         for x in _goal.steps_left(g):
             _goal.mark_step(tenant_id, g["id"], x["n"], "done", conv=conversation_id)
-        _goal.finish(tenant_id, g["id"], "done", reason=" ".join(str(final_text or "").split())[:300])
+        _goal.finish(tenant_id, g["id"], "done", reason=text[:300])
     except Exception:
         log.exception("auto plan close failed")
 
@@ -1182,7 +1234,11 @@ def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
     chat = _cc.chat_of(conversation_id)
     shown = {f.id for f in memory_facts(tenant_id, recent_facts(), chat)}
     rel = _y.relevant_facts(tenant_id, user_text, shown, top=6, conversation_id=chat)
-    return ("JUDE HUE FACTS (her own, by meaning for this ask):\n" + "\n".join(f"- {t}" for _, t in rel)) if rel else ""
+    if not rel:
+        return ""
+    mk = _y.fact_marks([i for i, _ in rel])   # v0.663 dated; Hoola's own guesses marked as such
+    return ("JUDE HUE FACTS (by meaning for this ask; 'Hoola ne samjha' = your own reading, not her words):\n"
+            + "\n".join(f"- {t}{mk.get(i, '')}" for i, t in rel))
 
 
 async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
@@ -1538,7 +1594,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                         and not _aage_promised(final_text):
                     # v0.311 the server's own one-step plan closes with the model's real final answer (no
                     # "text mein mat ruko" loop over a plan the model never wrote); a mere promise still goes on
-                    _close_auto_plan(tenant_id, conversation_id, g, final_text)
+                    _close_auto_plan(tenant_id, conversation_id, g, final_text, state.get("calls"))
                     g = None
                 if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < 8:
                     state["goal"] = g
@@ -1585,13 +1641,17 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             try:
                 out = await _watched(_run_tool(b["name"], args_in, ctx, settings, mcp_route), conversation_id, ctx, state)
                 _PROGRESS[conversation_id] = time.time()   # v0.311 the turn is moving (read by _with_deadline)
-                fine = not (isinstance(out, dict) and out.get("error"))
+                _fail = tool_failure(out)   # v0.663 {"ok": False} / status failed is a failure too, not only "error"
+                fine = not _fail
                 breaker.after(b["name"], fine)
                 refs = out.get("tool_references") if isinstance(out, dict) and getattr(ctx, "native_search", False) \
                     else None
                 content = refs if refs else _short(out, RESULT_LIMIT.get(b["name"], 6000))   # v0.563 tool_reference
-                call = {"tool": b["name"], "ok": fine, "error": "" if fine else str(out.get("error"))[:300],
-                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else str(content)[:300]}
+                call = {"tool": b["name"], "ok": fine, "error": "" if fine else _fail[:300],
+                        "args": args_in, "key": _key(b["name"], args_in), "result": "" if not fine else str(content)[:300],
+                        # v0.663 every figure the tool really returned (the 300-char result above hid row 10's amount,
+                        # so the after-reply check called a correct number unsourced)
+                        "digits": _facts_of(content) if fine else ""}
                 if not fine:
                     content += await pakka.on_failure(tenant_id, b["name"], call["error"], state.get("request", ""), state)
                     call["internet_fix"] = (state.get("web_fix") or {}).get(b["name"], "")
@@ -1784,17 +1844,30 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
             return final_text
-        if not final_text:
-            final_text = "Yeh kaam lamba ho gaya, main yahin ruk raha hoon. Aage kya karoon?"
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
-                                                     **_tag(live, True)})
-            # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
-            _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
-        return final_text
+        # v0.663 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
+        # be returned as the final answer and the turn recorded "done"), and the outcome is partial, never done
+        state["left"] = state.get("left") or "steps ki had poori ho gayi, kaam poora nahi hua"
+        honest = "Yeh kaam lamba ho gaya aur abhi poora nahi hua - main yahin ruk raha hoon. Aage badhaun?"
+        bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent",
+                                                 **_tag(live, True)})
+        # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
+        _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
+        return (final_text + "\n\n" + honest).strip() if final_text else honest
     if not final_text.strip():
         # the model finished without a word: never leave the user staring at a silent chat
-        final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
-            "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
+        # v0.663 only when a tool really finished: "Kaam ho gaya" after every tool failed was made up
+        _cs = state.get("calls") or []
+        _bad = [c for c in _cs if not c.get("ok")]
+        if ran_tools and _cs and len(_bad) == len(_cs):
+            state["left"] = state.get("left") or "koi kadam poora nahi hua"
+            final_text = ("Maaf kijiye, yeh kaam nahi ho paya - jo kadam chalaye woh atak gaye ("
+                          + (str(_bad[-1].get("error") or "")[:120] or "galti") + "). Dobara koshish karun?")
+        elif ran_tools and _bad:
+            state["left"] = state.get("left") or "kuch kadam atak gaye"
+            final_text = gendered("Kuch hissa ho gaya, par sab nahi - kuch kadam atak gaye. Baaki dobara karun?", gender)
+        else:
+            final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
+                "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
         bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                  **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)

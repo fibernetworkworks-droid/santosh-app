@@ -187,9 +187,24 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
         lines.append("ALWAYS keep in mind (the user pinned these; id: fact):")
         lines += [f"- {f.id}: {f.text}" for f in pins]
     others = [f for f in facts if not f.pinned]
-    if others:
-        lines.append("Things the user asked you to remember (id: fact):")
-        lines += [f"- {f.id}: {f.text}" for f in others]
+    # v0.663 SACH KA HISAAB: a fact Hoola picked up by itself (source auto) is NOT her instruction, and an old fact may be
+    # out of date - both used to sit under "the user asked you to remember", undated, and were stated to her as truth
+    hers = [f for f in others if (f.source or "") != "auto"]
+    guessed = [f for f in others if (f.source or "") == "auto"]
+
+    def _when(f) -> str:
+        try:
+            return f.created_at.strftime("%d %b %Y")
+        except Exception:   # noqa: BLE001
+            return "?"
+    if hers:
+        lines.append("Things the user asked you to remember (id: fact, saved on):")
+        lines += [f"- {f.id}: {f.text} (saved {_when(f)})" for f in hers]
+    if guessed:
+        lines.append("Things YOU picked up from earlier chats - your own reading, not her words (id: fact, noted on). "
+                     "They can be wrong or out of date: before you act on one or state it as a fact, check it with her "
+                     "in a few words (e.g. 'aapka godown ab bhi Chakan mein hai na?'):")
+        lines += [f"- {f.id}: {f.text} (noted {_when(f)})" for f in guessed]
     if memory_count(tenant_id) > len(facts):
         lines.append("Older things the user told you are not listed here: yaad_khojo (or memory_search for a saved "
                      "fact) finds them in one call - look them up before saying you do not know or asking her again.")

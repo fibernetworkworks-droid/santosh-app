@@ -2008,3 +2008,13 @@ Task: SAVE THE STATE after the four-wave flaw audit (v0.657 / v0.660 / v0.661 / 
 Work: branch `stable-2026-11-07-audit-v662` cut at dda3e58f (= v0.662.0 code + one marketing doc); markers re-verified and
 151 tests green in a git-archive extract of that commit; KNOWN GOOD CHECKPOINT entry added to CLAUDE.md.
 Not verified: live restart / call / late reminder; VPS version at save; Google sign-in still dead.
+
+---
+Task ID: v0663-sach-ka-hisaab
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: second deep audit (37 flaws found, 4 waves proposed) -> owner "GO WAVE 5" = the 14 false-statement flaws.
+Work: v0.663.0 SACH KA HISAAB - tool_failure, family-aware + past-report-aware claim check, quick lane forced queue,
+call claim check by real tools, honest auto-plan close / step cap / empty ending, goal round outcome kept, verify scoped
+to the job, figures from the whole result, guessed facts labelled. 32 new tests.
+Not verified: live. Waves 6-8 (double / lost work, wrong place, smoothness) wait for her GO.

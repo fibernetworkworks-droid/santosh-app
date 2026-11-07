@@ -22212,3 +22212,52 @@ real facts; no live memory quiz has been run on this version.
 
 Tests `test_v0662_kaam_saaf.py` 19 (17 fail on the old code); 320 older suites pass. NOT VERIFIED live: the Google
 backoff against her real dead sign-in, the late-reminder wording on a real restart.
+
+## v0.663.0 SACH KA HISAAB — Wave 5 of the second deep audit: Hoola never says something false (owner: "GO WAVE 5")
+
+The second deep audit (4 parallel read-only passes: task loop, hallucination / honesty, consistency / persistence,
+smoothness) found 37 flaws; this wave fixes the 14 where Hoola could tell her something untrue.
+
+1. **A failed tool is a failure.** `santosh.tool_failure(out)`: a result with `ok: False` or status failed / failure /
+   error / refused (a failed video render, a refused promo) counted as success because only an `error` key was read -
+   logged ok, outcome "done", the honesty check switched off, a failing procedure learned as good. The call side
+   (`voice._fails`) reads it the same way.
+2. **A true report is not called a lie.** `draftcheck.ran_before(conv, family)`: on a wake turn, a status ask ("mail gaya
+   kya?") or a past-tense claim ("bhej diya tha"), a tool of that kind that really succeeded in this chat (or the chat
+   behind a call record) in the last 7 days backs the claim. With nothing behind it, the claim is still caught.
+3. **A claim needs a tool of ITS kind.** `all_claims` judges every claim in the reply (not only the first) and
+   `family_of` / `_backs_claim` map it to send / money / book / remind / publish tools (sub-agents, browser, PC, MCP and
+   workflows back any). "Mail bhej diya aur reminder laga diya" with only `create_reminder` run now gets `NUDGE_PART`.
+4. **The quick lane (no tools) never says done or swallows work.** A reply that claims done, or her message with a doing
+   verb (`quick._ACTION`), goes to the running job / queue; a claiming reply is replaced by the honest queue line.
+5. **The call corrects a claim after a failed or unrelated tool.** `_check_spoken_claim` counts only tools that finished
+   ok, did something (not a read) and are of the claim's kind; a running count (`n`) replaces the capped list length
+   (after 60 tools the old count was always 0).
+6. **Excuse words no longer hide a claim.** Future / offer / condition words excuse a claim only BEFORE it (or in the same
+   word: "kar dunga"); after it only a negation / tap / approval does; "aapne jo ... thi" (a relative clause) is cut off.
+   New claims: "order place kar diya", "PDF / invoice / website ... bana diya / ban gayi / taiyaar ho gayi", "I've created".
+   A plan or list written in the reply itself is never a claim.
+7. **A call job that only talked is not "ho gaya".** `_late_result` relays "done" only for outcome done; "talk" goes to
+   the neutral line.
+8. **The server's own plan closes with the truth.** `_close_auto_plan`: a question back to her = `blocked_on_her`, every
+   call failed (or a failed call + failure words) = `failed`, steps left as they are; only a real finish ticks them done.
+   A polite "Aur kuch karna hai?" is not a question about the job.
+9. **The step cap always says it.** The honest "abhi poora nahi hua" line is added even when a mid-task line exists, and
+   `state["left"]` makes the outcome partial, never done.
+10. **"Kaam ho gaya" is never made up.** An empty reply after tools says the job did not happen (all failed) or only part
+    of it did (some failed).
+11. **A goal round keeps a stuck outcome.** `_continuation` writes "continuing" only while the goal is still open and the
+    round did not end stuck / stopped.
+12. **Done = verified counts only this job's rows.** `verify.gate(..., since=goal.started_at)` (`verify.SINCE`): files,
+    pages, reminders, routines and list items made before the job no longer pass it.
+13. **A correct figure deep in a result is backed.** Each call keeps every number its result carried (`digits`, from
+    `_facts_of`), read by `sources_text`, so row 10's amount is not flagged as unsourced.
+14. **Guessed facts are labelled and dated.** `life.context_block` lists her own facts ("saved <date>") apart from facts
+    Hoola picked up ("noted <date>", check with her first); facts read by meaning carry `yaad.fact_marks`
+    ("Hoola ne samjha, <date>") on chat and call.
+
+Also fixed: `voice.Call._conv_of` no longer crashes on a call object without `conv` (test_v0220 was red since v0.660).
+Tests: NEW `test_v0663_sach_ka_hisaab.py` (32; 23 fail on the old code). Updated to the new truth: test_v0654 (the fake
+call's tool records now have the real shape), test_v0226 (its scripted "Excel bana diya" after only a read is a false
+claim), test_v0220 (the fake call names its chat). NOT VERIFIED live. Not done in this wave (said plainly): the after-reply
+figure check still runs only on her own turns, not on background reports.
