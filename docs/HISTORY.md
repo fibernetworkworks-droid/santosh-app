@@ -21761,3 +21761,37 @@ telecall, kalam, site, appmaker, aftersales, wapsi, brand, ads...), each a synch
 `context_block` and both `_system(...)` builds (start of the turn + the mid-turn rebuild after tool_search) run through
 `asyncio.to_thread`. No prompt text changed. Test: `test_v0645_prompt_built_off_the_loop` in test_v0638_tez_taiyari.py.
 NOT VERIFIED: her next call log is the proof (the `prompt` stage should drop and no `event loop blocked` line in it).
+
+## v0.646.0 WEB DEVELOPMENT PANEL 2 — the panel works on its own, end to end (owner: "fully immature and very bad with alignment ... when clicking the type section it borders the typing section with a blue line" + "when I type the prompt it goes to main chat on homepage ... make it perfect end to end")
+
+**The leak, found by reading the server:** `site.service._publish` sends every site event to the conversation stored on
+the site, and a site made with `conv=""` falls back to `net.home_conv(tenant)` = her HOME chat. v0.636 sent the ask to
+the chat composer outright; the fix is not just "call /api/sites" - the panel first makes the site's OWN conversation
+and hands it to `POST /api/sites {brief, conversation_id}` (and to the plan / look taps), so the plan card, step lines
+and studio auto-open never land in her home chat. If the server refuses the line, that empty thread is deleted.
+
+**The layout, found by measuring:** `#app .wd-body` / `.wd-info` / `.wd-new` belong to the Game Desk (v0.420) and were
+turning the panel body into a wrapped flex row. Everything moved to its own `wdp-` prefix. The two-column split wraps
+by the room it HAS (flex 999 1 480px / 1 1 360px) - the Website studio can sit beside the panel and a window-width
+media query had left the main column 25 px wide. The ask card has ONE border; the textarea has none and no focus
+outline (the global `#app textarea:focus-visible` outline was the blue line); the card gets a soft ring on focus-within.
+
+**The flow in the panel** (`static/console/webdev.js`): home ask -> plan card (untick pages, home locked; the server's
+questions answered by index; the AI cost estimate) -> "Haan, aage badho" (`/answers` then `/plan {pages}`) -> three
+looks with real screenshots (colours drawn only as plain #hex) -> "Choose this look" (`/look`) -> build progress
+(polled every 3.5 s while the server works and the panel is visible) -> live preview (computer 1280 scaled / phone 390)
+-> "Change something" (`/change`). Failed / paused -> `/resume`; building -> Pause (`/stop`); a planned site can be
+deleted (confirm). Every site has its own **Ask Hoola** thread (one conversation per site kept in localStorage, titled
+"Website · <name>", each message carries a hint naming the site id so the agent works on THIS site and never starts
+another; replies polled from `/messages` + `/live`). Integrations / Data / Settings asks go there. "Move my old site" and
+"Screenshot" read the design in the panel (`/api/site-design/read`; a 403 shows the TXT / meta ownership proof) and her
+tap uses it (`/api/site-design/use`, keep=true = "keep my pages and order"). Publish / rollback / take-down / redirects
+unchanged: confirm() + the server's hash.
+
+**Tests** `test_v0646_webdev_panel.py` (renamed from v0636): wiring + a real-browser walk in light, dark and phone - the
+focused textarea has outline none / border 0 and the card a ring; one line in the ask makes a site whose plan card shows
+in the panel, the main composer stays empty, the studio does not jump open; the thread's message is in its own
+conversation; looks draw 6 swatches (a bad colour dropped) and the concept as text; every tab renders; no two visible
+buttons overlap and none clips its words on any screen; no sideways scroll at 390 px. test_v142 `recent_and_isolation`
+stays red exactly as on main (pre-existing). NOT VERIFIED live: a real build through the panel on the VPS (the test
+cannot nest a Chromium build); thread replies are polled every 1.5 s, not streamed.
