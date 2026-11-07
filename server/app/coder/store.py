@@ -668,10 +668,13 @@ def skills_search(tenant: str, query: str, limit: int = 2, include_disabled: boo
                              if len(t) >= 3 and t.lower().strip(".,?!;:'\"()") not in _SKILL_STOP}
                     out = []
                     for r in rows:
-                        name = str(r["name"] or "").lower().replace("-", " ")
-                        hay = name + " " + str(r["description"] or "").lower()
-                        hits = {w for w in words if w in hay}
-                        if len(hits) >= 2 or any(w in name for w in hits):
+                        name_words = set(re.findall(r"[a-z0-9\u0900-\u097f]+", str(r["name"] or "").lower()))
+                        desc = str(r["description"] or "").lower()
+                        body = str(r["body"] or "").lower()
+                        top = {w for w in words if w in name_words or re.search(r"\b" + re.escape(w), desc)}
+                        deep = {w for w in words if re.search(r"\b" + re.escape(w), body)}
+                        # at least one of her words in the skill's own name / description, and two in all
+                        if (top and len(top | deep) >= 2) or (top & name_words and len(words) <= 2):
                             out.append(dict(r))
                         if len(out) >= limit:
                             break
