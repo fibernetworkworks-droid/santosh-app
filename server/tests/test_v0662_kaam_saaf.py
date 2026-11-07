@@ -118,10 +118,17 @@ def test_a_dead_google_sign_in_backs_off_and_tells_her_once(env, monkeypatch):
         def refresh(self, req):
             calls.append(1)
             raise RefreshError("invalid_grant: Token has been expired or revoked.")
-    for _ in range(3):
-        with pytest.raises(google_auth.GoogleReconnect):
-            google_auth.refresh(Creds(), T, "me@x.in")
+    tok = google_auth.BACKGROUND.set(True)              # the background watchers (mail 60 s, calendar 120 s)
+    try:
+        for _ in range(3):
+            with pytest.raises(google_auth.GoogleReconnect):
+                google_auth.refresh(Creds(), T, "me@x.in")
+    finally:
+        google_auth.BACKGROUND.reset(tok)
     assert calls == [1]                                   # asked Google once, not every minute
+    with pytest.raises(google_auth.GoogleReconnect):
+        google_auth.refresh(Creds(), T, "me@x.in")       # her own chat ask always tries again
+    assert calls == [1, 1]
     assert len(told) == 1 and "Google" in told[0] and "naye mail" in told[0]
 
     class NewCreds(Creds):
@@ -130,7 +137,7 @@ def test_a_dead_google_sign_in_backs_off_and_tells_her_once(env, monkeypatch):
         def refresh(self, req):
             calls.append(2)
     google_auth.refresh(NewCreds(), T, "me@x.in")
-    assert calls == [1, 2] and T not in google_auth._DEAD
+    assert calls == [1, 1, 2] and T not in google_auth._DEAD
 
 
 # ---------------------------------------------------------------- 28 honesty check

@@ -420,6 +420,8 @@ async def _slot(fn) -> None:
     """v0.662 one worker slot, guarded: an exception that keeps recurring in an EARLY slot (campaigns come first)
     used to skip every slot after it on every tick - reminders, follow-ups, research - silently. Now it is logged
     (once a minute per slot) and the next slot still runs."""
+    from . import google_auth as _ga
+    tok = _ga.BACKGROUND.set(True)      # a dead Google sign-in waits out its backoff here (never in her own chat)
     try:
         r = fn()
         if asyncio.iscoroutine(r):
@@ -431,6 +433,8 @@ async def _slot(fn) -> None:
         if time.time() - _SLOT_FAIL.get(name, 0.0) >= 60:
             _SLOT_FAIL[name] = time.time()
             log.exception("worker slot %s failed (the other slots still run)", name)
+    finally:
+        _ga.BACKGROUND.reset(tok)
 
 
 async def tick() -> None:

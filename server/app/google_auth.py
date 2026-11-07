@@ -57,6 +57,10 @@ def mark_error(tenant_id: str, err: str | None) -> None:
             conn.last_error = (err or None) and str(err)[:500]
 
 
+import contextvars as _cv
+# v0.662 set by the worker's slots: only BACKGROUND watchers (mail watch 60 s, calendar 120 s) wait out the backoff;
+# her own chat ask always tries Google again (she may have just re-linked)
+BACKGROUND: "_cv.ContextVar[bool]" = _cv.ContextVar("google_background", default=False)
 _DEAD: dict[str, dict] = {}
 DEAD_BACKOFF_S = (1800, 7200, 21600)     # 30 min, 2 h, then every 6 h
 TELL_EVERY_S = 24 * 3600
@@ -96,7 +100,7 @@ def refresh(creds, tenant_id: str, email: str = "") -> None:
     from google.auth.transport.requests import Request
     tok = _tok_key(creds)
     dead = _DEAD.get(tenant_id)
-    if dead and dead["tok"] == tok and time.time() < dead["until"]:
+    if dead and dead["tok"] == tok and time.time() < dead["until"] and BACKGROUND.get():
         # v0.662 a refused sign-in is not asked again every minute (mail watch 60 s, calendar 120 s: her log showed
         # invalid_grant forever) - the same dead token waits out its backoff; a NEW sign-in has a new token and goes
         raise GoogleReconnect(dead["msg"])
