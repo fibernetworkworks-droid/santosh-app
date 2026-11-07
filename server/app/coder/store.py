@@ -564,22 +564,34 @@ def tool_uses_by_ids(ids: list[int]) -> list[dict]:
 
 # ---------------------------------------------------------------- work state
 
-def work_write(lst: str, items: list[dict]) -> None:
+# v0.672+ wave 9: the table had no tenant column (list was the whole primary key), so one user's to-do list rode every
+# other user's chat and call primer ("Still open: ..."). Each list is now stored under its tenant's own key; rows written
+# before this (no key) are read by nobody.
+_WS_SEP = "\x1f"
+
+
+def _ws_key(tenant: str, lst: str) -> str:
+    return f"{tenant or ''}{_WS_SEP}{(lst or 'default')[:200]}"
+
+
+def work_write(lst: str, items: list[dict], tenant: str = "") -> None:
     ensure()
     now = time.strftime("%Y-%m-%dT%H:%M:%S%z")
     with db(write=True) as c:
         c.execute("INSERT INTO work_state(list, items, updated_at) VALUES (?,?,?) "
                   "ON CONFLICT(list) DO UPDATE SET items=excluded.items, updated_at=excluded.updated_at",
-                  (lst[:200], json.dumps(items[:100], ensure_ascii=False), now))
+                  (_ws_key(tenant, lst), json.dumps(items[:100], ensure_ascii=False), now))
 
 
-def work_read(lst: str | None = None, include_closed: bool = False) -> dict:
+def work_read(lst: str | None = None, include_closed: bool = False, tenant: str = "") -> dict:
     ensure()
+    pre = f"{tenant or ''}{_WS_SEP}"
     with db() as c:
         if lst:
-            rows = c.execute("SELECT * FROM work_state WHERE list=?", (lst,)).fetchall()
+            rows = c.execute("SELECT * FROM work_state WHERE list=?", (_ws_key(tenant, lst),)).fetchall()
         else:
-            rows = c.execute("SELECT * FROM work_state ORDER BY updated_at").fetchall()
+            rows = c.execute("SELECT * FROM work_state WHERE substr(list, 1, ?) = ? ORDER BY updated_at",
+                             (len(pre), pre)).fetchall()
     out: dict[str, list] = {}
     for r in rows:
         try:
@@ -588,7 +600,7 @@ def work_read(lst: str | None = None, include_closed: bool = False) -> dict:
             items = []
         if not include_closed:
             items = [i for i in items if (i.get("status") or "todo") in ("todo", "doing")]
-        out[r["list"]] = items
+        out[str(r["list"])[len(pre):]] = items
     return out
 
 

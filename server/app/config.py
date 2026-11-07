@@ -34,6 +34,7 @@ class Settings(BaseSettings):
     agent_hard_effort: str = "high"        # v0.331 Claude effort for a hard reasoning ask (agent/hard.py); '' = model default
     agent_long_on_claude: bool = True       # v0.331 a long job's calls go to Claude even when CHAT_LLM picks a cheaper brain
     agent_hard_model: str = "claude-opus-5-5"   # v0.429 SOCH KE JAWAB 2: a hard reasoning ask runs on the strongest model ('' = anthropic_model)
+    hoola_operator_tenant: str = "default"   # wave 9: the tenant that owns the server's AI key (only it is told to recharge Anthropic)
     claude_one_model: str = "claude-haiku-5-5"   # v0.631 SAB HAIKU (owner: "DO EVERY THING HAIKU FOR NOW --- SIMPLE TO HARD"): EVERY Claude call in Hoola runs on this model, whatever it asked for ('' = each part uses its own model again)
     chat_simple_model: str = "claude-haiku-5-5"   # v0.630 HAIKU DIMAAG: an ordinary (not hard, not long) ask runs on Haiku ('' = anthropic_model); a failure answers on Sonnet
     agent_hard_max_tokens: int = 16000      # v0.429 per call for a hard ask (thinking counts; 2000 cut the answer)

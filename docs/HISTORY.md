@@ -22572,3 +22572,40 @@ short on save - restored and re-checked; test runs now use `-o tmp_path_retentio
 ## v0.672.0 DOOSRI JAANCH — the four waves above shipped as ONE release
 
 Waves 5-8 of the second deep audit (37 flaws) were built as 0.663-0.667 and re-versioned twice while other sessions shipped 0.663-0.671; to stop the churn they ship together as v0.672.0 (pubspec 0.672.0+678). Code comments keep the wave numbers they were written with (v0.665-v0.668).
+
+## v0.681.0 TURANT — Wave 9 of the third deep audit: urgent safety, money, privacy and cost (owner: "GO WAVE 9")
+
+The third deep audit (5 parallel passes: long tasks, tool choice + skills, memory + context, analysis + monitoring,
+reliability + feeling) found 47 flaws in 5 waves; this wave is the urgent nine.
+
+1. **Coder work lists are per tenant.** `work_state` had no tenant column (the list name was the whole key), so one
+   user's to-do list rode every user's chat / call primer ("Still open: ..."). Stored under a tenant key now
+   (`store._ws_key`); old unkeyed rows are read by nobody. The `/api/coder/observations/batch` and `tool-uses/batch`
+   routes also returned ANY tenant's rows by id - filtered to the caller's tenant.
+2. **A bulk WhatsApp send needs HER words.** `santosh.ASK_NOW` (her own turn's words) + `tools._she_said_send`:
+   `create_campaign auto_send` and `confirm_send` start sending only when her words in THIS turn say send (haan / bhej
+   do / send, no "nahi / mat"); never a routine, a wake report or the model reading an older "haan". Otherwise the
+   campaign waits READY with `not_sent` telling the model to ask "Bhej doon?" (the phone card's "Haan, bhej do" still
+   sends). The campaign family no longer opens on a bare "whatsapp" (one-person asks), only on bulk words.
+3. **SAB HAIKU covers streamed calls.** anthropic 2.x `messages.stream` posts directly, so `usage.install` wrapping only
+   `create` let all live chat (and the Web Studio live build) run on Opus / Sonnet while the log said Haiku. `stream` is
+   wrapped too; the streamed meter counts `msg.model` (what was really sent).
+4. **Web Studio streamed sections are counted** (`site.ai._streamed` -> `usage.from_anthropic`).
+5. **Research ceilings hold the price of calls in flight** (`bill.Meter.held_inr`, `per_call_inr` at the model really
+   sent): six parallel workers all passed `afford()` at Rs 147 of 150 and each then spent; a granted call now holds its
+   likely price until the meter has counted it.
+6. **Only the operator is told to recharge Anthropic** (`hoola_operator_tenant`, default "default"): a staff member, a
+   customer or another tenant hears `OUTAGE_TEXT`; a spoken (call) error never carries the "code 529 · ref" tail; the
+   log gets one loud "CREDIT IS OUT" line.
+7. **The fallback really changes model.** `usage.ONE_MODEL_BYPASS`: when the one model (Haiku) is overloaded / down the
+   call goes to `anthropic_model` once instead of being rewritten straight back to Haiku (the turn died); never on a
+   credit / bad-request error. A failed WAKE turn publishes no error line itself - kaam_followup's honest line is the one
+   she gets (it was two pushes).
+8. **A failed staff task is "failed".** `employee.network.run_pending` checks `turn_failed_since`: the outage line was
+   saved as "done" and sent to the staff member as the result.
+9. **The minute is out of the cached system prompt.** `prompts.system_prompt` + `life.context_block` carry the DATE
+   only; the exact time rides with her newest message (`santosh._now_note`, "[Abhi ka samay: ...]"). The minute changed
+   the first cached block every turn, so the whole chat was re-written to the cache (1.25x) instead of read (0.1x).
+
+Tests: NEW `test_v0681_turant.py` (19; all 19 fail on the old code). NOT VERIFIED live: the cache-read share on a real
+bill, a real overload fallback, a real campaign send.

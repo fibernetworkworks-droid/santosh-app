@@ -68,8 +68,11 @@ _LATLNG = re.compile(r"(?<![\d.])-?\d{1,2}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}")
 # auto-keys below - this map carries the natural language the names cannot cover.
 EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     # v0.311 WhatsApp campaigns are a family now (they were always on): her words, or a chat that already ran one
-    "campaign": ("whatsapp", "whats app", "campaign", "template", "broadcast", "lead list", "leads", "contact list",
-                 "customer list", "bulk message", "opt-in", "opt in", "consent", "व्हाट्सएप", "कैंपेन"),
+    # wave 9: NOT a bare "whatsapp" - "Rahul ko whatsapp karo" (one person) opened the BULK campaign tools and
+    # tool_search ranked create_campaign first; only bulk / campaign words open it now
+    "campaign": ("whatsapp campaign", "whatsapp broadcast", "whatsapp pe sabko", "whatsapp par sabko", "sabko whatsapp",
+                 "whatsapp template", "campaign", "template", "broadcast", "lead list", "leads", "contact list",
+                 "customer list", "bulk message", "bulk whatsapp", "opt-in", "opt in", "consent", "कैंपेन"),
     # v0.245 generic verbs (bhej / send / reply / draft / label) removed: they loaded 23 mail tools for every send
     "email": ("mail", "email", "gmail", "inbox", "khat", "newsletter", "unsubscribe", "attachment",
               "fwd", "snooze", "vacation", "spam", "ईमेल", "मेल", "इनबॉक्स"),

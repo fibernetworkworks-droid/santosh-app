@@ -130,7 +130,13 @@ def _streamed(req: dict[str, Any]):
             buf.append(piece)
             ST.feed("".join(buf))
         ST.feed("".join(buf), force=True)
-        return stm.get_final_message()
+        msg = stm.get_final_message()
+    try:   # wave 9: a streamed section was never counted (the usage meter wraps only create) - every live-build Opus call
+        from .. import usage
+        usage.from_anthropic(usage.one_model(dict(req)).get("model", req.get("model", "")), msg)
+    except Exception:   # noqa: BLE001
+        pass
+    return msg
 
 
 def _ask_app(system: str, prompt: str, max_tokens: int, kind: str, images: list[bytes] | None = None,

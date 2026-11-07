@@ -364,6 +364,13 @@ def _gemini_fallback(kw: dict, e: Exception) -> str:
 ONE_MODEL = {"moved": 0}
 
 
+import contextvars as _cvars
+
+# wave 9: the ONE model just failed (overload / refusal) - its fallback must really be another model. The fallback asked
+# for anthropic_model and one_model rewrote it straight back to the same Haiku, so a 529 killed the turn.
+ONE_MODEL_BYPASS: "_cvars.ContextVar[bool]" = _cvars.ContextVar("hoola_one_model_bypass", default=False)
+
+
 def one_model(kw: dict) -> dict:
     """v0.631 SAB HAIKU: with claude_one_model set, every Claude call (chat, hard asks, long jobs, background jobs,
     routines, every engine - including the ones with a model written in their code) runs on that one model. Applied
@@ -374,6 +381,9 @@ def one_model(kw: dict) -> dict:
     except Exception:
         return kw
     m = str(kw.get("model") or "")
+    if ONE_MODEL_BYPASS.get():
+        ONE_MODEL["bypassed"] = ONE_MODEL.get("bypassed", 0) + 1
+        return kw
     if one and m.startswith("claude-") and m != one:
         ONE_MODEL["moved"] += 1
         return {**kw, "model": one}
@@ -403,6 +413,17 @@ def install() -> None:
                 from_anthropic(kw.get("model", ""), r)
             return r
         AsyncMessages.create, Messages.create = a_create, s_create
+        # wave 9: .stream() posts directly (anthropic 2.x never calls .create), so every STREAMED call - all of her live
+        # chat, the Web Studio live build - skipped SAB HAIKU while the log claimed Haiku. The model is rewritten here
+        # too; the streamed usage is counted where the final message is read (santosh._claude_stream, site.ai).
+        as_orig, ss_orig = AsyncMessages.stream, Messages.stream
+
+        def a_stream(self, *a, **kw):
+            return as_orig(self, *a, **one_model(kw))
+
+        def s_stream(self, *a, **kw):
+            return ss_orig(self, *a, **one_model(kw))
+        AsyncMessages.stream, Messages.stream = a_stream, s_stream
     except Exception:
         log.exception("usage: anthropic not wrapped")
     try:

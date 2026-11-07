@@ -9,7 +9,7 @@ import time
 import json
 import logging
 from collections import defaultdict
-from datetime import timedelta
+from datetime import datetime, timedelta
 
 from sqlalchemy import select
 
@@ -86,6 +86,17 @@ def _load_history(conversation_id: str) -> list[dict]:
     if _ctx.full_mode():
         return _sanitize(yaad.full_history(conversation_id))
     return _sanitize(yaad.history(conversation_id))
+
+
+def _now_note(tenant_id: str | None) -> str:
+    """wave 9: "[Abhi ka samay: Saturday 07 Nov 2026, 9:32 PM IST]" in her own time zone, for THIS message only."""
+    try:
+        from .. import life
+        t = datetime.now(life.tz_of(tenant_id or "default"))
+    except Exception:   # noqa: BLE001
+        from zoneinfo import ZoneInfo
+        t = datetime.now(ZoneInfo("Asia/Kolkata"))
+    return f"[Abhi ka samay: {t.strftime('%A %d %b %Y, %I:%M %p').replace(' 0', ' ')} {t.tzname() or ''}]".replace(" ]", "]")
 
 
 def _with_memory(history: list[dict], block: str) -> None:
@@ -358,6 +369,12 @@ def _say_error(tenant_id: str, who: str, text: str) -> bool:
     says the same kind of error once per tenant per 30 minutes."""
     if (who or "owner") == "owner":
         return True
+    if who == "wake":
+        # wave 9: a failed job report says nothing itself - kaam_followup sees turn_failed_since and posts its own honest
+        # line; both went out before ("AI busy, phir bolna" + "ho gaya") - two pushes, one asking her to repeat a thing
+        # she never asked
+        STATS_LONG["bg_errors_quiet"] = STATS_LONG.get("bg_errors_quiet", 0) + 1
+        return False
     kind = re.sub(r"\(ref[^)]*\)|ref[:\s]*\w+|\d+", "", text or "").strip()[:80]
     last = _BG_ERR.get(tenant_id)
     if last and last[0] == kind and time.time() - last[1] < BG_ERROR_QUIET_S:
@@ -557,6 +574,9 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
 
 # v0.630 HAIKU DIMAAG: set by a voice call before it hands her words to the brain (copied into the turn's task)
 VOICE_BRAIN_NOW: _cv.ContextVar[bool] = _cv.ContextVar("hoola_voice_brain_now", default=False)
+# wave 9: HER words of this turn (only her own turns set it) - a bulk send is allowed only when THESE say send, never on
+# the model's own reading of an earlier "haan" (create_campaign auto_send / confirm_send used to trust the model)
+ASK_NOW: _cv.ContextVar[str] = _cv.ContextVar("hoola_ask_now", default="")
 # v0.636 KAHAN RUKA: her 16:22 call ask waited 18 s BEFORE the first Claude call (the calls were 5.3 s + 3.3 s) - a call
 # brain turn now times every stage before its first model call and logs them in one line (`brain prep ...`)
 _PREP: _cv.ContextVar = _cv.ContextVar("hoola_brain_prep", default=None)
@@ -695,7 +715,40 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
             log.warning("model %s failed, answering on %s: %s", over, settings.anthropic_model, str(e)[:200])
             if live is not None:
                 live.reset()
-    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
+            if _sent_model(over) == _sent_model(settings.anthropic_model):
+                # wave 9: SAB HAIKU would send the fallback to the very model that just failed - this one call goes to
+                # the real fallback model instead (said in the log); every other call stays on the one model
+                from .. import usage as _u
+                tok = _u.ONE_MODEL_BYPASS.set(True)
+                try:
+                    log.warning("fallback bypasses the one-model rule once: %s failed, %s answers", _sent_model(over),
+                                settings.anthropic_model)
+                    return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap,
+                                              think, api_stream)
+                finally:
+                    _u.ONE_MODEL_BYPASS.reset(tok)
+    try:
+        return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think, api_stream)
+    except asyncio.CancelledError:
+        raise
+    except Exception as e:   # noqa: BLE001
+        # wave 9: the ONE model (SAB HAIKU) is overloaded / down: the turn used to die there (the SDK's own retries are on
+        # the same model). Once, the real chat model answers instead - never on a credit / bad-request error.
+        low = str(e).lower()
+        if _sent_model(settings.anthropic_model) == settings.anthropic_model or "credit" in low or "billing" in low \
+                or not any(x in low for x in ("overloaded", "529", "error 5", "503", "502", "500", "timed out", "rate limit", "429")):
+            raise
+        from .. import usage as _u
+        log.warning("one model %s failed (%s); %s answers this call", _sent_model(settings.anthropic_model), low[:120],
+                    settings.anthropic_model)
+        if live is not None:
+            live.reset()
+        tok = _u.ONE_MODEL_BYPASS.set(True)
+        try:
+            return await _claude_call(settings.anthropic_model, system, history, settings, tools, live, cap, think,
+                                      api_stream)
+        finally:
+            _u.ONE_MODEL_BYPASS.reset(tok)
 
 
 def _sent_model(model: str) -> str:
@@ -837,7 +890,7 @@ async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
                     live.feed_think(getattr(ev.delta, "thinking", "") or "")
         msg = await st.get_final_message()
     from .. import usage   # the SDK wrapper counts messages.create only: a streamed answer is counted here
-    usage.from_anthropic(kw.get("model", ""), msg)
+    usage.from_anthropic(getattr(msg, "model", "") or _sent_model(kw.get("model", "")), msg)   # wave 9: the model REALLY sent
     _learn_claude(kw, msg)
     return [_block_to_dict(b) for b in msg.content], msg.stop_reason
 
@@ -874,9 +927,24 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     raise last
 
 
-def _friendly_error(e: BaseException) -> str:
+OUTAGE_TEXT = "Hoola ki AI service thodi der ke liye ruki hui hai - hum ise theek kar rahe hain. Thodi der baad phir boliye."
+
+
+def _operator(tenant_id: str | None) -> bool:
+    """wave 9: the tenant that OWNS the server's AI key (it pays the Anthropic bill) - only that tenant is told to recharge."""
+    try:
+        op = str(getattr(get_settings(), "hoola_operator_tenant", "default") or "default")
+    except Exception:   # noqa: BLE001
+        op = "default"
+    return (tenant_id or "default") == op
+
+
+def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "owner", spoken: bool = False) -> str:
     """v0.237 a clean line for her: never the raw technical text (it stays in the log under the same short ref,
-    and the turn_failed event keeps it for the developer). An HTTP status, when there is one, rides as a code."""
+    and the turn_failed event keeps it for the developer). An HTTP status, when there is one, rides as a code.
+    wave 9: the AI key is ONE key for the whole server - a staff member, a customer or another tenant was told to recharge
+    Anthropic on console.anthropic.com (and a call could read it aloud with its code / ref tail). Only the operator's own
+    turn hears the billing line; everyone else hears a neutral outage line; a spoken line never carries the code / ref."""
     import re as _re
     s = str(e)
     low = s.lower()
@@ -884,7 +952,11 @@ def _friendly_error(e: BaseException) -> str:
     from . import context as _ctx
     if "credit balance is too low" in low or "billing" in low and "anthropic" in low:
         # v0.631 her account is out of credit: say it plainly, it is not a bug and waiting will not fix it
-        head = "Anthropic ka credit khatam ho gaya hai - console.anthropic.com > Plans & Billing par recharge kijiye, phir dobara boliye."
+        log.error("ANTHROPIC CREDIT IS OUT - every Claude turn on this server fails until it is recharged")
+        if _operator(tenant_id) and (who or "owner") == "owner":
+            head = "Anthropic ka credit khatam ho gaya hai - console.anthropic.com > Plans & Billing par recharge kijiye, phir dobara boliye."
+        else:
+            head = OUTAGE_TEXT
     elif _ctx.is_overflow(s):
         head = "Yeh chat bahut lambi ho gayi hai. Naya chat shuru karke wahi baat bolein - pichhli baatein yaad rahengi."
     elif busy:
@@ -895,6 +967,8 @@ def _friendly_error(e: BaseException) -> str:
         return head
     ref = format(random.getrandbits(24), "06x")
     log.warning("error ref %s: %s", ref, s[:2000])
+    if spoken:
+        return head            # a voice call speaks the line: no "code 529 · ref a3f9c2" read aloud
     m = _re.search(r"\b(?:error(?: code)?:?\s*|status\s*)(\d{3})\b", s, _re.I)
     return f"{head} (code {m.group(1)} · ref {ref})" if m else f"{head} (ref {ref})"
 
@@ -1034,6 +1108,8 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     from .breaker import Breaker, FAILS_IN_ROW_GOAL
     from . import pakka
     from . import goal as _goal
+    _hers = (getattr(ctx, "actor", "owner") or "owner")
+    ASK_NOW.set(user_text if (_hers == "owner" or _hers.startswith("approved:")) else "")
     state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
                    "conv": conversation_id, "actor": getattr(ctx, "actor", "owner") or "owner"}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
@@ -2164,7 +2240,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         log.exception("agent turn crashed outside its guard")
         _mark_failed(conversation_id)
         try:
-            text = _friendly_error(e)
+            text = _friendly_error(e, tenant_id, actor or "owner", bool(VOICE_BRAIN_NOW.get()))
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "error"})
             _save(conversation_id, "assistant", [{"type": "text", "text": text}], display=text)
             bus.publish(conversation_id, "typing", {"on": False})
@@ -2448,6 +2524,8 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                         block = (_goalb.PLAN_FIRST + "\n\n" + block) if block else _goalb.PLAN_FIRST
               except Exception:
                 log.exception("memory block failed")
+            _now_line = _now_note(tenant_id)   # wave 9: the exact time rides HERE (volatile), never in the cached system prompt
+            block = (_now_line + "\n\n" + block) if block else _now_line
             if block:
                 _with_memory(history, block)
         _mark("memory")
@@ -2495,7 +2573,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
         except Exception as e:
             log.exception("agent turn failed")
             _mark_failed(conversation_id)
-            final_text = _friendly_error(e)
+            final_text = _friendly_error(e, tenant_id, who, bool(VOICE_BRAIN_NOW.get()))
             await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, f"galti: {str(e)[:120]}", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": str(e)[:200]},
                              turn_id=_turn_id, actor=who)

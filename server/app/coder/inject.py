@@ -174,10 +174,10 @@ def _decode(r: dict) -> dict:
     return r
 
 
-def _work_lines() -> list[str]:
+def _work_lines(tenant: str = "") -> list[str]:
     out: list[str] = []
     try:
-        for lst, items in store.work_read().items():
+        for lst, items in store.work_read(tenant=tenant).items():
             for it in items[:8]:
                 status = it.get("status") or "todo"
                 mark = "[todo]" if status == "todo" else "[doing]"
@@ -240,7 +240,7 @@ def primer(tenant: str, conv: str | None = None, compact: bool = False, query: s
                       surface="voice" if not compact else "chat")
     if sk:
         header += "\n" + sk
-    work = _work_lines()
+    work = _work_lines(tenant)
     if work:
         header += "\nStill open:\n" + "\n".join(work[:6])
     limit = 6 if compact else 30

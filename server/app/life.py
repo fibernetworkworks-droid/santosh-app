@@ -176,7 +176,8 @@ def context_block(tenant_id: str, conversation_id: str = "") -> str:
         lines.append(f"User's city: {p.city}")
     if p.language:
         lines.append(f"Preferred language: {p.language}")
-    lines.append(f"User's time zone: {p.timezone or 'Asia/Kolkata'}; local time now {datetime.now(tz).strftime('%A %d %B %Y %H:%M')}")
+    lines.append(f"User's time zone: {p.timezone or 'Asia/Kolkata'}; today is {datetime.now(tz).strftime('%A %d %B %Y')} "
+                 "(the exact time rides with her newest message)")   # wave 9: no minute here - it broke the prompt cache
     if p.briefing_time:
         lines.append(f"Morning briefing is set for {p.briefing_time} every day")
     jobs = active_routines(tenant_id)

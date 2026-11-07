@@ -429,7 +429,10 @@ def system_text(families=None) -> str:
 
 
 def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, families=None) -> str:
-    when = datetime.now(IST).strftime("%A %d %B %Y, %I:%M %p IST")
+    # wave 9: the DATE only - the minute used to change this prompt every turn, and the system prompt is the first cached
+    # block: every turn re-wrote the WHOLE chat to the cache (1.25x) instead of reading it (0.1x). The exact time rides on
+    # her newest message instead (santosh: "Abhi ka samay").
+    when = datetime.now(IST).strftime("%A %d %B %Y (IST)")
     mode = ("\nMode: TEST MODE for WhatsApp. Campaign messages are simulated; nothing reaches real phones. Mention this once if the user expects real delivery."
             if dry_run else "\nMode: LIVE. WhatsApp messages go to real customers.")
     ctx = f"\n\nAbout this user\n{context}" if context else ""
@@ -536,4 +539,4 @@ def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, f
             ids = f"\n\nPehchaan Locker (her saved ID numbers, masked for you; use the {{id:...}} reference): {s}" if s else ""
         except Exception:
             ids = ""
-    return personalise(system_text(families), name, gender) + f"\nCurrent time: {when}." + mode + ctx + learned + job + ids
+    return personalise(system_text(families), name, gender) + f"\nToday: {when}. The exact current time is given with her newest message." + mode + ctx + learned + job + ids

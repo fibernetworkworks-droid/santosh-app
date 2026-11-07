@@ -170,7 +170,33 @@ async def check_template_status(ctx: Ctx, template_id: str, **_):
         return {"template_id": t.id, "name": t.name, "status": t.status, "rejection_reason": t.rejection_reason}
 
 
+_SEND_YES = re.compile(r"\b(haan|han|ha|haa|yes|yep|ok|okay|theek|thik|bhej\s*d[oeiy]|bhejo|bhejiye|send|go\s+ahead|kar\s*do"
+                       r"|chalu\s*kar|start\s+(?:it|the)|sabko\s+bhej|bhej\s*den?a)\b", re.I)
+_SEND_NO = re.compile(r"\b(nahi|nahin|mat|ruko|wait|no|don'?t|cancel|baad\s*mein)\b", re.I)
+
+
+def _she_said_send(ctx: Ctx) -> bool:
+    """Wave 9: a bulk WhatsApp send starts only when HER words in THIS turn say send - never a routine, a wake report or
+    the model reading an older 'haan'. Otherwise the campaign waits as a card ("Haan, bhej do" on her phone)."""
+    actor = getattr(ctx, "actor", "owner") or "owner"
+    if not (actor == "owner" or actor.startswith("approved:")):
+        return False
+    try:
+        from .santosh import ASK_NOW
+        words = ASK_NOW.get() or ""
+    except Exception:   # noqa: BLE001
+        return False
+    return bool(_SEND_YES.search(words)) and not _SEND_NO.search(words)
+
+
+WAIT_FOR_HER = ("The campaign is READY but NOT sent: her own words in this turn did not say send. Show her the message "
+                "text and how many people it goes to, and ask 'Bhej doon?'. It sends only when she says haan / bhej do "
+                "herself, or taps 'Haan, bhej do' on the campaign card. Never say it was sent.")
+
+
 async def create_campaign(ctx: Ctx, title, lead_list_id, template_id, param_mapping, consent_confirmed, auto_send, **_):
+    if auto_send and not _she_said_send(ctx):
+        auto_send = False
     try:
         v = camp.create_campaign(tenant_id=ctx.tenant_id, conversation_id=ctx.conversation_id, title=title,
                                  lead_list_id=lead_list_id, template_id=template_id, param_mapping=param_mapping,
@@ -179,10 +205,16 @@ async def create_campaign(ctx: Ctx, title, lead_list_id, template_id, param_mapp
     except camp.CampaignError as e:
         raise ToolError(str(e))
     v["daily_limit"] = get_settings().max_daily_sends
+    if not auto_send:
+        v["not_sent"] = WAIT_FOR_HER
     return v
 
 
 async def confirm_send(ctx: Ctx, campaign_id, **_):
+    if not _she_said_send(ctx):
+        v = camp.campaign_view(campaign_id)
+        v["not_sent"] = WAIT_FOR_HER
+        return v
     try:
         return camp.confirm_send(campaign_id)
     except camp.CampaignError as e:

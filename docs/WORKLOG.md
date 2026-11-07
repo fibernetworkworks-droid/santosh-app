@@ -2197,3 +2197,13 @@ JAANCH mid-push again), their base kept whole each time, the route + the module 
 0.672.0/+678 -> 0.680.0/+679. server/app/agent/aeptune.py + POST /api/aep/turn/{conversation_id} behind require_key + current_tenant;
 tests test_v0610_hoola_adopt.py (15, zero network); the AEP octo 369 + their newest suites green (the reds proven pre-existing on
 pristine); deploy is the owner's dispatch.
+
+---
+Task ID: v0681-turant
+Date: 2026-11-07
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: third deep audit ("NOW AGAIN GO DEEP ... MAKE THE HOOLA AI A POWERFULL GOD") -> 47 flaws, 5 waves -> "GO WAVE 9".
+Work: v0.681.0 TURANT - per-tenant coder work lists + tenant-filtered batch routes, bulk send only on her own words,
+SAB HAIKU on streams + real-model metering, studio stream counted, research in-flight price held, operator-only
+recharge line, one-model fallback bypass + quiet wake failures, staff failures honest, minute out of the cached prompt.
+19 new tests. Not verified live. Waves 10-13 wait for her GO.
