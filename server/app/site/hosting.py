@@ -316,7 +316,7 @@ def blockers(r: Site) -> list[str]:
     out = [b["text"] for b in chk.get("blocking", [])]
     blanks = (chk.get("scores") or {}).get("blanks", 0)
     if blanks:
-        out.append(f"{blanks} jagah [blank] baaki hai (phone / daam / naam jo pata nahi tha); pehle bata dijiye")
+        out.append(f"{blanks} jagah [blank] baaki hai - preview mein Hoola ki sample value dikh rahi hai (phone / daam / naam jo pata nahi tha); asli bata dijiye, phir live")
     if r.status != "ready":
         out.append(f"website abhi '{r.status}' hai")
     if not r.version:

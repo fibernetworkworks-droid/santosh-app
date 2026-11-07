@@ -797,7 +797,7 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
                       "item": base_url.rstrip("/") + "/" + ("" if sg == "home" else sg + "/")} for i, (t, sg) in enumerate(trail)]
             ld += ('<script type="application/ld+json">' + json.dumps({"@context": "https://schema.org", "@type": "BreadcrumbList",
                                                                        "itemListElement": items}, ensure_ascii=False).replace("</", "<\\/") + '</script>')
-    return (f'<!doctype html><html lang="{lang}"{dir_}><head>{"".join(meta)}{links}{ld}</head>'
+    return samples((f'<!doctype html><html lang="{lang}"{dir_}><head>{"".join(meta)}{links}{ld}</head>'
             f'<body class="look-{esc(site["tokens"]["style"])}">{header(site, plan, page["slug"], rel, logo)}{notice}'
             f'<main id="main">{crumb}{body}</main>{footer(site, plan, rel)}{floats(site)}'
             + (f'<script src="{rel}assets/vendor/lottie_light.min.js" defer></script>'
@@ -810,7 +810,56 @@ def page_html(site: dict[str, Any], plan: dict[str, Any], page: dict[str, Any], 
             + (f'<script type="module" src="{rel}assets/vendor/three-hero.js"></script>' if "data-hoola-3d=" in body else "")   # v0.566
             + ('<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>'
                if 'class="cf-turnstile"' in body else "")                                                       # v0.551
-            + '</body></html>')
+            + '</body></html>'), f)
+
+
+# ---------------------------------------------------------------- v0.671 sample values in the preview
+# A blank the model could not fill (her phone, a price, a review) shows a believable SAMPLE in the preview - like
+# Lovable's filled-in demo - instead of a yellow [phone]. It stays a blank underneath (class "blank eg"), so the launch
+# check still counts it and nothing goes live until her real value replaces it; filling a blank writes the real fact.
+_EG_BLANK = re.compile(r'<em\b([^>]*\bclass="blank"[^>]*)>\[([^\]<]{1,60})\]</em>')
+_EG_ATTR = re.compile(r'\bdata-eg="([^"]{1,80})"')
+
+
+def sample_for(label: str, f: dict[str, Any]) -> str:
+    low = re.sub(r"[^a-z0-9 /-]+", "", label.lower()).strip()
+    city = str(f.get("city") or "").strip()
+    nm = str(f.get("name") or "").strip()
+    slug = re.sub(r"[^a-z0-9]+", "", nm.lower())[:20] or "yourshop"
+    table = (
+        (("whatsapp", "phone", "mobile", "number", "call", "contact", "contact number"), "98765 43210"),
+        (("email", "e-mail", "mail", "email id", "email address"), f"hello@{slug}.in"),
+        (("email / phone", "phone / email"), f"hello@{slug}.in / 98765 43210"),
+        (("address", "full address", "shop address", "pata", "location"), f"12 Main Road, {city or 'Station Road'}"),
+        (("hours", "timings", "timing", "opening hours", "time", "samay"), "10 am - 9 pm, Mon - Sat"),
+        (("price", "daam", "rate", "fees", "fee", "cost", "amount"), "₹299"),
+        (("city", "shahar", "town", "area"), city or "Your city"),
+        (("name", "business name", "shop name", "brand name"), nm or "Your business"),
+        (("rating",), "4.8 out of 5"),
+        (("year", "since", "established"), "2015"),
+    )
+    for words, val in table:
+        if low in words:
+            return val
+    for words, val in table:
+        if any(w in low.split() for w in words):
+            return val
+    return ""
+
+
+def samples(html: str, f: dict[str, Any]) -> str:
+    if 'class="blank"' not in html:
+        return html
+
+    def one(m):
+        eg = _EG_ATTR.search(m.group(1))
+        val = (eg.group(1) if eg else "") or esc(sample_for(m.group(2), f))
+        if not val:
+            return m.group(0)
+        lab = esc(m.group(2))
+        return (f'<em class="blank eg" data-blank="{lab}" title="Sample - give your real {lab} and Hoola puts it here '
+                f'before the site goes live">{val}</em>')
+    return _EG_BLANK.sub(one, html)
 
 
 # ---------------------------------------------------------------- legal pages (code only)

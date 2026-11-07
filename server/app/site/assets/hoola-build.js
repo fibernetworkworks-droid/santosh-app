@@ -42,6 +42,8 @@
         }
       }
     }
+    var eg = t.content.querySelectorAll('em.blank[data-eg]');   // v0.671 a sample value in place of a yellow [blank]
+    for (var q = 0; q < eg.length; q++) { eg[q].textContent = eg[q].getAttribute('data-eg'); eg[q].classList.add('eg'); }
     return t.content;
   }
 

@@ -53,7 +53,7 @@ def test_download_moves_and_care(site_env, monkeypatch):
     q = c.get(f"/api/sites/{v['id']}/moves?quiet=1")
     assert q.status_code == 200 and q.json() == {"none": True, "rows": []}
     say = c.get(f"/api/sites/{v['id']}/care?days=30").json()["say"]
-    assert not say.startswith(":") and say.startswith("S-")
+    assert not say.startswith(":") and say.startswith(v["name"]) and v["name_by"] == "hoola"   # v0.671 Hoola names it
 
 
 def test_studio_js_markers():
@@ -122,7 +122,7 @@ def test_every_section_in_a_browser(arena_server, arch_env, monkeypatch):
     page.click("#ws [data-act='launch']")
     page.wait_for_selector("#ws [data-act='golive']", timeout=15000)
     page.click("#ws [data-act='golive']")
-    page.wait_for_selector("#wsPane .kv:has-text('s-0001.hoolasites.in')", timeout=15000)
+    page.wait_for_selector("#wsPane .kv:has-text('.hoolasites.in')", timeout=15000)
     page.fill("#wsDom", "sharmasweets.in")
     page.click("#ws form[data-form='domain'] [type=submit]")
     try:

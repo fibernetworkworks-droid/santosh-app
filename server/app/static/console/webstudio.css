@@ -429,3 +429,8 @@ details.actd.turnw>summary{list-style:none;display:inline-flex;align-items:cente
 :root[data-theme="dark"] .aura i{opacity:.22}
 @media (prefers-reduced-motion:reduce){.aura i{animation:none}}
 @media (max-width:760px){.aura{height:560px}.aura i{filter:blur(56px)}}
+
+/* v0.671 a brand name Hoola picked is said so, one tap from Rename */
+.namedby{margin-left:6px;font-family:inherit;font-size:12px;font-weight:500;line-height:1;color:var(--pri);background:var(--pri-soft);border:0;border-radius:999px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+.namedby:hover{filter:brightness(.97)}
+@media (max-width:760px){.namedby{display:none}}

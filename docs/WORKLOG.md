@@ -2136,3 +2136,14 @@ Work Log:
 - test_v0669_hoola_aura.py 2 + test_v0667_premium_studio.py 2 green; version ritual 0.668.0 -> 0.669.0 (+675)
 Stage Summary:
 - shipped v0.669.0 to main
+
+---
+Task ID: v0.671.0 NAAM AUR NAMOONA
+Agent: Claude Code (web session)
+Task: Hoola brand name before building + sample values instead of blanks in the preview
+Work Log:
+- brand_name + new()/view()/rename(); build.samples + prompts + live canvas; Studio chip
+- built as 0.670; their KAAN W6 took 0.670.0 -> re-versioned 0.671.0 on their tip (REBASE PROTOCOL)
+- tests: v0671 6 + site suites (v121, v0223-v0225, v0292, v0315, v0649, v0663, v0664, v0667, v0669) green; v0224 backup prune red on the unchanged tree too
+Stage Summary:
+- shipped v0.671.0 to main

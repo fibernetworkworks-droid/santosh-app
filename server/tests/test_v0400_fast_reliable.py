@@ -189,5 +189,5 @@ def test_console_shows_the_visitor_tests():
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.670.0"
-    assert "0.670.0+676" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.671.0"
+    assert "0.671.0+677" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
