@@ -281,8 +281,9 @@ def test_live_build_in_a_browser(arena_server, arch_env, monkeypatch):
     sid = page.url.split("#/site/")[1].split("/")[0]
     # R5: a change to the built site streams over it, then 'New version ready' + before / after
     from app.site import service as S
-    g = S.get(T, sid)
-    k = S.sec_key("home", g["plan"]["pages"][0]["sections"][-1]["type"])
+    plan = S._j(S._load(sid).plan, {})
+    home = next(p for p in plan["pages"] if p["slug"] == "home")
+    k = S.sec_key("home", home["sections"][-1]["type"])
 
     def change():
         S._save(sid, status="building", stage="build")
