@@ -1923,3 +1923,13 @@ Task: owner GO on the false-task-reply audit.
 Work Log: draftcheck effect() by result, read names, clause window, new claim phrases, card nudge + line; voice spoken-claim
 correction; merged their v0.654.0, re-versioned 0.655.0; 25 tests.
 Stage Summary: shipped; live check pending.
+
+---
+Task ID: v0.656.0 KAAM DIKHE
+Agent: Claude (web studio session)
+Task: owner screenshot - Studio looks panel showed one line and 0%; wants Lovable-style live steps + timing
+Work Log:
+- new site/activity.py step log fed by every build stage + finer counts in the looks waves
+- Studio work panel + site chat: elapsed time, step list with ticks / spinners / counts / live times
+- tests 3 new + browser walk; 74/75 site suites green (the 1 red fails on main too)
+Stage Summary: shipped v0.656.0 on top of their v0.655.0 SACH KA PEHRA (both kept)

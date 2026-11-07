@@ -344,11 +344,56 @@
     drawState(); drawPane();
   }
 
+  /* ---------- v0.655 the job's real steps with live timers (server clock, corrected for this screen) ---------- */
+  let CLOCK = 0, TICK = null, ACT_OPEN = false;
+  const nowS = () => Date.now() / 1000 + CLOCK;
+  const dur = s => { s = Math.max(0, Math.round(s)); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s` : `${Math.floor(s / 3600)}h ${String(Math.floor(s / 60) % 60).padStart(2, '0')}m`; };
+  const ACTV = v => { const a = M(v && v.activity); if (a.now) CLOCK = Number(a.now) - Date.now() / 1000; return a; };
+  function actSig(v) { const a = M(v && v.activity), st = L(a.steps), l = st[st.length - 1] || {}; return [st.length, l.state, l.done, l.note, a.ended].join('|'); }
+  function stepRow(x) {
+    const run = x.state === 'run', bad = x.state === 'error';
+    const ic = run ? '<span class="spin" aria-hidden="true"></span>' : bad ? `<span class="xmark" aria-hidden="true">!</span>` : `<span class="tick" aria-hidden="true">${ico('check', 11)}</span>`;
+    const cnt = Number(x.total) ? `<span class="cnt">${esc(S(x.done || 0))}/${esc(S(x.total))}</span>` : '';
+    const t = run ? `<span class="tm" data-t0="${Number(x.at)}"></span>` : `<span class="tm">${dur((Number(x.end) || Number(x.at)) - Number(x.at))}</span>`;
+    return `<li class="${run ? 'run' : bad ? 'bad' : 'ok'}">${ic}<div class="sl"><span class="ell">${esc(S(x.label))}</span>${x.note ? `<span class="sn ell">${esc(S(x.note))}</span>` : ''}</div>${cnt}${t}</li>`;
+  }
+  function stepList(a, last) {
+    const st = L(a.steps).filter(x => !x.final || x.state === 'error');
+    return `<ol class="acts" aria-label="What Hoola is doing">${(last ? st.slice(-last) : st).map(stepRow).join('')}</ol>`;
+  }
+  function actPanel(v) {
+    const a = ACTV(v), st = L(a.steps); if (!st.length) return '';
+    const cur = [...st].reverse().find(x => x.state === 'run');
+    const pct = cur && Number(cur.total) ? Math.round(100 * Number(cur.done || 0) / Number(cur.total)) : null;
+    return `<div class="acthead"><span class="mut sm">Working for <b class="tm" data-t0="${Number(a.started)}"></b></span><span class="sp"></span>
+        ${cur ? `<span class="mut sm ell">Step ${st.indexOf(cur) + 1}${pct !== null ? ` · ${pct}% of this step` : ''}</span>` : ''}</div>
+      <div class="prog${pct === null ? ' ind' : ''}" role="progressbar" aria-label="Progress of this step"${pct === null ? '' : ` aria-valuemin="0" aria-valuemax="100" aria-valuenow="${pct}"`}><i style="width:${pct === null ? 30 : Math.max(3, pct)}%"></i></div>
+      ${stepList(a)}`;
+  }
+  function tickClocks() {
+    APP.querySelectorAll('[data-t0]').forEach(e => { const t0 = Number(e.dataset.t0); if (t0) e.textContent = dur(nowS() - t0); });
+  }
+  function startTick() { if (!TICK) { TICK = setInterval(tickClocks, 1000); } tickClocks(); }
+
   function drawState() {
     const box = $('#wsState'); if (!box || !CUR) return;
-    const v = CUR, b = M(v.board);
-    box.innerHTML = WORKING(v) ? `<div class="step" style="padding:4px 0 2px"><span class="spin" aria-hidden="true"></span><span class="ell">${esc(S(b.now) || S(v.say) || 'Working…')}</span>${b.total ? `<span class="sp"></span><span>${esc(S(b.pct || 0))}%</span>` : ''}</div>` : '';
+    const v = CUR, b = M(v.board), a = ACTV(v), st = L(a.steps);
+    if (WORKING(v)) {
+      const cur = [...st].reverse().find(x => x.state === 'run');
+      box.innerHTML = `<div class="chatact"><div class="step"><span class="spin" aria-hidden="true"></span><span class="ell sp">${esc(S(cur?.label) || S(b.now) || S(v.say) || 'Working…')}</span>
+          ${cur && Number(cur.total) ? `<span class="cnt">${esc(S(cur.done || 0))}/${esc(S(cur.total))}</span>` : ''}${a.started ? `<span class="tm" data-t0="${Number(a.started)}"></span>` : ''}</div>
+        ${st.length > 1 ? `<details class="actd"${ACT_OPEN ? ' open' : ''}><summary>${st.length} steps so far</summary>${stepList(a, 12)}</details>` : ''}</div>`;
+    } else if (st.length && a.ended) {
+      const ok = !st.some(x => x.state === 'error');
+      box.innerHTML = `<details class="actd done"${ACT_OPEN ? ' open' : ''}><summary>${ok ? 'Worked' : 'Stopped'} for ${dur(Number(a.ended) - Number(a.started))} · ${st.filter(x => !x.final).length} steps</summary>${stepList(a)}</details>`;
+    } else box.innerHTML = '';
     const p = $('#wsPill'); if (p) p.innerHTML = statusPill(v);
+    startTick();
+  }
+  APP.addEventListener('toggle', e => { if (e.target.matches?.('details.actd')) ACT_OPEN = e.target.open; }, true);
+  function drawActivity() {
+    const el = $('#wsAct'); if (el && CUR) el.innerHTML = actPanel(CUR);
+    drawState();
   }
 
   function viewsBar(extra = '') {
@@ -393,10 +438,13 @@
       const note = st === 'looks' ? 'Every page of your site is written once, then shown in three different designs. You click through all of them before anything is built.'
         : 'Each page is written, put together and checked on a phone and a computer.';
       const pct = Math.max(4, Math.min(100, Number(b.pct) || 0));
+      const acts = actPanel(v);
       pane.innerHTML = viewsBar() + `<div class="stage"><div class="box"><div style="display:flex;align-items:center;gap:10px"><h2 class="sp">${esc(t)}</h2><span class="spin" aria-hidden="true"></span></div>
-        <p class="mut">${esc(note)}</p><div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="Progress"><i style="width:${pct}%"></i></div>
-        <p class="mut sm">${esc(S(b.now) || S(v.say) || 'Working…')}</p>
+        <p class="mut">${esc(note)}</p>
+        <div id="wsAct">${acts || `<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(pct)}" aria-label="Progress"><i style="width:${pct}%"></i></div>
+        <p class="mut sm">${esc(S(b.now) || S(v.say) || 'Working…')}</p>`}</div>
         ${['building', 'checking'].includes(st) ? '<div class="inl" style="justify-content:flex-end"><button class="b" type="button" data-act="stop">Pause</button></div>' : ''}</div></div>`;
+      startTick();
       return;
     }
     const src = S(v.preview) + (EDIT ? '__edit/' : '');
@@ -599,10 +647,11 @@
       try {
         const v = await api('GET', `/api/sites/${enc(id)}`);
         if (!CUR || CUR.id !== id) return;
-        const changed = sig(v) !== SIG; CUR = v; drawState();
-        if (changed && (VIEW === 'preview' || !WORKING(v))) drawPane(); else startPoll();
+        const changed = sig(v) !== SIG, moved = actSig(v) !== actSig(CUR); CUR = v;
+        if (changed && (VIEW === 'preview' || !WORKING(v))) { drawState(); drawPane(); }
+        else { if (moved) drawActivity(); else drawState(); startPoll(); }
       } catch { startPoll(); }
-    }, 3500);
+    }, 2000);
   }
   function stopPoll() { if (POLL) { clearTimeout(POLL); POLL = null; } }
   async function reload() { if (!CUR) return; try { CUR = await api('GET', `/api/sites/${enc(CUR.id)}`); drawState(); drawPane(); } catch (e) { toast(e.message, true); } }
@@ -821,7 +870,7 @@
         const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return toast('Write one line about the website.', true);
         const plan = store.get(MODE_KEY) === 'plan';
         const note = $('#wsAskWork');
-        if (note) { note.hidden = false; note.innerHTML = `<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${plan ? 'Writing your plan from your words · about a minute' : 'Starting your website'}</span>`; }
+        if (note) { note.hidden = false; note.innerHTML = `<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${plan ? 'Writing your plan from your words · about a minute' : 'Starting your website'}</span><span class="tm" data-t0="${nowS()}"></span>`; startTick(); }
         ta.readOnly = true;
         try { await startFromAsk(t); }
         catch (er) { if (note) { note.hidden = false; note.innerHTML = `<span class="li bad">${esc(er.message)} · your words are still in the box, press send again</span>`; } throw er; }
@@ -833,8 +882,8 @@
         const pid = parts()[1];
         const box = $('#wsPlanMsgs'), work = document.createElement('div');
         work.className = 'pending';
-        work.innerHTML = `<div class="me">${esc(t)}</div><div class="step" data-work><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Updating the plan · about a minute</div>`;
-        box?.appendChild(work); if (box) box.scrollTop = box.scrollHeight;
+        work.innerHTML = `<div class="me">${esc(t)}</div><div class="step" data-work><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Updating the plan · about a minute<span class="sp"></span><span class="tm" data-t0="${nowS()}"></span></div>`;
+        box?.appendChild(work); if (box) box.scrollTop = box.scrollHeight; startTick();
         ta.value = ''; ta.readOnly = true;
         try { CARD = await api('POST', `/api/site-architect/${enc(pid)}/revise`, {words: t}); }
         catch (er) {

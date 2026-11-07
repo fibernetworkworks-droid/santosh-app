@@ -22031,3 +22031,22 @@ Built (`agent/draftcheck.py`):
 Tests `test_v0654_sach_ka_pehra.py` 25 (10 false replies caught - 6 as cards, 8 honest ones untouched, real tool result shapes,
 the whole registry, the call check incl. news / opening / per-turn counting). 221 / 221 across every suite that uses the check +
 voice / chat. NOT VERIFIED on a real call.
+
+## v0.656.0 KAAM DIKHE — the Web Studio shows every build step with live timers (owner screenshot: "3 looks bana raha hoon 0%" for minutes; "IT MUST SHOW SAME DETAILS LIKE A LOVABLE SHOW")
+
+Cause: the looks never touch the build board's section counts, so the panel read 0% and one line until the looks were done;
+the chat showed the same line. NEW `server/app/site/activity.py`: a per-site step log (`activity.json` beside the site's
+files, atomic write under a lock) - `step(label, note, key, done, total, alongside)` starts a step (the running one ends
+now) or moves the count of the running step with the same key; `alongside` (the photos) runs beside the others; `end()`
+closes the job (done / waiting for her / error / paused) and the next step starts a fresh log; `read()` returns the steps,
+the job's start / end and the server clock. Fed from `service._work` (every stage already called it; Hinglish labels /
+notes mapped to English for the Studio, her chat keeps the Hinglish) plus finer steps: the photos n/total, the top of
+every look n/total, screenshots, every page for the looks n/total with the page part, assembling, the build's every page
+n/total. `view()` carries `activity`. Studio (`webstudio.js` + css): work panel = "Working for 2m 14s" + current step %
++ the step list (tick / spinner / !, label, note, count, time; a running step's time ticks every second against the
+server clock), the site chat = current step + count + timer + "N steps so far" list, and after the job "Worked for X ·
+N steps"; polls every 2 s and updates the steps in place without reloading the preview; an opened list stays open. The
+home ask box and the plan chat's "Updating the plan" row tick too. Tests `test_v0655_kaam_dikhe.py` (3: step log
+semantics, a real looks + build leaving a timed log, the screen's markers) + the v0.649 browser walk ("Worked for …
+steps", the step list). Pre-existing red, not this change (fails on origin/main too): test_v0224_site_edge.py::
+test_daily_backup_prune_and_safe_restore (pruned 2 vs 1).
