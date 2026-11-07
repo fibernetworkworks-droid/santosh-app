@@ -308,6 +308,28 @@ def _save(conversation_id: str, role: str, content, display: str | None = None) 
         s.add(Message(conversation_id=conversation_id, role=role, content=content, display=display, in_history=True))
 
 
+# v0.657 PAKKA KAAM: run_turn never raises - a crash / timeout / budget stop RETURNS a friendly line, so callers
+# (a finished job's wake report, a routine) could not tell it from a real answer and marked the work delivered.
+# Every failed ending stamps the time here; `turn_failed_since(conv, t0)` asks "did the turn I started fail?".
+_FAILED: dict[str, float] = {}
+TIMEOUT_TEXT = ("Yeh kaam bahut der se chal raha tha, isliye maine ise beech mein rok diya. Jo kadam us waqt chal raha tha "
+                "woh shayad aadha hua ho - dobara bolne se pehle dekh lijiye kya ho chuka hai (aap kahein to main check "
+                "karke bata deta hoon), taaki koi mail ya message do baar na jaaye.")
+TIMEOUT_GOAL = ("Is round ka samay khatam ho gaya, beech ka kadam roka gaya. Agla round pehle dekhega kya ho chuka hai, "
+                "phir wahin se aage badhega - aapko kuch dobara bolne ki zaroorat nahi.")
+
+
+def _mark_failed(conversation_id: str) -> None:
+    _FAILED[conversation_id] = time.time()
+    if len(_FAILED) > 2000:
+        for k in sorted(_FAILED, key=_FAILED.get)[:1000]:
+            _FAILED.pop(k, None)
+
+
+def turn_failed_since(conversation_id: str, since: float) -> bool:
+    return _FAILED.get(conversation_id, 0.0) >= since
+
+
 def _pending_worker_notes(conversation_id: str) -> list[str]:
     with session() as s:
         rows = s.scalars(select(Message).where(Message.conversation_id == conversation_id,
@@ -1902,6 +1924,7 @@ async def run_turn(conversation_id: str, user_text: str, tenant_id: str | None =
         raise
     except BaseException as e:   # noqa: BLE001 - the last line of defence: silence is worse than any error text
         log.exception("agent turn crashed outside its guard")
+        _mark_failed(conversation_id)
         try:
             text = _friendly_error(e)
             bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "error"})
@@ -1947,6 +1970,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     usage.bind(tenant_id, feature)       # v0.98 what this turn's model calls cost, and for whom
     if not usage.allowed(tenant_id, feature):
         text = usage.blocked_text(tenant_id)
+        _mark_failed(conversation_id)
         bus.publish(conversation_id, "message", {"role": "assistant", "text": text, "source": "budget"})
         return text
     _gender = persona(tenant_id)[1]
@@ -2120,6 +2144,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             pass
 
         _mark("save")
+        try:   # v0.657 PAKKA KAAM: the inbox row learns THIS turn really began (the restart sweep's anchor)
+            from .. import turn_inbox as _ti
+            await asyncio.to_thread(_ti.started, conversation_id)
+        except Exception:
+            log.debug("inbox started stamp failed", exc_info=True)
         history = _load_history(conversation_id)
         _mark("history")
         if not save_user and not saved_wake and agent_text.strip():
@@ -2192,7 +2221,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 max(30, settings.agent_goal_turn_s) if settings.agent_goal else 0)
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)
-            final_text = "Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya. Thoda chhota karke phir bolein?"
+            _mark_failed(conversation_id)
+            # v0.657 PAKKA KAAM: the deadline cancels the turn MID-TOOL, so a step may be half done (some mails gone,
+            # some not). Never invite a blind resend; a background goal round says the next round carries on.
+            final_text = TIMEOUT_GOAL if (goal_on and who == "goal") else TIMEOUT_TEXT
             await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)
@@ -2203,6 +2235,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
         except Exception as e:
             log.exception("agent turn failed")
+            _mark_failed(conversation_id)
             final_text = _friendly_error(e)
             await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, f"galti: {str(e)[:120]}", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": str(e)[:200]},
