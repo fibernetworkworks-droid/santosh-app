@@ -157,7 +157,7 @@ def test_run_vendor_happy_path_provenance_dedup_and_estimate_bill(open_vendor):
     got = {x["name"]: x for x in S.rows("t1")["rows"]}
     assert got["Acme Traders"]["source_lane"] == "VENDOR"
     assert got["Acme Traders"]["source_url"] == "https://vendor.example/records/acme"
-    assert got["Acme Traders"]["parser_version"] == "v0.681.0-vd1"
+    assert got["Acme Traders"]["parser_version"] == "v0.682.0-vd1"
     assert got["Acme Traders"]["phone"] == "919876543210"                   # the E.164 law applies to vendor rows
     bill = r["bill"]
     assert bill["lane"] == "VENDOR" and bill["vendor"] == "acme-leads"
@@ -434,7 +434,7 @@ def test_enrich_fanout_through_the_api(env, monkeypatch):
 def test_registry_stays_562_and_the_tool_schemas_carry_p4(env):
     from app.agent.leads_tools import LEADS_TOOLS, LEADS_HANDLERS
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 614                                    # the registry pin: no new tool, the lane rode leads_run
+    assert len(TOOLS) == 615                                    # the registry pin: no new tool, the lane rode leads_run
     for t in LEADS_TOOLS:
         assert t["name"] in LEADS_HANDLERS
     run_tool = next(t for t in LEADS_TOOLS if t["name"] == "leads_run")
@@ -462,7 +462,7 @@ def test_card_set_v6_all_guards_on(env):
               "vendor_provenance_required", "vendor_cost_honest", "enrich_fanout_built",
               "store_backend_named", "ladder_complete", "lane_refused_by_name", "rule_text_amended"):
         assert g.get(k) is True, f"guard {k} is off: {g.get(k)}"
-    assert card["set"] == 6 and card["guards_ok"] == len(g)   # v0.681.0: the outreach walls joined
+    assert card["set"] == 6 and card["guards_ok"] == len(g)   # v0.682.0: the outreach walls joined
     ids = {a["id"] for a in ASKS}
     assert {"tool_vendor", "rule_vendor_off", "tool_outreach_log", "rule_handoff_confirm"} <= ids
 

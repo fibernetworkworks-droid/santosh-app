@@ -30,7 +30,7 @@ import re
 from typing import Any
 from urllib.parse import quote_plus
 
-PARSER_GMAPS = "v0.681.0-gm1"     # every scraped row names this code as the reader of its source
+PARSER_GMAPS = "v0.682.0-gm1"     # every scraped row names this code as the reader of its source
 
 SEARCH_HOST = "www.google.com"
 PAGE_SIZE = 20                    # listings per search page (the pb parameter's page step)

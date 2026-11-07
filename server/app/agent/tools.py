@@ -375,6 +375,14 @@ TOOLS.extend(DUNIYA_TOOLS)
 TOOL_LABELS.update(DUNIYA_LABELS)
 HANDLERS.update(DUNIYA_HANDLERS)
 
+from .kala_tools import (  # noqa: E402  v0.681 KALA MANCH - the T5 knowledge-skill catalog family (github.com/google/skills, Apache-2.0, fork-and-remix sanctioned, IDEA-ONLY): ONE GET-only door over Google's public skill catalog - catalog (index.json byte-exact behind a TTL cache, regex-narrowed) + read / references (SKILL.md documents fetched fresh on demand, NEVER executed) + list / status, every url behind the house SSRF guard AND a one-host allowlist, backend-only
+    KALA_HANDLERS, KALA_LABELS, KALA_TOOLS,
+)
+
+TOOLS.extend(KALA_TOOLS)
+TOOL_LABELS.update(KALA_LABELS)
+HANDLERS.update(KALA_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)

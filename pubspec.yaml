@@ -1,7 +1,10 @@
 <<<<<<< HEAD
-version: 0.681.0+680
+<<<<<<< HEAD
+version: 0.682.0+681
 =======
 >>>>>>> 00aa1dac92776ec5833a28e0e0c6346524f91b18
+=======
+>>>>>>> 831c1db9f9bd2f5ddb05e2d490a150d99181c8c3
 name: santosh
 description: Santosh, your AI coworker. Android app for the Santosh Core backend.
 publish_to: "none"

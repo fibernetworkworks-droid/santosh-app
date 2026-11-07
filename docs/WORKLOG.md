@@ -1,4 +1,6 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.681.0 KALA MANCH - the T5 knowledge-skill catalog family (planned at 0.669.0, the dev chain took 0.669-0.680 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept; owner: "GO" on the google/skills deploy plan)
+
 Task ID: v0.670.0 KAAN W6 HISAAB AUR SAFAI (built as 0.667.0; their 0.667.0/0.668.0/0.669.0 took the version numbers while W6 sat built - REBASE PROTOCOL, rebuilt on their tip, all kept)
 
 Task ID: v0.666.0 KAAN W5 BOLI KE TEEN DARWAZE (built as 0.663.0; their STUDIO JAANCH 0.663.0, ASLI SAMAY 0.664.0, JHAROKHA MANCH 0.665.0 - REBASE PROTOCOL twice, all kept)

@@ -24,7 +24,7 @@ from __future__ import annotations
 
 import time
 
-PARSER_SCRAPE = "v0.681.0-gm1"    # the scrape lane's reader version (rows carry it as parser_version)
+PARSER_SCRAPE = "v0.682.0-gm1"    # the scrape lane's reader version (rows carry it as parser_version)
 
 GOOGLE_MIN_INTERVAL = 1.0         # >= 1s between fetches to the same host (plan 5.6 politeness cap)
 MAX_CONCURRENCY = 2               # the named ceiling (plan 5.6); one host in P3, so politeness paces the run
