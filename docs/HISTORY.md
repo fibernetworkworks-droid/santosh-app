@@ -22050,3 +22050,40 @@ home ask box and the plan chat's "Updating the plan" row tick too. Tests `test_v
 semantics, a real looks + build leaving a timed log, the screen's markers) + the v0.649 browser walk ("Worked for …
 steps", the step list). Pre-existing red, not this change (fails on origin/main too): test_v0224_site_edge.py::
 test_daily_backup_prune_and_safe_restore (pruned 2 vs 1).
+
+## v0.657.0 PAKKA KAAM — Wave 1 of the deep flaw audit: lost work and money (owner: "Wave 1 (lost work, money): 1, 2, 5, 6, 7, 8, 12 --- FIX THIS")
+
+The 7 Nov audit (four parallel read-only checks with repro tests) found 30 flaws; Wave 1 = the ones that lose her
+work or touch money. Built as 0.657 (their KAAM DIKHE took 0.656, both kept).
+
+1. **Restart mid-turn was "answered".** `turn_inbox._answered_since` took ANY in_history assistant row after
+   acceptance as the answer - but every model step that only called a tool is saved that way, so a turn cut by a
+   deploy after its first tool was marked done and she never got a reply (the v0.441 "a restart re-runs a call job"
+   promise was false for every real job). Now the turn stamps `TurnInbox.started_at` when it holds the lock
+   (`turn_inbox.started`, via the `CURRENT` contextvar set in `run_owned`; a nested turn in another chat never
+   stamps), and the sweep calls a turn answered only by a FINAL reply (display shown, no tool_use) after that moment.
+   Otherwise it RESUMES with save_user=False and `RESUME_NOTE` (look at the steps already done, never redo a sent
+   mail / order / card, check a step whose result is missing). Rows from before the column anchor on her matched words.
+2. **Queued message dropped.** A message waiting behind another turn had no anchor, so the OTHER turn's reply
+   counted as its answer after a restart. A row that never began now simply runs.
+5. **Approval card double run.** `Runner.decide` read `pending` and committed only after `_execute`; two taps (phone
+   + console, or a retry) both executed. Now one conditional `UPDATE ... WHERE decision='pending'` claims the card
+   (`executing` / `rejected`), committed BEFORE anything runs; a second tap gets "Already". An unexpected crash
+   mid-action and a claim left `executing` for 30 min (restart) become `interrupted`, said once and plainly
+   (`bazar.service.INTERRUPTED_SAY`: "order / payment hua ya nahi, pakka nahi pata - dekh lijiye") - never the
+   expiry's "kuch order ya payment nahi hua".
+6. **Failed wake turn = delivered.** `run_turn` never raises; it RETURNS the error / timeout / budget line, and the
+   follow-up marked the result sent. `santosh._mark_failed` stamps every failing exit (budget, timeout, crash, outer
+   guard); `turn_failed_since(conv, t0)` makes `_wake_turn` return False so the canned line with the link goes out.
+7. **Told twice.** (a) `kaam_followup.tick` counted the row's OWN wake turn as "her busy turn" and posted the dry
+   canned line into the middle of the report - `_SENDING` is now checked first. (b) kaamwatch never set `told` when
+   the report was queued, so a later event re-announced the same done job - `enqueue(dup_ok=True)` + `told=state`.
+8. **Failed routine spoken as done.** The `failed:` branch could never fire; now the routine checks
+   `turn_failed_since` and records `failed: ...`, so a live call never hears an error as "poora hua".
+12. **Timeout text.** "Thoda chhota karke phir bolein?" invited a blind resend of a half-done step - now
+   `santosh.TIMEOUT_TEXT` says a step may be half done and to check first (so no mail goes twice); a goal round's
+   timeout says the next round carries on (`TIMEOUT_GOAL`).
+
+Tests `test_v0657_pakka_kaam.py` 14 (12 fail on the old code); `test_v0191_harness2` expectation updated (a reply
+must follow THIS row's own words). NOT VERIFIED live: no real pm2 restart mid-turn has been run; the resumed turn's
+"don't redo" relies on the model reading the earlier tool results it is shown.

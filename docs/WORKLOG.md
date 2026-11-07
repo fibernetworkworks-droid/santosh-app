@@ -1933,3 +1933,15 @@ Work Log:
 - Studio work panel + site chat: elapsed time, step list with ticks / spinners / counts / live times
 - tests 3 new + browser walk; 74/75 site suites green (the 1 red fails on main too)
 Stage Summary: shipped v0.656.0 on top of their v0.655.0 SACH KA PEHRA (both kept)
+
+---
+Task ID: v0.657.0 PAKKA KAAM
+Agent: Claude (voice/task session)
+Task: owner "Wave 1 (lost work, money): 1, 2, 5, 6, 7, 8, 12 --- FIX THIS" after the deep flaw audit
+Work Log:
+- turn_inbox: started_at anchor, final-reply check, resume note; queued message no longer dropped
+- bazar runner: conditional claim before execute; 'executing' cut by a restart -> 'interrupted' + plain notice
+- santosh._mark_failed / turn_failed_since; kaam_followup + routines use it; timeout text warns of half-done step
+- kaamwatch marks a queued report told; followup tick checks _SENDING first
+- tests: test_v0657_pakka_kaam.py 14 (12 fail on the old code); harness2 expectation updated (another turn's reply is not this row's answer)
+Stage Summary: shipped v0.657.0 on top of their v0.656.0 KAAM DIKHE (both kept)

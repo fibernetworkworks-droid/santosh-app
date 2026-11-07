@@ -48,5 +48,5 @@ def test_console_sends_longer_text_as_a_file():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.656.0"
-    assert "0.656.0+662" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.657.0"
+    assert "0.657.0+663" in (ROOT / "pubspec.yaml").read_text()
