@@ -501,7 +501,13 @@ def block(tenant: str, conversation_id: str = "") -> str:
     live = [j for j in js if j["state"] in ("working", "waiting")]
     fresh = [j for j in js if j["state"] in ("done", "failed", "stopped")
              and (now() - datetime.fromisoformat(j["updated_at"])).total_seconds() < 6 * 3600]
-    if not live and not fresh:
+    crews: list[str] = []
+    try:   # CALL PAR TEAM: every running agent crew, agent by agent (inline crews were invisible here)
+        from .agent import team as _team
+        crews = _team.live_lines(tenant)
+    except Exception:
+        crews = []
+    if not live and not fresh and not crews:
         return ""
     stuck_min = max(1, _secs("KAAM_STUCK_S", 900) // 60)
     rows = [f"- {j['label']} {j['title']}: "
@@ -510,6 +516,7 @@ def block(tenant: str, conversation_id: str = "") -> str:
                else STATE_WORD[j['state']])
             + (f" (abhi: {j['stage']})" if j["state"] == "working" and j["stage"] else "")
             + (f" ({j['detail'][:120]})" if j["state"] != "working" and j["detail"] else "") for j in (live + fresh)[:10]]
+    rows += [f"- {c}" for c in crews[:4]]
     return ("KAAM KI HAALAT (live, from the jobs themselves; checked " + datetime.now(timezone.utc).strftime("%H:%M UTC") + "):\n"
             + "\n".join(rows) + "\nWhen she asks about any of these, answer from THIS list (or kaam_status for the newest) - "
             "never say 'dekh raha hoon / check kar raha hoon' without giving the real state.")

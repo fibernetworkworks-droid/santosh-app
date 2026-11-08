@@ -164,6 +164,9 @@ def _native_stop(tenant: str, kind: str, jid: str, conv: str) -> bool:
             from .operator import service as O
             O.cancel(tenant, jid)
             return True
+        if kind == "agent_team":   # CALL PAR TEAM: "agents band karo" really stops a background crew
+            from .agent import team as _team
+            return _team.stop_team(tenant, jid)
         if kind == "research_run":
             from .research import runner as R
             R.stop(tenant, jid)

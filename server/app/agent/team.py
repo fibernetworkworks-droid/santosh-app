@@ -34,7 +34,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
-from sqlalchemy import DateTime, Integer, String, Text, select
+from sqlalchemy import DateTime, Integer, String, Text, func, select
 from sqlalchemy.orm import Mapped, mapped_column
 
 from ..config import get_settings
@@ -289,8 +289,20 @@ async def _run_crew(specs: list[dict], team_id: str, mission: str, main_families
     `on_done` (background crews): called after each agent's future settles, for live progress events.
     v0.443 `timeout`: when the clock runs out, ONLY the agents still running are cut and marked "time out"; every
     agent that already finished keeps its deliverable (before, one slow agent threw away the whole crew's work)."""
-    tasks = [asyncio.ensure_future(_run_agent(s, team_id, mission, main_families, tenant, conv, turn_id,
-                                              settings, shared)) for s in specs]
+    # CALL PAR TEAM: a crew asked for on a call works like a chat crew - the call's quick-voice settings (Haiku voice
+    # brain, 8-exchange history, no hard / research detection) are for the VOICE reply, not for the crew's work
+    from . import santosh
+    _v = santosh.VOICE_BRAIN_NOW.set(False)
+    _m = santosh._MODEL_NOW.set("")
+    try:
+        tasks = [asyncio.ensure_future(_run_agent(s, team_id, mission, main_families, tenant, conv, turn_id,
+                                                  settings, shared)) for s in specs]
+    finally:
+        santosh.VOICE_BRAIN_NOW.reset(_v)
+        santosh._MODEL_NOW.reset(_m)
+    _live_open(team_id, tenant, conv, mission, specs, bg=bool(shared and shared.get("check_stopped")))
+    for s_, t_ in zip(specs, tasks):
+        t_.add_done_callback(lambda t, n=_clip(s_.get("name"), 40): _live_settle(team_id, n, t))
     if on_done is not None:
         for t in tasks:
             t.add_done_callback(on_done)
@@ -305,6 +317,7 @@ async def _run_crew(specs: list[dict], team_id: str, mission: str, main_families
     if pending:
         STATS["timed_out"] = STATS.get("timed_out", 0) + len(pending)
         await asyncio.gather(*pending, return_exceptions=True)     # let them unwind before the results are read
+    LIVE.pop(team_id, None)
     out: list[dict] = []
     for s, t in zip(specs, tasks):
         name = _clip(s.get("name"), 40)
@@ -327,6 +340,64 @@ async def _run_crew(specs: list[dict], team_id: str, mission: str, main_families
             out.append({"name": name, "ok": False, "stopped": False, "seconds": 0.0, "tools": [],
                         "deliverable": f"(crash: {o})"})
     return out
+
+
+# CALL PAR TEAM: what every running crew is doing NOW (inline crews only ever published step events, so a call could
+# only say "chal raha hai") - read by agent_status and by the call brain's memory block
+LIVE: dict[str, dict] = {}
+
+
+def _live_open(team_id: str, tenant: str, conv: str, mission: str, specs: list[dict], bg: bool = False) -> dict:
+    d = {"bg": bg, "tenant": tenant, "conv": conv, "mission": _clip(mission, 120), "t0": time.time(),
+         "agents": {_clip(x.get("name"), 40): "chal raha" for x in specs}}
+    LIVE[team_id] = d
+    return d
+
+
+def _live_settle(team_id: str, name: str, t) -> None:
+    d = LIVE.get(team_id)
+    if d is None:
+        return
+    try:
+        o = None if t.cancelled() else (t.exception() or t.result())
+        d["agents"][name] = "ho gaya" if isinstance(o, dict) and o.get("ok") else "nahi ho paya"
+    except Exception:
+        d["agents"][name] = "nahi ho paya"
+
+
+def live_lines(tenant: str, convs: set[str] | None = None) -> list[str]:
+    """One line per running crew of this tenant: '2/3 agent ho gaye - price: chal raha'."""
+    out = []
+    for d in list(LIVE.values()):
+        if d["tenant"] != tenant or (convs is not None and d["conv"] not in convs):
+            continue
+        ag = d["agents"]
+        done = sum(1 for v in ag.values() if v != "chal raha")
+        running = [n for n, v in ag.items() if v == "chal raha"]
+        mins = int((time.time() - d["t0"]) // 60)
+        line = f"Agent team '{d['mission']}': {done}/{len(ag)} agent ho gaye ({mins} min se)"
+        if running:
+            line += "; abhi chal rahe: " + ", ".join(running[:4])
+        out.append(line)
+    return out
+
+
+def inline_running(tenant: str) -> int:
+    return sum(sum(1 for v in d["agents"].values() if v == "chal raha")
+               for d in list(LIVE.values()) if d["tenant"] == tenant and not d.get("bg"))
+
+
+def stop_team(tenant: str, team_id: str) -> bool:
+    """kaamstop's native stop for a background crew ("agents band karo" from a call or the chat)."""
+    ensure_table()
+    with session() as s:
+        row = s.get(AgentTeam, team_id)
+        if row is None or row.tenant_id != tenant or row.status in ("done", "failed", "stopped"):
+            return False
+        row.status, row.error, row.updated_at = "stopped", "owner ne roka", now()
+    _RUNNING.discard(team_id)
+    STATS["stopped"] += 1
+    return True
 
 
 def _digest(results: list[dict], per: int = 340) -> str:
@@ -375,18 +446,36 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
     if take == 0:
         STATS["refused"] += 1
         return {"note": "Is turn ki agent budget poori ho gayi - pehle is team ka natija merge karo."}
+    if mode != "background":
+        # CALL PAR TEAM: a cap per HER, not per ask - a call record + 2 side records could each start 8 agents at once
+        free = max(0, int(getattr(settings, "team_tenant_inline_max", 8)) - inline_running(tenant))
+        if free == 0:
+            STATS["refused"] += 1
+            return {"note": "Abhi aapke liye pehle se kai agents chal rahe hain - unka natija aane do, phir naya "
+                            "team lagao (agent_status se dekho)."}
+        if take > free:
+            note_cap = (note_cap + " " if note_cap else "") + f"Abhi {free} agent hi aur lag sakte the."
+            take = free
     specs = specs_in[:take]
+    research_ask = bool(getattr(ctx, "research", False))
+    from . import santosh
+    if not research_ask and santosh.VOICE_BRAIN_NOW.get():
+        try:   # a call skips hard / research detection for speed - the crew still gets the research rules
+            from . import hard as _hard
+            research_ask = _hard.research_wanted(mission)
+        except Exception:
+            research_ask = False
     main_fams = set(getattr(ctx, "admit").families) if getattr(ctx, "admit", None) is not None else None
     turn_id = (_evlog.CURRENT.get() or {}).get("turn_id") or new_id("team")
     ctx.team_used = used + take
     if mode == "background":
         return await _deploy_background(specs, mission, tenant, conv, turn_id, note_cap, settings,
-                                        research=bool(getattr(ctx, "research", False)))
+                                        research=research_ask)
     # ---- inline: the crew runs INSIDE this tool call, deliverables come back in one result
     team_id = new_id("tm")
     STATS["inline"] += 1
     per_agent_cap = min(int(settings.team_agent_timeout_s), 260)   # the main turn's tool clock is 300 s
-    shared: dict = {"place": getattr(ctx, "place", "") or "", "research": bool(getattr(ctx, "research", False))}    # v0.270 her place for this turn rides to the crew
+    shared: dict = {"place": getattr(ctx, "place", "") or "", "research": research_ask}    # v0.270 her place for this turn rides to the crew
     # v0.443 a slow agent is cut at the clock; the agents that finished keep their work (team.py _run_crew)
     results = await _run_crew(specs, team_id, mission, main_fams, tenant, conv, turn_id, settings, shared,
                               timeout=per_agent_cap)
@@ -411,7 +500,9 @@ async def _deploy_background(specs: list[dict], mission: str, tenant: str, conv:
     from . import eventlog as _evlog
     ensure_table()
     with session() as s:
-        running = s.scalar(select(AgentTeam.id).where(AgentTeam.tenant_id == tenant, AgentTeam.status == "running")) or 0
+        # CALL PAR TEAM: a COUNT (it read one id string and compared it with a number - a TypeError whenever a crew ran)
+        running = int(s.scalar(select(func.count(AgentTeam.id)).where(AgentTeam.tenant_id == tenant,
+                                                                      AgentTeam.status == "running")) or 0)
         if running >= max(1, int(settings.team_bg_max_running)):
             STATS["refused"] += 1
             return {"note": "Iske pehle ki background team abhi chal rahi hai - uske baad yeh lag jayegi "
@@ -464,7 +555,8 @@ async def agent_status(ctx, action: str = "check", id: str = "", **_) -> dict:
         if id:
             q = q.where(AgentTeam.id == id[:40])
         rows = s.scalars(q).all()
-    if not rows:
+    live = live_lines(tenant)
+    if not rows and not live:
         return {"note": "Abhi tak koi team deploy nahi hui (ya purani ho gayi)."}
     out = []
     for r in rows:
@@ -479,7 +571,7 @@ async def agent_status(ctx, action: str = "check", id: str = "", **_) -> dict:
                                      if r.status in ("done", "failed", "stopped") else ""),
                     "error": _clip(r.error, 200) if r.status == "failed" else "",
                     "updated": (_aware(r.updated_at) or now()).isoformat()})
-    return {"teams": out,
+    return {"teams": out, "live": live,
             "note": "Yahi sach hai jo teams ne diya - iske alawa kuch claim mat karo."}
 
 
@@ -580,7 +672,7 @@ async def run_background(team_id: str) -> None:
                       "agents": len(results), "background": True},
                      turn_id=f"team_{team_id}", actor="team")
     payload: dict[str, Any] = {"id": team_id, "number": f"team {team_id[-4:]}", "name": _clip(mission, 60),
-                               "status": final_status, "say": _clip(digest, 220)}
+                               "status": final_status, "say": _clip(digest, 600)}   # CALL PAR TEAM: was 220
     if err:
         payload["error"] = err
     bus.publish(conv, "agent_team", payload)   # kaamwatch shapes it -> kaam_followup -> wake turn / one-shot line
@@ -607,8 +699,8 @@ async def tick() -> int:
                 r = s.get(AgentTeam, row["id"])
                 if r is None or r.status not in ("queued", "running"):
                     continue
-                per_tenant = s.scalar(select(AgentTeam.id).where(
-                    AgentTeam.tenant_id == row["tenant"], AgentTeam.status == "running")) or 0
+                per_tenant = int(s.scalar(select(func.count(AgentTeam.id)).where(
+                    AgentTeam.tenant_id == row["tenant"], AgentTeam.status == "running")) or 0)
                 if r.status == "queued" and per_tenant >= max(1, int(settings.team_bg_max_running)):
                     continue
                 if r.tries >= 2:

@@ -187,6 +187,7 @@ class Settings(BaseSettings):
     team_research_max_tokens: int = 4000    # v0.437 ... and room for a sourced report (~15 lines with links)
     team_research_soft_s: float = 170.0     # v0.437 a research agent writes its sourced report at this mark (the inline crew clock is 260 s)
     team_background: bool = True            # mode="background" crews (persisted, worker-run, self-reporting)
+    team_tenant_inline_max: int = 8      # CALL PAR TEAM: inline agents running at once for one user, across all her asks
     team_bg_max_running: int = 2            # running background crews per tenant
     team_bg_timeout_s: int = 1200           # a whole background crew's wall clock
     agent_event_log: bool = True            # the harness session log (harness_events; best-effort writes, never breaks a turn)

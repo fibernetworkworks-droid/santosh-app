@@ -3219,7 +3219,7 @@ class Call:
             try:
                 res = job.result()
                 self._orphan_note(f"pichhli call ka bada kaam{about} ka natija: "
-                                  f"{json.dumps(res, ensure_ascii=False, default=str)[:800]}")
+                                  f"{json.dumps(res, ensure_ascii=False, default=str)[:1500]}")   # CALL PAR TEAM: was 800
             except Exception as e:
                 log.warning("late voice job did not produce a result after close: %r", e if job.done() else "unfinished")
             return
@@ -3244,18 +3244,18 @@ class Call:
         outcome = str(oc.get("outcome") or "")
         left = str(oc.get("left") or "")[:220]
         if outcome == "done":   # v0.665 "talk" (no tool ran: a question back, a promise) is NOT done - the neutral line below
-            self.push_news(f"(Woh bada kaam{about} ho gaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis baare "
+            self.push_news(f"(Woh bada kaam{about} ho gaya: {str(job.result())[:3000]}. Pehle ek chhote se batao kis baare "
                               f"mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.){tail}")
         elif outcome in ("partial", "continuing"):
             self.push_news(f"(Woh bada kaam{about} abhi chal raha hai — {left or 'kuch hissa baaki'}. User ko mat kehna "
-                              f"ki poora ho gaya: bolo 'abhi kaam chal raha hai, khatam hote hi bataunga', aur baat jatari rahe.){tail}")
+                              f"ki poora ho gaya: bolo 'abhi kaam chal raha hai, khatam hote hi {'bataungi' if self.gender == 'f' else 'bataunga'}', aur baat jatari rahe.){tail}")
         elif outcome in ("stuck", "stopped"):
             why = left or ("owner ne rok diya" if outcome == "stopped" else "ek jagah atak gaya")
             self.push_news(f"(Woh bada kaam{about} atka hai: {why}. Sach batao ek line mein — kya ho gaya, kya baaki, "
                               f"aapse kya chahiye. 'Ho gaya' bilkul mat kehna.){tail}")
         else:
             # v0.652 SACHCHA NATIJA: no outcome recorded for THIS job - never assume "ho gaya"; say what its answer says
-            self.push_news(f"(Woh bada kaam{about} ka jawab aaya: {str(job.result())[:1500]}. Pehle ek chhote se batao kis "
+            self.push_news(f"(Woh bada kaam{about} ka jawab aaya: {str(job.result())[:3000]}. Pehle ek chhote se batao kis "
                               f"baare mein hai ('woh jo aapne kaha tha...'), phir jawab mein jo likha hai wahi ek-do lines "
                               f"mein. 'Ho gaya' sirf tab kehna jab jawab mein saaf likha ho ki kaam poora hua.){tail}")
 
@@ -3844,16 +3844,29 @@ class Call:
     def _run_conv(self) -> str:
         """v0.657 where this brain ask runs: the call record, or - when the call's earlier ask still holds it - a free
         side record (made on first need), so a second ask runs NOW with every tool instead of waiting up to 15 min
-        behind the first (or getting the no-tools quick answer)."""
+        behind the first (or getting the no-tools quick answer).
+        CALL PAR TEAM: a record just handed to an ask counts as busy for a few seconds (until its turn takes the lock),
+        so two quick asks never both pick the call record."""
         from .agent import santosh as _brain
-        if not _brain._locks[self.conv].locked():
-            return self.conv
+        claimed = getattr(self, "_claimed", None)
+        if claimed is None:
+            claimed = self._claimed = {}
+        now_m = time.monotonic()
+
+        def busy(k: str) -> bool:
+            return _brain._locks[k].locked() or now_m - claimed.get(k, -99.0) < 5.0
+
+        def take(k: str) -> str:
+            claimed[k] = now_m
+            return k
+        if not busy(self.conv):
+            return take(self.conv)
         sides = getattr(self, "_sides", None)
         if sides is None:
             sides = self._sides = []
         for k in sides:
-            if not _brain._locks[k].locked():
-                return k
+            if not busy(k):
+                return take(k)
         if len(sides) >= self.MAX_SIDES:
             return sides[0]               # three asks at once: this one queues behind the oldest side ask
         from . import callconv
@@ -3863,7 +3876,7 @@ class Call:
         if me is not None:
             ACTIVE.setdefault(k, []).append(me)
         self.stats["side_asks"] = self.stats.get("side_asks", 0) + 1
-        return k
+        return take(k)
 
     async def _copy_back(self, side: str, request: str, job: asyncio.Task) -> None:
         """v0.657 a side ask's words + answer land in the call record too (its receipt, its next asks), once the call

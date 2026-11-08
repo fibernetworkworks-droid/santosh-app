@@ -1800,6 +1800,11 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     # "text mein mat ruko" loop over a plan the model never wrote); a mere promise still goes on
                     _close_auto_plan(tenant_id, conversation_id, g, final_text, state.get("calls"))
                     g = None
+                if g is not None and VOICE_BRAIN_NOW.get() and not any(
+                        (c or {}).get("tool") == "kaam_plan" for c in (state.get("calls") or [])):
+                    # CALL PAR TEAM: a call question that did not touch the job ("kal ka mausam?") is answered as it
+                    # is - the open job's rounds carry on in the background, they do not take her call ask over
+                    g = None
                 if g is not None and _goal.steps_left(g) and state.get("goal_nudges", 0) < 8:
                     state["goal"] = g
                     state["goal_nudges"] = state.get("goal_nudges", 0) + 1

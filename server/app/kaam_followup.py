@@ -206,7 +206,8 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
         STATS["wake"] += 1
         try:   # the same quiet note into her live call, exactly like the one-shot line
             from . import kaamwatch
-            kaamwatch._voice(r.tenant_id, r.conversation_id, " ".join(str(text).split())[:300])
+            # CALL PAR TEAM: a few full sentences (300 chars left one fragment of a 4-agent result on the call)
+            kaamwatch._voice(r.tenant_id, r.conversation_id, " ".join(str(text).split())[:700])
         except Exception:
             log.debug("wake voice note failed", exc_info=True)
         return True
@@ -217,6 +218,14 @@ async def _wake_turn(r: KaamFollowup, settings) -> bool:
 
 def _canned(r: KaamFollowup) -> str:
     """The honest kaamwatch-style line, used when the model has no words (never leave her without the news)."""
+    try:   # CALL PAR TEAM: her avatar's own forms ("shuru kar dungi")
+        from .avatar.service import gendered, persona
+        return gendered(_canned_raw(r), persona(r.tenant_id)[1])
+    except Exception:
+        return _canned_raw(r)
+
+
+def _canned_raw(r: KaamFollowup) -> str:
     head = f"{r.label} {r.title}".strip()
     if r.state == "failed":
         return f"❌ {head}: ruk gaya, dikkat aayi." + (f" ({r.detail})" if r.detail else "") + \
@@ -405,8 +414,14 @@ async def tick() -> int:
                     # never came. A truly long turn still gets the honest line - the news is never lost.
                     if age >= _wait_s() or r.tries >= _MAX_TRIES - 1:
                         r.status, r.sent_at = "sent", now()
-                        notify(conv, _canned(r))
+                        line = _canned(r)
+                        notify(conv, line)
                         STATS["fallback"] += 1
+                        try:   # CALL PAR TEAM: a live call hears it too (it went to the chat only)
+                            from . import kaamwatch
+                            kaamwatch._voice(r.tenant_id, conv, line[:700])
+                        except Exception:
+                            log.debug("fallback voice note failed", exc_info=True)
             STATS["postponed"] += 1
             continue
         if row["id"] in _SENDING:

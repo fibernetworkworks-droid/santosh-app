@@ -645,7 +645,15 @@ def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -
     ask = f"[Goal jaari: {view['goal']} — baaki steps: " + "; ".join(f"{x['n']}. {x['text']}" for x in left[:8]) + \
         ". Aage badho, har step kaam_plan se likho, poora hone par finish done.]"
     _pend(view["id"], 1)
-    _bg(_continuation(conv, tenant, ask, view["id"], who))
+    # CALL PAR TEAM: a round scheduled from a CALL brain turn copied the call's context - every later round of the job
+    # ran in quick-voice mode (Haiku voice brain, 8 exchanges, no thinking / hard / compaction). A round is chat work.
+    from . import santosh as _s
+    _v, _m = _s.VOICE_BRAIN_NOW.set(False), _s._MODEL_NOW.set("")
+    try:
+        _bg(_continuation(conv, tenant, ask, view["id"], who))
+    finally:
+        _s.VOICE_BRAIN_NOW.reset(_v)
+        _s._MODEL_NOW.reset(_m)
     LAST_OUTCOME[conv] = {"outcome": "continuing", "left": f"{view['done']}/{view['total']} steps done, {len(left)} baaki",
                           "goal": view["goal"], "at": time.time()}
     STATS["continued"] += 1
@@ -827,7 +835,15 @@ def continue_now(tenant: str, conv: str) -> dict[str, Any] | None:
             ". Owner ne kaha aage badho. Aage badho, har step kaam_plan se likho, poora hone par finish done.]"
         from .santosh import _bg
         _pend(view["id"], 1)
+        # CALL PAR TEAM: a round scheduled from a CALL brain turn copied the call's context - every later round of the job
+    # ran in quick-voice mode (Haiku voice brain, 8 exchanges, no thinking / hard / compaction). A round is chat work.
+    from . import santosh as _s
+    _v, _m = _s.VOICE_BRAIN_NOW.set(False), _s._MODEL_NOW.set("")
+    try:
         _bg(_continuation(conv, tenant, ask, view["id"], who))
+    finally:
+        _s.VOICE_BRAIN_NOW.reset(_v)
+        _s._MODEL_NOW.reset(_m)
     return view
 
 

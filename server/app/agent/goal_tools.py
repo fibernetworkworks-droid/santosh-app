@@ -25,7 +25,9 @@ KAAM_PLAN_DEF = {
         "Where a step produces something checkable, give it a `check`: file_pages>=3, file_rows>=20, file_slides>=6, "
         "file:<name>, link_ok, artifact, reminder>=3, list:<name>>=5, tool:<name>. After every big step write "
         "ONE short line to her (what you found / made, what is next), then the next tool. blocked_on_her is only when you truly need "
-        "HER: her tap on a card, an OTP, or a fact only she knows."),
+        "HER: her tap on a card, an OTP, or a fact only she knows. "
+        "On a CALL, show / add / step reach the job already running in the chat the call came from: 'isme ye bhi jodo' = "
+        "add (never a second set), 'kahan tak pahuncha' = show."),
     "input_schema": {
         "type": "object",
         "properties": {
@@ -53,6 +55,22 @@ KAAM_PLAN_DEF = {
 }
 
 
+def _goal_for(conv: str):
+    """CALL PAR TEAM: the running job THIS conversation can act on - its own, or (on a call record) the job running in
+    the chat the call came from, so "isme ye bhi jodo" / "kahan tak pahuncha" on a call reaches her chat's long job."""
+    a = goal_mod.active_for(conv)
+    if a is not None:
+        return a
+    try:
+        from .. import callconv
+        chat = callconv.chat_of(conv)
+        if chat and chat != conv:
+            return goal_mod.active_for(chat)
+    except Exception:
+        return None
+    return None
+
+
 async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[str] | None = None, n: int = 0,
                     state: str = "", text: str = "", outcome: str = "", reason: str = "", goal_id: str = "",
                     made: list[str] | None = None, left: str = "", your_turn: str = "", note: str = "",
@@ -67,30 +85,33 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
             v = goal_mod.set_goal(tenant, conv, goal, steps or [], origin=getattr(ctx, "actor", "owner") or "owner")
         elif action == "step":
             if not goal_id:
-                a = goal_mod.active_for(conv)
+                a = _goal_for(conv)
                 if a is None:
                     raise ToolError("Is chat ka koi goal chal nahi raha; pehle kaam_plan set karo.")
                 goal_id = a["id"]
+                conv = a.get("conversation_id") or conv
             if not state:
                 raise ToolError("state chahiye: done | failed | skipped | current")
             v = goal_mod.mark_step(tenant, goal_id, int(n), state, reason or "", conv, check=check)
         elif action == "add":
             if not goal_id:
-                a = goal_mod.active_for(conv)
+                a = _goal_for(conv)
                 if a is None:
                     raise ToolError("Is chat ka koi goal chal nahi raha; pehle kaam_plan set karo.")
                 goal_id = a["id"]
+                conv = a.get("conversation_id") or conv
             v = goal_mod.add_step(tenant, goal_id, text, conv, check=check)
         elif action == "show":
-            v = goal_mod.show(tenant, goal_id) if goal_id else (goal_mod.active_for(conv) or {})
+            v = goal_mod.show(tenant, goal_id) if goal_id else (_goal_for(conv) or {})
             if not v:
                 raise ToolError("Is chat ka koi goal chal nahi raha.")
         elif action == "finish":
             if not goal_id:
-                a = goal_mod.active_for(conv)
+                a = _goal_for(conv)
                 if a is None:
                     raise ToolError("Is chat ka koi goal chal nahi raha.")
                 goal_id = a["id"]
+                conv = a.get("conversation_id") or conv
             if not outcome:
                 raise ToolError("outcome chahiye: done | blocked_on_her | failed | stopped")
             v = goal_mod.finish(tenant, goal_id, outcome, reason, conv, made=made or [], left=left,
