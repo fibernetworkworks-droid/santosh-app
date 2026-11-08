@@ -564,10 +564,10 @@ def test_injection_matches_a_crew_ask(desk):
 def test_version(env):
     from app import main as main_mod
     from pathlib import Path as P
-    assert main_mod.APP_VERSION == "0.700.0"
+    assert main_mod.APP_VERSION == "0.701.0"
     story = P(main_mod.__file__).read_text().split("APP_VERSION = ", 1)[1][:20000]
     # story pin moved to the newest story (the v0.549/v0.476 precedent: the newest
     # release's story carries the marker; the older stories live in git history)
     assert "HOOLA RETRIEVE" in story and "aep/retrieve.py" in story  # the newest-story precedent (the P5 markers live in the Previous chain)
     pub = (REPO_ROOT / "pubspec.yaml").read_text(encoding="utf-8")
-    assert "version: 0.700.0+699" in pub
+    assert "version: 0.701.0+700" in pub

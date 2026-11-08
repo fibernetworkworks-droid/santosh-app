@@ -731,6 +731,10 @@ class Settings(BaseSettings):
     mail_bulk_daily_cap: int = 300          # per mailbox per day (Gmail allows ~500 for personal accounts)
     mail_bulk_max: int = 1000               # recipients in one bulk mail
     mail_max_attach_mb: int = 18            # total attachments per mail (Gmail/Outlook limit is ~25 MB encoded)
+    # v0.701 PAKKA ATTACHMENT: a draft keeps its OWN copy of every attached file (chat uploads / Hoola-made / Drive)
+    # so a Bhejo tap next day, a scheduled send (up to 60 days) or a multi-day bulk never meets a deleted file.
+    mail_keep_dir: str = "./data/mail_attach"
+    mail_keep_days: int = 70                # kept copies older than this are swept (schedules go up to 60 days)
     notebook_tts_model: str = "gemini-3.8-flash-tts"            # v0.155 Audio / Video Overview voices (expressive, 2 hosts, 20 Indian langs)
     notebook_tts_legacy_model: str = "gemini-2.5-flash-preview-tts"   # used when the new TTS refuses (older API path)
     notebook_model: str = "claude-opus-5-5"   # v0.155 writes Studio items (scripts, decks, reports); '' = anthropic_model

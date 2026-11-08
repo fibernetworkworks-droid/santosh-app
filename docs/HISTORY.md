@@ -22958,3 +22958,27 @@ refused once and then asked again plain (the 400 retry) - two requests per call.
 glm_reasoning_room (2048) to max_tokens on OpenRouter as on NVIDIA. Her key: $10 limit, $3.61 left at the check
 (OpenRouter /key), so the key limit will need raising for daily use. Tests: test_v0699_glm_openrouter.py healed (4).
 NOT VERIFIED: the first glmdoor check through OpenRouter on her VPS.
+
+
+## v0.701.0 PAKKA ATTACHMENT (owner: "GO FIX 1 2 3 + SHEET IMPORT", 8 Nov)
+
+From the attachment-flow audit of 8 Nov:
+1. Every chat upload and Hoola-made file is a PcFile that `pc.service.cleanup_files` deletes after 24 h, and a mail
+   fetched the bytes only at SEND time - a next-day Bhejo, a scheduled mail (up to 60 days) or a bulk run spread over
+   days failed with "ab server par nahi hai". The cleanup lives in the frozen PC module, so it is untouched: instead
+   `mailbox.service.describe_attachments` copies each file / Drive attachment ONCE into `mail_keep_dir`
+   (`./data/mail_attach/<tenant>/<sha256>`, written via .part + replace, touched on reuse, swept after
+   `mail_keep_days` 70) and stores the hash as `keep`; `load_files` sends the kept copy first and falls back to the old
+   path for drafts made before v0.701. A file already gone at draft time is said then, not at send.
+2. A Google Sheet attached from Drive was labelled `.xlsx` but exported as PDF at send with the google-apps mime type.
+3. drive_find's `<account>~<id>` refs always failed ("Drive file nahi mili") because the mail path called
+   `get_client(tenant).get(ref)` directly. Both fixed by ONE door, `ms._drive_bytes` -> `drive.service.fetch`
+   (resolve: refs / links / ids / names on every account; real exports - Doc docx, Sheet xlsx, Slides pptx, or
+   `format` on ask; the 25 MB size check BEFORE the download). The kept copy means the send no longer re-downloads.
+4. `sheets.service.import_rows` accepts `{drive_file}` (Excel / CSV / a Google Sheet exported as xlsx) - no upload first;
+   its `{file_id}` path now says plainly when the file is gone instead of a raw FileNotFoundError.
+Schemas: ATTACH_SCHEMA names the drive_find id / link / name + `format`; sheet_create source gains `drive_file`.
+Tests: test_v0701_pakka_attachment.py (11), test_email_phase1 drive test healed to the real ref; email / drive / photos /
+sheets / routines suites green. Pre-existing reds on main untouched (test_v121_site x3, test_v0568_lottie_3d x1 - same
+on origin/main). NOT DONE: Calendar attachments, Outlook upload sessions for >3-4 MB, Gmail /upload endpoint.
+NOT VERIFIED live: needs her Google sign-in reconnected.

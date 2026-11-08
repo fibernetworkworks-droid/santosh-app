@@ -20,9 +20,12 @@ from .tools import Ctx, ToolError
 ATTACH_SCHEMA = {"type": "array", "description": (
     "Files to attach. Each item is ONE of: {email_id, attachment_id} (a file from a received email, ids from "
     "email_read), {file_id} (a file from the user's PC via pc_send_to_phone, or one the user added), "
-    "{drive_file_id} (a file from the user's Google Drive), {artifact_id} (a Santosh page)."),
+    "{drive_file_id} (a file from the user's Google Drive: the id drive_find gives, a Drive link or the file name; a "
+    "Google Doc / Sheet / Slides goes as .docx / .xlsx / .pptx, or set format: pdf), {artifact_id} (a Santosh page). "
+    "The draft keeps its own copy of each file, so a later or scheduled send still has it."),
     "items": {"type": "object", "properties": {"email_id": {"type": "string"}, "attachment_id": {"type": "string"},
                                                "file_id": {"type": "string"}, "drive_file_id": {"type": "string"},
+                                               "format": {"type": "string", "enum": ["pdf", "docx", "xlsx", "pptx", "csv"]},
                                                "artifact_id": {"type": "string"}}}}
 
 EMAIL_TOOLS = [

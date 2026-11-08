@@ -75,7 +75,8 @@ SHEETS_TOOLS = [
          "required": ["spreadsheet"]}},
     {"name": "sheet_create", "description": (
         "Create a new Google Sheet in the user's Drive, with tabs, a header row and optional rows (objects or lists). "
-        "Or import an Excel / CSV: source = {email_id, attachment_id} (from an email) or {file_id} (PC / phone file). "
+        "Or import an Excel / CSV: source = {email_id, attachment_id} (from an email), {file_id} (PC / phone file) or "
+        "{drive_file} (an Excel / CSV / Google Sheet already in her Drive: the id drive_find gives, a link or a name). "
         "Returns the link and shows a card in the chat."),
      "input_schema": {"type": "object", "properties": {
          "title": {"type": "string"},
@@ -83,7 +84,7 @@ SHEETS_TOOLS = [
              "name": {"type": "string"}, "header": {"type": "array", "items": {"type": "string"}},
              "rows": {"type": "array", "items": {}}}}},
          "source": {"type": "object", "properties": {"email_id": {"type": "string"}, "attachment_id": {"type": "string"},
-                                                     "file_id": {"type": "string"}}}},
+                                                     "file_id": {"type": "string"}, "drive_file": {"type": "string"}}}},
          "required": ["title"]}},
     {"name": "sheet_add_tab", "description": "Add a new tab to a sheet, optionally with a header row.",
      "input_schema": {"type": "object", "properties": {"spreadsheet": SHEET, "name": {"type": "string"},

@@ -2366,3 +2366,13 @@ Work Log:
 - version ritual 0.699.0 -> 0.700.0
 Stage Summary:
 - 39 passed (v0699 / v0695 / glm / v0475 / routines)
+
+---
+Task ID: v0.701.0 PAKKA ATTACHMENT
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: owner "GO FIX 1 2 3 + SHEET IMPORT"
+Work Log:
+- mailbox kept copies (_keep/_kept/_sweep_kept), _drive_bytes via drive.service.fetch, load_files kept-first
+- sheets import_rows drive_file; schemas; config mail_keep_dir / mail_keep_days
+Stage Summary:
+- 11 new tests + 86 in email/drive/photos/routines + 93 in sheets & neighbours green; 4 website reds pre-existing on main

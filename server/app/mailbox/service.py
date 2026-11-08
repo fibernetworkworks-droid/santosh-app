@@ -910,8 +910,13 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
                         "size": att["size"], "mime": att["mime"]})
         elif a.get("file_id"):
             f = _file_row(tenant, str(a["file_id"]))
-            out.append({"type": "file", "file_id": f.id, "name": f.name, "size": f.size,
-                        "mime": mimetypes.guess_type(f.name)[0] or "application/octet-stream"})
+            p = Path(f.stored_path or "")
+            if not p.exists():
+                raise MailError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
+            data = p.read_bytes()
+            out.append({"type": "file", "file_id": f.id, "name": f.name, "size": len(data),
+                        "mime": mimetypes.guess_type(f.name)[0] or "application/octet-stream",
+                        "keep": _keep(tenant, data)})
         elif a.get("artifact_id"):
             from .. import artifacts
             art = artifacts.get(tenant, str(a["artifact_id"]))
@@ -919,30 +924,11 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
                 raise MailError("Woh Santosh page (artifact) nahi mila ya abhi ban raha hai.")
             name = re.sub(r"[^\w\- ]+", "", art.title).strip() or "santosh-page"
             out.append({"type": "artifact", "artifact_id": art.id, "name": f"{name}.html", "size": 0, "mime": "text/html"})
-        elif a.get("drive_file_id"):
-            from ..drive.accounts import get_client as _drive_client
-            try:
-                c = _drive_client(tenant)
-                meta = c.get(str(a["drive_file_id"]))
-                name, mt = meta.get("name") or "file", meta.get("mimeType") or "application/octet-stream"
-                if mt.startswith("application/vnd.google-apps"):
-                    export = {"document": ("application/pdf", ".pdf"),
-                              "spreadsheet": ("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ".xlsx"),
-                              "presentation": ("application/pdf", ".pdf"), "drawing": ("image/png", ".png")}
-                    kind = mt.rsplit(".", 1)[-1]
-                    if kind not in export:
-                        raise MailError("Yeh Google file type attach nahi hoti; use PDF/XLSX bana kar Drive mein rakhiye.")
-                    mt, ext = export[kind]
-                    name = (name.rsplit(".", 1)[0] if "." in name else name) + ext
-                    data = c.export(str(a["drive_file_id"]), mt)
-                else:
-                    data = c.download(str(a["drive_file_id"]))
-            except MailError:
-                raise
-            except Exception as e:
-                raise MailError(f"Drive file nahi mili ({type(e).__name__}). Google Drive judi hai? Profile > Google Drive.")
-            out.append({"type": "drive", "drive_file_id": str(a["drive_file_id"]), "name": name[:200],
-                        "size": len(data), "mime": mt})
+        elif a.get("drive_file_id") or a.get("drive_file"):
+            ref = str(a.get("drive_file_id") or a.get("drive_file"))
+            name, mt, data = _drive_bytes(tenant, ref, a.get("format"))
+            out.append({"type": "drive", "drive_file_id": ref, "name": name[:200], "size": len(data), "mime": mt,
+                        "keep": _keep(tenant, data)})
         else:
             raise MailError("attachments: use {email_id, attachment_id}, {file_id}, {drive_file_id} or {artifact_id}")
     cap = get_settings().mail_max_attach_mb * 1024 * 1024
@@ -952,6 +938,70 @@ def describe_attachments(tenant: str, refs: list[dict[str, Any]] | None) -> list
     return out
 
 
+
+# v0.701 PAKKA ATTACHMENT: every attached file is copied once, at draft time, into the mail's own store (content
+# addressed), so the draft no longer depends on the 24-hour chat-file store (cleanup is in the frozen PC module and is
+# left alone) or on Drive still answering at send time. The copy is what she saw in the preview.
+def _keep_root(tenant: str) -> Path:
+    safe = re.sub(r"[^A-Za-z0-9_.-]", "_", tenant or "default")[:80]
+    p = Path(get_settings().mail_keep_dir) / safe
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _keep(tenant: str, data: bytes) -> str:
+    import hashlib
+    import time as _t
+    h = hashlib.sha256(data).hexdigest()
+    p = _keep_root(tenant) / h
+    try:
+        if not p.exists():
+            tmp = p.with_suffix(".part")
+            tmp.write_bytes(data)
+            tmp.replace(p)
+        else:
+            p.touch()
+        _sweep_kept(tenant, _t.time())
+    except OSError:
+        log.warning("mail: could not keep a copy of an attachment", exc_info=True)
+        return ""
+    return h
+
+
+def _kept(tenant: str, h: Any) -> bytes | None:
+    if not h or not re.fullmatch(r"[0-9a-f]{64}", str(h)):
+        return None
+    p = _keep_root(tenant) / str(h)
+    try:
+        return p.read_bytes() if p.exists() else None
+    except OSError:
+        return None
+
+
+def _sweep_kept(tenant: str, now_ts: float) -> None:
+    cutoff = now_ts - max(1, int(get_settings().mail_keep_days or 70)) * 86400
+    for p in _keep_root(tenant).iterdir():
+        try:
+            if p.is_file() and p.stat().st_mtime < cutoff:
+                p.unlink()
+        except OSError:
+            pass
+
+
+def _drive_bytes(tenant: str, ref: str, fmt: Any = None) -> tuple[str, str, bytes]:
+    """One Drive door for mail: any ref drive_find gives ("<account>~<id>"), a link, an id or a name; Google files
+    exported with their real type (a Sheet as a real .xlsx, not a PDF named .xlsx); the 25 MB size check BEFORE the
+    download (drive.service.fetch)."""
+    from ..drive import service as ds
+    from ..drive.client import DriveError
+    try:
+        name, mt, data, _c, _f = ds.fetch(tenant, ref, str(fmt).lower() if fmt else None)
+    except DriveError as e:
+        raise MailError(str(e) or "Drive file nahi mili.")
+    except Exception as e:
+        raise MailError(f"Drive file nahi mili ({type(e).__name__}). Google Drive judi hai? Profile > Google Drive.")
+    return name, mt, data
+
 def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str, str, bytes]]:
     files = []
     for a in refs or []:
@@ -960,24 +1010,22 @@ def load_files(tenant: str, refs: list[dict[str, Any]] | None) -> list[tuple[str
             name, mtype, data = attachment(tenant, a["email_id"], a["attachment_id"])
             files.append((a.get("name") or name, mtype, data))
         elif t == "file":
+            kept = _kept(tenant, a.get("keep"))
+            if kept is not None:
+                files.append((a.get("name") or "file", a.get("mime") or "application/octet-stream", kept))
+                continue
             f = _file_row(tenant, a["file_id"])
             p = Path(f.stored_path)
             if not p.exists():
                 raise MailError(f"{f.name} ab server par nahi hai (files 24 ghante baad hat jaati hain). Dobara bhejiye.")
             files.append((f.name, a.get("mime") or "application/octet-stream", p.read_bytes()))
         elif t == "drive":
-            from ..drive.accounts import get_client as _drive_client
-            try:
-                c = _drive_client(tenant)
-                meta = c.get(a["drive_file_id"])
-                mt = meta.get("mimeType") or a.get("mime") or "application/octet-stream"
-                if mt.startswith("application/vnd.google-apps"):
-                    data = c.export(a["drive_file_id"], "application/pdf")
-                else:
-                    data = c.download(a["drive_file_id"])
-            except Exception as e:
-                raise MailError(f"Drive file ab nahi mili ({type(e).__name__}).")
-            files.append((a.get("name") or meta.get("name") or "file", mt, data))
+            kept = _kept(tenant, a.get("keep"))
+            if kept is not None:
+                files.append((a.get("name") or "file", a.get("mime") or "application/octet-stream", kept))
+                continue
+            name, mt, data = _drive_bytes(tenant, a["drive_file_id"], a.get("format"))
+            files.append((a.get("name") or name, a.get("mime") or mt, data))
         elif t == "artifact":
             from .. import artifacts
             html = artifacts.latest_html(a["artifact_id"])

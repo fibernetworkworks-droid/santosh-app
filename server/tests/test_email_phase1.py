@@ -269,20 +269,23 @@ def test_undo_window_sends_after_wait(bz, gbox):  # noqa: F811
 
 # ---------------- Drive files as attachments ----------------
 class FakeDrive:
+    key, address = "k1", "me@gmail.com"
+
     def get(self, fid):
-        return {"name": "Brochure.pdf", "mimeType": "application/pdf"}
+        return {"id": fid, "name": "Brochure.pdf", "mimeType": "application/pdf", "size": "16"}
 
     def download(self, fid):
         return b"%PDF-drive-bytes"
 
 
 def test_drive_file_attach(gbox, monkeypatch):
-    import app.drive.accounts as da
-    monkeypatch.setattr(da, "get_client", lambda tenant, which=None: FakeDrive())
+    # v0.701: the mail door goes through drive.service.fetch (resolve + size check), so the fake is wired there
+    import app.drive.service as ds
+    monkeypatch.setattr(ds, "_client_for", lambda tenant, key: FakeDrive())
     from app import main
     ctx = conv_ctx()
     out = run("email_draft", {"to": "ramesh@vendor.in", "subject": "Brochure", "body": "Attached.",
-                              "attachments": [{"drive_file_id": "drv1"}]}, ctx)
+                              "attachments": [{"drive_file_id": "k1~drv1"}]}, ctx)
     assert out["attachments"] == ["Brochure.pdf"]
     with TestClient(main.app) as c:
         assert c.post(f"/api/emails/{out['draft_id']}/send").json()["status"] == "sent"
@@ -341,4 +344,4 @@ def test_gmail_drafts_needs_id(bz, gbox):  # noqa: F811
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.700.0"
+    assert APP_VERSION == "0.701.0"
