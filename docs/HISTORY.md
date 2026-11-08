@@ -22837,3 +22837,11 @@ wake -> voice news). Twelve fixes, `tests/test_v0691_call_par_team.py` (10):
 - `voice.Call._pick_conv`: pick + claim under one lock, claims released when the ask ends, so two quick asks never both
   pick the call record.
 - NOT VERIFIED live: a real call with a running crew and a long job.
+
+
+## v0.693.0 HOOLA APP STUDIO
+
+v0.693.0 HOOLA APP STUDIO (built as 0.688; their v0.689-v0.692 landed while it was built - REBASE PROTOCOL, all kept; owner: prototype of all 14 pages -> "GO BUILD THE APP STUDIO"): the native-app builder as its own full-screen app at /console/apps, the Web Studio's twin - own sidebar (New app, Home, Search, All apps, Starred, App ideas, Starred + Recent with a rename / star / delete menu), home = one line + Build | Plan (Build sends her Haan when the plan has no open question so the 3 looks start; Plan stops at the plan), the 1 crore+ idea library with audience filter; a workspace per app = her own Hoola thread for THAT app (never the home chat) + the live work card + Plan / Looks / Screens / Prototype | Android / iPhone / Store | Data / Business / Health / Settings (+ History), every button on the existing /api/apps routes (screen images fetched with her token, Design pakka sends the server's hash, Play production / App Store review / rollout steps / deletes ask first and send her_tap only from her tap, the Play service-account key chosen as a file and sealed on the server); NEW appmaker/activity.py = every app job's progress lines as server-timed English steps (looks, every screen with a count, checks, fixes, Kotlin per screen, compile rounds, phone check, iPhone build, TestFlight) through one fail-open hook each in service._work and the android / ios _put; the app view carries activity + builds at a glance; console sidebar row App Development; chat app cards gain Open in App Studio; 6 tests incl. a real-browser walk of every page on a real designed app.
+
+
+NOT VERIFIED: no real Android / iPhone build has been watched in the Studio on her server; the Play key upload and the store / rollout buttons call routes that have never answered a live account.

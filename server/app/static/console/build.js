@@ -209,6 +209,7 @@ window.HoolaBuild = function (C) {
     else if (s === 'ready' || s === 'approved') body = miniScreens(o)
       + `<div class="acts">${pv ? `<a class="btn soft" href="${esc(pv)}" target="_blank" rel="noopener">Try the prototype</a>` : ''}${btn('studio', 'Studio')}${s === 'ready' ? btn('approve', 'Approve design', 'go') : (!o.an || !S(o.an.status) ? btn('android', 'Build Android app', 'go') : '')}</div>`;
     else if (s === 'failed' || s === 'stopped') body = (v.error ? `<div class="badc bln">${esc(v.error)}</div>` : '') + `<div class="acts">${btn('studio', 'Studio')}${btn('resume', 'Continue', 'go')}</div>`;
+    body += `<div class="acts"><a class="btn soft" href="/console/apps#/app/${encodeURIComponent(S(v.id))}">Open in App Studio</a></div>`;   // v0.693 the full-screen App Studio
     return cardHead(o, IC_APP) + stages(o, true) + (v.say ? `<p class="bsay">${esc(v.say)}</p>` : '') + body;
   }
   function androidCard(o) {

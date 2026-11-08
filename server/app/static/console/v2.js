@@ -100,7 +100,7 @@ let CREATE = null;      // v0.259 the Create Studio (studio.js): the Create butt
 /* v0.222 R2: the sidebar is Claude-style - New chat + Search on top, then the places; Chat is the brand mark (home),
    Account is the user card at the bottom. The phone tabbar keeps its own five. */
 const SMOOTH = () => matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';   // v0.226 R6: no smooth scroll under reduced motion
-const NAV = [['creative','Create'],['webdev','Web Development'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
+const NAV = [['creative','Create'],['webdev','Web Development'],['appdev','App Development'],['aaj','Today'],['kaam','Tools'],['baat','Voice call']];   // v0.456 her ask: no Lab / Systems rows
 // (was ['lab','Lab'] since v0.415): Prayogshala opens from the Education Desk's Lab tab, Systems from an Enterprise
 // employee's Open desk - both views (#v-lab, #v-systems) and go('lab' | 'systems', arg) stay as they were.
 IC.creative = '<path d="M12 3l2.4 5.6L20 11l-5.6 2.4L12 19l-2.4-5.6L4 11l5.6-2.4z"/>';
@@ -118,6 +118,7 @@ IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 
 let EMP = null;
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
+IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
 IC.webdev = '<rect x="3" y="4" width="18" height="16" rx="3"/><path d="M3 9h18M9 14l-2 2 2 2M15 14l2 2-2 2"/>';   // v0.635 Web Development
 let ENT = null;        // v0.317 the Employee Hub + desks (employees.js)
 const EDU_KEYS = ['tutor', 'school_office', 'curriculum', 'research', 'school_register', 'lab'];   // v0.453 any of them opens the Education Desk
@@ -151,6 +152,7 @@ function drawNav() {
 }
 function go(v, arg) {
   if (v === 'creative' && CREATE) { CREATE.open(); return; }    // v0.259 Create = the full-screen Create Studio
+  if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
   $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';

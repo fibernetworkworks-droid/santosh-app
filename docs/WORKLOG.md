@@ -2300,3 +2300,14 @@ Date: 2026-11-08
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: multi-agent crews during a live call while a long task runs - map how it works, then fix the 12 gaps.
 Work: crew cap count, chat-mode rounds, call questions not hijacked, results said whole on the call, roko stops crews, call reaches the chat job, live crew progress, per-her inline cap, crews out of voice mode + research rules, gendered lines, record pick lock; 10 tests. Shipped as 0.692 after their 0.690-0.691. Not verified live.
+
+---
+Task ID: v0.693.0 HOOLA APP STUDIO
+Agent: Claude Code (web session)
+Task: App Studio at /console/apps (owner: prototype of 14 pages -> "GO BUILD THE APP STUDIO")
+Work Log:
+- read the whole app flow (server engine, 232 routes, phone + console clients); 14-page prototype approved
+- appmaker/activity.py + hooks; appstudio.html/js/css; /console/apps route; App Development sidebar row; chat card link
+- 6 tests (route, english steps, build hooks, design log, markers, real-browser walk of every page); built as 0.688, main moved to 0.692 -> re-versioned 0.693.0
+Stage Summary:
+- shipped v0.693.0 to main
