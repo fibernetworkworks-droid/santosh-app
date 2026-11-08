@@ -1,4 +1,4 @@
-"""v0.689.0 KAAM MANCH - the work-discipline layer, backend-only (owner: "GO" on the OWL deploy
+"""v0.690.0 KAAM MANCH - the work-discipline layer, backend-only (owner: "GO" on the OWL deploy
 plan; upstream github.com/camel-ai/owl @ 2df367e, Apache-2.0, external PRs welcome; IDEA-ONLY:
 zero upstream code crossed the wall - what ported is the orchestration doctrine: the specialist
 workers' search/verify/code heuristics (examples/run.py prompts + the society's <tips> block),

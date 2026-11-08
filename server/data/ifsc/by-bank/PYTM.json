@@ -1,0 +1,20 @@
+{
+  "PYTM0000001": {
+    "BANK": "Paytm Payments Bank",
+    "IFSC": "PYTM0000001",
+    "BRANCH": "Paytm Payments Bank IMPS",
+    "CENTRE": "NA",
+    "DISTRICT": "NA",
+    "STATE": "MAHARASHTRA",
+    "ADDRESS": "NA",
+    "CONTACT": null,
+    "IMPS": true,
+    "CITY": "MUMBAI",
+    "UPI": true,
+    "NEFT": false,
+    "RTGS": false,
+    "MICR": null,
+    "SWIFT": null,
+    "ISO3166": "IN-MH"
+  }
+}

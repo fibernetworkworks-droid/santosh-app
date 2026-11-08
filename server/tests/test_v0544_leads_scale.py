@@ -157,7 +157,7 @@ def test_run_vendor_happy_path_provenance_dedup_and_estimate_bill(open_vendor):
     got = {x["name"]: x for x in S.rows("t1")["rows"]}
     assert got["Acme Traders"]["source_lane"] == "VENDOR"
     assert got["Acme Traders"]["source_url"] == "https://vendor.example/records/acme"
-    assert got["Acme Traders"]["parser_version"] == "v0.689.0-vd1"
+    assert got["Acme Traders"]["parser_version"] == "v0.690.0-vd1"
     assert got["Acme Traders"]["phone"] == "919876543210"                   # the E.164 law applies to vendor rows
     bill = r["bill"]
     assert bill["lane"] == "VENDOR" and bill["vendor"] == "acme-leads"

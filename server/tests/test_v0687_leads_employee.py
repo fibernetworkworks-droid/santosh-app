@@ -1,4 +1,4 @@
-"""v0.689.0 LEADS EMPLOYEE: the Lead Generation employee joins the AI Employees hub's Business department
+"""v0.690.0 LEADS EMPLOYEE: the Lead Generation employee joins the AI Employees hub's Business department
 (owner: "PERFECT NOW CHECK IN AI EMPLOYE :: BUSINESS SECTION IN WEB CONSOLVE ---- AND PUT THE LEAD GENEARTION
 AI EMPLOYEE IN THAT SECTION") + its Leads Desk in the web console.
 
