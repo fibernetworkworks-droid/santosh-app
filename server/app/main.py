@@ -8768,6 +8768,11 @@ async def sites_new(body: dict, tenant: str = Depends(current_tenant)):
     """{brief, name, goal, style, answers {name, phone, ...}, client, conversation_id}"""
     from .site import service as S
     ans = body.get("answers") if isinstance(body.get("answers"), dict) else None
+    brief = str(body.get("brief") or "")
+    if body.get("deep") and not body.get("field"):     # v0.708 the Studio's Build mode: a system ask gets the deep plan
+        from .site import architect as AR
+        if AR.wants_plan(brief):
+            return await asyncio.to_thread(_site_logic, AR.build_now, tenant, brief, str(body.get("conversation_id") or ""))
     return await asyncio.to_thread(_site, S.new, tenant, str(body.get("brief") or ""), str(body.get("conversation_id") or ""),
                                    str(body.get("name") or ""), str(body.get("field") or ""), str(body.get("goal") or ""),
                                    str(body.get("style") or ""), ans, str(body.get("client") or ""))
