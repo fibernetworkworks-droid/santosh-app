@@ -1,4 +1,4 @@
-"""v0.690.0 LEADS DESK EMPTY - the desk rendered 'Loading…' FOREVER with all three fetches 200 (the owner's
+"""v0.691.0 LEADS DESK EMPTY - the desk rendered 'Loading…' FOREVER with all three fetches 200 (the owner's
 second screenshot; reproduced end-to-end in a real browser against the real app). ROOT CAUSE, caught live:
 `ReferenceError: empty is not defined at Object.leads` - the desk called `empty(...)`, which is the EDUCATION
 desk's LOCAL helper (`const empty = ...` inside `async function edu(el)`), invisible from the leads desk. The

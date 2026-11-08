@@ -1,4 +1,4 @@
-"""v0.690.0 LEADS DESK SEAM - the desk said a route the server never served, and the release tests
+"""v0.691.0 LEADS DESK SEAM - the desk said a route the server never served, and the release tests
 checked each side SEPARATELY so the broken seam passed both. The owner's screenshot: the Leads Desk
 opened to a red "Not Found" - the desk's first load is Promise.all([GET /api/leads/overview,
 GET /api/leads/runs, GET /api/leads/outreach]) and the server's overview route is GET /api/leads (the

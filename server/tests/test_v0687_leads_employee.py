@@ -1,4 +1,4 @@
-"""v0.690.0 LEADS EMPLOYEE: the Lead Generation employee joins the AI Employees hub's Business department
+"""v0.691.0 LEADS EMPLOYEE: the Lead Generation employee joins the AI Employees hub's Business department
 (owner: "PERFECT NOW CHECK IN AI EMPLOYE :: BUSINESS SECTION IN WEB CONSOLVE ---- AND PUT THE LEAD GENEARTION
 AI EMPLOYEE IN THAT SECTION") + its Leads Desk in the web console.
 
@@ -107,6 +107,6 @@ def test_no_leads_tool_checks_is_hired():
 # ---------------------------------------------------------------- the version
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.690.0"
+    assert APP_VERSION == "0.691.0"
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.690.0+689" in pub.read_text()
+    assert "0.691.0+690" in pub.read_text()

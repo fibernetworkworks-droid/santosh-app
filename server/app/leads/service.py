@@ -29,12 +29,12 @@ from .importer import normalize_phone
 from .models import LeadContact, LeadListRef, LeadOutreach, LeadRun, ensure_tables
 from . import rules as R
 
-PARSER_VERSION = "v0.690.0-her1"        # the L0 her-data reader; every row names the code that read its source
-PARSER_INDIAMART = "v0.690.0-im1"       # the REGISTRY lane: IndiaMART's own MCP server via app/indiamart.py
-PARSER_PLACES = "v0.690.0-pl1"          # the OFFICIAL_API lane: the existing maps tools (nearby + details on tap)
-PARSER_ENRICH = "v0.690.0-en1"          # the P2 enrich pass reads the business's OWN website (enrich.py)
-PARSER_SCRAPE = "v0.690.0-gm1"          # the P3 SCRAPE lane: the Google Maps PUBLIC listing parser (gmaps_parse)
-PARSER_VENDOR = "v0.690.0-vd1"          # the P4 VENDOR lane: the licensed vendor's rows (leads/vendor.py contract)
+PARSER_VERSION = "v0.691.0-her1"        # the L0 her-data reader; every row names the code that read its source
+PARSER_INDIAMART = "v0.691.0-im1"       # the REGISTRY lane: IndiaMART's own MCP server via app/indiamart.py
+PARSER_PLACES = "v0.691.0-pl1"          # the OFFICIAL_API lane: the existing maps tools (nearby + details on tap)
+PARSER_ENRICH = "v0.691.0-en1"          # the P2 enrich pass reads the business's OWN website (enrich.py)
+PARSER_SCRAPE = "v0.691.0-gm1"          # the P3 SCRAPE lane: the Google Maps PUBLIC listing parser (gmaps_parse)
+PARSER_VENDOR = "v0.691.0-vd1"          # the P4 VENDOR lane: the licensed vendor's rows (leads/vendor.py contract)
 
 # mapsbill.MapsCapped arrives here re-raised as maps.MapsError (maps._bill's own law: "a cap hit becomes a
 # MapsError"), with this stable text inside - so the cap and an ordinary MapsError are told apart by MARK,

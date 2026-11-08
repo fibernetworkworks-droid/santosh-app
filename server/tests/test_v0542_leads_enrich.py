@@ -97,7 +97,7 @@ def test_site_pass_reads_home_then_contact_and_bounds_the_pages(monkeypatch):
     assert len(urls) == E.SITE_PAGES_MAX                  # home + contact-ish pages, the site bound holds
     assert "contact@medplus.in" in out["emails"] and "info@medplus.in" in out["emails"]
     assert out["socials"]["twitter"] == "https://twitter.com/medplus"
-    assert out["blocked"] == [] and out["parser_version"].startswith("v0.690")
+    assert out["blocked"] == [] and out["parser_version"].startswith("v0.691")
 
 
 def test_site_pass_names_the_block_and_the_dead_site_never_crashes(monkeypatch):
