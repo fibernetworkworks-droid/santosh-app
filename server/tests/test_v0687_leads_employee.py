@@ -1,4 +1,4 @@
-"""v0.687.0 LEADS EMPLOYEE: the Lead Generation employee joins the AI Employees hub's Business department
+"""v0.689.0 LEADS EMPLOYEE: the Lead Generation employee joins the AI Employees hub's Business department
 (owner: "PERFECT NOW CHECK IN AI EMPLOYE :: BUSINESS SECTION IN WEB CONSOLVE ---- AND PUT THE LEAD GENEARTION
 AI EMPLOYEE IN THAT SECTION") + its Leads Desk in the web console.
 
@@ -78,7 +78,7 @@ def test_the_desk_exists_and_is_wired():
 
 
 def test_the_desk_speaks_the_real_surface_and_the_two_tap_law():
-    for route in ("/api/leads/overview", "/api/leads/runs?limit=12", "/api/leads/outreach?limit=100",
+    for route in ("/api/leads", "/api/leads/runs?limit=12", "/api/leads/outreach?limit=100",
                   "/api/leads/rows?q=", "/api/leads/campaign-list", "/api/leads/opt-out", "/api/leads/forget"):
         assert route in EMP, route
     api_src = (SRV / "app" / "leads" / "api.py").read_text(encoding="utf-8")
@@ -107,6 +107,6 @@ def test_no_leads_tool_checks_is_hired():
 # ---------------------------------------------------------------- the version
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.688.0"
+    assert APP_VERSION == "0.689.0"
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.688.0+687" in pub.read_text()
+    assert "0.689.0+688" in pub.read_text()

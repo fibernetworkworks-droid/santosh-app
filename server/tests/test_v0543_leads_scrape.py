@@ -140,7 +140,7 @@ def test_parser_reads_every_constant_from_the_fixture():
     assert r["category"] == "Dentist, Dental clinic"                 # IDX_CATEGORIES 14
     assert r["place_id"] == "ChIJN1t_tDeuEmsRUsoyG82frLA4"           # IDX_PLACE_ID 9
     assert r["cid"] == "2384729384" and r["kgmid"].startswith("0x")  # IDX_CID 10 + the kgmid SHAPE scan
-    assert r["parser_version"] == "v0.687.0-gm1"
+    assert r["parser_version"] == "v0.689.0-gm1"
 
 
 def test_parser_never_reads_the_review_text_store_boundary():
@@ -267,7 +267,7 @@ def test_scrape_run_happy_path_provenance_and_dedup(env, monkeypatch):
     assert by_name["Sharma Dental Clinic"]["key_type"] == "kgmid"            # the strongest id wins
     assert by_name["Sharma Dental Clinic"]["phone"] == "919876543210"        # E.164, the house law
     assert by_name["Sharma Dental Clinic"]["source_lane"] == "SCRAPE"
-    assert by_name["Sharma Dental Clinic"]["parser_version"] == "v0.687.0-gm1"
+    assert by_name["Sharma Dental Clinic"]["parser_version"] == "v0.689.0-gm1"
     assert "/maps/search/" in by_name["Sharma Dental Clinic"]["source_url"]  # the exact page it was read from
     assert by_name["Kirita Clinic"]["key_type"] == "phone_e164"              # no ids -> the phone keys it
     assert all("Great service" not in json.dumps(r) for r in rows)           # the store boundary held

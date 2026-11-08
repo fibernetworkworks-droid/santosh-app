@@ -2798,7 +2798,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     }
     let o, rr, out;
     try {
-      [o, rr, out] = await Promise.all([api('GET', '/api/leads/overview'), api('GET', '/api/leads/runs?limit=12'),
+      [o, rr, out] = await Promise.all([api('GET', '/api/leads'), api('GET', '/api/leads/runs?limit=12'),
                                         api('GET', '/api/leads/outreach?limit=100')]);
     } catch (e) { el.innerHTML = `<div class="vh"><h2>Leads Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
     const st = o.store || {}, u = o.usage || {}, built = o.lanes_built || {};
