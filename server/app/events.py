@@ -469,7 +469,7 @@ def card_title(kind: str, payload: Any) -> str:
     return str(t or kind)[:80]
 
 
-_DONE_WORD = {"sent": "SENT (bhej diya gaya)", "scheduled": "SCHEDULED (time par jayega)", "cancelled": "CANCELLED (nahi bheja)",
+_DONE_WORD = {"sent": "SENT (bhej diya gaya)", "scheduled": "QUEUED TO SEND (undo time ya apne set time ke baad khud jayega - 'nahi gaya' mat kehna, 'bhej diya' tabhi jab SENT dikhe)", "cancelled": "CANCELLED (nahi bheja)",
               "approved": "APPROVED", "rejected": "REJECTED (usne mana kiya)", "done": "DONE", "failed": "FAILED",
               "expired": "EXPIRED", "answered": "ANSWERED", "decided": "DECIDED", "paid": "PAID"}
 

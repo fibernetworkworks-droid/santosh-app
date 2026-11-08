@@ -44,6 +44,17 @@ STATS: dict[str, int] = {"calls": 0, "trimmed": 0, "chars_saved": 0, "cleared": 
 CLEAR_TRIGGER = _env_int("PRUNE_CLEAR_TRIGGER_CHARS", 40000)
 CLEAR_KEEP = _env_int("PRUNE_CLEAR_KEEP_STEPS", 3)
 CLEAR_BATCH = _env_int("PRUNE_CLEAR_BATCH_STEPS", 4)
+# v0.707 GLM (the SDK door) has no prompt cache: every step re-pays the whole history (her log: 165-182k chars a step),
+# so the batching that protects Claude's cache buys nothing there - clear sooner and step by step
+CLEAR_TRIGGER_GLM = _env_int("PRUNE_CLEAR_TRIGGER_GLM_CHARS", 12000)
+
+
+def _glm_on() -> bool:
+    try:
+        from .. import glmdoor
+        return bool(glmdoor.active())
+    except Exception:
+        return False
 CLEARED = "[Purana tool natija hata diya gaya ({tool}, {n} chars) - jo kaam ka tha woh upar jawab mein aa chuka; zaroorat ho to tool dobara chalao]"
 # wave 10: a cleared result keeps what a long job needs later - its head, every link / id and every figure. The bare marker
 # above threw away the supplier pages of steps 2-8 before the Excel step: the model fetched them all again or invented
@@ -99,9 +110,13 @@ def clear_old(history: list[dict]) -> list[dict]:
     old = steps[:-CLEAR_KEEP]
     total = sum(_size(b.get("content")) for i in old for b in history[i]["content"]
                 if isinstance(b, dict) and b.get("type") == "tool_result")
-    if total <= CLEAR_TRIGGER:
+    glm = _glm_on()
+    if total <= (CLEAR_TRIGGER_GLM if glm else CLEAR_TRIGGER):
         return history
-    cut = len(old) - (len(old) % max(1, CLEAR_BATCH)) if len(old) >= CLEAR_BATCH else len(old)
+    if glm:
+        cut = len(old)
+    else:
+        cut = len(old) - (len(old) % max(1, CLEAR_BATCH)) if len(old) >= CLEAR_BATCH else len(old)
     names: dict[str, str] = {}
     for m in history:
         if isinstance(m, dict) and m.get("role") == "assistant" and isinstance(m.get("content"), list):

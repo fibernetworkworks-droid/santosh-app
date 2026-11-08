@@ -23050,3 +23050,12 @@ _near_miss typo warning (check_address). Tests test_v0706_gmail_gehri_jaanch.py 
 v0.707.0 SEEDHA WORKSPACE (built as 0.694; their v0.694-v0.706 landed while it was built - REBASE PROTOCOL, all kept; owner: "even when ask for website in plan mode it just starts a plan making down that search with no proper work... why it is not landing on workspace... make a proper fix with perfect smooth transition in pages"): (1) "Build this plan" never dies on the data draft any more - the architect's approve used to 422 "Data ka draft abhi theek nahi" and build NOTHING whenever the plan's lists / rules draft had a problem; now the website is built and the lists + rules wait for their own fix (said in the answer: App & data tab, 'Data dobara'); (2) the Web Studio AND the App Studio move to the workspace the moment she sends (her words in the chat, a live work card on the real clock, a skeleton of the plan / site) instead of sitting on the home under a dotted line for up to a minute - the real plan / website / app opens in the same place, a failure goes back home with her words still in the box and the reason under it; "Build this plan" turns into "Starting the build" at once with a working line in the chat; every page arrives with a short fade-up (still under reduced motion); 4 tests incl. two real-browser walks with a slow plan.
 
 NOT VERIFIED on her server; checked in a real browser with a slowed plan (the workspace in under 2 s, the real plan after).
+## v0.708.0 GMAIL WAVE 2 (built as 0.707.0; their SEEDHA WORKSPACE took 0.707.0 - REBASE PROTOCOL, both kept)
+
+Owner: "GO WAVE 2". The open items of docs/tests/GMAIL_AUDIT_2026-11-08.md: `ms.act_query` + `GmailBox.ids_for` (bulk by
+filter, paged, 500 cap; email_action takes source_folder / query, ids now optional), `_modify` chunks 1,000;
+`gmail.NOT_SUPPORTED` / `_not_for_consumer` (Workspace-only settings, delete-forever); `accounts.RECONNECT` +
+NotConnected for invalid_grant (linked mailboxes; the sign-in path keeps its v0.70 card); sync snooze per thread + warning / honest wake line; email_drafts eml_
+guard + resolve on edit; many_recipients warning; email_thread 15 x 1,500 newest; prune CLEAR_TRIGGER_GLM 12000 (no batch);
+context.window caps at chat_context_max_tokens_glm 40000 while the GLM door is active; events QUEUED TO SEND wording.
+Tests test_v0707_gmail_wave2.py (8).

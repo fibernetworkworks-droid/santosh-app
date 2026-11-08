@@ -2432,3 +2432,10 @@ Work Log:
 - 4 tests; 291 green on the 0.694 tree (studio, architect, app studio suites); built as 0.694, main moved to 0.706 -> re-versioned 0.707.0
 Stage Summary:
 - shipped v0.707.0 to main
+Task ID: v0.708.0 GMAIL WAVE 2 (built as 0.707.0)
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: the Gmail audit's open items
+Work Log:
+- bulk by filter, not-supported settings, NotConnected on expiry, snooze per thread, draft id guard, GLM history caps
+Stage Summary:
+- 8 new tests; wider suites run

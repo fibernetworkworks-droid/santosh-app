@@ -45,6 +45,28 @@ LIST_WORKERS = 8           # message metadata fetched 8 at a time instead of one
 RETRY_STATUS = (429, 500, 502, 503, 504)
 
 
+NOT_SUPPORTED = {
+    "delete": ("Hamesha ke liye delete (Trash ko bhi chhod kar) Google is login se nahi karne deta. Mail Trash mein bhejiye "
+               "(email_delete) - Gmail 30 din baad khud hata deta hai. Dobara jodne se yeh nahi badlega."),
+    "settings": ("Yeh Gmail setting (forwarding address / auto-forward / send-as alias banana) Google sirf company "
+                 "(Workspace) accounts ko admin ke zariye deta hai - Hoola se nahi ho sakti, dobara jodne se bhi nahi. "
+                 "Owner khud Gmail > Settings > 'Forwarding and POP/IMAP' ya 'Accounts' mein kar sakti hain."),
+}
+
+
+def _ns_key(method: str, path: str) -> str:
+    return "delete" if method.upper() == "DELETE" and path.startswith("/messages/") or "batchDelete" in path else "settings"
+
+
+def _not_for_consumer(method: str, path: str) -> bool:
+    m = method.upper()
+    if _ns_key(m, path) == "delete":
+        return True
+    return m in ("POST", "PUT", "PATCH", "DELETE") and any(
+        x in path for x in ("/settings/forwardingAddresses", "/settings/autoForwarding", "/settings/sendAs",
+                            "/settings/delegates"))
+
+
 def _shared() -> httpx.Client:
     global _SHARED
     with _SHARED_LOCK:
@@ -95,6 +117,10 @@ class GmailBox(Box):
         except httpx.HTTPError as e:
             raise MailError(f"Gmail se baat nahi ho payi ({type(e).__name__})")
         if r.status_code == 403 and "insufficient" in r.text.lower():
+            if _not_for_consumer(method, path):
+                # v0.707 Google gives these only to company (Workspace) accounts with admin delegation; "dobara jodiye"
+                # sent her round in a loop - reconnecting can never grant it
+                raise MailError(NOT_SUPPORTED.get(_ns_key(method, path), NOT_SUPPORTED["settings"]))
             raise MailError("Gmail ki permission nahi mili. App mein Profile > Email se Gmail dobara jodiye.")
         if r.status_code == 404:
             raise MailError("Yeh email nahi mila (shayad hata di gayi).")
@@ -167,7 +193,29 @@ class GmailBox(Box):
 
     # ---------------- organising ----------------
     def _modify(self, ids, add=(), remove=()):
-        self._req("POST", "/messages/batchModify", json={"ids": list(ids), "addLabelIds": list(add), "removeLabelIds": list(remove)})
+        ids = list(ids)
+        for i in range(0, len(ids), 1000):          # v0.707 batchModify takes at most 1,000 ids
+            self._req("POST", "/messages/batchModify", json={"ids": ids[i:i + 1000], "addLabelIds": list(add),
+                                                             "removeLabelIds": list(remove)})
+
+    def ids_for(self, folder: str, search: str | None = None, cap: int = 500) -> tuple[list[str], bool]:
+        """v0.707 every message id matching a folder + search, paged (500 a page), up to `cap`. True = more beyond cap."""
+        f = (folder or "inbox").lower()
+        q = [] if f == "search" else [FOLDER_Q.get(f) or f'label:"{folder}"']
+        if search:
+            q.append(search)
+        ids: list[str] = []
+        token = None
+        while len(ids) < cap:
+            params = {"q": " ".join(q), "maxResults": min(500, cap - len(ids))}
+            if token:
+                params["pageToken"] = token
+            got = self._req("GET", "/messages", params=params)
+            ids += [m["id"] for m in got.get("messages", [])]
+            token = got.get("nextPageToken")
+            if not token:
+                return ids, False
+        return ids, True
 
     def mark(self, ids, read):
         self._modify(ids, remove=["UNREAD"]) if read else self._modify(ids, add=["UNREAD"])
@@ -242,7 +290,7 @@ class GmailBox(Box):
                 raise
             t = self._req("GET", f"/threads/{tid}", params=params)
         msgs: list[dict[str, Any]] = []
-        for m in (t.get("messages") or [])[:max_messages]:
+        for m in (t.get("messages") or [])[-max_messages:]:     # v0.707 the NEWEST ones (the reply she needs)
             try:
                 p = mime.parse(self.raw(m["id"]))
             except MailError:

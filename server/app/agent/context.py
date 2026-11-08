@@ -76,6 +76,15 @@ def window(brain: str, settings=None) -> int:
     s = settings or _settings()
     lim = limit(brain, s)
     cap = int(getattr(s, "chat_context_max_tokens", 0) or 0)
+    if cap <= 0:
+        try:
+            from .. import glmdoor
+            if glmdoor.active():
+                # v0.707 every Claude call is answered by GLM (no prompt cache): a long chat was re-sent whole on every
+                # step (165-182k chars); with GLM the chat compacts at this many tokens unless she set her own cap
+                cap = int(getattr(s, "chat_context_max_tokens_glm", 40000) or 0)
+        except Exception:
+            pass
     return max(8000, min(lim, int(cap / _share(s)))) if cap > 0 else lim
 
 
