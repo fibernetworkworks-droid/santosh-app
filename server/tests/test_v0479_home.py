@@ -360,10 +360,10 @@ def test_audit_trail_readback(fakeha):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.704.0"
+    assert APP_VERSION == "0.705.0"
 
 
 def test_pubspec_version():
     import pathlib
     root = pathlib.Path(__file__).resolve().parents[2]
-    assert "0.704.0+703" in (root / "pubspec.yaml").read_text()
+    assert "0.705.0+704" in (root / "pubspec.yaml").read_text()

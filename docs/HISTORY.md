@@ -23021,3 +23021,15 @@ DONE" + "FOR EVERY WORK IT TAKES TIME". Two faults found in the code:
 Timing: a chat turn read diary (yaad), job state, coder memory one after another; `santosh._chat_memory` reads them and
 the card news in parallel under `chat_memory_s` (6 s), a late part is left out of that turn only, and logs
 `chat memory N s (parts)` so the next slow turn shows where its time went. Tests test_v0704_card_ki_khabar_chat.py (5).
+
+## v0.705.0 LOOP BAND
+
+Her harness log (13:39-13:46, 8 Nov) for "saare promotion mail archive kar do": email_check folder=promotions ->
+email_action archive -> email_check again, ~40 rounds, while a voice call ran beside it (the call's own asks waited behind
+Gmail reads of 7-27 s). Cause: `gmail.FOLDER_Q` had no inbox tabs, so "promotions" became `label:"promotions"`, and an
+archived mail KEEPS its category label - every read returned the mails just archived. The same-call breaker never fired
+because every round's inputs differed (limit 50, 20, 15, 12, 8...). Fixes: inbox tabs (promotions / social / updates /
+forums / primary / personal) = `category:<tab> in:inbox`; email_threads' description says a tab query needs in:inbox;
+`breaker.NAME_STEER` 12 (the 13th call of the same tool is paused once with a "is this a loop?" note, later calls run) and
+`NAME_STOP` 30 (the 31st stops the turn); a parallel batch counts once. NOT CHANGED, noted: a bulk archive runs without a
+confirm card (archive is reversible) - her test form expected a card for G19. Tests test_v0705_loop_band.py (4).

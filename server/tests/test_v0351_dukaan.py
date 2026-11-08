@@ -221,5 +221,5 @@ def test_a_customer_buys_in_a_real_browser(shop_server):
 def test_version():
     from pathlib import Path
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.704.0"
-    assert "0.704.0+703" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.705.0"
+    assert "0.705.0+704" in (Path(__file__).resolve().parents[2] / "pubspec.yaml").read_text()

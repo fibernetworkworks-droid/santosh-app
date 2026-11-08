@@ -165,7 +165,9 @@ EMAIL_TOOLS = [
         "search, default in:inbox) + limit shows conversations with ref, subject, from, count, unread, snippet. "
         "action='read' with a message id from email_check reads the whole conversation (same as email_thread). "
         "action='act' with refs + one of archive / trash / inbox / mark_read / mark_unread / star / unstar / move "
-        "(folder=) applies it to EVERY mail in those conversations at once. Gmail accounts only."),
+        "(folder=) applies it to EVERY mail in those conversations at once. Gmail accounts only. An archived mail keeps its "
+        "category, so a query for an inbox tab must include in:inbox (category:promotions in:inbox) - else the same "
+        "mails come back after every archive."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["list", "read", "act"]},
          "query": {"type": "string"}, "limit": {"type": "integer"},

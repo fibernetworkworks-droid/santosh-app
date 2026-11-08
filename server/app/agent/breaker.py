@@ -14,6 +14,8 @@ TOOL_FAILS_CONSTRAIN = 3   # a tool that failed 3 times in this turn is taken aw
 FAILS_IN_ROW_STOP = 4      # 4 failed calls in a row: stop
 MAX_CALLS = 48             # more tool calls than this in one turn: stop (v0.311: 30 -> 48, so the step-24 long-job
                            # switch is reached first; a parallel look-up batch counts once - see Breaker.batch)
+NAME_STEER = 12           # v0.705 the 13th call of the SAME tool in one turn (inputs differing) is paused once
+NAME_STOP = 30            # ... and the 31st stops the turn (her archive job looped 40 rounds, every input new)
 FAILS_IN_ROW_GOAL = 7      # v0.186 goal mode: more patience before a hard stop (one replan rescue first)
 
 STATS: Counter = Counter()   # steer / constrain / stop, since start (GET /api/agent/stats)
@@ -35,6 +37,9 @@ class Breaker:
         self.rescue_note = ""        # the replan message for the model (read by the turn right after it trips)
         self.calls = 0
         self.same: Counter = Counter()
+        self.names: Counter = Counter()
+        self._bsize = 0
+        self._bleft = 0              # v0.705 calls still to come from the current parallel batch (counted once by name)
         self.fails: Counter = Counter()
         self.in_row = 0
         self.blocked: set[str] = set()
@@ -54,6 +59,20 @@ class Breaker:
                 return self.stopped
             return (f"{name} is baar baar fail ho raha hai, isliye is kaam mein ab nahi chalega. Koi aur tarika lo, ya "
                     "owner ko seedha batao kya atka.")
+        if self._bleft > 0:
+            first = self._bleft == self._bsize
+            self._bleft -= 1
+        else:
+            first = True
+        if first:
+            self.names[name] += 1
+        if first and self.names[name] > NAME_STOP:
+            return self._stop(f"{name} ek hi kaam mein {NAME_STOP} se zyada baar chala")
+        if first and self.names[name] == NAME_STEER + 1:
+            self._trip("steer")
+            return (f"{name} is kaam mein {NAME_STEER} baar chal chuka hai. Ruko aur dekho: kya har baar nateeja BADAL raha "
+                    "hai? Agar wahi cheezein baar baar aa rahi hain to yeh loop hai - aur mat chalao, owner ko 1-2 line mein "
+                    "batao kya hua. Agar har call sach mein naya kaam hai (alag log / alag cheez), to agli call chala sakte ho.")
         k = _key(name, args)
         self.same[k] += 1
         if self.same[k] > SAME_CALL_STEER:
@@ -70,6 +89,7 @@ class Breaker:
         gaya'.) Same-call steering and failure counting still see every single call."""
         if n > 1:
             self.calls -= n - 1
+            self._bleft = self._bsize = n
 
     def after(self, name: str, ok: bool) -> None:
         if ok:

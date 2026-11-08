@@ -16,7 +16,13 @@ from .base import Box, MailError
 API = "https://gmail.googleapis.com/gmail/v1/users/me"
 FOLDER_Q = {"inbox": "in:inbox", "sent": "in:sent", "trash": "in:trash", "spam": "in:spam", "starred": "is:starred",
             "drafts": "in:drafts", "snoozed": "in:snoozed",
-            "archive": "-in:inbox -in:sent -in:drafts -in:trash -in:spam -in:chats"}
+            "archive": "-in:inbox -in:sent -in:drafts -in:trash -in:spam -in:chats",
+            # v0.705 the inbox tabs: an archived mail KEEPS its category label, so "promotions" read as label:promotions
+            # kept returning mails already archived - her "saare promotion archive karo" looped ~40 rounds (archive,
+            # read, same mails again). A tab is what is still IN the inbox under that tab.
+            "promotions": "category:promotions in:inbox", "social": "category:social in:inbox",
+            "updates": "category:updates in:inbox", "forums": "category:forums in:inbox",
+            "primary": "category:primary in:inbox", "personal": "category:primary in:inbox"}
 META = ["From", "To", "Cc", "Subject", "Date", "Message-ID", "List-Unsubscribe", "Precedence", "Auto-Submitted"]
 
 

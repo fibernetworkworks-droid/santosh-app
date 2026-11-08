@@ -2404,3 +2404,12 @@ Work Log:
 - santosh: _chat_memory (parallel, bounded, logged) + _last_reply_at; config chat_memory_s
 Stage Summary:
 - 5 new tests + v0650 green; wider suites run
+
+---
+Task ID: v0.705.0 LOOP BAND
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her harness log - promotions archive looped 40 rounds
+Work Log:
+- gmail.FOLDER_Q inbox tabs; email_threads description; breaker NAME_STEER / NAME_STOP with batch credit
+Stage Summary:
+- 4 new tests; breaker suites green except reds that fail on the old code too
