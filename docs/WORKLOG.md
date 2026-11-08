@@ -2286,3 +2286,17 @@ Date: 2026-11-08
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: "GO WAVE 13" - analysis, monitoring and feeling (12 items).
 Work: research check on every actor, pylab figures checked, corrected answer re-checked, independent reviewer, worker health + slot timeout + looplag from start, female avatar grammar, fixed lines gendered, night push hold, mood rule, prompt contradictions, error-after-tools warning, background errors once a night; 16 tests. The third audit (47 flaws) is complete. Not verified live.
+
+---
+Task ID: v0692-call-par-team
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: multi-agent crews during a live call while a long task runs - map how it works, then fix the 12 gaps.
+Work: crew cap count, chat-mode rounds, call questions not hijacked, results said whole on the call, roko stops crews, call reaches the chat job, live crew progress, per-her inline cap, crews out of voice mode + research rules, gendered lines, record pick lock; 10 tests. Built as 0.691 work, shipped as 0.692 after their 0.690-0.691. Not verified live.
+
+---
+Task ID: v0692-call-par-team
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: multi-agent crews during a live call while a long task runs - map how it works, then fix the 12 gaps.
+Work: crew cap count, chat-mode rounds, call questions not hijacked, results said whole on the call, roko stops crews, call reaches the chat job, live crew progress, per-her inline cap, crews out of voice mode + research rules, gendered lines, record pick lock; 10 tests. Shipped as 0.692 after their 0.690-0.691. Not verified live.

@@ -22811,3 +22811,29 @@ The last wave of the 47-flaw third audit. Twelve items, each with a test that fa
   The same background error is said once a night (`BG_ERROR_NIGHT_S`), not every 30 minutes.
 - conftest sets PUSH_QUIET=0-0 so old suites never depend on the wall clock.
 - NOT VERIFIED live: a held night push on her phone, the first stuck-worker healthz, a female avatar's real call.
+
+
+## v0.692.0 CALL PAR TEAM - agent crews and long jobs on a live call (owner: "lets work on hoola ai multi agent call during call during a long task" -> GO)
+
+How it works today was mapped first (call -> santosh_kaam -> call brain on a call / side record, 20 s wait then "working",
+_late_result / _orphan_note; crews only through the call brain; background crews report via kaamwatch -> kaam_followup ->
+wake -> voice news). Twelve fixes, `tests/test_v0691_call_par_team.py` (10):
+- `team._deploy_background` / `team.tick`: the running-crew cap is a COUNT (`func.count`) - it compared an id string with a
+  number (TypeError whenever a crew ran; the cap of 2 was never kept, a tick could abort).
+- `goal._schedule`: a round scheduled from a call brain turn resets `VOICE_BRAIN_NOW` / `_MODEL_NOW` - every later round of
+  the job ran in quick-voice mode.
+- `santosh._steps_inner`: on a call, an open job's "text cannot end the turn" nudge applies only when this turn touched
+  `kaam_plan`; "kal ka mausam?" is answered.
+- `kaam_followup`: the postponed fallback line is also said on a live call; the wake voice note is 700 chars (was 300);
+  `_canned` in her avatar's forms. `team.run_background` say = 600 (was 220); `voice._late_result` 3000 (was 1500),
+  orphan note 1500 (was 800); "bataungi" for a female avatar.
+- `team.stop_team` + `kaamstop._native_stop` kind `agent_team`: "agents band karo" stops a background crew for real.
+- `goal_tools._goal_for`: on a call record, kaam_plan step / add / show / finish reach the job running in the chat the call
+  came from (never a second job); the tool text says so.
+- `team.LIVE` / `live_lines` / `inline_running`: agent-by-agent progress of every crew (inline ones were invisible), in
+  `kaamwatch.block` (chat + call memory) and `agent_status` (`live`).
+- `team_tenant_inline_max` (8): inline agents running at once per HER, across the call record + side records.
+- `team._run_crew` starts sub-agents outside voice mode; `deploy_agents` on a call marks a research ask (`hard.research_wanted`).
+- `voice.Call._pick_conv`: pick + claim under one lock, claims released when the ask ends, so two quick asks never both
+  pick the call record.
+- NOT VERIFIED live: a real call with a running crew and a long job.
