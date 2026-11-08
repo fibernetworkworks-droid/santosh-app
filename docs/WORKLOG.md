@@ -2324,3 +2324,10 @@ Date: 2026-11-08
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: deep check before final testing + use NVIDIA GLM 5.3 Flash for every brain call.
 Work: free cards all full, 2 real bugs fixed (video_studio family, skill pack stamps), card + pins healed, docs/FINAL_TEST_PLAN.md; SAB GLM door (glmdoor.py) with NVIDIA reasoning fields, picture support, Claude fallback, glm_check job; 11 tests. Not verified live (no NVIDIA key here).
+
+---
+Task ID: v0696-glm-safety-switch
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: her live NVIDIA test hung - keep Hoola fast whatever GLM does.
+Work: 45 s GLM clock, no retry on timeout, skip GLM 10 min after 2 failures; 2 tests.

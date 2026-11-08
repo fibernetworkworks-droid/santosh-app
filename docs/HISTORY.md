@@ -22889,3 +22889,14 @@ FINAL JAANCH (`docs/FINAL_TEST_PLAN.md`):
 - `quality/leadscard.py`: the free card counts only asks that name a tool (13/13, was shown as 13/21).
 - Pins healed: hub catalogue 84 (Lead Generation employee), the GLM tool-turn order (a narration note may follow the
   tool row), the one-model stream source window. Tests `test_v0694_final_jaanch.py` (3).
+
+
+## v0.696.0 GLM SAFETY SWITCH (her first live NVIDIA test: model listed, every chat call hung 120 s with 0 bytes)
+
+- `agent/llm.py`: one GLM request waits at most `glm_timeout_s` (45 s, connect 10 s); a timed-out GLM request is not
+  retried; after `glm_breaker_fails` (2) failures in a row GLM is skipped for `glm_pause_s` (600 s) - `cheap_brain()`
+  and `glmdoor.active()` return the Claude path at once - then GLM is tried again (`BREAKER`, `glm_paused`, `glm_result`).
+- `/api/agent/stats` `sab_glm` shows `paused` + the breaker counters. Tests: 2 more in `test_v0695_sab_glm.py`.
+- Live state at the time: NVIDIA reachable (HTTP 200 in 0.08 s), the key lists `z-ai/glm-5.3-flash`, chat calls
+  return nothing in 120 s - an NVIDIA-side issue (forum reports of new keys that list models but get nothing / 404 on
+  chat). Owner told to keep CLAUDE_ALL_GLM=false / CHAT_LLM=claude until a streamed test answers.

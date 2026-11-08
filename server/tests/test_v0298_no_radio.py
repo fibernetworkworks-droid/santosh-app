@@ -31,5 +31,5 @@ def test_plan_breath_does_nothing_when_off():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.695.0"
-    assert "0.695.0+694" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.696.0"
+    assert "0.696.0+695" in (ROOT / "pubspec.yaml").read_text()

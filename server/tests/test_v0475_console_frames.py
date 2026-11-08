@@ -122,11 +122,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'SAB GLM' in main and 'webstudio' in main  # the newest-story precedent (v0.695.0 carries the marker; WEB CLONE rides the Previous chain)
+    assert 'GLM SAFETY SWITCH' in main and 'webstudio' in main  # the newest-story precedent (v0.696.0 carries the marker; SAB GLM rides the Previous chain)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.695.0+694' in pub
+    assert 'version: 0.696.0+695' in pub
