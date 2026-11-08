@@ -2254,3 +2254,13 @@ Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: ship waves 9-12 of the third audit as one release after the wide regression run.
 Work: re-versioned 0.681 -> 0.685 on their v0.684 tip; 9 regressions found by the comparison fixed; 67 new tests.
 Not verified live. Wave 13 waits for her GO.
+
+---
+Task ID: v0.686.0 EK LAKH ALAG WEBSITE
+Agent: Claude Code (web session)
+Task: Templates = 1,00,000 unique websites worldwide (owner: v0.683 showed 100 'Sweet shop' cards)
+Work Log:
+- site/world.py (50 sectors x 20 subjects, 10 types, sector types, positionings, cities, name roots) + site/templates.py rewrite + routes + Studio page
+- all 1,00,000 checked (length, guard, unique names + concepts); built as 0.684, main moved to 0.685 -> re-versioned 0.686.0
+Stage Summary:
+- shipped v0.686.0 to main
