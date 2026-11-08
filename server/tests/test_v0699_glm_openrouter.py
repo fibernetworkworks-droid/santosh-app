@@ -44,18 +44,19 @@ def _ask():
     return asyncio.run(llm._openai_create("glm", "sys", [], [{"role": "user", "content": "hi"}], 500))
 
 
-def test_openrouter_reasoning_off_by_default(orr):
+def test_openrouter_reasoning_low_never_off(orr):
     from app.agent import llm
     st, seen = orr
     assert llm.is_openrouter() and not llm.is_nvidia()
     url, model, label, headers, extra = llm._target("glm")
     assert label == "GLM (OpenRouter)" and model == "z-ai/glm-5.3-flash"
     assert headers["Authorization"] == "Bearer sk-or-test"
-    assert extra == {"reasoning": {"enabled": False}}
-    assert llm.room(500) == 500
+    # v0.700: OpenRouter's GLM refuses {"enabled": false} ("Reasoning is mandatory") - always effort low + room
+    assert extra == {"reasoning": {"effort": "low", "exclude": True}}
+    assert llm.room(500) > 500
     _ask()
     b = seen["bodies"][0]
-    assert b["reasoning"] == {"enabled": False} and b["max_tokens"] == 500
+    assert b["reasoning"] == {"effort": "low", "exclude": True} and b["max_tokens"] > 500
     for bad in ("thinking", "reasoning_effort", "chat_template_kwargs"):
         assert bad not in b
 
@@ -79,4 +80,4 @@ def test_openrouter_refusing_reasoning_is_asked_again_plain(orr):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.699.0"
+    assert APP_VERSION == "0.700.0"

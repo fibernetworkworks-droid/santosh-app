@@ -364,10 +364,10 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         label = "GLM (NVIDIA)"
     elif is_openrouter():
         # v0.699 GLM VIA OPENROUTER: OpenRouter speaks its OWN reasoning field ({"reasoning": {...}}), not Z.ai's
-        # "thinking". glm_thinking disabled (the default) = reasoning off = fast + cheap; enabled = effort low,
-        # reasoning text excluded from the reply. Room for it is added only when it is on (room()).
-        extra = ({"reasoning": {"effort": st.glm_reasoning_effort or "low", "exclude": True}}
-                 if st.glm_thinking == "enabled" else {"reasoning": {"enabled": False}})
+        # "thinking". v0.700: her live check - z-ai/glm-5.3-flash on OpenRouter answers 400 "Reasoning is mandatory
+        # for this endpoint and cannot be disabled", so reasoning is never switched off there: effort low (fast +
+        # cheap), the reasoning text excluded from the reply, and room() adds space for it in max_tokens.
+        extra = {"reasoning": {"effort": st.glm_reasoning_effort or "low", "exclude": True}}
         label = "GLM (OpenRouter)"
     else:
         extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
@@ -387,7 +387,7 @@ def is_openrouter() -> bool:
 def room(max_tokens: int) -> int:
     """NVIDIA's GLM counts its (always-on) reasoning inside max_tokens: a 900-token reviewer would come back empty.
     Room for the reasoning is added on that endpoint only."""
-    if not (is_nvidia() or (is_openrouter() and get_settings().glm_thinking == "enabled")):
+    if not (is_nvidia() or is_openrouter()):
         return max_tokens
     return int(max_tokens) + max(0, int(getattr(get_settings(), "glm_reasoning_room", 2048) or 0))
 

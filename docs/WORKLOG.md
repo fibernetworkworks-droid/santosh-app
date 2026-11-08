@@ -2356,3 +2356,13 @@ Work Log:
 Stage Summary:
 - tests/test_v0699_glm_openrouter.py 4 passed; SAB GLM / glm / v0475 / routines 39 passed
 - NOT VERIFIED live: her glmdoor check on the VPS
+
+---
+Task ID: v0.700.0 REASONING ZAROORI
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her OpenRouter check showed GLM-5.3-Flash refuses reasoning off
+Work Log:
+- llm._target OpenRouter: always reasoning effort low + exclude; room() on OpenRouter too
+- version ritual 0.699.0 -> 0.700.0
+Stage Summary:
+- 39 passed (v0699 / v0695 / glm / v0475 / routines)

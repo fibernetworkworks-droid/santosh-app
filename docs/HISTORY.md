@@ -22947,3 +22947,14 @@ CHAT_LLM=glm, CLAUDE_ALL_GLM=true, OMNIROUTE_URL empty; check `python -m app.glm
 Tests: test_v0699_glm_openrouter.py (4) + SAB GLM / glm / routines green. Pre-existing reds on main untouched
 (v2.html stamp counts 23 vs 22/20 in test_v0234/v0240/v0249, test_v0295, v0486 version layer, v0538, v0540).
 NOT VERIFIED: no live OpenRouter GLM call from Hoola yet - her glmdoor check is the first.
+
+
+## v0.700.0 REASONING ZAROORI (her live OpenRouter check, 8 Nov)
+
+Her curl to OpenRouter z-ai/glm-5.3-flash with {"reasoning":{"enabled":false}} answered 400 "Reasoning is mandatory
+for this endpoint and cannot be disabled". v0.699 sent exactly that by default, so every brain call would have been
+refused once and then asked again plain (the 400 retry) - two requests per call. Now the OpenRouter branch of
+`llm._target` always sends {"reasoning":{"effort": glm_reasoning_effort (low), "exclude": true}} and `room()` adds
+glm_reasoning_room (2048) to max_tokens on OpenRouter as on NVIDIA. Her key: $10 limit, $3.61 left at the check
+(OpenRouter /key), so the key limit will need raising for daily use. Tests: test_v0699_glm_openrouter.py healed (4).
+NOT VERIFIED: the first glmdoor check through OpenRouter on her VPS.

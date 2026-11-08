@@ -75,5 +75,5 @@ def test_mid_call_notes_in_hinglish():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.699.0"
-    assert "0.699.0+698" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.700.0"
+    assert "0.700.0+699" in (ROOT / "pubspec.yaml").read_text()
