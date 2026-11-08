@@ -71,6 +71,20 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (8 Nov 2026, later, owner: "SAVE THE STATE" after "DEPLOYED" of the 1 lakh websites): branch
+  `stable-2026-11-08-web-v687` = commit c78c2164c = v0.687.0, pubspec 0.687.0+686 - cut at the LIVE commit (healthz read
+  0.687.0 after her deploy). Carries v0.686 EK LAKH ALAG WEBSITE (Web Studio Templates = 1,00,000 unique websites:
+  1,000 subjects in 50 sectors x 10 positionings x 10 world cities, own name each, sector-fitting type, 10 styles, prompt
+  <= 2,000 chars + guard-clean, search + sector / type / style filters) + v0.687 LEADS EMPLOYEE (Lead Generation in the
+  AI Employees Business section + console Leads desk) + v0.671 NAAM AUR NAMOONA + v0.669 HOOLA AURA.
+  **RE-VERIFIED IN THIS EXACT COMMIT** (git archive, run there): APP_VERSION 0.687.0, templates TOTAL 100000, world.check()
+  clean, **40 tests green** (v0686 lakh websites, v0687 leads employee, v0671, v0669, v0475 console frames, routines).
+  Live: healthz 0.687.0, /console/web 200, /api/site-templates 401 without login (deployed and key-protected).
+  **NOT VERIFIED / CAVEATS:** her own view of the Templates page after Ctrl+Shift+R not seen by this session; no site
+  has been built from a template yet; no live leads lane run yet; older reds carried (test_v0447 motion, test_v0453
+  education desk css). APK release `v0.686.0-b1965` (server-only change since):
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.686.0-b1965/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-08-web-v687` as the branch.
 - SAVE THE STATE (8 Nov 2026, owner: "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after P9 HOOLA ADOPT went
   live): branch `stable-2026-11-08-aep-v680` = commit 00aa1dac9 = v0.680.0, pubspec 0.680.0+679 - cut at the LIVE commit
   (healthz 0.680.0; deployed this session by vps-ops > deploy run 42394254940, success in ~50 s, the job took the DB backup).

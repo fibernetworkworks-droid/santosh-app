@@ -2266,3 +2266,13 @@ Work Log:
 - all 1,00,000 checked (length, guard, unique names + concepts); built as 0.684, main moved to 0.685 -> re-versioned 0.686.0
 Stage Summary:
 - shipped v0.686.0 to main
+
+---
+Task ID: SAVE THE STATE stable-2026-11-08-web-v687
+Agent: Claude Code (web session)
+Task: checkpoint after the owner deployed the 1 lakh websites (live healthz 0.687.0)
+Work Log:
+- git archive c78c2164c, ran 40 tests there (all green), templates TOTAL 100000 + world.check() clean
+- branch stable-2026-11-08-web-v687 pushed at c78c2164c; CLAUDE.md checkpoint entry added
+Stage Summary:
+- rollback point = stable-2026-11-08-web-v687 (v0.687.0)
