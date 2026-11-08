@@ -404,6 +404,13 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
               "what breaks if", "impact of changing", "architecture of this repo", "codebase samjh", "code ka naksha",
               "repo ka naksha", "kaun call karta", "kis par depend", "isko badalne se kya tootega", "graph_build",
               "graph_ask", "graph_list"),
+    # v0.694.0 WEB CLONE: the family opens ONLY on clone words (bare 'clone' parks in _GENERIC so 'git clone this
+    # repo' never misroutes, and 'site banao' stays the website builder). 'rebuild' only with the site named.
+    "webclone": ("web clone", "site clone", "website clone", "clone kar do site", "site ko clone",
+                 "is site ko clone", "is website ko clone", "site ka clone", "website ka clone",
+                 "webclone", "site clone kar", "website clone kar", "is page ko clone", "page clone",
+                 "site ko archive kar", "website archive", "apni site migrate", "site ko migrate kar",
+                 "site ka rebuild banao", "website ka rebuild banao", "साइट क्लोन", "क्लोन कर दो साइट"),
 }
 
 # words that appear inside many tool names but mean nothing on their own - never become auto-keys
@@ -451,6 +458,8 @@ _GENERIC = frozenset({
     "pdf",       # making a pdf = docstudio; working ON a pdf = the "pdf work" intent
     "build",     # v0.496 "build a website / app" is not a code-graph ask
     "graph",     # v0.496 charts / dashboards own the bare word; the code-graph family has its own phrases
+    "clone",     # v0.694.0 WEB CLONE: bare 'clone' is everyday ("git clone this repo" = git, not the web family);
+                 # only her clone WORDS (web clone / site ko clone ...) open the webclone family
 })
 
 
@@ -650,6 +659,12 @@ INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
     # other avatars on the Hoola Network
     (re.compile(r"(?:ke|ki|ka|ko)\s+avatar|avatar\s+(?:ko|se)|hoola network|network pe", re.I), ("hoola",), "network"),
     # research / comparison that splits into parts -> the team (core) + the web (core); nothing extra to load
+    # v0.694.0 WEB CLONE: the job TYPE in her words ("is site ko clone kar do") - EXTRA_KEYS carries the same words;
+    # bare 'clone' stays parked in _GENERIC so 'git clone this repo' never lands here
+    (re.compile(r"web\s*clone|website\s+clone|site\s+clone|clone\s+(?:this|is|yeh|ye)\s+(?:site|website|page)|"
+                r"(?:site|website|page)\s+ko\s+clone|(?:site|website)\s+ka\s+(?:clone|rebuild)|"
+                r"clone\s+kar(?:a|wa)?\s*(?:do|dena|de)?", re.I),
+     ("webclone",), "web clone ka kaam"),
 ]
 # desktop-software words (v0.271: they no longer bring a PC into view by themselves - only her words do)
 _DESKTOP = re.compile(r"\btally\b|busy software|\bmarg\b|ffmpeg|libreoffice|pandoc|imagemagick|\bapt\b|pip install|"

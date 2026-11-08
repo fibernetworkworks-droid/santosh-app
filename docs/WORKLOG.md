@@ -1,4 +1,10 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.694.0 WEB CLONE (rebuilt-from-spec lane)
+Agent: lane (webclone rebuild)
+Task: owner "DOES ALL WORK DONE -- DOES NOW HOOLA AI WILL CLONE ANY WEBSITE PERFECTLY" -> the deploy ask "PERFECT IS IT DEPLOYED".
+Work Log: the first rebuild sat built through their v0.686-v0.693 and was eaten by the sandbox recycle mid-flight (the 0.682.0 precedent); this lane rebuilt it from the spec onto their 8c11c130d HOOLA APP STUDIO tip: capture.py + endpoints_adapter.py + assemble.py + webclone_tools.py, the three admit.py seams, 30 tool-count pins healed, 224 version pins re-swept, the offline suite 21 cases green + the live example.com check.
+Stage Summary: pushed to main; the box still runs 0.685.0 - the paste-in runtime patch carries the same seams against it
+
 Task ID: v0.688.0 KAAM MANCH (the OWL work-discipline port)
 Agent: main (kaam laws lane)
 Task: owner "GO" on the OWL deploy plan (download/HOOLA_OWL_DEPLOY_PLAN.md, 6 decisions locked: laws+tips shape, KAAM MANCH name, all lanes, default ON + caps, no new tool, ~30 tests).
