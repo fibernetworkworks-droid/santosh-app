@@ -325,6 +325,8 @@ class Settings(BaseSettings):
     # https://integrate.api.nvidia.com/v1, GLM_MODEL=z-ai/glm-5.3-flash, GLM_API_KEY=nvapi-... and CHAT_LLM=glm.
     claude_all_glm: bool = False
     claude_all_glm_fallback: bool = True
+    claude_all_brain: str = ""              # "" = OmniRoute when OMNIROUTE_URL is set, else GLM | "glm" | "omniroute"
+    omniroute_timeout_s: float = 90.0       # one OmniRoute request (it may try two providers inside it)
     glm_reasoning_effort: str = "low"     # NVIDIA GLM-5.3-Flash: low | high | max (its default max is slow)
     glm_timeout_s: float = 45.0           # one GLM request waits at most this (her NVIDIA test hung 120 s with 0 bytes)
     glm_breaker_fails: int = 2            # GLM failures in a row before it is skipped

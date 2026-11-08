@@ -190,3 +190,49 @@ def test_a_nemotron_model_gets_a_plain_request(glm, monkeypatch):
     b = glm["glm"][-1]
     assert b["model"] == "nvidia/nemotron-3.5-super-vl-120b-a12b"
     assert "reasoning_effort" not in b and "chat_template_kwargs" not in b and "thinking" not in b
+
+
+def test_with_omniroute_set_every_call_goes_through_omniroute(glm, monkeypatch):
+    """Owner: "check omniroute" -> GO. With OMNIROUTE_URL set the door sends every call to the OmniRoute combo."""
+    from app.config import get_settings
+    from app import glmdoor
+    st = get_settings()
+    monkeypatch.setattr(st, "omniroute_url", "http://127.0.0.1:20128/v1")
+    monkeypatch.setattr(st, "omniroute_model", "santosh")
+    monkeypatch.setattr(st, "omniroute_key", "or-local")
+    seen = []
+
+    def omni(req):
+        seen.append((str(req.url), json.loads(req.content), dict(req.headers)))
+        return httpx.Response(200, json={"id": "o1", "model": "z-ai/glm-5.3-flash:free",
+                                         "choices": [{"message": {"content": "omni se"}, "finish_reason": "stop"}]})
+    from app.agent import llm
+    llm.set_http(httpx.AsyncClient(transport=httpx.MockTransport(omni)))
+    assert glmdoor.brain() == "omniroute" and glmdoor.active()
+    m = asyncio.run(glm["aclient"].messages.create(model="claude-haiku-5-5", max_tokens=300,
+                                                     messages=[{"role": "user", "content": "hi"}]))
+    url, body, headers = seen[-1]
+    assert m.content[0].text == "omni se" and url.startswith("http://127.0.0.1:20128/v1/chat/completions")
+    assert body["model"] == "santosh" and body["max_tokens"] == 300 and "reasoning_effort" not in body
+    assert headers.get("x-omniroute-compression") == "off" and headers.get("authorization") == "Bearer or-local"
+    assert glm["claude"] == 0
+
+
+def test_a_failing_omniroute_is_skipped_too(glm, monkeypatch):
+    from app.config import get_settings
+    from app import glmdoor
+    from app.agent import llm
+    monkeypatch.setattr(get_settings(), "omniroute_url", "http://127.0.0.1:20128/v1")
+
+    def down(req):
+        return httpx.Response(503, json={"error": "all providers busy"})
+    llm.set_http(httpx.AsyncClient(transport=httpx.MockTransport(down)))
+    llm.BREAKERS["omniroute"].update({"fails": 0, "until": 0.0})
+    for _ in range(2):
+        m = asyncio.run(glm["aclient"].messages.create(model="claude-haiku-5-5", max_tokens=50,
+                                                         messages=[{"role": "user", "content": "hi"}]))
+        assert m.content[0].text == "from claude"
+    assert llm.brain_paused("omniroute") and not glmdoor.active()
+    monkeypatch.setattr(get_settings(), "chat_llm", "omniroute")
+    assert llm.cheap_brain() is None                      # the chat goes to Claude meanwhile
+    llm.BREAKERS["omniroute"].update({"fails": 0, "until": 0.0})

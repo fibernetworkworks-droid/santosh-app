@@ -42,27 +42,42 @@ def set_http(client: httpx.AsyncClient | None) -> None:
 # brain must never make every turn wait out its timeout before Claude answers: after `glm_breaker_fails` failures in
 # a row GLM is skipped for `glm_pause_s` (Claude answers at once), then tried again; one GLM request waits at most
 # `glm_timeout_s`, and a timed-out request is not retried (a hung endpoint does not answer a second later).
-BREAKER = {"fails": 0, "until": 0.0, "paused": 0}
+# OMNIROUTE SAB KE LIYE: the same switch for each OpenAI-style brain (OmniRoute too), its own counters per brain.
+BREAKERS: dict[str, dict] = {"glm": {"fails": 0, "until": 0.0, "paused": 0},
+                             "omniroute": {"fails": 0, "until": 0.0, "paused": 0}}
+BREAKER = BREAKERS["glm"]          # the GLM one, by its old name
+
+
+def brain_paused(brain: str) -> bool:
+    import time as _t
+    b = BREAKERS.get(brain)
+    return bool(b) and _t.time() < b["until"]
+
+
+def brain_result(brain: str, ok: bool) -> None:
+    import time as _t
+    b = BREAKERS.get(brain)
+    if b is None:
+        return
+    if ok:
+        b["fails"] = 0
+        return
+    b["fails"] += 1
+    st = get_settings()
+    if b["fails"] >= max(1, int(getattr(st, "glm_breaker_fails", 2) or 2)):
+        b["until"] = _t.time() + float(getattr(st, "glm_pause_s", 600) or 600)
+        b["fails"] = 0
+        b["paused"] += 1
+        log.error("%s failed %s times in a row - skipped for %.0f s, Claude answers meanwhile", brain,
+                  getattr(st, "glm_breaker_fails", 2), float(getattr(st, "glm_pause_s", 600) or 600))
 
 
 def glm_paused() -> bool:
-    import time as _t
-    return _t.time() < BREAKER["until"]
+    return brain_paused("glm")
 
 
 def glm_result(ok: bool) -> None:
-    import time as _t
-    if ok:
-        BREAKER["fails"] = 0
-        return
-    BREAKER["fails"] += 1
-    st = get_settings()
-    if BREAKER["fails"] >= max(1, int(getattr(st, "glm_breaker_fails", 2) or 2)):
-        BREAKER["until"] = _t.time() + float(getattr(st, "glm_pause_s", 600) or 600)
-        BREAKER["fails"] = 0
-        BREAKER["paused"] += 1
-        log.error("GLM failed %s times in a row - skipped for %.0f s, Claude answers meanwhile",
-                  getattr(st, "glm_breaker_fails", 2), float(getattr(st, "glm_pause_s", 600) or 600))
+    brain_result("glm", ok)
 
 
 def _glm_timeout():
@@ -70,33 +85,38 @@ def _glm_timeout():
     return httpx.Timeout(t, connect=10)
 
 
+def _brain_timeout(label: str):
+    """The clock for one request: GLM 45 s; OmniRoute 90 s (it may try two providers inside one request)."""
+    if label.startswith("GLM"):
+        return {"timeout": _glm_timeout()}
+    if label.startswith("OmniRoute"):
+        return {"timeout": httpx.Timeout(float(getattr(get_settings(), "omniroute_timeout_s", 90) or 90), connect=10)}
+    return {}
+
+
 async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
                         max_tokens: int) -> tuple[list[dict], str, dict]:
-    if brain == "glm" and glm_paused():
-        raise LLMError("GLM paused after repeated failures - another brain answers")
+    if brain_paused(brain):
+        raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
         out = await _openai_create(brain, system, tools, messages, max_tokens)
     except Exception:
-        if brain == "glm":
-            glm_result(False)
+        brain_result(brain, False)
         raise
-    if brain == "glm":
-        glm_result(True)
+    brain_result(brain, True)
     return out
 
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
                         on_text, on_think=None) -> tuple[list[dict], str, dict]:
-    if brain == "glm" and glm_paused():
-        raise LLMError("GLM paused after repeated failures - another brain answers")
+    if brain_paused(brain):
+        raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
         out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think)
     except Exception:
-        if brain == "glm":
-            glm_result(False)
+        brain_result(brain, False)
         raise
-    if brain == "glm":
-        glm_result(True)
+    brain_result(brain, True)
     return out
 
 
@@ -122,10 +142,10 @@ def cheap_brain() -> str | None:
     if mode == "claude":
         return None
     if mode == "omniroute":
-        return "omniroute" if omniroute_ready() else None
+        return "omniroute" if omniroute_ready() and not brain_paused("omniroute") else None
     if mode == "glm":
         return "glm" if glm_ready() and not glm_paused() else None
-    if omniroute_ready():
+    if omniroute_ready() and not brain_paused("omniroute"):
         return "omniroute"
     return "glm" if glm_ready() and not glm_paused() else None
 
@@ -296,7 +316,7 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
         wait = RETRY_DELAY * (2 ** i)
         try:
             r = await _client().post(url, json=body, headers=headers,
-                                     **({"timeout": _glm_timeout()} if label.startswith("GLM") else {}))
+                                     **_brain_timeout(label))
         except httpx.TimeoutException as e:
             if label.startswith("GLM"):
                 raise LLMError(f"{label} not reachable: timed out ({type(e).__name__})") from e   # never retried
@@ -427,7 +447,7 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
         finish = ""
         try:
             async with _client().stream("POST", url, json=body, headers=headers,
-                                        **({"timeout": _glm_timeout()} if label.startswith("GLM") else {})) as r:
+                                        **_brain_timeout(label)) as r:
                 if r.status_code >= 400:
                     detail = (await r.aread()).decode("utf-8", "replace")[:300]
                     err = LLMError(f"{label} error {r.status_code}: {detail}")

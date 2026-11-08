@@ -32,13 +32,34 @@ def _settings():
     return get_settings()
 
 
+def brain() -> str:
+    """Which OpenAI-style brain the door uses: OmniRoute when it is set up (owner: "check omniroute" -> GO - one gateway
+    with its own provider fallbacks, official API keys only), else the GLM endpoint. `claude_all_brain` can pin one."""
+    try:
+        st = _settings()
+        want = str(getattr(st, "claude_all_brain", "") or "").lower()
+        if want in ("glm", "omniroute"):
+            return want
+        return "omniroute" if st.omniroute_url else "glm"
+    except Exception:
+        return "glm"
+
+
+def _ready(b: str) -> bool:
+    st = _settings()
+    return bool(st.omniroute_url) if b == "omniroute" else bool(st.glm_api_key)
+
+
 def active() -> bool:
     try:
         st = _settings()
-        if not (getattr(st, "claude_all_glm", False) and st.glm_api_key):
+        if not getattr(st, "claude_all_glm", False):
+            return False
+        b = brain()
+        if not _ready(b):
             return False
         from .agent import llm
-        return not llm.glm_paused()          # the safety switch: a hung GLM is skipped for a while, Claude answers
+        return not llm.brain_paused(b)       # the safety switch: a hung brain is skipped for a while, Claude answers
     except Exception:
         return False
 
@@ -78,7 +99,7 @@ def has_media(messages: list) -> bool:
     """A call GLM cannot read well: PDFs always; pictures only when the GLM endpoint is not NVIDIA (which reads them)."""
     try:
         from .agent import llm
-        pics_ok = llm.is_nvidia()
+        pics_ok = llm.is_nvidia() and brain() == "glm"
     except Exception:
         pics_ok = False
     kinds = ("document",) if pics_ok else ("image", "document")
@@ -109,9 +130,11 @@ def build(kw: dict) -> tuple[str, dict, dict, str]:
     tools = [t for t in (_plain(kw.get("tools") or [])) if isinstance(t, dict) and t.get("name")
              and t.get("type") in (None, "custom")]          # server tools (web_search ...) have no GLM twin
     msgs, fns = llm.to_openai(_system_text(kw.get("system")), tools, messages)
-    url, model, label, headers, extra = llm._target("glm")
+    b = brain()
+    url, model, label, headers, extra = llm._target(b)
+    mt = int(kw.get("max_tokens") or 1024)
     body: dict = {"model": model, "messages": msgs,
-                  "max_tokens": llm.room(int(kw.get("max_tokens") or 1024)),
+                  "max_tokens": llm.room(mt) if b == "glm" else mt,
                   "temperature": float(kw.get("temperature", _settings().glm_temperature)), **extra}
     if fns:
         body["tools"] = fns
@@ -152,9 +175,9 @@ async def acreate(kw: dict) -> Any:
     try:
         msg = await _acreate(kw)
     except Exception:
-        llm.glm_result(False)
+        llm.brain_result(brain(), False)
         raise
-    llm.glm_result(True)
+    llm.brain_result(brain(), True)
     return msg
 
 
@@ -179,16 +202,16 @@ def create_sync(kw: dict) -> Any:
     try:
         msg = _create_sync(kw)
     except Exception:
-        llm.glm_result(False)
+        llm.brain_result(brain(), False)
         raise
-    llm.glm_result(True)
+    llm.brain_result(brain(), True)
     return msg
 
 
 def _create_sync(kw: dict) -> Any:
     from .agent import llm
     url, headers, body, label = build(kw)
-    with httpx.Client(timeout=llm._glm_timeout()) as c:
+    with httpx.Client(**(llm._brain_timeout(label) or {"timeout": llm._glm_timeout()})) as c:
         r = c.post(url, json=body, headers=headers)
         if r.status_code >= 400 and body.pop("reasoning_effort", None) is not None:
             body.pop("chat_template_kwargs", None)       # an endpoint that does not know the reasoning fields
@@ -310,8 +333,11 @@ class _SyncStream:
 def status() -> dict:
     st = _settings()
     from .agent import llm
-    return {"on": active(), "paused": llm.glm_paused(), "breaker": dict(llm.BREAKER), "model": st.glm_model, "base_url": st.glm_base_url,
-            "claude_fallback": _claude_ok(), **STATS, "key_set": bool(st.glm_api_key)}
+    b = brain()
+    return {"on": active(), "brain": b, "paused": llm.brain_paused(b), "breaker": dict(llm.BREAKERS.get(b, {})),
+            "model": st.omniroute_model if b == "omniroute" else st.glm_model,
+            "base_url": st.omniroute_url if b == "omniroute" else st.glm_base_url,
+            "claude_fallback": _claude_ok(), **STATS, "key_set": bool(st.glm_api_key), "omniroute_set": bool(st.omniroute_url)}
 
 
 __all__ = ["active", "acreate", "create_sync", "has_media", "status", "_Stream", "json"]
@@ -321,10 +347,13 @@ async def _check() -> int:
     """`python -m app.glmdoor check`: one tiny text call + one tool call through the SAME door every call uses."""
     import time
     st = _settings()
-    print(f"GLM endpoint {st.glm_base_url} model {st.glm_model} key {'set' if st.glm_api_key else 'NOT SET'}; "
-          f"SAB GLM {'ON' if active() else 'off'}; Claude fallback {'yes' if _claude_ok() else 'no'}")
-    if not st.glm_api_key:
-        print("GADBAD: GLM_API_KEY is empty (make one at build.nvidia.com > your model > Get API Key, put it in .env)")
+    b = brain()
+    where = (f"OmniRoute {st.omniroute_url} model {st.omniroute_model}" if b == "omniroute"
+             else f"GLM endpoint {st.glm_base_url} model {st.glm_model} key {'set' if st.glm_api_key else 'NOT SET'}")
+    print(f"{where}; SAB GLM {'ON' if active() else 'off'}; Claude fallback {'yes' if _claude_ok() else 'no'}")
+    if not _ready(b):
+        print("GADBAD: " + ("OMNIROUTE_URL is empty" if b == "omniroute" else
+                            "GLM_API_KEY is empty (make one at your provider, put it in .env)"))
         return 1
     rc = 0
     t = time.monotonic()
