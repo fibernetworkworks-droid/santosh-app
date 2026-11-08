@@ -412,6 +412,7 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 
 # v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
 RESULT_LIMIT = {"research_run": 40000,
+                "email_check": 12000,   # v0.706 slimmed rows: 20-40 mails fit, the model no longer sees 6 of 50
                 # wave 10: a crew's deliverables ARE the evidence of the job: at 6,000 the list-slimming cut agents 4+
                 "deploy_agents": 24000, "agent_status": 24000}
 

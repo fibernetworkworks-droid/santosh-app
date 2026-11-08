@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import base64
 import html
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from email.message import EmailMessage
 from typing import Any, Callable
@@ -34,6 +37,22 @@ def unb64url(s: str) -> bytes:
     return base64.urlsafe_b64decode(s + "=" * (-len(s) % 4))
 
 
+# v0.706 ONE pooled HTTPS client for every Gmail call (keep-alive): each request used to open a fresh client, so a
+# 50-mail check paid 51 TLS handshakes in a row (her log: 7-27 s per email_check)
+_SHARED: httpx.Client | None = None
+_SHARED_LOCK = threading.Lock()
+LIST_WORKERS = 8           # message metadata fetched 8 at a time instead of one after another
+RETRY_STATUS = (429, 500, 502, 503, 504)
+
+
+def _shared() -> httpx.Client:
+    global _SHARED
+    with _SHARED_LOCK:
+        if _SHARED is None or _SHARED.is_closed:
+            _SHARED = httpx.Client(timeout=40, limits=httpx.Limits(max_connections=32, max_keepalive_connections=16))
+        return _SHARED
+
+
 class GmailBox(Box):
     kind = "gmail"
 
@@ -43,19 +62,38 @@ class GmailBox(Box):
         self._token = token
         self._client = client
 
+    def _bearer(self, fresh: bool = False) -> str:
+        """v0.706 the token is read once and reused for a few minutes (it was a DB read + decrypt per request)."""
+        now_t = time.monotonic()
+        tok = getattr(self, "_tok", None)
+        if not fresh and tok and now_t - tok[1] < 240:
+            return tok[0]
+        t = self._token(fresh)
+        self._tok = (t, now_t)
+        return t
+
     def _req(self, method: str, path: str, **kw) -> Any:
-        c = self._client or httpx.Client(timeout=40)
+        c = self._client or _shared()
+        r = None
         try:
-            for attempt in (0, 1):
-                r = c.request(method, API + path, headers={"Authorization": f"Bearer {self._token(attempt == 1)}"}, **kw)
-                if r.status_code == 401 and attempt == 0:
+            refreshed = False
+            for attempt in range(4):
+                r = c.request(method, API + path, headers={"Authorization": f"Bearer {self._bearer(refreshed)}"}, **kw)
+                if r.status_code == 401 and not refreshed:
+                    refreshed = True
+                    continue
+                busy = r.status_code in RETRY_STATUS or (r.status_code == 403 and "ratelimit" in r.text.lower())
+                if busy and attempt < 3:
+                    # v0.706 Gmail's own "slow down" / backend blips are retried (they went to the model as raw JSON)
+                    try:
+                        wait = float(r.headers.get("retry-after") or 0)
+                    except ValueError:
+                        wait = 0
+                    time.sleep(min(max(wait, 0.6 * (2 ** attempt)), 6))
                     continue
                 break
         except httpx.HTTPError as e:
             raise MailError(f"Gmail se baat nahi ho payi ({type(e).__name__})")
-        finally:
-            if self._client is None:
-                c.close()
         if r.status_code == 403 and "insufficient" in r.text.lower():
             raise MailError("Gmail ki permission nahi mili. App mein Profile > Email se Gmail dobara jodiye.")
         if r.status_code == 404:
@@ -94,12 +132,18 @@ class GmailBox(Box):
         params = {"q": " ".join(q), "maxResults": max(1, min(int(limit or 10), 50))}
         if f in ("trash", "spam"):
             params["includeSpamTrash"] = "true"
-        ids = [m["id"] for m in self._req("GET", "/messages", params=params).get("messages", [])]
-        out = []
-        for mid in ids:
-            m = self._req("GET", f"/messages/{mid}", params=[("format", "metadata")] + [("metadataHeaders", h) for h in META])
-            out.append(self._summary(m))
-        return out
+        got = self._req("GET", "/messages", params=params)
+        ids = [m["id"] for m in got.get("messages", [])]
+        self.last_more = bool(got.get("nextPageToken"))     # v0.706 there are more beyond this page (said to the model)
+        meta = [("format", "metadata")] + [("metadataHeaders", h) for h in META]
+
+        def one(mid):
+            return self._summary(self._req("GET", f"/messages/{mid}", params=meta))
+        if len(ids) <= 1 or self._client is not None:
+            return [one(mid) for mid in ids]
+        self._bearer()                      # read the token once before the workers share it
+        with ThreadPoolExecutor(max_workers=min(LIST_WORKERS, len(ids))) as ex:
+            return list(ex.map(one, ids))     # order kept
 
     def _summary(self, m: dict) -> dict[str, Any]:
         hdrs = {h["name"].lower(): h["value"] for h in (m.get("payload") or {}).get("headers", [])}
@@ -186,8 +230,17 @@ class GmailBox(Box):
 
     # ---------------- v0.181.0 threads: the whole conversation ----------------
     def thread(self, mid: str, max_messages: int = 30, body_chars: int = 3000) -> dict[str, Any]:
-        t = self._req("GET", f"/threads/{mid}",
-                      params=[("format", "metadata")] + [("metadataHeaders", h) for h in META])
+        # v0.706 a thread id equals only the FIRST message's id: a reply's message id 404'd here ("email nahi mila") -
+        # a th: ref is stripped, a message id is turned into its thread id when the direct read misses
+        mid = mid[3:] if str(mid).startswith("th:") else mid
+        params = [("format", "metadata")] + [("metadataHeaders", h) for h in META]
+        try:
+            t = self._req("GET", f"/threads/{mid}", params=params)
+        except MailError:
+            tid = self.thread_of(mid)
+            if not tid or tid == mid:
+                raise
+            t = self._req("GET", f"/threads/{tid}", params=params)
         msgs: list[dict[str, Any]] = []
         for m in (t.get("messages") or [])[:max_messages]:
             try:
@@ -249,7 +302,7 @@ class GmailBox(Box):
                          json={"color": {"backgroundColor": background, "textColor": text}})
 
     # ---------------- v0.181.0 importance + category tabs ----------------
-    CATEGORIES = {"personal": "CATEGORY_PERSONAL", "social": "CATEGORY_SOCIAL", "updates": "CATEGORY_UPDATES",
+    CATEGORIES = {"personal": "CATEGORY_PERSONAL", "primary": "CATEGORY_PERSONAL", "social": "CATEGORY_SOCIAL", "updates": "CATEGORY_UPDATES",
                   "forums": "CATEGORY_FORUMS", "promotions": "CATEGORY_PROMOTIONS"}
 
     def mark_important(self, ids: list[str], on: bool) -> None:
@@ -259,7 +312,7 @@ class GmailBox(Box):
         cat = self.CATEGORIES.get((category or "").strip().lower())
         if not cat:
             raise MailError("category personal / social / updates / forums / promotions mein se hai")
-        self._modify(ids, add=[cat], remove=[c for c in self.CATEGORIES.values() if c != cat])
+        self._modify(ids, add=[cat], remove=sorted({c for c in self.CATEGORIES.values() if c != cat}))
 
     def apply_label(self, ids: list[str], name: str) -> None:
         """v0.182.0 a label on top of the mail, inbox nahi chhodti (a rule's 'label' action)."""
@@ -270,11 +323,16 @@ class GmailBox(Box):
         """The mailbox's own view: historyId (the watcher's watermark), address, messages count."""
         return self._req("GET", "/profile")
 
-    def history(self, start_history_id: str, types: str = "messageAdded", max_results: int = 100) -> dict[str, Any]:
+    def history(self, start_history_id: str, types: str = "messageAdded", max_results: int = 100,
+                page_token: str | None = None) -> dict[str, Any]:
         """Everything that changed since the watermark (new mail). A 404 here means the watermark expired
-        (history purged) — the sync engine falls back to a plain `after:` listing, nothing is ever lost."""
-        return self._req("GET", "/history", params={"startHistoryId": start_history_id, "historyTypes": types,
-                                                    "maxResults": max(1, min(int(max_results), 500))})
+        (history purged) — the sync engine falls back to a plain `after:` listing, nothing is ever lost.
+        v0.706 `page_token`: the watcher asked for page 2 and got a TypeError, so a busy inbox stalled for good."""
+        params = {"startHistoryId": start_history_id, "historyTypes": types,
+                  "maxResults": max(1, min(int(max_results), 500))}
+        if page_token:
+            params["pageToken"] = page_token
+        return self._req("GET", "/history", params=params)
 
     # ---------------- v0.183.0 settings: vacation reply, sendAs (signature / aliases), auto-forward ----------------
     # These need the gmail.settings.basic scope (one-time reconnect for mailboxes linked before v0.183.0).

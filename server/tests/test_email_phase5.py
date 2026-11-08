@@ -425,8 +425,12 @@ def test_threads_list_and_act(gb, bz):  # noqa: F811
     out = run("email_threads", {"action": "act", "refs": ["mbx5~th:th1"], "act": "archive"}, ctx)
     assert out["count"] == 1
     assert ("th1", {"addLabelIds": [], "removeLabelIds": ["INBOX"]}) in gb.thread_mods
-    out = run("email_threads", {"action": "act", "refs": ["mbx5~th:th2", "mbx5~th:th1"], "act": "trash"}, ctx)
-    assert gb.thread_trashed == ["th2", "th1"] and gb.thread_mods[-2:] == gb.thread_mods[-2:]
+    # v0.706: whole-conversation trash needs a card now (it trashed with no card and no cap)
+    import pytest as _pt
+    from app.agent.tools import ToolError as _TE
+    with _pt.raises(Exception) as _e:
+        run("email_threads", {"action": "act", "refs": ["mbx5~th:th2", "mbx5~th:th1"], "act": "trash"}, ctx)
+    assert "email_delete" in str(_e.value) and not getattr(gb, "thread_trashed", [])
     run("email_threads", {"action": "act", "refs": ["mbx5~th:th1"], "act": "star"}, ctx)
     assert ("th1", {"addLabelIds": ["STARRED"], "removeLabelIds": []}) in gb.thread_mods
     out = run("email_threads", {"action": "act", "refs": ["mbx5~th:th1"], "act": "move", "folder": "Kaam"}, ctx)

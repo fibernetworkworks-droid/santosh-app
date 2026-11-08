@@ -79,8 +79,34 @@ def check(tenant: str, folder: str = "inbox", unread_only: bool = False, search:
                         "email_snooze action='list' se dikhte hain.")
     items = _guard(box, lambda: box.list(folder or "inbox", unread_only, search, limit, since, snippets))
     contacts.learn(tenant, [(i.get("from", ""), i.get("from_email", "")) for i in items if not i.get("bulk")], 0.2)
-    return {"account": box.address, "folder": folder or "inbox", "count": len(items),
-            "emails": [_public(box, i) for i in items]}
+    out = {"account": box.address, "folder": folder or "inbox", "count": len(items),
+           "emails": [_public(box, i) for i in items]}
+    if getattr(box, "last_more", False) or (limit and len(items) >= int(limit)):
+        # v0.706 the model never knew a list was cut short - it looped check -> act, guessing when to stop
+        out["more"] = True
+        out["more_note"] = ("Aur mails bhi hain is filter mein. Bulk kaam ke liye wahi query dobara chalao jab tak "
+                            "'more' na rahe - ek baar act karne ke baad wahi mails wapas aayein to loop hai, ruk jao.")
+    return out
+
+
+SLIM_DROP = ("to", "message_id", "account")
+
+
+def slim(result: dict[str, Any]) -> dict[str, Any]:
+    """v0.706 the model's copy of an email list: ~720 chars a mail meant the 6,000-char result cap showed it only 6 of
+    50 fetched mails. Drops what it never acts on, false flags, and caps the snippet."""
+    if not isinstance(result, dict) or not isinstance(result.get("emails"), list):
+        return result
+    rows = []
+    drop = SLIM_DROP if result.get("account") != "all" else tuple(k for k in SLIM_DROP if k != "account")
+    for e in result["emails"]:
+        r = {k: v for k, v in e.items() if k not in drop and v not in (False, "", None)}
+        if isinstance(r.get("snippet"), str) and len(r["snippet"]) > 140:
+            r["snippet"] = r["snippet"][:140] + "…"
+        if isinstance(r.get("subject"), str) and len(r["subject"]) > 120:
+            r["subject"] = r["subject"][:120] + "…"
+        rows.append(r)
+    return {**result, "emails": rows}
 
 
 def _check_all(tenant: str, folder: str, unread_only: bool, search: str | None, limit: int,
@@ -757,6 +783,7 @@ def gmail_draft_edit(tenant: str, ref: str, to: str | None = None, cc: str | Non
     msg = mime.build(from_addr=from_addr or box.address, from_name=from_name or sender_name(tenant, box),
                      to=(to or "").strip() or mime.dec(orig.get("To")),
                      cc=(cc or "").strip() or mime.dec(orig.get("Cc")),
+                     bcc=mime.dec(orig.get("Bcc")) or "",      # v0.706 an edit used to drop the draft's Bcc silently
                      subject=(subject or "").strip() or (mime.dec(orig.get("Subject")) or ""),
                      body=new_body, in_reply_to=irt, references=refs, files=files, html_body=html_body)
     out = _guard(box, lambda: box.draft_update(native, msg, thread_id or None))
@@ -788,7 +815,7 @@ def threads_list(tenant: str, query: str = "in:inbox", limit: int = 10, account:
 THREAD_ACTIONS = ("archive", "trash", "inbox", "mark_read", "mark_unread", "star", "unstar", "move")
 
 
-def thread_act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str, Any]:
+def thread_act(tenant: str, refs: list[str], action: str, folder: str = "", confirmed: bool = False) -> dict[str, Any]:
     if action not in THREAD_ACTIONS:
         raise MailError(f"action must be one of {', '.join(THREAD_ACTIONS)}")
     if not refs:
@@ -800,6 +827,10 @@ def thread_act(tenant: str, refs: list[str], action: str, folder: str = "") -> d
         r = str(ref or "")
         if "~" not in r:
             raise MailError("Yeh thread ka ref nahi lag raha — email_threads list se refs lijiye.")
+        if action == "trash" and not confirmed:
+            # v0.706 whole conversations went to Trash with no card and no cap (email_delete always asks first)
+            raise MailError("Poori conversation Trash karna delete hai - pehle confirm card chahiye. email_delete ids=<message "
+                            "ids from email_check> use karo; woh card bhejta hai aur uske Haan ke baad hi hatata hai.")
         box, native = split_ref(tenant, r)
         tid = native[3:] if native.startswith("th:") else native
         if box.kind != "gmail":
@@ -1169,9 +1200,10 @@ def send_draft(tenant: str, draft_id: str, edits: dict[str, Any] | None = None, 
         md = bool(d.markdown)
         alias = (d.from_alias or "").strip().lower()
     try:
-        for a in [x for x in (to_addr + "," + cc + "," + bcc).split(",") if x.strip()]:
-            if not contacts.valid(email.utils.parseaddr(a)[1]):
-                raise MailError(f"'{a.strip()}' sahi email address nahi hai")
+        # v0.706 getaddresses: a display name with a comma ("Sharma, Ravi" <r@x.com>) was split in two and refused
+        for nm, a in email.utils.getaddresses([x for x in (to_addr, cc, bcc) if x]):
+            if not contacts.valid(a):
+                raise MailError(f"'{(nm + ' ' + a).strip()}' sahi email address nahi hai")
         box = get_box(tenant, account or None)
         if alias:
             _alias_verified(tenant, box, alias)     # verified send-as only, before anything moves

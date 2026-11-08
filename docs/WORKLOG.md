@@ -2413,3 +2413,12 @@ Work Log:
 - gmail.FOLDER_Q inbox tabs; email_threads description; breaker NAME_STEER / NAME_STOP with batch credit
 Stage Summary:
 - 4 new tests; breaker suites green except reds that fail on the old code too
+
+---
+Task ID: v0.706.0 GMAIL GEHRI JAANCH
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: deep Gmail flaw audit + fixes
+Work Log:
+- 3 parallel read-only audits; findings verified in code; 13 fixed; open list in docs/tests/GMAIL_AUDIT_2026-11-08.md
+Stage Summary:
+- 10 new tests; email suites run

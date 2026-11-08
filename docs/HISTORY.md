@@ -23033,3 +23033,13 @@ forums / primary / personal) = `category:<tab> in:inbox`; email_threads' descrip
 `breaker.NAME_STEER` 12 (the 13th call of the same tool is paused once with a "is this a loop?" note, later calls run) and
 `NAME_STOP` 30 (the 31st stops the turn); a parallel batch counts once. NOT CHANGED, noted: a bulk archive runs without a
 confirm card (archive is reversible) - her test form expected a card for G19. Tests test_v0705_loop_band.py (4).
+
+## v0.706.0 GMAIL GEHRI JAANCH
+
+Owner: "GO DEEP IN GMAIL --- FIND ALL POSSIBLE FLAWS --- THAT HOOLA AI IS STRUGLING AND FAILING". Three read-only audits
+(provider layer, agent tools, speed / call path); the full table, fixed + still open, is docs/tests/GMAIL_AUDIT_2026-11-08.md.
+Fixed: gmail._shared pooled httpx client + LIST_WORKERS 8 + _bearer token cache; RETRY_STATUS 429/5xx + rateLimit 403
+retried 3x; thread() strips th: and falls back to thread_of; history(page_token); primary category; service.slim + more
+flag + RESULT_LIMIT email_check 12000; thread_act trash refused (confirmed=False) -> email_delete card; send_draft
+getaddresses; gmail_draft_edit keeps Bcc; email_draft reply account = source box, replace_id (_cancel_pending),
+_near_miss typo warning (check_address). Tests test_v0706_gmail_gehri_jaanch.py (10).

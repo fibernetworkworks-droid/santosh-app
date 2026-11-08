@@ -85,6 +85,8 @@ EMAIL_TOOLS = [
          "follow_up_days": {"type": "number", "description": "Optional: remind if no reply after this many days"},
          "save_to_gmail": {"type": "boolean", "description": "Also save into the Gmail Drafts folder"},
          "from_alias": {"type": "string", "description": "Send from this Gmail send-as alias (verified ones only)"},
+         "replace_id": {"type": "string", "description": "Fixing a draft card you made earlier (new subject / body / "
+                        "address)? Its draft_id here: the old card is cancelled so only the fixed one is live."},
          "account": {"type": "string", "description": "Send from this mailbox (address)"}},
          "required": ["body"]}},
     {"name": "email_forward", "description": (
@@ -167,7 +169,7 @@ EMAIL_TOOLS = [
         "action='act' with refs + one of archive / trash / inbox / mark_read / mark_unread / star / unstar / move "
         "(folder=) applies it to EVERY mail in those conversations at once. Gmail accounts only. An archived mail keeps its "
         "category, so a query for an inbox tab must include in:inbox (category:promotions in:inbox) - else the same "
-        "mails come back after every archive."),
+        "mails come back after every archive. act=trash is refused here (no card) - deleting goes through email_delete."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["list", "read", "act"]},
          "query": {"type": "string"}, "limit": {"type": "integer"},
@@ -314,7 +316,8 @@ async def _t(fn, *a, **kw):
 
 
 async def email_check(ctx: Ctx, folder="inbox", unread_only=False, limit=10, search=None, account=None, **_):
-    return await _t(ms.check, ctx.tenant_id, folder or "inbox", bool(unread_only), search, int(limit or 10), account)
+    return ms.slim(await _t(ms.check, ctx.tenant_id, folder or "inbox", bool(unread_only), search, int(limit or 10),
+                            account))
 
 
 async def email_read(ctx: Ctx, id, **_):
@@ -428,9 +431,53 @@ def _save_draft(ctx: Ctx, **f) -> dict[str, Any]:
     return view
 
 
+
+def _near_miss(tenant: str, addrs: str) -> list[str]:
+    """v0.706 an address she never mailed / never got mail from, that is ONE small typo away from one she knows."""
+    import difflib
+    import email.utils as eu
+    from ..db import MailContact, session as _session
+    from sqlalchemy import select as _select
+    got = [a.lower() for _, a in eu.getaddresses([addrs or ""]) if a]
+    if not got:
+        return []
+    with _session() as s:
+        known = [c.email.lower() for c in s.scalars(_select(MailContact).where(MailContact.tenant_id == tenant)
+                                                     .order_by(MailContact.score.desc()).limit(2000)).all()]
+    ks = set(known)
+    out = []
+    for a in got:
+        if a in ks:
+            continue
+        local, _, dom = a.partition("@")
+        best = None
+        for k in known:
+            kl, _, kd = k.partition("@")
+            if kd != dom:
+                continue
+            r = difflib.SequenceMatcher(None, local, kl).ratio()
+            if r >= 0.72 and (best is None or r > best[0]):
+                best = (r, k)
+        if best:
+            out.append(f"{a} naya address hai - kahin {best[1]} to nahi?")
+    return out
+
+
+def _cancel_pending(ctx: Ctx, draft_id: str) -> None:
+    """v0.706 email_draft replace_id: the old card she has not tapped yet is cancelled, so a fix never leaves two live
+    cards (she could tap the wrong one)."""
+    from ..db import EmailDraft, session as _session
+    with _session() as s:
+        d = s.get(EmailDraft, draft_id)
+        if not d or d.tenant_id != ctx.tenant_id or d.status not in ("pending", "failed"):
+            return
+        d.status = "cancelled"
+        conv = d.conversation_id
+    bus.publish(conv, "email_sent", {"id": draft_id, "status": "cancelled"})
+
 async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, reply_to_id=None, reply_all=False,
                       attachments=None, send_at=None, follow_up_days=None, account=None, markdown=False,
-                      save_to_gmail=False, from_alias=None, **_):
+                      save_to_gmail=False, from_alias=None, replace_id=None, **_):
     # v0.703: GLM sometimes names the recipient under another key (recipient / email / to_email...) or drops it;
     # take the common aliases instead of failing the step, and say exactly how to retry when it is really missing.
     if not to:
@@ -450,7 +497,9 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
             orig = ms.read(ctx.tenant_id, str(reply_to_id), mark_seen=False)
             kind = "reply"
             box, _native = ms.split_ref(ctx.tenant_id, str(reply_to_id))
-            acct = acct or box.key
+            # v0.706 a reply ALWAYS goes from the mailbox the mail came to: another account carried the source box's
+            # thread id into a box that does not have it (Gmail splits / refuses the thread)
+            acct = box.key
             me = box.address
             if not to_addr:
                 reply_to = mime.addr_list(orig.get("reply_to"))
@@ -476,12 +525,22 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
         text, key = _with_signature(ctx, body, acct)
         atts = ms.describe_attachments(ctx.tenant_id, attachments)
         when = _when(ctx, send_at)
+        if replace_id:
+            _cancel_pending(ctx, str(replace_id))
         return _save_draft(ctx, to_addr=to_addr[:1000], cc_addr=cc_addr[:1000], bcc_addr=bcc_addr[:1000] or None,
                            subject=(subj or "(no subject)")[:500], body=text, in_reply_to=in_reply_to, references=refs,
                            thread_id=thread_id, account=key, kind=kind, attachments=atts or None, send_at=when,
                            follow_up_days=int(follow_up_days) if follow_up_days else None, markdown=bool(markdown),
                            from_alias=alias or None)
     view = await _t(work)
+    try:   # v0.706 a mistyped address went in unchecked (kunaltelgote23 for kunaltlgt23) - name the near miss
+        warn = await _t(_near_miss, ctx.tenant_id, view.get("to", "") + "," + (view.get("cc") or ""))
+        if warn:
+            view = {**view, "check_address": warn,
+                    "say": "Pehle usse poochho: " + "; ".join(warn) + " - galat ho to email_draft replace_id ke saath "
+                           "sahi address se dobara banao."}
+    except Exception:
+        pass
     if save_to_gmail:
         await _t(ms.push_gmail_draft, ctx.tenant_id, str(view["id"]))
     note = "Draft taiyaar hai. User app mein 'Bhejo' dabakar approve karega; tab tak bheja nahi jayega."
