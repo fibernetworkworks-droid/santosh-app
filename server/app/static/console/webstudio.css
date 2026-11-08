@@ -458,3 +458,15 @@ dialog.tpld:not([open]){display:none}
 /* v0.686 every template its own website: name, then what it is */
 .tcard .tl,.tpldh .tl{font-size:14px;color:var(--ink);line-height:1.35}
 .tpldh .tl{font-size:15px;color:var(--mut)}
+/* v0.707 SEEDHA WORKSPACE: every page arrives with a short fade-up (home, plan, workspace, the waiting workspace), the
+   waiting workspace shows a calm skeleton of the plan / site while the server writes it; still under reduced motion */
+.home,.wsp{animation:ws-in .24s cubic-bezier(.2,.7,.2,1) both}
+@keyframes ws-in{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+.doc.skel{display:flex;flex-direction:column;gap:12px;min-height:420px}
+.doc.skel .sk{display:block;height:12px;border-radius:6px;background:linear-gradient(90deg,var(--sunk) 0%,var(--hair) 40%,var(--sunk) 80%);background-size:300% 100%;animation:ws-sheen 1.6s linear infinite;width:100%}
+.doc.skel .sk.h{height:22px;width:55%;margin-top:14px}.doc.skel .w40{width:40%}.doc.skel .w50{width:50%}.doc.skel .w60{width:60%}.doc.skel .w70{width:70%}.doc.skel .w80{width:80%}
+@keyframes ws-sheen{from{background-position:100% 0}to{background-position:-200% 0}}
+.acts li.wait{opacity:.55}
+.acts .tick.off,.tick.off{background:transparent;border:1.5px solid var(--hair2)}
+.comp[aria-disabled=true]{opacity:.6}
+@media (prefers-reduced-motion:reduce){.home,.wsp{animation:none}.doc.skel .sk{animation:none}}

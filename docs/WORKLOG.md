@@ -2422,3 +2422,13 @@ Work Log:
 - 3 parallel read-only audits; findings verified in code; 13 fixed; open list in docs/tests/GMAIL_AUDIT_2026-11-08.md
 Stage Summary:
 - 10 new tests; email suites run
+
+---
+Task ID: v0.707.0 SEEDHA WORKSPACE
+Agent: Claude Code (web session)
+Task: Studio plan / build land on the workspace at once + Build this plan never dies on the data draft (owner screenshots)
+Work Log:
+- architect.approve drops data/logic when the draft is bad and says so; webstudio + appstudio drawPending; approve-plan working state; ws-in fade + skeleton css
+- 4 tests; 291 green on the 0.694 tree (studio, architect, app studio suites); built as 0.694, main moved to 0.706 -> re-versioned 0.707.0
+Stage Summary:
+- shipped v0.707.0 to main

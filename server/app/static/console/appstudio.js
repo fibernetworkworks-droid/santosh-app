@@ -279,11 +279,43 @@
     if (title) api('PATCH', `/api/conversations/${enc(c)}`, {title}).catch(() => {});
     return c;
   }
+  /* v0.707 SEEDHA WORKSPACE: the moment she sends, the page moves to the app's workspace (her words in the chat, a live
+     work card on the real clock, the plan area filling in) instead of waiting on the home under a small line. */
+  function drawPending(text) {
+    const t0 = nowS(), plan = store.get(MODE_KEY) === 'plan';
+    const steps = ['Reading your words', 'Planning every screen, tab and list', plan ? 'Writing the plan' : 'Starting three looks of the Home screen'];
+    APP.innerHTML = `<div class="wsp" data-pending="1">
+      <header class="top"><a href="#/" aria-label="App Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+        <span class="pname">New app</span>${pill(plan ? 'Writing the plan' : 'Starting', 'v')}<span class="sp"></span><a class="b ghost" href="#/apps">All apps</a></header>
+      <div class="body"><section class="chat" aria-label="Chat with Hoola">
+          <div class="msgs" aria-live="polite"><div class="me">${esc(text)}</div>
+            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Starting your app'}</b><span id="asPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
+              <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
+              <ol class="acts" id="asPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
+              <div class="wfoot"><span class="ell">Usually under a minute. Nothing is built until you say so.</span></div></div></div>
+          <form class="comp" aria-disabled="true"><textarea rows="2" disabled placeholder="You can write here once the app opens…"></textarea><div class="cbar"><span class="sp"></span><button class="send" type="button" disabled aria-label="Send">${ico('up', 16)}</button></div></form>
+        </section>
+        <section class="pane" aria-label="App"><div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">Plan</button><button type="button" disabled>Looks</button><button type="button" disabled>Screens</button></nav></div>
+          <div class="stage"><article class="doc skel" aria-busy="true" aria-label="The plan is being written"><i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk"></i><i class="sk w70"></i></article></div></section></div></div>`;
+    document.title = 'New app · Hoola App Studio';
+    startTick();
+    let k = 0; clearInterval(drawPending._t);
+    drawPending._t = setInterval(() => {
+      const ol = $('#asPendSteps'); if (!ol) return clearInterval(drawPending._t);
+      if (k >= steps.length - 1) return;
+      const now = nowS(), cur = ol.querySelector(`[data-i="${k}"]`), nxt = ol.querySelector(`[data-i="${k + 1}"]`);
+      if (cur) { cur.className = 'ok'; cur.firstElementChild.outerHTML = tick; const tm = cur.querySelector('.tm'); if (tm) { tm.removeAttribute('data-t0'); tm.textContent = dur(now - Number(tm.dataset.s || t0)); } }
+      k++;
+      if (nxt) { nxt.className = 'run'; nxt.firstElementChild.outerHTML = '<span class="spin" aria-hidden="true"></span>'; const tm = nxt.querySelector('.tm'); if (tm) { tm.dataset.t0 = now; tm.dataset.s = now; } }
+      const nw = $('#asPendNow'); if (nw) nw.textContent = steps[k];
+      tickClocks();
+    }, 8000);
+  }
   async function startApp(body) {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
-    const work = $('#asAskWork');
-    const say = t => { if (work) { work.hidden = false; work.innerHTML = `<span class="spin" aria-hidden="true"></span><span>${esc(t)}</span>`; } };
-    say('Reading your words and writing the plan…');
+    let work = null;
+    const say = t => { const n = $('#asPendNow'); if (n) n.textContent = t; };
+    drawPending(S(body.brief));
     try {
       const conv = await newConv('');
       let v;
@@ -292,7 +324,7 @@
         if (!/ek sawaal|Pakka karne/i.test(e.message)) throw e;
         const fd = await dialog('One quick question', `<p class="sm">${esc(e.message.replace(/^Pakka karne ke liye ek sawaal:\s*/i, ''))}</p>
           <label class="sm mut" for="asSure">Your answer (or leave empty to go with the first meaning)</label><input class="in" id="asSure" name="a" maxlength="300">`);
-        if (!fd) { if (work) work.hidden = true; return; }
+        if (!fd) { clearInterval(drawPending._t); PREFILL = S(body.brief); drawHome('home'); return; }
         const a = S(fd.get('a')).trim();
         v = await api('POST', '/api/apps', {...body, brief: a ? `${body.brief}. ${a}` : body.brief, answers: {...M(body.answers), sure: true}, conversation_id: conv});
       }
@@ -304,7 +336,13 @@
         catch (e) { toast(e.message, true); }
       }
       go(`#/app/${enc(v.id)}/plan`);
-    } catch (e) { if (work) work.hidden = true; toast(e.message, true); }
+    } catch (e) {
+      clearInterval(drawPending._t);
+      PREFILL = S(body.brief); drawHome('home');          // back home with her words in the box and the reason under it
+      work = $('#asAskWork');
+      if (work) { work.hidden = false; work.innerHTML = `<span class="li bad">${esc(e.message)} · your words are still in the box, press send again</span>`; }
+      else toast(e.message, true);
+    } finally { clearInterval(drawPending._t); }
   }
 
   /* ---------- project menu (open, new tab, rename, star, delete) ---------- */

@@ -403,8 +403,13 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     spec = a.get("spec") or {}
     if "logic" in on and "data" not in on:
         on.discard("logic")                      # rules need their lists
+    data_later = False
     if ("data" in on) and not c["data_ready"]:
-        raise ArchError("Data ka draft abhi theek nahi; 'Data dobara' dabaiye ya Data band karke banaiye.", 422)
+        # v0.707 her "Build this plan" never dies on the data draft: the website is built now, the lists + rules wait
+        # for their own fix (App & data tab, 'Data dobara') - the old 422 left her on the plan with nothing built
+        on.discard("data")
+        on.discard("logic")
+        data_later = True
     pages = spec.get("pages") or []
     pub = [x["title"] for x in pages if x["for"] == "public"]
     inner = [f"{x['title']} ({'login ke baad' if x['for'] == 'member' else 'staff'})" for x in pages if x["for"] != "public"]
@@ -462,6 +467,8 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     except Exception:                            # noqa: BLE001
         log.debug("spec publish", exc_info=True)
     say = f"Haan mil gaya. Ban raha hai: {', '.join(done)}."
+    if data_later:
+        say += " Data ki lists aur niyam abhi nahi lage (draft theek nahi tha) - website ke App & data tab se 'Data dobara' kijiye."
     if todo:
         say += f" Baad mein Connect tab se jodiye: {', '.join(todo)}."
     try:

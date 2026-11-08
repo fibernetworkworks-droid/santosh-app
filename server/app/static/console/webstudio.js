@@ -353,6 +353,49 @@
     return c;
   }
 
+  /* v0.707 SEEDHA WORKSPACE: the moment she sends, the page moves to the workspace (her words in the chat, a live work
+     card with the real clock, the plan / site area filling in) - it never sits on the home under a small note while
+     the server writes the plan. When the server answers, the real plan / website opens in the same place. */
+  function drawPending(plan, text) {
+    const steps = plan ? ['Reading your words', 'Choosing the pages, users and data', 'Writing the plan document']
+      : ['Reading your words', 'Naming the website', 'Starting three complete looks'];
+    const t0 = nowS();
+    APP.innerHTML = `<div class="wsp wsp-in" data-pending="${plan ? 'plan' : 'build'}">
+      <header class="top"><a href="#/" aria-label="Web Studio home" style="display:flex"><div class="mark" aria-hidden="true"><span></span></div></a><span class="tsep" aria-hidden="true">/</span>
+        <span class="pname">${plan ? 'New plan' : 'New website'}</span>${pill(plan ? 'Writing the plan' : 'Starting', 'v')}<span class="sp"></span>
+        <a class="b ghost" href="#/sites">All websites</a></header>
+      <div class="body">
+        <section class="chat" aria-label="Chat with Hoola">
+          <div class="msgs" id="wsPendMsgs" aria-live="polite"><div class="me">${esc(text)}</div>
+            <div class="chatact wcard"><div class="step whead"><span class="spin" aria-hidden="true"></span><span class="wt"><b>${plan ? 'Writing your plan' : 'Starting your website'}</b><span id="wsPendNow">${esc(steps[0])}</span></span><span class="tm" data-t0="${t0}"></span></div>
+              <div class="prog ind" role="progressbar" aria-label="Progress"><i style="width:30%"></i></div>
+              <ol class="acts" id="wsPendSteps">${steps.map((x, i) => `<li class="${i ? 'wait' : 'run'}" data-i="${i}">${i ? '<span class="tick off" aria-hidden="true"></span>' : '<span class="spin" aria-hidden="true"></span>'}<div class="sl"><span class="ell">${esc(x)}</span></div><span class="tm"${i ? '' : ` data-t0="${t0}"`}></span></li>`).join('')}</ol>
+              <div class="wfoot"><span class="ell">${plan ? 'About a minute. Nothing is built until you say so.' : 'About a minute, then the three looks appear here.'}</span></div></div></div>
+          <form class="comp" aria-disabled="true"><textarea rows="2" disabled placeholder="You can write here once ${plan ? 'the plan' : 'the website'} opens…"></textarea>
+            <div class="cbar"><span class="mut sm">${plan ? 'Plan mode' : 'Build mode'}</span><span class="sp"></span><button class="send" type="button" disabled aria-label="Send">${ico('up', 16)}</button></div></form>
+        </section>
+        <section class="pane" aria-label="${plan ? 'Plan' : 'Website'}">
+          <div class="ptop"><nav class="views" aria-label="Views"><button type="button" aria-current="page">${plan ? 'Plan' : 'Preview'}</button><button type="button" disabled>${plan ? 'Preview' : 'Code'}</button></nav></div>
+          <div class="stage"><article class="doc skel" aria-busy="true" aria-label="${plan ? 'The plan is being written' : 'The website is starting'}">
+            <i class="sk w40"></i><i class="sk h"></i><i class="sk"></i><i class="sk w80"></i><i class="sk w60"></i><i class="sk h"></i><i class="sk"></i><i class="sk w70"></i><i class="sk w50"></i></article></div>
+        </section></div></div>`;
+    document.title = `${plan ? 'New plan' : 'New website'} · Hoola Web Studio`;
+    startTick();
+    // the steps move on the real clock while the one server call runs (labels only; the server answer decides)
+    let k = 0;
+    clearInterval(drawPending._t);
+    drawPending._t = setInterval(() => {
+      const ol = $('#wsPendSteps'); if (!ol) return clearInterval(drawPending._t);
+      if (k >= steps.length - 1) return;
+      const now = nowS(), cur = ol.querySelector(`[data-i="${k}"]`), nxt = ol.querySelector(`[data-i="${k + 1}"]`);
+      if (cur) { cur.className = 'ok'; cur.firstElementChild.outerHTML = tick; const tm = cur.querySelector('.tm'); if (tm) { tm.removeAttribute('data-t0'); tm.textContent = dur(now - Number(tm.dataset.s || t0)); } }
+      k++;
+      if (nxt) { nxt.className = 'run'; nxt.firstElementChild.outerHTML = '<span class="spin" aria-hidden="true"></span>'; const tm = nxt.querySelector('.tm'); if (tm) { tm.dataset.t0 = now; tm.dataset.s = now; } }
+      const nw = $('#wsPendNow'); if (nw) nw.textContent = steps[k];
+      tickClocks();
+    }, plan ? 14000 : 6000);
+  }
+
   async function startFromAsk(text) {
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     const conv = await newConv('');
@@ -1272,7 +1315,19 @@
       } else if (act === 'approve-plan') {
         const pid = parts()[1];
         const conv = store.get('hoola.ws.spec.conv.' + pid);
-        const r = await api('POST', `/api/site-architect/${enc(pid)}/approve`, {hash: d.hash, conversation_id: conv});
+        // v0.707 her tap shows at once: the button turns into a working line and the chat says what is starting
+        b.disabled = true; b.innerHTML = `<span class="spin" aria-hidden="true"></span>Starting the build`;
+        const box = $('#wsPlanMsgs');
+        if (box) { const w = document.createElement('div'); w.className = 'step'; w.dataset.work = '1';
+          w.innerHTML = `<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Building this plan · the website opens in a moment<span class="sp"></span><span class="tm" data-t0="${nowS()}"></span>`;
+          box.appendChild(w); box.scrollTop = box.scrollHeight; startTick(); }
+        let r;
+        try { r = await api('POST', `/api/site-architect/${enc(pid)}/approve`, {hash: d.hash, conversation_id: conv}); }
+        catch (er) {
+          b.disabled = false; b.textContent = 'Build this plan';
+          const w = box?.querySelector('[data-work]'); if (w) { w.className = 'li bad'; w.textContent = er.message; }
+          throw er;
+        }
         await loadLists();
         const site = SITES.find(x => S(x.id) === S(r.site) || S(x.number) === S(r.number));
         if (site && conv) store.set(convKey(site.id), conv);
@@ -1368,12 +1423,16 @@
       if (kind === 'ask') {
         const ta = f.querySelector('textarea'), t = S(ta.value).trim(); if (!t) return toast('Write one line about the website.', true);
         const plan = store.get(MODE_KEY) === 'plan';
-        const note = $('#wsAskWork');
-        if (note) { note.hidden = false; note.innerHTML = `<span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span>${plan ? 'Writing your plan from your words · about a minute' : 'Starting your website'}</span><span class="tm" data-t0="${nowS()}"></span>`; startTick(); }
-        ta.readOnly = true;
+        drawPending(plan, t);                       // v0.707: straight into the workspace, the work shows there
         try { await startFromAsk(t); }
-        catch (er) { if (note) { note.hidden = false; note.innerHTML = `<span class="li bad">${esc(er.message)} · your words are still in the box, press send again</span>`; } throw er; }
-        finally { if (ta.isConnected) ta.readOnly = false; }
+        catch (er) {
+          clearInterval(drawPending._t);
+          PREFILL = t; drawHome('home');            // back home with her words still in the box and the reason under it
+          const note = $('#wsAskWork');
+          if (note) { note.hidden = false; note.innerHTML = `<span class="li bad">${esc(er.message)} · your words are still in the box, press send again</span>`; }
+          throw er;
+        }
+        finally { clearInterval(drawPending._t); }
       }
       else if (kind === 'old' || kind === 'shot') await readDesign(f, kind);
       else if (kind === 'revise') {

@@ -23043,3 +23043,10 @@ retried 3x; thread() strips th: and falls back to thread_of; history(page_token)
 flag + RESULT_LIMIT email_check 12000; thread_act trash refused (confirmed=False) -> email_delete card; send_draft
 getaddresses; gmail_draft_edit keeps Bcc; email_draft reply account = source box, replace_id (_cancel_pending),
 _near_miss typo warning (check_address). Tests test_v0706_gmail_gehri_jaanch.py (10).
+
+
+## v0.707.0 SEEDHA WORKSPACE
+
+v0.707.0 SEEDHA WORKSPACE (built as 0.694; their v0.694-v0.706 landed while it was built - REBASE PROTOCOL, all kept; owner: "even when ask for website in plan mode it just starts a plan making down that search with no proper work... why it is not landing on workspace... make a proper fix with perfect smooth transition in pages"): (1) "Build this plan" never dies on the data draft any more - the architect's approve used to 422 "Data ka draft abhi theek nahi" and build NOTHING whenever the plan's lists / rules draft had a problem; now the website is built and the lists + rules wait for their own fix (said in the answer: App & data tab, 'Data dobara'); (2) the Web Studio AND the App Studio move to the workspace the moment she sends (her words in the chat, a live work card on the real clock, a skeleton of the plan / site) instead of sitting on the home under a dotted line for up to a minute - the real plan / website / app opens in the same place, a failure goes back home with her words still in the box and the reason under it; "Build this plan" turns into "Starting the build" at once with a working line in the chat; every page arrives with a short fade-up (still under reduced motion); 4 tests incl. two real-browser walks with a slow plan.
+
+NOT VERIFIED on her server; checked in a real browser with a slowed plan (the workspace in under 2 s, the real plan after).
