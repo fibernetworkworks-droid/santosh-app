@@ -1,4 +1,13 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.680.0 SAVE THE STATE (P9 HOOLA ADOPT live)
+Agent: main (aep adoption lane)
+Task: owner "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after the P9 AEP adoption deploy.
+Work Log: branch stable-2026-11-08-aep-v680 cut at 00aa1dac9 (v0.680.0, pubspec 0.680.0+679) and pushed; the deploy was fired this session through vps-ops > deploy (run 42394254940, success in ~50 s, the job took the DB backup before the restart); CLAUDE.md checkpoint entry added. Live proof at the save: healthz ok true / version 0.680.0; anonymous POST /api/aep/turn -> 401; anonymous GET /api/aep/runs -> 401; P9 suite re-run 15/15 green at this exact commit.
+Stage Summary: pushed to main; the AEP turn lane is LIVE behind user auth; first real signed-in turn + aep_trace flip + phone rendering of the 'aep'-sourced reply still to be seen on her device.
+
+---
+
+# HOOLA — Multi-Session Worklog
 Task ID: v0.682.0 KAAN W6 FIX - the unlock guard's engine seam made honest (voiceprint_ready consumes the real voiceid bool contract; the live box TypeError healed at kaan/status; the three W6 test patches healed + one NEW regression test on the real unpatched contract; ritual_v0682.py 0.681.0 -> 0.682.0 (+681); owner: "W6 (quotas + retention -> unlocks real voiceprint diarization) -- start")
 
 Task ID: v0.681.0 KALA MANCH - the T5 knowledge-skill catalog family (planned at 0.669.0, the dev chain took 0.669-0.680 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept; owner: "GO" on the google/skills deploy plan)

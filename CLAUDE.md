@@ -71,6 +71,22 @@ The codebase still uses the old name "Santosh" internally (package `com.newtika.
   `server/tests/test_routines.py`, commit `vX.Y.Z: <summary>`, push to `main`, wait for CI, give APK link + VPS commands.
 
 ## KNOWN GOOD CHECKPOINT (go back here if something breaks)
+- SAVE THE STATE (8 Nov 2026, owner: "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after P9 HOOLA ADOPT went
+  live): branch `stable-2026-11-08-aep-v680` = commit 00aa1dac9 = v0.680.0, pubspec 0.680.0+679 - cut at the LIVE commit
+  (healthz 0.680.0; deployed this session by vps-ops > deploy run 42394254940, success in ~50 s, the job took the DB backup).
+  The first product adoption of the AEP train: POST /api/aep/turn/{conversation_id} behind require_key + current_tenant
+  (anonymous 401 the moment the server has a key; the conversation must belong to the caller's tenant), the
+  server/app/agent/aeptune.py seam (map_history -> AEP messages, aep.create_agent over hoola_brain_factory, Nudge + Curator
+  as the default ride, SqliteSaver checkpointer on the conversation thread, P2 tracer spans + the vault sink when aep_trace
+  is flipped), the reply lands as a row + SSE message sourced 'aep', usage.bind meters the lane, brain failure = loud 502,
+  typing always released; the production loop untouched, registry 608, server-only change (no new APK needed).
+  **RE-VERIFIED AT THE SAVE:** test_v0610_hoola_adopt.py re-run at this exact commit - 15 passed (31.5 s); live right after
+  the deploy: healthz ok true / version 0.680.0, anonymous POST /api/aep/turn -> 401, anonymous GET /api/aep/runs -> 401.
+  **NOT VERIFIED / CAVEATS:** no real signed-in user turn has ridden the new lane on the live box yet; the aep_trace vault
+  flip not exercised live; the phone rendering of the SSE 'aep'-sourced reply not yet seen on her device; her Google
+  sign-in is still dead (carried from v0.629). Server-only change; the client APK `v0.680.0-b1944` exists (build CI):
+  https://github.com/fibernetworkworks-droid/santosh-app/releases/download/v0.680.0-b1944/app-release.apk
+  Roll back exactly like the ones below, with `stable-2026-11-08-aep-v680` as the branch.
 - SAVE THE STATE (7 Nov 2026, later, owner: "SAVE THE STATE" after the four-wave flaw audit): branch
   `stable-2026-11-07-audit-v662` = commit dda3e58f = v0.662.0, pubspec 0.662.0+668 (code = 78396124 KAAM SAAF; the only
   later change on main is docs/marketing/HERO_DEMO_AND_30_SHORTS.md). All 30 audit flaws fixed in four waves:
