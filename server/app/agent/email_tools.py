@@ -429,6 +429,13 @@ def _save_draft(ctx: Ctx, **f) -> dict[str, Any]:
 async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, reply_to_id=None, reply_all=False,
                       attachments=None, send_at=None, follow_up_days=None, account=None, markdown=False,
                       save_to_gmail=False, from_alias=None, **_):
+    # v0.703: GLM sometimes names the recipient under another key (recipient / email / to_email...) or drops it;
+    # take the common aliases instead of failing the step, and say exactly how to retry when it is really missing.
+    if not to:
+        for k in ("recipient", "recipients", "to_email", "to_address", "email", "address"):
+            if _.get(k):
+                to = _[k]
+                break
     def work():
         to_addr = _resolve(ctx, to or "", "to")
         cc_addr = _resolve(ctx, cc or "", "cc")
@@ -457,7 +464,9 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
             refs = orig.get("references") or None
             thread_id = orig.get("thread_id") or None
         if not to_addr:
-            raise ToolError("Kis email par bhejna hai? 'to' address ya naam do, ya reply_to_id do.")
+            raise ToolError("'to' missing: call email_draft again with to=\"name@example.com\" (the address you "
+                            "found, e.g. from email_contacts) or to=\"<contact name>\", or reply_to_id for a reply. "
+                            "Keep the same body/subject.")
         alias = (str(from_alias or "")).strip().lower()
         if alias:                                        # v0.184.0 send-from-alias: check before the card exists
             abox = get_box(ctx.tenant_id, acct)

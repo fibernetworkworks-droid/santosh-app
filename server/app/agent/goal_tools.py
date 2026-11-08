@@ -91,7 +91,14 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
                 goal_id = a["id"]
                 conv = a.get("conversation_id") or conv
             if not state:
-                raise ToolError("state chahiye: done | failed | skipped | current")
+                # v0.703: a missing state used to fail the step (her G8 run: three times in a row, the goal stuck
+                # and the 'doosra tareeka' loop began). A step reported with what it made / a note = done;
+                # a bare call = the step she is on now.
+                state = "done" if (reason or made) else "current"
+            state = {"completed": "done", "complete": "done", "finished": "done", "ok": "done", "success": "done",
+                     "in_progress": "current", "working": "current", "started": "current", "doing": "current",
+                     "skip": "skipped", "fail": "failed", "error": "failed"}.get(str(state).strip().lower(),
+                                                                               str(state).strip().lower())
             v = goal_mod.mark_step(tenant, goal_id, int(n), state, reason or "", conv, check=check)
         elif action == "add":
             if not goal_id:

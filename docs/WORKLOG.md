@@ -2385,3 +2385,12 @@ Work Log:
 - glmdoor.build keeps in-view + tool_search-loaded tools only; _expand_refs for tool_reference blocks
 Stage Summary:
 - 42 passed (v0702 / v0699 / v0695 / glm / v0475 / routines); the failing-tool cause still needs her harness events
+
+---
+Task ID: v0.703.0 TOOL ARGS MAAF
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her G8 event log - kaam_plan step without state, email_draft without to
+Work Log:
+- goal_tools.kaam_plan: default + synonym map for state; email_tools.email_draft: recipient aliases + exact retry hint
+Stage Summary:
+- 2 new tests green; goal / email suites re-run

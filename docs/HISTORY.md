@@ -22995,3 +22995,13 @@ into a text line ("Tool loaded, you can call it now: X") and returns the names s
 `defer_loading` key is stripped. Tests test_v0702_glm_tools_in_view.py (3). Still open from the same run: a tool kept
 failing (the "doosra tareeka" ladder ran ~22 Haiku steps and parked the job) - which tool and why needs her harness
 events; not known at ship time.
+
+## v0.703.0 TOOL ARGS MAAF (her G8 event log)
+
+Her harness events for G8 (draft a mail to Kunal) showed the real stall: GLM called `kaam_plan action=step` without
+`state` three times ("state chahiye ...") and `email_draft` without `to` twice, even after `email_contacts` had found
+kunaltlgt23@gmail.com; each ToolError fed the "Yeh raasta nahi chala" loop and the goal parked. Fix: `kaam_plan step`
+with no state = `done` when a reason/note/made is given, else `current`; common words (completed, in_progress, ...)
+map to the real states. `email_draft` accepts recipient / recipients / to_email / to_address / email / address as `to`,
+and a really-missing `to` says exactly how to call again. Gmail itself was working through the linked mailboxes;
+the Google sign-in (Drive / Calendar) is still dead until she reconnects. Tests test_v0703_tool_args_maaf.py (2).

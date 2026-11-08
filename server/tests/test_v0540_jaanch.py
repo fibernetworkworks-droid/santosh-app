@@ -398,4 +398,4 @@ def test_the_kits_carry_the_switch_and_the_anr_reader():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.702.0"
+    assert APP_VERSION == "0.703.0"
