@@ -5633,7 +5633,8 @@ def agent_stats():
     from .aep import vault_sink
     from .aep.tracers import GLOBAL_STORE
     from . import looplag
-    return {"loop": dict(looplag.STATS), "worker": worker.health(),
+    from . import glmdoor
+    return {"loop": dict(looplag.STATS), "worker": worker.health(), "sab_glm": glmdoor.status(),
             "breaker": {k: STATS.get(k, 0) for k in ("steer", "constrain", "stop")}, "procedures": dict(procedures.STATS),
             "pakka": dict(pakka.STATS), "halts": dict(_s.HALTS), "scrubbed": scrub.STATS["scrubbed"],
             "parallel": dict(web.PARALLEL_STATS), "call_receipts": dict(callreceipt.STATS),

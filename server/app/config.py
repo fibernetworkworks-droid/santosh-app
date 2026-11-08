@@ -319,6 +319,14 @@ class Settings(BaseSettings):
     glm_base_url: str = "https://api.z.ai/api/paas/v4"
     glm_model: str = "glm-4.7"
     glm_temperature: float = 0.6
+    # SAB GLM (owner: "use GLM 5.3 Flash for all use - NVIDIA gives a free API"): with claude_all_glm on, EVERY Claude
+    # call (chat fallback, reviewers, summaries, every engine) is answered by the GLM brain below; Claude only when GLM
+    # fails (claude_all_glm_fallback) or a call carries pictures / PDFs. For NVIDIA set GLM_BASE_URL to
+    # https://integrate.api.nvidia.com/v1, GLM_MODEL=z-ai/glm-5.3-flash, GLM_API_KEY=nvapi-... and CHAT_LLM=glm.
+    claude_all_glm: bool = False
+    claude_all_glm_fallback: bool = True
+    glm_reasoning_effort: str = "low"     # NVIDIA GLM-5.3-Flash: low | high | max (its default max is slow)
+    glm_reasoning_room: int = 2048        # tokens added to max_tokens on NVIDIA (its reasoning counts inside max_tokens)
     glm_thinking: str = "disabled"          # enabled | disabled | "" (don't send) — disabled = faster, cheaper replies
 
     # --- realtime voice (Baat tab): Gemini Live speech-to-speech, key from aistudio.google.com ---

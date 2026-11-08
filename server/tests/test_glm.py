@@ -54,8 +54,12 @@ def test_glm_runs_a_tool_turn(bz, monkeypatch):  # noqa: F811
                           {"choices": [{"delta": {}, "finish_reason": "tool_calls"}],
                            "usage": {"prompt_tokens": 10, "completion_tokens": 5}}]
             else:
-                assert body["messages"][-1]["role"] == "tool"
-                assert "msedcl" in body["messages"][-1]["content"]
+                # FINAL CHECK: the tool result sits right after the call; Hoola's own "[System: ...]" narration note
+                # may follow it as a user line (valid OpenAI order) - the old pin wanted the tool row last
+                tm = [m for m in body["messages"] if m["role"] == "tool"]
+                assert tm and "msedcl" in tm[-1]["content"]
+                i = body["messages"].index(tm[-1])
+                assert body["messages"][i - 1].get("tool_calls")
                 chunks = [{"choices": [{"delta": {"content": "MSEDCL mil gaya."}}]}]
             sse = b"".join(b"data: " + json.dumps(c).encode() + b"\n\n" for c in chunks) + b"data: [DONE]\n\n"
             return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=sse)
@@ -63,8 +67,8 @@ def test_glm_runs_a_tool_turn(bz, monkeypatch):  # noqa: F811
             return httpx.Response(200, json={"choices": [{"finish_reason": "tool_calls", "message": {"content": None, "tool_calls": [
                 {"id": "call_1", "type": "function", "function": {"name": "bazar_find", "arguments": "{\"query\": \"msedcl bijli bill\"}"}}]}}],
                 "usage": {"prompt_tokens": 10, "completion_tokens": 5}})
-        assert body["messages"][-1]["role"] == "tool"
-        assert "msedcl" in body["messages"][-1]["content"]
+        tm = [m for m in body["messages"] if m["role"] == "tool"]
+        assert tm and "msedcl" in tm[-1]["content"]
         return httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "MSEDCL mil gaya."}}]})
 
     llm.set_http(httpx.AsyncClient(transport=httpx.MockTransport(handler)))

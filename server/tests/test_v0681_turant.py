@@ -115,7 +115,7 @@ def test_streams_follow_the_one_model_rule():
     from anthropic.resources import AsyncMessages, Messages
     assert AsyncMessages.stream.__name__ == "a_stream" and Messages.stream.__name__ == "s_stream"
     src = inspect.getsource(usage.install)
-    assert "one_model(kw)" in src.split("def a_stream", 1)[1][:200]
+    assert "one_model(kw)" in src.split("def a_stream", 1)[1][:600]
 
 
 def test_one_model_bypass_lets_the_fallback_really_change_model(monkeypatch):

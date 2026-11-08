@@ -84,9 +84,17 @@ def choose(messages: list[dict]) -> str:
     b = cheap_brain()
     if b is None:
         return "claude"
-    if _has_media(messages[-1:]) and st.anthropic_api_key:
-        return "claude"          # pictures and PDFs go to the model that reads them well
+    if _has_media(messages[-1:]) and st.anthropic_api_key and not (b == "glm" and is_nvidia() and _only_images(messages[-1:])):
+        return "claude"          # pictures and PDFs go to the model that reads them well (NVIDIA GLM reads pictures)
     return b
+
+
+def _only_images(messages: list[dict]) -> bool:
+    for m in messages:
+        c = m.get("content")
+        if isinstance(c, list) and any(isinstance(b, dict) and b.get("type") == "document" for b in c):
+            return False
+    return True
 
 
 def _has_media(messages: list[dict]) -> bool:
@@ -108,6 +116,26 @@ def _text_of(content) -> str:
         elif isinstance(b, dict) and b.get("type") in ("image", "document"):
             out.append("[attachment]")
     return "\n".join(t for t in out if t)
+
+
+def _image_parts(blocks: list) -> list[dict]:
+    """Anthropic base64 image blocks -> OpenAI image_url parts, only for a brain that reads pictures (NVIDIA GLM)."""
+    try:
+        if not is_nvidia():
+            return []
+    except Exception:
+        return []
+    out = []
+    for b in blocks:
+        if not (isinstance(b, dict) and b.get("type") == "image"):
+            continue
+        src = b.get("source") or {}
+        if src.get("type") == "base64" and src.get("data"):
+            out.append({"type": "image_url",
+                        "image_url": {"url": f"data:{src.get('media_type') or 'image/png'};base64,{src['data']}"}})
+        elif src.get("type") == "url" and src.get("url"):
+            out.append({"type": "image_url", "image_url": {"url": src["url"]}})
+    return out[:8]
 
 
 def to_openai(system: str, tools: list[dict], messages: list[dict]) -> tuple[list[dict], list[dict]]:
@@ -141,8 +169,11 @@ def to_openai(system: str, tools: list[dict], messages: list[dict]) -> tuple[lis
             else:
                 extra.append(b)
         if extra:
-            t = _text_of(extra)
-            if t:
+            parts = _image_parts(extra)
+            t = _text_of([b for b in extra if not (parts and b.get("type") == "image")])
+            if parts:       # SAB GLM: NVIDIA's GLM-5.3-Flash reads pictures (png / jpg / webp, up to 8 a request)
+                msgs.append({"role": "user", "content": ([{"type": "text", "text": t}] if t else []) + parts})
+            elif t:
                 msgs.append({"role": "user", "content": t})
     fns = [{"type": "function", "function": {"name": t["name"], "description": t.get("description", ""),
                                              "parameters": t.get("input_schema") or {"type": "object", "properties": {}}}}
@@ -209,6 +240,13 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
             if r.status_code < 400:
                 return r
             last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
+            if r.status_code in (400, 422) and ("reasoning_effort" in body or "chat_template_kwargs" in body):
+                body = {k: v for k, v in body.items() if k not in ("reasoning_effort", "chat_template_kwargs")}
+                log.warning("%s refused the reasoning fields - asking again without them", label)
+                r = await _client().post(url, json=body, headers=headers)
+                if r.status_code < 400:
+                    return r
+                last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
             if r.status_code not in TRANSIENT_STATUS:
                 raise last   # a wrong key or a bad request will not get better by asking again
             ra = r.headers.get("retry-after", "")
@@ -229,9 +267,29 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         if st.omniroute_key:
             h["Authorization"] = f"Bearer {st.omniroute_key}"
         return st.omniroute_url.rstrip("/") + "/chat/completions", st.omniroute_model, "OmniRoute", h, {}
-    extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
-    return (st.glm_base_url.rstrip("/") + "/chat/completions", st.glm_model, "GLM",
+    if is_nvidia():
+        # SAB GLM: NVIDIA's hosted GLM-5.3-Flash always reasons (it cannot be switched off); the effort is set with
+        # reasoning_effort (low | high | max, default max = slow) and chat turns ask clear_thinking (NVIDIA's own page).
+        extra = {"reasoning_effort": st.glm_reasoning_effort or "low",
+                 "chat_template_kwargs": {"clear_thinking": True}}
+        label = "GLM (NVIDIA)"
+    else:
+        extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
+        label = "GLM"
+    return (st.glm_base_url.rstrip("/") + "/chat/completions", st.glm_model, label,
             {"Authorization": f"Bearer {st.glm_api_key}"}, extra)
+
+
+def is_nvidia() -> bool:
+    return "integrate.api.nvidia.com" in (get_settings().glm_base_url or "")
+
+
+def room(max_tokens: int) -> int:
+    """NVIDIA's GLM counts its (always-on) reasoning inside max_tokens: a 900-token reviewer would come back empty.
+    Room for the reasoning is added on that endpoint only."""
+    if not is_nvidia():
+        return max_tokens
+    return int(max_tokens) + max(0, int(getattr(get_settings(), "glm_reasoning_room", 2048) or 0))
 
 
 async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
@@ -239,7 +297,8 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
-    body: dict = {"model": model, "messages": msgs, "max_tokens": max_tokens, "temperature": st.glm_temperature, **extra}
+    body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
+                  "temperature": st.glm_temperature, **extra}
     if fns:
         body["tools"] = fns
         body["tool_choice"] = "auto"
@@ -265,8 +324,8 @@ def _stream_body(brain: str, system: str, tools: list[dict], messages: list[dict
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
-    body: dict = {"model": model, "messages": msgs, "max_tokens": max_tokens, "temperature": st.glm_temperature,
-                  "stream": True, **extra}
+    body: dict = {"model": model, "messages": msgs, "max_tokens": room(max_tokens) if brain == "glm" else max_tokens,
+                  "temperature": st.glm_temperature, "stream": True, **extra}
     if fns:
         body["tools"] = fns
         body["tool_choice"] = "auto"

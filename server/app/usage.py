@@ -318,6 +318,8 @@ def from_anthropic(model: str, resp: Any) -> None:
     u = getattr(resp, "usage", None)
     if u is None:
         return
+    if _is_glm(resp):
+        return          # SAB GLM: the GLM door already counted this answer at GLM's own price (from_openai)
     g = (lambda k: int(getattr(u, k, 0) or 0)) if not isinstance(u, dict) else (lambda k: int(u.get(k) or 0))
     record(getattr(resp, "model", None) or model or "claude", tok_in=g("input_tokens"), tok_out=g("output_tokens"),
            cache_read=g("cache_read_input_tokens"), cache_write=g("cache_creation_input_tokens"))
@@ -390,6 +392,11 @@ def one_model(kw: dict) -> dict:
     return kw
 
 
+def _is_glm(resp: Any) -> bool:
+    m = str(getattr(resp, "model", "") or "").lower()
+    return m.startswith(("z-ai/", "zai", "glm")) or "/glm" in m
+
+
 def install() -> None:
     """Wrap the SDKs once (idempotent): every Claude / Gemini call anywhere in Hoola is counted."""
     if _INSTALLED[0]:
@@ -400,6 +407,18 @@ def install() -> None:
         a_orig, s_orig = AsyncMessages.create, Messages.create
 
         async def a_create(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
+                                                                    and glmdoor._claude_ok()):
+                # SAB GLM: this Claude call is answered by GLM (NVIDIA glm-5.3-flash); Claude only if GLM fails
+                try:
+                    return await glmdoor.acreate(kw)
+                except Exception as e:
+                    if not glmdoor._claude_ok():
+                        glmdoor.STATS["failed"] += 1
+                        raise
+                    log.warning("GLM door failed (%s) - this call goes to Claude", str(e)[:200])
+                    glmdoor.STATS["fallback_claude"] += 1
             kw = one_model(kw)
             r = await a_orig(self, *a, **kw)
             if not kw.get("stream"):
@@ -407,6 +426,17 @@ def install() -> None:
             return r
 
         def s_create(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not kw.get("stream") and not (glmdoor.has_media(kw.get("messages"))
+                                                                    and glmdoor._claude_ok()):
+                try:
+                    return glmdoor.create_sync(kw)
+                except Exception as e:
+                    if not glmdoor._claude_ok():
+                        glmdoor.STATS["failed"] += 1
+                        raise
+                    log.warning("GLM door failed (%s) - this call goes to Claude", str(e)[:200])
+                    glmdoor.STATS["fallback_claude"] += 1
             kw = one_model(kw)
             r = s_orig(self, *a, **kw)
             if not kw.get("stream"):
@@ -419,9 +449,17 @@ def install() -> None:
         as_orig, ss_orig = AsyncMessages.stream, Messages.stream
 
         def a_stream(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not (glmdoor.has_media(kw.get("messages")) and glmdoor._claude_ok()):
+                me, k1 = self, one_model(kw)
+                return glmdoor._Stream(kw, lambda: as_orig(me, *a, **k1))   # SAB GLM, Claude only as the fallback
             return as_orig(self, *a, **one_model(kw))
 
         def s_stream(self, *a, **kw):
+            from . import glmdoor
+            if glmdoor.active() and not (glmdoor.has_media(kw.get("messages")) and glmdoor._claude_ok()):
+                me, k1 = self, one_model(kw)
+                return glmdoor._SyncStream(kw, lambda: ss_orig(me, *a, **k1))
             return ss_orig(self, *a, **one_model(kw))
         AsyncMessages.stream, Messages.stream = a_stream, s_stream
     except Exception:

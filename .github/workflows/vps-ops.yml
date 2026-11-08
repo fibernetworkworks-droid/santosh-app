@@ -59,6 +59,7 @@ on:
           - code_card_hard
           - code_card_mobile
           - auth_check
+          - glm_check
           - review_card
           - fix_card_spec
           - cad_check
@@ -511,6 +512,10 @@ jobs:
                 echo 'if grep -qE "^API_KEY=.+" $CORE/.env 2>/dev/null; then echo "API_KEY in .env: set"; else echo "API_KEY in .env: MISSING or empty"; fi'
                 echo 'for u in http://172.18.0.1:8077 http://127.0.0.1:8077; do c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 $u/api/me); [ "$c" != "000" ] && { echo "Live: $u/api/me with no login -> $c (401 = locked, 200 = OPEN)"; break; }; done'
                 echo 'c=$(curl -s -o /dev/null -w "%{http_code}" -m 10 https://hoola.ainewtika.com/api/me); echo "Public: https://hoola.ainewtika.com/api/me with no login -> $c"' ;;
+              glm_check)
+                # SAB GLM: is the GLM key set (NAME only, never the value) and does ONE tiny call answer (text + a tool call)?
+                echo 'for k in GLM_API_KEY GLM_BASE_URL GLM_MODEL CHAT_LLM CLAUDE_ALL_GLM; do if grep -qE "^$k=.+" $CORE/.env 2>/dev/null; then echo "$k: set"; else echo "$k: not set"; fi; done'
+                echo 'cd $CORE && timeout 180 .venv/bin/python -m app.glmdoor check' ;;
               cad_check)
                 # v0.458 IS THE CAD ENGINEER ALIVE HERE? Builds real parts in the box on THIS server and runs every
                 # stage on them - geometry + files out, her own numbers, DFM, hidden-line views, stress, buckling,
