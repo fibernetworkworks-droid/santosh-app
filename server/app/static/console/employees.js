@@ -2790,6 +2790,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const LKIND = {campaign_list: 'List built', campaign_sent: 'WhatsApp sent', email_sent: 'Email sent'};
   let LROWS = {q: '', city: '', lane: ''}, LCARD = null;
   async function leads(el) {
+    const empty = t => `<p class="muted em-small">${esc(t)}</p>`;   // the desk's own empty helper (each desk carries its own; a sibling desk's local is not in scope here)
     if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Leads Desk</h2></div><div class="empty">Loading…</div>';
     const me = (DATA && DATA.employees || []).find(x => x.key === 'leads');
     if (!me || !isHired(me)) {
