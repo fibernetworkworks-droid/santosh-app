@@ -167,7 +167,7 @@ def test_fixed_lines_in_her_forms(monkeypatch):
     r = types.SimpleNamespace(tenant_id="t-f", label="Team", title="prices", state="stopped", detail="", link="")
     monkeypatch.setattr(av, "persona", lambda t: ("Priya", "f"))
     assert "shuru kar dungi" in kaam_followup._canned(r)
-    assert "'bataungi' if self.gender == 'f'" in inspect.getsource(voice.Call._late_result)
+    assert "'bataungi' if getattr(self, 'gender', 'm') == 'f'" in inspect.getsource(voice.Call._late_result)
 
 
 # ---------------------------------------------------------------- 12
@@ -177,6 +177,8 @@ def test_two_quick_asks_never_pick_the_same_record(monkeypatch):
     monkeypatch.setattr(callconv, "open_side", lambda t, c, cid: made.append(1) or f"side{len(made)}")
     call = voice.Call.__new__(voice.Call)
     call.conv, call.ctx, call.call_id, call.stats = "callX", types.SimpleNamespace(tenant_id=T), "cid", {}
-    a = call._run_conv()
-    b = call._run_conv()
+    a = call._pick_conv()                   # the first ask's turn has not taken the lock yet
+    b = call._pick_conv()
     assert a == "callX" and b == "side1" and a != b
+    call._claimed["callX"] = 0              # the first ask ended: the call record is free again
+    assert call._run_conv() == "callX"

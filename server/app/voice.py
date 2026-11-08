@@ -3101,7 +3101,7 @@ class Call:
         run_conv = self.conv
         if brain:
             try:
-                run_conv = await asyncio.to_thread(self._run_conv)
+                run_conv = await asyncio.to_thread(self._pick_conv)   # CALL PAR TEAM: pick + claim as one step
             except Exception:
                 log.exception("side record failed; the ask waits on the call record")
                 run_conv = self.conv
@@ -3115,6 +3115,11 @@ class Call:
                                                            context=note, place=place))
         finally:
             _brain.VOICE_BRAIN_NOW.reset(tok)
+        if brain:
+            def _unclaim(_j, rc=run_conv):
+                c = getattr(self, "_claimed", {})
+                c[rc] = max(0, c.get(rc, 0) - 1)
+            job.add_done_callback(_unclaim)
         self._job_conv = getattr(self, "_job_conv", None) or {}
         self._job_conv[id(job)] = run_conv
         if len(self._job_conv) > 200:
@@ -3248,7 +3253,7 @@ class Call:
                               f"mein hai ('woh jo aapne kaha tha...'), phir result ek-do chhoti lines mein.){tail}")
         elif outcome in ("partial", "continuing"):
             self.push_news(f"(Woh bada kaam{about} abhi chal raha hai — {left or 'kuch hissa baaki'}. User ko mat kehna "
-                              f"ki poora ho gaya: bolo 'abhi kaam chal raha hai, khatam hote hi {'bataungi' if self.gender == 'f' else 'bataunga'}', aur baat jatari rahe.){tail}")
+                              f"ki poora ho gaya: bolo 'abhi kaam chal raha hai, khatam hote hi {'bataungi' if getattr(self, 'gender', 'm') == 'f' else 'bataunga'}', aur baat jatari rahe.){tail}")
         elif outcome in ("stuck", "stopped"):
             why = left or ("owner ne rok diya" if outcome == "stopped" else "ek jagah atak gaya")
             self.push_news(f"(Woh bada kaam{about} atka hai: {why}. Sach batao ek line mein — kya ho gaya, kya baaki, "
@@ -3841,23 +3846,32 @@ class Call:
 
     MAX_SIDES = 2
 
+    _PICK_LOCK = threading.Lock()
+
+    def _pick_conv(self) -> str:
+        """CALL PAR TEAM: choose the record AND claim it under one lock (two asks picked in two threads at once used
+        to both see the call record free)."""
+        with Call._PICK_LOCK:
+            k = self._run_conv()
+            claimed = getattr(self, "_claimed", None)
+            if claimed is None:
+                claimed = self._claimed = {}
+            claimed[k] = claimed.get(k, 0) + 1
+            return k
+
     def _run_conv(self) -> str:
         """v0.657 where this brain ask runs: the call record, or - when the call's earlier ask still holds it - a free
         side record (made on first need), so a second ask runs NOW with every tool instead of waiting up to 15 min
         behind the first (or getting the no-tools quick answer).
-        CALL PAR TEAM: a record just handed to an ask counts as busy for a few seconds (until its turn takes the lock),
-        so two quick asks never both pick the call record."""
+        CALL PAR TEAM: a record already handed to an ask whose turn has not taken the lock yet counts as busy
+        (`_claimed`, set by _delegate until that ask ends), so two quick asks never both pick the call record."""
         from .agent import santosh as _brain
-        claimed = getattr(self, "_claimed", None)
-        if claimed is None:
-            claimed = self._claimed = {}
-        now_m = time.monotonic()
+        claimed = getattr(self, "_claimed", None) or {}
 
         def busy(k: str) -> bool:
-            return _brain._locks[k].locked() or now_m - claimed.get(k, -99.0) < 5.0
+            return _brain._locks[k].locked() or claimed.get(k, 0) > 0
 
         def take(k: str) -> str:
-            claimed[k] = now_m
             return k
         if not busy(self.conv):
             return take(self.conv)
