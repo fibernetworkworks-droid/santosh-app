@@ -19,10 +19,10 @@ from app.leads.models import LeadContact, LeadRun, LeadOutreach, ensure_tables
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.686.0"
+    assert APP_VERSION == "0.687.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.686.0+685" in pub.read_text()
+    assert "0.687.0+686" in pub.read_text()
 
 
 # ---------------------------------------------------------------- the move did not break the old lane
@@ -61,7 +61,7 @@ def test_no_row_without_provenance(env):
                     "HER_DATA", "dentists-pune.csv")
     assert row["key_type"] == "phone_e164" and row["key_value"] == "919876500001"
     assert row["source_lane"] == "HER_DATA" and row["source_url"] == "dentists-pune.csv"
-    assert row["parser_version"].startswith("v0.684")
+    assert row["parser_version"].startswith("v0.687")
 
 
 def test_row_without_any_key_is_refused(env):
@@ -105,7 +105,7 @@ def test_run_card_and_runs_list(env):
     out = S.run_her_data("t1", "ask", ROWS[:2], "f.csv")
     card = S.run_card(out["run"]["id"])
     assert card and card["tenant"] == "t1" and card["status"] == "DONE"
-    assert card["provenance"]["parser_version"].startswith("v0.684")
+    assert card["provenance"]["parser_version"].startswith("v0.687")
     assert len(S.runs("t1")) == 1
 
 

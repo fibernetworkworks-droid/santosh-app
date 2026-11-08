@@ -32,7 +32,7 @@ import time
 from typing import Any
 from urllib.parse import urljoin, urlparse
 
-PARSER_ENRICH = "v0.684.0-en1"          # every enriched field names the code that read its site
+PARSER_ENRICH = "v0.687.0-en1"          # every enriched field names the code that read its site
 
 SITE_PAGES_MAX = 3                       # home + up to two contact-ish pages; a lead site is read, not crawled
 HOST_MIN_INTERVAL = 1.0                  # site-level politeness: >= 1s between fetches to the same host

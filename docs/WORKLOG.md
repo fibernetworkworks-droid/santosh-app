@@ -8,6 +8,8 @@ Stage Summary: pushed to main; the AEP turn lane is LIVE behind user auth; first
 ---
 
 # HOOLA — Multi-Session Worklog
+
+Task ID: v0.687.0 LEADS EMPLOYEE - the Lead Generation employee joins the AI Employees hub's Business department + the Leads Desk in the web console (the real /api/leads surface, the two-tap confirm card, the outreach ledger, opt-out + forget; no is_hired gate on the six leads tools - EDU_OPEN law; registry 615 stands; ritual_0687.py 0.686.0 -> 0.687.0 (+686); owner: "PUT THE LEAD GENEARTION AI EMPLOYEE IN THAT SECTION")
 Task ID: v0.682.0 KAAN W6 FIX - the unlock guard's engine seam made honest (voiceprint_ready consumes the real voiceid bool contract; the live box TypeError healed at kaan/status; the three W6 test patches healed + one NEW regression test on the real unpatched contract; ritual_v0682.py 0.681.0 -> 0.682.0 (+681); owner: "W6 (quotas + retention -> unlocks real voiceprint diarization) -- start")
 
 Task ID: v0.681.0 KALA MANCH - the T5 knowledge-skill catalog family (planned at 0.669.0, the dev chain took 0.669-0.680 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept; owner: "GO" on the google/skills deploy plan)

@@ -95,6 +95,32 @@ CATALOG: dict[str, dict[str, Any]] = {
                    "pitch": "Calls your leads and customers with a script, notes every answer."},
     "support": {"name": "Customer Support", "live": False, "icon": "chat",
                 "pitch": "Answers customer questions on WhatsApp and email from your own FAQ."},
+    # v0.686.0 LEADS EMPLOYEE (owner: "PUT THE LEAD GENERATION AI EMPLOYEE IN THE AI EMPLOYEES BUSINESS SECTION
+    # OF THE WEB CONSOLE"): the P0-P5 leads engine (docs/LEADS_PLAN.md) joins the Hub's Business department.
+    # The six leads tools were open to every user before this row existed, so hiring only adds the desk - no
+    # leads tool starts checking is_hired() (the EDU_OPEN law, tested). NOT VERIFIED stands: her first live run
+    # on each lane is the true confirmation; the desk reads the real /api/leads/* surface, nothing is faked.
+    "leads": {
+        "name": "Lead Generation", "live": True, "icon": "search",
+        "pitch": "Finds real businesses that may need you, keeps one clean row per business with its source named, and hands a list to the WhatsApp / email desks only after your two taps. It gathers; it never contacts anyone on its own.",
+        "does": ["Searches IndiaMART through IndiaMART's own official MCP, and Google Maps through the official Places routes on your account",
+                 "Imports your own CSV lists and keeps ONE row per business - the same business met twice is merged, and every row carries its source (lane, URL, fetched-at) as columns",
+                 "One polite pass over a kept row's own website fills empty phone / email slots only (1 request a second, robots honoured, no SMTP probes)",
+                 "Shows the caps before every run: 5,000 rows per run, 20,000 per day by default - a 5,001-row ask is refused at plan time with the cap named, never silently truncated",
+                 "Hands a list to the campaign desk with a CONFIRM CARD first: you see the rows, the ones without a phone and the opt-outs, and nothing is built until your second tap",
+                 "Writes every real WhatsApp / email send to a ledger you can read (GET /api/leads/outreach), and honours opt-outs again at send time",
+                 "Forgets a business completely on your word - the DPO duty"],
+        "needs": ["IndiaMART's MCP connection for the IndiaMART lane (free)",
+                  "The Google Maps key already on your account for the Places lane; place details are bought per run under a cap you set",
+                  "Your explicit per-tenant opt-in before the public-listing scrape lane ever runs - it is OFF until you switch it on",
+                  "A vendor's config if you want the paid vendor lane; it is priced before it runs and never retried"],
+        "never": ["Contact anyone: it gathers - your two taps send",
+                  "Message a person who opted out - they are refused at send time",
+                  "Scrape anything until the scrape opt-in is ON",
+                  "Take consumer (vyakti) lists or logins, or cross a login wall - businesses' public data only",
+                  "Invent vendor rows, retry a billed vendor call, or print the vendor key",
+                  "Hide a send: every real send lands in the ledger",
+                  "Keep what you asked it to forget"]},
     # v0.357 ENGINEERING DESK (docs/ENGINEERING_DESK_PLAN.md): one shared locked runner, a pack per role
     "cad": {"name": "CAD Engineer", "live": True, "icon": "cube", "group": "Research, CAD, Hardware & Industrial Tech",
             "pitch": "Turns your words and sizes into a real 3D part: STEP and STL files plus a dimensioned drawing.",

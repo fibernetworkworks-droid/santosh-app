@@ -31,5 +31,5 @@ def test_progress_row_never_shows_a_second_avatar():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.686.0"
-    assert "0.686.0+685" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.687.0"
+    assert "0.687.0+686" in (ROOT / "pubspec.yaml").read_text()

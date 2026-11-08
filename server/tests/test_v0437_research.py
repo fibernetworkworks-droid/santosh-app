@@ -198,4 +198,4 @@ def test_settings():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.686.0"
+    assert APP_VERSION == "0.687.0"
