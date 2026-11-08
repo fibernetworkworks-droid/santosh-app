@@ -13,7 +13,13 @@ only a real phone / real call / real account can prove are kept apart below. Tic
    since 3 Nov — Gmail / Drive / Calendar / Sheets / Business Profile all refuse until this is done).
 4. Anthropic credit and Gemini (AI Studio) credit topped up — an empty balance looks like "AI service busy".
 
-## 0b. Switching every brain to GLM 5.3 Flash (NVIDIA, free)
+## 0b. Switching every brain to GLM 5.3 Flash (OpenRouter, paid - chosen 8 Nov)
+
+`~/apps/santosh-core/.env`: `GLM_API_KEY=<the OpenRouter key>`, `GLM_BASE_URL=https://openrouter.ai/api/v1`,
+`GLM_MODEL=z-ai/glm-5.3-flash`, `CHAT_LLM=glm`, `CLAUDE_ALL_GLM=true`, no `OMNIROUTE_URL`; then
+`pm2 restart santosh --update-env` and `.venv/bin/python -m app.glmdoor check` -> PAKKA.
+
+## 0c. (older) GLM on NVIDIA, free - her key never got an answer from GLM there
 
 1. build.nvidia.com > sign in (free NVIDIA Developer account, phone check) > model `z-ai/glm-5-3-flash` > Get API Key.
 2. Put these in `~/apps/santosh-core/.env` on the VPS (the key ONLY there, never in chat):

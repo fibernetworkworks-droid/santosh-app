@@ -327,8 +327,9 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
             if r.status_code < 400:
                 return r
             last = LLMError(f"{label} error {r.status_code}: {r.text[:300]}")
-            if r.status_code in (400, 422) and ("reasoning_effort" in body or "chat_template_kwargs" in body):
-                body = {k: v for k, v in body.items() if k not in ("reasoning_effort", "chat_template_kwargs")}
+            _rf = ("reasoning_effort", "chat_template_kwargs", "reasoning", "thinking")
+            if r.status_code in (400, 422) and any(k in body for k in _rf):
+                body = {k: v for k, v in body.items() if k not in _rf}
                 log.warning("%s refused the reasoning fields - asking again without them", label)
                 r = await _client().post(url, json=body, headers=headers)
                 if r.status_code < 400:
@@ -361,6 +362,13 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
         extra = ({"reasoning_effort": st.glm_reasoning_effort or "low",
                   "chat_template_kwargs": {"clear_thinking": True}} if "glm" in (st.glm_model or "").lower() else {})
         label = "GLM (NVIDIA)"
+    elif is_openrouter():
+        # v0.699 GLM VIA OPENROUTER: OpenRouter speaks its OWN reasoning field ({"reasoning": {...}}), not Z.ai's
+        # "thinking". glm_thinking disabled (the default) = reasoning off = fast + cheap; enabled = effort low,
+        # reasoning text excluded from the reply. Room for it is added only when it is on (room()).
+        extra = ({"reasoning": {"effort": st.glm_reasoning_effort or "low", "exclude": True}}
+                 if st.glm_thinking == "enabled" else {"reasoning": {"enabled": False}})
+        label = "GLM (OpenRouter)"
     else:
         extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}
         label = "GLM"
@@ -372,10 +380,14 @@ def is_nvidia() -> bool:
     return "integrate.api.nvidia.com" in (get_settings().glm_base_url or "")
 
 
+def is_openrouter() -> bool:
+    return "openrouter.ai" in (get_settings().glm_base_url or "")
+
+
 def room(max_tokens: int) -> int:
     """NVIDIA's GLM counts its (always-on) reasoning inside max_tokens: a 900-token reviewer would come back empty.
     Room for the reasoning is added on that endpoint only."""
-    if not is_nvidia():
+    if not (is_nvidia() or (is_openrouter() and get_settings().glm_thinking == "enabled")):
         return max_tokens
     return int(max_tokens) + max(0, int(getattr(get_settings(), "glm_reasoning_room", 2048) or 0))
 

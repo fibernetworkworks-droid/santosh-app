@@ -22926,3 +22926,24 @@ FINAL JAANCH (`docs/FINAL_TEST_PLAN.md`):
   OmniRoute's own FREE_TIERS.md marks them "ToS: caution"), Claude Code / Codex / Copilot subscription logins (Hoola's
   official-routes rule).
 - Tests: 2 more in test_v0695_sab_glm.py. NOT VERIFIED live: OmniRoute not yet installed on the VPS.
+
+
+## v0.699.0 GLM VIA OPENROUTER (owner: "lets go with glm 5.3 flash - via openrouter")
+
+Why: NVIDIA's free z-ai/glm-5.3-flash never answered her key (0 bytes, 120 s), OpenRouter answered
+`z-ai/glm-5.3-flash:free` with 404 "unavailable for free - use z-ai/glm-5.3-flash". She chose the paid slug on
+the OpenRouter key her video studio already uses (~$0.075 in / ~$0.25 out per million, third-party price pages).
+
+What: `llm._target` gains an OpenRouter branch (`llm.is_openrouter()`): OpenRouter's own field
+`{"reasoning": {"enabled": false}}` by default (GLM_THINKING=disabled = fast + cheap), `GLM_THINKING=enabled` ->
+`{"reasoning": {"effort": <glm_reasoning_effort>, "exclude": true}}` and `room()` adds the reasoning room only then.
+Z.ai's `thinking` and NVIDIA's `reasoning_effort` / `chat_template_kwargs` never ride to OpenRouter. The 400/422
+retry now strips any of the four reasoning fields and asks again plain. Label "GLM (OpenRouter)" (still GLM for the
+breaker / no-retry-on-timeout rules). Everything else is the v0.695-v0.698 SAB GLM door unchanged (PDFs -> Claude,
+pictures -> Claude off NVIDIA, 2 failures -> 10 min Claude).
+
+VPS .env: GLM_API_KEY=<her OpenRouter key>, GLM_BASE_URL=https://openrouter.ai/api/v1, GLM_MODEL=z-ai/glm-5.3-flash,
+CHAT_LLM=glm, CLAUDE_ALL_GLM=true, OMNIROUTE_URL empty; check `python -m app.glmdoor check` -> PAKKA.
+Tests: test_v0699_glm_openrouter.py (4) + SAB GLM / glm / routines green. Pre-existing reds on main untouched
+(v2.html stamp counts 23 vs 22/20 in test_v0234/v0240/v0249, test_v0295, v0486 version layer, v0538, v0540).
+NOT VERIFIED: no live OpenRouter GLM call from Hoola yet - her glmdoor check is the first.

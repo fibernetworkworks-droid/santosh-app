@@ -2345,3 +2345,14 @@ Date: 2026-11-08
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: OmniRoute for every brain call.
 Work: door picks OmniRoute when set, per-brain breaker, 90 s clock, setup steps (official keys only); 2 tests.
+
+---
+Task ID: v0.699.0 GLM VIA OPENROUTER
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: owner "lets go with glm 5.3 flash - via openrouter"
+Work Log:
+- llm._target OpenRouter branch (reasoning field), room only when thinking on, retry strips reasoning fields
+- version ritual 0.698.0 -> 0.699.0 (pubspec +698, 223 test files, 32 console stamps)
+Stage Summary:
+- tests/test_v0699_glm_openrouter.py 4 passed; SAB GLM / glm / v0475 / routines 39 passed
+- NOT VERIFIED live: her glmdoor check on the VPS
