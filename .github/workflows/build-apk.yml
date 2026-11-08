@@ -64,7 +64,14 @@ jobs:
       - name: Build APK
         run: |
           set -o pipefail
-          flutter build apk --release --target-platform android-arm,android-arm64 2>&1 | tee /tmp/b.log || {
+          # A download blip (504 / Gateway Time-out / could not GET) is retried up to 3 times; a real code error fails at once.
+          ok=""
+          for i in 1 2 3; do
+            if flutter build apk --release --target-platform android-arm,android-arm64 2>&1 | tee /tmp/b.log; then ok=1; break; fi
+            grep -qiE "504|Gateway Time-out|Could not GET|Could not download|downloading artifacts from the network|Connection reset|timed out" /tmp/b.log || break
+            echo "::warning::Network trouble while building (try $i) - waiting and trying again"; sleep $((i*45))
+          done
+          [ -n "$ok" ] || {
             grep -iE "error|exception|because|incompatible|requires|not found|unresolved|failed|minSdk|compileSdk|namespace" /tmp/b.log | tail -50 | while IFS= read -r L; do echo "::error::$L"; done
             exit 1
           }
