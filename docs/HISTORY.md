@@ -22912,3 +22912,17 @@ FINAL JAANCH (`docs/FINAL_TEST_PLAN.md`):
   plain request (the streamed chat path has no ask-again on a refused field). 1 test.
 - Set on the VPS: GLM_MODEL=nvidia/nemotron-3.5-super-vl-120b-a12b, CHAT_LLM=glm, CLAUDE_ALL_GLM=true; then
   `python -m app.glmdoor check`. The settings keep the GLM_* names (any OpenAI-compatible model works there).
+
+
+## v0.698.0 OMNIROUTE SAB KE LIYE (owner: "check omniroute" -> "go")
+
+- `glmdoor.brain()`: the SDK door (every Claude call, with CLAUDE_ALL_GLM on) uses OmniRoute when OMNIROUTE_URL is set,
+  else the GLM endpoint; `claude_all_brain` pins one. `llm.BREAKERS` = a safety switch per brain (2 failures -> skipped
+  10 min); `omniroute_timeout_s` 90 s; the x-omniroute-compression: off header still rides every request.
+- Setup on the VPS (OmniRoute v3.8.x, MIT): docker bound to 127.0.0.1:20128, dashboard reached over an SSH tunnel;
+  providers by OFFICIAL API KEY ONLY - OpenRouter (z-ai/glm-5.3-flash:free), NVIDIA (nemotron-3.5-super-vl-120b-a12b),
+  Anthropic; one combo `santosh` with strategy priority in that order; an Endpoints key = OMNIROUTE_KEY.
+- NEVER through OmniRoute: OpenCode Zen / Kilo free tiers (their terms allow them only inside their own clients -
+  OmniRoute's own FREE_TIERS.md marks them "ToS: caution"), Claude Code / Codex / Copilot subscription logins (Hoola's
+  official-routes rule).
+- Tests: 2 more in test_v0695_sab_glm.py. NOT VERIFIED live: OmniRoute not yet installed on the VPS.

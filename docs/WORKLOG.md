@@ -2338,3 +2338,10 @@ Date: 2026-11-08
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: her NVIDIA key - GLM-5.3-Flash hangs; find a model that answers.
 Work: her tests found only Nemotron answers; GLM-only reasoning fields; recommended nemotron-3.5-super-vl-120b-a12b; 1 test.
+
+---
+Task ID: v0698-omniroute
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: OmniRoute for every brain call.
+Work: door picks OmniRoute when set, per-brain breaker, 90 s clock, setup steps (official keys only); 2 tests.
