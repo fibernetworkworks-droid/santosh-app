@@ -13,7 +13,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 from collections import defaultdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from sqlalchemy import func, or_, select
@@ -51,10 +51,16 @@ WAIT_STATUS = {"waiting", "pending", "needs_tap", "waiting_payment", "waiting_si
 TAP_KINDS = {"bazar_approval", "employee_ask", "operator_ask", "studio_approval", "ask_form", "pg_write"}
 
 
+# v0.704 a card whose answer arrives under ANOTHER kind (her Send tap on an email draft is published as email_sent):
+# without this the draft kept its own "pending" state for ever - every "kya card abhi baaki hai?" said yes
+CARD_ALIAS = {"email_sent": "email_draft"}
+
+
 def card_key(kind: str, payload: Any, event_id: int) -> str:
     """One card = one key (kind + its own id). Messages and id-less events never merge."""
     if kind == "message" or not isinstance(payload, dict):
         return f"e:{event_id}"
+    kind = CARD_ALIAS.get(kind, kind)
     for k in _ID_KEYS:
         v = payload.get(k)
         if isinstance(v, (str, int)) and str(v):
@@ -449,11 +455,72 @@ def waiting_cards(tenant: str, limit: int = 40, max_age_h: float | None = None) 
             out.append({"id": it["first"].id, "kind": e.kind, "key": it["key"], "age_h": round(age, 1),
                         "conversation_id": getattr(it["first"], "conversation_id", "") or "",
                         "at": _utc(it["first"].created_at).isoformat(),
-                        "title": str((e.payload or {}).get("title") or (e.payload or {}).get("what") or
-                                     (e.payload or {}).get("reason") or e.kind)[:80]})
+                        "title": card_title(e.kind, e.payload)})
             if len(out) >= limit:
                 break
     return out
+
+
+def card_title(kind: str, payload: Any) -> str:
+    p = payload if isinstance(payload, dict) else {}
+    t = p.get("title") or p.get("what") or p.get("reason")
+    if not t and p.get("subject") is not None:
+        t = f"Email to {p.get('to') or '?'}: {p.get('subject') or '(no subject)'}"
+    return str(t or kind)[:80]
+
+
+_DONE_WORD = {"sent": "SENT (bhej diya gaya)", "scheduled": "SCHEDULED (time par jayega)", "cancelled": "CANCELLED (nahi bheja)",
+              "approved": "APPROVED", "rejected": "REJECTED (usne mana kiya)", "done": "DONE", "failed": "FAILED",
+              "expired": "EXPIRED", "answered": "ANSWERED", "decided": "DECIDED", "paid": "PAID"}
+
+
+def card_updates(tenant: str, since: datetime | None, limit: int = 8) -> list[dict[str, Any]]:
+    """v0.704 cards she ANSWERED (tap: send / approve / cancel / reply...) after `since` - the brain's own history only has
+    "card bheja", never her tap, so without this a chat turn thought the card still waited."""
+    from . import convs
+    conv = convs.current(tenant)
+    if not conv:
+        return []
+    cut = _utc(since) if since else datetime.now(timezone.utc) - timedelta(hours=6)
+    out = []
+    for it in reversed(_collapse(_story(conv, tenant, scan=2000))):
+        first, last = it["first"], it["latest"]
+        if last.id == first.id or _utc(last.created_at) <= cut:
+            continue
+        if not needs_her(first.kind, first.payload) or needs_her(last.kind, last.payload):
+            continue
+        p = last.payload if isinstance(last.payload, dict) else {}
+        st = str(p.get("status") or p.get("state") or ("answered" if p.get("answered") else
+                                                      "decided" if p.get("decided") else "done")).lower()
+        out.append({"title": card_title(first.kind, first.payload), "kind": first.kind, "state": st,
+                    "at": _utc(last.created_at).isoformat(), "error": str(p.get("error") or "")[:160]})
+        if len(out) >= limit:
+            break
+    return out
+
+
+def card_news_block(tenant: str, since: datetime | None) -> str:
+    """v0.704 for EVERY chat turn: what she did on cards since the last reply + the cards that really still wait."""
+    try:
+        ups = card_updates(tenant, since)
+    except Exception:
+        ups = []
+    lines = []
+    if ups:
+        rows = []
+        for u in ups:
+            hm = datetime.fromisoformat(u["at"]).astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%H:%M")
+            rows.append(f"- {u['title']}: {_DONE_WORD.get(u['state'], u['state'].upper())} at {hm}"
+                        + (f" - error: {u['error']}" if u["error"] else ""))
+        lines.append("CARDS SHE ANSWERED SINCE YOUR LAST REPLY (her own taps, the real result - trust this over your "
+                     "earlier 'card bheja' line; never ask her to tap these again, never redo them):\n" + "\n".join(rows))
+    try:
+        ws = waiting_cards(tenant, 8, max_age_h=CARD_STALE_H)
+    except Exception:
+        ws = []
+    if ws:
+        lines.append("CARDS STILL WAITING FOR HER TAP:\n" + "\n".join(f"- {w['title']} ({w['kind']})" for w in ws))
+    return "\n\n".join(lines)
 
 
 def cards_block(tenant: str, limit: int = 8) -> str:

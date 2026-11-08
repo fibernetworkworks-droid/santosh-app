@@ -23005,3 +23005,19 @@ with no state = `done` when a reason/note/made is given, else `current`; common 
 map to the real states. `email_draft` accepts recipient / recipients / to_email / to_address / email / address as `to`,
 and a really-missing `to` says exactly how to call again. Gmail itself was working through the linked mailboxes;
 the Google sign-in (Drive / Calendar) is still dead until she reconnects. Tests test_v0703_tool_args_maaf.py (2).
+
+## v0.704.0 CARD KI KHABAR CHAT MEIN
+
+Owner: "WHEN ANY TASK LANDS ON CARD HOOLA AI AND USER PRESS SEND, APPROVE ETC --- HOOLA DONT KNOW THAT CARD ACTIVITY IS
+DONE" + "FOR EVERY WORK IT TAKES TIME". Two faults found in the code:
+1. Her Send tap on an email draft is published as `email_sent` while the card is `email_draft`; `events.card_key` keys by
+   kind + id, so the server saw two cards and the draft's own state stayed `pending` for ever (waiting_cards and the call's
+   cards_block both said it still waited). `events.CARD_ALIAS = {"email_sent": "email_draft"}` makes them one card; the
+   reloaded timeline now draws the draft with its real sent state (both clients already merged email_sent by id live).
+2. Card state reached only a CALL's brain turn (v0.651 `cards_block`); a chat turn's history only had "card bheja" and never
+   her tap. `events.card_updates` / `card_news_block`: the cards she answered (sent / approved / rejected / cancelled /
+   failed, with the time and any error) since Hoola's last reply in this chat + the cards still waiting - on every owner /
+   wake / routine chat turn.
+Timing: a chat turn read diary (yaad), job state, coder memory one after another; `santosh._chat_memory` reads them and
+the card news in parallel under `chat_memory_s` (6 s), a late part is left out of that turn only, and logs
+`chat memory N s (parts)` so the next slow turn shows where its time went. Tests test_v0704_card_ki_khabar_chat.py (5).

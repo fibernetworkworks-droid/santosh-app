@@ -1435,6 +1435,48 @@ def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
             + "\n".join(f"- {t}{mk.get(i, '')}" for i, t in rel))
 
 
+
+def _last_reply_at(conversation_id: str):
+    """v0.704 when Hoola last replied in this chat (the 'since' of the card news)."""
+    from ..db import Message
+    from sqlalchemy import select as _sel
+    with session() as s:
+        return s.scalar(_sel(Message.created_at).where(Message.conversation_id == conversation_id,
+                                                       Message.role == "assistant")
+                        .order_by(Message.id.desc()).limit(1))
+
+
+async def _chat_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
+    """v0.704 a chat turn's memory block: diary / facts (yaad), the real job state (kaamwatch), the coder primer and the
+    card news read IN PARALLEL, waiting at most `chat_memory_s` in all (they used to run one after another)."""
+    from .. import yaad, kaamwatch, events as _ev
+    from .. import coder as _coder
+
+    def _cards():
+        return _ev.card_news_block(tenant_id, _last_reply_at(conversation_id))
+
+    parts = [("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)),
+             ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
+             ("cards", _cards),
+             ("coder", lambda: _coder.inject.turn_block(tenant_id, conversation_id, query=user_text or ""))]
+    tasks = {name: asyncio.ensure_future(asyncio.to_thread(fn)) for name, fn in parts}
+    t0 = time.monotonic()
+    done, pending = await asyncio.wait(tasks.values(), timeout=float(getattr(settings, "chat_memory_s", 6.0) or 6.0))
+    out = []
+    for name, t in tasks.items():
+        if t in done:
+            try:
+                v = t.result()
+            except Exception:
+                log.exception("chat memory part %s failed", name)
+                continue
+            if v:
+                out.append(v)
+        else:
+            log.info("chat memory: %s not ready in %.1fs, left out of this turn", name, time.monotonic() - t0)
+    log.info("chat memory %.2fs (%s)", time.monotonic() - t0, ",".join(n for n, t in tasks.items() if t in done))
+    return "\n\n".join(out)
+
 async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, settings) -> str:
     """v0.638 the memory block of a call's brain turn: diary/facts (yaad), the real job state (kaamwatch) and the coder
     primer read IN PARALLEL, waiting at most `voice_brain_memory_s` in all. A part that is not ready in time is left out
@@ -2592,24 +2634,10 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                 block = await _brain_memory(tenant_id, conversation_id, user_text, settings)
             else:
               try:   # v0.108 work diary, facts by meaning, recalled old exchanges: for this message only
-                from .. import yaad
-                block = await asyncio.to_thread(yaad.turn_block, tenant_id, conversation_id, user_text)
-                try:   # v0.136 the REAL state of her running / finished jobs, so Hoola never says "dekh raha hoon"
-                    from .. import kaamwatch
-                    kb = await asyncio.to_thread(kaamwatch.block, tenant_id, conversation_id)   # v0.246 fenced
-                    if kb:
-                        block = (block + "\n\n" + kb) if block else kb
-                except Exception:
-                    log.exception("kaam block failed")
-                try:   # v0.473 HOOLA CODER: the compact coder-memory primer rides BESIDE yaad, never
-                       # instead of it - KAAM KA HAAL and the diary keep their order, this lands after
-                    from .. import coder as _coder
-                    cb = await asyncio.to_thread(_coder.inject.turn_block, tenant_id, conversation_id,
-                                                 query=user_text or "")
-                    if cb:
-                        block = (block + "\n\n" + cb) if block else cb
-                except Exception:
-                    log.exception("coder block failed")
+                # v0.704 the parts are read TOGETHER (one after another they added up on every chat turn, the shape
+                # v0.638 removed from calls) under one bounded wait; a part not ready is left out of THIS turn only.
+                # The card news rides with them: her taps (Send / Approve / Cancel) since the last reply.
+                block = await _chat_memory(tenant_id, conversation_id, user_text, settings)
                 # v0.648: her recent calls reach a chat turn through the diary's "Pichhli calls" section (call records are
                 # in the same memory scope) - the separate v0.646 recent-calls block said the same thing twice
                 if settings.agent_goal:   # v0.187 an open goal rides above everything: this turn continues it

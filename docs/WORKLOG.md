@@ -2394,3 +2394,13 @@ Work Log:
 - goal_tools.kaam_plan: default + synonym map for state; email_tools.email_draft: recipient aliases + exact retry hint
 Stage Summary:
 - 2 new tests green; goal / email suites re-run
+
+---
+Task ID: v0.704.0 CARD KI KHABAR CHAT MEIN
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: Hoola does not know a card was sent / approved; every task slow
+Work Log:
+- events: CARD_ALIAS email_sent->email_draft, card_title, card_updates, card_news_block
+- santosh: _chat_memory (parallel, bounded, logged) + _last_reply_at; config chat_memory_s
+Stage Summary:
+- 5 new tests + v0650 green; wider suites run
