@@ -22982,3 +22982,16 @@ Tests: test_v0701_pakka_attachment.py (11), test_email_phase1 drive test healed 
 sheets / routines suites green. Pre-existing reds on main untouched (test_v121_site x3, test_v0568_lottie_3d x1 - same
 on origin/main). NOT DONE: Calendar attachments, Outlook upload sessions for >3-4 MB, Gmail /upload endpoint.
 NOT VERIFIED live: needs her Google sign-in reconnected.
+
+
+## v0.702.0 GLM SIRF DIKHTE AUZAAR (her G8 test on GLM, 8 Nov)
+
+Her pm2 log: GLM steps at in=70,554..79,330 tokens, some out=3-4k, 40-60 s each, then "GLM door failed ... timed out"
+and the breaker sent the rest to Claude Haiku (tools=657 on every call). Cause: v0.565 tool search sends every tool, ~60
+in view and the rest `defer_loading: true` (not in Claude's context, not billed); `glmdoor.build` dropped only server
+tools, so GLM received all ~650 definitions in full on every step. Fix: `build` keeps a tool only if it is not deferred
+or tool_search has loaded it in this conversation; `_expand_refs` turns each `tool_reference` block in a tool_result
+into a text line ("Tool loaded, you can call it now: X") and returns the names so those tools join GLM's list; the
+`defer_loading` key is stripped. Tests test_v0702_glm_tools_in_view.py (3). Still open from the same run: a tool kept
+failing (the "doosra tareeka" ladder ran ~22 Haiku steps and parked the job) - which tool and why needs her harness
+events; not known at ship time.

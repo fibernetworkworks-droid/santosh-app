@@ -123,12 +123,38 @@ def _tool_choice(tc: Any) -> Any:
     return "auto"
 
 
+def _expand_refs(messages: list) -> tuple[list, set]:
+    """tool_search answers with tool_reference blocks that Claude's API expands; GLM cannot. Each becomes a text line
+    naming the loaded tool, and the names come back so those tools join GLM's tool list."""
+    found: set = set()
+    for m in messages:
+        c = m.get("content") if isinstance(m, dict) else None
+        if not isinstance(c, list):
+            continue
+        for b in c:
+            if not (isinstance(b, dict) and b.get("type") == "tool_result" and isinstance(b.get("content"), list)):
+                continue
+            inner = []
+            for x in b["content"]:
+                if isinstance(x, dict) and x.get("type") == "tool_reference" and x.get("tool_name"):
+                    found.add(x["tool_name"])
+                    inner.append({"type": "text", "text": f"Tool loaded, you can call it now: {x['tool_name']}"})
+                else:
+                    inner.append(x)
+            b["content"] = inner
+    return messages, found
+
+
 def build(kw: dict) -> tuple[str, dict, dict, str]:
     """(url, headers, body, label) for one Anthropic-style call."""
     from .agent import llm
-    messages = _plain(kw.get("messages") or [])
-    tools = [t for t in (_plain(kw.get("tools") or [])) if isinstance(t, dict) and t.get("name")
-             and t.get("type") in (None, "custom")]          # server tools (web_search ...) have no GLM twin
+    messages, found = _expand_refs(_plain(kw.get("messages") or []))
+    # v0.702: Claude's tool search sends ~650 tools with only ~60 in view (defer_loading: true for the rest); GLM has
+    # no such switch, so every deferred tool used to ride in FULL - ~70k tokens a step, slow, timing out. GLM now gets
+    # what Claude sees: the tools in view + the ones tool_search has loaded in this conversation.
+    tools = [{k: v for k, v in t.items() if k != "defer_loading"} for t in (_plain(kw.get("tools") or []))
+             if isinstance(t, dict) and t.get("name") and t.get("type") in (None, "custom")   # no GLM twin for server tools
+             and (not t.get("defer_loading") or t.get("name") in found)]
     msgs, fns = llm.to_openai(_system_text(kw.get("system")), tools, messages)
     b = brain()
     url, model, label, headers, extra = llm._target(b)

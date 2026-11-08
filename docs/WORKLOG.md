@@ -2376,3 +2376,12 @@ Work Log:
 - sheets import_rows drive_file; schemas; config mail_keep_dir / mail_keep_days
 Stage Summary:
 - 11 new tests + 86 in email/drive/photos/routines + 93 in sheets & neighbours green; 4 website reds pre-existing on main
+
+---
+Task ID: v0.702.0 GLM SIRF DIKHTE AUZAAR
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: her G8 "stuck, trying different way, was instant before"
+Work Log:
+- glmdoor.build keeps in-view + tool_search-loaded tools only; _expand_refs for tool_reference blocks
+Stage Summary:
+- 42 passed (v0702 / v0699 / v0695 / glm / v0475 / routines); the failing-tool cause still needs her harness events
