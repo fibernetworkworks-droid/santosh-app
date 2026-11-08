@@ -1,4 +1,20 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.688.0 KAAM MANCH (the OWL work-discipline port)
+Agent: main (kaam laws lane)
+Task: owner "GO" on the OWL deploy plan (download/HOOLA_OWL_DEPLOY_PLAN.md, 6 decisions locked: laws+tips shape, KAAM MANCH name, all lanes, default ON + caps, no new tool, ~30 tests).
+Work Log: REBASE PROTOCOL (planned v0.686, shipped on their v0.687 tip c78c2164c, their base kept whole); server/app/agent/kaam_laws.py NEW (~150 LOC, stdlib-re only); prompts.py _kaam_tips() appended post-cut in system_text (both paths); santosh.py the ledger note at natural turn end + the done backstop in _pakka_check; config.py kaam_enabled + kaam_ledger_enabled (default on); test_v0688_kaam_manch.py NEW (32, offline); the v0.221 full-guide contract test re-pinned to SYSTEM+tips (off = old identity); ritual_v0688.py swept (parser-stamp guard), pubspec 0.688.0+687, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors; battery green, jharokha 22 reds proven pre-existing (missing Chromium, stash run).
+Stage Summary: pushed to main as v0.688.0 + tag; vps-ops deploy fired; live test = her first (Kaam:) receipt line under a worked answer.
+Task ID: v0.680.0 SAVE THE STATE (P9 HOOLA ADOPT live)
+Agent: main (aep adoption lane)
+Task: owner "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after the P9 AEP adoption deploy.
+Work Log: branch stable-2026-11-08-aep-v680 cut at 00aa1dac9 (v0.680.0, pubspec 0.680.0+679) and pushed; the deploy was fired this session through vps-ops > deploy (run 42394254940, success in ~50 s, the job took the DB backup before the restart); CLAUDE.md checkpoint entry added. Live proof at the save: healthz ok true / version 0.680.0; anonymous POST /api/aep/turn -> 401; anonymous GET /api/aep/runs -> 401; P9 suite re-run 15/15 green at this exact commit.
+Stage Summary: pushed to main; the AEP turn lane is LIVE behind user auth; first real signed-in turn + aep_trace flip + phone rendering of the 'aep'-sourced reply still to be seen on her device.
+
+---
+
+# HOOLA — Multi-Session Worklog
+
+Task ID: v0.687.0 LEADS EMPLOYEE - the Lead Generation employee joins the AI Employees hub's Business department + the Leads Desk in the web console (the real /api/leads surface, the two-tap confirm card, the outreach ledger, opt-out + forget; no is_hired gate on the six leads tools - EDU_OPEN law; registry 615 stands; ritual_0687.py 0.686.0 -> 0.687.0 (+686); owner: "PUT THE LEAD GENEARTION AI EMPLOYEE IN THAT SECTION")
 Task ID: v0.682.0 KAAN W6 FIX - the unlock guard's engine seam made honest (voiceprint_ready consumes the real voiceid bool contract; the live box TypeError healed at kaan/status; the three W6 test patches healed + one NEW regression test on the real unpatched contract; ritual_v0682.py 0.681.0 -> 0.682.0 (+681); owner: "W6 (quotas + retention -> unlocks real voiceprint diarization) -- start")
 
 Task ID: v0.681.0 KALA MANCH - the T5 knowledge-skill catalog family (planned at 0.669.0, the dev chain took 0.669-0.680 while KALA sat planned - REBASE PROTOCOL, re-slotted on their v0.680.0 tip, all kept; owner: "GO" on the google/skills deploy plan)
@@ -2247,6 +2263,24 @@ Work: re-versioned 0.681 -> 0.685 on their v0.684 tip; 9 regressions found by th
 Not verified live. Wave 13 waits for her GO.
 
 ---
+Task ID: v0.686.0 EK LAKH ALAG WEBSITE
+Agent: Claude Code (web session)
+Task: Templates = 1,00,000 unique websites worldwide (owner: v0.683 showed 100 'Sweet shop' cards)
+Work Log:
+- site/world.py (50 sectors x 20 subjects, 10 types, sector types, positionings, cities, name roots) + site/templates.py rewrite + routes + Studio page
+- all 1,00,000 checked (length, guard, unique names + concepts); built as 0.684, main moved to 0.685 -> re-versioned 0.686.0
+Stage Summary:
+- shipped v0.686.0 to main
+
+---
+Task ID: SAVE THE STATE stable-2026-11-08-web-v687
+Agent: Claude Code (web session)
+Task: checkpoint after the owner deployed the 1 lakh websites (live healthz 0.687.0)
+Work Log:
+- git archive c78c2164c, ran 40 tests there (all green), templates TOTAL 100000 + world.check() clean
+- branch stable-2026-11-08-web-v687 pushed at c78c2164c; CLAUDE.md checkpoint entry added
+Stage Summary:
+- rollback point = stable-2026-11-08-web-v687 (v0.687.0)
 Task ID: v0686-mann-ki-baat (wave 13 of the third audit)
 Date: 2026-11-08
 Agent: Claude Code (session hoola-project-review-lzrqhu)

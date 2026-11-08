@@ -406,12 +406,25 @@ def guide_for(new_families, had=()) -> str:
     return "\n".join(out)
 
 
+def _kaam_tips() -> str:
+    """v0.688 KAAM MANCH: the work-discipline tips (house text, ideas from camel-ai/owl@2df367e, Apache-2.0,
+    IDEA-ONLY). Appended AFTER the family cut so they ride every turn; kaam_enabled off = byte-identical prompt."""
+    try:
+        from ..config import get_settings
+        from . import kaam_laws
+        if not get_settings().kaam_enabled:
+            return ""
+        return "\n\n" + kaam_laws.tips_block()
+    except Exception:
+        return ""
+
+
 def system_text(families=None) -> str:
     """The guide for one turn. families=None (admission off, routines, staff, direct callers) = the full SYSTEM,
     byte-identical to before. Otherwise only the guides of the admitted families + an index of the rest."""
     if families is None:
         GUIDE_STATS["full"] += 1
-        return SYSTEM
+        return SYSTEM + _kaam_tips()
     fams = set(families)
     kept, left = [], []
     for text, need, label in _guide():
@@ -426,7 +439,7 @@ def system_text(families=None) -> str:
     GUIDE_STATS["built"] += 1
     GUIDE_STATS["chars_full"] = len(SYSTEM)
     GUIDE_STATS["chars_last"] = len(txt)
-    return txt
+    return txt + _kaam_tips()
 
 
 def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, families=None) -> str:

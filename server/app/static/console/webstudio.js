@@ -109,7 +109,7 @@
   let SITES = [], SPECS = [], CUR = null, CARD = null, VIEW = 'preview', DEVICE = 'pc', LOOK = 0, EDIT = false;
   let POLL = null, SIG = '', PREFILL = '', BUSY = false, RO = null;
   /* v0.683 the 1,00,000-prompt template library: her filters, the rows shown, the template she picked */
-  const TPL = {q: '', ind: '', goal: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
+  const TPL = {q: '', sector: '', kind: '', style: '', rows: [], total: 0, all: 100000, meta: null, t: null};
   let TPLSEL = null;
   const lakh = n => Number(n || 0).toLocaleString('en-IN');
   const THREAD = {site: '', conv: '', rows: [], live: '', waiting: false, since: 0, started: 0, timer: null, sig: ''};
@@ -231,11 +231,11 @@
     const mode = store.get(MODE_KEY) === 'plan' ? 'plan' : 'build';
     let main;
     if (page === 'templates') {
-      main = `<section class="wrap tplw"><div class="sec"><h2 style="font-size:24px">Templates</h2><span class="tplall">${lakh(TPL.all)} deep prompts</span></div>
-        <p class="mut">A deep website prompt for every one of 1,000 kinds of business in 40 industries, each with 10 goals and 10 design styles. Every prompt covers the pages, the design and the build quality. Open one, use it as it is or change any line.</p>
-        <div class="tplbar"><label class="find">${ico('search', 16)}<input id="wsTplQ" type="search" placeholder="Search: dentist, bakery, gym, CA office, wedding…" aria-label="Search templates" autocomplete="off" value="${esc(TPL.q)}"></label>
-          <select id="wsTplInd" aria-label="Industry"><option value="">All industries</option></select>
-          <select id="wsTplGoal" aria-label="Goal"><option value="">Any goal</option></select>
+      main = `<section class="wrap tplw"><div class="sec"><h2 style="font-size:24px">Templates</h2><span class="tplall">${lakh(TPL.all)} websites</span></div>
+        <p class="mut">1,00,000 different websites from around the world: software, schools, hospitals, studios, shops, non-profits, climate tech and more, in 50 sectors and 10 cities. Every template is its own business with its own name, website type and design, and a deep prompt for the pages, design and build. Open one, use it as it is or change any line.</p>
+        <div class="tplbar"><label class="find">${ico('search', 16)}<input id="wsTplQ" type="search" placeholder="Search: AI tool, school, cafe Berlin, eco-friendly, online store…" aria-label="Search templates" autocomplete="off" value="${esc(TPL.q)}"></label>
+          <select id="wsTplInd" aria-label="Sector"><option value="">All sectors</option></select>
+          <select id="wsTplGoal" aria-label="Website type"><option value="">Any website type</option></select>
           <select id="wsTplStyle" aria-label="Design style"><option value="">Any style</option></select></div>
         <p class="mut sm" id="wsTplCount" aria-live="polite">Loading templates…</p>
         <div class="tgrid" id="wsTplGrid"></div>
@@ -289,7 +289,7 @@
 
   function tplCard(r) {
     return `<button class="tcard" type="button" data-tpl="${esc(r.id)}"><span class="tn">#${lakh(r.n)}</span><b>${esc(r.title)}</b>
-      <span class="mut sm">${esc(r.hi)} · ${esc(r.industry_label)}</span><span class="tchips"><i>${esc(r.goal_label)}</i><i>${esc(r.style_label)}</i></span></button>`;
+      <span class="tl">${esc(r.line)}</span><span class="mut sm">${esc(r.sector_label)} · ${esc(r.city)}</span><span class="tchips"><i>${esc(r.type_label)}</i><i>${esc(r.style_label)}</i></span></button>`;
   }
   function tplOptions(sel, list, val, first) {
     const el = $(sel); if (!el || el.options.length > 1) { if (el) el.value = val; return; }
@@ -299,16 +299,16 @@
   async function loadTpl(reset) {
     const grid = $('#wsTplGrid'); if (!grid) return;
     if (reset) TPL.rows = [];
-    const qs = new URLSearchParams({q: TPL.q, industry: TPL.ind, goal: TPL.goal, style: TPL.style, offset: String(TPL.rows.length), limit: '30'});
+    const qs = new URLSearchParams({q: TPL.q, sector: TPL.sector, kind: TPL.kind, style: TPL.style, offset: String(TPL.rows.length), limit: '30'});
     let r;
     try { r = await api('GET', '/api/site-templates?' + qs); } catch (e) { $('#wsTplCount').textContent = e.message; return; }
     if (!$('#wsTplGrid')) return;
     TPL.rows = TPL.rows.concat(r.rows || []); TPL.total = r.total || 0; TPL.all = r.all || TPL.all;
-    tplOptions('#wsTplInd', r.industries || [], TPL.ind, 'All industries');
-    tplOptions('#wsTplGoal', r.goals || [], TPL.goal, 'Any goal');
+    tplOptions('#wsTplInd', r.sectors || [], TPL.sector, 'All sectors');
+    tplOptions('#wsTplGoal', r.types || [], TPL.kind, 'Any website type');
     tplOptions('#wsTplStyle', r.styles || [], TPL.style, 'Any style');
-    const all = APP.querySelector('.tplall'); if (all) all.textContent = `${lakh(TPL.all)} deep prompts`;
-    $('#wsTplCount').textContent = TPL.total ? `${lakh(TPL.total)} templates${TPL.q || TPL.ind || TPL.goal || TPL.style ? ' match' : ''} · showing ${lakh(TPL.rows.length)}`
+    const all = APP.querySelector('.tplall'); if (all) all.textContent = `${lakh(TPL.all)} websites`;
+    $('#wsTplCount').textContent = TPL.total ? `${lakh(TPL.total)} templates${TPL.q || TPL.sector || TPL.kind || TPL.style ? ' match' : ''} · showing ${lakh(TPL.rows.length)}`
       : 'No template matches. Try a simpler word, like "clinic" or "shop".';
     grid.innerHTML = TPL.rows.map(tplCard).join('');
     const more = APP.querySelector('[data-act="tpl-more"]'); if (more) more.hidden = TPL.rows.length >= TPL.total;
@@ -317,8 +317,8 @@
     let p;
     try { p = await api('GET', '/api/site-templates/' + enc(id)); } catch (e) { return toast(e.message, true); }
     const d = document.createElement('dialog'); d.className = 'dlg tpld';
-    d.innerHTML = `<div class="tpldh"><span class="tn">Template #${lakh(p.n)} of ${lakh(TPL.all)}</span><b>${esc(p.title)} <span class="mut">${esc(p.hi)}</span></b>
-        <span class="tchips"><i>${esc(p.industry_label)}</i><i>${esc(p.goal_label)}</i><i>${esc(p.style_label)}</i></span></div>
+    d.innerHTML = `<div class="tpldh"><span class="tn">Template #${lakh(p.n)} of ${lakh(TPL.all)}</span><b>${esc(p.title)}</b><span class="tl">${esc(p.line)}${p.country && p.country !== p.city ? ', ' + esc(p.country) : ''}</span>
+        <span class="tchips"><i>${esc(p.sector_label)}</i><i>${esc(p.type_label)}</i><i>${esc(p.style_label)}</i></span></div>
       <pre class="tpre" tabindex="0">${esc(p.prompt)}</pre>
       <p class="mut sm">${lakh(p.chars)} characters · ${p.pages.length} pages · you can change any line after you tap Use.</p>
       <div class="inl" style="justify-content:flex-end"><button class="b" type="button" data-x="close">Close</button><button class="b" type="button" data-x="copy">Copy</button><button class="b pri" type="button" data-x="use">Use this prompt</button></div>`;
@@ -365,7 +365,7 @@
         return;
       }
       const body = {brief: text, conversation_id: conv};
-      if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.683
+      if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.686 the template's library card
       TPLSEL = null;
       const v = await api('POST', '/api/sites', body);
       store.set(convKey(v.id), conv);
@@ -1335,7 +1335,7 @@
     clearTimeout(TPL.t); TPL.t = setTimeout(() => { TPL.q = S(e.target.value).trim(); loadTpl(true); }, 250);
   });
   APP.addEventListener('change', e => {
-    const k = {wsTplInd: 'ind', wsTplGoal: 'goal', wsTplStyle: 'style'}[e.target.id]; if (!k) return;
+    const k = {wsTplInd: 'sector', wsTplGoal: 'kind', wsTplStyle: 'style'}[e.target.id]; if (!k) return;
     TPL[k] = S(e.target.value); loadTpl(true);
   });
   APP.addEventListener('input', e => {

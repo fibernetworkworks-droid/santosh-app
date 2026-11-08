@@ -117,7 +117,7 @@ def test_indiamart_keeps_sellers_and_dedups_products(env, monkeypatch):
     assert c["key_type"] == "name_address"                                         # name + city fallback key
     for x in store["rows"]:
         assert x["source_lane"] == "REGISTRY" and x["source_url"].startswith("https://www.indiamart.com/")
-        assert x["parser_version"].startswith("v0.684")
+        assert x["parser_version"].startswith("v0.689")
     assert r["bill"]["lane"] == "REGISTRY" and r["bill"]["calls"] == 1 and r["bill"]["inr"] == 0.0
     assert calls[0]["term"] == "cement" and calls[0]["city"] == "Pune"
 
@@ -203,7 +203,7 @@ def test_places_tiles_and_dedups_by_place_id(env, monkeypatch):
     assert p1["lat"] == 18.5204 and p1["phone"] == ""                    # PRO list: facts only, no expensive fields
     for x in store["rows"]:
         assert x["source_lane"] == "OFFICIAL_API" and "maps.google.com" in x["source_url"]
-        assert x["parser_version"].startswith("v0.684")
+        assert x["parser_version"].startswith("v0.689")
     assert r["bill"]["sku_nearby"] == mapsbill.SKU_NEARBY_PRO and r["bill"]["nearby_calls"] == 5
     assert r["bill"]["attribution"] == "Google"
     assert r["bill"]["inr"] == 0.0                                       # inside the month's free allowance

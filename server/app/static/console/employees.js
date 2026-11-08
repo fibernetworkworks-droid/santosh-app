@@ -15,7 +15,7 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
   const when = iso => { if (!iso) return '–'; const d = new Date(iso); return isNaN(d) ? '–' : d.toLocaleString('en-IN', {day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'}); };
   const num = v => (v === null || v === undefined || v === '') ? '–' : (typeof v === 'number' ? v.toLocaleString('en-IN', {maximumFractionDigits: 1}) : esc(String(v)));
   const visible = el => el && el.isConnected && !el.closest('.view')?.hidden;
-  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems'};   // v0.420 the Game Desk roles share it
+  const DESKS = {film: 'filmdesk', game_dev: 'gamedesk', procgen_dev: 'gamedesk', physics_dev: 'gamedesk', audio_dev: 'gamedesk', haptics_dev: 'gamedesk', netcode_dev: 'gamedesk', xr_dev: 'gamedesk', sim_dev: 'gamedesk', twin_arch: 'gamedesk', vfx_td: 'gamedesk', architect: 'archdesk', tutor: 'edudesk', school_office: 'edudesk', curriculum: 'edudesk', research: 'edudesk', school_register: 'edudesk', lab: 'edudesk', erp: 'systems', crm_arch: 'systems', tpm: 'systems', bpa: 'systems', ecom_arch: 'systems', health_int: 'systems', bank_int: 'systems', supply_opt: 'systems', plm: 'systems', regtech: 'systems', leads: 'leadsdesk'};   // v0.420 the Game Desk roles share it   // v0.686.0 the Lead Generation employee's desk
     // v0.410 + the Architecture Desk    // v0.370 employee key -> its desk view when the names differ
 
   // ------------------------------------------------------------ the hub
@@ -2783,5 +2783,131 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
     }));
   }
 
-  return {hub, desk, social, cad, game, arch, edu};
+  // ------------------------------------------------------------ v0.686.0 the Leads Desk
+  // The Lead Generation employee's desk: the real /api/leads/* surface. Read-only except HER two taps (the
+  // campaign-list hand-off: confirm card first, nothing is built until the second tap) and the DPO acts
+  // (opt-out per row, forget). The engine gathers; nothing is ever sent from this desk.
+  const LKIND = {campaign_list: 'List built', campaign_sent: 'WhatsApp sent', email_sent: 'Email sent'};
+  let LROWS = {q: '', city: '', lane: ''}, LCARD = null;
+  async function leads(el) {
+    if (!el.firstChild) el.innerHTML = '<div class="vh"><h2>Leads Desk</h2></div><div class="empty">Loading…</div>';
+    const me = (DATA && DATA.employees || []).find(x => x.key === 'leads');
+    if (!me || !isHired(me)) {
+      el.innerHTML = `<div class="vh"><h2>Leads Desk</h2></div><div class="empty">The Lead Generation employee is not hired. <button class="btn go" type="button" data-v="hire">Go to AI Employees</button></div>`;
+      return;
+    }
+    let o, rr, out;
+    try {
+      [o, rr, out] = await Promise.all([api('GET', '/api/leads'), api('GET', '/api/leads/runs?limit=12'),
+                                        api('GET', '/api/leads/outreach?limit=100')]);
+    } catch (e) { el.innerHTML = `<div class="vh"><h2>Leads Desk</h2></div><p class="badc">${esc(e.message)}</p>`; return; }
+    const st = o.store || {}, u = o.usage || {}, built = o.lanes_built || {};
+    const LANE_NAME = {HER_DATA: 'Your lists (CSV / typed)', REGISTRY: 'IndiaMART (official MCP, free)',
+                       OFFICIAL_API: 'Google Places (official routes)', SCRAPE: 'Public-listing scrape (opt-in)',
+                       VENDOR: 'Paid vendor (config-gated)'};
+    const laneTiles = (o.lanes || []).map(l => `<div class="kpi gl"><b>${built[l] ? 'Built' : '–'}</b><span>${esc(LANE_NAME[l] || l)}</span></div>`).join('');
+    el.innerHTML = `<div class="vh"><h2>Leads Desk</h2><span class="muted em-sub">It gathers; it never contacts anyone on its own. Outreach waits for your two taps on the campaign / email desks.</span>
+        ${me.status === 'paused' ? tag('warn', 'Paused') : ''} <span class="tag">${esc((TRUST[me.trust] || TRUST.seekh)[0])}</span></div>
+      <div class="kpis em-kpis">
+        <div class="kpi gl"><b>${num(st.rows)}</b><span>businesses kept</span></div>
+        <div class="kpi gl"><b>${num(st.with_phone)}</b><span>with phone</span></div>
+        <div class="kpi gl"><b>${num(st.with_email)}</b><span>with email</span></div>
+        <div class="kpi gl"><b>${num(st.opted_out)}</b><span>opted out</span></div>
+        <div class="kpi gl"><b>${num(u.rows_kept)}</b><span>kept today (cap ${num(u.per_day)})</span></div></div>
+      <div class="tile gl"><div class="em-h"><h3>The lanes</h3><span class="muted em-small">Run one by asking in the chat, e.g. “IndiaMART pe Akola ke plumbers laao” or “Places se Pune mein dentist dhoondo”.</span></div>
+        <div class="kpis em-kpis">${laneTiles}</div>
+        <p class="muted em-small">Store: ${esc((o.store_backend || {}).backend || 'sqlite')} · ${esc(o.one_question || '')}</p></div>
+      <div class="grid2">
+        <section class="tile gl"><h3>Recent runs</h3>${(rr.runs || []).map(r => `<div class="ed-row"><div><b>${esc((r.lanes || []).join(', ') || 'run')}</b> <small class="muted">${esc(when(r.created_at))}</small>
+          <p class="muted em-small">${esc([r.place, r.status, `${num(r.kept)} kept of ${num(r.found)} found`, r.duped ? `${num(r.duped)} dupes` : '', r.error ? 'error: ' + r.error : ''].filter(Boolean).join(' · '))}</p></div></div>`).join('') || empty('No runs yet. Ask in the chat to run a lane.')}</section>
+        <section class="tile gl"><h3>Outreach ledger</h3>
+          <p class="muted em-small">Every event that left the store through a desk. Opt-outs are refused at send time; a forgotten row's events stay (the history is not the person).</p>
+          ${(out.events || []).slice(0, 12).map(v => `<div class="ed-row"><div><b>${esc(LKIND[v.kind] || v.kind)}</b> <small class="muted">${esc(v.desk || '')}</small>
+            <p class="muted em-small">${esc(v.name || '')} · ${esc(when(v.at))}</p></div></div>`).join('') || empty('Nothing has left the store yet.')}</section>
+      </div>
+      <section class="tile gl"><h3>The store</h3>
+        <div class="ar-form em-form"><label><span>Search</span><input id="lq" value="${esc(LROWS.q)}" placeholder="Sharma, dental…"></label>
+          <label><span>City</span><input id="lcity" value="${esc(LROWS.city)}" placeholder="Akola"></label>
+          <label><span>Lane</span><select id="llane"><option value="">All lanes</option>${(o.lanes || []).map(l => `<option value="${esc(l)}"${LROWS.lane === l ? ' selected' : ''}>${esc(LANE_NAME[l] || l)}</option>`).join('')}</select></label>
+          <button class="btn soft" type="button" id="lgo">Search</button></div>
+        <div id="lrowsOut">${empty('Press Search to see rows.')}</div></section>
+      <section class="tile gl"><div class="em-h"><h3>Hand a list to the campaign desk</h3><span class="muted em-small">Two taps: the first shows the confirm card and creates nothing; the second builds the list. Sending is the campaign / email desk's own consent machinery.</span></div>
+        <div class="ar-form em-form"><label><span>List name</span><input id="lname" value="Leads list"></label>
+          <label><span>Same search as the store</span><input id="lhq" value="${esc(LROWS.q)}" placeholder="leave empty for everything"></label>
+          <label><span>City</span><input id="lhcity" value="${esc(LROWS.city)}"></label>
+          <label><span>Lane</span><select id="lhlane"><option value="">All lanes</option>${(o.lanes || []).map(l => `<option value="${esc(l)}">${esc(LANE_NAME[l] || l)}</option>`).join('')}</select></label>
+          <button class="btn go" type="button" id="lhand">Show the confirm card</button></div>
+        <div id="lcardOut"></div></section>
+      <section class="tile gl"><h3>Forget (the DPO duty)</h3>
+        <p class="muted em-small">Forgetting removes the rows and their store copies; the ledger's events stay, shown as gone. Opt out a single business with the button in its row above.</p>
+        <div class="ar-form em-form"><label><span>Run id (leave empty with “everything” unticked)</span><input id="lfrun" placeholder="run id"></label>
+          <label class="em-small"><input type="checkbox" id="lfall"> forget EVERYTHING in the store</label>
+          <button class="btn soft em-leave" type="button" id="lforget">Forget</button></div></section>`;
+    const rowsOut = el.querySelector('#lrowsOut');
+    async function loadRows() {
+      rowsOut.innerHTML = empty('Loading…');
+      try {
+        const r = await api('GET', `/api/leads/rows?q=${encodeURIComponent(LROWS.q)}&city=${encodeURIComponent(LROWS.city)}&lane=${encodeURIComponent(LROWS.lane)}&limit=25`);
+        rowsOut.innerHTML = (r.rows || []).length ? `<p class="muted em-small">${num(r.total)} match · showing ${num((r.rows || []).length)}</p>
+          <table class="em-tbl"><thead><tr><th>Business</th><th>Phone</th><th>City</th><th>Source</th><th></th></tr></thead><tbody>${r.rows.map(w => `<tr>
+            <td><b>${esc(w.name || '(naam nahi)')}</b>${w.opt_out ? ' <span class="tag warn">opted out</span>' : ''}<br><small class="muted">${esc(w.category || '')}</small></td>
+            <td>${esc(w.phone || '–')}</td><td>${esc(w.city || '–')}</td>
+            <td><small class="muted">${esc(w.source_lane || '')}${w.source_url ? `<br>${esc(String(w.source_url).slice(0, 60))}` : ''}</small></td>
+            <td>${w.opt_out ? '' : `<button class="btn soft" type="button" data-lopt="${esc(w.id)}">Opt out</button>`}</td></tr>`).join('')}</tbody></table>`
+          : empty('No rows match. Run a lane from the chat first, or import your CSV there.');
+        rowsOut.querySelectorAll('[data-lopt]').forEach(b => b.addEventListener('click', async () => {
+          b.disabled = true;
+          try { await api('POST', '/api/leads/opt-out', {contact_id: b.dataset.lopt, opt_out: true}); toast('Opted out. The campaign desk will refuse them at send time.'); await leads(el); }
+          catch (e) { toast(e.message, true); b.disabled = false; }
+        }));
+      } catch (e) { rowsOut.innerHTML = `<p class="badc">${esc(e.message)}</p>`; }
+    }
+    el.querySelector('#lgo').addEventListener('click', () => {
+      LROWS = {q: el.querySelector('#lq').value.trim(), city: el.querySelector('#lcity').value.trim(), lane: el.querySelector('#llane').value};
+      loadRows();
+    });
+    const cardOut = el.querySelector('#lcardOut');
+    if (LCARD) cardOut.innerHTML = LCARD;
+    const handBody = () => ({name: el.querySelector('#lname').value.trim() || 'Leads list', q: el.querySelector('#lhq').value.trim(),
+                             city: el.querySelector('#lhcity').value.trim(), lane: el.querySelector('#lhlane').value});
+    el.querySelector('#lhand').addEventListener('click', async () => {
+      LCARD = empty('Loading…'); cardOut.innerHTML = LCARD;
+      try {
+        const c = await api('POST', '/api/leads/campaign-list', handBody());
+        if (c.confirm_required) {
+          LCARD = `<div class="tile gl em-note"><b>Confirm card - nothing is built yet</b>
+            <p class="em-small">${num(c.rows)} rows can go (with a phone) · ${num(c.rows_without_phone)} stay back (no phone) · ${num(c.opt_out_excluded)} opted-out rows are already excluded. ${esc(c.confirm || '')}</p>
+            <p class="muted em-small">${esc(c.consent || '')}</p>
+            <div class="acts"><button class="btn go" type="button" id="lconfirm">Confirm - build the list</button>
+              <button class="btn soft" type="button" id="lcancel">Cancel</button></div></div>`;
+        } else {
+          LCARD = `<div class="tile gl em-note"><b>List built: ${esc(c.name || '')}</b>
+            <p class="em-small">${num(c.rows)} rows · consent False on every row. ${esc(c.note || '')}</p>
+            <p class="muted em-small">Now open the campaign desk (chat: “isk list pe campaign banao”) and send from there, on its own consent machinery.</p></div>`;
+          toast('List built. Nothing was sent.');
+        }
+        cardOut.innerHTML = LCARD;
+        const cf = el.querySelector('#lconfirm'), cc = el.querySelector('#lcancel');
+        if (cc) cc.addEventListener('click', () => { LCARD = null; cardOut.innerHTML = ''; });
+        if (cf) cf.addEventListener('click', async () => {
+          cf.disabled = true;
+          try { const done = await api('POST', '/api/leads/campaign-list', {...handBody(), confirm: true});
+                LCARD = `<div class="tile gl em-note"><b>List built: ${esc(done.name || '')}</b><p class="em-small">${num(done.rows)} rows · consent False on every row. ${esc(done.note || '')}</p>
+                  <p class="muted em-small">Now open the campaign desk (chat: “isk list pe campaign banao”) and send from there, on its own consent machinery.</p></div>`;
+                cardOut.innerHTML = LCARD; toast('List built. Nothing was sent.'); await leads(el); }
+          catch (e) { toast(e.message, true); cf.disabled = false; }
+        });
+      } catch (e) { LCARD = `<p class="badc">${esc(e.message)}</p>`; cardOut.innerHTML = LCARD; }
+    });
+    el.querySelector('#lforget').addEventListener('click', async () => {
+      const run = el.querySelector('#lfrun').value.trim(), all = el.querySelector('#lfall').checked;
+      if (!run && !all) { toast('Give a run id, or tick “forget EVERYTHING”.', true); return; }
+      if (!confirm(all ? 'Forget EVERY row in the leads store? This cannot be undone.' : 'Forget every row of this run? This cannot be undone.')) return;
+      try { const r = await api('POST', '/api/leads/forget', {run_id: run, all_rows: all}); toast(`Forgotten: ${num(r.deleted)} rows. The ledger's events stay, shown as gone.`); await leads(el); }
+      catch (e) { toast(e.message, true); }
+    });
+    loadRows();
+  }
+
+  return {hub, desk, social, cad, game, arch, edu, leads};
 };

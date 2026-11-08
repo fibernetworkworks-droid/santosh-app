@@ -96,7 +96,7 @@ def test_console_hub_departments_and_desks():
 
 
 def test_console_education_desk():
-    assert "return {hub, desk, social, cad, game, arch, edu};" in EMP
+    assert "return {hub, desk, social, cad, game, arch, edu, leads};" in EMP
     for route in ("/api/guru", "/api/daftar", "/api/pathyakram", "/api/shodh", "/api/shiksha", "/api/prayog/labs"):
         assert f"get('{route}')" in EMP, route
     assert "/shares/${encodeURIComponent(b.dataset.id)}/decide`, {yes, hash: b.dataset.hash}" in EMP   # her tap, card hash
