@@ -152,3 +152,30 @@ def test_an_endpoint_that_refuses_the_reasoning_fields_is_asked_again(glm, monke
     m = asyncio.run(glm["aclient"].messages.create(model="claude-haiku-5-5", max_tokens=50,
                                                      messages=[{"role": "user", "content": "hi"}]))
     assert m.content[0].text == "ok" and len(calls) == 2 and "reasoning_effort" not in calls[1]
+
+
+def test_a_hung_glm_is_skipped_and_claude_answers_at_once(glm, monkeypatch):
+    """Her live NVIDIA test: the model listed, every chat call hung with 0 bytes. Two failures -> GLM skipped."""
+    from app.agent import llm
+    from app import glmdoor
+
+    def hang(req):
+        raise httpx.ReadTimeout("no bytes", request=req)
+    llm.set_http(httpx.AsyncClient(transport=httpx.MockTransport(hang)))
+    llm.BREAKER.update({"fails": 0, "until": 0.0})
+    for _ in range(2):
+        m = asyncio.run(glm["aclient"].messages.create(model="claude-haiku-5-5", max_tokens=50,
+                                                         messages=[{"role": "user", "content": "hi"}]))
+        assert m.content[0].text == "from claude"
+    assert llm.glm_paused() and not glmdoor.active() and llm.cheap_brain() in (None, "omniroute")
+    n = glm["claude"]
+    asyncio.run(glm["aclient"].messages.create(model="claude-haiku-5-5", max_tokens=50,
+                                               messages=[{"role": "user", "content": "hi"}]))
+    assert glm["claude"] == n + 1                    # straight to Claude, no wait on GLM
+    llm.BREAKER.update({"fails": 0, "until": 0.0})
+
+
+def test_one_glm_request_has_a_short_clock(glm):
+    from app.agent import llm
+    t = llm._glm_timeout()
+    assert t.read == 45.0 and t.connect == 10

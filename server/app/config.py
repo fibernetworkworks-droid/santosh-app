@@ -326,6 +326,9 @@ class Settings(BaseSettings):
     claude_all_glm: bool = False
     claude_all_glm_fallback: bool = True
     glm_reasoning_effort: str = "low"     # NVIDIA GLM-5.3-Flash: low | high | max (its default max is slow)
+    glm_timeout_s: float = 45.0           # one GLM request waits at most this (her NVIDIA test hung 120 s with 0 bytes)
+    glm_breaker_fails: int = 2            # GLM failures in a row before it is skipped
+    glm_pause_s: float = 600.0            # how long a failing GLM is skipped (Claude answers meanwhile)
     glm_reasoning_room: int = 2048        # tokens added to max_tokens on NVIDIA (its reasoning counts inside max_tokens)
     glm_thinking: str = "disabled"          # enabled | disabled | "" (don't send) — disabled = faster, cheaper replies
 

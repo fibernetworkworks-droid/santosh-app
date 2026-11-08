@@ -38,6 +38,68 @@ def set_http(client: httpx.AsyncClient | None) -> None:
     _http = client
 
 
+# SAB GLM safety switch: her first live NVIDIA test listed the model but every chat call hung 120 s with 0 bytes. A hung
+# brain must never make every turn wait out its timeout before Claude answers: after `glm_breaker_fails` failures in
+# a row GLM is skipped for `glm_pause_s` (Claude answers at once), then tried again; one GLM request waits at most
+# `glm_timeout_s`, and a timed-out request is not retried (a hung endpoint does not answer a second later).
+BREAKER = {"fails": 0, "until": 0.0, "paused": 0}
+
+
+def glm_paused() -> bool:
+    import time as _t
+    return _t.time() < BREAKER["until"]
+
+
+def glm_result(ok: bool) -> None:
+    import time as _t
+    if ok:
+        BREAKER["fails"] = 0
+        return
+    BREAKER["fails"] += 1
+    st = get_settings()
+    if BREAKER["fails"] >= max(1, int(getattr(st, "glm_breaker_fails", 2) or 2)):
+        BREAKER["until"] = _t.time() + float(getattr(st, "glm_pause_s", 600) or 600)
+        BREAKER["fails"] = 0
+        BREAKER["paused"] += 1
+        log.error("GLM failed %s times in a row - skipped for %.0f s, Claude answers meanwhile",
+                  getattr(st, "glm_breaker_fails", 2), float(getattr(st, "glm_pause_s", 600) or 600))
+
+
+def _glm_timeout():
+    t = float(getattr(get_settings(), "glm_timeout_s", 45) or 45)
+    return httpx.Timeout(t, connect=10)
+
+
+async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
+                        max_tokens: int) -> tuple[list[dict], str, dict]:
+    if brain == "glm" and glm_paused():
+        raise LLMError("GLM paused after repeated failures - another brain answers")
+    try:
+        out = await _openai_create(brain, system, tools, messages, max_tokens)
+    except Exception:
+        if brain == "glm":
+            glm_result(False)
+        raise
+    if brain == "glm":
+        glm_result(True)
+    return out
+
+
+async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
+                        on_text, on_think=None) -> tuple[list[dict], str, dict]:
+    if brain == "glm" and glm_paused():
+        raise LLMError("GLM paused after repeated failures - another brain answers")
+    try:
+        out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think)
+    except Exception:
+        if brain == "glm":
+            glm_result(False)
+        raise
+    if brain == "glm":
+        glm_result(True)
+    return out
+
+
 def _client() -> httpx.AsyncClient:
     global _http
     if _http is None:
@@ -62,10 +124,10 @@ def cheap_brain() -> str | None:
     if mode == "omniroute":
         return "omniroute" if omniroute_ready() else None
     if mode == "glm":
-        return "glm" if glm_ready() else None
+        return "glm" if glm_ready() and not glm_paused() else None
     if omniroute_ready():
         return "omniroute"
-    return "glm" if glm_ready() else None
+    return "glm" if glm_ready() and not glm_paused() else None
 
 
 def describe() -> str:
@@ -233,9 +295,14 @@ async def _post_with_retry(url: str, body: dict, headers: dict, label: str) -> h
     for i in range(tries):
         wait = RETRY_DELAY * (2 ** i)
         try:
-            r = await _client().post(url, json=body, headers=headers)
+            r = await _client().post(url, json=body, headers=headers,
+                                     **({"timeout": _glm_timeout()} if label.startswith("GLM") else {}))
+        except httpx.TimeoutException as e:
+            if label.startswith("GLM"):
+                raise LLMError(f"{label} not reachable: timed out ({type(e).__name__})") from e   # never retried
+            last = LLMError(f"{label} not reachable: timed out ({type(e).__name__})")
         except httpx.HTTPError as e:
-            last = LLMError(f"{label} not reachable: {e}")
+            last = LLMError(f"{label} not reachable: {type(e).__name__} {e}")
         else:
             if r.status_code < 400:
                 return r
@@ -292,8 +359,8 @@ def room(max_tokens: int) -> int:
     return int(max_tokens) + max(0, int(getattr(get_settings(), "glm_reasoning_room", 2048) or 0))
 
 
-async def openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
-                        max_tokens: int) -> tuple[list[dict], str, dict]:
+async def _openai_create(brain: str, system: str, tools: list[dict], messages: list[dict],
+                         max_tokens: int) -> tuple[list[dict], str, dict]:
     st = get_settings()
     url, model, label, headers, extra = _target(brain)
     msgs, fns = to_openai(system, tools, messages)
@@ -342,8 +409,8 @@ def _assemble(text: str, calls: dict[int, dict], finish: str = "") -> dict:
     return {"choices": [{"message": msg, "finish_reason": finish or None}]}
 
 
-async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                        on_text, on_think=None) -> tuple[list[dict], str, dict]:
+async def _openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
+                         on_text, on_think=None) -> tuple[list[dict], str, dict]:
     """v0.161 the same answer as openai_create, but the words reach `on_text` as the model writes them. Tool-call
     arguments are joined and parsed only when the answer is complete (never partial JSON). Retries only before the
     first word arrived (after that the caller resets the words and falls back to the other brain).
@@ -358,7 +425,8 @@ async def openai_stream(brain: str, system: str, tools: list[dict], messages: li
         usage: dict = {}
         finish = ""
         try:
-            async with _client().stream("POST", url, json=body, headers=headers) as r:
+            async with _client().stream("POST", url, json=body, headers=headers,
+                                        **({"timeout": _glm_timeout()} if label.startswith("GLM") else {})) as r:
                 if r.status_code >= 400:
                     detail = (await r.aread()).decode("utf-8", "replace")[:300]
                     err = LLMError(f"{label} error {r.status_code}: {detail}")

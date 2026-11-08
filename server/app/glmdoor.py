@@ -35,7 +35,10 @@ def _settings():
 def active() -> bool:
     try:
         st = _settings()
-        return bool(getattr(st, "claude_all_glm", False) and st.glm_api_key)
+        if not (getattr(st, "claude_all_glm", False) and st.glm_api_key):
+            return False
+        from .agent import llm
+        return not llm.glm_paused()          # the safety switch: a hung GLM is skipped for a while, Claude answers
     except Exception:
         return False
 
@@ -146,6 +149,17 @@ def _count(data: dict, model: str) -> None:
 
 async def acreate(kw: dict) -> Any:
     from .agent import llm
+    try:
+        msg = await _acreate(kw)
+    except Exception:
+        llm.glm_result(False)
+        raise
+    llm.glm_result(True)
+    return msg
+
+
+async def _acreate(kw: dict) -> Any:
+    from .agent import llm
     url, headers, body, label = build(kw)
     r = await llm._post_with_retry(url, body, headers, label)
     try:
@@ -162,8 +176,19 @@ async def acreate(kw: dict) -> Any:
 
 def create_sync(kw: dict) -> Any:
     from .agent import llm
+    try:
+        msg = _create_sync(kw)
+    except Exception:
+        llm.glm_result(False)
+        raise
+    llm.glm_result(True)
+    return msg
+
+
+def _create_sync(kw: dict) -> Any:
+    from .agent import llm
     url, headers, body, label = build(kw)
-    with httpx.Client(timeout=httpx.Timeout(120, connect=15)) as c:
+    with httpx.Client(timeout=llm._glm_timeout()) as c:
         r = c.post(url, json=body, headers=headers)
         if r.status_code >= 400 and body.pop("reasoning_effort", None) is not None:
             body.pop("chat_template_kwargs", None)       # an endpoint that does not know the reasoning fields
@@ -284,7 +309,8 @@ class _SyncStream:
 
 def status() -> dict:
     st = _settings()
-    return {"on": active(), "model": st.glm_model, "base_url": st.glm_base_url,
+    from .agent import llm
+    return {"on": active(), "paused": llm.glm_paused(), "breaker": dict(llm.BREAKER), "model": st.glm_model, "base_url": st.glm_base_url,
             "claude_fallback": _claude_ok(), **STATS, "key_set": bool(st.glm_api_key)}
 
 
