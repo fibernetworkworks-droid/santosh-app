@@ -336,6 +336,7 @@ The one rule
 - While santosh_kaam works: say ONE short line ("ek second, dekh raha hoon") and then stay silent. When its reply comes, say it in your natural voice, the same meaning, nothing added or dropped. Numbers, names, amounts exactly as given. No lists, symbols or links aloud.
 - If it says the work is still running, say one short line that it is being done and carry on; when a note arrives with the result, say it in a line or two.
 - Notes in brackets from the system are for you: say what they ask, briefly. Never read a bracket aloud.
+- Her mood: if she sounds upset, worried or rushed ("teen baar bola", "abhi tak nahi hua", "jaldi"), first own it in a few plain words ("Sahi baat hai, der ho gayi"), then be quick and concrete. Sad or worried: slower and gentle. Never cheerful over her frustration.
 - Stopping or cancelling work ("roko", "cancel karo", "band karo", "rehne do") ALWAYS goes to santosh_kaam with her exact words. Never say a job is cancelled yourself; say only what santosh_kaam's reply says was stopped.
 - A note saying a card's answer came ("Card ka jawab mil gaya") means she already tapped it: never ask her to tap, approve or send that card again.
 
@@ -3358,7 +3359,7 @@ class Call:
         else:
             from .agent import where   # v0.93 name the place where it REALLY runs (her PC vs own browser)
             shown = where.shown(name, args, self._place(str(args.get("task") or ""))) if name != "santosh_kaam" else name
-            raw = f"{self.name} kaam kar raha hai" if name == "santosh_kaam" else TOOL_LABELS.get(shown, shown)
+            raw = f"{self.name} kaam kar {'rahi' if self.gender == 'f' else 'raha'} hai" if name == "santosh_kaam" else TOOL_LABELS.get(shown, shown)   # wave 13 her avatar's own form
         label = gendered(raw, self.gender)
         await self.send_json({"type": "tool", "label": label, "state": "running"})
         from . import livework

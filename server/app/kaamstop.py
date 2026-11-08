@@ -257,6 +257,11 @@ def cancel(tenant: str, words: str = "", here: str = "", skip_turn: str = "") ->
     if partial:
         say += (" Iska jo hissa pehle se chal raha tha woh shayad khud poora ho jaaye; main ispar aage kuch nahi karunga "
                 "aur iske baare mein bataunga bhi nahi.")
+    try:   # wave 13: her avatar's own forms ("nahi karungi" for a female avatar)
+        from .avatar.service import gendered, persona
+        say = gendered(say, persona(tenant)[1])
+    except Exception:
+        pass
     if left:
         say += " Abhi bhi chal raha hai: " + "; ".join(left) + "."
     log.info("kaam cancelled for %s (%s): %s", tenant, how, names)

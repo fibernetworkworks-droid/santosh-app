@@ -361,6 +361,7 @@ def _mark_failed(conversation_id: str) -> None:
 
 _BG_ERR: dict[str, tuple[str, float]] = {}
 BG_ERROR_QUIET_S = 1800
+BG_ERROR_NIGHT_S = 10 * 3600
 
 
 def _say_error(tenant_id: str, who: str, text: str) -> bool:
@@ -371,13 +372,20 @@ def _say_error(tenant_id: str, who: str, text: str) -> bool:
         return True
     if who == "wake":
         # wave 9: a failed job report says nothing itself - kaam_followup sees turn_failed_since and posts its own honest
-        # line; both went out before ("AI busy, phir bolna" + "ho gaya") - two pushes, one asking her to repeat a thing
+        # line; both went out before ("AI busy, phir boliye" + "ho gaya") - two pushes, one asking her to repeat a thing
         # she never asked
         STATS_LONG["bg_errors_quiet"] = STATS_LONG.get("bg_errors_quiet", 0) + 1
         return False
     kind = re.sub(r"\(ref[^)]*\)|ref[:\s]*\w+|\d+", "", text or "").strip()[:80]
     last = _BG_ERR.get(tenant_id)
-    if last and last[0] == kind and time.time() - last[1] < BG_ERROR_QUIET_S:
+    quiet = BG_ERROR_QUIET_S
+    try:   # wave 13: in her quiet hours the same background error is said once for the night, not every 30 minutes
+        from .. import push as _push
+        if _push.is_quiet_now(tenant_id):
+            quiet = BG_ERROR_NIGHT_S
+    except Exception:
+        pass
+    if last and last[0] == kind and time.time() - last[1] < quiet:
         STATS_LONG["bg_errors_quiet"] = STATS_LONG.get("bg_errors_quiet", 0) + 1
         return False
     _BG_ERR[tenant_id] = (kind, time.time())
@@ -534,13 +542,37 @@ def _model_refused(e: Exception) -> bool:
     return ("not_found" in m or "404" in m or "unknown model" in m or "model:" in m) and "model" in m
 
 
-def _hard_held(state: dict, settings) -> bool:
-    """v0.436 is this turn's answer held for the self-check? Her hard question, check switched on."""
-    return bool(state.get("hard") and getattr(settings, "hard_check", True))
+def _research_delivered(conversation_id: str, state: dict) -> bool:
+    """wave 13: a research dossier was handed to the model in THIS turn (any actor: a long-job round, a routine, a call)."""
+    if not conversation_id:
+        return False
+    try:
+        from ..research import engine as _reng
+        d = _reng.recall(conversation_id)
+        return d is not None and float(d.get("_delivered", 0)) >= float(state.get("t0", 0) or 0) > 0
+    except Exception:
+        return False
 
 
-async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings) -> list[str]:
-    """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or []."""
+def _hard_held(state: dict, settings, conversation_id: str = "") -> bool:
+    """v0.436 is this turn's answer held for the self-check? Her hard question, check switched on.
+    wave 13: also every turn that writes from a research dossier - the figure check used to run only on HER hard
+    turns, so a goal round / routine / call report reached her unchecked."""
+    if not getattr(settings, "hard_check", True):
+        return False
+    return bool(state.get("hard")) or _research_delivered(conversation_id, state)
+
+
+# wave 13: said under a corrected answer that still fails the free check (it used to go out as if checked)
+STATS_HARD_UNSURE = {"n": 0}
+HARD_UNSURE = ("\n\n_Dhyan dijiye: is jawab ke kuch aankde pakke nahi ho paye - use karne se pehle ek baar "
+               "jaanch lijiye._")
+
+
+async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings,
+                      free_only: bool = False) -> list[str]:
+    """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or [].
+    wave 13 free_only = the corrected answer's re-check: code + claim checks only, no model call."""
     from . import hard as _hardc
     bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch raha hoon", "state": "running",
                                           "id": "hard-check"})
@@ -556,13 +588,13 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
                 _d = _reng.recall(conversation_id)
                 if _d is not None and float(_d.get("_delivered", 0)) >= float(state.get("t0", 0)):   # handed to the model in THIS turn
                     problems = _claims.check_report(draft, _d)
-                    if not problems:    # v0.480 R9: then a reviewer reads the WORDING against the dossier's notes (the generic one only sees a truncated tail)
+                    if not problems and not free_only:    # v0.480 R9: then a reviewer reads the WORDING against the dossier's notes (the generic one only sees a truncated tail)
                         from ..research import review as _rrev
                         problems = await _rrev.review_report(state.get("request", ""), draft, _d, settings)
                         reviewed = bool(getattr(settings, "research_review", True)) and bool(_d.get("fields"))
             except Exception:
                 log.exception("claim check failed")
-        if not problems and not reviewed:
+        if not problems and not reviewed and not free_only:
             problems = await _hardc.review(state.get("request", ""), draft, ev, settings)
         state["hard_check"] = {"problems": problems, "tools": names[:12]}
         return problems
@@ -962,7 +994,7 @@ def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "
     elif _ctx.is_overflow(s):
         head = "Yeh chat bahut lambi ho gayi hai. Naya chat shuru karke wahi baat bolein - pichhli baatein yaad rahengi."
     elif busy:
-        head = "Abhi AI service busy ya unreachable hai, thodi der baad phir bolna."
+        head = "Abhi AI service busy ya unreachable hai, thodi der baad phir boliye."
     else:
         head = "Maaf kijiye, abhi kuch gadbad ho gayi."
     if not s:
@@ -1025,8 +1057,23 @@ async def _watched(work, conversation_id: str, ctx: Ctx, state: dict | None = No
         raise
 
 
+# wave 13: an error AFTER tools ran used to give only the generic line - she repeated the ask and a mail went twice
+AFTER_TOOLS = (" Isse pehle kuch kadam chal chuke the - dobara bolne se pehle dekh lijiye kya ho chuka hai, taaki koi mail "
+               "ya message do baar na jaaye.")
+
+
+def _tools_since(history: list[dict], h0: int) -> list[str]:
+    names: list[str] = []
+    for m in history[h0:]:
+        c = m.get("content") if isinstance(m, dict) else None
+        for b in (c if isinstance(c, list) else []):
+            if isinstance(b, dict) and b.get("type") == "tool_use":
+                names.append(str(b.get("name") or ""))
+    return names
+
+
 HALTED_TEXT = {"stop": "Theek hai, maine kaam rok diya.",
-               "pause": "Owner ne kaam rok diya (Pause), isliye main yahin ruk gaya. 'Kaam shuru' hone par aage karunga."}
+               "pause": "Aapne kaam rok diya (Pause), isliye main yahin ruk gaya. 'Kaam shuru' hone par aage karunga."}
 
 # v0.189 Tools that may run TOGETHER when one step asks for several (dsh's bounded pool, Claude Code's
 # concurrency-safe read batching - kept deliberately small): pure look-ups only. Anything that writes,
@@ -1648,7 +1695,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if live is not None:   # Gyaan answers are rewritten at the end (links, numbers): those show only when final
             # v0.436 SOCH KE JAWAB step 5: a hard answer is held too - it is checked before she sees it (thinking
             # still streams on the Soch card)
-            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings)))
+            live.block(stream=not (_gyaan.used(conversation_id) or _hard_held(state, settings, conversation_id)))
         _mark("step_setup")
         _conv_tok = _ctx.CONV.set(conversation_id)   # v0.237 the model's real token count lands on this chat's reading
         try:
@@ -1692,7 +1739,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 bus.publish(conversation_id, "message", {"role": "assistant", "text": part, "source": "agent",
                                                          "stopped": True, **_tag(live)})
                 _save(conversation_id, "assistant", [{"type": "text", "text": part}], display=part)
-            final_text = HALTED_TEXT[h.why]
+            final_text = gendered(HALTED_TEXT[h.why], gender)
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, bool(part))})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -1701,7 +1748,16 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _ctx.CONV.reset(_conv_tok)
         history.append({"role": "assistant", "content": blocks})
         texts = [b["text"] for b in blocks if b.get("type") == "text" and b.get("text", "").strip()]
-        if texts and stop not in ("tool_use", "max_tokens") and _hard_held(state, settings) \
+        if texts and stop not in ("tool_use", "max_tokens") and state.get("hard_fixed") \
+                and not state.get("hard_rechecked"):
+            # wave 13: the corrected answer is checked again (free checks only); still failing = said plainly
+            state["hard_rechecked"] = True
+            if await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings, free_only=True):
+                STATS_HARD_UNSURE["n"] += 1
+                blocks = blocks + [{"type": "text", "text": HARD_UNSURE.strip()}]
+                history[-1] = {"role": "assistant", "content": blocks}
+                texts = texts + [HARD_UNSURE.strip()]
+        if texts and stop not in ("tool_use", "max_tokens") and _hard_held(state, settings, conversation_id) \
                 and not state.get("hard_checked"):
             state["hard_checked"] = True
             problems = await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings)
@@ -1709,6 +1765,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 _save(conversation_id, "assistant", blocks, display=None)
                 from . import hard as _hardc
                 nudge = _hardc.fix_note(problems)
+                state["hard_fixed"] = True
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
@@ -1966,7 +2023,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             history[-1] = {"role": "user", "content": results + [{"type": "text", "text": note}]}
             if live is not None:
                 live.new_text_block()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": "Soch badal raha hoon — doosra raasta try karta hoon.",
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": gendered("Soch badal raha hoon — doosra raasta try karta hoon.", gender),
                                                      "source": "agent", **_tag(live, True)})
         _save(conversation_id, "user", results)
         if breaker.stopped:                # stuck: stop here and say so plainly
@@ -1994,7 +2051,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                    "steps likho (jo ho chuka use done likho), phir aage badho jab tak poora na ho.]")
             history[-1] = {"role": "user", "content": list(history[-1]["content"]) + [{"type": "text", "text": ext}]}
         if conversation_id in _stopped or state.get("halted"):
-            final_text = HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"])
+            final_text = gendered(HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"]), gender)
             if state.get("halted"):
                 final_text += " Jo kadam chal raha tha woh beech mein roka gaya; dobara karne se pehle dekh lijiye kitna hua."
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
@@ -2034,8 +2091,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             state["left"] = state.get("left") or "kuch kadam atak gaye"
             final_text = gendered("Kuch hissa ho gaya, par sab nahi - kuch kadam atak gaye. Baaki dobara karun?", gender)
         else:
-            final_text = gendered("Kaam ho gaya. Aur kuch karna hai?", gender) if ran_tools else \
-                "Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?"
+            # wave 13: no "Aur kuch karna hai?" tail (the reply rule forbids it), and the not-understood line gendered too
+            final_text = "Kaam ho gaya." if ran_tools else \
+                gendered("Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?", gender)
         bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                  **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -2552,6 +2610,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             bus.publish(conversation_id, "typing", {"on": False})
             return STOPPED_IN_PREP
         _stopped.discard(conversation_id)
+        _h0 = len(history)
         from .. import livereply
         # v0.191 a wake turn never streams into an already-open channel (a live call owns its own reply stream);
         # it publishes whole messages like every non-streaming path.
@@ -2573,7 +2632,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             _mark_failed(conversation_id)
             # v0.657 PAKKA KAAM: the deadline cancels the turn MID-TOOL, so a step may be half done (some mails gone,
             # some not). Never invite a blind resend; a background goal round says the next round carries on.
-            final_text = TIMEOUT_GOAL if (goal_on and who == "goal") else TIMEOUT_TEXT
+            final_text = TIMEOUT_GOAL if (goal_on and who == "goal") else gendered(TIMEOUT_TEXT, _gender)
             await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, "time limit par roka gaya", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": f"turn timeout ({settings.agent_turn_timeout_s}s)"},
                              turn_id=_turn_id, actor=who)
@@ -2587,6 +2646,9 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             log.exception("agent turn failed")
             _mark_failed(conversation_id)
             final_text = _friendly_error(e, tenant_id, who, bool(VOICE_BRAIN_NOW.get()))
+            _ran = _tools_since(history, _h0)
+            if _ran:    # wave 13: steps already ran (a mail may be gone) - never invite a blind repeat
+                final_text = final_text + AFTER_TOOLS
             await asyncio.to_thread(_record_cut, tenant_id, conversation_id, user_text, f"galti: {str(e)[:120]}", _t_turn0)
             _evlog.log_event(tenant_id, conversation_id, "turn_failed", {"line": str(e)[:200]},
                              turn_id=_turn_id, actor=who)

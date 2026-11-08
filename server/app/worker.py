@@ -477,6 +477,8 @@ async def expire_stale_asks() -> None:
 
 
 _SLOT_FAIL: dict[str, float] = {}
+# wave 13: what the worker is doing, for /healthz (a hung slot used to stop reminders / follow-ups for good, silently)
+BEAT = {"tick_at": 0.0, "slot_at": 0.0, "slot": "", "ticks": 0, "slot_timeouts": 0}
 
 
 async def _slot(fn) -> None:
@@ -485,14 +487,19 @@ async def _slot(fn) -> None:
     (once a minute per slot) and the next slot still runs."""
     from . import google_auth as _ga
     tok = _ga.BACKGROUND.set(True)      # a dead Google sign-in waits out its backoff here (never in her own chat)
+    name = getattr(fn, "__name__", "slot")
+    BEAT["slot"], BEAT["slot_at"] = name, time.time()
     try:
         r = fn()
         if asyncio.iscoroutine(r):
-            await r
+            # wave 13: one hung await (a mail / HTTP call that never answers) no longer holds every other slot for ever
+            await asyncio.wait_for(r, timeout=float(getattr(get_settings(), "worker_slot_timeout_s", 300) or 300))
+    except asyncio.TimeoutError:
+        BEAT["slot_timeouts"] += 1
+        log.error("worker slot %s took longer than its limit - cut, the other slots run", name)
     except asyncio.CancelledError:
         raise
     except Exception:
-        name = getattr(fn, "__name__", "slot")
         if time.time() - _SLOT_FAIL.get(name, 0.0) >= 60:
             _SLOT_FAIL[name] = time.time()
             log.exception("worker slot %s failed (the other slots still run)", name)
@@ -509,6 +516,22 @@ async def tick() -> None:
         game_studio_jobs, coder_jobs, bahar_jobs, app_ops_jobs,
     ):
         await _slot(fn)
+    BEAT["slot"] = ""
+    BEAT["tick_at"] = time.time()
+    BEAT["ticks"] += 1
+
+
+def health() -> dict:
+    """wave 13: is the worker alive? stuck = a slot has run past its limit + 2 min, or no tick for 10 min."""
+    now = time.time()
+    if not BEAT["ticks"] and not BEAT["slot_at"]:
+        return {"ok": True, "started": False}
+    limit = float(getattr(get_settings(), "worker_slot_timeout_s", 300) or 300) + 120
+    in_slot = bool(BEAT["slot"]) and now - BEAT["slot_at"] > limit
+    no_tick = BEAT["tick_at"] > 0 and now - BEAT["tick_at"] > max(600.0, limit)
+    return {"ok": not (in_slot or no_tick), "started": True, "slot": BEAT["slot"],
+            "last_tick_s": round(now - BEAT["tick_at"], 1) if BEAT["tick_at"] else None,
+            "ticks": BEAT["ticks"], "slot_timeouts": BEAT["slot_timeouts"]}
 
 _ops_last = 0.0
 
@@ -1308,6 +1331,11 @@ async def run_forever(stop: asyncio.Event) -> None:
             await tick()
         except Exception:
             log.exception("worker tick failed")
+        try:   # wave 13: what her quiet hours held goes out once the night is over
+            from . import push as _push
+            _push.flush_night()
+        except Exception:
+            log.exception("night push flush failed")
         try:   # v0.98 counted model calls reach the database even when nothing else is happening
             from . import usage
             await asyncio.to_thread(usage.flush)

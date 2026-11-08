@@ -6,6 +6,7 @@ delivery; device actions are re-checked by the phone (claimed once, ignored when
 from __future__ import annotations
 
 import json
+import re
 import logging
 import threading
 import time
@@ -654,7 +655,7 @@ PUSH_KINDS = {"message", "goal", "bazar_approval", "artifact", "pc_file", "photo
 RAW_KINDS = {"device_action", "home_device", "bt_request", "voice_ring"}   # the phone runs these itself; no notification text (voice_ring: the SERVER calls HER - the native side turns it into the wake: broadcast and the app auto-starts the call; learned in v0.219)
 
 
-STATS_QUIET: dict[str, int] = {"call_message": 0, "call_card": 0}
+STATS_QUIET: dict[str, int] = {"call_message": 0, "call_card": 0, "night_held": 0, "night_dropped": 0}
 
 
 def _heard_on_call(conv: str, kind: str) -> bool:
@@ -678,9 +679,73 @@ def _heard_on_call(conv: str, kind: str) -> bool:
     return False
 
 
+# wave 13 RAAT KI NEEND: every push went out as Android HIGH priority at any hour - a 2 am routine result, a finished
+# job, a desk report or an outage line woke her phone. In her quiet hours (push_quiet, default the ring's 22-8) a push
+# that does not need her NOW is held and the newest few go out when the night ends. Never held: a card or ask that
+# needs her tap, a site / security / data-breach alarm, her OWN reminder, and anything while she is awake and using
+# the app (she wrote in the last 20 minutes).
+URGENT_KINDS = {"operator_ask", "bazar_approval", "studio_approval", "ask_form", "employee_ask", "site_down",
+                "cyber_incident", "dpo_breach", "google_reconnect"}
+_OWN_REMINDER = re.compile(r"^Yaad dila ra(?:ha|hi) hoon:")
+_AWAKE: dict[str, float] = {}
+_HELD: dict[str, list[dict[str, Any]]] = {}
+NIGHT_SEND_MAX = 3
+
+
+def is_quiet_now(tenant: str) -> bool:
+    try:
+        from datetime import datetime
+        from .life import tz_of
+        st = get_settings()
+        h = datetime.now(tz_of(tenant)).hour
+        a, b = (getattr(st, "push_quiet", "") or st.voice_ring_quiet or "22-8").split("-")[:2]
+        a, b = int(a), int(b)
+        return (a > b and (h >= a or h < b)) or (a <= b and a <= h < b)
+    except Exception:
+        return False
+
+
+def _hold_for_night(tenant: str, ev: dict[str, Any]) -> bool:
+    if not getattr(get_settings(), "push_night_hold", True):
+        return False
+    kind = ev.get("kind")
+    if kind in RAW_KINDS or kind in URGENT_KINDS:
+        return False
+    p = ev.get("payload") or {}
+    if kind == "message" and _OWN_REMINDER.match(str(p.get("text") or "")):
+        return False
+    if time.time() - _AWAKE.get(tenant, 0.0) < 1200:
+        return False
+    return is_quiet_now(tenant)
+
+
+def flush_night() -> int:
+    """Send what the night held, once the quiet hours are over: the newest few, oldest of them first."""
+    sent = 0
+    for tenant in list(_HELD):
+        if is_quiet_now(tenant):
+            continue
+        held = _HELD.pop(tenant, [])
+        for ev in held[-NIGHT_SEND_MAX:]:
+            try:
+                _pool.submit(_send, tenant, ev)
+                sent += 1
+            except RuntimeError:
+                pass
+        STATS_QUIET["night_dropped"] = STATS_QUIET.get("night_dropped", 0) + max(0, len(held) - NIGHT_SEND_MAX)
+    return sent
+
+
 def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
     """Called for every published event; sends the push in the background (never slows the caller)."""
-    if ev.get("kind") not in PUSH_KINDS or not configured():
+    if not configured():
+        return
+    if ev.get("kind") == "message" and (ev.get("payload") or {}).get("role") == "user":
+        t = _tenant(conversation_id)
+        if t:
+            _AWAKE[t] = time.time()     # wave 13: she is awake and using the app - nothing of hers is held
+        return
+    if ev.get("kind") not in PUSH_KINDS:
         return
     if ev["kind"] not in RAW_KINDS and build("x", ev) is None:
         return
@@ -688,6 +753,11 @@ def on_event(conversation_id: str, ev: dict[str, Any]) -> None:
     if not tenant:
         return
     if ev["kind"] not in RAW_KINDS and _heard_on_call(conversation_id, ev["kind"]):
+        return
+    if _hold_for_night(tenant, ev):
+        _HELD.setdefault(tenant, []).append(ev)
+        del _HELD[tenant][:-30]
+        STATS_QUIET["night_held"] = STATS_QUIET.get("night_held", 0) + 1
         return
     if ev["kind"] == "voice_ring" and not _ring_allowed(tenant, conversation_id,
                                                          reminder=bool((ev.get("payload") or {}).get("reminder"))):

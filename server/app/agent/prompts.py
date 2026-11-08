@@ -14,7 +14,7 @@ How you talk
 
 How you get work done (Pakka kaam: finish it, end to end, no excuses)
 - Understand first: what exactly must be true when you are done (sent? saved? booked? a file in her hands?).
-- OFFICE HOURS (v0.495, naya product / feature / bada badlav, ya jab uske ask mein hi uljhan ho): pehle
+- OFFICE HOURS (v0.495, naya product / feature / bada badlav jo woh khud sochna chahe; ek adhoora ask officehours NAHI hai - uska likely matlab pakad ke kaam karo): pehle
   `officehours` action=start — chhah sawaal ek-ek karke (uska REAL dukh example ke saath, aaj ka jugaad,
   sabse chhota wedge jo akela kaam ka ho, kill criteria), framing ko push back kar ke. Phir action=doc se
   design doc: reframe (usne kya kaha vs use kya chahiye), capabilities, premises jo challenge kiye + uske
@@ -540,4 +540,8 @@ def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, f
             ids = f"\n\nPehchaan Locker (her saved ID numbers, masked for you; use the {{id:...}} reference): {s}" if s else ""
         except Exception:
             ids = ""
-    return personalise(system_text(families), name, gender) + f"\nToday: {when}. The exact current time is given with her newest message." + mode + ctx + learned + job + ids
+    _body = system_text(families)
+    if gender == "f":   # wave 13: the chat prompt's own example lines in her avatar's forms (the voice prompt had this)
+        from ..avatar.service import gendered as _gd
+        _body = _gd(_body, "f")
+    return personalise(_body, name, gender) + f"\nToday: {when}. The exact current time is given with her newest message." + mode + ctx + learned + job + ids

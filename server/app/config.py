@@ -65,6 +65,7 @@ class Settings(BaseSettings):
     avatar_engine_url: str = ""            # e.g. https://<account>--hoola-lab-web.modal.run
     avatar_engine_key: str = ""            # the same ENGINE_KEY the lab's Modal secret holds
     hard_check_model: str = ""              # v0.436 the reviewer's model ('' = anthropic_model)
+    hard_check_independent: bool = True     # wave 13: the reviewer skips the one-model rewrite (never the writer's own Haiku)
     hard_check_timeout_s: float = 60.0      # v0.436 a slow reviewer never blocks the answer
     agent_narrate_every: int = 1            # v0.258 after this many tool rounds with no word to her, ONE short line (8 in v0.240 = silence)
     agent_narrate_max: int = 6              # v0.258 at most this many such lines in a turn (2 in v0.240; Claude writes one per tool group)
@@ -572,6 +573,8 @@ class Settings(BaseSettings):
     voice_ring_reminders: bool = True      # v0.621 a due reminder with no live call rings her and the call says it
     voice_ring_reminder_max_day: int = 12  # ...her own reminders: quiet hours do not apply, only this sanity cap
     voice_ring_max_day: int = 2            # v0.211 rings per tenant per day (the phone is not an alarm clock)
+    push_quiet: str = ""                   # wave 13: quiet hours for pushes ("" = the ring's voice_ring_quiet)
+    push_night_hold: bool = True           # wave 13: non-urgent pushes are held in her quiet hours, the newest few sent after
     voice_ring_quiet: str = "22-8"         # v0.211 quiet hours in the tenant's own timezone - no rings inside
 
     # --- Hoola Coder (v0.473): persistent session memory - capture -> spool -> observer -> vault ---
@@ -865,6 +868,7 @@ class Settings(BaseSettings):
     dry_run_reply_ratio: float = 0.08
 
     worker_tick_seconds: float = 2.0
+    worker_slot_timeout_s: float = 300.0   # wave 13: a worker slot that hangs longer is cut, the rest run
     tenant_id: str = "default"
 
     # --- v0.134 Gyaan: knowledge base (agentic RAG) over her files, Drive, mail, notes, chats ---

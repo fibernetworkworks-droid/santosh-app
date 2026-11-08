@@ -53,8 +53,13 @@ async def review_report(question: str, draft: str, dossier: dict, settings) -> l
         from ..agent.santosh import get_client
         model = getattr(settings, "hard_check_model", "") or settings.anthropic_model
         user = f"{digest(dossier)}\n\nREPORT:\n{str(draft)[:12000]}"
-        resp = await asyncio.wait_for(get_client().messages.create(model=model, max_tokens=700, system=REVIEW_SYSTEM, messages=[{"role": "user", "content": user}]),
-                                      timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        from .. import usage as _usage
+        _byp = _usage.ONE_MODEL_BYPASS.set(bool(getattr(settings, "hard_check_independent", True)))   # wave 13: not the writer's model
+        try:
+            resp = await asyncio.wait_for(get_client().messages.create(model=model, max_tokens=700, system=REVIEW_SYSTEM, messages=[{"role": "user", "content": user}]),
+                                          timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        finally:
+            _usage.ONE_MODEL_BYPASS.reset(_byp)
         raw = "".join(str(b.get("text") if isinstance(b, dict) else getattr(b, "text", "")) for b in resp.content)
         m = re.search(r"\{.*\}", raw, re.S)
         v = json.loads(m.group(0)) if m else {}

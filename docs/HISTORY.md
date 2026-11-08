@@ -22726,3 +22726,31 @@ Tests: NEW `test_v0684_sahi_auzaar.py` (27). NOT VERIFIED live (the tool card on
 ## v0.685.0 TEESRI JAANCH - waves 9-12 shipped as one release (built as 0.681; their LEADS ENGINE, EK LAKH PROMPT and KALA MANCH took 0.681-0.684 - REBASE PROTOCOL, all kept)
 
 Wave 13 (analysis, monitoring and feeling - 12 items) waits for her GO. The wide regression run (510 related test files, ~7,600 tests) found 9 regressions of these waves; all were fixed (the held research price in the refusal text, the honesty gate on learning only, the sent-model meter, a smaller cleared-result gist, focus words kept in full mode, bulk-offer campaign phrases, per-tenant coder pins, the slot-loop pin); every other failure fails on their own tip too (website / browser / Playwright / voice / sandbox classes).
+
+
+## v0.686.0 MANN KI BAAT - wave 13 of the third deep audit (owner: "GO WAVE 13": analysis, monitoring and feeling)
+
+The last wave of the 47-flaw third audit. Twelve items, each with a test that fails on v0.685.0 (`tests/test_v0686_mann_ki_baat.py`, 16):
+
+- ANALYSIS. `santosh._hard_held(state, settings, conv)` also holds every turn that writes from a research dossier handed
+  over in THIS turn (`_research_delivered`) - a goal round, a routine or a call report used to reach her with no R3
+  figure check. `hard.code_check`: pylab having run no longer passes - the draft's worked-out figures must be in what the
+  tools printed or in her question (`hard.backed`: exact, rounded, lakh / crore / thousand / percent forms). The corrected
+  answer after a fix round is checked again with the free checks only (`_hard_check(..., free_only=True)`); still failing =
+  `HARD_UNSURE` line under it. The reviewer (`hard.review`, `research/review.review_report`) runs with
+  `usage.ONE_MODEL_BYPASS` (`hard_check_independent`, default on) so SAB HAIKU no longer makes the writer its own judge.
+- MONITORING. `worker.BEAT` + `worker.health()`; `/healthz` "ok" is false when a slot ran past `worker_slot_timeout_s`
+  (300) + 2 min or no tick for 10 min, and carries a `worker` block; `_slot` cuts a hung coroutine slot at the limit
+  (`slot_timeouts`); `looplag.start()` in `lifespan`; `/api/agent/stats` shows `loop` + `worker`.
+- FEELING. `avatar.gendered` changes only the speaker's own forms (a first-person future, a verb before "hoon", a verb in a
+  clause from "main"); "Kaam ho gaya" / "Ho raha hai" / "meeting ban gayi" keep their grammar; paya / ruka / any -unga
+  added. TIMEOUT_TEXT, HALTED_TEXT (no more "Owner ne"), the re-plan line, the not-understood line, kaamstop's line and the
+  call's "{name} kaam kar raha hai" follow her avatar; the chat system prompt gets the female pass the voice prompt had.
+  `push`: non-urgent pushes in her quiet hours (`push_quiet`, default the ring's 22-8; `push_night_hold`) are held and the
+  newest 3 sent when the night ends (`flush_night`, after each worker tick); never held: cards / asks / alarms
+  (`URGENT_KINDS`), her own reminder, anything while she wrote in the last 20 min. A mood rule in `replystyle.CHAT` and
+  `voice.PERSONA_BRAIN`. OFFICE HOURS no longer opens on an unclear ask; the fallback is "Kaam ho gaya." (no "Aur kuch
+  karna hai?"); "phir boliye". An error after tools ran adds `AFTER_TOOLS` (never a blind repeat of a sent mail).
+  The same background error is said once a night (`BG_ERROR_NIGHT_S`), not every 30 minutes.
+- conftest sets PUSH_QUIET=0-0 so old suites never depend on the wall clock.
+- NOT VERIFIED live: a held night push on her phone, the first stuck-worker healthz, a female avatar's real call.

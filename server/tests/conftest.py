@@ -88,6 +88,7 @@ def env(tmp_path, monkeypatch):
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")
     monkeypatch.setenv("VOICE_LEAN_TOOLS", "false")  # v0.627 production declares the small menu; older suites pin the full one (test_v0627 checks the small one)
     monkeypatch.setenv("VOICE_PARK", "false")        # v0.617 older call suites expect a live Gemini session; test_v0617 turns it on
+    monkeypatch.setenv("PUSH_QUIET", "0-0")         # wave 13: no night-quiet behaviour by the wall clock in old suites (test_v0686 sets its own)
     monkeypatch.setenv("MEMORY_AUTO", "false")       # v0.108: no background fact-picking model calls in scripted tests
     monkeypatch.setenv("SEMANTIC_OFF", "1")
     monkeypatch.setenv("CONNECT_CLEAN", "false")     # v0.303: older suites count the full catalogue; test_v0303 covers clean          # no 40 s embedding-model download attempt (the sandbox has no HF)

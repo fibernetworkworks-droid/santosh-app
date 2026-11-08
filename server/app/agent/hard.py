@@ -319,6 +319,27 @@ def research_check(draft: str, evidence_text: str) -> list[str]:
     return []
 
 
+def _num(t: str) -> float | None:
+    try:
+        return float(t.replace(",", ""))
+    except ValueError:
+        return None
+
+
+def backed(figure: str, evidence_text: str, question: str = "") -> bool:
+    """wave 13: is this figure in the tools' output (exactly, rounded, or in lakh / crore / thousand / percent form)?"""
+    v = _num(figure)
+    if v is None:
+        return True
+    pool = [x for x in (_num(t) for t in _DIGITS.findall((evidence_text or "") + " " + (question or ""))) if x is not None]
+    for e in pool:
+        for scale in (1, 1e3, 1e5, 1e7, 1e-2, 100):
+            w = v * scale
+            if abs(e - w) <= max(0.006 * abs(w), 0.51 if scale == 1 else 0.0):
+                return True
+    return False
+
+
 def code_check(question: str, draft: str, why: list[str] | None, tools_run: list[str],
                evidence_text: str = "") -> list[str]:
     """Free check: a calculation ask whose draft carries worked-out numbers while pylab never ran; a research answer
@@ -327,12 +348,18 @@ def code_check(question: str, draft: str, why: list[str] | None, tools_run: list
         found = research_check(draft, evidence_text)
         if found:
             return found
-    if "pylab" in (tools_run or []):
-        return []
     if not (set(why or []) & _CALC_KINDS):
         return []
     asked = set(_DIGITS.findall(question or ""))
     new = [n for n in _DIGITS.findall(draft or "") if n not in asked and len(n.replace(",", "")) >= 3]
+    if "pylab" in (tools_run or []):
+        # wave 13: pylab having run at all used to pass the check - now the draft's worked-out figures must be in what
+        # the tools printed (or in her question), so a trivial pylab call cannot cover numbers written from memory
+        stray = [n for n in dict.fromkeys(new) if not backed(n, evidence_text, question)]
+        if len(stray) >= 2:
+            return [f"These figures are not in pylab's printed output or any tool result: {', '.join(stray[:6])}. "
+                    "Compute each of them in pylab (print it) and use the printed value."]
+        return []
     if len(new) >= 2:
         return [f"These figures were worked out without running pylab: {', '.join(new[:6])}. Compute them in pylab "
                 "and use its printed results."]
@@ -378,11 +405,18 @@ async def review(question: str, draft: str, ev: str, settings) -> list[str]:
     try:
         from .santosh import get_client
         model = getattr(settings, "hard_check_model", "") or settings.anthropic_model
+        from .. import usage as _usage
+        # wave 13: the reviewer is a DIFFERENT model from the writer - under SAB HAIKU the reviewer was rewritten to the
+        # same Haiku that wrote the answer, so "independent" was not true. One small call (900 tokens), held answers only.
         user = (f"HER QUESTION:\n{question[:3000]}\n\nTOOL EVIDENCE FROM THIS TURN (pylab code + outputs, data):\n"
                 f"{ev or '(no tools ran)'}\n\nDRAFT ANSWER:\n{draft[:8000]}")
-        resp = await asyncio.wait_for(get_client().messages.create(
-            model=model, max_tokens=900, system=CHECK_SYSTEM, messages=[{"role": "user", "content": user}]),
-            timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        _byp = _usage.ONE_MODEL_BYPASS.set(bool(getattr(settings, "hard_check_independent", True)))
+        try:
+            resp = await asyncio.wait_for(get_client().messages.create(
+                model=model, max_tokens=900, system=CHECK_SYSTEM, messages=[{"role": "user", "content": user}]),
+                timeout=float(getattr(settings, "hard_check_timeout_s", 60)))
+        finally:
+            _usage.ONE_MODEL_BYPASS.reset(_byp)
         raw = "".join(_text_of(b) for b in resp.content).strip()
         m = re.search(r"\{.*\}", raw, re.S)
         v = _json.loads(m.group(0)) if m else {}

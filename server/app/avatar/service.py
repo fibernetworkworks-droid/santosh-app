@@ -73,20 +73,42 @@ _FEM = {
     "sambhalta": "sambhalti", "maangega": "maangegi", "karega": "karegi", "dega": "degi", "bhejega": "bhejegi",
     "lega": "legi", "batayega": "batayegi", "maangta": "maangti", "jodta": "jodti", "kholta": "kholti",
     "chhaant-ta": "chhaant-ti", "bhejta": "bhejti", "nikalta": "nikalti",
+    "paya": "payi", "ruka": "ruki", "thaka": "thaki",   # wave 13: "main samajh nahi paya" / "main ruka"
 }
 _FEM_RE = re.compile(r"\b(" + "|".join(sorted(map(re.escape, _FEM), key=len, reverse=True)) + r")\b", re.I)
 
 
+_CLAUSE_END = re.compile(r"[.!?;:,\n\u2014\u2013|()\"]|\s-\s")
+_ME = re.compile(r"\b(main|mai|mein khud)\b", re.I)
+_HOON = re.compile(r"^\s+(?:\w+\s+)?(hoon|hun|hu|hoo|hoongi|hunga)\b", re.I)
+
+
 def gendered(text: str, gender: str) -> str:
-    """Masculine Hindi/Hinglish self-references -> feminine when the avatar is female."""
+    """Masculine Hindi/Hinglish SELF-references -> feminine when the avatar is female.
+    wave 13: only the speaker's own forms change - a first-person future (karunga), a verb before "hoon", or a verb in a
+    clause that starts from "main". The WORK keeps its own grammar: "Kaam ho gaya", "Ho raha hai", "meeting ban gayi"
+    stay as they are (the old blind swap made a female avatar say "Kaam ho gayi")."""
     if gender != "f" or not text:
         return text
 
     def sub(m: re.Match) -> str:
         w = m.group(1)
-        out = _FEM[w.lower()]
+        lw = w.lower()
+        mine = lw.endswith("unga") or lw.endswith("ega") or lw.endswith("ayega")
+        if not mine and _HOON.match(text[m.end():m.end() + 24]):
+            mine = True
+        if not mine:
+            before = text[:m.start()]
+            cuts = list(_CLAUSE_END.finditer(before))
+            clause = before[cuts[-1].end():] if cuts else before
+            mine = bool(_ME.search(clause))
+        if not mine:
+            return w
+        out = _FEM[lw]
         return out.capitalize() if w[0].isupper() else out
-    return _FEM_RE.sub(sub, text)
+    out = _FEM_RE.sub(sub, text)
+    # wave 13: any first-person future (-unga) is the speaker's own, whatever the verb (sunaunga, samjhaunga, ...)
+    return re.sub(r"\b(\w{2,})unga\b", lambda m: m.group(1) + ("ungi" if m.group(0)[-4:].islower() else "UNGI"), out)
 
 
 # ---------------------------------------------------------------- name rules
