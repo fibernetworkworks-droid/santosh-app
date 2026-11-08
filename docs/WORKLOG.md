@@ -2317,3 +2317,10 @@ Work Log:
 - 6 tests (route, english steps, build hooks, design log, markers, real-browser walk of every page); built as 0.688, main moved to 0.692 -> re-versioned 0.693.0
 Stage Summary:
 - shipped v0.693.0 to main
+
+---
+Task ID: v0695-sab-glm-final-jaanch
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: deep check before final testing + use NVIDIA GLM 5.3 Flash for every brain call.
+Work: free cards all full, 2 real bugs fixed (video_studio family, skill pack stamps), card + pins healed, docs/FINAL_TEST_PLAN.md; SAB GLM door (glmdoor.py) with NVIDIA reasoning fields, picture support, Claude fallback, glm_check job; 11 tests. Not verified live (no NVIDIA key here).

@@ -22857,3 +22857,35 @@ v0.693.0 HOOLA APP STUDIO (built as 0.688; their v0.689-v0.692 landed while it w
 
 
 NOT VERIFIED: no real Android / iPhone build has been watched in the Studio on her server; the Play key upload and the store / rollout buttons call routes that have never answered a live account.
+
+
+## v0.695.0 SAB GLM + FINAL JAANCH (owner: "NOW GO AGAIN DEEP CHECK THE HOOLA ALL PARAMETERS ..." + "NOW LETS USE GLM 5.3 FLASH FOR ALL USE --- AS NVIDIA PROVIDING FREE API")
+
+SAB GLM (`app/glmdoor.py`, `usage.install`, `agent/llm.py`):
+- Every Claude call in Hoola passes ONE door (the Anthropic SDK's Messages.create / .stream, async + sync). With
+  `CLAUDE_ALL_GLM=true` and a GLM key, the door answers from the GLM brain and returns a real `anthropic.types.Message`
+  (TextBlock / ToolUseBlock, stop_reason, usage), so every engine keeps working unchanged. Streams return an object with
+  the SDK's async/sync context-manager shape (`get_final_message`, events, `text_stream`).
+- NVIDIA (`GLM_BASE_URL=https://integrate.api.nvidia.com/v1`, `GLM_MODEL=z-ai/glm-5.3-flash`, key `nvapi-...` from
+  build.nvidia.com): `reasoning_effort` (`glm_reasoning_effort`, default low) + `chat_template_kwargs.clear_thinking`
+  are sent, Z.ai's `thinking` field is not; `max_tokens` gets `glm_reasoning_room` (2048) added because the model's
+  reasoning cannot be switched off and counts inside max_tokens; a 400/422 on those fields asks again without them.
+- Pictures (png/jpg/webp, max 8) go to NVIDIA GLM as image_url parts; PDFs go to Claude.
+- GLM down / 429 / refused -> the SAME call on Claude when `CLAUDE_ALL_GLM_FALLBACK` (default on) and an Anthropic key
+  is set; no Claude key -> the GLM error stands. Counted once, at GLM's price (from_anthropic skips GLM-model answers).
+- The chat loop itself uses GLM with `CHAT_LLM=glm` (existing path). Gemini Live stays the call's VOICE.
+- `python -m app.glmdoor check` (one text call + one tool call) + vps-ops `glm_check`; `/api/agent/stats` -> `sab_glm`.
+- Tests `test_v0695_sab_glm.py` (8, offline: fake NVIDIA + fake Anthropic endpoints).
+- NOT VERIFIED live: no NVIDIA call has been made from here (no key in the sandbox). Free tier ~40 requests a minute
+  (third-party figure), trial terms (NVIDIA API Trial Terms of Service - read before production), inputs may be
+  recorded by NVIDIA on the trial endpoint. Long jobs / agent crews can hit 40/min -> those calls go to Claude.
+
+FINAL JAANCH (`docs/FINAL_TEST_PLAN.md`):
+- `agent/tools.py`: the construction Studio desk was imported as STUDIO_* and overwrote the AI video studio's names,
+  so `video_studio` lost its family (rode every turn) and "ai video" opened the construction shot-brief desk; imported
+  under CSTUDIO_* now, own `cstudio` family + keys.
+- `coder/skill_packs.py`: a pack stamp is consumed only when no install crashed (`_FAILED_STAMPS` / `_consume`, all 30
+  seeders) - a user whose installs crashed used to never receive that pack.
+- `quality/leadscard.py`: the free card counts only asks that name a tool (13/13, was shown as 13/21).
+- Pins healed: hub catalogue 84 (Lead Generation employee), the GLM tool-turn order (a narration note may follow the
+  tool row), the one-model stream source window. Tests `test_v0694_final_jaanch.py` (3).

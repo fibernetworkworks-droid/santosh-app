@@ -13,6 +13,15 @@ only a real phone / real call / real account can prove are kept apart below. Tic
    since 3 Nov — Gmail / Drive / Calendar / Sheets / Business Profile all refuse until this is done).
 4. Anthropic credit and Gemini (AI Studio) credit topped up — an empty balance looks like "AI service busy".
 
+## 0b. Switching every brain to GLM 5.3 Flash (NVIDIA, free)
+
+1. build.nvidia.com > sign in (free NVIDIA Developer account, phone check) > model `z-ai/glm-5-3-flash` > Get API Key.
+2. Put these in `~/apps/santosh-core/.env` on the VPS (the key ONLY there, never in chat):
+   `GLM_API_KEY=nvapi-...`, `GLM_BASE_URL=https://integrate.api.nvidia.com/v1`, `GLM_MODEL=z-ai/glm-5.3-flash`,
+   `CHAT_LLM=glm`, `CLAUDE_ALL_GLM=true` (keep `ANTHROPIC_API_KEY` set if you want Claude as the backup).
+3. `pm2 restart santosh --update-env`, then vps-ops > `glm_check` -> "PAKKA: GLM answers through the door".
+4. Test C1-C10 again on GLM. Gemini Live remains the call's voice.
+
 ## 1. Free checks the server can run itself (no model cost)
 
 | vps-ops job | Pass looks like |
