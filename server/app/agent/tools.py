@@ -949,7 +949,11 @@ from .const_green_tools import GREEN_HANDLERS, GREEN_LABELS, GREEN_TOOLS  # noqa
 from .const_land_tools import LAND_HANDLERS, LAND_LABELS, LAND_TOOLS  # noqa: E402
 from .const_plan_tools import PLAN_HANDLERS, PLAN_LABELS, PLAN_TOOLS  # noqa: E402
 from .const_ehs_tools import EHS_HANDLERS, EHS_LABELS, EHS_TOOLS  # noqa: E402
-from .const_studio_tools import STUDIO_HANDLERS, STUDIO_LABELS, STUDIO_TOOLS, LEARN_HANDLERS, LEARN_LABELS, LEARN_TOOLS  # noqa: E402
+# FINAL CHECK: imported under its OWN names - as STUDIO_* it overwrote the AI video studio's names, so video_studio
+# lost its family (rode every turn) and "ai video" opened the construction shot-brief desk instead (the v0.559 trap again)
+from .const_studio_tools import STUDIO_HANDLERS as CSTUDIO_HANDLERS, STUDIO_LABELS as CSTUDIO_LABELS  # noqa: E402
+from .const_studio_tools import STUDIO_TOOLS as CSTUDIO_TOOLS  # noqa: E402
+from .const_studio_tools import LEARN_HANDLERS, LEARN_LABELS, LEARN_TOOLS  # noqa: E402
 from .const_fm_tools import FM_HANDLERS, FM_LABELS, FM_TOOLS  # noqa: E402
 
 for _t, _l, _h in ((STORE_TOOLS, STORE_LABELS, STORE_HANDLERS), (LABOUR_TOOLS, LABOUR_LABELS, LABOUR_HANDLERS),
@@ -1135,7 +1139,7 @@ for _t, _l, _h in ((PROPAGENT_TOOLS, PROPAGENT_LABELS, PROPAGENT_HANDLERS), (REN
     TOOL_LABELS.update(_l)
     HANDLERS.update(_h)
 for _t, _l, _h in ((LAND_TOOLS, LAND_LABELS, LAND_HANDLERS), (PLAN_TOOLS, PLAN_LABELS, PLAN_HANDLERS),
-                   (EHS_TOOLS, EHS_LABELS, EHS_HANDLERS), (STUDIO_TOOLS, STUDIO_LABELS, STUDIO_HANDLERS),
+                   (EHS_TOOLS, EHS_LABELS, EHS_HANDLERS), (CSTUDIO_TOOLS, CSTUDIO_LABELS, CSTUDIO_HANDLERS),
                    (LEARN_TOOLS, LEARN_LABELS, LEARN_HANDLERS), (FM_TOOLS, FM_LABELS, FM_HANDLERS)):
     _seen = {t["name"] for t in TOOLS}
     TOOLS.extend(t for t in _t if t["name"] not in _seen)

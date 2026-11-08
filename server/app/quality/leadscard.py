@@ -367,7 +367,8 @@ def saved() -> list[dict]:
 def lines(card: dict) -> list[str]:
     if card.get("kind") == "free":
         g = card["guards"]
-        out = [f"Leads card (free, set v{card['set']}): right tool in view {card['right_in_view']}/{card['asks']}, "
+        out = [f"Leads card (free, set v{card['set']}): right tool in view {card['right_in_view']}/{card.get('tool_asks', card['asks'])} "
+               f"(+{card['asks'] - card.get('tool_asks', card['asks'])} rule asks, judged live), "
                f"tools registered {card['registered']}/{card['tools']}, "
                f"reachable from a real ask {card['reachable']}/{card['tools']}, guards {card['guards_ok']}/{len(g)}"]
         if card["not_registered"]:
@@ -375,7 +376,7 @@ def lines(card: dict) -> list[str]:
         if card["unreachable"]:
             out.append("  never in view for any ask: " + ", ".join(card["unreachable"]))
         out += [f"  guard off: {k}" for k, v in g.items() if not v]
-        out += [f"  - {r['id']}: no right tool in view" for r in card["rows"] if not r["in_view"]]
+        out += [f"  - {r['id']}: no right tool in view" for r in card["rows"] if r.get("had_ok") and not r["in_view"]]
         return out
     out = [f"Leads card (live, set v{card['set']}): RIGHT {card['right']}/{card['answered']} "
            f"(tool {card['tool_right']}/{card['tool_asks']}, guards {card['rule_right']}/{card['rule_asks']}), "

@@ -420,13 +420,28 @@ def seed_byox(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("byox seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
         log.info("byox seed: %d skills into %s", wrote, tenant)
     return {"byox_seeded": wrote}
+
+
+# FINAL CHECK: a pack seeder used to stamp itself "done for ever" even when every skill in it crashed on install -
+# that tenant then never received the pack (the skills card found the Claude pack missing this way). A stamp is now
+# consumed only when no install crashed; a crash leaves it open, so the next desk open / first turn retries.
+_FAILED_STAMPS: set[str] = set()
+
+
+def _consume(stamp: str) -> None:
+    if stamp in _FAILED_STAMPS:
+        _FAILED_STAMPS.discard(stamp)
+        log.warning("skill pack %s had a failed install - left open to retry", stamp)
+        return
+    store.mark_consumed(stamp)
 
 
 CLAUDE_DIR = SEED_DIR / "claude"
@@ -476,8 +491,9 @@ def seed_claude(tenant: str) -> dict:
             continue                       # already exists: hers stays
         except Exception:
             log.exception("claude seed of %s failed for %s", d.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -514,8 +530,9 @@ def seed_progpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("prog seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -552,8 +569,9 @@ def seed_sp(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("sp seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -590,8 +608,9 @@ def seed_fepack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("fe seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -628,8 +647,9 @@ def seed_cspack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("cs seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -667,8 +687,9 @@ def seed_magicpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("mg seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -706,8 +727,9 @@ def seed_bdpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("bd seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -745,8 +767,9 @@ def seed_crewpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("cr seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -784,8 +807,9 @@ def seed_thpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("th seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -823,8 +847,9 @@ def seed_edpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("ed seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -861,8 +886,9 @@ def seed_gapack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("ga seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -899,8 +925,9 @@ def seed_devpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("de seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -937,8 +964,9 @@ def seed_enpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("en seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -975,8 +1003,9 @@ def seed_dbpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("db seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1013,8 +1042,9 @@ def seed_mepack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("me seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1051,8 +1081,9 @@ def seed_lepack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("le seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1089,8 +1120,9 @@ def seed_secpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("se seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1127,8 +1159,9 @@ def seed_cmpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("cm seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1165,8 +1198,9 @@ def seed_hapack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("ha seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1203,8 +1237,9 @@ def seed_bupack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("bu seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1241,8 +1276,9 @@ def seed_wopack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("wo seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1279,8 +1315,9 @@ def seed_nepack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("ne seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1317,8 +1354,9 @@ def seed_dcpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("dc seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1355,8 +1393,9 @@ def seed_hspack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("hs seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1393,8 +1432,9 @@ def seed_evpack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("ev seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1431,8 +1471,9 @@ def seed_tepack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("te seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1469,8 +1510,9 @@ def seed_mipack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("mi seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1507,8 +1549,9 @@ def seed_repack(tenant: str) -> dict:
             continue
         except Exception:
             log.exception("re seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:
@@ -1578,8 +1621,9 @@ def seed(tenant: str) -> dict:
             continue                       # already exists (or lint): her file stays
         except Exception:
             log.exception("seed of %s failed for %s", f.name, tenant)
+            _FAILED_STAMPS.add(stamp)
     try:
-        store.mark_consumed(stamp)
+        _consume(stamp)
     except Exception:
         pass
     if wrote:

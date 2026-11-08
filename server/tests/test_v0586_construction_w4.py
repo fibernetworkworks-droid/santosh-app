@@ -373,7 +373,7 @@ def test_hub_rows_carry_w4(env):
                         ("const_customer", "RERA number"), ("const_approvals", "Heritage")):
         assert any(marker.lower() in str(x).lower() for x in CATALOG[key]["does"]), (key, marker)
     assert any("tier C" in x for x in CATALOG["const_land"]["never"])
-    assert len(CATALOG) == 83, "73 (68 + five Wave-4 desks) + their chain to v0.609 (dukaan/retail/bima/risk/paisa/sandarbh...)"
+    assert len(CATALOG) == 84, "73 (68 + five Wave-4 desks) + their chain to v0.609 (dukaan/retail/bima/risk/paisa/sandarbh...) + the v0.687 Lead Generation employee"
 
 
 def test_version_pins():

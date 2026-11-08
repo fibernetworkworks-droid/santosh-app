@@ -105,6 +105,7 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "reel": ("reel", "shorts", "youtube short", "short video", "instagram", "status video"),   # wave 12: not "short" ("short mein batao")
     "motion": ("motion", "animat", "animate"),
     "studio": ("studio", "ai video", "video shoot"),
+    "cstudio": ("shot brief", "site visualisation", "site visualization", "render brief", "walkthrough brief", "asset checklist"),   # FINAL CHECK: the construction Studio desk (its tools were filed under "studio")
     # v0.259 Create Studio: song / voice-over / dubbing (the Create page names the tool; these cover her own words)
     "create": ("song", "gaana", "gaane", "jingle", "lyrics", "music studio", "voice-over", "voiceover", "voice over",
                "dub", "dubbing", "create studio", "गाना", "डब"),
