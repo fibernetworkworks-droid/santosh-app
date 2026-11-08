@@ -2439,3 +2439,9 @@ Work Log:
 - bulk by filter, not-supported settings, NotConnected on expiry, snooze per thread, draft id guard, GLM history caps
 Stage Summary:
 - 8 new tests; wider suites run
+
+---
+Task ID: v0.709.0 PLAN KA DHAANCHA
+Ask: plans random/shallow; every plan previewed as a marketing landing page - root cause + fix.
+Done: approved plan drives the site structure (site_plan + brief_text + looks hero/tops), deep code-sized architect + depth checks + deepen round, Build-mode deep path, Studio plan document. 7 new tests + 4 architect suites green.
+Not verified: real Opus plan depth/time on her server.

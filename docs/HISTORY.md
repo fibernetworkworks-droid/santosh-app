@@ -23059,3 +23059,50 @@ NotConnected for invalid_grant (linked mailboxes; the sign-in path keeps its v0.
 guard + resolve on edit; many_recipients warning; email_thread 15 x 1,500 newest; prune CLEAR_TRIGGER_GLM 12000 (no batch);
 context.window caps at chat_context_max_tokens_glm 40000 while the GLM door is active; events QUEUED TO SEND wording.
 Tests test_v0707_gmail_wave2.py (8).
+
+## v0.709.0 PLAN KA DHAANCHA
+
+v0.709.0 PLAN KA DHAANCHA (built as 0.708; their GMAIL WAVE 2 took 0.708.0 - REBASE PROTOCOL, both kept; owner: "any simple,
+complex, hard web development work - Hoola just creates a random plan. The plan must go deep with all aspects... BIG issue:
+the plan is a different structure and Hoola shows a preview of a landing marketing page for any plan - go deep, find the
+root cause and fix this perfectly").
+
+ROOT CAUSE (three, all in code, none in the model):
+1. `architect.approve()` flattened the approved spec into one line of page titles and called `S.new()`, which built the
+   LIBRARY's page set for the business type (`make_plan(L.brief(...))`: home / about / services / contact, a marketing
+   home with the library's home sections and the library's marketing hero). The spec's pages, their purpose and the
+   logged-in screens were thrown away - so a school portal, a clinic system and a sweet shop all came out as the same
+   landing page. Every section writer, the art direction and the three looks also read the library brief text
+   ("Pages: home, about, services...", "Home sections: ...", "Hero: ...").
+2. The architect was ONE 6,000-token call on the light ('site_edit', medium) path with no sense of size and no section
+   design: a thin list of page titles + a few stories - "a random plan".
+3. Build mode (no plan step) for a system ask took the same library marketing set.
+
+THE FIX:
+- `site/architect.py`: `size(words)` decides simple / standard / complex IN CODE (app-ish words + length; the model may
+  only raise it). ARCH_SYSTEM rewritten: "the structure is the product" (a web app / portal home is the front door of
+  the system, never a marketing landing page), every page with its OWN sections in order (the real section types listed,
+  custom ones named), journeys end to end, quality (security / privacy / speed / SEO / accessibility), launch phases,
+  risks, assumptions, what she must give; kind (brochure ... portal / marketplace); 16,000 tokens on 'site_art'.
+  `checks()` / `depth()` judge the plan against its own size (every role has stories + a journey + screens, every page
+  its sections, data + rules, quality, phases, risks for complex); a thin plan goes back ONCE (`DEEPEN`) with its gaps
+  named and the deeper answer is kept only if it really has fewer gaps. The card grows flows / quality / phases / risks
+  (info modules, always on) + per-page items (sections) + kind / complexity / depth.
+- `architect.site_plan()`: THE ROOT FIX - the approved plan IS the site's structure: its public pages with their sections
+  in order (a page left without sections falls back to the library's sections for that page type), legal pages / CTA
+  from the library base, the logged-in pages ride the app area (account / admin, built from the data), and `plan.spec`
+  carries kind, who uses it, journeys, app pages. `S.new(shape=...)` takes it; a big page_count grows from it (the site
+  map job keeps it as the base).
+- `site/service.py`: `brief_text()` - every writer (sections, art direction, kit, pictures) reads THE PLAN instead of the
+  library's page list / home sections / hero; the looks use the plan's home hero and its custom top sections; internal
+  links on planned sites.
+- Build mode: POST /api/sites {deep: true} (the Studio sends it) - a system ask (`wants_plan`: portal / web app /
+  dashboard / login / 3+ app words) is planned deep and built at once on her Build tap (`architect.build_now`); a brochure
+  stays on the fast library path.
+- Web Studio plan document: depth line (kind, size, n/m architecture checks, what is still thin), every page as a card with
+  who it is for + its sections, every journey step by step.
+
+Tests: test_v0709_plan_shape.py (7, incl. a browser walk of the plan document); the two module-list pins in
+test_v0407 / test_v0414 moved to the 13 modules.
+NOT VERIFIED on her server with real Opus: the depth of a real plan, the time the deeper call takes (two Opus rounds
+can take a few minutes - the Studio's pending workspace shows it), and the first real portal's looks.
