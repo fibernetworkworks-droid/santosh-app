@@ -433,7 +433,7 @@ def test_purity_no_top_level_httpx():
 
 
 def test_registry_608():
-    assert len(TOOLS) == 615, ("608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, "
+    assert len(TOOLS) == 616, ("608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, "
                                "owner 'T4'). Was: 606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 "
                                "local-browser family) through v0.666. 581 + 1 paisa_sahayak (their v0.587) "
                                "+ 2 sandarbh (v0.590 SANDARBH MANCH) + 1 bhandar (v0.620 BHANDAR MANCH).")
@@ -450,4 +450,4 @@ def test_enum_and_label_pins():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.693.0"                       # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.694.0"                       # conscious-bump guard: moves with every release
