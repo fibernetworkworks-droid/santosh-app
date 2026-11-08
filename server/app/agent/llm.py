@@ -337,8 +337,9 @@ def _target(brain: str) -> tuple[str, str, str, dict, dict]:
     if is_nvidia():
         # SAB GLM: NVIDIA's hosted GLM-5.3-Flash always reasons (it cannot be switched off); the effort is set with
         # reasoning_effort (low | high | max, default max = slow) and chat turns ask clear_thinking (NVIDIA's own page).
-        extra = {"reasoning_effort": st.glm_reasoning_effort or "low",
-                 "chat_template_kwargs": {"clear_thinking": True}}
+        # Those two fields are GLM's own: another NVIDIA model (her key answered only Nemotron) gets a plain request.
+        extra = ({"reasoning_effort": st.glm_reasoning_effort or "low",
+                  "chat_template_kwargs": {"clear_thinking": True}} if "glm" in (st.glm_model or "").lower() else {})
         label = "GLM (NVIDIA)"
     else:
         extra = {"thinking": {"type": st.glm_thinking}} if st.glm_thinking in ("enabled", "disabled") else {}

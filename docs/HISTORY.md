@@ -22900,3 +22900,15 @@ FINAL JAANCH (`docs/FINAL_TEST_PLAN.md`):
 - Live state at the time: NVIDIA reachable (HTTP 200 in 0.08 s), the key lists `z-ai/glm-5.3-flash`, chat calls
   return nothing in 120 s - an NVIDIA-side issue (forum reports of new keys that list models but get nothing / 404 on
   chat). Owner told to keep CLAUDE_ALL_GLM=false / CHAT_LLM=claude until a streamed test answers.
+
+
+## v0.697.0 NVIDIA NEMOTRON (her live tests on the VPS)
+
+- On her NVIDIA key: z-ai/glm-5.3-flash, deepseek-ai/deepseek-v4.1-flash and minimaxai/minimax-m3.1-flash hang (0 bytes
+  in 25-120 s); meta/llama-3.3-70b, qwen3-next-80b, kimi-k2-instruct are end-of-life (410); many listed ids 404. The
+  Nemotron models answer and call tools right: nemotron-3.5-super-vl-120b-a12b 0.54 s (recommended: fast, 120B, reads
+  pictures), nemotron-3.5-lightning-30b-a3b 2.0 s, nemotron-3-ultra-550b-a55b 5.2 s (strongest, slow).
+- `agent/llm.py _target`: GLM's own reasoning fields go only to a model whose name has "glm"; other NVIDIA models get a
+  plain request (the streamed chat path has no ask-again on a refused field). 1 test.
+- Set on the VPS: GLM_MODEL=nvidia/nemotron-3.5-super-vl-120b-a12b, CHAT_LLM=glm, CLAUDE_ALL_GLM=true; then
+  `python -m app.glmdoor check`. The settings keep the GLM_* names (any OpenAI-compatible model works there).

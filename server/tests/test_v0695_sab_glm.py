@@ -179,3 +179,14 @@ def test_one_glm_request_has_a_short_clock(glm):
     from app.agent import llm
     t = llm._glm_timeout()
     assert t.read == 45.0 and t.connect == 10
+
+
+def test_a_nemotron_model_gets_a_plain_request(glm, monkeypatch):
+    """Her key answered only NVIDIA's Nemotron models: GLM's own reasoning fields are not sent to them."""
+    from app.config import get_settings
+    monkeypatch.setattr(get_settings(), "glm_model", "nvidia/nemotron-3.5-super-vl-120b-a12b")
+    asyncio.run(glm["aclient"].messages.create(model="claude-haiku-5-5", max_tokens=100,
+                                               messages=[{"role": "user", "content": "hi"}]))
+    b = glm["glm"][-1]
+    assert b["model"] == "nvidia/nemotron-3.5-super-vl-120b-a12b"
+    assert "reasoning_effort" not in b and "chat_template_kwargs" not in b and "thinking" not in b

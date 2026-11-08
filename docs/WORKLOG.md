@@ -2331,3 +2331,10 @@ Date: 2026-11-08
 Agent: Claude Code (session hoola-project-review-lzrqhu)
 Task: her live NVIDIA test hung - keep Hoola fast whatever GLM does.
 Work: 45 s GLM clock, no retry on timeout, skip GLM 10 min after 2 failures; 2 tests.
+
+---
+Task ID: v0697-nvidia-nemotron
+Date: 2026-11-08
+Agent: Claude Code (session hoola-project-review-lzrqhu)
+Task: her NVIDIA key - GLM-5.3-Flash hangs; find a model that answers.
+Work: her tests found only Nemotron answers; GLM-only reasoning fields; recommended nemotron-3.5-super-vl-120b-a12b; 1 test.
