@@ -38,6 +38,15 @@ jobs:
             [ -n "$file" ] && echo "::warning file=${file#$PWD/},line=$line::$sev $code: $msg"
           done < analyze.txt
           true
+      - name: Gradle from its own server (GitHub's copy answered 504 on 8 Nov)
+        run: |
+          P=android/gradle/wrapper/gradle-wrapper.properties
+          if [ -f "$P" ]; then
+            sed -i -E 's#https\\?://github\.com/gradle/gradle-distributions/releases/download/v([0-9.]+)/gradle-([0-9.]+-(all|bin))\.zip#https\\://services.gradle.org/distributions/gradle-\2.zip#' "$P"
+            grep distributionUrl "$P"
+            U=$(grep distributionUrl "$P" | cut -d= -f2- | sed 's#\\##g')
+            for i in 1 2 3 4; do curl -fsSIL --max-time 30 "$U" >/dev/null && break; echo "gradle server busy, try $i"; sleep $((i*10)); done
+          fi
       - name: Build APK
         run: |
           set -o pipefail
