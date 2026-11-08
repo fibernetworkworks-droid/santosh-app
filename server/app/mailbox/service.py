@@ -143,10 +143,13 @@ def _check_all(tenant: str, folder: str, unread_only: bool, search: str | None, 
     return out
 
 
-def thread(tenant: str, ref: str) -> dict[str, Any]:
+def thread(tenant: str, ref: str, max_messages: int = 30, body_chars: int = 3000) -> dict[str, Any]:
     """v0.181.0 the whole conversation, in order, one call."""
     box, native = split_ref(tenant, ref)
-    out = _guard(box, lambda: box.thread(native))
+    try:
+        out = _guard(box, lambda: box.thread(native, max_messages, body_chars))
+    except TypeError:                                # a box whose thread() takes only the id
+        out = _guard(box, lambda: box.thread(native))
     out["account"] = box.address
     out["id"] = make_ref(box, native)
     for m in out.get("messages", []):
@@ -194,6 +197,46 @@ def _by_box(tenant: str, refs: list[str]) -> dict[str, tuple[Box, list[str]]]:
 
 ACTIONS = ("archive", "mark_read", "mark_unread", "star", "unstar", "move", "spam", "not_spam",
            "mark_important", "mark_not_important", "category")
+
+
+BULK_CAP = 500
+BULK_ACTIONS = ("archive", "mark_read", "mark_unread", "star", "unstar", "move", "mark_not_important")
+
+
+def act_query(tenant: str, action: str, source_folder: str = "inbox", search: str | None = None,
+              account: str | None = None, folder: str = "", cap: int = BULK_CAP) -> dict[str, Any]:
+    """v0.707 ONE call for "saare promotions archive karo": the server finds every matching mail (paged) and acts on all
+    of them, then says how many - the model used to loop check -> act 40 times guessing when it was done."""
+    if action not in BULK_ACTIONS:
+        raise MailError(f"Bulk action in mein se: {', '.join(BULK_ACTIONS)} (delete / spam ke liye email_delete card).")
+    if action == "move" and not folder:
+        raise MailError("Kis folder/label mein?")
+    box = get_box(tenant, account)
+    if box.kind != "gmail" or not hasattr(box, "ids_for"):
+        raise MailError("Query se bulk kaam abhi Gmail par hai - doosre mailbox ke liye email_check ke ids do.")
+    ids, more = _guard(box, lambda: box.ids_for(source_folder or "inbox", search, max(1, min(int(cap), 2000))))
+    if not ids:
+        return {"done": action, "count": 0, "account": box.address, "note": "Is filter mein koi mail nahi mili."}
+
+    def go():
+        if action == "archive":
+            box.archive(ids)
+        elif action in ("mark_read", "mark_unread"):
+            box.mark(ids, action == "mark_read")
+        elif action in ("star", "unstar"):
+            box.star(ids, action == "star")
+        elif action == "mark_not_important":
+            box.mark_important(ids, False)
+        else:
+            box.move(ids, folder)
+    _guard(box, go)
+    out = {"done": action, "count": len(ids), "account": box.address, "from": source_folder,
+           "say": f"{len(ids)} mails par '{action}' ho gaya. Ab dobara check karke loop mat chalao."}
+    if more:
+        out["more"] = True
+        out["say"] = (f"{len(ids)} mails par '{action}' ho gaya; aur bhi bachi hain (ek baar mein {cap} tak). Owner se "
+                      "poochho aage karna hai to wahi call ek baar aur.")
+    return out
 
 
 def act(tenant: str, refs: list[str], action: str, folder: str = "") -> dict[str, Any]:

@@ -157,6 +157,7 @@ class Settings(BaseSettings):
     chat_context_limit_claude: int = 200000
     chat_context_limit_omniroute: int = 128000   # the smallest window your OmniRoute combo can land on
     chat_context_full_at: float = 0.75     # the request may fill this share of the window; above it the safety net runs
+    chat_context_max_tokens_glm: int = 40000   # v0.707 the same cap while the GLM door answers (no prompt cache)
     chat_context_max_tokens: int = 0       # v0.244 cost cap: compact at this many tokens whatever the model's window (0 = off)
     # v0.242 FULL CLAUDE MODE Phase 2 (agent/compact.py): Claude-style compaction at the full_at line
     about_me: bool = True                  # v0.250 "Mere baare mein" page rebuilt daily for active owners (false = never rebuilt)

@@ -23043,3 +23043,13 @@ retried 3x; thread() strips th: and falls back to thread_of; history(page_token)
 flag + RESULT_LIMIT email_check 12000; thread_act trash refused (confirmed=False) -> email_delete card; send_draft
 getaddresses; gmail_draft_edit keeps Bcc; email_draft reply account = source box, replace_id (_cancel_pending),
 _near_miss typo warning (check_address). Tests test_v0706_gmail_gehri_jaanch.py (10).
+
+## v0.707.0 GMAIL WAVE 2
+
+Owner: "GO WAVE 2". The open items of docs/tests/GMAIL_AUDIT_2026-11-08.md: `ms.act_query` + `GmailBox.ids_for` (bulk by
+filter, paged, 500 cap; email_action takes source_folder / query, ids now optional), `_modify` chunks 1,000;
+`gmail.NOT_SUPPORTED` / `_not_for_consumer` (Workspace-only settings, delete-forever); `accounts.RECONNECT` +
+NotConnected for invalid_grant (linked mailboxes; the sign-in path keeps its v0.70 card); sync snooze per thread + warning / honest wake line; email_drafts eml_
+guard + resolve on edit; many_recipients warning; email_thread 15 x 1,500 newest; prune CLEAR_TRIGGER_GLM 12000 (no batch);
+context.window caps at chat_context_max_tokens_glm 40000 while the GLM door is active; events QUEUED TO SEND wording.
+Tests test_v0707_gmail_wave2.py (8).

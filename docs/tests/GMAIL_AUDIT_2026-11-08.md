@@ -20,7 +20,23 @@ the code. Owner ask: "GO DEEP IN GMAIL --- FIND ALL POSSIBLE FLAWS --- THAT HOOL
 | 12 | Editing a Gmail draft dropped its Bcc | Bcc vanished | Bcc carried over |
 | 13 | "primary" tab refused by set_category | "primary mein daalo" failed | alias to CATEGORY_PERSONAL |
 
-## Still open (next wave)
+## Fixed in v0.707 (wave 2)
+- Bulk by filter in ONE call: email_action with source_folder / query and no ids - server pages every match (500 cap), batchModify chunked at 1,000.
+- Workspace-only settings (forwarding address, auto-forward, send-as create, delegates) and delete-forever now say plainly they are not possible - no "dobara jodiye" loop.
+- Expired login on a linked mailbox (invalid_grant) = NotConnected with the plain reconnect line (the Google sign-in path already had its own reconnect card, kept).
+- Snooze archives / wakes the whole conversation and says when it failed.
+- eml_ card ids refused by email_drafts with the replace_id hint; email_drafts edit resolves names; > 10 visible recipients warned.
+- email_thread: newest 15 messages x 1,500 chars.
+- GLM door: old tool results cleared past 12k chars (step by step), chat compacts at 40k tokens.
+- Queued-to-send wording in the card news (not "SCHEDULED").
+
+## Still open after wave 2
+- GLM door has no streaming (a call hears nothing until the whole answer is written).
+- Voice-started goals / crews drop the call history trim (goal.py / team.py reset VOICE_BRAIN_NOW).
+- Bare id with 2 mailboxes still goes to the default box.
+- Bulk archive confirm card - her decision.
+
+## Original list (wave 1 era)
 - Settings that need scopes consumer OAuth cannot get: delete-forever (`https://mail.google.com/`), forwarding / send-as
   create (`gmail.settings.sharing`) -> they 403 and say "Gmail dobara jodiye" in a loop. Needs a plain "not supported" line.
 - Expired sign-in (invalid_grant / GoogleReconnect) reaches the model as raw JSON / a non-MailError instead of NotConnected.

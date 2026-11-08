@@ -2422,3 +2422,12 @@ Work Log:
 - 3 parallel read-only audits; findings verified in code; 13 fixed; open list in docs/tests/GMAIL_AUDIT_2026-11-08.md
 Stage Summary:
 - 10 new tests; email suites run
+
+---
+Task ID: v0.707.0 GMAIL WAVE 2
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: the Gmail audit's open items
+Work Log:
+- bulk by filter, not-supported settings, NotConnected on expiry, snooze per thread, draft id guard, GLM history caps
+Stage Summary:
+- 8 new tests; wider suites run

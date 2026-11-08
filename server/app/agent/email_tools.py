@@ -99,11 +99,19 @@ EMAIL_TOOLS = [
     {"name": "email_action", "description": (
         "Organise emails (done at once, can be undone): archive, mark_read, mark_unread, star, unstar, move (to "
         "folder/label; created if missing), spam, not_spam, mark_important, mark_not_important, category (folder= "
-        "personal / social / updates / forums / promotions; Gmail). ids from email_check. To delete use email_delete."),
+        "personal / social / updates / forums / promotions; Gmail). ids from email_check. To delete use email_delete. "
+        "ALL mails of a filter at once ('saare promotions archive karo', 'sab unread ko read karo'): give NO ids, give "
+        "source_folder (inbox / promotions / social / updates / ...) and/or query (Gmail search like from:amazon "
+        "older_than:30d) - the server acts on every match (up to 500) in ONE call and returns the count. Never loop "
+        "email_check -> email_action for a bulk job."),
      "input_schema": {"type": "object", "properties": {
          "ids": {"type": "array", "items": {"type": "string"}},
-         "action": {"type": "string", "enum": list(ms.ACTIONS)}, "folder": {"type": "string"}},
-         "required": ["ids", "action"]}},
+         "action": {"type": "string", "enum": list(ms.ACTIONS)}, "folder": {"type": "string",
+                    "description": "Target folder/label for move, or the tab for category"},
+         "source_folder": {"type": "string", "description": "Bulk: which folder / tab to act on (no ids)"},
+         "query": {"type": "string", "description": "Bulk: Gmail search to act on (no ids)"},
+         "account": {"type": "string"}},
+         "required": ["action"]}},
     {"name": "email_label", "description": (
         "Manage Gmail labels. action='list' shows them as a nested tree (Gmail nests with /). 'create' (name) — "
         "'Office/Clients' creates the nested path too. 'rename' (name, new_name). 'color' (name, color: red / orange / "
@@ -325,7 +333,8 @@ async def email_read(ctx: Ctx, id, **_):
 
 
 async def email_thread(ctx: Ctx, id, **_):
-    return await _t(ms.thread, ctx.tenant_id, str(id))
+    # v0.707 a long thread was up to 30 x 3,000 chars (~90k) in ONE result; newest 15 at 1,500 each is plenty to answer
+    return await _t(ms.thread, ctx.tenant_id, str(id), 15, 1500)
 
 
 async def email_triage(ctx: Ctx, hours=24, unread_only=True, account=None, **_):
@@ -533,6 +542,15 @@ async def email_draft(ctx: Ctx, body, to=None, cc="", bcc="", subject=None, repl
                            follow_up_days=int(follow_up_days) if follow_up_days else None, markdown=bool(markdown),
                            from_alias=alias or None)
     view = await _t(work)
+    try:   # v0.707 many VISIBLE recipients: everyone sees everyone's address
+        import email.utils as _eu
+        n_vis = len(_eu.getaddresses([view.get("to", "") or "", view.get("cc", "") or ""]))
+        if n_vis > 10:
+            view = {**view, "many_recipients": n_vis,
+                    "say": f"{n_vis} log ek doosre ka address dekh payenge. Owner se poochho - alag alag bhejna ho to "
+                           "email_bulk, ya baaki ko bcc mein daalo."}
+    except Exception:
+        pass
     try:   # v0.706 a mistyped address went in unchecked (kunaltelgote23 for kunaltlgt23) - name the near miss
         warn = await _t(_near_miss, ctx.tenant_id, view.get("to", "") + "," + (view.get("cc") or ""))
         if warn:
@@ -574,7 +592,13 @@ async def email_forward(ctx: Ctx, id, to, cc="", note="", include_attachments=Tr
             "note": "Forward ka draft card chat mein hai; user Bhejo dabayega."}
 
 
-async def email_action(ctx: Ctx, ids, action, folder="", **_):
+async def email_action(ctx: Ctx, action, ids=None, folder="", query=None, source_folder=None, account=None, **_):
+    if not ids and (query or source_folder):
+        # v0.707 bulk by filter: the server pages through every match and acts once (no check -> act loop)
+        return await _t(ms.act_query, ctx.tenant_id, action, source_folder or "inbox", query, account, folder or "")
+    if not ids:
+        raise ToolError("Kaunsi emails? ids do (email_check se), ya poore filter ke liye source_folder / query do "
+                        "(jaise source_folder='promotions').")
     return await _t(ms.act, ctx.tenant_id, [str(i) for i in ids or []], action, folder or "")
 
 
@@ -589,6 +613,11 @@ async def email_label(ctx: Ctx, action, name="", new_name="", color="", account=
 
 async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None, to=None, cc=None, subject=None,
                        body=None, markdown=None, **_):
+    if id and str(id).startswith("eml_"):
+        # v0.707 two kinds of draft id: eml_... is Hoola's own card (email_draft), not a Gmail draft - it 404'd here as
+        # "email nahi mila"
+        raise ToolError(f"{id} Hoola ka card hai, Gmail draft nahi. Isko badalna ho to email_draft replace_id={id} ke "
+                        "saath naye subject / body / to se dobara banao; bhejna = card par owner ka tap.")
     if action == "delete":
         if not id:
             raise ToolError("Kaunsa draft? id do (email_drafts list se).")
@@ -604,6 +633,9 @@ async def email_drafts(ctx: Ctx, action="list", id=None, limit=10, account=None,
             raise ToolError("Kaunsa draft? id do (email_drafts list se).")
         if to is None and cc is None and subject is None and body is None:
             raise ToolError("Kya badalna hai? to / cc / subject / body mein se jo badle wahi dijiye.")
+        # v0.707 names / typos went straight into the To header - resolved like email_draft does
+        to = None if to is None else _resolve(ctx, str(to), "to")
+        cc = None if cc is None else _resolve(ctx, str(cc), "cc")
         return await _t(ms.gmail_draft_edit, ctx.tenant_id, str(id), None if to is None else str(to),
                         None if cc is None else str(cc), None if subject is None else str(subject),
                         None if body is None else str(body), markdown, account)
