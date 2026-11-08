@@ -36,7 +36,14 @@ def test_voice_and_quick_lane_share_the_rules():
 
 
 def test_full_guide_when_no_families():
-    assert prompts.system_text(None) == prompts.SYSTEM
+    # v0.688 KAAM MANCH: the always-on work-discipline tips append AFTER the guide (kaam_enabled
+    # off = the old byte-identity, asserted too); the admission cut itself still drops nothing
+    from app.agent import kaam_laws
+    from app.config import get_settings
+    if get_settings().kaam_enabled:
+        assert prompts.system_text(None) == prompts.SYSTEM + "\n\n" + kaam_laws.tips_block()
+    else:
+        assert prompts.system_text(None) == prompts.SYSTEM
     full = prompts.system_prompt(False, "", None)
     assert "GST work (she" in full and "Payroll (" in full
 
@@ -122,4 +129,4 @@ def test_prompt_slim_off_sends_the_full_guide(bz, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.687.0"
+    assert APP_VERSION == "0.688.0"

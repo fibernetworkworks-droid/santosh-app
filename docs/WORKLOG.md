@@ -1,4 +1,9 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.688.0 KAAM MANCH (the OWL work-discipline port)
+Agent: main (kaam laws lane)
+Task: owner "GO" on the OWL deploy plan (download/HOOLA_OWL_DEPLOY_PLAN.md, 6 decisions locked: laws+tips shape, KAAM MANCH name, all lanes, default ON + caps, no new tool, ~30 tests).
+Work Log: REBASE PROTOCOL (planned v0.686, shipped on their v0.687 tip c78c2164c, their base kept whole); server/app/agent/kaam_laws.py NEW (~150 LOC, stdlib-re only); prompts.py _kaam_tips() appended post-cut in system_text (both paths); santosh.py the ledger note at natural turn end + the done backstop in _pakka_check; config.py kaam_enabled + kaam_ledger_enabled (default on); test_v0688_kaam_manch.py NEW (32, offline); the v0.221 full-guide contract test re-pinned to SYSTEM+tips (off = old identity); ritual_v0688.py swept (parser-stamp guard), pubspec 0.688.0+687, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors; battery green, jharokha 22 reds proven pre-existing (missing Chromium, stash run).
+Stage Summary: pushed to main as v0.688.0 + tag; vps-ops deploy fired; live test = her first (Kaam:) receipt line under a worked answer.
 Task ID: v0.680.0 SAVE THE STATE (P9 HOOLA ADOPT live)
 Agent: main (aep adoption lane)
 Task: owner "PERFECT. IT IS NOW LIVE ON HOOLA AI --- SAVE THE STATE" after the P9 AEP adoption deploy.

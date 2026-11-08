@@ -353,6 +353,11 @@ class Settings(BaseSettings):
     kala_catalog_ttl_seconds: int = 300    # tool, the google/skills catalog) - index.json fetched byte-exact
                                            # behind this in-process TTL; documents fetched fresh every read;
                                            # off means off (honest NEED_SETUP)
+    kaam_enabled: bool = True              # v0.688 KAAM MANCH: the work-discipline layer (OWL-derived, IDEA-ONLY
+                                           # from camel-ai/owl@2df367e, zero upstream code): the search/verify
+                                           # tips on the system prompt + the done-needs-proof backstop + the
+                                           # (Kaam: ...) ledger note - no tool, no key, no network
+    kaam_ledger_enabled: bool = True       # ... the ledger note alone can go quiet without touching the rest
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)

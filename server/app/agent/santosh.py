@@ -1768,6 +1768,21 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 bus.publish(conversation_id, "message", {"role": "assistant", "text": note, "source": "agent",
                                                          "note": True, **_tag(live, True)})
                 _save(conversation_id, "assistant", [{"type": "text", "text": note}], display=note)
+            # v0.688 KAAM MANCH: the work receipt - one (Kaam: ...) note row under the answer when tools ran
+            # (OWL's per-round honest record, miniaturized; pure arithmetic over state, never an estimate). The
+            # ledger switch is separate so the line can go quiet without touching the tips or the backstop.
+            if settings.kaam_enabled and settings.kaam_ledger_enabled and state.get("calls"):
+                from . import kaam_laws as _kaam
+                _g0 = state.get("goal")
+                _line = _kaam.ledger(state, ran_steps,
+                                     (settings.agent_goal_max_steps if (state.get("goal") or state.get("extended"))
+                                      else settings.agent_max_steps),
+                                     plan_left=(len(_goal.steps_left(_g0)) if _g0 else None),
+                                     plan_total=(len(_g0.get("steps") or []) if _g0 else 0))
+                if _line:
+                    bus.publish(conversation_id, "message", {"role": "assistant", "text": _line, "source": "agent",
+                                                             "note": True, **_tag(live, True)})
+                    _save(conversation_id, "assistant", [{"type": "text", "text": _line}], display=_line)
             break
         async def _one(b: dict) -> dict:
             """One tool_use block, run to its tool_result (v0.189: every path RETURNS exactly one result, so the
@@ -2178,6 +2193,15 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
     real = [c for c in calls if c.get("tool") not in pakka.SKIP]
     if not real:
         return ""
+    # v0.688 KAAM MANCH (OWL's <TASK_DONE> law, in code): the free backstop for the paths the model self-check
+    # never reaches (the simple-job skip below, the checks cap above) - a strong done-claim while EVERY real
+    # call failed is always wrong, and it costs no model call to know it. Sets the correction note only.
+    if settings.kaam_enabled:
+        from . import kaam_laws as _kaam
+        _note = _kaam.done_note(state, final_text)
+        if _note:
+            state["correct"] = _note
+            return ""
     failed = any(not c.get("ok") for c in real)
     if not failed and len(real) < 3:          # a simple job that went fine: no extra model call
         return ""
