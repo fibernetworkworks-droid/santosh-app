@@ -39,7 +39,8 @@ PORTAL = {
                       {"type": "custom", "name": "Admission form", "design": "the admissions list form"}]},
         {"slug": "fee-structure", "title": "Fee structure", "purpose": "class-wise fees", "for": "public",
          "sections": [{"type": "hero"}, {"type": "pricing_table", "design": "class-wise fee table, values from her"}]},
-        {"slug": "contact", "title": "Contact", "purpose": "pata, phone", "for": "public", "sections": []},
+        {"slug": "contact", "title": "Contact", "purpose": "pata, phone", "for": "public",
+         "sections": [{"type": "hero"}, {"type": "contact_block", "design": "office phone"}, {"type": "map_hours"}]},
         {"slug": "my-child", "title": "My child", "purpose": "fees + attendance of her child", "for": "member",
          "sections": [{"type": "custom", "name": "Fee status", "design": "paid / due rows"}]},
         {"slug": "mark-attendance", "title": "Mark attendance", "purpose": "teacher marks the class", "for": "staff",
@@ -144,7 +145,11 @@ def test_build_this_plan_builds_the_plans_own_structure(deep_env):
     assert [x["type"] for x in home["sections"]][:2] == ["hero", "custom_quick_actions"] or \
         home["sections"][1]["label"] == "Quick actions"
     assert "PORTAL FRONT DOOR" in home["sections"][0]["design"]
-    assert [x["type"] for x in plan["pages"][3]["sections"]][:1] == ["hero"] and len(plan["pages"][3]["sections"]) >= 2   # fallback
+    from app.site import architect as AR                                                     # a page with no sections: library fallback
+    base = {"pages": [{"slug": "home", "sections": []}], "cta": "call"}
+    fb = AR.site_plan({"pages": [{"slug": "home", "title": "Home", "for": "public", "sections": []},
+                                 {"slug": "contact", "title": "Contact", "for": "public", "sections": []}]}, {}, base)
+    assert [x["type"] for x in fb["pages"][1]["sections"]] == ["hero", "contact_block", "map_hours"]
     assert plan["spec"]["kind"] == "portal" and {x["title"] for x in plan["spec"]["app_pages"]} == {"My child", "Mark attendance"}
     assert r.status == "looks"
     # every writer reads THE PLAN, not the library's page list / home sections / marketing hero
@@ -156,7 +161,13 @@ def test_build_this_plan_builds_the_plans_own_structure(deep_env):
     p = S._section_prompt(r, "home", home["sections"][1], [])
     assert "THE APPROVED PLAN" in p and "INTERNAL LINKS" in p and "admissions/" in p
     assert S._home_hero(plan).startswith("PORTAL FRONT DOOR")
-    assert [s["label"] for s in S._look_sections(r)][:1] == ["Quick actions"]               # the looks show the plan's top
+    from app.config import get_settings
+    st = get_settings()
+    old, st.site_look_sections = st.site_look_sections, 3
+    try:
+        assert [s["label"] for s in S._look_sections(r)][:1] == ["Quick actions"]           # the looks show the plan's top
+    finally:
+        st.site_look_sections = old
 
 
 def test_build_mode_gives_a_system_ask_the_deep_plan(deep_env):
@@ -183,7 +194,10 @@ def test_studio_draws_the_plan_as_a_document():
 def test_the_plan_document_in_a_browser(deep_env, arena_server):
     base, browser, key = arena_server
     c = TestClient(__import__("app.main", fromlist=["app"]).app)
-    card = c.post("/api/site-architect", json={"words": "hamare school ka portal - admission, fees, attendance, notices"}).json()
+    res = c.post("/api/site-architect", json={"words": "hamare school ka portal - admission, fees, attendance, notices"},
+                 headers={"Authorization": "Bearer " + key})
+    assert res.status_code == 200, res.text
+    card = res.json()
     ctx = browser.new_context(viewport={"width": 1440, "height": 900})
     ctx.add_init_script(f"try {{ localStorage.setItem('hoola.console.token', '{key}') }} catch (e) {{}}")
     pg = ctx.new_page()
