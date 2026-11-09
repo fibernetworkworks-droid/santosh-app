@@ -3283,3 +3283,45 @@ body.albon{overflow:hidden}
 #seekh .sk-row-bd small{display:block;font-size:11.5px;color:var(--mut)}
 #seekh .sk-perform{flex-shrink:0}
 @media (max-width:560px){#seekh .sk-row{flex-wrap:wrap}#seekh .sk-perform{width:100%}}
+
+/* ================================================================================================
+   v0.719 SAAF COMPOSER: with a side panel / studio open the chat column is ~320-560px and the composer
+   row squeezed every button to 21px, broke the chip words onto two lines and pushed Send out of the box.
+   The composer now sizes itself by ITS OWN width (container query), never the window: buttons never
+   shrink, chips never wrap their words (they become icons when space is short), the right group
+   (mic / call / stop / send) always sits flush right inside the box.
+   ================================================================================================ */
+#app #composer{container-type:inline-size;container-name:composer}
+#app #composer .row{flex-wrap:nowrap;min-width:0}
+#app #composer .row>*{flex:none}
+#app #composer .row>.ib{min-width:36px}
+#app #composer .qchips{flex-wrap:nowrap;min-width:0}
+#app #composer .qc{white-space:nowrap;flex:none}
+#app #composer .row>.who{margin-inline:auto 4px;min-width:0;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto}
+#app #composer .row>#micBtn{margin-left:auto}
+#app #composer .stopb{white-space:nowrap}
+@container composer (max-width:640px){
+ #app #composer .row>.who{display:none}
+ #app #composer .callb span{display:none}
+ #app #composer .callb{padding:0 11px}
+}
+@container composer (max-width:520px){
+ #app #composer .row{gap:4px}
+ #app #composer .row>.ib{width:36px;height:36px}
+ #app #composer .qchips{gap:4px}
+ #app #composer .qc{font-size:0;gap:0;width:32px;height:32px;padding:0;justify-content:center}
+ #app #composer .qc svg{width:15px;height:15px}
+ #app #composer .stopb{padding:0 10px}
+}
+@container composer (max-width:360px){
+ #app #composer .row{gap:3px}
+ #app #composer .row>.ib{width:32px;height:32px;min-width:32px}
+ #app #composer .qc{width:30px;height:30px}
+ #app #composer .row>.ib svg{width:18px;height:18px}
+ #app #composer .callb{display:none}
+}
+@container composer (max-width:280px){
+ #app #composer .row{flex-wrap:wrap;row-gap:6px}
+ #app #composer .qchips{order:9;flex-basis:100%}
+ #app #composer .qc{font-size:12px;gap:5px;width:auto;padding:0 10px}
+}

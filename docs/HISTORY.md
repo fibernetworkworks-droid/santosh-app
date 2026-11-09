@@ -1,3 +1,21 @@
+## v0.719.0 SAAF COMPOSER — the chat typing box stays intact with a side panel open (9 Nov 2026; owner, screenshot: "when any artifact, pdf, doc open in right side panel chat typing section icon gets misplaced ... all content must remain intact not misplaced"; their SEEKH MANCH ON THE CONSOLE took 0.718.0 first, both kept)
+
+Opening an artifact / PDF / doc in the right panel leaves the chat column about 250-560 px wide. The composer row was
+built for the full width: its buttons shrank to 21 px, "Deep research" and "Hoola PC" broke onto two lines, and Send
+was pushed out past the box edge. Measured in a real browser before the fix (1280 px: row 285 px, items needed 372).
+
+The fix (v2.css, the SAAF COMPOSER block at the end): `#composer` is a CSS size container named `composer`, so the row
+responds to the composer's OWN width, never the window. Every row item is `flex:none` (no squeezing), chip words never
+wrap, the mic carries `margin-left:auto` so mic / call / stop / send stay flush right whether or not the name label is
+shown. Steps: <= 640 px the "Santosh · English" label hides and Call shows its icon only; <= 520 px the chips become
+32 px icons (their accessible names and titles stay); <= 360 px buttons 32 px; <= 280 px the chips move to their own
+line under the buttons - nothing is ever dropped. The normal full-width view is unchanged.
+
+Tests: NEW test_v0719_saaf_composer.py (2: the CSS pins + a real-browser walk at 1180 / 1280 / 1440 / 1700 px, landing
+and docked composer with the panel open - every control present, inside the box, >= 30 px, chips on one line, Send
+flush right; FAILS on the old CSS, proven). Version layer: APP_VERSION 0.719.0, pubspec 0.719.0+718, 34 console stamps,
+test pins swept 0.718.0 -> 0.719.0 (their seekh story pin kept at v0.718.0), the newest-story pin moved to SAAF COMPOSER.
+
 ## v0.718.0 SEEKH MANCH ON THE CONSOLE — the HOOLA AI Video Learner page (9 Nov 2026; owner: "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT — CHECK THE EXISTING CONSOLE DESIGN AND IN AI EMPLOYEE SECTION BUILD THE HOOLA AI VIDEO LEARNER. In that, a panel where user can load a video and HOOLA AI will see this and note in REALTIME. Once done, HOOLA AI will prepare a MEMORY for this. And IN THIS PAGE ONLY user will tell HOOLA to PERFORM THIS TASK NOW — then HOOLA will use HIS BROWSER for doing that task" + "PERFECT START THE DEPLOYMENT" on the prototype shown in chat; built as v0.716.0, their NAYA ROOP took 0.716.0 and their FILE CARD SAHI took 0.717.0 while it sat built — REBASE PROTOCOL onto their tip, all kept)
 
 v0.713 taught Hoola to learn a way of working from a video (SEEKH MANCH, the `seekh_video` tool). This
