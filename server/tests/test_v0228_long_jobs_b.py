@@ -178,8 +178,8 @@ def test_phone_and_console_show_report_and_continue():
     assert ".greport" in (ROOT / "server/app/static/console/v2.css").read_text()
     prompt = (ROOT / "server/app/agent/prompts.py").read_text()
     # v0.257 the prompt orders Claude's rhythm: say it first, then one finding-line per step
-    assert "CHALTE CHALTE BOLO" in prompt
-    assert "bade kaam se PEHLE ek vaakya" in prompt
+    assert "TALK AS YOU WORK" in prompt
+    assert "BEFORE a big job, one sentence" in prompt
     assert "har step ka koi line chat mein mat likho" not in prompt    # v0.240's silence is gone
     assert "Aakhri jawab hamesha chaar hisson mein" not in prompt      # ...and v0.228's bullet dump stays gone
 
