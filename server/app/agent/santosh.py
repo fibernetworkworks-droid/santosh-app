@@ -1161,7 +1161,9 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     _hers = (getattr(ctx, "actor", "owner") or "owner")
     ASK_NOW.set(user_text if (_hers == "owner" or _hers.startswith("approved:")) else "")
     state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
-                   "conv": conversation_id, "actor": getattr(ctx, "actor", "owner") or "owner"}
+                   "conv": conversation_id, "actor": getattr(ctx, "actor", "owner") or "owner",
+                   # parity Phase 5: the reply is only what the model wrote (no stapled notes / ledger line)
+                   "answer_only": bool(getattr(settings, "chat_answer_only", False))}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
     state["big"] = bool(ctx.actor in ("owner", "goal") and settings.agent_goal and _goal.looks_big(user_text or ""))
@@ -1243,7 +1245,9 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
                                           "routine" if actor == "goal" else actor)
         if learned and learned.get("learned"):
             bus.publish(conversation_id, "procedure", {"event": "learned", "id": learned["learned"], "title": learned["title"]})
-    if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked"):
+    if user_text and actor == "owner" and settings.draft_check and not state.get("hard_checked") \
+            and not state.get("answer_only"):   # parity Phase 5: no after-the-reply note
+
         # (v0.436 a hard answer already passed the self-check before she saw it - no second, weaker look after)
         # v0.223 the last look, in the background: the reply is already on her screen, so nothing waits for this
         from . import draftcheck
@@ -1801,7 +1805,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 and not state.get("hard_rechecked"):
             # wave 13: the corrected answer is checked again (free checks only); still failing = said plainly
             state["hard_rechecked"] = True
-            if await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings, free_only=True):
+            if await _hard_check(conversation_id, state, "\n\n".join(texts), history, settings, free_only=True) \
+                    and not state.get("answer_only"):   # parity Phase 5: no note stapled onto the corrected answer
                 STATS_HARD_UNSURE["n"] += 1
                 blocks = blocks + [{"type": "text", "text": HARD_UNSURE.strip()}]
                 history[-1] = {"role": "assistant", "content": blocks}
@@ -1824,7 +1829,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if stop != "tool_use" and _gyaan.used(conversation_id):
                 # v0.134 Gyaan: links from retrieved text removed, numbers checked against the cited sources, source chips
                 final_text, srcs = _gyaan.finish(conversation_id, final_text, state.get("request", ""))
-                final_text = await _gyaan.ground(conversation_id, final_text)      # v0.135 model check of cited sentences
+                if not state.get("answer_only"):   # parity Phase 5: the ground check appends a note - not any more
+                    final_text = await _gyaan.ground(conversation_id, final_text)  # v0.135 model check of cited sentences
                 if srcs:
                     bus.publish(conversation_id, "gyaan_sources", {"sources": srcs})
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent", **_tag(live)})
@@ -1892,7 +1898,12 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                                       else settings.agent_max_steps),
                                      plan_left=(len(_goal.steps_left(_g0)) if _g0 else None),
                                      plan_total=(len(_g0.get("steps") or []) if _g0 else 0))
-                if _line:
+                if _line and state.get("answer_only"):
+                    # parity Phase 5: the receipt is step data, never a chat row - the console shows it small and grey
+                    # inside the folded "Worked for" steps; the phone ignores the kind; the model never re-reads it
+                    state["ledger"] = _line
+                    bus.publish(conversation_id, "ledger", {"line": _line})
+                elif _line:
                     bus.publish(conversation_id, "message", {"role": "assistant", "text": _line, "source": "agent",
                                                              "note": True, **_tag(live, True)})
                     _save(conversation_id, "assistant", [{"type": "text", "text": _line}], display=_line)
@@ -2314,6 +2325,14 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
         from . import kaam_laws as _kaam
         _note = _kaam.done_note(state, final_text)
         if _note:
+            if state.get("answer_only"):
+                # parity Phase 5: the model corrects itself once; a note goes out only for a real action claim
+                if not state.get("done_nudged"):
+                    state["done_nudged"] = True
+                    return SELF_CORRECT_NUDGE.format(what="every tool in this turn failed, so what was asked is not done")
+                if draftcheck.action_claim(final_text):
+                    state["correct"] = _note
+                return ""
             state["correct"] = _note
             return ""
     failed = any(not c.get("ok") for c in real)
@@ -2335,8 +2354,21 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
                 "If it truly cannot be done, say plainly what is done, what is left and what she can do.")
     if not v["claim_ok"]:
         pakka.STATS["corrected_claims"] += 1
+        if state.get("answer_only"):
+            # parity Phase 5: ask the model once to say it right; no note unless a real action claim stays false
+            if not state.get("claim_nudged"):
+                state["claim_nudged"] = True
+                return SELF_CORRECT_NUDGE.format(what=(v["missing"] or "some part") + " is still left")
+            if not draftcheck.action_claim(final_text):
+                return ""
         state["correct"] = "(To be clear: this is still left - " + (v["missing"] or "some part") + ".)"
     return ""
+
+
+# parity Phase 5: the one self-correction ask (the model rewrites its own answer; nothing is stapled on after)
+SELF_CORRECT_NUDGE = ("[System check, not the user] Your answer claims more than was really done: {what}. Write your "
+                      "answer again in your own words, saying plainly what is done and what is not. Do not claim "
+                      "anything that no tool result shows.")
 
 
 _STOP_AT: dict[str, float] = {}

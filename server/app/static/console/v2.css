@@ -3392,3 +3392,5 @@ body.albon{overflow:hidden}
 /* v0.726 the card sizes by its OWN width (the chat column shrinks when the side panel opens, the window does not) */
 @container hpcard (max-width:520px){#app .hmpage .hp-top{flex-wrap:wrap;gap:12px}#app .hmpage .hp-acts{flex:0 0 100%}#app .hmpage .hp-acts .btn{flex:1}#app .hmpage .hp-thumb{width:64px}}
 @container hpcard (max-width:340px){#app .hmpage .hp-thumb{display:none}#app .hmpage .hp-top{padding:12px}#app .hmpage .hp-steps{padding:8px 12px 10px}#app .hmpage .hp-foot{padding:8px 12px}}
+/* parity Phase 5: the turn's work receipt inside the folded steps - small, grey, never in the reply */
+#app .tools .tl .wledger{font-size:12px;color:var(--dim);padding:4px 0 0;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}

@@ -677,6 +677,16 @@ function foldLive(t = TURN) {
   g.el.querySelectorAll('.ts .hm-spin').forEach(sp => { sp.parentElement.className = 'ic hm-tick'; sp.parentElement.innerHTML = HM_TICK; });
   g.el.querySelector('.tl').classList.add('hmrows');
 }
+/* parity Phase 5: the turn's work receipt ("4/24 steps · 2 calls (2 ok) · done ✓ · tools") is step data, not a chat
+   row - it sits small and grey at the bottom of the folded "Worked for" steps; nothing shows when there is no fold */
+function ledgerLine(line, root = col, t = TURN) {
+  if (!line) return;
+  const tl = t?.live?.tl || [...root.querySelectorAll('.hmfold')].pop()?.querySelector('.tl');
+  if (!tl) return;
+  tl.querySelector('.wledger')?.remove();
+  const d = document.createElement('div'); d.className = 'wledger'; d.textContent = String(line).replace(/^\(Kaam:\s*/, '').replace(/\)$/, '');
+  tl.appendChild(d);
+}
 function stepEvent(p) { liveStep(p); simpleProgress('step',p); }   // v0.721 one row: liveStep fills its list, simpleProgress its words
 function closeTurnTools(t = TURN) {
   if (!t) return;
@@ -1250,6 +1260,7 @@ function onEvent(ev) {
       hoolaText(p.text || '', p.source, ev.id, ev.at); return;
     case 'typing': typing(!!p.on); return;
     case 'step': landing(false); stepEvent(p); return;
+    case 'ledger': ledgerLine(p.line); return;   // parity Phase 5: the receipt lives in the steps fold
     case 'work': workEvent(p); return;
     case 'say': {
       simpleProgress('say',p);
@@ -1277,6 +1288,7 @@ function renderEvents(events, any) {
       else hoolaText(p.text || '', p.source, ev.id, ev.at);
     }
     else if (ev.kind === 'step') continue;   // v0.171 the transcript keeps what each turn did (steps=1)
+    else if (ev.kind === 'ledger') { flushStepBuf(); ledgerLine(p.line, SINK, null); }   // parity Phase 5
     else { flushStepBuf(); renderCard(ev.kind, p, ev.at); }
   }
   flushStepBuf();
@@ -1509,7 +1521,7 @@ const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'memory_used', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',
-  'maps_places',
+  'maps_places', 'ledger',
   'biz_inbox', 'biz_appointment', 'propagent_listing', 'chai_order']);
 let ACC = null, ACC_LAST = 0;
 function accountStream() {
