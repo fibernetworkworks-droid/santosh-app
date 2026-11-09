@@ -494,8 +494,9 @@ def block(tenant: str, conversation_id: str = "") -> str:
     try:
         js = jobs(tenant, 24, 40 if conversation_id else 12)
         if conversation_id:
-            from .fence import chats_in, keep
-            js = keep(js, chats_in(tenant, conversation_id))[:12]
+            from .fence import own_chat, keep, alone
+            # v0.714 HAR CHAT ALAG: only THIS chat's jobs (a job with no chat - background - is not its work either)
+            js = keep(js, own_chat(tenant, conversation_id), strict=alone())[:12]
     except Exception:
         return ""
     live = [j for j in js if j["state"] in ("working", "waiting")]

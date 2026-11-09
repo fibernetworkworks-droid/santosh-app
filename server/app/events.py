@@ -438,13 +438,15 @@ def head(conversation_id: str, tenant: str, n: int = 40) -> dict[str, Any]:
 CARD_STALE_H = 72   # v0.662 a card nobody answered in 3 days is not news on every call ask any more
 
 
-def waiting_cards(tenant: str, limit: int = 40, max_age_h: float | None = None) -> list[dict[str, Any]]:
-    """Cards in ANY of her chats whose latest state waits for her (newest first)."""
+def waiting_cards(tenant: str, limit: int = 40, max_age_h: float | None = None,
+                  conversation_id: str = "") -> list[dict[str, Any]]:
+    """Cards in ANY of her chats whose latest state waits for her (newest first).
+    v0.714 `conversation_id` = only THAT chat's own cards (a chat turn never sees another chat's cards)."""
     from . import convs
-    conv = convs.current(tenant)
+    conv = conversation_id or convs.current(tenant)
     if not conv:
         return []
-    items = _collapse(_story(conv, tenant, scan=4000))
+    items = _collapse(_story(conv, "" if conversation_id else tenant, scan=4000))
     now = datetime.now(timezone.utc)
     out = []
     for it in reversed(items):
@@ -475,16 +477,17 @@ _DONE_WORD = {"sent": "SENT (bhej diya gaya)", "scheduled": "QUEUED TO SEND (und
               "expired": "EXPIRED", "answered": "ANSWERED", "decided": "DECIDED", "paid": "PAID"}
 
 
-def card_updates(tenant: str, since: datetime | None, limit: int = 8) -> list[dict[str, Any]]:
+def card_updates(tenant: str, since: datetime | None, limit: int = 8, conversation_id: str = "") -> list[dict[str, Any]]:
     """v0.704 cards she ANSWERED (tap: send / approve / cancel / reply...) after `since` - the brain's own history only has
-    "card bheja", never her tap, so without this a chat turn thought the card still waited."""
+    "card bheja", never her tap, so without this a chat turn thought the card still waited.
+    v0.714 `conversation_id` = that chat's own cards only (it used to read whichever chat she had open + all others)."""
     from . import convs
-    conv = convs.current(tenant)
+    conv = conversation_id or convs.current(tenant)
     if not conv:
         return []
     cut = _utc(since) if since else datetime.now(timezone.utc) - timedelta(hours=6)
     out = []
-    for it in reversed(_collapse(_story(conv, tenant, scan=2000))):
+    for it in reversed(_collapse(_story(conv, "" if conversation_id else tenant, scan=2000))):
         first, last = it["first"], it["latest"]
         if last.id == first.id or _utc(last.created_at) <= cut:
             continue
@@ -505,12 +508,26 @@ _ASKS_PENDING = re.compile(r"\b(card|cards|pending|baaki|bacha|bache|waiting|app
                            r"status|update|kya chal|kahan tak|bhej(a|i|e)? (kya|ki nahi)|gaya kya|hua kya|draft)\b", re.I)
 
 
-def card_news_block(tenant: str, since: datetime | None, user_text: str = "") -> str:
+def _own_conv(conversation_id: str) -> str:
+    """v0.714 HAR CHAT ALAG: the chat whose OWN cards a turn reads ('' = the old all-chats read, chat_alone off)."""
+    if not conversation_id:
+        return ""
+    try:
+        from .fence import alone
+        if not alone():
+            return ""
+        from .callconv import chat_of
+        return chat_of(conversation_id) or conversation_id
+    except Exception:   # noqa: BLE001
+        return conversation_id
+
+
+def card_news_block(tenant: str, since: datetime | None, user_text: str = "", conversation_id: str = "") -> str:
     """v0.704 for EVERY chat turn: what she did on cards since the last reply + the cards that really still wait.
     v0.709: the WAITING list rides only when her message is about pending work / cards - on every turn it made the model
     open her real asks with a status report ("Good morning. Quick state: 4 cards waiting...") instead of answering."""
     try:
-        ups = card_updates(tenant, since)
+        ups = card_updates(tenant, since, conversation_id=_own_conv(conversation_id))
     except Exception:
         ups = []
     lines = []
@@ -526,7 +543,7 @@ def card_news_block(tenant: str, since: datetime | None, user_text: str = "") ->
     if not _ASKS_PENDING.search(user_text or ""):
         return "\n\n".join(lines)
     try:
-        ws = waiting_cards(tenant, 8, max_age_h=CARD_STALE_H)
+        ws = waiting_cards(tenant, 8, max_age_h=CARD_STALE_H, conversation_id=_own_conv(conversation_id))
     except Exception:
         ws = []
     if ws:

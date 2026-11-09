@@ -86,7 +86,7 @@ def _note_dead(tenant_id: str, tok: str, msg: str) -> None:
     try:
         from . import convs
         from .events import bus, notify
-        conv = convs.current(tenant_id)
+        conv = convs.notice_chat(tenant_id)   # v0.714
         if conv:
             notify(conv, msg + " Tab tak naye mail aur meeting ki khabar nahi aa payegi.")
             bus.publish(conv, "google_reconnect", {"text": msg})

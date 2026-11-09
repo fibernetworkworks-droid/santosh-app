@@ -1188,12 +1188,15 @@ def diary(tenant: str, conversation_id: str = "", days: int = DIARY_DAYS) -> dic
     since = datetime.now(timezone.utc) - timedelta(days=days)
     out: dict[str, list[str]] = {"jobs": [], "web": [], "files": [], "calls": []}
     from .agent.pakka import TaskRun
-    from .fence import chats_in, keep
+    from .fence import chats_in, keep, own_chat, alone
     allowed = chats_in(tenant, conversation_id) if conversation_id else None   # v0.246 the Session fence
+    # v0.714 HAR CHAT ALAG: the jobs / website jobs of THIS chat only (another chat's work never rides this one)
+    mine = own_chat(tenant, conversation_id) if conversation_id else None
+    strict = bool(conversation_id) and alone()
     with session() as s:
         runs = s.scalars(select(TaskRun).where(TaskRun.tenant_id == tenant, TaskRun.created_at >= since,
                                                TaskRun.outcome != "talk").order_by(TaskRun.created_at.desc()).limit(60)).all()
-        runs = keep(runs, allowed)[:30]
+        runs = keep(runs, mine, strict=strict)[:30]
         for r in runs:
             line = f"{_when(r.created_at, tenant)} · {_clip(r.request, 110)} → {OUTCOME.get(r.outcome, r.outcome)}"
             if r.steps:
@@ -1205,7 +1208,7 @@ def diary(tenant: str, conversation_id: str = "", days: int = DIARY_DAYS) -> dic
             from .operator.models import OperatorTask
             ops = s.scalars(select(OperatorTask).where(OperatorTask.tenant_id == tenant, OperatorTask.created_at >= since)
                             .order_by(OperatorTask.created_at.desc()).limit(30)).all()
-            ops = keep(ops, allowed)[:12]
+            ops = keep(ops, mine, strict=strict)[:12]
             for o in ops:
                 res = _clip(o.summary or o.error or o.stage, 110)
                 out["web"].append(f"{_when(o.created_at, tenant)} · website job {o.id}: {_clip(o.task, 90)} → {o.status}"

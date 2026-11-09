@@ -295,6 +295,6 @@ def decide_share(tenant: str, sid: str, approve: bool) -> dict[str, Any]:
 def _publish(tenant: str, conv: str, card: dict) -> None:
     from . import convs
     from .events import bus
-    c = conv or convs.current(tenant)
+    c = conv or convs.notice_chat(tenant)   # v0.714
     if c:
         bus.publish(c, "share_ask", card)
