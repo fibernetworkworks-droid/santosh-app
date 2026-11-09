@@ -311,6 +311,7 @@ async def _run_crew(specs: list[dict], team_id: str, mission: str, main_families
     except asyncio.CancelledError:
         for t in tasks:
             t.cancel()
+        LIVE.pop(team_id, None)   # PARITY Phase 4: Stop cancels the turn and every agent - none is left counted as running
         raise
     for t in pending:
         t.cancel()
@@ -446,6 +447,14 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
     if take == 0:
         STATS["refused"] += 1
         return {"note": "Is turn ki agent budget poori ho gayi - pehle is team ka natija merge karo."}
+    kept_in_turn = False
+    if mode == "background":
+        from . import santosh as _s0
+        if _s0.work_in_turn(ctx, settings):
+            # PARITY Phase 4: her chat turn has room (chat_turn_s) - the crew works HERE and the answer is the reply,
+            # like Claude's research agents. No background row, no follow-up, no wake turn.
+            mode, kept_in_turn = "inline", True
+            _s0.STATS_INTURN["crews_kept_in_turn"] += 1
     if mode != "background":
         # CALL PAR TEAM: a cap per HER, not per ask - a call record + 2 side records could each start 8 agents at once
         free = max(0, int(getattr(settings, "team_tenant_inline_max", 8)) - inline_running(tenant))
@@ -468,6 +477,7 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
     main_fams = set(getattr(ctx, "admit").families) if getattr(ctx, "admit", None) is not None else None
     turn_id = (_evlog.CURRENT.get() or {}).get("turn_id") or new_id("team")
     ctx.team_used = used + take
+    in_turn = santosh.work_in_turn(ctx, settings)
     if mode == "background":
         return await _deploy_background(specs, mission, tenant, conv, turn_id, note_cap, settings,
                                         research=research_ask)
@@ -476,6 +486,14 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
     STATS["inline"] += 1
     per_agent_cap = min(int(settings.team_agent_timeout_s), 260)   # the main turn's tool clock is 300 s
     shared: dict = {"place": getattr(ctx, "place", "") or "", "research": research_ask}    # v0.270 her place for this turn rides to the crew
+    if in_turn:
+        # PARITY Phase 4: inside her chat turn the tool clock is chat_long_tool_s, so the crew gets the in-turn clock
+        # (kept under it); a research agent writes its sourced report ~2 minutes before the crew clock ends
+        long_clock = int(getattr(settings, "chat_long_tool_s", 0) or 0)
+        per_agent_cap = max(per_agent_cap, min(int(getattr(settings, "team_inturn_timeout_s", 0) or 0),
+                                               max(0, long_clock - 60)))
+        if research_ask:
+            shared["soft_s"] = max(float(getattr(settings, "team_research_soft_s", 170)), per_agent_cap - 120.0)
     # v0.443 a slow agent is cut at the clock; the agents that finished keep their work (team.py _run_crew)
     results = await _run_crew(specs, team_id, mission, main_fams, tenant, conv, turn_id, settings, shared,
                               timeout=per_agent_cap)
@@ -489,6 +507,9 @@ async def deploy_agents(ctx, mission: str = "", agents: list[dict] | None = None
             "Kuch apne aap se mat jodo."
             if ok_n else "Koi agent kuch deliver nahi kar paya - use kya hua saaf batao, ek akela dobara try "
                          "ya seedha khud karo.")
+    if kept_in_turn:
+        note = ("This crew ran inside this turn (not in the background) - its work is below. Write the full answer NOW, "
+                "in this reply. " + note)
     if note_cap:
         note = note_cap + " " + note
     return {"team": team_id, "mode": "inline", "agents": results, "note": note}
@@ -751,8 +772,8 @@ TEAM_TOOLS = [
      "description": ("Deploy a TEAM of sub-agents that work in PARALLEL, each on ONE independent part of the job, "
                      "and hand you their deliverables to merge into your answer. Use it when the job truly splits "
                      "into independent parts (research on several sites, several files to read, data from different "
-                     "places). mode=background for long crews: you reply at once and the result reports itself when "
-                     "done. Sub-agents cannot deploy further agents."),
+                     "places). The crew works inside the turn and you answer with the merged result in the same reply. "
+                     "Sub-agents cannot deploy further agents."),
      "input_schema": {"type": "object", "properties": {
          "mission": {"type": "string", "description": "The overall job, in the owner's words, one line"},
          "agents": {"type": "array", "items": {"type": "object", "properties": {
@@ -763,7 +784,9 @@ TEAM_TOOLS = [
                                        "A PC only when she put the job on a PC"}},
              "required": ["name", "task"]}},
          "mode": {"type": "string", "enum": ["inline", "background"],
-                  "description": "inline = wait here, merge now; background = reply fast, the crew reports itself"}},
+                  "description": ("inline (default) = the crew works inside this turn, you merge and answer now; "
+                                  "background = only for a crew that truly outlasts the turn (in her chat the crew "
+                                  "always runs inside the turn)")}},
        "required": ["mission", "agents"]}},
     {"name": "agent_status",
      "description": ("Check or stop a deployed agent team. check = the deliverables of recent crews (a background "

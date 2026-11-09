@@ -442,6 +442,15 @@ def system_text(families=None) -> str:
     return txt + _kaam_tips()
 
 
+# PARITY Phase 4: the AGENT TEAM guide's background sentence, and what replaces it while chat_work_in_turn is on
+TEAM_BG_TEXT = """mode=background
+  for a long crew: reply at once ("team is on it, I will tell you myself when the work is done") and stop - the result reports
+  itself; agent_status"""
+TEAM_INTURN_TEXT = """The crew works
+  INSIDE this turn (like a lead with research agents): wait for its deliverables, merge them, and give her the full answer
+  in this same reply - never "the team is on it, I will tell you later"; agent_status"""
+
+
 def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, families=None) -> str:
     # wave 9: the DATE only - the minute used to change this prompt every turn, and the system prompt is the first cached
     # block: every turn re-wrote the WHOLE chat to the cache (1.25x) instead of reading it (0.1x). The exact time rides on
@@ -554,6 +563,12 @@ def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, f
         except Exception:
             ids = ""
     _body = system_text(families)
+    try:   # PARITY Phase 4: with work in the turn the crew never goes to the background from her chat
+        from ..config import get_settings as _gs
+        if getattr(_gs(), "chat_work_in_turn", False):
+            _body = _body.replace(TEAM_BG_TEXT, TEAM_INTURN_TEXT, 1)
+    except Exception:
+        pass
     if gender == "f":   # wave 13: the chat prompt's own example lines in her avatar's forms (the voice prompt had this)
         from ..avatar.service import gendered as _gd
         _body = _gd(_body, "f")

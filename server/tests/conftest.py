@@ -58,6 +58,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_ALONE", "false")         # v0.714 older suites pin "the chat she is in"; test_v0714 turns it on
     monkeypatch.setenv("HOOLA_LANGUAGE", "auto")      # v0.728 older suites pin Hinglish text; test_v0728 checks English
     monkeypatch.setenv("CHAT_ANSWER_ONLY", "false")   # parity Phase 5: older suites pin the stapled notes; test_parity5 checks on
+    monkeypatch.setenv("CHAT_WORK_IN_TURN", "false")  # PARITY Phase 4: older suites pin background crews / research + the 900 s turn; test_parity_p4 checks in-turn
     monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
