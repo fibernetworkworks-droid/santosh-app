@@ -62,6 +62,70 @@ CORE_FAMILIES = frozenset({
 # past 30-50 tools in view; a plain "namaste" carried 75 before this, ~52 after.
 CORE_TOOLS = frozenset({"maps_search", "maps_directions",
                         "yaad_khojo"})   # v0.605 EK YAAD: the one memory door is always in view (old chats are fetched, not pasted)
+
+
+# Parity Phase 3 CLEAN TOOLS: the core families of the old mode (life, maps' everyday pair, id, usage, device, make,
+# data, docstudio) are no longer always on, so the words that clearly name ONE of their jobs bring just that job back
+# (a tool name) or its family (a family tag). Whole-word / phrase matches (tight), read only when chat_core_tools is on.
+CORE_KEYS: dict[str, tuple[str, ...]] = {
+    "get_weather": ("weather", "mausam", "baarish", "barish", "rain", "temperature", "garmi kitni", "thand kitni",
+                    "मौसम", "बारिश", "तापमान"),
+    "set_phone_alarm": ("alarm", "utha dena", "utha do", "jaga dena", "jaga do", "wake me", "अलार्म", "उठा देना",
+                        "जगा देना"),
+    "set_phone_timer": ("timer", "टाइमर"),
+    "list_add": ("grocery", "shopping list", "list mein", "list me", "meri list", "my list", "list se", "सूची"),
+    "list_show": ("grocery", "shopping list", "list mein", "list me", "meri list", "my list", "list dikhao"),
+    "list_done": ("list se", "list mein se", "ho gaya list"),
+    "list_reminders": ("reminders", "reminder list", "kaun se reminder", "mere reminder"),
+    "cancel_reminder": ("reminder cancel", "reminder hata", "reminder band", "cancel the reminder"),
+    "create_routine": ("roz subah", "har roz", "every day at", "every morning", "routine", "har din"),
+    "maps_search": ("kitna time lagega", "kitni der lagegi", "how far", "how long to reach", "airport tak",
+                    "timing", "opening hours", "khulta", "khulti", "band hota", "pharmacy", "hospital", "clinic"),
+    "maps_directions": ("kitna time lagega", "kitni der lagegi", "how far", "how long to reach", "airport tak",
+                        "directions"),
+    "ai_kharcha": ("ai ka kharcha", "ai ka kitna kharcha", "ai kharcha", "ai spend", "ai spending", "ai cost",
+                   "ai usage", "hoola ka kharcha"),
+    "id_locker": ("aadhaar", "aadhar", "pan card", "pan number", "passport number", "voter id", "driving licence",
+                  "driving license", "pehchaan", "आधार"),
+    "id_photo": ("passport size", "passport photo", "पासपोर्ट फोटो", "id photo", "visa photo"),
+    "photo_clean": ("background hata", "remove background", "photo saaf", "photo clean"),
+    "phone_health": ("phone slow", "phone itna slow", "phone garam", "phone hang", "battery", "storage full",
+                     "mera phone"),
+    "make_document": ("word mein", "word file", "word document", "in word", "docx", "mou"),
+    "docstudio": ("word mein", "word file", "word document", "in word", "docx", "mou", "excel", "spreadsheet",
+                  "powerpoint", "ppt", "slides", "presentation", "brochure", "letterhead"),
+    "data": ("most starred", "collect the", "collect all", "list of", "dataset"),
+    "id": ("id locker", "pehchaan locker"),
+    "file": ("attached", "attachment", "this file", "is file"),
+}
+
+
+def core_keys_hits(text: str) -> tuple[set[str], set[str]]:
+    """(tool names, family tags) her words clearly name, from CORE_KEYS (tight match)."""
+    low = str(text or "").lower()
+    tools_: set[str] = set()
+    fams: set[str] = set()
+    fam_tags = set(FAMILY_OF.values())
+    for target, keys in CORE_KEYS.items():
+        if any(_hit_tight(k, low) for k in keys):
+            if target in HANDLERS:
+                tools_.add(target)
+            elif target in fam_tags:
+                fams.add(target)
+    return tools_, fams
+
+
+def core_on(settings) -> bool:
+    """Parity Phase 3 CLEAN TOOLS (setting chat_core_tools): a turn starts from the core tool set (agent/core_tools.py)."""
+    if settings is None:
+        try:
+            from ..config import get_settings
+            settings = get_settings()
+        except Exception:
+            return False
+    return bool(getattr(settings, "chat_core_tools", False))
+
+
 _LATLNG = re.compile(r"(?<![\d.])-?\d{1,2}\.\d{2,}\s*,\s*-?\d{1,3}\.\d{2,}")
 
 # Hand-written keywords per family (lowercase substrings matched against her words). Tool names add their own
@@ -447,6 +511,28 @@ def _hit(key: str, text: str) -> bool:
     return key in text
 
 
+# Parity Phase 3 CLEAN TOOLS: with chat_core_tools a family joins a turn only when her words clearly NAME it. Every
+# key matches as a whole word (a Latin key may take a plural / -ing / -ed ending; "rent" no longer opens the rent desk
+# on "current"), and a few compound words keep their own spelling ("gmail", "spreadsheet"). Keys in Indian scripts
+# keep the substring match (a word boundary does not work there).
+_TIGHT_PREFIX = ("g", "spread", "e", "whats")   # "gmail" / "spreadsheet" / "email" / "whatsapp" still name the family
+
+
+def _hit_tight(key: str, text: str) -> bool:
+    if not key or not key.isascii():
+        return bool(key) and key in text
+    pre = r"(?:" + "|".join(_TIGHT_PREFIX) + r")?" if len(key) >= 4 else ""
+    return re.search(r"\b" + pre + re.escape(key) + r"(?:s|es|ing|ed)?\b", text) is not None
+
+
+# everyday words that are auto-keys of one family but do not NAME it (tight mode only): "rate" opened Biz Seva on
+# "repo rate", "india" opened the India facts family on "in India", "current" etc. Her own phrases still open them.
+_TIGHT_GENERIC = frozenset({"india", "rate", "rates", "price", "prices", "today", "current", "news", "world", "public",
+                            "local", "online", "free", "best", "top", "new", "old", "big", "small", "quick", "fast",
+                            "smart", "daily", "live", "info", "help", "guide", "money", "plan", "work", "job", "jobs",
+                            "profile", "source", "sources"})
+
+
 # v0.245 tags / name-words that are everyday words: never auto-keys ('make' loaded notebook + network + artifact,
 # 'search' / 'phone' / 'report' / 'print' loaded the PC tools, 'file' loaded Drive)
 _GENERIC = frozenset({
@@ -512,8 +598,12 @@ class AdmitSet:
 
     def __init__(self, settings):
         self.settings = settings
-        self.families: set[str] = set(CORE_FAMILIES)
+        self.core = core_on(settings)         # Parity Phase 3: start from the ~20 core tools, not the core families
+        self.families: set[str] = set() if self.core else set(CORE_FAMILIES)
         self.extra: set[str] = set()          # tool names admitted directly (beyond their family)
+        if self.core:
+            from .core_tools import CORE
+            self.extra.update(n for n in CORE if n in HANDLERS)
         self.why: dict[str, str] = {}         # v0.245 family -> how it got in (word / intent / meaning / place)
 
     def admit_families(self, tags) -> list[str]:
@@ -540,6 +630,13 @@ class AdmitSet:
     def specs(self) -> list[dict]:
         """The tool list for the model: tool_search first, then the admitted specs in the registry's own order."""
         out = [search_spec()]
+        if self.core:   # Parity Phase 3: the core tools first, in their own order, with the clear English descriptions
+            from .core_tools import CORE, present
+            by_name = {t["name"]: t for t in TOOLS}
+            out += [present(by_name[n]) for n in CORE if n in by_name and n in self.extra]
+            have = {t["name"] for t in out}
+            out += [t for t in TOOLS if t["name"] not in have and self._seen(t["name"])]
+            return out
         for t in TOOLS:
             if self._seen(t["name"]):
                 out.append(t)
@@ -574,17 +671,21 @@ def search_spec() -> dict:
 _LABEL = "Tools dhoondh raha hoon"
 
 
-def _match(text: str) -> set[str]:
-    """Families whose keys (auto or hand-written) appear in the text. Lowercase in, family tags out."""
+def _match(text: str, tight: bool = False) -> set[str]:
+    """Families whose keys (auto or hand-written) appear in the text. Lowercase in, family tags out.
+    tight (Parity Phase 3, chat_core_tools): whole-word keys only and no everyday auto-keys."""
     hits: set[str] = set()
+    hit = _hit_tight if tight else _hit
     for fam, keys in _AUTO.items():
         for k in keys:
-            if _hit(k, text):
+            if tight and k in _TIGHT_GENERIC:
+                continue
+            if hit(k, text):
                 hits.add(fam)
                 break
     for fam, keys in EXTRA_KEYS.items():
         for k in keys:
-            if _hit(k, text):
+            if hit(k, text):
                 hits.add(fam)
                 break
     return hits & set(FAMILY_OF.values())   # only families that really exist in the registry
@@ -700,7 +801,7 @@ def route(text: str, settings=None) -> dict[str, str]:
     """family -> why, for one ask (no admission state). The single source for plan_for and the tool-choice card."""
     low = str(text or "").lower()
     why: dict[str, str] = {}
-    for fam in _match(low):
+    for fam in _match(low, tight=core_on(settings)):
         why.setdefault(fam, "word")
     for pat, fams, label in INTENTS:
         if pat.search(text or ""):
@@ -748,14 +849,22 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
     if not getattr(settings, "agent_tool_admission", True):
         return None
     adm = AdmitSet(settings)
-    adm.extra.update(n for n in CORE_TOOLS if n in HANDLERS)     # v0.559 the everyday tools of non-core families
+    if not adm.core:
+        adm.extra.update(n for n in CORE_TOOLS if n in HANDLERS)     # v0.559 the everyday tools of non-core families
     why = route(text, settings)
     if extra_text:
         for f, w in route(extra_text, settings).items():
             why.setdefault(f, w)
+    if adm.core:
+        _ct, _cf = core_keys_hits((text or "") + " " + (extra_text or ""))
+        adm.extra.update(_ct)
+        for f in _cf:
+            why.setdefault(f, "core word")
+        if _ct:
+            adm.why = {**adm.why, **{n: "core word" for n in _ct}}
     if why:
         adm.admit_families(why)
-        adm.why = why
+        adm.why = {**adm.why, **why}
     if "maps" in set(FAMILY_OF.values()) and "maps" not in adm.families and _LATLNG.search(text or ""):
         adm.admit_families(["maps"])            # v0.559 a latitude, longitude pair in her words is a maps ask
         adm.why = {**adm.why, "maps": "coordinates"}
@@ -775,6 +884,10 @@ def plan_for(text: str, settings, extra_text: str = "") -> AdmitSet | None:
         if "research" in set(FAMILY_OF.values()) and (_hard.research_wanted(text) or "research_status" in str(text) or "research_watch" in str(text)):
             adm.admit_families(["research"])
             adm.why = {**adm.why, "research": "research ask"}
+            if adm.core:    # Parity Phase 3: a research ask also gets the quoted-sources reader and the report maker
+                adm.extra.add("web_sources")
+                if "docstudio" in set(FAMILY_OF.values()):
+                    adm.admit_families(["docstudio"])
             if "team" in set(FAMILY_OF.values()):     # v0.559 team left the core: deep research still gets its crew
                 adm.admit_families(["team"])
                 adm.why.setdefault("team", "research ask")

@@ -628,6 +628,7 @@ LABELS_EN = {
     'warehouse': 'Working on the warehouse',
     'warehouse_dekho': 'Checking the warehouse',
     'web_clone': 'Cloning the website: capture, endpoints, Next.js rebuild',
+    'web_fetch': 'Reading the web page',
     'web_sources': 'Reading web pages',
     'website': 'Building the website',
     'website_dekho': 'Checking the website',

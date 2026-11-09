@@ -169,6 +169,12 @@ class Settings(BaseSettings):
     chat_compact_keep: int = 4             # newest exchanges that always stay word for word
     chat_compact_max_chars: int = 8000     # the checkpoint summary's size
     tool_admit_cap: int = 220               # admitted specs above this = router over-matched: send the FULL set instead
+    # Parity Phase 3 CLEAN TOOLS (docs/CLAUDE_PARITY_PLAN.md): a turn starts from ~22 core tools (agent/core_tools.py:
+    # web_search, ONE web reader web_fetch, pylab, artifact, file, one memory search, chats, mail, calendar, drive,
+    # plan, agents, form, status) with clear English descriptions; a family joins only when her words clearly name it
+    # (whole-word keys), everything else stays one tool_search away; big results keep head + tail; no raw Python errors.
+    # false = the old always-on core families (~55 tools a plain turn) and the old result / error text
+    chat_core_tools: bool = True
     # v0.191 HARNESS-2: job-completion WAKE turns (dsh completionDelivery + maxConsecutiveWakes) - a finished job whose
     # chat is idle wakes the real brain (tools allowed) instead of only the v0.187 one-shot line; budget keeps it finite.
     agent_wake_turns: bool = True

@@ -305,7 +305,7 @@ def test_styles_exist():
 
 
 def test_no_new_tool_road_the_registry_stays():
-    assert len(T.TOOLS) == 618, "the console page adds NO tool - it drives the v0.713 seekh_video organs"
+    assert len(T.TOOLS) == 619, "the console page adds NO tool - it drives the v0.713 seekh_video organs"
 
 
 def test_version_pins():

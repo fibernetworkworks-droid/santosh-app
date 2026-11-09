@@ -412,6 +412,7 @@ TRIM_STATS: dict[str, int] = {"lists": 0, "cut": 0}
 
 # v0.473 R2: the research dossier IS the evidence (its source list ends it), so it is not cut at the usual 6,000 characters
 RESULT_LIMIT = {"research_run": 40000,
+                "web_fetch": 12000,     # Parity Phase 3: the one web reader returns up to 10,000 characters of page text
                 "email_check": 12000,   # v0.706 slimmed rows: 20-40 mails fit, the model no longer sees 6 of 50
                 # wave 10: a crew's deliverables ARE the evidence of the job: at 6,000 the list-slimming cut agents 4+
                 "deploy_agents": 24000, "agent_status": 24000}
@@ -468,9 +469,49 @@ def _short(obj, limit: int = 6000) -> str:
                 TRIM_STATS["strings"] = TRIM_STATS.get("strings", 0) + 1
                 return out
     TRIM_STATS["cut"] += 1
+    if _head_tail_on():
+        # Parity Phase 3 CLEAN TOOLS: head + tail, so the END of a result (totals, the next-page cursor, the error at
+        # the bottom of a log, the closing sources) survives the cut too
+        head = int(limit * 0.7)
+        tail = max(0, limit - head)
+        return (s[:head] + f"…[cut: {len(s) - head - tail:,} of {len(s):,} characters left out in the middle. For "
+                "the rest ask for less - a filter, a search word, a smaller limit or the next page - or save big "
+                "data with data_fetch and read it with data_read.]…" + (s[-tail:] if tail else ""))
     return (s[:limit] + f"…[cut: showing {limit:,} of {len(s):,} characters. For the rest ask for less - a filter, a "
             "search word, a smaller limit or the next page - or save big data with data_fetch and read it with "
             "data_read.]")
+
+
+def _head_tail_on() -> bool:
+    try:
+        from ..config import get_settings
+        return bool(getattr(get_settings(), "chat_core_tools", False))
+    except Exception:
+        return False
+
+
+_MISSING_ARG = re.compile(r"missing (\d+ )?required (?:positional |keyword-only )?arguments?: (.+)$")
+_UNEXPECTED_ARG = re.compile(r"got an unexpected keyword argument '([^']+)'")
+
+
+def clean_error(name: str, e: BaseException, args: dict | None = None) -> str:
+    """Parity Phase 3 CLEAN TOOLS: a crash inside a tool never reaches the model as a raw Python error ("KeyError:
+    'x'", "NoneType object is not subscriptable"). It says what went wrong in plain words and how to fix the CALL when
+    the call itself was wrong (a missing / unknown parameter); otherwise that it was Hoola's own fault and what to do."""
+    msg = str(e)
+    m = _MISSING_ARG.search(msg)
+    if isinstance(e, TypeError) and m:
+        names = ", ".join(x.strip().strip("'") for x in m.group(2).replace(" and ", ", ").split(",") if x.strip())
+        return (f"{name} was called without its required parameter(s): {names}. Call {name} again with "
+                f"{names} filled in.")
+    m = _UNEXPECTED_ARG.search(msg)
+    if isinstance(e, TypeError) and m:
+        return (f"{name} has no parameter '{m.group(1)}'. Call it again with only the parameters in its "
+                "description.")
+    kind = type(e).__name__
+    return (f"{name} failed because of a problem inside Hoola ({kind}), not because of anything she did. Do not "
+            "repeat the same call with the same arguments: try a different tool or different arguments, or tell her "
+            "plainly in one line that this step did not work.")
 
 
 def _slim_strings(obj, cap: int, depth: int = 0):
@@ -480,8 +521,15 @@ def _slim_strings(obj, cap: int, depth: int = 0):
     if isinstance(obj, str):
         if len(obj) <= cap:
             return obj
-        return obj[:cap] + (f"…[{len(obj) - cap:,} more characters cut - for the rest ask for this part alone, a smaller "
-                            "limit or the next page, or save big data with data_fetch and read it with data_read]")
+        if not _head_tail_on():
+            return obj[:cap] + (f"…[{len(obj) - cap:,} more characters cut - for the rest ask for this part alone, a "
+                                "smaller limit or the next page, or save big data with data_fetch and read it with "
+                                "data_read]")
+        head = int(cap * 0.7)   # Parity Phase 3: a long text keeps its end too (a page's last lines, a log's error)
+        tail = cap - head
+        return (obj[:head] + f"…[{len(obj) - cap:,} characters cut from the middle - for the rest ask for this part "
+                "alone, a smaller limit or the next page, or save big data with data_fetch and read it with "
+                "data_read]…" + obj[-tail:])
     if isinstance(obj, dict):
         return {k: _slim_strings(v, cap, depth + 1) for k, v in obj.items()}
     if isinstance(obj, list):
@@ -2010,7 +2058,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"]})
                 _work(conversation_id, b["id"], shown, label, "error", args_in, error="Something went wrong")
                 return {"type": "tool_result", "tool_use_id": b["id"],
-                        "content": f"Internal error in {b['name']}: {e}" + help_, "is_error": True}
+                        "content": (clean_error(b["name"], e, b.get("input") or {}) if _head_tail_on()
+                                    else f"Internal error in {b['name']}: {e}") + help_, "is_error": True}
 
         tblocks = [b for b in blocks if b.get("type") == "tool_use"]
         results: list[dict] = []
@@ -2024,7 +2073,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             for b, o in zip(tblocks, outs):
                 results.append(o if isinstance(o, dict) else
                                {"type": "tool_result", "tool_use_id": b["id"], "is_error": True,
-                                "content": f"Internal error in {b['name']}: {o}"})
+                                "content": (clean_error(b["name"], o, b.get("input") or {}) if _head_tail_on()
+                                            else f"Internal error in {b['name']}: {o}")})
         else:
             for b in blocks:
                 if b.get("type") != "tool_use":
