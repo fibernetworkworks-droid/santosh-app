@@ -377,19 +377,19 @@ class _EmailScreenState extends State<EmailScreen> {
               tilePadding: const EdgeInsets.symmetric(horizontal: 12),
               childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               iconColor: C.accent, collapsedIconColor: C.accent,
-              title: Text(app.g('Gmail, full'), style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text(app.g('All Gmail tasks, from chat — safely'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              title: Text(app.g('Gmail, poora'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              subtitle: Text(app.g('Gmail ke saare kaam, chat se — hifazat ke saath'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
               children: [
                 for (final t in [
-                  app.g('Read and sort: inbox, whole threads, attachments (PDF, Excel, photos too), including Gmail\'s own snoozed folder.'),
-                  app.g('While writing: rich mail, attach Drive files, schedule, undo window, send from an alias (verified aliases).'),
-                  app.g('Handled by itself: rules, saved searches, labels (with colours and nesting), snooze, follow-up reminders, bulk mail.'),
-                  app.g('Gmail\'s own filters too — they run inside Gmail, even when Hoola is off.'),
-                  app.g('Gmail drafts: view, edit in place (attachments stay), and send directly — after a card.'),
-                  app.g('Whole conversations at once, and delete for good only when the card says so.'),
-                  app.g('Gmail\'s own settings: vacation auto-reply, signature, send-as aliases (add, remove, send from them), forwarding addresses, IMAP / POP, language, auto-forward — all on your tap.'),
-                  app.g('News of new mail every minute, important first; OTP codes are never read out.'),
-                  app.g('If you need to reconnect Gmail once for settings, tap “Connect” on this screen — mail keeps working as before.'),
+                  app.g('Padhna, chhaantna: inbox, thread poora, attachments (PDF, Excel, photos bhi), Gmail ke apne snoozed folder samet.'),
+                  app.g('Likhte waqt: rich mail, Drive file attach, schedule, undo window, alias se bhejna (verified aliases).'),
+                  app.g('Khud sambhale: rules, saved searches, labels (rang aur nesting ke saath), snooze, follow-up yaad, bulk mail.'),
+                  app.g('Gmail ke apne filters bhi — Gmail ke andar hi chalte hain, Hoola band ho to bhi.'),
+                  app.g('Gmail ke drafts: dekhna, wahin badalna (attachments bane rehte hain), seedha bhejna — card ke baad.'),
+                  app.g('Poore conversations ek saath, aur delete hamesha ke liye tabhi jab card par likha ho.'),
+                  app.g('Gmail ki apni settings: vacation auto-reply, signature, send-as aliases (jodna, hatana, unse bhejna), forwarding addresses, IMAP / POP, language, auto-forward — sab aapke tap par.'),
+                  app.g('Nayi mail ki khabar har minute, zaroori ka pehle; OTP codes kabhi nahi batata.'),
+                  app.g('Settings ke liye Gmail ek baar dobara jodna pade to is screen par “Jodiye” dabaiye — mail pehle jaisi chalti hai.'),
                 ])
                   Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     const Padding(padding: EdgeInsets.only(top: 2), child: Icon(Icons.check_circle_outline_rounded, size: 15, color: C.accent)),
@@ -422,7 +422,7 @@ class _EmailScreenState extends State<EmailScreen> {
               ),
             if (_accounts.isNotEmpty) ...[
               const SizedBox(height: 18),
-              Text(app.g('News of new mail'), style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(app.g('Nayi mail ki khabar'), style: const TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Text(app.g('Hoola checks your inbox every minute. If an important mail or a mail from your people arrives, it tells you in the chat; '
                   'newsletters stay quiet. OTP codes are never read out.'),
@@ -439,11 +439,11 @@ class _EmailScreenState extends State<EmailScreen> {
               const SizedBox(height: 18),
               Row(children: [
                 Expanded(child: Text(app.g('Mail rules'), style: const TextStyle(fontWeight: FontWeight.w700))),
-                IconButton(tooltip: app.g('New rule'), onPressed: _addRule,
+                IconButton(tooltip: app.g('Naya rule'), onPressed: _addRule,
                     icon: const Icon(Icons.add_circle_outline_rounded, color: C.accent)),
               ]),
               if (_rules.isEmpty)
-                Text(app.g('No rules. Say a rule in the chat like "archive mails from the bank".'),
+                Text(app.g('Koi rule nahi. Bolo "bank ki mail aaye to archive karo" jaisa rule chat mein.'),
                     style: const TextStyle(color: C.muted, fontSize: 12.5)),
               for (final r in _rules)
                 Padding(
@@ -478,7 +478,7 @@ class _EmailScreenState extends State<EmailScreen> {
                       ])),
                     ])),
                   ),
-                Text(app.g('Say “show <name>” in the chat — this only shows, it changes nothing.'),
+                Text(app.g('Chat mein boliye “<naam> dikhao” — yeh sirf dikhata hai, kuch nahi badalta.'),
                     style: const TextStyle(color: C.muted, fontSize: 11.5)),
               ],
             ],

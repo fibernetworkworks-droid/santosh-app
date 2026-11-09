@@ -205,7 +205,7 @@ class _TodayScreenState extends State<TodayScreen> {
               const SizedBox(width: 10),
               _action(Icons.storefront_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], const Color(0x597C5CFF), app.g('Dukaan'), 'I want to order supplies from the nearby kirana shop'),
               const SizedBox(width: 10),
-              _action(Icons.near_me_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], const Color(0x592DD4BF), app.g('Directions'), 'Tell me what is open nearby and the way there'),
+              _action(Icons.near_me_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], const Color(0x592DD4BF), app.g('Rasta'), 'Tell me what is open nearby and the way there'),
               const SizedBox(width: 10),
               _action(Icons.local_taxi_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], const Color(0x59FB7185), app.g('Cab'), 'I want to book a cab'),
             ]),
@@ -214,11 +214,11 @@ class _TodayScreenState extends State<TodayScreen> {
               scrollDirection: Axis.horizontal,
               clipBehavior: Clip.none,
               child: Row(children: [
-                _chip(Icons.auto_fix_high_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], app.g('Make a photo'), 'I want to edit a photo'),
+                _chip(Icons.auto_fix_high_rounded, const [Color(0xFFA78BFA), Color(0xFF7C5CFF)], app.g('Photo banao'), 'I want to edit a photo'),
                 const SizedBox(width: 8),
-                _chip(Icons.movie_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], app.g('Make a video'), 'I want to make a reel video'),
+                _chip(Icons.movie_rounded, const [Color(0xFFFB7185), Color(0xFFE11D48)], app.g('Video banao'), 'I want to make a reel video'),
                 const SizedBox(width: 8),
-                _chip(Icons.mail_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], app.g('Write email'), 'I want to write an email'),
+                _chip(Icons.mail_rounded, const [Color(0xFF2DD4BF), Color(0xFF0D9488)], app.g('Email likho'), 'I want to write an email'),
                 const SizedBox(width: 8),
                 _chip(Icons.smart_display_rounded, const [Color(0xFFFFB15C), Color(0xFFFB923C)], app.g('TV'), 'Play something on the TV'),
               ]),
@@ -291,10 +291,10 @@ class ReminderSection extends StatelessWidget {
 
   String _countdown(DateTime due, DateTime now) {
     final d = due.difference(now);
-    if (d.inMinutes < 1) return app.g('just now');
-    if (d.inMinutes < 60) return app.g('in {x} min', x: '${d.inMinutes}');
-    if (d.inHours < 24) return app.g('in {x} hours', x: '${d.inHours}');
-    return app.g('in {x} days', x: '${d.inDays}');
+    if (d.inMinutes < 1) return app.g('abhi');
+    if (d.inMinutes < 60) return app.g('{x} min baad', x: '${d.inMinutes}');
+    if (d.inHours < 24) return app.g('{x} ghante baad', x: '${d.inHours}');
+    return app.g('{x} din baad', x: '${d.inDays}');
   }
 
   Future<void> _dismiss(BuildContext context, Map<String, dynamic> r) async {
@@ -306,7 +306,7 @@ class ReminderSection extends StatelessWidget {
         content: Row(children: [
           const Icon(Icons.check_rounded, size: 16, color: C.ok),
           const SizedBox(width: 8),
-          Expanded(child: Text(app.g('Reminder removed'), style: const TextStyle(color: C.ink))),
+          Expanded(child: Text(app.g('Reminder hata diya'), style: const TextStyle(color: C.ink))),
         ]),
       ));
     }
@@ -399,9 +399,9 @@ class ReminderSection extends StatelessWidget {
               const SizedBox(width: 11),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(app.g('No reminders'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(app.g('Koi reminder nahi'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 3),
-                  Text(app.g('Say: "Remind me about my medicine tomorrow at 9" — I will note it at once.'),
+                  Text(app.g('Boliye: "Kal 9 baje dawai yaad dilana" — main turant likh lungi.'),
                       style: const TextStyle(fontSize: 12.5, height: 1.45, color: C.muted)),
                 ]),
               ),
@@ -415,12 +415,12 @@ class ReminderSection extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.forum_rounded, size: 14, color: Color(0xFFFCD34D)),
                   const SizedBox(width: 6),
-                  Text(app.g('Start talking'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFFCD34D))),
+                  Text(app.g('Baat shuru karo'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFFCD34D))),
                 ]),
               ),
             ),
             const SizedBox(height: 10),
-            Text(app.g('Every reminder will ring on time.'), style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0x99FCD34D))),
+            Text(app.g('Har yaad time par dugi.'), style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0x99FCD34D))),
           ]),
         ),
       ]);
@@ -486,10 +486,10 @@ class RoutinesSection extends StatelessWidget {
 
   String _countdown(DateTime due, DateTime now) {
     final d = due.difference(now);
-    if (d.inMinutes < 1) return app.g('just now');
-    if (d.inMinutes < 60) return app.g('in {x} min', x: '${d.inMinutes}');
-    if (d.inHours < 24) return app.g('in {x} hours', x: '${d.inHours}');
-    return app.g('in {x} days', x: '${d.inDays}');
+    if (d.inMinutes < 1) return app.g('abhi');
+    if (d.inMinutes < 60) return app.g('{x} min baad', x: '${d.inMinutes}');
+    if (d.inHours < 24) return app.g('{x} ghante baad', x: '${d.inHours}');
+    return app.g('{x} din baad', x: '${d.inDays}');
   }
 
   Future<void> _stop(BuildContext context, Map<String, dynamic> r) async {
@@ -500,7 +500,7 @@ class RoutinesSection extends StatelessWidget {
         content: Row(children: [
           const Icon(Icons.check_rounded, size: 16, color: C.ok),
           const SizedBox(width: 8),
-          Expanded(child: Text(app.g('Task stopped'), style: const TextStyle(color: C.ink))),
+          Expanded(child: Text(app.g('Kaam band kar diya'), style: const TextStyle(color: C.ink))),
         ]),
       ));
     }
@@ -558,7 +558,7 @@ class RoutinesSection extends StatelessWidget {
               if (runs > 0) ...[
                 Icon(Icons.bolt_rounded, size: 11, color: C.faint),
                 const SizedBox(width: 3),
-                Text(app.g('{x} times', x: '$runs'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.faint)),
+                Text(app.g('{x} baar', x: '$runs'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: C.faint)),
                 const SizedBox(width: 7),
               ],
               Expanded(
@@ -610,7 +610,7 @@ class RoutinesSection extends StatelessWidget {
     // ── Khaali: the invite card — Hoola ka pehla khud-ka-kaam bol kar banwao ──
     if (routines.isEmpty) {
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        HomeLabel(app.g('HOOLA\'S OWN TASKS')),
+        HomeLabel(app.g('HOOLA KE APNE KAAM')),
         Glass(
           tint: const Color(0xFFA78BFA),
           opacity: .05,
@@ -620,9 +620,9 @@ class RoutinesSection extends StatelessWidget {
               const SizedBox(width: 11),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(app.g('No Hoola task is running'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(app.g('Hoola ka koi kaam chalu nahi'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 3),
-                  Text(app.g('Say: "Tell me the weather every morning at 7" — I will do it every day myself, you will not need to remind me.'),
+                  Text(app.g('Boliye: "Har subah 7 baje mausam bata dena" — main roz khud karungi, yaad dilana nahi padega.'),
                       style: const TextStyle(fontSize: 12.5, height: 1.45, color: C.muted)),
                 ]),
               ),
@@ -636,12 +636,12 @@ class RoutinesSection extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.forum_rounded, size: 14, color: Color(0xFFC4B5FD)),
                   const SizedBox(width: 6),
-                  Text(app.g('Start talking'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFC4B5FD))),
+                  Text(app.g('Baat shuru karo'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFFC4B5FD))),
                 ]),
               ),
             ),
             const SizedBox(height: 10),
-            Text(app.g('My work, my responsibility — on time, without reminders.'), style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0x99C4B5FD))),
+            Text(app.g('Mera kaam, meri zimmedari — time par, bina yaad dilaye.'), style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0x99C4B5FD))),
           ]),
         ),
       ]);
@@ -660,7 +660,7 @@ class RoutinesSection extends StatelessWidget {
     }
     final nextId = '${routines.first['id']}';   // server orders by next_run — the soonest gets the countdown
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      HomeLabel(app.g('HOOLA\'S OWN TASKS'), count: routines.length),
+      HomeLabel(app.g('HOOLA KE APNE KAAM'), count: routines.length),
       Glass(
         padding: const EdgeInsets.fromLTRB(10, 4, 10, 10),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -715,7 +715,7 @@ class ListsSection extends StatelessWidget {
         content: Row(children: [
           const Icon(Icons.undo_rounded, size: 16, color: C.ok),
           const SizedBox(width: 8),
-          Expanded(child: Text(app.g('Back in the list'), style: const TextStyle(color: C.ink))),
+          Expanded(child: Text(app.g('Wapas list mein'), style: const TextStyle(color: C.ink))),
         ]),
       ));
     }
@@ -776,9 +776,9 @@ class ListsSection extends StatelessWidget {
               const SizedBox(width: 11),
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(app.g('No lists'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  Text(app.g('Koi list nahi'), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
                   const SizedBox(height: 3),
-                  Text(app.g('Say: "Add milk and bread to the shopping list" — I will write it down and tick items off.'),
+                  Text(app.g('Boliye: "Doodh aur bread shopping list mein daalo" — main likh lungi, aur tick karti jaungi.'),
                       style: const TextStyle(fontSize: 12.5, height: 1.45, color: C.muted)),
                 ]),
               ),
@@ -792,12 +792,12 @@ class ListsSection extends StatelessWidget {
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   const Icon(Icons.forum_rounded, size: 14, color: Color(0xFF5EEAD4)),
                   const SizedBox(width: 6),
-                  Text(app.g('Start talking'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF5EEAD4))),
+                  Text(app.g('Baat shuru karo'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF5EEAD4))),
                 ]),
               ),
             ),
             const SizedBox(height: 10),
-            Text(app.g('Every small item will be written down — and ticked off below as soon as it is done.'),
+            Text(app.g('Har chhoti cheez likhi jaayegi — poore hote hi neeche tikti jaayegi.'),
                 style: const TextStyle(fontSize: 11.5, fontStyle: FontStyle.italic, color: Color(0x995EEAD4))),
           ]),
         ),
