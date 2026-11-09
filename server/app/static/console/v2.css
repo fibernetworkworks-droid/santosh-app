@@ -3208,7 +3208,7 @@ body.albon{overflow:hidden}
 @media (prefers-reduced-motion:reduce){#app .mu,#app .cd.hmplan,#app .result-card.hmfile,#app .tools.hmlive .ts{animation:none}}
 #app .hmplan li.old .hm-tick svg{animation:none;stroke-dashoffset:0}
 
-/* ================= v0.716 SEEKH MANCH ON THE CONSOLE - the HOOLA AI Video Learner ================= */
+/* ================= v0.718 SEEKH MANCH ON THE CONSOLE - the HOOLA AI Video Learner ================= */
 /* The hub card inside AI Employees (a wide row: icon, the promise, the door) */
 #hire .ae-seekh{display:flex;align-items:center;gap:16px;width:100%;margin-top:14px;padding:16px 18px;border:1px solid var(--hair);border-radius:18px;background:var(--surface);text-align:left;transition:border-color .2s,transform .12s,box-shadow .2s}
 #hire .ae-seekh:hover{border-color:var(--pri);transform:translateY(-1px);box-shadow:var(--sh2)}

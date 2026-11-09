@@ -2503,3 +2503,10 @@ Not verified live; phone compiles on CI.
 Task ID: v0.717.0 FILE CARD SAHI
 Ask: her live PDF card stacked in a column - make it like the approved design.
 Fixed: row direction (the old .cd column rule won), Open + download icon, no Use as reference, doubled name cleaned. Checked in a browser.
+
+---
+Task ID: v0.718.0 SEEKH MANCH ON THE CONSOLE (re-ship; built as 0.716, their NAYA ROOP took 0.716 and FILE CARD SAHI took 0.717 - REBASE PROTOCOL onto their 5964cdda7 tip, all kept)
+Agent: Claude (web session)
+Ask: "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT ... IN AI EMPLOYEE SECTION BUILD THE HOOLA AI VIDEO LEARNER ... load a video and HOOLA AI will see this and note in REALTIME ... prepare a MEMORY ... IN THIS PAGE ONLY user will tell HOOLA to PERFORM THIS TASK NOW - then HOOLA will use HIS BROWSER" + "PERFECT START THE DEPLOYMENT" on the prototype shown in chat.
+Built: the #v-seekh console view + seekh.js (load video -> live five-step stepper + HOOLA KI NOTES paced in -> the memory card -> Perform-this-task-NOW on the same page through one chat turn, the operator's own browser); the AI Employees hub card (employees.js); NEW server/app/seekh_console.py (/api/seekh/console/*: watch job + progress pulse + watches list; key-protected, tenant-scoped, one watch at a time, adoption on reload); seekh.watch grew only an additive on_stage callback (no-op for the tool and the old tests); no new tool (617), no new pip/keys/settings; frozen PC zone untouched (pinned). 25 tests (born v0716, ships v0718) + v0713 re-run 40/40; live browser-verified before the push (panel walk, honest 422 + the no-Gemini error surfaced in the notes area, zero page errors).
+Deploy: the owner's vps-ops dispatch; healthz must grep 0.718.0.

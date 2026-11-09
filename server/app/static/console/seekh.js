@@ -1,4 +1,4 @@
-/* v0.716 SEEKH MANCH ON THE CONSOLE - the HOOLA AI VIDEO LEARNER (the owner's console page for v0.713's
+/* v0.718 SEEKH MANCH ON THE CONSOLE - the HOOLA AI VIDEO LEARNER (the owner's console page for v0.713's
    learn-from-a-video): load a video, watch Hoola take notes in REALTIME, see the MEMORY it prepared, and
    tell it to PERFORM THIS TASK NOW on this very page - Hoola runs the task with its own browser through
    one honest chat turn (the computer operator reads the draft recipe at job start).

@@ -1,4 +1,4 @@
-"""v0.716 SEEKH MANCH ON THE CONSOLE - the HOOLA AI Video Learner panel's own lane (/api/seekh/console/*).
+"""v0.718 SEEKH MANCH ON THE CONSOLE - the HOOLA AI Video Learner panel's own lane (/api/seekh/console/*).
 
 Owner (2026-11-09, verbatim): "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT - CHECK THE EXISTING CONSOLE DESIGN
 AND IN AI EMPLOYEE SECTION BUILD THE HOOLA AI VIDEO LEARNER. In that, a panel where user can load a video and

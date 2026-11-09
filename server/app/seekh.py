@@ -414,7 +414,7 @@ def _save_recipe_draft(tenant: str, sk: dict[str, Any], source: str) -> dict[str
 
 # ---------------------------------------------------------------- the pipeline
 def _emit(on_stage, stage: str, data: dict[str, Any] | None = None) -> None:
-    """v0.716: the console lane's progress door - a no-op for every existing caller (the tool, the tests)."""
+    """v0.718: the console lane's progress door - a no-op for every existing caller (the tool, the tests)."""
     try:
         if on_stage:
             on_stage(stage, data or {})                        # never let a UI sink break the watch

@@ -1,9 +1,9 @@
-"""v0.716 SEEKH MANCH ON THE CONSOLE - the HOOLA AI Video Learner panel, end to end
+"""v0.718 SEEKH MANCH ON THE CONSOLE - the HOOLA AI Video Learner panel, end to end
 (owner: "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT - CHECK THE EXISTING CONSOLE DESIGN AND IN AI EMPLOYEE
 SECTION BUILD THE HOOLA AI VIDEO LEARNER. In that, a panel where user can load a video and HOOLA AI will
 see this and note in REALTIME. Once done, HOOLA AI will prepare a MEMORY for this. And IN THIS PAGE ONLY
 user will tell HOOLA to PERFORM THIS TASK NOW - then HOOLA will use HIS BROWSER for doing that task"
-+ "PERFECT START THE DEPLOYMENT" on the prototype shown in chat).
++ "PERFECT START THE DEPLOYMENT" on the prototype shown in chat; born as v0716 in the collision round - their NAYA ROOP and FILE CARD SAHI took the next two version slots while it sat built, REBASE PROTOCOL onto their tip with their code kept whole; ships as v0718).
 
 WHAT THIS SUITE HOLDS:
 - the lane (/api/seekh/console/*): key-protected, tenant-scoped, one watch at a time (a second start
@@ -87,7 +87,7 @@ def test_router_mounted_with_three_doors():
 
 def test_key_protected(env, monkeypatch):
     from app.config import get_settings
-    monkeypatch.setenv("API_KEY", "test-key-0716")
+    monkeypatch.setenv("API_KEY", "test-key-0718")
     get_settings.cache_clear()
     c = client()
     assert c.post("/api/seekh/console/watch", json={"video": "https://youtu.be/dQw4w9WgXcQ"}).status_code == 401
@@ -310,8 +310,8 @@ def test_no_new_tool_road_the_registry_stays():
 
 def test_version_pins():
     main = (SERVER / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.716.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.716.0" in main
+    assert 'APP_VERSION = "0.718.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
     pub = ROOT / "pubspec.yaml"
-    assert "version: 0.716.0+715" in pub.read_text(encoding="utf-8")
+    assert "version: 0.718.0+717" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.716.0" in html and "console/v2.js?v=0.716.0" in html
+    assert "console/seekh.js?v=0.718.0" in html and "console/v2.js?v=0.718.0" in html
