@@ -101,17 +101,17 @@ def test_narrate_text_asks_for_the_real_finding_plus_what_is_next():
     """v0.240 forbade numbers and links, which left the line empty filler. Claude's line IS the number."""
     n = G.NARRATE
     # v0.268 rewrote this ask into the measured two halves; the demand for the REAL figure only got stronger
-    assert "do vaakya" in n
-    assert "asli number / id / naam / link" in n and "banaya hua nahi" in n
-    assert "AB KYA" in n and "KYA MILA" in n                     # what it found + what it is doing now
+    assert "two sentences" in n
+    assert "real number / id / name / link" in n and "nothing made up" in n
+    assert "WHAT NEXT" in n and "WHAT WAS FOUND" in n                     # what it found + what it is doing now
     assert "koi number ya link nahi" not in n                    # the v0.240 ban is still gone
-    assert "Bina number wali line bekaar hai" in n               # ...and the opposite is now demanded
-    for ban in ("bullet, heading, emoji",):
+    assert "A line without a number is useless" in n               # ...and the opposite is now demanded
+    for ban in ("bullets, headings, emoji",):
         assert ban in n, ban
-    assert "kaam ab POORA ho gaya hai to yeh line mat likho" in n   # never filler right before the answer
+    assert "If the work is now COMPLETE do not write this line" in n   # never filler right before the answer
     # the true facts the tools returned ride into the ask (app/agent/say.py), never invented
     with_fact = G.narrate_line(["12 naye mails aaye", "site v0.256.0 par hai"])
-    assert "12 naye mails aaye" in with_fact and "naya mat banao" in with_fact
+    assert "12 naye mails aaye" in with_fact and "do not invent new ones" in with_fact
     assert G.narrate_line([]) == n and G.narrate_line(None) == n
 
 

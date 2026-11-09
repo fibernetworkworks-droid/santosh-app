@@ -182,6 +182,6 @@ def test_no_minute_in_the_cached_system_prompt(env):
     from app.agent import prompts, santosh
     sp = prompts.system_prompt(True, "", T)
     assert not re.search(r"\d{1,2}:\d{2}\s*(AM|PM)", sp)
-    assert re.match(r"\[Abhi ka samay: \w+ \d{1,2} \w+ \d{4}, \d{1,2}:\d{2} (AM|PM)", santosh._now_note(T))
+    assert re.match(r"\[Current time: \w+ \d{1,2} \w+ \d{4}, \d{1,2}:\d{2} (AM|PM)", santosh._now_note(T))
     from app import life
     assert not re.search(r"local time now .*\d{2}:\d{2}", life.context_block(T))

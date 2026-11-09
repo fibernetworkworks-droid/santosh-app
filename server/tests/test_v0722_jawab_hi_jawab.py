@@ -19,10 +19,10 @@ def test_a_finished_crew_writes_the_answer_not_a_status():
     from app import kaam_followup as K
     t = K._wake_text(_row("agent_team", "agent_team:tm_abc123"))
     assert "<team_result_due team=\"tm_abc123\">" in t
-    assert "agent_status tool se action=check, id=tm_abc123" in t
-    assert "ASLI JAWAB" in t and "doosre kaam / projects / cards ki list mat do" in t
-    assert "kaam_status" in t and "'jawab upar hai' mat likho" in t
-    assert "1-3 chhoti lines" not in t                         # the old snippet-sized answer is gone for crews
+    assert "agent_status tool with action=check, id=tm_abc123" in t
+    assert "ACTUAL ANSWER TO HER QUESTION" in t and "do not list other jobs / projects / cards" in t
+    assert "kaam_status" in t and "do not write 'the answer is above'" in t
+    assert "1-3 short lines" not in t                         # the old snippet-sized answer is gone for crews
     assert "team_result_due" in K._wake_text(_row("agent_team", "agent_team:x", state="failed"))
     assert "team_result_due" not in K._wake_text(_row("agent_team", "agent_team:x", state="stopped"))
 
@@ -30,8 +30,8 @@ def test_a_finished_crew_writes_the_answer_not_a_status():
 def test_every_other_wake_stays_on_its_own_job():
     from app import kaam_followup as K
     t = K._wake_text(_row("video_job", "video_job:v1"))
-    assert "Sirf ISI kaam ki baat karo - doosre kaam / projects / cards ki list mat do." in t
-    assert "tabhi likho jab woh sach mein is chat mein upar likha ho" in t
+    assert "Talk ONLY about THIS job - do not list other jobs / projects / cards." in t
+    assert "only if it really is written above in this chat" in t
 
 
 def test_kaam_status_in_a_wake_sees_only_this_chat(env, monkeypatch):

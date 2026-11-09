@@ -285,7 +285,7 @@ def clean_rules(r: dict[str, Any] | None) -> dict[str, Any]:
 
 
 def rules_summary(r: dict[str, Any], name: str = DEFAULT_NAME) -> list[str]:
-    """The rules read back in plain Hinglish, for the owner to confirm."""
+    """The rules read back in plain English, for the owner to confirm."""
     knock = {"anyone": "Koi bhi Hoola request bhej sakta hai", "id_or_qr": "Sirf jinke paas aapka Hoola ID ya QR hai",
              "verified": "Sirf verified log", "nobody": "Abhi koi nahi (sab band)"}[r["knock"]]
     words = {"auto": "seedha le lo", "ask": "pehle mujhse poochho", "never": "mana"}

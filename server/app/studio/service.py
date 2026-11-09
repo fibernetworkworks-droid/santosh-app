@@ -1086,7 +1086,7 @@ async def review(tenant: str, project: str, shot_id: str, take: int | None = Non
             brain.look, sheet.read_bytes(), "You are a picky film director checking one generated shot (6 frames in time order).",
             f"The shot should show: {shot['prompt']}. Return JSON {{\"matches\": true/false, \"score\": 1-10, "
             "\"good\": [2-3 short things that are right], \"problems\": [short, with the second they happen like '0:04 ...'], "
-            "\"fix\": \"a better prompt sentence if needed\"}. Write good / problems in simple Hinglish. Look for wrong "
+            "\"fix\": \"a better prompt sentence if needed\"}. Write good / problems in simple English. Look for wrong "
             "faces, extra fingers, melting objects, text gibberish, wrong place.")
     except Exception as e:
         log.info("studio review look: %s", e)
@@ -1569,7 +1569,7 @@ async def hide(tenant: str, project: str) -> dict:
 IMPROVE_SYSTEM = """You help an Indian small-business owner describe a short AI video. Rewrite her idea as a richer brief
 for a film director: who / what we see, the place, the mood, the light, 3-6 moments in order, the one line to be said
 (in her language) and the ending. Keep every fact she gave (names, prices, offers, dates, phone numbers) exactly; never
-invent prices, phone numbers, dates, real people or brand names. Write in simple Hinglish (Roman script) except the
+invent prices, phone numbers, dates, real people or brand names. Write in simple English (Roman script) except the
 spoken line, which stays in her language and script. Max 90 words. Output only the brief."""
 
 

@@ -216,11 +216,11 @@ async def decide(text: str, settings) -> dict:
 # Rides in the system prompt ONLY on a hard turn (ordinary chat stays lean). The core is how a careful analyst works;
 # the kind lines come from the labels assess() found. The reply rulebook (her language, answer first, length follows
 # the question, light formatting) still governs HOW it is written - this governs how it is THOUGHT.
-RECIPE_CORE = """SOCH KA TAREEKA (this is a hard question - think it through like a careful analyst, then answer like Hoola):
+RECIPE_CORE = """HOW TO THINK (this is a hard question - think it through like a careful analyst, then answer like Hoola):
 1. The real question: what decision or number does she actually need? If the words allow two readings, take the most
    likely one and say it in ONE line; ask a question only when a wrong guess would cost her (money, a filing, a send).
 2. Facts first: use what she gave, this chat, her files and memory. A fact you need and do not have = a stated
-   assumption in one short line ("maan ke chal rahe hain: ..."), never a made-up fact. Current rates, rules or prices
+   assumption in one short line ("Assuming: ..."), never a made-up fact. Current rates, rules or prices
    that change = say they should be checked, or look them up with a tool.
 3. Work it out in parts. EVERY number you work out comes from pylab (run it, quote the printed result) - never mental
    maths. Keep units and the Indian way of writing money (Rs / lakh / crore).

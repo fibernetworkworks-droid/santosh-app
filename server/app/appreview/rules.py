@@ -1,4 +1,4 @@
-"""What the App Review Sahayak checks, why it matters (plain Hinglish), and how to fix it. Pure data + small helpers.
+"""What the App Review Sahayak checks, why it matters (plain English), and how to fix it. Pure data + small helpers.
 
 Every risk has: code, title, area, severity, MASVS control, explanation, fix and (where it helps) a code snippet per stack.
 Policy facts carry a source id (SOURCES) with the date they were checked. They are starter facts for her review, not legal

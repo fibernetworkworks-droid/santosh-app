@@ -61,6 +61,6 @@ def promised(text: str) -> bool:
     return bool(_PROMISE.search(last) or _PROMISE_LEAD.search(last.strip(" -–—*_")))
 
 
-NUDGE = ("[System: tumne abhi likha ki aage kaam kar rahe ho, par koi tool call nahi kiya - is tarah kaam yahin ruk "
-         "jaata hai. Jo kaha woh ABHI tools se karo (line ke saath usi jawab mein agla tool). Agar sab sach mein ho "
-         "chuka hai to bina aage ka vaada kiye seedha aakhri jawab do: kya hua, kya bana.]")
+NUDGE = ("[System: you just wrote that you are continuing the work, but you made no tool call - this is how work stops "
+         "here. Do what you said NOW with tools (put the next tool call in this same reply, beside your line). If "
+         "everything is really done, give the final answer right away with no further promise: what happened, what was made.]")

@@ -47,7 +47,7 @@ def test_very_long_job_drops_only_the_middle():
     steps = [f"s{i}" for i in range(1, 101)]
     kept = yaad.keep_steps(steps, 80)
     assert kept[:2] == ["s1", "s2"] and kept[-1] == "s100" and len(kept) == 80
-    assert "beech ke" in kept[2]
+    assert "steps in between" in kept[2]
     assert yaad.keep_steps(steps, 14)[-1] == "s100"   # even the short form keeps the newest progress
 
 

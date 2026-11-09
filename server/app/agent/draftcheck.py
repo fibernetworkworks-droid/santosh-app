@@ -336,9 +336,9 @@ def said_line(text: str) -> str:
 
 _PROMISE_REMIND = re.compile(r"(yaad\s*dila\s*(?:dunga|dungi|doonga|doongi|denge|deta|deti)|i'?ll\s+remind\s+you"
                              r"|remind\s+you\s+(?:tomorrow|at|in|later))", re.I)
-NUDGE_PROMISE = ("[Sach ki jaanch] Tumne yaad dilane ka WAADA kiya, par koi reminder laga nahi hai - Hoola reminder ke bina "
-                 "kuch yaad nahi rakhta. Abhi create_reminder se sahi samay par laga do (phir batao kab ka laga), ya waada "
-                 "mat karo.")
+NUDGE_PROMISE = ("[Truth check] You PROMISED to remind her, but no reminder is set - Hoola remembers nothing without a "
+                 "reminder. Set it now with create_reminder at the right time (then say what time you set), or do not "
+                 "make the promise.")
 
 
 def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:

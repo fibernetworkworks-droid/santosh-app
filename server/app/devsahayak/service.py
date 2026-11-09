@@ -97,7 +97,7 @@ Rules:
   for a new or small file you may give the whole `content`.
 
 Reply with ONE JSON object:
-{"explain": "plain Hinglish for the owner: what was wrong / what you did, 2-5 lines",
+{"explain": "plain English for the owner: what was wrong / what you did, 2-5 lines",
  "cause": "one line root cause (fix / explain only)",
  "files": [{"path": "repo/relative/path", "why": "one line", "edits": [{"find": "...", "replace": "..."}]}
            or {"path": "...", "why": "...", "content": "full new file text"}],
@@ -629,7 +629,7 @@ def _ask_model(t: DevTask, context: str, rules: str, extra: str = "") -> dict[st
     ask = {"write": "Write the code she asks for.", "fix": "Find the root cause of this bug, explain it, and fix it WITH a test.",
            "tests": "Write tests for the code she names (no behaviour change unless a test proves a bug: then say so in risk).",
            "docs": "Write / update the docs she asks for (README, docstrings, comments, API docs). No code behaviour change.",
-           "explain": "Explain this bug in plain Hinglish: where, why, how to fix. Do NOT change files (files: [])."}[t.kind]
+           "explain": "Explain this bug in plain English: where, why, how to fix. Do NOT change files (files: [])."}[t.kind]
     prompt = (f"Task kind: {t.kind}. {ask}\nRepo: {t.repo} (base branch {t.base}).\n"
               + (f"Her coding rules: {rules}\n" if rules else "")
               + f"\n<request>\n{t.text}\n</request>\n\n"

@@ -79,17 +79,17 @@ def test_spoken_shape_strips_symbols_and_colon():
 
 def test_wake_text_carries_delivery():
     t = _wake_text(_row(state="done", detail="4 shots ban gaye", link="https://x.y"))
-    assert "apni awaaz mein 1-3 chhoti lines" in t                        # the v0.192 instruction stays
-    assert "energy natije ke hisaab se" in t                              # v0.193: energy matches the result
-    assert "comma ka matlab chhota pause" in t
+    assert "in your own voice in 1-3 short lines" in t                        # the v0.192 instruction stays
+    assert "energy to match the result" in t                              # v0.193: energy matches the result
+    assert "a comma is a short pause" in t
     assert "https://x.y" in t and "4 shots ban gaye" in t                 # the digest is untouched
 
 
 def test_one_shot_system_carries_delivery():
-    assert "Jaise phone par bolti hai waise likho" in _ONE_SHOT_SYSTEM
-    assert "energy natije ke hisaab se" in _ONE_SHOT_SYSTEM
-    assert "koi ✅ ❌ jaise symbol nahi" in _ONE_SHOT_SYSTEM              # the old rules all survive
-    assert "kuch apne aap se jodna mat" in _ONE_SHOT_SYSTEM
+    assert "Write the way you would say it on the phone" in _ONE_SHOT_SYSTEM
+    assert "energy to match the result" in _ONE_SHOT_SYSTEM
+    assert "No emoji, no markdown, no symbols like ✅ ❌" in _ONE_SHOT_SYSTEM              # the old rules all survive
+    assert "add nothing of your own" in _ONE_SHOT_SYSTEM
 
 
 def test_kaamwatch_voice_note_rides_with_delivery(env, monkeypatch):
