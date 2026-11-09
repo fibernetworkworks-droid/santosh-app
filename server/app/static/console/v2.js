@@ -424,7 +424,7 @@ function replayStep(p) {
   if (p.state === 'running') return;      // the done / error step of the same call follows it
   if (!STEPBUF) {
     STEPBUF = document.createElement('details'); STEPBUF.className = 'tools hmfold'; STEPBUF.open = false;   // v0.718 the same fold as a live turn
-    STEPBUF.innerHTML = `<summary>${HM_CHEV}<span class="sm"></span></summary><div class="tl"></div>`;
+    STEPBUF.innerHTML = `<summary><span class="sm"></span>${HM_DN}</summary><div class="tl"></div>`;
     SINK.appendChild(STEPBUF);
   }
   const row = p.state === 'error' ? `<span class="ic" style="background:rgba(248,113,113,.18);color:var(--bad)">!</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>${p.detail ? `<span class="tm">${esc(String(p.detail).slice(0, 60))}</span>` : ''}`
@@ -439,7 +439,7 @@ function flushStepBuf() {
   if (!STEPBUF) return;
   const n = STEPBUF.querySelectorAll('.ts').length;
   if (!n) STEPBUF.remove();
-  else STEPBUF.querySelector('.sm').textContent = `Worked · ${n} step${n > 1 ? "s" : ""}`;
+  else STEPBUF.querySelector('.sm').textContent = 'Worked';   // v0.721 no count - the arrow opens the steps
   STEPBUF = null;
 }
 // v0.279 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
@@ -591,14 +591,24 @@ function simpleProgress(kind,p={}) {
     const mark=document.createElement('span');mark.className='progress-mark';mark.setAttribute('aria-hidden','true');   // v0.718 the 3D Hoola mark while she waits
     if(window.HoolaMark)mark.innerHTML=HoolaMark.think(24);
     const label=document.createElement('span');label.className='progress-label';   // v0.299: no avatar here either
-    const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
     const secs=document.createElement('span');secs.className='progress-secs';secs.setAttribute('aria-hidden','true');   // v0.293 the clock is decoration; the label is what a screen reader reads
-    SIMPLE_PROGRESS.append(mark,label,dots,secs);
+    // v0.721 EK HI KAAM-ROW: the ONE working row. The step list (the backend feed) sits under it, folded behind a
+    // small arrow - the arrow shows only once there is a step, and opening it is her choice for the whole reply.
+    const tog=document.createElement('button');tog.type='button';tog.className='wtog';tog.hidden=true;
+    tog.setAttribute('aria-label','Show steps');tog.setAttribute('aria-expanded','false');tog.innerHTML=HM_DN;
+    const steps=document.createElement('div');steps.className='tools hmlive wsteps';steps.innerHTML='<div class="tl"></div>';
+    tog.addEventListener('click',()=>{const t=TURN;const on=!SIMPLE_PROGRESS?.classList.contains('wopen');
+      if(t)t.stepsOpen=on;SIMPLE_PROGRESS?.classList.toggle('wopen',on);tog.setAttribute('aria-expanded',String(on));tog.setAttribute('aria-label',on?'Hide steps':'Show steps');});
+    SIMPLE_PROGRESS.append(mark,label,secs,tog,steps);
+    if(TURN?.stepsOpen){SIMPLE_PROGRESS.classList.add('wopen');tog.setAttribute('aria-expanded','true');}
     PROGRESS_T0=Date.now();clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=setInterval(progressTick,1000);
   }
   placeProgress();
-  const label=PROGRESS_POLICY.phase(kind,p);
-  const text=SIMPLE_PROGRESS.querySelector('.progress-label');if(text.textContent!==label)text.textContent=label;
+  let label=PROGRESS_POLICY.phase(kind,p);
+  const cur=TURN?.live?.cur;   // v0.721 the row says what is happening NOW, in the step's own words
+  if(cur&&/^(Working on it|Thinking|Still working)/.test(label))label=cur;
+  const text=SIMPLE_PROGRESS.querySelector('.progress-label');
+  if(text.textContent!==label){text.textContent=label;text.classList.remove('wswap');void text.offsetWidth;text.classList.add('wswap');}
   scrollDown();
 }
 /* v0.299 (owner: "WHEN HOOLA PERFECOM LONG TASK THE LODING, THINGING SECTION GET HIDE FOR WHILE - FIND ROUTE
@@ -620,25 +630,32 @@ function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;cl
    reload (replayStep). */
 const HM_TICK = '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 5"/></svg>';
 const HM_CHEV = '<svg class="hm-chev" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4"/></svg>';
+const HM_DN = '<svg class="hm-dn" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg>';   // v0.721 the only control: an arrow
 function liveStep(p) {
   if (!TYPING) return;
   const t = turn();
+  if (!SIMPLE_PROGRESS) simpleProgress('step', p);
   let g = t.live;
   if (!g) {
-    const el = document.createElement('details'); el.className = 'tools hmlive'; el.open = true;
-    el.innerHTML = `<summary>${HM_CHEV}<span class="sm">Working</span></summary><div class="tl"></div>`;
-    g = t.live = {el, rows: new Map(), t0: Date.now(), n: 0};
+    // v0.721: no second "Working" block in the chat any more - the steps live inside the ONE working row; this
+    // hidden anchor only keeps their place, so the fold ("Worked for 12s") lands where the work happened
+    const el = document.createElement('details'); el.className = 'tools hmfold'; el.open = false; el.hidden = true;
+    el.innerHTML = `<summary><span class="sm"></span>${HM_DN}</summary><div class="tl"></div>`;
+    const tl = SIMPLE_PROGRESS.querySelector('.wsteps .tl'); tl.innerHTML = '';
+    g = t.live = {el, tl, rows: new Map(), t0: Date.now(), n: 0, cur: ''};
     put(t, el);
     if (SIMPLE_PROGRESS) placeProgress();
   }
+  const tog = SIMPLE_PROGRESS?.querySelector('.wtog'); if (tog) tog.hidden = false;
   const id = String(p.id || p.tool || g.n);
   let r = g.rows.get(id);
   if (!r) {
     r = document.createElement('div'); r.className = 'ts run';
     r.innerHTML = '<span class="ic"><span class="hm-spin"></span></span><span class="tx"></span><span class="tm"></span>';
-    r._t0 = Date.now(); g.rows.set(id, r); g.n++; g.el.querySelector('.tl').appendChild(r);
+    r._t0 = Date.now(); g.rows.set(id, r); g.n++; g.tl.appendChild(r);
   }
   r.querySelector('.tx').textContent = p.label || p.tool || 'Working';
+  if (p.state !== 'done' && p.state !== 'error') g.cur = p.label || p.tool || g.cur;
   if (p.state === 'done' || p.state === 'error') {
     r.classList.remove('run'); r.classList.toggle('err', p.state === 'error');
     const ic = r.querySelector('.ic'); ic.className = p.state === 'error' ? 'ic' : 'ic hm-tick';
@@ -651,14 +668,16 @@ function foldLive(t = TURN) {
   const g = t?.live; if (!g) return;
   t.live = null;
   const secs = Math.max(1, Math.round((Date.now() - g.t0) / 1000));
-  g.el.classList.remove('hmlive'); g.el.classList.add('hmfold'); g.el.open = false;
-  g.el.querySelector('.sm').textContent = `Worked for ${fmtSecs(secs)} · ${g.n} step${g.n > 1 ? 's' : ''}`;
+  const tl = g.el.querySelector('.tl'); while (g.tl.firstChild) tl.appendChild(g.tl.firstChild);
+  g.el.hidden = false; g.el.open = !!t.stepsOpen;
+  g.el.querySelector('.sm').textContent = `Worked for ${fmtSecs(secs)}`;   // v0.721 no step count, just the arrow
+  const tog = SIMPLE_PROGRESS?.querySelector('.wtog'); if (tog) tog.hidden = true;
   g.el.querySelectorAll('.ts.run').forEach(r => { r.classList.remove('run'); });
   // the rows keep their live look inside the fold (spinner never left spinning)
   g.el.querySelectorAll('.ts .hm-spin').forEach(sp => { sp.parentElement.className = 'ic hm-tick'; sp.parentElement.innerHTML = HM_TICK; });
   g.el.querySelector('.tl').classList.add('hmrows');
 }
-function stepEvent(p) { liveStep(p); simpleProgress('step',p); }
+function stepEvent(p) { liveStep(p); simpleProgress('step',p); }   // v0.721 one row: liveStep fills its list, simpleProgress its words
 function closeTurnTools(t = TURN) {
   if (!t) return;
   for (const g of t.groups || []) {

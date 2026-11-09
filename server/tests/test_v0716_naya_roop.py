@@ -61,7 +61,7 @@ def test_long_job_plan_and_live_steps():
     assert "function liveStep(p)" in js and "function foldLive(" in js
     assert "function stepEvent(p) { liveStep(p); simpleProgress('step',p); }" in js
     assert "foldLive(R.t);" in js and "foldLive();TYPING=null;" in js
-    assert "`Worked for ${fmtSecs(secs)} · ${g.n} step" in js
+    assert "`Worked for ${fmtSecs(secs)}`" in js   # v0.721 the step count went; the arrow stays
     assert "el.classList.add('hmplan')" in js and "'LONG JOB RUNNING'" in js
 
 
@@ -117,7 +117,7 @@ def test_soft_landing_and_mark_in_a_real_browser():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.720.0")
+    assert APP_VERSION.startswith("0.721.0")
 
 
 def test_v0717_file_card_is_one_row_like_the_approved_design():

@@ -1,3 +1,19 @@
+## v0.721.0 EK HI KAAM-ROW — one working row, the steps behind an arrow (9 Nov 2026; owner, two screenshots: "IT HAS 2 WORKING... THING IN CHAT SPACE. SHOW ME A PERFECT SINGLE WORKING.. ALSO DONT SHOW THE BACKEND FEED FREQUENTLY HIDE IT IN DROPDOWN" -> preview artifact -> "DONT SHOW A STEPS JUST A DROPDOWN ARROW" -> "GO")
+
+While Hoola worked, the console drew two things: the v0.716 live step block ("⌄ Working" with every backend step
+listed open) and, under it, the "Working on it… 31s" row with the mark. Now there is ONE row (`SIMPLE_PROGRESS` in
+v2.js): the 3D mark, what Hoola is doing right now (the running step's own label, swapped in with a soft rise; the
+phase line when no step runs), the clock, and a small arrow button (`.wtog`, shown once a step exists). The step list
+(`.wsteps`, the same `.tools.hmlive .ts` rows) sits inside that row, folded; her tap opens it and the choice holds for
+the rest of that reply (`TURN.stepsOpen`). `liveStep` no longer puts a visible block in the chat - it keeps a hidden
+`.tools.hmfold` anchor where the work started; when the words start (`seg`) or the turn ends (`typing(false)`),
+`foldLive` moves the rows into that anchor and shows "Worked for 38s" + the arrow - no step count. The replayed
+history uses the same fold ("Worked" + arrow, no count). Hoola's own sentences between steps and the Plan card stay
+as they were. Step labels are the server's own (Hinglish today). Tests: NEW test_v0721_ek_kaam_row.py (2, incl. a
+real-browser walk with real typing/step events: exactly one row, the running step's words, arrow shown and list
+folded, tap opens it, the fold reads "Worked for Ns" with the arrow and keeps her open choice, no page errors) +
+v0258 / v0293 / v0299 / v0716 pins moved to the new shape. Preview: https://claude.ai/artifact/Vzp4AQNY2GwDNsRSpRsjJF
+
 ## v0.720.0 HALKA NISHAAN — the console logo is the light mark, no ring (9 Nov 2026; owner, sidebar screenshot: "CHECK THE LOGO IS DARK -- MAKE IT LIGHT LOGO -- AS ALREADY DEVLOPED DONT KEEP THAT RING ON IT")
 
 The sidebar and sign-in card showed `hoola-logo.png` - the app icon, the mark on its navy square - cropped round, with the

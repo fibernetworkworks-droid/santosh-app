@@ -137,10 +137,10 @@ def test_the_console_already_folds_the_tool_noise_like_claude():
     js = (ROOT / "server/app/static/console/v2.js").read_text()
     assert "STEPBUF = document.createElement('details')" in js
     assert "STEPBUF.className = 'tools hmfold'" in js and "STEPBUF.open = false" in js   # v0.716 the same fold as a live turn
-    assert "`Worked · ${n} step${n > 1 ? \"s\" : \"\"}`" in js
+    assert "textContent = 'Worked';" in js   # v0.721 no step count - the arrow opens the steps
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.720.0"
-    assert "0.720.0+719" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.721.0"
+    assert "0.721.0+720" in (ROOT / "pubspec.yaml").read_text()

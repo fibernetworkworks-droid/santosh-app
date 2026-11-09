@@ -3329,3 +3329,24 @@ body.albon{overflow:hidden}
 /* v0.720 HALKA NISHAAN: the sidebar / sign-in logo is the LIGHT mark (hoola-mark.png - the drawing on transparent, no navy
    square) and carries no ring and no round crop; the v0.264-era magenta ring rule no longer reaches it. */
 #app .mk img[src*="hoola-mark"],.mk img[src*="hoola-mark"],.lcard .brand img[src*="hoola-mark"]{border-radius:0;box-shadow:none;background:none;object-fit:contain}
+
+/* v0.721 EK HI KAAM-ROW: ONE working row in the chat - the 3D mark, what Hoola is doing now (the step's own words,
+   swapping in softly), the clock, and a small arrow. The step list (the backend feed) sits folded under that row and
+   opens only when she taps the arrow; at the end it folds into "Worked for 38s" + the same arrow, no step count. */
+#app .simple-progress{flex-wrap:wrap;row-gap:2px}
+#app .simple-progress .progress-label{flex:0 1 auto;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#app .simple-progress .progress-label.wswap{animation:wSwap .35s ease-out both}
+@keyframes wSwap{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+#app .wtog{flex:none;display:inline-grid;place-items:center;width:24px;height:24px;margin-left:-4px;padding:0;border:0;border-radius:6px;background:none;color:var(--dim);cursor:pointer}
+#app .wtog:hover{color:var(--ink);background:var(--glass)}
+#app .wtog:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+#app .hm-dn{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;transition:transform .2s}
+#app .simple-progress.wopen .wtog .hm-dn,#app .tools.hmfold[open]>summary .hm-dn{transform:rotate(180deg)}
+#app .simple-progress .wsteps{flex:0 0 100%;display:none;margin:2px 0 0 12px;padding-left:22px;border-left:1px solid var(--hair)}
+#app .simple-progress.wopen .wsteps{display:block}
+#app .simple-progress .wsteps .tl{padding:2px 0}
+#app .tools.hmfold[hidden]{display:none}
+#app .tools.hmfold>summary .sm{color:var(--mut)}
+#app .tools.hmfold>summary:hover .hm-dn{color:var(--ink)}
+#app .tools.hmfold[open]>.tl{margin-left:12px;padding-left:22px;border-left:1px solid var(--hair)}
+@media (prefers-reduced-motion:reduce){#app .simple-progress .progress-label.wswap{animation:none}}

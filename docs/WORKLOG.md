@@ -2522,3 +2522,9 @@ Task ID: v0.720.0 HALKA NISHAAN
 Ask: the sidebar logo is dark with a ring - make it the light logo, no ring.
 Fixed: static/hoola-mark.png (the mark on transparent, from make_mark.js) in the console sidebar + sign-in; ring / crop removed. Checked light + dark.
 Deploy: the usual vps-ops ritual; healthz must grep 0.720.0; hard refresh.
+
+---
+Task ID: v0.721.0 EK HI KAAM-ROW
+Ask: two 'working' things in the chat - one row only, backend feed hidden behind a dropdown arrow (no step count).
+Built: one working row (mark, current step words, clock, arrow); steps folded under it; 'Worked for Ns' + arrow at the end. Browser walk with real events.
+Deploy: the usual vps-ops ritual; healthz must grep 0.721.0; hard refresh.
