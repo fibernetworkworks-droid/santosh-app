@@ -736,6 +736,56 @@ INDUSTRIES: dict[str, dict[str, Any]] = {
 }
 
 
+# ---------------------------------------------------------------- v0.714 APP SCREENS: the building blocks of a portal / web app
+# The section library above is marketing-only (hero / services / pricing / reviews), so any plan built from it came out as
+# a landing page - even a school portal. These are the SCREENS a real system is made of (what Lovable / Emergent build
+# first): each is drawn as a working app screen filled with clearly-marked SAMPLE data (data-sample + a "Sample data"
+# chip) so she sees the real product before any data exists. Sample rows never go live: the launch check counts them.
+SCREENS: dict[str, dict[str, Any]] = {
+    "screen_dashboard": {"label": "Dashboard", "screen": True, "variants": [
+        "4 KPI tiles with a number + small trend, then today's list and a recent-activity feed",
+        "left column of KPI tiles, right a chart card and a 'needs your action' list",
+        "greeting line + quick action buttons + 3 cards of the user's own items"]},
+    "screen_table": {"label": "Data table", "screen": True, "variants": [
+        "search box + status filter chips + a table of rows with status pills and a row action, paging under it",
+        "dense table with sortable column heads, a bulk-select column and an 'Add new' button",
+        "card list on phone that becomes a table on desktop, each row opening its record"]},
+    "screen_form": {"label": "Form", "screen": True, "variants": [
+        "multi-step form with a step bar, labelled fields, help text and a clear submit",
+        "two-column form grouped in panels with a summary card at the side",
+        "short one-screen form with field validation hints and a success state"]},
+    "screen_detail": {"label": "Record detail", "screen": True, "variants": [
+        "header with name + status pill + actions, field panels below and a timeline of changes",
+        "tabs (Details / Activity / Files) with related lists inside",
+        "summary card left, related rows (payments, visits, marks) right"]},
+    "screen_board": {"label": "Board", "screen": True, "variants": [
+        "kanban columns per workflow state with cards showing who / when / priority",
+        "swimlanes by owner with cards moving left to right",
+        "compact columns with counts in each header and a 'new' card at the top"]},
+    "screen_calendar": {"label": "Calendar", "screen": True, "variants": [
+        "week view with booked slots as coloured blocks and free slots tappable",
+        "month grid with dots per day and the chosen day's list beside it",
+        "today's agenda list with time, who and status, plus a mini month"]},
+    "screen_approvals": {"label": "Approvals queue", "screen": True, "variants": [
+        "list of pending items, each with what / who / when and Approve / Reject buttons",
+        "inbox style: list left, the selected item's details + decision right",
+        "grouped by type with counts and a reason box for rejections"]},
+    "screen_signin": {"label": "Sign-in", "screen": True, "variants": [
+        "role cards (who are you?) then Hoola's sign-in box; no password field drawn by hand",
+        "split panel: what you can do inside on the left, Hoola's sign-in on the right",
+        "centred card with the portal name, a one-line purpose and Hoola's sign-in"]},
+    "screen_settings": {"label": "Settings", "screen": True, "variants": [
+        "side list of setting groups, the chosen group's fields and toggles on the right",
+        "stacked panels (profile, notifications, team) with save per panel",
+        "simple list of toggles and choices with a short line under each"]},
+}
+SECTIONS.update(SCREENS)
+
+
+def is_screen(t: Any) -> bool:
+    return isinstance(t, str) and t in SCREENS
+
+
 def check() -> list[str]:
     """Self-check of the fixed parts (used by tests and the library build)."""
     bad: list[str] = []
@@ -743,7 +793,7 @@ def check() -> list[str]:
         bad.append("goals != 10")
     if len(STYLES) != 10:
         bad.append("styles != 10")
-    if sum(len(v["variants"]) for v in SECTIONS.values()) != 300:
+    if sum(len(v["variants"]) for k, v in SECTIONS.items() if k not in SCREENS) != 300:
         bad.append("section designs != 300")
     if len(HEROES) != 24:
         bad.append("heroes != 24")

@@ -2481,3 +2481,13 @@ Ask: other chats' messages / daily coworker updates land in new chats - keep eve
 Found: every background notice used convs.current = the chat she had open; chat-turn memory read other chats' jobs / cards.
 Fixed: convs.notice_chat -> turn chat or the pinned 'Hoola updates' chat; routines + briefing run there; own-chat jobs / cards / diary / coder notes; switch chat_alone.
 Not verified live.
+
+
+---
+Task ID: v0.715.0 SCREENS FIRST (built as 0.714)
+Agent: Claude (web studio session)
+Task: owner "GO" on research points 1 + 2 - app-screen section types + screens-first plans and looks.
+Work: taxonomy.SCREENS (9 types), architect main_screen + SCREENS FIRST prompt + depth check, site_plan home = front door +
+main screen, looks show screens (APP_LOOK_NOTE), SCREEN_NOTE for the writer, [data-sample] counted + launch blocker,
+Studio "Main screen" pill; test_v0714_screens_first.py (5), v0709 fixture updated.
+Deploy: vps-ops deploy; healthz must read 0.715.0.
