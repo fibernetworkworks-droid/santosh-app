@@ -5377,6 +5377,14 @@ from .coder.service import make_router as _coder_router  # noqa: E402
 app.include_router(_coder_router(require_key, current_tenant))
 
 
+# v0.716 SEEKH MANCH ON THE CONSOLE (the HOOLA AI Video Learner panel): /api/seekh/console/* - the watch
+# job with live stages, the progress pulse and the learned-kaam list. PERFORM is not an endpoint: the panel
+# composes one honest chat turn, so the task runs through the agent and the computer operator's own browser.
+from .seekh_console import make_router as _seekh_console_router  # noqa: E402
+
+app.include_router(_seekh_console_router(require_key, current_tenant))
+
+
 # v0.486.0 BYOX SKILL PACK: /api/byox/categories and /api/byox/guide/{slug} (restored v0.492.0: dropped by a merge)
 from .byox.guide import get_guide, list_categories as _byox_list  # noqa: E402
 

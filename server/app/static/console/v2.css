@@ -3207,3 +3207,79 @@ body.albon{overflow:hidden}
 @media (max-width:520px){#app .result-card.hmfile{flex-wrap:wrap}#app .hmfile .result-actions{width:100%}}
 @media (prefers-reduced-motion:reduce){#app .mu,#app .cd.hmplan,#app .result-card.hmfile,#app .tools.hmlive .ts{animation:none}}
 #app .hmplan li.old .hm-tick svg{animation:none;stroke-dashoffset:0}
+
+/* ================= v0.716 SEEKH MANCH ON THE CONSOLE - the HOOLA AI Video Learner ================= */
+/* The hub card inside AI Employees (a wide row: icon, the promise, the door) */
+#hire .ae-seekh{display:flex;align-items:center;gap:16px;width:100%;margin-top:14px;padding:16px 18px;border:1px solid var(--hair);border-radius:18px;background:var(--surface);text-align:left;transition:border-color .2s,transform .12s,box-shadow .2s}
+#hire .ae-seekh:hover{border-color:var(--pri);transform:translateY(-1px);box-shadow:var(--sh2)}
+#hire .ae-seekh-ic{width:52px;height:52px;border-radius:16px;display:grid;place-items:center;flex-shrink:0;background:var(--pri-soft);color:var(--pri-ink)}
+#hire .ae-seekh-ic svg{width:26px;height:26px}
+#hire .ae-seekh-bd{flex:1;min-width:0}
+#hire .ae-seekh-bd b{display:block;font-size:15px;font-weight:600}
+#hire .ae-seekh-bd small{display:block;margin-top:3px;font-size:12.5px;line-height:1.5;color:var(--mut)}
+#hire .ae-seekh-go{display:inline-flex;align-items:center;gap:6px;flex-shrink:0;font-size:13px;font-weight:600;color:var(--pri-ink);white-space:nowrap}
+#hire .ae-seekh-go svg{width:15px;height:15px}
+@media (max-width:640px){#hire .ae-seekh{flex-wrap:wrap}#hire .ae-seekh-go{width:100%;justify-content:center;padding-top:10px;border-top:1px solid var(--hair)}}
+
+/* The panel itself (#v-seekh) */
+#seekh .sk-card{margin-top:14px;gap:12px}
+#seekh .sk-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+#seekh .sk-form{display:flex;flex-direction:column;gap:10px}
+#seekh .sk-field{display:flex;flex-direction:column;gap:4px;font-size:12.5px;font-weight:600;color:var(--mut)}
+#seekh .sk-field span small{font-weight:400;color:var(--dim)}
+#seekh .sk-grow{flex:1}
+#seekh .sk-btnrow{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+#seekh .sk-small{font-size:12.5px;line-height:1.55}
+#seekh .sk-src{font-size:11.5px;color:var(--dim)}
+
+/* the live watch: stepper + notes */
+#seekh .sk-elapsed{margin-left:8px;font-size:12.5px;font-weight:400;color:var(--dim)}
+#seekh .sk-steps{list-style:none;display:flex;flex-wrap:wrap;gap:6px 18px;margin:0;padding:0}
+#seekh .sk-step{display:flex;align-items:center;gap:8px;color:var(--dim)}
+#seekh .sk-step .sk-dot{width:10px;height:10px;border-radius:50%;border:2px solid var(--hair2);background:var(--raise);flex-shrink:0}
+#seekh .sk-step b{font-size:13px;font-weight:600;display:block}
+#seekh .sk-step small{display:block;font-size:11px;font-weight:400}
+#seekh .sk-step em{font-style:normal;font-size:11.5px;color:var(--dim);font-variant-numeric:tabular-nums}
+#seekh .sk-step.did{color:var(--mut)}
+#seekh .sk-step.did .sk-dot{border-color:var(--ok);background:var(--ok)}
+#seekh .sk-step.on{color:var(--ink)}
+#seekh .sk-step.on .sk-dot{border-color:var(--pri);background:var(--pri);animation:skPulse 1.6s ease-out infinite}
+#seekh .sk-step.on b{color:var(--pri-ink)}
+@keyframes skPulse{0%{box-shadow:0 0 0 0 rgb(var(--acc-rgb) / .35)}100%{box-shadow:0 0 0 9px rgb(var(--acc-rgb) / 0)}}
+#seekh .sk-notes{margin-top:6px;border:1px solid var(--hair);border-radius:14px;background:var(--raise);overflow:hidden}
+#seekh .sk-notes-hd{padding:8px 14px;border-bottom:1px solid var(--hair);font-size:11.5px;font-weight:700;letter-spacing:.06em;color:var(--mut)}
+#seekh .sk-notes-hd small{font-weight:400;letter-spacing:0;text-transform:none}
+#seekh .sk-notes-bd{max-height:280px;overflow-y:auto;padding:12px 14px;font-family:var(--fr);font-size:13.5px;line-height:1.7;white-space:pre-wrap;word-break:break-word;color:var(--chat-ink)}
+#seekh .sk-watching{display:inline-block;color:var(--dim);animation:skBlink 1.4s ease-in-out infinite}
+@keyframes skBlink{50%{opacity:.35}}
+#seekh .sk-err{color:var(--bad)}
+
+/* the memory card */
+#seekh .sk-mem-hd{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px}
+#seekh .sk-title{font-size:17px;font-weight:700}
+#seekh .sk-badges{display:flex;flex-wrap:wrap;gap:6px}
+#seekh .sk-msteps{list-style:none;margin:4px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+#seekh .sk-msteps li{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13.5px}
+#seekh .sk-n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--pri-soft);color:var(--pri-ink);font-size:11.5px;font-weight:700;flex-shrink:0}
+#seekh .sk-act{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--teal);border:1px solid var(--hair);border-radius:6px;padding:2px 7px}
+#seekh .sk-note{flex:1;min-width:200px}
+#seekh .sk-ev{font-size:11.5px;font-variant-numeric:tabular-nums;color:var(--pri-ink);background:var(--pri-soft);border-radius:6px;padding:2px 6px}
+#seekh .sk-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#seekh .sk-chip{font-size:12px;color:var(--mut);border:1px solid var(--hair);border-radius:999px;padding:3px 10px;background:var(--raise)}
+#seekh .sk-chip.warn{color:var(--warn);background:var(--warn-soft)}
+#seekh .sk-chip.v{color:var(--pri-ink);background:var(--pri-soft)}
+#seekh .sk-conf{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--mut);margin-top:8px}
+#seekh .sk-bar{flex:1;max-width:280px;height:7px;border-radius:99px;background:var(--sunk);overflow:hidden}
+#seekh .sk-bar b{display:block;height:100%;border-radius:99px;background:var(--grad)}
+
+/* perform + the learned list */
+#seekh .sk-aim{margin:0;font-size:14px;color:var(--mut)}
+#seekh .sk-aim b{color:var(--ink)}
+#seekh .sk-sent{margin-top:10px;padding:12px 14px;border:1px solid var(--ok);border-radius:12px;background:var(--ok-soft);font-size:13.5px;line-height:1.6;display:flex;flex-direction:column;gap:10px}
+#seekh .sk-list{display:flex;flex-direction:column;gap:8px}
+#seekh .sk-row{display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--hair);border-radius:14px;background:var(--raise)}
+#seekh .sk-row-bd{flex:1;min-width:0}
+#seekh .sk-row-bd b{display:block;font-size:14px}
+#seekh .sk-row-bd small{display:block;font-size:11.5px;color:var(--mut)}
+#seekh .sk-perform{flex-shrink:0}
+@media (max-width:560px){#seekh .sk-row{flex-wrap:wrap}#seekh .sk-perform{width:100%}}
