@@ -646,6 +646,8 @@ def model_for(settings, hard: bool, long_job: bool) -> str:
         # the long-job branch and ran on Sonnet with a 16k cap - her 17:44 call: 9.1 + 5.8 + 23.0 + 4.3 s. She is
         # waiting on the line; the call brain is always voice_brain_model (Haiku)
         return str(settings.voice_brain_model) if SIMPLE_MODEL["ok"] else ""
+    if getattr(settings, "chat_one_model", False):
+        return ""        # v0.732 PARITY PHASE 1: no Haiku / Sonnet / Opus split by ask size - the chat model, every step
     if hard and not long_job:
         return str(getattr(settings, "agent_hard_model", "") or "")
     if long_job:
@@ -770,6 +772,8 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
         # wave 9: the ONE model (SAB HAIKU) is overloaded / down: the turn used to die there (the SDK's own retries are on
         # the same model). Once, the real chat model answers instead - never on a credit / bad-request error.
         low = str(e).lower()
+        if getattr(settings, "chat_one_model", False) and not VOICE_BRAIN_NOW.get():
+            raise        # v0.732 one model: _think asks the SAME model again, never another one mid-chat
         if _sent_model(settings.anthropic_model) == settings.anthropic_model or "credit" in low or "billing" in low \
                 or not any(x in low for x in ("overloaded", "529", "error 5", "503", "502", "500", "timed out", "rate limit", "429")):
             raise
@@ -936,14 +940,24 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     either never leaves the user without an answer. Returns (blocks, stop_reason, the brain that answered).
     v0.161 a brain that fails after some streamed words: `delta_reset`, and the next brain writes them again."""
     order = [brain]
-    if brain == "claude":
+    if llm.one_model():
+        # v0.732 PARITY PHASE 1 EK MODEL: the chat stays on its model - the SAME brain is asked again a few seconds
+        # apart (a GLM timeout is never retried inside one request), never another brain; then the error goes up and
+        # she reads the plain "busy, try again" line
+        order = [brain] * (1 + max(0, int(getattr(settings, "chat_model_retries", 2) or 0)))
+    elif brain == "claude":
         cheap = llm.cheap_brain()
         if cheap and not llm._has_media(history[-1:]):   # pictures and PDFs need Claude; plain text can go to the cheap brain
             order.append(cheap)
     elif _claude_ready():
         order.append("claude")
     last: Exception | None = None
-    for b in order:
+    for i, b in enumerate(order):
+        if i and llm.one_model():
+            if last is not None and not _same_model_retry_ok(last):
+                break
+            STATS_ONE_MODEL["retries"] += 1
+            await asyncio.sleep(float(getattr(settings, "chat_model_retry_s", 3.0) or 0) * i)
         try:
             extra = {"think": True} if (_THINK_NOW.get() and b == "claude") else {}   # v0.232 only when it thinks
             blocks, stop = await _call_brain(b, system, history, settings, tools, live, max_tokens, **extra)
@@ -957,9 +971,26 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
             last = e
             if live is not None:
                 live.reset()
-            log.warning("%s failed%s: %s", b, "; trying the other brain" if b != order[-1] else "", e)
+            log.warning("%s failed%s: %s", b, "; asking the same model again" if llm.one_model() and i + 1 < len(order)
+                        else ("; trying the other brain" if b != order[-1] else ""), e)
     assert last is not None
     raise last
+
+
+STATS_ONE_MODEL = {"retries": 0}
+
+
+def _same_model_retry_ok(e: BaseException) -> bool:
+    """v0.732 a failure worth asking the same model again: busy / rate limit / timeout / unreachable / a 5xx. A wrong key,
+    a refused request, an out-of-credit or a too-long chat will not get better a few seconds later."""
+    low = str(e).lower()
+    if "credit" in low or "billing" in low:
+        return False
+    from . import context as _ctx
+    if _ctx.is_overflow(str(e)):
+        return False
+    return any(x in low for x in ("overloaded", "529", "error 5", "503", "502", "500", "timed out", "timeout",
+                                  "rate limit", "429", "not reachable", "connection", "broken answer"))
 
 
 OUTAGE_TEXT = "The Hoola AI service is paused for a little while - we are fixing it. Please try again in a moment."

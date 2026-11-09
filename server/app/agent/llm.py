@@ -150,6 +150,32 @@ def cheap_brain() -> str | None:
     return "glm" if glm_ready() and not glm_paused() else None
 
 
+def one_model() -> bool:
+    """v0.732 PARITY PHASE 1: a chat turn stays on one model (chat_one_model)."""
+    try:
+        return bool(getattr(get_settings(), "chat_one_model", True))
+    except Exception:
+        return True
+
+
+def chat_brain() -> str | None:
+    """The brain a chat runs on: like cheap_brain, but a brain the safety switch paused is STILL the chat's brain while
+    chat_one_model is on (a pause sends background calls to Claude; it never moves a chat to another model)."""
+    if not one_model():
+        return cheap_brain()
+    st = get_settings()
+    mode = (st.chat_llm or "auto").lower()
+    if mode == "claude":
+        return None
+    if mode == "omniroute":
+        return "omniroute" if omniroute_ready() else None
+    if mode == "glm":
+        return "glm" if glm_ready() else None
+    if omniroute_ready():
+        return "omniroute"
+    return "glm" if glm_ready() else None
+
+
 def describe() -> str:
     st = get_settings()
     b = cheap_brain()
@@ -163,7 +189,7 @@ def describe() -> str:
 def choose(messages: list[dict]) -> str:
     """'omniroute', 'glm' or 'claude' for this turn."""
     st = get_settings()
-    b = cheap_brain()
+    b = chat_brain()
     if b is None:
         return "claude"
     if _has_media(messages[-1:]) and st.anthropic_api_key and not (b == "glm" and is_nvidia() and _only_images(messages[-1:])):

@@ -59,6 +59,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("HOOLA_LANGUAGE", "auto")      # v0.728 older suites pin Hinglish text; test_v0728 checks English
     monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
+    monkeypatch.setenv("CHAT_ONE_MODEL", "false")      # v0.732 older suites pin the brain fallbacks; test_v0732_ek_model checks one model
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_CLAUDE", "200000")   # v0.724 older gauge suites pin the 200k window
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_GLM", "200000")
     monkeypatch.setenv("CHAT_CONTEXT_MAX_TOKENS_GLM", "40000")  # v0.707 pin; test_v0724 checks the 1M / no-cap defaults

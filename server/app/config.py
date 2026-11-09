@@ -294,6 +294,15 @@ class Settings(BaseSettings):
 
     # --- low-cost chat brain: any OpenAI-compatible API (Z.ai GLM, or GLM self-hosted in India) ---
     chat_llm: str = "auto"                  # auto (OmniRoute, else GLM, else Claude) | omniroute | glm | claude
+    # v0.732 PARITY PHASE 1 EK MODEL (owner: "WE WILL KEEP GLM 5.3 FLASH AS PRIMARY FOR ALL FOR NOW --- PHASE 0 + 1"): a
+    # chat turn runs on ONE model from start to end, like Claude chat - the configured chat brain (GLM-5.3-Flash on her
+    # server). No silent switch to Claude when GLM fails or is paused, no Haiku / Sonnet / Opus split by ask size: the
+    # same model is asked again (chat_model_retries, chat_model_retry_s apart), then the turn says plainly that the model
+    # is busy. The ONE exception: a PDF / picture the chat brain cannot read goes to Claude (llm.choose). Background
+    # work (summaries, reviewers, Studio steps) keeps its own routes. Off = the old fallbacks.
+    chat_one_model: bool = True
+    chat_model_retries: int = 2
+    chat_model_retry_s: float = 3.0
     # --- OmniRoute: open-source LLM gateway on this VPS (switches providers, fallback, cost routing) ---
     omniroute_url: str = ""                 # e.g. http://127.0.0.1:20128/v1
     omniroute_key: str = ""                 # an endpoint API key made in the OmniRoute dashboard
