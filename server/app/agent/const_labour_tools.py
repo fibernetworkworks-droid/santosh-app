@@ -16,11 +16,11 @@ LABOUR_TOOLS = [
         "trade, present, absent, ot_hours, wage_basis day|hour|piece, note - the daily muster roll row. action=licence: "
         "kind contract_labour|bocw|epf|esic|other, number, authority, holder, site, valid_from, valid_to, status, note - "
         "renewal calendar. action=wage_rate: trade, rate, basis, site, wef, source (KAHAN se aaya number - agreement / "
-        "notification / aapki baat), note. action=wage_audit: site, day, trade, workers, ot_hours, advances, deductions "
-        "-> the working paper (gross - advance - katuayi = dene hai; rate ka source saath). action=wage_paid: site, day, "
+        "notification / your word), note. action=wage_audit: site, day, trade, workers, ot_hours, advances, deductions "
+        "-> the working paper (gross - advance - katuayi = to pay; with the source of the rate). action=wage_paid: site, day, "
         "trade, amount, workers, note - record AFTER the payment is made. action=cess_tds: base (construction cost / "
         "contract payment), state (default maharashtra), individual, pan_ok -> BOCW cess + Sec 393(1) TDS, determined "
-        "arithmetic only. Paisa Hoola nahi bhejta; licence / return file karna compliance officer ka kaam."),
+        "arithmetic only. Hoola does not send money; filing a licence / return is the compliance officer's job."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["muster", "licence", "wage_rate", "wage_audit", "wage_paid", "cess_tds"]},
          "site": {"type": "string"}, "day": {"type": "string"}, "contractor": {"type": "string"}, "trade": {"type": "string"},

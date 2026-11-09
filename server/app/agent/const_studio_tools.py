@@ -12,10 +12,10 @@ from .tools import Ctx, ToolError
 
 STUDIO_TOOLS = [
     {"name": "const_studio", "description": (
-        "Visualisation & presentation desk (#119/#120) - registers and checklists, render/design NAHI. "
+        "Visualisation & presentation desk (#119/#120) - registers and checklists, NOT render/design. "
         "action=shot_add: project, rows [shot, view, time_of_day, purpose] -> brief register. "
         "action=shot_asset: project, shot, rows [asset, needed(yes/no), status]. action=report_add: "
-        "project, name, rows [section, kind, status] -> outline register (deck approval aapki). "
+        "project, name, rows [section, kind, status] -> outline register (deck approval is YOURS). "
         "action=status: project, ref (optional) -> pending vs ready."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["shot_add", "shot_asset", "report_add", "status"]},
@@ -36,12 +36,12 @@ LEARN_TOOLS = [
     {"name": "const_learn", "description": (
         "Training & coaching desk (#121/#122/#123). action=trainee_add: project, rows [name, trade, "
         "batch]. action=module_add: rows [module, hours, status]. action=assess_add: rows [trainee, "
-        "module, marks, max] (marks AAPKI sheets se). action=assess_sum: project, pass_pct (AAPKI "
+        "module, marks, max] (marks from YOUR sheets). action=assess_sum: project, pass_pct (YOUR "
         "policy) -> pass/re-test. action=topic_add: rows [topic, syllabus_ref, status]. action=quiz_add: "
         "project, topic, rows [question, correct_answer, option_b, option_c, option_d]. action=quiz_score: "
         "topic, rows [trainee, answers...] -> score arithmetic. action=coach_check: rows [item, status, "
         "note] (contractor records discipline). action=coach_note: text. Certificate training centre "
-        "deta hai; tax/investment advice tier C."),
+        "gives; tax/investment advice is tier C."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["trainee_add", "module_add", "assess_add", "assess_sum",
                                                "topic_add", "quiz_add", "quiz_score", "coach_check",

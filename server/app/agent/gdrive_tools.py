@@ -38,8 +38,8 @@ GDRIVE_LABELS = {"drive_find": "Drive mein dhoondh raha hoon", "drive_read_file"
 
 def _require(ctx: Ctx):
     if not gdrive.configured(ctx.tenant_id):
-        raise ToolError("Google Drive abhi connect nahi hai. Server par service account key (GOOGLE_SA_FILE) set karke "
-                        "ek folder Santosh ki service-account email ko share kijiye.")
+        raise ToolError("Google Drive is not connected yet. Set the service account key (GOOGLE_SA_FILE) on the server and "
+                        "share a folder with Santosh's service-account email.")
 
 
 async def drive_find(ctx: Ctx, query="", limit=15, **_):
@@ -70,7 +70,7 @@ async def sheet_read(ctx: Ctx, spreadsheet_id, range=None, **_):
 async def sheet_append(ctx: Ctx, spreadsheet_id, values, sheet_name=None, **_):
     _require(ctx)
     if not isinstance(values, list) or not values:
-        raise ToolError("values ek list honi chahiye (row ke cells).")
+        raise ToolError("values must be a list (the cells of the row).")
     try:
         return await gdrive.sheet_append(str(spreadsheet_id), [str(v) for v in values], sheet_name, tenant_id=ctx.tenant_id)
     except gdrive.DriveError as e:

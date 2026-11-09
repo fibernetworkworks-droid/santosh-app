@@ -19,7 +19,7 @@ _OWNER_ONLY = {"settings", "waive", "assignment", "paid", "cancel", "done", "for
 GRAPHIC_TOOLS = [
     {"name": "graphic", "description": (
         "Graphic designer's client desk. NEVER invent prices, dates, facts or what a client said; ask her. Cards = only her tap "
-        "decides (say 'aapki haan ka card bheja hai', never 'sent'). client: name, business, phone, kind business|individual, "
+        "decides (say 'I have sent a card for your approval', never 'sent'). client: name, business, phone, kind business|individual, "
         "gstin, state, colors, font, tagline, contact, tds_pct (what the client says it deducts). logo: client, file_id. "
         "vendor: name, phone, spec {color, dpi, bleed, safe, format, pdfx}. job: job (to update) or client, kind, brief (client "
         "words = data), facts (what may appear), sizes, print_fmt, print_custom {w_mm,h_mm}, print_job {qty,stock,finish}, vendor, "
@@ -96,9 +96,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..graphic import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     jb = _s(a.get("job"))
     try:
         if action == "settings":
@@ -121,7 +121,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                   a.get("sizes"), _s(a.get("instruction")), actor, conv)
         if action == "upload":
             if not a.get("file_id"):
-                raise ToolError("Design ki file_id chahiye (chat mein file bhejiye).")
+                raise ToolError("The design's file_id is needed (send the file in the chat).")
             return S.proof_upload(t, jb, None, "", _s(a.get("file_id")), _s(a.get("notes") or a.get("text")), actor, conv)
         if action == "feedback":
             return S.feedback(t, jb, _s(a.get("text")), a.get("version"), actor, conv)
@@ -148,7 +148,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.extra_request(t, jb, actor, conv)
         if action == "handover":
             if a.get("force") and not _owner(ctx):
-                raise ToolError("Paise baaki hote hue files dena: sirf owner.")
+                raise ToolError("Only the owner can hand over files while payment is pending.")
             return S.handover_request(t, jb, bool(a.get("force")), actor, conv)
         if action == "print_order":
             return S.vendor_request(t, jb, _s(a.get("vendor")), actor, conv)
@@ -168,7 +168,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget_client(t, _s(a.get("client")), actor)
     except S.GraphicError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -202,7 +202,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"fonts": {k: {"label": v[0], "rule": v[1]} for k, v in R.FONT_LICENCES.items()}, "assets": R.ASSET_LICENCES}
     except S.GraphicError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"Unknown what '{what}'.")
 
 
 async def _graphic(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:

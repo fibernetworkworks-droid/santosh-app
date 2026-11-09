@@ -81,7 +81,7 @@ async def data_fetch(ctx: Ctx, url, params=None, fields=None, items_path="", pag
             raise ToolError(f"API ne {status} diya: {str(out.get('json') or out.get('text') or '')[:300]}")
         data = out.get("_data")
         if data is None:
-            raise ToolError("Is API ne JSON nahi diya; data_fetch sirf JSON API ke liye hai (page ke liye open_website).")
+            raise ToolError("This API did not return JSON; data_fetch is only for JSON APIs (use open_website for a page).")
         try:
             items = D.find_items(data, str(items_path or ""))
         except D.DataError as e:
@@ -127,7 +127,7 @@ async def data_read(ctx: Ctx, dataset="", offset=0, limit=20, fields=None, sort=
     if export == "csv":
         from .make_tools import _deliver, _safe
         view = await asyncio.to_thread(_deliver, ctx, _safe(doc["name"] or doc["id"], ".csv"), D.to_csv(doc), "data")
-        return view | {"count": doc["count"], "note": "CSV file card chat mein hai."}
+        return view | {"count": doc["count"], "note": "The CSV file card is in the chat."}
     part, total = D.rows_slice(doc, int(offset or 0), int(limit or 20), fields, str(sort or ""), bool(desc), str(q or ""))
     nxt = int(offset or 0) + len(part)
     return {"dataset": doc["id"], "total": total, "offset": int(offset or 0), "rows": D.as_text(part),
@@ -136,7 +136,7 @@ async def data_read(ctx: Ctx, dataset="", offset=0, limit=20, fields=None, sort=
 
 async def data_note(ctx: Ctx, dataset, notes=None, key="", column="note", **_):
     if not isinstance(notes, dict) or not notes:
-        raise ToolError("notes = {key value: text} chahiye.")
+        raise ToolError("notes = {key value: text} is needed.")
     try:
         res = await asyncio.to_thread(D.annotate, ctx.tenant_id, str(dataset), notes, str(key or ""),
                                       str(column or "note"))

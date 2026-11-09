@@ -12,8 +12,8 @@ from .tools import Ctx, ToolError
 DELAY_TOOLS = [
     {"name": "const_delay", "description": (
         "Delay analysis working papers (#47) - as-planned vs as-built, windows, notice compliance. "
-        "CRITICALITY NAHI COMPUTE hoti (baseline rows par AAPKI critical marks), entitlement ka "
-        "nishkarsh code se nahi nikalta (forensic planner + counsel). action=prog_add: project, kind "
+        "CRITICALITY IS NOT COMPUTED (YOUR critical marks on the baseline rows); the entitlement "
+        "conclusion is not derived by code (forensic planner + counsel). action=prog_add: project, kind "
         "baseline|asbuilt, rows [{activity, start, finish, critical?}] (YYYY-MM-DD). action=window_add: "
         "project, label, start, finish -> analysis window. action=impact: project -> per-activity slip "
         "days + windows touched + HER criticality beside it. action=notice_check: project, event, "

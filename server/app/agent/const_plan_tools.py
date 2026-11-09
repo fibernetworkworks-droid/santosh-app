@@ -11,15 +11,15 @@ from .tools import Ctx, ToolError
 PLAN_TOOLS = [
     {"name": "const_plan", "description": (
         "Planning & controls desk (#42/#43/#63/#65/#66/#68/#69/#79/#80). action=activity_add: project, "
-        "rows [code, name, base_start, base_finish] (baseline AAPKA). action=activity_update: project, "
+        "rows [code, name, base_start, base_finish] (the baseline is YOURS). action=activity_update: project, "
         "code, act_start, act_finish, pct. action=variance: project -> planned vs actual dates "
-        "(criticality NAHI). action=resource_add: project, rows [activity, trade, crew, output_planned]. "
+        "(NOT criticality). action=resource_add: project, rows [activity, trade, crew, output_planned]. "
         "action=productivity: project, activity, output_actual. action=risk_add: project, rows [risk, "
-        "p(1-5 AAPKA), i(1-5 AAPKA), owner, due] -> score = p x i. action=risk_board: project. "
+        "p(1-5 YOURS), i(1-5 YOURS), owner, due] -> score = p x i. action=risk_board: project. "
         "action=si_add: project, rows [no, date, from, to, subject]. action=pmc_log: project, date, "
         "what, note. action=cashflow: project, pv_rows [period, planned], ac_rows [period, actual] -> "
-        "S-curve variance. action=evm: project, bac, rows [period, pv, ev, ac] -> SPI/CPI (EAC nahi). "
-        "action=dashboard: project -> sirf jo registers keh chuke. action=agency_add: rows [agency, "
+        "S-curve variance. action=evm: project, bac, rows [period, pv, ev, ac] -> SPI/CPI (not EAC). "
+        "action=dashboard: project -> only what the registers have already said. action=agency_add: rows [agency, "
         "scope, sample_status, start, finish]. action=plant_add: rows [plant, type, owned_hired]. "
         "action=plant_book: project, plant, from, to, site -> double-booking NAMED. action=plant_util: "
         "project, plant, working_days -> utilisation %."),

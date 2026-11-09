@@ -76,12 +76,12 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..appreview import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("App review graahakon ke liye nahi hai.")
+        raise ToolError("App review is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if any(_TOKEN.search(_s(x)) for x in a.values()):
-        raise ToolError("Token chat mein mat dijiye: App Review > Niyam mein app ke andar jodiye. Jo token yahan likha, use GitHub par "
-                        "badal (revoke) dijiye.")
+        raise ToolError("No tokens in chat: add it inside the app under App Review > Rules. Revoke any token you wrote here on GitHub "
+                        "and replace it.")
     try:
         if action == "file":
             return _short(S.review_file(t, _s(a.get("file")), conv))
@@ -111,7 +111,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..appreview import service as S
     t = ctx.tenant_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("App review graahakon ke liye nahi hai.")
+        raise ToolError("App review is not for customers.")
     try:
         if what == "overview":
             sm = S.summary(t)
@@ -124,7 +124,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             v = S.get(t, _s(a.get("review")))
             hit = next((r for r in v["risks"] if r["key"] == _s(a.get("key"))), None)
             if hit is None:
-                raise ToolError("Yeh risk nahi mila.")
+                raise ToolError("This risk was not found.")
             return hit
         if what == "fixlist":
             return {"tasks": S.fix_list(S.get(t, _s(a.get("review"))))}
@@ -142,8 +142,8 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "checks": {c: {"title": r["title"], "area": R.AREAS[r["area"]], "sev": r["sev"], "masvs": r["masvs"]}
                                for c, r in R.RULES.items()},
                     "sources": R.SOURCES,
-                    "never": ["app / code chalana (sirf padhna)", "app ya code kisi third party ko upload karna",
-                              "kisi aur ki website par .git / .env jaanch (sirf verify kiye domain par)", "token chat mein lena"]}
+                    "never": ["running the app / code (read only)", "uploading the app or code to any third party",
+                              "checking .git / .env on someone else's website (only on a verified domain)", "accepting a token in chat"]}
     except (S.ReviewError, ValueError) as ex:
         raise ToolError(str(ex))
     raise ToolError("what galat")

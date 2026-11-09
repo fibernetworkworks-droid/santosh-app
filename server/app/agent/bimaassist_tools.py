@@ -72,7 +72,7 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return E.fhir_claim(g("claim") or {})
     if action == "code_map":
         return E.code_map(g("codes") or [], g("mapping") or {})
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 async def _bima_assist(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
@@ -80,7 +80,7 @@ async def _bima_assist(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     if actor.startswith("customer:") and action not in _SELF_HELP:
-        raise ToolError("Yeh insurance desk ki team ke liye hai.")
+        raise ToolError("This is for the insurance desk team.")
     try:
         return await asyncio.to_thread(_sync, action, a)
     except ValueError as e:

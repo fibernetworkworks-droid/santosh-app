@@ -105,16 +105,16 @@ def _sync(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         return CP.draft({k: a.get(k) for k in keys})
     if action == "facts":
         return {"facts": SC.FACTS, "ladder": CP.LADDER, "always": SC.HEADLINE_RULES,
-                "note": "verify: true wali baatein yaad se hain; primary site par dobara dekhiye."}
-    raise ToolError(f"action '{action}' nahi pehchana.")
+                "note": "Items marked verify: true are from memory; check them again on the primary site."}
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 async def _paisa_sahayak(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     actor = _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _STATEMENT and actor not in ("owner",) and not actor.startswith("approved:"):
-        raise ToolError("Statement sirf owner ke liye.")
+        raise ToolError("Statements are for the owner only.")
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     try:

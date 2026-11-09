@@ -14,9 +14,9 @@ DRAWQA_TOOLS = [
         "Drawing QA & bye-law check (document-level, PDF/DWG-first; a PDF was never a model). action=dwg: project, "
         "dwg_no, rev, kind (plan/section/structural/services), scale_as_noted, source -> register. action=rule_add: "
         "rule_id, text, limit_value, unit, clause (jaise 'UDCPR 6.1'), source (kaunsa DCPR / ULB letter), direction "
-        "min|max (setback MIN hota hai, FAR MAX) - bina clause ka rule nahi bachta. action=check: drawing, rule_id, "
+        "min|max (setback is MIN, FAR is MAX) - a rule without a clause is not kept. action=check: drawing, rule_id, "
         "declared -> within/breach (ARITHMETIC; faisla project architect ka). action=review_pack: drawing -> checks + "
-        "sign line khaali PDF (architect ke liye). "
+        "PDF with an empty sign line (for the architect). "
         "action=dwg_mark: drawing, status received|under_check|returned|ok_drafted."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["dwg", "rule_add", "check", "review_pack", "dwg_mark"]},

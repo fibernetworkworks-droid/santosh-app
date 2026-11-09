@@ -83,7 +83,7 @@ def _read(tenant: str, file_id: str, look: bool = False) -> dict[str, Any]:
         if seen:
             out["seen"] = seen
     if not out.get("text") and not out.get("seen") and not out.get("codes"):
-        out["note"] = "Iske andar ka kuch padh / dekh nahi paya; file bheji ja sakti hai."
+        out["note"] = "Could not read / see anything inside it; the file can still be sent."
     return out
 
 

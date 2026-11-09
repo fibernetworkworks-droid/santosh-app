@@ -13,12 +13,12 @@ RERA_TOOLS = [
     {"name": "const_rera", "description": (
         "RERA & escrow desk (MahaRERA first). action=project: name, maha_rera (reg no), promoter, start_on, "
         "complete_on, escrow_acct -> project data pack. action=update_draft: rera_project, quarter (2026-Q4), "
-        "pct_complete (AAPKA bataya hua - main % nahi nikalta), units_booked, units_delivered, complaints. "
+        "pct_complete (as YOU tell it - I do not compute the %), units_booked, units_delivered, complaints. "
         "action=form_pack: rera_project, form_no (Form 3/4/5...), purpose, period, data [{item, value, source}], "
-        "prepared_for (CA/architect/engineer ka NAAM) -> sign line khaali rehti hai. action=escrow_in: rera_project, "
-        "amount, day, ref. action=escrow_withdraw: rera_project, amount, certificate_ref (ZAROORI - engineer/architect/"
-        "CA ka certificate), day. action=reconcile: rera_project -> receipts vs 70% reserve (state pack se, cited) + "
-        "CA audit due. Filing promoter / professional ki haan se - Hoola kabhi nahi."),
+        "prepared_for (NAME of the CA/architect/engineer) -> the sign line stays empty. action=escrow_in: rera_project, "
+        "amount, day, ref. action=escrow_withdraw: rera_project, amount, certificate_ref (REQUIRED - the engineer's/architect's/"
+        "CA's certificate), day. action=reconcile: rera_project -> receipts vs 70% reserve (from the state pack, cited) + "
+        "CA audit due. Filing only on the promoter's / professional's approval - never by Hoola."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["project", "update_draft", "form_pack", "escrow_in", "escrow_withdraw",
                                                "reconcile"]},

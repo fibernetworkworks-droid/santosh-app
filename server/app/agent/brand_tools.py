@@ -63,7 +63,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action in _OWNER_ONLY and actor != "owner" and not actor.startswith("approved:"):
-            raise ToolError("Yeh sirf owner kar sakti hain.")
+            raise ToolError("Only the owner can do this.")
         if action == "make":
             r = B.make(t, _s(a.get("brief")), _s(a.get("kind")), a.get("sizes"), _s(a.get("festival")), _s(a.get("photo")),
                        _s(a.get("layout")), ai_background=bool(a.get("ai_background")), template=_s(a.get("template")),
@@ -76,7 +76,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             r = B.set_photo(t, _s(a.get("design")), _s(a.get("file_id") or a.get("photo")), conv=conv)
         elif action == "approve":
             r = B.request_approval(t, _s(a.get("design")), bool(a.get("force")), conv)
-            r["note"] = "Card sent. Only her tap on 'Haan, final' makes the final files; do not say it is approved."
+            r["note"] = "Card sent. Only her tap on 'Yes, final' makes the final files; do not say it is approved."
         elif action == "copy":
             r = B.copy_design(t, _s(a.get("design")))
         elif action == "template":

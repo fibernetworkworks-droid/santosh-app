@@ -57,7 +57,7 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return E.appeal(a.get("reasons") or [], None, a.get("today"), a.get("insurer_replied_on"))
     if action == "kyc_check":
         return E.kyc_check(a.get("docs") or {})
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 async def _bima_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
@@ -65,7 +65,7 @@ async def _bima_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     if actor.startswith("customer:") and action not in _SHOPPER:
-        raise ToolError("Yeh insurance desk ki team ke liye hai.")
+        raise ToolError("This is for the insurance desk team.")
     try:
         return await asyncio.to_thread(_sync, action, a)
     except ValueError as e:

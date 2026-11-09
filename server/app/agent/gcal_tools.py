@@ -25,7 +25,7 @@ REPEAT_SCHEMA = {"type": "object", "description": "Optional repeat, e.g. {freq: 
 GCAL_TOOLS = [
     {"name": "calendar_agenda", "description": (
         "The user's Google Calendar for a day or range (all the calendars they read: work, family, holidays). Use for "
-        "'aaj/kal kya hai', 'is hafte ki meetings', 'agle mahine kab free hoon'. Returns time, title, location, people, "
+        "'what is on today/tomorrow', 'this week's meetings', 'when am I free next month'. Returns time, title, location, people, "
         "Meet link, and whether the user has replied to an invite. query filters by words."),
      "input_schema": {"type": "object", "properties": {
          "from_date": {"type": "string", "description": "Local date YYYY-MM-DD (default today)"},
@@ -76,7 +76,7 @@ GCAL_TOOLS = [
          "required": ["event_id", "response"]}},
     {"name": "calendar_free_slots", "description": (
         "When is the user free? Finds open time of at least `minutes` between work_start and work_end on the given "
-        "days, from their Google Calendar. Use for 'kal kab free hoon', 'is hafte 1 ghante ka slot dhoondho'."),
+        "days, from their Google Calendar. Use for 'when am I free tomorrow', 'find a 1-hour slot this week'."),
      "input_schema": {"type": "object", "properties": {
          "from_date": {"type": "string", "description": "YYYY-MM-DD (default today)"},
          "to_date": {"type": "string", "description": "YYYY-MM-DD (default = from_date)"},
@@ -87,7 +87,7 @@ GCAL_TOOLS = [
         "The user's connected calendars and Santosh's calendar settings. read_calendars = names of calendars to "
         "include in the agenda; default_calendar = where new events go; meeting_alerts = minutes before a meeting "
         "Santosh nudges (0 = off). Call with no arguments to list. If nothing is connected tell the user: "
-        "Profile > Calendar > Google Calendar jodiye."),
+        "Connect Google Calendar in Profile > Calendar."),
      "input_schema": {"type": "object", "properties": {
          "read_calendars": {"type": "array", "items": {"type": "string"}}, "default_calendar": {"type": "string"},
          "meeting_alerts": {"type": "integer"}}}},
@@ -114,7 +114,7 @@ def _day(s: str | None, default: date) -> date:
     try:
         return datetime.fromisoformat(str(s)[:10]).date()
     except ValueError:
-        raise ToolError("Date YYYY-MM-DD format mein do, e.g. 2026-10-20.")
+        raise ToolError("Give the date in YYYY-MM-DD format, e.g. 2026-10-20.")
 
 
 def _today(ctx: Ctx) -> date:
@@ -125,7 +125,7 @@ def _parse(ctx: Ctx, s: str, what: str) -> datetime:
     try:
         return life.parse_local(str(s), life.tz_of(ctx.tenant_id))
     except ValueError as e:
-        raise ToolError(f"{what} samajh nahi aaya ({e}). Local ISO do, jaise 2026-10-20T16:00.")
+        raise ToolError(f"{what} was not understood ({e}). Give local ISO time, like 2026-10-20T16:00.")
 
 
 def _people(ctx: Ctx, people: list[str] | None) -> list[str]:
@@ -154,7 +154,7 @@ async def calendar_agenda(ctx: Ctx, from_date=None, to_date=None, query=None, **
     if d1 < d0:
         d0, d1 = d1, d0
     if (d1 - d0).days > 92:
-        raise ToolError("Ek baar mein 3 mahine tak ka calendar.")
+        raise ToolError("Calendar for up to 3 months at a time.")
     start = datetime(d0.year, d0.month, d0.day, tzinfo=tz)
     end = datetime(d1.year, d1.month, d1.day, tzinfo=tz) + timedelta(days=1)
     await asyncio.to_thread(cs.remember_conversation, ctx.tenant_id, ctx.conversation_id)
@@ -187,7 +187,7 @@ async def calendar_add_event(ctx: Ctx, title, start, end=None, all_day=False, lo
     else:
         e = s + (timedelta(days=1) if all_day else timedelta(hours=1))
     if e <= s:
-        raise ToolError("End time start ke baad hona chahiye.")
+        raise ToolError("End time must be after the start.")
     people = _people(ctx, attendees)
 
     def work():
@@ -224,7 +224,7 @@ async def calendar_update_event(ctx: Ctx, event_id, title=None, start=None, end=
             from ..cal.caldav_cal import NEEDS_SIGNIN
             raise CalError(NEEDS_SIGNIN)
         if not v["i_am_organizer"] and (title or start or end or location is not None or adds or removes):
-            raise CalError(f"Is meeting ke organizer {v['organizer']} hain; aap sirf jawab (calendar_respond) de sakte hain.")
+            raise CalError(f"The organizer of this meeting is {v['organizer']}; you can only reply (calendar_respond).")
         tz = life.tz_of(ctx.tenant_id)
         body: dict[str, Any] = {}
         if title:
@@ -239,7 +239,7 @@ async def calendar_update_event(ctx: Ctx, event_id, title=None, start=None, end=
             ns = _parse(ctx, start, "Start time") if start else old_s
             ne = _parse(ctx, end, "End time") if end else (ns + (old_e - old_s) if old_s and old_e else ns + timedelta(hours=1))
             if ne <= ns:
-                raise CalError("End time start ke baad hona chahiye.")
+                raise CalError("End time must be after the start.")
             body["start"] = cs._when_body(ns, v["all_day"], tz)
             body["end"] = cs._when_body(ne, v["all_day"], tz)
         if adds or removes:
@@ -251,7 +251,7 @@ async def calendar_update_event(ctx: Ctx, event_id, title=None, start=None, end=
             mins = sorted({max(0, min(int(m), 40320)) for m in reminders})[:5]
             body["reminders"] = {"useDefault": False, "overrides": [{"method": "popup", "minutes": m} for m in mins]}
         if not body and not meet:
-            raise CalError("Kya badalna hai? (title, start, end, location, attendees, meet)")
+            raise CalError("What should change? (title, start, end, location, attendees, meet)")
         others = [a["email"] for a in v["attendees"]] + adds
         if others and (set(body) - {"reminders"} or meet):
             ns_label = life.fmt_local(_parse(ctx, start, "Start") if start else datetime.fromisoformat(v["start_iso"]), tz) \
@@ -282,7 +282,7 @@ async def calendar_cancel_event(ctx: Ctx, event_id, whole_series=False, **_):
         summary = {"title": v["title"], "when": v["start"] + (" (har baar)" if whole_series and v["recurring"] else ""),
                    "location": v["location"]}
         if not v["i_am_organizer"] and v["organizer"]:
-            summary["note"] = f"Organizer {v['organizer']} ko 'nahi aa paunga' jayega."
+            summary["note"] = f"A 'cannot attend' reply will go to organizer {v['organizer']}."
             return cs.pend(ctx.tenant_id, ctx.conversation_id, "decline", {"box": box.key, "ref": cs.make_ref(box, cal_id, raw["id"])},
                            summary)
         people = [a["email"] for a in v["attendees"]]
@@ -314,11 +314,11 @@ async def calendar_free_slots(ctx: Ctx, from_date=None, to_date=None, minutes=60
     d0 = _day(from_date, _today(ctx))
     d1 = _day(to_date, d0)
     if (d1 - d0).days > 31:
-        raise ToolError("Ek baar mein ek mahine tak.")
+        raise ToolError("Up to one month at a time.")
     try:
         slots = await _t(cs.free_slots, ctx.tenant_id, d0, d1, int(minutes or 60), work_start or "09:00", work_end or "19:00")
     except ValueError:
-        raise ToolError("work_start / work_end HH:MM format mein do.")
+        raise ToolError("Give work_start / work_end in HH:MM format.")
     return {"from": d0.isoformat(), "to": d1.isoformat(), "minutes": int(minutes or 60), "free": slots,
             "note": "Offer 2-3 of these; book with calendar_add_event once the user picks one."}
 
@@ -334,7 +334,7 @@ async def calendar_settings(ctx: Ctx, read_calendars=None, default_calendar=None
             for c in cals:
                 if w in (c["name"].lower(), c["id"].lower(), c["ref"].lower()):
                     return c
-            raise CalError(f"'{name}' calendar nahi mila. Calendars: {', '.join(c['name'] for c in cals)}")
+            raise CalError(f"'{name}' calendar not found. Calendars: {', '.join(c['name'] for c in cals)}")
         if read_calendars is not None:
             refs = [find(n)["ref"] for n in read_calendars]
             cs.set_prefs(ctx.tenant_id, read_calendars=refs or None)

@@ -89,10 +89,10 @@ async def software_architect(ctx: Ctx, action="", brief="", repo="", scale=None,
     from ..employee import hire
     t = ctx.tenant_id
     if not await asyncio.to_thread(hire.is_hired, t, KEY):
-        raise ToolError("Principal Software Architect hired nahi hai: Employees mein ek tap mein hire kijiye, phir design "
+        raise ToolError("The Principal Software Architect is not hired: hire it in Employees with one tap, then design "
                         "banega.")
     if action not in ("list", "status") and str(getattr(ctx, "actor", "owner")).startswith(("customer:", "staff:")):
-        raise ToolError("Architecture ka kaam sirf owner ka hai.")
+        raise ToolError("Architecture work is for the owner only.")
     try:
         if action == "new":
             return _short(await asyncio.to_thread(A.start, t, ctx.conversation_id, brief, repo,
@@ -102,7 +102,7 @@ async def software_architect(ctx: Ctx, action="", brief="", repo="", scale=None,
         if not id:
             ps = await asyncio.to_thread(A.projects, t)
             if not ps:
-                raise ToolError("Abhi koi design nahi hai; action=new se shuru kijiye.")
+                raise ToolError("There is no design yet; start with action=new.")
             id = ps[0]["id"]
         if action == "status":
             return _short(await asyncio.to_thread(A.get, t, id))

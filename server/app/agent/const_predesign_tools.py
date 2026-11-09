@@ -15,25 +15,25 @@ PREDESIGN_TOOLS = [
         "Pre-design desk - load take-down, preliminary sizing, MEP estimates, fire rule checks (sab "
         "PRELIMINARY working papers; design/stability sign registered engineer ka, tier C). action=rule_add: "
         "family ll|unit|span|fire|mep|other, rule_id, text, value, unit, direction min|max, clause, source - "
-        "bina clause ka rule nahi bachta. action=slab_load: project, name, occupancy residential|office|stair, "
+        "a rule without a clause is not kept. action=slab_load: project, name, occupancy residential|office|stair, "
         "thickness_m, finish_kn_m2 -> DL+LL trail (IS 875 pack rows). action=column_load: project, name, "
         "tributary_m2, floors, load_kn_m2, beam_add_kn, wall_add_kn -> Pu kN. action=column_size: project, "
         "name, pu_kn, fck, fy, steel_pct -> IS 456 cl 39.3 working paper (50 mm module, rounding shown). "
         "action=beam_depth: project, name, span_m, support cantilever|simply_supported|continuous, depth_mm "
-        "-> span/ratio check (span > 10 m refuse hota hai - modification factors engineer ke). action=mep_elec: "
+        "-> span/ratio check (span > 10 m is refused - modification factors are the engineer's). action=mep_elec: "
         "project, name, connected_kw, demand_factor, diversity, pf, note (source likho) -> kVA. "
         "action=mep_water: project, name, occupants -> KLD (CPHEEO pack row). action=mep_hvac: project, name, "
         "area_m2, tr_per_m2, source -> TR. action=fire_check: project, rule_id, declared -> within/breach "
         "(clause cited; faisla fire consultant ka). action=fire_demand: project, name, density_lpm_m2, "
         "density_source, area_m2, duration_min, hose_add_lpm -> L/min + m3. Wave 3.5: action=form_area: "
-        "project, name, rows [kind slab|beam|column|wall, L, B, H, count] -> contact area, geometry AAPKE "
-        "dims se (#74; shuttering DESIGN site engineer ki). action=strike_check: project, element_kind "
+        "project, name, rows [kind slab|beam|column|wall, L, B, H, count] -> contact area, geometry is YOURS "
+        "from dims (#74; shuttering DESIGN is the site engineer's). action=strike_check: project, element_kind "
         "vertical|slab_soffit|beam_soffit|props_slab_le4m5|props_beam_le6m|props_slab_gt4m5|props_beam_gt6m, "
         "cement opc, ambient_c, age_h -> IS 456 Table 10 min (OPC + >15 degC only, warna REFUSE; striking "
-        "ka ORDER site engineer ka, tier C). action=props_check: project, name, declared_kn_m2, "
+        "the ORDER is the site engineer's, tier C). action=props_check: project, name, declared_kn_m2, "
         "allowable_kn_m2, source (supplier table) -> within/exceeds. action=scaffold_tag: project, "
         "scaffold_id, status ok|defective|altered, checked_by (competent person ka NAAM), next_check -> "
-        "tag register (#74, tag competent person lagata hai). action=day: desk ka summary."),
+        "tag register (#74, the competent person applies the tag). action=day: desk summary."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["rule_add", "slab_load", "column_load", "column_size",
                                                "beam_depth", "mep_elec", "mep_water", "mep_hvac",
