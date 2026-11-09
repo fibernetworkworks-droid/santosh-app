@@ -400,6 +400,12 @@ class Settings(BaseSettings):
                                            # tips on the system prompt + the done-needs-proof backstop + the
                                            # (Kaam: ...) ledger note - no tool, no key, no network
     kaam_ledger_enabled: bool = True       # ... the ledger note alone can go quiet without touching the rest
+    chat_answer_only: bool = True          # parity Phase 5: the reply is ONLY what the model wrote - the (Kaam: ...)
+                                           # ledger rides the turn's step data (event `ledger`, the console's folded
+                                           # steps row), honesty checks ask the model to correct itself once instead
+                                           # of stapling a note, and a correction message goes out only when a real
+                                           # ACTION claim (sent / paid / booked / deleted / published) stayed false
+                                           # after that retry. False = the old stapled notes.
     seekh_enabled: bool = True             # v0.713 SEEKH MANCH: learn a way of working from a video (the
     seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
     seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories

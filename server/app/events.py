@@ -37,6 +37,7 @@ LOCAL_KINDS = LIVE_ONLY | {
     "bt_request", "bazar_open", "bazar_link", "gyaan_sources", "memory_saved", "memory_used", "procedure", "compact", "open", "link",
     "call_receipt", "speaker", "voice", "biz_inbox", "biz_appointment", "propagent_listing", "chai_order",
     "maps_places",   # v0.449 Phase 2: the places card belongs to the chat that asked
+    "ledger",        # parity Phase 5: the turn's work receipt (step data shown in the steps fold)
 }
 # v0.646 ALAG CALL: what a call does on its own record that stays THERE (her words, tool rows, the receipt...). Every
 # other local kind - phone actions (alarm, open app, home devices), list refreshes, places - also reaches the live

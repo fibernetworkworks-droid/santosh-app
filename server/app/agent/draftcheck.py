@@ -159,6 +159,22 @@ _ANY_TOOL = re.compile(r"delegate|crew|team|agent|santosh_kaam|dhara|workflow|br
                        r"|composio|mcp|zapier|kaam_run|bazar_do|connector", re.I)
 
 
+# parity Phase 5: the claims that are real ACTIONS on her behalf - only these may still get a correction message after
+# the model's own retry (a false "sent" / "paid" / "booked" / "deleted" / "published" must never stand)
+ACTION_FAMILIES = ("send", "money", "book", "publish")
+_DELETE = re.compile(r"delet|remov|cancel|hata\s*di|mita\s*di", re.I)
+
+
+def is_action(phrase: str, family: str = "") -> bool:
+    """True when a claimed phrase is a real action (a family above, or a delete / cancel)."""
+    return (family or family_of(phrase, "")[0]) in ACTION_FAMILIES or bool(_DELETE.search(phrase or ""))
+
+
+def action_claim(text: str) -> bool:
+    """True when the reply claims at least one real ACTION was done."""
+    return any(is_action(p, family_of(p, w)[0]) for p, w, _c in all_claims(text))
+
+
 def family_of(phrase: str, window: str) -> tuple[str, "re.Pattern | None"]:
     """The kind of work a claim names ('' + None = a generic claim any doing tool backs)."""
     for name, words, tools in _FAMILIES:
@@ -361,7 +377,7 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         return ""
     calls = state.get("calls") or []
     report = (state.get("actor") == "wake") or bool(_STATUS_ASK.search(str(state.get("request") or "")))
-    bad, card = [], False
+    bad, card, act = [], False, False
     for phrase, window, clause in claims:
         _fam, tools = family_of(phrase, window)
         mine = [c for c in calls if _backs_claim(c, tools)]
@@ -372,9 +388,11 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         if conv and (report or _PAST.search(clause)) and ran_before(conv, tools):
             continue                       # v0.665 a true report of work done earlier ("haan, bhej diya tha")
         bad.append(phrase)
+        act = act or is_action(phrase, _fam)
         card = card or any(effect(c) == "card" for c in mine)
     if not bad:
         return ""
+    state["false_action"] = act
     seen = state.get("fake_done", 0) + 1
     state["fake_done"] = seen
     if seen == 1:
@@ -387,6 +405,11 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
             return NUDGE_PART.format(what=", ".join(dict.fromkeys(bad))[:120])
         return NUDGE
     if seen == 2 and not state.get("correct"):
+        if state.get("answer_only") and not state.get("false_action"):
+            # parity Phase 5: the model was asked once to correct itself; a claim that is not a real ACTION
+            # (sent / paid / booked / deleted / published) gets no note stapled on - the reply stays its own words
+            STATS["said_dropped"] = STATS.get("said_dropped", 0) + 1
+            return ""
         STATS["fake_done_said"] += 1
         state["correct"] = (SAID_CARD_EN if card else said_line(text))
     return ""

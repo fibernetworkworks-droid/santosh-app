@@ -2932,7 +2932,7 @@ String kalaCardKey(String kind, Map<String, dynamic> p) {
 }
 
 /// v0.550 EK JAISA: kinds that are stream plumbing, never a card; everything else with something to say is shown.
-const Set<String> _notCards = {'resync', 'replay_end', 'ping', 'heartbeat', 'presence', 'reply_chunk'};
+const Set<String> _notCards = {'resync', 'replay_end', 'ping', 'heartbeat', 'presence', 'reply_chunk', 'ledger'};
 
 /// Should an event of a kind this app does not know be drawn as a plain card? Only when it carries something to read.
 bool anyCardWorthShowing(String kind, Map<String, dynamic> p) {
