@@ -102,4 +102,4 @@ def test_a_bare_haan_goes_to_the_model_with_the_chat(gauge, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.724.0")
+    assert APP_VERSION.split(".")[1] >= "724"

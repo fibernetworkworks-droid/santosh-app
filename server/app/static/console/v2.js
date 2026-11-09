@@ -925,7 +925,71 @@ function goalReport(r) {
     part('⏳ What is left', r.baaki) + (r.aapka ? part('👉 Your part', [r.aapka]) : '') + `</div>`;
 }
 
+/* v0.725 PAGE CARD (owner: "CHECK THE INTERACTIVE WEB UI BAR -- DONT HAVE A TIMING AND WORK IN PROGRESS" -> the
+   approved preview -> GO): one card per page, drawn in all its states from the server's real fields. While it is made:
+   a live clock from started_at (server clock, so a skewed PC clock never shows a wrong number), the usual time, the
+   step the builder is really on (writing / checking), a moving bar that shows work and never a made-up percentage,
+   and Stop. Ready: a small picture, what the page holds, version, how long it took, Share + Open. Not made: the
+   reason in plain words + Try again. */
+const PAGE_STEPS = [['read', 'Brief read'], ['writing', 'Writing the page'], ['checking', 'Checking it opens'], ['done', 'Ready']];
+function pageClock(s) { s = Math.max(0, Math.floor(s)); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function pageCard(p, live) {
+  const el = cardShell('artifact', p); el.className = 'cd hmpage';
+  clearInterval(el._tick);
+  const st = p.status || 'building', stage = p.stage || (st === 'building' ? 'writing' : '');
+  const building = st === 'building', failed = st === 'failed';
+  const stopped = stage === 'stopped', kept = st === 'ready' && (stopped || stage === 'failed') && Number(p.version) > 0;
+  const title = esc(p.title || 'Page');
+  const pill = building ? '<span class="hp-pill work"><span class="d"></span>Building</span>'
+    : failed ? `<span class="hp-pill bad"><span class="d"></span>${stopped ? 'Stopped' : 'Not made'}</span>`
+    : '<span class="hp-pill ok"><span class="d"></span>Ready</span>';
+  const thumb = `<div class="hp-thumb${building ? ' live' : ''}" aria-hidden="true"><i></i><i></i><i></i>${st === 'ready' ? '<b></b><b></b><b></b>' : ''}</div>`;
+  const now0 = Date.parse(p.now || '') || Date.now(), skew = now0 - Date.now();
+  const t0 = Date.parse(p.started_at || '') || 0;
+  const took = p.build_s != null ? pageClock(p.build_s) : '';
+  let sub, acts = '', below = '';
+  if (building) {
+    const cur = Math.max(1, PAGE_STEPS.findIndex(x => x[0] === stage));
+    sub = `<span data-step>${esc(PAGE_STEPS[cur][1])}</span><span class="sep">·</span><span class="hp-clock" data-clock>${t0 ? pageClock((Date.now() + skew - t0) / 1000) : '0:00'}</span><span class="sep">·</span><span>usually 20–90 s</span>`;
+    acts = '<button class="btn soft" type="button" data-stop>Stop</button>';
+    below = '<div class="hp-bar" aria-hidden="true"><span></span></div><div class="hp-steps">' + PAGE_STEPS.map((x, i) =>
+      `<span class="hp-st${i < cur ? ' done' : i === cur ? ' now' : ''}"><span class="ic">${i < cur ? '✓' : ''}</span>${esc(x[1])}</span>`).join('') + '</div>';
+  } else if (failed) {
+    sub = `<span>${esc(p.error || 'The page could not be made.')}${took ? ` After <span class="hp-clock">${took}</span>.` : ''}</span>`;
+    acts = stopped ? '' : '<button class="btn" type="button" data-retry>Try again</button>';
+  } else {
+    sub = `<span>${esc(p.summary || 'Open it to use the page.')}</span>`;
+    acts = '<button class="btn soft" type="button" data-share>Share</button><button class="btn" type="button" data-open>Open</button>';
+    below = `<div class="hp-foot"><span>Version ${Number(p.version) || 1}</span>${took ? `<span class="sep">·</span><span>made in <span class="hp-clock">${took}</span></span>` : ''}`
+      + (kept ? `<span class="sep">·</span><span>${esc(stopped ? 'The new version was stopped; this one stays.' : 'The new version could not be made; this one stays.')}</span>` : '') + '</div>';
+  }
+  el.setAttribute('aria-label', `Page ${p.title || ''}: ${building ? 'being made' : failed ? 'not made' : 'ready'}`);
+  el.innerHTML = `<div class="hp-top">${thumb}<div class="hp-meta"><div class="hp-r1"><span class="hp-title">${title}</span>${pill}</div>`
+    + `<div class="hp-sub"${building ? ' aria-live="polite"' : ''}>${sub}</div></div><div class="hp-acts">${acts}</div></div>${below}`;
+  if (building && t0) {
+    const c = el.querySelector('[data-clock]');
+    el._tick = setInterval(() => { if (!el.isConnected) return clearInterval(el._tick); c.textContent = pageClock((Date.now() + skew - t0) / 1000); }, 1000);
+  }
+  el.querySelector('[data-stop]')?.addEventListener('click', async e => {
+    e.currentTarget.disabled = true; e.currentTarget.textContent = 'Stopping…';
+    try { await api('POST', `/api/artifacts/${encodeURIComponent(p.id)}/stop`); } catch (er) { toast(er.message, true); }
+  });
+  el.querySelector('[data-retry]')?.addEventListener('click', () => {
+    msg.value = `Make the page "${p.title || 'page'}" again`; msg.dispatchEvent(new Event('input')); composer.requestSubmit();
+  });
+  el.querySelector('[data-open]')?.addEventListener('click', () => { const it = PN?.itemOf('artifact', p); if (it) PN.open(it); });
+  el.querySelector('[data-share]')?.addEventListener('click', async () => {
+    try {
+      const r = await api('POST', `/api/artifacts/${encodeURIComponent(p.id)}/share`, {on: true});
+      try { await navigator.clipboard.writeText(r.share_url); toast('Share link copied.'); } catch (er) { toast('Share link: ' + r.share_url); }
+    } catch (er) { toast(er.message, true); }
+  });
+  if (live && st === 'ready') PN?.update('artifact', p);
+  scrollDown();
+}
+
 function renderCard(kind, p, at, live) {
+  if (kind === 'artifact' && p && p.id) { pageCard(p, live); return; }
   if(PROGRESS_POLICY.quiet(kind,p)){if(live)simpleProgress(kind,p);return;}
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
   if (RESULTS?.kinds.has(kind) && PN?.itemOf(kind, p) && (kind !== 'artifact' || p.status === 'ready')) {

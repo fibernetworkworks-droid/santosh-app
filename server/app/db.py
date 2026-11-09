@@ -694,6 +694,10 @@ class Artifact(Base):
     deleted: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # v0.725 PAGE CARD: the card's live step + clock (nullable: old rows have none)
+    stage: Mapped[str | None] = mapped_column(String(20), nullable=True, default="")      # writing | checking | done | stopped | failed
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    build_s: Mapped[int | None] = mapped_column(Integer, nullable=True)                 # seconds the last build took
 
 
 class ArtifactVersion(Base):

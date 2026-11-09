@@ -1,3 +1,21 @@
+## v0.725.0 PAGE CARD — the page card shows time, the real step, Stop, and a proper result (9 Nov 2026; owner, screenshot of "Build an interactive web UI · Page": "DONT HAVE A TIMING AND WORK IN PROGRESS ETC --- SHOW ME HERE A PREMIUM AND PERFECT CARD FOR THIS" -> preview https://claude.ai/artifact/NYDA8Fpm1LEbYQr5Sa4HaP -> "GO")
+
+The card a page (artifact_make) draws in the chat was a title + 'Page' tag while it was made: no clock, no step, nothing
+to tell a slow build from a stuck one. SERVER (`app/artifacts.py`): the builder now reports its REAL steps - `writing`
+when the model call starts, `checking` when the reply is parsed (and back to `writing` on the one format retry), `done`
+when the version is saved - each as an `artifact` event (`_stage`); the row keeps `started_at` (the card's clock) and
+`build_s` (how long it took), three nullable columns so old rows load unchanged; `public()` also sends the server's
+`now` so a skewed PC clock never shows a wrong number. A failure is said in plain words (`_why`: took too long / came
+back incomplete twice / the page maker had a problem) instead of a Python class name. `stop()` + POST
+/api/artifacts/{id}/stop cancels a running build; the last ready version stays ("Stopped by you."). CONSOLE
+(`pageCard` in v2.js, `.hmpage` in v2.css): one card per page, changed in place - building: drawn picture with a soft
+sweep, title, Building pill, the step, a ticking clock, "usually 20–90 s", a moving bar (never a made-up %), the four
+steps (Brief read / Writing the page / Checking it opens / Ready) and Stop; ready: picture, title, Ready pill, what the
+page holds, Version n, made in m:ss, Share (copies the share link) and Open (the workspace); not made: the reason + Try
+again (sends "Make the page ... again" through the normal chat). Reduced motion stops every animation; phone width
+stacks the buttons. Tests test_v0725_page_card.py (6, incl. a real-browser walk: one card through building -> checking
+-> ready, clock read from the server's start time). NOT VERIFIED live; the phone app keeps its own card (console only).
+
 ## v0.724.0 CLAUDE JAISA — the whole chat, every message, to the full model (9 Nov 2026; owner: "GLM IS NOT ISSUE ... MIGHT BE ISSUE IN OUR CODE --- CHECK IT PROPERLY", then "MAKE IT 1 MILLION CONTEXT WINDOW FOR EVERY CHAT" and "MAKE IT EXACTLY AS CLAUDE CHAT DOES ENTIRE MSG HANDLING FEATURE")
 
 CHECKED: the GLM door's translation (glmdoor.build / llm.to_openai / from_openai) is sound - system, text, tool calls,

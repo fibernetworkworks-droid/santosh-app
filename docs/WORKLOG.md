@@ -2546,3 +2546,10 @@ Task ID: v0.724.0 CLAUDE JAISA
 Ask: GLM fine, check our code; 1M context for every chat; message handling exactly like Claude chat.
 Built: measured the GLM cap starving the chat (~7k tokens); 1M window, no GLM cap, later tool-result clearing; quick lane + bare-haan shortcut off.
 Deploy: the usual vps-ops ritual; healthz must grep 0.724.0.
+
+
+---
+Task ID: v0.725.0 PAGE CARD
+Ask: the page card had no timing / progress - premium card (preview approved, GO).
+Built: builder steps + start + duration + Stop + plain failure reasons; console pageCard in all three states; browser walk.
+Deploy: the usual vps-ops ritual; healthz must grep 0.725.0; hard refresh the console.

@@ -110,8 +110,47 @@ def share_url(token: str) -> str:
 
 
 def public(a: Artifact) -> dict[str, Any]:
+    st = getattr(a, "started_at", None)
     return {"id": a.id, "title": a.title, "version": a.version, "status": a.status, "summary": a.summary,
-            "error": a.error, "updated_at": (a.updated_at or a.created_at).isoformat(), "shared": bool(a.share_token)}
+            "error": a.error, "updated_at": (a.updated_at or a.created_at).isoformat(), "shared": bool(a.share_token),
+            # v0.725 PAGE CARD: the real step the builder is on, when it started (the card's clock) and how long it took
+            "stage": getattr(a, "stage", "") or "", "started_at": st.isoformat() if st else "",
+            "build_s": getattr(a, "build_s", None), "now": now().isoformat()}
+
+
+def _stage(aid: str, stage: str) -> None:
+    """v0.725 move the build to its next real step and tell the card."""
+    with session() as s:
+        a = s.get(Artifact, aid)
+        if a is None:
+            return
+        a.stage = stage
+        s.flush()
+        snap, conv = public(a), a.conversation_id
+    if conv:
+        try:
+            bus.publish(conv, "artifact", snap)
+        except Exception:
+            log.exception("artifact stage event failed")
+
+
+def _why(e: BaseException) -> str:
+    """v0.725 a failure in plain words for the card (was the Python class name)."""
+    if isinstance(e, (asyncio.TimeoutError, TimeoutError)):
+        return "The page maker took too long and was stopped."
+    if isinstance(e, ValueError):
+        return "The page came back incomplete twice."
+    return "The page maker had a problem."
+
+
+def _took(a: Artifact) -> int | None:
+    st = getattr(a, "started_at", None)
+    if not st:
+        return None
+    if st.tzinfo is None:
+        from datetime import timezone
+        st = st.replace(tzinfo=timezone.utc)
+    return max(0, int((now() - st).total_seconds()))
 
 
 def _emit(a: Artifact) -> None:
@@ -204,6 +243,7 @@ async def _build(aid: str, request: str, data: str = "") -> None:
         if a is None:
             return
         a.status, a.error, a.updated_at = "building", "", now()
+        a.stage, a.started_at, a.build_s = "writing", now(), None      # v0.725 the card's step + clock
         prev_version = a.version
         s.flush()
         snap = public(a)
@@ -219,10 +259,13 @@ async def _build(aid: str, request: str, data: str = "") -> None:
         prompt = f"{prompt}\n\nCURRENT PAGE:\n{current}"
     try:
         reply = await _llm(system, prompt)
+        _stage(aid, "checking")
         try:
             title, summary, page = parse(reply)
         except ValueError:   # one retry with a nudge about the format
+            _stage(aid, "writing")
             reply = await _llm(system, prompt + "\n\nReturn TITLE, SUMMARY and the complete HTML document.")
+            _stage(aid, "checking")
             title, summary, page = parse(reply)
         with session() as s:
             a = s.get(Artifact, aid)
@@ -231,8 +274,20 @@ async def _build(aid: str, request: str, data: str = "") -> None:
             n = a.version + 1
             s.add(ArtifactVersion(artifact_id=aid, version=n, html=page, note=request.strip()[:300]))
             a.version, a.title, a.summary, a.status, a.error, a.updated_at = n, title, summary, "ready", "", now()
+            a.stage, a.build_s = "done", _took(a)
             s.flush()
             s.expunge(a)
+    except asyncio.CancelledError:      # v0.725 her Stop on the card
+        with session() as s:
+            a = s.get(Artifact, aid)
+            if a is not None:
+                a.status = "ready" if a.version else "failed"
+                a.stage, a.build_s, a.error, a.updated_at = "stopped", _took(a), "Stopped by you.", now()
+                s.flush()
+                s.expunge(a)
+        if a is not None:
+            _emit(a)
+        raise
     except Exception as e:
         log.exception("artifact build failed")
         with session() as s:
@@ -240,11 +295,24 @@ async def _build(aid: str, request: str, data: str = "") -> None:
             if a is None:
                 return
             a.status = "ready" if a.version else "failed"
-            a.error = f"Ye version nahi ban paya: {type(e).__name__}"[:300]
+            a.stage, a.build_s = "failed", _took(a)
+            a.error = _why(e)[:300]
             a.updated_at = now()
             s.flush()
             s.expunge(a)
     _emit(a)
+
+
+def stop(tenant: str, aid: str) -> bool:
+    """v0.725 her Stop on a page card: cancel the running build (the last ready version stays)."""
+    a = get(tenant, aid)
+    if a is None:
+        return False
+    t = _building.get(aid)
+    if not t or t.done():
+        return False
+    t.cancel()
+    return True
 
 
 def start_build(aid: str, request: str, data: str = "") -> asyncio.Task:
