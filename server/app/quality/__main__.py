@@ -12,6 +12,8 @@
        | research verdict <id> right|wrong ["why"] [--engine X]   (v0.471 R0 RESEARCH card: report quality scored from its own evidence)
        | research runoff --check | --status | --decide | --apply | --reset | --budget-inr N [--engines hoola,parallel,exa] [--only ids] [--limit N] [--k 1] [--judge]
          (v0.478 R7: the card across the engines, scored the same way; --apply writes the winner as the default, only when she says so)
+   | parity [--check | --live] [--judge] [--only id,id] [--limit N] [--cat followup|one_tool|long|make|memory|trap|lang]
+       [--label x] | parity --status   (v0.732 CLAUDE PARITY card: 60 multi-turn conversations through the real run_turn)
    | sdk [--setup]   (v0.378 the Dart / Kotlin toolchains the mobile coding card runs with)   (v0.360 coding card: 12 practice jobs through the real loop)"""
 from __future__ import annotations
 
@@ -155,6 +157,32 @@ def _code(argv: list[str]) -> int:
     return 0
 
 
+def _parity(argv: list[str]) -> int:
+    """v0.732 CLAUDE PARITY Phase 0: --check (free: set + calibrated scorer + tools in view) or --live (real turns)."""
+    from . import paritycard as PC
+    val = lambda k: argv[argv.index(k) + 1] if k in argv and len(argv) > argv.index(k) + 1 else ""  # noqa: E731
+    if "--status" in argv:
+        cards = PC.saved()
+        if not cards:
+            print("No parity card saved yet.")
+            return 0
+        print("\n".join(PC.lines(PC.load(cards[0]["file"]))))
+        return 0
+    items = PC.pick(only=val("--only"), limit=int(val("--limit") or 0), cat=val("--cat"))
+    if not items:
+        print("No conversation matches.")
+        return 2
+    if "--live" in argv:
+        card = asyncio.run(PC.live_card(items, judge="--judge" in argv,
+                                        progress=lambda cid: print("  ..", cid, flush=True)))
+    else:
+        card = PC.free_card(items)
+    card = PC.save(card, val("--label"))
+    print("\n".join(PC.lines(card)))
+    print(f"\n  saved: {card['file']}")
+    return 0 if card.get("kind") != "check" or card.get("ok") else 1
+
+
 def _hardcard(argv: list[str]) -> int:
     from . import hard_card as H
 
@@ -274,6 +302,8 @@ def main(argv: list[str]) -> int:
         hours = int(argv[argv.index("--hours") + 1]) if "--hours" in argv and len(argv) > argv.index("--hours") + 1 else 24
         print("\n".join(LJ.lines(LJ.report(hours))))
         return 0
+    if argv and argv[0] == "parity":        # v0.732 CLAUDE PARITY card (free --check; --live costs model calls)
+        return _parity(argv[1:])
     if argv and argv[0] == "hardcard":      # v0.438 the hard card: known answers, scored (free, or --live)
         return _hardcard(argv[1:])
     if argv and argv[0] == "hard":          # v0.272 the hard-reasoning detector card (free, no model)
