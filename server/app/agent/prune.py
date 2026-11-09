@@ -46,7 +46,7 @@ CLEAR_KEEP = _env_int("PRUNE_CLEAR_KEEP_STEPS", 3)
 CLEAR_BATCH = _env_int("PRUNE_CLEAR_BATCH_STEPS", 4)
 # v0.707 GLM (the SDK door) has no prompt cache: every step re-pays the whole history (her log: 165-182k chars a step),
 # so the batching that protects Claude's cache buys nothing there - clear sooner and step by step
-CLEAR_TRIGGER_GLM = _env_int("PRUNE_CLEAR_TRIGGER_GLM_CHARS", 12000)
+CLEAR_TRIGGER_GLM = _env_int("PRUNE_CLEAR_TRIGGER_GLM_CHARS", 30000)   # v0.724 was 12000: earlier pages of a long job vanished after ~4 steps
 
 
 def _glm_on() -> bool:

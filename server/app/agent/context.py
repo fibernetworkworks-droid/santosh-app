@@ -41,6 +41,8 @@ SQUEEZE_RESULT = 1500          # this turn's older tool results in the hard form
 
 RATIO: dict[str, float] = {}           # brain -> learned chars per token
 LIMIT_SEEN: dict[str, int] = {}        # brain -> a window a "too long" error named
+FIXED_SEEN: dict[str, int] = {}        # v0.724 brain -> tokens of the last request's system prompt + tools in view
+FIXED_GUESS_TOK = 35000                # before the first measured request (her server: ~33k+ with GLM)
 LAST: dict[str, dict[str, Any]] = {}   # conversation -> the last reading (for /api/conversations/{id}/context)
 CONV: ContextVar[str] = ContextVar("hoola_context_conv", default="")   # set around the step loop's model call only
 STATS: dict[str, int] = {"measured": 0, "full": 0, "net": 0, "net_dropped": 0, "overflow": 0, "squeezed": 0,
@@ -59,11 +61,11 @@ def full_mode(settings=None) -> bool:
 
 def limit(brain: str, settings=None) -> int:
     s = settings or _settings()
-    lim = {"glm": getattr(s, "chat_context_limit_glm", 200000),
-           "omniroute": getattr(s, "chat_context_limit_omniroute", 128000)}.get(
-        brain, getattr(s, "chat_context_limit_claude", 200000))
+    lim = {"glm": getattr(s, "chat_context_limit_glm", 1000000),
+           "omniroute": getattr(s, "chat_context_limit_omniroute", 1000000)}.get(
+        brain, getattr(s, "chat_context_limit_claude", 1000000))
     seen = LIMIT_SEEN.get(brain)
-    return max(8000, min(int(lim or 200000), seen or 10 ** 9))
+    return max(8000, min(int(lim or 1000000), seen or 10 ** 9))
 
 
 def _share(s) -> float:
@@ -81,8 +83,13 @@ def window(brain: str, settings=None) -> int:
             from .. import glmdoor
             if glmdoor.active():
                 # v0.707 every Claude call is answered by GLM (no prompt cache): a long chat was re-sent whole on every
-                # step (165-182k chars); with GLM the chat compacts at this many tokens unless she set her own cap
-                cap = int(getattr(s, "chat_context_max_tokens_glm", 40000) or 0)
+                # step (165-182k chars); with GLM the chat compacts at this many tokens unless she set her own cap.
+                # v0.724 SAARI BAAT: that cap counted the system prompt + tool list (~33k tokens) too, leaving the
+                # CONVERSATION ~7k tokens - every real chat was shortened / dropped on every GLM turn and GLM answered
+                # half-blind. The setting is now the conversation's own room, on top of the fixed part.
+                room = int(getattr(s, "chat_context_max_tokens_glm", 0) or 0)
+                if room > 0:
+                    cap = room + FIXED_SEEN.get(brain, FIXED_GUESS_TOK)
         except Exception:
             pass
     return max(8000, min(lim, int(cap / _share(s)))) if cap > 0 else lim
@@ -265,6 +272,7 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     `turn_start` = index where THIS turn's messages begin (never shortened)."""
     s = settings or _settings()
     fixed = size(system) + size(_in_view(tools))
+    FIXED_SEEN[brain] = tokens(brain, fixed)     # v0.724 the GLM cap is conversation room on top of this
     hist_chars = sum(size(m.get("content")) for m in history)
     est = tokens(brain, fixed + hist_chars)
     line = budget(brain, s)

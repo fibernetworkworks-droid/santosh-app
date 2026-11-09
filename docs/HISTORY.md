@@ -1,3 +1,26 @@
+## v0.724.0 CLAUDE JAISA — the whole chat, every message, to the full model (9 Nov 2026; owner: "GLM IS NOT ISSUE ... MIGHT BE ISSUE IN OUR CODE --- CHECK IT PROPERLY", then "MAKE IT 1 MILLION CONTEXT WINDOW FOR EVERY CHAT" and "MAKE IT EXACTLY AS CLAUDE CHAT DOES ENTIRE MSG HANDLING FEATURE")
+
+CHECKED: the GLM door's translation (glmdoor.build / llm.to_openai / from_openai) is sound - system, text, tool calls,
+tool results, pictures and tool_search references all arrive. The fault was OUR sizing. MEASURED on a test server: the
+system prompt + tools in view are 97-127k characters (~32-42k tokens) before any conversation; with GLM on, v0.707 capped
+the WHOLE request at 40k tokens, so the conversation got ~7k tokens (~20k characters) and the safety net shortened or
+dropped nearly the whole chat on every GLM turn (her server's prompt is bigger still). GLM was answering half-blind.
+FIX 1 (context window): every brain's window is 1,000,000 tokens (`chat_context_limit_claude / glm / omniroute`); a model
+whose real window is smaller answers "too long", `context.overflowed` learns the real number from that error and the
+turn retries once (existing rescue) - so 1M is a ceiling, never a failure. `chat_context_max_tokens_glm` is 0 (no GLM
+cost cap); when set it now means CONVERSATION room on top of the measured fixed part (`context.FIXED_SEEN`), never the
+whole request. GLM clears old tool results at 30,000 characters (was 12,000: a long job lost its earlier pages after
+~4 steps). FIX 2 (Claude's message handling - every message reaches the full model): the quick lane is off
+(`quick_lane` False) - while a job ran, her message was answered by a no-tools brain from 10 chat lines and that pair
+was saved OUT of the history (in_history=False), so the main model never saw it; now it reaches the running job
+(steer) or waits its turn. A bare "haan" no longer approves a waiting PC / browser card before the model reads it
+(`chat_approval_words` False); the model sees the card and its own last reply and may still approve with haan_karo.
+KEPT on purpose: "roko / cancel" stops running work at once (Claude's Stop button), the research plan-first card,
+compaction near the window. COST, said plainly: GLM has no prompt cache, so a long chat is re-sent whole on every step;
+a 200k-token chat costs about 5x a 40k one per step. Old suites pin the old values in conftest; test_v0724_saari_baat.py
+(9). NOT VERIFIED live (no logs from here); GLM-5.3-Flash's real window is not known here - the first too-long answer
+on a huge chat will teach it.
+
 ## v0.723.0 PICHHLA SAWAAL — a bare "YES" answers Hoola's own last question again (9 Nov 2026; owner, screenshot: "USER PUT YES AND AI FORGOT ITS OWN LAST MSG AND GIVING UNWANTED REPLIES ----- FIND ROOT CAUSE")
 
 Hoola's long answer (10 AI SaaS ideas) ended with "Want me to make a full PDF report on any one of these?". She wrote

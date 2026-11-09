@@ -2540,3 +2540,9 @@ Task ID: v0.723.0 PICHHLA SAWAAL
 Ask: she said YES to Hoola's own "Want me to make a PDF report?" and Hoola asked what the YES was for - root cause.
 Built: shortened replies keep their end; the exchange before her message stays rich and is never dropped; haan_karo text.
 Deploy: the usual vps-ops ritual; healthz must grep 0.723.0.
+
+---
+Task ID: v0.724.0 CLAUDE JAISA
+Ask: GLM fine, check our code; 1M context for every chat; message handling exactly like Claude chat.
+Built: measured the GLM cap starving the chat (~7k tokens); 1M window, no GLM cap, later tool-result clearing; quick lane + bare-haan shortcut off.
+Deploy: the usual vps-ops ritual; healthz must grep 0.724.0.

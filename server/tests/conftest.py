@@ -56,6 +56,11 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku
     monkeypatch.setenv("CHAT_ALONE", "false")         # v0.714 older suites pin "the chat she is in"; test_v0714 turns it on
+    monkeypatch.setenv("QUICK_LANE", "true")          # v0.724 older suites pin the quick lane; test_v0724 checks it is off
+    monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
+    monkeypatch.setenv("CHAT_CONTEXT_LIMIT_CLAUDE", "200000")   # v0.724 older gauge suites pin the 200k window
+    monkeypatch.setenv("CHAT_CONTEXT_LIMIT_GLM", "200000")
+    monkeypatch.setenv("CHAT_CONTEXT_MAX_TOKENS_GLM", "40000")  # v0.707 pin; test_v0724 checks the 1M / no-cap defaults
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

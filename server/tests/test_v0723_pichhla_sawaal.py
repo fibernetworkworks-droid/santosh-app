@@ -88,4 +88,4 @@ def test_haan_karo_is_not_the_meaning_of_every_yes():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.723.0")
+    assert APP_VERSION.split(".")[1] >= "723"

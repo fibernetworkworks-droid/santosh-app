@@ -2473,7 +2473,7 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
                # 'approve hai', 'confirm'...) — card khud resolve, tap ki zaroorat nahi (paise wali card par hi).
                # Sirf POORA uttar hi manzoori ho tabhi ('haan, address yeh raha' ka baaki hissa brain dekhega).
             from .. import approval_words
-            if approval_words.is_pure_approval(user_text):
+            if getattr(settings, "chat_approval_words", False) and approval_words.is_pure_approval(user_text):
                 from ..bazar import service as _bz
                 _ap = await asyncio.to_thread(_bz.voice_approve, tenant_id, conversation_id, user_text, True, "chat")
             else:

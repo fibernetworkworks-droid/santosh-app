@@ -153,11 +153,12 @@ class Settings(BaseSettings):
     prompt_slim: bool = True               # v0.473 PATLA PROMPT: only the admitted families' guides ride in the system prompt (false = the full ~130 KB guide, as before)
     # v0.237 FULL CLAUDE MODE Phase 1 (agent/context.py): the whole chat word for word while it fits the model's window
     chat_context: str = "claude"           # claude = whole chat, gauge + safety net | hoola = the v0.108 40-49 exchange window (instant rollback)
-    chat_context_limit_glm: int = 200000   # GLM's context window in tokens (check your Z.ai plan)
-    chat_context_limit_claude: int = 200000
-    chat_context_limit_omniroute: int = 128000   # the smallest window your OmniRoute combo can land on
+    chat_context_limit_glm: int = 1000000  # v0.724 owner: 1M for every chat (a smaller real window is learned from its "too long" error)
+    chat_context_limit_claude: int = 1000000   # v0.724 owner: "MAKE IT 1 MILLION CONTEXT WINDOW FOR EVERY CHAT"
+    chat_context_limit_omniroute: int = 1000000  # v0.724 1M; a smaller real window is learned from its error
     chat_context_full_at: float = 0.75     # the request may fill this share of the window; above it the safety net runs
-    chat_context_max_tokens_glm: int = 40000   # v0.707 the same cap while the GLM door answers (no prompt cache)
+    chat_context_max_tokens_glm: int = 0       # v0.724 owner: 1M window, no GLM cost cap (0 = off); v0.707 cap while the GLM door answers (no prompt cache); v0.724 = tokens
+                                               # of CONVERSATION on top of the system prompt + tools (was the whole request)
     chat_context_max_tokens: int = 0       # v0.244 cost cap: compact at this many tokens whatever the model's window (0 = off)
     # v0.242 FULL CLAUDE MODE Phase 2 (agent/compact.py): Claude-style compaction at the full_at line
     about_me: bool = True                  # v0.250 "Mere baare mein" page rebuilt daily for active owners (false = never rebuilt)
@@ -308,7 +309,11 @@ class Settings(BaseSettings):
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
-    quick_lane: bool = True                 # v0.86 answer new chat messages at once while a long job runs
+    quick_lane: bool = False                # v0.86 answer new chat messages at once while a long job runs. v0.724 CLAUDE
+                                            # JAISA: off - a smaller no-tools brain answered from 10 lines and the pair was
+                                            # kept OUT of the history; now her message reaches the running job / waits
+    chat_approval_words: bool = False       # v0.724 CLAUDE JAISA: a bare "haan" no longer approves a waiting PC / browser
+                                            # card before the model reads it; the model sees the card + its own last reply
     quick_model: str = ""                   # v0.86 model for the quick lane ('' = anthropic_model; a cheap brain is used first)
     prompt_cache: bool = True               # v0.86 Anthropic prompt caching on tools + conversation (faster replies)
     console_v2: bool = True                 # v0.170 Console v2 master switch: the Night-Glass v2 shell serves /console (?legacy=1 = the old page) and turns the four chat phases on below in one go
