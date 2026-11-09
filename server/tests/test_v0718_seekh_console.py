@@ -310,8 +310,8 @@ def test_no_new_tool_road_the_registry_stays():
 
 def test_version_pins():
     main = (SERVER / "app" / "main.py").read_text(encoding="utf-8")
-    assert 'APP_VERSION = "0.731.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
+    assert 'APP_VERSION = "0.732.0"' in main and "SEEKH MANCH ON THE CONSOLE v0.718.0" in main
     pub = ROOT / "pubspec.yaml"
-    assert "version: 0.731.0+730" in pub.read_text(encoding="utf-8")
+    assert "version: 0.732.0+731" in pub.read_text(encoding="utf-8")
     html = (CONSOLE / "v2.html").read_text(encoding="utf-8")
-    assert "console/seekh.js?v=0.731.0" in html and "console/v2.js?v=0.731.0" in html
+    assert "console/seekh.js?v=0.732.0" in html and "console/v2.js?v=0.732.0" in html

@@ -44,7 +44,7 @@ def test_a_plain_ask_sees_about_twenty_core_tools(core):
     names = [t["name"] for t in plan.specs()]
     assert len(names) <= 25, names
     assert names[0] == "tool_search"
-    assert set(CORE) <= set(names)
+    assert set(CORE) - {"artifact"} <= set(names)    # artifact joins only with chat_artifact_direct (pinned off here)
     for old in OLD_READERS + OLD_MEMORY:
         assert old not in names, old
     assert plan.families == set()          # no family joins a plain question
@@ -93,7 +93,7 @@ def test_core_descriptions_are_clear_english_and_keep_every_property(core):
     reg = {t["name"]: t for t in TOOLS}
     shown = {t["name"]: t for t in admit.plan_for(PLAIN, core).specs()}
     for n in CORE:
-        if n == "web_fetch":
+        if n in ("web_fetch", "artifact"):
             continue
         assert shown[n]["description"] == CORE_DESC[n]
         assert "Example:" in CORE_DESC[n]

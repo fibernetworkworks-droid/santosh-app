@@ -2593,3 +2593,9 @@ Ask: GO PHONE and GO WAVE 3 -- in parallel.
 Built: phone app (Dart + Kotlin + manifest) English, model-facing prompts / tool descriptions / nudges / voice persona English; i18n lookup keys kept; 9 worktree agents, merged + compared against v0.729.0.
 Incident: shared /tmp/pytest-of-root filled the disk (0 MB); deleted with the owner's OK.
 Deploy: the usual vps-ops ritual; healthz must grep 0.731.0; the APK build is the first compile of the phone text.
+
+---
+Task ID: v0.732.0 CLAUDE PARITY 0-6
+Ask: GLM 5.3 Flash primary + PHASE 0 + 1, then the large gaps of the parity table first.
+Built: parity card + request dump, one model per chat, small fixed prompt, core tools + web_fetch, work in the turn, answer only, direct artifacts; 6 worktree agents + the join; each switch default on, pinned off for old suites.
+Deploy: the usual vps-ops ritual; healthz must grep 0.732.0; then vps-ops parity_card_check (free) and parity_card (live) for the first baseline.

@@ -422,16 +422,21 @@ def _kaam_tips() -> str:
 _PAGES_OLD = "- Pages (artifacts): when the user wants something to use, keep, see or share rather than just an answer (calculator, tracker/accounts book, checklist, planner, chart or mini dashboard from their numbers, quiz, poster/menu/price list, landing page, simple game, formatted plan), call artifact_make with a complete brief (purpose, all details and numbers, language, style) and put tables/lists in data. For changes, pass artifact_id (artifact_list finds it). Don't paste HTML in chat; the card with an Open button is the result."
 
 
+_i = SYSTEM.find("- Pages (artifacts):")
+_PAGES_NEW = SYSTEM[_i:SYSTEM.find("\n", _i)] if _i >= 0 else ""
+if _PAGES_NEW:      # SYSTEM itself keeps the old line (older suites compare against it); _pages swaps the new one in
+    SYSTEM = SYSTEM.replace(_PAGES_NEW, _PAGES_OLD, 1)
+
+
 def _pages(txt: str) -> str:
-    """parity Phase 6: chat_artifact_direct off = the old pages line (artifact_make with a brief), byte-identical."""
+    """parity Phase 6: chat_artifact_direct on = the direct-artifact pages line; off = SYSTEM's old line, byte-identical."""
     try:
         from ..config import get_settings
-        if get_settings().chat_artifact_direct:
+        if not get_settings().chat_artifact_direct or not _PAGES_NEW:
             return txt
     except Exception:
         return txt
-    i = SYSTEM.find("- Pages (artifacts):")
-    return txt.replace(SYSTEM[i:SYSTEM.find("\n", i)], _PAGES_OLD) if i >= 0 else txt
+    return txt.replace(_PAGES_OLD, _PAGES_NEW, 1)
 
 
 def system_text(families=None) -> str:

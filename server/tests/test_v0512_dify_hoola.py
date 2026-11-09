@@ -321,7 +321,7 @@ def test_approval_expiry_is_typed_and_refuses_retry(monkeypatch):
     run = D.get_run(CTX.tenant_id, r["run_id"])
     assert run["status"] == "failed" and run["pause_reason"] == "approval_expired"
     out = _run(D.dhara_control(CTX, action="retry", run_id=r["run_id"]))
-    assert out.get("ok") is False and "approve" in out["note"]
+    assert out.get("ok") is False and "approving again" in out["note"]
 
 
 def test_step_version_recorded_default_1():
@@ -375,10 +375,10 @@ def test_retry_honest_on_live_or_done_runs():
     _run(D.dhara_save(CTX, name="plain", steps=[{"id": "a", "type": "set", "name": "v", "value": "1"}]))
     r = _run(D.dhara_run(CTX, name="plain"))
     out = _run(D.dhara_control(CTX, action="retry", run_id=r["run_id"]))
-    assert "sirf ruke hue" in out["note"]
+    assert "only on a stopped" in out["note"]
     _run(D.drain())
     out2 = _run(D.dhara_control(CTX, action="retry", run_id=r["run_id"]))
-    assert "sirf ruke hue" in out2["note"]
+    assert "only on a stopped" in out2["note"]
 
 
 def test_summaries_kill_switch(monkeypatch):
@@ -475,7 +475,7 @@ def test_dsl_import_lands_disabled():
     _run(D.dhara_save(CTX2, name="traveler", steps=_flow()))
     env = _run(D.dhara_dsl(CTX2, action="export", name="traveler"))["dsl"]
     out = _run(D.dhara_dsl(CTX, action="import", dsl=env))
-    assert out["ok"] is True and out["enabled"] is False and "BAND" in out["note"]
+    assert out["ok"] is True and out["enabled"] is False and "OFF" in out["note"]
     assert D.get_workflow(T1, name="traveler")["enabled"] in (0, False)
 
 
@@ -505,7 +505,7 @@ def test_dsl_size_cap(monkeypatch):
     _run(D.dhara_save(CTX, name="big", steps=big))
     with pytest.raises(Exception) as e:
         _run(D.dhara_dsl(CTX, action="export", name="big"))
-    assert "bohot bada" in str(e.value)
+    assert "too big" in str(e.value)
 
 
 def test_dsl_webhook_import_mints_a_new_token_shown_once():
@@ -522,7 +522,7 @@ def test_dsl_kill_switch(monkeypatch):
     _patch_settings(monkeypatch, dhara_dsl_enabled=False)
     with pytest.raises(Exception) as e:
         _run(D.dhara_dsl(CTX, action="export", name="x"))
-    assert "band" in str(e.value).lower()
+    assert "turned off" in str(e.value).lower()
 
 
 # ================================================================= pins
@@ -542,4 +542,4 @@ def test_registry_542_with_dhara_dsl():
 
 def test_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.731.0"
+    assert APP_VERSION == "0.732.0"
