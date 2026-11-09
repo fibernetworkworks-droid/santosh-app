@@ -864,6 +864,10 @@ async def tool_search(ctx, need: str = "", **_):
         try:
             from .prompts import guide_for
             g = guide_for(hits - had, had)
+            if getattr(ctx, "small_prompt", False):   # parity Phase 2: the always-on how-to notes left the prompt
+                from .core_prompt import how_for
+                h = how_for(need)
+                g = (g + "\n" + h).strip() if h else g
             if g:   # the family's working guide, delivered beside the result (the system prompt stays as it was)
                 getattr(ctx, "native_guides", None) is None and setattr(ctx, "native_guides", [])
                 ctx.native_guides.append(g)
@@ -883,8 +887,21 @@ async def tool_search(ctx, need: str = "", **_):
     if adm is None:   # no turn state (admission off / direct call): names only, nothing changes
         names = sorted(n for n, f in FAMILY_OF.items() if f in hits)
         return {"admitted": names[:40], "note": "Yeh tools is turn mein loaded NAHI hain (admission off)."}
+    had = set(adm.families)
     fresh = adm.admit_families(hits)
     STATS["tool_search"] += 1
+    if getattr(ctx, "small_prompt", False):
+        # parity Phase 2: the system prompt never changes inside a turn, so the opened families' guides (and the
+        # always-on how-to notes matching the need) are delivered beside this result, as on the native path
+        try:
+            from .prompts import guide_for
+            from .core_prompt import how_for
+            g = "\n".join(x for x in (guide_for(hits - had, had), how_for(need)) if x)
+            if g:
+                getattr(ctx, "native_guides", None) is None and setattr(ctx, "native_guides", [])
+                ctx.native_guides.append(g)
+        except Exception:
+            log.debug("guide lookup failed", exc_info=True)
     log.info("tool_search admitted %s (%s)", ",".join(hits), ",".join(fresh[:8]))
     return {"admitted": fresh, "note": "Yeh tools ab is poori turn ke liye khul gaye - agle call se upyog karo."}
 

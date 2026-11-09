@@ -61,6 +61,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_APPROVAL_WORDS", "true") # v0.724 older suites pin "haan" approving a card; test_v0724 checks off
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_CLAUDE", "200000")   # v0.724 older gauge suites pin the 200k window
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_GLM", "200000")
+    monkeypatch.setenv("CHAT_SMALL_PROMPT", "false")  # parity Phase 2: older suites pin the long per-turn prompt; test_parity_p2 checks the small one
     monkeypatch.setenv("CHAT_CONTEXT_MAX_TOKENS_GLM", "40000")  # v0.707 pin; test_v0724 checks the 1M / no-cap defaults
     get_settings.cache_clear()
     yield
