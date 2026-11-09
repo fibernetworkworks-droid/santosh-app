@@ -289,6 +289,30 @@ _LONG_TURN: set[str] = set()     # v0.473 turns that moved to the long-job caps 
 _PROGRESS: dict[str, float] = {}  # v0.311 conv -> when its running turn last finished a tool (the deadline reads it)
 
 
+# PARITY Phase 4: long work stays in the turn. Tools that run a whole crew / research run inside her turn get the long
+# tool clock instead of the 300 s one (an inline research run's own soft clock is 420 s - it was cut at 300 s before).
+LONG_IN_TURN = frozenset({"deploy_agents", "research_run"})
+STATS_INTURN: dict[str, int] = {"turns": 0, "crews_kept_in_turn": 0, "research_kept_in_turn": 0}
+
+
+def work_in_turn(ctx, settings=None) -> bool:
+    """True = this is HER chat turn and long work (crews, research) runs inside it and comes back as the reply.
+    A call's brain turn (she is waiting on the line), routines, wakes, goal rounds and staff keep the old lanes."""
+    st = settings or get_settings()
+    if not getattr(st, "chat_work_in_turn", False):
+        return False
+    if (getattr(ctx, "actor", "owner") or "owner") != "owner":
+        return False
+    return not VOICE_BRAIN_NOW.get()
+
+
+def _calls_cap(settings, ctx, base: int) -> int:
+    """The breaker's tool-call cap for this turn: her in-turn chat gets chat_max_calls (~200), never less than before."""
+    if work_in_turn(ctx, settings):
+        return max(int(base), int(getattr(settings, "chat_max_calls", 0) or 0))
+    return int(base)
+
+
 async def _with_deadline(coro, conversation_id: str, first: float, long: float):
     """v0.473 the turn's lock deadline. A turn that became a long job mid-way (kaam_plan written, or the short cap
     reached with work going) gets the long-job deadline instead of being killed at the short one."""
@@ -1118,7 +1142,10 @@ async def _run_tool(name: str, args: dict, ctx: Ctx, settings, mcp_route: dict |
                      _meta.get("turn_id", ""), _meta.get("actor", ""))
     _t0 = time.time()
     try:
-        out = await asyncio.wait_for(work, timeout=max(5, settings.agent_tool_timeout_s))
+        _clock = max(5, settings.agent_tool_timeout_s)
+        if name in LONG_IN_TURN and work_in_turn(ctx, settings):
+            _clock = max(_clock, int(getattr(settings, "chat_long_tool_s", 0) or 0))
+        out = await asyncio.wait_for(work, timeout=_clock)
     except asyncio.CancelledError:
         raise
     except BaseException as e:
@@ -1160,7 +1187,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     from . import goal as _goal
     _hers = (getattr(ctx, "actor", "owner") or "owner")
     ASK_NOW.set(user_text if (_hers == "owner" or _hers.startswith("approved:")) else "")
-    state: dict = {"calls": [], "breaker": Breaker(), "used": [], "hint": "", "request": user_text, "t0": time.time(),
+    state: dict = {"calls": [], "breaker": Breaker(max_calls=_calls_cap(settings, ctx, Breaker().max_calls)), "used": [], "hint": "", "request": user_text, "t0": time.time(),
                    "conv": conversation_id, "actor": getattr(ctx, "actor", "owner") or "owner"}
     # v0.232 PHASE C a clearly big ask by her thinks from its FIRST call (the plan comes first, and Claude can't start
     # thinking in the middle of a tool loop, so waiting for kaam_plan set would keep this whole turn silent)
@@ -1197,7 +1224,7 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
         g0 = _goal.active_for(conversation_id)
         if g0 is not None:   # goal open when the turn began: the goal caps apply from the first step
             state["goal"] = g0
-            state["breaker"] = Breaker(max_calls=settings.agent_goal_max_calls, fails_in_row=FAILS_IN_ROW_GOAL,
+            state["breaker"] = Breaker(max_calls=_calls_cap(settings, ctx, settings.agent_goal_max_calls), fails_in_row=FAILS_IN_ROW_GOAL,
                                        rescue=True)
             state["max_tokens"] = settings.agent_goal_max_tokens
     actor = getattr(ctx, "actor", "owner") or "owner"
@@ -1278,7 +1305,7 @@ def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx)
     state["auto_plan"] = v["id"]
     state["goal"] = v
     b = state["breaker"]
-    b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+    b.max_calls, b.fails_in_row, b.rescue = _calls_cap(settings, ctx, settings.agent_goal_max_calls), FAILS_IN_ROW_GOAL, True
     state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
     _LONG_TURN.add(conversation_id)
     STATS_LONG["auto_plan"] += 1
@@ -1723,7 +1750,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             if g_top is not None:
                 state["goal"] = g_top
                 b = state["breaker"]
-                b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+                b.max_calls, b.fails_in_row, b.rescue = _calls_cap(settings, ctx, settings.agent_goal_max_calls), FAILS_IN_ROW_GOAL, True
                 state["max_tokens"] = settings.agent_goal_max_tokens
         # v0.232 PHASE C: this step's model call thinks out loud when a long job runs (read by _think; a contextvar so
         # sub-agents and every caller of _think keep their signature, and the team's own calls never think)
@@ -2116,7 +2143,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             _LONG_TURN.add(conversation_id)
             STATS_LONG["extended"] += 1
             b = state["breaker"]
-            b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
+            b.max_calls, b.fails_in_row, b.rescue = _calls_cap(settings, ctx, settings.agent_goal_max_calls), FAILS_IN_ROW_GOAL, True
             state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
             ext = ("[System: this job is long and not finished yet. Do not stop. Now write the steps of the remaining work with `kaam_plan set` "
                    "(mark what is already done as done), then carry on until it is complete.]")
@@ -2694,9 +2721,13 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
             from . import goal as _goalt
             goal_on = settings.agent_goal and _goalt.active_for(conversation_id) is not None
             _LONG_TURN.discard(conversation_id)
+            _first = settings.agent_goal_turn_s if goal_on else settings.agent_turn_timeout_s
+            if work_in_turn(ctx, settings):   # PARITY Phase 4: her chat turn has room for long work (20 min)
+                STATS_INTURN["turns"] += 1
+                _first = max(_first, int(getattr(settings, "chat_turn_s", 0) or 0))
             final_text = await _with_deadline(
                 _steps(conversation_id, ctx, _gender, history, settings, tenant_id, user_text), conversation_id,
-                max(30, settings.agent_goal_turn_s if goal_on else settings.agent_turn_timeout_s),
+                max(30, _first),
                 max(30, settings.agent_goal_turn_s) if settings.agent_goal else 0)
         except asyncio.TimeoutError:
             log.error("agent turn timed out after %ss", settings.agent_turn_timeout_s)

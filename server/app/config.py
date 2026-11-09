@@ -193,6 +193,15 @@ class Settings(BaseSettings):
     team_tenant_inline_max: int = 8      # CALL PAR TEAM: inline agents running at once for one user, across all her asks
     team_bg_max_running: int = 2            # running background crews per tenant
     team_bg_timeout_s: int = 1200           # a whole background crew's wall clock
+    # PARITY Phase 4 (docs/CLAUDE_PARITY_PLAN.md): long work stays IN the chat turn, like Claude - deploy_agents crews
+    # and Hoola's own research_run run inside her turn and the answer is the reply (no background crew, no wake turn).
+    # Background jobs stay only for work that outlives the turn (video renders, app / website builds). False = the old
+    # behaviour (crews / research may go to the background, 900 s turn, 300 s tool clock).
+    chat_work_in_turn: bool = True
+    chat_turn_s: int = 1200                 # her chat turn's budget with work in the turn (20 min; was agent_turn_timeout_s 900)
+    chat_max_calls: int = 200               # tool calls one chat turn may make (breaker cap; was 48 / 150 in goal mode)
+    chat_long_tool_s: int = 1080            # tool clock for deploy_agents / research_run inside a chat turn (was 300 s)
+    team_inturn_timeout_s: int = 900        # an in-turn crew's clock: slow agents are cut, finished agents keep their work
     agent_event_log: bool = True            # the harness session log (harness_events; best-effort writes, never breaks a turn)
     event_log_retain_days: int = 14         # the daily worker sweep drops older rows
     tv_refresh: bool = True                # Hoola TV: download + check the free channel list nightly

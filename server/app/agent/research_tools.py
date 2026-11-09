@@ -20,8 +20,8 @@ RESEARCH_TOOLS = [
         "in code - then a planner adds goals for real gaps or stops. It returns a DOSSIER: notes with [n] sources and "
         "whether each note's words were found on its page, calculations with their code, what could NOT be confirmed, and "
         "the source list. Write the report ONLY from the dossier: state a note marked NOT VERIFIED as unconfirmed, never as fact; "
-        "cite only the listed sources; keep 'not confirmed' items in the report. Runs in the BACKGROUND (10-40 minutes): you get a run id back "
-        "at once - tell her in one short line that it has started and she will get the report here when it is done, and END the turn "
+        "cite only the listed sources; keep 'not confirmed' items in the report. In her chat it runs inside this turn and returns the "
+        "dossier - write the report in this same reply. When it returns a run id instead, it runs in the BACKGROUND (10-40 minutes) - tell her in one short line that it has started and she will get the report here when it is done, and END the turn "
         "(do not write findings now; the finished run wakes you to write the report). "
         "NOT for one quick fact (use google_search / web_sources) and NOT for Indian official statistics alone (use mospi)."),
      "input_schema": {"type": "object", "properties": {
@@ -36,8 +36,9 @@ RESEARCH_TOOLS = [
                     "description": "Which engine gathers. Default hoola (Hoola's own). A vendor engine runs only when SHE has enabled it; the answer is "
                                    "checked by Hoola against the cited pages either way. Omit unless she named one."},
          "mode": {"type": "string", "enum": ["background", "inline"],
-                  "description": "background (default) = it starts and you reply with ONE short line; the report is written when the run "
-                                 "finishes. inline = wait here (short jobs only)"}},
+                  "description": "In her chat the run works inside this turn and returns the dossier now (write the report in this "
+                                 "reply). Elsewhere: background = it starts and you reply with ONE short line; the report is written "
+                                 "when the run finishes. inline = wait here"}},
          "required": ["question", "sub_questions"]}},
     {"name": "research_document", "description": (
         "Turn the research report you wrote into a DOCUMENT she can hand over: a PDF (her brand colours when she has a brand kit), a Word file and / or a workbook. "
@@ -166,6 +167,13 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
             "exclude_domains": exclude_domains if isinstance(exclude_domains, list) else None, "after_date": after_date}
     asked = E._URL.findall(q + " " + " ".join(goals))
     background = bool(getattr(st, "research_background", True)) if mode in (None, "") else str(mode) == "background"
+    if background:
+        from . import santosh as _s
+        if _s.work_in_turn(ctx, st):
+            # PARITY Phase 4: in her chat the run works inside this turn (the long tool clock covers its 420 s soft
+            # clock) and the dossier comes back now, so the report is this reply - no background run, no wake turn
+            background = False
+            _s.STATS_INTURN["research_kept_in_turn"] += 1
     if eng != "hoola":
         background = True                                          # a vendor's run takes minutes and is polled: never inside a turn
     if background:       # v0.475 R4: persisted, worker-run, self-reporting
