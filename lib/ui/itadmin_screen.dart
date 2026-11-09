@@ -29,7 +29,7 @@ String _rs(dynamic v) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}, Set<String> hidden = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}, Set<String> hidden = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -46,7 +46,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -120,16 +120,16 @@ class _ItadminScreenState extends State<ItadminScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Aaj ka IT admin', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Today\'s IT admin', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
-          if (lines.isEmpty) _muted('Sab theek: koi renewal, card ya checklist baaki nahi.'),
+          if (lines.isEmpty) _muted('All fine: no renewal, card or checklist is pending.'),
           for (final l in lines) Padding(padding: const EdgeInsets.only(bottom: 4), child: Text('• $l', style: const TextStyle(fontSize: 13))),
         ]),
       ),
-      if (waiting.isNotEmpty) _h('Aapki haan chahiye (${waiting.length})'),
+      if (waiting.isNotEmpty) _h('Needs your yes (${waiting.length})'),
       for (final c in waiting)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: ItadminChangeCard(app: widget.app, data: {'change': c}, onDone: _load)),
-      if (approved.isNotEmpty) _h('Haan di, console mein karna baaki'),
+      if (approved.isNotEmpty) _h('Approved, still to do in the console'),
       for (final c in approved)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: ItadminChangeCard(app: widget.app, data: {'change': c}, onDone: _load)),
       if (cls.isNotEmpty) _h('Checklists'),
@@ -138,23 +138,23 @@ class _ItadminScreenState extends State<ItadminScreen> {
       if (day['review_due'] == true)
         Padding(
           padding: const EdgeInsets.only(top: 6),
-          child: GlassButton(label: 'Access review shuru karo', icon: Icons.fact_check_rounded, onTap: () => _run('POST', '/api/itadmin/reviews')),
+          child: GlassButton(label: 'Start access review', icon: Icons.fact_check_rounded, onTap: () => _run('POST', '/api/itadmin/reviews')),
         ),
     ]);
   }
 
   // ---------------- Licence
   Future<void> _licenceForm([Map<String, dynamic>? l]) async {
-    final f = await _form(context, l == null ? 'Naya licence / subscription' : 'Badlo: ${_s(l['name'])}', const [
-      ('name', 'Naam (jaise Microsoft 365 Business Basic)'),
-      ('vendor', 'Kis se (vendor / partner)'),
-      ('seats_bought', 'Kitni seats li'),
-      ('seats_used', 'Kitni use mein'),
-      ('cost', 'Kharcha ₹ (aapka number)'),
+    final f = await _form(context, l == null ? 'New licence / subscription' : 'Change: ${_s(l['name'])}', const [
+      ('name', 'Name (for example Microsoft 365 Business Basic)'),
+      ('vendor', 'From whom (vendor / partner)'),
+      ('seats_bought', 'How many seats taken'),
+      ('seats_used', 'How many in use'),
+      ('cost', 'Cost ₹ (your number)'),
       ('cost_per', 'month / year / once'),
-      ('renews_on', 'Renewal tareekh (YYYY-MM-DD)'),
-      ('owner', 'Kaun dekhta / bharta hai'),
-      ('login_with', 'Kis account se manage (password nahi)'),
+      ('renews_on', 'Renewal date (YYYY-MM-DD)'),
+      ('owner', 'Who looks after / pays for it'),
+      ('login_with', 'Managed from which account (not the password)'),
     ], initial: {
       if (l != null) for (final k in ['name', 'vendor', 'seats_bought', 'seats_used', 'cost', 'cost_per', 'renews_on', 'owner', 'login_with'])
         if (_s(l[k]).isNotEmpty) k: _s(l[k]),
@@ -168,9 +168,9 @@ class _ItadminScreenState extends State<ItadminScreen> {
     if (!mounted) return;
     final perSeat = await showDialog<bool>(
         context: context,
-        builder: (d) => AlertDialog(content: const Text('Kharcha har seat ka hai?'), actions: [
-              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi, poora')),
-              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, per seat')),
+        builder: (d) => AlertDialog(content: const Text('Is the cost per seat?'), actions: [
+              TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No, the whole amount')),
+              TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, per seat')),
             ]));
     if (perSeat != null) body['per_seat'] = perSeat;
     if (l == null) {
@@ -185,11 +185,11 @@ class _ItadminScreenState extends State<ItadminScreen> {
     final save = _m(_m(_d?['day'])['renewals'])['save_year'];
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       if (save is num && save > 0)
-        Glass(child: Text('Khaali seats hata kar ~${_rs(save)} saal ke bach sakte hain.', style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700))),
+        Glass(child: Text('By removing empty seats you could save about ~${_rs(save)} a year.', style: const TextStyle(color: C.ok, fontWeight: FontWeight.w700))),
       const SizedBox(height: 8),
-      GlassButton(label: 'Naya licence', icon: Icons.add_rounded, onTap: _busy ? null : () => _licenceForm()),
+      GlassButton(label: 'New licence', icon: Icons.add_rounded, onTap: _busy ? null : () => _licenceForm()),
       const SizedBox(height: 8),
-      if (rows.isEmpty) _muted('Abhi koi licence nahi. M365 / Workspace jodne par seats khud aa jayengi (Admin tab).'),
+      if (rows.isEmpty) _muted('No licences yet. When you connect M365 / Workspace, seats will come in by themselves (Admin tab).'),
       for (final l in rows) _licTile(l),
     ]);
   }
@@ -218,23 +218,23 @@ class _ItadminScreenState extends State<ItadminScreen> {
                 [
                   if (l['seats_bought'] != null || l['seats_used'] != null) 'Seats ${_s(l['seats_used'] ?? '?')}/${_s(l['seats_bought'] ?? '?')}',
                   if (l['cost'] != null) '${_rs(l['cost'])}/${_s(l['cost_per'])}${l['per_seat'] == true ? ' per seat' : ''}',
-                  if (_s(l['renews_on']).isNotEmpty) 'Renewal ${_s(l['renews_on'])} (${_s(days)} din)',
+                  if (_s(l['renews_on']).isNotEmpty) 'Renewal ${_s(l['renews_on'])} (${_s(days)} days)',
                   l['auto_renew'] == true ? 'auto-renew ON' : (l['auto_renew'] == false ? 'auto-renew OFF' : 'auto-renew ?'),
                 ].join(' · '),
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
             if (w.isNotEmpty)
-              Text('${_s(w['free'])} seat khaali${w['rupees_year'] != null ? ' · ~${_rs(w['rupees_year'])}/saal' : ''}',
+              Text('${_s(w['free'])} seats free${w['rupees_year'] != null ? ' · ~${_rs(w['rupees_year'])}/year' : ''}',
                   style: const TextStyle(color: C.ok, fontSize: 12.5)),
             Row(children: [
               TextButton(
                   onPressed: () async {
-                    final f = await _form(context, 'Renew kar diya', const [('renews_on', 'Agli tareekh (khaali = +1 saal)'), ('cost', 'Naya kharcha ₹')], ok: 'Save');
+                    final f = await _form(context, 'Renewed', const [('renews_on', 'Next date (blank = +1 year)'), ('cost', 'New cost ₹')], ok: 'Save');
                     if (f == null) return;
                     await _run('POST', '/api/itadmin/licences/${_s(l['id'])}/renewed',
                         {if (f['renews_on'] != null) 'renews_on': f['renews_on'], if (f['cost'] != null) 'cost': double.tryParse(f['cost']!)});
                   },
-                  child: const Text('Maine renew kiya')),
-              TextButton(onPressed: () => _run('DELETE', '/api/itadmin/licences/${_s(l['id'])}'), child: const Text('List se hatao')),
+                  child: const Text('I renewed it')),
+              TextButton(onPressed: () => _run('DELETE', '/api/itadmin/licences/${_s(l['id'])}'), child: const Text('Remove from the list')),
             ]),
           ]),
         ),
@@ -244,7 +244,7 @@ class _ItadminScreenState extends State<ItadminScreen> {
 
   // ---------------- Log (people + access)
   Future<void> _newPerson() async {
-    final f = await _form(context, 'Naya insaan', const [('name', 'Naam'), ('email', 'Office email'), ('phone', 'Phone'), ('role', 'Kaam'), ('department', 'Department')], ok: 'Save');
+    final f = await _form(context, 'New person', const [('name', 'Name'), ('email', 'Office email'), ('phone', 'Phone'), ('role', 'Role'), ('department', 'Department')], ok: 'Save');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     await _run('POST', '/api/itadmin/people', f);
   }
@@ -253,14 +253,14 @@ class _ItadminScreenState extends State<ItadminScreen> {
     final rows = _list(_d?['people']);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        Expanded(child: GlassButton(label: 'Naya insaan', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newPerson)),
+        Expanded(child: GlassButton(label: 'New person', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newPerson)),
         const SizedBox(width: 8),
         Expanded(
             child: GlassButton(
-                label: 'Naya joiner',
+                label: 'New joiner',
                 icon: Icons.login_rounded,
                 onTap: () async {
-                  final f = await _form(context, 'Naya staff aa raha hai', const [('name', 'Naam'), ('when', 'Kab se (YYYY-MM-DD)')], ok: 'Checklist banao');
+                  final f = await _form(context, 'A new staff member is joining', const [('name', 'Name'), ('when', 'From when (YYYY-MM-DD)')], ok: 'Make checklist');
                   if (f == null || (f['name'] ?? '').isEmpty) return;
                   final r = await _run('POST', '/api/itadmin/people', {'name': f['name']});
                   final p = _m(r?['person']);
@@ -268,7 +268,7 @@ class _ItadminScreenState extends State<ItadminScreen> {
                 })),
       ]),
       const SizedBox(height: 8),
-      _muted('Yahan sirf likha jata hai ki kis ke paas kaun sa access hai. Password kabhi mat likhiye.'),
+      _muted('This only records who has which access. Never write passwords here.'),
       for (final p in rows)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -296,11 +296,11 @@ class _ItadminScreenState extends State<ItadminScreen> {
 
   // ---------------- Guides
   Future<void> _newGuide() async {
-    final f = await _form(context, 'Naya guide', const [
-      ('topic', 'Kis baare mein (jaise Naye PC par office email)'),
-      ('words', 'Aap kaise karti hain (apne shabdon mein, step by step)'),
-      ('audience', 'Kiske liye (khaali = sab staff)'),
-    ], ok: 'Guide banao');
+    final f = await _form(context, 'New guide', const [
+      ('topic', 'About what (for example Office email on a new PC)'),
+      ('words', 'How you do it (in your own words, step by step)'),
+      ('audience', 'For whom (blank = all staff)'),
+    ], ok: 'Make guide');
     if (f == null || (f['topic'] ?? '').isEmpty) return;
     final r = await _run('POST', '/api/itadmin/guides', f);
     final g = _m(r?['guide']);
@@ -313,28 +313,28 @@ class _ItadminScreenState extends State<ItadminScreen> {
     final rows = _list(_d?['guides']);
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
       Row(children: [
-        Expanded(child: GlassButton(label: 'Naya guide', icon: Icons.menu_book_rounded, onTap: _busy ? null : _newGuide)),
+        Expanded(child: GlassButton(label: 'New guide', icon: Icons.menu_book_rounded, onTap: _busy ? null : _newGuide)),
         const SizedBox(width: 8),
         Expanded(
             child: GlassButton(
-                label: 'Sawaal poochho',
+                label: 'Ask a question',
                 icon: Icons.help_outline_rounded,
                 onTap: () async {
-                  final f = await _form(context, 'Staff ka IT sawaal', const [('text', 'Sawaal'), ('person', 'Kisne poocha')], ok: 'Jawab');
+                  final f = await _form(context, 'Staff IT question', const [('text', 'Question'), ('person', 'Who asked')], ok: 'Answer');
                   if (f == null || (f['text'] ?? '').isEmpty || !mounted) return;
                   final r = await _call(context, widget.app, 'POST', '/api/itadmin/ask', f);
                   if (r != null && mounted) {
                     await showDialog<void>(
                         context: context,
                         builder: (d) => AlertDialog(content: SingleChildScrollView(child: Text(_s(r['say']))), actions: [
-                              TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))
+                              TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))
                             ]));
                   }
                   await _load();
                 })),
       ]),
       const SizedBox(height: 8),
-      if (rows.isEmpty) _muted('Abhi koi guide nahi. Aap jo baar baar samjhati hain, ek baar likh dijiye.'),
+      if (rows.isEmpty) _muted('No guides yet. Write down once what you keep explaining again and again.'),
       for (final g in rows)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -348,7 +348,7 @@ class _ItadminScreenState extends State<ItadminScreen> {
                 Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${_s(g['number'])} · ${_s(g['title'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  Text('v${_s(g['version'])} · ${_s(g['asked'])} baar kaam aaya', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                  Text('v${_s(g['version'])} · ${_s(g['asked'])} times it helped', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                 ])),
                 Pill(_s(g['status']) == 'published' ? 'Live' : 'Draft', fg: _s(g['status']) == 'published' ? C.ok : C.warn),
               ]),
@@ -361,7 +361,7 @@ class _ItadminScreenState extends State<ItadminScreen> {
           final gaps = _list(_m(snap.data)['gaps']);
           if (gaps.isEmpty) return const SizedBox.shrink();
           return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            _h('Staff ye poochte hain, guide nahi hai'),
+            _h('Staff ask these, but there is no guide'),
             for (final g in gaps.take(6)) Text('• ${_s(g['topic'])} (${_s(g['count'])}x)', style: const TextStyle(fontSize: 13)),
           ]);
         },
@@ -382,25 +382,25 @@ class _ItadminScreenState extends State<ItadminScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(child: Text(title, style: const TextStyle(fontWeight: FontWeight.w800))),
-              Pill(c.isEmpty ? 'Juda nahi' : (_s(c['mode']) == 'manage' ? 'Padhna + haan se badlaav' : 'Sirf padhna'), fg: c.isEmpty ? C.muted : C.ok),
+              Pill(c.isEmpty ? 'Not connected' : (_s(c['mode']) == 'manage' ? 'Read + changes with your yes' : 'Read only'), fg: c.isEmpty ? C.muted : C.ok),
             ]),
             if (c.isNotEmpty) Text('${_s(c['account'])}${_s(c['last_sync']).isNotEmpty ? ' · sync ${_s(c['last_sync'])}' : ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
             if (_s(c['last_error']).isNotEmpty) Text(_s(c['last_error']), style: const TextStyle(color: C.bad, fontSize: 12)),
             Row(children: [
-              TextButton(onPressed: onLink, child: Text(c.isEmpty ? 'Jodiye' : 'Dobara jodiye')),
-              if (c.isNotEmpty) TextButton(onPressed: () => _run('POST', '/api/itadmin/sync', {'provider': provider}), child: const Text('Abhi padho')),
-              if (c.isNotEmpty) TextButton(onPressed: () => _run('DELETE', '/api/itadmin/$provider'), child: const Text('Hatao')),
+              TextButton(onPressed: onLink, child: Text(c.isEmpty ? 'Connect' : 'Connect again')),
+              if (c.isNotEmpty) TextButton(onPressed: () => _run('POST', '/api/itadmin/sync', {'provider': provider}), child: const Text('Read now')),
+              if (c.isNotEmpty) TextButton(onPressed: () => _run('DELETE', '/api/itadmin/$provider'), child: const Text('Remove')),
             ]),
           ]),
         );
     return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-      _muted('Hoola aapke admin console ko sirf padhta hai (users, licence, devices). Koi bhi badlaav card par aapki haan ke baad hi.'),
+      _muted('Hoola only reads your admin console (users, licences, devices). Any change happens only after your yes on a card.'),
       connTile('Google Workspace', g, () async {
         final mode = await showDialog<String>(
             context: context,
-            builder: (d) => SimpleDialog(title: const Text('Kya permission dein?'), children: [
-                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'read'), child: const Text('Sirf padhna (behtar)')),
-                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'manage'), child: const Text('Padhna + meri haan par badlaav')),
+            builder: (d) => SimpleDialog(title: const Text('What permission to give?'), children: [
+                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'read'), child: const Text('Read only (better)')),
+                  SimpleDialogOption(onPressed: () => Navigator.pop(d, 'manage'), child: const Text('Read + changes on my yes')),
                 ]));
         if (mode == null || !mounted) return;
         final r = await _call(context, widget.app, 'POST', '/api/itadmin/google/start', {'mode': mode});
@@ -412,27 +412,27 @@ class _ItadminScreenState extends State<ItadminScreen> {
         final f = await _form(context, 'Microsoft 365 (Entra app)', const [
           ('directory_id', 'Directory (tenant) ID'),
           ('client_id', 'Application (client) ID'),
-          ('client_secret', 'Client secret (sirf yahan; kabhi dikhaya nahi jayega)'),
+          ('client_secret', 'Client secret (only here; it will never be shown)'),
           ('mode', 'read / manage'),
-        ], hidden: const {'client_secret'}, ok: 'Jodo');
+        ], hidden: const {'client_secret'}, ok: 'Add');
         if (f == null) return;
         final r = await _run('PUT', '/api/itadmin/microsoft', f);
         final cu = _s(r?['consent_url']);
         if (cu.isNotEmpty && mounted) {
           final go = await showDialog<bool>(
               context: context,
-              builder: (d) => AlertDialog(content: const Text('Admin consent abhi dena hai? (Microsoft ka page khulega)'), actions: [
-                    TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Baad mein')),
-                    TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Kholo')),
+              builder: (d) => AlertDialog(content: const Text('Give admin consent now? (Microsoft\'s page will open)'), actions: [
+                    TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Later')),
+                    TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Open')),
                   ]));
           if (go == true) await Native.openExternal(url: cu);
         }
       }, 'microsoft'),
       _h('Access review'),
-      GlassButton(label: 'Naya review shuru karo', icon: Icons.fact_check_rounded, onTap: () => _run('POST', '/api/itadmin/reviews')),
+      GlassButton(label: 'Start a new review', icon: Icons.fact_check_rounded, onTap: () => _run('POST', '/api/itadmin/reviews')),
       const SizedBox(height: 6),
       for (final r in reviews) Padding(padding: const EdgeInsets.only(bottom: 8), child: ItadminReviewView(app: widget.app, review: r, onDone: _load)),
-      _h('Achhi aadatein (tick karo)'),
+      _h('Good habits (tick)'),
       for (final p in practices)
         CheckboxListTile(
           contentPadding: EdgeInsets.zero,
@@ -441,18 +441,18 @@ class _ItadminScreenState extends State<ItadminScreen> {
           subtitle: Text(_s(p['why']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
           onChanged: (v) => _run('PUT', '/api/itadmin/settings', {'practices': {_s(p['id']): v == true}}),
         ),
-      _h('Niyam'),
+      _h('Rules'),
       GlassButton(
-          label: 'Office ki jaankari',
+          label: 'Office information',
           icon: Icons.tune_rounded,
           onTap: () async {
-            final f = await _form(context, 'IT admin niyam', const [
-              ('org_name', 'Office ka naam'),
+            final f = await _form(context, 'IT admin rules', const [
+              ('org_name', 'Office name'),
               ('domain', 'Email domain'),
-              ('admin_name', 'Admin rights kiske paas'),
-              ('standard_systems', 'Har naye insaan ko (comma se: Email, Tally, Wi-Fi)'),
-              ('morning_time', 'Subah ka note (HH:MM)'),
-              ('rules', 'Aapke niyam'),
+              ('admin_name', 'Who has admin rights'),
+              ('standard_systems', 'For every new person (comma separated: Email, Tally, Wi-Fi)'),
+              ('morning_time', 'Morning note (HH:MM)'),
+              ('rules', 'Your rules'),
             ], initial: {
               for (final k in ['org_name', 'domain', 'admin_name', 'morning_time', 'rules']) if (_s(st[k]).isNotEmpty) k: _s(st[k]),
               'standard_systems': ((st['standard_systems'] as List?) ?? const []).join(', '),
@@ -472,7 +472,7 @@ class _ItadminScreenState extends State<ItadminScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 60), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Licence'), (2, 'Log'), (3, 'Guides'), (4, 'Admin')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Licence'), (2, 'Log'), (3, 'Guides'), (4, 'Admin')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -480,7 +480,7 @@ class _ItadminScreenState extends State<ItadminScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _licences(), _people(), _guides(), _admin()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Devices IT Helpdesk ke register mein hain. Access / setting ka har badlaav sirf aapki haan ke card se. Password / OTP Hoola kabhi nahi maangta ya rakhta. Renewal ka paisa aap bharti hain.',
+                  'Devices are in the IT Helpdesk register. Every access / setting change happens only through a card with your yes. Hoola never asks for or keeps a password / OTP. You pay the renewal money yourself.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -524,7 +524,7 @@ class _ItadminPersonPageState extends State<ItadminPersonPage> {
   Widget build(BuildContext context) {
     final p = _p;
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(p == null ? 'Insaan' : _s(p['name']))),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(p == null ? 'Person' : _s(p['name']))),
       body: Aurora(
         child: p == null
             ? const Center(child: CircularProgressIndicator())
@@ -539,43 +539,43 @@ class _ItadminPersonPageState extends State<ItadminPersonPage> {
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   GlassButton(
-                      label: 'Access jodo',
+                      label: 'Add access',
                       icon: Icons.key_rounded,
                       height: 42,
                       onTap: () async {
-                        final f = await _form(context, 'Kaun sa access (password nahi)', const [
+                        final f = await _form(context, 'Which access (not the password)', const [
                           ('system', 'System (Tally, GST portal, Router, Wi-Fi...)'),
-                          ('account', 'Login naam / email'),
+                          ('account', 'Login name / email'),
                           ('level', 'user / admin / owner'),
-                        ], ok: 'Darj');
+                        ], ok: 'Recorded');
                         if (f == null) return;
                         final shared = await showDialog<bool>(
                             context: context,
-                            builder: (d) => AlertDialog(content: const Text('Yeh login kai log share karte hain?'), actions: [
-                                  TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Nahi')),
-                                  TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, shared')),
+                            builder: (d) => AlertDialog(content: const Text('Do many people share this login?'), actions: [
+                                  TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('No')),
+                                  TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, shared')),
                                 ]));
                         await _go('POST', '/api/itadmin/access', {...f, 'person': widget.id, 'shared': shared == true});
                       }),
                   GlassButton(
-                      label: 'Kaam badla',
+                      label: 'Role changed',
                       icon: Icons.swap_horiz_rounded,
                       height: 42,
                       onTap: () async {
-                        final f = await _form(context, 'Naya kaam', const [('new_role', 'Naya kaam / department')], ok: 'Checklist');
+                        final f = await _form(context, 'New role', const [('new_role', 'New role / department')], ok: 'Checklist');
                         if (f != null) await _go('POST', '/api/itadmin/people/${widget.id}/mover', f);
                       }),
                   GlassButton(
-                      label: 'Chhod rahe hain',
+                      label: 'Leaving',
                       icon: Icons.logout_rounded,
                       height: 42,
                       color: C.warn,
                       onTap: () async {
-                        final f = await _form(context, 'Aakhri din', const [('when', 'Tareekh (YYYY-MM-DD, khaali = aaj)')], ok: 'Checklist + cards');
+                        final f = await _form(context, 'Last day', const [('when', 'Date (YYYY-MM-DD, blank = today)')], ok: 'Checklist + cards');
                         if (f != null) await _go('POST', '/api/itadmin/people/${widget.id}/leaver', f);
                       }),
                   if (_s(p['status']) == 'left')
-                    GlassButton(label: 'Data mitao (DPDP)', icon: Icons.delete_forever_rounded, height: 42, color: C.bad,
+                    GlassButton(label: 'Delete data (DPDP)', icon: Icons.delete_forever_rounded, height: 42, color: C.bad,
                         onTap: () => _go('POST', '/api/itadmin/people/${widget.id}/forget')),
                 ]),
                 _h('Access'),
@@ -595,7 +595,7 @@ class _ItadminPersonPageState extends State<ItadminPersonPage> {
                         ? TextButton(
                             onPressed: () => _go('POST', '/api/itadmin/changes',
                                 {'kind': _s(a['source']) == 'manual' ? 'access_remove' : 'user_disable', 'access': _s(a['id'])}),
-                            child: const Text('Hatao (card)'))
+                            child: const Text('Remove (card)'))
                         : null,
                   ),
                 _h('Devices (IT Helpdesk)'),
@@ -684,44 +684,44 @@ class _ItadminGuidePageState extends State<ItadminGuidePage> {
                             child: ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.network('$base/api/itadmin/shots/${_s(st['shot'])}', headers: api.authHeaders, fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Text('Screenshot nahi khula', style: TextStyle(color: C.muted))),
+                                  errorBuilder: (_, __, ___) => const Text('Screenshot did not open', style: TextStyle(color: C.muted))),
                             ),
                           ),
                         Row(children: [
                           TextButton(onPressed: () => _shot(int.tryParse(_s(st['n'])) ?? 1), child: const Text('Screenshot')),
                           TextButton(
                               onPressed: () async {
-                                final f = await _form(context, 'Step badlo', const [('text', 'Step')], initial: {'text': _s(st['text'])}, ok: 'Save');
+                                final f = await _form(context, 'Change step', const [('text', 'Step')], initial: {'text': _s(st['text'])}, ok: 'Save');
                                 if (f != null && (f['text'] ?? '').isNotEmpty) await _go('PUT', '/api/itadmin/guides/${widget.id}/steps/${_s(st['n'])}', f);
                               },
-                              child: const Text('Badlo')),
-                          TextButton(onPressed: () => _go('PUT', '/api/itadmin/guides/${widget.id}/steps/${_s(st['n'])}', {'remove': true}), child: const Text('Hatao')),
+                              child: const Text('Change')),
+                          TextButton(onPressed: () => _go('PUT', '/api/itadmin/guides/${widget.id}/steps/${_s(st['n'])}', {'remove': true}), child: const Text('Remove')),
                         ]),
                       ]),
                     ),
                   ),
                 TextButton(
                     onPressed: () async {
-                      final f = await _form(context, 'Naya step', const [('text', 'Step')], ok: 'Jodo');
+                      final f = await _form(context, 'New step', const [('text', 'Step')], ok: 'Add');
                       final n = _list(g['steps']).length + 1;
                       if (f != null && (f['text'] ?? '').isNotEmpty) await _go('PUT', '/api/itadmin/guides/${widget.id}/steps/$n', f);
                     },
-                    child: const Text('+ Step jodo')),
+                    child: const Text('+ Add step')),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   if (_s(g['status']) != 'published')
-                    GradientButton(label: 'Publish (staff ke liye)', icon: Icons.publish_rounded, height: 44,
+                    GradientButton(label: 'Publish (for staff)', icon: Icons.publish_rounded, height: 44,
                         onTap: () => _go('POST', '/api/itadmin/guides/${widget.id}/publish', {})),
                   GlassButton(label: 'Word file', icon: Icons.description_rounded, height: 44, onTap: () => _go('POST', '/api/itadmin/guides/${widget.id}/file')),
-                  GlassButton(label: 'Band karo', icon: Icons.archive_rounded, height: 44,
+                  GlassButton(label: 'Turn off', icon: Icons.archive_rounded, height: 44,
                       onTap: () => _go('POST', '/api/itadmin/guides/${widget.id}/publish', {'archive': true})),
                 ]),
-                if (_list(g['versions']).isNotEmpty) _h('Purane version'),
+                if (_list(g['versions']).isNotEmpty) _h('Old versions'),
                 for (final v in _list(g['versions']).reversed)
                   ListTile(
                     contentPadding: EdgeInsets.zero,
                     title: Text('v${_s(v['version'])} · ${_s(v['steps'])} steps'),
                     subtitle: Text(_s(v['at'])),
-                    trailing: TextButton(onPressed: () => _go('POST', '/api/itadmin/guides/${widget.id}/restore', {'version': v['version']}), child: const Text('Wapas lao')),
+                    trailing: TextButton(onPressed: () => _go('POST', '/api/itadmin/guides/${widget.id}/restore', {'version': v['version']}), child: const Text('Bring back')),
                   ),
               ]),
       ),
@@ -745,13 +745,13 @@ class ItadminReviewView extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
           Expanded(child: Text('${_s(review['number'])} · ${_s(review['decided'])}/${_s(review['total'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(open ? 'Khula' : 'Poora', fg: open ? C.warn : C.ok),
+          Pill(open ? 'Open' : 'Complete', fg: open ? C.warn : C.ok),
         ]),
         for (final it in items)
           Padding(
             padding: const EdgeInsets.only(top: 6),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${_s(it['person']).isEmpty ? '(kisi se juda nahi)' : _s(it['person'])} · ${_s(it['system'])} · ${_s(it['level'])}',
+              Text('${_s(it['person']).isEmpty ? '(not connected to anyone)' : _s(it['person'])} · ${_s(it['system'])} · ${_s(it['level'])}',
                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
               if ((it['flags'] as List?)?.isNotEmpty == true)
                 Text((it['flags'] as List).map(_s).join(', '), style: const TextStyle(fontSize: 12, color: C.warn)),
@@ -762,16 +762,16 @@ class ItadminReviewView extends StatelessWidget {
                         await _call(context, app, 'POST', '/api/itadmin/reviews/${_s(review['id'])}/items/${_s(it['id'])}', {'decision': 'keep'});
                         onDone?.call();
                       },
-                      child: const Text('Rakho')),
+                      child: const Text('Keep')),
                   TextButton(
                       onPressed: () async {
                         await _call(context, app, 'POST', '/api/itadmin/reviews/${_s(review['id'])}/items/${_s(it['id'])}', {'decision': 'remove'});
                         onDone?.call();
                       },
-                      child: const Text('Hatao (card)')),
+                      child: const Text('Remove (card)')),
                 ])
               else if (_s(it['decision']).isNotEmpty)
-                Text(_s(it['decision']) == 'keep' ? 'Rakha' : 'Hatane ka card', style: const TextStyle(fontSize: 12, color: C.muted)),
+                Text(_s(it['decision']) == 'keep' ? 'Kept' : 'Card to remove', style: const TextStyle(fontSize: 12, color: C.muted)),
             ]),
           ),
         if (open)
@@ -780,7 +780,7 @@ class ItadminReviewView extends StatelessWidget {
                 await _call(context, app, 'POST', '/api/itadmin/reviews/${_s(review['id'])}/close');
                 onDone?.call();
               },
-              child: const Text('Review band karo')),
+              child: const Text('Close review')),
       ]),
     );
   }
@@ -811,7 +811,7 @@ class _ItadminChangeCardState extends State<ItadminChangeCard> {
   Future<void> _decide(bool yes) async {
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi? (zaroori nahi)', const [('reason', 'Wajah')], ok: 'Mana karo');
+      final f = await _form(context, 'Why not? (not needed)', const [('reason', 'Reason')], ok: 'Decline');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -851,44 +851,44 @@ class _ItadminChangeCardState extends State<ItadminChangeCard> {
         Row(children: [
           const Icon(Icons.admin_panel_settings_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('Aapki haan chahiye · ${_s(c['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Needs your yes · ${_s(c['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_s(c['kind_label'])),
         ]),
         const SizedBox(height: 6),
         Text(_s(c['what']), style: const TextStyle(fontWeight: FontWeight.w700)),
         Text('System: ${_s(c['system'])}${_s(c['target']).isNotEmpty ? ' · ${_s(c['target'])}' : ''}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-        if (_s(c['asked_by']).isNotEmpty) Text('Kisne maanga: ${_s(c['asked_by'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
+        if (_s(c['asked_by']).isNotEmpty) Text('Who asked: ${_s(c['asked_by'])}', style: const TextStyle(fontSize: 12, color: C.faint)),
         const SizedBox(height: 4),
         if (api.isNotEmpty)
           Container(
             width: double.infinity,
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(10)),
-            child: Text('Haan par yeh call jayegi:\n${_s(api['method'])} ${_s(api['url'])}${api['body'] != null ? '\n${_s(api['body'])}' : ''}',
+            child: Text('On yes, this call will go:\n${_s(api['method'])} ${_s(api['url'])}${api['body'] != null ? '\n${_s(api['body'])}' : ''}',
                 style: const TextStyle(fontSize: 11.5, fontFamily: 'monospace')),
           )
         else ...[
-          const Text('Aap khud karengi (console mein):', style: TextStyle(fontSize: 12.5)),
+          const Text('You do it yourself (in the console):', style: TextStyle(fontSize: 12.5)),
           for (final s in steps) Text('• $s', style: const TextStyle(fontSize: 12.5)),
         ],
-        if (_s(c['risk']).isNotEmpty) Text('Dhyaan: ${_s(c['risk'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
-        if (_s(c['undo']).isNotEmpty) Text('Wapas: ${_s(c['undo'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(c['risk']).isNotEmpty) Text('Note: ${_s(c['risk'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
+        if (_s(c['undo']).isNotEmpty) Text('Undo: ${_s(c['undo'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         if (_s(c['result']).isNotEmpty) Text(_s(c['result']), style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 8),
         if (status == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, karo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, do it', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else if (status == 'approved')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Maine kar diya', icon: Icons.done_all_rounded, height: 44, onTap: _busy ? null : () => _done(true))),
+            Expanded(child: GradientButton(label: 'I did it', icon: Icons.done_all_rounded, height: 44, onTap: _busy ? null : () => _done(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Nahi hua', icon: Icons.error_outline_rounded, height: 44, onTap: _busy ? null : () => _done(false))),
+            Expanded(child: GlassButton(label: 'Did not happen', icon: Icons.error_outline_rounded, height: 44, onTap: _busy ? null : () => _done(false))),
           ])
         else
-          Text(switch (status) { 'done' => 'Ho gaya.', 'rejected' => 'Mana kiya. Kuch nahi badla.', 'failed' => 'Nahi hua.', _ => status },
+          Text(switch (status) { 'done' => 'Done.', 'rejected' => 'Declined. Nothing changed.', 'failed' => 'Did not happen.', _ => status },
               style: TextStyle(color: status == 'done' ? C.ok : C.muted, fontSize: 12.5)),
       ]),
     );
@@ -918,7 +918,7 @@ class _ItadminChecklistCardState extends State<ItadminChecklistCard> {
   Widget build(BuildContext context) {
     final items = _list(_cl['items']);
     final kind = _s(_cl['kind']);
-    final label = switch (kind) { 'joiner' => 'Naya staff', 'mover' => 'Kaam badla', 'leaver' => 'Chhod rahe', _ => kind };
+    final label = switch (kind) { 'joiner' => 'New staff', 'mover' => 'Role changed', 'leaver' => 'Leaving', _ => kind };
     return Glass(
       padding: const EdgeInsets.all(12),
       border: kind == 'leaver' && _s(_cl['status']) == 'open' ? C.warn : null,
@@ -931,7 +931,7 @@ class _ItadminChecklistCardState extends State<ItadminChecklistCard> {
             contentPadding: EdgeInsets.zero,
             value: it['done'] == true,
             title: Text(_s(it['text']), style: const TextStyle(fontSize: 13)),
-            subtitle: _s(it['change']).isNotEmpty ? const Text('Card se poora hoga (aapki haan)', style: TextStyle(fontSize: 11, color: C.faint)) : null,
+            subtitle: _s(it['change']).isNotEmpty ? const Text('Will be completed from the card (your yes)', style: TextStyle(fontSize: 11, color: C.faint)) : null,
             onChanged: _s(it['change']).isNotEmpty ? null : (v) => _tick(it, v == true),
           ),
       ]),
@@ -958,7 +958,7 @@ class ItadminRenewalCard extends StatelessWidget {
           Text(_s(data['say']), style: const TextStyle(fontSize: 12.5)),
           TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ItadminScreen(app: app))),
-              child: const Text('IT Admin kholo')),
+              child: const Text('Open IT Admin')),
         ])),
       ]),
     );
@@ -979,7 +979,7 @@ class ItadminReviewCard extends StatelessWidget {
             Expanded(child: Text('Access review ${_s(_m(data['review'])['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           ]),
           Text(_s(data['say']), style: const TextStyle(fontSize: 12.5)),
-          TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ItadminScreen(app: app))), child: const Text('Review kholo')),
+          TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ItadminScreen(app: app))), child: const Text('Open review')),
         ]),
       );
 }
@@ -1004,7 +1004,7 @@ class ItadminGuideCard extends StatelessWidget {
         if (_s(g['id']).isNotEmpty)
           TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ItadminGuidePage(app: app, id: _s(g['id'])))),
-              child: const Text('Guide dekho / publish')),
+              child: const Text('See / publish guide')),
       ]),
     );
   }
@@ -1023,11 +1023,11 @@ class ItadminDayCard extends StatelessWidget {
         const Row(children: [
           Icon(Icons.wb_sunny_rounded, color: C.accent),
           SizedBox(width: 8),
-          Text('Aaj ka IT admin note', style: TextStyle(fontWeight: FontWeight.w800)),
+          Text('Today\'s IT admin note', style: TextStyle(fontWeight: FontWeight.w800)),
         ]),
         const SizedBox(height: 4),
         for (final l in lines) Text('• $l', style: const TextStyle(fontSize: 13)),
-        TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ItadminScreen(app: app))), child: const Text('Kholo')),
+        TextButton(onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ItadminScreen(app: app))), child: const Text('Open')),
       ]),
     );
   }

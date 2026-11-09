@@ -50,7 +50,7 @@ String _when(dynamic iso) {
   final l = t.toLocal();
   final h = l.hour % 12 == 0 ? 12 : l.hour % 12;
   final now = DateTime.now();
-  final day = (l.year == now.year && l.month == now.month && l.day == now.day) ? 'aaj' : '${l.day}/${l.month}';
+  final day = (l.year == now.year && l.month == now.month && l.day == now.day) ? 'today' : '${l.day}/${l.month}';
   return '$day $h:${l.minute.toString().padLeft(2, '0')} ${l.hour < 12 ? 'am' : 'pm'}';
 }
 
@@ -61,15 +61,15 @@ const _stateColor = {
 };
 
 const _payWord = {
-  'due': 'paisa baaki', 'requested': 'payment card gaya', 'claimed': 'bheja (pakka nahi)', 'part_paid': 'kuch mila',
-  'paid': 'poora mila', 'khata': 'khata par', 'refund_due': 'wapas dena baaki', 'refunded': 'wapas ho gaya',
+  'due': 'balance due', 'requested': 'payment card sent', 'claimed': 'sent (not confirmed)', 'part_paid': 'got some',
+  'paid': 'got everything', 'khata': 'on credit', 'refund_due': 'refund still to give', 'refunded': 'refunded',
 };
-const _payChoiceWord = {'upi': 'UPI se', 'counter': 'Counter par', 'khata': 'Khata (udhaar)'};
+const _payChoiceWord = {'upi': 'by UPI', 'counter': 'At the counter', 'khata': 'Credit (udhaar)'};
 const _reasonWord = {
-  'short': 'Kam aaya', 'damaged': 'Toota / kharab', 'wrong': 'Galat cheez', 'expired': 'Expiry nikli', 'price': 'Daam galat',
-  'other': 'Kuch aur',
+  'short': 'Came short', 'damaged': 'Broken / faulty', 'wrong': 'Wrong item', 'expired': 'Expiry passed', 'price': 'Wrong price',
+  'other': 'Something else',
 };
-const _resolveWord = {'refund': 'Paise wapas', 'credit': 'Khata mein jama', 'replace': 'Badal kar denge', 'reject': 'Nahi maana'};
+const _resolveWord = {'refund': 'Money back', 'credit': 'Credited to account', 'replace': 'They will replace it', 'reject': 'Not accepted'};
 
 /// v0.106 Pay from HER UPI app: the server builds the link from the pinned payee; a new / changed UPI ID is shown big
 /// and needs her own "sahi hai" tap first. Hoola never sees the PIN.
@@ -84,30 +84,30 @@ Future<void> payWithUpi(BuildContext context, Future<Map<String, dynamic>> Funct
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text(changed ? 'UPI ID badla hai!' : 'Pehli baar is UPI ko'),
+          title: Text(changed ? 'The UPI ID has changed!' : 'First time with this UPI:'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(_s(r['name']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
             Text(_s(r['upi_id']), style: const TextStyle(fontSize: 15)),
             if (r['business_verified'] == true) const Padding(padding: EdgeInsets.only(top: 6), child: Pill('Verified business', fg: C.ok)),
             if (changed) ...[
               const SizedBox(height: 8),
-              Text('Pehle: ${_s(r['was'])}', style: const TextStyle(color: C.bad)),
+              Text('Before: ${_s(r['was'])}', style: const TextStyle(color: C.bad)),
               const SizedBox(height: 6),
-              const Text('Dukaan ko phone karke pakka kijiye. Dhokebaaz aksar UPI ID badal dete hain.',
+              const Text('Confirm with the shop by phone. Fraudsters often change the UPI ID.',
                   style: TextStyle(color: C.bad, fontSize: 12.5)),
             ] else
               const Padding(
                 padding: EdgeInsets.only(top: 8),
-                child: Text('UPI app mein yahi naam dikhe tabhi PIN daaliye.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                child: Text('Enter your PIN only if this same name shows in your UPI app.', style: TextStyle(color: C.muted, fontSize: 12.5)),
               ),
             const SizedBox(height: 8),
-            Text('Rakam: ${_inr(r['amount'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
+            Text('Amount: ${_inr(r['amount'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
             TextButton(
                 onPressed: () => Navigator.of(ctx).pop(true),
-                child: Text(changed ? 'Maine pakka kiya, naya UPI sahi hai' : 'Haan, yahi sahi hai')),
+                child: Text(changed ? 'I have confirmed, the new UPI is correct' : 'Yes, this is correct')),
           ],
         ),
       );
@@ -115,12 +115,12 @@ Future<void> payWithUpi(BuildContext context, Future<Map<String, dynamic>> Funct
       r = await trust();
     }
     final url = _s(r['url']);
-    if (url.isEmpty) throw 'Payment link nahi bana';
+    if (url.isEmpty) throw 'Could not make the payment link';
     final launched = await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
     if (!context.mounted) return;
     _snack(context, launched
-        ? 'UPI app mein pay karke yahan "Maine pay kiya" dabaiye (UTR ke saath).'
-        : 'Phone mein koi UPI app nahi mila.');
+        ? 'Pay in your UPI app, then tap "I have paid" here (with the UTR).'
+        : 'No UPI app found on this phone.');
   } catch (e) {
     if (context.mounted) _snack(context, '$e');
   }
@@ -143,7 +143,7 @@ Future<Map<String, dynamic>?> moneyDialog(BuildContext context, String title,
             TextField(
                 controller: a,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(labelText: 'Rakam (₹)')),
+                decoration: const InputDecoration(labelText: 'Amount (₹)')),
             if (withMode) ...[
               const SizedBox(height: 8),
               Wrap(spacing: 6, children: [
@@ -155,8 +155,8 @@ Future<Map<String, dynamic>?> moneyDialog(BuildContext context, String title,
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Theek hai')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('OK')),
         ],
       ),
     ),
@@ -168,7 +168,7 @@ Future<Map<String, dynamic>?> moneyDialog(BuildContext context, String title,
 }
 
 const _lineWord = {
-  'partial': 'kam hai', 'out': 'khatam', 'not_found': 'nahi hai', 'unknown_stock': 'stock pata nahi', 'substitute': 'badle mein',
+  'partial': 'short', 'out': 'out of stock', 'not_found': 'not there', 'unknown_stock': 'stock not known', 'substitute': 'as a substitute',
 };
 
 /// One deal as a chat card (also inside the voice call). [full] = the deal page (history, every action).
@@ -229,8 +229,8 @@ class _DealCardState extends State<DealCard> {
         title: Text(title),
         content: TextField(controller: c, minLines: 1, maxLines: 3, decoration: InputDecoration(hintText: hint)),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Theek hai')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('OK')),
         ],
       ),
     );
@@ -249,7 +249,7 @@ class _DealCardState extends State<DealCard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Kya galat hai?'),
+          title: const Text('What is wrong?'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
@@ -271,12 +271,12 @@ class _DealCardState extends State<DealCard> {
                     }
                   }),
                 ),
-              TextField(controller: note, minLines: 1, maxLines: 3, decoration: const InputDecoration(hintText: 'Do line mein bataiye')),
+              TextField(controller: note, minLines: 1, maxLines: 3, decoration: const InputDecoration(hintText: 'Tell us in two lines')),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Shikayat bhejo')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send complaint')),
           ],
         ),
       ),
@@ -300,7 +300,7 @@ class _DealCardState extends State<DealCard> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Shikayat ka jawab'),
+          title: const Text('Reply to complaint'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_reasonWord[_s(dp['reason'])] ?? ''}${_s(dp['note']).isEmpty ? '' : ': "${_s(dp['note'])}"'}',
@@ -314,13 +314,13 @@ class _DealCardState extends State<DealCard> {
                 TextField(
                     controller: a,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Rakam (₹)')),
-              TextField(controller: note, decoration: InputDecoration(labelText: action == 'reject' ? 'Wajah (zaroori)' : 'Note')),
+                    decoration: const InputDecoration(labelText: 'Amount (₹)')),
+              TextField(controller: note, decoration: InputDecoration(labelText: action == 'reject' ? 'Reason (required)' : 'Note')),
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send')),
           ],
         ),
       ),
@@ -345,7 +345,7 @@ class _DealCardState extends State<DealCard> {
           const Icon(Icons.account_balance_wallet_rounded, size: 18, color: C.teal),
           const SizedBox(width: 6),
           Expanded(
-            child: Text('${_payChoiceWord[_s(p['choice'])] ?? ''} · ${_inr(p['paid'])} mila / ${_inr(p['due'])}',
+            child: Text('${_payChoiceWord[_s(p['choice'])] ?? ''} · ${_inr(p['paid'])} received / ${_inr(p['due'])}',
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           ),
           Pill(_payWord[st] ?? st, fg: st == 'paid' || st == 'refunded' ? C.ok : (st == 'khata' ? C.violet : C.warn)),
@@ -356,13 +356,13 @@ class _DealCardState extends State<DealCard> {
             child: Text('UPI: ${_s(pe['upi_id'])} (${_s(pe['name'])})${pe['business_verified'] == true ? ' · verified' : ''}',
                 style: const TextStyle(color: C.muted, fontSize: 12)),
           ),
-        if (_s(p['due_on']).isNotEmpty) Text('Khata: ${_s(p['due_on'])} tak dena', style: const TextStyle(color: C.muted, fontSize: 12)),
+        if (_s(p['due_on']).isNotEmpty) Text('Credit: ${_s(p['due_on'])} is the due date', style: const TextStyle(color: C.muted, fontSize: 12)),
         for (final r in _l(p['receipts']))
           Text(
-              'Rasid ${_s(r['receipt'])}: ${_inr(r['amount'])} ${_s(r['mode'])}'
+              'Receipt ${_s(r['receipt'])}: ${_inr(r['amount'])} ${_s(r['mode'])}'
               '${_s(r['utr_tail']).isEmpty ? '' : ' · ref ..${_s(r['utr_tail'])}'} · ${_when(r['at'])}',
               style: const TextStyle(fontSize: 12)),
-        if (_d(p['refund_due']) > 0) Text('Wapas: ${_inr(p['refund_due'])} baaki', style: const TextStyle(color: C.warn, fontSize: 12)),
+        if (_d(p['refund_due']) > 0) Text('Refund: ${_inr(p['refund_due'])} pending', style: const TextStyle(color: C.warn, fontSize: 12)),
       ]),
     );
   }
@@ -381,18 +381,18 @@ class _DealCardState extends State<DealCard> {
         if (_s(cr['status']) == 'waiting')
           Text('Cancel request: ${_s(cr['reason'])}', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
         if (dp.isNotEmpty) ...[
-          Text('Shikayat: ${_reasonWord[_s(dp['reason'])] ?? _s(dp['reason'])}',
+          Text('Complaint: ${_reasonWord[_s(dp['reason'])] ?? _s(dp['reason'])}',
               style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
           if (_l(dp['lines']).isNotEmpty)
             Text(_l(dp['lines']).map((l) => '${_s(l['item'])} (${_qty(l['qty'])})').join(', '), style: const TextStyle(fontSize: 12)),
           if (_s(dp['note']).isNotEmpty) Text('"${_s(dp['note'])}"', style: const TextStyle(fontSize: 12, color: C.muted)),
           if (ans.isNotEmpty)
             Text(
-                'Jawab: ${_resolveWord[_s(ans['action'])] ?? ''}${_d(ans['amount']) > 0 ? ' ${_inr(ans['amount'])}' : ''}'
+                'Reply: ${_resolveWord[_s(ans['action'])] ?? ''}${_d(ans['amount']) > 0 ? ' ${_inr(ans['amount'])}' : ''}'
                 '${_s(ans['note']).isEmpty ? '' : ' · ${_s(ans['note'])}'}',
                 style: const TextStyle(fontSize: 12.5)),
           if (_s(dp['escalated']).isNotEmpty)
-            const Text('Jawab nahi maana gaya. Aage: National Consumer Helpline 1915 / e-Daakhil (edaakhil.nic.in).',
+            const Text('The reply was not accepted. Next: National Consumer Helpline 1915 / e-Daakhil (edaakhil.nic.in).',
                 style: TextStyle(fontSize: 11.5, color: C.muted)),
         ],
       ]),
@@ -414,7 +414,7 @@ class _DealCardState extends State<DealCard> {
                   [
                     if (ln['price'] != null) '${_qty(ln['qty'])} ${_s(ln['unit'])} × ${_inr(ln['price'])}'.replaceAll('  ', ' '),
                     if (_d(ln['gst_pct']) > 0) 'GST ${_qty(ln['gst_pct'])}%',
-                    if (_d(ln['asked']) != _d(ln['qty']) && _s(ln['status']) != 'substitute') 'maanga ${_qty(ln['asked'])}',
+                    if (_d(ln['asked']) != _d(ln['qty']) && _s(ln['status']) != 'substitute') 'asked${_qty(ln['asked'])}',
                     if (_s(ln['asked_as']).isNotEmpty) '"${_s(ln['asked_as'])}"',
                   ].join(' · '),
                   style: const TextStyle(color: C.muted, fontSize: 12),
@@ -465,7 +465,7 @@ class _DealCardState extends State<DealCard> {
 
     if (buyer && _s(v['waiting']) == 'mandate') {
       add(GlassButton(
-          label: 'Is baar rok do', icon: Icons.pan_tool_rounded, onTap: _busy ? null : () => _act('standing_hold')));
+          label: 'Stop this time', icon: Icons.pan_tool_rounded, onTap: _busy ? null : () => _act('standing_hold')));
     }
     if (buyer && acts.contains('confirm')) {
       final terms = _m(q['terms']);
@@ -473,10 +473,10 @@ class _DealCardState extends State<DealCard> {
       final pick = opts.contains(_pay) ? _pay : (opts.contains('upi') ? 'upi' : (opts.isEmpty ? '' : opts.first));
       if (opts.length > 1) {
         add(Wrap(spacing: 6, runSpacing: 6, children: [
-          const Padding(padding: EdgeInsets.only(top: 8), child: Text('Paisa: ', style: TextStyle(color: C.muted))),
+          const Padding(padding: EdgeInsets.only(top: 8), child: Text('Payment: ', style: TextStyle(color: C.muted))),
           for (final o in opts)
             ChoiceChip(
-                label: Text((_payChoiceWord[o] ?? o) + (o == 'khata' ? ' · ${_s(_m(terms['khata'])['days'])} din' : '')),
+                label: Text((_payChoiceWord[o] ?? o) + (o == 'khata' ? ' · ${_s(_m(terms['khata'])['days'])} days' : '')),
                 selected: pick == o,
                 onSelected: (_) => setState(() => _pay = o)),
         ]));
@@ -486,7 +486,7 @@ class _DealCardState extends State<DealCard> {
       final atHome = _s(_m(q['service'])['at']) == 'their_place';
       if (svc) {
         final est = _m(q['estimate']);
-        if (est.isNotEmpty) add(Text('Andaaza: ${_inr(est['min'])} - ${_inr(est['max'])} (extra kaam aapki haan se hi)',
+        if (est.isNotEmpty) add(Text('Estimate: ${_inr(est['min'])} - ${_inr(est['max'])} (extra work only with your yes)',
             style: const TextStyle(fontSize: 12.5, color: C.muted)));
         add(Wrap(spacing: 6, runSpacing: 6, children: [
           for (final sl in slots)
@@ -497,11 +497,11 @@ class _DealCardState extends State<DealCard> {
               controller: _addr,
               minLines: 1,
               maxLines: 3,
-              decoration: const InputDecoration(labelText: 'Pura pata (sirf booking par unhe jaayega)', isDense: true)));
+              decoration: const InputDecoration(labelText: 'Full address (shared only after booking)', isDense: true)));
         }
       }
       add(GradientButton(
-          label: svc ? 'Haan, ${_slot.isEmpty ? 'samay chuniye' : slotSay(_slot)} book karo' : 'Haan, confirm · ${_inr(q['total'])}',
+          label: svc ? 'Yes, ${_slot.isEmpty ? 'choose a time' : slotSay(_slot)} and book' : 'Yes, confirm · ${_inr(q['total'])}',
           icon: Icons.check_rounded,
           height: 50,
           onTap: _busy || (svc && _slot.isEmpty)
@@ -523,102 +523,102 @@ class _DealCardState extends State<DealCard> {
     }
     if (buyer && acts.contains('paid')) {
       add(GlassButton(
-          label: 'Maine pay kiya',
+          label: 'I have paid',
           icon: Icons.task_alt_rounded,
           onTap: _busy
               ? null
               : () async {
-                  final r = await _ask('UPI se bhej diya?', 'UTR / UPI reference (UPI app ke payment details mein)');
+                  final r = await _ask('Sent by UPI?', 'UTR / UPI reference (in the payment details of your UPI app)');
                   if (r != null) _act('paid', {'utr': r.replaceAll(' ', '')});
                 }));
     }
     if (buyer && acts.contains('ok')) {
-      add(GradientButton(label: 'Haan, sab sahi mila', icon: Icons.thumb_up_alt_rounded, height: 50, onTap: _busy ? null : () => _act('ok')));
+      add(GradientButton(label: 'Yes, everything is correct', icon: Icons.thumb_up_alt_rounded, height: 50, onTap: _busy ? null : () => _act('ok')));
     }
     if (buyer && acts.contains('dispute')) {
-      add(GlassButton(label: 'Kuch galat hai (shikayat)', icon: Icons.report_problem_rounded, onTap: _busy ? null : _disputeDialog));
+      add(GlassButton(label: 'Something is wrong (complaint)', icon: Icons.report_problem_rounded, onTap: _busy ? null : _disputeDialog));
     }
     if (buyer && acts.contains('dispute_close')) {
       add(Row(children: [
         Expanded(
             child: GradientButton(
-                label: 'Jawab theek hai', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('dispute_close', {'accept': true}))),
+                label: 'The reply is fine', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('dispute_close', {'accept': true}))),
         const SizedBox(width: 8),
         Expanded(
             child: GlassButton(
-                label: 'Nahi maanti',
+                label: 'Not accepted',
                 icon: Icons.gavel_rounded,
                 onTap: _busy
                     ? null
                     : () async {
-                        final r = await _ask('Jawab nahi maana?', 'Kya chahiye (dukaan ko dikhega)');
+                        final r = await _ask('Reply not accepted?', 'What do you need (the shop will see this)');
                         if (r != null) _act('dispute_close', {'accept': false, 'note': r});
                       })),
       ]));
     }
     if (!buyer && acts.contains('received')) {
       add(GradientButton(
-          label: '${_s(pay['status']) == 'claimed' ? 'Paisa mila?' : 'Paisa mila'} · ${_inr(left)}',
+          label: '${_s(pay['status']) == 'claimed' ? 'Money received?' : 'Money received'} · ${_inr(left)}',
           icon: Icons.savings_rounded,
           height: 50,
           onTap: _busy
               ? null
               : () async {
-                  final r = await moneyDialog(context, 'Paisa aa gaya?',
-                      amount: left, hint: 'Apne bank / UPI app mein dekh kar hi. Graahak ka "bhej diya" saboot nahi hai.');
+                  final r = await moneyDialog(context, 'Money received?',
+                      amount: left, hint: 'Check only in your own bank / UPI app. The customer saying "sent" is not proof.');
                   if (r != null) _act('received', r);
                 }));
     }
     if (!buyer && acts.contains('pay_request') && _s(pay['status']) != 'claimed') {
       add(GlassButton(
-          label: reqs.isEmpty ? 'Payment card bhejo' : 'Payment card dobara',
+          label: reqs.isEmpty ? 'Send payment card' : 'Send payment card again',
           icon: Icons.request_quote_rounded,
           onTap: _busy ? null : () => _act('pay_request')));
     }
     if (!buyer && acts.contains('refund')) {
       add(GlassButton(
-          label: 'Refund diya · ${_inr(pay['refund_due'])}',
+          label: 'Refund given ·${_inr(pay['refund_due'])}',
           icon: Icons.undo_rounded,
           onTap: _busy
               ? null
               : () async {
-                  final r = await moneyDialog(context, 'Refund bhej diya?',
-                      amount: pay['refund_due'], withMode: false, hint: 'Apne UPI / bank se bhejne ke baad. Hoola paisa nahi bhejta.');
+                  final r = await moneyDialog(context, 'Refund sent?',
+                      amount: pay['refund_due'], withMode: false, hint: 'Only after you send from your own UPI / bank. Hoola does not send money.');
                   if (r != null) _act('refund', r);
                 }));
     }
     if (!buyer && acts.contains('resolve')) {
-      add(GradientButton(label: 'Shikayat ka jawab', icon: Icons.support_agent_rounded, height: 50, onTap: _busy ? null : _resolveDialog));
+      add(GradientButton(label: 'Reply to complaint', icon: Icons.support_agent_rounded, height: 50, onTap: _busy ? null : _resolveDialog));
     }
     if (!buyer && acts.contains('cancel_yes')) {
       add(Row(children: [
         Expanded(
             child: GlassButton(
-                label: 'Cancel maano', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('cancel_answer', {'yes': true}))),
+                label: 'Treat as cancelled', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('cancel_answer', {'yes': true}))),
         const SizedBox(width: 8),
         Expanded(
             child: GlassButton(
-                label: 'Mana karo',
+                label: 'Decline',
                 icon: Icons.block_rounded,
                 onTap: _busy
                     ? null
                     : () async {
-                        final r = await _ask('Cancel mana?', 'Wajah (graahak ko dikhegi)');
+                        final r = await _ask('Decline the cancel?', 'Reason (the customer will see this)');
                         if (r != null) _act('cancel_answer', {'yes': false, 'note': r});
                       })),
       ]));
     }
     if (!buyer && acts.contains('send_quote') && _s(v['waiting']) == 'quote') {
-      add(GradientButton(label: 'Quote bhejo', icon: Icons.send_rounded, height: 50, onTap: _busy ? null : () => _act('send_quote')));
+      add(GradientButton(label: 'Send quote', icon: Icons.send_rounded, height: 50, onTap: _busy ? null : () => _act('send_quote')));
     }
     if (!buyer && acts.contains('accept')) {
-      add(GradientButton(label: 'Order pakka karo', icon: Icons.check_rounded, height: 50, onTap: _busy ? null : () => _act('accept')));
+      add(GradientButton(label: 'Confirm order', icon: Icons.check_rounded, height: 50, onTap: _busy ? null : () => _act('accept')));
     }
     if (!buyer && acts.contains('packing') && st == 'accepted') {
-      add(GlassButton(label: 'Packing shuru', icon: Icons.inventory_2_rounded, onTap: _busy ? null : () => _act('packing')));
+      add(GlassButton(label: 'Start packing', icon: Icons.inventory_2_rounded, onTap: _busy ? null : () => _act('packing')));
     }
     if (!buyer && acts.contains('ready')) {
-      add(GradientButton(label: 'Parcel taiyaar', icon: Icons.local_shipping_rounded, height: 50, onTap: _busy ? null : () => _act('ready')));
+      add(GradientButton(label: 'Parcel ready', icon: Icons.local_shipping_rounded, height: 50, onTap: _busy ? null : () => _act('ready')));
     }
     final open = pay.isNotEmpty && _s(pay['status']) != 'khata' && left > 0;
     if (!buyer && acts.contains('handed_over') && open) {
@@ -628,8 +628,8 @@ class _DealCardState extends State<DealCard> {
           contentPadding: EdgeInsets.zero,
           value: _collect,
           onChanged: (x) => setState(() => _collect = x == true),
-          title: Text('Counter par ${_inr(left)} le liya'),
-          subtitle: const Text('Paisa pehle: bina iske saamaan nahi diya jaata', style: TextStyle(fontSize: 11.5)),
+          title: Text('At the counter ${_inr(left)} collected'),
+          subtitle: const Text('Payment first: goods are not handed over without it', style: TextStyle(fontSize: 11.5)),
         ),
         if (_collect)
           Wrap(spacing: 6, children: [
@@ -645,12 +645,12 @@ class _DealCardState extends State<DealCard> {
             controller: _code,
             keyboardType: TextInputType.number,
             maxLength: 4,
-            decoration: const InputDecoration(labelText: 'Graahak ka pickup code', counterText: ''),
+            decoration: const InputDecoration(labelText: 'Customer\'s pickup code', counterText: ''),
           ),
         ),
         const SizedBox(width: 10),
         GlassButton(
-            label: 'De diya',
+            label: 'Given',
             icon: Icons.handshake_rounded,
             onTap: _busy
                 ? null
@@ -666,20 +666,20 @@ class _DealCardState extends State<DealCard> {
           onPressed: _busy
               ? null
               : () async {
-                  final r = await _ask('Mana karna hai?', 'Wajah (graahak ko dikhegi)');
+                  final r = await _ask('Do you want to decline?', 'Reason (the customer will see this)');
                   if (r != null) _act('reject', {'reason': r});
                 },
-          child: const Text('Mana karo', style: TextStyle(color: C.bad))));
+          child: const Text('Decline', style: TextStyle(color: C.bad))));
     }
     if (acts.contains('cancel')) {
       no.add(TextButton(
           onPressed: _busy
               ? null
               : () async {
-                  final r = await _ask(buyer ? 'Order cancel karna hai?' : 'Deal cancel karni hai?', 'Wajah');
+                  final r = await _ask(buyer ? 'Cancel this order?' : 'Cancel this deal?', 'Reason');
                   if (r != null) _act('cancel', {'reason': r});
                 },
-          child: Text(buyer && st == 'quoted' ? 'Nahi chahiye' : 'Cancel', style: const TextStyle(color: C.muted))));
+          child: Text(buyer && st == 'quoted' ? 'Not needed' : 'Cancel', style: const TextStyle(color: C.muted))));
     }
     if (no.isNotEmpty) add(Wrap(alignment: WrapAlignment.end, children: no));
     return out;
@@ -703,7 +703,7 @@ class _DealCardState extends State<DealCard> {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(buyer ? 'Khareed · ${_s(v['with'])}' : 'Bikri · ${_s(v['with'])}',
+              Text(buyer ? 'Buying ·${_s(v['with'])}' : 'Selling ·${_s(v['with'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800), maxLines: 1, overflow: TextOverflow.ellipsis),
               Text(_s(v['number']).isNotEmpty ? '${_s(v['number'])} · $title' : title,
                   style: const TextStyle(color: C.muted, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -721,7 +721,7 @@ class _DealCardState extends State<DealCard> {
                     ? TrustChip(app: widget.app, peer: _s(v['peer']), tier: _s(v['tier']), say: _s(v['tier_say']), onChanged: widget.onChanged)
                     : Pill(_s(v['tier_say']), fg: tierColor[_s(v['tier'])] ?? C.chip),
               if (_s(v['mandate_id']).isNotEmpty) const Pill('standing order', fg: C.violet),
-              if (_s(v['rfq_id']).isNotEmpty) const Pill('tulna', fg: C.accent),
+              if (_s(v['rfq_id']).isNotEmpty) const Pill('compared', fg: C.accent),
             ]),
           ),
         if (_s(v['say']).isNotEmpty && !widget.full) ...[
@@ -735,10 +735,10 @@ class _DealCardState extends State<DealCard> {
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(16)),
             child: Column(children: [
-              const Text('Counter par yeh code dikhaiye', style: TextStyle(color: C.muted, fontSize: 12)),
+              const Text('Show this code at the counter', style: TextStyle(color: C.muted, fontSize: 12)),
               Text(_s(rdy['code']),
                   style: const TextStyle(fontSize: 34, fontWeight: FontWeight.w900, letterSpacing: 8, color: C.ok)),
-              Text('${_s(rdy['place'])}${_when(rdy['until']).isEmpty ? '' : ' · ${_when(rdy['until'])} tak'}',
+              Text('${_s(rdy['place'])}${_when(rdy['until']).isEmpty ? '' : ' · ${_when(rdy['until'])} until'}',
                   textAlign: TextAlign.center, style: const TextStyle(fontSize: 12.5)),
             ]),
           ),
@@ -750,7 +750,7 @@ class _DealCardState extends State<DealCard> {
           if (q['valid_until'] != null && st == 'quoted')
             Padding(
               padding: const EdgeInsets.only(top: 4),
-              child: Text('Quote ${_when(q['valid_until'])} tak', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+              child: Text('Quote ${_when(q['valid_until'])} until', style: const TextStyle(color: C.faint, fontSize: 11.5)),
             ),
         ] else if (ask['items'] != null) ...[
           const SizedBox(height: 8),
@@ -767,7 +767,7 @@ class _DealCardState extends State<DealCard> {
         if (buyer && st == 'quoted')
           const Padding(
             padding: EdgeInsets.only(top: 8),
-            child: Text('Aapke Haan dabaane par hi order jaayega. Paisa yahan se nahi kat-ta.',
+            child: Text('The order goes only when you tap Yes. No money is taken from here.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ),
         if (buttons.isNotEmpty) ...[const SizedBox(height: 12), ...buttons],
@@ -777,12 +777,12 @@ class _DealCardState extends State<DealCard> {
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => DealPage(app: widget.app, dealId: _s(v['id'])))),
-              child: const Text('Poori deal dekho'),
+              child: const Text('See the whole deal'),
             ),
           ),
         if (widget.full && (v['history'] as List?) != null) ...[
           const SizedBox(height: 12),
-          const Text('Kya kya hua', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('What happened', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           for (final h in _l(v['history']))
             Padding(
@@ -920,22 +920,22 @@ class _DealsScreenState extends State<DealsScreen> {
     final ok = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nayi list bhejo'),
+        title: const Text('Send a new list'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: to, decoration: const InputDecoration(labelText: 'Kise (naam / @Hoola ID / business)')),
+            TextField(controller: to, decoration: const InputDecoration(labelText: 'To whom (name / @Hoola ID / business)')),
             TextField(
                 controller: items,
                 minLines: 4,
                 maxLines: 10,
-                decoration: const InputDecoration(labelText: 'Har line: cheez aur maatra', hintText: 'Parle-G 10 carton\nTata Salt 1kg 20')),
-            TextField(controller: note, decoration: const InputDecoration(labelText: 'Note (kab tak chahiye...)')),
+                decoration: const InputDecoration(labelText: 'One line each: item and quantity', hintText: 'Parle-G 10 carton\nTata Salt 1kg 20')),
+            TextField(controller: note, decoration: const InputDecoration(labelText: 'Note (needed by when...)')),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(''), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop('catalog'), child: const Text('Unki price list')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop('send'), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(''), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop('catalog'), child: const Text('Their price list')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop('send'), child: const Text('Send')),
         ],
       ),
     );
@@ -979,20 +979,20 @@ class _DealsScreenState extends State<DealsScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: Text(it == null ? 'Naya item' : 'Item badlo'),
+          title: Text(it == null ? 'New item' : 'Change item'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam')),
-              TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Daam (GST ke bina, ek unit)')),
-              TextField(controller: qty, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Stock mein kitna (khaali = gina nahi)')),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(controller: price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price (without GST, per unit)')),
+              TextField(controller: qty, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'How much in stock (blank = not counted)')),
               TextField(controller: unit, decoration: const InputDecoration(labelText: 'Unit (carton, packet, kg...)')),
-              TextField(controller: aliases, decoration: const InputDecoration(labelText: 'Doosre naam (comma se)')),
-              TextField(controller: low, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Itna bache to batao (khaali = nahi)')),
-              TextField(controller: subs, decoration: const InputDecoration(labelText: 'Khatam ho to badle mein (stock ke item, comma se)')),
+              TextField(controller: aliases, decoration: const InputDecoration(labelText: 'Other names (comma separated)')),
+              TextField(controller: low, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Tell me when this much is left (blank = no)')),
+              TextField(controller: subs, decoration: const InputDecoration(labelText: 'If out of stock, substitutes (stock items, comma separated)')),
               SwitchListTile(
                 dense: true,
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Price list mein dikhe'),
+                title: const Text('Show in price list'),
                 value: shown,
                 onChanged: (x) => set(() => shown = x),
               ),
@@ -1004,7 +1004,7 @@ class _DealsScreenState extends State<DealsScreen> {
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
             TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
           ],
         ),
@@ -1066,15 +1066,15 @@ class _DealsScreenState extends State<DealsScreen> {
 
   Widget _stockTab() => ListView(padding: const EdgeInsets.all(16), children: [
         Wrap(spacing: 10, runSpacing: 10, children: [
-          GlassButton(label: 'Item jodo', icon: Icons.add_rounded, onTap: () => _editItem()),
-          GlassButton(label: 'Sheet se daalo', icon: Icons.upload_file_rounded, onTap: _importSheet),
+          GlassButton(label: 'Add item', icon: Icons.add_rounded, onTap: () => _editItem()),
+          GlassButton(label: 'Import from sheet', icon: Icons.upload_file_rounded, onTap: _importSheet),
         ]),
         const SizedBox(height: 12),
         if (_stock.isEmpty)
           const Padding(
             padding: EdgeInsets.all(12),
-            child: Text('Jo aap bechte hain uska daam, GST aur stock yahan likhiye. Graahak ki list aane par Hoola isi se quote '
-                'banata hai (khud se daam kabhi nahi banata).', style: TextStyle(color: C.muted)),
+            child: Text('Write the price, GST and stock of what you sell here. When a customer\'s list comes in, Hoola makes the quote from this '
+                '(it never makes up prices on its own).', style: TextStyle(color: C.muted)),
           ),
         for (final it in _stock)
           Padding(
@@ -1092,14 +1092,14 @@ class _DealsScreenState extends State<DealsScreen> {
                     ]),
                   ),
                   Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                    Text(it['qty'] == null ? 'gina nahi' : '${_qty(it['free'])} khaali',
+                    Text(it['qty'] == null ? 'not counted' : '${_qty(it['free'])} free',
                         style: TextStyle(fontWeight: FontWeight.w800, color: it['qty'] == null || it['low'] == true ? C.warn : C.ink)),
-                    if (it['low'] == true) const Pill('kam hai', fg: C.warn),
+                    if (it['low'] == true) const Pill('short', fg: C.warn),
                     if (_d(it['reserved']) > 0)
-                      Text('${_qty(it['reserved'])} order mein', style: const TextStyle(color: C.faint, fontSize: 11)),
+                      Text('${_qty(it['reserved'])} in orders', style: const TextStyle(color: C.faint, fontSize: 11)),
                   ]),
                   IconButton(
-                    tooltip: 'Hatao',
+                    tooltip: 'Remove',
                     icon: const Icon(Icons.delete_outline_rounded, color: C.muted),
                     onPressed: () async {
                       try {
@@ -1133,14 +1133,14 @@ class _DealsScreenState extends State<DealsScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(a == null ? 'Khata kholo' : 'Khata badlo'),
+        title: Text(a == null ? 'Open credit account' : 'Change credit account'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          if (a == null) TextField(controller: to, decoration: const InputDecoration(labelText: 'Graahak (naam / @Hoola ID)')),
-          TextField(controller: lim, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Seema (₹), 0 = band')),
-          TextField(controller: days, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kitne din mein dena')),
+          if (a == null) TextField(controller: to, decoration: const InputDecoration(labelText: 'Customer (name / @Hoola ID)')),
+          TextField(controller: lim, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Limit (₹), 0 = off')),
+          TextField(controller: days, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Days to pay')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
           TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
         ],
       ),
@@ -1169,9 +1169,9 @@ class _DealsScreenState extends State<DealsScreen> {
           ]),
           Text(
               [
-                if (mine && _d(a['limit']) > 0) 'seema ${_inr(a['limit'])} · ${_qty(a['days'])} din · ${_inr(a['limit_left'])} bacha',
-                if (mine && _s(a['status']) == 'paused') 'band',
-                if (_s(a['due_on']).isNotEmpty) '${_s(a['due_on'])} tak${a['overdue'] == true ? ' (nikal gaya)' : ''}',
+                if (mine && _d(a['limit']) > 0) 'limit${_inr(a['limit'])} · ${_qty(a['days'])} days · ${_inr(a['limit_left'])} left',
+                if (mine && _s(a['status']) == 'paused') 'paused',
+                if (_s(a['due_on']).isNotEmpty) '${_s(a['due_on'])} until${a['overdue'] == true ? ' (overdue)' : ''}',
               ].join(' · '),
               style: TextStyle(color: a['overdue'] == true ? C.bad : C.muted, fontSize: 12)),
           for (final e in _l(a['entries']).take(4))
@@ -1183,14 +1183,14 @@ class _DealsScreenState extends State<DealsScreen> {
               GlassButton(label: 'Payment card', icon: Icons.request_quote_rounded, onTap: () => _khataDo('request', {'to': peer})),
             if (mine && bal > 0)
               GlassButton(
-                  label: 'Paisa mila',
+                  label: 'Money received',
                   icon: Icons.savings_rounded,
                   onTap: () async {
-                    final r = await moneyDialog(context, 'Khata ka paisa aaya?',
-                        amount: bal, hint: 'Apne bank / UPI / haath mein dekh kar hi.');
+                    final r = await moneyDialog(context, 'Did the credit payment come in?',
+                        amount: bal, hint: 'Only after checking your own bank / UPI / cash in hand.');
                     if (r != null) _khataDo('received', {'to': peer, ...r});
                   }),
-            if (mine) GlassButton(label: 'Seema', icon: Icons.tune_rounded, onTap: () => _openKhata(a)),
+            if (mine) GlassButton(label: 'Limit', icon: Icons.tune_rounded, onTap: () => _openKhata(a)),
             if (!mine && bal > 0)
               GradientButton(
                   label: 'Pay (UPI app)',
@@ -1199,10 +1199,10 @@ class _DealsScreenState extends State<DealsScreen> {
                       () => app.api!.netKhataAct('trust_payee', {'to': peer}))),
             if (!mine && bal > 0)
               GlassButton(
-                  label: 'Maine pay kiya',
+                  label: 'I have paid',
                   icon: Icons.task_alt_rounded,
                   onTap: () async {
-                    final r = await moneyDialog(context, 'UPI se bhej diya?', withMode: false, amount: bal);
+                    final r = await moneyDialog(context, 'Sent by UPI?', withMode: false, amount: bal);
                     if (r != null) _khataDo('paid', {'to': peer, 'utr': r['utr']});
                   }),
           ]),
@@ -1219,7 +1219,7 @@ class _DealsScreenState extends State<DealsScreen> {
         Expanded(
           child: Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Mujhe milna hai', style: TextStyle(color: C.muted, fontSize: 12)),
+              const Text('I am to receive', style: TextStyle(color: C.muted, fontSize: 12)),
               Text(_inr(_khata['owed_total']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: C.accent)),
             ]),
           ),
@@ -1228,28 +1228,28 @@ class _DealsScreenState extends State<DealsScreen> {
         Expanded(
           child: Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Mujhe dena hai', style: TextStyle(color: C.muted, fontSize: 12)),
+              const Text('I am to pay', style: TextStyle(color: C.muted, fontSize: 12)),
               Text(_inr(_khata['owe_total']), style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 20, color: C.warn)),
             ]),
           ),
         ),
       ]),
       const SizedBox(height: 12),
-      GlassButton(label: 'Graahak ka khata kholo', icon: Icons.menu_book_rounded, onTap: () => _openKhata()),
+      GlassButton(label: 'Open the customer\'s credit account', icon: Icons.menu_book_rounded, onTap: () => _openKhata()),
       if (_rules['khata'] != true)
         const Padding(
           padding: EdgeInsets.only(top: 6),
-          child: Text('Niyam mein "Khata (udhaar)" chalu karne par hi quote mein khata dikhega.', style: TextStyle(color: C.faint, fontSize: 12)),
+          child: Text('Credit (udhaar) shows in a quote only if you turn it on in the rules.', style: TextStyle(color: C.faint, fontSize: 12)),
         ),
       const SizedBox(height: 12),
-      if (owed.isNotEmpty) const Text('Mere graahak', style: TextStyle(fontWeight: FontWeight.w800)),
+      if (owed.isNotEmpty) const Text('My customers', style: TextStyle(fontWeight: FontWeight.w800)),
       for (final a in owed) _khataRow(a, true),
-      if (owe.isNotEmpty) const Text('Meri dukaanein', style: TextStyle(fontWeight: FontWeight.w800)),
+      if (owe.isNotEmpty) const Text('My shops', style: TextStyle(fontWeight: FontWeight.w800)),
       for (final a in owe) _khataRow(a, false),
       if (owed.isEmpty && owe.isEmpty)
         const Padding(
           padding: EdgeInsets.all(12),
-          child: Text('Khata par liya / diya order yahan apne aap likha jaata hai, dono taraf ek jaisa.', style: TextStyle(color: C.muted)),
+          child: Text('Orders taken or given on credit are written here automatically, the same on both sides.', style: TextStyle(color: C.muted)),
         ),
     ]);
   }
@@ -1262,7 +1262,7 @@ class _DealsScreenState extends State<DealsScreen> {
         title: Text(title),
         content: TextField(controller: c, decoration: InputDecoration(hintText: hint)),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
           TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
         ],
       ),
@@ -1274,54 +1274,54 @@ class _DealsScreenState extends State<DealsScreen> {
 
   Widget _moneyRules() => Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Paisa', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Payment', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Row(children: [
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_s(_rules['upi_id']).isEmpty ? 'UPI ID abhi nahi' : _s(_rules['upi_id']),
+                Text(_s(_rules['upi_id']).isEmpty ? 'No UPI ID yet' : _s(_rules['upi_id']),
                     style: const TextStyle(fontWeight: FontWeight.w700)),
                 Text(
-                    '${_s(_rules['payee_name']).isEmpty ? 'Naam nahi' : _s(_rules['payee_name'])}'
+                    '${_s(_rules['payee_name']).isEmpty ? 'No name' : _s(_rules['payee_name'])}'
                     '${_rules['business_verified'] == true ? ' · verified business' : ''}',
                     style: const TextStyle(color: C.muted, fontSize: 12)),
               ]),
             ),
-            TextButton(onPressed: () => _editText('Aapka UPI ID', 'upi_id', 'naam@bank'), child: const Text('UPI')),
-            TextButton(onPressed: () => _editText('UPI par naam', 'payee_name', 'Jaise bank mein hai'), child: const Text('Naam')),
+            TextButton(onPressed: () => _editText('Your UPI ID', 'upi_id', 'name@bank'), child: const Text('UPI')),
+            TextButton(onPressed: () => _editText('Name on UPI', 'payee_name', 'As it is at the bank'), child: const Text('Name')),
           ]),
-          const Text('Graahak ke Hoola is UPI ko yaad rakhte hain; badalne par unhe chetavni milti hai.',
+          const Text('Customers\' Hoola remember this UPI; they get a warning if it changes.',
               style: TextStyle(color: C.faint, fontSize: 11.5)),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Saamaan se pehle paisa'),
-            subtitle: const Text('Paid, khata, ya counter par usi waqt', style: TextStyle(fontSize: 12)),
+            title: const Text('Payment before goods'),
+            subtitle: const Text('Paid, on credit, or at the counter on the spot', style: TextStyle(fontSize: 12)),
             value: _s(_rules['pay_before']) != 'none',
             onChanged: (x) => _setRule({'pay_before': x ? 'handover' : 'none'}),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Counter par cash / UPI chalega'),
+            title: const Text('Cash / UPI at the counter is fine'),
             value: _rules['counter_ok'] != false,
             onChanged: (x) => _setRule({'counter_ok': x}),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Khata (udhaar)'),
-            subtitle: const Text('Sirf un graahakon ko jinka khata aap kholein', style: TextStyle(fontSize: 12)),
+            title: const Text('Credit (udhaar)'),
+            subtitle: const Text('Only customers whose credit account you open', style: TextStyle(fontSize: 12)),
             value: _rules['khata'] == true,
             onChanged: (x) => _setRule({'khata': x}),
           ),
-          Text('Pakka hone ke baad free cancel: ${_qty(_rules['cancel_minutes'] ?? 30)} min', style: const TextStyle(fontSize: 12.5)),
+          Text('Free cancel after confirmation: ${_qty(_rules['cancel_minutes'] ?? 30)} min', style: const TextStyle(fontSize: 12.5)),
           Wrap(spacing: 6, children: [
             for (final x in const [0, 30, 120])
               ChoiceChip(label: Text('$x min'), selected: _d(_rules['cancel_minutes'] ?? 30) == x, onSelected: (_) => _setRule({'cancel_minutes': x})),
           ]),
           const SizedBox(height: 6),
-          Text('Shikayat ka samay: ${_qty(_rules['dispute_hours'] ?? 48)} ghante', style: const TextStyle(fontSize: 12.5)),
+          Text('Time to raise a complaint: ${_qty(_rules['dispute_hours'] ?? 48)} hours', style: const TextStyle(fontSize: 12.5)),
           Wrap(spacing: 6, children: [
             for (final x in const [24, 48, 168])
-              ChoiceChip(label: Text('$x ghante'), selected: _d(_rules['dispute_hours'] ?? 48) == x, onSelected: (_) => _setRule({'dispute_hours': x})),
+              ChoiceChip(label: Text('$x hours'), selected: _d(_rules['dispute_hours'] ?? 48) == x, onSelected: (_) => _setRule({'dispute_hours': x})),
           ]),
         ]),
       );
@@ -1338,17 +1338,17 @@ class _DealsScreenState extends State<DealsScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Quote khud bhejna', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Send the quote myself', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          const Text('Sirf tab jab list ki har cheez stock mein ho aur rakam seema ke andar ho.',
+          const Text('Only when every item on the list is in stock and the amount is within the limit.',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           Wrap(spacing: 6, children: [
-            for (final e in const {'off': 'Har baar mujhse', 'trusted': 'Bharose walon ko', 'connected': 'Sab jude logon ko'}.entries)
+            for (final e in const {'off': 'Ask me every time', 'trusted': 'Trusted ones', 'connected': 'All connected people'}.entries)
               ChoiceChip(label: Text(e.value), selected: aq == e.key, onSelected: (_) => _setRule({'auto_quote': e.key})),
           ]),
           const SizedBox(height: 8),
-          Text('Seema: ${_inr(_rules['auto_quote_max'])}', style: const TextStyle(fontSize: 12.5)),
+          Text('Limit: ${_inr(_rules['auto_quote_max'])}', style: const TextStyle(fontSize: 12.5)),
           Wrap(spacing: 6, children: [
             for (final x in const [5000, 25000, 100000])
               ActionChip(label: Text(_inr(x)), onPressed: () => _setRule({'auto_quote_max': x})),
@@ -1360,14 +1360,14 @@ class _DealsScreenState extends State<DealsScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Order khud pakka karna', style: TextStyle(fontWeight: FontWeight.w800)),
-            subtitle: Text('Graahak ke confirm ke baad, stock dobara dekh kar, ${_inr(_rules['auto_accept_max'])} tak',
+            title: const Text('Confirm the order myself', style: TextStyle(fontWeight: FontWeight.w800)),
+            subtitle: Text('After the customer confirms, with stock checked again, up to ${_inr(_rules['auto_accept_max'])}',
                 style: const TextStyle(fontSize: 12.5)),
             value: _rules['auto_accept'] == true,
             onChanged: (x) => _setRule({'auto_accept': x}),
           ),
           Wrap(spacing: 6, children: [
-            for (final e in const {'trusted': 'Sirf bharosemand', 'connected': 'Sab jude log'}.entries)
+            for (final e in const {'trusted': 'Trusted only', 'connected': 'All connected people'}.entries)
               ChoiceChip(
                   label: Text(e.value),
                   selected: (_s(_rules['auto_accept_who']).isEmpty ? 'trusted' : _s(_rules['auto_accept_who'])) == e.key,
@@ -1382,34 +1382,34 @@ class _DealsScreenState extends State<DealsScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Price list kise dikhe', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Who sees the price list', style: TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
           Wrap(spacing: 6, children: [
-            for (final e in const {'off': 'Kisi ko nahi', 'connected': 'Jude logon ko', 'public': 'Sab ko'}.entries)
+            for (final e in const {'off': 'No one', 'connected': 'Connected people', 'public': 'Everyone'}.entries)
               ChoiceChip(label: Text(e.value), selected: (_s(_rules['catalog']).isEmpty ? 'connected' : _s(_rules['catalog'])) == e.key,
                   onSelected: (_) => _setRule({'catalog': e.key})),
           ]),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Stock hai ya nahi, yeh bhi dikhe'),
+            title: const Text('Also show whether it is in stock'),
             value: _rules['show_stock'] == true,
             onChanged: (x) => _setRule({'show_stock': x}),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Pack hote hi graahak ko code chala jaaye'),
-            subtitle: const Text('Band ho to packing ke baad aapse poochha jaayega', style: TextStyle(fontSize: 12)),
+            title: const Text('Send the code to the customer as soon as it is packed'),
+            subtitle: const Text('If off, you will be asked after packing', style: TextStyle(fontSize: 12)),
             value: _rules['auto_ready'] != false,
             onChanged: (x) => _setRule({'auto_ready': x}),
           ),
           const SizedBox(height: 6),
-          _namesField('Bharose wale graahak (naam / Hoola ID)', 'trusted'),
+          _namesField('Trusted customers (name / Hoola ID)', 'trusted'),
           const SizedBox(height: 8),
-          _namesField('Packing karne wale (khaali = team ke manager + packing wale)', 'packers'),
+          _namesField('People who pack (blank = team managers + packers)', 'packers'),
           if (((_rules['packers_found'] as List?) ?? const []).isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text('Pick list jaayegi: ${((_rules['packers_found'] as List?) ?? const []).join(', ')}',
+              child: Text('Pick list will go: ${((_rules['packers_found'] as List?) ?? const []).join(', ')}',
                   style: const TextStyle(color: C.muted, fontSize: 12)),
             ),
         ]),
@@ -1417,21 +1417,21 @@ class _DealsScreenState extends State<DealsScreen> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Pickup ki jagah', style: TextStyle(fontWeight: FontWeight.w800)),
-          Text(_s(_rules['place']).isEmpty ? 'Abhi nahi likhi' : _s(_rules['place']), style: const TextStyle(color: C.muted)),
+          const Text('Pickup place', style: TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(_rules['place']).isEmpty ? 'Not written yet' : _s(_rules['place']), style: const TextStyle(color: C.muted)),
           const SizedBox(height: 6),
           GlassButton(
-            label: 'Badlo',
+            label: 'Change',
             icon: Icons.edit_location_alt_rounded,
             onTap: () async {
               final c = TextEditingController(text: _s(_rules['place']));
               final ok = await showDialog<bool>(
                 context: context,
                 builder: (ctx) => AlertDialog(
-                  title: const Text('Pickup ki jagah'),
-                  content: TextField(controller: c, decoration: const InputDecoration(hintText: 'Jaise: Counter 3, Gala no. 12')),
+                  title: const Text('Pickup place'),
+                  content: TextField(controller: c, decoration: const InputDecoration(hintText: 'For example: Counter 3, Shelf no. 12')),
                   actions: [
-                    TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
+                    TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
                     TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
                   ],
                 ),
@@ -1448,7 +1448,7 @@ class _DealsScreenState extends State<DealsScreen> {
       const SizedBox(height: 12),
       Text(_s(_rules['say']), style: const TextStyle(color: C.faint, fontSize: 12)),
       const SizedBox(height: 6),
-      const Text('Yeh niyam aapke Mere Niyam ka hissa hain. Paisa hamesha aapke tap se.', style: TextStyle(color: C.teal, fontSize: 12)),
+      const Text('These rules are part of your My Rules. Money always moves only with your tap.', style: TextStyle(color: C.teal, fontSize: 12)),
     ]);
   }
 
@@ -1457,19 +1457,19 @@ class _DealsScreenState extends State<DealsScreen> {
         length: 10,
         child: Scaffold(
           appBar: AppBar(
-            title: const Text('Khareed aur bikri'),
+            title: const Text('Buying and selling'),
             backgroundColor: Colors.transparent,
             bottom: TabBar(isScrollable: true, tabs: [
-              Tab(text: 'Khareed${_buy.isEmpty ? '' : ' (${_buy.length})'}'),
-              Tab(text: 'Bikri${_sell.isEmpty ? '' : ' (${_sell.length})'}'),
+              Tab(text: 'Purchase${_buy.isEmpty ? '' : ' (${_buy.length})'}'),
+              Tab(text: 'Sales${_sell.isEmpty ? '' : ' (${_sell.length})'}'),
               Tab(text: 'Packing${_picks.isEmpty ? '' : ' (${_picks.length})'}'),
               const Tab(text: 'Booking'),
-              const Tab(text: 'Tulna'),
+              const Tab(text: 'Comparison'),
               const Tab(text: 'Standing'),
               const Tab(text: 'Offers'),
               const Tab(text: 'Stock'),
-              const Tab(text: 'Khata'),
-              const Tab(text: 'Niyam'),
+              const Tab(text: 'Credit'),
+              const Tab(text: 'Rules'),
             ]),
           ),
           floatingActionButton: FloatingActionButton.extended(
@@ -1477,7 +1477,7 @@ class _DealsScreenState extends State<DealsScreen> {
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.playlist_add_rounded),
-            label: const Text('Nayi list'),
+            label: const Text('New list'),
           ),
           body: Aurora(
             child: _loading
@@ -1485,13 +1485,13 @@ class _DealsScreenState extends State<DealsScreen> {
                 : RefreshIndicator(
                     onRefresh: _load,
                     child: TabBarView(children: [
-                      _dealList(_buy, 'Kisi dukaan ya wholesaler ko list bhejiye: "Nayi list". Unka Hoola quote bhejega, aap haan karengi tabhi order jaayega.'),
-                      _dealList(_sell, 'Jab koi aapke Hoola ko list bhejega, quote yahan taiyaar milega.'),
+                      _dealList(_buy, 'Send a list to a shop or wholesaler: "New list". Their Hoola will send a quote, and the order goes only when you say yes.'),
+                      _dealList(_sell, 'When someone sends your Hoola a list, the quote will be ready here.'),
                       ListView(padding: const EdgeInsets.all(16), children: [
                         if (_picks.isEmpty)
                           const Padding(
                             padding: EdgeInsets.all(20),
-                            child: Text('Jahan aap kaam karti / karte hain, wahan ke Hoola se pick list aayegi to yahan dikhegi.',
+                            child: Text('When a pick list comes from the Hoola of the place where you work, it will show here.',
                                 style: TextStyle(color: C.muted)),
                           ),
                         for (final p in _picks)
@@ -1572,20 +1572,20 @@ class _PickCardState extends State<PickCard> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Kitna mila?'),
+        title: const Text('How much did you get?'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             for (var i = 0; i < lines.length; i++)
               TextField(
                 controller: ctrls[i],
                 keyboardType: TextInputType.number,
-                decoration: InputDecoration(labelText: '${_s(lines[i]['item'])} (chahiye ${_qty(lines[i]['qty'])})'),
+                decoration: InputDecoration(labelText: '${_s(lines[i]['item'])} (need ${_qty(lines[i]['qty'])})'),
               ),
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Owner ko batao')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Tell the owner')),
         ],
       ),
     );
@@ -1599,7 +1599,7 @@ class _PickCardState extends State<PickCard> {
     }
     if (ok != true) return;
     if (short.isEmpty) {
-      if (mounted) _snack(context, 'Sab poora hai; "Sab pack ho gaya" dabaiye.');
+      if (mounted) _snack(context, 'Everything is complete; tap "All packed".');
       return;
     }
     _act('short', {'short': short});
@@ -1611,8 +1611,8 @@ class _PickCardState extends State<PickCard> {
     final acts = List<String>.from((v['actions'] as List?) ?? const []);
     final lines = _l(v['lines']);
     final word = {
-      'new': 'naya', 'packing': 'packing', 'packed': 'pack ho gaya', 'short': 'kam hai', 'ready': 'counter par',
-      'handed_over': 'de diya', 'cancelled': 'cancel', 'taken': 'koi aur kar raha',
+      'new': 'new', 'packing': 'packing', 'packed': 'packed', 'short': 'short', 'ready': 'at the counter',
+      'handed_over': 'handed over', 'cancelled': 'cancel', 'taken': 'someone else is doing it',
     }[st] ?? st;
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -1645,28 +1645,28 @@ class _PickCardState extends State<PickCard> {
           ),
         if (_s(v['note']).isNotEmpty) Text('Note: ${_s(v['note'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
         if (st == 'ready' && _s(v['place']).isNotEmpty)
-          Text('${_s(v['place'])}${_when(v['until']).isEmpty ? '' : ' · ${_when(v['until'])} tak'}',
+          Text('${_s(v['place'])}${_when(v['until']).isEmpty ? '' : ' · ${_when(v['until'])} until'}',
               style: const TextStyle(color: C.muted, fontSize: 12)),
         const SizedBox(height: 8),
         if (acts.contains('packing') && st == 'new')
-          GlassButton(label: 'Packing shuru', icon: Icons.play_arrow_rounded, onTap: _busy ? null : () => _act('packing')),
+          GlassButton(label: 'Start packing', icon: Icons.play_arrow_rounded, onTap: _busy ? null : () => _act('packing')),
         if (acts.contains('packed')) ...[
           const SizedBox(height: 8),
           GradientButton(
-              label: 'Sab pack ho gaya',
+              label: 'All packed',
               icon: Icons.check_rounded,
               height: 48,
               onTap: _busy || (_ticked.length < lines.length && lines.length > 1) ? null : () => _act('packed')),
           if (_ticked.length < lines.length && lines.length > 1)
             const Padding(
               padding: EdgeInsets.only(top: 4),
-              child: Text('Har item par tick lagaiye', style: TextStyle(color: C.faint, fontSize: 11.5)),
+              child: Text('Tick every item', style: TextStyle(color: C.faint, fontSize: 11.5)),
             ),
         ],
         if (acts.contains('short'))
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: _busy ? null : _short, child: const Text('Kuch kam hai', style: TextStyle(color: C.warn))),
+            child: TextButton(onPressed: _busy ? null : _short, child: const Text('Something is missing', style: TextStyle(color: C.warn))),
           ),
         if (acts.contains('handover') && _d(v['collect']) > 0)
           Container(
@@ -1674,10 +1674,10 @@ class _PickCardState extends State<PickCard> {
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(14)),
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Pehle ${_inr(v['collect'])} lijiye. Code daalne par yahi rakam jama hogi.',
+              Text('First, collect ${_inr(v['collect'])} . When you enter the code, this amount will be credited.',
                   style: const TextStyle(fontWeight: FontWeight.w700, color: C.warn)),
               Wrap(spacing: 6, children: [
-                for (final e in const {'cash': 'Cash liya', 'upi': 'UPI aaya'}.entries)
+                for (final e in const {'cash': 'Cash taken', 'upi': 'UPI received'}.entries)
                   ChoiceChip(label: Text(e.value), selected: _mode == e.key, onSelected: (_) => setState(() => _mode = e.key)),
               ]),
             ]),
@@ -1689,12 +1689,12 @@ class _PickCardState extends State<PickCard> {
                 controller: _code,
                 keyboardType: TextInputType.number,
                 maxLength: 4,
-                decoration: const InputDecoration(labelText: 'Graahak ka code', counterText: ''),
+                decoration: const InputDecoration(labelText: 'Customer\'s code', counterText: ''),
               ),
             ),
             const SizedBox(width: 10),
             GlassButton(
-                label: 'Saamaan diya',
+                label: 'Goods handed over',
                 icon: Icons.handshake_rounded,
                 onTap: _busy
                     ? null
@@ -1785,7 +1785,7 @@ class _CatalogSheetState extends State<CatalogSheet> {
           ),
           const Padding(
             padding: EdgeInsets.symmetric(horizontal: 16),
-            child: Text('Daam jaankari ke liye hain; pakka quote unke stock se aayega.', style: TextStyle(color: C.faint, fontSize: 12)),
+            child: Text('Prices are for information; the confirmed quote will come from their stock.', style: TextStyle(color: C.faint, fontSize: 12)),
           ),
           Expanded(
             child: _err != null
@@ -1802,7 +1802,7 @@ class _CatalogSheetState extends State<CatalogSheet> {
                             dense: true,
                             title: Text(_s(it['item']), style: const TextStyle(fontWeight: FontWeight.w700)),
                             subtitle: Text('${_inr(it['price'])} / ${_s(it['unit']).isEmpty ? 'unit' : _s(it['unit'])}'
-                                '${it['in_stock'] == false ? ' · abhi stock nahi' : ''}'),
+                                '${it['in_stock'] == false ? ' · not in stock now' : ''}'),
                             trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                               IconButton(
                                   onPressed: q <= 0 ? null : () => setState(() => _count[i] = q - 1),
@@ -1819,7 +1819,7 @@ class _CatalogSheetState extends State<CatalogSheet> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: GradientButton(
-                label: n == 0 ? 'Item chuniye' : '$n item ki list bhejo',
+                label: n == 0 ? 'Choose an item' : '$n items, send the list',
                 icon: Icons.send_rounded,
                 onTap: n == 0 || _busy ? null : _send),
           ),
@@ -1846,7 +1846,7 @@ class KhataCard extends StatelessWidget {
         Row(children: [
           const Icon(Icons.menu_book_rounded, color: C.violet),
           const SizedBox(width: 10),
-          Expanded(child: Text('Khata · ${_s(v['with'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('Credit · ${_s(v['with'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           Text(_inr(v['balance']), style: const TextStyle(fontWeight: FontWeight.w900)),
         ]),
         const SizedBox(height: 6),
@@ -1863,7 +1863,7 @@ class KhataCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DealsScreen(app: app))),
-              child: const Text('Khata kholo'),
+              child: const Text('Open credit account'),
             ),
           ),
       ]),

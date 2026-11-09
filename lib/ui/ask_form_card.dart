@@ -95,7 +95,7 @@ class _AskFormCardState extends State<AskFormCard> {
 
   Widget _field(Map<String, dynamic> f, bool open) {
     final name = '${f['name']}';
-    final label = '${f['label']}${f['required'] == false ? ' (zaroori nahi)' : ''}';
+    final label = '${f['label']}${f['required'] == false ? ' (not required)' : ''}';
     final hint = '${f['hint'] ?? ''}';
     final kind = '${f['kind']}';
     final opts = List<String>.from(((f['options'] as List?) ?? const []).map((e) => '$e'));
@@ -134,8 +134,8 @@ class _AskFormCardState extends State<AskFormCard> {
           textInputAction: TextInputAction.next,
           decoration: InputDecoration(
             isDense: true,
-            hintText: hint.isNotEmpty ? hint : (kind == 'date' ? 'Tareekh chuniye' : null),
-            helperText: isId ? 'Pehchaan Locker mein jayega; Hoola ko sirf aakhri 4 ank dikhenge' : null,
+            hintText: hint.isNotEmpty ? hint : (kind == 'date' ? 'Choose a date' : null),
+            helperText: isId ? 'It goes into the ID Locker; Hoola sees only the last 4 digits' : null,
             suffixIcon: isId
                 ? IconButton(
                     icon: Icon(_showId.contains(name) ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 18),
@@ -168,7 +168,7 @@ class _AskFormCardState extends State<AskFormCard> {
           const Icon(Icons.assignment_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${v['title'] ?? 'Form'}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15))),
-          Pill(switch (status) { 'answered' => 'Bhar diya', 'cancelled' => 'Band', _ => 'Bhariye' },
+          Pill(switch (status) { 'answered' => 'Filled', 'cancelled' => 'Cancelled', _ => 'Fill in' },
               fg: status == 'answered' ? C.ok : status == 'cancelled' ? C.faint : C.accent),
         ]),
         if ('${v['why'] ?? ''}'.isNotEmpty)
@@ -185,9 +185,9 @@ class _AskFormCardState extends State<AskFormCard> {
           Padding(
             padding: const EdgeInsets.only(top: 12),
             child: Row(children: [
-              Expanded(child: GlassButton(label: _busy ? 'Bhej raha hoon…' : 'Bhejiye', icon: Icons.send_rounded, onTap: open ? _send : null)),
+              Expanded(child: GlassButton(label: _busy ? 'Sending…' : 'Send', icon: Icons.send_rounded, onTap: open ? _send : null)),
               const SizedBox(width: 8),
-              TextButton(onPressed: open ? _close : null, child: const Text('Rehne do')),
+              TextButton(onPressed: open ? _close : null, child: const Text('Leave it')),
             ]),
           ),
       ]),

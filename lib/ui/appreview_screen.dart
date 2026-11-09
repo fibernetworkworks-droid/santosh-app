@@ -29,11 +29,11 @@ Color _sevColor(String s) => switch (s) {
       _ => C.faint,
     };
 String _sevLabel(String s) => switch (s) {
-      'critical' => 'Bahut gambhir',
-      'high' => 'Gambhir',
-      'medium' => 'Dhyaan dein',
-      'low' => 'Chhota',
-      _ => 'Jaankari',
+      'critical' => 'Very serious',
+      'high' => 'Serious',
+      'medium' => 'Please note',
+      'low' => 'Small',
+      _ => 'Information',
     };
 Color _scoreColor(int s) => s >= 80 ? C.ok : (s >= 50 ? C.warn : C.bad);
 
@@ -58,8 +58,8 @@ Future<String?> _ask(BuildContext context, String title, String label, {bool obs
       content: TextField(controller: c, obscureText: obscure, autocorrect: !obscure, enableSuggestions: !obscure,
           decoration: InputDecoration(labelText: label, hintText: hint)),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next')),
       ],
     ),
   );
@@ -93,7 +93,7 @@ Future<String?> startReview(BuildContext context, Santosh app, String how) async
     final pick = await FilePicker.platform.pickFiles(withData: true, type: FileType.custom, allowedExtensions: const ['apk', 'aab', 'zip', 'apks', 'xapk']);
     final f = pick?.files.firstOrNull;
     if (f == null || f.bytes == null) return null;
-    if (context.mounted) _snack(context, 'File bhej rahi hoon, phir jaanch (kuch der lag sakti hai)...');
+    if (context.mounted) _snack(context, 'Sending the file, then checking (it may take a while)...');
     try {
       final up = await app.api!.uploadFile('/api/appreview/upload', f.name, f.bytes!, timeout: const Duration(seconds: 400), tries: 2);
       if (!context.mounted) return null;
@@ -103,11 +103,11 @@ Future<String?> startReview(BuildContext context, Santosh app, String how) async
       return null;
     }
   } else if (how == 'repo') {
-    final repo = await _ask(context, 'GitHub repo', 'owner/naam ya github.com link', hint: 'meri-company/meri-app');
+    final repo = await _ask(context, 'GitHub repo', 'owner/name or github.com link', hint: 'your-company/your-app');
     if (repo == null || !context.mounted) return null;
     r = await _call(context, app, 'POST', '/api/appreview/reviews', {'repo': repo});
   } else {
-    final url = await _ask(context, 'Aapki website', 'Address', hint: 'aapki-dukaan.in');
+    final url = await _ask(context, 'Your website', 'Address', hint: 'yourshop.in');
     if (url == null || !context.mounted) return null;
     r = await _call(context, app, 'POST', '/api/appreview/reviews', {'url': url});
   }
@@ -179,7 +179,7 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
                 if (cmp['previous'] != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 4),
-                    child: Text('Pichhli ${_s(cmp['previous'])} se: ${(_list(cmp['fixed'])).length} theek, ${_s(cmp['still_open'])} baaki, ${_s(cmp['new'])} naye',
+                    child: Text('Previous ${_s(cmp['previous'])} from: ${(_list(cmp['fixed'])).length} fine, ${_s(cmp['still_open'])} still open,${_s(cmp['new'])} new',
                         style: const TextStyle(color: C.muted, fontSize: 12)),
                   ),
               ]),
@@ -196,9 +196,9 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
     return ListView(padding: const EdgeInsets.all(14), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Nayi jaanch', style: TextStyle(color: C.ink, fontSize: 16, fontWeight: FontWeight.w700)),
+          const Text('New check', style: TextStyle(color: C.ink, fontSize: 16, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          const Text('Apni app ki file (APK / AAB / code ki ZIP), GitHub repo ya website. Hoola sirf padhta hai, app chalata nahi, kahin upload nahi karta.',
+          const Text('Your app\'s file (APK / AAB / code ZIP), GitHub repo or website. Hoola only reads; it does not run the app or upload it anywhere.',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -211,9 +211,9 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
       ),
       const SizedBox(height: 14),
       if (targets.isEmpty)
-        const Text('Abhi koi jaanch nahi hui.', style: TextStyle(color: C.muted))
+        const Text('No checks done yet.', style: TextStyle(color: C.muted))
       else ...[
-        const Text('Aapke apps / sites (aakhri jaanch)', style: TextStyle(color: C.muted, fontWeight: FontWeight.w600)),
+        const Text('Your apps / sites (last check)', style: TextStyle(color: C.muted, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         for (final t in targets) _reviewTile(t),
       ],
@@ -225,7 +225,7 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
     return RefreshIndicator(
       onRefresh: _load,
       child: ListView(padding: const EdgeInsets.all(14), children: [
-        if (rs.isEmpty) const Text('Koi review nahi.', style: TextStyle(color: C.muted)),
+        if (rs.isEmpty) const Text('No reviews.', style: TextStyle(color: C.muted)),
         for (final r in rs) _reviewTile(r),
       ]),
     );
@@ -239,54 +239,54 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
     return ListView(padding: const EdgeInsets.all(14), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('App kis cheez se bani hai', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
+          const Text('What the app is built with', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
           Wrap(spacing: 6, children: [
-            for (final (k, l) in const [('', 'Khud pehchano'), ('android', 'Kotlin / Java'), ('flutter', 'Flutter'), ('react_native', 'React Native'), ('web', 'Website')])
+            for (final (k, l) in const [('', 'Recognise by itself'), ('android', 'Kotlin / Java'), ('flutter', 'Flutter'), ('react_native', 'React Native'), ('web', 'Website')])
               ChoiceChip(label: Text(l), selected: _s(st['stack']) == k, onSelected: (_) => _put({'stack': k})),
           ]),
           SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: st['kids'] == true,
               onChanged: (v) => _put({'kids': v}),
-              title: const Text('App bachchon (18 se kam) ke liye bhi hai'),
-              subtitle: const Text('Play Families policy + DPDP parent consent ki jaanch')),
+              title: const Text('The app is also for children (under 18)'),
+              subtitle: const Text('Checks Play Families policy + DPDP parent consent')),
           SwitchListTile(
               contentPadding: EdgeInsets.zero,
               value: st['ios'] == true,
               onChanged: (v) => _put({'ios': v}),
-              title: const Text('iPhone (App Store) version bhi hai')),
+              title: const Text('There is also an iPhone (App Store) version')),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Developer ka naam (fix list par)'),
-            subtitle: Text(_s(st['developer']).isEmpty ? 'Nahi likha' : _s(st['developer'])),
+            title: const Text('Developer name (on the fix list)'),
+            subtitle: Text(_s(st['developer']).isEmpty ? 'Not written' : _s(st['developer'])),
             trailing: const Icon(Icons.edit, size: 18),
             onTap: () async {
-              final n = await _ask(context, 'Developer', 'Naam / company');
+              final n = await _ask(context, 'Developer', 'Name / company');
               if (n != null) _put({'developer': n});
             },
           ),
-          Text('Play niyam: ${_s(pt['since'])} se naye update ko API ${_s(pt['new_and_updates'])} target karna zaroori (jaanch ${_s(st['checked_on'])}).',
+          Text('Play rules: ${_s(pt['since'])} new updates must target API ${_s(pt['new_and_updates'])} (checked ${_s(st['checked_on'])}).',
               style: const TextStyle(color: C.faint, fontSize: 12)),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('GitHub (sirf padhne ke liye)', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
+          const Text('GitHub (read only)', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          const Text('Private repo ke liye fine-grained token banaiye: sirf "Contents: Read-only". Token yahin likhiye, chat mein kabhi nahi.',
+          const Text('For a private repo, make a fine-grained token: only "Contents: Read-only". Write the token only here, never in chat.',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: Text(gh['joined'] == true ? 'Juda hai ${_s(gh['label'])}' : 'Juda nahi', style: const TextStyle(color: C.ink))),
+            Expanded(child: Text(gh['joined'] == true ? 'Connected ${_s(gh['label'])}' : 'Not connected', style: const TextStyle(color: C.ink))),
             if (gh['joined'] == true)
               TextButton(
                   onPressed: () async {
                     await _call(context, widget.app, 'DELETE', '/api/appreview/github');
                     await _load();
                   },
-                  child: const Text('Hatao'))
+                  child: const Text('Remove'))
             else
               TextButton(
                   onPressed: () async {
@@ -295,27 +295,27 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
                     await _call(context, widget.app, 'PUT', '/api/appreview/github', {'token': t});
                     await _load();
                   },
-                  child: const Text('Jodo')),
+                  child: const Text('Add')),
           ]),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Meri websites (verify)', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
+          const Text('My websites (verify)', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
           const SizedBox(height: 4),
-          const Text('.git / .env jaisi khuli files ki jaanch sirf usi domain par hoti hai jo aapka hai (DNS TXT ya ek file se dikhaiye).',
+          const Text('Checks for open files like .git / .env are done only on a domain that is yours (prove it with a DNS TXT record or a file).',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           for (final d in doms) _domainRow(d),
           TextButton.icon(
               onPressed: () async {
-                final u = await _ask(context, 'Domain jodiye', 'aapki-dukaan.in');
+                final u = await _ask(context, 'Add domain', 'yourshop.in');
                 if (u == null || !mounted) return;
                 await _call(context, widget.app, 'POST', '/api/appreview/domains', {'url': u});
                 await _load();
               },
               icon: const Icon(Icons.add),
-              label: const Text('Domain jodo')),
+              label: const Text('Add domain')),
         ]),
       ),
     ]);
@@ -337,13 +337,13 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
                   await _call(context, widget.app, 'POST', '/api/appreview/domains/verify', {'url': _s(d['host'])});
                   await _load();
                 },
-                child: const Text('Verify karo')),
+                child: const Text('Verify')),
         ]),
         if (!ok) ...[
           SelectableText('TXT  ${_s(how['name'])}  =  ${_s(how['value'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
           TextButton(
               onPressed: () => Clipboard.setData(ClipboardData(text: _s(how['value']))),
-              child: const Text('Value copy karo')),
+              child: const Text('Copy value')),
         ],
       ]),
     );
@@ -360,9 +360,9 @@ class _AppReviewScreenState extends State<AppReviewScreen> {
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.shield_outlined), label: 'Aaj'),
+          NavigationDestination(icon: Icon(Icons.shield_outlined), label: 'Today'),
           NavigationDestination(icon: Icon(Icons.list_alt), label: 'Reviews'),
-          NavigationDestination(icon: Icon(Icons.tune), label: 'Niyam'),
+          NavigationDestination(icon: Icon(Icons.tune), label: 'Rules'),
         ],
       ),
     );
@@ -399,7 +399,7 @@ class _AppReviewPageState extends State<AppReviewPage> {
   Future<void> _mark(Map<String, dynamic> risk, bool ignore) async {
     String note = '';
     if (ignore) {
-      final n = await _ask(context, 'Jaan-boojh kar hai?', 'Wajah (jaise: Play declaration bhara hai)');
+      final n = await _ask(context, 'Is it intentional?', 'Reason (for example: Play declaration is filled)');
       if (n == null) return;
       note = n;
     }
@@ -431,8 +431,8 @@ class _AppReviewPageState extends State<AppReviewPage> {
               child: Wrap(spacing: 6, runSpacing: 4, children: [
                 _chip(_sevLabel(sev), _sevColor(sev)),
                 _chip(_s(r['area_label']), C.chip),
-                if (r['change'] == 'new') _chip('Naya', C.accent),
-                if (ignored) _chip('Aapne chhoda', C.faint),
+                if (r['change'] == 'new') _chip('New', C.accent),
+                if (ignored) _chip('You left', C.faint),
               ]),
             ),
             childrenPadding: const EdgeInsets.only(bottom: 10),
@@ -441,13 +441,13 @@ class _AppReviewPageState extends State<AppReviewPage> {
               Text(_s(r['explain']), style: const TextStyle(color: C.muted)),
               if (ev.isNotEmpty) ...[
                 const SizedBox(height: 8),
-                const Text('Kahan mila', style: TextStyle(color: C.ink, fontWeight: FontWeight.w600, fontSize: 12.5)),
+                const Text('Where found', style: TextStyle(color: C.ink, fontWeight: FontWeight.w600, fontSize: 12.5)),
                 for (final e in ev)
                   Text('• ${_s(e['where'])}${e['line'] != null ? ':${_s(e['line'])}' : ''}${_s(e['text']).isNotEmpty ? '  ${_s(e['text'])}' : ''}',
                       style: const TextStyle(color: C.faint, fontSize: 12, fontFamily: 'monospace')),
               ],
               const SizedBox(height: 8),
-              const Text('Kya karein', style: TextStyle(color: C.ink, fontWeight: FontWeight.w600, fontSize: 12.5)),
+              const Text('What to do', style: TextStyle(color: C.ink, fontWeight: FontWeight.w600, fontSize: 12.5)),
               Text(_s(r['fix']), style: const TextStyle(color: C.muted)),
               if (_s(sn['code']).isNotEmpty) ...[
                 const SizedBox(height: 6),
@@ -460,7 +460,7 @@ class _AppReviewPageState extends State<AppReviewPage> {
                 TextButton.icon(
                     onPressed: () {
                       Clipboard.setData(ClipboardData(text: _s(sn['code'])));
-                      _snack(context, 'Code copy ho gaya');
+                      _snack(context, 'Code copied');
                     },
                     icon: const Icon(Icons.copy, size: 16),
                     label: Text('Copy (${_s(sn['for'])})')),
@@ -475,7 +475,7 @@ class _AppReviewPageState extends State<AppReviewPage> {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                    onPressed: () => _mark(r, !ignored), child: Text(ignored ? 'Phir se khula maano' : 'Jaan-boojh kar hai (chhodo)')),
+                    onPressed: () => _mark(r, !ignored), child: Text(ignored ? 'Treat as open again' : 'Intentional (ignore)')),
               ),
             ],
           ),
@@ -515,7 +515,7 @@ class _AppReviewPageState extends State<AppReviewPage> {
               ]),
               if (_list(cmp['fixed']).isNotEmpty) ...[
                 const SizedBox(height: 8),
-                Text('Theek hue (${_s(cmp['previous'])} ke baad)', style: const TextStyle(color: C.ok, fontWeight: FontWeight.w600)),
+                Text('Fixed (${_s(cmp['previous'])} after)', style: const TextStyle(color: C.ok, fontWeight: FontWeight.w600)),
                 for (final f in _list(cmp['fixed']).take(8)) Text('✓ ${_s(f['title'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
               ],
             ]),
@@ -531,24 +531,24 @@ class _AppReviewPageState extends State<AppReviewPage> {
                   final m = await _call(context, widget.app, 'GET', '/api/appreview/reviews/${widget.id}/fixlist');
                   if (m == null) return;
                   Clipboard.setData(ClipboardData(text: _s(m['markdown'])));
-                  if (context.mounted) _snack(context, 'Fix list copy ho gayi');
+                  if (context.mounted) _snack(context, 'Fix list copied');
                 },
                 icon: const Icon(Icons.copy),
                 label: const Text('Fix list copy')),
             OutlinedButton.icon(
                 onPressed: () => _call(context, widget.app, 'POST', '/api/appreview/reviews/${widget.id}/handoff', {'to': 'devsahayak'}),
                 icon: const Icon(Icons.engineering),
-                label: const Text('Developer Sahayak ko do')),
+                label: const Text('Give to Developer Assistant')),
             OutlinedButton.icon(
                 onPressed: () => _call(context, widget.app, 'POST', '/api/appreview/reviews/${widget.id}/handoff', {'to': 'developer'}),
                 icon: const Icon(Icons.send),
-                label: const Text('Developer ko message')),
+                label: const Text('Message to developer')),
           ]),
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(children: [
-              Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: const Text('Sab'), selected: _area.isEmpty, onSelected: (_) => setState(() => _area = ''))),
+              Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: const Text('All'), selected: _area.isEmpty, onSelected: (_) => setState(() => _area = ''))),
               for (final a in areas)
                 Padding(padding: const EdgeInsets.only(right: 6), child: ChoiceChip(label: Text(a), selected: _area == a, onSelected: (_) => setState(() => _area = a))),
             ]),
@@ -599,7 +599,7 @@ class AppReviewReportCard extends StatelessWidget {
           alignment: Alignment.centerRight,
           child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AppReviewPage(app: app, id: _s(data['id'])))),
-              child: const Text('Poori review dekho')),
+              child: const Text('See the full review')),
         ),
       ]),
     );
@@ -640,21 +640,21 @@ class _AppReviewHandoffCardState extends State<AppReviewHandoffCard> {
     return Glass(
       border: _done.isEmpty ? C.accent : null,
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(dev ? 'Developer Sahayak ko fix list?' : 'Developer ke liye fix list', style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
+        Text(dev ? 'Fix list to Developer Assistant?' : 'Fix list for the developer', style: const TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
         const SizedBox(height: 4),
         Text(_s(d['say']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 6),
         for (final t in tasks.take(6))
           Text('${_s(t['n'])}. ${_s(t['title'])}', style: TextStyle(color: _sevColor(_s(t['severity'])), fontSize: 12.5)),
-        if (tasks.length > 6) Text('... aur ${tasks.length - 6}', style: const TextStyle(color: C.faint, fontSize: 12)),
+        if (tasks.length > 6) Text('... and ${tasks.length - 6}', style: const TextStyle(color: C.faint, fontSize: 12)),
         const SizedBox(height: 8),
         if (_done.isNotEmpty)
-          Text(_done == 'sent' ? 'Ho gaya' : (_done == 'rejected' ? 'Mana kiya' : 'Nahi ho paya'), style: const TextStyle(color: C.faint))
+          Text(_done == 'sent' ? 'Done' : (_done == 'rejected' ? 'Declined' : 'Did not work'), style: const TextStyle(color: C.faint))
         else
           Row(children: [
-            FilledButton(onPressed: _busy ? null : () => _decide(true), child: const Text('Haan')),
+            FilledButton(onPressed: _busy ? null : () => _decide(true), child: const Text('Yes')),
             const SizedBox(width: 8),
-            OutlinedButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Mana')),
+            OutlinedButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Decline')),
           ]),
       ]),
     );
@@ -682,7 +682,7 @@ class AppReviewAlertCard extends StatelessWidget {
               alignment: Alignment.centerRight,
               child: TextButton(
                   onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => AppReviewPage(app: app, id: _s(data['id'])))),
-                  child: const Text('Review kholo')),
+                  child: const Text('Open review')),
             ),
         ]),
       );

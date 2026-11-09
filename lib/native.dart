@@ -20,7 +20,7 @@ class Native {
   static Future<void> stop() async => _call('stopService');
   /// v0.49 shrink a phone video to fit [mb] MB (Android's own encoder). {path} or {error}.
   static Future<Map<String, dynamic>> compressVideo(String path, {int mb = 24, int clipMs = 0}) async =>
-      Map<String, dynamic>.from(await _call<Map>('compressVideo', {'path': path, 'mb': mb, 'clipMs': clipMs}) ?? {'error': 'is phone par nahi ho sakta'});
+      Map<String, dynamic>.from(await _call<Map>('compressVideo', {'path': path, 'mb': mb, 'clipMs': clipMs}) ?? {'error': 'cannot be done on this phone'});
   /// 0..100 while a video is being made smaller, -1 when none is.
   static Future<int> compressProgress() async => await _call<int>('compressProgress') ?? -1;
   static Future<void> compressCancel() async => _call('compressCancel');
@@ -126,7 +126,7 @@ class Native {
     try {
       return await _ch.invokeMethod<String>('saveVideo', {'path': path, 'name': name});
     } catch (_) {
-      return 'Is phone par save nahi ho saka';
+      return 'Could not be saved on this phone';
     }
   }
   /// v0.127 Hoola Screen: the board link + switches; returns {connected, name, showing, on, awake, has_link, width, height}.
@@ -149,7 +149,7 @@ class Native {
     try {
       return await _ch.invokeMethod<String>('saveImage', {'path': path, 'name': name});
     } catch (_) {
-      return 'Is phone par save nahi ho saka';
+      return 'Could not be saved on this phone';
     }
   }
   /// v0.58 background reel alerts: daily limit (minutes, 0 = off) and the after-11-pm bedtime nudge.
@@ -186,7 +186,7 @@ class Native {
   static Future<void> askExactAlarms() async => _call('askExactAlarms');
   /// Open a UPI payment / app link / app (from a user tap). Returns "ok" or a short reason.
   static Future<String> openExternal({String url = '', String package = ''}) async =>
-      await _call<String>('openExternal', {'url': url, 'package': package}) ?? 'Is phone par nahi khul sakta';
+      await _call<String>('openExternal', {'url': url, 'package': package}) ?? 'Cannot be opened on this phone';
   /// v0.109 Which of these app packages are installed on this phone (Roz ke kaam ticks).
   static Future<Set<String>?> installedApps(List<String> packages) async {
     final r = await _call<List>('installedApps', {'packages': packages});
@@ -227,13 +227,13 @@ class Native {
   /// Asks for "Nearby devices" (Android 12+). Returns true when already allowed.
   static Future<bool> homeAskBluetooth() async => await _call<bool>('homeAskBluetooth') ?? false;
   /// Turns the "Santosh Remote" Bluetooth TV remote on/off. "ok", "permission" or a reason.
-  static Future<String> homeRemote(bool on) async => await _call<String>('homeRemote', {'on': on}) ?? 'Is phone par nahi chalta';
-  static Future<String> homeDiscoverable() async => await _call<String>('homeDiscoverable') ?? 'Is phone par nahi chalta';
+  static Future<String> homeRemote(bool on) async => await _call<String>('homeRemote', {'on': on}) ?? 'Does not work on this phone';
+  static Future<String> homeDiscoverable() async => await _call<String>('homeDiscoverable') ?? 'Does not work on this phone';
   /// A Bluetooth job (status, devices, scan, pair, connect, disconnect, tv_pair, turn_on, settings).
   /// Returns {ok, result, error}; error "permission" = Nearby devices not allowed (the prompt is shown).
   static Future<Map<String, dynamic>> btRun(String action, [Map<String, dynamic> args = const {}]) async {
     final r = await _call<Map>('btRun', {'action': action, 'args': jsonEncode(args)});
-    if (r == null) return {'ok': false, 'result': <String, dynamic>{}, 'error': 'Is phone par Bluetooth nahi chalta'};
+    if (r == null) return {'ok': false, 'result': <String, dynamic>{}, 'error': 'Bluetooth does not work on this phone'};
     return {
       'ok': r['ok'] == true,
       'result': _deep(r['result']),
@@ -246,5 +246,5 @@ class Native {
       : <String, dynamic>{};
   /// Runs one server-built device command. Returns "ok" or a short reason ("permission" = Nearby devices not allowed).
   static Future<String> homeRun(Map<String, dynamic> action) async =>
-      await _call<String>('homeRun', {'action': jsonEncode(action)}) ?? 'Is phone par home devices nahi chalte';
+      await _call<String>('homeRun', {'action': jsonEncode(action)}) ?? 'Home devices do not work on this phone';
 }

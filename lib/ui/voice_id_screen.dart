@@ -8,9 +8,9 @@ import '../voice_recorder.dart';
 import 'glass.dart';
 
 const _modes = {
-  'off': ('Band', 'Hoola awaaz se kisi ko nahi pehchanta'),
-  'on': ('Chalu', 'Ghar ke log pehchane jaate hain; anjaan awaaz ko malik maana jaata hai'),
-  'strict': ('Sakht', 'Mail, paise, files, PC sirf aapki pakki pehchani awaaz se'),
+  'off': ('Off', 'Hoola does not recognise anyone by voice'),
+  'on': ('On', 'Household members are recognised; an unknown voice is treated as the owner'),
+  'strict': ('Strict', 'Mail, money, files and PC only by your confirmed voice'),
 };
 
 /// Profile > Awaaz Pehchaan: Hoola knows who is talking (you, Maa, Papa...) and keeps your private work locked to
@@ -66,14 +66,14 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
 
   Future<void> _add({required bool self}) async {
     if (widget.app.voiceCall.inCall) {
-      _say('Call chal rahi hai. Pehle call band kijiye, phir awaaz jodiye.');
+      _say('A call is in progress. End the call first, then add a voice.');
       return;
     }
     final Map<String, dynamic>? spec =
         self ? <String, dynamic>{'name': '', 'relation': 'self', 'gender': null, 'level': 'owner'} : await _askPerson();
     if (spec == null || !mounted) return;
     if (self) {
-      final name = await _askName('Aapka naam');
+      final name = await _askName('Your name');
       if (name == null || !mounted) return;
       spec['name'] = name;
       spec['gender'] = await _askGender();
@@ -101,10 +101,10 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
         backgroundColor: C.bgBottom,
         title: Text(title),
         content: TextField(controller: c, autofocus: true, textCapitalization: TextCapitalization.words,
-            decoration: const InputDecoration(hintText: 'Naam')),
+            decoration: const InputDecoration(hintText: 'Name')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim().isEmpty ? null : c.text.trim()), child: const Text('Aage')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim().isEmpty ? null : c.text.trim()), child: const Text('Next')),
         ],
       ),
     );
@@ -114,10 +114,10 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
         context: context,
         builder: (ctx) => SimpleDialog(
           backgroundColor: C.bgBottom,
-          title: const Text('Script kaise padhenge?'),
+          title: const Text('How will they read the script?'),
           children: [
-            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'm'), child: const Text('"Main ijaazat deta hoon"')),
-            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'f'), child: const Text('"Main ijaazat deti hoon"')),
+            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'm'), child: const Text('"I give my permission"')),
+            SimpleDialogOption(onPressed: () => Navigator.pop(ctx, 'f'), child: const Text('"I give my permission"')),
           ],
         ),
       );
@@ -137,13 +137,13 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
           final fixed = rels.firstWhere((r) => r['id'] == rel, orElse: () => const {})['gender'] as String?;
           return AlertDialog(
             backgroundColor: C.bgBottom,
-            title: const Text('Ghar ke sadasya'),
+            title: const Text('Household members'),
             content: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
                 TextField(controller: name, textCapitalization: TextCapitalization.words,
-                    decoration: const InputDecoration(labelText: 'Naam (jaise Asha)')),
+                    decoration: const InputDecoration(labelText: 'Name (for example Asha)')),
                 const SizedBox(height: 12),
-                const Text('Rishta', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                const Text('Relation', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 const SizedBox(height: 6),
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   for (final r in rels)
@@ -159,7 +159,7 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
                 if (fixed == null) ...[
                   const SizedBox(height: 12),
                   Wrap(spacing: 6, children: [
-                    for (final g in const [('m', 'Purush'), ('f', 'Mahila')])
+                    for (final g in const [('m', 'Male'), ('f', 'Female')])
                       ChoiceChip(
                         label: Text(g.$2),
                         selected: gender == g.$1,
@@ -171,27 +171,27 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
                   ]),
                 ],
                 const SizedBox(height: 12),
-                const Text('Kya kya kar sakte hain', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                const Text('What they can do', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero, dense: true, value: 'family', groupValue: level,
-                  title: const Text('Ghar ke kaam'), subtitle: const Text('Reminder, alarm, music, TV, AC, search'),
+                  title: const Text('Household tasks'), subtitle: const Text('Reminder, alarm, music, TV, AC, search'),
                   onChanged: (v) => set(() => level = v!),
                 ),
                 RadioListTile<String>(
                   contentPadding: EdgeInsets.zero, dense: true, value: 'trusted', groupValue: level,
-                  title: const Text('Bharosemand'), subtitle: const Text('Calendar, files aur mail padhna bhi; paise, mail bhejna, PC nahi'),
+                  title: const Text('Trusted'), subtitle: const Text('Also reading Calendar, files and mail; not money, sending mail or PC'),
                   onChanged: (v) => set(() => level = v!),
                 ),
               ]),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Leave it')),
               TextButton(
                 onPressed: () {
                   if (name.text.trim().isEmpty || (fixed == null && gender == null)) return;
                   Navigator.pop(ctx, {'name': name.text.trim(), 'relation': rel, 'gender': fixed ?? gender, 'level': level});
                 },
-                child: const Text('Aage'),
+                child: const Text('Next'),
               ),
             ],
           );
@@ -205,11 +205,11 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: Text('${m['name']} ki awaaz hatayein?'),
-        content: const Text('Hoola unki awaaz ki pehchaan turant mita dega.'),
+        title: Text('${m['name']} — remove the voice?'),
+        content: const Text('Hoola will delete their voice recognition at once.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hatao', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -242,7 +242,7 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
           const SizedBox(width: 12),
           Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${m['name']}', style: const TextStyle(fontWeight: FontWeight.w700)),
-            Text(owner ? 'Aap (malik) · sab kuch' : '${m['relation_label']} · ${m['level'] == 'trusted' ? 'bharosemand' : 'ghar ke kaam'}',
+            Text(owner ? 'You (owner) · everything' : '${m['relation_label']} · ${m['level'] == 'trusted' ? 'trusted' : 'household tasks'}',
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
           ])),
           if (!owner)
@@ -251,8 +251,8 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
               color: C.bgBottom,
               onSelected: (v) => _level(m, v),
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'family', child: Text('Ghar ke kaam')),
-                PopupMenuItem(value: 'trusted', child: Text('Bharosemand')),
+                PopupMenuItem(value: 'family', child: Text('Household tasks')),
+                PopupMenuItem(value: 'trusted', child: Text('Trusted')),
               ],
             ),
           IconButton(icon: const Icon(Icons.delete_outline_rounded, color: C.faint), onPressed: () => _remove(m)),
@@ -267,7 +267,7 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
     final mode = o?['mode'] as String? ?? 'on';
     final ownerIn = o?['owner_enrolled'] == true;
     return Scaffold(
-      appBar: AppBar(title: const Text('Awaaz Pehchaan'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: const Text('Voice Recognition'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
@@ -277,16 +277,16 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
             if (o != null) ...[
               Glass(
                 child: Text(
-                  'Call mein ${widget.app.aName} awaaz se pehchanega ki kaun bol raha hai: aap, Maa, Papa ya koi aur. '
-                  'Ghar ke log apne kaam karwa sakte hain, par aapke mail, paise, files, PC aur Hoola Network sirf aapki awaaz se.\n\n'
-                  'Har vyakti khud ek chhota script padhkar apni ijaazat deta hai. Recording save nahi hoti, sirf awaaz ki '
-                  'pehchaan (encrypted). Awaaz password nahi hai: paise hamesha aapke tap se hi jaate hain.',
+                  'In a call, ${widget.app.aName} will recognise by voice who is speaking: you, Mom, Dad or someone else. '
+                  'Household members can get their own tasks done, but your mail, money, files, PC and Hoola Network only by your voice.\n\n'
+                  'Each person reads a short script and gives their own permission. The recording is not saved, only the voice '
+                  'recognition (encrypted). A voice is not a password: money always moves only with your tap.',
                   style: const TextStyle(color: C.chip, fontSize: 13.5, height: 1.35),
                 ),
               ),
               const SizedBox(height: 14),
               if (o['available'] != true)
-                const Glass(child: Text('Awaaz Pehchaan abhi server par chalu nahi hai (server par setup_voiceid.sh chalana hai).',
+                const Glass(child: Text('Voice Recognition is not on the server yet (setup_voiceid.sh has to be run on the server).',
                     style: TextStyle(color: C.warn))),
               if (o['available'] == true) ...[
                 const Text('Lock', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -307,10 +307,10 @@ class _VoiceIdScreenState extends State<VoiceIdScreen> {
                 const SizedBox(height: 16),
                 for (final m in _members) _member(m),
                 if (!ownerIn) ...[
-                  GradientButton(label: 'Pehle apni awaaz jodiye', icon: Icons.mic_rounded, height: 50, onTap: () => _add(self: true)),
+                  GradientButton(label: 'First add your voice', icon: Icons.mic_rounded, height: 50, onTap: () => _add(self: true)),
                   const SizedBox(height: 10),
                 ],
-                GlassButton(label: 'Ghar ke sadasya ko jodiye', icon: Icons.group_add_rounded, height: 48,
+                GlassButton(label: 'Add a household member', icon: Icons.group_add_rounded, height: 48,
                     onTap: ownerIn ? () => _add(self: false) : null),
               ],
             ],
@@ -367,18 +367,18 @@ class _EnrolPageState extends State<_EnrolPage> {
     final long = _rec.length;
     final wav = await _rec.stop();
     if (long < _min) {
-      setState(() => _msg = 'Thoda aur: poora script aaram se padhiye (kam se kam 15 second).');
+      setState(() => _msg = 'A little more: read the whole script calmly (at least 15 seconds).');
       return;
     }
     setState(() {
       _sending = true;
-      _msg = 'Jaanch raha hoon…';
+      _msg = 'Checking…';
     });
     try {
       final m = await widget.api.voiceIdUpload(widget.script['enrol_id'] as String, wav);
       setState(() {
         _done = true;
-        _msg = '${m['name']} ki awaaz jud gayi. Ab call mein Hoola unhe pehchanega.';
+        _msg = '${m['name']} \'s voice is added. Now Hoola will recognise them in calls.';
       });
     } catch (e) {
       setState(() => _msg = e is ApiException ? e.message : '$e');
@@ -390,25 +390,25 @@ class _EnrolPageState extends State<_EnrolPage> {
   Widget build(BuildContext context) {
     final secs = _rec.length.inMilliseconds / 1000;
     return Scaffold(
-      appBar: AppBar(title: Text(widget.self ? 'Apni awaaz' : '${widget.name} ki awaaz'), backgroundColor: Colors.transparent),
+      appBar: AppBar(title: Text(widget.self ? 'Your voice' : '${widget.name} \'s voice'), backgroundColor: Colors.transparent),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-          Text(widget.self ? 'Yeh script khud, normal awaaz mein padhiye:' : '${widget.name} khud yeh script padhein (unki apni ijaazat):',
+          Text(widget.self ? 'Read this script yourself, in your normal voice:' : '${widget.name} should read this script themselves (with their own permission):',
               style: const TextStyle(color: C.muted)),
           const SizedBox(height: 10),
           Glass(child: Text(widget.script['script'] as String? ?? '', style: const TextStyle(fontSize: 18, height: 1.45))),
           const SizedBox(height: 10),
-          const Text('Shaant jagah, phone munh se ek haath door. Code wali line zaroor padhiye.',
+          const Text('A quiet place, phone an arm\'s length from your mouth. Be sure to read the code line.',
               style: TextStyle(color: C.faint, fontSize: 12.5)),
           const SizedBox(height: 18),
           if (_rec.recording) ...[
             LinearProgressIndicator(value: _rec.level, minHeight: 8, color: C.ok, backgroundColor: C.panel),
             const SizedBox(height: 8),
-            Text('${secs.toStringAsFixed(0)} sec${secs < 15 ? ' (kam se kam 15)' : ''}', textAlign: TextAlign.center),
+            Text('${secs.toStringAsFixed(0)} sec${secs < 15 ? ' (at least 15)' : ''}', textAlign: TextAlign.center),
             const SizedBox(height: 12),
-            GradientButton(label: 'Ho gaya', icon: Icons.stop_rounded, onTap: _stop),
+            GradientButton(label: 'Done', icon: Icons.stop_rounded, onTap: _stop),
           ] else if (!_done)
-            GradientButton(label: _sending ? 'Jaanch raha hoon…' : 'Bolna shuru karein', icon: Icons.mic_rounded,
+            GradientButton(label: _sending ? 'Checking…' : 'Start speaking', icon: Icons.mic_rounded,
                 onTap: _sending ? null : _start),
           if (_msg != null) ...[
             const SizedBox(height: 14),
@@ -416,7 +416,7 @@ class _EnrolPageState extends State<_EnrolPage> {
           ],
           if (_done) ...[
             const SizedBox(height: 16),
-            GlassButton(label: 'Theek hai', icon: Icons.check_rounded, onTap: () => Navigator.pop(context, true)),
+            GlassButton(label: 'OK', icon: Icons.check_rounded, onTap: () => Navigator.pop(context, true)),
           ],
         ]),
       ),

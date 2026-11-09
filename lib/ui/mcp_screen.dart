@@ -114,13 +114,13 @@ class _McpScreenState extends State<McpScreen> {
       final r = await app.api!.composioConnect(a['toolkit'] as String);
       final url = r['url'] as String? ?? '';
       if (url.isEmpty) {
-        _snack(r['say'] as String? ?? '${a['name']} abhi nahi jud sakta.');
+        _snack(r['say'] as String? ?? '${a['name']} cannot be connected right now.');
         await _loadComposio();
         return;
       }
       final res = await Native.openExternal(url: url);
       if (res != 'ok') _snack(res);
-      _snack('Apne ${a['name']} account se sign-in kijiye, phir yahan wapas aaiye.');
+      _snack('Sign in to your ${a['name']} account, then come back here.');
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     }
@@ -146,10 +146,10 @@ class _McpScreenState extends State<McpScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: Text('${a['name']} jodiye'),
+        title: Text('${a['name']} Connect'),
         content: SingleChildScrollView(
           child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Apne ${a['name']} account ki key yahan daaliye. Yeh seedha ${a['name']} ke saath jaanchi jaati hai; Hoola ise save nahi karta.',
+            Text('Enter your ${a['name']} account key here. It is checked directly with ${a['name']} ; Hoola does not save it.',
                 style: const TextStyle(fontSize: 13)),
             for (final f in fields)
               TextField(
@@ -166,8 +166,8 @@ class _McpScreenState extends State<McpScreen> {
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Jodiye')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Connect')),
         ],
       ),
     );
@@ -178,7 +178,7 @@ class _McpScreenState extends State<McpScreen> {
     if (ok != true) return;
     try {
       final res = await app.api!.composioKey(a['toolkit'] as String, values);
-      _snack(res['status'] == 'ready' ? '${a['name']} jud gaya. Ab Hoola se kahiye.' : '${a['name']} jud raha hai…');
+      _snack(res['status'] == 'ready' ? '${a['name']} is connected. Now tell Hoola.' : '${a['name']} is connecting…');
       await _loadComposio();
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -189,11 +189,11 @@ class _McpScreenState extends State<McpScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => AlertDialog(
-        title: Text('${a['name']} hatayein?'),
-        content: Text('Hoola aapke ${a['name']} account se kaam karna band kar dega.'),
+        title: Text('${a['name']} remove?'),
+        content: Text('Hoola will stop working with your ${a['name']} account.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Hatao')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Remove')),
         ],
       ),
     );
@@ -211,14 +211,14 @@ class _McpScreenState extends State<McpScreen> {
     final tools = (a['tools'] as num?)?.toInt() ?? 0;
     final PluginAction action;
     if (st == 'ready') {
-      action = const PluginAction(kind: ActionKind.linked, label: 'Juda hai');
+      action = const PluginAction(kind: ActionKind.linked, label: 'Connected');
     } else if (st == 'needs_key') {
-      action = PluginAction(kind: ActionKind.attention, label: 'Key daaliye', onTap: () => _composioKey(a));
+      action = PluginAction(kind: ActionKind.attention, label: 'Enter key', onTap: () => _composioKey(a));
     } else if (st == 'needs_setup') {
-      action = PluginAction(kind: ActionKind.soon, label: 'Setup baaki',
-          onTap: () => _snack('${a['name']}: Newtika ko ek baar Composio mein is app ka setup karna hai, phir yeh judega.'));
+      action = PluginAction(kind: ActionKind.soon, label: 'Setup pending',
+          onTap: () => _snack('${a['name']}: Newtika has to set up this app in Composio once, then it will connect.'));
     } else {
-      action = PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _composioConnect(a));
+      action = PluginAction(kind: ActionKind.add, label: 'Connect', onTap: () => _composioConnect(a));
     }
     return PluginCard(
       name: a['name'] as String? ?? '',
@@ -231,7 +231,7 @@ class _McpScreenState extends State<McpScreen> {
   }
 
   Widget _composioSection() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Caption('APPS · ${_cmpAll > 0 ? _cmpAll : _cmp.length} · apne account se sign-in, koi naya account nahi'),
+        Caption('APPS · ${_cmpAll > 0 ? _cmpAll : _cmp.length} · sign in with your own account, no new account'),
         Glass(
           radius: 18,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
@@ -254,7 +254,7 @@ class _McpScreenState extends State<McpScreen> {
               for (final c in ['', ..._cmpCats])
                 Padding(
                   padding: const EdgeInsets.only(right: 8),
-                  child: ChoiceChip(label: Text(c.isEmpty ? 'Sab' : c), selected: _cmpCat == c, showCheckmark: false,
+                  child: ChoiceChip(label: Text(c.isEmpty ? 'All' : c), selected: _cmpCat == c, showCheckmark: false,
                       onSelected: (_) {
                         setState(() => _cmpCat = c);
                         _loadComposio();
@@ -265,7 +265,7 @@ class _McpScreenState extends State<McpScreen> {
         ],
         const SizedBox(height: 12),
         if (_cmp.isEmpty)
-          const Padding(padding: EdgeInsets.all(12), child: Text('Kuch nahi mila', style: TextStyle(color: C.muted)))
+          const Padding(padding: EdgeInsets.all(12), child: Text('Nothing found', style: TextStyle(color: C.muted)))
         else
           PluginGrid(children: [for (final (i, a) in _cmp.indexed) Stagger(index: i % 8, child: _composioCard(a))]),
         if (_cmp.length < _cmpTotal)
@@ -273,7 +273,7 @@ class _McpScreenState extends State<McpScreen> {
             padding: const EdgeInsets.only(top: 8),
             child: Center(
               child: TextButton(onPressed: () => _loadComposio(more: true),
-                  child: Text('Aur dikhao (${_cmpTotal - _cmp.length} aur)')),
+                  child: Text('Show more (${_cmpTotal - _cmp.length} more)')),
             ),
           ),
       ]);
@@ -294,16 +294,16 @@ class _McpScreenState extends State<McpScreen> {
     final String line;
     final Color col;
     if (st == 'ready' && tools.isNotEmpty) {
-      line = '${app.aName} jaanta hai · ${tools.length} tools: ${tools.take(4).join(', ')}${tools.length > 4 ? '…' : ''}';
+      line = '${app.aName} knows · ${tools.length} tools: ${tools.take(4).join(', ')}${tools.length > 4 ? '…' : ''}';
       col = C.ok;
     } else if (st == 'ready') {
-      line = '${app.aName} jaanta hai, par server ne koi tool nahi bataya';
+      line = '${app.aName} knows it, but the server did not list any tools';
       col = C.warn;
     } else if (st == 'slow' || st == 'error') {
-      line = 'Server abhi jawab nahi de raha${(k['error'] as String? ?? '').isNotEmpty ? ': ${k['error']}' : ''}';
+      line = 'The server is not answering right now${(k['error'] as String? ?? '').isNotEmpty ? ': ${k['error']}' : ''}';
       col = C.warn;
     } else {
-      line = 'Jodna poora kijiye, phir ${app.aName} iske tools use karega';
+      line = 'Finish connecting, then ${app.aName} will use its tools';
       col = C.faint;
     }
     return Padding(
@@ -338,7 +338,7 @@ class _McpScreenState extends State<McpScreen> {
       return;
     }
     if (c['native'] != null) {
-      _snack('${c['name']} Hoola mein pehle se hai: ${c['native']}');
+      _snack('${c['name']} is already in Hoola: ${c['native']}');
       return;
     }
     if ((c['options'] as Map?)?['kind'] == 'github') {
@@ -355,27 +355,27 @@ class _McpScreenState extends State<McpScreen> {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: Text('${c['name']} jodiye'),
+          title: Text('${c['name']} Connect'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(c['how_to_connect'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
             if ((c['url_hint'] as String? ?? '').isNotEmpty)
               Padding(padding: const EdgeInsets.only(top: 6),
-                  child: Text('Aisa dikhta hai: ${c['url_hint']}', style: const TextStyle(color: C.faint, fontSize: 11.5))),
+                  child: Text('It looks like: ${c['url_hint']}', style: const TextStyle(color: C.faint, fontSize: 11.5))),
             if (c['id'] == '21st-magic')
               const Padding(padding: EdgeInsets.only(top: 6),
-                  child: Text('21st.dev/mcp par sign in karke API key banaiye (purani Magic key ab nahi chalti). Hoola sirf code banata hai, aapki site khud nahi badalta.',
+                  child: Text('Sign in at 21st.dev/mcp and make an API key (the old Magic key no longer works). Hoola only makes code; it does not change your site by itself.',
                       style: TextStyle(color: C.faint, fontSize: 11.5))),
             if (c['id'] == 'razorpay')
               const Padding(padding: EdgeInsets.only(top: 6),
                   child: Text('Format: key_id:key_secret (Razorpay Dashboard > API Keys)', style: TextStyle(color: C.faint, fontSize: 11.5))),
             TextField(controller: t, obscureText: auth == 'api_key',
-                decoration: InputDecoration(labelText: auth == 'api_key' ? 'API key' : 'Aapka MCP address (https://…)')),
+                decoration: InputDecoration(labelText: auth == 'api_key' ? 'API key' : 'Your MCP address (https://…)')),
             if ((c['docs'] as String? ?? '').isNotEmpty)
-              TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('Kahan milega? (docs)')),
+              TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('Where to find it? (docs)')),
           ]),
           actions: [
-            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne dein')),
-            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Jodiye')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+            TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Connect')),
           ],
         ),
       );
@@ -394,7 +394,7 @@ class _McpScreenState extends State<McpScreen> {
         final err = await app.linkApp(r['pack_id'] as String);
         if (err != null) _snack(err);
       } else {
-        _snack(r['status'] == 'ready' ? '${c['name']} jud gaya. Ab Hoola se kahiye.' : 'Key sahi nahi lagi');
+        _snack(r['status'] == 'ready' ? '${c['name']} is connected. Now tell Hoola.' : 'The key does not look right');
       }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -420,21 +420,21 @@ class _McpScreenState extends State<McpScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('GitHub jodiye'),
+        title: const Text('Connect GitHub'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(c['how_to_connect'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           if (canReuse)
             SwitchListTile(contentPadding: EdgeInsets.zero, value: reuse, onChanged: (v) => setD(() => reuse = v),
-                title: const Text('Developer Sahayak wala token use karo', style: TextStyle(fontSize: 13.5))),
+                title: const Text('Use the Developer Assistant token', style: TextStyle(fontSize: 13.5))),
           if (!reuse)
             TextField(controller: t, obscureText: true,
                 decoration: const InputDecoration(labelText: 'Fine-grained token (github_pat_…)')),
           SwitchListTile(contentPadding: EdgeInsets.zero, value: readonly, onChanged: (v) => setD(() => readonly = v),
-              title: const Text('Sirf padhna (read-only)', style: TextStyle(fontSize: 13.5)),
-              subtitle: const Text('Hoola kuch likh / badal nahi payega', style: TextStyle(color: C.faint, fontSize: 11.5))),
+              title: const Text('Read only', style: TextStyle(fontSize: 13.5)),
+              subtitle: const Text('Hoola will not be able to write or change anything', style: TextStyle(color: C.faint, fontSize: 11.5))),
           const SizedBox(height: 6),
-          const Text('Hoola kya dekh sake:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const Text('What Hoola may see:', style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 4),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final ts in all)
@@ -442,21 +442,21 @@ class _McpScreenState extends State<McpScreen> {
                   onSelected: ts == 'context' ? null : (v) => setD(() => v ? picked.add(ts) : picked.remove(ts))),
           ]),
           const SizedBox(height: 8),
-          const Text('Lockdown hamesha on (public repo mein bahar walon ka likha Hoola nahi padhta). Har likhne wala kaam '
-              '(issue, PR, merge, push) aapke tap ke baad hi.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('Lockdown is always on (in a public repo Hoola does not read what outsiders wrote). Every writing action '
+              '(issue, PR, merge, push) happens only after your tap.', style: TextStyle(color: C.faint, fontSize: 11.5)),
           if ((c['docs'] as String? ?? '').isNotEmpty)
-            TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('Token kaise banaye?')),
+            TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('How to make the token?')),
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne dein')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Jodiye')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Connect')),
         ],
       )),
     );
     if (ok != true) return;
     final key = reuse ? '' : t.text.trim();
     if (!reuse && key.isEmpty && c['status'] != 'ready') {
-      _snack('Token daaliye');
+      _snack('Enter token');
       return;
     }
     setState(() => _busy = true);
@@ -465,7 +465,7 @@ class _McpScreenState extends State<McpScreen> {
           toolsets: picked.where((x) => x != 'context').toList());
       await _loadMine();
       final note = (r['note'] as String? ?? '');
-      _snack(r['status'] == 'ready' ? 'GitHub jud gaya. ${note.isNotEmpty ? note : 'Ab Hoola se kahiye.'}' : 'Token sahi nahi laga');
+      _snack(r['status'] == 'ready' ? 'GitHub is connected. ${note.isNotEmpty ? note : 'Now tell Hoola.'}' : 'The token does not look right');
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
     } finally {
@@ -488,27 +488,27 @@ class _McpScreenState extends State<McpScreen> {
     final tok = TextEditingController();
     const names = {
       'database': 'Tables + SQL', 'debugging': 'Logs + advisors', 'development': 'Project URL / types', 'docs': 'Docs',
-      'functions': 'Edge Functions', 'account': 'Saare projects', 'branching': 'Branches', 'storage': 'Storage',
+      'functions': 'Edge Functions', 'account': 'All projects', 'branching': 'Branches', 'storage': 'Storage',
     };
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => StatefulBuilder(builder: (ctx, setD) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Supabase jodiye'),
+        title: const Text('Connect Supabase'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(c['how_to_connect'] as String? ?? '', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
           TextField(controller: proj, decoration: const InputDecoration(
-              labelText: 'Project ref (behtar: sirf ek project)', hintText: '20 chhote akshar, Project Settings > General')),
+              labelText: 'Project ref (better: just one project)', hintText: '20 lowercase letters, Project Settings > General')),
           SwitchListTile(contentPadding: EdgeInsets.zero, value: readonly, onChanged: (v) => setD(() => readonly = v),
-              title: const Text('Sirf padhna (read-only)', style: TextStyle(fontSize: 13.5)),
-              subtitle: const Text('SQL read-only user se chalega. Production par on rakhiye.', style: TextStyle(color: C.faint, fontSize: 11.5))),
+              title: const Text('Read only', style: TextStyle(fontSize: 13.5)),
+              subtitle: const Text('SQL runs as a read-only user. Keep this on in production.', style: TextStyle(color: C.faint, fontSize: 11.5))),
           SwitchListTile(contentPadding: EdgeInsets.zero, value: useToken, onChanged: (v) => setD(() => useToken = v),
-              title: const Text('Sign-in ki jagah token (sbp_...)', style: TextStyle(fontSize: 13.5))),
+              title: const Text('Token instead of sign-in (sbp_...)', style: TextStyle(fontSize: 13.5))),
           if (useToken)
             TextField(controller: tok, obscureText: true, decoration: const InputDecoration(labelText: 'Personal access token')),
           const SizedBox(height: 6),
-          const Text('Hoola kya dekh sake:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const Text('What Hoola may see:', style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 4),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final f in all)
@@ -516,14 +516,14 @@ class _McpScreenState extends State<McpScreen> {
                   onSelected: (v) => setD(() => v ? picked.add(f) : picked.remove(f))),
           ]),
           const SizedBox(height: 8),
-          const Text('Migration, SQL badlaav, Edge Function deploy, naya project: har baar aapke tap ke baad hi. '
-              'Table ka data Hoola ke liye sirf data hai, hukum nahi.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('Migrations, SQL changes, Edge Function deploys, a new project: each time only after your tap. '
+              'Table data is just data for Hoola, not instructions.', style: TextStyle(color: C.faint, fontSize: 11.5)),
           if ((c['docs'] as String? ?? '').isNotEmpty)
             TextButton(onPressed: () => Native.openExternal(url: c['docs'] as String), child: const Text('Supabase docs')),
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne dein')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Jodiye')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Connect')),
         ],
       )),
     );
@@ -538,7 +538,7 @@ class _McpScreenState extends State<McpScreen> {
         if (err != null) _snack(err);
       } else {
         final note = (r['note'] as String? ?? '');
-        _snack(r['status'] == 'ready' ? 'Supabase jud gaya. ${note.isNotEmpty ? note : 'Ab Hoola se kahiye.'}' : 'Token sahi nahi laga');
+        _snack(r['status'] == 'ready' ? 'Supabase is connected. ${note.isNotEmpty ? note : 'Now tell Hoola.'}' : 'The token does not look right');
       }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -557,7 +557,7 @@ class _McpScreenState extends State<McpScreen> {
           for (final cat in ['', ...cats])
             Padding(
               padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(label: Text(cat.isEmpty ? 'Sab' : cat), selected: _fcat == cat, showCheckmark: false,
+              child: ChoiceChip(label: Text(cat.isEmpty ? 'All' : cat), selected: _fcat == cat, showCheckmark: false,
                   onSelected: (_) => setState(() => _fcat = cat)),
             ),
         ]),
@@ -569,19 +569,19 @@ class _McpScreenState extends State<McpScreen> {
 
   Widget _featuredAction(Map<String, dynamic> c) {
     final st = c['status'] as String? ?? '';
-    if (st == 'ready') return const PluginAction(kind: ActionKind.linked, label: 'Juda hai');
+    if (st == 'ready') return const PluginAction(kind: ActionKind.linked, label: 'Connected');
     if (st == 'needs_link') {
       return PluginAction(kind: ActionKind.attention, label: 'Sign in', onTap: () async {
         final err = await app.linkApp(c['pack_id'] as String);
         if (err != null) _snack(err);
       });
     }
-    if (st == 'needs_key') return PluginAction(kind: ActionKind.attention, label: 'Key daaliye', onTap: () => _connectFeatured(c));
-    if (c['auth'] == 'oauth_partner') return const PluginAction(kind: ActionKind.soon, label: 'Jald aa raha');
+    if (st == 'needs_key') return PluginAction(kind: ActionKind.attention, label: 'Enter key', onTap: () => _connectFeatured(c));
+    if (c['auth'] == 'oauth_partner') return const PluginAction(kind: ActionKind.soon, label: 'Coming soon');
     if (c['native'] != null) {
-      return PluginAction(kind: ActionKind.builtin, label: 'Hoola mein hai', onTap: () => _snack('${c['name']} Hoola mein pehle se hai: ${c['native']}'));
+      return PluginAction(kind: ActionKind.builtin, label: 'In Hoola', onTap: () => _snack('${c['name']} is already in Hoola: ${c['native']}'));
     }
-    return PluginAction(kind: ActionKind.add, label: _busy ? 'Jod raha hoon…' : 'Jodiye', onTap: _busy ? null : () => _connectFeatured(c));
+    return PluginAction(kind: ActionKind.add, label: _busy ? 'Connecting…' : 'Connect', onTap: _busy ? null : () => _connectFeatured(c));
   }
 
   Widget _featuredCard(Map<String, dynamic> c) => PluginCard(
@@ -602,7 +602,7 @@ class _McpScreenState extends State<McpScreen> {
     setState(() => _busy = true);
     Map<String, dynamic> r;
     try {
-      _snack(e['package'] != null ? '${e['name']} ko jaanch kar shuru kar rahe hain… pehli baar ek minute lag sakta hai' : '${e['name']} jod rahe hain…');
+      _snack(e['package'] != null ? '${e['name']} is being checked and started… the first time it can take a minute' : '${e['name']} connecting…');
       r = await app.api!.mcpOneTap(ref, keys: keys, acceptCaution: accept);
     } catch (err) {
       if (mounted) setState(() => _busy = false);
@@ -613,7 +613,7 @@ class _McpScreenState extends State<McpScreen> {
     final st = r['status'] as String? ?? '';
     if (st == 'ready') {
       await _loadMine();
-      _snack(r['say'] as String? ?? '${e['name']} jud gaya. Ab Hoola se kahiye.');
+      _snack(r['say'] as String? ?? '${e['name']} is connected. Now tell Hoola.');
     } else if (st == 'needs_link') {
       await _loadMine();
       final err = await app.linkApp(r['pack_id'] as String);
@@ -627,16 +627,16 @@ class _McpScreenState extends State<McpScreen> {
         builder: (ctx) => AlertDialog(
           title: Text('${e['name']}: savdhani'),
           content: Text([...(r['reasons'] as List? ?? []).map((x) => '• $x'), '',
-            'Hoola ise band dibbe (locked container) mein chalayega aur har likhne / bhejne wale kaam se pehle aapki haan lega.'].join('\n')),
+            'Hoola will run it in a locked container and ask for your yes before every write or send action.'].join('\n')),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Phir bhi jodo')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Leave it')),
+            TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Connect anyway')),
           ],
         ),
       );
       if (go == true) await _oneTap(e, keys: keys, accept: true);
     } else {
-      _snack(r['say'] as String? ?? 'Nahi jud paya');
+      _snack(r['say'] as String? ?? 'Could not connect');
     }
   }
 
@@ -650,11 +650,11 @@ class _McpScreenState extends State<McpScreen> {
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(18, 18, 18, MediaQuery.of(ctx).viewInsets.bottom + 18),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${e['name']} ki keys', style: display(19)),
+          Text('${e['name']} keys', style: display(19)),
           const SizedBox(height: 6),
-          Text(say.isNotEmpty ? say : 'Yeh server chalne ke liye ye maangta hai.', style: const TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
+          Text(say.isNotEmpty ? say : 'This server needs these to run.', style: const TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
           const SizedBox(height: 4),
-          const Text('Hoola inhe encrypt karke rakhta hai, sirf is server ko deta hai; chat mein kabhi na bhejein.',
+          const Text('Hoola keeps them encrypted and gives them only to this server; never send them in chat.',
               style: TextStyle(color: C.faint, fontSize: 12)),
           for (final k in need)
             TextField(
@@ -665,9 +665,9 @@ class _McpScreenState extends State<McpScreen> {
           const SizedBox(height: 14),
           Row(children: [
             if ((e['github'] as String? ?? '').isNotEmpty)
-              Expanded(child: GlassButton(label: 'Kahan milegi?', height: 46, onTap: () => Native.openExternal(url: e['github'] as String))),
+              Expanded(child: GlassButton(label: 'Where to find it?', height: 46, onTap: () => Native.openExternal(url: e['github'] as String))),
             if ((e['github'] as String? ?? '').isNotEmpty) const SizedBox(width: 10),
-            Expanded(child: GradientButton(label: 'Jodiye', height: 46, onTap: () => Navigator.of(ctx).pop(true))),
+            Expanded(child: GradientButton(label: 'Connect', height: 46, onTap: () => Navigator.of(ctx).pop(true))),
           ]),
         ]),
       ),
@@ -691,25 +691,25 @@ class _McpScreenState extends State<McpScreen> {
       builder: (ctx) => Padding(
         padding: EdgeInsets.fromLTRB(18, 18, 18, MediaQuery.of(ctx).viewInsets.bottom + 18),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(entry == null ? 'MCP server jodiye' : 'Jodiye: ${entry['name']}', style: display(19)),
+          Text(entry == null ? 'Connect an MCP server' : 'Connect: ${entry['name']}', style: display(19)),
           const SizedBox(height: 6),
           Text(
               entry?['source'] == 'Apify Store'
-                  ? 'Apify actor: apna Apify API token neeche key mein daaliye (Apify Console > Settings > Integrations). Har run aapke Apify credit kharch karta hai.'
+                  ? 'Apify actor: put your own Apify API token in the key field below (Apify Console > Settings > Integrations). Every run uses your Apify credit.'
                   : entry?['mcp_url'] != null
-                      ? 'Iska MCP pata pehle se bhara hai. Bas Jodiye dabaiye (key sirf tab, jab server maange).'
+                      ? 'Its MCP address is already filled in. Just tap Connect (a key only if the server asks).'
                       : local
-                          ? 'Yeh server computer par chalta hai. Pehle use apne PC/server par HTTP mode mein chalaiye, phir uska https pata yahan daaliye.'
-                          : 'Server ka MCP pata (https://…/mcp) daaliye. GitHub page par milta hai.',
+                          ? 'This server runs on a computer. First run it on your PC/server in HTTP mode, then enter its https address here.'
+                          : 'Enter the server\'s MCP address (https://…/mcp). You can find it on the GitHub page.',
               style: const TextStyle(color: C.muted, fontSize: 12.5, height: 1.4)),
           if (entry?['caution'] != null) ...[
             const SizedBox(height: 8),
             Text('⚠ ${entry!['caution']}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
           ],
           TextField(controller: url, keyboardType: TextInputType.url, decoration: const InputDecoration(labelText: 'MCP address (https://…)')),
-          TextField(controller: name, decoration: const InputDecoration(labelText: 'Naam (optional)')),
+          TextField(controller: name, decoration: const InputDecoration(labelText: 'Name (optional)')),
           const SizedBox(height: 6),
-          const Text('API key sirf tab, jab server maange. Hoola ise encrypt karke rakhta hai; chat mein kabhi na bhejein.',
+          const Text('An API key only if the server asks. Hoola keeps it encrypted; never send it in chat.',
               style: TextStyle(color: C.faint, fontSize: 12)),
           TextField(controller: key, obscureText: true, decoration: const InputDecoration(labelText: 'API key (optional)')),
           TextField(controller: header, decoration: const InputDecoration(labelText: 'Key header (Authorization / X-API-Key)')),
@@ -718,7 +718,7 @@ class _McpScreenState extends State<McpScreen> {
             if (entry?['github'] != null && (entry!['github'] as String).isNotEmpty)
               Expanded(child: GlassButton(label: 'GitHub', height: 46, onTap: () => Native.openExternal(url: entry['github'] as String))),
             if (entry?['github'] != null) const SizedBox(width: 10),
-            Expanded(child: GradientButton(label: 'Jodiye', height: 46, onTap: () => Navigator.of(ctx).pop(true))),
+            Expanded(child: GradientButton(label: 'Connect', height: 46, onTap: () => Navigator.of(ctx).pop(true))),
           ]),
         ]),
       ),
@@ -734,7 +734,7 @@ class _McpScreenState extends State<McpScreen> {
         final err = await app.linkApp(r['pack_id'] as String);
         if (err != null) _snack(err);
       } else {
-        _snack(r['status'] == 'ready' ? '${r['name']} jud gaya. Ab Hoola se kahiye.' : 'Key sahi nahi lagi, dobara daaliye');
+        _snack(r['status'] == 'ready' ? '${r['name']} is connected. Now tell Hoola.' : 'The key does not look right, enter it again');
       }
     } catch (e) {
       _snack(e.toString().replaceFirst('Exception: ', ''));
@@ -750,13 +750,13 @@ class _McpScreenState extends State<McpScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: Text('${m['name']} ki API key'),
+        title: Text('${m['name']} API key'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: key, obscureText: true, decoration: const InputDecoration(labelText: 'API key')),
           TextField(controller: header, decoration: const InputDecoration(labelText: 'Header')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Rehne dein')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Leave it')),
           TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Save')),
         ],
       ),
@@ -764,7 +764,7 @@ class _McpScreenState extends State<McpScreen> {
     if (ok != true || key.text.trim().isEmpty) return;
     try {
       final r = await app.api!.mcpKey(m['pack_id'] as String, key.text.trim(), header: header.text.trim());
-      _snack(r['status'] == 'ready' ? 'Key save ho gayi' : 'Key save hui, server abhi bhi sign-in maang raha hai');
+      _snack(r['status'] == 'ready' ? 'Key saved' : 'Key saved, but the server is still asking you to sign in');
       _loadMine();
     } catch (e) {
       _snack(e.toString());
@@ -785,7 +785,7 @@ class _McpScreenState extends State<McpScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(m['name'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
               Text(m['url'] as String? ?? '', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 11.5)),
-              if (m['caution'] == true) const Text('Paise/code wala server: har kaam par aapka tap', style: TextStyle(color: C.warn, fontSize: 11.5)),
+              if (m['caution'] == true) const Text('Server with money/codes: your tap on every action', style: TextStyle(color: C.warn, fontSize: 11.5)),
               _knows(m),
             ]),
           ),
@@ -798,7 +798,7 @@ class _McpScreenState extends State<McpScreen> {
                   if (err != null) _snack(err);
                 }),
               'needs_key' => PluginAction(kind: ActionKind.attention, label: 'Key', height: 34, onTap: () => _keyDialog(m)),
-              _ => const PluginAction(kind: ActionKind.linked, label: 'Juda hai', height: 34),
+              _ => const PluginAction(kind: ActionKind.linked, label: 'Connected', height: 34),
             },
           ),
           PopupMenuButton<String>(
@@ -815,9 +815,9 @@ class _McpScreenState extends State<McpScreen> {
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'tools', child: Text('Tools: chalu / band, pehle poochho')),
-              PopupMenuItem(value: 'key', child: Text('API key badlein')),
-              PopupMenuItem(value: 'remove', child: Text('Hata dein')),
+              PopupMenuItem(value: 'tools', child: Text('Tools: on / off, ask first')),
+              PopupMenuItem(value: 'key', child: Text('Change API key')),
+              PopupMenuItem(value: 'remove', child: Text('Remove')),
             ],
           ),
         ]),
@@ -852,13 +852,13 @@ class _McpScreenState extends State<McpScreen> {
           const SizedBox(height: 8),
           Wrap(spacing: 6, runSpacing: 6, children: [
             Pill(e['field'] as String? ?? ''),
-            Pill(remote ? 'Online service' : e['runs_on'] == 'hoola' ? 'Hoola runner par chalega' : e['runs_on'] == 'pc' ? 'Aapke PC par' : 'Computer par chalta',
+            Pill(remote ? 'Online service' : e['runs_on'] == 'hoola' ? 'Runs on the Hoola runner' : e['runs_on'] == 'pc' ? 'On your PC' : 'Runs on a computer',
                 fg: remote || e['runs_on'] == 'hoola' ? C.teal : C.faint),
             if (e['source'] != null) Pill(e['source'] as String),
-            if (e['downloads_per_month'] != null) Pill('${e['downloads_per_month']}/mahina downloads'),
-            if (e['users_per_month'] != null) Pill('${e['users_per_month']} log/mahina'),
-            if (e['one_tap'] == true) const Pill('Ek tap', fg: C.ok),
-            if (e['trusted'] == true) const Pill('Bharosemand', fg: C.teal),
+            if (e['downloads_per_month'] != null) Pill('${e['downloads_per_month']}/month downloads'),
+            if (e['users_per_month'] != null) Pill('${e['users_per_month']} logs/month'),
+            if (e['one_tap'] == true) const Pill('One tap', fg: C.ok),
+            if (e['trusted'] == true) const Pill('Trusted', fg: C.teal),
             if (e['keys'] != null) Pill('Key: ${(e['keys'] as List).join(', ')}', fg: C.warn),
             if (e['caution'] != null) const Pill('Savdhani', fg: C.warn),
           ]),
@@ -872,12 +872,12 @@ class _McpScreenState extends State<McpScreen> {
                 onTap: () => Native.openExternal(url: (e['github'] ?? e['link']) as String? ?? ''))),
             const SizedBox(width: 8),
             Expanded(child: e['connect'] == 'not_allowed'
-                ? PluginAction(kind: ActionKind.soon, label: 'Allowed nahi', onTap: () => _snack(e['how_to_connect'] as String? ?? ''))
+                ? PluginAction(kind: ActionKind.soon, label: 'Not allowed', onTap: () => _snack(e['how_to_connect'] as String? ?? ''))
                 : e['runs_on'] == 'pc'
-                    ? PluginAction(kind: ActionKind.soon, label: 'PC par chalega', onTap: () => _snack(e['pc_note'] as String? ?? ''))
+                    ? PluginAction(kind: ActionKind.soon, label: 'Runs on the PC', onTap: () => _snack(e['pc_note'] as String? ?? ''))
                     : e['one_tap'] == true
-                        ? PluginAction(kind: ActionKind.add, label: 'Ek tap mein jodo', onTap: () => _oneTap(e))
-                        : PluginAction(kind: ActionKind.add, label: 'Jodiye', onTap: () => _addDialog(entry: e))),
+                        ? PluginAction(kind: ActionKind.add, label: 'Connect in one tap', onTap: () => _oneTap(e))
+                        : PluginAction(kind: ActionKind.add, label: 'Connect', onTap: () => _addDialog(entry: e))),
           ]),
         ]),
       ),
@@ -896,7 +896,7 @@ class _McpScreenState extends State<McpScreen> {
         child: RefreshIndicator(
           onRefresh: _loadMine,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Apne Slack, Notion, Jira, HubSpot, Zoom… accounts jodiye: Hoola unme aapka kaam karega.',
+            const Text('Connect your Slack, Notion, Jira, HubSpot, Zoom… accounts: Hoola will do your work in them.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             if (_err != null) Padding(padding: const EdgeInsets.only(top: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
             if (_cmp.isNotEmpty || _cmpQ.isNotEmpty || _cmpCat.isNotEmpty) ...[
@@ -905,10 +905,10 @@ class _McpScreenState extends State<McpScreen> {
             ] else if (!_cmpLoaded)
               const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
             else
-              const Padding(padding: EdgeInsets.all(16), child: Text('Apps abhi server par chalu nahi hain.', style: TextStyle(color: C.muted))),
+              const Padding(padding: EdgeInsets.all(16), child: Text('Apps are not running on the server right now.', style: TextStyle(color: C.muted))),
             if (_mine.isNotEmpty) ...[
               const SizedBox(height: 18),
-              const Caption('AAPKE JUDE HUE SERVERS'),
+              const Caption('YOUR CONNECTED SERVERS'),
               for (final m in _mine) _mineCard(m),
             ],
             const SizedBox(height: 18),
@@ -916,8 +916,8 @@ class _McpScreenState extends State<McpScreen> {
               padding: const EdgeInsets.all(4),
               child: ListTile(
                 leading: const Icon(Icons.storage_rounded, color: C.accent),
-                title: const Text('Postgres (apna database)', style: TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: const Text('Kisi bhi PostgreSQL ko jodiye: tables, read-only query, explain, sehat; badlav aapki haan se',
+                title: const Text('Postgres (your own database)', style: TextStyle(fontWeight: FontWeight.w700)),
+                subtitle: const Text('Connect any PostgreSQL: tables, read-only queries, explain, health; changes only with your yes',
                     style: TextStyle(color: C.muted, fontSize: 12)),
                 trailing: const Icon(Icons.chevron_right_rounded),
                 onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PostgresScreen(app: app))),

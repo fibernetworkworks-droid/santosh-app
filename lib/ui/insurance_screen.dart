@@ -103,13 +103,13 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
 
   Future<void> _newClient() async {
     final c = <String, TextEditingController>{};
-    if (await _form('Naya graahak', const [
-          ('name', 'Naam'),
+    if (await _form('New customer', const [
+          ('name', 'Name'),
           ('phone', 'Mobile'),
-          ('dob', 'Janam tareekh (dd-mm-yyyy)'),
-          ('city', 'Shehar'),
-          ('income', 'Saal ki kamai (₹)'),
-          ('liabilities', 'Loan baaki (₹)'),
+          ('dob', 'Date of birth (dd-mm-yyyy)'),
+          ('city', 'City'),
+          ('income', 'Yearly income (₹)'),
+          ('liabilities', 'Loan outstanding (₹)'),
         ], c) !=
         'ok') {
       return;
@@ -127,7 +127,7 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
           ('insurer', 'Company (LIC, Star Health...)'),
           ('plan', 'Plan'),
           ('number', 'Policy number'),
-          ('start', 'Shuru (dd-mm-yyyy)'),
+          ('start', 'Start (dd-mm-yyyy)'),
           ('mode', 'Mode (yearly / half_yearly / quarterly / monthly)'),
           ('premium', 'Premium (₹)'),
           ('cover', 'Cover / sum assured (₹)'),
@@ -181,13 +181,13 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
                         final ok = await showDialog<bool>(
                           context: context,
                           builder: (d) => AlertDialog(
-                            content: Text('${_s(p['client'])} ne ${_s(p['insurer'])} ko ${rs(p['premium'])} bhar diya?'),
-                            actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, bhara'))],
+                            content: Text('Did ${_s(p['client'])} pay ${_s(p['insurer'])} ${rs(p['premium'])}?'),
+                            actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, paid'))],
                           ),
                         );
                         if (ok == true) await _run(() => widget.app.api!.insPaid(_s(p['id'])));
                       },
-                child: const Text('Bhara gaya'),
+                child: const Text('Paid'),
               ),
           ]),
         ]),
@@ -204,7 +204,7 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
       for (final p in all) _policyTile(p),
       if (_drafts.isNotEmpty) ...[
         const SizedBox(height: 6),
-        Text('Yaad dilane ke message (aap bhejengi)', style: display(15)),
+        Text('Reminder messages (you send them)', style: display(15)),
         const SizedBox(height: 6),
         for (final d in _drafts)
           Padding(
@@ -219,7 +219,7 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
                   alignment: Alignment.centerRight,
                   child: TextButton.icon(
                     icon: const Icon(Icons.send_rounded, size: 18),
-                    label: const Text('WhatsApp kholo'),
+                    label: const Text('Open WhatsApp'),
                     onPressed: _s(d['to']).isEmpty
                         ? null
                         : () async {
@@ -234,13 +234,13 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
             ),
           ),
       ],
-      if (all.isEmpty) const Text('Agle 15 din mein koi premium nahi.', style: TextStyle(color: C.muted)),
+      if (all.isEmpty) const Text('No premiums in the next 15 days.', style: TextStyle(color: C.muted)),
     ]);
   }
 
   Widget _clientsTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: 'Naya graahak', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newClient),
+          GlassButton(label: 'New customer', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newClient),
           GlassButton(label: 'Renewal list (Excel)', icon: Icons.upload_file_rounded, onTap: _busy ? null : _import),
         ]),
         const SizedBox(height: 10),
@@ -257,11 +257,11 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_s(c['name']), style: const TextStyle(fontWeight: FontWeight.w800)),
-                      Text([if (c['age'] != null) '${c['age']} saal', _s(c['city']), _s(c['phone'])].where((x) => x.isNotEmpty).join(' · '),
+                      Text([if (c['age'] != null) '${c['age']} yrs', _s(c['city']), _s(c['phone'])].where((x) => x.isNotEmpty).join(' · '),
                           style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     ]),
                   ),
-                  IconButton(icon: const Icon(Icons.add_card_rounded), tooltip: 'Policy jodo', onPressed: () => _newPolicy(c)),
+                  IconButton(icon: const Icon(Icons.add_card_rounded), tooltip: 'Add policy', onPressed: () => _newPolicy(c)),
                 ]),
               ),
             ),
@@ -271,7 +271,7 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
   Widget _claimsTab() {
     final cl = _list(_sum?['claims']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      if (cl.isEmpty) const Text('Koi khula claim nahi.', style: TextStyle(color: C.muted)),
+      if (cl.isEmpty) const Text('No open claims.', style: TextStyle(color: C.muted)),
       for (final c in cl)
         Padding(
           padding: const EdgeInsets.only(bottom: 8),
@@ -283,13 +283,13 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
               Text('Policy ${_s(c['policy'])} · ${_s(c['status'])}${_s(c['insurer_ref']).isNotEmpty ? ' · ref ${_s(c['insurer_ref'])}' : ''}',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
               if (((c['missing'] as List?) ?? const []).isNotEmpty)
-                Text('Baaki: ${((c['missing'] as List?) ?? const []).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
-              if (_s(c['escalate']).isNotEmpty) Text('Der ho gayi: ${_s(c['escalate'])}', style: const TextStyle(fontSize: 12.5, color: C.bad)),
+                Text('Pending: ${((c['missing'] as List?) ?? const []).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+              if (_s(c['escalate']).isNotEmpty) Text('Late: ${_s(c['escalate'])}', style: const TextStyle(fontSize: 12.5, color: C.bad)),
             ]),
           ),
         ),
       const SizedBox(height: 6),
-      const Text('Claim shuru karne ke liye chat mein bataiye: "Sunita ka hospital claim, policy STAR9".',
+      const Text('To start a claim, tell me in the chat: "Sunita\'s hospital claim, policy STAR9".',
           style: TextStyle(color: C.faint, fontSize: 11.5)),
     ]);
   }
@@ -299,7 +299,7 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
     final b = Map<String, dynamic>.from((_sum?['book'] as Map?) ?? const {});
     final bd = _list(_sum?['birthdays']);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Bima sahayak'), actions: [
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Insurance assistant'), actions: [
         IconButton(
           icon: const Icon(Icons.table_view_rounded),
           tooltip: 'Policy book Excel',
@@ -312,8 +312,8 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             Glass(
               child: Row(children: [
-                _stat('chalu policy', '${b['inforce'] ?? 0}'),
-                _stat('saal ka premium', lakhs(b['yearly_premium'] ?? 0)),
+                _stat('active policies', '${b['inforce'] ?? 0}'),
+                _stat('yearly premium', lakhs(b['yearly_premium'] ?? 0)),
                 _stat('persistency', b['persistency_pct'] == null ? '-' : '${b['persistency_pct']}%'),
               ]),
             ),
@@ -326,13 +326,13 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
                     const Icon(Icons.cake_rounded, color: C.accent),
                     const SizedBox(width: 8),
                     Expanded(child: Text('${_s(x['client'])}: ${_s(x['on'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
-                    TextButton(onPressed: () => _wa(_s(x['to']), _s(x['text'])), child: const Text('Badhai')),
+                    TextButton(onPressed: () => _wa(_s(x['to']), _s(x['text'])), child: const Text('Congratulations')),
                   ]),
                 ),
             ],
             const SizedBox(height: 12),
             Wrap(spacing: 6, children: [
-              for (final (i, t) in const [(0, 'Premium'), (1, 'Graahak'), (2, 'Claim')])
+              for (final (i, t) in const [(0, 'Premium'), (1, 'Customer'), (2, 'Claim')])
                 ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
             ]),
             const SizedBox(height: 10),
@@ -340,8 +340,8 @@ class _InsuranceScreenState extends State<InsuranceScreen> {
             if (_sum != null) [_renewals(), _clientsTab(), _claimsTab()][_tab],
             const SizedBox(height: 14),
             const Text(
-                'Premium graahak seedha insurer ko bharta hai; Hoola paisa nahi leta. Proposal par sign aur health ki jaankari graahak khud bharega. '
-                'Salah graahak ko sirf aapki haan ke baad. Free-look 30 din.',
+                'The customer pays the premium directly to the insurer; Hoola does not take money. The customer signs the proposal and fills in health details themselves. '
+                'Advice goes to the customer only after your yes. Free-look 30 days.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
@@ -396,14 +396,14 @@ class _InsClientPageState extends State<InsClientPage> {
           if (_needs != null)
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Zaroorat', style: display(16)),
+                Text('Need', style: display(16)),
                 const SizedBox(height: 6),
-                if (life.isNotEmpty) Text('Life cover: chahiye ${lakhs(life['need'])}, hai ${lakhs(life['existing'])}, gap ${lakhs(life['gap'])}'),
-                Text('Health cover: chahiye ${lakhs(health['need'])}, hai ${lakhs(health['existing'])}'),
+                if (life.isNotEmpty) Text('Life cover: needed ${lakhs(life['need'])}, has ${lakhs(life['existing'])}, gap ${lakhs(life['gap'])}'),
+                Text('Health cover: needed ${lakhs(health['need'])}, has ${lakhs(health['existing'])}'),
                 const SizedBox(height: 6),
                 for (final g in ((_needs?['gaps'] as List?) ?? const [])) Text('• $g', style: const TextStyle(fontSize: 12.5, color: C.warn)),
                 const SizedBox(height: 6),
-                const Text('Andaza rule of thumb se; final faisla graahak ka.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+                const Text('Estimate by rule of thumb; the final decision is the customer\'s.', style: TextStyle(color: C.faint, fontSize: 11.5)),
               ]),
             ),
           const SizedBox(height: 10),
@@ -416,7 +416,7 @@ class _InsClientPageState extends State<InsClientPage> {
                   Text('${_s(p['insurer'])} · ${_s(p['plan'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
                   Text('${_s(p['type_label'])} · ${_s(p['number'])} · ${rs(p['premium'])} ${_s(p['mode'])} · cover ${lakhs(p['cover'])}',
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
-                  Text('${_s((p['premium_state'] as Map?)?['label'])}${_s(p['nominee']).isEmpty ? ' · nominee nahi!' : ''}',
+                  Text('${_s((p['premium_state'] as Map?)?['label'])}${_s(p['nominee']).isEmpty ? ' · no nominee!' : ''}',
                       style: const TextStyle(fontSize: 12.5)),
                 ]),
               ),
@@ -479,17 +479,17 @@ class _InsCardState extends State<InsCard> {
         Row(children: [
           const Icon(Icons.health_and_safety_rounded, color: C.accent),
           const SizedBox(width: 10),
-          Expanded(child: Text('${_s(v['client'])} ke liye salah taiyaar', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('${_s(v['client'])} advice ready', style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
         const SizedBox(height: 8),
         if (_draft == null) ...[
-          const Text('Options ki tulna aur zaroorat ka record ban gaya. Graahak ko bhejne do?', style: TextStyle(fontSize: 13)),
+          const Text('The comparison of options and the record of needs are ready. Send to the customer?', style: TextStyle(fontSize: 13)),
           const SizedBox(height: 8),
-          GradientButton(label: 'Haan, message banao', icon: Icons.check_rounded, onTap: _busy ? null : _haan),
+          GradientButton(label: 'Yes, make the message', icon: Icons.check_rounded, onTap: _busy ? null : _haan),
         ] else ...[
           SelectableText(_draft!, style: const TextStyle(fontSize: 12.5, height: 1.35)),
           const SizedBox(height: 8),
-          GlassButton(label: 'WhatsApp kholo', icon: Icons.send_rounded, onTap: _to.isEmpty ? null : () => _wa(_to, _draft!)),
+          GlassButton(label: 'Open WhatsApp', icon: Icons.send_rounded, onTap: _to.isEmpty ? null : () => _wa(_to, _draft!)),
         ],
       ]),
     );

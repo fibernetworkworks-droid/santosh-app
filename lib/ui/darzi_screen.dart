@@ -19,12 +19,12 @@ List<Map<String, dynamic>> _list(dynamic l) =>
 
 const _flow = ['new', 'cutting', 'stitching', 'trial', 'ready'];
 const _word = {
-  'new': 'Naya',
+  'new': 'New',
   'cutting': 'Cutting',
-  'stitching': 'Silai',
+  'stitching': 'Stitching',
   'trial': 'Trial',
-  'ready': 'Taiyaar',
-  'delivered': 'De diya',
+  'ready': 'Ready',
+  'delivered': 'Given',
   'cancelled': 'Cancel',
 };
 
@@ -92,18 +92,18 @@ class DarziScreen extends StatelessWidget {
             backgroundColor: Colors.transparent,
             title: const Text('Darzi sahayak'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
+              Tab(text: 'Today'),
               Tab(text: 'Orders'),
-              Tab(text: 'Graahak'),
-              Tab(text: 'Daam'),
-              Tab(text: 'Niyam'),
+              Tab(text: 'Customer'),
+              Tab(text: 'Price'),
+              Tab(text: 'Rules'),
             ]),
           ),
           floatingActionButton: FloatingActionButton.extended(
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Naya order', style: TextStyle(fontWeight: FontWeight.w800)),
+            label: const Text('New order', style: TextStyle(fontWeight: FontWeight.w800)),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DarziNewOrderPage(app: app))),
           ),
           body: Aurora(
@@ -132,8 +132,8 @@ class DarziOrderTile extends StatelessWidget {
     final late = o['late'] == true;
     final left = o['days_left'];
     final when = st == 'delivered'
-        ? 'Diya ${_s(o['delivered_on'])}'
-        : 'Delivery ${_s(o['deliver_nice'])}${left is int && left >= 0 && st != 'ready' ? ' · $left din' : ''}';
+        ? 'Given ${_s(o['delivered_on'])}'
+        : 'Delivery ${_s(o['deliver_nice'])}${left is int && left >= 0 && st != 'ready' ? ' · $left days' : ''}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Press(
@@ -154,17 +154,17 @@ class DarziOrderTile extends StatelessWidget {
               Icon(late ? Icons.warning_amber_rounded : Icons.event_rounded, size: 15, color: late ? C.bad : C.muted),
               const SizedBox(width: 4),
               Expanded(
-                  child: Text(late ? 'Der ho gayi: ${_s(o['deliver_nice'])}' : when,
+                  child: Text(late ? 'Late: ${_s(o['deliver_nice'])}' : when,
                       style: TextStyle(color: late ? C.bad : C.muted, fontSize: 12.5))),
               if (_s(o['trial_nice']).isNotEmpty && st != 'delivered')
                 Text('Trial ${_s(o['trial_nice'])}  ', style: const TextStyle(color: C.accent2, fontSize: 12)),
               if ((o['balance_paise'] ?? 0) is num && (o['balance_paise'] as num) > 0)
-                Text('Baaki ${_s(o['balance'])}', style: const TextStyle(color: C.warn, fontSize: 12, fontWeight: FontWeight.w700)),
+                Text('Pending ${_s(o['balance'])}', style: const TextStyle(color: C.warn, fontSize: 12, fontWeight: FontWeight.w700)),
             ]),
             if ((o['quote_pending'] as List?)?.isNotEmpty == true)
               const Padding(
                 padding: EdgeInsets.only(top: 4),
-                child: Text('Daam aapki haan ka intezaar kar raha hai', style: TextStyle(color: C.accent, fontSize: 12)),
+                child: Text('The price is waiting for your yes', style: TextStyle(color: C.accent, fontSize: 12)),
               ),
           ]),
         ),
@@ -241,15 +241,15 @@ class _TodayTabState extends State<_TodayTab> with _Live {
                 Pill('${(d['trials'] as List).length} trial', fg: C.accent2),
                 Pill('${(d['deliveries'] as List).length} delivery', fg: C.ok),
                 if ((d['late'] as List).isNotEmpty) Pill('${(d['late'] as List).length} der', fg: C.bad),
-                Pill('${d['open_orders']} chalu'),
-                if ((d['quotes_pending'] ?? 0) > 0) Pill('${d['quotes_pending']} daam baaki', fg: C.accent),
+                Pill('${d['open_orders']} in progress'),
+                if ((d['quotes_pending'] ?? 0) > 0) Pill('${d['quotes_pending']} balance due', fg: C.accent),
               ]),
             ]),
           ),
           const SizedBox(height: 12),
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Hafte ka kaam (delivery wale kapde)', style: TextStyle(fontWeight: FontWeight.w800)),
+              const Text('This week\'s work (clothes to deliver)', style: TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 10),
               for (final w in _list(d['week']))
                 Padding(
@@ -275,10 +275,10 @@ class _TodayTabState extends State<_TodayTab> with _Live {
                 ),
             ]),
           ),
-          _section('Der ho gayi', _list(d['late']), C.bad),
-          _section('Aaj trial', _list(d['trials']), C.accent2),
-          _section('Aaj dena hai', _list(d['deliveries']), C.ok),
-          _section('Taiyaar, 3+ din se nahi le gaye', _list(d['waiting_pickup']), C.warn),
+          _section('Late', _list(d['late']), C.bad),
+          _section('Trial today', _list(d['trials']), C.accent2),
+          _section('To deliver today', _list(d['deliveries']), C.ok),
+          _section('Ready, not collected for 3+ days', _list(d['waiting_pickup']), C.warn),
         ],
       ]),
     );
@@ -327,7 +327,7 @@ class _OrdersTabState extends State<_OrdersTab> with _Live {
 
   @override
   Widget build(BuildContext context) {
-    const filters = {'open': 'Chalu', 'ready': 'Taiyaar', 'delivered': 'Diye gaye', 'all': 'Sab'};
+    const filters = {'open': 'In progress', 'ready': 'Ready', 'delivered': 'Given', 'all': 'All'};
     return RefreshIndicator(
       onRefresh: reload,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
@@ -349,7 +349,7 @@ class _OrdersTabState extends State<_OrdersTab> with _Live {
         if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
         if (_rows == null && _err == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
         if (_rows != null && _rows!.isEmpty)
-          const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('Koi order nahi.', style: TextStyle(color: C.muted)))),
+          const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('No orders.', style: TextStyle(color: C.muted)))),
         for (final o in _rows ?? const <Map<String, dynamic>>[]) DarziOrderTile(o: o, app: app),
       ]),
     );
@@ -420,8 +420,8 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
         content: TextField(controller: c, keyboardType: const TextInputType.numberWithOptions(decimal: true), autofocus: true,
             decoration: InputDecoration(prefixText: '₹ ', hintText: hint)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(context, _num(c.text) ?? 0), child: const Text('Theek')),
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(context, _num(c.text) ?? 0), child: const Text('OK')),
         ],
       ),
     );
@@ -440,11 +440,11 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
         final yes = await showDialog<bool>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Niyam se mel nahi khata'),
+            title: const Text('Does not match the rules'),
             content: Text(probs.join('\n\n')),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Nahi')),
-              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Phir bhi rakho')),
+              TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+              TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Keep it anyway')),
             ],
           ),
         );
@@ -516,13 +516,13 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
           ]),
           if (_s(cust['phone']).isNotEmpty) Text(_s(cust['phone']), style: const TextStyle(color: C.muted)),
           const SizedBox(height: 8),
-          Text('Liya ${_s(o['received_on'])}  ·  Trial ${_s(o['trial_nice']).isEmpty ? '-' : _s(o['trial_nice'])}  ·  '
-              'Delivery ${_s(o['deliver_nice'])}${o['rush'] == true ? ' (jaldi)' : ''}',
+          Text('Received${_s(o['received_on'])}  ·  Trial ${_s(o['trial_nice']).isEmpty ? '-' : _s(o['trial_nice'])}  ·  '
+              'Delivery ${_s(o['deliver_nice'])}${o['rush'] == true ? ' (rush)' : ''}',
               style: TextStyle(color: o['late'] == true ? C.bad : C.chip, fontSize: 13)),
           const SizedBox(height: 8),
-          Text('Kul ${_s(o['total'])}  ·  Mila ${_s(o['paid'])}  ·  Baaki ${_s(o['balance'])}',
+          Text('Total ${_s(o['total'])}  ·  Received ${_s(o['paid'])}  ·  Balance ${_s(o['balance'])}',
               style: TextStyle(fontWeight: FontWeight.w800, color: bal > 0 ? C.warn : C.ok)),
-          if (_s(o['rush_charge']).isNotEmpty) Text('Jaldi ka charge ${_s(o['rush_charge'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
+          if (_s(o['rush_charge']).isNotEmpty) Text('Rush charge ${_s(o['rush_charge'])}', style: const TextStyle(color: C.muted, fontSize: 12)),
           if (_s(o['notes']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_s(o['notes']), style: const TextStyle(color: C.muted))),
         ]),
       ),
@@ -536,10 +536,10 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
                 Expanded(
                     child: Text('${it['qty']} x ${_s(it['label'])}${_s(it['person']).isNotEmpty ? ' (${it['person']})' : ''}',
                         style: const TextStyle(fontWeight: FontWeight.w800))),
-                Text(_s(it['price']).isEmpty ? 'daam baaki' : _s(it['price']),
+                Text(_s(it['price']).isEmpty ? 'balance due' : _s(it['price']),
                     style: TextStyle(color: _s(it['price']).isEmpty ? C.accent : C.ink, fontWeight: FontWeight.w700)),
               ]),
-              if (_s(it['fabric']).isNotEmpty) Text('Kapda: ${it['fabric']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+              if (_s(it['fabric']).isNotEmpty) Text('Cloth: ${it['fabric']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
               if (_s(it['style']).isNotEmpty) Text('Style: ${it['style']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
               if (it['measure'] is Map) ...[
                 const SizedBox(height: 6),
@@ -551,7 +551,7 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
           ),
         ),
       if (!closed) ...[
-        const Padding(padding: EdgeInsets.fromLTRB(4, 6, 4, 8), child: Text('Kaam kahan tak?', style: TextStyle(fontWeight: FontWeight.w800))),
+        const Padding(padding: EdgeInsets.fromLTRB(4, 6, 4, 8), child: Text('How far is the work?', style: TextStyle(fontWeight: FontWeight.w800))),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final s in _flow.skip(1))
             ChoiceChip(
@@ -564,32 +564,32 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
         Row(children: [
           Expanded(
               child: GlassButton(
-                  label: 'Paise mile',
+                  label: 'Money received',
                   icon: Icons.currency_rupee_rounded,
                   onTap: _busy
                       ? null
                       : () async {
-                          final a = await _askMoney('Kitne paise mile?');
+                          final a = await _askMoney('How much was received?');
                           if (a != null && a > 0) _run(() => _api.darziPay(widget.id, a, how: 'app'));
                         })),
           const SizedBox(width: 10),
           Expanded(
               child: GradientButton(
-                  label: 'De diya',
+                  label: 'Given',
                   icon: Icons.check_circle_rounded,
                   height: 48,
                   onTap: _busy
                       ? null
                       : () async {
-                          final a = await _askMoney('Dete waqt kitne mile?', initial: bal > 0 ? (bal / 100).toStringAsFixed(0) : '0');
+                          final a = await _askMoney('How much was received at delivery?', initial: bal > 0 ? (bal / 100).toStringAsFixed(0) : '0');
                           if (a != null) _run(() => _api.darziDeliver(widget.id, paidNow: a > 0 ? a : null, conversationId: _conv));
                         })),
         ]),
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GlassButton(label: '"Taiyaar hai" message', icon: Icons.chat_rounded, onTap: _busy ? null : _readySheet),
+          GlassButton(label: '"Ready" message', icon: Icons.chat_rounded, onTap: _busy ? null : _readySheet),
           GlassButton(label: 'Slip (PDF)', icon: Icons.picture_as_pdf_rounded, onTap: _busy ? null : _slip),
-          GlassButton(label: 'Tareekh badlo', icon: Icons.event_repeat_rounded, onTap: _busy ? null : _dates),
+          GlassButton(label: 'Change date', icon: Icons.event_repeat_rounded, onTap: _busy ? null : _dates),
           GlassButton(
               label: 'Cancel',
               icon: Icons.close_rounded,
@@ -600,10 +600,10 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
                       final yes = await showDialog<bool>(
                         context: context,
                         builder: (_) => AlertDialog(
-                          title: const Text('Order cancel karein?'),
+                          title: const Text('Cancel the order?'),
                           actions: [
-                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Nahi')),
-                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Haan, cancel')),
+                            TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+                            TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Yes, cancel')),
                           ],
                         ),
                       );
@@ -615,17 +615,17 @@ class _DarziOrderPageState extends State<DarziOrderPage> with _Live {
           GlassButton(label: 'Slip (PDF)', icon: Icons.picture_as_pdf_rounded, onTap: _busy ? null : _slip),
           if (bal > 0)
             GlassButton(
-                label: 'Baaki paise mile',
+                label: 'Remaining money received',
                 icon: Icons.currency_rupee_rounded,
                 onTap: _busy
                     ? null
                     : () async {
-                        final a = await _askMoney('Kitne paise mile?', initial: (bal / 100).toStringAsFixed(0));
+                        final a = await _askMoney('How much was received?', initial: (bal / 100).toStringAsFixed(0));
                         if (a != null && a > 0) _run(() => _api.darziPay(widget.id, a, how: 'app'));
                       }),
         ]),
       const SizedBox(height: 18),
-      const Text('Hisaab (log)', style: TextStyle(fontWeight: FontWeight.w800)),
+      const Text('Account (log)', style: TextStyle(fontWeight: FontWeight.w800)),
       const SizedBox(height: 6),
       for (final l in _list(o['log']).reversed)
         Padding(
@@ -718,7 +718,7 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
 
   Future<void> _save({bool force = false}) async {
     if (_name.text.trim().isEmpty && _phone.text.trim().isEmpty && widget.customer == null) {
-      _snack(context, 'Graahak ka naam ya phone likhiye');
+      _snack(context, 'Write the customer\'s name or phone');
       return;
     }
     setState(() => _busy = true);
@@ -748,20 +748,20 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
             child: DropdownButtonFormField<String>(
               value: ids.contains(l.garment) ? l.garment : (ids.isEmpty ? null : ids.first),
               isExpanded: true,
-              decoration: const InputDecoration(labelText: 'Kapda'),
+              decoration: const InputDecoration(labelText: 'Cloth'),
               items: [for (final g in _garments) DropdownMenuItem(value: _s(g['id']), child: Text(_s(g['label'])))],
               onChanged: (v) => setState(() => l.garment = v ?? 'other'),
             ),
           ),
           const SizedBox(width: 8),
-          SizedBox(width: 52, child: TextField(controller: l.qty, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kitne'))),
+          SizedBox(width: 52, child: TextField(controller: l.qty, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'How many'))),
           const SizedBox(width: 8),
-          SizedBox(width: 84, child: TextField(controller: l.price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Daam ₹'))),
+          SizedBox(width: 84, child: TextField(controller: l.price, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Price ₹'))),
           if (_lines.length > 1)
             IconButton(onPressed: () => setState(() => _lines.removeAt(i)), icon: const Icon(Icons.close_rounded, color: C.faint)),
         ]),
         Row(children: [
-          Expanded(child: TextField(controller: l.person, decoration: const InputDecoration(labelText: 'Kiske liye (agar koi aur)'))),
+          Expanded(child: TextField(controller: l.person, decoration: const InputDecoration(labelText: 'For whom (if someone else)'))),
           const SizedBox(width: 8),
           Expanded(flex: 2, child: TextField(controller: l.style, decoration: const InputDecoration(labelText: 'Design / style'))),
         ]),
@@ -775,12 +775,12 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
     final probs = List<String>.from((ck?['problems'] as List?) ?? const []);
     final notes = List<String>.from((ck?['notes'] as List?) ?? const []);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Naya order')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('New order')),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(children: [
-              TextField(controller: _name, enabled: widget.customer == null, decoration: const InputDecoration(labelText: 'Graahak ka naam')),
+              TextField(controller: _name, enabled: widget.customer == null, decoration: const InputDecoration(labelText: 'Customer name')),
               TextField(controller: _phone, enabled: widget.customer == null, keyboardType: TextInputType.phone,
                   decoration: const InputDecoration(labelText: 'Phone')),
             ]),
@@ -789,7 +789,7 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
           for (var i = 0; i < _lines.length; i++) _line(i),
           Align(
             alignment: Alignment.centerLeft,
-            child: TextButton.icon(onPressed: () => setState(() => _lines.add(_Line())), icon: const Icon(Icons.add_rounded), label: const Text('Aur kapda')),
+            child: TextButton.icon(onPressed: () => setState(() => _lines.add(_Line())), icon: const Icon(Icons.add_rounded), label: const Text('More clothes')),
           ),
           Glass(
             child: Column(children: [
@@ -817,8 +817,8 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
                 ),
               ]),
               const SizedBox(height: 4),
-              const Text('Delivery khaali chhodein to Hoola niyam se sabse jaldi ki tareekh rakhega.', style: TextStyle(color: C.faint, fontSize: 11.5)),
-              TextField(controller: _advance, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Advance mila ₹')),
+              const Text('If you leave delivery blank, Hoola will use the earliest date by the rules.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+              TextField(controller: _advance, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Advance received ₹')),
               TextField(controller: _notes, decoration: const InputDecoration(labelText: 'Note')),
             ]),
           ),
@@ -827,7 +827,7 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
             Glass(
               border: probs.isEmpty ? C.ok : C.warn,
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(probs.isEmpty ? 'Niyam ke hisaab se theek' : 'Niyam se mel nahi khata',
+                Text(probs.isEmpty ? 'Fine as per the rules' : 'Does not match the rules',
                     style: TextStyle(fontWeight: FontWeight.w800, color: probs.isEmpty ? C.ok : C.warn)),
                 for (final p in probs) Padding(padding: const EdgeInsets.only(top: 6), child: Text('• $p', style: const TextStyle(color: C.chip))),
                 for (final n in notes) Padding(padding: const EdgeInsets.only(top: 6), child: Text('· $n', style: const TextStyle(color: C.muted, fontSize: 12.5))),
@@ -835,8 +835,8 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Row(children: [
-                      Expanded(child: Text('Sabse jaldi: ${ck['earliest_nice']}', style: const TextStyle(color: C.accent))),
-                      TextButton(onPressed: () => setState(() => _deliver = _s(ck['earliest'])), child: const Text('Yahi rakho')),
+                      Expanded(child: Text('Earliest: ${ck['earliest_nice']}', style: const TextStyle(color: C.accent))),
+                      TextButton(onPressed: () => setState(() => _deliver = _s(ck['earliest'])), child: const Text('Keep this')),
                     ]),
                   ),
               ]),
@@ -844,14 +844,14 @@ class _DarziNewOrderPageState extends State<DarziNewOrderPage> {
           ],
           const SizedBox(height: 14),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Niyam se check', icon: Icons.rule_rounded, onTap: _busy ? null : _doCheck)),
+            Expanded(child: GlassButton(label: 'Check by rules', icon: Icons.rule_rounded, onTap: _busy ? null : _doCheck)),
             const SizedBox(width: 10),
             Expanded(child: GradientButton(label: 'Order save', height: 48, onTap: _busy ? null : () => _save())),
           ]),
           if (probs.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: GlassButton(label: 'Main maanti hoon, phir bhi save karo', color: C.warn, onTap: _busy ? null : () => _save(force: true)),
+              child: GlassButton(label: 'I understand, save anyway', color: C.warn, onTap: _busy ? null : () => _save(force: true)),
             ),
         ]),
       ),
@@ -901,13 +901,13 @@ class _CustomersTabState extends State<_CustomersTab> with _Live {
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Naya graahak'),
+        title: const Text('New customer'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: n, autofocus: true, decoration: const InputDecoration(labelText: 'Naam')),
+          TextField(controller: n, autofocus: true, decoration: const InputDecoration(labelText: 'Name')),
           TextField(controller: p, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Leave it')),
           TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Save')),
         ],
       ),
@@ -930,7 +930,7 @@ class _CustomersTabState extends State<_CustomersTab> with _Live {
             Expanded(
               child: TextField(
                 controller: _q,
-                decoration: const InputDecoration(hintText: 'Naam ya phone se dhoondhiye', prefixIcon: Icon(Icons.search_rounded)),
+                decoration: const InputDecoration(hintText: 'Search by name or phone', prefixIcon: Icon(Icons.search_rounded)),
                 onSubmitted: (_) => reload(),
               ),
             ),
@@ -939,7 +939,7 @@ class _CustomersTabState extends State<_CustomersTab> with _Live {
           const SizedBox(height: 10),
           if (_rows == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
           if (_rows != null && _rows!.isEmpty)
-            const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('Koi graahak nahi.', style: TextStyle(color: C.muted)))),
+            const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('No customers.', style: TextStyle(color: C.muted)))),
           for (final c in _rows ?? const <Map<String, dynamic>>[])
             Padding(
               padding: const EdgeInsets.only(bottom: 8),
@@ -955,7 +955,7 @@ class _CustomersTabState extends State<_CustomersTab> with _Live {
                         if (_s(c['phone']).isNotEmpty) Text(_s(c['phone']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
                       ]),
                     ),
-                    if ((c['open_orders'] ?? 0) > 0) Pill('${c['open_orders']} chalu', fg: C.accent),
+                    if ((c['open_orders'] ?? 0) > 0) Pill('${c['open_orders']} in progress', fg: C.accent),
                   ]),
                 ),
               ),
@@ -1005,7 +1005,7 @@ class _DarziCustomerPageState extends State<DarziCustomerPage> with _Live {
     final c = _c;
     final cust = Map<String, dynamic>.from((c?['customer'] as Map?) ?? const {});
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(cust['name']).isEmpty ? 'Graahak' : _s(cust['name']))),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(cust['name']).isEmpty ? 'Customer' : _s(cust['name']))),
       body: Aurora(
         child: c == null
             ? const Center(child: CircularProgressIndicator())
@@ -1015,7 +1015,7 @@ class _DarziCustomerPageState extends State<DarziCustomerPage> with _Live {
                 Row(children: [
                   Expanded(
                       child: GradientButton(
-                          label: 'Naya naap',
+                          label: 'New measurements',
                           icon: Icons.straighten_rounded,
                           height: 46,
                           onTap: () => Navigator.of(context)
@@ -1024,7 +1024,7 @@ class _DarziCustomerPageState extends State<DarziCustomerPage> with _Live {
                   const SizedBox(width: 10),
                   Expanded(
                       child: GlassButton(
-                          label: 'Naya order',
+                          label: 'New order',
                           icon: Icons.add_rounded,
                           onTap: () => Navigator.of(context)
                               .push(MaterialPageRoute(builder: (_) => DarziNewOrderPage(app: app, customer: cust)))
@@ -1032,15 +1032,15 @@ class _DarziCustomerPageState extends State<DarziCustomerPage> with _Live {
                 ]),
                 const SizedBox(height: 14),
                 Row(children: [
-                  const Expanded(child: Text('Naap', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
+                  const Expanded(child: Text('Measurement', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
                   TextButton(
                       onPressed: () {
                         setState(() => _history = !_history);
                         reload();
                       },
-                      child: Text(_history ? 'Sirf naye' : 'Purane bhi')),
+                      child: Text(_history ? 'Only new' : 'Old ones too')),
                 ]),
-                if (_list(c['measures']).isEmpty) const Text('Abhi koi naap nahi.', style: TextStyle(color: C.muted)),
+                if (_list(c['measures']).isEmpty) const Text('No measurements yet.', style: TextStyle(color: C.muted)),
                 for (final m in _list(c['measures']))
                   Glass(
                     margin: const EdgeInsets.only(bottom: 8),
@@ -1103,7 +1103,7 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
     }
     final free = _free.text.trim();
     if (vals.isEmpty && free.isEmpty) {
-      _snack(context, 'Koi naap likhiye');
+      _snack(context, 'Enter some measurements');
       return;
     }
     setState(() => _busy = true);
@@ -1122,16 +1122,16 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
         await showDialog<void>(
           context: context,
           builder: (_) => AlertDialog(
-            title: const Text('Naap save hua'),
+            title: const Text('Measurements saved'),
             content: Text([
-              if (changed.isNotEmpty) 'Pichhli baar se fark:\n${changed.join('\n')}',
-              if (missing.isNotEmpty) 'Abhi baaki: ${missing.join(', ')}',
+              if (changed.isNotEmpty) 'Change since last time:\n${changed.join('\n')}',
+              if (missing.isNotEmpty) 'Remaining: ${missing.join(', ')}',
             ].join('\n\n')),
-            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Theek'))],
+            actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))],
           ),
         );
       } else {
-        _snack(context, 'Naap save hua');
+        _snack(context, 'Measurements saved');
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
@@ -1145,7 +1145,7 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
     final fields = _list(_spec['fields']);
     final must = List<String>.from((_spec['must'] as List?) ?? const []);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Naap: ${_s(widget.customer['name'])}')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Measurement: ${_s(widget.customer['name'])}')),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
@@ -1153,11 +1153,11 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
               DropdownButtonFormField<String>(
                 value: _garments.any((g) => g['id'] == _garment) ? _garment : null,
                 isExpanded: true,
-                decoration: const InputDecoration(labelText: 'Kapda'),
+                decoration: const InputDecoration(labelText: 'Cloth'),
                 items: [for (final g in _garments) DropdownMenuItem(value: _s(g['id']), child: Text(_s(g['label'])))],
                 onChanged: (v) => setState(() => _garment = v ?? 'blouse'),
               ),
-              TextField(controller: _person, decoration: const InputDecoration(labelText: 'Kiske liye (graahak khud ho to khaali)')),
+              TextField(controller: _person, decoration: const InputDecoration(labelText: 'For whom (blank if the customer themselves)')),
             ]),
           ),
           const SizedBox(height: 12),
@@ -1182,13 +1182,13 @@ class _DarziMeasurePageState extends State<DarziMeasurePage> {
                 controller: _free,
                 minLines: 1,
                 maxLines: 3,
-                decoration: const InputDecoration(labelText: 'Ya seedha likh dijiye', hintText: 'L 15, chest 34, kamar 30, bahi 11 1/2'),
+                decoration: const InputDecoration(labelText: 'Or just write it directly', hintText: 'L 15, chest 34, kamar 30, bahi 11 1/2'),
               ),
               TextField(controller: _note, decoration: const InputDecoration(labelText: 'Fitting / style note (loose, deep back...)')),
             ]),
           ),
           const SizedBox(height: 14),
-          GradientButton(label: 'Naap save karo', icon: Icons.save_rounded, height: 50, onTap: _busy ? null : _save),
+          GradientButton(label: 'Save measurements', icon: Icons.save_rounded, height: 50, onTap: _busy ? null : _save),
         ]),
       ),
     );
@@ -1261,7 +1261,7 @@ class _PricesTabState extends State<_PricesTab> with _Live {
         if (d != null) days[id] = d;
       }
       await app.api!.darziSaveSettings({'prices': prices, 'min_days': days});
-      if (mounted) _snack(context, 'Daam aur din save');
+      if (mounted) _snack(context, 'Price and days saved');
       await reload();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -1274,7 +1274,7 @@ class _PricesTabState extends State<_PricesTab> with _Live {
         onRefresh: reload,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
           if ((_quotes ?? const []).isNotEmpty) ...[
-            const Text('Aapki haan chahiye', style: TextStyle(fontWeight: FontWeight.w800, color: C.accent)),
+            const Text('Needs your yes', style: TextStyle(fontWeight: FontWeight.w800, color: C.accent)),
             const SizedBox(height: 8),
             for (final q in _quotes!) Padding(padding: const EdgeInsets.only(bottom: 10), child: DarziQuoteCard(key: ValueKey('pq${q['id']}'), v: q, app: app)),
           ],
@@ -1282,8 +1282,8 @@ class _PricesTabState extends State<_PricesTab> with _Live {
           if (_st != null)
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Daam ki list aur kitne din lagte hain', style: TextStyle(fontWeight: FontWeight.w800)),
-                const Text('Jo daam yahan hai woh seedha order mein lagta hai; naya ya alag daam aapki haan se.',
+                const Text('Price list and how many days each takes', style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text('The price here goes straight into the order; a new or different price needs your yes.',
                     style: TextStyle(color: C.faint, fontSize: 12)),
                 const SizedBox(height: 8),
                 for (final g in _garments)
@@ -1297,7 +1297,7 @@ class _PricesTabState extends State<_PricesTab> with _Live {
                     SizedBox(
                         width: 60,
                         child: TextField(controller: _days[_s(g['id'])], keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(suffixText: 'din', isDense: true))),
+                            decoration: const InputDecoration(suffixText: 'days', isDense: true))),
                   ]),
                 const SizedBox(height: 12),
                 GradientButton(label: 'Save', height: 46, onTap: _busy ? null : _saveList),
@@ -1328,7 +1328,7 @@ class _RulesTabState extends State<_RulesTab> {
   bool _enabled = true;
   bool _loaded = false;
   bool _busy = false;
-  static const _days = ['Som', 'Mangal', 'Budh', 'Guru', 'Shukra', 'Shani', 'Ravi'];
+  static const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   @override
   void initState() {
@@ -1373,7 +1373,7 @@ class _RulesTabState extends State<_RulesTab> {
         'rules': _rules.text.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
         'ready_template': _template.text.trim(),
       });
-      if (mounted) _snack(context, 'Niyam save');
+      if (mounted) _snack(context, 'Save rules');
     } catch (e) {
       if (mounted) _snack(context, '$e');
     }
@@ -1390,26 +1390,26 @@ class _RulesTabState extends State<_RulesTab> {
                 contentPadding: EdgeInsets.zero,
                 value: _enabled,
                 onChanged: (v) => setState(() => _enabled = v),
-                title: Text('${widget.app.aName} darzi ka kaam sambhale'),
-                subtitle: const Text('Subah ki list, order ki jaanch, WhatsApp par graahak ko order ka haal'),
+                title: Text('${widget.app.aName} handle the tailoring work'),
+                subtitle: const Text('Morning list, order checks, order updates to customers on WhatsApp'),
               ),
-              TextField(controller: _shop, decoration: const InputDecoration(labelText: 'Dukaan ka naam')),
+              TextField(controller: _shop, decoration: const InputDecoration(labelText: 'Shop name')),
               const SizedBox(height: 8),
               Row(children: [
-                const Text('Naap: '),
+                const Text('Measurement: '),
                 ChoiceChip(label: const Text('inch'), selected: _unit == 'inch', onSelected: (_) => setState(() => _unit = 'inch')),
                 const SizedBox(width: 6),
                 ChoiceChip(label: const Text('cm'), selected: _unit == 'cm', onSelected: (_) => setState(() => _unit = 'cm')),
               ]),
               TextField(controller: _pieces, keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Roz kitne kapde de sakti hain (0 = koi seemaa nahi)')),
+                  decoration: const InputDecoration(labelText: 'How many garments per day (0 = no limit)')),
               TextField(controller: _rush, keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Jaldi (rush) ka extra charge %')),
+                  decoration: const InputDecoration(labelText: 'Rush extra charge %')),
               TextField(controller: _remeasure, keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Kitne mahine baad dobara naap lein')),
-              TextField(controller: _morning, decoration: const InputDecoration(labelText: 'Subah ki list kab (HH:MM)')),
+                  decoration: const InputDecoration(labelText: 'Re-measure after how many months')),
+              TextField(controller: _morning, decoration: const InputDecoration(labelText: 'Morning list time (HH:MM)')),
               const SizedBox(height: 10),
-              const Text('Dukaan kis din band rehti hai', style: TextStyle(color: C.muted)),
+              const Text('Which day the shop is closed', style: TextStyle(color: C.muted)),
               Wrap(spacing: 6, children: [
                 for (var i = 0; i < 7; i++)
                   FilterChip(
@@ -1428,19 +1428,19 @@ class _RulesTabState extends State<_RulesTab> {
                 minLines: 3,
                 maxLines: 8,
                 decoration: const InputDecoration(
-                    labelText: 'Apne niyam (ek line mein ek)', hintText: 'Bridal blouse 15 din se kam nahi\nShaadi season mein advance 50%'),
+                    labelText: 'Your own rules (one per line)', hintText: 'Bridal blouse not under 15 days\nAdvance 50% in wedding season'),
               ),
               TextField(
                 controller: _template,
                 minLines: 2,
                 maxLines: 5,
                 decoration: const InputDecoration(
-                    labelText: '"Taiyaar hai" message', helperText: '{name} {items} {shop} {number} {balance} {balance_line} likh sakti hain'),
+                    labelText: '"Ready" message', helperText: 'You can write {name} {items} {shop} {number} {balance} {balance_line}'),
               ),
             ]),
           ),
           const SizedBox(height: 14),
-          GradientButton(label: 'Niyam save karo', height: 50, onTap: _busy ? null : _save),
+          GradientButton(label: 'Save rules', height: 50, onTap: _busy ? null : _save),
         ]);
 }
 
@@ -1463,7 +1463,7 @@ class _DarziQuoteCardState extends State<DarziQuoteCard> {
   Future<void> _decide(bool yes) async {
     final price = _num(_p.text);
     if (yes && (price == null || price <= 0)) {
-      _snack(context, 'Daam likhiye');
+      _snack(context, 'Enter the price');
       return;
     }
     setState(() => _busy = true);
@@ -1487,20 +1487,20 @@ class _DarziQuoteCardState extends State<DarziQuoteCard> {
         Row(children: [
           const Icon(Icons.sell_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Naya daam: ${_s(v['label'])}', style: display(15.5))),
-          if (!pending) Pill(_s(v['status']) == 'approved' ? 'Pakka ${_s(v['price'])}' : 'Mana', fg: _s(v['status']) == 'approved' ? C.ok : C.faint),
+          Expanded(child: Text('New price: ${_s(v['label'])}', style: display(15.5))),
+          if (!pending) Pill(_s(v['status']) == 'approved' ? 'Confirm ${_s(v['price'])}' : 'Decline', fg: _s(v['status']) == 'approved' ? C.ok : C.faint),
         ]),
         const SizedBox(height: 4),
         Text([if (_s(v['customer']).isNotEmpty) _s(v['customer']), if (_s(v['order_number']).isNotEmpty) 'Order ${v['order_number']}'].join(' · '),
             style: const TextStyle(color: C.muted, fontSize: 12.5)),
         if (_s(v['why']).isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: Text(_s(v['why']), style: const TextStyle(color: C.chip))),
-        if (_s(v['list_price']).isNotEmpty) Text('List mein: ${v['list_price']}', style: const TextStyle(color: C.faint, fontSize: 12)),
+        if (_s(v['list_price']).isNotEmpty) Text('In the list: ${v['list_price']}', style: const TextStyle(color: C.faint, fontSize: 12)),
         if (pending) ...[
           const SizedBox(height: 8),
           Row(children: [
             SizedBox(
               width: 130,
-              child: TextField(controller: _p, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Daam')),
+              child: TextField(controller: _p, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Price')),
             ),
             const SizedBox(width: 8),
             Expanded(
@@ -1509,15 +1509,15 @@ class _DarziQuoteCardState extends State<DarziQuoteCard> {
                 contentPadding: EdgeInsets.zero,
                 value: _toList,
                 onChanged: (x) => setState(() => _toList = x ?? true),
-                title: const Text('List mein bhi', style: TextStyle(fontSize: 12.5)),
+                title: const Text('Also in the list', style: TextStyle(fontSize: 12.5)),
               ),
             ),
           ]),
           const SizedBox(height: 6),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 10),
-            Expanded(child: GradientButton(label: 'Haan, pakka', height: 48, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, confirm', height: 48, onTap: _busy ? null : () => _decide(true))),
           ]),
         ],
       ]),
@@ -1571,35 +1571,35 @@ class _DarziReadyCardState extends State<DarziReadyCard> {
         Row(children: [
           const Icon(Icons.checkroom_rounded, color: C.ok, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Taiyaar: ${_s(v['customer'])} (${_s(v['number'])})', style: display(15.5))),
-          if (st == 'sent') const Pill('Bheja', fg: C.ok),
-          if (st == 'opened') const Pill('WhatsApp khola', fg: C.teal),
+          Expanded(child: Text('Ready: ${_s(v['customer'])} (${_s(v['number'])})', style: display(15.5))),
+          if (st == 'sent') const Pill('Sent', fg: C.ok),
+          if (st == 'opened') const Pill('WhatsApp opened', fg: C.teal),
         ]),
         const SizedBox(height: 4),
         Text(_s(v['what']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
-        TextField(controller: _t, minLines: 2, maxLines: 6, decoration: const InputDecoration(labelText: 'Message (badal sakti hain)')),
+        TextField(controller: _t, minLines: 2, maxLines: 6, decoration: const InputDecoration(labelText: 'Message (you can change it)')),
         const SizedBox(height: 10),
         if (_phone.length == 10)
           Row(children: [
-            Expanded(child: GradientButton(label: 'WhatsApp par bhejo', icon: Icons.send_rounded, height: 46, onTap: _busy ? null : () => _open('whatsapp'))),
+            Expanded(child: GradientButton(label: 'Send on WhatsApp', icon: Icons.send_rounded, height: 46, onTap: _busy ? null : () => _open('whatsapp'))),
             const SizedBox(width: 8),
             GlassButton(label: 'SMS', onTap: _busy ? null : () => _open('sms')),
           ])
         else
           GlassButton(
-              label: 'Message copy karo',
+              label: 'Copy message',
               icon: Icons.copy_rounded,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: _t.text.trim()));
-                _snack(context, 'Copy ho gaya (graahak ka phone save nahi hai)');
+                _snack(context, 'Copied (the customer\'s phone is not saved)');
               }),
         if (v['can_business'] == true) ...[
           const SizedBox(height: 8),
-          GlassButton(label: 'Business WhatsApp se bhejo', icon: Icons.verified_rounded, onTap: _busy || st == 'sent' ? null : _business),
+          GlassButton(label: 'Send from Business WhatsApp', icon: Icons.verified_rounded, onTap: _busy || st == 'sent' ? null : _business),
         ],
         const SizedBox(height: 4),
-        Text('${widget.app.aName} khud nahi bhejta: aap dabayengi tabhi jayega.', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+        Text('${widget.app.aName} does not send by itself: it goes only when you tap.', style: const TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
     );
   }
@@ -1616,7 +1616,7 @@ class DarziDayCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.content_cut_rounded, color: C.accent, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text('Aaj ki silai', style: display(16))),
+            Expanded(child: Text('Today\'s stitching', style: display(16))),
             if ((v['late'] ?? 0) > 0) Pill('${v['late']} der', fg: C.bad),
           ]),
           const SizedBox(height: 8),
@@ -1625,7 +1625,7 @@ class DarziDayCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DarziScreen(app: app))),
-              child: const Text('Darzi kholo'),
+              child: const Text('Open tailor'),
             ),
           ),
         ]),

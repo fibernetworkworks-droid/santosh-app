@@ -14,13 +14,13 @@ class CallRateCard extends StatefulWidget {
 }
 
 const _reasons = {
-  'cut_off': 'Beech mein kaat diya',
-  'slow': 'Jawab der se aaya',
-  'misheard': 'Galat samjha',
-  'audio': 'Awaaz saaf nahi thi',
-  'not_done': 'Kaam nahi hua',
-  'too_long': 'Bahut lamba bola',
-  'robotic': 'Machine jaisa laga',
+  'cut_off': 'Cut me off',
+  'slow': 'The reply came late',
+  'misheard': 'Misunderstood',
+  'audio': 'The voice was not clear',
+  'not_done': 'The task did not happen',
+  'too_long': 'Talked too long',
+  'robotic': 'Felt like a machine',
 };
 
 class _CallRateCardState extends State<CallRateCard> {
@@ -54,21 +54,21 @@ class _CallRateCardState extends State<CallRateCard> {
           const Icon(Icons.call_end_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(done ? 'Shukriya! Isse calls behtar banengi.' : '${widget.app.aName} ke saath call kaisi rahi?',
+            child: Text(done ? 'Thank you! This will make calls better.' : '${widget.app.aName} — how was the call?',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
           if (!done && _good == null) ...[
             IconButton(
-                tooltip: 'Achhi', onPressed: _busy ? null : () => _send(true), icon: const Icon(Icons.thumb_up_alt_rounded, color: C.ok)),
+                tooltip: 'Good', onPressed: _busy ? null : () => _send(true), icon: const Icon(Icons.thumb_up_alt_rounded, color: C.ok)),
             IconButton(
-                tooltip: 'Theek nahi',
+                tooltip: 'Not good',
                 onPressed: _busy ? null : () => setState(() => _good = false),
                 icon: const Icon(Icons.thumb_down_alt_rounded, color: C.bad)),
           ],
         ]),
         if (_good == false && !_sent) ...[
           const SizedBox(height: 6),
-          const Text('Kya gadbad hui? (ek ya zyada)', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const Text('What went wrong? (one or more)', style: TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 6),
           Wrap(spacing: 6, runSpacing: 6, children: [
             for (final e in _reasons.entries)
@@ -81,13 +81,13 @@ class _CallRateCardState extends State<CallRateCard> {
           const SizedBox(height: 8),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: _busy ? null : () => _send(false), child: const Text('Bhejiye')),
+            child: TextButton(onPressed: _busy ? null : () => _send(false), child: const Text('Send')),
           ),
         ],
         if (_good == false && _sent)
           const Padding(
             padding: EdgeInsets.only(top: 4),
-            child: Text('Shukriya, yeh theek karne mein madad karega.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+            child: Text('Thank you, this will help fix it.', style: TextStyle(color: C.muted, fontSize: 12.5)),
           ),
       ]),
     );

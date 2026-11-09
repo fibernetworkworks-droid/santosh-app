@@ -16,7 +16,7 @@ import 'hoola_media.dart';
 /// not the small preview); PDF / Office / any other file opens in the phone's own app (the signed link, as before).
 
 /// The words a files-only message carries to Hoola (the bubble then shows only the tiles).
-const fileOnlyText = 'Ye file dekho';
+const fileOnlyText = 'Look at this file';
 
 /// One file waiting in the typing box.
 class TrayFile {
@@ -237,7 +237,7 @@ class AttachTray extends StatelessWidget {
 bool filesOnlyText(String text, List files) {
   final t = text.trim();
   if (files.isEmpty) return false;
-  if (t == fileOnlyText) return true;
+  if (t == fileOnlyText || t == 'Ye file dekho') return true;   // the old Hinglish stand-in is still recognised
   final lines = t.split('\n').where((l) => l.trim().isNotEmpty).toList();
   return lines.isNotEmpty && lines.every((l) => l.trim().startsWith('📎 '));
 }
@@ -310,7 +310,7 @@ void openAttachment(BuildContext context, Santosh app, List<Map<String, dynamic>
   final url = '${f['url'] ?? ''}';
   if (!const {'image', 'video', 'audio'}.contains(k)) {
     if (url.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Yeh file ab server par nahi hai (24 ghante baad hat jaati hai).')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('This file is no longer on the server (it is removed after 24 hours).')));
     } else {
       hoolaOpenUrl(app, url);
     }
@@ -361,7 +361,7 @@ class _AttachViewerState extends State<AttachViewer> {
         ]),
         actions: [
           if (url.isNotEmpty)
-            IconButton(tooltip: 'Phone mein kholiye / download', onPressed: () => hoolaOpenUrl(widget.app, url), icon: const Icon(Icons.download_rounded)),
+            IconButton(tooltip: 'Open in phone / download', onPressed: () => hoolaOpenUrl(widget.app, url), icon: const Icon(Icons.download_rounded)),
         ],
       ),
       body: PageView.builder(
@@ -397,7 +397,7 @@ class _FullPhoto extends StatelessWidget {
             Image.network(abs, fit: BoxFit.contain, gaplessPlayback: true,
                 frameBuilder: (_, child, frame, sync) => AnimatedOpacity(opacity: frame == null ? 0 : 1, duration: const Duration(milliseconds: 160), child: child),
                 errorBuilder: (_, __, ___) => small == null
-                    ? const Text('Photo ab server par nahi hai.', style: TextStyle(color: Colors.white70))
+                    ? const Text('The photo is no longer on the server.', style: TextStyle(color: Colors.white70))
                     : const SizedBox.shrink()),
         ]),
       ),
@@ -423,7 +423,7 @@ class _FullPlayerState extends State<_FullPlayer> {
     super.initState();
     final url = '${widget.f['url'] ?? ''}';
     if (url.isEmpty) {
-      _err = 'Yeh file ab server par nahi hai.';
+      _err = 'This file is no longer on the server.';
       return;
     }
     final c = VideoPlayerController.networkUrl(Uri.parse(widget.app.api?.absolute(url) ?? url));
@@ -433,7 +433,7 @@ class _FullPlayerState extends State<_FullPlayer> {
       setState(() {});
       c.play();
     }).catchError((Object e) {
-      if (mounted) setState(() => _err = 'Chal nahi paya: $e');
+      if (mounted) setState(() => _err = 'Could not play: $e');
     });
     c.addListener(_tick);
   }

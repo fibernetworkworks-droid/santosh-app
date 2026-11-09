@@ -51,7 +51,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
     try {
       await job();
     } catch (e) {
-      _say('Nahi ho paya: $e (link 24 ghante chalta hai; purani photo ho to dobara banwaiye)');
+      _say('Failed: $e (the link lasts 24 hours; for an old photo, have it made again)');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -61,13 +61,13 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
         final p = await _local();
         if (p == null) return;
         final err = await Native.saveImage(p, _name);
-        _say(err ?? 'Gallery mein save ho gayi (Pictures/Hoola)');
+        _say(err ?? 'Saved to gallery (Pictures/Hoola)');
       });
 
   Future<void> _share() => _run(() async {
         final p = await _local();
         if (p == null) return;
-        final err = await Native.shareFile(p, mime: 'image/png', title: 'Photo bhejiye');
+        final err = await Native.shareFile(p, mime: 'image/png', title: 'Send photo');
         if (err != null) _say(err);
       });
 
@@ -77,7 +77,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
     if (t.isEmpty || fid == null) return;
     _ctl.clear();
     FocusScope.of(context).unfocus();
-    await widget.app.send('Is photo mein yeh badlav karo: $t', files: [fid]);
+    await widget.app.send('Make this change in this photo: $t', files: [fid]);
   }
 
   void _open() {
@@ -103,7 +103,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
             Icon(_edit ? Icons.auto_fix_high_rounded : Icons.image_rounded, color: C.teal),
             const SizedBox(width: 10),
             Expanded(
-                child: Text(_edit ? 'Photo badli' : 'Photo bani',
+                child: Text(_edit ? 'Photo changed' : 'Photo made',
                     style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5))),
             Text('${v['aspect'] ?? ''} · ${best ? 'best' : 'fast'}', style: const TextStyle(color: C.faint, fontSize: 12)),
           ]),
@@ -123,7 +123,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
                         errorBuilder: (c, e, s) => Container(
                             height: 120,
                             alignment: Alignment.center,
-                            child: const Text('Photo ka link purana ho gaya (24 ghante)', style: TextStyle(color: C.faint)))),
+                            child: const Text('The photo link has expired (24 hours)', style: TextStyle(color: C.faint)))),
               ),
             ),
           ),
@@ -132,7 +132,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
             Text(prompt, maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.faint, fontSize: 12.5)),
           ],
           const SizedBox(height: 4),
-          const Text('AI se bana · Hoola', style: TextStyle(color: C.faint, fontSize: 11)),
+          const Text('AI-made · Hoola', style: TextStyle(color: C.faint, fontSize: 11)),
           const SizedBox(height: 8),
           Wrap(spacing: 8, runSpacing: 6, children: [
             OutlinedButton.icon(
@@ -142,7 +142,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
             OutlinedButton.icon(
                 onPressed: _busy ? null : _share,
                 icon: const Icon(Icons.share_rounded, size: 18),
-                label: const Text('Bhejo')),
+                label: const Text('Send')),
           ]),
           const SizedBox(height: 8),
           Row(children: [
@@ -154,7 +154,7 @@ class _PhotoMadeCardState extends State<PhotoMadeCard> {
                 textInputAction: TextInputAction.send,
                 onSubmitted: (_) => _change(),
                 decoration: const InputDecoration(
-                    isDense: true, hintText: 'Badlav bolo: "rang neela karo"', border: OutlineInputBorder()),
+                    isDense: true, hintText: 'Say the change: "make the colour blue"', border: OutlineInputBorder()),
               ),
             ),
             IconButton(onPressed: _change, icon: const Icon(Icons.send_rounded, color: C.teal)),

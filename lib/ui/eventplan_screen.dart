@@ -20,7 +20,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').replaceAll('₹', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -28,7 +28,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}, Set<String> multi = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}, Set<String> multi = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -41,7 +41,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -67,7 +67,7 @@ Widget _draftButtons(Map<String, dynamic> draft) {
   return Wrap(spacing: 8, runSpacing: 6, children: [
     if (wa.isNotEmpty) GlassButton(label: 'WhatsApp draft', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: wa)),
     if (sms.isNotEmpty) GlassButton(label: 'SMS draft', icon: Icons.sms_rounded, height: 40, onTap: () => Native.openExternal(url: sms)),
-    if (upi.isNotEmpty) GlassButton(label: 'UPI app kholo', icon: Icons.currency_rupee_rounded, height: 40, onTap: () => Native.openExternal(url: upi)),
+    if (upi.isNotEmpty) GlassButton(label: 'Open UPI app', icon: Icons.currency_rupee_rounded, height: 40, onTap: () => Native.openExternal(url: upi)),
   ]);
 }
 
@@ -79,9 +79,9 @@ Future<Map<String, dynamic>> _proof(Santosh app, String challengePath, String fa
       [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
   if (r['signature'] == null) {
     throw ApiException(428, switch (_s(r['error'])) {
-      'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-      'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-      _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+      'cancelled' => 'Fingerprint was not given, so approval did not happen.',
+      'key_invalidated' => 'A new fingerprint was added on this phone: go to Profile > Approve with fingerprint and connect the phone again.',
+      _ => 'Approval by fingerprint did not work (${_s(r['error'])}).',
     });
   }
   return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -139,18 +139,18 @@ class _EventplanScreenState extends State<EventplanScreen> {
       .then((_) => _load());
 
   Future<void> _newEvent() async {
-    final f = await _form(context, 'Naya event', const [
-      ('name', 'Event ka naam (jaise Acme dealer meet)'),
+    final f = await _form(context, 'New event', const [
+      ('name', 'Event name (for example Acme dealer meet)'),
       ('client', 'Client'),
-      ('client_phone', 'Client ka phone'),
-      ('day', 'Tareekh (DD-MM-YYYY)'),
-      ('start', 'Shuru (HH:MM)'),
-      ('end', 'Khatam (HH:MM)'),
+      ('client_phone', 'Client\'s phone'),
+      ('day', 'Date (DD-MM-YYYY)'),
+      ('start', 'Start (HH:MM)'),
+      ('end', 'End (HH:MM)'),
       ('venue', 'Venue'),
-      ('city', 'Shahar'),
-      ('headcount', 'Kitne log'),
-      ('budget', 'Client ka budget'),
-      ('brief', 'Brief (client ke shabd)'),
+      ('city', 'City'),
+      ('headcount', 'How many people'),
+      ('budget', 'Client\'s budget'),
+      ('brief', 'Brief (in the client\'s words)'),
     ], multi: const {'brief'});
     if (f == null) return;
     final r = await _run('POST', '/api/eventplan/events', {
@@ -168,16 +168,16 @@ class _EventplanScreenState extends State<EventplanScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(w['bookings']).isNotEmpty) const Caption('VENDOR BOOKING: AAPKI HAAN'),
+      if (_list(w['bookings']).isNotEmpty) const Caption('VENDOR BOOKING: YOUR YES'),
       for (final b in _list(w['bookings']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: EventplanBookingCard(app: widget.app, data: {'booking': b}, onDone: _load)),
-      if (_list(w['docs']).isNotEmpty) const Caption('QUOTE / INVOICE: AAPKI HAAN'),
+      if (_list(w['docs']).isNotEmpty) const Caption('QUOTE / INVOICE: YOUR YES'),
       for (final d in _list(w['docs']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: EventplanDocCard(app: widget.app, data: {'doc': d}, onDone: _load)),
-      if (_list(w['messages']).isNotEmpty) const Caption('MESSAGE / INVITE: AAPKI HAAN'),
+      if (_list(w['messages']).isNotEmpty) const Caption('MESSAGE / INVITE: YOUR YES'),
       for (final m in _list(w['messages']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: EventplanMessageCard(app: widget.app, data: {'message': m}, onDone: _load)),
-      if (_list(w['spends']).isNotEmpty) const Caption('KHARCHA: AAPKI HAAN'),
+      if (_list(w['spends']).isNotEmpty) const Caption('EXPENSE: YOUR YES'),
       for (final x in _list(w['spends']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: EventplanSpendCard(app: widget.app, data: {'spend': x}, onDone: _load)),
     ]);
@@ -186,9 +186,9 @@ class _EventplanScreenState extends State<EventplanScreen> {
   Widget _events() {
     final es = _list(_d?['events']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Naya event', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newEvent),
+      GradientButton(label: 'New event', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newEvent),
       const SizedBox(height: 12),
-      if (es.isEmpty) const Text('Abhi koi event nahi.', style: TextStyle(color: C.muted)),
+      if (es.isEmpty) const Text('No events yet.', style: TextStyle(color: C.muted)),
       for (final e in es)
         Padding(
           padding: const EdgeInsets.only(bottom: 10),
@@ -199,7 +199,7 @@ class _EventplanScreenState extends State<EventplanScreen> {
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_s(e['number'])} · ${_s(e['name'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                Text([_s(e['day']), _s(e['client']), _s(e['kind_label']), if (e['headcount'] != null) '${_s(e['headcount'])} log']
+                Text([_s(e['day']), _s(e['client']), _s(e['kind_label']), if (e['headcount'] != null) '${_s(e['headcount'])} people']
                     .where((x) => x.isNotEmpty).join(' · '), style: const TextStyle(fontSize: 12.5, color: C.muted)),
               ])),
               Pill(_s(e['status_label'])),
@@ -213,9 +213,9 @@ class _EventplanScreenState extends State<EventplanScreen> {
     final vs = _list(_d?['vendors']);
     final heads = _m(_d?['heads']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Vendor jodo', icon: Icons.person_add_rounded, height: 44, onTap: _busy ? null : () async {
+      GradientButton(label: 'Add vendor', icon: Icons.person_add_rounded, height: 44, onTap: _busy ? null : () async {
         final f = await _form(context, 'Vendor', [
-          ('name', 'Naam'), ('head', 'Kaam: ${heads.keys.join(' / ')}'), ('phone', 'Phone'), ('upi_id', 'UPI ID (advance ke liye)'),
+          ('name', 'Name'), ('head', 'Role: ${heads.keys.join(' / ')}'), ('phone', 'Phone'), ('upi_id', 'UPI ID (for the advance)'),
           ('gstin', 'GSTIN'), ('fssai', 'FSSAI no (caterer)'), ('notes', 'Note'),
         ]);
         if (f != null) await _run('POST', '/api/eventplan/vendors', f);
@@ -236,21 +236,21 @@ class _EventplanScreenState extends State<EventplanScreen> {
     final team = _list(st['team']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_s(st['firm']).isEmpty ? 'Firm ka naam nahi' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
-        Text('${_s(st['gstin']).isEmpty ? 'GSTIN nahi' : 'GSTIN ${_s(st['gstin'])}'} · GST ${_s(st['gst_pct'])}% (SAC ${_s(st['sac'])})',
+        Text(_s(st['firm']).isEmpty ? 'No firm name' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text('${_s(st['gstin']).isEmpty ? 'No GSTIN' : 'GSTIN ${_s(st['gstin'])}'} · GST ${_s(st['gst_pct'])}% (SAC ${_s(st['sac'])})',
             style: const TextStyle(color: C.muted)),
-        Text('Kamai: ${_s(st['fee_mode'])} · margin ${_s(st['margin_pct'])}% · fee ${_s(st['fee_pct'])}%', style: const TextStyle(fontSize: 12.5)),
-        Text('Sound ${_s(st['sound_till'])} tak (Noise Rules) · subah ka note ${_s(st['morning_time'])}', style: const TextStyle(fontSize: 12.5)),
-        Text('UPI: ${_s(st['upi_id']).isEmpty ? '(Employee profile se)' : _s(st['upi_id'])}', style: const TextStyle(fontSize: 12.5)),
+        Text('Earning: ${_s(st['fee_mode'])} · margin ${_s(st['margin_pct'])}% · fee ${_s(st['fee_pct'])}%', style: const TextStyle(fontSize: 12.5)),
+        Text('Sound ${_s(st['sound_till'])} until (Noise Rules) · morning note ${_s(st['morning_time'])}', style: const TextStyle(fontSize: 12.5)),
+        Text('UPI: ${_s(st['upi_id']).isEmpty ? '(from the Employee profile)' : _s(st['upi_id'])}', style: const TextStyle(fontSize: 12.5)),
         if (team.isNotEmpty) Text('Team: ${team.map((t) => _s(t['name'])).join(', ')}', style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
-        GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: () async {
-          final f = await _form(context, 'Niyam', const [
-            ('firm', 'Firm'), ('gstin', 'GSTIN'), ('address', 'Pata'), ('phone', 'Phone'), ('email', 'Email'), ('upi_id', 'UPI ID'),
-            ('fee_mode', 'Kamai: markup / fee / none'), ('margin_pct', 'Margin % (vendor kharche par)'), ('fee_pct', 'Fee % (fee mode)'),
-            ('gst_pct', 'GST % (CA se pakka; event management 18%)'), ('validity_days', 'Quote kitne din valid'),
-            ('sound_till', 'Sound kab tak (22:00; state chhoot ho to 23:59 tak)'), ('morning_time', 'Subah ka note (HH:MM)'),
-            ('team', 'Team: har line "Naam, phone, role"'), ('terms', 'Terms'),
+        GlassButton(label: 'Change', icon: Icons.edit_rounded, height: 40, onTap: () async {
+          final f = await _form(context, 'Rules', const [
+            ('firm', 'Firm'), ('gstin', 'GSTIN'), ('address', 'Address'), ('phone', 'Phone'), ('email', 'Email'), ('upi_id', 'UPI ID'),
+            ('fee_mode', 'Earning: markup / fee / none'), ('margin_pct', 'Margin % (on vendor costs)'), ('fee_pct', 'Fee % (fee mode)'),
+            ('gst_pct', 'GST % (confirm with your CA; event management 18%)'), ('validity_days', 'Quote valid for how many days'),
+            ('sound_till', 'Sound until when (22:00; 23:59 if the state allows)'), ('morning_time', 'Morning note (HH:MM)'),
+            ('team', 'Team: each line "Name, phone, role"'), ('terms', 'Terms'),
           ], multi: const {'team', 'terms'}, initial: {for (final k in ['firm', 'gstin', 'address', 'phone', 'email', 'upi_id', 'fee_mode', 'terms',
             'sound_till', 'morning_time']) k: _s(st[k])});
           if (f == null) return;
@@ -270,14 +270,14 @@ class _EventplanScreenState extends State<EventplanScreen> {
         }),
       ])),
       const SizedBox(height: 10),
-      const Text('Vendor ke daam sirf unke quote se; Hoola daam, tareekh ya licence nahi gadhta. Booking, advance, quotation, '
-          'invite aur kharcha sirf aapki haan se.', style: TextStyle(fontSize: 12, color: C.faint)),
+      const Text('Vendor prices only from their quotes; Hoola never makes up prices, dates or licences. Booking, advance, quotation, '
+          'invites and expenses only with your yes.', style: TextStyle(fontSize: 12, color: C.faint)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Events', 'Vendors', 'Niyam'];
+    const tabs = ['Today', 'Events', 'Vendors', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Event Sahayak'),
@@ -340,9 +340,9 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
 
   Future<void> _edit() async {
     final e = _e ?? {};
-    final f = await _form(context, 'Event badlo', const [
+    final f = await _form(context, 'Change event', const [
       ('client', 'Client'), ('client_phone', 'Client phone'), ('client_gstin', 'Client GSTIN'), ('client_state', 'Client state code'),
-      ('day', 'Tareekh'), ('start', 'Shuru'), ('end', 'Khatam'), ('venue', 'Venue'), ('headcount', 'Log'), ('budget', 'Client ka budget'),
+      ('day', 'Date'), ('start', 'Start'), ('end', 'End'), ('venue', 'Venue'), ('headcount', 'People'), ('budget', 'Client\'s budget'),
     ], initial: {for (final k in ['client', 'client_phone', 'client_gstin', 'client_state', 'day', 'start', 'end', 'venue']) k: _s(e[k]),
       'headcount': _s(e['headcount']), 'budget': _s(e['budget'])});
     if (f == null) return;
@@ -352,15 +352,15 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
   Future<void> _facts() async {
     final cur = _m(_e?['facts']);
     final keys = const {
-      'sound': 'Sound / loudspeaker', 'food': 'Khana', 'music': 'Recorded music', 'alcohol': 'Sharab', 'pandal': 'Pandal / temporary structure',
-      'stage': 'Bada stage / truss', 'fireworks': 'Aatishbaazi', 'drone': 'Drone', 'road': 'Sadak / rally', 'ticketed': 'Ticket bikenge',
+      'sound': 'Sound / loudspeaker', 'food': 'Food', 'music': 'Recorded music', 'alcohol': 'Liquor', 'pandal': 'Pandal / temporary structure',
+      'stage': 'Large stage / truss', 'fireworks': 'Fireworks', 'drone': 'Drone', 'road': 'Road / rally', 'ticketed': 'Tickets will be sold',
     };
     final sel = {for (final k in keys.keys) k: cur[k] == true};
     String venueKind = _s(cur['venue_kind']).isEmpty ? 'indoor' : _s(cur['venue_kind']);
     final ok = await showDialog<bool>(
       context: context,
       builder: (d) => StatefulBuilder(builder: (d, set) => AlertDialog(
-        title: const Text('Event mein kya hoga?'),
+        title: const Text('What will happen at the event?'),
         content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
           Wrap(spacing: 6, children: [
             for (final v in const ['indoor', 'hotel', 'open', 'public'])
@@ -370,7 +370,7 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
             CheckboxListTile(value: sel[e.key], title: Text(e.value), dense: true, onChanged: (v) => set(() => sel[e.key] = v == true)),
         ])),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
           TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Save')),
         ],
       )),
@@ -380,35 +380,35 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
   }
 
   Future<void> _vquote() async {
-    final f = await _form(context, 'Vendor ka quote (jaisa unhone bataya)', const [
-      ('vendor', 'Vendor ka naam'), ('amount', 'Rakam (per plate ho to ek plate ki)'), ('per', 'per: khaali / plate / person / hour / day'),
-      ('qty', 'Kitne (plate / ghante)'), ('gst', 'GST: shamil / alag / pata nahi'), ('gst_pct', 'GST %'), ('what', 'Kya milega'),
-      ('advance_pct', 'Advance %'), ('cancel_terms', 'Radd karne ki shart'), ('includes', 'Kya shamil'),
+    final f = await _form(context, 'Vendor\'s quote (as they gave it)', const [
+      ('vendor', 'Vendor name'), ('amount', 'Amount (if per plate, for one plate)'), ('per', 'per: blank / plate / person / hour / day'),
+      ('qty', 'How many (plates / hours)'), ('gst', 'GST: included / extra / not known'), ('gst_pct', 'GST %'), ('what', 'What you get'),
+      ('advance_pct', 'Advance %'), ('cancel_terms', 'Cancellation terms'), ('includes', 'What is included'),
     ]);
     if (f == null) return;
     final g = (f['gst'] ?? '').toLowerCase();
     await _run('POST', '$_base/vquotes', {
       ...f, 'amount': _n(f['amount']), if (f['qty'] != null) 'qty': _n(f['qty']), if (f['gst_pct'] != null) 'gst_pct': _n(f['gst_pct']),
       if (f['advance_pct'] != null) 'advance_pct': _n(f['advance_pct']),
-      'gst_included': g.startsWith('sha') ? true : (g.startsWith('alag') ? false : null),
+      'gst_included': (g.startsWith('sha') || g.startsWith('inc')) ? true : ((g.startsWith('alag') || g.startsWith('ext')) ? false : null),
     });
   }
 
   Future<void> _budgetLine() async {
     final f = await _form(context, 'Budget line', const [
-      ('item', 'Item'), ('head', 'Head (venue / catering / decor / sound ...)'), ('cost', 'Kharcha (vendor ka quote / aapka; khaali = baad mein)'),
-      ('margin_pct', 'Margin % (khaali = aapka default)'), ('pure', 'Client ki taraf se seedha (pure agent)? haan / nahi'),
+      ('item', 'Item'), ('head', 'Head (venue / catering / decor / sound ...)'), ('cost', 'Cost (vendor quote / yours; blank = later)'),
+      ('margin_pct', 'Margin % (blank = your default)'), ('pure', 'Directly on the client\'s behalf (pure agent)? yes / no'),
     ]);
     if (f == null) return;
     await _run('POST', '$_base/budget', {'lines': [
       {'item': f['item'] ?? '', 'head': f['head'] ?? '', if (f['cost'] != null) 'cost': _n(f['cost']),
-        if (f['margin_pct'] != null) 'margin_pct': _n(f['margin_pct']), 'pure_agent': (f['pure'] ?? '').toLowerCase().startsWith('h')},
+        if (f['margin_pct'] != null) 'margin_pct': _n(f['margin_pct']), 'pure_agent': (f['pure'] ?? '').toLowerCase().startsWith(RegExp('[hy]'))},
     ]});
   }
 
   Future<void> _book(Map<String, dynamic> q) async {
     final f = await _form(context, 'Booking: ${_s(q['vendor'])}', const [
-      ('advance', 'Advance (khaali = quote ka %)'), ('advance_due', 'Advance kab tak (DD-MM-YYYY)'), ('arrive', 'Event ke din pahunchna (HH:MM)'),
+      ('advance', 'Advance (blank = % of the quote)'), ('advance_due', 'Advance by when (DD-MM-YYYY)'), ('arrive', 'Reach on the event day (HH:MM)'),
     ]);
     if (f == null) return;
     await _run('POST', '$_base/bookings', {'quote': _s(q['id']), if (f['advance'] != null) 'advance': _n(f['advance']),
@@ -416,7 +416,7 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
   }
 
   Future<void> _guests() async {
-    final f = await _form(context, 'Mehmaan jodo', const [('text', 'Har line: Naam phone, group')], multi: const {'text'});
+    final f = await _form(context, 'Add guest', const [('text', 'Each line: Name phone, group')], multi: const {'text'});
     if (f == null) return;
     await _run('POST', '$_base/guests', {'text': f['text'] ?? ''});
   }
@@ -437,7 +437,7 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
   }
 
   Future<void> _rsvp(Map<String, dynamic> g) async {
-    final f = await _form(context, 'Jawab: ${_s(g['name'])}', const [('words', 'Unka jawab (haan +2 / nahi / shayad)')]);
+    final f = await _form(context, 'Reply: ${_s(g['name'])}', const [('words', 'Their reply (yes +2 / no / maybe)')]);
     if (f == null) return;
     await _run('POST', '$_base/rsvp', {'guest': _s(g['id']), 'words': f['words'] ?? ''});
   }
@@ -453,14 +453,14 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
   }
 
   Future<void> _spend() async {
-    final f = await _form(context, 'Kharcha (aapki haan se)', const [('what', 'Kis cheez ka'), ('amount', 'Rakam (bill se)'), ('payee', 'Kisko'),
+    final f = await _form(context, 'Expense (with your yes)', const [('what', 'For what'), ('amount', 'Amount (from the bill)'), ('payee', 'To whom'),
       ('head', 'Head')]);
     if (f == null) return;
     await _run('POST', '$_base/spends', {...f, 'amount': _n(f['amount'])});
   }
 
   Future<void> _report() async {
-    final f = await _form(context, 'Event ke baad', const [('attended', 'Kitne aaye'), ('issues', 'Dikkatein (har line ek)'), ('notes', 'Note')],
+    final f = await _form(context, 'After the event', const [('attended', 'How many came'), ('issues', 'Problems (one per line)'), ('notes', 'Note')],
         multi: const {'issues', 'notes'});
     if (f == null) return;
     await _run('POST', '$_base/report', {if (f['attended'] != null) 'attended': _n(f['attended']), 'notes': f['notes'] ?? '',
@@ -495,32 +495,32 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${_s(e['kind_label'])} · ${_s(e['status_label'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-            Text('${_s(e['day']).isEmpty ? '[tareekh?]' : _s(e['day'])} ${_s(e['start'])}-${_s(e['end'])} · ${_s(e['venue']).isEmpty ? '[venue?]' : _s(e['venue'])}',
+            Text('${_s(e['day']).isEmpty ? '[date?]' : _s(e['day'])} ${_s(e['start'])}-${_s(e['end'])} · ${_s(e['venue']).isEmpty ? '[venue?]' : _s(e['venue'])}',
                 style: const TextStyle(fontSize: 13)),
-            Text('Client: ${_s(e['client'])} · ${_s(e['headcount'])} log · budget ${_s(e['budget_text'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+            Text('Client: ${_s(e['client'])} · ${_s(e['headcount'])} people · budget ${_s(e['budget_text'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
             const SizedBox(height: 6),
-            GlassButton(label: 'Event mein kya hoga (permission ke liye)', icon: Icons.checklist_rounded, height: 38, onTap: _busy ? null : _facts),
+            GlassButton(label: 'What will happen at the event (for the permission)', icon: Icons.checklist_rounded, height: 38, onTap: _busy ? null : _facts),
           ])),
           _section('BUDGET', [
             Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_s(b['say']), style: const TextStyle(fontSize: 13)),
               for (final l in _list(b['lines']))
                 Text('${_s(l['id'])} ${_s(l['head_label'])}: ${_s(l['item'])} · kharcha ${_rs(l['cost'])} → client ${_rs(l['client_price'])}'
-                    '${l['pure_agent'] == true ? ' (seedha)' : ''}', style: TextStyle(fontSize: 12, color: l['cost'] == null ? C.warn : C.ink)),
+                    '${l['pure_agent'] == true ? ' (direct)' : ''}', style: TextStyle(fontSize: 12, color: l['cost'] == null ? C.warn : C.ink)),
               for (final w in _strs(b['warnings'])) Text('⚠ $w', style: const TextStyle(fontSize: 12, color: C.warn)),
             ])),
           ], action: IconButton(icon: const Icon(Icons.add_rounded, color: C.accent), onPressed: _busy ? null : _budgetLine)),
           _section('VENDOR QUOTES', [
             for (final q in vq)
               Glass(margin: const EdgeInsets.only(bottom: 8), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('${_s(q['head_label'])} · ${_s(q['vendor'])} · ${_rs(q['total'] ?? q['base'])}${q['chosen'] == true ? '  ✓ chuna' : ''}',
+                Text('${_s(q['head_label'])} · ${_s(q['vendor'])} · ${_rs(q['total'] ?? q['base'])}${q['chosen'] == true ? '  ✓ chosen' : ''}',
                     style: const TextStyle(fontWeight: FontWeight.w700)),
                 if (_s(q['note']).isNotEmpty) Text('⚠ ${_s(q['note'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
                 Text([_s(q['what']), if (q['advance_pct'] != null) 'advance ${_s(q['advance_pct'])}%', _s(q['cancel_terms'])]
                     .where((x) => x.isNotEmpty).join(' · '), style: const TextStyle(fontSize: 12, color: C.muted)),
                 Wrap(spacing: 8, children: [
-                  if (q['chosen'] != true) GlassButton(label: 'Yeh chuno', height: 36, onTap: _busy ? null : () => _run('POST', '/api/eventplan/vquotes/${_s(q['id'])}/choose')),
-                  GlassButton(label: 'Book karo', icon: Icons.event_available_rounded, height: 36, onTap: _busy ? null : () => _book(q)),
+                  if (q['chosen'] != true) GlassButton(label: 'Choose this', height: 36, onTap: _busy ? null : () => _run('POST', '/api/eventplan/vquotes/${_s(q['id'])}/choose')),
+                  GlassButton(label: 'Book', icon: Icons.event_available_rounded, height: 36, onTap: _busy ? null : () => _book(q)),
                 ]),
               ])),
           ], action: IconButton(icon: const Icon(Icons.add_rounded, color: C.accent), onPressed: _busy ? null : _vquote)),
@@ -528,44 +528,44 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
             for (final d in _list(e['docs']).reversed.take(3))
               Padding(padding: const EdgeInsets.only(bottom: 8), child: EventplanDocCard(app: widget.app, data: {'doc': d}, onDone: _load)),
             Wrap(spacing: 8, runSpacing: 6, children: [
-              GlassButton(label: 'Quotation banao', icon: Icons.request_quote_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/quote')),
-              GlassButton(label: 'Invoice (event ke baad)', icon: Icons.receipt_long_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/invoice')),
-              GlassButton(label: 'Client se paise mile', icon: Icons.currency_rupee_rounded, height: 40, onTap: _busy ? null : () async {
-                final f = await _form(context, 'Client se mila', const [('amount', 'Kitne'), ('ref', 'UTR / cheque')]);
+              GlassButton(label: 'Make quotation', icon: Icons.request_quote_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/quote')),
+              GlassButton(label: 'Invoice (after the event)', icon: Icons.receipt_long_rounded, height: 40, onTap: _busy ? null : () => _run('POST', '$_base/invoice')),
+              GlassButton(label: 'Money received from client', icon: Icons.currency_rupee_rounded, height: 40, onTap: _busy ? null : () async {
+                final f = await _form(context, 'Received from client', const [('amount', 'How many'), ('ref', 'UTR / cheque')]);
                 if (f != null) await _run('POST', '$_base/client_paid', {'amount': _n(f['amount']), 'ref': f['ref'] ?? ''});
               }),
             ]),
           ]),
-          _section('BOOKING / KHARCHA', [
+          _section('BOOKING / EXPENSE', [
             for (final bk in _list(e['bookings']))
               Padding(padding: const EdgeInsets.only(bottom: 8), child: EventplanBookingCard(app: widget.app, data: {'booking': bk}, onDone: _load)),
             for (final x in _list(e['spends']))
               Padding(padding: const EdgeInsets.only(bottom: 8), child: EventplanSpendCard(app: widget.app, data: {'spend': x}, onDone: _load)),
           ], action: IconButton(icon: const Icon(Icons.add_card_rounded, color: C.accent), onPressed: _busy ? null : _spend)),
-          _section('MEHMAAN · ${_s(gs['total'])}', [
+          _section('GUESTS ·${_s(gs['total'])}', [
             Text(_s(g['say']), style: const TextStyle(fontSize: 12.5)),
             Wrap(spacing: 8, runSpacing: 6, children: [
-              GlassButton(label: 'Jodo', icon: Icons.person_add_alt_rounded, height: 38, onTap: _busy ? null : _guests),
+              GlassButton(label: 'Add', icon: Icons.person_add_alt_rounded, height: 38, onTap: _busy ? null : _guests),
               GlassButton(label: 'Sheet', icon: Icons.upload_file_rounded, height: 38, onTap: _busy ? null : _importGuests),
-              GlassButton(label: 'Invite (haan se)', icon: Icons.mail_rounded, height: 38,
+              GlassButton(label: 'Invite (with your yes)', icon: Icons.mail_rounded, height: 38,
                   onTap: _busy ? null : () => _run('POST', '$_base/messages', {'kind': 'invite'})),
-              GlassButton(label: 'Yaad dilao', icon: Icons.notifications_rounded, height: 38,
+              GlassButton(label: 'Remind', icon: Icons.notifications_rounded, height: 38,
                   onTap: _busy ? null : () => _run('POST', '$_base/messages', {'kind': 'reminder'})),
             ]),
             for (final x in _list(g['guests']).take(60))
               ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text(_s(x['name'])),
-                  subtitle: Text([_s(x['group']), x['invited'] == true ? 'invite gaya' : 'invite nahi', if (x['no_messages'] == true) 'message mat bhejo']
+                  subtitle: Text([_s(x['group']), x['invited'] == true ? 'invite sent' : 'no invite', if (x['no_messages'] == true) 'do not send the message']
                       .where((s) => s.isNotEmpty).join(' · ')),
                   trailing: Text('${_s(x['status']).isEmpty ? '?' : _s(x['status'])}${(x['plus'] ?? 0) == 0 ? '' : ' +${_s(x['plus'])}'}'),
                   onTap: _busy ? null : () => _rsvp(x)),
           ]),
-          _section('KAAM · ${_s(tk['late'])} der se', [
+          _section('TASK · ${_s(tk['late'])} late', [
             for (final t in _list(tk['tasks']))
               CheckboxListTile(dense: true, contentPadding: EdgeInsets.zero, value: t['status'] == 'done',
-                  title: Text(_s(t['what'])), subtitle: Text('${_s(t['due'])}${_s(t['owner']).isEmpty ? ' · koi zimmedar nahi' : ' · ${_s(t['owner'])}'}'),
+                  title: Text(_s(t['what'])), subtitle: Text('${_s(t['due'])}${_s(t['owner']).isEmpty ? ' · no one in charge' : ' · ${_s(t['owner'])}'}'),
                   onChanged: _busy ? null : (v) => _run('PATCH', '/api/eventplan/tasks/${_s(t['id'])}', {'status': v == true ? 'done' : 'open'}),
                   secondary: IconButton(icon: const Icon(Icons.person_rounded, size: 20), onPressed: _busy ? null : () async {
-                    final f = await _form(context, 'Zimmedar', const [('owner', 'Kaun karega'), ('due', 'Kab tak')], initial: {'owner': _s(t['owner'])});
+                    final f = await _form(context, 'Responsible', const [('owner', 'Who will do it'), ('due', 'By when')], initial: {'owner': _s(t['owner'])});
                     if (f != null) await _run('PATCH', '/api/eventplan/tasks/${_s(t['id'])}', f);
                   })),
           ]),
@@ -574,7 +574,7 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
             for (final p in _list(pm['permits']))
               ListTile(dense: true, contentPadding: EdgeInsets.zero,
                   title: Text(_s(p['label']), style: TextStyle(color: p['late'] == true ? C.warn : C.ink)),
-                  subtitle: Text('${_s(p['why'])}\n${_s(p['who'])} · ${_s(p['apply_by'])} tak${_s(p['ref']).isEmpty ? '' : ' · ${_s(p['ref'])}'}'),
+                  subtitle: Text('${_s(p['why'])}\n${_s(p['who'])} · ${_s(p['apply_by'])} until${_s(p['ref']).isEmpty ? '' : ' · ${_s(p['ref'])}'}'),
                   trailing: PopupMenuButton<String>(
                     child: Pill(_s(p['status'])),
                     onSelected: (v) => _run('POST', '$_base/permits', {'key': _s(p['key']), 'status': v}),
@@ -589,8 +589,8 @@ class _EventplanEventPageState extends State<EventplanEventPage> {
           ], action: IconButton(icon: const Icon(Icons.edit_note_rounded, color: C.accent), onPressed: _busy ? null : _show)),
           const SizedBox(height: 14),
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GlassButton(label: 'Event ke baad report', icon: Icons.summarize_rounded, height: 40, onTap: _busy ? null : _report),
-            GlassButton(label: 'Mehmaan / client ki details hatao', icon: Icons.delete_sweep_rounded, height: 40,
+            GlassButton(label: 'Report after the event', icon: Icons.summarize_rounded, height: 40, onTap: _busy ? null : _report),
+            GlassButton(label: 'Delete guest / client details', icon: Icons.delete_sweep_rounded, height: 40,
                 onTap: _busy ? null : () => _run('POST', '$_base/forget')),
           ]),
           const SizedBox(height: 30),
@@ -649,30 +649,30 @@ class _EventplanDocCardState extends State<EventplanDocCard> {
           const SizedBox(width: 8),
           Expanded(child: Text('${inv ? 'Invoice' : 'Quotation'} ${_s(d['number'])} · ${_s(d['client'])} · ${_s(d['total_text'])}',
               style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'draft' => 'draft', 'approved' => 'bhejne ko taiyaar', 'sent' => 'bheja',
-            'accepted' => 'pakka', 'rejected' => 'nahi', _ => st }, fg: st == 'waiting' ? C.accent : C.chip),
+          Pill(switch (st) { 'waiting' => 'your yes?', 'draft' => 'draft', 'approved' => 'ready to send', 'sent' => 'sent',
+            'accepted' => 'confirmed', 'rejected' => 'no', _ => st }, fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text('${_s(d['event'])} · taxable ${_rs(t['taxable'])} + GST ${_rs(t['tax'])}${t['intra'] == false ? ' (IGST)' : ' (CGST + SGST)'}'
-            '${(t['pure_agent'] ?? 0) == 0 ? '' : ' + seedha ${_rs(t['pure_agent'])}'}'
-            '${inv ? ' · baaki ${_rs(t['balance'])}' : ' · ${_s(d['valid_until'])} tak'}', style: const TextStyle(fontSize: 12.5)),
+            '${(t['pure_agent'] ?? 0) == 0 ? '' : ' + direct${_rs(t['pure_agent'])}'}'
+            '${inv ? ' · balance${_rs(t['balance'])}' : ' · ${_s(d['valid_until'])} until'}', style: const TextStyle(fontSize: 12.5)),
         for (final b in _strs(d['blanks'])) Text('⚠ $b', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
           if (st == 'draft' && _strs(d['blanks']).isEmpty)
-            GlassButton(label: 'Haan ke liye card', icon: Icons.send_rounded, height: 40,
+            GlassButton(label: 'Card for your yes', icon: Icons.send_rounded, height: 40,
                 onTap: _busy ? null : () => _post('/api/eventplan/docs/$id/request', {})),
           if (st == 'waiting') ...[
-            GradientButton(label: 'Haan, client ko bhejo', height: 42,
+            GradientButton(label: 'Yes, send to the client', height: 42,
                 onTap: _busy ? null : () => _post('/api/eventplan/docs/$id/decide', {'yes': true, 'hash': _s(d['hash'])})),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _post('/api/eventplan/docs/$id/decide', {'yes': false, 'hash': _s(d['hash'])})),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _post('/api/eventplan/docs/$id/decide', {'yes': false, 'hash': _s(d['hash'])})),
           ],
-          if (st == 'approved') GlassButton(label: 'Maine bhej diya', icon: Icons.check_rounded, height: 40,
+          if (st == 'approved') GlassButton(label: 'I sent it', icon: Icons.check_rounded, height: 40,
               onTap: _busy ? null : () => _post('/api/eventplan/docs/$id/mark', {'what': 'sent'})),
-          if (!inv && (st == 'approved' || st == 'sent')) GlassButton(label: 'Client ne maana', icon: Icons.handshake_rounded, height: 40,
+          if (!inv && (st == 'approved' || st == 'sent')) GlassButton(label: 'Client agreed', icon: Icons.handshake_rounded, height: 40,
               onTap: _busy ? null : () => _post('/api/eventplan/docs/$id/mark', {'what': 'accepted'})),
         ]),
         if (_draft.isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_draft)],
-        const Text('Client ko sirf aapki haan se jaata hai; message aap khud bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('It goes to the client only with your yes; you send the message yourself.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -724,31 +724,31 @@ class _EventplanBookingCardState extends State<EventplanBookingCard> {
           const Icon(Icons.event_available_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(b['number'])} · ${_s(b['vendor'])} · ${_s(b['amount_text'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'pakka', 'advance_paid' => 'advance diya', 'rejected' => 'nahi', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'confirmed', 'advance_paid' => 'advance paid', 'rejected' => 'no', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text('${_s(b['event'])} ${_s(b['day'])} · ${_s(b['head_label'])}'
-            '${(b['advance'] ?? 0) == 0 ? '' : ' · advance ${_s(b['advance_text'])}${_s(b['advance_due']).isEmpty ? '' : ' (${_s(b['advance_due'])} tak)'}'}'
-            '${_s(b['arrive']).isEmpty ? '' : ' · ${_s(b['arrive'])} pahunchna'}', style: const TextStyle(fontSize: 12.5)),
+            '${(b['advance'] ?? 0) == 0 ? '' : ' · advance ${_s(b['advance_text'])}${_s(b['advance_due']).isEmpty ? '' : ' (${_s(b['advance_due'])} until)'}'}'
+            '${_s(b['arrive']).isEmpty ? '' : ' · ${_s(b['arrive'])} arrive'}', style: const TextStyle(fontSize: 12.5)),
         if (_s(b['terms']).isNotEmpty) Text(_s(b['terms']), style: const TextStyle(fontSize: 12, color: C.muted)),
         for (final c in _strs(b['checks'])) Text('⚠ $c', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, book karo', height: 42, onTap: _busy ? null : () => _go(() => _decideWithFinger(widget.app,
+            Expanded(child: GradientButton(label: 'Yes, book', height: 42, onTap: _busy ? null : () => _go(() => _decideWithFinger(widget.app,
                 '/api/eventplan/bookings/$id/decide', '/api/eventplan/bookings/$id/challenge', {'yes': true, 'hash': _s(b['hash'])}, 'Vendor booking')))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _go(() async =>
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _go(() async =>
                 _m(await widget.app.api!.call('POST', '/api/eventplan/bookings/$id/decide', body: {'yes': false, 'hash': _s(b['hash'])})))),
           ]),
         if (st == 'approved')
-          GlassButton(label: 'Advance diya', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () async {
-            final f = await _form(context, 'Advance diya', const [('amount', 'Kitna'), ('ref', 'UTR')], initial: {'amount': _s(b['advance'])});
+          GlassButton(label: 'Advance given', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () async {
+            final f = await _form(context, 'Advance given', const [('amount', 'How much'), ('ref', 'UTR')], initial: {'amount': _s(b['advance'])});
             if (f == null) return;
             await _go(() async => _m(await widget.app.api!.call('POST', '/api/eventplan/bookings/$id/paid', body: {'amount': _n(f['amount']), 'ref': f['ref'] ?? ''})));
           }),
         if (_draft.isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_draft)],
-        const Text('Hoola khud paise nahi deta; advance aap apne UPI app se dengi.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola does not pay money itself; you pay the advance from your own UPI app.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -796,7 +796,7 @@ class _EventplanSpendCardState extends State<EventplanSpendCard> {
           const Icon(Icons.payments_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(x['number'])} · ${_s(x['what'])} · ${_s(x['amount_text'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'paid' => 'diya', 'rejected' => 'nahi', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'paid' => 'paid', 'rejected' => 'no', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text('${_s(x['event'])} · ${_s(x['head_label'])}${_s(x['payee']).isEmpty ? '' : ' · ${_s(x['payee'])}'}', style: const TextStyle(fontSize: 12.5)),
@@ -804,14 +804,14 @@ class _EventplanSpendCardState extends State<EventplanSpendCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan', height: 42, onTap: _busy ? null : () => _go(() => _decideWithFinger(widget.app,
-                '/api/eventplan/spends/$id/decide', '/api/eventplan/spends/$id/challenge', {'yes': true, 'hash': _s(x['hash'])}, 'Kharcha')))),
+            Expanded(child: GradientButton(label: 'Yes', height: 42, onTap: _busy ? null : () => _go(() => _decideWithFinger(widget.app,
+                '/api/eventplan/spends/$id/decide', '/api/eventplan/spends/$id/challenge', {'yes': true, 'hash': _s(x['hash'])}, 'Expense')))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _go(() async =>
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _go(() async =>
                 _m(await widget.app.api!.call('POST', '/api/eventplan/spends/$id/decide', body: {'yes': false, 'hash': _s(x['hash'])})))),
           ]),
         if (st == 'approved')
-          GlassButton(label: 'Maine de diya', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () => _go(() async =>
+          GlassButton(label: 'I gave it', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () => _go(() async =>
               _m(await widget.app.api!.call('POST', '/api/eventplan/spends/$id/paid', body: {})))),
       ]),
     );
@@ -863,8 +863,8 @@ class _EventplanMessageCardState extends State<EventplanMessageCard> {
         Row(children: [
           const Icon(Icons.mail_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('${_s(x['event'])} · ${_s(x['kind'])} · ${_s(x['count'])} log', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'links taiyaar', 'sent' => 'bheja', 'rejected' => 'nahi', _ => st },
+          Expanded(child: Text('${_s(x['event'])} · ${_s(x['kind'])} · ${_s(x['count'])} people', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'links ready', 'sent' => 'sent', 'rejected' => 'no', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text(_s(x['text']), style: const TextStyle(fontSize: 12.5)),
@@ -872,18 +872,18 @@ class _EventplanMessageCardState extends State<EventplanMessageCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, draft banao', height: 42,
+            Expanded(child: GradientButton(label: 'Yes, make the draft', height: 42,
                 onTap: _busy ? null : () => _post('/api/eventplan/messages/$id/decide', {'yes': true, 'hash': _s(x['hash'])}))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _post('/api/eventplan/messages/$id/decide', {'yes': false, 'hash': _s(x['hash'])})),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _post('/api/eventplan/messages/$id/decide', {'yes': false, 'hash': _s(x['hash'])})),
           ]),
         for (final l in _links.take(40))
           ListTile(dense: true, contentPadding: EdgeInsets.zero, title: Text(_s(l['name'])), subtitle: Text(_s(l['phone'])),
               trailing: IconButton(icon: const Icon(Icons.chat_rounded, color: C.ok),
                   onPressed: _s(l['wa']).isEmpty ? null : () => Native.openExternal(url: _s(l['wa'])))),
         if (st == 'approved')
-          GlassButton(label: 'Sab ko bhej diya', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () => _post('/api/eventplan/messages/$id/sent', {})),
-        const Text('Hoola khud message nahi bhejta; har link aap apne phone se bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+          GlassButton(label: 'Sent to everyone', icon: Icons.check_rounded, height: 40, onTap: _busy ? null : () => _post('/api/eventplan/messages/$id/sent', {})),
+        const Text('Hoola does not send messages itself; you send each link from your own phone.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }

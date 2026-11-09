@@ -18,10 +18,10 @@ String artifactAgo(String? iso) {
   final t = DateTime.tryParse(iso ?? '')?.toLocal();
   if (t == null) return '';
   final d = DateTime.now().difference(t);
-  if (d.inMinutes < 1) return 'abhi';
-  if (d.inHours < 1) return '${d.inMinutes} min pehle';
-  if (d.inDays < 1) return '${d.inHours} ghante pehle';
-  return '${d.inDays} din pehle';
+  if (d.inMinutes < 1) return 'now';
+  if (d.inHours < 1) return '${d.inMinutes} min ago';
+  if (d.inDays < 1) return '${d.inHours} hours ago';
+  return '${d.inDays} days ago';
 }
 
 /// Open an artifact full-screen. Returns when the screen is closed.
@@ -94,7 +94,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
           if (e.isForMainFrame == false || !mounted) return;
           setState(() {
             _loading = false;
-            _loadError = 'Page load nahi hua (${e.description})';
+            _loadError = 'Page did not load (${e.description})';
           });
         },
         onNavigationRequest: _onNav,
@@ -167,7 +167,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     var reloadNow = false;
     setState(() {
       _status = status;
-      _failNote = status == 'failed' ? ((error ?? '').isEmpty ? 'Badlaav nahi ho paya. Dobara boliye.' : error) : null;
+      _failNote = status == 'failed' ? ((error ?? '').isEmpty ? 'The change could not be made. Please say it again.' : error) : null;
       if (status == 'ready' && version > _latest) {
         _latest = version;
         _viewing = null; // a newer version is ready: show it
@@ -183,7 +183,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     if (api == null) {
       setState(() {
         _loading = false;
-        _loadError = 'Hoola se connect nahi hai.';
+        _loadError = 'Not connected to Hoola.';
       });
       return;
     }
@@ -234,23 +234,23 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       final rawArgs = msg['args'];
       final args = rawArgs is Map ? Map<String, dynamic>.from(rawArgs) : <String, dynamic>{};
       final api = app.api;
-      if (api == null) throw Exception('Hoola se connect nahi hai');
+      if (api == null) throw Exception('Not connected to Hoola');
       Object? result;
       switch (op) {
         case 'storage.get':
           final getKey = '${args['key'] ?? ''}';
-          if (getKey.isEmpty) throw Exception('key chahiye');
+          if (getKey.isEmpty) throw Exception('key needed');
           result = (await api.artifactState(widget.id))[getKey];
         case 'storage.set':
           final setKey = '${args['key'] ?? ''}';
-          if (setKey.isEmpty) throw Exception('key chahiye');
+          if (setKey.isEmpty) throw Exception('key needed');
           await api.artifactSetState(widget.id, setKey, args['value']);
           result = true;
         case 'storage.all':
           result = await api.artifactState(widget.id);
         case 'ask':
           final q = '${args['question'] ?? ''}'.trim();
-          if (q.isEmpty) throw Exception('question chahiye');
+          if (q.isEmpty) throw Exception('question needed');
           result = await api.artifactAsk(widget.id, q);
         default:
           await _reply(callId, false, 'Unknown op: $op');
@@ -285,7 +285,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       _ask.clear();
       if (mounted) setState(() => _status = 'building');
     } catch (e) {
-      _snack('Badlaav nahi bheja: ${_clean(e)}');
+      _snack('Change not sent: ${_clean(e)}');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
@@ -314,7 +314,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: Text('Versions', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           ),
-          if (vs.isEmpty) const ListTile(title: Text('Abhi sirf ek version hai')),
+          if (vs.isEmpty) const ListTile(title: Text('Only one version for now')),
           for (final v in vs)
             ListTile(
               leading: Pill('v${_num(v['version'])}'),
@@ -340,18 +340,18 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       if (!mounted) return;
       setState(() => _shared = r['shared'] == true);
       if (!on) {
-        _snack('Sharing band. Purana link ab nahi khulega.');
+        _snack('Sharing is off. The old link will no longer open.');
         return;
       }
       final raw = r['share_url'] as String? ?? '';
       if (raw.isEmpty) {
-        _snack('Share link nahi mila. Dobara koshish kijiye.');
+        _snack('Share link not found. Please try again.');
         return;
       }
       await Clipboard.setData(ClipboardData(text: api.absolute(raw)));
-      _snack('Link copy ho gaya. Jiske paas bhi yeh link hai, woh ise dekh sakta hai.');
+      _snack('Link copied. Anyone who has this link can view it.');
     } catch (e) {
-      _snack('Nahi ho paya: ${_clean(e)}');
+      _snack('Could not do it: ${_clean(e)}');
     }
   }
 
@@ -359,9 +359,9 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     if (_url.isEmpty) return;
     try {
       final ok = await launchUrl(Uri.parse(_url), mode: LaunchMode.externalApplication);
-      if (!ok) _snack('Browser nahi khula.');
+      if (!ok) _snack('Browser did not open.');
     } catch (_) {
-      _snack('Browser nahi khula.');
+      _snack('Browser did not open.');
     }
   }
 
@@ -369,14 +369,14 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Artifact hataiye?'),
-        content: Text('"$_title" aur iske saare versions hamesha ke liye hat jayenge. Share kiya hua link bhi band ho jayega.'),
+        title: const Text('Remove the artifact?'),
+        content: Text('"$_title" and all its versions will be deleted for good. The shared link will also stop working.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Leave it')),
           FilledButton(
             style: FilledButton.styleFrom(backgroundColor: C.bad, foregroundColor: Colors.white),
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Hataiye'),
+            child: const Text('Remove'),
           ),
         ],
       ),
@@ -392,7 +392,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
       }
       if (mounted) Navigator.of(context).pop();
     } catch (e) {
-      _snack('Nahi hata paya: ${_clean(e)}');
+      _snack('Could not delete: ${_clean(e)}');
     }
   }
 
@@ -449,12 +449,12 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
         radius: 20,
         child: Row(children: [
-          IconButton(tooltip: 'Band karo', icon: const Icon(Icons.close_rounded, color: C.chip), onPressed: () => Navigator.of(context).pop()),
+          IconButton(tooltip: 'Turn off', icon: const Icon(Icons.close_rounded, color: C.chip), onPressed: () => Navigator.of(context).pop()),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(_title.isEmpty ? 'Artifact' : _title,
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
-              Text(_shared ? 'Hoola Artifact · link se share' : 'Hoola Artifact',
+              Text(_shared ? 'Hoola Artifact · shared by link' : 'Hoola Artifact',
                   maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
             ]),
           ),
@@ -463,12 +463,12 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             icon: const Icon(Icons.more_vert_rounded, color: C.chip),
             onSelected: _menu,
             itemBuilder: (_) => [
-              const PopupMenuItem(value: 'versions', child: Text('Versions dekhiye')),
-              const PopupMenuItem(value: 'share', child: Text('Link share karein')),
-              if (_shared) const PopupMenuItem(value: 'unshare', child: Text('Sharing band karein')),
-              const PopupMenuItem(value: 'browser', child: Text('Browser mein kholiye')),
-              const PopupMenuItem(value: 'reload', child: Text('Dobara load karein')),
-              const PopupMenuItem(value: 'delete', child: Text('Hataiye', style: TextStyle(color: C.bad))),
+              const PopupMenuItem(value: 'versions', child: Text('See versions')),
+              const PopupMenuItem(value: 'share', child: Text('Share link')),
+              if (_shared) const PopupMenuItem(value: 'unshare', child: Text('Turn off sharing')),
+              const PopupMenuItem(value: 'browser', child: Text('Open in browser')),
+              const PopupMenuItem(value: 'reload', child: Text('Reload')),
+              const PopupMenuItem(value: 'delete', child: Text('Remove', style: TextStyle(color: C.bad))),
             ],
           ),
         ]),
@@ -488,7 +488,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
 
   Widget _strip() => _note(
         const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: C.accent)),
-        'Hoola bana raha hai… naya version taiyaar hote hi yahin khul jayega',
+        'Hoola is building… it will open here as soon as the new version is ready',
         const Color(0x2EFFB15C),
         const Color(0xFFFFD9A8),
       );
@@ -506,7 +506,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
 
   Widget _oldBanner() => _note(
         const Icon(Icons.history_rounded, color: C.chip, size: 18),
-        'Purana version v$_viewing dekh rahe hain',
+        'You are viewing an older version v$_viewing',
         const Color(0x17FFFFFF),
         C.chip,
         action: TextButton(
@@ -514,7 +514,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             setState(() => _viewing = null);
             _load();
           },
-          child: const Text('Naya dekhiye'),
+          child: const Text('See the new one'),
         ),
       );
 
@@ -526,11 +526,11 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Icon(building ? Icons.hourglass_top_rounded : Icons.cloud_off_rounded, color: C.muted, size: 40),
               const SizedBox(height: 10),
-              Text(building ? 'Abhi ban raha hai…' : 'Page nahi khula', style: display(18)),
+              Text(building ? 'Building now…' : 'Page did not open', style: display(18)),
               const SizedBox(height: 6),
               Text(_loadError ?? '', textAlign: TextAlign.center, style: const TextStyle(color: C.muted, fontSize: 13)),
               const SizedBox(height: 14),
-              GlassButton(label: 'Dobara koshish', icon: Icons.refresh_rounded, onTap: _load),
+              GlassButton(label: 'Try again', icon: Icons.refresh_rounded, onTap: _load),
             ]),
           ),
         ),
@@ -551,7 +551,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
               onSubmitted: (_) => _revise(),
               style: const TextStyle(fontSize: 14.5, color: C.ink),
               decoration: InputDecoration(
-                hintText: building ? 'Hoola bana raha hai…' : 'Badlaav batayiye… (e.g. dark mode, Hindi mein)',
+                hintText: building ? 'Hoola is building…' : 'Tell me the change… (e.g. dark mode, in Hindi)',
                 isDense: true,
                 border: InputBorder.none,
                 enabledBorder: InputBorder.none,
@@ -561,7 +561,7 @@ class _ArtifactScreenState extends State<ArtifactScreen> {
             ),
           ),
           IconButton(
-            tooltip: 'Badlaav bhejiye',
+            tooltip: 'Send change',
             onPressed: _sending || building ? null : _revise,
             icon: _sending
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: C.accent))
@@ -586,14 +586,14 @@ class ArtifactCard extends StatelessWidget {
     final summary = v['summary'] as String? ?? '';
     final version = _num(v['version']);
     final error = v['error'] as String? ?? '';
-    String chip = version > 1 ? 'v$version' : 'TAIYAAR';
+    String chip = version > 1 ? 'v$version' : 'READY';
     Color chipFg = C.ok;
     if (status == 'failed') {
-      chip = 'NAHI BANA';
+      chip = 'NOT MADE';
       chipFg = C.bad;
     }
     if (status == 'deleted') {
-      chip = 'HATA DIYA';
+      chip = 'REMOVED';
       chipFg = C.muted;
     }
     return Padding(
@@ -626,16 +626,16 @@ class ArtifactCard extends StatelessWidget {
           if (status == 'building')
             const Padding(
               padding: EdgeInsets.only(top: 6),
-              child: Text('Bana raha hoon… thodi der mein taiyaar', style: TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600)),
+              child: Text('Building… ready in a moment', style: TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600)),
             ),
           if (status == 'failed')
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(error.isEmpty ? 'Nahi ban paya. Hoola se dobara boliye.' : error, style: const TextStyle(color: C.bad, fontSize: 12.5)),
+              child: Text(error.isEmpty ? 'Could not be made. Ask Hoola again.' : error, style: const TextStyle(color: C.bad, fontSize: 12.5)),
             ),
           if (status != 'deleted' && id.isNotEmpty) ...[
             const SizedBox(height: 10),
-            GradientButton(label: 'Kholiye', height: 42, icon: Icons.open_in_full_rounded, onTap: () => openArtifact(context, app, id, title)),
+            GradientButton(label: 'Open', height: 42, icon: Icons.open_in_full_rounded, onTap: () => openArtifact(context, app, id, title)),
           ],
         ]),
       ),
@@ -689,10 +689,10 @@ class _ArtifactCallPillState extends State<ArtifactCallPill> {
     final failed = status == 'failed';
     final canOpen = ready && id.isNotEmpty && !app.lockedMode;
     final text = ready
-        ? (app.lockedMode ? '📄 $title — taiyaar, unlock karke dekhiye' : '📄 $title — taiyaar, Kholiye')
+        ? (app.lockedMode ? '📄 $title — ready, unlock to view' : '📄 $title — ready, Open')
         : failed
-            ? '📄 $title — nahi ban paya'
-            : '📄 $title — bana raha hoon…';
+            ? '📄 $title — could not be made'
+            : '📄 $title — building…';
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Center(

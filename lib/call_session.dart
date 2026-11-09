@@ -191,7 +191,7 @@ class CallSession extends ChangeNotifier {
   Future<void> start() async {
     if (inCall) return;
     if (app.conversationId == null || !app.connected) {
-      note = 'Pehle server se connect hone dijiye.';
+      note = 'Let it connect to the server first.';
       notifyListeners();
       return;
     }
@@ -276,7 +276,7 @@ class CallSession extends ChangeNotifier {
   Future<void> attachFiles(List<({String name, List<int> bytes})> files) async {
     if (!inCall || files.isEmpty) return;
     uploading = true;
-    _setFileNote('${files.map((f) => f.name).join(', ')} bhej raha hoon…', seconds: 600);
+    _setFileNote('${files.map((f) => f.name).join(', ')} sending…', seconds: 600);
     final ids = <String>[];
     final failed = <String>[];
     for (final f in files) {
@@ -289,10 +289,10 @@ class CallSession extends ChangeNotifier {
     }
     uploading = false;
     if (ids.isNotEmpty && !(_call?.sendFiles(ids) ?? false)) {
-      failed.add('Call ka connection nahi mila, file chat mein bhej di');
+      failed.add('The call connection was not found, the file was sent in chat');
       await app.send(files.map((f) => '📎 ${f.name}').join('\n'), files: ids);
     }
-    _setFileNote(failed.isEmpty ? '📎 File ${app.aName} tak pahunch gayi' : failed.join('\n'), seconds: failed.isEmpty ? 6 : 12);
+    _setFileNote(failed.isEmpty ? '📎 File ${app.aName} reached' : failed.join('\n'), seconds: failed.isEmpty ? 6 : 12);
   }
 
   /// v0.491 EQUAL POWER: she can TYPE into the call (a spelling, an address, a repair the voice ladder kept
@@ -302,16 +302,16 @@ class CallSession extends ChangeNotifier {
     final t = text.trim();
     if (t.isEmpty || !inCall) return;
     if (_call?.sendText(t) ?? false) {
-      _setFileNote('✍️ ${app.aName} ko likh diya', seconds: 4);
+      _setFileNote('✍️ ${app.aName} was written to', seconds: 4);
     } else {
       await app.send(t);
-      _setFileNote('Call ka connection nahi tha, aapki baat chat mein bhej di', seconds: 8);
+      _setFileNote('There was no call connection, your words were sent in chat', seconds: 8);
     }
   }
 
   void _onClosed(String? reason) {
     _tick?.cancel();
-    if (inCall && reason != null && reason.isNotEmpty) note = 'Call band ho gayi: $reason';
+    if (inCall && reason != null && reason.isNotEmpty) note = 'Call ended: $reason';
     _closedState(reason);
   }
 
@@ -358,9 +358,9 @@ class CallSession extends ChangeNotifier {
         speaker = null;
         speakerIsOwner = true;
       case 'files':
-        _setFileNote(e['ok'] == true ? '📎 ${e['names'] ?? 'File'} ${app.aName} ko mil gayi' : '${e['message'] ?? 'File nahi pahunchi'}');
+        _setFileNote(e['ok'] == true ? '📎 ${e['names'] ?? 'File'} ${app.aName} received it' : '${e['message'] ?? 'The file did not reach'}');
       case 'write_hint':   // v0.119 two misunderstandings in a row: typing is faster than a third try
-        _setFileNote('✍️ ${e['text'] ?? 'Chat mein likh dijiye'}');
+        _setFileNote('✍️ ${e['text'] ?? 'Write it in the chat'}');
       case 'hold':
         if (e['on'] == true) {
           holdReason = '${e['reason'] ?? 'button'}';
@@ -376,11 +376,11 @@ class CallSession extends ChangeNotifier {
         speaker = owner ? '${e['name']}' : '${e['name']} (${e['relation']})';
       case 'status':
         linkNote = switch (e['state']) {
-          'phone_reconnecting' => 'Network chala gaya, dobara jod raha hoon…',
-          'reconnecting' => 'Connection thoda slow hai, sambhal raha hoon…',
-          'audio_paused' => 'Dusri awaaz (phone call?) chal rahi hai, call ruki hui hai',
+          'phone_reconnecting' => 'Network lost, reconnecting…',
+          'reconnecting' => 'The connection is a bit slow, holding on…',
+          'audio_paused' => 'Another sound (a phone call?) is playing, the call is paused',
           'call_hold' => null,   // v0.142 the hold banner says it
-          'restarting' => 'Server update ho raha hai, call khud dobara jud jaayegi…',   // v0.617
+          'restarting' => 'The server is updating, the call will reconnect by itself…',   // v0.617
           'resting' => null,     // v0.617 quiet call: still connected, Hoola listens and comes back on her voice
           _ => null,
         };
