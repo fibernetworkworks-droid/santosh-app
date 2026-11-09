@@ -1,3 +1,11 @@
+## v0.717.0 FILE CARD SAHI — the made-file card the way she approved it (9 Nov 2026; owner sent a live screenshot of a PDF card stacked in a column: "MAKE IT SAME AS DESIGNED IN PREVIOUS PLAN")
+
+The v0.716 `.hmfile` card never set a row direction, and the console's old `.cd` rule (`flex-direction:column`)
+won, so the page picture, the name and the buttons stacked centred. Now `flex-direction:row` + left aligned: page
+picture with its type tag, name + "PDF · 464 KB", then Open and a download icon. "Use as reference" is left off
+file cards (it is for pictures), and a name the model doubled ("Report_pdf.pdf") shows once. Checked in a real
+browser against v2.css. 1 test.
+
 ## v0.716.0 NAYA ROOP — her new Hoola logo + the chat feel she picked (9 Nov 2026; owner, after the preview page: "0 :: PERFECT, 1 : Calm, 2 : Hoola mark, 3 : Fade with soft focus, 4 :: recommended, 5 : recommended, 6 : recommended")
 
 Built from the preview she approved (artifact "Hoola Chat Feel"):

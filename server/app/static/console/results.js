@@ -58,7 +58,8 @@ window.HoolaResults = ctx => {
   const KIND = [[/\.pdf$/i, 'PDF', '', 'PDF'], [/\.(docx?|odt|rtf)$/i, 'DOC', 'w', 'Word'], [/\.(xlsx?|ods|csv)$/i, 'XLS', 'x', 'Excel'],
                 [/\.(pptx?|odp|key)$/i, 'PPT', 's', 'Slides']];
   function fileCard(el, view, info, item) {
-    const name = info.name || item.title || 'File';
+    // a name the model doubled ("Report_pdf.pdf") shows once
+    const name = String(info.name || item.title || 'File').replace(/[_ -](pdf|docx|xlsx|pptx)(\.\1)$/i, '$2');
     const k = KIND.find(([re]) => re.test(name)) || (info.media === 'pdf' ? KIND[0] : [null, 'FILE', 'f', (info.media || 'File')]);
     const kb = Math.max(1, Math.round((info.size || 0) / 1024));
     const size = kb >= 1024 ? (kb / 1024).toFixed(1) + ' MB' : kb + ' KB';
@@ -113,6 +114,10 @@ window.HoolaResults = ctx => {
         if (el.classList.contains('hmfile')) {
           const row = el.querySelector('.result-actions');
           const open = row?.querySelector('[data-expand]'); if (open) open.textContent = 'Open';
+          row?.querySelector('[data-reuse]')?.remove();          // the approved card: Open + download, nothing else
+          const dl = row?.querySelector('[data-download]');
+          if (dl) { dl.classList.add('hmico'); dl.setAttribute('aria-label', 'Download'); dl.title = 'Download';
+            dl.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>'; }
           el.appendChild(row);
           el.addEventListener('click', e => { if (!e.target.closest('button,a')) ctx.open(item); });
         }

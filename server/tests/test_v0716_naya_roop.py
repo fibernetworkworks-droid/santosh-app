@@ -117,4 +117,13 @@ def test_soft_landing_and_mark_in_a_real_browser():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.716.0")
+    assert APP_VERSION.startswith("0.717.0")
+
+
+def test_v0717_file_card_is_one_row_like_the_approved_design():
+    """Owner's live screenshot: the PDF card stacked in a column (the old .cd rule won). One row, Open + download icon."""
+    css = _r("server/app/static/console/v2.css")
+    assert "#app .result-card.hmfile{display:flex;flex-direction:row;" in css
+    r = _r("server/app/static/console/results.js")
+    assert "row?.querySelector('[data-reuse]')?.remove();" in r and "dl.classList.add('hmico')" in r
+    assert "replace(/[_ -](pdf|docx|xlsx|pptx)(\\.\\1)$/i, '$2')" in r
