@@ -219,10 +219,10 @@ def test_finish_done_is_refused_when_the_file_is_not_there(env):
     held = G.finish("default", v["id"], "done", "ho gaya", conv, made=["report_final.pdf"])
     assert held["verified"] is False and held["status"] == "working"
     steps = held["steps"]
-    assert steps[1]["state"] == "current" and "jaanch mein nahi mila" in steps[1]["note"]
+    assert steps[1]["state"] == "current" and "not found in the check" in steps[1]["note"]
     with session() as s:
         row = s.scalars(select(G.GoalRun).where(G.GoalRun.id == v["id"])).first()
-        assert row.status == "working" and "Jaanch baaki" in row.reason
+        assert row.status == "working" and "Check pending" in row.reason
 
 
 def test_finish_done_closes_when_the_file_is_really_there(env, tmp_path):

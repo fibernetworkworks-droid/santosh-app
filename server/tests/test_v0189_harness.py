@@ -209,7 +209,7 @@ def test_stopped_enqueue_gate_and_canned_line():
     waiting = dict(job, state="waiting")
     assert enqueue("default", "conv_gate", waiting) is False         # waiting still never reports (her baari = card)
     row = types.SimpleNamespace(label="Video edit", title="Roka hua kaam", state="stopped", detail="", link="")
-    assert "band kar diya gaya" in _canned(row) and "bol dena" in _canned(row)
+    assert "was stopped" in _canned(row) and "just say so" in _canned(row)
 
 
 # ---------------- version ----------------

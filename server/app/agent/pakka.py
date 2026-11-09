@@ -338,7 +338,7 @@ def _ladder_line(state: dict, tool: str, error: str) -> None:
     # hai; is mailbox mein email_check use kijiye" - backend text written for the model, not for her (her own
     # words: "BULK BACKEND UNWANTED RESPONSES"). The line stays human; the real error is already on the step chip
     # (bus.publish "step" carries `detail`) and in the work log, one click away, exactly like Claude's tool row.
-    say = "Yeh raasta nahi chala — ek doosra tareeka try karta hoon…"
+    say = "That route did not work - trying another way…"
     try:
         from ..db import Message
         with session() as s:

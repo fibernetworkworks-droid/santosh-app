@@ -113,12 +113,12 @@ def test_step_cap_line_is_saved_when_long_mode_is_off(gz, monkeypatch):  # noqa:
         _set_brain(monkeypatch, FakeBrain([([tu(i, "kaam_status", q=f"s{i}")], "tool_use") for i in range(1, 30)]))
         from app.agent.santosh import run_turn
         out = asyncio.run(run_turn(conv, "lamba kaam", tenant_id="default"))
-        assert "Yeh kaam lamba" in out
+        assert "This task has become long" in out
         from app.db import Message, session
         from sqlalchemy import select
         with session() as s:
             last = s.scalars(select(Message).where(Message.conversation_id == conv).order_by(Message.id.desc())).first()
-        assert last.role == "assistant" and "Yeh kaam lamba" in (last.display or "")
+        assert last.role == "assistant" and "This task has become long" in (last.display or "")
     finally:
         get_settings.cache_clear()
 

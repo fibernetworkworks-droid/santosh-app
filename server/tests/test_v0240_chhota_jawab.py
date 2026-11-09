@@ -52,7 +52,7 @@ def test_the_report_text_is_handed_over_as_what_she_already_sees(gz):  # noqa: F
     out = _finish_out(gz["conv"])
     # renamed: not a template called "report", but "what the card shows"
     assert "report" not in out
-    assert "card_shows" in out and "✅ Kya hua" in out["card_shows"]
+    assert "card_shows" in out and "✅ What was done" in out["card_shows"]
     assert "CARD par pehle se dikh rahi hai" in out["note"]
 
 
@@ -69,7 +69,7 @@ def test_nothing_is_lost_from_the_card(gz):  # noqa: F811
     assert rep["aapka"]                                   # her part
     # and the card's own text still renders all four (the phone / console read this dict)
     txt = G.report_text(rep)
-    for part in ("✅ Kya hua", "📎 Kya bana", "⏳ Kya baaki hai", "👉 Aapko kya karna hai"):
+    for part in ("✅ What was done", "📎 What was made", "⏳ What is left", "👉 What you need to do"):
         assert part in txt, part
 
 

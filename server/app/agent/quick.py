@@ -174,8 +174,8 @@ async def answer(conv: str, tenant: str, user_text: str, steering: bool = False)
             queued = True
             if draftcheck.claims_done(text):
                 text = ""
-    text = text or ("Theek hai, chal rahe kaam mein yeh abhi jod raha hoon." if steering
-                                               else "Haan, abhi wala kaam khatam hote hi yeh karta hoon.")
+    text = text or ("Okay, I am adding this to the work in progress right now." if steering
+                                               else "Yes, I will do this as soon as the current task is finished.")
     with session() as s:
         if not queued:   # answered here: shown in chat, never replayed to the full brain as a new request
             s.add(Message(conversation_id=conv, role="user", content=user_text, display=user_text,

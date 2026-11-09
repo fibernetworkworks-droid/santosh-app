@@ -60,7 +60,7 @@ def test_a_step_note_passed_either_way_lands_in_the_same_place(gz):  # noqa: F81
 # ---------------------------------------------------------------- 2. no backend text in her chat
 def test_the_try_another_way_line_carries_no_raw_error():
     src = (ROOT / "server/app/agent/pakka.py").read_text()
-    assert 'say = "Yeh raasta nahi chala — ek doosra tareeka try karta hoon…"' in src
+    assert 'say = "That route did not work - trying another way…"' in src
     assert 'say = f"Yeh raasta nahi chala ({reason})' not in src
     # the detail is NOT lost - the step chip still carries it, one click away
     agent = (ROOT / "server/app/agent/santosh.py").read_text()

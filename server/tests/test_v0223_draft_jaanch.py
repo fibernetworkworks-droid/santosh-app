@@ -21,7 +21,7 @@ def test_a_claim_with_nothing_behind_it_is_caught_then_said_plainly():
     assert "correct" not in st
     # it claims again after the nudge: the honest line is added after the words she already read
     assert draftcheck.fake_done(st, "Mail bhej diya.") == ""
-    assert st["correct"] == draftcheck.SAID and "hua nahi hai" in st["correct"]
+    assert st["correct"] == draftcheck.SAID and "not done yet" in st["correct"]
 
 
 def test_a_claim_about_her_or_in_the_future_is_not_a_claim():
@@ -92,7 +92,7 @@ def test_the_gate_spends_nothing_when_there_is_nothing_to_check():
     before = dict(draftcheck.STATS)
     assert draftcheck.worth_checking("kaise ho", "Badhiya! Aap kaise hain? Sab theek chal raha hai yahan.", []) is None
     assert draftcheck.worth_checking("hi", "Theek.", []) is None                       # too short to judge
-    assert draftcheck.worth_checking("kitna hua", "Rs 500 hua.\n\n(Dhyaan: dekh lijiye.)", []) is None
+    assert draftcheck.worth_checking("kitna hua", "Rs 500 hua.\n\n(Please note: dekh lijiye.)", []) is None
     assert draftcheck.STATS["gated"] == before["gated"]
     # a figure nothing backs, or a two-part question: worth one small look
     g = draftcheck.worth_checking("bill kitna hua", "Total Rs 7,250 hua hai, kal tak de dijiye.", [])
@@ -144,12 +144,12 @@ def test_an_unbacked_figure_gets_one_honest_note_in_chat_and_in_the_call(bz, mon
     from app import kaamwatch
     monkeypatch.setattr(kaamwatch, "_voice", lambda t, c, s: said.append(s))
     out = _after(bz["conv"], "bill kitna hua", "Total Rs 7,250 hua hai.", tenant="t1")
-    assert out.startswith("(Dhyaan: Rs 7,250") and "khud dekh lijiye" in out
+    assert out.startswith("(Please note: Rs 7,250") and "check it yourself" in out
     with session() as s:
         rows = [m for m in s.query(Message).filter(Message.conversation_id == bz["conv"]).all()
-                if m.display and m.display.startswith("(Dhyaan:")]
+                if m.display and m.display.startswith("(Please note:")]
     assert len(rows) == 1 and rows[0].in_history is False    # a note, never part of the model's own history
-    assert said and said[0].startswith("Dhyaan:")
+    assert said and said[0].startswith("Please note:")
 
 
 def test_the_note_can_only_name_figures_the_code_also_saw(bz, monkeypatch):
@@ -166,13 +166,13 @@ def test_a_name_is_checked_in_code_too(bz, monkeypatch):
     draftcheck._SPOKE.pop(bz["conv"], None)
     assert _after(bz["conv"], "Sharma ji ko Rs 7,250 ka bill bhejo?", "Sharma ji ko Rs 7,250 bhej raha hoon.") == ""
     out = _after(bz["conv"], "bill kis-kis ka hai? aur total?", "Sharma ji ka Rs 7,250 hai.")
-    assert out.startswith("(Dhyaan: Sharma ji")
+    assert out.startswith("(Please note: Sharma ji")
 
 
 def test_a_missed_part_of_her_question_gets_an_honest_line(bz, monkeypatch):
     _model(monkeypatch, '{"ok": false, "missed": "late fee kitni hai", "unsupported": []}')
     out = _after(bz["conv"], "GST kab bharna hai? Aur late fee kitni hai?", "GSTR-3B 20 tareekh tak bhar dijiye.")
-    assert out == "(Ek baat reh gayi: late fee kitni hai - bataun?)"
+    assert out == "(One thing left: late fee kitni hai - shall I tell you?)"
 
 
 def test_the_note_never_chatters(bz, monkeypatch):
@@ -242,7 +242,7 @@ def test_the_reply_never_waits_for_the_check(bz, monkeypatch):
     assert out == "Total Rs 7,250 hua hai."
     # the reply was back before the check had even finished thinking: the turn never waits for it
     assert checked_at and back < checked_at[0], (back, checked_at)
-    assert any(n.startswith("(Dhyaan: Rs 7,250") for n in notes), notes
+    assert any(n.startswith("(Please note: Rs 7,250") for n in notes), notes
 
 
 def test_version():

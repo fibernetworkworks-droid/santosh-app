@@ -56,7 +56,7 @@ def test_restart_picks_up_a_half_done_job(gz, monkeypatch):  # noqa: F811
     assert _row(v["id"])["recovered"] == 1 and _row(v["id"])["rounds"] == 1   # a recovery never uses a round
     with session() as s:
         lines = [m.display for m in s.scalars(select(Message).where(Message.conversation_id == conv)).all()]
-    assert any("Server dobara chalu hua" in (x or "") and "1/3" in (x or "") for x in lines)
+    assert any("The server restarted" in (x or "") and "1/3" in (x or "") for x in lines)
     _age(v["id"], 15)
     assert goal.recover_tick() == 0                              # its round is pending in this process: never doubled
 

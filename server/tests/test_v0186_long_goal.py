@@ -144,7 +144,7 @@ def test_failed_path_reads_docs_and_says_doosra_tareeka_breaker_rescues_once(gz,
              if isinstance(b, dict) and b.get("type") == "text" and "replan" in (b.get("text") or "")]
     assert len(notes) == 1                            # appended once to the history (snapshots repeat it)
     # she saw the doosra-tareeka line exactly once (45 s throttle in one turn)
-    progress = [e for e in _events(conv, "message") if "doosra tareeka" in (e.get("text") or "")]
+    progress = [e for e in _events(conv, "message") if "trying another way" in (e.get("text") or "")]
     assert len(progress) == 1
     # the doc text was handed to the brain (marked as data, not instructions) — inside the failing tool's result
     assert any("Docs padh liye" in str(b) for m in brain.seen for msg in m["messages"]
@@ -190,7 +190,7 @@ def test_steps_running_out_ends_honestly_and_one_continuation_finishes(gz, monke
         return out
 
     out = asyncio.run(go())
-    assert "steps ho gaye" in out and "background" in out          # honest, not the stale mid-task text
+    assert "steps done" in out and "background" in out          # honest, not the stale mid-task text
     # _steps records partial (TaskRun); once the continuation is scheduled the call hears 'continuing'
     assert LAST_OUTCOME[conv]["outcome"] in ("partial", "continuing")
     assert conts and "baaki steps" in conts[0][1]
@@ -237,7 +237,7 @@ def test_no_continuation_when_blocked_on_her_after_rokiye_or_past_rounds(gz, mon
     assert goal_mod.maybe_continue(conv2, "default", "owner") is False
     v2 = goal_mod.show("default", v["id"])
     # v0.223: the budget ran out = the job stops and ASKS ("Aage badhaun?"), it is no longer thrown away as failed
-    assert v2["status"] == "blocked" and v2["hold"] == "limit" and "Aage badhaun" in v2["reason"]
+    assert v2["status"] == "blocked" and v2["hold"] == "limit" and "Shall I carry on" in v2["reason"]
 
 
 def test_max_tokens_cut_continues_exactly_where_it_stopped(gz, monkeypatch):  # noqa: F811

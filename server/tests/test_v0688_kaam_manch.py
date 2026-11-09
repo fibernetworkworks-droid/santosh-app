@@ -124,7 +124,7 @@ def test_ledger_plan_line():
 
 
 def test_ledger_left_over_beats_done_tick():
-    assert "baaki:" in K.ledger(_st(left="invoice bhejni hai"), 7, 24)
+    assert "left:" in K.ledger(_st(left="invoice bhejni hai"), 7, 24)
     assert "done" not in K.ledger(_st(left="invoice bhejni hai"), 7, 24)
     assert "done ✓" in K.ledger(_st(), 7, 24)        # clean close shows the tick
     assert "done ✓" not in K.ledger(_st(kept_going=1), 7, 24)
@@ -174,7 +174,7 @@ def test_done_note_quiet_on_plain_text():
 
 def test_done_note_hinglish_and_honest():
     note = K.done_note({"calls": [{"tool": "scrape", "ok": False}]}, "payment ho gaya")
-    assert "saaf" in note and "poora nahi" in note
+    assert "To be clear" in note and "not done" in note
 
 
 # ---------------------------------------------------------------- WIRING (switches + sources)
