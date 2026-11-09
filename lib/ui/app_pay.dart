@@ -69,7 +69,7 @@ class _AppPayPanelState extends State<AppPayPanel> {
       for (final c in _k.values) {
         c.clear();
       }
-      _say('Gateway jud gaya. Webhook address apne gateway dashboard mein daaliye.');
+      _say('Gateway connected. Enter the webhook address in your gateway dashboard.');
     } catch (e) {
       _say('$e');
     }
@@ -84,13 +84,13 @@ class _AppPayPanelState extends State<AppPayPanel> {
       builder: (c) => AlertDialog(
         title: Text('Refund - ${_s(p['label'])}'),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Paid ${_s(p['amount_rs'])}, refunded ${_rs(p['refunded'])}. Paisa graahak ke original payment par wapas jaayega (5-7 din).'),
+          Text('Paid ${_s(p['amount_rs'])}, refunded ${_rs(p['refunded'])}. The money goes back to the customer\'s original payment method (5-7 days).'),
           TextField(controller: amt, keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: const InputDecoration(labelText: 'Raqam (khaali = baaki sab)')),
+              decoration: const InputDecoration(labelText: 'Amount (blank = all the rest)')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, refund karo')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, refund')),
         ],
       ),
     );
@@ -114,12 +114,12 @@ class _AppPayPanelState extends State<AppPayPanel> {
       builder: (c) => AlertDialog(
         title: const Text('Payment link'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          TextField(controller: amt, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Raqam (Rs)')),
-          TextField(controller: what, decoration: const InputDecoration(labelText: 'Kis liye (jaise udhaar)')),
+          TextField(controller: amt, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: const InputDecoration(labelText: 'Amount (Rs)')),
+          TextField(controller: what, decoration: const InputDecoration(labelText: 'For what (e.g. credit)')),
         ]),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Link banao')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Make link')),
         ],
       ),
     );
@@ -128,7 +128,7 @@ class _AppPayPanelState extends State<AppPayPanel> {
       final r = _m(await widget.app.api!.call('POST', '$_base/pay/link', body: {'amount': amt.text.trim(), 'purpose': what.text.trim(), 'her_tap': true}));
       if (_s(r['url']).isNotEmpty) {
         await Clipboard.setData(ClipboardData(text: _s(r['url'])));
-        _say('Link copy ho gaya - khud WhatsApp / SMS kijiye.');
+        _say('Link copied - send it yourself by WhatsApp / SMS.');
       }
     } catch (e) {
       _say('$e');
@@ -144,14 +144,14 @@ class _AppPayPanelState extends State<AppPayPanel> {
       Icon(Icons.payments_rounded, color: on ? C.ok : C.muted, size: 20),
       const SizedBox(width: 6),
       Expanded(child: Text('Online payment${on ? ' · ${_s(_p['gateway'])}${_p['test'] == true ? ' (test)' : ''}' : ''}', style: display(15))),
-      IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+      IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
     ]);
     if (!on) {
       final fields = (_m(_p['fields'])[_gw] as List? ?? const []).map(_s).toList();
       return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         head,
-        const Text('Apna gateway jodiye. Graahak gateway ke page par pay karta hai, paisa aapke bank mein jaata hai; Hoola kabhi paisa nahi rakhta. '
-            'Order paid tabhi maana jaata hai jab gateway khud bataye. Chaabi yahin likhiye - chat mein kabhi nahi.', style: TextStyle(color: C.muted, fontSize: 12)),
+        const Text('Connect your gateway. The customer pays on the gateway\'s page, the money goes to your bank; Hoola never holds money. '
+            'An order counts as paid only when the gateway itself says so. Enter the key here - never in the chat.', style: TextStyle(color: C.muted, fontSize: 12)),
         DropdownButton<String>(
           value: _gw,
           isExpanded: true,
@@ -163,19 +163,19 @@ class _AppPayPanelState extends State<AppPayPanel> {
               enableSuggestions: false, decoration: InputDecoration(labelText: f.replaceAll('_', ' '))),
         CheckboxListTile(value: _test, onChanged: (v) => setState(() => _test = v ?? false), title: const Text('Test mode'),
             contentPadding: EdgeInsets.zero, dense: true),
-        FilledButton(onPressed: _busy ? null : _join, child: const Text('Check karke jodo')),
+        FilledButton(onPressed: _busy ? null : _join, child: const Text('Check and connect')),
       ]);
     }
     final t = _m(_p['totals']);
     final pays = _l(_p['payments']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       head,
-      Text('Mila: ${_rs(t['paid'])} (${_s(t['count'])}) · refund: ${_rs(t['refunded'])}${_n(t['mismatch']) > 0 ? ' · ${_s(t['mismatch'])} raqam mein farak - dekhiye' : ''}',
+      Text('Received: ${_rs(t['paid'])} (${_s(t['count'])}) · refund: ${_rs(t['refunded'])}${_n(t['mismatch']) > 0 ? ' · ${_s(t['mismatch'])} amount mismatch - please check' : ''}',
           style: const TextStyle(color: C.ink, fontSize: 12.5)),
       const SizedBox(height: 4),
       SelectableText('Webhook: ${_s(_p['webhook_url'])}', style: const TextStyle(color: C.muted, fontSize: 11.5)),
       if ((_p['can'] as List? ?? const []).contains('links'))
-        TextButton.icon(onPressed: _link, icon: const Icon(Icons.link_rounded, size: 18), label: const Text('Payment link banao')),
+        TextButton.icon(onPressed: _link, icon: const Icon(Icons.link_rounded, size: 18), label: const Text('Make payment link')),
       for (final p in pays.take(15))
         ListTile(
           dense: true,

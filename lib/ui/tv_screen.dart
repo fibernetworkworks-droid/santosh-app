@@ -133,7 +133,7 @@ class _TvScreenState extends State<TvScreen> {
   Map<String, dynamic>? get _here => _countries.where((c) => c['code'] == _country).firstOrNull;
 
   String get _placeName =>
-      _country.isEmpty ? 'Saari duniya' : (_here?['name'] as String? ?? (_country == 'IN' ? 'India' : _country));
+      _country.isEmpty ? 'Whole world' : (_here?['name'] as String? ?? (_country == 'IN' ? 'India' : _country));
   String get _placeFlag => _country.isEmpty ? '🌍' : (_here?['flag'] as String? ?? (_country == 'IN' ? '🇮🇳' : '📺'));
 
   Future<void> _pickCountry() async {
@@ -217,7 +217,7 @@ class _TvScreenState extends State<TvScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_placeName, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
-                      Text(_loaded ? '$_total free channels · desh badliye' : 'Channels aa rahe hain…',
+                      Text(_loaded ? '$_total free channels · change country' : 'Loading channels…',
                           style: const TextStyle(color: C.muted, fontSize: 12)),
                     ]),
                   ),
@@ -226,8 +226,8 @@ class _TvScreenState extends State<TvScreen> {
               ),
             ),
             const SizedBox(height: 6),
-            const Text('Sirf official free channels: Doordarshan, free news, duniya ke free channels. '
-                'Paid channels (Star, Sony, Colors, HBO, live sports) unke apne app mein.',
+            const Text('Only official free channels: Doordarshan, free news, free channels from around the world. '
+                'Paid channels (Star, Sony, Colors, HBO, live sports) are in their own apps.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
             const SizedBox(height: 12),
             Glass(
@@ -255,7 +255,7 @@ class _TvScreenState extends State<TvScreen> {
             const SizedBox(height: 14),
             if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
             if (!_loaded && _err == null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
-            if (_loaded && list.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Kuch nahi mila', style: TextStyle(color: C.muted)))),
+            if (_loaded && list.isEmpty) const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Nothing found', style: TextStyle(color: C.muted)))),
             GridView(
               shrinkWrap: true,
               padding: EdgeInsets.zero,
@@ -327,7 +327,7 @@ class _CountrySheetState extends State<_CountrySheet> {
           ),
           Expanded(
             child: ListView(children: [
-              if (q.isEmpty) _row('🌍', 'Saari duniya', '$all channels · ${widget.countries.length} desh', ''),
+              if (q.isEmpty) _row('🌍', 'Whole world', '$all channels · ${widget.countries.length} desh', ''),
               for (final c in shown)
                 _row(c['flag'] as String? ?? '📺', c['name'] as String? ?? '', '${c['count']} channels', c['code'] as String),
             ]),
@@ -405,7 +405,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
           await vc.dispose();
         }
       }
-      if (mounted) setState(() => _err = '${ch['name']} abhi chal nahi raha. Thodi der baad try kijiye ya doosra channel dekhiye.');
+      if (mounted) setState(() => _err = '${ch['name']} is not playing right now. Try again later or pick another channel.');
     } catch (e) {
       if (mounted) setState(() => _err = e is ApiException ? e.message : '$e');
     }
@@ -429,7 +429,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
         await _vc?.pause();
         setState(() => _onTv = true);
       }
-      _snack(ok ? '${_ch?['name'] ?? 'Channel'} ${r['tv_name'] ?? 'TV'} pe chal raha hai' : (r['error'] ?? r['say'] ?? 'TV pe nahi chala').toString());
+      _snack(ok ? '${_ch?['name'] ?? 'Channel'} ${r['tv_name'] ?? 'TV'} is playing' : (r['error'] ?? r['say'] ?? 'Could not play on the TV').toString());
     } catch (e) {
       _snack(e is ApiException ? e.message : '$e');
     }
@@ -479,7 +479,7 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
                 child: const Column(mainAxisSize: MainAxisSize.min, children: [
                   Icon(Icons.cast_connected_rounded, color: C.teal, size: 40),
                   SizedBox(height: 8),
-                  Text('TV pe chal raha hai', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
+                  Text('Playing on the TV', style: TextStyle(color: C.ink, fontWeight: FontWeight.w700)),
                 ]),
               ),
             Positioned(
@@ -522,23 +522,23 @@ class _TvPlayerScreenState extends State<TvPlayerScreen> {
               if (!_onTv)
                 PluginAction(
                     kind: ch?['on_tv'] == true ? ActionKind.add : ActionKind.attention,
-                    label: _casting ? 'TV dhoondh raha hoon…' : 'TV pe dikhao',
+                    label: _casting ? 'Looking for the TV…' : 'Show on TV',
                     height: 48,
                     onTap: _casting || ch == null ? null : _cast)
               else
-                PluginAction(kind: ActionKind.linked, label: 'TV pe band karo', height: 48, onTap: _stopTv),
+                PluginAction(kind: ActionKind.linked, label: 'Stop on TV', height: 48, onTap: _stopTv),
               const SizedBox(height: 8),
               Text(
                   ch?['on_tv'] == true
-                      ? 'Chromecast, Android TV ya Google TV phone ke Wi-Fi par ho.'
-                      : 'Yeh channel shayad sirf phone pe chale. Samsung / LG TV ke liye Hoola se kahiye: "TV pe YouTube pe ${ch?['name'] ?? ''} live lagao".',
+                      ? 'The Chromecast, Android TV or Google TV must be on the phone\'s Wi-Fi.'
+                      : 'This channel may play only on the phone. For a Samsung / LG TV, tell Hoola: "Play ${ch?['name'] ?? ''} live on the TV on YouTube".',
                   style: const TextStyle(color: C.faint, fontSize: 11.5)),
               if (widget.lineup.length > 1) ...[
                 const SizedBox(height: 16),
                 Row(children: [
                   Expanded(child: GlassButton(label: 'Pichla', icon: Icons.skip_previous_rounded, height: 44, onTap: () => _step(-1))),
                   const SizedBox(width: 10),
-                  Expanded(child: GlassButton(label: 'Agla', icon: Icons.skip_next_rounded, height: 44, onTap: () => _step(1))),
+                  Expanded(child: GlassButton(label: 'Next', icon: Icons.skip_next_rounded, height: 44, onTap: () => _step(1))),
                 ]),
               ],
             ]),

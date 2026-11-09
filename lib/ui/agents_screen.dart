@@ -84,7 +84,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => _search(),
             decoration: InputDecoration(
-              hintText: 'Kaunsa agent chahiye? e.g. call centre, GST, coding, legal',
+              hintText: 'Which agent do you need? e.g. call centre, GST, coding, legal',
               prefixIcon: const Icon(Icons.search_rounded),
               filled: true,
               fillColor: C.panel,
@@ -95,7 +95,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
         SizedBox(
           height: 42,
           child: ListView(scrollDirection: Axis.horizontal, padding: const EdgeInsets.symmetric(horizontal: 12), children: [
-            _chip(_proven ? '✓ Sirf proven (A/B)' : 'Sab tiers', _proven, () {
+            _chip(_proven ? '✓ Proven only (A/B)' : 'Sab tiers', _proven, () {
               setState(() => _proven = !_proven);
               _search();
             }),
@@ -125,7 +125,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
           child: _error != null && _items.isEmpty
               ? Center(child: Padding(padding: const EdgeInsets.all(24), child: Text(_error!, style: const TextStyle(color: C.bad))))
               : _items.isEmpty && !_loading
-                  ? const Center(child: Text('Kuch nahi mila. Doosre shabd ya "Sab tiers" try kijiye.', style: TextStyle(color: C.muted)))
+                  ? const Center(child: Text('Nothing found. Try other words or "All tiers".', style: TextStyle(color: C.muted)))
                   : ListView.builder(
                       padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                       itemCount: _items.length + 1,
@@ -133,7 +133,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
                         if (i == _items.length) {
                           return const Padding(
                             padding: EdgeInsets.only(top: 6),
-                            child: Text('Score popularity/recency ka signal hai, benchmark nahi. Production se pehle sandbox mein test kijiye.',
+                            child: Text('The score is a popularity / recency signal, not a benchmark. Test in a sandbox before production.',
                                 style: TextStyle(color: C.faint, fontSize: 11.5)),
                           );
                         }
@@ -172,9 +172,9 @@ class _AgentsScreenState extends State<AgentsScreen> {
             if (a['caution'] != null || a['licence_note'] != null || a['blocked'] == true) ...[
               const SizedBox(height: 6),
               Wrap(spacing: 6, runSpacing: 4, children: [
-                if (a['blocked'] == true) const Pill('Hoola use nahi karega', fg: C.bad),
-                if (a['caution'] != null) const Pill('⚠ Sandbox mein chalaiye', fg: C.warn),
-                if (a['licence_note'] != null && !(a['licence_note'] as String).startsWith('Licence not listed')) const Pill('Licence dhyan', fg: C.warn),
+                if (a['blocked'] == true) const Pill('Hoola will not use this', fg: C.bad),
+                if (a['caution'] != null) const Pill('⚠ Run in a sandbox', fg: C.warn),
+                if (a['licence_note'] != null && !(a['licence_note'] as String).startsWith('Licence not listed')) const Pill('Licence note', fg: C.warn),
               ]),
             ],
           ]),
@@ -216,7 +216,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
           if (a['found_in'] != null) _row('Found in', '${a['found_in']}'),
           if (a['packages'] != null) _row('Packages', '${a['packages']}'),
           const SizedBox(height: 10),
-          _box('Hoola ke saath kaise', a['how_to_use'] as String? ?? '', C.teal),
+          _box('How to use with Hoola', a['how_to_use'] as String? ?? '', C.teal),
           if (a['licence_note'] != null) _box('Licence', a['licence_note'] as String, C.warn),
           if (a['caution'] != null) _box('Savdhaan', a['caution'] as String, C.bad),
           const SizedBox(height: 12),
@@ -224,7 +224,7 @@ class _AgentsScreenState extends State<AgentsScreen> {
             FilledButton.icon(
               onPressed: () => launchUrl(Uri.parse(a['link'] as String), mode: LaunchMode.externalApplication),
               icon: const Icon(Icons.open_in_new_rounded),
-              label: const Text('Project page kholiye'),
+              label: const Text('Open the project page'),
             ),
         ]),
       ),

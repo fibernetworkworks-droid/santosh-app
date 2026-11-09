@@ -27,7 +27,7 @@ class _UpiResultCardState extends State<UpiResultCard> {
     try {
       await widget.app.api!.upiResult(_s('txn_ref'), answer: a);   // the server sends the updated card
     } catch (e) {
-      if (mounted) setState(() => _err = 'Nahi bheja ja saka: $e');
+      if (mounted) setState(() => _err = 'Could not send: $e');
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -41,7 +41,7 @@ class _UpiResultCardState extends State<UpiResultCard> {
     await Clipboard.setData(ClipboardData(text: vpa));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-        content: Text('UPI ID copy ho gaya: $vpa · amount ${_s('amount')} khud likhiye')));
+        content: Text('UPI ID copied: $vpa · enter the amount (${_s('amount')}) yourself')));
     final res = await Native.openExternal(package: _s('package'));
     if (res != 'ok' && mounted) setState(() => _err = res);
   }
@@ -51,14 +51,14 @@ class _UpiResultCardState extends State<UpiResultCard> {
     final st = _s('status');
     final ask = widget.v['ask'] == true && st != 'completed' && st != 'failed';
     final (IconData icon, Color col, String head) = switch (st) {
-      'completed' => (Icons.check_circle_rounded, C.ok, 'Paise chale gaye'),
-      'failed' => (Icons.cancel_rounded, C.bad, 'Paise nahi gaye'),
-      'pending' => (Icons.schedule_rounded, C.warn, 'Bank se pakka hona baaki'),
-      _ => (Icons.help_outline_rounded, C.warn, 'Payment hua?'),
+      'completed' => (Icons.check_circle_rounded, C.ok, 'Money was sent'),
+      'failed' => (Icons.cancel_rounded, C.bad, 'Money was not sent'),
+      'pending' => (Icons.schedule_rounded, C.warn, 'Still to be confirmed by the bank'),
+      _ => (Icons.help_outline_rounded, C.warn, 'Was the payment made?'),
     };
     final who = _s('said_by') == 'app'
-        ? '${_s('app').isEmpty ? 'UPI app' : _s('app')} ne bataya'
-        : _s('said_by') == 'owner' ? 'Aapne bataya' : '';
+        ? '${_s('app').isEmpty ? 'UPI app' : _s('app')} said'
+        : _s('said_by') == 'owner' ? 'You said' : '';
     final tail = _s('ref_tail');
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
@@ -84,29 +84,29 @@ class _UpiResultCardState extends State<UpiResultCard> {
           if (ask) ...[
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: GradientButton(label: 'Ho gaya', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : () => _answer('done'))),
+              Expanded(child: GradientButton(label: 'Done', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : () => _answer('done'))),
               const SizedBox(width: 8),
-              Expanded(child: GlassButton(label: 'Nahi hua', icon: Icons.close_rounded, height: 42, onTap: _busy ? null : () => _answer('not'))),
+              Expanded(child: GlassButton(label: 'Not done', icon: Icons.close_rounded, height: 42, onTap: _busy ? null : () => _answer('not'))),
             ]),
           ],
           if (widget.v['mode'] == 'copy' && st != 'completed' && st != 'failed')
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Text(
-                  '${_s('app').isEmpty ? 'Ye app' : _s('app')} link se kisi vyakti ko payment nahi karne deta. UPI ID copy ho gaya hai: '
-                  'app mein "To UPI ID" par paste karke ${_s('amount')} bhejiye, phir yahan "Ho gaya" dabaiye.',
+                  '${_s('app').isEmpty ? 'This app' : _s('app')} does not allow paying a person by link. The UPI ID is copied: '
+                  'paste it in the app under "To UPI ID", send ${_s('amount')}, then tap "Done" here.',
                   style: const TextStyle(color: C.chip, fontSize: 12.5)),
             ),
           if ((widget.v['blocked'] == true || widget.v['mode'] == 'copy') && st != 'completed' && _s('vpa').isNotEmpty) ...[
             const SizedBox(height: 8),
             GlassButton(
-                label: 'UPI ID copy karke ${_s('app').isEmpty ? 'app' : _s('app')} kholo',
+                label: 'Copy the UPI ID and open ${_s('app').isEmpty ? 'the app' : _s('app')}',
                 icon: Icons.copy_rounded,
                 height: 42,
                 onTap: _copyAndOpen),
             const Padding(
               padding: EdgeInsets.only(top: 4),
-              child: Text('Kuch apps kisi vyakti ko link se payment rok deti hain; app mein UPI ID paste karke bhejiye.',
+              child: Text('Some apps block paying a person by link; paste the UPI ID in the app and send it.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ),
           ],

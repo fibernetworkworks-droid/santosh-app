@@ -65,18 +65,18 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text({'complain': 'Shikayat', 'quote': 'Quote maangiye', 'order': 'Order'}[kind] ?? kind),
-        content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'Kya chahiye / kya problem hai?')),
+        title: Text({'complain': 'Shikayat', 'quote': 'Ask for a quote', 'order': 'Order'}[kind] ?? kind),
+        content: TextField(controller: c, minLines: 2, maxLines: 6, decoration: const InputDecoration(hintText: 'What do you need / what is the problem?')),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send')),
         ],
       ),
     );
     if (ok != true || c.text.trim().isEmpty) return;
     try {
       final r = await app.api!.netBusinessContact('@${b['handle']}', c.text.trim(), kind);
-      _snack(kind == 'complain' ? 'Ticket ${r['ticket'] ?? ''} bana. ${r['eta'] ?? ''}' : 'Bhej diya; jawab chat mein aayega.');
+      _snack(kind == 'complain' ? 'Ticket ${r['ticket'] ?? ''} created. ${r['eta'] ?? ''}' : 'Sent; the reply will come in the chat.');
       await _load();
     } catch (e) {
       _snack(e.toString());
@@ -100,10 +100,10 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
-          title: const Text('Mera business'),
+          title: const Text('My business'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: name, decoration: const InputDecoration(labelText: 'Business ka naam')),
+              TextField(controller: name, decoration: const InputDecoration(labelText: 'Business name')),
               DropdownButton<String>(
                 isExpanded: true,
                 value: cat,
@@ -111,17 +111,17 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
                 onChanged: (v) => set(() => cat = v ?? 'other'),
               ),
               TextField(controller: area, decoration: const InputDecoration(labelText: 'Area (jaise Akola, Pune)')),
-              TextField(controller: hours, decoration: const InputDecoration(labelText: 'Samay (jaise Som-Shani 9 se 7)')),
-              TextField(controller: about, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Business ke baare mein')),
+              TextField(controller: hours, decoration: const InputDecoration(labelText: 'Hours (e.g. Mon-Sat 9 to 7)')),
+              TextField(controller: about, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'About the business')),
               TextField(controller: catalog, minLines: 3, maxLines: 10,
-                  decoration: const InputDecoration(labelText: 'Price list (har line: cheez - daam / unit)')),
+                  decoration: const InputDecoration(labelText: 'Price list (one per line: item - price / unit)')),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Public counter (koi bhi customer ka Hoola baat kar sake)'),
+                title: const Text('Public counter (any customer\'s Hoola can talk to it)'),
                 value: public,
                 onChanged: (v) => set(() => public = v),
               ),
-              TextField(controller: webhook, decoration: const InputDecoration(labelText: 'Apna system webhook (optional, https://)')),
+              TextField(controller: webhook, decoration: const InputDecoration(labelText: 'Your own system webhook (optional, https://)')),
               TextField(controller: secret, decoration: const InputDecoration(labelText: 'Webhook secret (optional)')),
             ]),
           ),
@@ -162,14 +162,14 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
         content: TextField(controller: c, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'GSTIN')),
         actions: [
           TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Bhejo')),
+          TextButton(onPressed: () => Navigator.of(ctx).pop(true), child: const Text('Send')),
         ],
       ),
     );
     if (ok != true) return;
     try {
       final r = await app.api!.netBusinessVerify(c.text.trim());
-      _snack(r['note'] as String? ?? 'Bhej diya');
+      _snack(r['note'] as String? ?? 'Sent');
       await _load();
     } catch (e) {
       _snack(e.toString());
@@ -185,7 +185,7 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
         appBar: AppBar(
           title: const Text('Hoola Business'),
           backgroundColor: Colors.transparent,
-          bottom: const TabBar(tabs: [Tab(text: 'Dhoondhiye'), Tab(text: 'Mera business')]),
+          bottom: const TabBar(tabs: [Tab(text: 'Dhoondhiye'), Tab(text: 'My business')]),
         ),
         body: Aurora(
           child: TabBarView(children: [
@@ -215,7 +215,7 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
                   ),
                 if (_mine.isNotEmpty) ...[
                   const SizedBox(height: 14),
-                  const Text('Meri shikayatein', style: TextStyle(fontWeight: FontWeight.w700)),
+                  const Text('My complaints', style: TextStyle(fontWeight: FontWeight.w700)),
                   for (final t in _mine)
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -229,26 +229,26 @@ class _HoolaBusinessScreenState extends State<HoolaBusinessScreen> {
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 if (b == null) ...[
-                  const Text('Apne business ka Hoola counter kholiye: customers ke Hoola shikayat, quote aur order seedha aapke Hoola se karenge; '
-                      'shikayat par ticket number banta hai aur aapke apne system (jaise FNW Flow) ko bhi ja sakta hai.',
+                  const Text('Open a Hoola counter for your business: customers\' Hoolas can send complaints, quotes and orders straight to your Hoola; '
+                      'a complaint gets a ticket number and can also go to your own system (such as FNW Flow).',
                       style: TextStyle(color: C.muted)),
                   const SizedBox(height: 12),
-                  GradientButton(label: 'Business counter kholiye', icon: Icons.storefront_rounded, height: 48, onTap: _setup),
+                  GradientButton(label: 'Open a business counter', icon: Icons.storefront_rounded, height: 48, onTap: _setup),
                 ] else ...[
                   Glass(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         Expanded(child: Text(b['name'] as String? ?? '', style: display(20))),
-                        Text(b['verification'] == 'verified' ? '🏢 verified' : b['verification'] == 'requested' ? 'jaanch mein' : '',
+                        Text(b['verification'] == 'verified' ? '🏢 verified' : b['verification'] == 'requested' ? 'under review' : '',
                             style: const TextStyle(color: C.teal)),
                       ]),
                       Text('${_cats[b['category']] ?? ''} · ${b['area'] ?? ''} · ${b['hours'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
-                      Text('${(b['catalog'] as List? ?? const []).length} cheezein price list mein · ${b['public'] == true ? 'public' : 'band'}'
-                          '${b['webhook'] == true ? ' · webhook jud gaya' : ''}', style: const TextStyle(color: C.faint, fontSize: 12)),
+                      Text('${(b['catalog'] as List? ?? const []).length} items in the price list · ${b['public'] == true ? 'public' : 'off'}'
+                          '${b['webhook'] == true ? ' · webhook connected' : ''}', style: const TextStyle(color: C.faint, fontSize: 12)),
                       Row(children: [
-                        TextButton(onPressed: _setup, child: const Text('Badliye')),
+                        TextButton(onPressed: _setup, child: const Text('Change')),
                         if (b['verification'] != 'verified' && b['verification'] != 'requested')
-                          TextButton(onPressed: _verify, child: const Text('Verified badge maangiye')),
+                          TextButton(onPressed: _verify, child: const Text('Ask for a verified badge')),
                       ]),
                     ]),
                   ),

@@ -62,7 +62,7 @@ class _FinalScreenState extends State<FinalScreen> {
     try {
       final p = await _file();
       if (p != null) {
-        final err = await Native.shareFile(p, title: 'Video bhejo', app: pkg);
+        final err = await Native.shareFile(p, title: 'Send video', app: pkg);
         if (err != null && mounted) studioSnack(context, err);
       }
     } catch (e) {
@@ -77,7 +77,7 @@ class _FinalScreenState extends State<FinalScreen> {
       final p = await _file();
       if (p != null) {
         final err = await Native.saveVideo(p, '${widget.name.replaceAll(RegExp(r'[^\w\- ]'), '')}.mp4');
-        if (mounted) studioSnack(context, err ?? 'Gallery mein save ho gaya (Movies/Hoola)');
+        if (mounted) studioSnack(context, err ?? 'Saved to the gallery (Movies/Hoola)');
       }
     } catch (e) {
       if (mounted) studioSnack(context, '$e');
@@ -88,17 +88,17 @@ class _FinalScreenState extends State<FinalScreen> {
   Future<void> _revise() async {
     final t = _change.text.trim();
     if (t.length < 4) {
-      studioSnack(context, 'Kya badalna hai, likhiye');
+      studioSnack(context, 'What should change? Write it');
       return;
     }
-    final sent = await app.send('Video Studio "${widget.name}" mein badlav chahiye: $t. Sirf zaroori shots dobara banao, '
-        'daam ka card bhejo, phir final video dobara jodo.');
+    final sent = await app.send('Video Studio "${widget.name}" needs a change: $t. Remake only the shots that need it, '
+        'send the price card, then join the final video again.');
     if (!mounted) return;
     if (sent) {
       _change.clear();
-      studioSnack(context, '${app.aName} ko bata diya: badle hue shot ka daam card par aayega.');
+      studioSnack(context, 'Told ${app.aName}: the price of the changed shot will show on the card.');
     } else {
-      studioSnack(context, 'Bhej nahi paya; dobara try kijiye.');
+      studioSnack(context, 'Could not send; please try again.');
     }
   }
 
@@ -124,17 +124,17 @@ class _FinalScreenState extends State<FinalScreen> {
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(widget.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: sora(17)),
-                        Text(o.isEmpty ? 'Abhi final video nahi' : 'Version ${outs.indexWhere((x) => x['url'] == o['url']) + 1}${o['preview'] == true ? ' · free preview' : ''}',
+                        Text(o.isEmpty ? 'No final video yet' : 'Version ${outs.indexWhere((x) => x['url'] == o['url']) + 1}${o['preview'] == true ? ' · free preview' : ''}',
                             style: body(11.5, color: C.faint)),
                       ]),
                     ),
-                    if (o.isNotEmpty) Tag(o['preview'] == true ? 'Preview' : 'Taiyaar', fg: o['preview'] == true ? C.muted : C.ok, size: 11),
+                    if (o.isNotEmpty) Tag(o['preview'] == true ? 'Preview' : 'Ready', fg: o['preview'] == true ? C.muted : C.ok, size: 11),
                   ]),
                 ),
                 if (o.isEmpty)
                   Padding(
                     padding: const EdgeInsets.all(24),
-                    child: Text('Pehle shots banaiye, phir "Final video jodo".', textAlign: TextAlign.center, style: body(14, color: C.muted)),
+                    child: Text('Make the shots first, then "Join final video".', textAlign: TextAlign.center, style: body(14, color: C.muted)),
                   )
                 else ...[
                   Center(
@@ -148,8 +148,8 @@ class _FinalScreenState extends State<FinalScreen> {
                   const SizedBox(height: 14),
                   Wrap(alignment: WrapAlignment.center, spacing: 8, runSpacing: 8, children: [
                     Tag('${secs(o['seconds'])} · ${o['mb'] ?? '?'} MB', fg: C.chip, bg: SC.card, size: 12),
-                    if (avg != null) Tag('AI jaanch ${avg.toStringAsFixed(1)}', fg: avg < 6 ? C.warn : C.ok, bg: SC.card, size: 12),
-                    Tag('Kharch ${rupees(v['spent_inr'])}', fg: C.chip, bg: SC.card, size: 12),
+                    if (avg != null) Tag('AI check ${avg.toStringAsFixed(1)}', fg: avg < 6 ? C.warn : C.ok, bg: SC.card, size: 12),
+                    Tag('Cost ${rupees(v['spent_inr'])}', fg: C.chip, bg: SC.card, size: 12),
                   ]),
                   if (outs.length > 1) ...[
                     const SizedBox(height: 12),
@@ -176,19 +176,19 @@ class _FinalScreenState extends State<FinalScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
                     child: Row(children: [
-                      Expanded(child: SButton(label: 'Gallery mein save', icon: Icons.download_rounded, busy: _busy == 'save', onTap: _save)),
+                      Expanded(child: SButton(label: 'Save to gallery', icon: Icons.download_rounded, busy: _busy == 'save', onTap: _save)),
                       const SizedBox(width: 10),
                       Expanded(
                         child: SButton(label: 'Link · 10 din', icon: Icons.link_rounded, primary: false, onTap: () {
                           Clipboard.setData(ClipboardData(text: app.api!.absolute('${o['url']}')));
-                          studioSnack(context, 'Link copy ho gaya (10 din chalega)');
+                          studioSnack(context, 'Link copied (works for 10 days)');
                         }),
                       ),
                     ]),
                   ),
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
-                    child: Text('Video par "AI-generated · Hoola" label hai. Post aap khud kijiye; Hoola kahin post nahi karta.',
+                    child: Text('The video carries an "AI-generated · Hoola" label. You post it yourself; Hoola does not post anywhere.',
                         textAlign: TextAlign.center, style: body(11.5, color: C.faint)),
                   ),
                 ],
@@ -197,7 +197,7 @@ class _FinalScreenState extends State<FinalScreen> {
                   padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(color: SC.card, borderRadius: BorderRadius.circular(18)),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    Text('Kuch badalna hai?', style: body(14, w: FontWeight.w800)),
+                    Text('Want to change something?', style: body(14, w: FontWeight.w800)),
                     const SizedBox(height: 10),
                     Row(children: [
                       Expanded(
@@ -205,7 +205,7 @@ class _FinalScreenState extends State<FinalScreen> {
                           controller: _change,
                           style: body(13.5, w: FontWeight.w500),
                           decoration: InputDecoration(
-                            hintText: 'Jaise: ant ka close-up 2 sec lamba karo',
+                            hintText: 'For example: make the ant close-up 2 sec longer',
                             hintStyle: body(13, w: FontWeight.w500, color: C.faint),
                             filled: true,
                             fillColor: SC.field,
@@ -226,7 +226,7 @@ class _FinalScreenState extends State<FinalScreen> {
                       ),
                     ]),
                     const SizedBox(height: 8),
-                    Text('Sirf badla hua shot dobara banega. Jodna aur captions free.', style: body(11.5, color: C.faint)),
+                    Text('Only the changed shot is remade. Joining and captions are free.', style: body(11.5, color: C.faint)),
                   ]),
                 ),
               ]),

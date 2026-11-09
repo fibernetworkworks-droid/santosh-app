@@ -193,7 +193,7 @@ class _ChatScreenState extends State<ChatScreen> {
     if ((s['skipped'] as num? ?? 0) > 0) {
       final names = List<String>.from((s['skipped_names'] as List? ?? const []).map((e) => '$e'));
       _snack('${names.isEmpty ? '${s['skipped']} file' : names.join(', ')}: '
-          '${app.g('nahi le paye (25 MB se badi, 6 se zyada, ya padh nahi paye). Badi file Google Drive link se bhejiye.')}');
+          '${app.g('could not be taken (bigger than 25 MB, more than 6, or unreadable). Send a big file as a Google Drive link.')}');
     }
     for (final f in List<Map<String, dynamic>>.from((s['files'] as List? ?? const []).map((e) => Map<String, dynamic>.from(e as Map)))) {
       if (_files.length >= 6) break;
@@ -284,7 +284,7 @@ class _ChatScreenState extends State<ChatScreen> {
       if ((s == 'done' || s == 'notListening') && mounted) setState(() => _listening = false);
     });
     if (!_sttReady) {
-      _snack(app.g('Microphone permission chahiye. Phone settings mein Hoola ko mic ki permission dijiye.'));
+      _snack(app.g('Microphone permission is needed. Give Hoola the mic permission in the phone settings.'));
       return;
     }
     setState(() => _listening = true);
@@ -364,7 +364,7 @@ class _ChatScreenState extends State<ChatScreen> {
         const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: C.accentSoft)),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(app.g('Sahi hai? {x} second mein bhej rahe hain…', x: '$_voiceCountdown'),
+          child: Text(app.g('Is that right? Sending in {x} seconds…', x: '$_voiceCountdown'),
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: C.accentSoft)),
         ),
         TextButton(
@@ -420,7 +420,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Widget _pendingFiles() => AttachTray(
         files: _files,
-        retryLabel: app.g('Dobara'),
+        retryLabel: app.g('Retry'),
         onRemove: (f) => setState(() => _files.remove(f)),
         onRetry: _upload,
         onOpen: (f) => openAttachment(context, app, [for (final x in _files) if (x.done) x.view], [for (final x in _files) if (x.done) x].indexOf(f)),
@@ -433,11 +433,11 @@ class _ChatScreenState extends State<ChatScreen> {
   Future<void> _send() async {
     var t = _text.text;
     if (_files.any((f) => f.err != null)) {
-      _snack(app.g('Ek file upload nahi hui. Uspar Dobara dabaiye ya hata dijiye.'));
+      _snack(app.g('One file did not upload. Tap Retry on it or remove it.'));
       return;
     }
     if (_files.any((f) => f.uploading)) {
-      _snack(app.g('File abhi upload ho rahi hai…'));
+      _snack(app.g('The file is still uploading…'));
       return;
     }
     final files = List<TrayFile>.from(_files);
@@ -480,7 +480,7 @@ class _ChatScreenState extends State<ChatScreen> {
         builder: (context, _) => Column(children: [
           _header(),
           if (app.error != null) _banner(app.error!, onTap: () => app.connect()),
-          if (app.connected && !app.brainReady) _banner(app.g('Hoola ka dimaag server par connect nahi hai (ANTHROPIC_API_KEY).')),
+          if (app.connected && !app.brainReady) _banner(app.g('Hoola\'s brain is not connected on the server (ANTHROPIC_API_KEY).')),
           WorkStrip(app: app),
           _waitingStrip(),
           Expanded(child: Stack(children: [
@@ -498,7 +498,7 @@ class _ChatScreenState extends State<ChatScreen> {
                     opacity: _away ? 1 : 0,
                     duration: const Duration(milliseconds: 180),
                     child: _DownButton(count: _unseen, onTap: _toBottom,
-                        labelNew: app.g('naye message, neeche jaiye'), labelLatest: app.g('Sabse neeche jaiye')),
+                        labelNew: app.g('new messages, scroll down'), labelLatest: app.g('Sabse neeche jaiye')),
                   ),
                 ),
               ),
@@ -592,16 +592,16 @@ class _ChatScreenState extends State<ChatScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(app.aName, maxLines: 1, overflow: TextOverflow.ellipsis, softWrap: false, style: display(20, w: FontWeight.w700)),
-              Text(!app.connected ? app.g('Connect ho raha hai…') : app.typing ? (app.currentStep ?? app.g('Kaam kar raha hoon…'))
-                  : app.incognito ? '🕶 Incognito · ${app.g('yaad nahi rakha jayega')}' : 'Online · ${languages[app.language] ?? ''}',
+              Text(!app.connected ? app.g('Connecting…') : app.typing ? (app.currentStep ?? app.g('Working…'))
+                  : app.incognito ? '🕶 Incognito · ${app.g('will not be remembered')}' : 'Online · ${languages[app.language] ?? ''}',
                   maxLines: 1, overflow: TextOverflow.ellipsis,
                   style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: app.connected ? C.ok : C.muted)),
             ]),
           ),
           if (widget.onVoice != null)
-            IconButton(tooltip: app.g('Bolkar baat karein'), onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
-          IconButton(tooltip: app.g('Purani chats'), onPressed: _showChats, icon: const Icon(Icons.history_rounded, color: C.chip)),
-          IconButton(tooltip: app.g('Naya chat'), onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
+            IconButton(tooltip: app.g('Talk by voice'), onPressed: widget.onVoice, icon: const Icon(Icons.graphic_eq_rounded, color: C.accent)),
+          IconButton(tooltip: app.g('Older chats'), onPressed: _showChats, icon: const Icon(Icons.history_rounded, color: C.chip)),
+          IconButton(tooltip: app.g('New chat'), onPressed: () => app.connect(fresh: true), icon: const Icon(Icons.add_comment_outlined, color: C.chip)),
         ]),
       );
 
@@ -614,7 +614,7 @@ class _ChatScreenState extends State<ChatScreen> {
               : TextButton.icon(
                   onPressed: app.loadOlder,
                   icon: const Icon(Icons.expand_less_rounded, size: 18),
-                  label: Text(app.g('Purani baatein dikhao'), style: const TextStyle(fontWeight: FontWeight.w700)),
+                  label: Text(app.g('Show older messages'), style: const TextStyle(fontWeight: FontWeight.w700)),
                 ),
         ),
       );
@@ -636,7 +636,7 @@ class _ChatScreenState extends State<ChatScreen> {
           const Icon(Icons.pending_actions_rounded, color: C.accentSoft, size: 18),
           const SizedBox(width: 10),
           Expanded(
-            child: Text(app.g('Aapki haan chahiye ({x})', x: '${w.length}'),
+            child: Text(app.g('Needs your yes ({x})', x: '${w.length}'),
                 style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: C.accentSoft)),
           ),
           const Icon(Icons.chevron_right_rounded, color: C.accentSoft),
@@ -665,13 +665,13 @@ class _ChatScreenState extends State<ChatScreen> {
                   Padding(
                     padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
                     child: Row(children: [
-                      Expanded(child: Text(app.g('Aapki haan chahiye · {x}', x: '${w.length}'), style: display(18, w: FontWeight.w700))),
+                      Expanded(child: Text(app.g('Needs your yes · {x}', x: '${w.length}'), style: display(18, w: FontWeight.w700))),
                       IconButton(onPressed: () => Navigator.pop(ctx), icon: const Icon(Icons.close_rounded, color: C.muted)),
                     ]),
                   ),
                   Expanded(
                     child: w.isEmpty
-                        ? Center(child: Text(app.g('Sab ho gaya ✓'), style: const TextStyle(color: C.muted)))
+                        ? Center(child: Text(app.g('All done ✓'), style: const TextStyle(color: C.muted)))
                         : ListView(
                             padding: const EdgeInsets.fromLTRB(14, 4, 14, 16),
                             children: [for (final it in w) Padding(padding: const EdgeInsets.only(bottom: 8), child: _item(it))],
@@ -705,7 +705,7 @@ class _ChatScreenState extends State<ChatScreen> {
                   ? chats
                   : [
                       for (final c in chats)
-                        if ('${c['title'] ?? app.g('Naya chat')}'.toLowerCase().contains(needle)) c,
+                        if ('${c['title'] ?? app.g('New chat')}'.toLowerCase().contains(needle)) c,
                     ];
               return SafeArea(
                 child: SizedBox(
@@ -714,9 +714,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(18, 14, 8, 4),
                       child: Row(children: [
-                        Expanded(child: Text(app.g('Aapki chats'), style: display(18, w: FontWeight.w700))),
-                        IconButton(   // v0.248 this chat's checkpoint summary + "Chat chhoti karo"
-                          tooltip: app.g('Is chat ka saar'),
+                        Expanded(child: Text(app.g('Your chats'), style: display(18, w: FontWeight.w700))),
+                        IconButton(   // v0.248 this chat's checkpoint summary + "Shorten chat"
+                          tooltip: app.g('Summary of this chat'),
                           onPressed: () {
                             Navigator.pop(ctx);
                             showCompactSheet(context, app);
@@ -729,7 +729,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             app.connect(fresh: true);
                           },
                           icon: const Icon(Icons.add_comment_outlined, size: 18),
-                          label: Text(app.g('Naya chat')),
+                          label: Text(app.g('New chat')),
                         ),
                         TextButton(   // v0.250 a chat Hoola never remembers
                           onPressed: () {
@@ -749,7 +749,7 @@ class _ChatScreenState extends State<ChatScreen> {
                             showKaamSheet(context, app);
                           },
                           icon: const Icon(Icons.task_alt_rounded, size: 18),
-                          label: Text(app.g('Aapka kaam')),
+                          label: Text(app.g('Your work')),
                         ),
                         TextButton.icon(
                           onPressed: () {
@@ -766,7 +766,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: TextField(
                         onChanged: (v) => setSheet(() => q = v),
                         decoration: InputDecoration(
-                          hintText: app.g('Chat khojo…'),
+                          hintText: app.g('Search chats…'),
                           prefixIcon: const Icon(Icons.search_rounded, size: 22, color: C.muted),
                           isDense: true,
                           suffixIcon: q.isEmpty
@@ -783,7 +783,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       child: chats.isEmpty
                           ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
                           : shown.isEmpty
-                              ? Center(child: Text(app.g('Koi chat nahi mili'), style: const TextStyle(color: C.muted)))
+                              ? Center(child: Text(app.g('No chats found'), style: const TextStyle(color: C.muted)))
                               : ListView(
                                   padding: const EdgeInsets.fromLTRB(10, 0, 10, 16),
                                   children: [
@@ -791,9 +791,9 @@ class _ChatScreenState extends State<ChatScreen> {
                                       ListTile(
                                         leading: Icon(c['id'] == app.conversationId ? Icons.chat_rounded : Icons.chat_bubble_outline_rounded,
                                             color: c['id'] == app.conversationId ? C.accent : C.muted),
-                                        title: Text('${c['title'] ?? app.g('Naya chat')}', maxLines: 1, overflow: TextOverflow.ellipsis),
+                                        title: Text('${c['title'] ?? app.g('New chat')}', maxLines: 1, overflow: TextOverflow.ellipsis),
                                         subtitle: Text(_when('${c['updated_at'] ?? ''}'), style: const TextStyle(color: C.faint, fontSize: 12)),
-                                        trailing: c['id'] == app.conversationId ? Pill(app.g('Abhi'), fg: C.onAccent, bg: C.accent) : null,
+                                        trailing: c['id'] == app.conversationId ? Pill(app.g('Now'), fg: C.onAccent, bg: C.accent) : null,
                                         onTap: () {
                                           Navigator.pop(ctx);
                                           app.openChat('${c['id']}');
@@ -816,10 +816,10 @@ class _ChatScreenState extends State<ChatScreen> {
     final t = DateTime.tryParse(iso)?.toLocal();
     if (t == null) return '';
     final d = DateTime.now().difference(t);
-    if (d.inMinutes < 2) return app.g('abhi');
-    if (d.inHours < 1) return app.g('{x} min pehle', x: '${d.inMinutes}');
-    if (d.inDays < 1) return app.g('{x} ghante pehle', x: '${d.inHours}');
-    if (d.inDays < 7) return app.g('{x} din pehle', x: '${d.inDays}');
+    if (d.inMinutes < 2) return app.g('just now');
+    if (d.inHours < 1) return app.g('{x} min ago', x: '${d.inMinutes}');
+    if (d.inDays < 1) return app.g('{x} hours ago', x: '${d.inHours}');
+    if (d.inDays < 7) return app.g('{x} days ago', x: '${d.inDays}');
     return '${t.day}/${t.month}/${t.year}';
   }
 
@@ -829,7 +829,7 @@ class _ChatScreenState extends State<ChatScreen> {
           margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(color: const Color(0x2EFFB15C), borderRadius: BorderRadius.circular(16)),
-          child: Text(onTap == null ? t : '$t  ${app.g('(dobara koshish ke liye tap kijiye)')}', style: const TextStyle(fontSize: 13, color: Color(0xFFFFD9A8))),
+          child: Text(onTap == null ? t : '$t  ${app.g('(tap to try again)')}', style: const TextStyle(fontSize: 13, color: Color(0xFFFFD9A8))),
         ),
       );
 
@@ -839,9 +839,9 @@ class _ChatScreenState extends State<ChatScreen> {
         child: Column(children: [
           LiveSantosh(feeling: app.mood, size: 170, thought: true),
           const SizedBox(height: 4),
-          Text(app.g('Kaise madad karoon?'), style: display(19, w: FontWeight.w700)),
+          Text(app.g('How can I help?'), style: display(19, w: FontWeight.w700)),
           const SizedBox(height: 4),
-          Text(app.g('Boliye ya likhiye — dono chalega.'), textAlign: TextAlign.center,
+          Text(app.g('Speak or type — either works.'), textAlign: TextAlign.center,
               style: const TextStyle(color: C.muted, fontSize: 13)),
           const SizedBox(height: 14),
           Glass(
@@ -850,7 +850,7 @@ class _ChatScreenState extends State<ChatScreen> {
             margin: const EdgeInsets.symmetric(horizontal: 26),
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              for (final s in const ['Kal subah 7 baje yaad dilana', 'Doodh list mein daalo', 'Aaj ka mausam'])
+              for (final s in const ['Remind me tomorrow at 7 am', 'Add milk to the list', 'Today\'s weather'])
                 Press(
                   onTap: () => app.send(app.g(s)),
                   child: Padding(
@@ -868,7 +868,7 @@ class _ChatScreenState extends State<ChatScreen> {
           const SizedBox(height: 10),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 30),
-            child: Text(app.g('Baat aapki — sirf aapke phone aur server par.'), textAlign: TextAlign.center,
+            child: Text(app.g('Your conversation — only on your phone and server.'), textAlign: TextAlign.center,
                 style: TextStyle(color: C.faint, fontSize: 12, fontStyle: FontStyle.italic)),
           ),
         ]),
@@ -966,7 +966,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       padding: const EdgeInsets.only(top: 6),
                       child: Press(
                         onTap: () => setState(() => _selecting = null),
-                        child: Pill('✓ ${app.g('Ho gaya')}', fg: C.onAccent, bg: C.ok),
+                        child: Pill('✓ ${app.g('Done')}', fg: C.onAccent, bg: C.ok),
                       ),
                     ),
                 ],
@@ -1085,7 +1085,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.copy_rounded, color: C.accent),
-            title: Text(app.g('Copy karo'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            title: Text(app.g('Copy'), style: const TextStyle(fontWeight: FontWeight.w700)),
             onTap: () {
               Navigator.pop(ctx);
               _copyMsg(text);
@@ -1093,8 +1093,8 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           ListTile(
             leading: const Icon(Icons.format_quote_rounded, color: C.accent),
-            title: Text(app.g('Jawab mein quote karo'), style: const TextStyle(fontWeight: FontWeight.w700)),
-            subtitle: Text(app.g('Reply bar mein upar dikhega'), style: const TextStyle(fontSize: 12, color: C.faint)),
+            title: Text(app.g('Quote in reply'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text(app.g('It will show above in the reply bar'), style: const TextStyle(fontSize: 12, color: C.faint)),
             onTap: () {
               Navigator.pop(ctx);
               _startReply(text);
@@ -1102,7 +1102,7 @@ class _ChatScreenState extends State<ChatScreen> {
           ),
           ListTile(
             leading: Icon(_selecting == it ? Icons.check_circle_rounded : Icons.highlight_alt_rounded, color: C.accent),
-            title: Text(app.g(_selecting == it ? 'Text chunna band karo' : 'Text chuniye'), style: const TextStyle(fontWeight: FontWeight.w700)),
+            title: Text(app.g(_selecting == it ? 'Stop selecting text' : 'Select text'), style: const TextStyle(fontWeight: FontWeight.w700)),
             subtitle: _selecting == it ? null : Text(app.g('Text ko dabakar kheenchiye'), style: const TextStyle(fontSize: 12, color: C.faint)),
             onTap: () {
               Navigator.pop(ctx);
@@ -1116,7 +1116,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   Future<void> _copyMsg(String text) async {
     await Clipboard.setData(ClipboardData(text: text));
-    if (mounted) _snack(app.g('Copy ho gaya'));
+    if (mounted) _snack(app.g('Copied'));
   }
 
   // ---- v0.178 WhatsApp-style reply: the quoted message waits in a violet bar above the
@@ -1146,7 +1146,7 @@ class _ChatScreenState extends State<ChatScreen> {
         const SizedBox(width: 10),
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
-            Text(app.g('IS PAR JAWAB'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.accentSoft, letterSpacing: .8)),
+            Text(app.g('REPLYING TO THIS'), style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, color: C.accentSoft, letterSpacing: .8)),
             const SizedBox(height: 2),
             Text(r, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip)),
           ]),
@@ -1162,19 +1162,19 @@ class _ChatScreenState extends State<ChatScreen> {
   List<String> _quickChips() {
     final h = DateTime.now().hour;
     final byHour = h >= 5 && h < 12
-        ? 'Roz subah briefing bhejna'
+        ? 'Send a briefing every morning'
         : h < 17
-            ? 'Aaj ka mausam'
+            ? 'Today\'s weather'
             : h < 22
-                ? 'Kal ka plan banao'
-                : 'Kal subah 7 baje yaad dilana';
+                ? 'Plan tomorrow'
+                : 'Remind me tomorrow at 7 am';
     final pool = <String>[
-      if (app.waitingCards.isNotEmpty) 'Meri haan kahan ruki hai?',
+      if (app.waitingCards.isNotEmpty) 'What is waiting for my yes?',
       byHour,
-      'Meri shopping list',
-      'Aaj ka mausam',
-      'Kal subah 7 baje yaad dilana',
-      'Roz subah briefing bhejna',
+      'My shopping list',
+      'Today\'s weather',
+      'Remind me tomorrow at 7 am',
+      'Send a briefing every morning',
     ];
     final chips = <String>[];
     for (final c in pool) {
@@ -1186,12 +1186,12 @@ class _ChatScreenState extends State<ChatScreen> {
 
   // ---- v0.178 quick asks with icons: what waits for her OK glows amber first ----
   static const _chipIcon = <String, IconData>{
-    'Meri haan kahan ruki hai?': Icons.pending_actions_rounded,
-    'Kal subah 7 baje yaad dilana': Icons.alarm_rounded,
-    'Aaj ka mausam': Icons.wb_cloudy_rounded,
-    'Meri shopping list': Icons.shopping_bag_outlined,
-    'Roz subah briefing bhejna': Icons.wb_sunny_rounded,
-    'Kal ka plan banao': Icons.event_note_rounded,
+    'What is waiting for my yes?': Icons.pending_actions_rounded,
+    'Remind me tomorrow at 7 am': Icons.alarm_rounded,
+    'Today\'s weather': Icons.wb_cloudy_rounded,
+    'My shopping list': Icons.shopping_bag_outlined,
+    'Send a briefing every morning': Icons.wb_sunny_rounded,
+    'Plan tomorrow': Icons.event_note_rounded,
   };
 
   Widget _quick() {
@@ -1206,16 +1206,16 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
                 decoration: BoxDecoration(
-                  color: s == 'Meri haan kahan ruki hai?' ? const Color(0x26FFB15C) : const Color(0x14FFFFFF),
+                  color: s == 'What is waiting for my yes?' ? const Color(0x26FFB15C) : const Color(0x14FFFFFF),
                   borderRadius: BorderRadius.circular(999),
-                  border: Border.all(color: s == 'Meri haan kahan ruki hai?' ? const Color(0x59FFB15C) : const Color(0x22FFFFFF)),
+                  border: Border.all(color: s == 'What is waiting for my yes?' ? const Color(0x59FFB15C) : const Color(0x22FFFFFF)),
                 ),
                 child: Row(mainAxisSize: MainAxisSize.min, children: [
                   Icon(_chipIcon[s] ?? Icons.chat_bubble_outline_rounded, size: 15,
-                      color: s == 'Meri haan kahan ruki hai?' ? C.accentSoft : C.chip),
+                      color: s == 'What is waiting for my yes?' ? C.accentSoft : C.chip),
                   const SizedBox(width: 7),
                   Text(app.g(s), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700,
-                      color: s == 'Meri haan kahan ruki hai?' ? C.accentSoft : C.chip)),
+                      color: s == 'What is waiting for my yes?' ? C.accentSoft : C.chip)),
                 ]),
               ),
             ),
@@ -1229,7 +1229,7 @@ class _ChatScreenState extends State<ChatScreen> {
         padding: const EdgeInsets.all(8),
         border: _listening ? const Color(0x66FFB15C) : null,   // v0.178 the glass rim warms up while she speaks
         child: Row(children: [
-          IconButton(tooltip: app.g('Photo, PDF, video ya koi bhi file'), onPressed: _attach, icon: const Icon(Icons.attach_file_rounded, color: C.chip)),
+          IconButton(tooltip: app.g('Photo, PDF, video or any file'), onPressed: _attach, icon: const Icon(Icons.attach_file_rounded, color: C.chip)),
           Expanded(
             child: TextField(
               controller: _text,
@@ -1238,7 +1238,7 @@ class _ChatScreenState extends State<ChatScreen> {
               maxLines: 4,
               textInputAction: TextInputAction.send,
               onSubmitted: (_) => _send(),
-              decoration: InputDecoration(border: InputBorder.none, hintText: _listening ? app.g('Sun raha hoon…') : app.g('{a} se boliye…', a: app.aName)),
+              decoration: InputDecoration(border: InputBorder.none, hintText: _listening ? app.g('Listening…') : app.g('Talk to {a}…', a: app.aName)),
             ),
           ),
           ValueListenableBuilder(
@@ -2235,8 +2235,8 @@ class _CampaignCard extends StatelessWidget {
   final Santosh app;
 
   static const labels = {
-    'awaiting_approval': 'Meta review', 'ready': 'Taiyaar', 'sending': 'Bhej raha hoon', 'completed': 'Poora',
-    'failed': 'Ruk gaya', 'cancelled': 'Cancel', 'paused': 'Ruka hua', 'waiting_limit': 'Kal tak',
+    'awaiting_approval': 'Meta review', 'ready': 'Ready', 'sending': 'Sending', 'completed': 'Complete',
+    'failed': 'Stopped', 'cancelled': 'Cancelled', 'paused': 'Paused', 'waiting_limit': 'Until tomorrow',
   };
 
   @override
@@ -2269,7 +2269,7 @@ class _CampaignCard extends StatelessWidget {
             child: LinearProgressIndicator(value: ((v['progress'] as num?) ?? 0) / 100, minHeight: 7, color: C.accent, backgroundColor: const Color(0x1F6D3FE0)),
           ),
           const SizedBox(height: 10),
-          Row(children: [stat(app.g('Bheje'), n['sent']), stat(app.g('Pahunche'), n['delivered']), stat(app.g('Padhe'), n['read']), stat(app.g('Jawab'), n['replied'])]),
+          Row(children: [stat(app.g('Bheje'), n['sent']), stat(app.g('Pahunche'), n['delivered']), stat(app.g('Padhe'), n['read']), stat(app.g('Reply'), n['replied'])]),
           if ((tpl['preview'] ?? tpl['body']) != null) ...[
             const SizedBox(height: 10),
             Container(
@@ -2278,10 +2278,10 @@ class _CampaignCard extends StatelessWidget {
               child: Text('${tpl['preview'] ?? tpl['body']}', style: const TextStyle(fontSize: 13, color: Color(0xFFD7D2F2))),
             ),
           ],
-          if (status == 'ready') ...[const SizedBox(height: 10), GradientButton(label: app.g('Haan, bhej do'), height: 46, onTap: () => app.campaignAction(v['id'], 'send'))],
+          if (status == 'ready') ...[const SizedBox(height: 10), GradientButton(label: app.g('Yes, send it'), height: 46, onTap: () => app.campaignAction(v['id'], 'send'))],
           if (status == 'sending' || status == 'awaiting_approval')
             TextButton(onPressed: () => app.campaignAction(v['id'], 'pause'), child: Text(app.g('Rokiye'))),
-          if (status == 'paused') TextButton(onPressed: () => app.campaignAction(v['id'], 'resume'), child: Text(app.g('Phir se chalao'))),
+          if (status == 'paused') TextButton(onPressed: () => app.campaignAction(v['id'], 'resume'), child: Text(app.g('Run again'))),
         ]),
       ),
     );
@@ -2315,12 +2315,12 @@ class _EmailCard extends StatelessWidget {
     final editable = status == 'pending' || status == 'failed';
     Color chipFg = C.chip;
     String chipText = when != null ? 'DRAFT · $when' : 'DRAFT';
-    if (status == 'sent') { chipText = app.g('BHEJ DIYA'); chipFg = C.ok; }
-    if (status == 'sending') { chipText = app.g('JA RAHA HAI'); chipFg = C.accentSoft; }
-    if (status == 'scheduled') { chipText = app.g('BHEJEGA · {x}', x: when ?? ''); chipFg = C.warn; }
+    if (status == 'sent') { chipText = app.g('SENT'); chipFg = C.ok; }
+    if (status == 'sending') { chipText = app.g('SENDING'); chipFg = C.accentSoft; }
+    if (status == 'scheduled') { chipText = app.g('WILL SEND · {x}', x: when ?? ''); chipFg = C.warn; }
     if (status == 'cancelled') { chipText = app.g('CANCEL'); chipFg = C.muted; }
     if (status == 'failed') { chipText = app.g('FAIL'); chipFg = C.bad; }
-    final title = kind == 'reply' ? app.g('Email · jawab') : kind == 'forward' ? app.g('Email · forward') : app.g('Email');
+    final title = kind == 'reply' ? app.g('Email · reply') : kind == 'forward' ? app.g('Email · forward') : app.g('Email');
     return Padding(
       padding: const EdgeInsets.only(bottom: 10),
       child: Glass(flat: true,
@@ -2335,7 +2335,7 @@ class _EmailCard extends StatelessWidget {
           _row(app.g('Ko'), to),
           if ((v['cc'] as String? ?? '').isNotEmpty) _row(app.g('Cc'), v['cc'] as String),
           if ((v['bcc'] as String? ?? '').isNotEmpty) _row(app.g('Bcc'), v['bcc'] as String),
-          _row(app.g('Vishay'), subject),
+          _row(app.g('Subject'), subject),
           const SizedBox(height: 8),
           Container(
             width: double.infinity,
@@ -2356,7 +2356,7 @@ class _EmailCard extends StatelessWidget {
               if (editable)
                 ActionChip(
                   avatar: const Icon(Icons.add_rounded, size: 16, color: C.accent),
-                  label: Text(app.g('File jodiye'), style: const TextStyle(fontSize: 12.5)),
+                  label: Text(app.g('Add a file'), style: const TextStyle(fontSize: 12.5)),
                   onPressed: busy ? null : () => _attach(context),
                 ),
             ]),
@@ -2367,7 +2367,7 @@ class _EmailCard extends StatelessWidget {
             const SizedBox(height: 10),
             Row(children: [
               Expanded(child: GradientButton(
-                  label: busy ? app.g('Bhej raha hoon…') : status == 'failed' ? app.g('Phir bhejo') : when != null ? app.g('Bhejo · {x}', x: when) : app.g('Bhejo'),
+                  label: busy ? app.g('Sending…') : status == 'failed' ? app.g('Send again') : when != null ? app.g('Send · {x}', x: when) : app.g('Send'),
                   height: 46, icon: when != null ? Icons.schedule_send_rounded : Icons.send_rounded,
                   onTap: busy ? null : () => app.sendEmail(v['id'] as String,
                       to: v['to'] as String?, cc: v['cc'] as String?, subject: v['subject'] as String?, body: v['body'] as String?))),
@@ -2381,7 +2381,7 @@ class _EmailCard extends StatelessWidget {
               padding: const EdgeInsets.only(top: 8),
               child: Row(children: [
                 TextButton.icon(onPressed: busy ? null : () => app.sendEmail(v['id'] as String, sendNow: true),
-                    icon: const Icon(Icons.send_rounded, size: 18), label: Text(app.g('Abhi bhejo'))),
+                    icon: const Icon(Icons.send_rounded, size: 18), label: Text(app.g('Send now'))),
                 const Spacer(),
                 TextButton(onPressed: busy ? null : () => app.cancelEmail(v['id'] as String), child: Text(app.g('Cancel'), style: const TextStyle(color: C.muted))),
               ]),
@@ -2437,14 +2437,14 @@ class _EmailCard extends StatelessWidget {
               const SizedBox(height: 8),
               TextField(controller: cc, keyboardType: TextInputType.emailAddress, decoration: const InputDecoration(labelText: 'Cc')),
               const SizedBox(height: 8),
-              TextField(controller: subject, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: app.g('Vishay'))),
+              TextField(controller: subject, textInputAction: TextInputAction.next, decoration: InputDecoration(labelText: app.g('Subject'))),
               const SizedBox(height: 8),
               TextField(controller: body, minLines: 4, maxLines: 12, decoration: const InputDecoration(labelText: 'Email')),
               const SizedBox(height: 16),
               Row(children: [
-                Expanded(child: GlassButton(label: app.g('Rehne do'), onTap: () => Navigator.pop(ctx, false))),
+                Expanded(child: GlassButton(label: app.g('Keep it'), onTap: () => Navigator.pop(ctx, false))),
                 const SizedBox(width: 10),
-                Expanded(child: GradientButton(label: app.g('Save karo'), height: 46, onTap: () => Navigator.pop(ctx, true))),
+                Expanded(child: GradientButton(label: app.g('Save'), height: 46, onTap: () => Navigator.pop(ctx, true))),
               ]),
             ]),
           ),
@@ -2487,9 +2487,9 @@ class EmailNewCard extends StatelessWidget {
           Row(children: [
             Icon(digest ? Icons.mark_email_read_outlined : Icons.mark_email_unread_outlined, color: C.accent, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text(app.g(digest ? 'Inbox update' : 'Nayi mail'),
+            Expanded(child: Text(app.g(digest ? 'Inbox update' : 'New mail'),
                 style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
-            if (v['important'] == true) Flexible(child: Pill(app.g('ZAROORI'), fg: C.warn)),
+            if (v['important'] == true) Flexible(child: Pill(app.g('IMPORTANT'), fg: C.warn)),
           ]),
           const SizedBox(height: 8),
           if (from.isNotEmpty || fromEmail.isNotEmpty)
@@ -2503,7 +2503,7 @@ class EmailNewCard extends StatelessWidget {
           if (otp)
             Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(app.g('Is mail mein login/OTP ka code ho sakta hai — Santosh code kabhi nahi batata.'),
+              child: Text(app.g('This mail may contain a login/OTP code — Hoola never reads out codes.'),
                   style: const TextStyle(color: C.warn, fontSize: 12)),
             ),
           if (account.isNotEmpty)
@@ -2514,16 +2514,16 @@ class EmailNewCard extends StatelessWidget {
           if (!digest && ref.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(spacing: 6, runSpacing: 6, children: [
-              ActionChip(onPressed: () => _say('Email "$ref" padho aur chhota mein batao kya hai.'),
-                  label: Text(app.g('Padho'), style: const TextStyle(fontSize: 12.5))),
-              ActionChip(onPressed: () => _say('Email "$ref" ka jawab likho.'),
-                  label: Text(app.g('Jawab do'), style: const TextStyle(fontSize: 12.5))),
-              ActionChip(onPressed: () => _say('Email "$ref" archive kar do.'),
+              ActionChip(onPressed: () => _say('Read email "$ref" and tell me briefly what it says.'),
+                  label: Text(app.g('Read'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => _say('Write a reply to email "$ref".'),
+                  label: Text(app.g('Reply'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => _say('Archive email "$ref".'),
                   label: Text(app.g('Archive'), style: const TextStyle(fontSize: 12.5))),
-              ActionChip(onPressed: () => _say('Email "$ref" ko 1 ghante ke liye snooze karo.'),
+              ActionChip(onPressed: () => _say('Snooze email "$ref" for 1 hour.'),
                   avatar: const Icon(Icons.alarm_add_rounded, size: 16, color: C.chip),
-                  label: Text(app.g('1 ghanta'), style: const TextStyle(fontSize: 12.5))),
-              ActionChip(onPressed: () => _say('Email "$ref" ko kal subah tak snooze karo.'),
+                  label: Text(app.g('1 hour'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => _say('Snooze email "$ref" until tomorrow morning.'),
                   avatar: const Icon(Icons.wb_twilight_rounded, size: 16, color: C.chip),
                   label: Text(app.g('Kal subah'), style: const TextStyle(fontSize: 12.5))),
             ]),
@@ -2553,22 +2553,22 @@ class EmailSnoozeCard extends StatelessWidget {
             const Icon(Icons.alarm_on_rounded, color: C.ok, size: 20),
             const SizedBox(width: 8),
             Expanded(child: Text(app.g('Snooze khatam'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
-            Flexible(child: Pill(app.g('WAPAS'), fg: C.ok)),
+            Flexible(child: Pill(app.g('BACK'), fg: C.ok)),
           ]),
           const SizedBox(height: 8),
           if (peer.isNotEmpty) Text(peer, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700)),
           Text(subject, style: const TextStyle(fontSize: 14.5, fontWeight: FontWeight.w700)),
           Padding(
             padding: const EdgeInsets.only(top: 4),
-            child: Text(app.g('Yeh mail wapas inbox mein hai (unread).'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            child: Text(app.g('This mail is back in the inbox (unread).'), style: const TextStyle(color: C.muted, fontSize: 12.5)),
           ),
           if (ref.isNotEmpty) ...[
             const SizedBox(height: 10),
             Wrap(spacing: 6, runSpacing: 6, children: [
-              ActionChip(onPressed: () => app.send('Email "$ref" padho aur chhota mein batao kya hai.'),
-                  label: Text(app.g('Padho'), style: const TextStyle(fontSize: 12.5))),
-              ActionChip(onPressed: () => app.send('Email "$ref" ka jawab likho.'),
-                  label: Text(app.g('Jawab do'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => app.send('Read email "$ref" and tell me briefly what it says.'),
+                  label: Text(app.g('Read'), style: const TextStyle(fontSize: 12.5))),
+              ActionChip(onPressed: () => app.send('Write a reply to email "$ref".'),
+                  label: Text(app.g('Reply'), style: const TextStyle(fontSize: 12.5))),
             ]),
           ],
         ]),
@@ -2593,7 +2593,7 @@ class _BazarCard extends StatelessWidget {
     final result = v['result'] as Map?;
     final open = result?['open'] as Map?;
     final money = (v['money'] as bool?) ?? (v['amount'] as String? ?? '').isNotEmpty;
-    String chip = money ? 'APPROVE KAREIN' : 'HAAN CHAHIYE';
+    String chip = money ? 'APPROVE' : 'YOUR YES NEEDED';
     Color chipFg = C.warn;
     if (status == 'approved' || status == 'auto') { chip = 'APPROVED'; chipFg = C.ok; }
     if (status == 'rejected') { chip = 'CANCEL'; chipFg = C.muted; }
@@ -2611,10 +2611,10 @@ class _BazarCard extends StatelessWidget {
           ]),
           if (demo) Padding(
               padding: const EdgeInsets.only(top: 6),
-              child: Text(app.g('DEMO: test bill hai, asli paise nahi katenge.'), style: const TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600))),
+              child: Text(app.g('DEMO: this is a test bill, no real money will be charged.'), style: const TextStyle(color: C.warn, fontSize: 12.5, fontWeight: FontWeight.w600))),
           const SizedBox(height: 8),
           if ((v['payee'] as String? ?? '').isNotEmpty)
-            Text('${app.g(money ? 'Kisko' : 'Kahan')}: ${v['payee']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
+            Text('${app.g(money ? 'To' : 'Where')}: ${v['payee']}', style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           for (final i in items.take(12))
             Padding(
@@ -2636,21 +2636,21 @@ class _BazarCard extends StatelessWidget {
             Text(v['pay_method'] as String, style: const TextStyle(color: C.muted, fontSize: 12.5)),
           ],
           if (v['needs_pin'] == true && status == 'pending')
-            Text(app.g('UPI PIN sirf aapke UPI app mein daaliye. Hoola kabhi PIN nahi maangega.'), style: const TextStyle(color: C.muted, fontSize: 12)),
+            Text(app.g('Enter the UPI PIN only in your UPI app. Hoola will never ask for the PIN.'), style: const TextStyle(color: C.muted, fontSize: 12)),
           if (v['voice_ok'] == true && status == 'pending') ...[
             // v0.191 samajhdaar card: boli/likhi hui manzoori — tap ki zaroorat nahi
             const SizedBox(height: 8),
             Row(children: [
               Icon(Icons.graphic_eq_rounded, size: 15, color: C.accent),
               const SizedBox(width: 6),
-              Expanded(child: Text(app.g('Bol kar bhi ho jayega — "haan karo" ya "approve" kahiye.'),
+              Expanded(child: Text(app.g('You can also do it by voice — say "yes, do it" or "approve".'),
                   style: const TextStyle(color: C.accent, fontSize: 12))),
             ]),
           ],
           if (status == 'pending') ...[
             const SizedBox(height: 10),
             Row(children: [
-              Expanded(child: GradientButton(label: busy ? app.g('Ho raha hai…') : (money ? app.g('Approve karein') : app.g('Haan, karo')), height: 46, icon: Icons.check_rounded,
+              Expanded(child: GradientButton(label: busy ? app.g('Working…') : (money ? app.g('Approve') : app.g('Yes, do it')), height: 46, icon: Icons.check_rounded,
                   onTap: busy ? null : () => showApproveSheet(context, app, v))),
               const SizedBox(width: 8),
               TextButton(onPressed: busy ? null : () => app.decideBazar(v['id'] as String, 'reject'), child: const Text('Cancel')),
@@ -2682,7 +2682,7 @@ Widget _openButtons(BuildContext context, Santosh app, Map<String, dynamic> open
   }
   return OutlinedButton.icon(
     icon: Icon(open['kind'] == 'upi' ? Icons.currency_rupee_rounded : Icons.open_in_new_rounded),
-    label: Text(open['label'] as String? ?? app.g('Kholiye')),
+    label: Text(open['label'] as String? ?? app.g('Open')),
     onPressed: () async {
       final r = await app.openBazar(open);
       if (r != 'ok' && context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(r)));
@@ -2720,15 +2720,15 @@ class _LinkCard extends StatelessWidget {
         padding: const EdgeInsets.only(bottom: 10),
         child: Glass(flat: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-            Text(app.g('{x} jodiye', x: '${v['name']}'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            Text(app.g('Connect {x}', x: '${v['name']}'), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             Padding(
                 padding: const EdgeInsets.only(top: 4),
-                child: Text(app.g('Ek baar apne account se login kijiye (OTP unke page par aayega). Phir Hoola aapke liye order kar sakta hai.'),
+                child: Text(app.g('Log in once with your own account (the OTP comes on their page). Then Hoola can place orders for you.'),
                     style: const TextStyle(fontSize: 13))),
             const SizedBox(height: 8),
             OutlinedButton.icon(
               icon: const Icon(Icons.link_rounded),
-              label: Text(app.g('{x} link karein', x: '${v['name']}')),
+              label: Text(app.g('Link {x}', x: '${v['name']}')),
               onPressed: () async {
                 final err = await app.linkApp(v['pack_id'] as String);
                 if (err != null && context.mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));

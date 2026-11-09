@@ -33,11 +33,11 @@ const _fmtSay = {
 
 String _stageSay(Map<String, dynamic> v) {
   final st = '${v['status'] ?? ''}';
-  if (st == 'done') return 'Taiyaar';
-  if (st == 'failed') return 'Nahi ban paya';
-  if (st == 'cancelled') return 'Rok diya';
+  if (st == 'done') return 'Ready';
+  if (st == 'failed') return 'Could not be made';
+  if (st == 'cancelled') return 'Stopped';
   final s = '${v['stage'] ?? ''}';
-  return s.isNotEmpty ? s : 'Line mein';
+  return s.isNotEmpty ? s : 'In queue';
 }
 
 class Blender3dCard extends StatefulWidget {
@@ -83,7 +83,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
     try {
       await job();
     } catch (e) {
-      _say('Nahi ho paya: $e');
+      _say('Could not do it: $e');
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -101,7 +101,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
         final p = await _local(url, name);
         if (p == null) return;
         final err = await Native.saveImage(p, name);
-        _say(err ?? 'Gallery mein save ho gayi (Pictures/Hoola)');
+        _say(err ?? 'Saved to the gallery (Pictures/Hoola)');
       });
 
   Future<void> _change({String words = '', Map<String, dynamic> extra = const {}}) => _run(() async {
@@ -110,7 +110,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
         if (api == null || id == null) return;
         await api.call('POST', '/api/blender3d/$id/change', body: {'words': words, ...extra});
         _ctl.clear();
-        _say(words.isEmpty ? 'Nayi files ban rahi hain' : 'Badlav shuru: naya version aayega');
+        _say(words.isEmpty ? 'New files are being made' : 'Change started: a new version is coming');
       });
 
   Future<void> _cancel() => _run(() async {
@@ -160,7 +160,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
             Expanded(
                 child: Text(_stageSay(v),
                     style: TextStyle(color: status == 'failed' ? C.bad : (status == 'done' ? C.ok : C.muted), fontSize: 12.5))),
-            if (busy) TextButton(onPressed: _busy ? null : _cancel, child: const Text('Rok do')),
+            if (busy) TextButton(onPressed: _busy ? null : _cancel, child: const Text('Stop')),
           ]),
           if (busy) ...[
             const SizedBox(height: 4),
@@ -185,7 +185,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
                       errorBuilder: (c, e, s) => Container(
                           height: 100,
                           alignment: Alignment.center,
-                          child: const Text('Picture ka link purana ho gaya', style: TextStyle(color: C.faint)))),
+                          child: const Text('The picture link has expired', style: TextStyle(color: C.faint)))),
                 ),
               ),
             ),
@@ -201,7 +201,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
               ]),
             ],
             const SizedBox(height: 4),
-            const Text('AI se bana · Hoola (Blender)', style: TextStyle(color: C.faint, fontSize: 11)),
+            const Text('Made by AI · Hoola (Blender)', style: TextStyle(color: C.faint, fontSize: 11)),
           ],
           if (size != null || stats['tris'] != null) ...[
             const SizedBox(height: 6),
@@ -233,7 +233,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
                 OutlinedButton.icon(
                     onPressed: _busy ? null : () => _share(renders[_view]['url'] as String? ?? '', '${v['number']}.png'),
                     icon: const Icon(Icons.share_rounded, size: 18),
-                    label: const Text('Bhejo')),
+                    label: const Text('Send')),
               if (video != null)
                 OutlinedButton.icon(
                     onPressed: () => Navigator.of(context).push(MaterialPageRoute(
@@ -259,7 +259,7 @@ class _Blender3dCardState extends State<Blender3dCard> {
                   maxLines: 3,
                   textInputAction: TextInputAction.send,
                   onSubmitted: (t) => t.trim().isEmpty ? null : _change(words: t.trim()),
-                  decoration: const InputDecoration(isDense: true, hintText: 'Badlav bolo: "handle bada karo"', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(isDense: true, hintText: 'Say a change: "make the handle bigger"', border: OutlineInputBorder()),
                 ),
               ),
               IconButton(
@@ -272,10 +272,10 @@ class _Blender3dCardState extends State<Blender3dCard> {
                 ActionChip(label: const Text('Sharp render'), onPressed: _busy ? null : () => _change(extra: {'quality': 'final'})),
                 ActionChip(label: const Text('360° video'), onPressed: _busy ? null : () => _change(extra: {'turntable': true})),
                 ActionChip(
-                    label: const Text('Saare angle'),
+                    label: const Text('All angles'),
                     onPressed: _busy ? null : () => _change(extra: {'views': ['three_quarter', 'front', 'side', 'top']})),
                 ActionChip(
-                    label: const Text('Saari files'),
+                    label: const Text('All files'),
                     onPressed: _busy ? null : () => _change(extra: {'exports': ['glb', 'stl', 'obj', 'fbx', 'usdz', 'blend']})),
               ]),
             ],
@@ -330,27 +330,27 @@ class _Blender3dScreenState extends State<Blender3dScreen> {
     return Scaffold(
       appBar: AppBar(title: Text('${widget.app.aName} · 3D Studio')),
       floatingActionButton: FloatingActionButton.extended(
-          onPressed: _new, icon: const Icon(Icons.add_rounded), label: const Text('Naya 3D')),
+          onPressed: _new, icon: const Icon(Icons.add_rounded), label: const Text('New 3D')),
       body: RefreshIndicator(
         onRefresh: _load,
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Asli Blender, Hoola ke haath mein',
+              const Text('Real Blender, in Hoola\'s hands',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
               const SizedBox(height: 6),
               const Text(
-                  'Bata dijiye kya banana hai: product mockup aapke label ke saath, dukaan / stall ka layout, gift, trophy, '
-                  'name plate, 3D print ka part. Render, 360° video aur GLB / STL / USDZ files aapke paas aati hain.',
+                  'Tell Hoola what to make: a product mockup with your label, a shop / stall layout, a gift, a trophy, '
+                  'a name plate, a 3D-print part. You get renders, a 360° video and GLB / STL / USDZ files.',
                   style: TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 8),
               if (_home != null)
                 Text(
                     health['installed'] == true
                         ? (health['no_network'] == true
-                            ? 'Blender taiyaar · har kaam band dibbe mein (internet nahi, aapki chaabiyan nahi)'
-                            : 'Blender taiyaar · code check + band dibba')
-                        : 'Blender abhi server par install nahi hai (admin: deploy/setup_blender.sh)',
+                            ? 'Blender ready · every job runs in a closed box (no internet, none of your keys)'
+                            : 'Blender ready · code check + closed box')
+                        : 'Blender is not installed on the server yet (admin: deploy/setup_blender.sh)',
                     style: TextStyle(color: health['installed'] == true ? C.ok : C.warn, fontSize: 12)),
             ]),
           ),
@@ -360,7 +360,7 @@ class _Blender3dScreenState extends State<Blender3dScreen> {
           if (_home != null && items.isEmpty)
             const Padding(
                 padding: EdgeInsets.all(20),
-                child: Text('Abhi koi 3D nahi bana. "Naya 3D" dabaiye ya chat mein boliye.', style: TextStyle(color: C.faint))),
+                child: Text('No 3D made yet. Tap "New 3D" or say it in the chat.', style: TextStyle(color: C.faint))),
           for (final p in items)
             InkWell(
               onTap: () async {
@@ -415,11 +415,11 @@ class _Blender3dPageState extends State<_Blender3dPage> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (c) => AlertDialog(
-              title: const Text('Ye 3D hata dein?'),
-              content: const Text('Saare versions aur files hat jayengi.'),
+              title: const Text('Remove this 3D?'),
+              content: const Text('All versions and files will be removed.'),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, hatao')),
+                TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+                TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, remove')),
               ],
             ));
     if (ok != true) return;
@@ -444,11 +444,11 @@ class _Blender3dPageState extends State<_Blender3dPage> {
               if ('${v['brief'] ?? ''}'.isNotEmpty)
                 Padding(
                     padding: const EdgeInsets.only(bottom: 10),
-                    child: Text('Aapne kaha: ${v['brief']}', style: const TextStyle(color: C.muted, fontSize: 12.5))),
+                    child: Text('You said: ${v['brief']}', style: const TextStyle(color: C.muted, fontSize: 12.5))),
               if (objects.isNotEmpty)
                 Glass(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    const Text('Model ke hisse', style: TextStyle(fontWeight: FontWeight.w700)),
+                    const Text('Model parts', style: TextStyle(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 6),
                     for (final o in objects.take(30))
                       Text(
@@ -477,7 +477,7 @@ class _Blender3dPageState extends State<_Blender3dPage> {
                       child: Row(children: [
                         const Icon(Icons.code_rounded, size: 18, color: C.faint),
                         const SizedBox(width: 8),
-                        const Expanded(child: Text('Blender script (jaanch ke baad chali)', style: TextStyle(fontWeight: FontWeight.w600))),
+                        const Expanded(child: Text('Blender script (ran after checking)', style: TextStyle(fontWeight: FontWeight.w600))),
                         Icon(_showCode ? Icons.expand_less_rounded : Icons.expand_more_rounded, color: C.faint),
                       ]),
                     ),
@@ -530,7 +530,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
         final r = await api.chatFile(conv, f.name, f.bytes);
         setState(() => _photos.add({'id': '${r['file_id']}', 'name': f.name}));
       } catch (e) {
-        _say('Photo nahi gayi: $e');
+        _say('The photo was not sent: $e');
       }
     }
   }
@@ -540,7 +540,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
     final b = _brief.text.trim();
     if (api == null) return;
     if (b.length < 6) {
-      _say('Thoda detail mein likhiye: kya, size, rang, kis kaam ke liye');
+      _say('Write a little more detail: what, size, colour, what it is for');
       return;
     }
     setState(() => _busy = true);
@@ -566,7 +566,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Naya 3D')),
+      appBar: AppBar(title: const Text('New 3D')),
       body: ListView(padding: const EdgeInsets.all(16), children: [
         TextField(
           controller: _brief,
@@ -574,22 +574,22 @@ class _NewBlender3dState extends State<_NewBlender3d> {
           maxLines: 8,
           decoration: const InputDecoration(
               border: OutlineInputBorder(),
-              labelText: 'Kya banana hai?',
-              hintText: 'Jaise: 250 g achaar ki kaanch ki barni, laal dhakkan, mera label (photo), lakdi ki table par'),
+              labelText: 'What should be made?',
+              hintText: 'For example: a 250 g glass pickle jar, red lid, my label (photo), on a wooden table'),
         ),
         const SizedBox(height: 10),
         Wrap(spacing: 6, runSpacing: 4, children: [
           for (final ex in const [
-            'Achaar ki barni mera label lagakar',
-            'Chai stall ka 3D layout 8x6 feet',
-            'Name plate "Sharma Niwas" pital jaisi',
-            '3D print ke liye phone stand',
+            'Pickle jar with my label',
+            '3D layout of a tea stall, 8x6 feet',
+            'A "Sharma Niwas" name plate that looks like brass',
+            'Phone stand for 3D printing',
           ])
             ActionChip(label: Text(ex, style: const TextStyle(fontSize: 12)), onPressed: () => setState(() => _brief.text = ex)),
         ]),
         const SizedBox(height: 14),
         Row(children: [
-          const Expanded(child: Text('Aapki photo (label / texture)', style: TextStyle(fontWeight: FontWeight.w600))),
+          const Expanded(child: Text('Your photo (label / texture)', style: TextStyle(fontWeight: FontWeight.w600))),
           TextButton.icon(onPressed: _photos.length >= 6 ? null : _addPhoto, icon: const Icon(Icons.add_photo_alternate_rounded), label: const Text('Jodo')),
         ]),
         if (_photos.isNotEmpty)
@@ -612,7 +612,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
         Wrap(spacing: 6, children: [
           for (final a in const ['1:1', '4:5', '9:16', '16:9'])
             ChoiceChip(label: Text(a), selected: _aspect == a, onSelected: (_) => setState(() => _aspect = a)),
-          ChoiceChip(label: const Text('Jaldi'), selected: _quality == 'preview', onSelected: (_) => setState(() => _quality = 'preview')),
+          ChoiceChip(label: const Text('Soon'), selected: _quality == 'preview', onSelected: (_) => setState(() => _quality = 'preview')),
           ChoiceChip(label: const Text('Sharp'), selected: _quality == 'final', onSelected: (_) => setState(() => _quality = 'final')),
         ]),
         SwitchListTile(
@@ -628,7 +628,7 @@ class _NewBlender3dState extends State<_NewBlender3d> {
             _print = v;
             if (v) _exports.add('stl');
           }),
-          title: const Text('3D print ke liye'),
+          title: const Text('For 3D printing'),
           subtitle: const Text('Band (closed) solid model + size check, STL file'),
         ),
         const SizedBox(height: 12),
@@ -637,11 +637,11 @@ class _NewBlender3dState extends State<_NewBlender3d> {
           icon: _busy
               ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
               : const Icon(Icons.view_in_ar_rounded),
-          label: const Text('Banao'),
+          label: const Text('Make'),
         ),
         const SizedBox(height: 10),
         const Text(
-            'Famous characters, kisi brand ka logo, asli log aur hathiyar ke parts Hoola nahi banata. Har picture par "AI se bana" likha hota hai.',
+            'Hoola does not make famous characters, brand logos, real people or weapon parts. Every picture is labelled "made by AI".',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
     );
