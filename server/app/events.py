@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import contextvars
 from collections import defaultdict
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -499,8 +500,15 @@ def card_updates(tenant: str, since: datetime | None, limit: int = 8) -> list[di
     return out
 
 
-def card_news_block(tenant: str, since: datetime | None) -> str:
-    """v0.704 for EVERY chat turn: what she did on cards since the last reply + the cards that really still wait."""
+# v0.709 her words that are ABOUT pending work / cards - only then does the waiting list ride the turn
+_ASKS_PENDING = re.compile(r"\b(card|cards|pending|baaki|bacha|bache|waiting|approve|approval|haan banao|kya hua|"
+                           r"status|update|kya chal|kahan tak|bhej(a|i|e)? (kya|ki nahi)|gaya kya|hua kya|draft)\b", re.I)
+
+
+def card_news_block(tenant: str, since: datetime | None, user_text: str = "") -> str:
+    """v0.704 for EVERY chat turn: what she did on cards since the last reply + the cards that really still wait.
+    v0.709: the WAITING list rides only when her message is about pending work / cards - on every turn it made the model
+    open her real asks with a status report ("Good morning. Quick state: 4 cards waiting...") instead of answering."""
     try:
         ups = card_updates(tenant, since)
     except Exception:
@@ -512,14 +520,18 @@ def card_news_block(tenant: str, since: datetime | None) -> str:
             hm = datetime.fromisoformat(u["at"]).astimezone(timezone(timedelta(hours=5, minutes=30))).strftime("%H:%M")
             rows.append(f"- {u['title']}: {_DONE_WORD.get(u['state'], u['state'].upper())} at {hm}"
                         + (f" - error: {u['error']}" if u["error"] else ""))
-        lines.append("CARDS SHE ANSWERED SINCE YOUR LAST REPLY (her own taps, the real result - trust this over your "
-                     "earlier 'card bheja' line; never ask her to tap these again, never redo them):\n" + "\n".join(rows))
+        lines.append("BACKGROUND ONLY - cards she answered since your last reply (her own taps, the real result). Use it "
+                     "only if her message is about these; never ask her to tap them again, never redo them, and do NOT "
+                     "open your reply with this:\n" + "\n".join(rows))
+    if not _ASKS_PENDING.search(user_text or ""):
+        return "\n\n".join(lines)
     try:
         ws = waiting_cards(tenant, 8, max_age_h=CARD_STALE_H)
     except Exception:
         ws = []
     if ws:
-        lines.append("CARDS STILL WAITING FOR HER TAP:\n" + "\n".join(f"- {w['title']} ({w['kind']})" for w in ws))
+        lines.append("Cards still waiting for her tap (she asked about pending work):\n"
+                     + "\n".join(f"- {w['title']} ({w['kind']})" for w in ws))
     return "\n\n".join(lines)
 
 

@@ -396,5 +396,5 @@ def test_gemini_file_has_only_the_routing_seam():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.710.0"
-    assert "0.710.0+709" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.711.0"
+    assert "0.711.0+710" in (ROOT / "pubspec.yaml").read_text()

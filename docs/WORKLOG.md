@@ -2451,3 +2451,12 @@ Task ID: v0.710.0 ARCHITECT OPUS
 Ask: plans still landing-page; check logs.
 Found: healthz chat_brain GLM-5.3-Flash + claude_one_model Haiku answer the architect call. Fixed: plan calls on Opus (CLAUDE_ONLY + ONE_MODEL_BYPASS), log line per plan.
 Not verified live.
+
+---
+Task ID: v0.711.0 SIRF JO POOCHA CHAT
+Agent: Claude Code (branch claude/hoola-project-review-lzrqhu)
+Task: Hoola answered a new ask with a status report of waiting cards
+Work Log:
+- events.card_news_block takes her words; waiting list only on pending-work words; answered note marked background
+Stage Summary:
+- v0704 + v0650 suites 12 passed

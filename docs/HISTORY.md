@@ -23130,3 +23130,13 @@ LEFT AS IS, said plainly: the section writers / looks still follow claude_one_mo
 from the Opus plan, but the section copy is Haiku's; moving them to Opus is her cost decision.
 Tests: test_v0709_plan_shape.py grows test_the_architect_plan_never_rides_glm_or_the_one_model. NOT VERIFIED on her
 server yet: the first plan after deploy - read the 'architect final' log line.
+
+## v0.711.0 SIRF JO POOCHA CHAT
+
+Her 9 Nov ask ("AI agent jo YouTube video / shorts / MP4 dekh ke seekhe, yaad rakhe, related kaam smoothly kare") was
+answered with "Good morning Meghana. Quick state: 4 site spec cards ... waiting for your Haan, banao taps, and 3 Diwali
+greeting emails drafted but not sent. Want me to open any of these...". Cause: v0.704 `events.card_news_block` added the
+WAITING cards list to EVERY chat turn's memory block, and the model led with it. Now the waiting list rides only when her
+words are about pending work / cards (`_ASKS_PENDING`: card, pending, baaki, approve, status, kya hua, draft...); the
+answered-cards note (what she tapped since the last reply) stays, marked BACKGROUND and never the opening. Tests: the v0.704
+suite updated + test_a_normal_ask_gets_no_waiting_list (her exact ask gets no list).
