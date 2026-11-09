@@ -310,7 +310,7 @@ def test_research_run_defaults_to_the_background_and_returns_at_once(rr):
 
 def test_research_status_check_result_and_stop(rr):
     from app.agent.research_tools import research_status
-    assert "koi research run nahi" in run_(research_status(_ctx(), action="check"))["note"]
+    assert "No research run found" in run_(research_status(_ctx(), action="check"))["note"]
     rid = runner.start("t1", "c1", "What is the Corvane Index?", ["Corvane value"], {}, hi=False)
     chk = run_(research_status(_ctx(), action="check"))
     assert chk["runs"][0]["id"] == rid and chk["runs"][0]["status"] == "queued"
@@ -320,13 +320,13 @@ def test_research_status_check_result_and_stop(rr):
     assert "RESEARCH DOSSIER" in res["dossier"] and res["run_id"] == rid and "doc_studio" in res["say"]
     got = E.recall("c1")
     assert got is not None and got["_delivered"] > 0                                      # remembered for the report check
-    assert "pehle hi done" in run_(research_status(_ctx(), action="stop", id=rid))["note"]
+    assert "already been done" in run_(research_status(_ctx(), action="stop", id=rid))["note"]
     other = runner.start("t1", "c1", "Q", ["g"], {}, hi=True)
     assert "roka gaya" in run_(research_status(_ctx(), action="stop", id=other))["note"] and store.get(other)["status"] == "stopped"
     from app.agent.tools import ToolError
     with pytest.raises(ToolError):
         run_(research_status(_ctx(actor="customer:1"), action="check"))
-    assert "koi research run nahi" in run_(research_status(_ctx(tenant="t9", conv="c9"), action="check"))["note"]   # another tenant sees nothing
+    assert "No research run found" in run_(research_status(_ctx(tenant="t9", conv="c9"), action="check"))["note"]   # another tenant sees nothing
 
 
 # ---------------------------------------------------------------- the finish -> wake path
@@ -345,7 +345,7 @@ def test_a_finished_run_wakes_the_brain_to_write_the_report_from_the_dossier(env
                         title="research abc · Corvane", state="done", detail="report likhne ko taiyaar: 6 pages")
     txt = KF._wake_text(r)
     assert txt.startswith("[Santosh worker update") and runner.is_report_due(txt) and 'run="rr_abc"' in txt
-    assert "research_status" in txt and "id=rr_abc" in txt and "dobara mat chalao" in txt and "jo confirm nahi" in txt
+    assert "research_status" in txt and "id=rr_abc" in txt and "do not run research_run again" in txt and "Not confirmed" in txt
     r.state = "failed"
     assert not runner.is_report_due(KF._wake_text(r))                                     # a failed run gets the ordinary news line
 
