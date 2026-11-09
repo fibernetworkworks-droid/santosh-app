@@ -74,7 +74,8 @@ TOOLS = [
         "approval card and the user's words in this turn approve it in context ('haan karo', 'kar do', 'theek hai', "
         "any clear yes). Call this to approve THAT step: the job moves at once. ONLY when such a step card is really "
         "pending; if the tool says none, don't insist. NEVER for money / UPI / bank-OTP / password cards: those "
-        "approve only by tapping the card in the app; voice can never approve them - say so plainly."),
+        "approve only by tapping the card in the app; voice can never approve them - say so plainly. A bare 'yes' / 'haan' that answers the question or offer in "
+        "YOUR OWN last reply ('Want me to make a PDF report?') is NOT this tool's job: do what you offered."),
      "input_schema": {"type": "object", "properties": {
          "heard": {"type": "string", "description": "Her words that approved it (short quote)"}}}},
 ]

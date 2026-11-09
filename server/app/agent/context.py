@@ -190,14 +190,16 @@ def _exchanges(msgs: list[dict]) -> list[list[dict]]:
     return out
 
 
-def _short(ex: list[dict]) -> list[dict]:
+def _short(ex: list[dict], rich: bool = False) -> list[dict]:
+    """An old exchange shortened. `rich` = the exchange right before her message (v0.723): its reply is what she is
+    answering, so it keeps the longer rich form (steps + a longer reply, head AND end) when the net has to touch it."""
     from .. import yaad
     first = ex[0]
     if isinstance(first.get("content"), list):   # a merged start: its words as one plain text for compress
         words = " ".join(str(b.get("text", "")) for b in first["content"] if isinstance(b, dict)
                          and b.get("type") == "text")
         ex = [{"role": "user", "content": words}] + ex[1:]
-    return yaad.compress(ex)
+    return yaad.compress(ex, rich=rich)
 
 
 def _summary_msg(conversation_id: str) -> list[dict]:
@@ -288,7 +290,7 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     i = 0
     while i < len(exs) and tokens(brain, total) > target:
         for j in range(i, min(i + BLOCK, len(exs))):
-            short[j] = _short(exs[j])
+            short[j] = _short(exs[j], rich=j == len(exs) - 1)
             total += size([m.get("content") for m in short[j]]) - sizes[j]
             sizes[j] = size([m.get("content") for m in short[j]])
         i += BLOCK
@@ -298,10 +300,11 @@ def fit(history: list[dict], system: Any, tools: Any, brain: str, conversation_i
     if tokens(brain, total) > target:   # even shortened it does not fit: the oldest blocks leave, the summary stays
         if not head:
             total += size([m.get("content") for m in summ])
-        while drop < len(kept) and tokens(brain, total) > target:
-            for j in range(drop, min(drop + BLOCK, len(kept))):
+        # v0.723 the exchange right before her message never leaves: her "YES" answers its question
+        while drop < len(kept) - 1 and tokens(brain, total) > target:
+            for j in range(drop, min(drop + BLOCK, len(kept) - 1)):
                 total -= sizes[j]
-            drop = min(drop + BLOCK, len(kept))
+            drop = min(drop + BLOCK, len(kept) - 1)
         STATS["net_dropped"] += 1
     out = (summ if (drop or head) else []) + _flat(kept[drop:]) + cur
     STATS["net"] += 1
@@ -320,7 +323,8 @@ def squeeze(history: list[dict], conversation_id: str = "", turn_start: int = 0)
     old, cur = history[:turn_start], history[turn_start:]
     head, old = _split_head(old)
     exs = _exchanges(old)
-    keep = [_short(ex) for ex in exs[-SQUEEZE_KEEP:]]
+    last = exs[-SQUEEZE_KEEP:]
+    keep = [_short(ex, rich=i == len(last) - 1) for i, ex in enumerate(last)]
     summ = head or (_summary_msg(conversation_id) if len(exs) > SQUEEZE_KEEP else [])
     out = summ + _flat(keep) + _trim_results(cur, SQUEEZE_RESULT)
     if conversation_id in LAST:

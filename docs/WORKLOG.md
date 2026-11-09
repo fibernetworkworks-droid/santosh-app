@@ -2534,3 +2534,9 @@ Task ID: v0.722.0 JAWAB HI JAWAB
 Ask: her $5M AI SaaS prompt got a desk survey instead of the answer - find root cause and fix.
 Built: finished agent-team wake fetches agent_status check and writes the answer; wake text stays on its own job; kaam_status in a wake = this chat only.
 Deploy: the usual vps-ops ritual; healthz must grep 0.722.0.
+
+---
+Task ID: v0.723.0 PICHHLA SAWAAL
+Ask: she said YES to Hoola's own "Want me to make a PDF report?" and Hoola asked what the YES was for - root cause.
+Built: shortened replies keep their end; the exchange before her message stays rich and is never dropped; haan_karo text.
+Deploy: the usual vps-ops ritual; healthz must grep 0.723.0.

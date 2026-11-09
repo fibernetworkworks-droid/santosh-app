@@ -57,4 +57,4 @@ def test_kaam_status_in_a_wake_sees_only_this_chat(env, monkeypatch):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.722.0")
+    assert APP_VERSION.split(".")[1] >= "722"

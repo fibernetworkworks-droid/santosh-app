@@ -178,6 +178,23 @@ def _clip(s: Any, n: int) -> str:
     return t if len(t) <= n else t[: n - 1] + "…"
 
 
+REPLY_TAIL = 600      # v0.723 a shortened reply keeps its END too: a closing question / offer ("Want me to make a PDF
+                      # report?") sits there, and her next "YES" answers exactly that
+
+
+def _clip_reply(s: Any, n: int) -> str:
+    """v0.723 PICHHLA SAWAAL: a reply cut for an old exchange keeps its head AND its last REPLY_TAIL characters. A
+    head-only cut dropped the question Hoola itself had asked, so her "YES" to it read as a yes to nothing."""
+    t = re.sub(r"\s+", " ", str(s if s is not None else "")).strip()
+    if len(t) <= n:
+        return t
+    tail = min(REPLY_TAIL, n // 3)
+    head = t[: n - tail - 3].rstrip()
+    end = t[-tail:]
+    end = end.split(" ", 1)[1] if " " in end[:60] else end
+    return head + " … " + end
+
+
 # v0.221 values that must survive WHOLE (a cut link / id / path is useless later)
 _WHOLE = ("file_id", "id", "url", "link", "path", "saved_path", "order_ref", "ref", "name", "title")
 _PAIR = re.compile(r'"([A-Za-z_][A-Za-z0-9_]{0,30})"\s*:\s*("(?:[^"\\]|\\.){0,400}"|-?\d+(?:\.\d+)?|true|false)')
@@ -286,7 +303,7 @@ def compress(ex: list[dict], user_max: int = 1500, reply_max: int = 1500, rich: 
     u = _clip(_user_text(ex), user_max) or "(—)"
     steps = steps_of(ex, RICH_GIST if rich else 170)
     steps = keep_steps(steps, RICH_STEP_LINES if rich else STEP_LINES)
-    reply = _clip(final_of(ex), RICH_REPLY if rich else reply_max)
+    reply = _clip_reply(final_of(ex), RICH_REPLY if rich else reply_max)
     body = (STEPS_OPEN + "; ".join(steps) + STEPS_CLOSE + "\n" if steps else "") + (reply or "(koi jawab nahi)")
     return [{"role": "user", "content": u}, {"role": "assistant", "content": [{"type": "text", "text": body}]}]
 

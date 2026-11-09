@@ -1,3 +1,20 @@
+## v0.723.0 PICHHLA SAWAAL — a bare "YES" answers Hoola's own last question again (9 Nov 2026; owner, screenshot: "USER PUT YES AND AI FORGOT ITS OWN LAST MSG AND GIVING UNWANTED REPLIES ----- FIND ROOT CAUSE")
+
+Hoola's long answer (10 AI SaaS ideas) ended with "Want me to make a full PDF report on any one of these?". She wrote
+"YES". Hoola called haan_karo, got "no pending card", and replied "Koi pending approval card nahi mila ... Bataiye YES kis
+cheez ke liye tha". ROOT CAUSE (reproduced in a test before the fix): with the GLM door on, `context.window` caps the chat
+at 40k tokens (v0.707). The previous turn carried a huge agent-team tool result, so the safety net in `context.fit`
+fired - and it shortens old exchanges in blocks of 10 (`BLOCK`), so with a short chat the IMMEDIATELY PREVIOUS exchange
+was shortened too (and could be dropped). A shortened exchange is `yaad.compress`, which kept only the FIRST 1,500
+characters of the reply (`_clip`, head only). A long answer's closing question / offer sits at its END, so the model saw
+the ideas list but not the question she was answering; the haan_karo description ("any clear yes") then looked like the
+only meaning of a bare YES. FIX: `yaad._clip_reply` keeps the head AND the last 600 characters of a shortened reply (used
+by every compress: the base history, the net, squeeze); the exchange right before her message is shortened in the rich
+form (3,000-char reply, more steps) and is never dropped by the net (`fit`) or squeeze; haan_karo's description says a
+yes to the question / offer in your own last reply is not its job - do what you offered. Left as is: the pre-model chat
+shortcut that approves a pending non-money PC / browser step card (same chat, <= 15 min) on a pure "haan" - small, named.
+Tests test_v0723_pichhla_sawaal.py (5). NOT VERIFIED live (vps-ops dispatch 403 - no logs read).
+
 ## v0.722.0 JAWAB HI JAWAB — the answer she asked for, not a desk survey (9 Nov 2026; owner, screenshot: "FIND THE 5 MILLION DOLLOR BUSINESS IDEA FOR AI SAAS PRODUCT" -> "CHECK THE PROMPT TO HOOLA AND ITS REPLY")
 
 Her reply was "Just finished: the $5M AI SaaS research ... the result should be in your chat above" followed by a list of
