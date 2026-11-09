@@ -70,7 +70,7 @@ Hard rules (the page is rendered frame by frame on a server with NO network):
    Never use requestAnimationFrame, setTimeout, setInterval, Date or real randomness (use HM.rnd(seed)).
    Canvas is fine (clear and redraw everything in seek); so is DOM / SVG positioned from t.
 4. Put everything inside <div id="stage"></div> (full screen). Use vmin / vw / vh units. Text big and readable on a phone,
-   in simple Hinglish (Roman) unless asked otherwise. Call HM.badge() once (a small "AI · Hoola" label: required by law).
+   in simple English (Roman) unless asked otherwise. Call HM.badge() once (a small "AI · Hoola" label: required by law).
 5. Make it genuinely beautiful: a clear visual hook in the first second, smooth easing, strong colour, real motion design.
    No invented facts (phone numbers, prices, claims) beyond what is given. No copyrighted characters or logos.
 Return ONLY the HTML document, starting with <!doctype html>."""

@@ -85,7 +85,7 @@ def test_a_late_memory_part_is_named_and_kept_for_the_next_ask(env, monkeypatch)
         await asyncio.sleep(1.2)                           # the slow part finishes in its thread
         return out, await santosh._brain_memory(T, "chat4", "ho gaya kya?", st)
     out, out2 = asyncio.run(go())
-    assert "abhi load nahi hua" in out and "kaam ki taaza haalat" in out and "kaam_status" in out
+    assert "not loaded yet" in out and "the latest state of her work" in out and "kaam_status" in out
     assert santosh._BRAIN_CACHE.get(("chat4", "kaam"), (0, ""))[1] == "KAAM: website chal rahi"
     assert "KAAM: website chal rahi" not in out2           # job state is never served stale: it moves
 

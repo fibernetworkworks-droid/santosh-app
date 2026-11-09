@@ -106,10 +106,10 @@ def test_the_brain_reads_which_cards_really_wait(env):
     convs.mark(T, "c4")
     bus.publish("c4", "bazar_approval", _card("pending"))
     blk = events.cards_block(T)
-    assert "CARDS ABHI USKI HAAN KE INTEZAAR MEIN" in blk and "Swiggy order" in blk
+    assert "CARDS NOW WAITING FOR HER YES" in blk and "Swiggy order" in blk
     bus.publish("c4", "bazar_approval", _card("approved"))                   # she tapped Approve
     blk = events.cards_block(T)
-    assert "abhi koi card uski haan ke intezaar mein NAHI hai" in blk and "Swiggy" not in blk
+    assert "no card is waiting for her yes right now" in blk and "Swiggy" not in blk
 
 
 def test_wired_into_the_call_brain_and_the_voice():

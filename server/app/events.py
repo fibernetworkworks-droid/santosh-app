@@ -472,8 +472,8 @@ def card_title(kind: str, payload: Any) -> str:
     return str(t or kind)[:80]
 
 
-_DONE_WORD = {"sent": "SENT (bhej diya gaya)", "scheduled": "QUEUED TO SEND (undo time ya apne set time ke baad khud jayega - 'nahi gaya' mat kehna, 'bhej diya' tabhi jab SENT dikhe)", "cancelled": "CANCELLED (nahi bheja)",
-              "approved": "APPROVED", "rejected": "REJECTED (usne mana kiya)", "done": "DONE", "failed": "FAILED",
+_DONE_WORD = {"sent": "SENT (it has gone out)", "scheduled": "QUEUED TO SEND (it will go out by itself after the undo time or its set time - do not say 'it did not go'; say 'sent' only when it shows SENT)", "cancelled": "CANCELLED (not sent)",
+              "approved": "APPROVED", "rejected": "REJECTED (she said no)", "done": "DONE", "failed": "FAILED",
               "expired": "EXPIRED", "answered": "ANSWERED", "decided": "DECIDED", "paid": "PAID"}
 
 
@@ -554,7 +554,7 @@ def card_news_block(tenant: str, since: datetime | None, user_text: str = "", co
 
 def cards_block(tenant: str, limit: int = 8) -> str:
     """v0.650 JAWAB MIL GAYA: for a call's brain turn - the cards that REALLY still wait for her (their own latest
-    state). An earlier "card bheja, approve kijiye" line in the history is no proof: a card she already tapped is not
+    state). An earlier "card sent, please approve" line in the history is no proof: a card she already tapped is not
     here, so the brain never asks her to tap it again."""
     try:
         ws = waiting_cards(tenant, limit, max_age_h=CARD_STALE_H)
@@ -566,13 +566,13 @@ def cards_block(tenant: str, limit: int = 8) -> str:
         except Exception:
             old_n = 0
         if old_n:
-            return (f"CARDS: koi NAYA card uski haan ke intezaar mein nahi hai; {old_n} purane card (3 din se zyada) pade "
-                    "hain - unka zikr tabhi karna jab woh khud poochhe.")
-        return ("CARDS: abhi koi card uski haan ke intezaar mein NAHI hai. Jo card pehle bheja tha uska jawab woh de "
-                "chuki hai - kisi card par tap / approve / bhejne ko mat kehna.")
-    rows = "\n".join(f"- {w['title']} ({w['kind']}, {w['age_h']} ghante se)" for w in ws)
-    return ("CARDS ABHI USKI HAAN KE INTEZAAR MEIN (live, from the cards themselves):\n" + rows +
-            "\nJo card is list mein NAHI hai uska jawab woh de chuki hai: use dobara tap karne ko mat kehna.")
+            return (f"CARDS: no NEW card is waiting for her yes; {old_n} old cards (more than 3 days) are lying "
+                    "there - mention them only if she asks about them herself.")
+        return ("CARDS: no card is waiting for her yes right now. She has already answered the cards sent earlier "
+                "- do not tell her to tap / approve / send on any card.")
+    rows = "\n".join(f"- {w['title']} ({w['kind']}, for {w['age_h']} hours)" for w in ws)
+    return ("CARDS NOW WAITING FOR HER YES (live, from the cards themselves):\n" + rows +
+            "\nA card that is NOT in this list has already been answered by her: do not tell her to tap it again.")
 
 
 def notify(conversation_id: str, text: str, campaign_id: str | None = None) -> None:

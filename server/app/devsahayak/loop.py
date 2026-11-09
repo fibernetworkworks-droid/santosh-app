@@ -106,7 +106,7 @@ TOOLS: list[dict[str, Any]] = [
     {"name": "done", "description": "Finish. Call it when the change is complete (or, for an explain task, when you "
      "understand the bug). Nothing is committed before this.",
      "input_schema": {"type": "object", "properties": {
-         "explain": {"type": "string", "description": "plain Hinglish for the owner: what was wrong / what you did, 2-5 lines - or, "
+         "explain": {"type": "string", "description": "plain English for the owner: what was wrong / what you did, 2-5 lines - or, "
                      "for a vague request, ONE short question back to her (and no edits)"},
          "cause": {"type": "string", "description": "one line root cause (fix / explain)"},
          "pr_title": {"type": "string", "description": "short imperative English title"},

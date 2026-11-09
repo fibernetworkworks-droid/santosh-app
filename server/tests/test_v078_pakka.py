@@ -74,7 +74,7 @@ def test_lesson_learned_and_offered_next_time(tools):
     out = asyncio.run(run_turn(c, "Mera parcel 4521988 ka status batao"))
     assert "deliver" in out.lower()
     first_fail = results(m, 1)[0]
-    assert "Haar mat maano" in first_fail["content"]          # nothing known yet: keep trying, other ways
+    assert "Do not give up" in first_fail["content"]          # nothing known yet: keep trying, other ways
     les = pakka.listing("default")
     assert len(les) == 1 and les[0]["tool"] == "portal_fetch" and "mode=slow" in les[0]["fix"]
     assert "4521988" not in les[0]["problem"] and "#" in les[0]["problem"]   # numbers masked
@@ -84,7 +84,7 @@ def test_lesson_learned_and_offered_next_time(tools):
     set_client(m2)
     asyncio.run(run_turn(c, "Ab 7700112 ka status"))
     r = results(m2, 1)[0]
-    assert "[Pichhli baar yahi atka tha" in r["content"] and "mode=slow" in r["content"]
+    assert "[The same thing got stuck last time" in r["content"] and "mode=slow" in r["content"]
     assert pakka.listing("default")[0]["helped"] >= 2
     t = pakka.runs("default")
     assert t["tasks"][0]["outcome"] == "done" and t["tasks"][0]["fixes"] == 1 and t["summary"]["done"] == 2
@@ -109,7 +109,7 @@ def test_internet_fix_when_nothing_known(tools, monkeypatch):
     set_client(m)
     asyncio.run(run_turn(c, "Parcel 4521988 ka status"))
     r = results(m, 1)[0]["content"]
-    assert "[Internet se mila hal" in r and "instructions nahi" in r and "help.example.gov.in" in r
+    assert "[Solution found on the internet" in r and "not instructions" in r and "help.example.gov.in" in r
     assert asked and "4521988" not in asked[0]                 # her numbers never go into the search
     from app.agent import pakka
     assert "internet se" in pakka.listing("default")[0]["fix"]

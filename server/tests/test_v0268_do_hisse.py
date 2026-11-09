@@ -20,27 +20,27 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_the_narration_ask_spells_out_both_halves():
     from app.agent import goal as G
     n = G.NARRATE
-    assert "THEEK DO HISSE" in n
-    assert "KYA MILA" in n and "AB KYA" in n
-    assert "subject CHEEZ ho, tum nahi" in n            # the thing is the subject, not "I"
-    assert "Bina number wali line bekaar hai" in n      # a line with no real figure is filler
-    assert "15-30 shabd" in n and "Teesra vaakya mat jodo" in n
+    assert "EXACTLY TWO HALVES" in n
+    assert "WHAT WAS FOUND" in n and "WHAT NEXT" in n
+    assert "subject is the THING, not you" in n            # the thing is the subject, not "I"
+    assert "A line without a number is useless" in n      # a line with no real figure is filler
+    assert "15-30 words" in n and "Do not add a third sentence" in n
 
 
 def test_the_narration_ask_carries_the_never_list():
     from app.agent import goal as G
     n = G.NARRATE
-    for ban in ("Bilkul!", "Perfect!", "lagta hai", "bullet, heading, emoji",
+    for ban in ("Sure!", "Perfect!", "it seems", "bullets, headings, emoji",
                 "kaam_plan, TypeError, thread-level listing"):
         assert ban in n, ban
-    assert "Maafi ya drama nahi" in n                   # bad news stays calm
-    assert "kaam ab POORA ho gaya hai to yeh line mat likho" in n
+    assert "No apology or drama" in n                   # bad news stays calm
+    assert "If the work is now COMPLETE do not write this line" in n
 
 
 def test_the_tool_fact_still_rides_in_and_nothing_is_invented():
     from app.agent import goal as G
     withf = G.narrate_line(["20 mails mile hain", "env~9831 sabse naya"])
-    assert "20 mails mile hain" in withf and "naya mat banao" in withf
+    assert "20 mails mile hain" in withf and "do not invent new ones" in withf
     assert G.narrate_line([]) == G.NARRATE and G.narrate_line(None) == G.NARRATE
 
 

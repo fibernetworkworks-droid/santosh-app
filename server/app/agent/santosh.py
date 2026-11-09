@@ -89,14 +89,14 @@ def _load_history(conversation_id: str) -> list[dict]:
 
 
 def _now_note(tenant_id: str | None) -> str:
-    """wave 9: "[Abhi ka samay: Saturday 07 Nov 2026, 9:32 PM IST]" in her own time zone, for THIS message only."""
+    """wave 9: "[Current time: Saturday 07 Nov 2026, 9:32 PM IST]" in her own time zone, for THIS message only."""
     try:
         from .. import life
         t = datetime.now(life.tz_of(tenant_id or "default"))
     except Exception:   # noqa: BLE001
         from zoneinfo import ZoneInfo
         t = datetime.now(ZoneInfo("Asia/Kolkata"))
-    return f"[Abhi ka samay: {t.strftime('%A %d %b %Y, %I:%M %p').replace(' 0', ' ')} {t.tzname() or ''}]".replace(" ]", "]")
+    return f"[Current time: {t.strftime('%A %d %b %Y, %I:%M %p').replace(' 0', ' ')} {t.tzname() or ''}]".replace(" ]", "]")
 
 
 def _with_memory(history: list[dict], block: str) -> None:
@@ -149,10 +149,10 @@ def _results_first(blocks: list) -> list:
 
 
 # v0.216 the honest answer for a result the crash lost (the model is told to check the step, not to guess)
-TOOL_RESULT_LOST = ("[System: yeh tool result ek crash ke beech save nahi ho paya tha. Is step ka asli status "
-                    "khud check karke (status/list jaisa tool) aage badho, andaza mat lagao.]")
+TOOL_RESULT_LOST = ("[System: this tool result was not saved because of a crash. Check the real status of this step "
+                    "yourself (with a status/list kind of tool) and carry on; do not guess.]")
 # v0.213 the prefill guard's continuation line (unchanged text, now inside _api_ready)
-CONTINUE_NUDGE = "[System: upar ki baat-cheet ke hisaab se aage badho.]"
+CONTINUE_NUDGE = "[System: carry on according to the conversation above.]"
 
 
 def _sanitize(msgs: list[dict]) -> list[dict]:
@@ -1252,10 +1252,10 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     return text
 
 
-AUTO_PLAN_NOTE = ("[System: tumne plan nahi likha tha, isliye server ne yeh plan bana diya aur use card par dikha "
-                  "diya: \"{goal}\" ({n} steps: {steps}). Ab lambe kaam ki seema mil gayi hai - ruko mat. Har step "
-                  "hone par `kaam_plan step n done` likho (card par dikhta hai); chaho to `kaam_plan set` se behtar "
-                  "steps likh do. Kaam poora hone par seedha aakhri jawab do.]")
+AUTO_PLAN_NOTE = ("[System: you did not write a plan, so the server made this plan and showed it on the card: "
+                  "\"{goal}\" ({n} steps: {steps}). You now have the limits of a long job - do not stop. After each step "
+                  "write `kaam_plan step n done` (it shows on the card); if you want, write better steps with "
+                  "`kaam_plan set`. When the work is complete give the final answer directly.]")
 
 
 def _auto_plan(conversation_id: str, tenant_id: str, state: dict, settings, ctx) -> str:
@@ -1387,9 +1387,9 @@ def _brain_pool():
 
 
 _BRAIN_CACHE: dict = {}
-_LATE_SAY = {"kaam": "kaam ki taaza haalat", "kiya": "is hafte ka kiya hua kaam", "cards": "baaki cards",
-             "chat": "chat ki haal ki baatein", "saar": "chat ka saar", "facts": "jude hue facts",
-             "coder": "coder notes", "yaad": "diary"}
+_LATE_SAY = {"kaam": "the latest state of her work", "kiya": "this week's finished work", "cards": "the cards still waiting",
+             "chat": "recent things said in this chat", "saar": "the chat summary", "facts": "related facts",
+             "coder": "coder notes", "yaad": "the diary"}
 
 
 def _brain_keep(key, fut) -> None:
@@ -1415,14 +1415,14 @@ def _call_chat_saar(conversation_id: str, max_chars: int = 2200) -> str:
         if _compact.active(conversation_id):
             return ""
         summ = _y.summary_block(conversation_id)
-        return ("Chat ki purani baaton ka saar (pichhli 8 baaton se pehle ka):\n" + _y._clip_ends(summ, max_chars)) \
+        return ("Summary of the older part of this chat (before the last 8 exchanges):\n" + _y._clip_ends(summ, max_chars)) \
             if summ else ""
     cp = _compact.active(chat)
     if cp and cp.get("summary"):
         return "CHAT KA SAAR (checkpoint of the chat she called from - open work and promises):\n" + \
             _y._clip_ends(cp["summary"], max_chars)
     summ = _y.summary_block(chat)
-    return ("Chat ki purani baaton ka saar:\n" + _y._clip_ends(summ, max_chars)) if summ else ""
+    return ("Summary of the older part of this chat:\n" + _y._clip_ends(summ, max_chars)) if summ else ""
 
 
 def _call_facts(tenant_id: str, conversation_id: str, user_text: str) -> str:
@@ -1543,8 +1543,8 @@ async def _brain_memory(tenant_id: str, conversation_id: str, user_text: str, se
     if late:
         # v0.657 never a silent gap: the brain is told what it does NOT have, so it checks instead of guessing
         miss = [_LATE_SAY.get(n, n) for n in late]
-        out.append("(Yaad ka yeh hissa abhi load nahi hua: " + ", ".join(miss) + ". Inke baare mein sawaal ho to pehle "
-                   "tool se dekho - kaam ki haalat kaam_status se, purani baat yaad_khojo se; andaza mat lagao.)")
+        out.append("(This part of memory is not loaded yet: " + ", ".join(miss) + ". If she asks about these, first "
+                   "look with a tool - the state of work with kaam_status, older things with yaad_khojo; do not guess.)")
         STATS_PREP["memory_late"] = STATS_PREP.get("memory_late", 0) + 1
         from .. import looplag
         log.info("call brain memory: %s not ready in %.1fs, left out of this ask (shared pool queue %d)",
@@ -1565,7 +1565,7 @@ def _cut_old_results(msgs: list[dict], cap: int) -> list[dict]:
             for b in c:
                 if isinstance(b, dict) and b.get("type") == "tool_result" and isinstance(b.get("content"), str) \
                         and len(b["content"]) > cap:
-                    nb.append({**b, "content": b["content"][:cap] + " ...[purana result chhota kiya; poora chahiye to tool dobara chalao]"})
+                    nb.append({**b, "content": b["content"][:cap] + " ...[old result shortened; run the tool again if you need all of it]"})
                     changed = True
                     STATS_PREP["results_cut"] += 1
                 else:
@@ -1834,8 +1834,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 # v0.473 and give the next call more room (a big tool input cut at 2,000 tokens would be cut again)
                 state["max_tokens"] = min(16000, 2 * (state.get("max_tokens") or settings.agent_max_tokens))
                 state["cuts"] = state.get("cuts", 0) + 1
-                nudge = "[System: aapka jawab beech mein cut gaya (max_tokens). Wahi se exactly aage badho — kaam ya " \
-                        "baaki baat poore karo, dobara shuru mat karo.]"
+                nudge = "[System: your reply was cut off in the middle (max_tokens). Continue exactly from there - finish the work or " \
+                        "the rest of what you were saying; do not start again.]"
                 history.append({"role": "user", "content": [{"type": "text", "text": nudge}]})
                 _save(conversation_id, "user", [{"type": "text", "text": nudge}])
                 continue
@@ -2118,8 +2118,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             b = state["breaker"]
             b.max_calls, b.fails_in_row, b.rescue = settings.agent_goal_max_calls, FAILS_IN_ROW_GOAL, True
             state["max_tokens"] = max(state.get("max_tokens") or 0, settings.agent_goal_max_tokens)
-            ext = ("[System: yeh kaam lamba hai aur abhi poora nahi hua. Ruko mat. Abhi `kaam_plan set` se baaki kaam ke "
-                   "steps likho (jo ho chuka use done likho), phir aage badho jab tak poora na ho.]")
+            ext = ("[System: this job is long and not finished yet. Do not stop. Now write the steps of the remaining work with `kaam_plan set` "
+                   "(mark what is already done as done), then carry on until it is complete.]")
             history[-1] = {"role": "user", "content": list(history[-1]["content"]) + [{"type": "text", "text": ext}]}
         if conversation_id in _stopped or state.get("halted"):
             final_text = gendered(HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"]), gender)

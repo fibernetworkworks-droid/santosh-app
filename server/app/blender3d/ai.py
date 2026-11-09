@@ -88,14 +88,14 @@ YOU WRITE ONE PYTHON SCRIPT FOR BLENDER 5.2 (bpy). It runs in an EMPTY scene ins
   real person. If she asks for one, make an original look-alike-free design in the same spirit and say so in NOTES.
 - For 3D printing (print=yes): closed solid meshes (no open edges), no paper-thin parts (walls >= 1.5 mm), parts touching
   or joined, flat base on Z=0, no floor plane.
-ANSWER FORMAT: first one line `TITLE: <short name>`, one line `NOTES: <one Hinglish sentence about the design>`, then the
+ANSWER FORMAT: first one line `TITLE: <short name>`, one line `NOTES: <one English sentence about the design>`, then the
 script in ONE ```python block. Nothing else."""
 
 WRITE_SYSTEM = "You are Hoola's 3D artist. You build 3D models and scenes in Blender with Python.\n" + GUIDE
 
 LOOK_SYSTEM = (
     "You check a 3D render against what the owner asked for. Reply ONLY JSON: {\"score\": 0-10, \"ok\": true|false, "
-    "\"seen\": \"one Hinglish line: what the picture shows\", \"fix\": \"what to change in the scene to match the ask "
+    "\"seen\": \"one English line: what the picture shows\", \"fix\": \"what to change in the scene to match the ask "
     "better (concrete: sizes, colours, missing parts, camera too far), or empty\"}. ok=true when score >= 7. Be honest.")
 
 

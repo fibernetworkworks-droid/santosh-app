@@ -73,9 +73,9 @@ def test_file_checks_record_disk_and_emptiness(env, tmp_path):
     p = _file(tmp_path, fid="file_gone4411", name="gone.pdf")
     p.unlink()
     r = V.check_file_id("default", "file_gone4411")
-    assert r["state"] == "failed" and "disk par nahi" in r["why"]
+    assert r["state"] == "failed" and "not on disk" in r["why"]
     _file(tmp_path, fid="file_empty5511", name="empty.csv", body=b"")
-    assert "khaali" in V.check_file_id("default", "file_empty5511")["why"]
+    assert "empty" in V.check_file_id("default", "file_empty5511")["why"]
 
 
 def test_artifact_and_filename_checks(env, tmp_path):
@@ -84,7 +84,7 @@ def test_artifact_and_filename_checks(env, tmp_path):
     _artifact(aid="art_building3311", ready=False)
     assert V.check_artifact("default", "art_building3311")["state"] == "failed"
     _artifact(aid="art_blank4411", html="   ")
-    assert "khaali" in V.check_artifact("default", "art_blank4411")["why"]
+    assert "empty" in V.check_artifact("default", "art_blank4411")["why"]
     assert V.check_artifact("default", "art_missing5511")["state"] == "failed"
     _file(tmp_path, fid="file_n16611", name="sales.xlsx", rows=4)
     assert V.check_filename("default", "sales.xlsx")["state"] == "ok"
@@ -130,7 +130,7 @@ def test_link_check_404_is_a_failure_but_unreachable_is_unknown(env, monkeypatch
     assert V.check_link("https://x.in/a")["state"] == "unknown"
     monkeypatch.setattr(get_settings(), "goal_verify_links", False)
     r = V.check_link("https://x.in/a")
-    assert r["state"] == "unknown" and "band hai" in r["why"]        # the switch: no call at all
+    assert r["state"] == "unknown" and "switched off" in r["why"]        # the switch: no call at all
 
 
 def test_dataset_check(env):
@@ -160,7 +160,7 @@ def test_step_checks(env, tmp_path, monkeypatch):
     assert V.check_step("default", conv, {"n": 1, "state": "done", "check": "file_pages>=3",
                                           "note": "file_s18811"})["state"] == "ok"
     r = V.check_step("default", conv, {"n": 1, "state": "done", "check": "file_pages>=5", "note": "file_s18811"})
-    assert r["state"] == "failed" and "3 pages hain" in r["why"]
+    assert r["state"] == "failed" and "has 3 pages" in r["why"]
     _file(tmp_path, fid="file_s29911", name="rows.xlsx", rows=30)
     assert V.check_step("default", conv, {"n": 2, "state": "done", "check": "file_rows>=30",
                                           "note": "file_s29911"})["state"] == "ok"
@@ -196,7 +196,7 @@ def test_gate_passes_unknowns_blocks_failures_and_never_raises(env, tmp_path, mo
     assert out["ok"] and out["checked"] == 2
     monkeypatch.setattr(V, "check_link", lambda u: V._unknown(u, "timeout"))
     out = V.gate("default", conv, ["https://x.in/a"], [])
-    assert out["ok"] and out["unknown"] and "Check nahi ho paya" in out["line"]
+    assert out["ok"] and out["unknown"] and "Could not be checked" in out["line"]
     out = V.gate("default", conv, ["ghost.pdf"], [])
     assert not out["ok"] and "ghost.pdf" in out["line"]
     out = V.gate("default", conv, [], [{"n": 2, "state": "pending", "check": "file_pages>=9"}])

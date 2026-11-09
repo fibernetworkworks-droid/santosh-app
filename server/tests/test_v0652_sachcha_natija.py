@@ -112,8 +112,8 @@ def test_a_stuck_job_never_reads_as_running(env):
     _chat("c2")
     _job("c2", "site_board:s1", minutes_ago=40)
     blk = kaamwatch.block(T, "c2")
-    assert "ATKA HAI (40 min se aage nahi badha" in blk and "'chal raha hai' mat kehna" in blk
-    assert "atka hai" in kaamwatch.status(T)["say"]
+    assert "STUCK (40 min with no progress" in blk and "do not say 'in progress'" in blk
+    assert "stuck" in kaamwatch.status(T)["say"]
     row = kaamlist.listing(T)["running"][0]
     assert row["stuck"] is True and row["say"].startswith("atka hai")
 
@@ -128,7 +128,7 @@ def test_a_dead_job_is_said_once(env, monkeypatch):
     _job("c3", "site_board:s2", minutes_ago=3 * 24 * 60)
     kaamwatch.tick()
     kaamwatch.tick()
-    assert len(told) == 1 and "2 din se aage nahi badha" in told[0]
+    assert len(told) == 1 and "has not moved for 2 days" in told[0]
     with session() as s:
         r = s.query(kaamwatch.KaamJob).filter_by(key="site_board:s2").one()
         assert (r.state, r.status) == ("stopped", "stale")

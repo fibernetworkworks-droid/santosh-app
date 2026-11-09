@@ -123,7 +123,7 @@ def drop_lines(tenant: str, fact: str, carries) -> int:
 # ------------------------------------------------------------------ building it
 SYSTEM = (
     "You keep ONE short memory page about an Indian business owner, for her AI coworker Hoola. Update the current page "
-    "with what is new. Sections (short Hinglish lines, only what is known): KAAM - her work, business, role; LOG - "
+    "with what is new. Sections (short English lines, only what is known): KAAM - her work, business, role; LOG - "
     "people she works with and who they are; PASAND - how she likes things done (language, formats, timing, tone); "
     "CHAL RAHA KAAM - ongoing projects or goals. Lines she wrote herself (marked HER EDIT) are true: keep them, never "
     "contradict them. Drop anything outdated. NEVER write OTPs, PINs, passwords, card / bank / ID numbers, money "
