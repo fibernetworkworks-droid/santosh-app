@@ -111,7 +111,7 @@ def test_milestones_push_at_most_twice_never_every_step(gz):  # noqa: F811
     assert marks == ["2/6", "4/6"]                     # 1/3 and 2/3, never the last step
     pushed = [push.render("goal", e, "Hoola") for e in evs]
     sent = [p for p in pushed if p]
-    assert len(sent) == 2 and "2/6 steps ho gaye" in sent[0][1]
+    assert len(sent) == 2 and "2/6 steps done" in sent[0][1]
     v2 = goal.set_goal("default", conv, "Chhota", ["a", "b", "c", "d"], origin="owner")
     for n in range(1, 5):
         goal.mark_step("default", v2["id"], n, "done")
