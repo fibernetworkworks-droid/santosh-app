@@ -1,4 +1,9 @@
 # HOOLA — Multi-Session Worklog
+Task ID: v0.730.0 SHILP MANCH (the ArtCraft generation lane, W0)
+Agent: main (shilp lane)
+Task: owner "MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS" after the READ of github.com/storytold/artcraft; the plan's W0 (the lane, six actions, two doors, BYOK, ~43 tests; W1 SEVAK worker + W2 BHANDAR store wait on a real key).
+Work Log: REBASE PROTOCOL (planned v0.686, rebuilt on their v0.729 tip 53ab8a366, their base kept whole); agent/shilp_tools.py NEW (envelope, _http seam, _call status table, _ref_url wall, _no_tokens media-token refusal, _gen_body, _generate, _act_job/_act_jobs, _map_state, _act_status/_act_models, _error_of, _sync, SHILP_TOOLS spec); agent/tools.py registry 617 -> 618; config.py shilp_enabled + artcraft_api_key + artcraft_base_url; app/shilp/mcp_server.py NEW (the kaan wire, serverInfo hoola-shilp); test_v0730_shilp.py NEW (43, offline, the seam fake records calls); ritual_v0730.py swept (parser-stamp guard), pubspec 0.730.0+729, console stamps, APP_VERSION story, CLAUDE.md + HISTORY.md + WORKLOG mirrors.
+Stage Summary: pushed to main as v0.730.0 + tag; vps-ops deploy fired; live test = action=status zero-network + her first real generation once ARTCRAFT_API_KEY is in the VPS .env.
 Task ID: v0.694.0 WEB CLONE (rebuilt-from-spec lane)
 Agent: lane (webclone rebuild)
 Task: owner "DOES ALL WORK DONE -- DOES NOW HOOLA AI WILL CLONE ANY WEBSITE PERFECTLY" -> the deploy ask "PERFECT IS IT DEPLOYED".
