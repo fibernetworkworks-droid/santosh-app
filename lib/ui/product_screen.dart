@@ -28,7 +28,7 @@ Future<dynamic> _call(Santosh app, String method, String path, {Object? body}) =
     app.api!.call(method, path, body: body, timeout: const Duration(seconds: 120));
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {Map<String, String> initial = const {}, String ok = 'Aage', bool obscureFirst = false}) async {
+    {Map<String, String> initial = const {}, String ok = 'Next', bool obscureFirst = false}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -46,7 +46,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -55,7 +55,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
   return {for (final e in c.entries) if (e.value.text.trim().isNotEmpty) e.key: e.value.text.trim()};
 }
 
-const _bucketLabel = {'now': 'Abhi', 'next': 'Agla', 'later': 'Baad mein'};
+const _bucketLabel = {'now': 'Now', 'next': 'Next', 'later': 'Later'};
 
 class ProductScreen extends StatefulWidget {
   const ProductScreen({super.key, required this.app});
@@ -105,19 +105,19 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   Future<void> _newIdea() async {
-    final f = await _form(context, 'Idea / dikkat / competitor note', const [
-      ('text', 'Aapke shabd (har line ek baat)'),
-      ('competitor', 'Competitor ka naam (ho to)'),
+    final f = await _form(context, 'Idea / problem / competitor note', const [
+      ('text', 'Your words (one point per line)'),
+      ('competitor', 'Competitor\'s name (if any)'),
     ]);
     if (f == null || f['text'] == null) return;
     await _run('POST', '/api/product/ideas', {...f, if (f['competitor'] != null) 'source': 'competitor'});
   }
 
   Future<void> _newRelease() async {
-    final f = await _form(context, 'Naya release', const [
-      ('version', 'Version (jaise 2.4.0)'),
-      ('text', 'Kya ship hua (har line ek badlaav)'),
-      ('since', 'Kab se (dd-mm-yyyy, khaali = pichhla release)'),
+    final f = await _form(context, 'New release', const [
+      ('version', 'Version (for example 2.4.0)'),
+      ('text', 'What shipped (one change per line)'),
+      ('since', 'Since when (dd-mm-yyyy, blank = last release)'),
     ]);
     if (f == null || f['version'] == null) return;
     final r = await _run('POST', '/api/product/releases', f);
@@ -149,7 +149,7 @@ class _ProductScreenState extends State<ProductScreen> {
               const SizedBox(height: 4),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 for (final s in (o['sources'] as List? ?? const [])) Pill('$s'),
-                if ((o['seen'] ?? 0) > 0) Pill('${o['seen']} log'),
+                if ((o['seen'] ?? 0) > 0) Pill('${o['seen']} people'),
                 if (_s(o['bucket']).isNotEmpty) Pill(_bucketLabel[_s(o['bucket'])] ?? _s(o['bucket']), fg: C.teal),
                 if (_s(o['kano']).isNotEmpty) Pill(_s(o['kano'])),
               ]),
@@ -167,10 +167,10 @@ class _ProductScreenState extends State<ProductScreen> {
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: GlassButton(label: 'Feedback padho', icon: Icons.download_rounded,
+        Expanded(child: GlassButton(label: 'Read feedback', icon: Icons.download_rounded,
             onTap: _busy ? null : () => _run('POST', '/api/product/harvest', {}))),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'Naya idea', icon: Icons.lightbulb_outline_rounded, onTap: _busy ? null : _newIdea)),
+        Expanded(child: GlassButton(label: 'New idea', icon: Icons.lightbulb_outline_rounded, onTap: _busy ? null : _newIdea)),
       ]),
       for (final p in pubs) ...[
         const SizedBox(height: 10),
@@ -178,7 +178,7 @@ class _ProductScreenState extends State<ProductScreen> {
       ],
       if (dups.isNotEmpty) ...[
         const SizedBox(height: 12),
-        const Caption('Ek jaise lag rahe hain'),
+        const Caption('These look alike'),
         for (final p in dups)
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -188,7 +188,7 @@ class _ProductScreenState extends State<ProductScreen> {
                 Expanded(child: Text('${p['a']} ${p['a_title']}\n${p['b']} ${p['b_title']}', style: const TextStyle(fontSize: 12.5))),
                 TextButton(
                     onPressed: _busy ? null : () => _run('POST', '/api/product/opportunities/${p['a']}/merge', {'into': p['b']}),
-                    child: const Text('Milao')),
+                    child: const Text('Match')),
               ]),
             ),
           ),
@@ -208,9 +208,9 @@ class _ProductScreenState extends State<ProductScreen> {
                       style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700))),
               IconButton(
                 icon: const Icon(Icons.add_rounded),
-                tooltip: 'Aaj ka number',
+                tooltip: 'Today\'s number',
                 onPressed: () async {
-                  final f = await _form(context, _s(k['name']), const [('value', 'Number'), ('day', 'Tareekh (khaali = aaj)')]);
+                  final f = await _form(context, _s(k['name']), const [('value', 'Number'), ('day', 'Date (blank = today)')]);
                   if (f == null || f['value'] == null) return;
                   await _run('POST', '/api/product/metrics', {'kpi': k['id'], 'value': double.tryParse(f['value']!), 'day': f['day'] ?? ''});
                 },
@@ -233,12 +233,12 @@ class _ProductScreenState extends State<ProductScreen> {
       Text(_s(b['say']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 8),
       GlassButton(
-          label: 'Nayi dikkat likho',
+          label: 'Write a new problem',
           icon: Icons.add_rounded,
           onTap: _busy
               ? null
               : () async {
-                  final f = await _form(context, 'Graahak ki dikkat', const [('title', 'Ek line'), ('problem', 'Thoda vistaar'), ('who', 'Kinke liye')]);
+                  final f = await _form(context, 'Customer\'s problem', const [('title', 'One line'), ('problem', 'A little detail'), ('who', 'For whom')]);
                   if (f == null || f['title'] == null) return;
                   await _run('POST', '/api/product/opportunities', f);
                 }),
@@ -258,7 +258,7 @@ class _ProductScreenState extends State<ProductScreen> {
       Row(children: [
         Expanded(
           child: GlassButton(
-            label: 'Sujhaav do',
+            label: 'Give a suggestion',
             icon: Icons.auto_awesome_rounded,
             onTap: _busy
                 ? null
@@ -269,16 +269,16 @@ class _ProductScreenState extends State<ProductScreen> {
                     final ok = await showDialog<bool>(
                       context: context,
                       builder: (d) => AlertDialog(
-                        title: const Text('Roadmap ka sujhaav'),
+                        title: const Text('Roadmap suggestion'),
                         content: SingleChildScrollView(
                           child: Text([
                             for (final m in moves) '${m['number']} ${m['title']}: ${_bucketLabel[m['to']] ?? m['to']}',
-                            if ((r['unscored'] as List? ?? const []).isNotEmpty) '\nScore baaki: ${(r['unscored'] as List).join(', ')}',
+                            if ((r['unscored'] as List? ?? const []).isNotEmpty) '\nScore pending:${(r['unscored'] as List).join(', ')}',
                           ].join('\n')),
                         ),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-                          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Lagao')),
+                          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+                          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Apply')),
                         ],
                       ),
                     );
@@ -293,7 +293,7 @@ class _ProductScreenState extends State<ProductScreen> {
       ]),
       const SizedBox(height: 6),
       GlassButton(
-          label: 'Graahakon ko dikhao (card)',
+          label: 'Show to customers (card)',
           icon: Icons.public_rounded,
           onTap: _busy ? null : () => _run('POST', '/api/product/publish', {'what': 'roadmap', 'dest': 'page'})),
       for (final b in const ['now', 'next', 'later']) ...[
@@ -311,7 +311,7 @@ class _ProductScreenState extends State<ProductScreen> {
   }
 
   Widget _specs() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Backlog mein kisi dikkat par "Spec likho" dabaiye.', style: TextStyle(fontSize: 12.5, color: C.muted)),
+        const Text('In the backlog, tap "Write spec" on a problem.', style: TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 8),
         for (final sp in _list(_d?['specs']))
           Padding(
@@ -323,7 +323,7 @@ class _ProductScreenState extends State<ProductScreen> {
                 child: Row(children: [
                   Expanded(child: Text('${sp['number']} ${sp['title']}\n${sp['stories']} story · v${sp['version']}',
                       style: const TextStyle(fontWeight: FontWeight.w700))),
-                  Pill(sp['status'] == 'ready' ? 'taiyaar' : '${sp['blocks']} baaki', fg: sp['status'] == 'ready' ? C.ok : C.warn),
+                  Pill(sp['status'] == 'ready' ? 'ready' : '${sp['blocks']} pending', fg: sp['status'] == 'ready' ? C.ok : C.warn),
                 ]),
               ),
             ),
@@ -331,7 +331,7 @@ class _ProductScreenState extends State<ProductScreen> {
       ]);
 
   Widget _releases() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GlassButton(label: 'Naya release', icon: Icons.rocket_launch_rounded, onTap: _busy ? null : _newRelease),
+        GlassButton(label: 'New release', icon: Icons.rocket_launch_rounded, onTap: _busy ? null : _newRelease),
         const SizedBox(height: 8),
         for (final r in _list(_d?['releases']))
           Padding(
@@ -341,7 +341,7 @@ class _ProductScreenState extends State<ProductScreen> {
               child: Glass(
                 padding: const EdgeInsets.all(12),
                 child: Row(children: [
-                  Expanded(child: Text('${r['version']} · ${r['title']}\n${r['day']} · ${r['items']} badlaav',
+                  Expanded(child: Text('${r['version']} · ${r['title']}\n${r['day']} · ${r['items']} changes',
                       style: const TextStyle(fontWeight: FontWeight.w700))),
                   Pill(_s(r['status']), fg: r['status'] == 'published' ? C.ok : C.chip),
                 ]),
@@ -360,26 +360,26 @@ class _ProductScreenState extends State<ProductScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Product: ${_s(st['product']).isEmpty ? '-' : st['product']}', style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('Users: ${_s(st['who']).isEmpty ? '-' : st['who']}', style: const TextStyle(fontSize: 12.5)),
-          Text('Score: ${_s(st['scoring']).toUpperCase()} · Capacity: Abhi ${_num(cap['now'])}, Agla ${_num(cap['next'])}, Baad ${_num(cap['later'])}',
+          Text('Score: ${_s(st['scoring']).toUpperCase()} · Capacity: now ${_num(cap['now'])}, next${_num(cap['next'])}, later ${_num(cap['later'])}',
               style: const TextStyle(fontSize: 12.5)),
           Text('North star: ${_s(ns['name']).isEmpty ? '-' : ns['name']}', style: const TextStyle(fontSize: 12.5)),
-          Text('GitHub: ${gh['joined'] == true ? '${gh['label']} · ${st['repo']}' : 'juda nahi'}', style: const TextStyle(fontSize: 12.5)),
+          Text('GitHub: ${gh['joined'] == true ? '${gh['label']} · ${st['repo']}' : 'not connected'}', style: const TextStyle(fontSize: 12.5)),
         ]),
       ),
       const SizedBox(height: 8),
       GlassButton(
-        label: 'Product aur capacity',
+        label: 'Product and capacity',
         icon: Icons.tune_rounded,
         onTap: () async {
-          final f = await _form(context, 'Product ke niyam', const [
-            ('product', 'Kya bana rahe hain'),
-            ('who', 'Kinke liye'),
-            ('now', 'Abhi ki capacity (person-month)'),
-            ('next', 'Agle ki capacity'),
-            ('later', 'Baad ki capacity'),
+          final f = await _form(context, 'Product rules', const [
+            ('product', 'What are we building'),
+            ('who', 'For whom'),
+            ('now', 'Current capacity (person-months)'),
+            ('next', 'Next capacity'),
+            ('later', 'Later capacity'),
             ('scoring', 'rice ya ice'),
-            ('ns', 'North star number (jaise: har hafte order karne wale)'),
-            ('ns_target', 'North star lakshya'),
+            ('ns', 'North star number (for example: people who order every week)'),
+            ('ns_target', 'North star goal'),
           ], initial: {
             'product': _s(st['product']),
             'who': _s(st['who']),
@@ -401,38 +401,38 @@ class _ProductScreenState extends State<ProductScreen> {
       ),
       const SizedBox(height: 6),
       GlassButton(
-        label: 'KPI jodo',
+        label: 'Add KPI',
         icon: Icons.insights_rounded,
         onTap: () async {
-          final f = await _form(context, 'KPI', const [('name', 'Naam'), ('unit', 'Unit (%, log, ₹)'), ('target', 'Lakshya'), ('better', 'up ya down')]);
+          final f = await _form(context, 'KPI', const [('name', 'Name'), ('unit', 'Unit (%, people, ₹)'), ('target', 'Goal'), ('better', 'up ya down')]);
           if (f == null || f['name'] == null) return;
           await _run('POST', '/api/product/kpis', {...f, if (f['target'] != null) 'target': double.tryParse(f['target']!)});
         },
       ),
       const SizedBox(height: 6),
       GlassButton(
-        label: gh['joined'] == true ? 'GitHub token badlo' : 'GitHub jodo (sirf padhne ke liye)',
+        label: gh['joined'] == true ? 'Change GitHub token' : 'Connect GitHub (read only)',
         icon: Icons.code_rounded,
         onTap: () async {
           final f = await _form(context, 'GitHub (fine-grained token)', const [
-            ('token', 'Token (Pull requests + Contents: read; release ke liye Contents: write)'),
-            ('repo', 'Repo (owner/naam)'),
-          ], initial: {'repo': _s(st['repo'])}, obscureFirst: true, ok: 'Jodo');
+            ('token', 'Token (Pull requests + Contents: read; Contents: write for releases)'),
+            ('repo', 'Repo (owner/name)'),
+          ], initial: {'repo': _s(st['repo'])}, obscureFirst: true, ok: 'Add');
           if (f == null || f['token'] == null) return;
           await _run('PUT', '/api/product/github', f);
         },
       ),
       if (gh['joined'] == true)
-        TextButton(onPressed: () => _run('DELETE', '/api/product/github'), child: const Text('GitHub token hatao')),
+        TextButton(onPressed: () => _run('DELETE', '/api/product/github'), child: const Text('Remove GitHub token')),
       const SizedBox(height: 8),
-      const Text('Hoola apne se koi number (reach, effort, revenue) nahi gadhta. Roadmap / release notes bahar sirf aapke tap se jaate hain.',
+      const Text('Hoola never makes up any number (reach, effort, revenue) by itself. The roadmap / release notes go out only with your tap.',
           style: TextStyle(fontSize: 12, color: C.faint)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Backlog', 'Roadmap', 'Specs', 'Release', 'Niyam'];
+    const tabs = ['Today', 'Backlog', 'Roadmap', 'Specs', 'Release', 'Rules'];
     final body = [_today, _backlog, _roadmap, _specs, _releases, _rules][_tab]();
     return Scaffold(
       backgroundColor: C.bgTop,
@@ -511,8 +511,8 @@ class _ProductOppPageState extends State<ProductOppPage> {
 
   Future<void> _score() async {
     final o = _o ?? const {};
-    final f = await _form(context, 'Aapka andaaza (RICE)', const [
-      ('reach', 'Reach: kitne log, 3 mahine mein'),
+    final f = await _form(context, 'Your estimate (RICE)', const [
+      ('reach', 'Reach: how many people, in 3 months'),
       ('impact', 'Impact: 3 / 2 / 1 / 0.5 / 0.25'),
       ('confidence', 'Confidence: 100 / 80 / 50'),
       ('effort', 'Effort: "2 hafte" / "1 mahina"'),
@@ -540,23 +540,23 @@ class _ProductOppPageState extends State<ProductOppPage> {
               const SizedBox(height: 10),
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(o['score'] == null ? 'Score baaki' : 'Score ${_num(o['score'])}',
+                  Text(o['score'] == null ? 'Score pending' : 'Score ${_num(o['score'])}',
                       style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                   if (_s(o['formula']).isNotEmpty) Text(_s(o['formula']), style: const TextStyle(fontSize: 12, color: C.muted)),
                   if (_s(o['ask']).isNotEmpty) Text(_s(o['ask']), style: const TextStyle(fontSize: 12.5, color: C.warn)),
                   for (final n in (o['score_notes'] as List? ?? const [])) Text('$n', style: const TextStyle(fontSize: 12, color: C.warn)),
                   const SizedBox(height: 6),
                   Wrap(spacing: 8, children: [
-                    TextButton(onPressed: _busy ? null : _score, child: const Text('Andaaza do')),
+                    TextButton(onPressed: _busy ? null : _score, child: const Text('Give an estimate')),
                     if ((o['seen'] ?? 0) > 0)
                       TextButton(
                           onPressed: _busy ? null : () => _act('score', {'use_seen': true}),
-                          child: Text('Reach = ${o['seen']} dekhe gaye log')),
+                          child: Text('Reach = ${o['seen']} people reached')),
                   ]),
                 ]),
               ),
               const SizedBox(height: 10),
-              const Caption('Roadmap par'),
+              const Caption('On the roadmap'),
               Wrap(spacing: 6, children: [
                 for (final b in const ['now', 'next', 'later', 'none'])
                   ChoiceChip(
@@ -566,20 +566,20 @@ class _ProductOppPageState extends State<ProductOppPage> {
                   ),
               ]),
               const SizedBox(height: 10),
-              const Caption('Kano (graahak ke liye kaisa)'),
+              const Caption('Kano (how it feels for the customer)'),
               Wrap(spacing: 6, children: [
                 for (final k in const ['must', 'performance', 'attractive', 'indifferent'])
                   ChoiceChip(label: Text(k), selected: o['kano'] == k, onSelected: _busy ? null : (_) => _act('kano', {'category': k})),
               ]),
               const SizedBox(height: 12),
-              const Caption('Saboot'),
+              const Caption('Proof'),
               for (final e in _list(o['evidence']))
                 Padding(
                   padding: const EdgeInsets.only(top: 6),
                   child: Glass(
                     padding: const EdgeInsets.all(10),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('${e['label']}${e['count'] != null ? ' · ${e['count']}' : ''}${e['people'] != null ? ' · ${e['people']} log' : ''}'
+                      Text('${e['label']}${e['count'] != null ? ' · ${e['count']}' : ''}${e['people'] != null ? ' · ${e['people']} people' : ''}'
                           '${e['rupees'] != null ? ' · ~₹${_num(e['rupees'])}' : ''}',
                           style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5)),
                       if (_s(e['trend']).isNotEmpty) Text(_s(e['trend']), style: const TextStyle(fontSize: 12, color: C.muted)),
@@ -590,24 +590,24 @@ class _ProductOppPageState extends State<ProductOppPage> {
                   ),
                 ),
               const SizedBox(height: 12),
-              const Caption('Tareeke (solutions)'),
+              const Caption('Approaches (solutions)'),
               for (final s in _list(o['solutions']))
                 Text('${s['chosen'] == true ? '✓ ' : '• '}${s['text']}', style: const TextStyle(fontSize: 13)),
               TextButton(
                 onPressed: _busy
                     ? null
                     : () async {
-                        final f = await _form(context, 'Naya tareeka', const [('text', 'Tareeka'), ('assumption', 'Kya maan rahe hain (test karna hai)')]);
+                        final f = await _form(context, 'New approach', const [('text', 'Method'), ('assumption', 'What we assume (to be tested)')]);
                         if (f == null || f['text'] == null) return;
                         await _act('solution', f);
                       },
-                child: const Text('Tareeka jodo'),
+                child: const Text('Add method'),
               ),
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(
                   child: GradientButton(
-                    label: 'Spec likho',
+                    label: 'Write spec',
                     icon: Icons.article_rounded,
                     onTap: _busy
                         ? null
@@ -624,18 +624,18 @@ class _ProductOppPageState extends State<ProductOppPage> {
               ]),
               const SizedBox(height: 8),
               Wrap(spacing: 8, children: [
-                TextButton(onPressed: _busy ? null : () => _act('ship', {}), child: const Text('Ship ho gaya')),
+                TextButton(onPressed: _busy ? null : () => _act('ship', {}), child: const Text('Shipped')),
                 if (_s(o['shipped_on']).isNotEmpty)
-                  TextButton(onPressed: _busy ? null : () => _act('result', {}), child: const Text('Pehle / baad dekho')),
+                  TextButton(onPressed: _busy ? null : () => _act('result', {}), child: const Text('See before / after')),
                 TextButton(
                   onPressed: _busy
                       ? null
                       : () async {
-                          final f = await _form(context, 'Chhod dein?', const [('reason', 'Wajah')], ok: 'Chhodo');
+                          final f = await _form(context, 'Leave it?', const [('reason', 'Reason')], ok: 'Leave');
                           if (f == null) return;
                           await _act('drop', f);
                         },
-                  child: const Text('Chhodo', style: TextStyle(color: C.bad)),
+                  child: const Text('Leave', style: TextStyle(color: C.bad)),
                 ),
               ]),
               if (_map(o['result']).isNotEmpty) Text(_s(_map(o['result'])['say']), style: const TextStyle(fontSize: 12.5)),
@@ -700,7 +700,7 @@ class _ProductSpecPageState extends State<ProductSpecPage> {
                 ? null
                 : () {
                     Clipboard.setData(ClipboardData(text: _s(sp['markdown'])));
-                    _snack(context, 'Spec copy ho gaya');
+                    _snack(context, 'Spec copied');
                   }),
       ]),
       body: sp == null
@@ -714,18 +714,18 @@ class _ProductSpecPageState extends State<ProductSpecPage> {
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
                 GlassButton(
-                  label: 'Badlav bolo',
+                  label: 'Tell the change',
                   icon: Icons.edit_note_rounded,
                   onTap: _busy
                       ? null
                       : () async {
-                          final f = await _form(context, 'Kya badlein?', const [('instruction', 'Aapke shabd')]);
+                          final f = await _form(context, 'What to change?', const [('instruction', 'Your words')]);
                           if (f == null || f['instruction'] == null) return;
                           await _go('POST', '/api/product/specs/${widget.ref}/revise', f);
                         },
                 ),
                 GlassButton(
-                  label: 'Dev / QA kaam',
+                  label: 'Dev / QA work',
                   icon: Icons.checklist_rounded,
                   onTap: _busy
                       ? null
@@ -742,10 +742,10 @@ class _ProductSpecPageState extends State<ProductSpecPage> {
                                 child: Text([
                                   for (final t in _list(r['dev_tasks'])) '• ${t['id']}: ${t['title']}',
                                   '',
-                                  'Test scenarios (Gherkin) copy ho gaye.',
+                                  'Test scenarios (Gherkin) copied.',
                                 ].join('\n')),
                               ),
-                              actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek'))],
+                              actions: [TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK'))],
                             ),
                           );
                         },
@@ -815,7 +815,7 @@ class _ProductReleasePageState extends State<ProductReleasePage> {
                   icon: const Icon(Icons.copy_rounded, size: 18),
                   onPressed: () {
                     Clipboard.setData(ClipboardData(text: text));
-                    _snack(context, 'Copy ho gaya');
+                    _snack(context, 'Copied');
                   }),
             ]),
             SelectableText(text, style: const TextStyle(fontSize: 13, height: 1.35)),
@@ -825,7 +825,7 @@ class _ProductReleasePageState extends State<ProductReleasePage> {
 
   Future<void> _edit() async {
     final n = _map(_r?['notes']);
-    final f = await _form(context, 'Notes badlo', const [('hinglish', 'Hinglish (har line ek)'), ('english', 'English (har line ek)')],
+    final f = await _form(context, 'Change notes', const [('hinglish', 'Hinglish (one per line)'), ('english', 'English (one per line)')],
         initial: {
           'hinglish': (n['hinglish'] as List? ?? const []).join('\n'),
           'english': (n['english'] as List? ?? const []).join('\n'),
@@ -844,10 +844,10 @@ class _ProductReleasePageState extends State<ProductReleasePage> {
       builder: (c) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           ListTile(leading: const Icon(Icons.code_rounded), title: const Text('GitHub release'), onTap: () => Navigator.pop(c, 'github')),
-          ListTile(leading: const Icon(Icons.public_rounded), title: const Text('Hoola ka public page (link)'), onTap: () => Navigator.pop(c, 'page')),
+          ListTile(leading: const Icon(Icons.public_rounded), title: const Text('Hoola\'s public page (link)'), onTap: () => Navigator.pop(c, 'page')),
           ListTile(
               leading: const Icon(Icons.content_paste_rounded),
-              title: const Text('Main khud paste karungi (Play / App Store / WhatsApp)'),
+              title: const Text('I will paste it myself (Play / App Store / WhatsApp)'),
               onTap: () => Navigator.pop(c, 'copy')),
         ]),
       ),
@@ -884,22 +884,22 @@ class _ProductReleasePageState extends State<ProductReleasePage> {
               for (final c in _list(r['checks']))
                 Text('${c['level'] == 'block' ? '⛔' : '⚠'} ${c['say']}',
                     style: TextStyle(fontSize: 12.5, color: c['level'] == 'block' ? C.bad : C.warn)),
-              _block('Graahak ke liye (Hinglish)', (n['hinglish'] as List? ?? const []).map((x) => '• $x').join('\n')),
+              _block('For customers (Hinglish)', (n['hinglish'] as List? ?? const []).map((x) => '• $x').join('\n')),
               _block('Customers (English)', (n['english'] as List? ?? const []).map((x) => '• $x').join('\n')),
-              _block('Google Play "What\'s new" (Hinglish, 500 tak)', _s(play['hinglish'])),
-              _block('Google Play "What\'s new" (en-IN, 500 tak)', _s(play['en-IN'])),
-              _block('App Store "What\'s New" (4000 tak)', _s(n['appstore'])),
-              _block('Changelog (andar ke liye)', _s(n['changelog'])),
+              _block('Google Play "What\'s new" (Hinglish, up to 500)', _s(play['hinglish'])),
+              _block('Google Play "What\'s new" (en-IN, up to 500)', _s(play['en-IN'])),
+              _block('App Store "What\'s New" (up to 4000)', _s(n['appstore'])),
+              _block('Changelog (internal)', _s(n['changelog'])),
               const SizedBox(height: 12),
               if (r['status'] != 'published')
                 Row(children: [
-                  Expanded(child: GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _busy ? null : _edit)),
+                  Expanded(child: GlassButton(label: 'Change', icon: Icons.edit_rounded, onTap: _busy ? null : _edit)),
                   const SizedBox(width: 8),
                   Expanded(child: GradientButton(label: 'Publish card', icon: Icons.send_rounded, onTap: _busy ? null : _publish)),
                 ]),
               TextButton(
                   onPressed: _busy ? null : () => _go('POST', '/api/product/releases/${widget.ref}/files', {}),
-                  child: const Text('Files banao (Word / Markdown)')),
+                  child: const Text('Make files (Word / Markdown)')),
             ]),
     );
   }
@@ -953,9 +953,9 @@ class _ProductPublishCardState extends State<ProductPublishCard> {
         Row(children: [
           const Icon(Icons.campaign_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Bahar bhejna hai: ${_s(d['title'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+          Expanded(child: Text('To send out: ${_s(d['title'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
         ]),
-        Text('Kahan: ${_s(d['where']).isEmpty ? _s(d['dest']) : d['where']}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        Text('Where: ${_s(d['where']).isEmpty ? _s(d['dest']) : d['where']}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         const SizedBox(height: 6),
         ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 220),
@@ -964,15 +964,15 @@ class _ProductPublishCardState extends State<ProductPublishCard> {
         const SizedBox(height: 8),
         if (_status == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, bhejo', onTap: _busy ? null : () => _decide(true), height: 44)),
+            Expanded(child: GradientButton(label: 'Yes, send', onTap: _busy ? null : () => _decide(true), height: 44)),
             const SizedBox(width: 8),
-            TextButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Mana')),
+            TextButton(onPressed: _busy ? null : () => _decide(false), child: const Text('Decline')),
           ])
         else
           Row(children: [
             Pill(_status, fg: _status == 'published' ? C.ok : C.chip),
             if (_url.startsWith('http'))
-              TextButton(onPressed: () => Native.openExternal(url: _url), child: const Text('Kholo')),
+              TextButton(onPressed: () => Native.openExternal(url: _url), child: const Text('Open')),
           ]),
       ]),
     );
@@ -1012,7 +1012,7 @@ class ProductNoteCard extends StatelessWidget {
                       : ProductScreen(app: app);
               Navigator.push(context, MaterialPageRoute(builder: (_) => page));
             },
-            child: const Text('Kholo'),
+            child: const Text('Open'),
           ),
         ),
       ]),

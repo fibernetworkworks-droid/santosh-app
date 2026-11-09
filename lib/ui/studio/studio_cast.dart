@@ -47,24 +47,24 @@ class _CastTabState extends State<CastTab> {
           padding: EdgeInsets.fromLTRB(20, 18, 20, 20 + MediaQuery.of(ctx).viewInsets.bottom),
           child: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-              Text(photo ? 'Photo se jodiye' : 'AI se banaiye', style: sora(18)),
+              Text(photo ? 'Add from photo' : 'Make with AI', style: sora(18)),
               const SizedBox(height: 14),
               if (replace == null)
                 Wrap(spacing: 8, children: [
-                  for (final e in const {'person': 'Insaan', 'product': 'Product / logo', 'place': 'Jagah'}.entries)
+                  for (final e in const {'person': 'Person', 'product': 'Product / logo', 'place': 'Place'}.entries)
                     SChip(label: e.value, on: k == e.key, onTap: () => set(() => k = e.key)),
                 ]),
               const SizedBox(height: 12),
-              _field(n, k == 'person' ? 'Naam (jaise Meera)' : k == 'product' ? 'Naam (jaise Chai packet)' : 'Naam (jaise Nadi kinara)',
+              _field(n, k == 'person' ? 'Name (for example Meera)' : k == 'product' ? 'Name (for example Tea packet)' : 'Name (for example Riverside)',
                   enabled: replace == null, onChanged: (_) => set(() {})),
               const SizedBox(height: 10),
-              _field(d, k == 'person' ? 'Kaisa dikhta hai: umar, kapde, baal, rang' : k == 'product' ? 'Kaisa hai: rang, packet, naam' : 'Kaisi jagah: ped, nadi, imaarat, mausam',
+              _field(d, k == 'person' ? 'What they look like: age, clothes, hair, colour' : k == 'product' ? 'What it looks like: colour, packet, name' : 'What kind of place: trees, river, buildings, weather',
                   lines: 2, onChanged: (_) => set(() {})),
               if (k == 'person') ...[
                 const SizedBox(height: 12),
                 Wrap(spacing: 8, children: [
-                  SChip(label: 'Mahila awaaz', on: voice == 'female', onTap: () => set(() => voice = 'female')),
-                  SChip(label: 'Purush awaaz', on: voice == 'male', onTap: () => set(() => voice = 'male')),
+                  SChip(label: 'Female voice', on: voice == 'female', onTap: () => set(() => voice = 'female')),
+                  SChip(label: 'Male voice', on: voice == 'male', onTap: () => set(() => voice = 'male')),
                 ]),
                 if (photo)
                   CheckboxListTile(
@@ -72,18 +72,18 @@ class _CastTabState extends State<CastTab> {
                     value: consent,
                     activeColor: C.accent,
                     onChanged: (x) => set(() => consent = x == true),
-                    title: Text('Is insaan ne video ke liye ijazat di hai', style: body(13.5)),
+                    title: Text('This person has given permission for the video', style: body(13.5)),
                   ),
               ],
               const SizedBox(height: 14),
               SButton(
-                label: photo ? 'Jodo' : 'Aage: daam dekho',
+                label: photo ? 'Add' : 'Next: see prices',
                 onTap: n.text.trim().isEmpty || (!photo && d.text.trim().length < 4) || (photo && k == 'person' && !consent)
                     ? null
                     : () => Navigator.pop(ctx, true),
               ),
               const SizedBox(height: 8),
-              Text('Asli insaan ka chehra sirf unki ijazat se. Neta, celebrity ya kisi brand ki nakal nahi banegi.',
+              Text('A real person\'s face only with their permission. No politicians, celebrities or copies of any brand.',
                   style: body(11.5, color: C.faint, height: 1.4)),
             ]),
           ),
@@ -97,7 +97,7 @@ class _CastTabState extends State<CastTab> {
       try {
         final f = await app.api!.chatFile(app.conversationId ?? '', x!.name.isEmpty ? 'photo.jpg' : x.name, bytes!);
         await app.api!.studioCharacter(name, {...body0, 'file_ids': ['${f['file_id']}']});
-        if (mounted) studioSnack(context, '${n.text.trim()} jud gaya: har shot mein yahi dikhega');
+        if (mounted) studioSnack(context, '${n.text.trim()} is added: this will appear in every shot');
       } catch (e) {
         if (mounted) studioSnack(context, '$e'.replaceFirst('Exception: ', ''));
       }
@@ -106,13 +106,13 @@ class _CastTabState extends State<CastTab> {
       return;
     }
     final done = await approveSimple(context, app,
-        title: '${n.text.trim()} ki tasveer',
+        title: '${n.text.trim()} picture',
         sub: '$name · Nano Banana Pro',
-        rows: [PriceRow(Icons.auto_awesome_rounded, SC.violet, 'Ek reference tasveer', d.text.trim(), 12)],
+        rows: [PriceRow(Icons.auto_awesome_rounded, SC.violet, 'One reference picture', d.text.trim(), 12)],
         inr: 12,
         month: sMap(widget.v['month']),
         ask: () => app.api!.studioCharacter(name, body0));
-    if (done && mounted) studioSnack(context, 'Tasveer ban rahi hai (lagbhag 30 sec)');
+    if (done && mounted) studioSnack(context, 'The picture is being made (about 30 sec)');
     await widget.onChanged();
   }
 
@@ -145,23 +145,23 @@ class _CastTabState extends State<CastTab> {
         if (_busy) const Padding(padding: EdgeInsets.only(bottom: 10), child: LinearProgressIndicator(color: C.accent, minHeight: 2)),
         SHead('Log', trailing: '${people.length}'),
         for (final c in people) ...[_person(c), const SizedBox(height: 10)],
-        if (people.isEmpty) _empty('Koi insaan jo har shot mein ek jaisa dikhe? Photo daaliye ya AI se banwaiye.'),
+        if (people.isEmpty) _empty('A person who looks the same in every shot? Add a photo or have AI make one.'),
         const SizedBox(height: 18),
-        const SHead('Jagah'),
+        const SHead('Place'),
         _strip(places, 'place'),
         const SizedBox(height: 18),
-        const SHead('Product aur logo'),
+        const SHead('Product and logo'),
         _strip(products, 'product'),
         const SizedBox(height: 18),
-        const SHead('Naya character'),
+        const SHead('New character'),
         Row(children: [
-          Expanded(child: _newTile(Icons.photo_camera_rounded, 'Asli photo se', 'us insaan ki ijazat ke saath', () => _add(photo: true))),
+          Expanded(child: _newTile(Icons.photo_camera_rounded, 'From a real photo', 'with that person\'s permission', () => _add(photo: true))),
           const SizedBox(width: 10),
-          Expanded(child: _newTile(Icons.auto_awesome_rounded, 'AI se banao', 'likhkar · ₹12 tasveer',
+          Expanded(child: _newTile(Icons.auto_awesome_rounded, 'Make with AI', 'by description · ₹12 picture',
               widget.v['can_paint'] == true ? () => _add(photo: false) : null)),
         ]),
         const SizedBox(height: 10),
-        Text('Kisi asli insaan ka chehra sirf unki ijazat se. Neta, celebrity ya kisi brand ki nakal nahi banegi.',
+        Text('A real person\'s face only with their permission. No politicians, celebrities or copies of any brand.',
             style: body(11.5, color: C.faint, height: 1.45)),
       ]),
     );
@@ -198,7 +198,7 @@ class _CastTabState extends State<CastTab> {
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: Text('${c['name']}', style: sora(16))),
-          Tag(c['generated'] == true ? 'AI se bana' : 'Asli photo', fg: c['generated'] == true ? SC.violet : C.ok),
+          Tag(c['generated'] == true ? 'AI-made' : 'Real photo', fg: c['generated'] == true ? SC.violet : C.ok),
         ]),
         if ('${c['description'] ?? ''}'.isNotEmpty) ...[
           const SizedBox(height: 6),
@@ -206,11 +206,11 @@ class _CastTabState extends State<CastTab> {
         ],
         const SizedBox(height: 10),
         Wrap(spacing: 8, runSpacing: 8, children: [
-          _chip(Icons.mic_rounded, '${c['voice'] ?? ''}'.isEmpty ? 'Hoola ki awaaz' : 'Awaaz: ${c['voice']}'),
-          _chip(Icons.movie_rounded, '${c['shots'] ?? 0} shots mein'),
+          _chip(Icons.mic_rounded, '${c['voice'] ?? ''}'.isEmpty ? 'Hoola\'s voice' : 'Voice: ${c['voice']}'),
+          _chip(Icons.movie_rounded, '${c['shots'] ?? 0} in shots'),
         ]),
         const SizedBox(height: 10),
-        SButton(label: 'Photo badlo', primary: false, height: 44, onTap: _busy ? null : () => _add(photo: true, replace: c)),
+        SButton(label: 'Change photo', primary: false, height: 44, onTap: _busy ? null : () => _add(photo: true, replace: c)),
       ]),
     );
   }
@@ -250,7 +250,7 @@ class _CastTabState extends State<CastTab> {
               child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
                 const Icon(Icons.add_rounded, color: C.muted),
                 const SizedBox(height: 4),
-                Text(kind == 'place' ? 'Jagah jodiye' : 'Product photo', style: body(12, w: FontWeight.w700, color: C.muted)),
+                Text(kind == 'place' ? 'Add place' : 'Product photo', style: body(12, w: FontWeight.w700, color: C.muted)),
               ]),
             ),
           ),

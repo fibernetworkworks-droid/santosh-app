@@ -60,7 +60,7 @@ class _ShopScreenState extends State<ShopScreen> {
       final r = await _api.orderKaroStart(what, site: _site, budget: _budget.text.trim(), conversationId: widget.app.conversationId ?? '');
       _what.clear();
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r['say'] ?? 'Order shuru'}')));
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${r['say'] ?? 'Order started'}')));
       }
       await _load();
     } catch (e) {
@@ -71,11 +71,11 @@ class _ShopScreenState extends State<ShopScreen> {
   }
 
   static const _words = {
-    'working': 'Taiyaar ho raha hai',
-    'waiting_payment': 'Aapke payment ka intezaar',
-    'placed': 'Order ho gaya',
-    'failed': 'Nahi ho paya',
-    'cancelled': 'Band kiya',
+    'working': 'Getting ready',
+    'waiting_payment': 'Waiting for your payment',
+    'placed': 'Order placed',
+    'failed': 'Did not happen',
+    'cancelled': 'Closed',
   };
 
   Color _col(String s) => s == 'placed' ? C.teal : (s == 'waiting_payment' ? C.warn : (s == 'failed' ? C.bad : C.accentSoft));
@@ -84,22 +84,22 @@ class _ShopScreenState extends State<ShopScreen> {
   Widget build(BuildContext context) {
     final name = widget.app.aName;
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Order karo')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Place order')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('$name item dhoondh ke, sahi size / quantity chun ke, cart, address aur slot tak sab karta hai. '
-                    'Aakhri payment aap khud karti hain (card aayega, ya apne UPI app mein).',
+                Text('$name finds the item, picks the right size / quantity, and does everything up to the cart, address and slot. '
+                    'You make the final payment yourself (a card will come, or in your UPI app).',
                     style: const TextStyle(color: C.chip, height: 1.35, fontSize: 13)),
                 const SizedBox(height: 10),
                 TextField(
                   controller: _what,
                   minLines: 1,
                   maxLines: 3,
-                  decoration: const InputDecoration(hintText: 'Jaise: Blinkit se 2 litre Amul doodh aur 1 brown bread'),
+                  decoration: const InputDecoration(hintText: 'For example: 2 litres of Amul milk and 1 brown bread from Blinkit'),
                 ),
                 const SizedBox(height: 8),
                 Row(children: [
@@ -109,7 +109,7 @@ class _ShopScreenState extends State<ShopScreen> {
                       isExpanded: true,
                       decoration: const InputDecoration(labelText: 'Site'),
                       items: [
-                        const DropdownMenuItem(value: '', child: Text('Hoola chune')),
+                        const DropdownMenuItem(value: '', child: Text('Hoola chooses')),
                         for (final s in _sites) DropdownMenuItem(value: '${s['id']}', child: Text('${s['name']}')),
                       ],
                       onChanged: (v) => setState(() => _site = v ?? ''),
@@ -122,14 +122,14 @@ class _ShopScreenState extends State<ShopScreen> {
                   ),
                 ]),
                 const SizedBox(height: 12),
-                GradientButton(label: _busy ? 'Shuru ho raha hai...' : 'Order taiyaar karo', icon: Icons.shopping_bag_rounded, height: 48, onTap: _busy ? null : _order),
+                GradientButton(label: _busy ? 'Starting...' : 'Get the order ready', icon: Icons.shopping_bag_rounded, height: 48, onTap: _busy ? null : _order),
               ]),
             ),
             const SizedBox(height: 14),
             if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
             if (_orders == null && _err == null) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
             if (_orders != null && _orders!.isEmpty)
-              const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('Abhi koi order nahi.', style: TextStyle(color: C.muted)))),
+              const Padding(padding: EdgeInsets.all(24), child: Center(child: Text('No orders yet.', style: TextStyle(color: C.muted)))),
             for (final o in _orders ?? const <Map<String, dynamic>>[])
               Padding(
                 padding: const EdgeInsets.only(bottom: 10),

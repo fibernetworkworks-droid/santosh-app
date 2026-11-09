@@ -27,7 +27,7 @@ Future<Map<String, dynamic>> _call(Santosh app, String method, String path, [Map
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {Map<String, String> initial = const {}, String ok = 'Aage'}) async {
+    {Map<String, String> initial = const {}, String ok = 'Next'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -40,7 +40,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -52,9 +52,9 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
 Color _sevColor(String s) => switch (s) { 'urgent' => C.bad, 'high' => C.warn, _ => C.chip };
 
 const _stages = [
-  ('acknowledged', 'Pavti di'),
-  ('investigating', 'Jaanch'),
-  ('waiting_customer', 'Graahak ka intezaar'),
+  ('acknowledged', 'Acknowledged'),
+  ('investigating', 'Check'),
+  ('waiting_customer', 'Waiting for customer'),
   ('waiting_third_party', 'Company / supplier'),
 ];
 
@@ -102,14 +102,14 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
   }
 
   Future<void> _new() async {
-    final f = await _form(context, 'Nayi shikayat', const [
-      ('text', 'Shikayat (graahak ke shabd)'),
-      ('customer', 'Graahak ka naam'),
+    final f = await _form(context, 'New complaint', const [
+      ('text', 'Complaint (in the customer\'s words)'),
+      ('customer', 'Customer name'),
       ('phone', 'Mobile'),
-      ('product', 'Saamaan / seva'),
+      ('product', 'Goods / service'),
       ('order_ref', 'Order / bill no (ho to)'),
-      ('amount', 'Kitne ka liya tha (Rs)'),
-      ('channel', 'Kahan se aayi: call / walk_in / whatsapp / email / social'),
+      ('amount', 'How much it cost (Rs)'),
+      ('channel', 'Where it came from: call / walk_in / whatsapp / email / social'),
     ]);
     if (f == null || (f['text'] ?? '').isEmpty) return;
     final r = await _run(() => _call(widget.app, 'POST', '/api/shikayat/cases', {
@@ -136,7 +136,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(children: [
               Expanded(
-                  child: Text('${_s(c['number'])} · ${_s(c['customer']).isEmpty ? 'Graahak' : _s(c['customer'])}',
+                  child: Text('${_s(c['number'])} · ${_s(c['customer']).isEmpty ? 'Customer' : _s(c['customer'])}',
                       style: const TextStyle(fontWeight: FontWeight.w800))),
               Pill(_s(c['stage_label'])),
             ]),
@@ -148,20 +148,20 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
               if (c['severity'] != 'normal') Pill(_s(c['severity']), fg: _sevColor(_s(c['severity']))),
               for (final f in (c['flags'] as List? ?? const []))
                 Pill(switch ('$f') {
-                  'repeat_customer' => 'phir se',
-                  'product_pattern' => 'same saamaan',
+                  'repeat_customer' => 'again',
+                  'product_pattern' => 'same goods',
                   'legal_threat' => 'court / helpline',
                   'safety' => 'suraksha',
-                  'escalated' => 'bahar gaye',
-                  'angry' => 'gussa',
+                  'escalated' => 'gone outside',
+                  'angry' => 'angry',
                   _ => '$f',
                 }, fg: C.warn),
             ]),
             if (_s(c['due']).isNotEmpty && c['stage'] != 'closed' && c['stage'] != 'rejected')
               Text(
                   c['overdue'] == true
-                      ? 'Samay-seema nikal gayi (${_s(c['due'])})'
-                      : (c['ack_late'] == true ? 'Pavti der se · hal ${_s(c['due'])} tak' : 'Hal ${_s(c['due'])} tak'),
+                      ? 'Time limit passed (${_s(c['due'])})'
+                      : (c['ack_late'] == true ? 'Acknowledged late · resolved ${_s(c['due'])} until' : 'Hal ${_s(c['due'])} until'),
                   style: TextStyle(fontSize: 12, color: isLate ? C.bad : C.muted)),
           ]),
         ),
@@ -175,16 +175,16 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        Pill('Khuli ${d['open'] ?? 0}'),
-        Pill('Pavti baaki ${d['no_ack'] ?? 0}', fg: (d['ack_late'] ?? 0) > 0 ? C.bad : C.chip),
-        Pill('Samay paar ${d['overdue'] ?? 0}', fg: (d['overdue'] ?? 0) > 0 ? C.bad : C.chip),
-        Pill('Muavza card ${d['comp_pending'] ?? 0}', fg: (d['comp_pending'] ?? 0) > 0 ? C.warn : C.chip),
+        Pill('Open ${d['open'] ?? 0}'),
+        Pill('Acknowledgement pending ${d['no_ack'] ?? 0}', fg: (d['ack_late'] ?? 0) > 0 ? C.bad : C.chip),
+        Pill('Overdue ${d['overdue'] ?? 0}', fg: (d['overdue'] ?? 0) > 0 ? C.bad : C.chip),
+        Pill('Compensation card ${d['comp_pending'] ?? 0}', fg: (d['comp_pending'] ?? 0) > 0 ? C.warn : C.chip),
       ]),
       const SizedBox(height: 10),
       for (final c in _list(_d?['cases']).where((c) => c['overdue'] == true || c['ack_late'] == true || c['severity'] == 'urgent'))
         _caseTile(c),
       GlassButton(
-          label: 'Hoola Network / WhatsApp ticket laao',
+          label: 'Bring a Hoola Network / WhatsApp ticket',
           icon: Icons.move_to_inbox_rounded,
           onTap: _busy ? null : () => _run(() => _call(widget.app, 'POST', '/api/shikayat/import_tickets'))),
     ]);
@@ -196,7 +196,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
         .toList();
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       TextField(
-        decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Naam, number, saamaan...'),
+        decoration: const InputDecoration(prefixIcon: Icon(Icons.search_rounded), hintText: 'Name, number, goods...'),
         onChanged: (v) => setState(() => _q = v),
       ),
       const SizedBox(height: 8),
@@ -209,7 +209,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
     final months = [for (var i = 0; i < 6; i++) DateTime(now.year, now.month - i, 1)];
     String m(DateTime d) => '${d.year}-${d.month.toString().padLeft(2, '0')}';
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      const Text('Har mahine ka register (Excel): har shikayat, samay par pavti / hal, wajah, rating, muavza, aur summary jo regulator ke form mein bhari ja sake.',
+      const Text('Monthly register (Excel): every complaint, acknowledged / resolved on time, reason, rating, compensation, and a summary that can be filled into the regulator\'s form.',
           style: TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 8),
       for (final d in months)
@@ -225,7 +225,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
     final sectors = _map(_d?['sectors']);
     final eff = _map(st['effective']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Aapka kaam kis niyam mein aata hai?', style: display(15)),
+      Text('Which rule does your work come under?', style: display(15)),
       const SizedBox(height: 6),
       Wrap(spacing: 6, runSpacing: 6, children: [
         for (final e in sectors.entries)
@@ -238,7 +238,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
       const SizedBox(height: 8),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Pavti ${eff['ack_hours']} ghante · hal ${eff['resolve_days']} din', style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text('Acknowledgement ${eff['ack_hours']} hours · resolution ${eff['resolve_days']} days', style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
           Text(_s(st['law']), style: const TextStyle(fontSize: 12.5)),
           for (final n in (st['notes'] as List? ?? const [])) Text('$n', style: const TextStyle(fontSize: 12, color: C.warn)),
@@ -246,24 +246,24 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
       ),
       const SizedBox(height: 8),
       GlassButton(
-          label: 'Apne niyam',
+          label: 'Your rules',
           icon: Icons.tune_rounded,
           onTap: _busy
               ? null
               : () async {
                   final o = _map(st['officer']);
-                  final f = await _form(context, 'Apne niyam', const [
-                    ('business', 'Business ka naam'),
-                    ('ack_hours', 'Pavti kitne ghante mein (khaali = niyam)'),
-                    ('resolve_days', 'Hal kitne din mein (niyam se kam ho sakta hai)'),
-                    ('reopen_days', 'Band ke kitne din tak dobara khule'),
-                    ('comp_limit', 'Ek muavza is se zyada ho to yaad dilao (Rs)'),
-                    ('month_limit', 'Mahine ka muavza seema (Rs)'),
-                    ('officer_name', 'Shikayat adhikari ka naam'),
-                    ('officer_phone', 'Shikayat adhikari ka number'),
-                    ('officer_email', 'Shikayat adhikari ka email'),
-                    ('add_rule', 'Naya niyam (jaise: 5000 se upar refund nahi, sirf replacement)'),
-                    ('morning_time', 'Subah ki yaad (HH:MM)'),
+                  final f = await _form(context, 'Your rules', const [
+                    ('business', 'Business name'),
+                    ('ack_hours', 'Acknowledge within how many hours (blank = per rules)'),
+                    ('resolve_days', 'Resolve within how many days (can be less than the rules)'),
+                    ('reopen_days', 'Reopen within how many days of closing'),
+                    ('comp_limit', 'Remind me if one compensation is above this (Rs)'),
+                    ('month_limit', 'Monthly compensation limit (Rs)'),
+                    ('officer_name', 'Grievance officer\'s name'),
+                    ('officer_phone', 'Grievance officer\'s number'),
+                    ('officer_email', 'Grievance officer\'s email'),
+                    ('add_rule', 'New rule (for example: no refund above 5000, replacement only)'),
+                    ('morning_time', 'Morning reminder (HH:MM)'),
                   ], initial: {
                     'business': _s(st['business']),
                     if ((st['ack_hours'] ?? 0) > 0) 'ack_hours': _s(st['ack_hours']),
@@ -286,12 +286,12 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
       const SizedBox(height: 8),
       for (final r in (st['rules'] as List? ?? const [])) Text('• $r', style: const TextStyle(fontSize: 12.5)),
       const SizedBox(height: 10),
-      Text('Kya seekha (wajah ke hisaab se)', style: display(14)),
+      Text('What was learned (by reason)', style: display(14)),
       for (final e in _map(st['learned']).entries)
         Text(
-            '• ${_s(_map(_d?['causes'])[e.key]).isEmpty ? e.key : _s(_map(_d?['causes'])[e.key])}: ${_map(e.value)['cases']} band, '
-            'ausat ${((_map(e.value)['days'] ?? 0) / ((_map(e.value)['cases'] ?? 1) == 0 ? 1 : _map(e.value)['cases'])).toStringAsFixed(1)} din'
-            '${(_map(e.value)['late'] ?? 0) > 0 ? ', ${_map(e.value)['late']} der se' : ''}',
+            '• ${_s(_map(_d?['causes'])[e.key]).isEmpty ? e.key : _s(_map(_d?['causes'])[e.key])}: ${_map(e.value)['cases']} closed, '
+            'average${((_map(e.value)['days'] ?? 0) / ((_map(e.value)['cases'] ?? 1) == 0 ? 1 : _map(e.value)['cases'])).toStringAsFixed(1)} days'
+            '${(_map(e.value)['late'] ?? 0) > 0 ? ', ${_map(e.value)['late']} late' : ''}',
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 10),
       for (final n in (_d?['never'] as List? ?? const [])) Text('• $n', style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -302,15 +302,15 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
   Widget build(BuildContext context) {
     final open = _list(_d?['cases']);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Shikayat sahayak')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Complaint assistant')),
       floatingActionButton: FloatingActionButton.extended(
-          onPressed: _busy ? null : _new, icon: const Icon(Icons.add_comment_rounded), label: const Text('Nayi shikayat')),
+          onPressed: _busy ? null : _new, icon: const Icon(Icons.add_comment_rounded), label: const Text('New complaint')),
       body: Aurora(
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
             Wrap(spacing: 6, children: [
-              for (final (i, t) in [(0, 'Aaj'), (1, 'Khuli ${open.length}'), (2, 'Sab'), (3, 'Register'), (4, 'Niyam')])
+              for (final (i, t) in [(0, 'Today'), (1, 'Open ${open.length}'), (2, 'All'), (3, 'Register'), (4, 'Rules')])
                 ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
             ]),
             const SizedBox(height: 10),
@@ -327,7 +327,7 @@ class _ShikayatScreenState extends State<ShikayatScreen> {
               ][_tab],
             const SizedBox(height: 14),
             const Text(
-                'Muavza (refund / replacement / chhoot) sirf aapki haan se; paisa Hoola nahi deta. Graahak ko message aap bhejti hain. Photo / video ki location hata kar rakhi jaati hai.',
+                'Compensation (refund / replacement / discount) only with your yes; Hoola does not pay. You send the message to the customer. Photo / video location is removed before keeping.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
@@ -363,7 +363,7 @@ class _SummaryTileState extends State<_SummaryTile> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(widget.month, style: const TextStyle(fontWeight: FontWeight.w800))),
-            TextButton(onPressed: _load, child: const Text('Dekho')),
+            TextButton(onPressed: _load, child: const Text('View')),
             TextButton(onPressed: widget.onExcel, child: const Text('Excel')),
           ]),
           if (_s0 != null) Text(_s(_s0!['say']), style: const TextStyle(fontSize: 12.5)),
@@ -434,9 +434,9 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
       backgroundColor: C.bgBottom,
       builder: (ctx) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          ListTile(leading: const Icon(Icons.photo_camera_rounded, color: C.accent), title: const Text('Camera se photo'), onTap: () => Navigator.pop(ctx, 'camera')),
-          ListTile(leading: const Icon(Icons.photo_library_rounded, color: C.accent), title: const Text('Gallery se photo'), onTap: () => Navigator.pop(ctx, 'gallery')),
-          ListTile(leading: const Icon(Icons.attach_file_rounded, color: C.accent), title: const Text('Video / screenshot / PDF / koi file'), onTap: () => Navigator.pop(ctx, 'file')),
+          ListTile(leading: const Icon(Icons.photo_camera_rounded, color: C.accent), title: const Text('Photo from camera'), onTap: () => Navigator.pop(ctx, 'camera')),
+          ListTile(leading: const Icon(Icons.photo_library_rounded, color: C.accent), title: const Text('Photo from gallery'), onTap: () => Navigator.pop(ctx, 'gallery')),
+          ListTile(leading: const Icon(Icons.attach_file_rounded, color: C.accent), title: const Text('Video / screenshot / PDF / any file'), onTap: () => Navigator.pop(ctx, 'file')),
         ]),
       ),
     );
@@ -471,7 +471,7 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
       await _act('close');
       return;
     }
-    final f = await _form(context, 'Checklist adhoori: ${left.map((x) => x['say']).join('; ')}', const [('reason', 'Phir bhi band karne ki wajah')], ok: 'Phir bhi band');
+    final f = await _form(context, 'Checklist incomplete: ${left.map((x) => x['say']).join('; ')}', const [('reason', 'Reason for closing anyway')], ok: 'Close anyway');
     if (f == null || (f['reason'] ?? '').isEmpty) return;
     await _act('close', {'force': true, 'reason': f['reason']});
   }
@@ -486,30 +486,30 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
         final reason = TextEditingController();
         return StatefulBuilder(
           builder: (d, set) => AlertDialog(
-            title: const Text('Muavza (card banega, aapki haan ke baad hi)'),
+            title: const Text('Compensation (a card will be made, only after your yes)'),
             content: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 Wrap(spacing: 6, runSpacing: 6, children: [
                   for (final (k, l) in const [
                     ('refund', 'Refund'),
                     ('replacement', 'Replacement'),
-                    ('discount', 'Chhoot'),
+                    ('discount', 'Discount'),
                     ('goodwill', 'Goodwill'),
-                    ('free_service', 'Muft seva'),
+                    ('free_service', 'Free service'),
                     ('credit', 'Credit / voucher'),
                   ])
                     ChoiceChip(label: Text(l), selected: kind == k, onSelected: (_) => set(() => kind = k)),
                 ]),
-                TextField(controller: amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rakam / keemat (Rs)')),
-                TextField(controller: item, decoration: const InputDecoration(labelText: 'Kya dena hai (replacement ho to)')),
-                TextField(controller: reason, maxLines: 2, decoration: const InputDecoration(labelText: 'Kyon')),
+                TextField(controller: amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Amount / value (Rs)')),
+                TextField(controller: item, decoration: const InputDecoration(labelText: 'What to give (if a replacement)')),
+                TextField(controller: reason, maxLines: 2, decoration: const InputDecoration(labelText: 'Why')),
               ]),
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(d), child: const Text('Rehne do')),
+              TextButton(onPressed: () => Navigator.pop(d), child: const Text('Leave it')),
               TextButton(
                   onPressed: () => Navigator.pop(d, {'kind': kind, 'amount': amount.text, 'item': item.text, 'reason': reason.text}),
-                  child: const Text('Card banao')),
+                  child: const Text('Make card')),
             ],
           ),
         );
@@ -540,7 +540,7 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                   context: context,
                   builder: (d) => Dialog(child: InteractiveViewer(child: Image.network(api.absolute(_s(p['url'])), headers: api.authHeaders))));
             } else {
-              _snack(context, '${_s(p['name'])} (${p['kind']})${p['cleaned'] == true ? ' · metadata hataya' : ''}');
+              _snack(context, '${_s(p['name'])} (${p['kind']})${p['cleaned'] == true ? ' · metadata removed' : ''}');
             }
           },
           child: ClipRRect(
@@ -561,7 +561,7 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
               Positioned(
                 left: 4,
                 bottom: 4,
-                child: Pill(p['stage'] == 'fix' ? 'theek' : 'shikayat', fg: p['stage'] == 'fix' ? C.ok : C.chip),
+                child: Pill(p['stage'] == 'fix' ? 'fix' : 'complaint', fg: p['stage'] == 'fix' ? C.ok : C.chip),
               ),
             ]),
           ),
@@ -574,7 +574,7 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
     final c = _c;
     final open = c != null && !['closed', 'rejected'].contains(c['stage']);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(c?['number']).isEmpty ? 'Shikayat' : _s(c?['number']))),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(_s(c?['number']).isEmpty ? 'Complaint' : _s(c?['number']))),
       body: Aurora(
         child: c == null
             ? const Center(child: CircularProgressIndicator())
@@ -587,7 +587,7 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Row(children: [
                         Expanded(
-                            child: Text('${_s(c['customer']).isEmpty ? 'Graahak' : _s(c['customer'])}${_s(c['phone']).isNotEmpty ? ' · ${c['phone']}' : ''}',
+                            child: Text('${_s(c['customer']).isEmpty ? 'Customer' : _s(c['customer'])}${_s(c['phone']).isNotEmpty ? ' · ${c['phone']}' : ''}',
                                 style: const TextStyle(fontWeight: FontWeight.w800))),
                         Pill(_s(c['stage_label'])),
                       ]),
@@ -599,34 +599,34 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                             if (_s(c['product']).isNotEmpty) _s(c['product']),
                             if (_s(c['order_ref']).isNotEmpty) 'order ${c['order_ref']}',
                             _s(c['channel']),
-                            'aayi ${_s(c['received'])}',
+                            'received${_s(c['received'])}',
                           ].join(' · '),
                           style: const TextStyle(fontSize: 12, color: C.muted)),
                       Text(
                           _s(c['ack_at']).isNotEmpty
-                              ? 'Pavti ${_s(c['ack_at'])} · hal ${_s(c['due'])} tak'
-                              : 'Pavti ${_s(c['ack_by'])} tak · hal ${_s(c['due'])} tak',
+                              ? 'Acknowledgement ${_s(c['ack_at'])} · hal ${_s(c['due'])} until'
+                              : 'Acknowledgement ${_s(c['ack_by'])} until · resolution ${_s(c['due'])} until',
                           style: TextStyle(fontSize: 12, color: c['overdue'] == true || c['ack_late'] == true ? C.bad : C.muted)),
-                      if (_s(c['owner']).isNotEmpty) Text('Zimmedaar: ${c['owner']}', style: const TextStyle(fontSize: 12)),
+                      if (_s(c['owner']).isNotEmpty) Text('Responsible: ${c['owner']}', style: const TextStyle(fontSize: 12)),
                       if (_s(c['commission']).isNotEmpty)
-                        Text('Graahak court jaaye to: ${c['commission']}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+                        Text('If the customer goes to court: ${c['commission']}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
                       if (_map(c['escalated']).isNotEmpty)
-                        Text('Graahak bahar gaye: ${_map(c['escalated'])['to']} ${_s(_map(c['escalated'])['ref'])}',
+                        Text('Customer went outside: ${_map(c['escalated'])['to']} ${_s(_map(c['escalated'])['ref'])}',
                             style: const TextStyle(fontSize: 12, color: C.bad)),
                     ]),
                   ),
                   const SizedBox(height: 8),
-                  Text('Saboot', style: display(15)),
+                  Text('Proof', style: display(15)),
                   const SizedBox(height: 6),
                   _proofs(_list(c['proofs'])),
                   const SizedBox(height: 6),
                   Wrap(spacing: 8, runSpacing: 8, children: [
-                    GlassButton(label: 'Shikayat ka saboot', icon: Icons.add_a_photo_rounded, onTap: _busy ? null : () => _addProof('complaint')),
-                    GlassButton(label: 'Theek hone ka saboot', icon: Icons.verified_rounded, onTap: _busy ? null : () => _addProof('fix')),
+                    GlassButton(label: 'Proof of the complaint', icon: Icons.add_a_photo_rounded, onTap: _busy ? null : () => _addProof('complaint')),
+                    GlassButton(label: 'Proof of the fix', icon: Icons.verified_rounded, onTap: _busy ? null : () => _addProof('fix')),
                   ]),
                   const SizedBox(height: 12),
                   if (open) ...[
-                    Text('Kaam', style: display(15)),
+                    Text('Task', style: display(15)),
                     const SizedBox(height: 6),
                     Wrap(spacing: 6, runSpacing: 6, children: [
                       for (final (k, l) in _stages)
@@ -634,47 +634,47 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                     ]),
                     const SizedBox(height: 8),
                     Wrap(spacing: 8, runSpacing: 8, children: [
-                      GlassButton(label: 'Pavti message', icon: Icons.mark_email_read_rounded, onTap: _busy ? null : () => _message('ack')),
+                      GlassButton(label: 'Acknowledgement message', icon: Icons.mark_email_read_rounded, onTap: _busy ? null : () => _message('ack')),
                       GlassButton(label: 'Update message', icon: Icons.update_rounded, onTap: _busy ? null : () => _message('update')),
                       GlassButton(
-                          label: 'Note / zimmedaar',
+                          label: 'Note / responsible',
                           icon: Icons.edit_note_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Note', const [('note', 'Kya hua'), ('owner', 'Kaun sambhalega (team)'), ('due', 'Nayi tareekh (ho to)')]);
+                                  final f = await _form(context, 'Note', const [('note', 'What happened'), ('owner', 'Who will handle it (team)'), ('due', 'New date (if any)')]);
                                   if (f != null) await _act('update', f);
                                 }),
                       GradientButton(
-                          label: 'Hal ho gaya',
+                          label: 'Resolved',
                           icon: Icons.task_alt_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Kya hal kiya', const [('resolution', 'Graahak ko yahi bataya jayega'), ('fix_proof', 'Saboot (bill / photo / unka message)')],
+                                  final f = await _form(context, 'What was done', const [('resolution', 'This is what the customer will be told'), ('fix_proof', 'Proof (bill / photo / their message)')],
                                       initial: {'resolution': _s(c['resolution']), 'fix_proof': _s(c['fix_proof'])});
                                   if (f != null) await _act('resolve', f);
                                 }),
-                      GlassButton(label: 'Muavza card', icon: Icons.volunteer_activism_rounded, onTap: _busy ? null : _comp),
+                      GlassButton(label: 'Compensation card', icon: Icons.volunteer_activism_rounded, onTap: _busy ? null : _comp),
                       GlassButton(
-                          label: 'Nahi maani',
+                          label: 'Not accepted',
                           icon: Icons.block_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Shikayat kyon nahi maani', const [('note', 'Saaf wajah (graahak ko bhi batayi jayegi)')]);
+                                  final f = await _form(context, 'Why the complaint was not accepted', const [('note', 'A clear reason (the customer will also be told)')]);
                                   if (f != null) {
                                     final r = await _act('update', {'stage': 'rejected', 'note': f['note'] ?? ''});
                                     if (r != null) await _message('reject');
                                   }
                                 }),
                       GlassButton(
-                          label: 'Graahak bahar gaye',
+                          label: 'Customer went outside',
                           icon: Icons.gavel_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Kahan gaye', const [('to', '1915 / ombudsman / consumer court / social media'), ('ref', 'Docket / notice no')]);
+                                  final f = await _form(context, 'Where did they go', const [('to', '1915 / ombudsman / consumer court / social media'), ('ref', 'Docket / notice no')]);
                                   if (f != null) await _act('escalate', f);
                                 }),
                     ]),
@@ -684,25 +684,25 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                     Wrap(spacing: 8, runSpacing: 8, children: [
                       GlassButton(label: 'Closing message', icon: Icons.forum_rounded, onTap: _busy ? null : () => _message('close')),
                       GlassButton(
-                          label: 'Graahak: theek hua',
+                          label: 'Customer: fixed',
                           icon: Icons.thumb_up_alt_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Graahak ne kya kaha', const [('satisfaction', 'Rating 1-5 (ho to)'), ('feedback', 'Unke shabd')]);
+                                  final f = await _form(context, 'What the customer said', const [('satisfaction', 'Rating 1-5 (ho to)'), ('feedback', 'Their words')]);
                                   if (f != null) await _act('confirm', {'fixed': true, 'satisfaction': int.tryParse(f['satisfaction'] ?? ''), 'feedback': f['feedback'] ?? ''});
                                 }),
                       GlassButton(
-                          label: 'Graahak: theek nahi',
+                          label: 'Customer: not fixed',
                           icon: Icons.thumb_down_alt_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Kya abhi bhi dikkat hai', const [('feedback', 'Unke shabd')]);
+                                  final f = await _form(context, 'Is there still a problem', const [('feedback', 'Their words')]);
                                   if (f != null) await _act('confirm', {'fixed': false, 'feedback': f['feedback'] ?? ''});
                                 }),
-                      GlassButton(label: 'Rating poochho', icon: Icons.star_rate_rounded, onTap: _busy ? null : () => _message('satisfaction')),
-                      if (c['stage'] == 'resolved') GradientButton(label: 'Band karo', icon: Icons.lock_rounded, onTap: _busy ? null : _close),
+                      GlassButton(label: 'Ask for rating', icon: Icons.star_rate_rounded, onTap: _busy ? null : () => _message('satisfaction')),
+                      if (c['stage'] == 'resolved') GradientButton(label: 'Close', icon: Icons.lock_rounded, onTap: _busy ? null : _close),
                       if (_s(c['ticket_ref']).isNotEmpty)
                         GlassButton(label: 'Ticket update', icon: Icons.sync_rounded, onTap: _busy ? null : () => _act('ticket_sync')),
                     ]),
@@ -710,17 +710,17 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                   if (c['stage'] == 'closed' || c['stage'] == 'rejected') ...[
                     const SizedBox(height: 8),
                     GlassButton(
-                        label: 'Phir kholo',
+                        label: 'Reopen',
                         icon: Icons.lock_open_rounded,
                         onTap: _busy
                             ? null
                             : () async {
-                                final f = await _form(context, 'Phir kyon khol rahe', const [('reason', 'Wajah')]);
+                                final f = await _form(context, 'Why reopen', const [('reason', 'Reason')]);
                                 if (f != null) await _act('reopen', f);
                               }),
                   ],
                   const SizedBox(height: 12),
-                  Text('Band karne se pehle', style: display(15)),
+                  Text('Before closing', style: display(15)),
                   for (final x in _list(c['checklist']))
                     Row(children: [
                       Icon(x['ok'] == true ? Icons.check_circle_rounded : Icons.radio_button_unchecked_rounded, size: 18, color: x['ok'] == true ? C.ok : C.faint),
@@ -729,7 +729,7 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                     ]),
                   if (_list(c['comps']).isNotEmpty) ...[
                     const SizedBox(height: 12),
-                    Text('Muavza', style: display(15)),
+                    Text('Compensation', style: display(15)),
                     for (final x in _list(c['comps']))
                       Padding(
                         padding: const EdgeInsets.only(top: 8),
@@ -743,10 +743,10 @@ class _ShikayatCasePageState extends State<ShikayatCasePage> {
                     Text(_s(c['resolution']), style: const TextStyle(fontSize: 13)),
                   ],
                   const SizedBox(height: 12),
-                  Text('Graahak aage kahan ja sakte hain', style: display(14)),
+                  Text('Where the customer can go next', style: display(14)),
                   for (final r in _list(c['routes'])) Text('• ${_s(r['name'])}: ${_s(r['how'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
                   const SizedBox(height: 12),
-                  Text('Hisaab', style: display(14)),
+                  Text('Account', style: display(14)),
                   for (final l in _list(c['log']).reversed)
                     Text('${_s(l['at']).replaceFirst('T', ' ').substring(0, _s(l['at']).length >= 16 ? 16 : _s(l['at']).length)} · ${_s(l['text'])}',
                         style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -765,19 +765,19 @@ Future<void> showShikayatMessage(BuildContext context, Santosh app, Map<String, 
   await showDialog<void>(
     context: context,
     builder: (d) => AlertDialog(
-      title: Text('Graahak ko message (${_s(m['number'])})'),
+      title: Text('Message to the customer (${_s(m['number'])})'),
       content: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           TextField(controller: text, maxLines: 9, style: const TextStyle(fontSize: 13)),
           const SizedBox(height: 6),
-          const Text('Aap padh kar bhejiye. Jo muavza aapne maana nahi, uska vaada mat likhiye.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+          const Text('Read it before sending. Do not promise any compensation you have not agreed to.', style: TextStyle(fontSize: 11.5, color: C.faint)),
         ]),
       ),
       actions: [
         TextButton(
             onPressed: () {
               Clipboard.setData(ClipboardData(text: text.text));
-              _snack(d, 'Copy ho gaya');
+              _snack(d, 'Copied');
             },
             child: const Text('Copy')),
         if (_s(m['wa_link']).isNotEmpty)
@@ -808,7 +808,7 @@ Future<void> showShikayatMessage(BuildContext context, Santosh app, Map<String, 
                   if (d.mounted) _snack(d, '$e');
                 }
               },
-              child: const Text('Business WhatsApp se bhejo')),
+              child: const Text('Send from Business WhatsApp')),
         TextButton(
             onPressed: () async {
               try {
@@ -822,7 +822,7 @@ Future<void> showShikayatMessage(BuildContext context, Santosh app, Map<String, 
                 if (d.mounted) _snack(d, '$e');
               }
             },
-            child: const Text('Maine bhej diya')),
+            child: const Text('I sent it')),
       ],
     ),
   );
@@ -849,13 +849,13 @@ class ShikayatCaseCard extends StatelessWidget {
           const SizedBox(width: 10),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('${ev == 'new' ? 'Nayi shikayat' : 'Shikayat'} ${_s(c['number'])}${_s(c['customer']).isNotEmpty ? ' · ${c['customer']}' : ''}',
+              Text('${ev == 'new' ? 'New complaint' : 'Complaint'} ${_s(c['number'])}${_s(c['customer']).isNotEmpty ? ' · ${c['customer']}' : ''}',
                   style: const TextStyle(fontWeight: FontWeight.w800)),
               Text(
                   [
                     _s(c['stage_label']),
                     if ((c['cause_labels'] as List?)?.isNotEmpty == true) (c['cause_labels'] as List).join(', '),
-                    if (_s(c['due']).isNotEmpty && ev == 'new') 'hal ${c['due']} tak',
+                    if (_s(c['due']).isNotEmpty && ev == 'new') 'hal ${c['due']} until',
                   ].join(' · '),
                   style: const TextStyle(fontSize: 12.5, color: C.muted)),
             ]),
@@ -879,12 +879,12 @@ class ShikayatMessageCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.forum_rounded, color: C.accent),
             const SizedBox(width: 8),
-            Expanded(child: Text('Graahak ke liye draft · ${_s(data['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
+            Expanded(child: Text('Draft for the customer · ${_s(data['number'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
           ]),
           const SizedBox(height: 6),
           Text(_s(data['text']), maxLines: 8, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, height: 1.35)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Dekho aur bhejo', icon: Icons.send_rounded, onTap: () => showShikayatMessage(context, app, data)),
+          GlassButton(label: 'See and send', icon: Icons.send_rounded, onTap: () => showShikayatMessage(context, app, data)),
         ]),
       );
 }
@@ -926,13 +926,13 @@ class _ShikayatCompCardState extends State<ShikayatCompCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = await _call(widget.app, 'POST', '/api/shikayat/comp/$id/challenge');
     final show = _map(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Muavze ki haan' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Yes for compensation' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'Fingerprint was not given, so approval did not happen.',
+        'key_invalidated' => 'A new fingerprint was added on this phone: go to Profile > Approve with fingerprint and connect the phone again.',
+        _ => 'Approval by fingerprint did not work (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -942,7 +942,7 @@ class _ShikayatCompCardState extends State<ShikayatCompCard> {
     final id = _s(_comp['id']);
     String note = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon nahi', const [('note', 'Wajah (aapke liye)')]);
+      final f = await _form(context, 'Why not', const [('note', 'Reason (for you)')]);
       if (f == null) return;
       note = f['note'] ?? '';
     }
@@ -970,7 +970,7 @@ class _ShikayatCompCardState extends State<ShikayatCompCard> {
   }
 
   Future<void> _given() async {
-    final f = await _form(context, 'Kaise diya', const [('how', 'UPI / cash / naya saamaan / bill mein chhoot'), ('ref', 'UTR / bill no (ho to)')]);
+    final f = await _form(context, 'How it was given', const [('how', 'UPI / cash / new goods / bill discount'), ('ref', 'UTR / bill no (ho to)')]);
     if (f == null) return;
     setState(() => _busy = true);
     try {
@@ -1002,24 +1002,24 @@ class _ShikayatCompCardState extends State<ShikayatCompCard> {
               child: Text(
                   '${_s(show['case']).isNotEmpty ? show['case'] : _s(widget.data['number'])} · ${_s(x['kind_label'])}${_s(x['amount_text']).isNotEmpty ? ' ${x['amount_text']}' : ''}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'pending' => 'aapki haan?', 'approved' => 'maana', 'given' => 'diya', 'rejected' => 'nahi', _ => st },
+          Pill(switch (st) { 'pending' => 'your yes?', 'approved' => 'accepted', 'given' => 'given', 'rejected' => 'no', _ => st },
               fg: st == 'pending' ? C.accent : (st == 'rejected' ? C.bad : C.ok)),
         ]),
-        if (_s(show['customer']).isNotEmpty) Text('Graahak: ${show['customer']}', style: const TextStyle(fontSize: 12.5)),
-        if (_s(x['item']).isNotEmpty) Text('Dena: ${x['item']}', style: const TextStyle(fontSize: 12.5)),
+        if (_s(show['customer']).isNotEmpty) Text('Customer: ${show['customer']}', style: const TextStyle(fontSize: 12.5)),
+        if (_s(x['item']).isNotEmpty) Text('To give: ${x['item']}', style: const TextStyle(fontSize: 12.5)),
         if (_s(x['reason']).isNotEmpty) Text(_s(x['reason']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final ch in (x['checks'] as List? ?? const [])) Text('• $ch', style: const TextStyle(fontSize: 12, color: C.warn)),
-        if (_s(x['given_how']).isNotEmpty) Text('Diya: ${x['given_how']}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(x['given_how']).isNotEmpty) Text('Given: ${x['given_how']}', style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 8),
         if (st == 'pending')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, dena hai', icon: Icons.fingerprint_rounded, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, give it', icon: Icons.fingerprint_rounded, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Nahi', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'No', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
           ]),
-        if (st == 'approved') GlassButton(label: 'Maine de diya', icon: Icons.check_rounded, onTap: _busy ? null : _given),
+        if (st == 'approved') GlassButton(label: 'I gave it', icon: Icons.check_rounded, onTap: _busy ? null : _given),
         const SizedBox(height: 4),
-        const Text('Paisa / saamaan aap khud dengi; Hoola sirf hisaab rakhta hai.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('You give the money / goods yourself; Hoola only keeps the record.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }

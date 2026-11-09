@@ -141,7 +141,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
           },
         );
     if (!_sttReady) {
-      _set(_V.idle, hint: 'Microphone permission chahiye. Phone settings mein Hoola ko mic allow kijiye.');
+      _set(_V.idle, hint: 'Microphone permission is needed. Allow the mic for Hoola in the phone settings.');
       return;
     }
     _gotFinal = false;
@@ -177,7 +177,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     _gotFinal = true;
     words = words.trim();
     if (words.isEmpty) {
-      _set(_V.idle, hint: 'Kuch suna nahi. Orb dabakar boliye.');
+      _set(_V.idle, hint: 'Heard nothing. Tap the orb and speak.');
       return;
     }
     _turnHadReply = false;
@@ -186,12 +186,12 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     _set(_V.thinking);
     final ok = await app.send(words, spoken: true);
     if (!ok) {
-      _set(_V.idle, hint: 'Message nahi gaya. Internet check kijiye.');
+      _set(_V.idle, hint: 'The message did not go. Check the internet.');
       return;
     }
     _waitTimer?.cancel();
     _waitTimer = Timer(const Duration(seconds: 90), () {
-      if (_state == _V.thinking && !_turnHadReply) _set(_V.idle, hint: '${app.aName} ko time lag raha hai. Jawab aate hi yahan dikhega.');
+      if (_state == _V.thinking && !_turnHadReply) _set(_V.idle, hint: '${app.aName} is taking time. The reply will show here as soon as it comes.');
     });
   }
 
@@ -271,7 +271,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
       case _V.listening:
         await _stt.stop(); // final result follows
       case _V.thinking:
-        _set(_V.idle, hint: 'Ruk gaya. ${app.aName} ka jawab aayega to yahan dikhega.');
+        _set(_V.idle, hint: 'Stopped. ${app.aName} reply will show here when it comes.');
       case _V.speaking:
         _queue.clear();
         await _tts.stop();
@@ -292,10 +292,10 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
   }
 
   String get _statusText => switch (_state) {
-        _V.idle => _hint ?? 'Orb dabaiye aur boliye',
-        _V.listening => 'Sun raha hoon…',
-        _V.thinking => app.currentStep != null ? '${app.currentStep}…' : 'Soch raha hoon…',
-        _V.speaking => 'Bol raha hoon… (beech mein bolne ke liye orb dabaiye)',
+        _V.idle => _hint ?? 'Tap the orb and speak',
+        _V.listening => 'Listening…',
+        _V.thinking => app.currentStep != null ? '${app.currentStep}…' : 'Thinking…',
+        _V.speaking => 'Speaking… (tap the orb to speak over)',
       };
 
   @override
@@ -307,19 +307,19 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
         child: Row(children: [
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Baat karein', style: display(28)),
-              Text('${app.aName} se seedhe bolkar · $lang', style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
+              Text('Talk', style: display(28)),
+              Text('${app.aName} speaking directly · $lang', style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
             ]),
           ),
           FilterChip(
-            label: const Text('Lagatar'),
+            label: const Text('Continuous'),
             selected: _handsFree,
             showCheckmark: false,
             avatar: Icon(_handsFree ? Icons.all_inclusive_rounded : Icons.touch_app_rounded, size: 18, color: _handsFree ? C.onAccent : C.chip),
             selectedColor: C.accent,
             backgroundColor: const Color(0x14FFFFFF),
             labelStyle: TextStyle(color: _handsFree ? C.onAccent : C.chip, fontWeight: FontWeight.w700),
-            tooltip: 'Jawab ke baad apne aap phir sunna',
+            tooltip: 'Listen again automatically after the reply',
             onSelected: (v) => setState(() => _handsFree = v),
           ),
         ]),
@@ -345,7 +345,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
             ),
           ),
           if (!app.connected)
-            const Positioned(left: 20, right: 20, top: 8, child: Pill('Server se connect ho raha hai…', fg: C.warn, bg: Color(0x2EFFB15C))),
+            const Positioned(left: 20, right: 20, top: 8, child: Pill('Connecting to the server…', fg: C.warn, bg: Color(0x2EFFB15C))),
           Positioned(left: 0, right: 0, bottom: 4, child: ArtifactCallPill(app: app)),
           Positioned(right: 12, top: 8, child: BrowserCallThumb(app: app)),
         ]),
@@ -358,11 +358,11 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
       Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-          _small(Icons.stop_rounded, 'Sab roko', _state == _V.idle ? null : _stopAll),
+          _small(Icons.stop_rounded, 'Stop everything', _state == _V.idle ? null : _stopAll),
           const SizedBox(width: 26),
           _orb(),
           const SizedBox(width: 26),
-          _small(Icons.replay_rounded, 'Phir se sunao', _reply.isEmpty || _state != _V.idle ? null : () {
+          _small(Icons.replay_rounded, 'Play again', _reply.isEmpty || _state != _V.idle ? null : () {
             _queue.add(_reply);
             _speakQueue();
           }),
@@ -382,7 +382,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
           reverse: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (_heard.isNotEmpty) ...[
-              const Text('AAP', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.muted)),
+              const Text('YOU', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.muted)),
               Text(_heard, style: const TextStyle(fontSize: 15, height: 1.35, color: C.ink)),
             ],
             if (_reply.isNotEmpty) ...[
@@ -417,7 +417,7 @@ class _VoiceScreenState extends State<VoiceScreen> with TickerProviderStateMixin
     };
     return Semantics(
       button: true,
-      label: _state == _V.idle ? 'Bolna shuru karein' : 'Orb',
+      label: _state == _V.idle ? 'Start speaking' : 'Orb',
       child: GestureDetector(
         onTap: _onOrb,
         child: AnimatedBuilder(

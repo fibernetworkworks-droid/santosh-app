@@ -72,11 +72,11 @@ class _AppOpsPanelState extends State<AppOpsPanel> {
       Row(children: [
         const Icon(Icons.monitor_heart_outlined, color: C.muted, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('App kaise chal rahi hai', style: display(15))),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        Expanded(child: Text('How the app is doing', style: display(15))),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
-      const _Dim('App ban jaane ke baad yahi wo hissa hai jise koi nahi dekhta: kitne log, kitni tez, kya fail ho raha '
-          'hai, aur kitna kharcha. Sab kuch aapki app ki asli calls se naapa gaya hai.'),
+      const _Dim('Once an app is built, this is the part nobody watches: how many people, how fast, what is failing, '
+          'and how much it costs. Everything is measured from your app\'s real calls.'),
       const SizedBox(height: 6),
       for (final a in alerts)
         Padding(
@@ -91,18 +91,18 @@ class _AppOpsPanelState extends State<AppOpsPanel> {
       const SizedBox(height: 4),
       _row('Log', '${_i(pe['accounts'])} accounts · ${_i(pe['rows'])} rows'
           '${_i(pe['orders']) > 0 ? " · ${_i(pe['orders'])} orders" : ''}'),
-      _row('Raftaar', _i(tr['calls']) == 0
-          ? 'abhi koi call nahi'
-          : 'aadhi ${_s(tr['p50'])} se kam, 95% ${_s(tr['p95'])} se kam · sabse dheemi ${_i(tr['slowest_ms'])}ms'),
+      _row('Speed', _i(tr['calls']) == 0
+          ? 'no calls yet'
+          : 'half under ${_s(tr['p50'])}, 95% under ${_s(tr['p95'])} · slowest ${_i(tr['slowest_ms'])}ms'),
       _row('Fail', '${_i(tr['errors'])} / ${_i(tr['calls'])}'
           '${_i(tr['calls']) > 0 ? " (${tr['error_percent']}%)" : ''}'),
-      _row('Phones se', _s(fd['says'])),
-      _row('Kharcha (30 din)', 'Rs ${_d(cs['inr']).toStringAsFixed(2)}'
-          '${_ls(cs['not_priced']).isNotEmpty ? " · daam set nahi: ${_ls(cs['not_priced']).join(', ')}" : ''}'),
-      if (gaps.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: _Dim('Abhi naapa nahi gaya: ${gaps.join('; ')}.')),
+      _row('From phones', _s(fd['says'])),
+      _row('Cost (30 days)', 'Rs ${_d(cs['inr']).toStringAsFixed(2)}'
+          '${_ls(cs['not_priced']).isNotEmpty ? " · price not set: ${_ls(cs['not_priced']).join(', ')}" : ''}'),
+      if (gaps.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: _Dim('Not measured yet: ${gaps.join('; ')}.')),
       const SizedBox(height: 10),
-      Text('Bade kaam se pehle', style: display(14)),
-      const _Dim('Pichhli baar AAPKA kitna kharcha hua tha - kisi table ka number nahi.'),
+      Text('Before a big job', style: display(14)),
+      const _Dim('What it cost YOU last time - not a number from a table.'),
       const SizedBox(height: 4),
       Wrap(spacing: 8, runSpacing: 8, children: [
         for (final j in const ['build', 'ios', 'logic', 'naksha', 'jaanch'])

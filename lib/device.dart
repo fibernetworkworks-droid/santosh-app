@@ -65,7 +65,7 @@ class Device {
       await _notes.zonedSchedule(
         id,
         'Hoola',
-        'Yaad dila raha hoon: ${r['text']}',
+        'Reminding you: ${r['text']}',
         tz.TZDateTime.from(due, tz.local),
         const NotificationDetails(android: _channel),
         androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
@@ -112,8 +112,8 @@ class Device {
         case 'tv_play':
           // Hoola TV: the channel opens in Hoola's own player
           final ch = a['channel'] as String? ?? '';
-          if (ch.isEmpty) return 'Channel nahi mila';
-          return await openTv(ch) ? null : 'Hoola app kholiye, channel wahan chalega';
+          if (ch.isEmpty) return 'Channel not found';
+          return await openTv(ch) ? null : 'Open the Hoola app, the channel will play there';
         case 'youtube_play':
           // v0.125 straight into the YouTube app (never Hoola's in-app browser), the web page only if YouTube is missing
           final vid = a['video_id'] as String? ?? '';
@@ -123,18 +123,18 @@ class Device {
               if (await launchUrl(Uri.parse('vnd.youtube:$vid'), mode: LaunchMode.externalNonBrowserApplication)) return null;
             } catch (_) {}
           }
-          if (web == null || !web.hasScheme) return 'YouTube link sahi nahi hai';
+          if (web == null || !web.hasScheme) return 'The YouTube link is not valid';
           try {
             if (await launchUrl(web, mode: LaunchMode.externalNonBrowserApplication)) return null;
           } catch (_) {}
-          return await launchUrl(web, mode: LaunchMode.externalApplication) ? null : 'YouTube phone par nahi khul paya';
+          return await launchUrl(web, mode: LaunchMode.externalApplication) ? null : 'YouTube could not open on the phone';
         case 'open_url':
           final uri = Uri.tryParse(a['url'] as String? ?? '');
-          if (uri == null || !uri.hasScheme) return 'Link sahi nahi hai';
+          if (uri == null || !uri.hasScheme) return 'The link is not valid';
           // inside Santosh's own browser when the app is open; another app for tel:, upi: etc.
           if (await openInApp(uri.toString(), title: a['title'] as String?)) return null;
           final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-          return ok ? null : 'Is link ko kholne wala app phone par nahi mila';
+          return ok ? null : 'No app on the phone can open this link';
         default:
           return 'This app version does not know "${a['type']}" yet; please update the app.';
       }

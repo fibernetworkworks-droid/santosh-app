@@ -111,71 +111,71 @@ class _PhoneHoolaScreenState extends State<PhoneHoolaScreen> with WidgetsBinding
     final available = latest?['available'] == true;
     return Scaffold(
       backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('Phone mein $name')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('$name on the phone')),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
         _card(
           icon: Icons.assistant_rounded,
           color: C.accent,
-          title: '$name ko phone ka assistant banaiye',
-          sub: 'Home button daba ke rakhiye (ya corner se swipe): $name khulega aur jo screen aap dekh rahi hain uska '
-              'screenshot + text chat mein laga dega — "is message ka jawab likho", "yeh offer sahi hai?". Sirf tab, jab '
-              'aap khud bulayengi; password / OTP wale khaane kabhi nahi liye jaate.',
+          title: 'Make $name your phone\'s assistant',
+          sub: 'Press and hold the Home button (or swipe from a corner): $name opens and puts a screenshot + text of the screen you are looking at '
+              'into the chat — "write a reply to this message", "is this offer fine?". Only when '
+              'you call it yourself; password / OTP fields are never taken.',
           children: [
-            _status(isDefault, '$name aapka assistant hai', 'Abhi koi aur assistant set hai'),
+            _status(isDefault, '$name is your assistant', 'Another assistant is set right now'),
             const SizedBox(height: 8),
             if (!isDefault)
-              const Text('Settings > Apps > Default apps > Digital assistant app > Hoola chuniye. Screen ke liye "Use text '
-                  'from screen" aur "Use screenshot" ON rakhiye.', style: TextStyle(fontSize: 12.5, height: 1.4)),
+              const Text('Settings > Apps > Default apps > Digital assistant app > choose Hoola. Keep "Use text '
+                  'from screen" and "Use screenshot" ON.', style: TextStyle(fontSize: 12.5, height: 1.4)),
             const SizedBox(height: 8),
-            FilledButton.tonal(onPressed: Native.assistSettings, child: Text(isDefault ? 'Settings dekho' : 'Set karo')),
+            FilledButton.tonal(onPressed: Native.assistSettings, child: Text(isDefault ? 'See settings' : 'Set')),
           ],
         ),
         _card(
           icon: Icons.bubble_chart_rounded,
           color: C.teal,
           title: 'Floating $name (bubble)',
-          sub: 'Kisi bhi app ke upar $name ka chhota gol chehra. Tap karo: chhoti chat khulti hai, likho ya 🎙 se call. '
-              'Android ka apna Bubbles feature hai — koi "draw over apps" permission nahi; bubble ko neeche kheench kar '
-              'kabhi bhi hata sakti hain.',
+          sub: 'A small round face of $name over any app. Tap: a small chat opens, type or use 🎙 to call. '
+              'It is Android\'s own Bubbles feature — no "draw over apps" permission; you can drag the bubble down to '
+              'remove it anytime.',
           children: [
             if (!bubbleOk)
-              const Text('Bubble Android 11 ya naye phone par chalta hai.', style: TextStyle(fontSize: 12.5, color: C.muted))
+              const Text('Bubble works on Android 11 or newer phones.', style: TextStyle(fontSize: 12.5, color: C.muted))
             else ...[
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 value: bubbleOn,
-                title: Text(bubbleOn ? 'Bubble chalu hai' : 'Bubble band hai', style: const TextStyle(fontWeight: FontWeight.w700)),
+                title: Text(bubbleOn ? 'Bubble is on' : 'Bubble is off', style: const TextStyle(fontWeight: FontWeight.w700)),
                 onChanged: (v) async {
                   final r = await Native.bubble(v, name);
                   await _load();
                   if (v && r['allowed'] == false && mounted) {
-                    _snack('Phone ki settings mein Hoola ke liye bubbles allow kijiye.');
+                    _snack('Allow bubbles for Hoola in the phone\'s settings.');
                     await Native.bubbleSettings();
                   }
                 },
               ),
               if (bubbleOn && _bubble['allowed'] != true)
-                TextButton(onPressed: Native.bubbleSettings, child: const Text('Bubbles allow karo (Android settings)')),
+                TextButton(onPressed: Native.bubbleSettings, child: const Text('Allow bubbles (Android settings)')),
             ],
           ],
         ),
         _card(
           icon: Icons.widgets_rounded,
           color: const Color(0xFFFFB15C),
-          title: 'Home screen par $name',
-          sub: 'Widget: $name ki aakhri baat, agla reminder, aur do bade button — 🎙 Bolo (seedha call) aur ✍ Likho.',
+          title: '$name on the home screen',
+          sub: 'Widget: $name\'s last chat, the next reminder, and two big buttons — 🎙 Speak (direct call) and ✍ Write.',
           children: [
-            _status(_widgets > 0, 'Widget laga hua hai', 'Widget nahi laga'),
+            _status(_widgets > 0, 'Widget is added', 'Widget not added'),
             const SizedBox(height: 8),
             FilledButton.tonal(
               onPressed: () async {
                 final ok = await Native.widgetPin();
                 await app.widgetSync();
                 if (!ok && mounted) {
-                  _snack('Home screen ko daba ke rakhiye > Widgets > Hoola chuniye.');
+                  _snack('Press and hold the home screen > Widgets > choose Hoola.');
                 }
               },
-              child: const Text('Widget lagao'),
+              child: const Text('Add widget'),
             ),
           ],
         ),
@@ -184,12 +184,12 @@ class _PhoneHoolaScreenState extends State<PhoneHoolaScreen> with WidgetsBinding
             icon: Icons.system_update_rounded,
             color: C.ok,
             title: 'App update',
-            sub: 'Abhi: v${_ver['version'] ?? '?'}. Naya version GitHub se aata hai; file ka checksum aur signature check '
-                'hota hai, phir Android khud "Install?" poochhta hai.',
+            sub: 'Now: v${_ver['version'] ?? '?'}. The new version comes from GitHub; the file\'s checksum and signature are checked, '
+                'then Android itself asks "Install?".',
             children: [
               if (_checking) const LinearProgressIndicator(minHeight: 3),
               if (latest != null && !_checking)
-                Text(available ? 'Naya: v${latest['version']} (${hoolaMb(latest['size'])})' : 'Aap sabse naye version par hain.',
+                Text(available ? 'New: v${latest['version']} (${hoolaMb(latest['size'])})' : 'You are on the newest version.',
                     style: TextStyle(fontWeight: FontWeight.w700, color: available ? C.accent : C.ok)),
               if (available && '${latest?['notes'] ?? ''}'.isNotEmpty)
                 Padding(
@@ -200,8 +200,8 @@ class _PhoneHoolaScreenState extends State<PhoneHoolaScreen> with WidgetsBinding
               const SizedBox(height: 8),
               Wrap(spacing: 8, children: [
                 if (available)
-                  FilledButton(onPressed: () => AppUpdater.run(context, latest!), child: const Text('Update karo')),
-                OutlinedButton(onPressed: _checking ? null : () => _check(force: true), child: const Text('Check karo')),
+                  FilledButton(onPressed: () => AppUpdater.run(context, latest!), child: const Text('Update')),
+                OutlinedButton(onPressed: _checking ? null : () => _check(force: true), child: const Text('Check')),
               ]),
             ],
           ),
@@ -226,12 +226,12 @@ class AppUpdater {
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: const Text('Ek permission chahiye'),
-          content: const Text('Update install karne ke liye Android poochhega: "Is source se apps install karein?" — '
-              'Hoola ke liye ON kijiye aur wapas aaiye.'),
+          title: const Text('One permission is needed'),
+          content: const Text('To install the update, Android will ask: "Allow installing apps from this source?" — '
+              'turn it ON for Hoola and come back.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Baad mein')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Settings kholo')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Later')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Open settings')),
           ],
         ),
       );
@@ -244,7 +244,7 @@ class AppUpdater {
     final err = await Native.updateInstall(path);
     if (!context.mounted) return;
     if (err == 'permission') {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('"Install unknown apps" ON karke dobara "Update karo" dabaiye.')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Turn on "Install unknown apps" and tap "Update" again.')));
     } else if (err != null && err.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(err)));
     }
@@ -270,15 +270,15 @@ class AppUpdater {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Naya ${app.aName} aaya hai: v${r['version']}', style: display(20)),
+              Text('New ${app.aName} is here: v${r['version']}', style: display(20)),
               const SizedBox(height: 6),
               Text('${r['notes'] ?? ''}', maxLines: 6, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: C.muted, fontSize: 13, height: 1.4)),
               const SizedBox(height: 12),
               Row(children: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Baad mein')),
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Later')),
                 const Spacer(),
-                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Update karo (${hoolaMb(r['size'])})')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Update (${hoolaMb(r['size'])})')),
               ]),
             ]),
           ),
@@ -317,7 +317,7 @@ class _DownloadDialogState extends State<_DownloadDialog> {
       if (path != null && path.isNotEmpty) {
         _close(path);
       } else if (mounted && !_closed) {
-        final e = '${res['error'] ?? 'Download nahi ho paya'}';
+        final e = '${res['error'] ?? 'Download failed'}';
         if (e == 'cancelled') {
           _close(null);
         } else {
@@ -342,7 +342,7 @@ class _DownloadDialogState extends State<_DownloadDialog> {
         canPop: false,
         child: AlertDialog(
           backgroundColor: C.bgBottom,
-          title: Text(_err == null ? 'Naya version aa raha hai' : 'Update nahi hua'),
+          title: Text(_err == null ? 'A new version is coming' : 'Update did not work'),
           content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
             if (_err == null) ...[
               Text('v${widget.rel['version']} · ${hoolaMb(widget.rel['size'])}', style: const TextStyle(color: C.muted, fontSize: 13)),
@@ -352,7 +352,7 @@ class _DownloadDialogState extends State<_DownloadDialog> {
                 child: LinearProgressIndicator(value: _pct <= 0 ? null : _pct / 100, minHeight: 8),
               ),
               const SizedBox(height: 6),
-              Text(_pct >= 100 ? 'Check kar raha hoon…' : '$_pct%', style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(_pct >= 100 ? 'Checking…' : '$_pct%', style: const TextStyle(fontWeight: FontWeight.w700)),
             ] else
               Text(_err!, style: const TextStyle(fontSize: 13.5)),
           ]),
@@ -362,7 +362,7 @@ class _DownloadDialogState extends State<_DownloadDialog> {
                 if (_err == null) await Native.updateCancel();
                 _close(null);
               },
-              child: Text(_err == null ? 'Rok do' : 'Theek hai'),
+              child: Text(_err == null ? 'Stop' : 'OK'),
             ),
           ],
         ),

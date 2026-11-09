@@ -52,7 +52,7 @@ class _TakesScreenState extends State<TakesScreen> {
     setState(() => _busy = true);
     try {
       await app.api!.studioPick(widget.name, _id, n);
-      if (mounted) studioSnack(context, 'Take $n rakha');
+      if (mounted) studioSnack(context, 'Kept take $n');
     } catch (e) {
       if (mounted) studioSnack(context, '$e'.replaceFirst('Exception: ', ''));
     }
@@ -74,18 +74,18 @@ class _TakesScreenState extends State<TakesScreen> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text('Shot ${_id.toUpperCase()} dobara banana', style: sora(18)),
+                Text('Shot ${_id.toUpperCase()} make again', style: sora(18)),
                 const SizedBox(height: 6),
-                if (_fix.text.trim().isNotEmpty) Text('Badlav: ${_fix.text.trim()}', style: body(13, color: C.muted)),
+                if (_fix.text.trim().isNotEmpty) Text('Change: ${_fix.text.trim()}', style: body(13, color: C.muted)),
                 const SizedBox(height: 12),
                 Text(rupees(r['inr']), style: sora(34, w: FontWeight.w700)),
                 const SizedBox(height: 6),
-                Text('Asli kharcha isse zyada nahi. Purane takes rahenge.', style: body(12, color: C.faint)),
+                Text('The real cost will not be more than this. Old takes will stay.', style: body(12, color: C.faint)),
                 const SizedBox(height: 16),
                 Row(children: [
-                  Expanded(child: SButton(label: 'Abhi nahi', primary: false, onTap: () => Navigator.pop(ctx, false))),
+                  Expanded(child: SButton(label: 'Not now', primary: false, onTap: () => Navigator.pop(ctx, false))),
                   const SizedBox(width: 10),
-                  Expanded(flex: 2, child: SButton(label: 'Haan, ${rupees(r['inr'])}', icon: Icons.check_rounded, onTap: () => Navigator.pop(ctx, true))),
+                  Expanded(flex: 2, child: SButton(label: 'Yes, ${rupees(r['inr'])}', icon: Icons.check_rounded, onTap: () => Navigator.pop(ctx, true))),
                 ]),
               ]),
             ),
@@ -93,9 +93,9 @@ class _TakesScreenState extends State<TakesScreen> {
         );
         final d = await app.api!.studioDecide(id, yes == true);
         if (mounted && yes == true) {
-          if ('${d['status']}' == 'failed') throw '${d['error'] ?? 'Shuru nahi ho paya'}';
+          if ('${d['status']}' == 'failed') throw '${d['error'] ?? 'Could not start'}';
           _fix.clear();
-          studioSnack(context, 'Naya take ban raha hai (1-5 min). Taiyaar hote hi bataunga.');
+          studioSnack(context, 'A new take is being made (1-5 min). I will tell you as soon as it is ready.');
         }
       }
     } catch (e) {
@@ -139,7 +139,7 @@ class _TakesScreenState extends State<TakesScreen> {
                     Expanded(
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text('${_id.toUpperCase()} · ${kindLabel['${s['kind']}'] ?? ''}', style: sora(17)),
-                        Text('${takes.length} take · ek chuniye', style: body(11.5, color: C.faint)),
+                        Text('${takes.length} takes · choose one', style: body(11.5, color: C.faint)),
                       ]),
                     ),
                     IconButton(onPressed: () => _go(-1), icon: const Icon(Icons.chevron_left_rounded)),
@@ -172,14 +172,14 @@ class _TakesScreenState extends State<TakesScreen> {
                     Padding(
                       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                        const SLabel('Kuch badalna hai?'),
+                        const SLabel('Want to change something?'),
                         Row(children: [
                           Expanded(
                             child: TextField(
                               controller: _fix,
                               style: body(13.5, w: FontWeight.w500),
                               decoration: InputDecoration(
-                                hintText: '${cur['fix'] ?? ''}'.isNotEmpty ? 'Sujhav: ${cur['fix']}' : 'Jaise: haath goad mein, roshni thodi kam',
+                                hintText: '${cur['fix'] ?? ''}'.isNotEmpty ? 'Suggestion: ${cur['fix']}' : 'For example: hands in lap, a little less light',
                                 hintMaxLines: 2,
                                 hintStyle: body(12.5, w: FontWeight.w500, color: C.faint),
                                 filled: true,
@@ -191,13 +191,13 @@ class _TakesScreenState extends State<TakesScreen> {
                             ),
                           ),
                           const SizedBox(width: 8),
-                          SizedBox(width: 110, child: SButton(label: 'Dobara', primary: false, height: 48, busy: _busy, onTap: () => _redo())),
+                          SizedBox(width: 110, child: SButton(label: 'Again', primary: false, height: 48, busy: _busy, onTap: () => _redo())),
                         ]),
                         const SizedBox(height: 8),
                         Wrap(spacing: 8, children: [
-                          SChip(label: 'Premium mein dobara', icon: Icons.diamond_outlined, on: false, onTap: _busy ? null : () => _redo(quality: 'premium')),
+                          SChip(label: 'Again in Premium', icon: Icons.diamond_outlined, on: false, onTap: _busy ? null : () => _redo(quality: 'premium')),
                           if (cur['quality'] == 'preview')
-                            SChip(label: 'HD mein banao', icon: Icons.hd_outlined, on: false, onTap: _busy ? null : () async {
+                            SChip(label: 'Make in HD', icon: Icons.hd_outlined, on: false, onTap: _busy ? null : () async {
                               final ok = await approveGenerate(context, app, v, shots: [_id]);
                               if (ok) _load();
                             }),
@@ -208,14 +208,14 @@ class _TakesScreenState extends State<TakesScreen> {
                 ),
                 SBottomBar(
                   child: Row(children: [
-                    Expanded(child: SButton(label: 'Baaki shots', primary: false, onTap: () => Navigator.maybePop(context))),
+                    Expanded(child: SButton(label: 'Remaining shots', primary: false, onTap: () => Navigator.maybePop(context))),
                     const SizedBox(width: 10),
                     Expanded(
                       flex: 2,
                       child: cur.isEmpty || cur['picked'] == true
-                          ? SButton(label: cur.isEmpty ? 'Abhi koi take nahi' : 'Take ${cur['n']} chuna hua hai', icon: Icons.check_rounded,
+                          ? SButton(label: cur.isEmpty ? 'No takes yet' : 'Take ${cur['n']} is chosen', icon: Icons.check_rounded,
                               light: true, primary: false, onTap: null)
-                          : SButton(label: 'Take ${cur['n']} rakho', icon: Icons.check_rounded, busy: _busy, onTap: () => _pick(sInt(cur['n']))),
+                          : SButton(label: 'Keep take ${cur['n']}', icon: Icons.check_rounded, busy: _busy, onTap: () => _pick(sInt(cur['n']))),
                     ),
                   ]),
                 ),
@@ -258,8 +258,8 @@ class _TakesScreenState extends State<TakesScreen> {
     if (t['score'] == null && good.isEmpty && bad.isEmpty) {
       return Padding(
         padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        child: Text(t['quality'] == 'preview' ? 'Yeh free preview hai: sirf kahani aur timing dekhne ke liye.'
-            : 'AI jaanch abhi nahi hui.', style: body(12.5, color: C.faint)),
+        child: Text(t['quality'] == 'preview' ? 'This is a free preview: only to see the story and timing.'
+            : 'AI check not done yet.', style: body(12.5, color: C.faint)),
       );
     }
     return Container(
@@ -275,15 +275,15 @@ class _TakesScreenState extends State<TakesScreen> {
             child: const Icon(Icons.search_rounded, size: 17, color: SC.violet),
           ),
           const SizedBox(width: 10),
-          Expanded(child: Text('AI jaanch · Take ${t['n']}', style: body(14, w: FontWeight.w800))),
+          Expanded(child: Text('AI check · Take ${t['n']}', style: body(14, w: FontWeight.w800))),
           if (t['score'] != null)
             Text('${t['score']}', style: body(14, w: FontWeight.w800, color: (t['score'] as num) < 6 ? C.warn : C.ok)),
         ]),
         const SizedBox(height: 10),
         for (final g in good) _line('✓', g, C.ok),
         for (final b in bad) _line('!', b, C.warn),
-        if (t['lipsync'] == true) _line('✓', 'Hoth line ke saath mile hue (Sync 3)', C.ok),
-        if ('${t['lipsync_error'] ?? ''}'.isNotEmpty) _line('!', 'Lip sync nahi hua: line kathan ki tarah lagegi', C.warn),
+        if (t['lipsync'] == true) _line('✓', 'Lips match the line (Sync 3)', C.ok),
+        if ('${t['lipsync_error'] ?? ''}'.isNotEmpty) _line('!', 'Lip sync did not work: the line will sound like narration', C.warn),
       ]),
     );
   }

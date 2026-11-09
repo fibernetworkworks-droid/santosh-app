@@ -20,7 +20,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -28,7 +28,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Next', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -42,7 +42,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -70,7 +70,7 @@ Widget _draftButtons(Map<String, dynamic> draft) {
     if (wa.isNotEmpty) GlassButton(label: 'WhatsApp draft', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: wa)),
     if (sms.isNotEmpty) GlassButton(label: 'SMS', icon: Icons.sms_rounded, height: 40, onTap: () => Native.openExternal(url: sms)),
     if (mail.isNotEmpty) GlassButton(label: 'Email', icon: Icons.mail_rounded, height: 40, onTap: () => Native.openExternal(url: mail)),
-    if (upi.isNotEmpty) const Pill('UPI link aapke UPI ID ka'),
+    if (upi.isNotEmpty) const Pill('UPI link of your UPI ID'),
   ]);
 }
 
@@ -147,7 +147,7 @@ class _GraphicScreenState extends State<GraphicScreen> {
             Text('${_s(j['client'])} · ${_s(j['kind_label'])}${_s(j['due']).isEmpty ? '' : ' · due ${_s(j['due'])}'}',
                 style: const TextStyle(fontSize: 12, color: C.muted)),
             Text('Round ${_s(r['used'])}/${(r['included'] ?? 0) + (r['extra'] ?? 0) + (r['waived'] ?? 0)}'
-                '${r['pending_feedback'] == true ? ' · feedback aaya' : ''}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+                '${r['pending_feedback'] == true ? ' · feedback received' : ''}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
           ])),
           Pill(_s(j['status_label'])),
         ]),
@@ -160,11 +160,11 @@ class _GraphicScreenState extends State<GraphicScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR YES'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: GraphicCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      for (final (k, label) in const [('late', 'LATE'), ('today', 'AAJ DUE'), ('soon', 'JALD DUE'), ('feedback', 'FEEDBACK AAYA'),
-        ('waiting_client', 'CLIENT KE JAWAB KA INTEZAAR'), ('unpaid', 'PAISE BAAKI')])
+      for (final (k, label) in const [('late', 'LATE'), ('today', 'DUE TODAY'), ('soon', 'DUE SOON'), ('feedback', 'FEEDBACK RECEIVED'),
+        ('waiting_client', 'WAITING FOR CLIENT\'S REPLY'), ('unpaid', 'PAYMENT DUE')])
         if (_list(day[k]).isNotEmpty) ...[Caption(label), for (final j in _list(day[k])) _jobTile(j), const SizedBox(height: 8)],
     ]);
   }
@@ -172,13 +172,13 @@ class _GraphicScreenState extends State<GraphicScreen> {
   Future<void> _newJob() async {
     final cl = _list(_d?['clients']);
     if (cl.isEmpty) {
-      _snack(context, 'Pehle client jodiye (Clients tab).');
+      _snack(context, 'First add a client (Clients tab).');
       return;
     }
-    final f = await _form(context, 'Naya kaam', const [
-      ('client', 'Client (naam ya C-001)'), ('title', 'Kaam ka naam'), ('kind', 'Kind: logo / social / poster / visiting_card ...'),
-      ('brief', 'Brief (client ke shabd)'), ('facts', 'Design par kya likhna hai (sirf sach)'), ('due', 'Due date (YYYY-MM-DD)'),
-      ('lines', 'Daam: ek line mein "kaam - 3000"'), ('rounds', 'Revision rounds'), ('extra_round_price', 'Extra round ka daam'),
+    final f = await _form(context, 'New job', const [
+      ('client', 'Client (name or C-001)'), ('title', 'Job name'), ('kind', 'Kind: logo / social / poster / visiting_card ...'),
+      ('brief', 'Brief (in the client\'s words)'), ('facts', 'What to write on the design (only the truth)'), ('due', 'Due date (YYYY-MM-DD)'),
+      ('lines', 'Price: in one line "job - 3000"'), ('rounds', 'Revision rounds'), ('extra_round_price', 'Extra round price'),
     ], initial: {'client': _s(cl.first['number'])});
     if (f == null || f['client'] == null) return;
     final body = <String, dynamic>{
@@ -198,17 +198,17 @@ class _GraphicScreenState extends State<GraphicScreen> {
   }
 
   Widget _kaam() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya kaam', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newJob),
+        GradientButton(label: 'New job', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newJob),
         const SizedBox(height: 12),
         for (final j in _list(_d?['jobs'])) _jobTile(j),
-        if (_list(_d?['jobs']).isEmpty) const Text('Abhi koi khula kaam nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['jobs']).isEmpty) const Text('No open jobs yet.', style: TextStyle(color: C.muted)),
       ]);
 
   Future<void> _clientForm([Map<String, dynamic>? c]) async {
-    final f = await _form(context, c == null ? 'Naya client' : 'Client badlo', const [
-      ('name', 'Naam'), ('business', 'Business / brand'), ('phone', 'Phone'), ('email', 'Email'), ('kind', 'business / individual'),
-      ('gstin', 'GSTIN'), ('state', 'State (MH / 27)'), ('tagline', 'Tagline'), ('primary', 'Mukhya rang (#hex ya laal / neela)'),
-      ('accent', 'Doosra rang'), ('tds_pct', 'Client kitna TDS kaatega (%)'),
+    final f = await _form(context, c == null ? 'New client' : 'Change client', const [
+      ('name', 'Name'), ('business', 'Business / brand'), ('phone', 'Phone'), ('email', 'Email'), ('kind', 'business / individual'),
+      ('gstin', 'GSTIN'), ('state', 'State (MH / 27)'), ('tagline', 'Tagline'), ('primary', 'Main colour (#hex or red / blue)'),
+      ('accent', 'Second colour'), ('tds_pct', 'How much TDS the client will deduct (%)'),
     ], initial: c == null ? const {} : {for (final k in ['name', 'business', 'phone', 'email', 'kind', 'gstin', 'state', 'tagline']) k: _s(c[k])});
     if (f == null) return;
     final body = <String, dynamic>{
@@ -240,7 +240,7 @@ class _GraphicScreenState extends State<GraphicScreen> {
   }
 
   Widget _clients() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya client', icon: Icons.person_add_rounded, height: 46, onTap: _busy ? null : () => _clientForm()),
+        GradientButton(label: 'New client', icon: Icons.person_add_rounded, height: 46, onTap: _busy ? null : () => _clientForm()),
         const SizedBox(height: 12),
         for (final c in _list(_d?['clients']))
           Glass(
@@ -250,7 +250,7 @@ class _GraphicScreenState extends State<GraphicScreen> {
               const SizedBox(width: 10),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('${_s(c['number'])} · ${_s(c['name'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                Text('${_s(c['business'])}${c['forgotten'] == true ? ' · (hataya)' : ''}', style: const TextStyle(fontSize: 12, color: C.muted)),
+                Text('${_s(c['business'])}${c['forgotten'] == true ? ' · (removed)' : ''}', style: const TextStyle(fontSize: 12, color: C.muted)),
               ])),
               PopupMenuButton<String>(
                 onSelected: (v) async {
@@ -259,9 +259,9 @@ class _GraphicScreenState extends State<GraphicScreen> {
                   if (v == 'forget') await _run('POST', '/api/graphic/clients/${_s(c['number'])}/forget');
                 },
                 itemBuilder: (_) => const [
-                  PopupMenuItem(value: 'edit', child: Text('Badlo / brand kit')),
-                  PopupMenuItem(value: 'logo', child: Text('Logo daalo')),
-                  PopupMenuItem(value: 'forget', child: Text('Details hatao (DPDP)')),
+                  PopupMenuItem(value: 'edit', child: Text('Change / brand kit')),
+                  PopupMenuItem(value: 'logo', child: Text('Add logo')),
+                  PopupMenuItem(value: 'forget', child: Text('Delete details (DPDP)')),
                 ],
               ),
             ]),
@@ -270,7 +270,7 @@ class _GraphicScreenState extends State<GraphicScreen> {
 
   Future<void> _vendorForm() async {
     final f = await _form(context, 'Printer', const [
-      ('name', 'Naam'), ('phone', 'Phone'), ('does', 'Kya chhapte hain'), ('color', 'Rang: cmyk / rgb'), ('dpi', 'DPI'),
+      ('name', 'Name'), ('phone', 'Phone'), ('does', 'What they print'), ('color', 'Colour: cmyk / rgb'), ('dpi', 'DPI'),
       ('bleed', 'Bleed mm'), ('safe', 'Safe margin mm'), ('format', 'File: pdf / jpg'),
     ], initial: const {'color': 'cmyk', 'dpi': '300', 'bleed': '3', 'safe': '4', 'format': 'pdf'});
     if (f == null || f['name'] == null) return;
@@ -281,7 +281,7 @@ class _GraphicScreenState extends State<GraphicScreen> {
   }
 
   Widget _printers() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Printer jodo', icon: Icons.print_rounded, height: 46, onTap: _busy ? null : _vendorForm),
+        GradientButton(label: 'Add printer', icon: Icons.print_rounded, height: 46, onTap: _busy ? null : _vendorForm),
         const SizedBox(height: 12),
         for (final v in _list(_d?['vendors']))
           Glass(
@@ -298,21 +298,21 @@ class _GraphicScreenState extends State<GraphicScreen> {
     final st = _m(_d?['settings']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_s(st['studio']).isEmpty ? 'Studio ka naam nahi' : _s(st['studio']), style: const TextStyle(fontWeight: FontWeight.w800)),
-        Text('Designer: ${_s(st['designer'])} · GSTIN ${_s(st['gstin']).isEmpty ? 'nahi' : st['gstin']} · SAC ${_s(st['sac'])}'),
+        Text(_s(st['studio']).isEmpty ? 'No studio name' : _s(st['studio']), style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text('Designer: ${_s(st['designer'])} · GSTIN ${_s(st['gstin']).isEmpty ? 'none' : st['gstin']} · SAC ${_s(st['sac'])}'),
         Text('Rounds ${_s(st['rounds'])} · extra round ${_rs(st['extra_round'])} · advance ${_s(st['advance_pct'])}%'),
-        Text('UPI: ${_s(st['upi_id'])} · Files paise ke baad: ${st['handover_after_pay'] == true ? 'haan' : 'nahi'}'),
-        Text('Copyright likhit assignment: ${st['assign_copyright'] == true ? 'haan' : 'nahi'}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        Text('UPI: ${_s(st['upi_id'])} · Files after payment: ${st['handover_after_pay'] == true ? 'yes' : 'no'}'),
+        Text('Written copyright assignment: ${st['assign_copyright'] == true ? 'yes' : 'no'}', style: const TextStyle(fontSize: 12, color: C.muted)),
       ])),
       const SizedBox(height: 10),
       GlassButton(
-        label: 'Niyam badlo',
+        label: 'Change rules',
         icon: Icons.tune_rounded,
         onTap: () async {
-          final f = await _form(context, 'Studio ke niyam', const [
-            ('studio', 'Studio'), ('designer', 'Aapka naam (copyright ke liye)'), ('gstin', 'GSTIN'), ('state', 'State'),
+          final f = await _form(context, 'Studio rules', const [
+            ('studio', 'Studio'), ('designer', 'Your name (for copyright)'), ('gstin', 'GSTIN'), ('state', 'State'),
             ('upi_id', 'UPI ID'), ('phone', 'Phone'), ('email', 'Email'), ('rounds', 'Revision rounds (default)'),
-            ('extra_round', 'Extra round daam'), ('advance_pct', 'Advance %'), ('udyam', 'Udyam number (MSME)'), ('terms', 'Shartein'),
+            ('extra_round', 'Extra round price'), ('advance_pct', 'Advance %'), ('udyam', 'Udyam number (MSME)'), ('terms', 'Terms'),
           ], initial: {for (final k in ['studio', 'designer', 'gstin', 'state', 'upi_id', 'phone', 'email', 'udyam', 'terms']) k: _s(st[k]),
             'rounds': _s(st['rounds']), 'advance_pct': _s(st['advance_pct']), 'extra_round': _s(st['extra_round'])});
           if (f == null) return;
@@ -325,15 +325,15 @@ class _GraphicScreenState extends State<GraphicScreen> {
         },
       ),
       const SizedBox(height: 12),
-      const Text('Font: Google Fonts (OFL) file de sakti hain; Adobe Fonts / khareeda font client ko file nahi, PDF / outline mein. '
-          '"Sirf personal use" font client ke kaam mein mana. Logo ka trade-mark search IP India par aap karti hain.',
+      const Text('Fonts: you may give Google Fonts (OFL) as files; Adobe Fonts / bought fonts go to the client in PDF / outline, not as files. '
+          '"Personal use only" fonts are not allowed in client work. You do the logo trademark search on IP India yourself.',
           style: TextStyle(fontSize: 12, color: C.muted)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Kaam', 'Clients', 'Printer', 'Niyam'];
+    const tabs = ['Today', 'Job', 'Clients', 'Printer', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Graphic designer'),
@@ -424,7 +424,7 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
         Row(children: [
           Text('v${_s(v['n'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(width: 8),
-          Pill(_s(v['source']) == 'upload' ? 'aapki file' : 'Hoola engine'),
+          Pill(_s(v['source']) == 'upload' ? 'your file' : 'Hoola engine'),
           const SizedBox(width: 6),
           Pill('round ${_s(v['round'])}'),
           const Spacer(),
@@ -444,16 +444,16 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
         const SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 6, children: [
           if (_s(v['status']) != 'old')
-            GlassButton(label: 'Client ko bhejo', icon: Icons.send_rounded, height: 38,
+            GlassButton(label: 'Send to client', icon: Icons.send_rounded, height: 38,
                 onTap: _busy ? null : () => _act('proof', {'version': v['n']})),
           if (_s(v['status']) == 'sent')
-            GlassButton(label: 'Client ne haan ki', icon: Icons.thumb_up_rounded, height: 38, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Client ki haan', const [('evidence', 'Unka message / baat')]);
+            GlassButton(label: 'Client said yes', icon: Icons.thumb_up_rounded, height: 38, onTap: _busy ? null : () async {
+              final f = await _form(context, 'Client\'s yes', const [('evidence', 'Their message / talk')]);
               if (f?['evidence'] != null) await _act('client_ok', {'version': v['n'], 'evidence': f!['evidence']});
             }),
           if (_s(v['status']) == 'sent')
-            GlassButton(label: 'Client ka badlav', icon: Icons.edit_note_rounded, height: 38, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Client ne kya kaha', const [('text', 'Unke shabd')]);
+            GlassButton(label: 'Client\'s changes', icon: Icons.edit_note_rounded, height: 38, onTap: _busy ? null : () async {
+              final f = await _form(context, 'What the client said', const [('text', 'Their words')]);
               if (f?['text'] != null) await _act('feedback', {'version': v['n'], 'text': f!['text']});
             }),
         ]),
@@ -481,22 +481,22 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
             Text('${_s(j['client'])} · ${_s(j['kind_label'])} · ${_s(j['status_label'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
             if (_s(j['due']).isNotEmpty) Text('Due: ${_s(j['due'])}'),
             if (_s(j['brief']).isNotEmpty) Text('Brief: ${_s(j['brief'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-            if (_s(j['facts']).isNotEmpty) Text('Design par: ${_s(j['facts'])}', style: const TextStyle(fontSize: 12.5)),
+            if (_s(j['facts']).isNotEmpty) Text('On design: ${_s(j['facts'])}', style: const TextStyle(fontSize: 12.5)),
             const SizedBox(height: 6),
-            Text('Revision: ${_s(r['used'])} istemal · ${_s(r['left'])} baaki (quote ${_s(r['included'])}, extra ${_s(r['extra'])})'
-                '${r['pending_feedback'] == true ? ' · naya feedback' : ''}'),
+            Text('Revision: ${_s(r['used'])} used ·${_s(r['left'])} left (quote ${_s(r['included'])}, extra ${_s(r['extra'])})'
+                '${r['pending_feedback'] == true ? ' · new feedback' : ''}'),
             const SizedBox(height: 6),
             for (final ln in _list(q['lines'])) Text('• ${_s(ln['name'])}: ${_rs(ln['amount'])}', style: const TextStyle(fontSize: 12.5)),
-            Text('Kul: ${_s(q['total_text'])} · advance ${_s(q['advance_text'])} · jama ${_rs(j['paid'])} · baaki ${_rs(j['balance'])}',
+            Text('Total: ${_s(q['total_text'])} · advance ${_s(q['advance_text'])} · paid ${_rs(j['paid'])} · balance${_rs(j['balance'])}',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
-            if (_strs(q['missing']).isNotEmpty) Text('Daam baaki: ${_strs(q['missing']).join(', ')}', style: const TextStyle(color: C.warn)),
+            if (_strs(q['missing']).isNotEmpty) Text('Balance: ${_strs(q['missing']).join(', ')}', style: const TextStyle(color: C.warn)),
             if (_s(q['tds_note']).isNotEmpty) Text(_s(q['tds_note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
           ])),
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            GlassButton(label: 'Daam / rounds', icon: Icons.currency_rupee_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Daam aur rounds', const [
-                ('lines', 'Ek line mein "kaam - 3000"'), ('rounds', 'Revision rounds'), ('extra_round_price', 'Extra round daam'),
+            GlassButton(label: 'Price / rounds', icon: Icons.currency_rupee_rounded, height: 40, onTap: _busy ? null : () async {
+              final f = await _form(context, 'Price and rounds', const [
+                ('lines', 'In one line "job - 3000"'), ('rounds', 'Revision rounds'), ('extra_round_price', 'Extra round price'),
                 ('advance_pct', 'Advance %'), ('due', 'Due date')]);
               if (f == null) return;
               setState(() => _busy = true);
@@ -511,39 +511,39 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
               if (mounted) setState(() => _busy = false);
             }),
             GlassButton(label: 'Quote card', icon: Icons.request_quote_rounded, height: 40, onTap: _busy ? null : () => _act('quote')),
-            GlassButton(label: 'Client ne quote maana', icon: Icons.handshake_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Quote maana', const [('evidence', 'Unka message')]);
+            GlassButton(label: 'Client accepted the quote', icon: Icons.handshake_rounded, height: 40, onTap: _busy ? null : () async {
+              final f = await _form(context, 'Quote maana', const [('evidence', 'Their message')]);
               if (f?['evidence'] != null) await _act('accepted', {'evidence': f!['evidence']});
             }),
-            GlassButton(label: 'Proof banao', icon: Icons.auto_awesome_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Proof (Hoola engine, client ke rang)', const [('instruction', 'Badlav (khaali = naya)')]);
+            GlassButton(label: 'Make proof', icon: Icons.auto_awesome_rounded, height: 40, onTap: _busy ? null : () async {
+              final f = await _form(context, 'Proof (Hoola engine, client\'s colours)', const [('instruction', 'Changes (blank = new)')]);
               if (f == null) return;
               await _act('render', {if (f['instruction'] != null) 'instruction': f['instruction']});
             }),
-            GlassButton(label: 'Apni file daalo', icon: Icons.upload_file_rounded, height: 40, onTap: _busy ? null : _upload),
+            GlassButton(label: 'Add your own file', icon: Icons.upload_file_rounded, height: 40, onTap: _busy ? null : _upload),
             GlassButton(label: 'Extra round card', icon: Icons.add_card_rounded, height: 40, onTap: _busy ? null : () => _act('extra')),
-            GlassButton(label: 'Is baar free', icon: Icons.redeem_rounded, height: 40, onTap: _busy ? null : () => _act('waive', {'reason': 'owner'})),
+            GlassButton(label: 'Free this time', icon: Icons.redeem_rounded, height: 40, onTap: _busy ? null : () => _act('waive', {'reason': 'owner'})),
           ]),
           const SizedBox(height: 14),
           const Caption('VERSIONS / PROOF'),
           for (final v in _list(j['version_list']).reversed) _version(v),
-          if (_list(j['version_list']).isEmpty) const Text('Abhi koi proof nahi.', style: TextStyle(color: C.muted)),
+          if (_list(j['version_list']).isEmpty) const Text('No proofs yet.', style: TextStyle(color: C.muted)),
           const SizedBox(height: 10),
           const Caption('FONT / PHOTO LICENCE'),
           for (final a in _list(j['assets']))
             Text('• ${_s(a['name'])}: ${_s(_m(a['verdict'])['say'])}', style: const TextStyle(fontSize: 12.5)),
-          GlassButton(label: 'Font / photo jodo', icon: Icons.font_download_rounded, height: 38, onTap: _busy ? null : () async {
-            final f = await _form(context, 'Asset', const [('name', 'Naam'), ('kind', 'font / image / icon'), ('source', 'Kahan se (Google Fonts, Adobe, stock ...)'),
+          GlassButton(label: 'Add font / photo', icon: Icons.font_download_rounded, height: 38, onTap: _busy ? null : () async {
+            final f = await _form(context, 'Asset', const [('name', 'Name'), ('kind', 'font / image / icon'), ('source', 'Where from (Google Fonts, Adobe, stock ...)'),
               ('licence', 'Licence (ofl / adobe_fonts / commercial / stock_paid / own / ai ...)'), ('licence_ref', 'Licence number')]);
             if (f?['name'] != null) await _act('asset', f);
           }),
           if (_s(j['kind']) == 'logo') ...[
             const SizedBox(height: 10),
             const Caption('TRADE-MARK SEARCH (IP INDIA)'),
-            Text(tm.isEmpty ? 'Abhi nahi hua.' : 'Nateeja: ${_s(tm['result'])} · class ${_strs(tm['classes']).join(', ')}',
+            Text(tm.isEmpty ? 'Not done yet.' : 'Result: ${_s(tm['result'])} · class ${_strs(tm['classes']).join(', ')}',
                 style: const TextStyle(fontSize: 12.5)),
             Wrap(spacing: 8, children: [
-              GlassButton(label: 'Kaise karein', icon: Icons.search_rounded, height: 38, onTap: () async {
+              GlassButton(label: 'How to do it', icon: Icons.search_rounded, height: 38, onTap: () async {
                 final h = await _call(context, widget.app, 'GET', '$_base/tm_help');
                 if (h == null || !mounted) return;
                 await showDialog(context: context, builder: (d) => AlertDialog(
@@ -554,14 +554,14 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
                     Text(_s(h['note']), style: const TextStyle(fontSize: 12)),
                   ])),
                   actions: [
-                    TextButton(onPressed: () => Native.openExternal(url: _strs(h['links']).first), child: const Text('Site kholo')),
-                    TextButton(onPressed: () => Navigator.pop(d), child: const Text('Theek')),
+                    TextButton(onPressed: () => Native.openExternal(url: _strs(h['links']).first), child: const Text('Open site')),
+                    TextButton(onPressed: () => Navigator.pop(d), child: const Text('OK')),
                   ],
                 ));
               }),
-              GlassButton(label: 'Nateeja likho', icon: Icons.fact_check_rounded, height: 38, onTap: () async {
-                final f = await _form(context, 'Search ka nateeja', const [
-                  ('result', 'nothing_similar / similar_found / registered_same'), ('classes', 'Class (jaise 30, 35)'), ('notes', 'Kya mila')]);
+              GlassButton(label: 'Write the result', icon: Icons.fact_check_rounded, height: 38, onTap: () async {
+                final f = await _form(context, 'Search result', const [
+                  ('result', 'nothing_similar / similar_found / registered_same'), ('classes', 'Class (for example 30, 35)'), ('notes', 'What was found')]);
                 if (f?['result'] == null) return;
                 await _act('tm', {'result': f!['result'], 'notes': f['notes'] ?? '',
                   'classes': (f['classes'] ?? '').split(RegExp(r'[,\s]+')).map((e) => int.tryParse(e)).whereType<int>().toList()});
@@ -569,11 +569,11 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
             ]),
           ],
           const SizedBox(height: 14),
-          const Caption('BAHAR JAANE WALE KAAM (AAPKI HAAN)'),
+          const Caption('JOBS GOING OUT (YOUR YES)'),
           Wrap(spacing: 8, runSpacing: 8, children: [
             GlassButton(label: 'Final files card', icon: Icons.inventory_2_rounded, height: 40, onTap: _busy ? null : () => _act('handover')),
             GlassButton(label: 'Print order card', icon: Icons.print_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Print order', const [('vendor', 'Printer ka naam'), ('qty', 'Kitni copies'), ('stock', 'Kaagaz'), ('finish', 'Finish')]);
+              final f = await _form(context, 'Print order', const [('vendor', 'Printer name'), ('qty', 'How many copies'), ('stock', 'Paper'), ('finish', 'Finish')]);
               if (f == null) return;
               if (f['qty'] != null || f['stock'] != null || f['finish'] != null) {
                 await _call(context, widget.app, 'PATCH', _base, {'print_job': {'qty': f['qty'], 'stock': f['stock'], 'finish': f['finish']}});
@@ -583,18 +583,18 @@ class _GraphicJobPageState extends State<GraphicJobPage> {
             GlassButton(label: 'Advance invoice', icon: Icons.receipt_rounded, height: 40, onTap: _busy ? null : () => _act('invoice', {'what': 'advance'})),
             GlassButton(label: 'Final invoice', icon: Icons.receipt_long_rounded, height: 40, onTap: _busy ? null : () => _act('invoice', {'what': 'final'})),
             GlassButton(label: 'Discount', icon: Icons.percent_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Discount', const [('amount', 'Rakam'), ('reason', 'Kyun')]);
+              final f = await _form(context, 'Discount', const [('amount', 'Amount'), ('reason', 'Why')]);
               if (_n(f?['amount']) != null) await _act('discount', {'amount': _n(f!['amount']), 'reason': f['reason'] ?? ''});
             }),
             GlassButton(label: 'Message', icon: Icons.chat_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Client ko message', const [('text', 'Message')]);
+              final f = await _form(context, 'Message to client', const [('text', 'Message')]);
               if (f?['text'] != null) await _act('message', {'text': f!['text']});
             }),
-            GlassButton(label: 'Paise mile', icon: Icons.payments_rounded, height: 40, onTap: _busy ? null : () async {
-              final f = await _form(context, 'Paise mile', const [('amount', 'Kitne'), ('mode', 'upi / cash / bank'), ('ref', 'UTR ke aakhri ank')]);
+            GlassButton(label: 'Money received', icon: Icons.payments_rounded, height: 40, onTap: _busy ? null : () async {
+              final f = await _form(context, 'Money received', const [('amount', 'How many'), ('mode', 'upi / cash / bank'), ('ref', 'Last digits of UTR')]);
               if (_n(f?['amount']) != null) await _act('paid', {'amount': _n(f!['amount']), 'mode': f['mode'] ?? 'upi', 'ref': f['ref'] ?? ''});
             }),
-            GlassButton(label: 'Poora', icon: Icons.done_all_rounded, height: 40, onTap: _busy ? null : () => _act('done')),
+            GlassButton(label: 'Complete', icon: Icons.done_all_rounded, height: 40, onTap: _busy ? null : () => _act('done')),
           ]),
           const SizedBox(height: 12),
           const Caption('LOG'),
@@ -630,9 +630,9 @@ class _GraphicCardCardState extends State<GraphicCardCard> {
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'Fingerprint was not given, so approval did not happen.',
+        'key_invalidated' => 'A new fingerprint was added on this phone: go to Profile > Approve with fingerprint and connect the phone again.',
+        _ => 'Approval by fingerprint did not work (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -642,7 +642,7 @@ class _GraphicCardCardState extends State<GraphicCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -691,7 +691,7 @@ class _GraphicCardCardState extends State<GraphicCardCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])} · ${_s(sh['job'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your yes?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'old', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text('${_s(sh['client'])} · ${_s(sh['title'])}', style: const TextStyle(fontSize: 12.5)),
@@ -703,16 +703,16 @@ class _GraphicCardCardState extends State<GraphicCardCard> {
           Text(_s(sh['rights']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
         ],
         if (kind == 'proof') ...[
-          Text('v${_s(sh['version'])} · round ${_s(sh['round'])} · ${_s(sh['rounds_left'])} round baaki', style: const TextStyle(fontSize: 12)),
+          Text('v${_s(sh['version'])} · round ${_s(sh['round'])} · ${_s(sh['rounds_left'])} rounds left', style: const TextStyle(fontSize: 12)),
           if (proofs.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: _img(widget.app, _s(proofs.values.first), height: 140)),
           for (final p in _strs(sh['print_problems'])) Text('🖨 $p', style: const TextStyle(fontSize: 11.5, color: C.warn)),
         ],
-        if (kind == 'extra') Text('Quote ke ${_s(sh['included'])} round poore; agla round ${_s(sh['amount_text'])}', style: const TextStyle(fontSize: 12)),
+        if (kind == 'extra') Text('Of the quote ${_s(sh['included'])} rounds done; next round${_s(sh['amount_text'])}', style: const TextStyle(fontSize: 12)),
         if (kind == 'handover') ...[
           for (final f in _list(sh['files'])) Text('• ${_s(f['name'])}: ${_s(f['what'])}', style: const TextStyle(fontSize: 12)),
           for (final a in _list(sh['assets'])) Text('🔤 ${_s(a['name'])}: ${_s(a['say'])}', style: const TextStyle(fontSize: 11.5)),
-          if (_s(sh['assignment']).isNotEmpty) const Text('+ Copyright assignment ka likhit draft (s.19)', style: TextStyle(fontSize: 12)),
-          if (sh['balance'] != null) Text('Baaki: ${_s(sh['balance_text'])}', style: const TextStyle(fontSize: 12)),
+          if (_s(sh['assignment']).isNotEmpty) const Text('+ A written copyright assignment draft (s.19)', style: TextStyle(fontSize: 12)),
+          if (sh['balance'] != null) Text('Pending: ${_s(sh['balance_text'])}', style: const TextStyle(fontSize: 12)),
         ],
         if (kind == 'vendor') ...[
           Text('Printer: ${_s(sh['vendor'])} · ${_s(_m(sh['print_job'])['qty'])} copies', style: const TextStyle(fontSize: 12)),
@@ -723,16 +723,16 @@ class _GraphicCardCardState extends State<GraphicCardCard> {
           Text('${_s(sh['what']) == 'advance' ? 'Advance' : 'Final'} invoice · UPI ${_s(sh['upi'])}', style: const TextStyle(fontSize: 12)),
           Text(_s(sh['tds_note']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
         ],
-        if (_s(sh['reason']).isNotEmpty) Text('Wajah: ${_s(sh['reason'])}', style: const TextStyle(fontSize: 12)),
+        if (_s(sh['reason']).isNotEmpty) Text('Reason: ${_s(sh['reason'])}', style: const TextStyle(fontSize: 12)),
         if (_s(sh['text']).isNotEmpty) Text('“${_s(sh['text'])}”', style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: money ? 'Haan (fingerprint)' : 'Haan', height: 42, onTap: _busy ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GradientButton(label: money ? 'Yes (fingerprint)' : 'Yes', height: 42, onTap: _busy ? null : () => _decide(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_draft.isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_draft)],
-        const Text('Hoola khud kuch nahi bhejta, paise nahi leta / deta: aap bhejti hain.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola sends nothing and neither takes nor gives money by itself: you send it.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -762,7 +762,7 @@ class GraphicNoteCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => GraphicJobPage(app: app, ref: job))),
-              child: Text('$job kholo'),
+              child: Text('Open $job'),
             ),
           ),
       ]),

@@ -54,23 +54,23 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
         title: Text(title),
         content: TextField(controller: c, autofocus: true, decoration: InputDecoration(hintText: hint)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Rakho')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Keep')),
         ],
       ),
     );
   }
 
   Future<void> _addWord() async {
-    final t = await _ask('Naam / shabd jo theek se sunna hai', 'jaise Rameshwar, Kothrud, Bisleri');
+    final t = await _ask('Name / word to hear correctly', 'for example Rameshwar, Kothrud, Bisleri');
     if (t == null || t.length < 2) return;
     await _run(() async => widget.app.api!.voiceWordAdd(t));
   }
 
   Future<void> _addFix() async {
-    final heard = await _ask('${widget.app.aName} kya galat sunta hai?', 'jaise Rames');
+    final heard = await _ask('${widget.app.aName} — what does it mishear?', 'for example Rames');
     if (heard == null || heard.isEmpty) return;
-    final meant = await _ask('Sahi shabd kya hai?', 'jaise Rameshwar');
+    final meant = await _ask('What is the correct word?', 'for example Rameshwar');
     if (meant == null || meant.isEmpty) return;
     await _run(() async => widget.app.api!.voiceFixAdd(heard, meant));
   }
@@ -79,11 +79,11 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('$what bhool jaaye?'),
-        content: const Text('Yeh wapas nahi aayega. Agli calls se phir se seekhna shuru hoga (agar seekhna chalu hai).'),
+        title: Text('Forget $what?'),
+        content: const Text('This will not come back. It will start learning again from the next calls (if learning is on).'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Haan, mitao')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Yes, delete')),
         ],
       ),
     );
@@ -100,7 +100,7 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
 
   String _num(dynamic x, {int dp = 0, String unit = ''}) {
     final n = (x as num?)?.toDouble();
-    if (n == null) return 'abhi pata nahi';
+    if (n == null) return 'not known yet';
     return '${n.toStringAsFixed(dp)}$unit';
   }
 
@@ -125,7 +125,7 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
     final learn = p['learn'] != false;
     final why = '${p['silence_why'] ?? 'default'}';
     return Scaffold(
-      appBar: AppBar(title: Text('$name ne kya seekha')),
+      appBar: AppBar(title: Text('What $name has learned')),
       body: v == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
@@ -138,59 +138,59 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
                       contentPadding: EdgeInsets.zero,
                       value: learn,
                       onChanged: _busy ? null : (on) => _run(() async => widget.app.api!.voiceLearnSet(on)),
-                      title: const Text('Calls se seekhna', style: TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: Text(learn ? 'Chalu: aapke rukne, bolne ki raftaar, shabdon se seekhta hai' : 'Band: kuch naya nahi seekhega'),
+                      title: const Text('Learning from calls', style: TextStyle(fontWeight: FontWeight.w700)),
+                      subtitle: Text(learn ? 'On: learns from your pauses, speaking speed and words' : 'Off: will not learn anything new'),
                     ),
                     Text('${v['privacy'] ?? ''}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     const SizedBox(height: 8),
                     Text('${v['say'] ?? ''}', style: const TextStyle(fontSize: 13.5)),
                   ]),
                 ),
-                _title('Bhasha'),
+                _title('Language'),
                 Glass(
                   padding: const EdgeInsets.all(14),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    _row('Aap bolti hain', lang == null ? 'App ki setting (abhi kuch seekha nahi)' : '${lang['name']}'),
+                    _row('You speak', lang == null ? 'App setting (nothing learned yet)' : '${lang['name']}'),
                     if (lang != null && lang['mix'] != null)
                       _row('English mix', '${(((lang['mix'] as num?) ?? 0) * 100).round()}% shabd'),
                     if (lang != null)
                       Align(
                         alignment: Alignment.centerRight,
-                        child: TextButton(onPressed: _busy ? null : () => _forget('language', 'Seekhi hui bhasha'), child: const Text('Bhool jao')),
+                        child: TextButton(onPressed: _busy ? null : () => _forget('language', 'Learned language'), child: const Text('Forget')),
                       ),
                   ]),
                 ),
-                _title('Bolne ka tareeka', trailing: (p['turns'] as num? ?? 0) > 0
-                    ? TextButton(onPressed: _busy ? null : () => _forget('profile', 'Bolne ka tareeka'), child: const Text('Bhool jao'))
+                _title('Way of speaking', trailing: (p['turns'] as num? ?? 0) > 0
+                    ? TextButton(onPressed: _busy ? null : () => _forget('profile', 'Way of speaking'), child: const Text('Forget'))
                     : null),
                 Glass(
                   padding: const EdgeInsets.all(14),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    _row('Calls / baatein', '${p['calls'] ?? 0} calls, ${p['turns'] ?? 0} baar aap boliin'),
-                    _row('Raftaar', _num(f['pace_wps'], dp: 1, unit: ' shabd / second')),
-                    _row('Beech mein rukna', f['pause_p50_ms'] == null ? 'abhi pata nahi' : '${_num(f['pause_p50_ms'])} ms aam, ${_num(f['pause_p90_ms'])} ms lamba'),
-                    _row('Jawab se pehle rukta hai', '${p['silence_ms'] ?? 700} ms'
-                        '${why == 'default' ? ' (aam setting)' : why.contains('cut_offs') ? ' (aapne bataya beech mein kaat diya)' : ' (aapke rukne se)'}'),
-                    _row('Ek baar mein', _num(f['turn_words_median'], unit: ' shabd')),
-                    _row('Awaaz ki pitch', f['pitch_hz'] == null ? 'abhi pata nahi' : '${_num(f['pitch_hz'])} Hz (${_num(f['pitch_low_hz'])}-${_num(f['pitch_high_hz'])})'),
-                    _row('Utaar-chadhaav', _num(f['tone_spread_st'], dp: 1, unit: ' semitone')),
+                    _row('Calls / chats', '${p['calls'] ?? 0} calls, ${p['turns'] ?? 0} times you spoke'),
+                    _row('Speed', _num(f['pace_wps'], dp: 1, unit: ' words / second')),
+                    _row('Pausing in between', f['pause_p50_ms'] == null ? 'not known yet' : '${_num(f['pause_p50_ms'])} ms typical,${_num(f['pause_p90_ms'])} ms long'),
+                    _row('Pauses before answering', '${p['silence_ms'] ?? 700} ms'
+                        '${why == 'default' ? ' (aam setting)' : why.contains('cut_offs') ? ' (you said it cut in)' : ' (from your pauses)'}'),
+                    _row('At a time', _num(f['turn_words_median'], unit: ' words')),
+                    _row('Voice pitch', f['pitch_hz'] == null ? 'not known yet' : '${_num(f['pitch_hz'])} Hz (${_num(f['pitch_low_hz'])}-${_num(f['pitch_high_hz'])})'),
+                    _row('Ups and downs', _num(f['tone_spread_st'], dp: 1, unit: ' semitone')),
                     const SizedBox(height: 8),
                     if (hint.isEmpty)
-                      const Text('2-3 calls ke baad yahan dikhega ki woh aapse kaise baat karega.', style: TextStyle(color: C.muted, fontSize: 12.5))
+                      const Text('After 2-3 calls, it will show here how it talks to you.', style: TextStyle(color: C.muted, fontSize: 12.5))
                     else ...[
-                      const Text('Calls mein woh aise dhyaan rakhta hai:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                      const Text('In calls it keeps this in mind:', style: TextStyle(color: C.muted, fontSize: 12.5)),
                       for (final h in hint) Padding(padding: const EdgeInsets.only(top: 4), child: Text('• $h', style: const TextStyle(fontSize: 13))),
                     ],
                     const SizedBox(height: 6),
-                    const Text('Aapki awaaz ya lehja copy nahi hota; sirf raftaar, rukna aur shabd.', style: TextStyle(color: C.muted, fontSize: 12)),
+                    const Text('Your voice or accent is not copied; only speed, pauses and words.', style: TextStyle(color: C.muted, fontSize: 12)),
                   ]),
                 ),
-                _title('Galat suna tha', trailing: TextButton.icon(
-                    onPressed: _busy ? null : _addFix, icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Jodo'))),
+                _title('Misheard', trailing: TextButton.icon(
+                    onPressed: _busy ? null : _addFix, icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Add'))),
                 Glass(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: fixes.isEmpty
-                      ? const Padding(padding: EdgeInsets.all(10), child: Text('Kuch nahi. Call mein "Rames nahi, Rameshwar" kahengi to yahan aayega.', style: TextStyle(color: C.muted, fontSize: 13)))
+                      ? const Padding(padding: EdgeInsets.all(10), child: Text('Nothing. If you say "not Rames, Rameshwar" in a call, it will show here.', style: TextStyle(color: C.muted, fontSize: 13)))
                       : Column(children: [
                           for (final x in fixes)
                             ListTile(
@@ -198,23 +198,23 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
                               leading: Icon(x['confirmed'] == true ? Icons.check_circle_rounded : Icons.help_outline_rounded,
                                   color: x['confirmed'] == true ? C.ok : C.warn),
                               title: Text('"${x['heard']}" → ${x['meant']}'),
-                              subtitle: Text(x['confirmed'] == true ? 'Pakka: calls mein dhyaan rakhta hai' : 'Ek baar suna: Haan dabaiye to pakka'),
+                              subtitle: Text(x['confirmed'] == true ? 'Confirmed: kept in mind in calls' : 'Heard once: tap Yes to confirm'),
                               trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                                 if (x['confirmed'] != true)
-                                  IconButton(tooltip: 'Haan, sahi', icon: const Icon(Icons.done_rounded),
+                                  IconButton(tooltip: 'Yes, correct', icon: const Icon(Icons.done_rounded),
                                       onPressed: _busy ? null : () => _run(() async => widget.app.api!.voiceFixConfirm((x['id'] as num).toInt()))),
-                                IconButton(tooltip: 'Hatao', icon: const Icon(Icons.close_rounded),
+                                IconButton(tooltip: 'Remove', icon: const Icon(Icons.close_rounded),
                                     onPressed: _busy ? null : () => _run(() async => widget.app.api!.voiceFixRemove((x['id'] as num).toInt()))),
                               ]),
                             ),
                         ]),
                 ),
-                _title('Aapke naam aur shabd', trailing: TextButton.icon(
-                    onPressed: _busy ? null : _addWord, icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Jodo'))),
+                _title('Your names and words', trailing: TextButton.icon(
+                    onPressed: _busy ? null : _addWord, icon: const Icon(Icons.add_rounded, size: 18), label: const Text('Add'))),
                 Glass(
                   padding: const EdgeInsets.all(12),
                   child: words.isEmpty
-                      ? const Text('Jo naam / jagah / cheez woh galat sunta hai, yahan jodiye. Aapke contacts ke naam apne aap jaate hain.',
+                      ? const Text('Add names / places / things it mishears. Your contacts\' names go in by themselves.',
                           style: TextStyle(color: C.muted, fontSize: 13))
                       : Wrap(spacing: 8, runSpacing: 6, children: [
                           for (final w in words)
@@ -226,9 +226,9 @@ class _VoiceLearnedScreenState extends State<VoiceLearnedScreen> {
                 ),
                 const SizedBox(height: 20),
                 OutlinedButton.icon(
-                  onPressed: _busy ? null : () => _forget('all', 'Sab kuch'),
+                  onPressed: _busy ? null : () => _forget('all', 'Everything'),
                   icon: const Icon(Icons.delete_outline_rounded, color: C.bad),
-                  label: const Text('Sab bhool jao', style: TextStyle(color: C.bad)),
+                  label: const Text('Forget everything', style: TextStyle(color: C.bad)),
                 ),
               ]),
             ),

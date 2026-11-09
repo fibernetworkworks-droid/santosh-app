@@ -316,7 +316,7 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
               const Text('How much may it do on its own?', style: TextStyle(fontWeight: FontWeight.w600)),
               RadioListTile<String>(
                   value: 'seekh', groupValue: trust, onChanged: (v) => setSheet(() => trust = v ?? 'seekh'),
-                  title: const Text('Seekh'), subtitle: const Text('Asks you before every change outside Hoola')),
+                  title: const Text('Learning'), subtitle: const Text('Asks you before every change outside Hoola')),
               RadioListTile<String>(
                   value: 'saathi', groupValue: trust, onChanged: (v) => setSheet(() => trust = v ?? 'seekh'),
                   title: const Text('Saathi'), subtitle: const Text('Small, undoable changes; tells you the same day')),
@@ -330,7 +330,7 @@ class _SeoDeskScreenState extends State<SeoDeskScreen> {
     if (ok != true) return;
     final body = <String, dynamic>{for (final e in f.entries) e.key: e.value.text.trim(), 'trust': trust};
     if (_s(body['url']).isEmpty) {
-      if (mounted) _snack(context, 'Website address chahiye.');
+      if (mounted) _snack(context, 'A website address is needed.');
       return;
     }
     await _call(() => widget.app.api!.seoOnboard(body), 'Started. The first check takes 10-15 minutes.');

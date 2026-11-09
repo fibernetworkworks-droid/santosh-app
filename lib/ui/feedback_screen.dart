@@ -33,7 +33,7 @@ Future<void> _open(BuildContext context, String url) async {
   try {
     await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
   } catch (_) {
-    if (context.mounted) _snack(context, 'Link nahi khula');
+    if (context.mounted) _snack(context, 'Link did not open');
   }
 }
 
@@ -51,8 +51,8 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Leave it')),
+        TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Next')),
       ],
     ),
   );
@@ -117,9 +117,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   }
 
   Future<void> _paste() async {
-    final f = await _form(context, 'Reviews chipkaiye', const [
-      ('text', 'Ek ya kai review (har review naye "-" se; "4*" bhi likh sakti hain)'),
-      ('source', 'Kahan ka? google / zomato / swiggy / amazon / flipkart / text'),
+    final f = await _form(context, 'Paste reviews', const [
+      ('text', 'One or more reviews (each review starts with a new "-"; you can also write "4*")'),
+      ('source', 'From where? google / zomato / swiggy / amazon / flipkart / text'),
     ]);
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run(() => widget.app.api!.call('POST', '/api/feedback/text', body: {'text': f['text'], 'source': f['source'] ?? 'text'}));
@@ -135,7 +135,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   Future<void> _sync(String what) async {
     Map<String, dynamic> body = {'what': what};
     if (what == 'forms') {
-      final f = await _form(context, 'Google Form', const [('form', 'Form ka naam ya edit link')]);
+      final f = await _form(context, 'Google Form', const [('form', 'Form name or edit link')]);
       if (f == null || (f['form'] ?? '').isEmpty) return;
       body['form'] = f['form'];
     }
@@ -153,16 +153,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   Future<void> _settings() async {
     final st = _map(_d?['settings']);
-    final f = await _form(context, 'Niyam', const [
-      ('business', 'Business ka naam'),
-      ('phone', 'Business phone (jawab mein dikhega)'),
-      ('sign_off', 'Jawab ke neeche ("- Team Annapurna")'),
-      ('language', 'Bhasha: hinglish / hi / mr / en'),
-      ('avg_order_value', 'Ausat order value ₹ (rupaye ka andaaza)'),
-      ('orders_per_year', 'Ek graahak saal mein kitni baar aata hai'),
-      ('review_link', 'Google review link (sabko ek jaisa dikhega)'),
-      ('period_days', 'Kitne din ka hisaab (30)'),
-      ('reply_rule', 'Jawab ka naya niyam (jaise "har jawab mein maafi pehle")'),
+    final f = await _form(context, 'Rules', const [
+      ('business', 'Business name'),
+      ('phone', 'Business phone (shown in the reply)'),
+      ('sign_off', 'Below the reply ("- Team Annapurna")'),
+      ('language', 'Language: hinglish / hi / mr / en'),
+      ('avg_order_value', 'Average order value ₹ (an estimate in rupees)'),
+      ('orders_per_year', 'How many times a customer comes in a year'),
+      ('review_link', 'Google review link (everyone sees the same)'),
+      ('period_days', 'How many days to count (30)'),
+      ('reply_rule', 'New rule for replies (for example "apology first in every reply")'),
     ], initial: {
       for (final k in ['business', 'phone', 'sign_off', 'language', 'review_link'])
         if (_s(st[k]).isNotEmpty) k: _s(st[k]),
@@ -180,9 +180,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
   }
 
   Future<void> _newSurvey(String kind) async {
-    final f = await _form(context, kind == 'nps' ? 'NPS survey (0-10)' : 'Anubhav survey (1-5 taare)', const [
-      ('title', 'Naam (jaise "Diwali order feedback")'),
-      ('question', 'Sawal (khaali = Hoola ka sawal)'),
+    final f = await _form(context, kind == 'nps' ? 'NPS survey (0-10)' : 'Experience survey (1-5 stars)', const [
+      ('title', 'Name (for example "Diwali order feedback")'),
+      ('question', 'Question (blank = Hoola\'s question)'),
     ]);
     if (f == null) return;
     await _run(() => widget.app.api!.call('POST', '/api/feedback/surveys', body: {'kind': kind, ...f}));
@@ -208,14 +208,14 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       Glass(child: Text(_s(_d?['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
       Row(children: [
-        _scoreTile('NPS', nps['nps'] == null ? '–' : '${(nps['nps'] as num) >= 0 ? '+' : ''}${nps['nps']}', '${nps['n'] ?? 0} jawab'),
+        _scoreTile('NPS', nps['nps'] == null ? '–' : '${(nps['nps'] as num) >= 0 ? '+' : ''}${nps['nps']}', '${nps['n'] ?? 0} replies'),
         const SizedBox(width: 8),
-        _scoreTile('CSAT', csat['csat'] == null ? '–' : '${csat['csat']}%', csat['avg'] == null ? '' : 'ausat ${csat['avg']}★'),
+        _scoreTile('CSAT', csat['csat'] == null ? '–' : '${csat['csat']}%', csat['avg'] == null ? '' : 'avg${csat['avg']}★'),
         const SizedBox(width: 8),
-        _scoreTile('Bina jawab', '${_d?['unreplied_public'] ?? 0}', 'public review'),
+        _scoreTile('Unanswered', '${_d?['unreplied_public'] ?? 0}', 'public review'),
       ]),
       const SizedBox(height: 12),
-      Text('Pehle yeh theek karein', style: display(15)),
+      Text('Fix these first', style: display(15)),
       for (final x in _list(ff['fix']))
         Padding(
           padding: const EdgeInsets.only(top: 8),
@@ -240,7 +240,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         ),
       if (_list(ff['keep_doing']).isNotEmpty) ...[
         const SizedBox(height: 12),
-        Text('Log pasand karte hain', style: display(15)),
+        Text('People like', style: display(15)),
         const SizedBox(height: 6),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final k in _list(ff['keep_doing'])) Pill('${_s(k['label']).replaceAll(' - tareef', '')} · ${k['count']}', fg: C.ok),
@@ -262,9 +262,9 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   Future<void> _themeAct(Map<String, dynamic> t) async {
     final f = await _form(context, _s(t['label']), const [
-      ('label', 'Apna naam'),
-      ('fixed_on', 'Theek kab kiya (aaj / YYYY-MM-DD)'),
-      ('note', 'Note (kya badla)'),
+      ('label', 'Your name'),
+      ('fixed_on', 'When it was fixed (today / YYYY-MM-DD)'),
+      ('note', 'Note (what changed)'),
     ]);
     if (f == null) return;
     await _run(() => widget.app.api!.call('POST', '/api/feedback/themes/${Uri.encodeComponent(_s(t['key']))}', body: f));
@@ -289,12 +289,12 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             ]),
             Text(
                 [
-                  'pehle ${t['prev']}',
+                  'before ${t['prev']}',
                   if (_s(_map(t['trend'])['say']).isNotEmpty) _s(_map(t['trend'])['say']),
-                  '${t['people']} log',
+                  '${t['people']} people',
                   if ((t['public'] ?? 0) > 0) '${t['public']} public',
-                  if (t['avg_stars'] != null) 'ausat ${t['avg_stars']}★',
-                  if (t['rupees'] != null) '~₹${t['rupees']} andaaza',
+                  if (t['avg_stars'] != null) 'avg${t['avg_stars']}★',
+                  if (t['rupees'] != null) '~₹${t['rupees']} (estimate)',
                 ].join(' · '),
                 style: const TextStyle(color: C.muted, fontSize: 12)),
             for (final e in _list(t['examples']).take(2))
@@ -313,7 +313,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
       Wrap(spacing: 6, children: [
         for (final d in const [7, 30, 90])
           ChoiceChip(
-              label: Text('$d din'),
+              label: Text('$d days'),
               selected: _days == d,
               onSelected: (_) {
                 setState(() => _days = d);
@@ -321,11 +321,11 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               }),
       ]),
       const SizedBox(height: 8),
-      Text('Shikayatein (${th['total'] ?? 0} feedback mein)', style: display(15)),
+      Text('Complaints (${th['total'] ?? 0} in feedback)', style: display(15)),
       const SizedBox(height: 6),
       for (final t in _list(th['negative'])) _themeCard(t),
       const SizedBox(height: 8),
-      Text('Tareef', style: display(15)),
+      Text('Praise', style: display(15)),
       const SizedBox(height: 6),
       for (final t in _list(th['positive'])) _themeCard(t),
       if (_s(th['rupee_note']).isNotEmpty) Text(_s(th['rupee_note']), style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -334,7 +334,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
 
   Widget _reviews() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final (k, t) in const [('', 'Sab'), ('neg', 'Shikayat'), ('mixed', 'Mila-jula'), ('pos', 'Tareef')])
+          for (final (k, t) in const [('', 'All'), ('neg', 'Complaint'), ('mixed', 'Mixed'), ('pos', 'Praise')])
             ChoiceChip(
                 label: Text(t),
                 selected: _filter == k,
@@ -346,7 +346,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         const SizedBox(height: 6),
         Wrap(spacing: 6, runSpacing: 6, children: [
           ChoiceChip(
-              label: const Text('Har jagah'),
+              label: const Text('Everywhere'),
               selected: _source.isEmpty,
               onSelected: (_) {
                 setState(() => _source = '');
@@ -363,10 +363,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         ]),
         const SizedBox(height: 8),
         GlassButton(
-            label: 'Bina-jawab reviews ke draft banao',
+            label: 'Make drafts for unanswered reviews',
             icon: Icons.edit_note_rounded,
             onTap: _busy ? null : () => _run(() => widget.app.api!.call('POST', '/api/feedback/replies/draft_all', body: {'limit': 10}))),
-        const Text('Har draft chat mein card ban kar aayega; har jawab par aapki Haan chahiye.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+        const Text('Each draft comes in the chat as a card; every reply needs your Yes.', style: TextStyle(fontSize: 11.5, color: C.faint)),
         const SizedBox(height: 8),
         for (final it in _items) _ReviewTile(app: widget.app, item: it, onChanged: _load),
       ]);
@@ -375,10 +375,10 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         Row(children: [
           Expanded(child: GlassButton(label: 'NPS (0-10)', icon: Icons.speed_rounded, onTap: _busy ? null : () => _newSurvey('nps'))),
           const SizedBox(width: 8),
-          Expanded(child: GlassButton(label: 'Taare (1-5)', icon: Icons.star_rounded, onTap: _busy ? null : () => _newSurvey('csat'))),
+          Expanded(child: GlassButton(label: 'Stars (1-5)', icon: Icons.star_rounded, onTap: _busy ? null : () => _newSurvey('csat'))),
         ]),
         const SizedBox(height: 8),
-        const Text('Link SAB graahakon ko bhejiye, sirf khush logon ko chun kar nahi. Jawab ke baad Google review ka link sabko ek jaisa dikhta hai.',
+        const Text('Send the link to ALL customers, not only the happy ones. After the reply, the Google review link looks the same to everyone.',
             style: TextStyle(fontSize: 12, color: C.faint)),
         const SizedBox(height: 8),
         for (final v in _list(_d?['surveys'])) FeedbackSurveyCard(app: widget.app, data: v, onChanged: _load),
@@ -389,16 +389,16 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Text('Feedback lao', style: display(15)),
       const SizedBox(height: 6),
-      GlassButton(label: 'Sheet / export daalo (Play, Amazon, Flipkart, Zomato, Swiggy, Typeform...)', icon: Icons.upload_file_rounded,
+      GlassButton(label: 'Import sheet / export (Play, Amazon, Flipkart, Zomato, Swiggy, Typeform...)', icon: Icons.upload_file_rounded,
           onTap: _busy ? null : _import),
       const SizedBox(height: 6),
-      GlassButton(label: 'Reviews chipkao', icon: Icons.content_paste_rounded, onTap: _busy ? null : _paste),
+      GlassButton(label: 'Paste reviews', icon: Icons.content_paste_rounded, onTap: _busy ? null : _paste),
       const SizedBox(height: 6),
-      GlassButton(label: 'Google Form ke jawab', icon: Icons.fact_check_rounded, onTap: _busy ? null : () => _sync('forms')),
+      GlassButton(label: 'Google Form responses', icon: Icons.fact_check_rounded, onTap: _busy ? null : () => _sync('forms')),
       const SizedBox(height: 6),
-      GlassButton(label: 'WhatsApp inbox se', icon: Icons.chat_rounded, onTap: _busy ? null : () => _sync('inbox')),
+      GlassButton(label: 'From WhatsApp inbox', icon: Icons.chat_rounded, onTap: _busy ? null : () => _sync('inbox')),
       const SizedBox(height: 6),
-      GlassButton(label: 'Call notes se', icon: Icons.call_rounded, onTap: _busy ? null : () => _sync('calls')),
+      GlassButton(label: 'From call notes', icon: Icons.call_rounded, onTap: _busy ? null : () => _sync('calls')),
       const SizedBox(height: 12),
       Glass(
         padding: const EdgeInsets.all(12),
@@ -407,7 +407,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             const Icon(Icons.storefront_rounded, color: C.accent),
             const SizedBox(width: 8),
             const Expanded(child: Text('Google Business Profile reviews', style: TextStyle(fontWeight: FontWeight.w800))),
-            Pill(g['connected'] == true ? 'juda' : 'nahi juda', fg: g['connected'] == true ? C.ok : C.muted),
+            Pill(g['connected'] == true ? 'connected' : 'not connected', fg: g['connected'] == true ? C.ok : C.muted),
           ]),
           if (g['connected'] == true)
             Text('${_s(g['address'])} · ${_s(g['location_title'])}${_s(g['last_sync']).isNotEmpty ? ' · sync ${_s(g['last_sync']).substring(0, 10)}' : ''}',
@@ -416,23 +416,23 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
           const SizedBox(height: 8),
           if (g['connected'] == true)
             Row(children: [
-              Expanded(child: GlassButton(label: 'Abhi sync', icon: Icons.sync_rounded, onTap: _busy ? null : () => _sync('google'))),
+              Expanded(child: GlassButton(label: 'Sync now', icon: Icons.sync_rounded, onTap: _busy ? null : () => _sync('google'))),
               const SizedBox(width: 8),
               Expanded(
                   child: GlassButton(
-                      label: 'Hatao',
+                      label: 'Remove',
                       icon: Icons.link_off_rounded,
                       onTap: _busy ? null : () => _run(() => widget.app.api!.call('DELETE', '/api/feedback/google')))),
             ])
           else
-            GradientButton(label: 'Google reviews jodiye', icon: Icons.link_rounded, onTap: _busy ? null : _googleLink),
+            GradientButton(label: 'Connect Google reviews', icon: Icons.link_rounded, onTap: _busy ? null : _googleLink),
           const SizedBox(height: 6),
-          const Text('Sirf aapka apna Business Profile. Jawab Google par sirf aapki Haan se jaata hai.',
+          const Text('Only your own Business Profile. A reply goes to Google only with your Yes.',
               style: TextStyle(fontSize: 11.5, color: C.faint)),
         ]),
       ),
       const SizedBox(height: 12),
-      GlassButton(label: 'Niyam aur apne numbers', icon: Icons.tune_rounded, onTap: _busy ? null : _settings),
+      GlassButton(label: 'Rules and your own numbers', icon: Icons.tune_rounded, onTap: _busy ? null : _settings),
       const SizedBox(height: 8),
       for (final r in ((_map(_d?['settings'])['reply_rules'] as List?) ?? const []))
         Text('• ${_s(r)}', style: const TextStyle(fontSize: 12.5)),
@@ -455,7 +455,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Themes'), (2, 'Reviews'), (3, 'Survey'), (4, 'Sources')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Themes'), (2, 'Reviews'), (3, 'Survey'), (4, 'Sources')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -463,7 +463,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _themes(), _reviews(), _surveys(), _sources()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Hoola koi review hatata, chhupata ya chun-chun kar nahi dikhata. Public jawab sirf aapki Haan se. Shak wale review sirf platform ke "report" raste se.',
+                  'Hoola never removes, hides or cherry-picks reviews. Public replies only with your Yes. Suspicious reviews only through the platform\'s "report" route.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -511,10 +511,10 @@ class _ReviewTile extends StatelessWidget {
                         .where((x) => x.isNotEmpty)
                         .join(' · '),
                     style: const TextStyle(fontSize: 12, color: C.muted))),
-            if (item['replied'] == true) const Pill('jawab diya', fg: C.ok),
+            if (item['replied'] == true) const Pill('replied', fg: C.ok),
           ]),
           const SizedBox(height: 4),
-          Text(_s(item['text']).isEmpty ? '(sirf taare)' : _s(item['text']), style: const TextStyle(fontSize: 13.5, height: 1.3)),
+          Text(_s(item['text']).isEmpty ? '(stars only)' : _s(item['text']), style: const TextStyle(fontSize: 13.5, height: 1.3)),
           if (((item['themes'] as List?) ?? const []).isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -526,7 +526,7 @@ class _ReviewTile extends StatelessWidget {
           if (item['replied'] != true)
             Align(
               alignment: Alignment.centerRight,
-              child: TextButton.icon(onPressed: () => _draft(context), icon: const Icon(Icons.reply_rounded, size: 18), label: const Text('Jawab ka draft')),
+              child: TextButton.icon(onPressed: () => _draft(context), icon: const Icon(Icons.reply_rounded, size: 18), label: const Text('Draft reply')),
             ),
         ]),
       ),
@@ -601,7 +601,7 @@ class _FeedbackReplyCardState extends State<FeedbackReplyCard> {
           const Icon(Icons.rate_review_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(
-              child: Text('Jawab: ${_s(it['source_label'])} ${_stars(it['stars'])}'.trim(), style: const TextStyle(fontWeight: FontWeight.w800))),
+              child: Text('Reply: ${_s(it['source_label'])} ${_stars(it['stars'])}'.trim(), style: const TextStyle(fontWeight: FontWeight.w800))),
           Pill(_status),
         ]),
         const SizedBox(height: 6),
@@ -613,7 +613,7 @@ class _FeedbackReplyCardState extends State<FeedbackReplyCard> {
           enabled: _status == 'draft',
           maxLines: 6,
           minLines: 3,
-          decoration: const InputDecoration(labelText: 'Jawab (badal sakti hain)', border: OutlineInputBorder()),
+          decoration: const InputDecoration(labelText: 'Reply (you can change it)', border: OutlineInputBorder()),
         ),
         for (final p in probs) Text('⚠ $p', style: const TextStyle(fontSize: 12, color: C.warn)),
         const SizedBox(height: 6),
@@ -624,11 +624,11 @@ class _FeedbackReplyCardState extends State<FeedbackReplyCard> {
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: widget.data['where'] == 'google_api' ? 'Haan, Google par daalo' : 'Haan, final',
+                    label: widget.data['where'] == 'google_api' ? 'Yes, post on Google' : 'Yes, final',
                     icon: Icons.check_rounded,
                     onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false))),
           ]),
         if (_status == 'approved')
           Row(children: [
@@ -638,10 +638,10 @@ class _FeedbackReplyCardState extends State<FeedbackReplyCard> {
                     icon: Icons.copy_rounded,
                     onTap: () async {
                       await Clipboard.setData(ClipboardData(text: _c.text.trim()));
-                      if (context.mounted) _snack(context, 'Copy ho gaya');
+                      if (context.mounted) _snack(context, 'Copied');
                     })),
             const SizedBox(width: 8),
-            Expanded(child: GradientButton(label: 'Daal diya', icon: Icons.done_all_rounded, onTap: _busy ? null : _done)),
+            Expanded(child: GradientButton(label: 'Added', icon: Icons.done_all_rounded, onTap: _busy ? null : _done)),
           ]),
       ]),
     );
@@ -665,7 +665,7 @@ class FeedbackSurveyCard extends StatelessWidget {
               Icon(data['kind'] == 'nps' ? Icons.speed_rounded : Icons.star_rounded, color: C.accent),
               const SizedBox(width: 8),
               Expanded(child: Text(_s(data['title']), style: const TextStyle(fontWeight: FontWeight.w800))),
-              Pill(data['active'] == false ? 'band' : '${data['responses'] ?? 0} jawab'),
+              Pill(data['active'] == false ? 'closed' : '${data['responses'] ?? 0} replies'),
             ]),
             Text(_s(data['question']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
             const SizedBox(height: 8),
@@ -681,7 +681,7 @@ class FeedbackSurveyCard extends StatelessWidget {
                   onPressed: () => _open(context, _s(data['whatsapp'])),
                   icon: const Icon(Icons.send_rounded, size: 18),
                   label: const Text('WhatsApp draft')),
-              TextButton.icon(onPressed: () => _open(context, _s(data['link'])), icon: const Icon(Icons.visibility_rounded, size: 18), label: const Text('Dekho')),
+              TextButton.icon(onPressed: () => _open(context, _s(data['link'])), icon: const Icon(Icons.visibility_rounded, size: 18), label: const Text('View')),
               if (onChanged != null)
                 TextButton(
                     onPressed: () async {
@@ -692,7 +692,7 @@ class FeedbackSurveyCard extends StatelessWidget {
                         if (context.mounted) _snack(context, '$e');
                       }
                     },
-                    child: Text(data['active'] == false ? 'Kholo' : 'Band karo')),
+                    child: Text(data['active'] == false ? 'Open' : 'Turn off')),
             ]),
           ]),
         ),

@@ -92,7 +92,7 @@ class HoolaMediaTile extends StatelessWidget {
       } else if (url.isNotEmpty) {
         hoolaOpenUrl(app, url);
       } else if (locked) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pehle "Haan" dabaiye, phir file khulegi.')));
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('First tap "Yes", then the file will open.')));
       }
     }
 
@@ -205,7 +205,7 @@ class _PhotoView extends StatelessWidget {
         appBar: AppBar(
           backgroundColor: Colors.black,
           title: Text(name, style: const TextStyle(fontSize: 15)),
-          actions: [if (onOpen != null) IconButton(tooltip: 'Poori file kholiye', onPressed: onOpen, icon: const Icon(Icons.open_in_new_rounded))],
+          actions: [if (onOpen != null) IconButton(tooltip: 'Open the full file', onPressed: onOpen, icon: const Icon(Icons.open_in_new_rounded))],
         ),
         body: Center(
           child: InteractiveViewer(
@@ -237,7 +237,7 @@ class HoolaSeen extends StatelessWidget {
         const SizedBox(width: 6),
         Expanded(
           child: Text.rich(TextSpan(children: [
-            TextSpan(text: '${app.aName} ne ${seen.isNotEmpty ? 'dekha' : 'padha'}: ', style: const TextStyle(fontWeight: FontWeight.w700, color: C.teal)),
+            TextSpan(text: '${app.aName} ${seen.isNotEmpty ? 'saw' : 'read'}: ', style: const TextStyle(fontWeight: FontWeight.w700, color: C.teal)),
             TextSpan(text: text),
           ]), style: const TextStyle(fontSize: 12.5, height: 1.35)),
         ),
@@ -306,9 +306,9 @@ class HoolaFromTo extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(top: 2),
       child: Row(children: [
-        Flexible(child: Text(incoming ? them : 'Aapka $mine', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.chip))),
+        Flexible(child: Text(incoming ? them : 'Your $mine', maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.chip))),
         const Padding(padding: EdgeInsets.symmetric(horizontal: 4), child: Icon(Icons.arrow_forward_rounded, size: 13, color: C.faint)),
-        Flexible(child: Text(incoming ? 'aapka $mine' : them, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.accentSoft, fontWeight: FontWeight.w700))),
+        Flexible(child: Text(incoming ? 'your $mine' : them, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11.5, color: C.accentSoft, fontWeight: FontWeight.w700))),
       ]),
     );
   }
@@ -355,7 +355,7 @@ class QrNote extends StatelessWidget {
             if (c['kind'] == 'upi')
               const Padding(
                 padding: EdgeInsets.only(top: 3),
-                child: Text('QR scan karne se paise sirf jaate hain, kabhi aate nahi.', style: TextStyle(fontSize: 11, color: C.faint)),
+                child: Text('Scanning a QR only sends money, it never receives it.', style: TextStyle(fontSize: 11, color: C.faint)),
               ),
           ]),
         ),

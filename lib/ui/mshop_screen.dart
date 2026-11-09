@@ -27,19 +27,19 @@ const _accessories = {
   'charger': 'Charger',
   'cable': 'Cable',
   'earphone': 'Earphone',
-  'box': 'Dabba',
+  'box': 'Box',
   'back_cover': 'Back cover',
 };
 const _flow = ['diagnosing', 'waiting_customer', 'waiting_part', 'repairing', 'ready'];
 const _word = {
-  'received': 'Jama',
-  'diagnosing': 'Jaanch',
-  'waiting_customer': 'Graahak ki haan',
-  'waiting_part': 'Part baaki',
+  'received': 'Received',
+  'diagnosing': 'Check',
+  'waiting_customer': 'Customer\'s yes',
+  'waiting_part': 'Part pending',
   'repairing': 'Repair',
-  'ready': 'Taiyaar',
-  'delivered': 'De diya',
-  'returned': 'Bina repair wapas',
+  'ready': 'Ready',
+  'delivered': 'Given',
+  'returned': 'Returned without repair',
   'cancelled': 'Cancel',
 };
 
@@ -81,20 +81,20 @@ class MShopScreen extends StatelessWidget {
         child: Scaffold(
           appBar: AppBar(
             backgroundColor: Colors.transparent,
-            title: const Text('Mobile dukaan sahayak'),
+            title: const Text('Mobile shop assistant'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
+              Tab(text: 'Today'),
               Tab(text: 'Repair'),
               Tab(text: 'Recharge'),
               Tab(text: 'Warranty'),
-              Tab(text: 'Niyam'),
+              Tab(text: 'Rules'),
             ]),
           ),
           floatingActionButton: FloatingActionButton.extended(
             backgroundColor: C.accent,
             foregroundColor: C.onAccent,
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Naya repair', style: TextStyle(fontWeight: FontWeight.w800)),
+            label: const Text('New repair', style: TextStyle(fontWeight: FontWeight.w800)),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MShopNewJobPage(app: app))),
           ),
           body: Aurora(
@@ -142,13 +142,13 @@ class MShopJobTile extends StatelessWidget {
               Expanded(
                 child: Text(
                     st == 'delivered'
-                        ? 'Diya ${_s(j['delivered_on'])}${_s(j['warranty_nice']).isNotEmpty ? ' · warranty ${j['warranty_nice']}' : ''}'
-                        : (late ? 'Der: ${_s(j['promised_nice'])}' : 'Wapsi ${_s(j['promised_nice'])}'),
+                        ? 'Given ${_s(j['delivered_on'])}${_s(j['warranty_nice']).isNotEmpty ? ' · warranty ${j['warranty_nice']}' : ''}'
+                        : (late ? 'Der: ${_s(j['promised_nice'])}' : 'Return ${_s(j['promised_nice'])}'),
                     style: TextStyle(color: late ? C.bad : C.muted, fontSize: 12.5)),
               ),
-              if (_s((j['bill'] as Map?)?['status']) == 'pending') const Text('Bill: aapki haan', style: TextStyle(color: C.accent, fontSize: 12)),
+              if (_s((j['bill'] as Map?)?['status']) == 'pending') const Text('Bill: your yes', style: TextStyle(color: C.accent, fontSize: 12)),
               if ((j['waiting_days'] ?? 0) is num && (j['waiting_days'] ?? 0) >= 3)
-                Text('  ${j['waiting_days']} din se taiyaar', style: const TextStyle(color: C.warn, fontSize: 12)),
+                Text('  ${j['waiting_days']} days ready', style: const TextStyle(color: C.warn, fontSize: 12)),
             ]),
           ]),
         ),
@@ -213,10 +213,10 @@ class _TodayTabState extends State<_TodayTab> with _ShopLive {
         if (d == null && _err == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
         if (d != null) ...[
           MShopDayCard(v: d, app: app, inScreen: true),
-          _sec('Der ho gayi', _list(d['late']), C.bad),
-          _sec('Aaj wapas dena hai', _list(d['due_today']), C.accent),
-          _sec('Part ka intezaar', _list(d['waiting_part']), C.warn),
-          _sec('Taiyaar, le nahi gaye', _list(d['unclaimed']), C.warn),
+          _sec('Late', _list(d['late']), C.bad),
+          _sec('To return today', _list(d['due_today']), C.accent),
+          _sec('Waiting for a part', _list(d['waiting_part']), C.warn),
+          _sec('Ready, not collected', _list(d['unclaimed']), C.warn),
         ],
       ]),
     );
@@ -262,13 +262,13 @@ class _JobsTabState extends State<_JobsTab> with _ShopLive {
 
   @override
   Widget build(BuildContext context) {
-    const filters = {'open': 'Chalu', 'ready': 'Taiyaar', 'delivered': 'Diye gaye', 'all': 'Sab'};
+    const filters = {'open': 'In progress', 'ready': 'Ready', 'delivered': 'Given', 'all': 'All'};
     return RefreshIndicator(
       onRefresh: reload,
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
         TextField(
           controller: _q,
-          decoration: const InputDecoration(hintText: 'Naam, phone, model ya IMEI', prefixIcon: Icon(Icons.search_rounded)),
+          decoration: const InputDecoration(hintText: 'Name, phone, model or IMEI', prefixIcon: Icon(Icons.search_rounded)),
           onSubmitted: (_) => reload(),
         ),
         const SizedBox(height: 8),
@@ -289,7 +289,7 @@ class _JobsTabState extends State<_JobsTab> with _ShopLive {
         const SizedBox(height: 10),
         if (_rows == null) const Padding(padding: EdgeInsets.all(40), child: Center(child: CircularProgressIndicator())),
         if (_rows != null && _rows!.isEmpty)
-          const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('Koi job nahi.', style: TextStyle(color: C.muted)))),
+          const Padding(padding: EdgeInsets.all(30), child: Center(child: Text('No jobs.', style: TextStyle(color: C.muted)))),
         for (final j in _rows ?? const <Map<String, dynamic>>[]) MShopJobTile(j: j, app: app),
       ]),
     );
@@ -375,8 +375,8 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
           ]),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Theek')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Leave it')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('OK')),
         ],
       ),
     );
@@ -430,22 +430,22 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
           const SizedBox(height: 6),
           Text(_s(j['device']), style: const TextStyle(fontWeight: FontWeight.w800)),
           if (_s(j['imei']).isNotEmpty)
-            Text('IMEI ${j['imei']}${j['imei_ok'] == false ? '  (check digit galat)' : ''}',
+            Text('IMEI ${j['imei']}${j['imei_ok'] == false ? '  (check digit wrong)' : ''}',
                 style: TextStyle(color: j['imei_ok'] == false ? C.warn : C.muted, fontSize: 12.5)),
           const SizedBox(height: 6),
           Text(_s(j['problem']), style: const TextStyle(color: C.chip)),
           Text(_list(j['faults']).map((f) => f['label']).join(' · '), style: const TextStyle(color: C.accentSoft, fontSize: 12.5)),
           if ((j['accessories'] as List?)?.isNotEmpty == true)
-            Text('Saath mein: ${(j['accessories'] as List).map((a) => _accessories[a] ?? a).join(', ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
-          if (_s(j['condition']).isNotEmpty) Text('Haalat: ${j['condition']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
-          if (_s(j['proof']).isNotEmpty) Text('Saboot: ${j['proof']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            Text('With it: ${(j['accessories'] as List).map((a) => _accessories[a] ?? a).join(', ')}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          if (_s(j['condition']).isNotEmpty) Text('Status: ${j['condition']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+          if (_s(j['proof']).isNotEmpty) Text('Proof: ${j['proof']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 6),
-          Text('Liya ${_s(j['received_on'])} · wapsi ${_s(j['promised_nice'])}${_s(j['estimate']).isNotEmpty ? ' · andaza ${j['estimate']}' : ''}',
+          Text('Received${_s(j['received_on'])} · return${_s(j['promised_nice'])}${_s(j['estimate']).isNotEmpty ? ' · estimate${j['estimate']}' : ''}',
               style: TextStyle(color: j['late'] == true ? C.bad : C.chip, fontSize: 13)),
-          Text('Mila ${_s(j['paid'])}${_s(j['total']).isNotEmpty ? ' · bill ${j['total']} · baaki ${j['balance']}' : ''}',
+          Text('Received ${_s(j['paid'])}${_s(j['total']).isNotEmpty ? ' · bill ${j['total']} · balance${j['balance']}' : ''}',
               style: const TextStyle(fontWeight: FontWeight.w700)),
-          if (_s(j['warranty_nice']).isNotEmpty) Text('Warranty ${j['warranty_nice']} tak', style: const TextStyle(color: C.ok)),
-          if (_s(j['warranty_of']).isNotEmpty) const Text('Warranty claim (pichhla repair)', style: TextStyle(color: C.warn)),
+          if (_s(j['warranty_nice']).isNotEmpty) Text('Warranty ${j['warranty_nice']} until', style: const TextStyle(color: C.ok)),
+          if (_s(j['warranty_of']).isNotEmpty) const Text('Warranty claim (previous repair)', style: TextStyle(color: C.warn)),
         ]),
       ),
       const SizedBox(height: 12),
@@ -453,10 +453,10 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text('Photo (${photos.length})', style: const TextStyle(fontWeight: FontWeight.w800))),
-            IconButton(tooltip: 'Gallery se', onPressed: _busy ? null : () => _photo(closed ? 'out' : 'in', ImageSource.gallery),
+            IconButton(tooltip: 'From gallery', onPressed: _busy ? null : () => _photo(closed ? 'out' : 'in', ImageSource.gallery),
                 icon: const Icon(Icons.photo_library_rounded, color: C.muted)),
           ]),
-          if (photos.isEmpty) const Text('Phone ki aage, peeche aur screen ki photo lijiye: warranty mein kaam aati hai.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          if (photos.isEmpty) const Text('Take photos of the front, back and screen of the phone: they help in a warranty claim.', style: TextStyle(color: C.muted, fontSize: 12.5)),
           if (photos.isNotEmpty)
             SizedBox(
               height: 96,
@@ -473,7 +473,7 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
                       Positioned(
                         left: 4,
                         bottom: 4,
-                        child: Pill(p['kind'] == 'out' ? 'Dete' : (p['kind'] == 'part' ? 'Part' : 'Aate'), fg: C.ink, bg: const Color(0x99000000)),
+                        child: Pill(p['kind'] == 'out' ? 'Giving' : (p['kind'] == 'part' ? 'Part' : 'Coming'), fg: C.ink, bg: const Color(0x99000000)),
                       ),
                     ]),
                   ),
@@ -481,9 +481,9 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
             ),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Aate waqt', icon: Icons.photo_camera_rounded, onTap: _busy ? null : () => _photo('in', ImageSource.camera))),
+            Expanded(child: GlassButton(label: 'At intake', icon: Icons.photo_camera_rounded, onTap: _busy ? null : () => _photo('in', ImageSource.camera))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Dete waqt', icon: Icons.photo_camera_back_rounded, onTap: _busy ? null : () => _photo('out', ImageSource.camera))),
+            Expanded(child: GlassButton(label: 'At delivery', icon: Icons.photo_camera_back_rounded, onTap: _busy ? null : () => _photo('out', ImageSource.camera))),
           ]),
         ]),
       ),
@@ -494,7 +494,7 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
         }, app: app),
       ],
       if (!closed) ...[
-        const Padding(padding: EdgeInsets.fromLTRB(4, 14, 4, 8), child: Text('Kaam kahan tak?', style: TextStyle(fontWeight: FontWeight.w800))),
+        const Padding(padding: EdgeInsets.fromLTRB(4, 14, 4, 8), child: Text('How far is the work?', style: TextStyle(fontWeight: FontWeight.w800))),
         Wrap(spacing: 8, runSpacing: 8, children: [
           for (final s in _flow)
             ChoiceChip(
@@ -513,10 +513,10 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
                   : () async {
                       final f = await _form('Part / labour', [
                         ('name', 'Part (display combo, battery...)', false),
-                        ('price', 'Graahak se ₹', true),
-                        ('cost', 'Aapko pada ₹', true),
-                        ('warranty_days', 'Part ki warranty (din)', true),
-                        ('labour', 'Labour ₹ (agar alag)', true),
+                        ('price', 'From customer ₹', true),
+                        ('cost', 'Cost to you ₹', true),
+                        ('warranty_days', 'Part warranty (days)', true),
+                        ('labour', 'Labour ₹ (if separate)', true),
                       ]);
                       if (f == null) return;
                       _run(() => _api.mshopAct(widget.id, 'part', {
@@ -527,9 +527,9 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
                             if (_num(f['labour']!) != null) 'labour': _num(f['labour']!),
                           }));
                     }),
-          GlassButton(label: 'Bill banao', icon: Icons.receipt_long_rounded, onTap: _busy ? null : () => _run(() => _api.mshopAct(widget.id, 'bill', {'conversation_id': _conv}))),
+          GlassButton(label: 'Make bill', icon: Icons.receipt_long_rounded, onTap: _busy ? null : () => _run(() => _api.mshopAct(widget.id, 'bill', {'conversation_id': _conv}))),
           GlassButton(
-              label: 'Andaze ka message',
+              label: 'Estimate message',
               icon: Icons.chat_rounded,
               onTap: _busy
                   ? null
@@ -540,27 +540,27 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
                           await Native.openExternal(url: _s(r['wa_link']));
                         } else {
                           await Clipboard.setData(ClipboardData(text: _s(r['text'])));
-                          if (mounted) _snack(context, 'Copy ho gaya');
+                          if (mounted) _snack(context, 'Copied');
                         }
                       } catch (e) {
                         if (mounted) _snack(context, '$e');
                       }
                     }),
-          GlassButton(label: 'Graahak ne haan kahi', icon: Icons.thumb_up_alt_rounded,
+          GlassButton(label: 'Customer said yes', icon: Icons.thumb_up_alt_rounded,
               onTap: _busy ? null : () => _run(() => _api.mshopAct(widget.id, 'customer_ok'))),
           GlassButton(
-              label: 'Paise mile',
+              label: 'Money received',
               icon: Icons.currency_rupee_rounded,
               onTap: _busy
                   ? null
                   : () async {
-                      final f = await _form('Kitne paise mile?', [('amount', '₹', true)]);
+                      final f = await _form('How much was received?', [('amount', '₹', true)]);
                       final a = f == null ? null : _num(f['amount']!);
                       if (a != null && a > 0) _run(() => _api.mshopAct(widget.id, 'pay', {'amount': a, 'how': 'app'}));
                     }),
           if (st == 'ready' && bill['status'] == 'approved')
             GlassButton(
-                label: '"Taiyaar hai" message',
+                label: '"Ready" message',
                 icon: Icons.send_rounded,
                 onTap: () async {
                   try {
@@ -571,7 +571,7 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
                   }
                 }),
           GlassButton(
-              label: 'Tareekh badlo',
+              label: 'Change date',
               icon: Icons.event_repeat_rounded,
               onTap: _busy
                   ? null
@@ -582,18 +582,18 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
                       if (d != null) _run(() => _api.mshopAct(widget.id, 'update', {'promised_on': _iso(d), 'force': true}));
                     }),
           GlassButton(label: 'Slip (PDF)', icon: Icons.picture_as_pdf_rounded, onTap: _busy ? null : _slip),
-          GlassButton(label: 'Bina repair wapas', icon: Icons.undo_rounded, color: C.warn,
+          GlassButton(label: 'Returned without repair', icon: Icons.undo_rounded, color: C.warn,
               onTap: _busy ? null : () => _run(() => _api.mshopAct(widget.id, 'status', {'status': 'returned'}))),
         ]),
         const SizedBox(height: 12),
         GradientButton(
-            label: 'De diya',
+            label: 'Given',
             icon: Icons.check_circle_rounded,
             height: 48,
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form('Dete waqt kitne mile?', [('amount', '₹ (baaki ${_s(j['balance'])})', true)]);
+                    final f = await _form('How much was received at delivery?', [('amount', '₹ (balance${_s(j['balance'])})', true)]);
                     if (f == null) return;
                     final a = _num(f['amount']!);
                     _run(() => _api.mshopAct(widget.id, 'deliver', {if (a != null && a > 0) 'amount': a, 'conversation_id': _conv}));
@@ -601,7 +601,7 @@ class _MShopJobPageState extends State<MShopJobPage> with _ShopLive {
       ] else
         Padding(padding: const EdgeInsets.only(top: 12), child: GlassButton(label: 'Slip (PDF)', icon: Icons.picture_as_pdf_rounded, onTap: _busy ? null : _slip)),
       const SizedBox(height: 18),
-      const Text('Hisaab (log)', style: TextStyle(fontWeight: FontWeight.w800)),
+      const Text('Account (log)', style: TextStyle(fontWeight: FontWeight.w800)),
       for (final l in _list(j['log']).reversed)
         Padding(
           padding: const EdgeInsets.only(top: 6),
@@ -677,7 +677,7 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
 
   Future<void> _save({bool force = false}) async {
     if (_problem.text.trim().isEmpty) {
-      _snack(context, 'Kya kharabi hai, likhiye');
+      _snack(context, 'Write what is wrong');
       return;
     }
     setState(() => _busy = true);
@@ -704,12 +704,12 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
     final notes = List<String>.from((ck?['notes'] as List?) ?? const []);
     final legal = probs.any((p) => p.contains('kanoonan'));
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Naya repair')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('New repair')),
       body: Aurora(
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
           Glass(
             child: Column(children: [
-              TextField(controller: _name, decoration: const InputDecoration(labelText: 'Graahak ka naam')),
+              TextField(controller: _name, decoration: const InputDecoration(labelText: 'Customer name')),
               TextField(controller: _phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone')),
               Row(children: [
                 Expanded(child: TextField(controller: _brand, decoration: const InputDecoration(labelText: 'Company (Redmi, Samsung...)'))),
@@ -717,13 +717,13 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
                 Expanded(child: TextField(controller: _model, decoration: const InputDecoration(labelText: 'Model'))),
               ]),
               TextField(controller: _imei, keyboardType: TextInputType.number, maxLength: 15,
-                  decoration: const InputDecoration(labelText: 'IMEI (*#06# dabakar)', counterText: '')),
+                  decoration: const InputDecoration(labelText: 'IMEI (dial *#06#)', counterText: '')),
             ]),
           ),
           const SizedBox(height: 12),
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: _problem, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'Kya kharabi hai (graahak ke shabdon mein)')),
+              TextField(controller: _problem, minLines: 1, maxLines: 3, decoration: const InputDecoration(labelText: 'What is wrong (in the customer\'s words)')),
               const SizedBox(height: 8),
               Wrap(spacing: 6, runSpacing: 4, children: [
                 for (final f in _allFaults)
@@ -734,22 +734,22 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
                   ),
               ]),
               if (_faults.contains('unlock'))
-                TextField(controller: _proof, decoration: const InputDecoration(labelText: 'Saboot ki phone inka hai (bill / dabba / ID dekha)')),
+                TextField(controller: _proof, decoration: const InputDecoration(labelText: 'Proof the phone is theirs (saw bill / box / ID)')),
               const SizedBox(height: 8),
-              const Text('Saath mein kya diya', style: TextStyle(color: C.muted)),
+              const Text('What was handed over with it', style: TextStyle(color: C.muted)),
               Wrap(spacing: 6, children: [
                 for (final a in _accessories.entries)
                   FilterChip(label: Text(a.value), selected: _acc.contains(a.key), onSelected: (v) => setState(() => v ? _acc.add(a.key) : _acc.remove(a.key))),
               ]),
-              TextField(controller: _condition, decoration: const InputDecoration(labelText: 'Haalat (scratch, crack, dent)')),
-              const Text('Phone ka password / pattern mat likhiye: Hoola use kabhi nahi rakhta.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+              TextField(controller: _condition, decoration: const InputDecoration(labelText: 'Condition (scratch, crack, dent)')),
+              const Text('Do not write the phone\'s password / pattern: Hoola never keeps it.', style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
           const SizedBox(height: 12),
           Glass(
             child: Column(children: [
               GlassButton(
-                label: _promised.isEmpty ? 'Wapsi ki tareekh (khaali = niyam se)' : 'Wapsi $_promised',
+                label: _promised.isEmpty ? 'Return date (blank = by rules)' : 'Return $_promised',
                 icon: Icons.event_rounded,
                 onTap: () async {
                   final now = DateTime.now();
@@ -759,7 +759,7 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
                 },
               ),
               Row(children: [
-                Expanded(child: TextField(controller: _estimate, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Andaza ₹'))),
+                Expanded(child: TextField(controller: _estimate, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Estimate ₹'))),
                 const SizedBox(width: 8),
                 Expanded(child: TextField(controller: _advance, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Advance ₹'))),
               ]),
@@ -770,29 +770,29 @@ class _MShopNewJobPageState extends State<MShopNewJobPage> {
             Glass(
               border: probs.isEmpty ? C.ok : (legal ? C.bad : C.warn),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(probs.isEmpty ? 'Niyam ke hisaab se theek' : 'Dhyaan dijiye',
+                Text(probs.isEmpty ? 'Fine as per the rules' : 'Please note',
                     style: TextStyle(fontWeight: FontWeight.w800, color: probs.isEmpty ? C.ok : (legal ? C.bad : C.warn))),
                 for (final p in probs) Padding(padding: const EdgeInsets.only(top: 6), child: Text('• $p', style: const TextStyle(color: C.chip))),
                 for (final n in notes) Padding(padding: const EdgeInsets.only(top: 6), child: Text('· $n', style: const TextStyle(color: C.muted, fontSize: 12.5))),
-                if (_s(ck['estimate']).isNotEmpty) Text('Andaza: ${ck['estimate']}', style: const TextStyle(color: C.accent)),
+                if (_s(ck['estimate']).isNotEmpty) Text('Estimate: ${ck['estimate']}', style: const TextStyle(color: C.accent)),
                 if (_s(ck['earliest_nice']).isNotEmpty)
                   Row(children: [
-                    Expanded(child: Text('Sabse jaldi: ${ck['earliest_nice']}', style: const TextStyle(color: C.accent))),
-                    TextButton(onPressed: () => setState(() => _promised = _s(ck['earliest'])), child: const Text('Yahi rakho')),
+                    Expanded(child: Text('Earliest: ${ck['earliest_nice']}', style: const TextStyle(color: C.accent))),
+                    TextButton(onPressed: () => setState(() => _promised = _s(ck['earliest'])), child: const Text('Keep this')),
                   ]),
               ]),
             ),
           ],
           const SizedBox(height: 14),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Niyam se check', icon: Icons.rule_rounded, onTap: _busy ? null : _doCheck)),
+            Expanded(child: GlassButton(label: 'Check by rules', icon: Icons.rule_rounded, onTap: _busy ? null : _doCheck)),
             const SizedBox(width: 10),
             Expanded(child: GradientButton(label: 'Job save', height: 48, onTap: _busy ? null : () => _save())),
           ]),
           if (probs.isNotEmpty && !legal)
             Padding(
               padding: const EdgeInsets.only(top: 10),
-              child: GlassButton(label: 'Main maanti hoon, phir bhi save karo', color: C.warn, onTap: _busy ? null : () => _save(force: true)),
+              child: GlassButton(label: 'I understand, save anyway', color: C.warn, onTap: _busy ? null : () => _save(force: true)),
             ),
         ]),
       ),
@@ -844,7 +844,7 @@ class _RechargeTabState extends State<_RechargeTab> with _ShopLive {
   Future<void> _add() async {
     final a = _num(_amount.text);
     if (a == null || a <= 0 || _number.text.trim().length < 10) {
-      _snack(context, 'Number aur rakam likhiye');
+      _snack(context, 'Write the number and amount');
       return;
     }
     setState(() => _busy = true);
@@ -876,33 +876,33 @@ class _RechargeTabState extends State<_RechargeTab> with _ShopLive {
       child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            const Text('Recharge kiya? Likh lijiye', style: TextStyle(fontWeight: FontWeight.w800)),
-            const Text('Recharge aap apne Jio POS Plus / Airtel Mitra / Vi app mein karti hain; Hoola khatam hone se pehle graahak ko yaad dilane ka draft banata hai.',
+            const Text('Did a recharge? Note it down', style: TextStyle(fontWeight: FontWeight.w800)),
+            const Text('You do the recharge in your own Jio POS Plus / Airtel Mitra / Vi app; Hoola makes a draft to remind the customer before it expires.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
             TextField(controller: _number, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Mobile number')),
             Row(children: [
-              Expanded(child: TextField(controller: _amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '₹ Rakam'))),
+              Expanded(child: TextField(controller: _amount, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: '₹ Amount'))),
               const SizedBox(width: 8),
-              Expanded(child: TextField(controller: _validity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Validity (din)'))),
+              Expanded(child: TextField(controller: _validity, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Validity (days)'))),
             ]),
-            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Naam (optional)')),
+            TextField(controller: _name, decoration: const InputDecoration(labelText: 'Name (optional)')),
             const SizedBox(height: 8),
             Wrap(spacing: 6, children: [
               for (final o in const {'jio': 'Jio', 'airtel': 'Airtel', 'vi': 'Vi', 'bsnl': 'BSNL'}.entries)
                 ChoiceChip(label: Text(o.value), selected: _op == o.key, onSelected: (_) => setState(() => _op = o.key)),
             ]),
             const SizedBox(height: 10),
-            GradientButton(label: 'Likh lo', height: 46, onTap: _busy ? null : _add),
+            GradientButton(label: 'Write it', height: 46, onTap: _busy ? null : _add),
           ]),
         ),
         if (d != null) ...[
           const SizedBox(height: 12),
           Glass(
-            child: Text('Aaj: ${day['count'] ?? 0} recharge · ${_s(day['amount'])} · commission ${_s(day['commission'])}',
+            child: Text('Today: ${day['count'] ?? 0} recharge · ${_s(day['amount'])} · commission ${_s(day['commission'])}',
                 style: const TextStyle(fontWeight: FontWeight.w700)),
           ),
           if (_list(d['due']).isNotEmpty) ...[
-            const Padding(padding: EdgeInsets.fromLTRB(4, 14, 4, 6), child: Text('Plan khatam hone wala: yaad dilaiye', style: TextStyle(fontWeight: FontWeight.w800, color: C.accent))),
+            const Padding(padding: EdgeInsets.fromLTRB(4, 14, 4, 6), child: Text('Plan expiring: remind', style: TextStyle(fontWeight: FontWeight.w800, color: C.accent))),
             for (final r in _list(d['due']))
               Glass(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -910,11 +910,11 @@ class _RechargeTabState extends State<_RechargeTab> with _ShopLive {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${_s(r['name']).isEmpty ? _s(r['number']) : r['name']} · ${_s(r['operator'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text('${_s(r['nice'])} ko khatam · pichhla ${_s(r['last_amount'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                      Text('${_s(r['nice'])} expires · last ${_s(r['last_amount'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     ]),
                   ),
                   r['reminded'] == true
-                      ? const Pill('Bheja', fg: C.ok)
+                      ? const Pill('Sent', fg: C.ok)
                       : TextButton(
                           onPressed: () async {
                             await Native.openExternal(url: _s(r['wa_link']));
@@ -927,13 +927,13 @@ class _RechargeTabState extends State<_RechargeTab> with _ShopLive {
                 ]),
               ),
           ],
-          const Padding(padding: EdgeInsets.fromLTRB(4, 14, 4, 6), child: Text('Haal ke recharge', style: TextStyle(fontWeight: FontWeight.w800))),
+          const Padding(padding: EdgeInsets.fromLTRB(4, 14, 4, 6), child: Text('Recent recharges', style: TextStyle(fontWeight: FontWeight.w800))),
           for (final r in _list(d['recent']))
             ListTile(
               dense: true,
               contentPadding: EdgeInsets.zero,
               title: Text('${_s(r['amount'])} · ${_s(r['operator'])} · ${_s(r['number'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-              subtitle: Text('${_s(r['day'])}${_s(r['expires_on']).isNotEmpty ? ' · khatam ${r['expires_on']}' : ''} · commission ${_s(r['commission'])}',
+              subtitle: Text('${_s(r['day'])}${_s(r['expires_on']).isNotEmpty ? ' · ends${r['expires_on']}' : ''} · commission ${_s(r['commission'])}',
                   style: const TextStyle(fontSize: 12)),
               trailing: IconButton(
                 icon: const Icon(Icons.remove_circle_outline_rounded, color: C.faint),
@@ -984,7 +984,7 @@ class _WarrantyTabState extends State<_WarrantyTab> {
           IconButton(onPressed: _find, icon: const Icon(Icons.search_rounded, color: C.accent)),
         ]),
         const SizedBox(height: 6),
-        const Text('Second-hand phone asli hai ya chori ka: "KYM <IMEI>" SMS 14422 par bhejiye (DoT / Sanchar Saathi).',
+        const Text('To check if a second-hand phone is genuine or stolen: send an SMS "KYM <IMEI>" to 14422 (DoT / Sanchar Saathi).',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
         if (_r != null) ...[
           const SizedBox(height: 12),
@@ -1081,7 +1081,7 @@ class _RulesTabState extends State<_RulesTab> {
         'fix_days': {for (final e in _days.entries) if (int.tryParse(e.value.text.trim()) != null) e.key: int.parse(e.value.text.trim())},
         'commission': {for (final e in _comm.entries) e.key: _num(e.value.text)},
       });
-      if (mounted) _snack(context, 'Niyam save');
+      if (mounted) _snack(context, 'Save rules');
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -1101,26 +1101,26 @@ class _RulesTabState extends State<_RulesTab> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 96), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          TextField(controller: _shop, decoration: const InputDecoration(labelText: 'Dukaan ka naam')),
-          TextField(controller: _gstin, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'GSTIN (agar hai)')),
+          TextField(controller: _shop, decoration: const InputDecoration(labelText: 'Shop name')),
+          TextField(controller: _gstin, textCapitalization: TextCapitalization.characters, decoration: const InputDecoration(labelText: 'GSTIN (if any)')),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             value: _gst,
             onChanged: (v) => setState(() => _gst = v),
-            title: const Text('Repair bill par GST 18% (SAC 998716)'),
+            title: const Text('GST 18% on the repair bill (SAC 998716)'),
           ),
           Wrap(spacing: 12, children: [
-            _small(_perDay, 'Job / din'),
-            _small(_unclaimed, 'Na le jaane ke din'),
-            _small(_remind, 'Recharge yaad (din pehle)'),
+            _small(_perDay, 'Job / day'),
+            _small(_unclaimed, 'Days not collected'),
+            _small(_remind, 'Recharge reminder (days before)'),
           ]),
-          TextField(controller: _morning, decoration: const InputDecoration(labelText: 'Subah ki list kab (HH:MM)')),
+          TextField(controller: _morning, decoration: const InputDecoration(labelText: 'Morning list time (HH:MM)')),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Kaam: daam, warranty, kitne din', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Job: price, warranty, how many days', style: TextStyle(fontWeight: FontWeight.w800)),
           for (final f in _list(s['faults']))
             Padding(
               padding: const EdgeInsets.only(top: 6),
@@ -1130,7 +1130,7 @@ class _RulesTabState extends State<_RulesTab> {
                 const SizedBox(width: 6),
                 _small(_warranty[_s(f['id'])], 'Warranty'),
                 const SizedBox(width: 6),
-                _small(_days[_s(f['id'])], 'Din'),
+                _small(_days[_s(f['id'])], 'Days'),
               ]),
             ),
         ]),
@@ -1145,14 +1145,14 @@ class _RulesTabState extends State<_RulesTab> {
       const SizedBox(height: 12),
       Glass(
         child: Column(children: [
-          TextField(controller: _terms, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Slip par shartein')),
+          TextField(controller: _terms, minLines: 2, maxLines: 5, decoration: const InputDecoration(labelText: 'Terms on the slip')),
           TextField(controller: _template, minLines: 2, maxLines: 5,
-              decoration: const InputDecoration(labelText: '"Taiyaar hai" message', helperText: '{name} {device} {work} {amount} {balance_line} {shop} {number}')),
-          TextField(controller: _rules, minLines: 2, maxLines: 6, decoration: const InputDecoration(labelText: 'Apne niyam (ek line mein ek)')),
+              decoration: const InputDecoration(labelText: '"Ready" message', helperText: '{name} {device} {work} {amount} {balance_line} {shop} {number}')),
+          TextField(controller: _rules, minLines: 2, maxLines: 6, decoration: const InputDecoration(labelText: 'Your own rules (one per line)')),
         ]),
       ),
       const SizedBox(height: 14),
-      GradientButton(label: 'Niyam save karo', height: 50, onTap: _busy ? null : _save),
+      GradientButton(label: 'Save rules', height: 50, onTap: _busy ? null : _save),
     ]);
   }
 }
@@ -1216,8 +1216,8 @@ class _MShopBillCardState extends State<MShopBillCard> {
           const Icon(Icons.receipt_long_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text('Bill: ${_s(v['number'])} ${_s(v['customer'])}', style: display(15.5))),
-          if (st == 'approved') Pill('Pakka ${_s(v['total'])}', fg: C.ok),
-          if (st == 'rejected') const Pill('Mana', fg: C.faint),
+          if (st == 'approved') Pill('Confirm ${_s(v['total'])}', fg: C.ok),
+          if (st == 'rejected') const Pill('Decline', fg: C.faint),
         ]),
         Text(_s(v['device']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 6),
@@ -1229,18 +1229,18 @@ class _MShopBillCardState extends State<MShopBillCard> {
         if ((v['gst_paise'] ?? 0) is num && (v['gst_paise'] as num) > 0)
           Row(children: [Expanded(child: Text(_s(v['gst_note']), style: const TextStyle(color: C.chip))), Text('₹${((v['gst_paise'] as num) / 100).toStringAsFixed(0)}')]),
         for (final w in List<String>.from((v['why'] as List?) ?? const [])) Text(w, style: const TextStyle(color: C.faint, fontSize: 12)),
-        if (_s(v['paid']).isNotEmpty) Text('Advance / mila: ${v['paid']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        if (_s(v['paid']).isNotEmpty) Text('Advance / received: ${v['paid']}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         if (pending) ...[
           const SizedBox(height: 8),
-          SizedBox(width: 160, child: TextField(controller: _t, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Kul'))),
+          SizedBox(width: 160, child: TextField(controller: _t, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Total'))),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Mana', onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Decline', onTap: _busy ? null : () => _decide(false))),
             const SizedBox(width: 10),
-            Expanded(child: GradientButton(label: 'Haan, yahi lo', height: 48, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, take this', height: 48, onTap: _busy ? null : () => _decide(true))),
           ]),
           const SizedBox(height: 4),
-          Text('${widget.app.aName} graahak ko daam tabhi batayega jab aap haan kahengi.', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+          Text('${widget.app.aName} will tell the customer the price only when you say yes.', style: const TextStyle(color: C.faint, fontSize: 11.5)),
         ],
       ]),
     );
@@ -1277,33 +1277,33 @@ class _MShopReadyCardState extends State<MShopReadyCard> {
         Row(children: [
           const Icon(Icons.phone_android_rounded, color: C.ok, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Taiyaar: ${_s(v['customer'])} (${_s(v['number'])})', style: display(15.5))),
-          if (_s(v['status']) == 'opened') const Pill('WhatsApp khola', fg: C.teal),
+          Expanded(child: Text('Ready: ${_s(v['customer'])} (${_s(v['number'])})', style: display(15.5))),
+          if (_s(v['status']) == 'opened') const Pill('WhatsApp opened', fg: C.teal),
         ]),
-        Text('Kul ${_s(v['amount'])} · baaki ${_s(v['balance'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+        Text('Total ${_s(v['amount'])} · balance${_s(v['balance'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         const SizedBox(height: 8),
-        TextField(controller: _t, minLines: 2, maxLines: 6, decoration: const InputDecoration(labelText: 'Message (badal sakti hain)')),
+        TextField(controller: _t, minLines: 2, maxLines: 6, decoration: const InputDecoration(labelText: 'Message (you can change it)')),
         const SizedBox(height: 10),
         if (_phone.length == 10)
           Row(children: [
-            Expanded(child: GradientButton(label: 'WhatsApp par bhejo', icon: Icons.send_rounded, height: 46, onTap: () => _open('whatsapp'))),
+            Expanded(child: GradientButton(label: 'Send on WhatsApp', icon: Icons.send_rounded, height: 46, onTap: () => _open('whatsapp'))),
             const SizedBox(width: 8),
             GlassButton(label: 'SMS', onTap: () => _open('sms')),
           ])
         else
           GlassButton(
-              label: 'Message copy karo',
+              label: 'Copy message',
               icon: Icons.copy_rounded,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: _t.text.trim()));
-                _snack(context, 'Copy ho gaya');
+                _snack(context, 'Copied');
               }),
         if (_s(v['upi_link']).isEmpty)
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('UPI link ke liye Employee > Naukri mein apni UPI ID daaliye.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+            child: Text('For a UPI link, enter your UPI ID in Employee > Job.', style: TextStyle(color: C.faint, fontSize: 11.5)),
           ),
-        Text('${widget.app.aName} khud nahi bhejta: aap dabayengi tabhi jayega.', style: const TextStyle(color: C.faint, fontSize: 11.5)),
+        Text('${widget.app.aName} does not send by itself: it goes only when you tap.', style: const TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
     );
   }
@@ -1323,7 +1323,7 @@ class MShopDayCard extends StatelessWidget {
         Row(children: [
           const Icon(Icons.phone_iphone_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Aaj ki mobile dukaan', style: display(16))),
+          Expanded(child: Text('Today\'s mobile shop', style: display(16))),
           if (late is num && late > 0) Pill('$late der', fg: C.bad),
         ]),
         const SizedBox(height: 8),
@@ -1333,7 +1333,7 @@ class MShopDayCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => MShopScreen(app: app))),
-              child: const Text('Dukaan kholo'),
+              child: const Text('Open shop'),
             ),
           ),
       ]),

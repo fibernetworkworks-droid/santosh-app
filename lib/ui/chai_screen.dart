@@ -52,7 +52,7 @@ class ChaiScreen extends StatelessWidget {
           appBar: AppBar(
             backgroundColor: Colors.transparent,
             title: const Text('Chai stall sahayak'),
-            bottom: const TabBar(tabs: [Tab(text: 'Aaj'), Tab(text: 'Kal'), Tab(text: 'Galla'), Tab(text: 'Menu')]),
+            bottom: const TabBar(tabs: [Tab(text: 'Today'), Tab(text: 'Tomorrow'), Tab(text: 'Galla'), Tab(text: 'Menu')]),
           ),
           body: Aurora(
             child: TabBarView(children: [
@@ -72,14 +72,14 @@ Future<void> _addCash(BuildContext context, Santosh app) async {
   final ok = await showDialog<bool>(
     context: context,
     builder: (_) => AlertDialog(
-      title: const Text('Cash ki bikri'),
+      title: const Text('Cash sales'),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
-        TextField(controller: amt, autofocus: true, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Kitna cash')),
-        TextField(controller: hr, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Kis ghante (0-23, khaali = poore din ka)')),
+        TextField(controller: amt, autofocus: true, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'How much cash')),
+        TextField(controller: hr, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Which hour (0-23, blank = whole day)')),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Rehne do')),
-        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Jodo')),
+        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Leave it')),
+        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Add')),
       ],
     ),
   );
@@ -137,7 +137,7 @@ class _TodayTabState extends State<_TodayTab> with _ChaiLive {
   }
 
   Widget _bars(List<Map<String, dynamic>> hours) {
-    if (hours.isEmpty) return const Text('Abhi ghante ka hisaab nahi.', style: TextStyle(color: C.muted));
+    if (hours.isEmpty) return const Text('No hourly figures yet.', style: TextStyle(color: C.muted));
     final max = hours.map((h) => (h['amount'] as num).toDouble()).fold<double>(1, (a, b) => b > a ? b : a);
     return SizedBox(
       height: 130,
@@ -178,8 +178,8 @@ class _TodayTabState extends State<_TodayTab> with _ChaiLive {
               Text('UPI ${_s(d['upi'])} (${d['upi_count']} payment)  ·  Cash ${_s(d['cash'])}', style: const TextStyle(color: C.chip)),
               if (_s(d['same_weekday_avg']).isNotEmpty || _s(d['yesterday']).isNotEmpty)
                 Text([
-                  if (_s(d['same_weekday_avg']).isNotEmpty) 'Isi din ka ausat ${d['same_weekday_avg']}',
-                  if (_s(d['yesterday']).isNotEmpty) 'kal ${d['yesterday']}',
+                  if (_s(d['same_weekday_avg']).isNotEmpty) 'Average for this day ${d['same_weekday_avg']}',
+                  if (_s(d['yesterday']).isNotEmpty) 'tomorrow ${d['yesterday']}',
                 ].join('  ·  '), style: const TextStyle(color: C.muted, fontSize: 12.5)),
               const SizedBox(height: 8),
               Text(_s(d['text']), style: const TextStyle(color: C.chip, height: 1.4, fontSize: 13)),
@@ -188,7 +188,7 @@ class _TodayTabState extends State<_TodayTab> with _ChaiLive {
           const SizedBox(height: 12),
           Glass(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              const Text('Aaj ghante ke hisaab se', style: TextStyle(fontWeight: FontWeight.w800)),
+              const Text('Today by hour', style: TextStyle(fontWeight: FontWeight.w800)),
               const SizedBox(height: 10),
               _bars(_list(d['hours'])),
               if (_h != null && _s(_h!['text']).isNotEmpty) ...[
@@ -199,11 +199,11 @@ class _TodayTabState extends State<_TodayTab> with _ChaiLive {
           ),
           const SizedBox(height: 14),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Cash jodo', icon: Icons.payments_rounded, onTap: () => _addCash(context, app))),
+            Expanded(child: GlassButton(label: 'Add cash', icon: Icons.payments_rounded, onTap: () => _addCash(context, app))),
             const SizedBox(width: 10),
             Expanded(
               child: GradientButton(
-                label: 'Kal ka plan',
+                label: 'Tomorrow\'s plan',
                 height: 48,
                 icon: Icons.local_cafe_rounded,
                 onTap: _busy
@@ -319,36 +319,36 @@ class _TomorrowTabState extends State<_TomorrowTab> with _ChaiLive {
             const SizedBox(height: 12),
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(_plan == null ? 'Kal ka plan abhi nahi bana' : 'Plan dobara banao', style: const TextStyle(fontWeight: FontWeight.w800)),
+                Text(_plan == null ? 'Tomorrow\'s plan is not ready yet' : 'Make the plan again', style: const TextStyle(fontWeight: FontWeight.w800)),
                 const SizedBox(height: 4),
-                const Text('Hoola aapke menu, pichhle hafton ki bikri, kal ki chhutti / baarish / garmi aur bache saamaan se banata hai. '
-                    'Roz shaam aapke samay par apne aap bhi banta hai.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                const Text('Hoola makes it from your menu, sales of past weeks, tomorrow\'s holiday / rain / heat and the stock left. '
+                    'It also makes it by itself every evening at your time.', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 TextField(controller: _cups, keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Roz lagbhag kitne cup? (sirf shuru mein, jab tak hisaab na bane)')),
+                    decoration: const InputDecoration(labelText: 'About how many cups a day? (only at the start, until figures build up)')),
                 const SizedBox(height: 10),
-                GradientButton(label: 'Plan banao', height: 46, onTap: _busy ? null : _make),
+                GradientButton(label: 'Make plan', height: 46, onTap: _busy ? null : _make),
               ]),
             ),
             const SizedBox(height: 12),
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                const Text('Aaj kaisa raha? (Hoola isse seekhta hai)', style: TextStyle(fontWeight: FontWeight.w800)),
+                const Text('How was today? (Hoola learns from this)', style: TextStyle(fontWeight: FontWeight.w800)),
                 Row(children: [
                   Expanded(child: TextField(controller: _milkLeft, keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Doodh bacha (litre)'))),
+                      decoration: const InputDecoration(labelText: 'Milk left (litres)'))),
                   const SizedBox(width: 10),
-                  Expanded(child: TextField(controller: _ranOut, decoration: const InputDecoration(labelText: 'Ya khatam kab hua (18:30)'))),
+                  Expanded(child: TextField(controller: _ranOut, decoration: const InputDecoration(labelText: 'Or when it ran out (18:30)'))),
                 ]),
                 Row(children: [
                   Expanded(child: TextField(controller: _sugarLeft, keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Chini bachi (kg)'))),
+                      decoration: const InputDecoration(labelText: 'Sugar left (kg)'))),
                   const SizedBox(width: 10),
                   Expanded(child: TextField(controller: _teaLeft, keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      decoration: const InputDecoration(labelText: 'Patti bachi (kg)'))),
+                      decoration: const InputDecoration(labelText: 'Tea leaves left (kg)'))),
                 ]),
-                TextField(controller: _cash, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Aaj ka cash')),
+                TextField(controller: _cash, keyboardType: TextInputType.number, decoration: const InputDecoration(prefixText: '₹ ', labelText: 'Today\'s cash')),
                 const SizedBox(height: 10),
-                GlassButton(label: 'Likh lo', icon: Icons.check_rounded, onTap: _busy ? null : _feedback),
+                GlassButton(label: 'Write it', icon: Icons.check_rounded, onTap: _busy ? null : _feedback),
               ]),
             ),
           ],
@@ -396,23 +396,23 @@ class _ChaiPlanCardState extends State<ChaiPlanCard> {
         Row(children: [
           const Icon(Icons.local_cafe_rounded, color: C.accent, size: 20),
           const SizedBox(width: 8),
-          Expanded(child: Text('Kal ka saamaan: ${_s(v['nice'])}', style: display(16))),
-          if (_s(v['status']) == 'done') const Pill('Ho gaya', fg: C.ok),
+          Expanded(child: Text('Tomorrow\'s supplies: ${_s(v['nice'])}', style: display(16))),
+          if (_s(v['status']) == 'done') const Pill('Done', fg: C.ok),
         ]),
         const SizedBox(height: 8),
-        Text('~${v['cups']} cup  ·  bikri ~${_s(v['sales'])}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+        Text('~${v['cups']} cup  ·  sales ~${_s(v['sales'])}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
         const SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          Pill('Doodh ${_q(need['milk_l'])} L', fg: C.ink),
-          Pill('Chini ${_q(need['sugar_kg'])} kg', fg: C.ink),
-          Pill('Patti ${_q(need['tea_kg'])} kg', fg: C.ink),
+          Pill('Milk ${_q(need['milk_l'])} L', fg: C.ink),
+          Pill('Sugar ${_q(need['sugar_kg'])} kg', fg: C.ink),
+          Pill('Strip ${_q(need['tea_kg'])} kg', fg: C.ink),
         ]),
         if (buy.values.any((x) => (x as num) > 0))
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text('Lena hai: ${[
-              if ((buy['milk_l'] ?? 0) > 0) 'doodh ${_q(buy['milk_l'])} L',
-              if ((buy['sugar_kg'] ?? 0) > 0) 'chini ${_q(buy['sugar_kg'])} kg',
+            child: Text('To buy: ${[
+              if ((buy['milk_l'] ?? 0) > 0) 'milk${_q(buy['milk_l'])} L',
+              if ((buy['sugar_kg'] ?? 0) > 0) 'sugar${_q(buy['sugar_kg'])} kg',
               if ((buy['tea_kg'] ?? 0) > 0) 'patti ${_q(buy['tea_kg'])} kg',
             ].join(', ')}', style: const TextStyle(color: C.accent, fontWeight: FontWeight.w700)),
           ),
@@ -421,7 +421,7 @@ class _ChaiPlanCardState extends State<ChaiPlanCard> {
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
             child: ExpansionTile(
               tilePadding: EdgeInsets.zero,
-              title: const Text('Kyun itna?', style: TextStyle(fontSize: 13, color: C.muted)),
+              title: const Text('Why so much?', style: TextStyle(fontSize: 13, color: C.muted)),
               children: [for (final r in reasons) Align(alignment: Alignment.centerLeft, child: Text('• $r', style: const TextStyle(color: C.chip, fontSize: 12.5)))],
             ),
           ),
@@ -434,24 +434,24 @@ class _ChaiPlanCardState extends State<ChaiPlanCard> {
               Row(children: [
                 Expanded(child: Text(_s(o['supplier']), style: const TextStyle(fontWeight: FontWeight.w800))),
                 if (_s(o['status']) != 'pending')
-                  Pill(_s(o['status']) == 'approved' ? 'Haan' : 'Mana', fg: _s(o['status']) == 'approved' ? C.ok : C.faint),
+                  Pill(_s(o['status']) == 'approved' ? 'Yes' : 'Decline', fg: _s(o['status']) == 'approved' ? C.ok : C.faint),
               ]),
               Text(_s(o['what']), style: const TextStyle(color: C.chip)),
-              if (_s(o['site']).isNotEmpty) Text('${o['site']} se (payment aap karengi)', style: const TextStyle(color: C.muted, fontSize: 12)),
+              if (_s(o['site']).isNotEmpty) Text('${o['site']} from (you pay)', style: const TextStyle(color: C.muted, fontSize: 12)),
               const SizedBox(height: 6),
               if (_s(o['status']) == 'pending')
                 Row(children: [
-                  Expanded(child: GlassButton(label: 'Mana', height: 40, onTap: _busy.isNotEmpty ? null : () => _decide(o, false))),
+                  Expanded(child: GlassButton(label: 'Decline', height: 40, onTap: _busy.isNotEmpty ? null : () => _decide(o, false))),
                   const SizedBox(width: 8),
-                  Expanded(child: GradientButton(label: 'Haan, order karo', height: 40, onTap: _busy.isNotEmpty ? null : () => _decide(o, true))),
+                  Expanded(child: GradientButton(label: 'Yes, place the order', height: 40, onTap: _busy.isNotEmpty ? null : () => _decide(o, true))),
                 ])
               else if (_s(o['status']) == 'approved' && _s(o['wa_link']).isNotEmpty)
-                GlassButton(label: 'WhatsApp par bhejo', icon: Icons.send_rounded, height: 40,
+                GlassButton(label: 'Send on WhatsApp', icon: Icons.send_rounded, height: 40,
                     onTap: () => Native.openExternal(url: _s(o['wa_link']))),
             ]),
           ),
         const SizedBox(height: 4),
-        Text('${widget.app.aName} khud order ya payment nahi karta: aapki haan ke baad message / order aap tak.',
+        Text('${widget.app.aName} does not place orders or pay by itself: after your yes, the message / order comes to you.',
             style: const TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
     );
@@ -513,23 +513,23 @@ class _GallaTabState extends State<_GallaTab> with _ChaiLive, WidgetsBindingObse
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: const Text('UPI alerts se galla'),
+        title: const Text('Cash box from UPI alerts'),
         content: SingleChildScrollView(
           child: Text(
-            '${app.aName} aapke phone par aane wale sirf in payment apps ke "paise mile" wale notification padhega: '
+            '${app.aName} will read only the "money received" notifications of these payment apps on your phone: '
             '${_list(_info['all']).where((a) => _picked.contains(a['package'])).map((a) => a['label']).join(', ')}.\n\n'
-            'Kya jaata hai aapke Hoola server par: rakam, samay, app ka naam, bhejne wale ka pehla naam, reference ke aakhri 4 ank. '
-            'Bas itna.\n\n'
-            'Kya kabhi nahi: OTP, PIN, password, SMS, chat, doosre apps ke notification, bheje hue paise, poora notification. '
-            'Yeh sab phone par hi chhod diya jaata hai.\n\n'
-            'Kyun: roz ki bikri, sabse achha ghanta aur kal ka doodh-chini apne aap nikalne ke liye.\n\n'
-            'Agle screen par Android "Notification access" mein "Hoola Galla" chalu kijiye. Kabhi bhi yahan se band kar sakti hain.',
+            'What goes to your Hoola server: amount, time, app name, sender\'s first name, last 4 digits of the reference. '
+            'That is all.\n\n'
+            'What never goes: OTP, PIN, password, SMS, chats, other apps\' notifications, money you sent, the full notification. '
+            'All of this stays on the phone.\n\n'
+            'Why: to work out daily sales, the best hour and tomorrow\'s milk and sugar by itself.\n\n'
+            'On the next screen, turn on "Hoola Galla" in Android "Notification access". You can turn it off from here anytime.',
             style: const TextStyle(height: 1.4),
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Nahi')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Samajh gayi, chalu karo')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('No')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('I understand, turn on')),
         ],
       ),
     );
@@ -592,19 +592,19 @@ class _GallaTabState extends State<_GallaTab> with _ChaiLive, WidgetsBindingObse
               contentPadding: EdgeInsets.zero,
               value: on,
               onChanged: _busy ? null : _toggle,
-              title: const Text('UPI alerts se galla', style: TextStyle(fontWeight: FontWeight.w800)),
+              title: const Text('Cash box from UPI alerts', style: TextStyle(fontWeight: FontWeight.w800)),
               subtitle: Text(on
-                  ? (granted ? 'Chalu: har UPI payment apne aap judta hai' : 'Android mein Notification access abhi nahi mila')
-                  : 'Band: sirf jo aap batayengi / statement bhejengi'),
+                  ? (granted ? 'On: every UPI payment is added by itself' : 'Notification access not found in Android yet')
+                  : 'Off: only what you tell me / the statement you send'),
             ),
             if (on && !granted)
-              GradientButton(label: 'Notification access kholo', height: 44, onTap: () => Native.payAlertsSettings()),
+              GradientButton(label: 'Open Notification access', height: 44, onTap: () => Native.payAlertsSettings()),
             if (on && granted)
-              Text('Bheje: ${_info['sent_total'] ?? 0}  ·  ruke: ${_info['pending'] ?? 0}'
-                  '${last > 0 ? '  ·  aakhri ${DateTime.fromMillisecondsSinceEpoch(last).toLocal().toString().substring(11, 16)}' : ''}',
+              Text('Sent: ${_info['sent_total'] ?? 0}  ·  pending:${_info['pending'] ?? 0}'
+                  '${last > 0 ? '  ·  last${DateTime.fromMillisecondsSinceEpoch(last).toLocal().toString().substring(11, 16)}' : ''}',
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
             const SizedBox(height: 8),
-            const Text('Kaun se payment app padhe jaayein', style: TextStyle(color: C.muted)),
+            const Text('Which payment apps to read', style: TextStyle(color: C.muted)),
             for (final a in _list(_info['all']))
               CheckboxListTile(
                 dense: true,
@@ -612,21 +612,21 @@ class _GallaTabState extends State<_GallaTab> with _ChaiLive, WidgetsBindingObse
                 value: _picked.contains(a['package']),
                 onChanged: (x) => _pickApp(_s(a['package']), x ?? false),
                 title: Text(_s(a['label'])),
-                subtitle: a['business'] == true ? null : const Text('Personal app: ghar ke paise bhi gin sakta hai', style: TextStyle(fontSize: 11.5)),
+                subtitle: a['business'] == true ? null : const Text('Personal app: it may also count household money', style: TextStyle(fontSize: 11.5)),
               ),
-            const Text('Sirf "paise mile" alert. OTP, SMS, bheje hue paise kabhi nahi.', style: TextStyle(color: C.faint, fontSize: 11.5)),
+            const Text('Only "money received" alerts. Never OTP, SMS or money you sent.', style: TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
         const SizedBox(height: 12),
         Row(children: [
           Expanded(child: GlassButton(label: 'Statement (CSV / Excel)', icon: Icons.upload_file_rounded, onTap: _busy ? null : _statement)),
           const SizedBox(width: 10),
-          Expanded(child: GlassButton(label: 'Cash jodo', icon: Icons.payments_rounded, onTap: () => _addCash(context, app))),
+          Expanded(child: GlassButton(label: 'Add cash', icon: Icons.payments_rounded, onTap: () => _addCash(context, app))),
         ]),
         const SizedBox(height: 14),
-        const Text('Haal ke payment', style: TextStyle(fontWeight: FontWeight.w800)),
+        const Text('Recent payments', style: TextStyle(fontWeight: FontWeight.w800)),
         const SizedBox(height: 6),
-        if (_recent.isEmpty) const Text('Abhi koi payment nahi.', style: TextStyle(color: C.muted)),
+        if (_recent.isEmpty) const Text('No payments yet.', style: TextStyle(color: C.muted)),
         for (final r in _recent)
           ListTile(
             dense: true,
@@ -636,7 +636,7 @@ class _GallaTabState extends State<_GallaTab> with _ChaiLive, WidgetsBindingObse
             subtitle: Text('${_s(r['at'])}  ·  ${_s(r['app']).isEmpty ? _s(r['source']) : _s(r['app'])}', style: const TextStyle(fontSize: 12)),
             trailing: IconButton(
               icon: const Icon(Icons.remove_circle_outline_rounded, color: C.faint),
-              tooltip: 'Galat hai, hatao',
+              tooltip: 'Wrong, remove it',
               onPressed: () async {
                 try {
                   await app.api!.gallaVoid(_s(r['id']));
@@ -748,7 +748,7 @@ class _MenuTabState extends State<_MenuTab> {
         'plan_time': _planTime.text.trim(),
         'rules': _rules.text.split('\n').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
       });
-      if (mounted) _snack(context, 'Save ho gaya');
+      if (mounted) _snack(context, 'Saved');
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -769,59 +769,59 @@ class _MenuTabState extends State<_MenuTab> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          TextField(controller: _stall, decoration: const InputDecoration(labelText: 'Stall ka naam')),
+          TextField(controller: _stall, decoration: const InputDecoration(labelText: 'Stall name')),
           const SizedBox(height: 8),
-          Text('Seekha hua: ek cup mein asal mein ~${_q(st['real_milk_per_cup_ml'])} ml doodh'
-              '${(st['factor_learned'] ?? 0) > 0 ? ' (${st['factor_learned']} din se)' : ' (abhi menu se)'}; '
-              'cash ~${_q(st['cash_pct'])}%${(st['cash_learned'] ?? 0) > 0 ? ' (seekha)' : ' (andaza)'}.',
+          Text('Learned: one cup actually costs ~${_q(st['real_milk_per_cup_ml'])} ml milk'
+              '${(st['factor_learned'] ?? 0) > 0 ? ' (${st['factor_learned']} days)' : ' (from the menu now)'}; '
+              'cash ~${_q(st['cash_pct'])}%${(st['cash_learned'] ?? 0) > 0 ? ' (learned)' : ' (estimate)'}.',
               style: const TextStyle(color: C.accentSoft, fontSize: 12.5)),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Menu: ek cup mein kya lagta hai', style: TextStyle(fontWeight: FontWeight.w800)),
-          const Text('Hissa % = sau cup mein se kitne yeh (andaza).', style: TextStyle(color: C.faint, fontSize: 11.5)),
+          const Text('Menu: what goes into one cup', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Share % = how many of every hundred cups are this (estimate).', style: TextStyle(color: C.faint, fontSize: 11.5)),
           for (var i = 0; i < _items.length; i++)
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Column(children: [
                 Row(children: [
-                  Expanded(child: TextField(controller: _items[i].name, decoration: const InputDecoration(labelText: 'Naam', isDense: true))),
+                  Expanded(child: TextField(controller: _items[i].name, decoration: const InputDecoration(labelText: 'Name', isDense: true))),
                   IconButton(onPressed: () => setState(() => _items.removeAt(i)), icon: const Icon(Icons.close_rounded, color: C.faint)),
                 ]),
                 Wrap(spacing: 8, children: [
-                  _f(_items[i].price, '₹ daam'),
-                  _f(_items[i].milk, 'Doodh ml'),
-                  _f(_items[i].sugar, 'Chini g'),
-                  _f(_items[i].tea, 'Patti g'),
-                  _f(_items[i].share, 'Hissa %'),
+                  _f(_items[i].price, '₹ price'),
+                  _f(_items[i].milk, 'Milk ml'),
+                  _f(_items[i].sugar, 'Sugar g'),
+                  _f(_items[i].tea, 'Strip g'),
+                  _f(_items[i].share, 'Share %'),
                 ]),
               ]),
             ),
           TextButton.icon(
               onPressed: () => setState(() => _items.add(_Item(const {'name': '', 'price': 10, 'milk_ml': 50, 'sugar_g': 8, 'tea_g': 2.5, 'share': 10}))),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Aur item')),
+              label: const Text('More items')),
           Wrap(spacing: 12, children: [
-            _f(_other, 'Chai ke alawa %', w: 120),
+            _f(_other, '% other than tea', w: 120),
             _f(_cashPct, 'Cash %', w: 80),
             _f(_safety, 'Extra %', w: 80),
             _f(_packet, 'Packet ml', w: 90),
           ]),
-          TextField(controller: _planTime, decoration: const InputDecoration(labelText: 'Roz plan kab (HH:MM)')),
+          TextField(controller: _planTime, decoration: const InputDecoration(labelText: 'Daily plan time (HH:MM)')),
         ]),
       ),
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Saamaan kahan se', style: TextStyle(fontWeight: FontWeight.w800)),
+          const Text('Where to buy supplies', style: TextStyle(fontWeight: FontWeight.w800)),
           for (var i = 0; i < _sups.length; i++)
             Padding(
               padding: const EdgeInsets.only(top: 10),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Row(children: [
-                  Expanded(child: TextField(controller: _sups[i].name, decoration: const InputDecoration(labelText: 'Naam (Gopal doodhwala)', isDense: true))),
+                  Expanded(child: TextField(controller: _sups[i].name, decoration: const InputDecoration(labelText: 'Name (Gopal milkman)', isDense: true))),
                   IconButton(onPressed: () => setState(() => _sups.removeAt(i)), icon: const Icon(Icons.close_rounded, color: C.faint)),
                 ]),
                 Row(children: [
@@ -832,7 +832,7 @@ class _MenuTabState extends State<_MenuTab> {
                       decoration: const InputDecoration(labelText: 'Ya site (blinkit, jiomart)', isDense: true))),
                 ]),
                 Wrap(spacing: 6, children: [
-                  for (final it in const {'milk': 'Doodh', 'sugar': 'Chini', 'tea': 'Patti'}.entries)
+                  for (final it in const {'milk': 'Milk', 'sugar': 'Sugar', 'tea': 'Strip'}.entries)
                     FilterChip(
                       label: Text(it.value),
                       selected: _sups[i].items.contains(it.key),
@@ -841,7 +841,7 @@ class _MenuTabState extends State<_MenuTab> {
                 ]),
               ]),
             ),
-          TextButton.icon(onPressed: () => setState(() => _sups.add(_Sup(const {'items': ['milk']}))), icon: const Icon(Icons.add_rounded), label: const Text('Supplier jodo')),
+          TextButton.icon(onPressed: () => setState(() => _sups.add(_Sup(const {'items': ['milk']}))), icon: const Icon(Icons.add_rounded), label: const Text('Add supplier')),
         ]),
       ),
       const SizedBox(height: 12),
@@ -850,11 +850,11 @@ class _MenuTabState extends State<_MenuTab> {
           controller: _rules,
           minLines: 2,
           maxLines: 6,
-          decoration: const InputDecoration(labelText: 'Apne niyam (ek line mein ek)', hintText: 'Doodh 20 litre se zyada ek din mein nahi\nRavivar ko 30% zyada'),
+          decoration: const InputDecoration(labelText: 'Your own rules (one per line)', hintText: 'No more than 20 litres of milk in a day\n30% more on Sunday'),
         ),
       ),
       const SizedBox(height: 14),
-      GradientButton(label: 'Save karo', height: 50, onTap: _busy ? null : _save),
+      GradientButton(label: 'Save', height: 50, onTap: _busy ? null : _save),
     ]);
   }
 }

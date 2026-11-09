@@ -86,13 +86,13 @@ class _SeoScreenState extends State<SeoScreen> {
     };
     const labels = {
       'url': 'Website (example.in)',
-      'name': 'Business ka naam',
-      'city': 'Shehar',
+      'name': 'Business name',
+      'city': 'City',
       'phone': 'Phone',
       'street': 'Address',
       'pin': 'Pin code',
-      'hours': 'Samay (Mo-Sa 10:00-20:00)',
-      'services': 'Kya bechte / karte hain (comma se)',
+      'hours': 'Timings (Mo-Sa 10:00-20:00)',
+      'services': 'What you sell / do (comma separated)',
     };
     final ok = await showDialog<bool>(
       context: context,
@@ -143,7 +143,7 @@ class _SeoScreenState extends State<SeoScreen> {
         builder: (d, setS) => AlertDialog(
           title: Text(title),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(controller: t, maxLines: stars ? 3 : 1, decoration: InputDecoration(labelText: stars ? 'Review ka text' : 'Kis baare mein')),
+            TextField(controller: t, maxLines: stars ? 3 : 1, decoration: InputDecoration(labelText: stars ? 'Review text' : 'About what')),
             if (stars)
               Wrap(children: [
                 for (var i = 1; i <= 5; i++)
@@ -151,7 +151,7 @@ class _SeoScreenState extends State<SeoScreen> {
                       icon: Icon(i <= st ? Icons.star_rounded : Icons.star_border_rounded, color: C.warn), onPressed: () => setS(() => st = i)),
               ]),
           ]),
-          actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Draft banao'))],
+          actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Make draft'))],
         ),
       ),
     );
@@ -168,7 +168,7 @@ class _SeoScreenState extends State<SeoScreen> {
         content: SingleChildScrollView(child: TextField(controller: t, maxLines: null, style: const TextStyle(fontSize: 13))),
         actions: [
           TextButton(onPressed: () => Clipboard.setData(ClipboardData(text: t.text)), child: const Text('Copy')),
-          if (d['status'] != 'approved') TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, final')),
+          if (d['status'] != 'approved') TextButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, final')),
         ],
       ),
     );
@@ -176,7 +176,7 @@ class _SeoScreenState extends State<SeoScreen> {
     try {
       final r = await widget.app.api!.seoDraftOk(_s(d['id']), t.text);
       await Clipboard.setData(ClipboardData(text: _s(r['text'])));
-      if (mounted) _snack(context, '${_s(r['say'])} (copy ho gaya)');
+      if (mounted) _snack(context, '${_s(r['say'])} (copied)');
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -199,12 +199,12 @@ class _SeoScreenState extends State<SeoScreen> {
       padding: const EdgeInsets.only(top: 10),
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Mobile speed (asli graahak)', style: display(14)),
+          Text('Mobile speed (real customers)', style: display(14)),
           const SizedBox(height: 8),
           Row(children: [
-            one('lcp', 'LCP (2.5s tak)', lcp),
-            one('inp', 'INP (200ms tak)', m['inp_ms'] == null ? '-' : '${m['inp_ms']}ms'),
-            one('cls', 'CLS (0.1 tak)', m['cls'] == null ? '-' : '${m['cls']}'),
+            one('lcp', 'LCP (within 2.5s)', lcp),
+            one('inp', 'INP (within 200ms)', m['inp_ms'] == null ? '-' : '${m['inp_ms']}ms'),
+            one('cls', 'CLS (within 0.1)', m['cls'] == null ? '-' : '${m['cls']}'),
             Expanded(child: Column(children: [Text('${m['lab_score'] ?? '-'}', style: display(16)), const Text('lab', style: TextStyle(color: C.muted, fontSize: 11.5))])),
           ]),
           for (final f in _list(m['fixes']).take(3))
@@ -224,10 +224,10 @@ class _SeoScreenState extends State<SeoScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('Google Search Console', style: display(14)),
             const SizedBox(height: 4),
-            const Text('Google par kitne log aapko dhoondh rahe hain, kis shabd se, kis position par: sirf padhne ki permission.',
+            const Text('How many people look for you on Google, with which words, at which position: read-only permission.',
                 style: TextStyle(fontSize: 12.5, color: C.muted)),
             const SizedBox(height: 8),
-            GlassButton(label: 'Search Console jodiye', icon: Icons.link_rounded, onTap: g['can_link'] == true ? _connect : null),
+            GlassButton(label: 'Connect Search Console', icon: Icons.link_rounded, onTap: g['can_link'] == true ? _connect : null),
           ]),
         ),
       );
@@ -239,7 +239,7 @@ class _SeoScreenState extends State<SeoScreen> {
       child: Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
-            Expanded(child: Text('Google se (${_s(g['address'])})', style: display(14))),
+            Expanded(child: Text('From Google (${_s(g['address'])})', style: display(14))),
             TextButton(
               onPressed: _busy
                   ? null
@@ -247,11 +247,11 @@ class _SeoScreenState extends State<SeoScreen> {
                       final r = await _run('performance');
                       if (r != null && mounted) setState(() => _perf = r);
                     },
-              child: const Text('Taaza karo'),
+              child: const Text('Refresh'),
             ),
           ]),
           if (last != null)
-            Text('${last['clicks']} click · ${last['impressions']} baar dikhe · position ${last['position']} (${_s(last['start'])} - ${_s(last['end'])})',
+            Text('${last['clicks']} click · ${last['impressions']} impressions · position ${last['position']} (${_s(last['start'])} - ${_s(last['end'])})',
                 style: const TextStyle(fontSize: 13)),
           if (p != null)
             for (final o in _list(p['opportunities']).take(5))
@@ -266,7 +266,7 @@ class _SeoScreenState extends State<SeoScreen> {
     final site = _sum?['site'] as Map?;
     final tasks = _list(_sum?['top_tasks']);
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('SEO sahayak'), actions: [
+      appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('SEO assistant'), actions: [
         if (site != null)
           IconButton(icon: const Icon(Icons.table_view_rounded), tooltip: 'Report Excel', onPressed: _busy ? null : () => _run('report')),
       ]),
@@ -276,10 +276,10 @@ class _SeoScreenState extends State<SeoScreen> {
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
             if (!_loaded) const Center(child: CircularProgressIndicator()),
             if (_loaded && site == null) ...[
-              const Text('Apni website jodiye: Hoola har page jaanchega, speed dekhega, aur Google par aage aane ki fix list banayega.',
+              const Text('Connect your website: Hoola will check every page, test speed, and make a fix list to rank higher on Google.',
                   style: TextStyle(fontSize: 14, height: 1.35)),
               const SizedBox(height: 12),
-              GradientButton(label: 'Website jodiye', icon: Icons.language_rounded, onTap: _busy ? null : _site),
+              GradientButton(label: 'Connect website', icon: Icons.language_rounded, onTap: _busy ? null : _site),
             ],
             if (site != null) ...[
               Glass(
@@ -293,7 +293,7 @@ class _SeoScreenState extends State<SeoScreen> {
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(_s(site['name']).isEmpty ? _s(site['url']) : _s(site['name']), style: const TextStyle(fontWeight: FontWeight.w800)),
                       Text(_s(site['url']), style: const TextStyle(color: C.muted, fontSize: 12.5)),
-                      Text('${_sum?['open_tasks'] ?? 0} kaam baaki · ${_sum?['bad'] ?? 0} zaroori', style: const TextStyle(fontSize: 12.5)),
+                      Text('${_sum?['open_tasks'] ?? 0} tasks left · ${_sum?['bad'] ?? 0} important', style: const TextStyle(fontSize: 12.5)),
                     ]),
                   ),
                   IconButton(icon: const Icon(Icons.edit_rounded), onPressed: _busy ? null : _site),
@@ -301,19 +301,19 @@ class _SeoScreenState extends State<SeoScreen> {
               ),
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
-                GlassButton(label: 'Jaanch karo', icon: Icons.manage_search_rounded, onTap: _busy ? null : () => _run('audit')),
+                GlassButton(label: 'Check', icon: Icons.manage_search_rounded, onTap: _busy ? null : () => _run('audit')),
                 GlassButton(label: 'Speed', icon: Icons.speed_rounded, onTap: _busy ? null : () => _run('speed')),
                 GlassButton(label: 'Schema', icon: Icons.code_rounded, onTap: _busy ? null : () => _run('schema')),
-                GlassButton(label: 'Naya page plan', icon: Icons.article_rounded, onTap: _busy ? null : () => _ask('Kis kaam / shabd ke liye page?', 'keyword', 'brief')),
+                GlassButton(label: 'New page plan', icon: Icons.article_rounded, onTap: _busy ? null : () => _ask('A page for which job / word?', 'keyword', 'brief')),
                 GlassButton(label: 'Google post', icon: Icons.campaign_rounded, onTap: _busy ? null : () => _ask('Google profile post', 'topic', 'gbp_post')),
-                GlassButton(label: 'Review jawab', icon: Icons.reviews_rounded, onTap: _busy ? null : () => _ask('Review ka jawab', 'review', 'review_reply', stars: true)),
+                GlassButton(label: 'Review reply', icon: Icons.reviews_rounded, onTap: _busy ? null : () => _ask('Reply to review', 'review', 'review_reply', stars: true)),
               ]),
               if (_busy) const Padding(padding: EdgeInsets.only(top: 10), child: LinearProgressIndicator()),
               _cwv(),
               _gsc(),
               if (tasks.isNotEmpty) ...[
                 const SizedBox(height: 14),
-                Text('Fix list (pehle zaroori)', style: display(15)),
+                Text('Fix list (most important first)', style: display(15)),
                 const SizedBox(height: 6),
                 for (final t in tasks)
                   Padding(
@@ -329,7 +329,7 @@ class _SeoScreenState extends State<SeoScreen> {
                         ]),
                         Text(Uri.tryParse(_s(t['url']))?.path ?? '', style: const TextStyle(color: C.muted, fontSize: 11.5)),
                         const SizedBox(height: 4),
-                        Text('Kaise: ${_s(t['fix'])}', style: const TextStyle(fontSize: 12.5)),
+                        Text('How: ${_s(t['fix'])}', style: const TextStyle(fontSize: 12.5)),
                         Align(
                           alignment: Alignment.centerRight,
                           child: TextButton(
@@ -339,7 +339,7 @@ class _SeoScreenState extends State<SeoScreen> {
                                     await widget.app.api!.seoTask(_s(t['id']), 'done');
                                     await _load();
                                   },
-                            child: const Text('Ho gaya'),
+                            child: const Text('Done'),
                           ),
                         ),
                       ]),
@@ -361,7 +361,7 @@ class _SeoScreenState extends State<SeoScreen> {
                           const Icon(Icons.edit_note_rounded, color: C.accent),
                           const SizedBox(width: 8),
                           Expanded(child: Text(_s(d['title']), style: const TextStyle(fontWeight: FontWeight.w700))),
-                          Pill(d['status'] == 'approved' ? 'final' : 'haan baaki'),
+                          Pill(d['status'] == 'approved' ? 'final' : 'yes pending'),
                         ]),
                       ),
                     ),
@@ -370,8 +370,8 @@ class _SeoScreenState extends State<SeoScreen> {
             ],
             const SizedBox(height: 14),
             const Text(
-                'Hoola sirf aapki website aur Google ke official tools (Search Console, PageSpeed) dekhta hai. Website / Google profile par badlav '
-                'aap lagati hain, aapki haan ke baad. Backlink kharidna, nakli review, keyword bharna kabhi nahi. Ranking ki guarantee koi nahi de sakta.',
+                'Hoola looks only at your website and Google\'s official tools (Search Console, PageSpeed). Changes to the website / Google profile '
+                'you make yourself, after your yes. Never buying backlinks, fake reviews or keyword stuffing. No one can guarantee a ranking.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ]),
         ),
@@ -389,8 +389,8 @@ class SeoCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final text = switch (kind) {
-      'seo_update' => 'Website jaanch poori: score ${v['score'] ?? 0}/100, ${v['bad'] ?? 0} zaroori kaam',
-      'seo_draft' => '${_s(v['title'])}: final karne ke liye aapki haan',
+      'seo_update' => 'Website check complete: score ${v['score'] ?? 0}/100, ${v['bad'] ?? 0} important tasks',
+      'seo_draft' => '${_s(v['title'])}: your yes to finalise',
       _ => _s(v['text']),
     };
     return Press(
