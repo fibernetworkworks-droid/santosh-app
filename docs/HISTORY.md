@@ -1,3 +1,15 @@
+## v0.726.0 PAGE CARD NARROW — the page card stays clean when the side panel narrows the chat (9 Nov 2026; owner, screenshot: "CHECK WHEN SIDE SECTION WIDTH MOVES --- THE CARD GET MESSY FIX THIS")
+
+v0.725's page card used a VIEWPORT media query for its narrow layout, but opening the side panel narrows the chat column
+(~340 px) while the window stays wide - so Share / Open stayed on the right, the summary was squeezed into a 36 px
+column (one word a line) and the title shrank to 0 px (measured in a browser at 1180 px with the panel open, the same
+picture as her screenshot). FIX (the v0.719 composer pattern): `.hmpage` is a CSS container (`hpcard`); under 520 px
+the buttons take their own full-width row under the text, under 340 px the drawn picture hides and the padding
+tightens; the title wraps to two lines instead of an ellipsis that could reach zero; the pill wraps under it if needed.
+test_v0726_page_card_narrow.py (2): a browser walk at 1180 / 1280 / 1440 / 1700 px with the panel open, ready and
+building cards - nothing outside the card, title >= 80 px, text gets the card's width, buttons under the text when
+narrow; it FAILS on the v0.725 CSS (title 0, text 36 px).
+
 ## v0.725.0 PAGE CARD — the page card shows time, the real step, Stop, and a proper result (9 Nov 2026; owner, screenshot of "Build an interactive web UI · Page": "DONT HAVE A TIMING AND WORK IN PROGRESS ETC --- SHOW ME HERE A PREMIUM AND PERFECT CARD FOR THIS" -> preview https://claude.ai/artifact/NYDA8Fpm1LEbYQr5Sa4HaP -> "GO")
 
 The card a page (artifact_make) draws in the chat was a title + 'Page' tag while it was made: no clock, no step, nothing

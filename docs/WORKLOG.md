@@ -2553,3 +2553,10 @@ Task ID: v0.725.0 PAGE CARD
 Ask: the page card had no timing / progress - premium card (preview approved, GO).
 Built: builder steps + start + duration + Stop + plain failure reasons; console pageCard in all three states; browser walk.
 Deploy: the usual vps-ops ritual; healthz must grep 0.725.0; hard refresh the console.
+
+
+---
+Task ID: v0.726.0 PAGE CARD NARROW
+Ask: page card messy when the side panel narrows the chat.
+Built: card sizes by its own width (container query); browser test at 4 widths that fails on the old CSS.
+Deploy: the usual vps-ops ritual; healthz must grep 0.726.0; hard refresh the console.

@@ -134,4 +134,4 @@ def test_the_card_in_a_real_browser(arena_server):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.725.0")
+    assert APP_VERSION.split(".")[1] >= "725"
