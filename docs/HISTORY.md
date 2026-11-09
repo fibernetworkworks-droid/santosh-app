@@ -23106,3 +23106,27 @@ Tests: test_v0709_plan_shape.py (7, incl. a browser walk of the plan document); 
 test_v0407 / test_v0414 moved to the 13 modules.
 NOT VERIFIED on her server with real Opus: the depth of a real plan, the time the deeper call takes (two Opus rounds
 can take a few minutes - the Studio's pending workspace shows it), and the first real portal's looks.
+
+## v0.710.0 ARCHITECT OPUS
+
+Owner after v0.709: "STILL SAME. CHECK THE LOGS WHY FOR ANY PROMPT GIVE THE LANDING PAGE PLAN".
+The vps-ops logs job could not be started from this session (workflow dispatch 403), so the live state was read from
+the public healthz instead: version 0.709.0 (deployed), `chat_brain: glm:z-ai/glm-5.3-flash`.
+
+ROOT CAUSE (configuration, not the plan code): with CLAUDE_ALL_GLM on, `usage.install`'s SDK door answers EVERY
+non-streamed Claude call from GLM-5.3-Flash (45 s request clock); when GLM fails the call falls to Claude but
+`claude_one_model` (default claude-haiku-5-5, v0.631 SAB HAIKU) rewrites it to Haiku. The architect's plan is a
+non-streamed 16k call, so it was ALWAYS answered by GLM-Flash or Haiku - never the Opus the Website Sahayak is built
+for - and those return the same generic Home / About / Services / Contact set whatever the ask. v0.709's deeper prompt
+and depth checks could not help a model that does not follow them.
+
+FIX: `architect._ask` wraps the three plan calls (draft, the deepen round, revise) in `glmdoor.CLAUDE_ONLY` (new
+context flag: the GLM door stands aside) + `usage.ONE_MODEL_BYPASS` (the existing flag hard-check and research review
+use), so the plan runs on `site_model` / Opus; switch `architect_opus` (default on; off = the old path). One log line per
+plan: `architect first|final: kind=.. size=.. pages=N (slugs) sections=N flows=N checks=p/t gaps=..`, so the next logs
+answer the question directly. Cost: one Opus plan call (+ at most one deepen) per website plan.
+
+LEFT AS IS, said plainly: the section writers / looks still follow claude_one_model (Haiku) - the STRUCTURE now comes
+from the Opus plan, but the section copy is Haiku's; moving them to Opus is her cost decision.
+Tests: test_v0709_plan_shape.py grows test_the_architect_plan_never_rides_glm_or_the_one_model. NOT VERIFIED on her
+server yet: the first plan after deploy - read the 'architect final' log line.

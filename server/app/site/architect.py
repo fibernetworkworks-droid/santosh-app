@@ -142,6 +142,38 @@ TIER_NOTE = {"simple": "a small site: 3-6 public pages, 3-5 sections each, 4-6 s
                         "approvals, payments + notifications, quality on every axis, 2-4 phases, the main risks."}
 
 
+def _ask(system: str, prompt: str, max_tokens: int, kind: str) -> dict[str, Any]:
+    """v0.710 ROOT CAUSE of 'every plan is a landing page' on her server: with CLAUDE_ALL_GLM on, the architect's call
+    was answered by GLM-5.3-Flash at the SDK door (a 45 s clock for a 10k-token plan), and any fallback ran on Haiku
+    (claude_one_model) - the smallest models, which give back the same generic Home / About / Services / Contact set
+    for any ask. The architect's plan is ONE call per website and it decides everything after it, so it runs on the
+    Website Sahayak's own Opus (`architect_opus`, default on): the GLM door and the one-model rule stand aside for it."""
+    from ..config import get_settings
+    if not bool(getattr(get_settings(), "architect_opus", True)):
+        return AI.ask_json(system, prompt, max_tokens, kind)
+    from .. import glmdoor
+    from .. import usage as U
+    a, b = glmdoor.CLAUDE_ONLY.set(True), U.ONE_MODEL_BYPASS.set(True)
+    try:
+        return AI.ask_json(system, prompt, max_tokens, kind)
+    finally:
+        glmdoor.CLAUDE_ONLY.reset(a)
+        U.ONE_MODEL_BYPASS.reset(b)
+
+
+def _plan_log(spec: dict[str, Any], stage: str) -> None:
+    """One line per plan so her server's log says what the architect really gave back."""
+    try:
+        d = depth(spec)
+        pages = spec.get("pages") or []
+        log.info("architect %s: kind=%s size=%s pages=%d (%s) sections=%d flows=%d checks=%d/%d gaps=%s", stage,
+                 spec.get("kind"), spec.get("complexity"), len(pages), ", ".join(p["slug"] for p in pages[:12]),
+                 sum(len(p.get("sections") or []) for p in pages), len(spec.get("flows") or []),
+                 d["passed"], d["total"], "; ".join(d["gaps"][:4]) or "-")
+    except Exception:                            # noqa: BLE001 - a log line never breaks a plan
+        log.debug("architect plan log", exc_info=True)
+
+
 def _system() -> str:
     from . import sitemap as SM
     return ARCH_SYSTEM.replace("@@SECTIONS@@", SM.section_lines())
@@ -278,9 +310,10 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool =
     if bad:
         raise ArchError(bad)
     tier = size(words)
-    raw = AI.ask_json(_system(), json.dumps({"her_words": words, "size_by_code": tier, "size_means": TIER_NOTE[tier]},
-                                            ensure_ascii=False), 16000, "site_art")
+    raw = _ask(_system(), json.dumps({"her_words": words, "size_by_code": tier, "size_means": TIER_NOTE[tier]},
+                                     ensure_ascii=False), 16000, "site_art")
     spec = clean(raw, words, tier)
+    _plan_log(spec, "first")
     if not spec["pages"]:
         raise ArchError("Plan samajh nahi aaya; thoda aur bataiye (kaun use karega, kya karega).", 502)
     spec = _deepen(spec, words, tier)
@@ -347,7 +380,7 @@ def _deepen(spec: dict[str, Any], words: str, tier: str) -> dict[str, Any]:
     gaps = depth(spec)["gaps"]
     if gaps:
         try:
-            raw = AI.ask_json(_system() + "\n\n" + DEEPEN,
+            raw = _ask(_system() + "\n\n" + DEEPEN,
                               json.dumps({"her_words": words, "size_by_code": spec.get("complexity") or tier,
                                           "size_means": TIER_NOTE[spec.get("complexity") or tier], "GAPS": gaps,
                                           "plan": {k: v for k, v in spec.items() if k not in ("words", "depth")}},
@@ -358,6 +391,7 @@ def _deepen(spec: dict[str, Any], words: str, tier: str) -> dict[str, Any]:
         except Exception as e:                   # noqa: BLE001 - the first plan still stands; its gaps are shown
             log.info("architect deepen round failed: %s", e)
     spec["depth"] = depth(spec)
+    _plan_log(spec, "final")
     return spec
 
 
@@ -548,7 +582,7 @@ def revise(tenant: str, ref: str, words: str, logic_ask=None) -> dict[str, Any]:
     p = _project(tenant, ref)
     a = _j(p.plan, {}).get("architect") or {}
     old = a.get("spec") or {}
-    raw = AI.ask_json(_system() + "\n\n" + REVISE,
+    raw = _ask(_system() + "\n\n" + REVISE,
                       json.dumps({"current_spec": {k: v for k, v in old.items() if k not in ("words", "depth", "changes")},
                                   "her_change": words}, ensure_ascii=False), 16000, "site_edit")
     new = clean(raw, old.get("words", ""), old.get("complexity") or size(old.get("words", "")))

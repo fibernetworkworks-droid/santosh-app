@@ -50,8 +50,16 @@ def _ready(b: str) -> bool:
     return bool(st.omniroute_url) if b == "omniroute" else bool(st.glm_api_key)
 
 
+import contextvars as _cv
+# v0.710 a call that must be Claude's own (the website architect's plan): the GLM door stands aside for it
+CLAUDE_ONLY: "_cv.ContextVar[bool]" = _cv.ContextVar("hoola_claude_only", default=False)
+
+
 def active() -> bool:
     try:
+        if CLAUDE_ONLY.get():
+            STATS["claude_only"] = STATS.get("claude_only", 0) + 1
+            return False
         st = _settings()
         if not getattr(st, "claude_all_glm", False):
             return False

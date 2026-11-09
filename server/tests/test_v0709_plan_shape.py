@@ -216,3 +216,38 @@ def test_the_plan_document_in_a_browser(deep_env, arena_server):
         pg.screenshot(path=f"{os.environ['APP_SHOTS']}/plan-doc.png", full_page=False)
     ctx.close()
     assert not errs, errs
+
+
+def test_the_architect_plan_never_rides_glm_or_the_one_model(monkeypatch):
+    """v0.710: her live server answered every Claude call from GLM-5.3-Flash (CLAUDE_ALL_GLM) and moved every
+    fallback to Haiku (claude_one_model) - the architect's plan came from the smallest models. It is Opus's now."""
+    from app import glmdoor
+    from app import usage as U
+    from app.config import get_settings
+    from app.site import ai as AI
+    from app.site import architect as AR
+    seen = []
+    monkeypatch.setattr(AI, "ask_json", lambda *a, **k: seen.append((glmdoor.CLAUDE_ONLY.get(), U.ONE_MODEL_BYPASS.get())) or {})
+    AR._ask("s", "p", 100, "site_art")
+    assert seen == [(True, True)]
+    assert glmdoor.CLAUDE_ONLY.get() is False and U.ONE_MODEL_BYPASS.get() is False        # reset after the call
+    st = get_settings()
+    monkeypatch.setattr(st, "claude_all_glm", True)
+    monkeypatch.setattr(st, "glm_api_key", "x")
+    t = glmdoor.CLAUDE_ONLY.set(True)
+    try:
+        assert glmdoor.active() is False                                                      # the door stands aside
+    finally:
+        glmdoor.CLAUDE_ONLY.reset(t)
+    assert U.one_model({"model": "claude-opus-5-5"})["model"] == st.claude_one_model or not st.claude_one_model
+    tb = U.ONE_MODEL_BYPASS.set(True)
+    try:
+        assert U.one_model({"model": "claude-opus-5-5"})["model"] == "claude-opus-5-5"
+    finally:
+        U.ONE_MODEL_BYPASS.reset(tb)
+    monkeypatch.setattr(st, "architect_opus", False)
+    seen.clear()
+    AR._ask("s", "p", 100, "site_art")
+    assert seen == [(False, False)]                                                          # her switch off = old path
+    src = __import__("inspect").getsource(AR)
+    assert src.count("_ask(_system()") == 3 and "AI.ask_json(_system()" not in src             # draft, deepen, revise
