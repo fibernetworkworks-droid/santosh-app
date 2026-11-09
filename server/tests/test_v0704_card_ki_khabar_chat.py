@@ -42,11 +42,11 @@ def test_chat_turn_hears_her_tap(env):
     _chat("c2")
     before = datetime.now(timezone.utc) - timedelta(seconds=5)
     bus.publish("c2", "email_draft", _draft("pending"))
-    blk = events.card_news_block(T, before)
-    assert "STILL WAITING" in blk and "Kal meeting" in blk
+    blk = events.card_news_block(T, before, "kaunse cards pending hain?")
+    assert "still waiting" in blk and "Kal meeting" in blk
     bus.publish("c2", "email_sent", _draft("sent"))
-    blk = events.card_news_block(T, before)
-    assert "ANSWERED SINCE YOUR LAST REPLY" in blk and "SENT" in blk and "STILL WAITING" not in blk
+    blk = events.card_news_block(T, before, "kaunse cards pending hain?")
+    assert "answered since your last reply" in blk and "SENT" in blk and "still waiting" not in blk
     # an answer older than the last reply is old news
     assert events.card_news_block(T, datetime.now(timezone.utc) + timedelta(seconds=5)) == ""
 
@@ -60,6 +60,18 @@ def test_approval_and_cancel(env):
     bus.publish("c3", "bazar_approval", {"id": "ap1", "title": "Swiggy order", "status": "rejected"})
     blk = events.card_news_block(T, before)
     assert "Swiggy order" in blk and "REJECTED" in blk
+
+
+def test_a_normal_ask_gets_no_waiting_list(env):
+    """v0.709 her 9 Nov ask ('AI agent jo YouTube video dekh ke seekhe...') was answered with 'Good morning. Quick
+    state: 4 site spec cards waiting...' - the waiting list rode EVERY turn. Now only when she asks about pending work."""
+    from app import events
+    from app.events import bus
+    _chat("c5")
+    bus.publish("c5", "email_draft", _draft("pending"))
+    ask = "AI agent jo YouTube video dekh ke form bharna seekhe aur yaad rakhe"
+    assert events.card_news_block(T, None, ask) == ""
+    assert "Kal meeting" in events.card_news_block(T, None, "kya kya baaki hai?")
 
 
 def test_chat_memory_parallel_and_wired():

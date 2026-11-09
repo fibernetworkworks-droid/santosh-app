@@ -27,7 +27,7 @@ def _login(c, base, email, pw):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.708.0"
+    assert APP_VERSION == "0.711.0"
 
 
 def test_link_moves_everything_and_old_logins_keep_working(app_site, monkeypatch):
@@ -172,7 +172,7 @@ def test_architect_builds_a_school_portal_from_one_line(arch_env):
     assert c.post("/api/site-architect", json={"words": "x"}).status_code == 400
     card = c.post("/api/site-architect", json={"words": "hamare school ka portal - admission, fees, chhutti ki arzi, notices"}).json()
     mods = {m["key"]: m for m in card["modules"]}
-    assert list(mods) == ["stories", "pages", "users", "data", "logic", "payments", "notifications", "integrations", "features"]   # v0.414
+    assert list(mods) == ["stories", "pages", "users", "flows", "data", "logic", "payments", "notifications", "integrations", "features", "quality", "phases", "risks"]   # v0.414
     assert card["data_ready"] and card["name"] == "Gyan Vidya Mandir"
     assert "Admissions" in mods["pages"]["lines"][0] and any("Leave requests" in x for x in mods["pages"]["lines"])
     assert len([x for x in mods["users"]["lines"] if x.startswith("Parent")]) == 1               # duplicate role dropped

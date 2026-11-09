@@ -407,7 +407,7 @@
         go('#/plan/' + enc(S(c.id)));
         return;
       }
-      const body = {brief: text, conversation_id: conv};
+      const body = {brief: text, conversation_id: conv, deep: true};   // v0.708 a system ask is planned deep first
       if (TPLSEL && text.includes('[Hoola template #')) Object.assign(body, {field: TPLSEL.field, goal: TPLSEL.goal, style: TPLSEL.style});   // v0.686 the template's library card
       TPLSEL = null;
       const v = await api('POST', '/api/sites', body);
@@ -485,14 +485,37 @@
     const m = $('#wsPlanMsgs'); if (m) m.scrollTop = m.scrollHeight;
   }
 
+  /* v0.708 the plan as a real architecture document: every page with its own sections, every journey step by step */
+  const FOR = {public: 'Everyone', member: 'After sign-in', staff: 'Staff'};
+  function depthLine(c) {
+    const d = M(c.depth); if (!Number(d.total)) return '';
+    const kind = S(c.kind).replace(/_/g, ' ');
+    return `<section class="depth" data-depth><p class="sm"><b>${esc(kind ? kind[0].toUpperCase() + kind.slice(1) : 'Website')}</b> · ${esc(S(c.complexity) || 'simple')} plan · ${esc(S(d.passed))}/${esc(S(d.total))} architecture checks passed</p>
+      ${L(d.gaps).length ? `<ul class="gaps">${L(d.gaps).map(x => `<li>Still thin: ${esc(S(x))}</li>`).join('')}</ul>` : ''}</section>`;
+  }
+  function modBody(m) {
+    if (S(m.key) === 'pages' && L(m.items).length) {
+      return `<ul>${L(m.lines).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul>
+        <div class="pgs">${L(m.items).map(x => `<div class="pg" data-page><div class="pgh"><b>${esc(S(x.title))}</b>${pill(FOR[S(x.for)] || 'Everyone', S(x.for) === 'public' ? '' : 'v')}</div>
+          ${x.sub ? `<p class="sm mut">${esc(S(x.sub))}</p>` : ''}
+          ${L(x.lines).length ? `<ol class="secs">${L(x.lines).map(y => `<li>${esc(S(y))}</li>`).join('')}</ol>` : ''}</div>`).join('')}</div>`;
+    }
+    if (S(m.key) === 'flows' && L(m.items).length) {
+      return `<div class="pgs">${L(m.items).map(x => `<div class="pg" data-flow><div class="pgh"><b>${esc(S(x.title))}</b>${pill(S(x.sub), '')}</div>
+        <ol class="secs">${L(x.steps).map(y => `<li>${esc(S(y))}</li>`).join('')}</ol></div>`).join('')}</div>`;
+    }
+    return `<ul>${L(m.lines).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul>`;
+  }
+
   function planDoc(c, words) {
     const mods = L(c.modules);
     return `<article class="doc">
       <div>${pill(`Plan ${S(c.number)}`, '')}<h2 style="margin-top:10px">${esc(S(c.name) || 'Your website')}</h2></div>
       ${words ? `<p class="quote">"${esc(words)}"</p>` : ''}
       ${c.summary ? `<section><h3>What I will build</h3><p>${esc(S(c.summary))}</p></section>` : ''}
-      ${mods.map(m => `<section><h3>${esc(S(m.title))}${m.ready === false ? ` ${pill('Needs a fix', 'warn')}` : ''}</h3>
-        <ul>${L(m.lines).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul></section>`).join('')}
+      ${depthLine(c)}
+      ${mods.map(m => `<section data-mod="${esc(S(m.key))}"><h3>${esc(S(m.title))}${m.ready === false ? ` ${pill('Needs a fix', 'warn')}` : ''}</h3>
+        ${modBody(m)}</section>`).join('')}
       ${L(c.warnings).length ? `<section><h3>Worth checking</h3><ul>${L(c.warnings).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul></section>` : ''}
       ${L(c.questions).length ? `<section><h3>Open questions</h3><ul>${L(c.questions).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul></section>` : ''}
       <div class="dfoot"><span class="mut sm sp">Next: three complete looks of this whole site to click through. Only your pick is built.</span>

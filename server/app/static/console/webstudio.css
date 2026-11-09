@@ -470,3 +470,13 @@ dialog.tpld:not([open]){display:none}
 .acts .tick.off,.tick.off{background:transparent;border:1.5px solid var(--hair2)}
 .comp[aria-disabled=true]{opacity:.6}
 @media (prefers-reduced-motion:reduce){.home,.wsp{animation:none}.doc.skel .sk{animation:none}}
+
+/* v0.708 the plan document: pages with their sections, journeys step by step, the depth line */
+.doc .depth{border:1px solid var(--line);border-radius:12px;padding:10px 14px;background:var(--sunk,transparent)}
+.doc .depth .gaps{margin:6px 0 0;padding-left:18px;color:var(--mut);font-size:13px}
+.doc .pgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;margin-top:10px}
+.doc .pg{border:1px solid var(--line);border-radius:12px;padding:10px 12px;min-width:0}
+.doc .pgh{display:flex;gap:8px;align-items:center;justify-content:space-between}
+.doc .pgh b{overflow-wrap:anywhere}
+.doc .secs{margin:6px 0 0;padding-left:18px;font-size:13px;color:var(--lit,inherit)}
+.doc .secs li{margin:2px 0;overflow-wrap:anywhere}

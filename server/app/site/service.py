@@ -470,7 +470,10 @@ def brand_name(brief: str, field_label: str = "", city: str = "") -> dict[str, A
 
 
 def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = "", goal: str = "", style: str = "",
-        answers: dict[str, Any] | None = None, client: str = "", staff: str = "", pages: int = 0) -> dict[str, Any]:
+        answers: dict[str, Any] | None = None, client: str = "", staff: str = "", pages: int = 0,
+        shape=None) -> dict[str, Any]:
+    """shape(br, base_plan) -> plan: v0.708 the Architect's approved plan gives the site its pages + sections (the
+    library's page set is only the base for legal pages / CTA / pages the plan left without sections)."""
     brief = _tidy(brief, 2000)
     if not brief and not field:
         raise SiteError("Kis cheez ki website? Do-teen shabd kaafi hain, jaise 'mithai dukaan ki website'.")
@@ -501,6 +504,8 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         if k in ("name", "phone", "whatsapp", "email", "address", "city", "hours", "tagline", "about") and v:
             facts[k] = _tidy(v, 400)
     plan = make_plan(br, facts)
+    if shape is not None:
+        plan = shape(br, plan)
     qs = missing_questions(facts, br)
     lang = (facts.get("language") or "").lower()
     lang = {"hinglish": "hinglish", "hindi": "hi", "hi": "hi", "marathi": "mr", "mr": "mr", "english": "en", "en": "en"}.get(lang, "en")
@@ -517,6 +522,9 @@ def new(tenant: str, brief: str, conv: str = "", name: str = "", field: str = ""
         s.expunge(r)
     L.learn(fid, "goal", [g])
     want = int(pages or 0) or SM.wanted(brief)          # v0.315 a big site: Opus plans the whole site map first
+    if shape is not None:                              # v0.708 the plan already has its pages: grow only past them
+        designed = SM.counts(plan)["designed"]
+        want = int(pages or 0) if int(pages or 0) >= 10 and int(pages or 0) > designed + 3 else 0
     if want >= 10:
         r = _sitemap_begin(r, want)
     _emit(r, push=True)
@@ -691,7 +699,9 @@ def sitemap_job(site_id: str, want: int = 25, words: str = "") -> None:
         current = _j(r.plan, {})
         base = make_plan(br, _j(r.facts, {}))
         plan = SM.plan_site(br, _j(r.facts, {}), (words + "\n" + r.brief).strip(), want, base,
-                            current if current.get("big") else None)
+                            current if (current.get("big") or current.get("spec")) else None)
+        if current.get("spec"):
+            plan["spec"] = current["spec"]
     except Exception as e:
         log.exception("site map failed")
         r = _save(site_id, stage="plan", error=_tidy(f"Site map nahi ban paya: {e}", 300))
@@ -1179,13 +1189,49 @@ def _lottie_line(r: Site) -> str:
     return ("\nHER ANIMATIONS (use with data-hoola-lottie): " + ", ".join(mine)) if mine else ""
 
 
+APP_SITE_KINDS = ("web_app", "portal", "marketplace")
+_LIB_ONLY = ("Pages: ", "Home sections: ", "Hero: ", "What customers search: ")
+
+
+def brief_text(br: dict[str, Any], plan: dict[str, Any]) -> str:
+    """v0.708 the brief every writer reads. A site built from the Architect's plan drops the library's own page list,
+    home sections and hero (they described a generic site of this business type) and carries THE PLAN instead: what
+    the site is, who uses it, every page with its purpose, the logged-in screens and the journeys."""
+    sp = plan.get("spec") if isinstance(plan.get("spec"), dict) else None
+    if not sp:
+        return br["text"]
+    lines = [x for x in br["text"].split("\n") if not x.startswith(_LIB_ONLY)]
+    kind = sp.get("kind") or "website"
+    pages = [p for p in plan.get("pages", []) if p["slug"] not in B.LEGAL_PAGES and not p.get("template_of")]
+    lines += [f"THE APPROVED PLAN (her architect's plan; follow its structure exactly): a {kind.replace('_', ' ')} "
+              f"({sp.get('complexity') or 'simple'})" + (" - NOT a marketing landing page: the home is the front door of the "
+                                                         "system (what it is, sign-in, each user's main actions)"
+                                                         if kind in APP_SITE_KINDS else "") + f". {sp.get('summary') or ''}",
+              "Who uses it: " + "; ".join(sp.get("roles") or []),
+              "Pages: " + "; ".join(f"{p['title']} ({p.get('why') or ''}): " + ", ".join(
+                  x.get("label") or x["type"] for x in p.get("sections") or []) for p in pages)]
+    if sp.get("app_pages"):
+        lines.append("Inside the app after sign-in (Hoola's app area - account / admin): " + "; ".join(
+            f"{x['title']} ({'staff' if x['for'] == 'staff' else 'member'}): {x.get('why') or ''}" for x in sp["app_pages"]))
+    if sp.get("flows"):
+        lines.append("Main journeys: " + " | ".join(sp["flows"][:8]))
+    return "\n".join(lines)
+
+
+def _home_hero(plan: dict[str, Any]) -> str:
+    if not plan.get("spec"):
+        return ""
+    home = next((p for p in plan.get("pages", []) if p["slug"] == "home"), {})
+    return next((x.get("design") or "" for x in home.get("sections") or [] if x["type"] == "hero"), "")
+
+
 def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], extra: str = "") -> str:
     br = L.brief(r.field, r.goal, r.style)
     tk = _j(r.look, {}).get("tokens") or {}
     plan = _j(r.plan, {})
     page = next((p for p in plan.get("pages", []) if p["slug"] == slug), {"title": slug, "why": ""})
     return "\n".join([
-        br["text"],
+        brief_text(br, plan),
         f"\nTHIS PAGE: {page['title']} ({page.get('why', '')}). THIS SECTION: {T.label_of(s)} "
         f"(type {s['type']}), design: {s.get('design')}. SECTION_ID: {sec_id(slug, s['type'])}.",
         "HEADING: this section is the page's ONLY <h1>." if s["type"] == "hero" else "HEADING: use <h2>, never <h1>.",
@@ -1211,7 +1257,7 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
 def _big_lines(plan: dict[str, Any], page: dict[str, Any]) -> str:
     """v0.315 a big site: where this page sits, the pages it may link to (hrefs that work from it), and for a collection
     template the placeholders every item fills."""
-    if not plan.get("big"):
+    if not (plan.get("big") or plan.get("spec")):      # v0.708 a planned site links its own pages too
         return ""
     slug = page.get("slug", "")
     depth = 2 if page.get("template_of") else (0 if slug == "home" else 1)
@@ -1311,8 +1357,10 @@ def _look_sections(r: Site) -> list[dict[str, Any]]:
     """v0.292 the home sections a look shows: the hero + the next ones (SITE_LOOK_SECTIONS), so she chooses from real
     page tops, not from a hero alone."""
     n = max(1, min(4, int(getattr(_settings(), "site_look_sections", 3) or 1)))
-    home = next((p for p in _j(r.plan, {}).get("pages", []) if p["slug"] == "home"), {"sections": []})
-    return [s for s in home.get("sections", []) if s["type"] != "hero" and s["type"] in T.SECTIONS][:n - 1]
+    plan = _j(r.plan, {})
+    home = next((p for p in plan.get("pages", []) if p["slug"] == "home"), {"sections": []})
+    ok = (lambda t: T.is_section(t)) if plan.get("spec") else (lambda t: t in T.SECTIONS)   # v0.708 the plan's own customs
+    return [s for s in home.get("sections", []) if s["type"] != "hero" and ok(s["type"])][:n - 1]
 
 
 def _in_ctx(fn):
@@ -1357,7 +1405,8 @@ def _make_looks(r: Site) -> None:
     _work(r, "start", "3 looks soch raha hoon", f"{len(styles)} design ek saath")
 
     def dna_of(i: int, siblings: list) -> dict[str, Any] | None:
-        return Q.make_dna(briefs[i]["text"], styles[i], _j(r.plan, {}), _facts_text(facts), r.brief or "", siblings)
+        return Q.make_dna(brief_text(briefs[i], _j(r.plan, {})), styles[i], _j(r.plan, {}), _facts_text(facts),
+                          r.brief or "", siblings)
 
     # wave 1: pictures + art directions at the same time
     with ThreadPoolExecutor(max_workers=len(styles) + 1, thread_name_prefix=f"look-{r.id[:6]}") as ex:
@@ -1384,7 +1433,8 @@ def _make_looks(r: Site) -> None:
     _work(r, "start", "3 looks ban rahe hain", f"{len(styles) * (1 + len(more))} hisse ek saath", act=False)
 
     # wave 2: every look's hero + page-top sections at the same time
-    jobs = [(i, {"type": "hero", "design": briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]}, True)
+    hero_d = _home_hero(_j(r.plan, {}))       # v0.708 the plan's own front door, not the library's marketing hero
+    jobs = [(i, {"type": "hero", "design": hero_d or briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]}, True)
             for i in range(len(styles))] + [(i, s, False) for i in range(len(styles)) for s in more]
     secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
     cnt_lock, cnt = threading.Lock(), {"n": 0}
@@ -1423,7 +1473,8 @@ def _make_looks(r: Site) -> None:
     # wave 3: assemble + screenshots of the 3 looks at the same time
     def shoot(i: int) -> dict[str, Any]:
         mini_plan = {"pages": [{"slug": "home", "title": "Home", "sections": [{"type": "hero"}] + [
-            {"type": s["type"]} for s in more if sec_key("home", s["type"]) in secs[i]]}], "cta": _j(r.plan, {}).get("cta")}
+            {"type": s["type"], "label": s.get("label") or T.label_of(s["type"])} for s in more
+            if sec_key("home", s["type"]) in secs[i]]}], "cta": _j(r.plan, {}).get("cta")}
         ctx = _ctx(r)
         ctx["tokens"], ctx["plan"], ctx["alts"], ctx["blog"] = toks[i], mini_plan, [], []
         out = dirs[i] / "site"
@@ -1749,7 +1800,7 @@ def _ensure_kit(r: Site) -> Site:
         return r
     _work(r, "start", "Design kit bana raha hoon", "buttons, cards, headings - har page ek jaisa")
     try:
-        kit = K.make(look["tokens"], look.get("dna"), r.style, L.brief(r.field, r.goal, r.style)["text"])
+        kit = K.make(look["tokens"], look.get("dna"), r.style, brief_text(L.brief(r.field, r.goal, r.style), _j(r.plan, {})))
     except Exception:
         log.info("design kit skipped", exc_info=True)
         kit = None
@@ -2399,7 +2450,7 @@ def _ensure_pictures(r: Site) -> int:
     _work(r, "start", "Tasveeren bana raha hoon", f"{need} photos is business ke liye")
     br = L.brief(r.field, r.goal, r.style)
     try:
-        shots = P.plan_shots(br["text"], r.style, _facts_text(_j(r.facts, {})), r.brief or "", need,
+        shots = P.plan_shots(brief_text(br, _j(r.plan, {})), r.style, _facts_text(_j(r.facts, {})), r.brief or "", need,
                              {p["name"] for p in have})
     except Exception as e:
         log.info("shot list failed: %s", e)

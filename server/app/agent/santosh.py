@@ -1454,7 +1454,7 @@ async def _chat_memory(tenant_id: str, conversation_id: str, user_text: str, set
     from .. import coder as _coder
 
     def _cards():
-        return _ev.card_news_block(tenant_id, _last_reply_at(conversation_id))
+        return _ev.card_news_block(tenant_id, _last_reply_at(conversation_id), user_text or "")
 
     parts = [("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)),
              ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
