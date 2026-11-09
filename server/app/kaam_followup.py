@@ -167,6 +167,18 @@ def _wake_text(r: KaamFollowup) -> str:
                 f"se likho (research_run dobara mat chalao): har number uske note ke source ke saath [n] aur date ke saath, jo confirm nahi hua "
                 f"woh alag section mein 'jo confirm nahi ho paya', aur sources ki list. Uski bhasha mein likho. Lamba ya file maangi ho to "
                 f"research_document tool se PDF / Word banao (uske liye apni final report `report` mein do) aur chat mein saar + file do.\n</research_report_due>")
+    if r.kind == "agent_team" and r.state in ("done", "failed"):
+        # v0.722 JAWAB HI JAWAB: a background crew's deliverable (up to 24k chars, AgentTeam.result) never reached the chat -
+        # the follow-up carried a 400-char snippet + "1-3 lines", so her question ("5 million dollar AI SaaS idea dhundo")
+        # got a status survey of her whole desk and "the result should be in your chat above" instead of the answer
+        tid = r.key.split(":", 1)[-1]
+        return (f"[Santosh worker update, not the user] <team_result_due team=\"{tid}\">\nUski di hui team ka kaam "
+                f"{STATE_WORD.get(r.state, r.state)} ({r.label} {r.title}).".replace("( ", "(") + (f"\nVivaran: {r.detail}" if r.detail else "") + f"\nPehle agent_status tool se action=check, id={tid} lo - usme "
+                f"team ke deliverables POORE hain. Ab unhi se USKE SAWAAL KA ASLI JAWAB yahin chat mein likho - poora, "
+                f"saaf, uski bhasha mein (jitna sawaal maangta hai utna; teen idea maange the to teeno, har ek ke saath "
+                f"zaroori baatein). Yahi is chat ka jawab hai: doosre kaam / projects / cards ki list mat do, kaam_status "
+                f"mat chalao, 'jawab upar hai' mat likho. Jo deliverables mein nahi hai woh apne se mat jodo; kuch adhura "
+                f"raha to ek line mein saaf bata do.\n</team_result_due>")
     head = f"{r.label} {r.title}".strip()
     digest = f"Kaam: {head}\nNatija: {STATE_WORD.get(r.state, r.state)}"
     if r.detail:
@@ -179,7 +191,8 @@ def _wake_text(r: KaamFollowup) -> str:
             "to thodi khushi awaaz mein, adhura ya galat to dheemi aur seedhi). Agar natija adhura "
             "ya galat lag raha hai, ya usme jo bataya gaya usse zyada kaam baaki hai, to tools se haalat check kar ke "
             "sahi jaankari do (jo tools dikhe unse; jo nahi dikhe tool_search se lao). Jo pata hai wahi bolo, kuch "
-            "apne aap se mat jodo.")
+            "apne aap se mat jodo. Sirf ISI kaam ki baat karo - doosre kaam / projects / cards ki list mat do. "
+            "'Natija upar chat mein hai' tabhi likho jab woh sach mein is chat mein upar likha ho.")
 
 
 async def _wake_turn(r: KaamFollowup, settings) -> bool:

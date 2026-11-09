@@ -29,7 +29,10 @@ async def kaam_status(ctx: Ctx, q: str = "", action: str = "status", **_):
         return await asyncio.to_thread(kaamstop.cancel, ctx.tenant_id, str(q or "")[:200], ctx.conversation_id,
                                        ctx.conversation_id)
     from .. import kaamwatch
-    return await asyncio.to_thread(kaamwatch.status, ctx.tenant_id, str(q or "")[:80])
+    # v0.722 a wake turn (a finished job reporting itself) reads only its own chat's jobs - her whole desk once came back
+    # as "Open projects on your desk" under a question that had nothing to do with them
+    conv = ctx.conversation_id if ctx.actor == "wake" else ""
+    return await asyncio.to_thread(kaamwatch.status, ctx.tenant_id, str(q or "")[:80], conv)
 
 
 KAAM_HANDLERS = {"kaam_status": kaam_status}

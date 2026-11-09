@@ -2528,3 +2528,9 @@ Task ID: v0.721.0 EK HI KAAM-ROW
 Ask: two 'working' things in the chat - one row only, backend feed hidden behind a dropdown arrow (no step count).
 Built: one working row (mark, current step words, clock, arrow); steps folded under it; 'Worked for Ns' + arrow at the end. Browser walk with real events.
 Deploy: the usual vps-ops ritual; healthz must grep 0.721.0; hard refresh.
+
+---
+Task ID: v0.722.0 JAWAB HI JAWAB
+Ask: her $5M AI SaaS prompt got a desk survey instead of the answer - find root cause and fix.
+Built: finished agent-team wake fetches agent_status check and writes the answer; wake text stays on its own job; kaam_status in a wake = this chat only.
+Deploy: the usual vps-ops ritual; healthz must grep 0.722.0.

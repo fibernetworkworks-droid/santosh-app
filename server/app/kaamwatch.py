@@ -469,8 +469,11 @@ STATE_WORD = {"working": "chal raha hai", "waiting": "AAPKA JAWAB CHAHIYE", "don
               "stopped": "band"}
 
 
-def status(tenant: str, q: str = "") -> dict[str, Any]:
+def status(tenant: str, q: str = "", conversation_id: str = "") -> dict[str, Any]:
     js = jobs(tenant, 48, 40)
+    if conversation_id:   # v0.722 a wake turn's status check sees THIS chat's jobs only (v0.714 HAR CHAT ALAG)
+        from .fence import own_chat, keep, alone
+        js = keep(js, own_chat(tenant, conversation_id), strict=alone())
     if q:
         ql = q.lower()
         hit = [j for j in js if ql in (j["label"] + " " + j["title"] + " " + j["kind"]).lower()]

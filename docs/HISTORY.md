@@ -1,3 +1,20 @@
+## v0.722.0 JAWAB HI JAWAB — the answer she asked for, not a desk survey (9 Nov 2026; owner, screenshot: "FIND THE 5 MILLION DOLLOR BUSINESS IDEA FOR AI SAAS PRODUCT" -> "CHECK THE PROMPT TO HOOLA AND ITS REPLY")
+
+Her reply was "Just finished: the $5M AI SaaS research ... the result should be in your chat above" followed by a list of
+every open project (HandLink ISP Portal, Mindrhythm, saree site, saree PDFs). ROOT CAUSE, three parts:
+(1) the ask was handed to a background agent crew (agent/team.py); the crew's deliverable lives in `AgentTeam.result`
+(up to 24k chars) but the kaamwatch follow-up row carries only a 400-char detail, and the generic wake text asked for
+"1-3 chhoti lines" - so the real answer was never written into the chat; (2) the wake text told the model to check
+state with tools, and `kaam_status` -> `kaamwatch.status` was tenant-wide, so it listed every chat's jobs; (3) the
+system prompt's newest sites / apps blocks gave the model more desk to recite.
+FIX: `kaam_followup._wake_text` - a finished / failed `agent_team` gets its own `<team_result_due team=...>` text:
+call `agent_status action=check id=<tid>` (full deliverables) and write THE ANSWER to her question in full, in her
+language, no other jobs / projects / cards, no kaam_status, no "answer is above", nothing added beyond the deliverables.
+The generic wake text: talk only about THIS job; say "the result is above" only when it really is. `kaamwatch.status`
+takes `conversation_id` and fences jobs with `fence.own_chat` (strict per `fence.alone()`); `kaam_status` passes the
+wake turn's chat (owner asks keep the whole list). Left alone on purpose: the short site / app reference blocks.
+Tests test_v0722_jawab_hi_jawab.py (4). NOT VERIFIED live: the VPS logs could not be read (vps-ops dispatch 403).
+
 ## v0.721.0 EK HI KAAM-ROW — one working row, the steps behind an arrow (9 Nov 2026; owner, two screenshots: "IT HAS 2 WORKING... THING IN CHAT SPACE. SHOW ME A PERFECT SINGLE WORKING.. ALSO DONT SHOW THE BACKEND FEED FREQUENTLY HIDE IT IN DROPDOWN" -> preview artifact -> "DONT SHOW A STEPS JUST A DROPDOWN ARROW" -> "GO")
 
 While Hoola worked, the console drew two things: the v0.716 live step block ("⌄ Working" with every backend step
