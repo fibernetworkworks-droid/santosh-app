@@ -188,12 +188,12 @@ def _ctx(actor="owner", conv="cdoc"):
 def test_the_tool_needs_a_dossier_in_this_chat_and_a_real_report(tool):
     from app.agent.research_tools import research_document
     from app.agent.tools import ToolError
-    with pytest.raises(ToolError, match="koi research dossier nahi"):
+    with pytest.raises(ToolError, match="no research dossier"):
         run_(research_document(_ctx(), report=REPORT))
     E.remember("cdoc", dossier())
-    with pytest.raises(ToolError, match="bahut chhoti"):
+    with pytest.raises(ToolError, match="too short"):
         run_(research_document(_ctx(), report="short"))
-    with pytest.raises(ToolError, match="sirf malik"):
+    with pytest.raises(ToolError, match="owner only"):
         run_(research_document(_ctx("customer:1"), report=REPORT))
 
 
