@@ -322,7 +322,7 @@ def test_research_status_check_result_and_stop(rr):
     assert got is not None and got["_delivered"] > 0                                      # remembered for the report check
     assert "already been done" in run_(research_status(_ctx(), action="stop", id=rid))["note"]
     other = runner.start("t1", "c1", "Q", ["g"], {}, hi=True)
-    assert "roka gaya" in run_(research_status(_ctx(), action="stop", id=other))["note"] and store.get(other)["status"] == "stopped"
+    assert "Research stopped" in run_(research_status(_ctx(), action="stop", id=other))["note"] and store.get(other)["status"] == "stopped"
     from app.agent.tools import ToolError
     with pytest.raises(ToolError):
         run_(research_status(_ctx(actor="customer:1"), action="check"))
