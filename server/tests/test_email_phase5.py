@@ -398,7 +398,7 @@ def test_draft_read_and_edit_keeps_attachment(gb, draft, bz):  # noqa: F811
 
 def test_draft_edit_needs_a_field(gb, draft, bz):  # noqa: F811
     ctx = conv_ctx()
-    with pytest.raises(ToolError, match="Kya badalna hai"):
+    with pytest.raises(ToolError, match="What should change"):
         run("email_drafts", {"action": "edit", "id": "d1"}, ctx)
 
 
@@ -510,5 +510,5 @@ def test_new_settings_gated_on_old_mailbox(bz, monkeypatch):  # noqa: F811
             run(name, args, ctx)
     for args in ({"imap": "get"}, {"pop": "get"}, {"language": "get"}):
         out = run("email_accounts", args, ctx)                     # the v0.183 gate returns the honest note
-        assert out["scope_ok"] is False and "connect this Gmail again" in out["note"]
+        assert out["scope_ok"] is False and "dobara jodna" in out["note"]
     assert not any(p.startswith("/settings/") for _, p in b.calls)   # nothing reached Gmail
