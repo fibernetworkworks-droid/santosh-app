@@ -102,7 +102,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                    _s(a.get("owner")), list(a.get("file_ids") or []), received=_s(a.get("received")) or None, by=by, conv=conv)
         if action == "proof":
             if not a.get("file_id"):
-                raise ToolError("file_id chahiye (jo file usne bheji).")
+                raise ToolError("file_id is needed (the file she sent).")
             return S.attach_file(t, cs, _s(a.get("file_id")), _s(a.get("stage")) or "complaint", _s(a.get("note")), by)
         if action == "ack":
             return S.ack(t, cs, _s(a.get("how")), by)
@@ -121,7 +121,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.confirm(t, cs, a.get("fixed") is not False, a.get("satisfaction"), _s(a.get("feedback")), by)
         if action == "close":
             if a.get("force") and not _owner(ctx):
-                raise ToolError("Checklist ke bina band sirf owner kar sakti hain.")
+                raise ToolError("Only the owner can close it without the checklist.")
             return S.close(t, cs, bool(a.get("force")), _s(a.get("reason")), by, conv)
         if action == "reopen":
             return S.reopen(t, cs, _s(a.get("reason") or a.get("note")), by)
@@ -129,11 +129,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.escalate(t, cs, _s(a.get("to")), _s(a.get("ref")), by)
         if action == "comp":
             out = S.comp_request(t, cs, _s(a.get("kind")), a.get("amount"), _s(a.get("item")), _s(a.get("reason")), conv, by)
-            out["note"] = "Card bheja: sirf owner app mein haan karengi. Graahak ko abhi koi vaada mat karo."
+            out["note"] = "Card sent: only the owner can say yes in the app. Do not promise the customer anything yet."
             return out
         if action == "comp_given":
             if not _owner(ctx):
-                raise ToolError("Muavza diya - yeh sirf owner batati hain.")
+                raise ToolError("Compensation - only the owner can state this.")
             return S.comp_given(t, _s(a.get("comp")), _s(a.get("how")), _s(a.get("ref")))
         if action == "import_tickets":
             return S.import_tickets(t)
@@ -141,15 +141,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, _s(a.get("month")), conv)
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Niyam sirf owner badal sakti hain.")
+                raise ToolError("Only the owner can change rules.")
             return S.save_settings(t, **{k: a[k] for k in _SET_KEYS if k in a})
         if action == "forget":
             if not _owner(ctx):
-                raise ToolError("Data mitana sirf owner.")
+                raise ToolError("Only the owner can delete data.")
             return S.forget_customer(t, _s(a.get("phone")))
     except (S.ShikayatError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -178,7 +178,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "causes": R.CAUSE_LABEL, "compensation": R.COMP_KINDS}
     except (S.ShikayatError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def shikayat(ctx: Ctx, action, **a: Any):
@@ -196,9 +196,9 @@ async def biz_shikayat(ctx: Ctx, text: str = "", product: str = "", order_ref: s
     c = _contact(ctx)
     text = str(text or "").strip()
     if not text:
-        raise ToolError("Shikayat kya hai, woh likhiye.")
+        raise ToolError("Write what the complaint is.")
     if policy.secret_found(text):
-        raise ToolError("Isme OTP / PIN / card jaisi jaankari hai; woh mat bhejiye.")
+        raise ToolError("This contains OTP / PIN / card details; do not send them.")
     try:
         return await asyncio.to_thread(S.customer_log, ctx.tenant_id, c.id, c.wa_id, c.name or "", text, str(product or ""), str(order_ref or ""))
     except S.ShikayatError as e:

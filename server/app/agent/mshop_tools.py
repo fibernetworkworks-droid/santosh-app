@@ -92,8 +92,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "photo":
             got = [M.attach_chat_photo(t, _s(a.get("job")), _s(f), _s(a.get("kind")) or "in") for f in (a.get("file_ids") or a.get("photos") or [])]
             if not got:
-                raise ToolError("file_ids chahiye (jo photo usne bheji).")
-            return {"photos": got, "say": f"{len(got)} photo job mein lag gayi."}
+                raise ToolError("file_ids are needed (the photos she sent).")
+            return {"photos": got, "say": f"{len(got)} photo(s) attached to the job."}
         if action == "status":
             return M.set_status(t, _s(a.get("job")), _s(a.get("status")), _s(a.get("note")), by, conv)
         if action == "part":
@@ -103,7 +103,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return M.prepare_bill(t, _s(a.get("job")), conv)
         if action == "decide_bill":
             if not _owner(ctx):
-                raise ToolError("Bill par haan sirf owner de sakti hain.")
+                raise ToolError("Only the owner can say yes to the bill.")
             return M.decide_bill(t, _s(a.get("job")), bool(a.get("approve")), a.get("total"), conv)
         if action == "customer_ok":
             return M.customer_agreed(t, _s(a.get("job")), a.get("estimate"), by)
@@ -118,7 +118,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "slip":
             return M.slip_file(t, _s(a.get("job")), conv)
         if action == "ready_message":
-            return {"card": M.ready_card(t, _s(a.get("job")), conv), "say": "Draft card par hai: aap bhejengi."}
+            return {"card": M.ready_card(t, _s(a.get("job")), conv), "say": "The draft is on the card: she will send it."}
         if action == "recharge":
             return M.add_recharge(t, _s(a.get("number") or a.get("phone")), a.get("amount"), _s(a.get("operator")),
                                   a.get("validity_days"), _s(a.get("name")), _s(a.get("plan")), _s(a.get("via")), _s(a.get("date")))
@@ -128,7 +128,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return M.void_recharge(t, _s(a.get("recharge_id")))
         if action == "rules":
             if not _owner(ctx):
-                raise ToolError("Daam, warranty aur niyam sirf owner badal sakti hain.")
+                raise ToolError("Only the owner can change prices, warranty and rules.")
             keys = ("shop_name", "gstin", "gst_on", "prices", "warranty", "fix_days", "jobs_per_day", "unclaimed_days",
                     "commission", "remind_days", "terms", "ready_template", "rules", "morning_time")
             return {"rules": M.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Niyam save."}

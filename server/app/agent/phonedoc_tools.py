@@ -103,19 +103,19 @@ async def phone_doctor(ctx: Ctx, action, **a: Any):
         if action == "check":
             snap = await _fresh(ctx, 60)
             if not snap:
-                return {"snapshot": {}, "say": "Phone ki jaanch nahi aayi: Hoola app khol ke rakhiye (Android par hi chalti hai)."}
+                return {"snapshot": {}, "say": "The phone check did not come in: keep the Hoola app open (it works on Android only)."}
             from ..phonedoc.playbooks import findings
             f = findings(snap)
-            return {"snapshot": snap, "findings": f, "say": P.summary(snap) + (". " + " ".join(x["text"] for x in f[:5]) if f else ". Sab theek dikh raha hai.")}
+            return {"snapshot": snap, "findings": f, "say": P.summary(snap) + (". " + " ".join(x["text"] for x in f[:5]) if f else ". Everything looks fine.")}
         if action == "recheck":
             snap = await _fresh(ctx, 60)
             return await asyncio.to_thread(P.recheck, t, _s(a.get("case")), snap or None)
         if action == "open":
             st = {"setting": _s(a.get("setting")), "pkg": _s(a.get("package")), "url": _s(a.get("url")), "title": ""}
             if not (st["setting"] or st["url"]):
-                raise ToolError("setting ya url chahiye.")
+                raise ToolError("setting or url is needed.")
             _open(ctx, st)
-            return {"say": "Phone par screen khol di."}
+            return {"say": "Opened the screen on the phone."}
         if action == "escalate":
             return await asyncio.to_thread(P.escalate, t, _s(a.get("case")), _s(a.get("kind")), bool(a.get("make_job")),
                                            _s(a.get("phone")), by, conv)

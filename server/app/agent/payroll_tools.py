@@ -89,13 +89,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return P.prepare_run(t, _s(a.get("period")), conv)
         if action == "decide":
             if not _owner(ctx):
-                raise ToolError("Salary par haan sirf owner de sakti hain.")
+                raise ToolError("Only the owner can say yes to salary.")
             return P.decide(t, _s(a.get("run") or a.get("period")), bool(a.get("approve")), _s(a.get("note")), conv)
         if action == "files":
             return P.files(t, _s(a.get("run") or a.get("period")), conv)
         if action == "paid":
             if not _owner(ctx):
-                raise ToolError("Payment ho gaya, yeh sirf owner bata sakti hain.")
+                raise ToolError("Only the owner can say a payment is done.")
             return P.mark_paid(t, _s(a.get("run") or a.get("period")), _s(a.get("paid_on")), by, conv)
         if action == "payslip_drafts":
             return P.payslip_drafts(t, _s(a.get("run") or a.get("period")))
@@ -106,13 +106,13 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return P.bonus_report(t, _s(a.get("period")), float(a.get("rate") or 8.33))
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Settings sirf owner.")
+                raise ToolError("Settings: owner only.")
             keys = ("company", "state", "pf_on", "pf_code", "esi_on", "esi_code", "tan", "min_wage", "days_basis", "pay_account",
                     "pay_ifsc", "morning_time")
             return {"settings": P.save_settings(t, **{k: a[k] for k in keys if k in a}), "say": "Save."}
     except (P.PayError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -130,7 +130,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return P.get_run(t, _s(a.get("run") or a.get("period")))
         if what == "employee":
             return next((e for e in P.employees(t, False) if _s(a.get("employee")).lower() in (e["name"].lower(), e["code"].lower(), e["id"])),
-                        {"error": "nahi mila"})
+                        {"error": "not found"})
         if what == "settings":
             return P.settings(t)
         if what == "tax":
@@ -143,7 +143,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"pt": R.pt(_s(a.get("state")), float(a.get("gross") or 0), int(a.get("month") or 1), _s(a.get("gender")))}
     except (P.PayError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def payroll(ctx: Ctx, action, **a: Any):

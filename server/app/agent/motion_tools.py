@@ -44,8 +44,7 @@ async def motion_video(ctx: Ctx, action, kind="explainer", brief="", aspect="9:1
                 p = await asyncio.to_thread(mo.plan, kind, str(brief))
                 v = await asyncio.to_thread(mo.create, ctx.tenant_id, kind, p["data"], aspect, music, "", ctx.conversation_id)
             return {"id": v["id"], "title": v["title"], "status": v["status"], "ai_label": v["ai_label"],
-                    "note": "Video ban rahi hai (1-3 minute). Poori hote hi chat mein card aayega; Connect > Hoola Motion "
-                            "mein bhi milegi."}
+                    "note": "The video is being made (1-3 minutes). A card will arrive in the chat as soon as it is done; it will also be in Connect > Hoola Motion."}
     except mo.MotionError as e:
         raise ToolError(str(e))
     raise ToolError("action: make, list ya status")

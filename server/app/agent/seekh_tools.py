@@ -35,7 +35,7 @@ def _run(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         raise ToolError("action = watch | status")
     video = str(a.get("video") or "").strip()
     if not video:
-        raise ToolError("Kaunsa video? Link ya chat mein attach kiye video ka file_id dijiye.")
+        raise ToolError("Which video? Give a link or the file_id of a video attached in the chat.")
     try:
         return seekh.watch(ctx.tenant_id, video, str(a.get("title") or ""),
                            getattr(ctx, "actor", "owner") or "owner")

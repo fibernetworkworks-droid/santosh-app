@@ -139,13 +139,13 @@ async def research_run(ctx: Ctx, question="", sub_questions=None, include_domain
     st = get_settings()
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor not in _ALLOWED and not actor.startswith("approved:"):
-        raise ToolError("Research chalana sirf malik ka kaam hai.")
+        raise ToolError("Running research is for the owner only.")
     if not getattr(st, "research_engine_on", True):
-        raise ToolError("Hoola ka research engine band hai. google_search / web_sources se kaam chalayiye.")
+        raise ToolError("Hoola's research engine is switched off. Use google_search / web_sources instead.")
     q = str(question or "").strip()
     goals = [str(x).strip() for x in (sub_questions or []) if str(x).strip()] if isinstance(sub_questions, list) else []
     if not q and not goals:
-        raise ToolError("Batayiye kya research karna hai (question aur sub_questions).")
+        raise ToolError("Say what to research (question and sub_questions).")
     from ..research import bill as _bill
     try:                 # v0.476 R5: no room left today = refused before anything starts
         _bill.preflight(ctx.tenant_id)
@@ -223,23 +223,23 @@ async def research_status(ctx: Ctx, action="check", id="", **_) -> dict[str, Any
     from ..research import runner, store
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor not in _ALLOWED and not actor.startswith("approved:"):
-        raise ToolError("Research ki haalat sirf malik dekh sakta hai.")
+        raise ToolError("Only the owner can see research status.")
     action = str(action or "check").lower()
     rows = runner.status(ctx.tenant_id, "" if id else ctx.conversation_id, str(id or ""))
     if not rows:
-        return {"note": "Is chat mein abhi koi research run nahi mila."}
+        return {"note": "No research run found in this chat yet."}
     rid = rows[0]["id"]
     if action == "stop":
         got = runner.stop(ctx.tenant_id, rid)
-        return {"note": {"stopped": "Research roka gaya - jo mil chuka hai woh bacha rahega.", "missing": "Yeh run nahi mila."}.get(
-            got, f"Woh run pehle hi {got} ho chuka hai.")}
+        return {"note": {"stopped": "Research stopped - what was already found is kept.", "missing": "This run was not found."}.get(
+            got, f"That run has already been {got}.")}
     if action == "result":
         from ..research import engine as E
         v = store.get(rid)
         if v is None or v["tenant"] != ctx.tenant_id:
-            return {"note": "Yeh run nahi mila."}
+            return {"note": "This run was not found."}
         if v["dossier"] is None:
-            return {"status": v["status"], "note": "Is run ka dossier abhi taiyaar nahi hai.", "progress": rows[0]["progress"]}
+            return {"status": v["status"], "note": "This run's dossier is not ready yet.", "progress": rows[0]["progress"]}
         E.remember(ctx.conversation_id, v["dossier"])           # the report check reads it back
         s = v["dossier"]["stats"]
         return {"dossier": E.render(v["dossier"]), "stats": s, "stop_reason": v["dossier"]["stop_reason"], "run_id": rid,
@@ -259,13 +259,13 @@ async def research_document(ctx: Ctx, report="", kinds=None, title="", include_c
     from .make_tools import _deliver, _safe
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor not in _ALLOWED and not actor.startswith("approved:"):
-        raise ToolError("Research ka document sirf malik ke liye banta hai.")
+        raise ToolError("The research document is made for the owner only.")
     d = E.recall(ctx.conversation_id)
     if d is None:
-        raise ToolError("Is chat mein abhi koi research dossier nahi hai - pehle research_status action=result (ya research_run) se dossier lo, phir report likho.")
+        raise ToolError("There is no research dossier in this chat yet - first get the dossier with research_status action=result (or research_run), then write the report.")
     rep = str(report or "").strip()
     if len(rep) < 200:
-        raise ToolError("Report bahut chhoti hai - poori final report `report` mein do.")
+        raise ToolError("The report is too short - give the whole final report in `report`.")
     found = C.check_report(rep, d)
     if found:
         raise ToolError("This report cannot become a document yet - the figure check found: " + " | ".join(found[:4]) + " Fix exactly these and call research_document again.")
@@ -305,7 +305,7 @@ async def research_watch(ctx: Ctx, action="list", question="", sub_questions=Non
     from ..research import watch as W
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor not in _ALLOWED and not actor.startswith("approved:"):
-        raise ToolError("Research watch sirf malik chala sakta hai.")
+        raise ToolError("Only the owner can run research watch.")
     st = get_settings()
     action = str(action or "list").lower()
     tenant, conv = ctx.tenant_id, ctx.conversation_id
@@ -316,12 +316,12 @@ async def research_watch(ctx: Ctx, action="list", question="", sub_questions=Non
                              "last_checked": w["last_checked_at"].isoformat() if w["last_checked_at"] else "",
                              "last_change": w["last_change_at"].isoformat() if w["last_change_at"] else "", "spent_this_month_inr": W.spent_this_month(w["id"], tenant),
                              "month_cap_inr": w["month_cap_inr"], "note": w["note"]} for w in ws],
-                "note": "" if ws else "Abhi koi topic watch par nahi hai."}
+                "note": "" if ws else "No topic is being watched right now."}
     if action == "add":
         q = str(question or "").strip()
         goals = [str(x).strip() for x in (sub_questions or []) if str(x).strip()] if isinstance(sub_questions, list) else []
         if not q or not goals:
-            raise ToolError("Watch ke liye question aur sub_questions chahiye.")
+            raise ToolError("A watch needs question and sub_questions.")
         eng = str(engine or "hoola").lower()
         ok, why = vendors.check(eng, tenant, st)
         if not ok:
@@ -340,7 +340,7 @@ async def research_watch(ctx: Ctx, action="list", question="", sub_questions=Non
         hi = bool(_re.search(r"(?i)\b(karo|hai|ka|ke|ki|mein|chahiye|batao|aur|kya)\b|[\u0900-\u097F]", q))
         base = E.recall(conv) if str(baseline) == "last" else None
         if str(baseline) == "last" and (base is None or not base.get("fields")):
-            raise ToolError("Is chat mein abhi koi research nahi hai jisse baseline bane - baseline mat do, pehla check abhi chal jayega.")
+            raise ToolError("There is no research in this chat to make a baseline from - do not give a baseline; the first check will run now.")
         over = {"over": {k: v for k, v in {"include_domains": include_domains if isinstance(include_domains, list) else None,
                                            "exclude_domains": exclude_domains if isinstance(exclude_domains, list) else None}.items() if v},
                 "asked": E._URL.findall(q + " " + " ".join(goals))}
@@ -354,7 +354,7 @@ async def research_watch(ctx: Ctx, action="list", question="", sub_questions=Non
     if action in ("pause", "resume", "delete", "check_now"):
         w = W.get(wid)
         if w is None or w["tenant"] != tenant:
-            raise ToolError("Yeh watch nahi mili (research_watch list se id lo).")
+            raise ToolError("This watch was not found (get the id from research_watch list).")
         if action == "delete" and not confirm:
             return {"proposal": True, "say": "Ask her to confirm deleting this watch, then call again with confirm=true."}
         if action == "check_now":
@@ -379,7 +379,7 @@ async def research_watch(ctx: Ctx, action="list", question="", sub_questions=Non
     if action == "result":
         got = W.result_for(tenant, str(run_id or "").strip())
         if got is None:
-            raise ToolError("Is run ka badlaav-digest nahi mila (run_id wake text se lo).")
+            raise ToolError("No change digest found for this run (take the run_id from the wake text).")
         E.remember(conv, got["check"])                      # the change message is checked against the new run + the earlier values
         return {"digest": got["digest"], "changed": len(got["diff"]["changed"]), "new": len(got["diff"]["new"]), "not_seen": len(got["diff"]["gone"]),
                 "say": ("Write a SHORT message (3-8 lines) in her language from this digest only: what changed (earlier value -> now, with the period), what is new, what was not seen "

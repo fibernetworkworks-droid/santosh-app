@@ -69,30 +69,30 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     comm = _s(a.get("community"))
     for v in a.values():
         if isinstance(v, str) and S.TOKEN_RE.search(v):
-            raise ToolError("Bot token chat mein nahi: app mein Community Sahayak > Telegram jodiye mein daaliye (aur BotFather se "
-                            "naya token bana lijiye, yeh wala chat mein aa chuka hai).")
+            raise ToolError("No bot token in chat: enter it in the app under Community Sahayak > Connect Telegram (and make a "
+                            "new token with BotFather - this one has already appeared in chat).")
     try:
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Group ke niyam sirf owner badal sakti hain.")
+                raise ToolError("Only the owner can change group rules.")
             return S.save_community(t, comm, **{k: a[k] for k in _SETTINGS if k in a})
         if action == "link_hoola":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.link_hoola(t, _s(a.get("group") or comm))
         if action == "welcome":
             return S.draft_template(t, _s(a.get("text")), comm, _s(a.get("language")), _s(a.get("kind")) or "welcome", _s(a.get("words")))
         if action == "faq":
             if not _owner(ctx):
-                raise ToolError("FAQ ke jawab sirf owner ke shabdon se.")
+                raise ToolError("FAQ answers only in the owner's words.")
             return S.add_faq(t, _s(a.get("question")), _s(a.get("answer")), comm, a.get("keywords") or [], True, _s(a.get("faq_id")))
         if action == "faq_delete":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.delete_faq(t, _s(a.get("faq_id")))
         if action == "answer":
             if not _owner(ctx):
-                raise ToolError("Group mein jawab sirf owner ke shabdon se.")
+                raise ToolError("Replies in the group only in the owner's words.")
             return S.answer_question(t, _s(a.get("question_id")), _s(a.get("answer")), True, True, _s(a.get("faq_id")))
         if action == "ignore":
             return S.ignore_question(t, _s(a.get("question_id")))
@@ -104,21 +104,21 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.dismiss_alert(t, _s(a.get("alert_id")), _s(a.get("note")), bool(a.get("allow_site")), bool(a.get("ok_word")))
         if action == "join":
             if not _owner(ctx):
-                raise ToolError("Join request ka faisla sirf owner.")
+                raise ToolError("Only the owner decides a join request.")
             return S.join_decide(t, _s(a.get("request_id")), bool(a.get("yes")), "owner")
         if action == "roles":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.set_roles(t, _s(a.get("member")), list(a.get("roles") or ["member"]), comm, a.get("note"))
         if action == "forget":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.forget_member(t, _s(a.get("member")), comm)
         if action == "register":
             return S.register_file(t, comm)
     except (S.SamError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -157,7 +157,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "legal": R.LEGAL, "actions": R.ACTIONS}
     except (S.SamError, ValueError) as ex:
         raise ToolError(str(ex)) from None
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def samudaay(ctx: Ctx, action, **a: Any):

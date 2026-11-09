@@ -123,7 +123,7 @@ def test_operator_asks_before_moving_her_browser_job_to_her_pc(env, monkeypatch)
     ctx = Ctx(tenant_id="default", conversation_id=conv)
     monkeypatch.setattr(reach, "probe", lambda host, **k: (True, ""))
     r = asyncio.run(operator_tools.computer_operator(ctx, "start", task="MSEDCL bill download karo"))
-    assert started and r["place"] == "hoola" and "aapke PC par nahi" in r["say"]
+    assert started and r["place"] == "hoola" and "not on your PC" in r["say"]
     get_settings.cache_clear()
 
 

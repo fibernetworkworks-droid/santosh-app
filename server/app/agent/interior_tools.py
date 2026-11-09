@@ -102,9 +102,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..interior import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Owner only.")
     pr = _s(a.get("project"))
     try:
         if action == "settings":
@@ -174,7 +174,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, pr, actor)
     except S.InteriorError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -213,7 +213,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "kinds": {k: {"label": v["label"], "unit": v["unit"]} for k, v in R.KINDS.items()}}
     except S.InteriorError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"what '{what}' not recognised.")
 
 
 async def _interior(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:

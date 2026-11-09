@@ -96,15 +96,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..ispnoc import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Network desk graahakon ke liye nahi hai.")
+        raise ToolError("The network desk is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     for k in ("text", "note", "commands", "rollback", "output", "rules"):
         v = a.get(k)
         vals = v if isinstance(v, list) else [v]
         if k not in ("text",) and any(isinstance(x, str) and R.has_secret(x) for x in vals):
-            raise ToolError("Password / community / key chat mein mat dijiye; woh sirf aapke collector ki machine par rahe. "
-                            "Agar password kahin likh diya hai to use badal dijiye.")
+            raise ToolError("Do not give a password / community / key in chat; keep it only on your collector machine. "
+                            "If a password was written anywhere, change it.")
     try:
         if action == "alarms":
             return S.ingest(t, _s(a.get("text")), _s(a.get("olt")), _s(a.get("source") or "paste"), conv=conv, actor=actor)
@@ -163,7 +163,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "alarm_file":
             raise ToolError(str(ex))
         raise
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -200,12 +200,12 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
         if what == "rules":
             return {"facts": R.RULES_FACTS, "sources": [{"title": x, "url": u} for x, u in R.SOURCES], "optics": R.OPTICS,
                     "sla_starters": R.SLA_DEFAULT, "teams": R.TEAMS, "change_actions": R.CHANGE_ACTIONS,
-                    "never": ["equipment par badlav khud karna (sirf uski haan ke card ke baad, collector ya uske haath se)",
-                              "device password / SNMP community / key maangna ya rakhna", "Hoola server se seedha OLT par login",
-                              "customer ko khud message bhejna (draft hi)"]}
+                    "never": ["changing equipment itself (only after her yes on a card, by the collector or by her hand)",
+                              "asking for or keeping a device password / SNMP community / key", "logging in to an OLT directly from the Hoola server",
+                              "messaging the customer itself (draft only)"]}
     except (S.NocError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def noc(ctx: Ctx, action, **a: Any):

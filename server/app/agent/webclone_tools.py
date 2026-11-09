@@ -73,17 +73,17 @@ def _project_root(ctx: Ctx, slug: str) -> Path:
 
 async def web_clone(ctx: Ctx, url: str = "", mode: str = "learn", name: str = "", **_) -> dict[str, Any]:
     if not (url or "").strip():
-        raise ToolError("Kaunsi website? Link dijiye (url).")
+        raise ToolError("Which website? Give the link (url).")
     mode = (mode or "learn").lower()
     if mode not in ("learn", "migrate", "archive"):
-        raise ToolError("mode learn / migrate / archive mein dijiye.")
+        raise ToolError("Give mode as learn / migrate / archive.")
     own = _own_domains(ctx)
     famous, why = _looks_like_own_or_reference(url, own)
     if famous:
         raise ToolError(
-            f"{why}. Kisi aur ki live brand site ko clone karke apni banaana nahi hota - that is brand theft. "
-            "Uski design se SEEKH kar owner ki apni site bana sakte hain (web studio), ya bina brand ke ek "
-            "similar layout - lekin ye tool us link par kaam nahi karega.")
+            f"{why}. Cloning someone else's live brand site and passing it off as your own is not allowed - that is brand theft. "
+            "The owner can LEARN from its design and build her own site (web studio), or a similar layout without the brand "
+            "- but this tool will not work on that link.")
 
     slug = re.sub(r"[^a-z0-9-]+", "-", (name or url).lower()).strip("-")[:40] or "site"
     work = _project_root(ctx, f"{slug}-{int(time.time())}")

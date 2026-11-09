@@ -138,7 +138,7 @@ async def slides_arrange(ctx: Ctx, presentation, slide, to=None, duplicate=False
     if duplicate:
         return await _t(sv.duplicate_slide, ctx.tenant_id, str(presentation), int(slide))
     if not to:
-        raise ToolError("Kahan le jaana hai? to (slide number) do.")
+        raise ToolError("Where should it move? Give to (slide number).")
     return await _t(sv.move_slide, ctx.tenant_id, str(presentation), int(slide), int(to))
 
 
@@ -147,7 +147,7 @@ async def slides_delete(ctx: Ctx, presentation, slides, **_):
         plan = sv.plan_delete(ctx.tenant_id, str(presentation), list(slides or []))
         return sv.pend(ctx.tenant_id, ctx.conversation_id, "delete",
                        {"account": plan["client"].key, "pid": plan["pid"], "ids": plan["ids"]},
-                       {"title": plan["title"], "lines": plan["lines"], "note": "Version history se wapas la sakte hain."})
+                       {"title": plan["title"], "lines": plan["lines"], "note": "Can be restored from Version history."})
     pid = await _t(work)
     card = await asyncio.to_thread(_card, ctx, pid)
     return {**card, "status": "needs_approval", "note": "Confirm card is in the chat; nothing deleted yet."}
@@ -174,14 +174,14 @@ async def slides_share(ctx: Ctx, presentation, people, role="reader", **_):
             raise SlidesError(" ".join(problems))
         emails = [a.strip() for a in addrs.split(",") if a.strip()]
         if not emails:
-            raise SlidesError("Kisko share karna hai?")
+            raise SlidesError("Who should it be shared with?")
         c, p = sv.resolve(ctx.tenant_id, str(presentation))
         r = role if role in ("reader", "commenter", "writer") else "reader"
-        label = {"reader": "Sirf dekh", "commenter": "Comment kar", "writer": "Edit kar"}[r]
+        label = {"reader": "view only", "commenter": "comment", "writer": "edit"}[r]
         return sv.pend(ctx.tenant_id, ctx.conversation_id, "share",
                        {"account": c.key, "pid": p["presentationId"], "emails": emails, "role": r},
-                       {"title": p.get("title", ""), "lines": [f"{label} sakenge: " + ", ".join(emails)],
-                        "note": "Unhe Google se email jayega."})
+                       {"title": p.get("title", ""), "lines": [f"Can {label}: " + ", ".join(emails)],
+                        "note": "Google will email them."})
     pid = await _t(work)
     card = await asyncio.to_thread(_card, ctx, pid)
     return {**card, "status": "needs_approval"}

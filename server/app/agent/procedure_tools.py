@@ -21,7 +21,7 @@ PROCEDURE_LABELS = {"seekhe_kaam": "Seekhe hue kaam dekh raha hoon"}
 async def seekhe_kaam(ctx: Ctx, action: str = "list", id: str = "", **_) -> dict[str, Any]:
     from .. import procedures as pr
     if (ctx.actor or "owner") != "owner":
-        raise ToolError("Yeh sirf owner dekh / badal sakti / sakta hai.")
+        raise ToolError("Only the owner can see / change this.")
     try:
         if action == "list":
             rows = await asyncio.to_thread(pr.listing, ctx.tenant_id)

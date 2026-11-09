@@ -349,7 +349,7 @@ def test_the_result_tool_hands_over_the_digest_and_remembers_the_dossier_to_chec
     kept = E.recall("c1")
     assert kept is not None and any(f["id"].startswith("prior-c") for f in kept["fields"])
     from app.agent.tools import ToolError
-    with pytest.raises(ToolError, match="digest nahi mila"):
+    with pytest.raises(ToolError, match="No change digest found"):
         tool(action="result", run_id="rr_nope")
     with pytest.raises(ToolError):
         tool(action="result", run_id=rid, tenant="t2")

@@ -78,9 +78,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..notary import service as S
     t, conv = ctx.tenant_id, ctx.conversation_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh notary office ka andar ka kaam hai.")
+        raise ToolError("This is the notary office's internal work.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner (notary) yeh kar sakti hain.")
+        raise ToolError("Only the owner (notary) can do this.")
     d = _s(a.get("doc"))
     try:
         if action == "draft":
@@ -129,7 +129,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, d)
     except (S.NotaryError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -137,7 +137,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..notary import service as S
     t = ctx.tenant_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh notary office ka andar ka kaam hai.")
+        raise ToolError("This is the notary office's internal work.")
     try:
         if what == "day":
             return S.day(t)
@@ -151,7 +151,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "party": [f"{x}{'*' if req else ''} ({lab})" for x, lab, req in R.PARTY_FIELDS], "langs": R.LANGS}
         if what == "register":
             if not _owner(ctx):
-                raise ToolError("Register sirf owner dekh sakti hain.")
+                raise ToolError("Only the owner can see the register.")
             return S.register(t, a.get("year"))
         if what == "apostilles":
             return {"apostilles": S.apostilles(t, _s(a.get("status")))}
@@ -161,7 +161,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": R.NEVER, "not_advice": R.NOT_ADVICE, "sources": R.SOURCES, "acts": {k: v["label"] for k, v in R.ACTS.items()}}
     except (S.NotaryError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def notary(ctx: Ctx, action, **a: Any):

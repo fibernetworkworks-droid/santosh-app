@@ -72,7 +72,7 @@ async def make_document(ctx: Ctx, kind, title, text="", sheets=None, slides=None
     blob = f"{title}\n{text}\n{sheets}\n{slides}"
     bad = [k for k in find(blob) if k in ("otp_pin", "password", "cvv")]
     if bad:
-        raise ToolError(f"Isme {describe(bad)} hai; Hoola aisi file nahi banata.")
+        raise ToolError(f"This contains {describe(bad)}; Hoola does not make such a file.")
     try:
         if kind == "docx":
             data = await asyncio.to_thread(officegen.make_docx, str(title), str(text or ""))
@@ -96,7 +96,7 @@ async def photo_clean(ctx: Ctx, file_id, color="white", **_):
     except imagekit.ImageError as e:
         raise ToolError(str(e))
     except Exception as e:
-        raise ToolError(f"Photo saaf nahi ho payi ({type(e).__name__}). Doosri photo try kijiye.")
+        raise ToolError(f"The photo could not be cleaned ({type(e).__name__}). Try another photo.")
     view = await asyncio.to_thread(_deliver, ctx, _safe(Path(name).stem + " clean", ".jpg"), out, "hoola")
     return view | {"done": True}
 

@@ -64,7 +64,7 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return online.shop_scam(a.get("url", ""), a.get("price"), a.get("market_price"), a.get("text", ""))
     if action == "gst_split":
         return online.gst_split(a.get("lines") or [], a.get("seller_state", ""), a.get("buyer_state", ""), a.get("price_includes_gst", True) is not False)
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 async def _dukaan_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
@@ -72,7 +72,7 @@ async def _dukaan_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     if actor.startswith("customer:") and action not in _SHOPPER:
-        raise ToolError("Yeh dukaan ke malik ke liye hai.")
+        raise ToolError("This is for the shop owner.")
     try:
         return await asyncio.to_thread(_sync, action, a)
     except ValueError as e:

@@ -106,9 +106,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Society ka kaam graahak ke liye nahi.")
+        raise ToolError("Society work is not for customers.")
     if action in OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner / secretary kar sakti hain.")
+        raise ToolError("Only the owner / secretary can do this.")
     if action in OWNER_ONLY:
         actor = "owner" if actor == "owner" else actor
     f = _s(a.get("flat"))
@@ -125,7 +125,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             try:
                 name, _m, data = ms.load_files(t, [{"type": "file", "file_id": _s(a.get("file_id"))}])[0]
             except Exception:
-                raise ToolError("file_id nahi mila (member list ki sheet bhejiye).")
+                raise ToolError("file_id not found (send the member list sheet).")
             return S.import_flats(t, data, name or "flats.csv", actor)
         if action == "nominate":
             return S.nominate(t, f, _s(a.get("name")), _s(a.get("relation")), a.get("share_pct"), bool(a.get("revoke")), actor)
@@ -187,7 +187,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.SocietyError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -195,7 +195,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..society import service as S
     t = ctx.tenant_id
     if (getattr(ctx, "actor", "owner") or "").startswith("customer:"):
-        raise ToolError("Society ki jaankari graahak ke liye nahi.")
+        raise ToolError("Society information is not for customers.")
     try:
         if what == "day":
             return S.day(t)
@@ -239,7 +239,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "sources": [{"what": w, "url": u, "date": d} for w, u, d in R.SOURCES]}
     except (S.SocietyError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def society(ctx: Ctx, action, **a: Any):

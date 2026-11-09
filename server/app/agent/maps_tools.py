@@ -217,11 +217,11 @@ async def maps_search(ctx: Ctx, query, near="", open_now=False, **_):
         places = await maps.search_places(str(query), near=center, open_now=bool(open_now), tenant_id=ctx.tenant_id)
     except maps.MapsError as e:
         link = maps.search_link(str(query) + (f" {near}" if near and not maps._is_here(near) else ""), here if not near else None)
-        _open_card(ctx, link, "Google Maps par dekhiye", f"'{query}' Google Maps par")
-        raise ToolError((str(e) + " " if str(e) else "") + "Google Maps ka search link phone par bhej diya hai; "
-                        "details ke liye google_search use karo.")
+        _open_card(ctx, link, "View on Google Maps", f"'{query}' on Google Maps")
+        raise ToolError((str(e) + " " if str(e) else "") + "A Google Maps search link was sent to the phone; "
+                        "use google_search for details.")
     if not places:
-        return {"places": [], "message": f"'{query}' ke liye Google Maps par kuch nahi mila."}
+        return {"places": [], "message": f"Nothing found on Google Maps for '{query}'."}
     return {"near": (center or {}).get("name", near or ""), "places": places,
             "note": "Show 2-4 best options briefly (name, distance, rating, open/closed). Offer directions or a call."}
 
@@ -232,14 +232,14 @@ async def maps_directions(ctx: Ctx, destination, origin="", mode="car", **_):
     if not maps.configured():
         link = maps.nav_link(str(destination), None if maps._is_here(origin) else str(origin), m)
         _open_card(ctx, link, "Navigation shuru karein", f"{destination} tak ka rasta")
-        raise ToolError("Google Maps key set nahi hai, isliye samay/doori nahi nikal saka; navigation button phone par bhej diya.")
+        raise ToolError("The Google Maps key is not set, so time/distance could not be worked out; a navigation button was sent to the phone.")
     try:
         src = await maps.resolve(origin, ctx.tenant_id, near=here)
         if src is None:
-            raise ToolError("Aap abhi kahan hain? Phone mein Santosh ko location permission dijiye ya jagah ka naam bataiye.")
+            raise ToolError("Where is she right now? Ask her to give the phone app location permission, or to name the place.")
         dst = await maps.resolve(destination, ctx.tenant_id, near=src)
         if dst is None:
-            raise ToolError(f"'{destination}' Google Maps par nahi mila. Thoda aur detail bataiye (area, shehar).")
+            raise ToolError(f"'{destination}' was not found on Google Maps. Ask for a bit more detail (area, city).")
         r = await maps.route(src, dst, m, tenant_id=ctx.tenant_id)
     except maps.MapsError as e:
         raise ToolError(str(e))
@@ -260,8 +260,8 @@ async def maps_navigate(ctx: Ctx, destination, mode="car", **_):
         except maps.MapsError:
             pass
     link = maps.nav_link(dest, None, m)
-    _open_card(ctx, link, "Navigation shuru karein", f"{destination} ke liye Google Maps")
-    return {"sent_to_phone": True, "link": link, "note": "Tell the user to tap 'Navigation shuru karein'."}
+    _open_card(ctx, link, "Start navigation", f"Google Maps for {destination}")
+    return {"sent_to_phone": True, "link": link, "note": "Tell the user to tap 'Start navigation'."}
 
 
 # ---------------------------------------------------------------- v0.449 Phase 2 + 3
@@ -285,15 +285,15 @@ def _places_card(ctx: Ctx, title: str, places: list[dict], near: str = "", cost_
 async def maps_nearby(ctx: Ctx, kinds, near="", radius_km=2, limit=12, rank="distance", **_):
     here = maps.where_am_i(ctx.tenant_id)
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise ToolError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     want = [str(k).strip() for k in (kinds if isinstance(kinds, list) else [kinds]) if str(k).strip()]
     if not want:
-        raise ToolError("Kis tarah ki jagah dhoondhni hai? (jaise pharmacy, bank, gas_station)")
+        raise ToolError("What kind of place should be searched? (e.g. pharmacy, bank, gas_station)")
     try:
         center = here if maps._is_here(near) else (
             await maps.geocode(str(near), near=here, tenant_id=ctx.tenant_id) if near else here)
         if center is None:
-            raise ToolError("Aap abhi kahan hain? Phone mein location permission dijiye ya jagah ka naam bataiye.")
+            raise ToolError("Where is she right now? Ask her to give the phone location permission, or to name the place.")
         before = mapsbill.usage(ctx.tenant_id)["inr"]
         places = await maps.nearby(center, want, radius_m=int(float(radius_km or 2) * 1000),
                                    limit=int(limit or 12), rank=str(rank or "distance"),
@@ -303,8 +303,8 @@ async def maps_nearby(ctx: Ctx, kinds, near="", radius_km=2, limit=12, rank="dis
     spent = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
     label = ", ".join(want[:3])
     if not places:
-        return {"places": [], "message": f"{label} is dayre mein ({radius_km} km) Google Maps par kuch nahi mila. "
-                                         f"Dayra bada karke dekhein?"}
+        return {"places": [], "message": f"No {label} found within {radius_km} km on Google Maps. "
+                                         f"Try a bigger radius?"}
     _places_card(ctx, label, places, near=(center or {}).get("name", near or ""), cost_inr=spent)
     return {"near": (center or {}).get("name", near or ""), "kinds": want, "count": len(places),
             "places": places, "cost_inr": spent, "attribution": maps.ATTRIBUTION,
@@ -316,7 +316,7 @@ async def maps_nearby(ctx: Ctx, kinds, near="", radius_km=2, limit=12, rank="dis
 
 async def maps_place(ctx: Ctx, place_id, **_):
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai.")
+        raise ToolError("Google Maps is not connected yet.")
     try:
         before = mapsbill.usage(ctx.tenant_id)["inr"]
         row = await maps.place_details(str(place_id), tenant_id=ctx.tenant_id)
@@ -358,18 +358,18 @@ MAX_ORIGINS = 5
 
 async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **_):
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise ToolError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     cands = candidates if isinstance(candidates, list) else [candidates]
     cands = [c for c in cands if c not in (None, "", {})]
     if not cands:
-        raise ToolError("Kin jagahon mein se sabse paas dhoondhna hai? Unke naam ya location bataiye.")
+        raise ToolError("Which places should the nearest be picked from? Ask for their names or locations.")
     if len(cands) > MAX_CANDIDATES:
-        raise ToolError(f"Ek baar mein {MAX_CANDIDATES} jagah tak hi dekh sakta hoon; {len(cands)} hain. "
-                        f"Do hisson mein baant dein.")
+        raise ToolError(f"Only up to {MAX_CANDIDATES} places can be checked at a time; there are {len(cands)}. "
+                        f"Split them into two parts.")
     srcs = origins if isinstance(origins, list) else ([origins] if origins else [])
     srcs = [o for o in srcs if o not in (None, "", {})] or ["here"]
     if len(srcs) > MAX_ORIGINS:
-        raise ToolError(f"Ek baar mein {MAX_ORIGINS} shuruaati jagah tak.")
+        raise ToolError(f"Only up to {MAX_ORIGINS} starting places at a time.")
     m = _mode(mode)
     here = maps.where_am_i(ctx.tenant_id)
     try:
@@ -377,8 +377,8 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
         for o in srcs:
             pt = await _locate(ctx, o, here)
             if pt is None:
-                raise ToolError("Aap abhi kahan hain? Phone mein location permission dijiye ya jagah ka naam bataiye."
-                                if maps._is_here(str(o)) else f"'{o}' Google Maps par nahi mila.")
+                raise ToolError("Where is she right now? Ask her to give the phone location permission, or to name the place."
+                                if maps._is_here(str(o)) else f"'{o}' was not found on Google Maps.")
             o_pts.append(pt)
         for c in cands:
             pt = await _locate(ctx, c, o_pts[0])
@@ -387,7 +387,7 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
             else:
                 d_pts.append(pt)
         if not d_pts:
-            raise ToolError("Inmein se koi jagah Google Maps par nahi mili: " + ", ".join(missing)[:200])
+            raise ToolError("None of these places were found on Google Maps: " + ", ".join(missing)[:200])
         cap = max(1, int(get_settings().maps_matrix_max or 100))
         prefiltered = False
         if len(o_pts) * len(d_pts) > cap:
@@ -395,8 +395,8 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
                 d_pts.sort(key=lambda d: maps._km(o_pts[0], d))
                 d_pts, prefiltered = d_pts[:cap], True
             else:
-                raise ToolError(f"{len(o_pts)} x {len(d_pts)} jodiyan hain; ek baar mein {cap} tak hi "
-                                f"(har jodi ka alag paisa lagta hai). Kam jagah dein.")
+                raise ToolError(f"There are {len(o_pts)} x {len(d_pts)} pairs; only up to {cap} at a time "
+                                f"(each pair is billed separately). Give fewer places.")
         before = mapsbill.usage(ctx.tenant_id)["inr"]
         rows = await maps.matrix(o_pts, d_pts, m, tenant_id=ctx.tenant_id)
     except maps.MapsError as e:
@@ -420,8 +420,8 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
     out = {"mode": m, "compared": len(d_pts), "results": result, "cost_inr": spent,
            "attribution": maps.ATTRIBUTION}
     if prefiltered:
-        out["prefiltered"] = (f"{len(cands)} mein se straight-line par sabse paas {cap} ko road par check kiya "
-                              f"(har jodi ka paisa lagta hai). Baaki door hain, par road se alag ho sakta hai.")
+        out["prefiltered"] = (f"Of {len(cands)}, the {cap} nearest by straight line were checked by road "
+                              f"(each pair is billed). The rest are farther, but road distance can differ.")
     if missing:
         out["not_found"] = missing
     out["note"] = ("Card shown for the first starting point. Name the winner with minutes and km in one line, "
@@ -432,7 +432,7 @@ async def maps_nearest(ctx: Ctx, candidates, origins=None, mode="car", top=3, **
 
 async def maps_address_check(ctx: Ctx, address, pin="", city="", state="", **_):
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise ToolError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     try:
         before = mapsbill.usage(ctx.tenant_id)["inr"]
         r = await maps.validate_address(str(address), str(pin or ""), str(city or ""), str(state or ""),
@@ -448,11 +448,11 @@ async def maps_address_check(ctx: Ctx, address, pin="", city="", state="", **_):
 
 async def maps_pata(ctx: Ctx, lat=None, lng=None, **_):
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise ToolError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     if lat is None or lng is None:
         here = maps.where_am_i(ctx.tenant_id)
         if here is None:
-            raise ToolError("Aap abhi kahan hain? Phone mein location permission dijiye ya lat/lng bataiye.")
+            raise ToolError("Where is she right now? Ask her to give the phone location permission, or to give lat/lng.")
         lat, lng = here["lat"], here["lng"]
     try:
         before = mapsbill.usage(ctx.tenant_id)["inr"]
@@ -460,7 +460,7 @@ async def maps_pata(ctx: Ctx, lat=None, lng=None, **_):
     except (maps.MapsError, ValueError) as e:
         raise ToolError(str(e))
     if r is None:
-        return {"address": "", "message": "Is point ka koi pata Google ke paas nahi."}
+        return {"address": "", "message": "Google has no address for this point."}
     r["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
     return r
 
@@ -480,18 +480,18 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
     from datetime import date
     from .. import mapsopt
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise ToolError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     if not mapsopt.configured():
-        raise ToolError("Din ka rasta ke liye Google Cloud project aur service-account file chahiye (server par "
-                        "ROUTE_OPT_PROJECT aur ROUTE_OPT_SA_FILE) - Maps ki API key isme nahi chalti. "
-                        "Abhi order tay nahi kar sakta; maps_nearest se sabse paas wala dekh sakta hoon.")
+        raise ToolError("The day route needs a Google Cloud project and a service-account file (on the server: "
+                        "ROUTE_OPT_PROJECT and ROUTE_OPT_SA_FILE) - the Maps API key does not work here. "
+                        "The stop order cannot be decided now; maps_nearest can find the nearest one.")
     raw = [x for x in (stops if isinstance(stops, list) else [stops]) if x not in (None, "", {})]
     if not raw:
-        raise ToolError("Kin jagahon ka rasta banana hai? Stops bataiye.")
+        raise ToolError("Which places should the route cover? Ask for the stops.")
     try:
         d = date.fromisoformat(str(day)) if day else None
     except ValueError:
-        raise ToolError("Taarikh YYYY-MM-DD mein chahiye.")
+        raise ToolError("The date must be in YYYY-MM-DD format.")
     here = maps.where_am_i(ctx.tenant_id)
     try:
         vs_in = [v for v in (vehicles if isinstance(vehicles, list) else []) if v]
@@ -500,7 +500,7 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
             v = v if isinstance(v, dict) else {"start": v}
             start = await _locate(ctx, v.get("start") or "here", here) if (v.get("start") or here) else None
             if start is None:
-                raise ToolError("Gaadi kahan se chalegi? Phone mein location permission dijiye ya shuruaat ki jagah bataiye.")
+                raise ToolError("Where does the vehicle start from? Ask her to give the phone location permission, or to name the starting place.")
             end = await _locate(ctx, v["end"], here) if v.get("end") else None
             veh.append({"name": v.get("name") or f"Gaadi {i + 1}", "start": start, "end": end,
                         "capacity": v.get("capacity"), "from": v.get("from"), "until": v.get("until")})
@@ -509,7 +509,7 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
             pt = await _stop_with_extras(ctx, item, veh[0]["start"])
             (pts if pt else missing).append(pt or str(item.get("name") if isinstance(item, dict) else item))
         if not pts:
-            raise ToolError("Inmein se koi jagah Google Maps par nahi mili: " + ", ".join(missing)[:200])
+            raise ToolError("None of these places were found on Google Maps: " + ", ".join(missing)[:200])
         before = mapsbill.usage(ctx.tenant_id)["inr"]
         plan = await mapsopt.optimize(pts, veh, d, tenant_id=ctx.tenant_id)
     except (maps.MapsError, ValueError) as e:
@@ -518,7 +518,7 @@ async def maps_route_plan(ctx: Ctx, stops, vehicles=None, day="", **_):
     for r in plan["routes"][:3]:
         _places_card(ctx, f"Din ka rasta - {r['vehicle']}",
                      [{"name": f"{s['order']}. {s['stop']}", "distance_km": s["leg_km"],
-                       "type": f"{s['arrive']} pahunchenge · {s['leg_min']} min", "lat": s["lat"], "lng": s["lng"]}
+                       "type": f"arrive {s['arrive']} · {s['leg_min']} min", "lat": s["lat"], "lng": s["lng"]}
                       for s in r["stops"]], near="", cost_inr=plan["cost_inr"])
     if missing:
         plan["not_found"] = missing
@@ -533,26 +533,26 @@ async def maps_links(ctx: Ctx, place="", lat=None, lng=None, place_id="", name="
                      streetview=True, **_):
     if lat is None or lng is None:
         if not str(place or "").strip():
-            raise ToolError("Kis jagah ka link chahiye? Naam, pata ya lat/lng bataiye.")
+            raise ToolError("Which place is the link for? Ask for the name, address or lat/lng.")
         if not maps.configured():
             # no key: the search link still works - it needs none
             link = maps.search_link(str(place), maps.where_am_i(ctx.tenant_id))
             return {"name": str(place), "view": link, "streetview": None,
-                    "note": "Maps key set nahi, isliye Street View nahi dekh paya; search link diya."}
+                    "note": "The Maps key is not set, so Street View could not be checked; a search link was given."}
         try:
             pt = await maps.resolve(str(place), ctx.tenant_id, near=maps.where_am_i(ctx.tenant_id))
         except maps.MapsError as e:
             raise ToolError(str(e))
         if pt is None:
-            raise ToolError(f"'{place}' Google Maps par nahi mila. Area / shehar ke saath bataiye.")
+            raise ToolError(f"'{place}' was not found on Google Maps. Ask for it with the area / city.")
         lat, lng = pt["lat"], pt["lng"]
         name = name or pt.get("name") or str(place)
     try:
         la, lo = float(lat), float(lng)
     except (TypeError, ValueError):
-        raise ToolError("lat/lng sahi nahi hain.")
+        raise ToolError("lat/lng are not valid.")
     if not (-90 <= la <= 90 and -180 <= lo <= 180):
-        raise ToolError("lat/lng sahi nahi hain.")
+        raise ToolError("lat/lng are not valid.")
     out: dict = {"name": name or f"{la},{lo}", "view": maps.view_link(la, lo, str(place_id or ""), str(name or ""))}
     if directions:
         out["directions"] = maps.nav_link({"lat": la, "lng": lo}, None, "DRIVE", navigate=False)
@@ -561,13 +561,13 @@ async def maps_links(ctx: Ctx, place="", lat=None, lng=None, place_id="", name="
         try:
             sv = await maps.streetview_check(la, lo, tenant_id=ctx.tenant_id)
         except maps.MapsError as e:
-            out["streetview_note"] = f"Street View nahi dekh paya: {e}"
+            out["streetview_note"] = f"Could not check Street View: {e}"
         else:
             if sv["available"]:
                 out["streetview"] = maps.streetview_link(la, lo, sv["pano_id"])
                 out["streetview_date"] = sv["date"]
             else:
-                out["streetview_note"] = "Yahan Street View nahi hai."
+                out["streetview_note"] = "There is no Street View here."
     out["attribution"] = maps.ATTRIBUTION
     out["note"] = ("Put these LINKS in the PDF / message as plain text or hyperlinks. Do not fetch or embed a map "
                    "or Street View picture: the terms forbid storing or re-sharing Google's images in a file.")
@@ -576,7 +576,7 @@ async def maps_links(ctx: Ctx, place="", lat=None, lng=None, place_id="", name="
 
 def _owner_only(ctx: Ctx) -> None:
     if (getattr(ctx, "actor", "owner") or "owner") != "owner":
-        raise ToolError("Yeh sirf malik ke liye hai.")
+        raise ToolError("This is for the owner only.")
 
 
 async def gbp_locations(ctx: Ctx, **_):
@@ -587,7 +587,7 @@ async def gbp_locations(ctx: Ctx, **_):
     except gbp.GbpError as e:
         raise ToolError(str(e))
     if not rows:
-        return {"locations": [], "message": "Is Google account par koi Business Profile listing nahi mili."}
+        return {"locations": [], "message": "No Business Profile listing was found on this Google account."}
     return {"locations": rows, "note": ("Read live from Google and not stored (its policies forbid keeping this content). "
                                         "Show name, address, phone and hours briefly. Editing and reviews are not "
                                         "available yet - say so if she asks.")}
@@ -601,8 +601,8 @@ async def gbp_numbers(ctx: Ctx, location="", days=None, **_):
         if not loc:
             rows = await gbp.locations(ctx.tenant_id)
             if len(rows) != 1:
-                raise ToolError("Kaun si listing? gbp_locations se location chuniye." if rows
-                                else "Koi Business Profile listing nahi mili.")
+                raise ToolError("Which listing? Pick a location from gbp_locations." if rows
+                                else "No Business Profile listing was found.")
             loc = rows[0]["location"]
         r = await gbp.numbers(ctx.tenant_id, loc, None if days is None else int(days))
     except gbp.GbpError as e:
@@ -627,7 +627,7 @@ async def ownmap_import(ctx: Ctx, file_id, name="", **_):
     try:
         fname, _m, data = ms.load_files(ctx.tenant_id, [{"type": "file", "file_id": str(file_id)}])[0]
     except Exception as e:
-        raise ToolError(f"File nahi mili: {e}")
+        raise ToolError(f"File not found: {e}")
     r = _own_call(ownmap.import_file, ctx.tenant_id, data or b"", fname, str(name or ""))
     r["note"] = ("Tell her plainly what was found (r.detected) and how many have no location. The map now lives in Hoola; "
                  "changes made later in Google My Maps do NOT come across - she must re-import. Drawing it on a Google "
@@ -645,13 +645,13 @@ async def _point(ctx: Ctx, place, lat, lng):
     if lat is not None and lng is not None:
         return float(lat), float(lng)
     if not str(place or "").strip():
-        raise ToolError("Kis jagah ke paas? Naam ya lat/lng bataiye.")
+        raise ToolError("Near which place? Ask for the name or lat/lng.")
     try:
         pt = await maps.resolve(str(place), ctx.tenant_id, near=maps.where_am_i(ctx.tenant_id))
     except maps.MapsError as e:
         raise ToolError(str(e))
     if pt is None:
-        raise ToolError(f"'{place}' Google Maps par nahi mila.")
+        raise ToolError(f"'{place}' was not found on Google Maps.")
     return pt["lat"], pt["lng"]
 
 
@@ -675,13 +675,13 @@ async def ownmap_delete(ctx: Ctx, map, confirm=False, **_):
     from .. import ownmap
     _owner_only(ctx)
     if confirm is not True:
-        raise ToolError("Pehle unse poochiye: 'Yeh map aur uski saari entries hata dun?' Haan ke baad confirm=true se bulaiye.")
+        raise ToolError("First ask her: 'Shall I remove this map and all its entries?' After her yes, call again with confirm=true.")
     return _own_call(ownmap.delete_map, ctx.tenant_id, str(map))
 
 
 async def solar_check(ctx: Ctx, place="", lat=None, lng=None, **_):
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise ToolError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     la, lo = await _point(ctx, place, lat, lng)
     try:
         before = mapsbill.usage(ctx.tenant_id)["inr"]
@@ -690,7 +690,7 @@ async def solar_check(ctx: Ctx, place="", lat=None, lng=None, **_):
         raise ToolError(str(e))
     r["cost_inr"] = round(mapsbill.usage(ctx.tenant_id)["inr"] - before, 4)
     if not r.get("covered"):
-        r["message"] = "Google ke paas is jagah ki chhat ka solar data nahi hai (imagery nahi). Andaza nahi lagaunga."
+        r["message"] = "Google has no rooftop solar data for this place (no imagery). Will not guess."
     else:
         r["note"] = ("Tell her roof area, panels that fit, sunshine hours and the layouts' yearly DC kWh. DC = before "
                      "inverter/wiring losses (real output is lower). Do NOT invent savings: ask her monthly bill / tariff and "
@@ -707,11 +707,11 @@ def _pt(x):
 
 async def maps_snap(ctx: Ctx, points, mode="driving", interpolate=False, **_):
     if not maps.configured():
-        raise ToolError("Google Maps abhi connect nahi hai (server par GOOGLE_MAPS_API_KEY set nahi hai).")
+        raise ToolError("Google Maps is not connected yet (GOOGLE_MAPS_API_KEY is not set on the server).")
     try:
         pts = [_pt(p) for p in (points if isinstance(points, list) else [])]
     except (TypeError, ValueError, KeyError):
-        raise ToolError("Points [{lat,lng}] ya 'lat,lng' mein chahiye.")
+        raise ToolError("Points must be given as [{lat,lng}] or 'lat,lng'.")
     try:
         before = mapsbill.usage(ctx.tenant_id)["inr"]
         r = await maps.snap_to_roads(pts, str(mode or "driving").upper(), bool(interpolate), tenant_id=ctx.tenant_id)

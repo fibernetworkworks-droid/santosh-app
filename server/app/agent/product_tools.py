@@ -88,20 +88,20 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..product import rules as R
     from ..product import service as S
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi hai.")
+        raise ToolError("This work is not for customers.")
     t, conv = ctx.tenant_id, ctx.conversation_id
     blob = " ".join(_s(v) for v in a.values())
     if R.has_token(blob):
-        raise ToolError("Token / key chat mein nahi: Product sahayak > Niyam mein app se jodiye. Jo token likha, use GitHub par badal dijiye.")
+        raise ToolError("No token / key in chat: connect it from the app under Product sahayak > Rules. Rotate any token that was written, on GitHub.")
     ref = _s(a.get("ref"))
     try:
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             return S.save_settings(t, **{k: a[k] for k in _SETTING_KEYS if k in a})
         if action == "kpi":
             if not _owner(ctx):
-                raise ToolError("KPI sirf owner badalti hain.")
+                raise ToolError("Only the owner changes the KPI.")
             return S.set_kpi(t, _s(a.get("name")), _s(a.get("definition")), _s(a.get("unit")), a.get("target"),
                              _s(a.get("better")) or "up", _s(a.get("kpi")), bool(a.get("remove")))
         if action == "harvest":
@@ -130,7 +130,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.place(t, ref, _s(a.get("bucket")), _s(a.get("theme")))
         if action == "plan":
             if a.get("apply") and not _owner(ctx):
-                raise ToolError("Roadmap lagana sirf owner.")
+                raise ToolError("Only the owner can set the roadmap.")
             return S.plan(t, bool(a.get("apply")))
         if action == "roadmap_files":
             return S.roadmap_files(t, conv)
@@ -163,14 +163,14 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.metric_add(t, _s(a.get("kpi")), a.get("value"), _s(a.get("day")), _s(a.get("note")))
     except (S.ProductError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..product import rules as R
     from ..product import service as S
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh graahak ke liye nahi hai.")
+        raise ToolError("This is not for customers.")
     t = ctx.tenant_id
     try:
         if what == "day":
@@ -204,7 +204,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "change_types": list(R.CHANGE_TYPES), "play_max": R.PLAY_MAX, "appstore_max": R.APPSTORE_MAX}
     except (S.ProductError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def product(ctx: Ctx, action, **a: Any):

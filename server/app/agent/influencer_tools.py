@@ -99,9 +99,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..influencer import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Owner only.")
     dl, ps = _s(a.get("deal")), _s(a.get("post"))
     try:
         if action == "settings":
@@ -110,7 +110,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             kw = {k: a[k] for k in _CR_KEYS if k in a}
             if "pan" in a:
                 if not _owner(ctx):
-                    raise ToolError("PAN sirf owner daalti hain.")
+                    raise ToolError("Only the owner enters the PAN.")
                 kw["pan"] = a["pan"]
             return S.creator_save(t, _s(a.get("creator")), actor, **kw)
         if action == "rate":
@@ -153,7 +153,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, _s(a.get("creator")), dl, actor)
     except S.InfluencerError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -184,7 +184,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
     except S.InfluencerError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"what '{what}' not recognised.")
 
 
 async def _influencer(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:

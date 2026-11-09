@@ -95,9 +95,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..shaadi import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Owner only.")
     w = _s(a.get("wedding"))
     try:
         if action == "settings":
@@ -170,7 +170,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, w, bool(a.get("include_gifts")), actor)
     except S.ShaadiError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -208,7 +208,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"cards": S.cards(t, w, _s(a.get("status")))}
         if what == "gifts":
             if not _owner(ctx):
-                raise ToolError("Shagun register sirf owner ke liye hai.")
+                raise ToolError("The shagun register is for the owner only.")
             return S.gifts(t, w, full=False)
         if what == "registration":
             return S.registration(t, w)
@@ -220,7 +220,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "vendor_kinds": R.VENDOR_KINDS}
     except S.ShaadiError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"what '{what}' not recognised.")
 
 
 async def _shaadi(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
