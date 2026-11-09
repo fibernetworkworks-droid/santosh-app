@@ -161,7 +161,7 @@ def _checkin(monkeypatch, parked=False, cancelled=False):
 
 def test_a_long_call_ask_says_it_is_still_working(env, monkeypatch):
     said, fake = _checkin(monkeypatch)
-    assert len(said) == 3 and all("abhi bhi chal raha hai" in x and "'Ho gaya' bilkul mat kehna" in x for x in said)
+    assert len(said) == 3 and all("is still running" in x and "Do NOT say it is done" in x for x in said)
     assert fake.stats["still_working"] == 3
 
 

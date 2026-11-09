@@ -185,7 +185,7 @@ def test_fresh_greeting_allows_continuity():
 
 def test_continuation_greeting_unchanged():
     g = greeting("default", "m", continuation="aakhri poori baat: pizza order karna tha")
-    assert "KOI NAYA CALL NAHI" in g
+    assert "NOT A NEW CALL" in g
 
 
 def test_run_uses_drop_then_followup():

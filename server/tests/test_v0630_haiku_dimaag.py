@@ -69,7 +69,7 @@ def test_voice_carries_one_tool_and_a_short_persona(monkeypatch):
     assert names[0] == "santosh_kaam" and set(names) <= {"santosh_kaam", "side_talk"}
     assert len(json.dumps(specs)) < 3000 and len(p) < 4000
     assert "EXACT words" in p and "Answer YOURSELF" in p and "{context}" in p
-    assert "ek second, dekh raha hoon" in p and "never say a thing is done" in p
+    assert "one second, checking" in p and "never say a thing is done" in p
     assert "You are female" in f and "You are male" not in f
     p.format(lang="Hinglish", now="now", context="ctx")
     from google.genai import types as gt
@@ -95,7 +95,7 @@ def test_brain_gets_her_words_on_haiku(monkeypatch, env):
     out = asyncio.run(call._execute("santosh_kaam", {"request": "summarise emails"}))
     assert out == {"result": "Aapke 3 naye mail hain."}
     assert seen["text"].startswith("mere last 10 email") and "summarise emails" in seen["text"]
-    assert seen["brain"] is True and "BOLA jayega" in seen["context"]
+    assert seen["brain"] is True and "SPOKEN on a call" in seen["context"]
     assert call.stats["brain_turns"] == 1
     assert santosh.VOICE_BRAIN_NOW.get() is False          # never leaks out of the brain's own task
     call.user_buf = ""                                     # a note-driven call never re-runs her OLD ask

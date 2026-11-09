@@ -95,7 +95,7 @@ def test_the_call_drops_the_unspoken_note_and_learns_quietly():
     asyncio.run(go())
     assert fake._news == ["(Website ka kaam ho gaya)"]              # the stale ask is never spoken
     assert fake.stats["card_notes_dropped"] == 1
-    assert quiet and "Card ka jawab mil gaya" in quiet[0] and "kabhi mat kehna" in quiet[0]
+    assert quiet and "Card ka jawab mil gaya" in quiet[0] and "Never tell her" in quiet[0]
 
 
 def test_the_brain_reads_which_cards_really_wait(env):
