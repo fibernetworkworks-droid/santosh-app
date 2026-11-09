@@ -18,10 +18,10 @@ class SheetCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = v['status'] as String? ?? 'created';
     final chip = switch (status) {
-      'created' => 'NAYI SHEET',
-      'deleted' => 'ROWS HATAYI',
-      'updated' => 'BADAL DI',
-      'shared' => 'SHARE KI',
+      'created' => 'NEW SHEET',
+      'deleted' => 'ROWS DELETED',
+      'updated' => 'CHANGED',
+      'shared' => 'SHARED',
       _ => status.toUpperCase(),
     };
     final tabs = (v['tabs'] as List? ?? const []).map((e) => '$e').toList();
@@ -40,7 +40,7 @@ class SheetCard extends StatelessWidget {
             Padding(padding: const EdgeInsets.only(top: 4), child: Text('Tabs: ${tabs.join(', ')}', style: const TextStyle(color: C.muted, fontSize: 12.5))),
           if (link.isNotEmpty) ...[
             const SizedBox(height: 10),
-            GlassButton(label: 'Sheet kholiye', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(link)),
+            GlassButton(label: 'Open sheet', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(link)),
           ],
         ]),
       ),
@@ -125,9 +125,9 @@ class _SheetsScreenState extends State<SheetsScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Hoola aapki Google Sheets naam se dhoondhta, padhta, sahi hisaab lagata (total, filter, group), rows '
-                'jodta aur badalta, nayi sheet banata, Excel import karta aur file banakar bhejta hai. Rows hatana, 20 se '
-                'zyada rows badalna aur share karna aapke tap ke baad hi.',
+            const Text('Hoola finds your Google Sheets by name, reads them, does the right sums (total, filter, group), adds and changes rows,'
+                'makes new sheets, imports Excel and sends files. Deleting rows, changing more than 20'
+                'rows and sharing go only after your tap.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -140,7 +140,7 @@ class _SheetsScreenState extends State<SheetsScreen> {
                   const SizedBox(width: 10),
                   Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(a['address'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                    Text(a['kind'] == 'service' ? 'Server ka service account: sirf share ki hui sheets' : 'Google account',
+                    Text(a['kind'] == 'service' ? 'Server service account: only shared sheets' : 'Google account',
                         style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     if (a['status'] == 'error') Text(a['error'] as String? ?? 'Login fail', style: const TextStyle(color: C.bad, fontSize: 12)),
                   ])),
@@ -149,15 +149,15 @@ class _SheetsScreenState extends State<SheetsScreen> {
                 ])),
               ),
             if (_loaded && (accounts.isEmpty || onlyService)) ...[
-              GradientButton(label: 'Google Sheets jodiye', icon: Icons.table_chart_rounded, height: 50, onTap: canLink ? _link : null),
+              GradientButton(label: 'Link Google Sheets', icon: Icons.table_chart_rounded, height: 50, onTap: canLink ? _link : null),
               if (!canLink)
                 const Padding(padding: EdgeInsets.only(top: 8),
-                    child: Text('Is server par Google sign-in abhi chalu nahi hai.', style: TextStyle(color: C.faint, fontSize: 12))),
+                    child: Text('Google sign-in is not on yet on this server.', style: TextStyle(color: C.faint, fontSize: 12))),
             ] else if (_loaded)
-              GlassButton(label: 'Doosra Google account jodiye', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
+              GlassButton(label: 'Link another Google account', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
             if (recent.isNotEmpty) ...[
               const SizedBox(height: 18),
-              const Text('Haal ki sheets', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Recent sheets', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Glass(child: Column(children: [
                 for (final r in recent)
@@ -171,15 +171,15 @@ class _SheetsScreenState extends State<SheetsScreen> {
               ])),
             ],
             const SizedBox(height: 18),
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try by voice', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"Sales sheet mein Pune ke kitne customers ka due 1000 se zyada hai?"',
-              '"Har salesman ki total sale batao"',
-              '"Sharma Traders ko Paid mark kar do"',
-              '"Aaj ki entry daalo: Kale Agencies, Akola, 650"',
-              '"Is Excel ko Google Sheet bana do"',
-              '"October sheet Excel banakar CA ko mail karo"',
+              '"In the sales sheet, how many Pune customers have a due above 1000?"',
+              '"Tell me the total sales of each salesman"',
+              '"Mark Sharma Traders as Paid"',
+              '"Add today\'s entry: Kale Agencies, Akola, 650"',
+              '"Make this Excel a Google Sheet"',
+              '"Make the October sheet an Excel and mail it to the CA"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),

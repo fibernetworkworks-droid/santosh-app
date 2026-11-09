@@ -18,10 +18,10 @@ class SlidesCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final status = v['status'] as String? ?? 'created';
     final chip = switch (status) {
-      'created' => 'NAYI PRESENTATION',
-      'deleted' => 'SLIDES HATAYI',
-      'updated' => 'BADAL DI',
-      'shared' => 'SHARE KI',
+      'created' => 'NEW PRESENTATION',
+      'deleted' => 'SLIDES DELETED',
+      'updated' => 'CHANGED',
+      'shared' => 'SHARED',
       _ => status.toUpperCase(),
     };
     final count = (v['slide_count'] as num?)?.toInt();
@@ -40,7 +40,7 @@ class SlidesCard extends StatelessWidget {
             Padding(padding: const EdgeInsets.only(top: 4), child: Text('$count slides', style: const TextStyle(color: C.muted, fontSize: 12.5))),
           if (link.isNotEmpty) ...[
             const SizedBox(height: 10),
-            GlassButton(label: 'Presentation kholiye', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(link)),
+            GlassButton(label: 'Open presentation', icon: Icons.open_in_new_rounded, height: 42, onTap: () => _open(link)),
           ],
         ]),
       ),
@@ -125,9 +125,9 @@ class _SlidesScreenState extends State<SlidesScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Hoola kisi bhi topic par poori presentation banata hai (title, points, table, closing aur speaker notes ke '
-                'saath), aapki decks padhkar summary deta hai, slides jodta / badalta / aage-peeche karta hai aur PDF ya PowerPoint '
-                'banakar bhejta hai. Slides hatana aur share karna aapke tap ke baad hi.',
+            const Text('Hoola makes a full presentation on any topic (with title, points, table, closing and speaker notes), reads your decks and summarises them, adds / changes / reorders slides and sends'
+                'a PDF or PowerPoint.'
+                'Deleting slides and sharing go only after your tap.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -149,15 +149,15 @@ class _SlidesScreenState extends State<SlidesScreen> {
                 ])),
               ),
             if (_loaded && (accounts.isEmpty || onlyService)) ...[
-              GradientButton(label: 'Google Slides jodiye', icon: Icons.slideshow_rounded, height: 50, onTap: canLink ? _link : null),
+              GradientButton(label: 'Link Google Slides', icon: Icons.slideshow_rounded, height: 50, onTap: canLink ? _link : null),
               if (!canLink)
                 const Padding(padding: EdgeInsets.only(top: 8),
-                    child: Text('Is server par Google sign-in abhi chalu nahi hai.', style: TextStyle(color: C.faint, fontSize: 12))),
+                    child: Text('Google sign-in is not on yet on this server.', style: TextStyle(color: C.faint, fontSize: 12))),
             ] else if (_loaded)
-              GlassButton(label: 'Doosra Google account jodiye', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
+              GlassButton(label: 'Link another Google account', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
             if (recent.isNotEmpty) ...[
               const SizedBox(height: 18),
-              const Text('Haal ki presentations', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Recent presentations', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Glass(child: Column(children: [
                 for (final r in recent)
@@ -171,15 +171,15 @@ class _SlidesScreenState extends State<SlidesScreen> {
               ])),
             ],
             const SizedBox(height: 18),
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try by voice', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"FNW Flow par 8 slide ki pitch presentation banao"',
-              '"ITPC training ke liye AI par presentation, Hindi mein"',
-              '"Q3 review deck ka summary batao"',
-              '"Slide 3 mein Goa ka point jodo"',
-              '"Deck mein 2025 ko 2026 kar do"',
-              '"Presentation PDF banakar client ko mail karo"',
+              '"Make an 8-slide pitch presentation on FNW Flow"',
+              '"Make a presentation on AI for ITPC training, in Hindi"',
+              '"Give me a summary of the Q3 review deck"',
+              '"Add the Goa point to slide 3"',
+              '"Change 2025 to 2026 in the deck"',
+              '"Make the presentation a PDF and mail it to the client"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),

@@ -32,7 +32,7 @@ class VoiceRecorder {
     }
     if (err != null) {
       await Native.wakeResume();
-      return err == 'permission' ? 'Microphone ki permission chahiye.' : err;
+      return err == 'permission' ? 'Microphone permission is needed.' : err;
     }
     _pcm.clear();
     recording = true;

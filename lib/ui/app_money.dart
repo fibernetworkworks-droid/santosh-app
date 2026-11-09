@@ -73,7 +73,7 @@ class _AppMoneyPanelState extends State<AppMoneyPanel> {
     try {
       await widget.app.api!.call('POST', '/api/apps/${widget.id}/khata/${_s(c['member'])}/pay', body: {'amount': amt, 'mode': 'cash'});
       ctl?.clear();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_s(c['name'])}: $amt likh liya.')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('${_s(c['name'])}: $amt noted.')));
       _load();
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
@@ -86,14 +86,14 @@ class _AppMoneyPanelState extends State<AppMoneyPanel> {
       Row(children: [
         const Icon(Icons.account_balance_wallet_rounded, color: C.ok, size: 20),
         const SizedBox(width: 6),
-        Expanded(child: Text('Paisa aur hisaab', style: display(15))),
-        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Taaza karo'),
+        Expanded(child: Text('Money and accounts', style: display(15))),
+        IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded, color: C.muted, size: 20), tooltip: 'Refresh'),
       ]),
-      if (!_loaded) const Text('Load ho raha hai…', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      if (!_loaded) const Text('Loading…', style: TextStyle(color: C.muted, fontSize: 12.5)),
       if (_s(_hisaab['say']).isNotEmpty) Text(_s(_hisaab['say']), style: const TextStyle(color: C.ink, fontSize: 13)),
       if (_owe.isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Udhaar baaki (${_owe.length})', style: display(13.5)),
+        Text('Udhaar pending (${_owe.length})', style: display(13.5)),
         for (final c in _owe.take(30))
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -102,7 +102,7 @@ class _AppMoneyPanelState extends State<AppMoneyPanel> {
               if (_s(c['link']).isNotEmpty)
                 TextButton(
                   onPressed: () => launchUrl(Uri.parse(_s(c['link'])), mode: LaunchMode.externalApplication),
-                  child: const Text('WhatsApp mein kholo'),
+                  child: const Text('Open in WhatsApp'),
                 ),
               SizedBox(
                 width: 70,
@@ -113,27 +113,27 @@ class _AppMoneyPanelState extends State<AppMoneyPanel> {
                   decoration: const InputDecoration(hintText: '₹', isDense: true),
                 ),
               ),
-              IconButton(onPressed: () => _gotPaid(c), icon: const Icon(Icons.check_circle_rounded, color: C.ok, size: 20), tooltip: 'Paise mile'),
+              IconButton(onPressed: () => _gotPaid(c), icon: const Icon(Icons.check_circle_rounded, color: C.ok, size: 20), tooltip: 'Money received'),
             ]),
           ),
       ],
       if (_low.isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Stock kam', style: display(13.5)),
+        Text('Low stock', style: display(13.5)),
         Wrap(spacing: 6, runSpacing: 6, children: [
-          for (final p in _low) Pill('${_s(p['name'])}: ${_n(p['qty']) == 0 ? 'khatam' : '${_n(p['qty'])} bache'}', fg: _n(p['qty']) == 0 ? C.bad : C.warn),
+          for (final p in _low) Pill('${_s(p['name'])}: ${_n(p['qty']) == 0 ? 'out of stock' : '${_n(p['qty'])} left'}', fg: _n(p['qty']) == 0 ? C.bad : C.warn),
         ]),
       ],
       if (_codes.isNotEmpty) ...[
         const SizedBox(height: 8),
-        Text('Chalu coupon', style: display(13.5)),
+        Text('Active coupons', style: display(13.5)),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final c in _codes)
-            Pill('${_s(c['code'])} · ${c['kind'] == 'percent' ? '${_n(c['value'])}%' : _rs(c['value'])} · ${_n(c['used'])} baar', fg: C.accent),
+            Pill('${_s(c['code'])} · ${c['kind'] == 'percent' ? '${_n(c['value'])}%' : _rs(c['value'])} · ${_n(c['used'])} times', fg: C.accent),
         ]),
       ],
       if (_loaded && _owe.isEmpty && _low.isEmpty && _codes.isEmpty && _s(_hisaab['say']).isEmpty)
-        const Text('Abhi kuch dikhane ko nahi.', style: TextStyle(color: C.faint, fontSize: 12.5)),
+        const Text('Nothing to show yet.', style: TextStyle(color: C.faint, fontSize: 12.5)),
     ]);
   }
 }

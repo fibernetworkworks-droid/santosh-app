@@ -65,7 +65,7 @@ class NotebookCard extends StatelessWidget {
             Text(v['emoji'] as String? ?? '📒', style: const TextStyle(fontSize: 20)),
             const SizedBox(width: 8),
             Expanded(child: Text(v['title'] as String? ?? 'Notebook', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15.5))),
-            Pill(status == 'note' ? 'NAYA NOTE' : status == 'updated' ? 'SOURCES JUDE' : 'NOTEBOOK', fg: C.teal),
+            Pill(status == 'note' ? 'NEW NOTE' : status == 'updated' ? 'SOURCES ADDED' : 'NOTEBOOK', fg: C.teal),
           ]),
           if (v['sources'] != null)
             Padding(padding: const EdgeInsets.only(top: 4), child: Text('${v['sources']} sources', style: const TextStyle(color: C.muted, fontSize: 12.5))),
@@ -77,7 +77,7 @@ class NotebookCard extends StatelessWidget {
           ],
           const SizedBox(height: 10),
           if (id != null)
-            GlassButton(label: 'Notebook kholiye', icon: Icons.menu_book_rounded, height: 42, onTap: () {
+            GlassButton(label: 'Open notebook', icon: Icons.menu_book_rounded, height: 42, onTap: () {
               Navigator.of(context).push(MaterialPageRoute(builder: (_) => NotebookDetailScreen(app: app, id: id)));
             }),
         ]),
@@ -116,7 +116,7 @@ class NotebookOutputCard extends StatelessWidget {
               Text(v['title'] as String? ?? '', maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
             ])),
-            Pill(st == 'ready' ? 'TAIYAAR' : st == 'failed' ? 'NAHI BANA' : 'BAN RAHA',
+            Pill(st == 'ready' ? 'READY' : st == 'failed' ? 'NOT MADE' : 'BEING MADE',
                 fg: st == 'ready' ? C.ok : st == 'failed' ? C.bad : C.accent),
           ]),
           if (st == 'queued' || st == 'working') ...[
@@ -124,7 +124,7 @@ class NotebookOutputCard extends StatelessWidget {
             LinearProgressIndicator(value: pct > 0 ? pct / 100 : null, color: C.accent, backgroundColor: C.panel, minHeight: 6,
                 borderRadius: BorderRadius.circular(4)),
             const SizedBox(height: 6),
-            Text('${v['stage'] ?? 'Line mein'}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+            Text('${v['stage'] ?? 'In queue'}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           ],
           if (st == 'failed')
             Padding(padding: const EdgeInsets.only(top: 8), child: Text('${v['error'] ?? ''}', style: const TextStyle(color: C.bad, fontSize: 13))),
@@ -139,7 +139,7 @@ class NotebookOutputCard extends StatelessWidget {
           const SizedBox(height: 10),
           Row(children: [
             if (st == 'ready')
-              Expanded(child: GradientButton(label: 'Kholiye', icon: Icons.play_arrow_rounded, height: 44,
+              Expanded(child: GradientButton(label: 'Open', icon: Icons.play_arrow_rounded, height: 44,
                   onTap: () => openNbOutput(context, app, nid, v))),
             if (st == 'ready') const SizedBox(width: 8),
             Expanded(child: GlassButton(label: 'Notebook', icon: Icons.menu_book_rounded, height: 44, onTap: nid.isEmpty ? null : () {
@@ -203,11 +203,11 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
     final name = await showDialog<String>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Nayi notebook'),
-        content: TextField(controller: t, autofocus: true, decoration: const InputDecoration(hintText: 'Naam (khaali chhodo: sources se ban jayega)')),
+        title: const Text('New notebook'),
+        content: TextField(controller: t, autofocus: true, decoration: const InputDecoration(hintText: 'Name (leave empty: it will be made from the sources)')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, t.text.trim().isEmpty ? 'Nayi notebook' : t.text.trim()), child: const Text('Banao')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, t.text.trim().isEmpty ? 'New notebook' : t.text.trim()), child: const Text('Create')),
         ],
       ),
     );
@@ -227,8 +227,8 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
       context: context,
       backgroundColor: C.bgBottom,
       builder: (_) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
-        ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Naam badlo'), onTap: () => Navigator.pop(context, 'rename')),
-        ListTile(leading: const Icon(Icons.copy_rounded), title: const Text('Copy banao'), onTap: () => Navigator.pop(context, 'copy')),
+        ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Rename'), onTap: () => Navigator.pop(context, 'rename')),
+        ListTile(leading: const Icon(Icons.copy_rounded), title: const Text('Make a copy'), onTap: () => Navigator.pop(context, 'copy')),
         ListTile(leading: const Icon(Icons.delete_outline_rounded, color: C.bad), title: const Text('Delete'), onTap: () => Navigator.pop(context, 'delete')),
       ])),
     );
@@ -247,7 +247,7 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
         foregroundColor: C.onAccent,
         onPressed: _create,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('Nayi notebook', style: TextStyle(fontWeight: FontWeight.w800)),
+        label: const Text('New notebook', style: TextStyle(fontWeight: FontWeight.w800)),
       ),
       body: Aurora(
         child: RefreshIndicator(
@@ -262,14 +262,14 @@ class _NotebooksScreenState extends State<NotebooksScreen> {
                       const SizedBox(height: 40),
                       const Text('📒', textAlign: TextAlign.center, style: TextStyle(fontSize: 64)),
                       const SizedBox(height: 12),
-                      Text('Apni pehli notebook banaiye', textAlign: TextAlign.center, style: display(22)),
+                      Text('Create your first notebook', textAlign: TextAlign.center, style: display(22)),
                       const SizedBox(height: 10),
-                      const Text('PDF, photo, audio, website, YouTube ya Drive file daaliye. Hoola sirf unhi se jawab dega (har baat ka '
-                          'source [1] ke saath), aur ek tap mein podcast, video, slides, mind map, quiz, flashcards bana dega: '
-                          'Hindi, Marathi, Tamil ya 39 bhashaon mein.',
+                      const Text('Add a PDF, photo, audio, website, YouTube or Drive file. Hoola will answer only from them (every point'
+                          'with source [1]), and in one tap can make a podcast, video, slides, mind map, quiz or flashcards:'
+                          'in Hindi, Marathi, Tamil or 39 languages.',
                           textAlign: TextAlign.center, style: TextStyle(color: C.muted, height: 1.45)),
                       const SizedBox(height: 24),
-                      GradientButton(label: 'Notebook banao', icon: Icons.add_rounded, onTap: _create),
+                      GradientButton(label: 'Create a notebook', icon: Icons.add_rounded, onTap: _create),
                     ])
                   : GridView.builder(
                       padding: const EdgeInsets.fromLTRB(14, 8, 14, 100),
@@ -331,7 +331,7 @@ Future<bool> nbNotebookAction(BuildContext context, Santosh app, Map<String, dyn
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => StatefulBuilder(builder: (ctx, set) => AlertDialog(
-              title: const Text('Naam aur nishaan'),
+              title: const Text('Name and icon'),
               content: Column(mainAxisSize: MainAxisSize.min, children: [
                 TextField(controller: t, autofocus: true),
                 const SizedBox(height: 12),
@@ -349,7 +349,7 @@ Future<bool> nbNotebookAction(BuildContext context, Santosh app, Map<String, dyn
                 ]),
               ]),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
                 FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Save')),
               ],
             )),
@@ -360,17 +360,17 @@ Future<bool> nbNotebookAction(BuildContext context, Santosh app, Map<String, dyn
     }
     if (a == 'copy') {
       await api.notebookCopy(id);
-      if (context.mounted) nbSnack(context, 'Copy ban gayi (sources aur notes ke saath)');
+      if (context.mounted) nbSnack(context, 'Copy made (with sources and notes)');
       return true;
     }
     if (a == 'delete') {
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: Text('"${nb['title']}" delete karein?'),
-          content: const Text('Sources, chat, notes aur Studio ki saari files hamesha ke liye hat jayengi.'),
+          title: Text('Delete "${nb['title']}"?'),
+          content: const Text('Its sources, chat, notes and all Studio files will be removed for good.'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nahi')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
             FilledButton(style: FilledButton.styleFrom(backgroundColor: C.bad), onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete')),
           ],
         ),
@@ -457,7 +457,7 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> with Single
     try {
       await app.api!.notebookStudio(widget.id, 'research', {'query': q}, conv: app.conversationId ?? '');
       if (mounted) {
-        nbSnack(context, 'Deep research shuru: web padh kar report banega aur source ban jayega (kuch minute).');
+        nbSnack(context, 'Deep research started: it will read the web, write a report and add it as a source (a few minutes).');
         _tabs.index = 2;
       }
       _load();
@@ -497,8 +497,8 @@ class _NotebookDetailScreenState extends State<NotebookDetailScreen> with Single
               }
             },
             itemBuilder: (_) => const [
-              PopupMenuItem(value: 'rename', child: Text('Naam / nishaan badlo')),
-              PopupMenuItem(value: 'copy', child: Text('Copy banao')),
+              PopupMenuItem(value: 'rename', child: Text('Rename / change icon')),
+              PopupMenuItem(value: 'copy', child: Text('Make a copy')),
               PopupMenuItem(value: 'delete', child: Text('Delete')),
             ],
           ),
@@ -554,13 +554,13 @@ class _SourcesTab extends StatelessWidget {
       backgroundColor: C.bgBottom,
       builder: (ctx) => SafeArea(child: Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(title: Text(s['title'] as String? ?? '', maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w700))),
-        ListTile(leading: const Icon(Icons.filter_1_rounded), title: const Text('Sirf yahi source chuno'), onTap: () => Navigator.pop(ctx, 'only')),
-        ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Naam badlo'), onTap: () => Navigator.pop(ctx, 'rename')),
+        ListTile(leading: const Icon(Icons.filter_1_rounded), title: const Text('Select only this source'), onTap: () => Navigator.pop(ctx, 'only')),
+        ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Rename'), onTap: () => Navigator.pop(ctx, 'rename')),
         if (s['refreshable'] == true)
-          ListTile(leading: const Icon(Icons.sync_rounded), title: const Text('Naya version laao (sync)'), onTap: () => Navigator.pop(ctx, 'refresh')),
+          ListTile(leading: const Icon(Icons.sync_rounded), title: const Text('Fetch the new version (sync)'), onTap: () => Navigator.pop(ctx, 'refresh')),
         if ((s['origin'] as String? ?? '').startsWith('http'))
-          ListTile(leading: const Icon(Icons.open_in_new_rounded), title: const Text('Asli page kholo'), onTap: () => Navigator.pop(ctx, 'open')),
-        ListTile(leading: const Icon(Icons.delete_outline_rounded, color: C.bad), title: const Text('Hatao'), onTap: () => Navigator.pop(ctx, 'remove')),
+          ListTile(leading: const Icon(Icons.open_in_new_rounded), title: const Text('Open the original page'), onTap: () => Navigator.pop(ctx, 'open')),
+        ListTile(leading: const Icon(Icons.delete_outline_rounded, color: C.bad), title: const Text('Remove'), onTap: () => Navigator.pop(ctx, 'remove')),
       ])),
     );
     if (a == null || !context.mounted) return;
@@ -575,10 +575,10 @@ class _SourcesTab extends StatelessWidget {
           final name = await showDialog<String>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('Source ka naam'),
+              title: const Text('Source name'),
               content: TextField(controller: t, autofocus: true),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
+                TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
                 FilledButton(onPressed: () => Navigator.pop(ctx, t.text.trim()), child: const Text('Save')),
               ],
             ),
@@ -586,9 +586,9 @@ class _SourcesTab extends StatelessWidget {
           if (name == null || name.isEmpty) return;
           await api.notebookRenameSource(id, sid, name);
         case 'refresh':
-          if (context.mounted) nbSnack(context, 'Source dobara padh raha hoon…');
+          if (context.mounted) nbSnack(context, 'Reading the source again…');
           final r = await api.notebookRefreshSource(id, sid);
-          if (context.mounted) nbSnack(context, r['changed'] == true ? 'Naya version aa gaya' : 'Koi badlav nahi tha');
+          if (context.mounted) nbSnack(context, r['changed'] == true ? 'New version arrived' : 'Nothing had changed');
         case 'open':
           await launchUrl(Uri.parse(s['origin'] as String), mode: LaunchMode.externalApplication);
           return;
@@ -596,11 +596,11 @@ class _SourcesTab extends StatelessWidget {
           final ok = await showDialog<bool>(
             context: context,
             builder: (ctx) => AlertDialog(
-              title: const Text('Source hatayein?'),
+              title: const Text('Remove the source?'),
               content: Text(s['title'] as String? ?? ''),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nahi')),
-                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hatao')),
+                TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+                FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Remove')),
               ],
             ),
           );
@@ -621,17 +621,17 @@ class _SourcesTab extends StatelessWidget {
     return RefreshIndicator(
       onRefresh: reload,
       child: ListView(padding: const EdgeInsets.fromLTRB(14, 12, 14, 40), children: [
-        GradientButton(label: 'Source jodo', icon: Icons.add_rounded,
+        GradientButton(label: 'Add source', icon: Icons.add_rounded,
             onTap: srcs.length >= max ? null : () => nbAddSourceSheet(context, app, id, reload, research)),
         const SizedBox(height: 8),
-        GlassButton(label: 'Web se dhoondho (Discover)', icon: Icons.travel_explore_rounded, height: 44,
+        GlassButton(label: 'Search the web (Discover)', icon: Icons.travel_explore_rounded, height: 44,
             onTap: () => nbDiscoverSheet(context, app, id, reload, research)),
         const SizedBox(height: 14),
         if (srcs.isEmpty)
           const Padding(
             padding: EdgeInsets.all(20),
-            child: Text('Abhi koi source nahi. PDF, Word, PowerPoint, photo (likha hua bhi), audio, apni awaaz, website, YouTube, '
-                'Google Drive / Sheets ya copy kiya text daaliye. Har jawab inhi sources se aayega.',
+            child: Text('No sources yet. Add a PDF, Word, PowerPoint, photo (with text), audio, your own voice, website, YouTube,'
+                'Google Drive / Sheets or pasted text. Every answer will come from these sources.',
                 textAlign: TextAlign.center, style: TextStyle(color: C.muted, height: 1.45)),
           )
         else ...[
@@ -642,9 +642,9 @@ class _SourcesTab extends StatelessWidget {
               activeColor: C.accent,
               onChanged: (_) => _toggle(context, null, on != srcs.length),
             ),
-            Expanded(child: Text('Sab chuno · $on / ${srcs.length} chune (limit $max)', style: const TextStyle(color: C.muted))),
+            Expanded(child: Text('Select all · $on / ${srcs.length} selected (limit $max)', style: const TextStyle(color: C.muted))),
           ]),
-          const Text('Sirf tick wale sources se chat aur Studio bante hain.', style: TextStyle(color: C.faint, fontSize: 12)),
+          const Text('Chat and Studio use only the ticked sources.', style: TextStyle(color: C.faint, fontSize: 12)),
           const SizedBox(height: 6),
           for (final s in srcs)
             Glass(
@@ -680,7 +680,7 @@ class _SourcesTab extends StatelessWidget {
     );
   }
 
-  static String _size(int chars) => chars >= 1000 ? '${(chars / 1000).toStringAsFixed(chars >= 10000 ? 0 : 1)}k akshar' : '$chars akshar';
+  static String _size(int chars) => chars >= 1000 ? '${(chars / 1000).toStringAsFixed(chars >= 10000 ? 0 : 1)}k characters' : '$chars characters';
 }
 
 // ---------------------------------------------------------------- add a source
@@ -694,9 +694,9 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
         child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Source jodiye', style: display(20)),
+          Text('Add source', style: display(20)),
           const SizedBox(height: 4),
-          const Text('Hoola inhi se jawab dega aur Studio banayega.', style: TextStyle(color: C.muted)),
+          const Text('Hoola will answer from these and make the Studio from them.', style: TextStyle(color: C.muted)),
           const SizedBox(height: 14),
           GridView.count(
             crossAxisCount: 3,
@@ -708,14 +708,14 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
             children: [
               for (final o in const [
                 ('file', 'File', 'PDF, Word, PPT, Excel', Icons.upload_file_rounded),
-                ('camera', 'Photo kheencho', 'Kitaab, notes, board', Icons.photo_camera_rounded),
+                ('camera', 'Take a photo', 'Book, notes, board', Icons.photo_camera_rounded),
                 ('gallery', 'Gallery', 'Photo / screenshot', Icons.photo_library_rounded),
-                ('record', 'Bol kar', 'Apni awaaz record', Icons.mic_rounded),
+                ('record', 'By voice', 'Record your voice', Icons.mic_rounded),
                 ('audio', 'Audio file', 'Lecture, call, meeting', Icons.audio_file_rounded),
-                ('link', 'Website / YouTube', 'Link daaliye', Icons.link_rounded),
-                ('text', 'Text paste', 'Copy kiya hua', Icons.content_paste_rounded),
+                ('link', 'Website / YouTube', 'Add a link', Icons.link_rounded),
+                ('text', 'Text paste', 'Pasted text', Icons.content_paste_rounded),
                 ('drive', 'Google Drive', 'Doc / Sheet / file', Icons.add_to_drive_rounded),
-                ('discover', 'Discover', 'Web se dhoondho', Icons.travel_explore_rounded),
+                ('discover', 'Discover', 'Search the web', Icons.travel_explore_rounded),
               ])
                 Press(
                   onTap: () => Navigator.pop(ctx, o.$1),
@@ -743,14 +743,14 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
 
   Future<void> upload(String name, List<int> bytes, {String title = ''}) async {
     if (bytes.length > 200 * 1024 * 1024) {
-      nbSnack(context, 'File 200 MB se badi hai.');
+      nbSnack(context, 'File is larger than 200 MB.');
       return;
     }
-    final close = _busy(context, 'Padh raha hoon: $name');
+    final close = _busy(context, 'Reading: $name');
     try {
       final r = await api.notebookUpload(id, name, bytes, title: title);
       close();
-      if (context.mounted) nbSnack(context, 'Source juda: ${r['title'] ?? name}${(r['note'] as String? ?? '').isNotEmpty ? ' · ${r['note']}' : ''}');
+      if (context.mounted) nbSnack(context, 'Source added: ${r['title'] ?? name}${(r['note'] as String? ?? '').isNotEmpty ? ' · ${r['note']}' : ''}');
       await reload();
     } catch (e) {
       close();
@@ -759,11 +759,11 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
   }
 
   Future<void> add(Map<String, dynamic> src) async {
-    final close = _busy(context, 'Source padh raha hoon…');
+    final close = _busy(context, 'Reading the source…');
     try {
       final r = await api.notebookAddSource(id, src);
       close();
-      if (context.mounted) nbSnack(context, 'Source juda: ${r['title'] ?? ''}${(r['note'] as String? ?? '').isNotEmpty ? ' · ${r['note']}' : ''}');
+      if (context.mounted) nbSnack(context, 'Source added: ${r['title'] ?? ''}${(r['note'] as String? ?? '').isNotEmpty ? ' · ${r['note']}' : ''}');
       await reload();
     } catch (e) {
       close();
@@ -778,7 +778,7 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
       try {
         res = await FilePicker.platform.pickFiles(type: a == 'audio' ? FileType.audio : FileType.any, allowMultiple: true, withData: false);
       } catch (e) {
-        if (context.mounted) nbSnack(context, 'File chun nahi paye: $e');
+        if (context.mounted) nbSnack(context, 'Could not pick the file: $e');
         return;
       }
       for (final f in res?.files ?? const <PlatformFile>[]) {
@@ -809,11 +809,11 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
       final wav = await showDialog<List<int>>(context: context, barrierDismissible: false, builder: (_) => const _RecordDialog());
       if (wav != null && context.mounted) {
         final stamp = DateTime.now().toIso8601String().substring(0, 16).replaceAll(':', '-');
-        await upload('recording-$stamp.wav', wav, title: 'Meri recording $stamp'.replaceAll('T', ' '));
+        await upload('recording-$stamp.wav', wav, title: 'My recording $stamp'.replaceAll('T', ' '));
       }
     case 'link':
       final v = await _ask(context, 'Website ya YouTube link', 'https://…', multi: true,
-          help: 'Ek se zyada link: har line mein ek. YouTube ka transcript padha jayega.');
+          help: 'More than one link: one per line. A YouTube transcript will be read.');
       if (v == null) return;
       for (final u in v.split(RegExp(r'[\s,]+')).where((x) => x.startsWith('http'))) {
         if (!context.mounted) return;
@@ -825,13 +825,13 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
       final ok = await showDialog<bool>(
         context: context,
         builder: (ctx) => AlertDialog(
-          title: const Text('Text paste kijiye'),
+          title: const Text('Paste the text'),
           content: SizedBox(
             width: 520,
             child: Column(mainAxisSize: MainAxisSize.min, children: [
-              TextField(controller: t, decoration: const InputDecoration(hintText: 'Naam (optional)')),
+              TextField(controller: t, decoration: const InputDecoration(hintText: 'Name (optional)')),
               const SizedBox(height: 8),
-              TextField(controller: body, minLines: 6, maxLines: 12, decoration: const InputDecoration(hintText: 'Yahan paste kijiye')),
+              TextField(controller: body, minLines: 6, maxLines: 12, decoration: const InputDecoration(hintText: 'Paste here')),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
@@ -846,15 +846,15 @@ Future<void> nbAddSourceSheet(BuildContext context, Santosh app, String id, Futu
             ]),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Jodo')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Add')),
           ],
         ),
       );
       if (ok == true && body.text.trim().isNotEmpty) await add({'text': body.text.trim(), if (t.text.trim().isNotEmpty) 'title': t.text.trim()});
     case 'drive':
-      final dv = await _ask(context, 'Google Drive', 'Drive link ya file ka naam',
-          help: 'Google Docs, Slides, Sheets, PDF ya koi bhi Drive file (Google se juda hona chahiye).');
+      final dv = await _ask(context, 'Google Drive', 'Drive link or file name',
+          help: 'Google Docs, Slides, Sheets, PDF or any Drive file (must be linked to Google).');
       if (dv != null) await add({'drive': dv});
     case 'discover':
       if (context.mounted) await nbDiscoverSheet(context, app, id, reload, research);
@@ -892,8 +892,8 @@ Future<String?> _ask(BuildContext context, String title, String hint, {bool mult
         if (help.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 8), child: Text(help, style: const TextStyle(color: C.faint, fontSize: 12))),
       ]),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-        FilledButton(onPressed: () => Navigator.pop(ctx, t.text.trim()), child: const Text('Theek hai')),
+        TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+        FilledButton(onPressed: () => Navigator.pop(ctx, t.text.trim()), child: const Text('OK')),
       ],
     ),
   );
@@ -930,7 +930,7 @@ class _RecordDialogState extends State<_RecordDialog> {
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-        title: const Text('Bol kar source banaiye'),
+        title: const Text('Add a source by speaking'),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           if (_err != null) Text(_err!, style: const TextStyle(color: C.bad)),
           if (_err == null) ...[
@@ -944,7 +944,7 @@ class _RecordDialogState extends State<_RecordDialog> {
             const SizedBox(height: 12),
             Text(nbClock(_rec.length), style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 6),
-            const Text('Lecture, meeting ya apne notes boliye. Hoola sun kar likh lega.', textAlign: TextAlign.center,
+            const Text('Speak a lecture, a meeting or your own notes. Hoola will listen and write it down.', textAlign: TextAlign.center,
                 style: TextStyle(color: C.muted, fontSize: 12.5)),
           ],
         ]),
@@ -952,12 +952,12 @@ class _RecordDialogState extends State<_RecordDialog> {
           TextButton(onPressed: () async {
             await _rec.stop();
             if (context.mounted) Navigator.pop(context);
-          }, child: const Text('Rehne do')),
+          }, child: const Text('Cancel')),
           if (_err == null)
             FilledButton(onPressed: () async {
               final w = await _rec.stop();
               if (context.mounted) Navigator.pop(context, w.length > 3200 ? w : null);
-            }, child: const Text('Ho gaya, jodo')),
+            }, child: const Text('Done, add it')),
         ],
       );
 }
@@ -1024,7 +1024,7 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
     }
     await widget.reload();
     if (!mounted) return;
-    nbSnack(context, '$ok / ${urls.length} sources jude');
+    nbSnack(context, '$ok / ${urls.length} sources added');
     Navigator.pop(context);
   }
 
@@ -1041,7 +1041,7 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
         builder: (_, sc) => ListView(controller: sc, padding: const EdgeInsets.fromLTRB(16, 16, 16, 30), children: [
           Text('Discover sources', style: display(20)),
           const SizedBox(height: 4),
-          const Text('Vishay likhiye: Hoola web se achhe sources laayega, aap chun kar jodiye.', style: TextStyle(color: C.muted)),
+          const Text('Write a topic: Hoola will bring good sources from the web and you pick which to add.', style: TextStyle(color: C.muted)),
           const SizedBox(height: 12),
           TextField(
             controller: _q,
@@ -1049,19 +1049,19 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
             textInputAction: TextInputAction.search,
             onSubmitted: (_) => _go(),
             decoration: InputDecoration(
-              hintText: 'Jaise: PM Kisan yojana ke niyam 2026',
+              hintText: 'e.g. PM Kisan scheme rules 2026',
               suffixIcon: IconButton(icon: const Icon(Icons.search_rounded), onPressed: _busy ? null : _go),
             ),
           ),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: GlassButton(label: _busy ? 'Dhoondh raha hoon…' : 'Jaldi dhoondho', icon: Icons.bolt_rounded, height: 44,
+            Expanded(child: GlassButton(label: _busy ? 'Searching…' : 'Quick search', icon: Icons.bolt_rounded, height: 44,
                 onTap: _busy ? null : _go)),
             const SizedBox(width: 8),
             Expanded(child: GlassButton(label: 'Deep research', icon: Icons.science_rounded, height: 44, onTap: () async {
               final q = _q.text.trim();
               if (q.isEmpty) {
-                nbSnack(context, 'Pehle vishay likhiye');
+                nbSnack(context, 'Write a topic first');
                 return;
               }
               Navigator.pop(context);
@@ -1070,7 +1070,7 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
           ]),
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Deep research = kai searches + pages padh kar poori report (source bhi ban jati hai), kuch minute lagte hain.',
+            child: Text('Deep research = many searches + reading pages into a full report (it also becomes a source). It takes a few minutes.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
           ),
           if (_busy) const Padding(padding: EdgeInsets.all(30), child: Center(child: CircularProgressIndicator())),
@@ -1080,7 +1080,7 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
               Glass(child: NbMarkdown(r['summary'] as String, size: 13.5)),
             ],
             const SizedBox(height: 12),
-            if (srcs.isEmpty) const Text('Kuch nahi mila. Doosre shabd try kijiye.', style: TextStyle(color: C.muted)),
+            if (srcs.isEmpty) const Text('Nothing found. Try other words.', style: TextStyle(color: C.muted)),
             for (final s in srcs)
               CheckboxListTile(
                 value: s['added'] == true || _pick.contains(s['url']),
@@ -1088,12 +1088,12 @@ class _DiscoverSheetState extends State<_DiscoverSheet> {
                 contentPadding: EdgeInsets.zero,
                 onChanged: s['added'] == true ? null : (v) => setState(() => v == true ? _pick.add(s['url'] as String) : _pick.remove(s['url'])),
                 title: Text(s['title'] as String? ?? '', maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                subtitle: Text('${s['added'] == true ? '✓ pehle se juda · ' : ''}${Uri.tryParse(s['url'] as String? ?? '')?.host ?? ''}\n${s['excerpt'] ?? ''}',
+                subtitle: Text('${s['added'] == true ? '✓ already added ·' : ''}${Uri.tryParse(s['url'] as String? ?? '')?.host ?? ''}\n${s['excerpt'] ?? ''}',
                     maxLines: 3, overflow: TextOverflow.ellipsis, style: const TextStyle(color: C.muted, fontSize: 12)),
               ),
             if (_pick.isNotEmpty) ...[
               const SizedBox(height: 10),
-              GradientButton(label: _adding > 0 ? 'Jod raha hoon $_adding / ${_pick.length}…' : '${_pick.length} sources jodo',
+              GradientButton(label: _adding > 0 ? 'Adding $_adding / ${_pick.length}…' : 'Add ${_pick.length} sources',
                   icon: Icons.add_rounded, onTap: _adding > 0 ? null : _add),
             ],
           ],
@@ -1176,14 +1176,14 @@ class _NbSourceScreenState extends State<NbSourceScreen> {
                       if (g == null)
                         const LinearProgressIndicator(color: C.accent, backgroundColor: C.panel)
                       else if ((g['summary'] as String? ?? '').isEmpty)
-                        Text('${g['error'] ?? 'Guide nahi bana'}', style: const TextStyle(color: C.muted))
+                        Text('${g['error'] ?? 'Guide was not made'}', style: const TextStyle(color: C.muted))
                       else ...[
                         NbMarkdown(g['summary'] as String, size: 14),
                         if ((g['topics'] as List? ?? const []).isNotEmpty) ...[
                           const SizedBox(height: 10),
                           Wrap(spacing: 6, runSpacing: 6, children: [
                             for (final t in g['topics'] as List)
-                              ActionChip(label: Text('$t'), onPressed: () => Navigator.pop(context, '"${s['title']}" mein $t ke baare mein samjhaiye')),
+                              ActionChip(label: Text('$t'), onPressed: () => Navigator.pop(context, 'Explain $t in "${s['title']}"')),
                           ]),
                         ],
                         for (final q in (g['questions'] as List? ?? const []))
@@ -1200,7 +1200,7 @@ class _NbSourceScreenState extends State<NbSourceScreen> {
                   if ((s['note'] as String? ?? '').isNotEmpty)
                     Padding(padding: const EdgeInsets.only(top: 8), child: Text('${s['note']}', style: const TextStyle(color: C.faint, fontSize: 12))),
                   const SizedBox(height: 14),
-                  Caption('POORA TEXT · ${passages.length} HISSE'),
+                  Caption('FULL TEXT · ${passages.length} PARTS'),
                   for (var i = 0; i < passages.length; i++)
                     Container(
                       key: i == widget.highlight ? _hl : null,
@@ -1212,7 +1212,7 @@ class _NbSourceScreenState extends State<NbSourceScreen> {
                         border: Border.all(color: i == widget.highlight ? C.accent : const Color(0x14FFFFFF)),
                       ),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        Text('Hissa ${i + 1}', style: TextStyle(color: i == widget.highlight ? C.accent : C.faint, fontSize: 11, fontWeight: FontWeight.w700)),
+                        Text('Part ${i + 1}', style: TextStyle(color: i == widget.highlight ? C.accent : C.faint, fontSize: 11, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 4),
                         SelectableText(passages[i], style: const TextStyle(height: 1.45, fontSize: 13.5)),
                       ]),
@@ -1296,7 +1296,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     q = q.trim();
     if (q.isEmpty || _thinking) return;
     if (_on == 0) {
-      nbSnack(context, nbList(widget.d['sources']).isEmpty ? 'Pehle koi source jodiye.' : 'Koi source chuna nahi hai: Sources mein tick kijiye.');
+      nbSnack(context, nbList(widget.d['sources']).isEmpty ? 'Add a source first.' : 'No source is selected: tick one in Sources.');
       widget.openSources();
       return;
     }
@@ -1332,7 +1332,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
       if ((s == 'done' || s == 'notListening') && mounted) setState(() => _listening = false);
     });
     if (!ok) {
-      if (mounted) nbSnack(context, 'Microphone permission chahiye.');
+      if (mounted) nbSnack(context, 'Microphone permission is needed.');
       return;
     }
     setState(() => _listening = true);
@@ -1367,7 +1367,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
               Expanded(child: Text('${c['title']}', maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w800))),
             ]),
             const SizedBox(height: 4),
-            Text('Source ${c['source']} · hissa ${c['passage']}', style: const TextStyle(color: C.faint, fontSize: 12)),
+            Text('Source ${c['source']} · part ${c['passage']}', style: const TextStyle(color: C.faint, fontSize: 12)),
             const SizedBox(height: 12),
             Container(
               padding: const EdgeInsets.all(12),
@@ -1376,7 +1376,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
               child: Text('“${c['snippet']}…”', style: const TextStyle(height: 1.45)),
             ),
             const SizedBox(height: 14),
-            GlassButton(label: 'Source mein dekho', icon: Icons.menu_book_rounded, onTap: () async {
+            GlassButton(label: 'See in source', icon: Icons.menu_book_rounded, onTap: () async {
               Navigator.pop(ctx);
               final q = await Navigator.of(context).push<String>(MaterialPageRoute(builder: (_) => NbSourceScreen(
                   app: widget.app, nid: widget.id, sid: c['source_id'] as String, highlight: (c['chunk'] as num?)?.toInt())));
@@ -1402,36 +1402,36 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
             padding: EdgeInsets.fromLTRB(18, 18, 18, 18 + MediaQuery.of(ctx).viewInsets.bottom),
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                Text('Chat set kijiye', style: display(20)),
+                Text('Set up the chat', style: display(20)),
                 const SizedBox(height: 14),
-                const Caption('MAQSAD'),
+                const Caption('PURPOSE'),
                 Wrap(spacing: 8, children: [
-                  for (final g in const [('default', 'Aam (research)'), ('learning', 'Seekhna (teacher)'), ('custom', 'Apna role')])
+                  for (final g in const [('default', 'General (research)'), ('learning', 'Learning (teacher)'), ('custom', 'Your role')])
                     ChoiceChip(label: Text(g.$2), selected: goal == g.$1, onSelected: (_) => set(() => goal = g.$1)),
                 ]),
                 if (goal == 'learning')
-                  const Padding(padding: EdgeInsets.only(top: 6), child: Text('Hoola seedha jawab dene ki jagah sawaal poochh kar sikhayega, step by step.',
+                  const Padding(padding: EdgeInsets.only(top: 6), child: Text('Instead of giving answers directly, Hoola will teach by asking questions, step by step.',
                       style: TextStyle(color: C.faint, fontSize: 12))),
                 if (goal == 'custom')
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: TextField(controller: custom, minLines: 2, maxLines: 5,
-                        decoration: const InputDecoration(hintText: 'Jaise: Tum GST exam ke teacher ho, har jawab mein ek example do')),
+                        decoration: const InputDecoration(hintText: 'e.g. You are a GST exam teacher, give an example in every answer')),
                   ),
                 const SizedBox(height: 14),
-                const Caption('JAWAB KI LAMBAI'),
+                const Caption('ANSWER LENGTH'),
                 Wrap(spacing: 8, children: [
-                  for (final l in const [('shorter', 'Chhota'), ('default', 'Normal'), ('longer', 'Lamba')])
+                  for (final l in const [('shorter', 'Short'), ('default', 'Normal'), ('longer', 'Long')])
                     ChoiceChip(label: Text(l.$2), selected: length == l.$1, onSelected: (_) => set(() => length = l.$1)),
                 ]),
                 const SizedBox(height: 14),
-                const Caption('JAWAB KI BHASHA'),
+                const Caption('ANSWER LANGUAGE'),
                 DropdownButton<String>(
                   isExpanded: true,
                   value: lang,
                   dropdownColor: C.bgBottom,
                   items: [
-                    const DropdownMenuItem(value: 'auto', child: Text('Jis bhasha mein poochha (auto)')),
+                    const DropdownMenuItem(value: 'auto', child: Text('The language you asked in (auto)')),
                     for (final e in langs.entries) DropdownMenuItem(value: e.key, child: Text('${e.value}')),
                   ],
                   onChanged: (v) => set(() => lang = v ?? 'auto'),
@@ -1446,7 +1446,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     try {
       await widget.app.api!.notebookConfig(widget.id, {'goal': goal, 'custom': custom.text.trim(), 'length': length, 'language': lang});
       await widget.reload();
-      if (mounted) nbSnack(context, 'Chat set ho gaya');
+      if (mounted) nbSnack(context, 'Chat is set');
     } catch (e) {
       if (mounted) nbSnack(context, '$e');
     }
@@ -1456,11 +1456,11 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Chat saaf karein?'),
-        content: const Text('Saved notes rahenge, sirf baatcheet hategi.'),
+        title: const Text('Clear the chat?'),
+        content: const Text('Saved notes stay; only the conversation is removed.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Saaf karo')),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Clear')),
         ],
       ),
     );
@@ -1480,9 +1480,9 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
         child: Column(children: [
           const Text('📚', style: TextStyle(fontSize: 40)),
           const SizedBox(height: 8),
-          const Text('Chat shuru karne ke liye pehle source jodiye.', textAlign: TextAlign.center),
+          const Text('Add a source first to start a chat.', textAlign: TextAlign.center),
           const SizedBox(height: 10),
-          GlassButton(label: 'Sources kholo', icon: Icons.add_rounded, onTap: widget.openSources),
+          GlassButton(label: 'Open sources', icon: Icons.add_rounded, onTap: widget.openSources),
         ]),
       );
     }
@@ -1492,7 +1492,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
           Text(widget.d['emoji'] as String? ?? '📒', style: const TextStyle(fontSize: 26)),
           const SizedBox(width: 8),
           Expanded(child: Text(widget.d['title'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 17))),
-          IconButton(tooltip: 'Naya overview', icon: const Icon(Icons.refresh_rounded, size: 20),
+          IconButton(tooltip: 'New overview', icon: const Icon(Icons.refresh_rounded, size: 20),
               onPressed: _guideBusy ? null : () => _loadGuide(refresh: true)),
         ]),
         Text('${nbList(widget.d['sources']).length} sources', style: const TextStyle(color: C.muted, fontSize: 12)),
@@ -1541,22 +1541,22 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             NbMarkdown(m['text'] as String? ?? '', onCite: (n) => _cite(m, n)),
             if (cites.isEmpty)
-              const Padding(padding: EdgeInsets.only(top: 4), child: Text('Is jawab ka koi source hissa nahi mila.', style: TextStyle(color: C.faint, fontSize: 11.5))),
+              const Padding(padding: EdgeInsets.only(top: 4), child: Text('No source part was found for this answer.', style: TextStyle(color: C.faint, fontSize: 11.5))),
             Row(children: [
               if (cites.isNotEmpty)
-                Expanded(child: Text('${cites.length} source hisse · [n] dabaiye', style: const TextStyle(color: C.faint, fontSize: 11.5)))
+                Expanded(child: Text('${cites.length} source parts · press [n]', style: const TextStyle(color: C.faint, fontSize: 11.5)))
               else
                 const Spacer(),
               IconButton(tooltip: 'Copy', visualDensity: VisualDensity.compact, icon: const Icon(Icons.copy_rounded, size: 18), onPressed: () {
                 Clipboard.setData(ClipboardData(text: (m['text'] as String? ?? '').replaceAll(RegExp(r'\[\d+\]'), '')));
-                nbSnack(context, 'Copy ho gaya');
+                nbSnack(context, 'Copied');
               }),
-              IconButton(tooltip: 'Note mein save', visualDensity: VisualDensity.compact, icon: const Icon(Icons.push_pin_outlined, size: 18),
+              IconButton(tooltip: 'Save to note', visualDensity: VisualDensity.compact, icon: const Icon(Icons.push_pin_outlined, size: 18),
                   onPressed: m['id'] == null ? null : () async {
                     try {
                       await widget.app.api!.notebookSaveMessage(widget.id, m['id'] as String);
                       await widget.reload();
-                      if (mounted) nbSnack(context, 'Note mein save ho gaya (Studio > Notes)');
+                      if (mounted) nbSnack(context, 'Saved to note (Studio > Notes)');
                     } catch (e) {
                       if (mounted) nbSnack(context, '$e');
                     }
@@ -1584,10 +1584,10 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
     super.build(context);
     final c = cfg;
     final tags = [
-      if (c['goal'] == 'learning') 'Seekhna',
-      if (c['goal'] == 'custom') 'Apna role',
-      if (c['length'] == 'shorter') 'Chhota',
-      if (c['length'] == 'longer') 'Lamba',
+      if (c['goal'] == 'learning') 'Learning',
+      if (c['goal'] == 'custom') 'Your role',
+      if (c['length'] == 'shorter') 'Short',
+      if (c['length'] == 'longer') 'Long',
       if ((c['language'] as String? ?? '').isNotEmpty) '${nbMap(widget.d['languages'])[c['language']] ?? c['language']}',
     ];
     return Column(children: [
@@ -1610,7 +1610,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
               child: Row(children: [
                 SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2.4, color: C.accent)),
                 SizedBox(width: 12),
-                Expanded(child: Text('Sources padh raha hoon, jawab likh raha hoon…', style: TextStyle(color: C.muted))),
+                Expanded(child: Text('Reading sources and writing the answer…', style: TextStyle(color: C.muted))),
               ]),
             ),
           ],
@@ -1629,15 +1629,15 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
                   child: Row(children: [
                     InkWell(
                       onTap: widget.openSources,
-                      child: Text('$_on sources chune', style: const TextStyle(color: C.muted, fontSize: 12, decoration: TextDecoration.underline)),
+                      child: Text('$_on sources selected', style: const TextStyle(color: C.muted, fontSize: 12, decoration: TextDecoration.underline)),
                     ),
                     const SizedBox(width: 8),
                     for (final t in tags) Padding(padding: const EdgeInsets.only(right: 4), child: Pill(t, fg: C.teal)),
                   ]),
                 ),
               ),
-              IconButton(tooltip: 'Chat set karo', visualDensity: VisualDensity.compact, icon: const Icon(Icons.tune_rounded, size: 20), onPressed: _configure),
-              IconButton(tooltip: 'Chat saaf karo', visualDensity: VisualDensity.compact, icon: const Icon(Icons.delete_sweep_outlined, size: 20),
+              IconButton(tooltip: 'Set chat', visualDensity: VisualDensity.compact, icon: const Icon(Icons.tune_rounded, size: 20), onPressed: _configure),
+              IconButton(tooltip: 'Clear chat', visualDensity: VisualDensity.compact, icon: const Icon(Icons.delete_sweep_outlined, size: 20),
                   onPressed: _msgs.isEmpty ? null : _clear),
             ]),
             Row(children: [
@@ -1649,7 +1649,7 @@ class _ChatTabState extends State<_ChatTab> with AutomaticKeepAliveClientMixin {
                   textInputAction: TextInputAction.send,
                   onSubmitted: send,
                   decoration: InputDecoration(
-                    hintText: _listening ? 'Sun raha hoon…' : 'Sources se kuch bhi poochhiye…',
+                    hintText: _listening ? 'Listening…' : 'Ask anything about your sources…',
                     filled: true,
                     fillColor: C.panel,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1695,7 +1695,7 @@ class _StudioTab extends StatelessWidget {
   Future<void> _start(BuildContext context, String kind, Map<String, dynamic> opts) async {
     try {
       final v = await app.api!.notebookStudio(id, kind, opts, conv: app.conversationId ?? '');
-      if (context.mounted) nbSnack(context, '${_kindLabel[kind] ?? 'Studio'} ban raha hai: ${v['stage'] ?? ''}. Taiyaar hote hi bataunga.');
+      if (context.mounted) nbSnack(context, '${_kindLabel[kind] ?? 'Studio'} is being made: ${v['stage'] ?? ''}. I will tell you as soon as it is ready.');
       await reload();
     } catch (e) {
       if (context.mounted) nbSnack(context, '$e');
@@ -1720,13 +1720,13 @@ class _StudioTab extends StatelessWidget {
       backgroundColor: C.bgBottom,
       builder: (ctx) => SafeArea(child: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(title: Text(o['title'] as String? ?? '', maxLines: 2, style: const TextStyle(fontWeight: FontWeight.w700))),
-        ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Naam badlo'), onTap: () => Navigator.pop(ctx, 'rename')),
-        ListTile(leading: const Icon(Icons.replay_rounded), title: const Text('Inhi settings se dobara banao'), onTap: () => Navigator.pop(ctx, 'again')),
+        ListTile(leading: const Icon(Icons.edit_rounded), title: const Text('Rename'), onTap: () => Navigator.pop(ctx, 'rename')),
+        ListTile(leading: const Icon(Icons.replay_rounded), title: const Text('Make again with the same settings'), onTap: () => Navigator.pop(ctx, 'again')),
         if (o['status'] == 'ready')
           for (final n in names) ...[
-            ListTile(leading: const Icon(Icons.share_rounded), title: Text('Bhejo: $n'), onTap: () => Navigator.pop(ctx, 'share:$n')),
-            ListTile(leading: const Icon(Icons.chat_rounded), title: Text('Chat mein file card: $n'),
-                subtitle: const Text('WhatsApp / email / Hoola Network par bhejne ke liye', style: TextStyle(fontSize: 11.5)),
+            ListTile(leading: const Icon(Icons.share_rounded), title: Text('Send: $n'), onTap: () => Navigator.pop(ctx, 'share:$n')),
+            ListTile(leading: const Icon(Icons.chat_rounded), title: Text('File card in chat: $n'),
+                subtitle: const Text('To send by WhatsApp / email / Hoola Network', style: TextStyle(fontSize: 11.5)),
                 onTap: () => Navigator.pop(ctx, 'card:$n')),
           ],
         ListTile(leading: const Icon(Icons.delete_outline_rounded, color: C.bad), title: const Text('Delete'), onTap: () => Navigator.pop(ctx, 'delete')),
@@ -1737,7 +1737,7 @@ class _StudioTab extends StatelessWidget {
     final oid = o['id'] as String;
     try {
       if (a == 'rename') {
-        final v = await _ask(context, 'Naya naam', '', initial: o['title'] as String? ?? '');
+        final v = await _ask(context, 'New name', '', initial: o['title'] as String? ?? '');
         if (v == null) return;
         await api.notebookOutputRename(id, oid, v);
       } else if (a == 'again') {
@@ -1749,7 +1749,7 @@ class _StudioTab extends StatelessWidget {
         return;
       } else if (a.startsWith('card:')) {
         await api.notebookShare(id, oid, a.substring(5), conv: app.conversationId ?? '');
-        if (context.mounted) nbSnack(context, 'File chat mein aa gayi');
+        if (context.mounted) nbSnack(context, 'The file is in the chat');
         return;
       } else if (a == 'delete') {
         await api.notebookOutputDelete(id, oid);
@@ -1776,10 +1776,10 @@ class _StudioTab extends StatelessWidget {
         if (!hasSrc)
           const Padding(
             padding: EdgeInsets.only(bottom: 10),
-            child: Text('Studio ke liye kam se kam ek source chuna hona chahiye.', style: TextStyle(color: C.warn)),
+            child: Text('Select at least one source for the Studio.', style: TextStyle(color: C.warn)),
           ),
         Text('Studio', style: display(20)),
-        const Text('Tap = turant banao · ✎ = apne hisaab se (bhasha, style, lambai, focus)', style: TextStyle(color: C.faint, fontSize: 12)),
+        const Text('Tap = make now · ✎ = customise (language, style, length, focus)', style: TextStyle(color: C.faint, fontSize: 12)),
         const SizedBox(height: 10),
         GridView.count(
           crossAxisCount: 3,
@@ -1823,7 +1823,7 @@ class _StudioTab extends StatelessWidget {
         ),
         const SizedBox(height: 18),
         if (outs.isNotEmpty) ...[
-          const Caption('BANE HUE'),
+          const Caption('MADE'),
           for (final o in outs) _OutputTile(app: app, o: o, onOpen: () => _open(context, o), onMenu: () => _outMenu(context, o)),
         ],
         const SizedBox(height: 14),
@@ -1831,7 +1831,7 @@ class _StudioTab extends StatelessWidget {
           const Expanded(child: Caption('NOTES')),
           TextButton.icon(
             icon: const Icon(Icons.add_rounded),
-            label: const Text('Note likho'),
+            label: const Text('Write a note'),
             onPressed: () async {
               await Navigator.of(context).push(MaterialPageRoute(builder: (_) => NbNoteScreen(app: app, nid: id)));
               reload();
@@ -1839,7 +1839,7 @@ class _StudioTab extends StatelessWidget {
           ),
         ]),
         if (notes.isEmpty)
-          const Text('Chat ke jawab 📌 se yahan save hote hain. Notes ko source bhi bana sakte hain.', style: TextStyle(color: C.faint, fontSize: 12.5)),
+          const Text('Chat answers saved with 📌 appear here. You can also turn notes into sources.', style: TextStyle(color: C.faint, fontSize: 12.5)),
         for (final n in notes)
           Glass(
             margin: const EdgeInsets.only(bottom: 8),
@@ -1921,7 +1921,7 @@ class _OutputTile extends StatelessWidget {
             LinearProgressIndicator(value: pct > 0 ? pct / 100 : null, color: C.accent, backgroundColor: C.panel, minHeight: 5,
                 borderRadius: BorderRadius.circular(4)),
             const SizedBox(height: 4),
-            Text('${o['stage'] ?? 'Line mein'}${kind == 'video' || kind == 'audio' ? ' · aap app band kar sakte hain, taiyaar hone par bataunga' : ''}',
+            Text('${o['stage'] ?? 'In queue'}${kind == 'video' || kind == 'audio' ? ' · you can close the app, I will tell you when it is ready' : ''}',
                 style: const TextStyle(color: C.muted, fontSize: 11.5)),
           ],
           if (st == 'failed')
@@ -1990,10 +1990,10 @@ class _StudioSheetState extends State<_StudioSheet> {
   }
 
   static String _nice(String k) => const {
-        'shorter': 'Chhota', 'default': 'Normal', 'longer': 'Lamba', 'short': 'Chhota', 'long': 'Lamba',
-        'fewer': 'Kam', 'standard': 'Normal', 'more': 'Zyada', 'easy': 'Aasaan', 'medium': 'Beech ka', 'hard': 'Mushkil',
-        'portrait': 'Khada (phone)', 'landscape': 'Leta (screen)', 'square': 'Square', 'concise': 'Kam shabd', 'detailed': 'Vistaar se',
-        'female': 'Mahila', 'male': 'Purush', 'warm': 'Narm', 'bright': 'Josh',
+        'shorter': 'Short', 'default': 'Normal', 'longer': 'Long', 'short': 'Short', 'long': 'Long',
+        'fewer': 'Fewer', 'standard': 'Normal', 'more': 'More', 'easy': 'Easy', 'medium': 'Medium', 'hard': 'Hard',
+        'portrait': 'Portrait (phone)', 'landscape': 'Landscape (screen)', 'square': 'Square', 'concise': 'Fewer words', 'detailed': 'Detailed',
+        'female': 'Female', 'male': 'Male', 'warm': 'Soft', 'bright': 'Josh',
       }[k] ?? k;
 
   String? _about(String key) {
@@ -2024,25 +2024,25 @@ class _StudioSheetState extends State<_StudioSheet> {
           if (k == 'audio') ...[
             _chips('FORMAT', 'format', _labels(c['formats']), 'deep_dive'),
             if (_about('format') != null) Text(_about('format')!, style: const TextStyle(color: C.faint, fontSize: 12)),
-            _chips('LAMBAI', 'length', _labels(c['lengths']), 'default'),
+            _chips('LENGTH', 'length', _labels(c['lengths']), 'default'),
           ],
           if (k == 'video') ...[
             _chips('FORMAT', 'format', _labels(c['formats']), 'explainer'),
             if (_about('format') != null) Text(_about('format')!, style: const TextStyle(color: C.faint, fontSize: 12)),
             _chips('VISUAL STYLE', 'style', styles, 'classic'),
             if (_o['style'] == 'custom')
-              TextField(controller: _custom, decoration: const InputDecoration(hintText: 'Kaisa dikhe? Jaise: chalk on blackboard, madhubani art')),
-            _chips('AWAAZ', 'voice', _labels(c['voices']), 'female'),
+              TextField(controller: _custom, decoration: const InputDecoration(hintText: 'What should it look like? e.g. chalk on blackboard, madhubani art')),
+            _chips('VOICE', 'voice', _labels(c['voices']), 'female'),
           ],
           if (k == 'slides') ...[
             _chips('FORMAT', 'format', _labels(c['formats']), 'detailed'),
             if (_about('format') != null) Text(_about('format')!, style: const TextStyle(color: C.faint, fontSize: 12)),
-            _chips('KITNI SLIDES', 'length', {for (final e in _labels(c['lengths']).entries) e.key: '${_nice(e.key)} (${const {'short': 6, 'default': 10, 'long': 15}[e.key] ?? ''})'}, 'default'),
+            _chips('HOW MANY SLIDES', 'length', {for (final e in _labels(c['lengths']).entries) e.key: '${_nice(e.key)} (${const {'short': 6, 'default': 10, 'long': 15}[e.key] ?? ''})'}, 'default'),
             _chips('DESIGN', 'style', styles, 'classic'),
             if (_o['style'] == 'custom')
-              TextField(controller: _custom, decoration: const InputDecoration(hintText: 'Kaisa design? Jaise: navy aur gold, corporate')),
+              TextField(controller: _custom, decoration: const InputDecoration(hintText: 'What design? e.g. navy and gold, corporate')),
             const SizedBox(height: 10),
-            TextField(controller: _audience, decoration: const InputDecoration(labelText: 'Kiske liye? (optional)', hintText: 'Jaise: bank manager, class 10 students')),
+            TextField(controller: _audience, decoration: const InputDecoration(labelText: 'Who is it for? (optional)', hintText: 'e.g. bank manager, class 10 students')),
           ],
           if (k == 'infographic') ...[
             _chips('SHAPE', 'orientation', _labels(c['orientations']), 'portrait'),
@@ -2052,7 +2052,7 @@ class _StudioSheetState extends State<_StudioSheet> {
           if (k == 'report') ...[
             _chips('FORMAT', 'type', _labels(nbMap(c['types'])), 'briefing'),
             const SizedBox(height: 10),
-            const Caption('IN SOURCES KE LIYE SUJHAV'),
+            const Caption('SUGGESTIONS FOR THESE SOURCES'),
             if (_suggested == null) const LinearProgressIndicator(color: C.accent, backgroundColor: C.panel),
             for (final f in _suggested ?? const <Map<String, dynamic>>[])
               ListTile(
@@ -2069,17 +2069,17 @@ class _StudioSheetState extends State<_StudioSheet> {
               ),
           ],
           if (k == 'flashcards' || k == 'quiz') ...[
-            _chips('KITNE', 'count', _labels(c['counts']), 'standard'),
-            _chips('MUSHKIL', 'difficulty', _labels(c['difficulty']), 'medium'),
+            _chips('HOW MANY', 'count', _labels(c['counts']), 'standard'),
+            _chips('DIFFICULTY', 'difficulty', _labels(c['difficulty']), 'medium'),
             const SizedBox(height: 10),
-            TextField(controller: _topic, decoration: const InputDecoration(labelText: 'Sirf is vishay par (optional)')),
+            TextField(controller: _topic, decoration: const InputDecoration(labelText: 'Only on this topic (optional)')),
           ],
           if (k == 'table') ...[
             const SizedBox(height: 10),
-            TextField(controller: _cols, decoration: const InputDecoration(labelText: 'Columns (optional)', hintText: 'Jaise: Yojana, Kisko milega, Kitna paisa, Last date')),
+            TextField(controller: _cols, decoration: const InputDecoration(labelText: 'Columns (optional)', hintText: 'e.g. Scheme, Who gets it, How much money, Last date')),
           ],
           const SizedBox(height: 12),
-          const Caption('BHASHA'),
+          const Caption('LANGUAGE'),
           DropdownButton<String>(
             isExpanded: true,
             value: widget.langs.containsKey(_o['language']) ? _o['language'] as String : null,
@@ -2094,18 +2094,18 @@ class _StudioSheetState extends State<_StudioSheet> {
             minLines: 2,
             maxLines: 6,
             decoration: InputDecoration(
-              labelText: k == 'report' && _o['type'] == 'custom' ? 'Report kaisi ho? (zaroori)' : 'Kis par dhyaan de? (optional)',
+              labelText: k == 'report' && _o['type'] == 'custom' ? 'What kind of report? (required)' : 'What to focus on? (optional)',
               hintText: switch (k) {
-                'audio' => 'Jaise: naye logon ke liye samjhao, sirf chapter 3, ek doosre se behas karo',
-                'video' => 'Jaise: kisanon ke liye, sirf fayde aur shartein',
-                'slides' => 'Jaise: 5 minute ki baat, numbers zyada',
-                _ => 'Jaise: sirf important dates, exam ke hisaab se',
+                'audio' => 'e.g. explain for beginners, only chapter 3, argue both sides',
+                'video' => 'e.g. for farmers, only benefits and conditions',
+                'slides' => 'e.g. a 5 minute talk, more numbers',
+                _ => 'e.g. only important dates, for the exam',
               },
             ),
           ),
           const SizedBox(height: 18),
           GradientButton(
-            label: 'Banao',
+            label: 'Create',
             icon: Icons.auto_awesome_rounded,
             onTap: () {
               final o = Map<String, dynamic>.from(_o);
@@ -2115,11 +2115,11 @@ class _StudioSheetState extends State<_StudioSheet> {
               if (_topic.text.trim().isNotEmpty) o['topic'] = _topic.text.trim();
               if (_cols.text.trim().isNotEmpty) o['columns'] = _cols.text.trim();
               if (k == 'report' && o['type'] == 'custom' && (o['focus'] as String? ?? '').isEmpty) {
-                nbSnack(context, 'Batayiye report kaisi ho, ya upar se ek format chuniye.');
+                nbSnack(context, 'Tell me what kind of report you want, or pick a format above.');
                 return;
               }
               if ((o['style'] == 'custom') && (o['custom_style'] as String? ?? '').isEmpty) {
-                nbSnack(context, 'Custom style ke liye batayiye kaisa dikhe.');
+                nbSnack(context, 'Tell me how the custom style should look.');
                 return;
               }
               Navigator.pop(context, o);
@@ -2128,7 +2128,7 @@ class _StudioSheetState extends State<_StudioSheet> {
           if (k == 'audio' || k == 'video')
             const Padding(
               padding: EdgeInsets.only(top: 8),
-              child: Text('Banne mein kuch minute lagte hain. Aap app band kar dijiye, taiyaar hote hi notification aayegi.',
+              child: Text('It takes a few minutes. You can close the app; a notification will come when it is ready.',
                   textAlign: TextAlign.center, style: TextStyle(color: C.faint, fontSize: 11.5)),
             ),
         ]),
@@ -2162,7 +2162,7 @@ class _NbNoteScreenState extends State<NbNoteScreen> {
 
   Future<bool> _save() async {
     if (_body.text.trim().isEmpty) {
-      nbSnack(context, 'Note khaali hai');
+      nbSnack(context, 'The note is empty');
       return false;
     }
     setState(() => _busy = true);
@@ -2174,7 +2174,7 @@ class _NbNoteScreenState extends State<NbNoteScreen> {
       } else {
         await api.notebookNoteUpdate(widget.nid, _id!, _title.text.trim(), _body.text.trim());
       }
-      if (mounted) nbSnack(context, 'Save ho gaya');
+      if (mounted) nbSnack(context, 'Saved');
       return true;
     } catch (e) {
       if (mounted) nbSnack(context, '$e');
@@ -2186,9 +2186,9 @@ class _NbNoteScreenState extends State<NbNoteScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: nbBar(_id == null ? 'Naya note' : 'Note', actions: [
+        appBar: nbBar(_id == null ? 'New note' : 'Note', actions: [
           if (_id != null)
-            IconButton(tooltip: _edit ? 'Dekho' : 'Badlo', icon: Icon(_edit ? Icons.visibility_rounded : Icons.edit_rounded),
+            IconButton(tooltip: _edit ? 'View' : 'Edit', icon: Icon(_edit ? Icons.visibility_rounded : Icons.edit_rounded),
                 onPressed: () => setState(() => _edit = !_edit)),
           if (_id != null)
             PopupMenuButton<String>(
@@ -2198,10 +2198,10 @@ class _NbNoteScreenState extends State<NbNoteScreen> {
                   if (a == 'source') {
                     if (_edit && !await _save()) return;
                     await api.notebookNoteToSource(widget.nid, _id!);
-                    if (mounted) nbSnack(context, 'Note ab ek source hai: chat aur Studio isse bhi padhenge');
+                    if (mounted) nbSnack(context, 'This note is now a source: chat and Studio will read it too');
                   } else if (a == 'copy') {
                     await Clipboard.setData(ClipboardData(text: _body.text));
-                    if (mounted) nbSnack(context, 'Copy ho gaya');
+                    if (mounted) nbSnack(context, 'Copied');
                   } else if (a == 'delete') {
                     await api.notebookNoteDelete(widget.nid, _id!);
                     if (mounted) Navigator.pop(context);
@@ -2211,7 +2211,7 @@ class _NbNoteScreenState extends State<NbNoteScreen> {
                 }
               },
               itemBuilder: (_) => const [
-                PopupMenuItem(value: 'source', child: Text('Source banao')),
+                PopupMenuItem(value: 'source', child: Text('Make source')),
                 PopupMenuItem(value: 'copy', child: Text('Copy')),
                 PopupMenuItem(value: 'delete', child: Text('Delete')),
               ],
@@ -2223,9 +2223,9 @@ class _NbNoteScreenState extends State<NbNoteScreen> {
               TextField(controller: _title, style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 18),
                   decoration: const InputDecoration(hintText: 'Title')),
               const SizedBox(height: 10),
-              TextField(controller: _body, minLines: 12, maxLines: null, decoration: const InputDecoration(hintText: 'Likhiye… (# heading, - list, **bold**)')),
+              TextField(controller: _body, minLines: 12, maxLines: null, decoration: const InputDecoration(hintText: 'Write… (# heading, - list, **bold**)')),
               const SizedBox(height: 16),
-              GradientButton(label: _busy ? 'Save ho raha hai…' : 'Save', icon: Icons.check_rounded, onTap: _busy ? null : () async {
+              GradientButton(label: _busy ? 'Saving…' : 'Save', icon: Icons.check_rounded, onTap: _busy ? null : () async {
                 if (await _save() && mounted) setState(() => _edit = false);
               }),
             ] else ...[

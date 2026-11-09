@@ -84,18 +84,18 @@ class _VoiceEngineScreenState extends State<VoiceEngineScreen> {
     final allowed = v?['allowed'] == true;
     final why = '${v?['why'] ?? ''}';
     return Scaffold(
-      appBar: AppBar(title: const Text('Call ki awaaz')),
+      appBar: AppBar(title: const Text('Call voice')),
       body: v == null
           ? Center(child: _err == null ? const CircularProgressIndicator() : Padding(padding: const EdgeInsets.all(24), child: Text(_err!)))
           : RefreshIndicator(
               onRefresh: _load,
               child: ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-                _option('gemini', Icons.graphic_eq_rounded, 'Gemini awaaz',
-                    'Abhi wali awaaz. Tez, sasti, har cheez ke liye tested.'),
+                _option('gemini', Icons.graphic_eq_rounded, 'Gemini voice',
+                    'The current voice. Fast, cheap, tested for everything.'),
                 _option('openai', Icons.auto_awesome_rounded, 'Real voice (OpenAI)',
                     allowed
-                        ? 'Zyada insaan jaisi: sochte waqt "hmm...", lambi baat ke baad halki saans, naram awaaz. Thoda mehnga.'
-                        : 'Abhi trial mein hai - jald hi sabke liye.',
+                        ? 'More human-like: "hmm..." while thinking, a light breath after a long sentence, a soft voice. Slightly costlier.'
+                        : 'In trial for now - soon for everyone.',
                     enabled: allowed),
                 if (why.isNotEmpty)
                   Glass(
@@ -111,21 +111,21 @@ class _VoiceEngineScreenState extends State<VoiceEngineScreen> {
                   Glass(
                     padding: const EdgeInsets.all(14),
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      const Text('Real voice - is mahine', style: TextStyle(fontWeight: FontWeight.w700)),
+                      const Text('Real voice - this month', style: TextStyle(fontWeight: FontWeight.w700)),
                       const SizedBox(height: 8),
-                      Text('Kharcha: ₹${(v['month_inr'] as num?)?.toStringAsFixed(2) ?? '0'} / ₹${_num(v['month_budget_inr'])}',
+                      Text('Cost: ₹${(v['month_inr'] as num?)?.toStringAsFixed(2) ?? '0'} / ₹${_num(v['month_budget_inr'])}',
                           style: const TextStyle(fontSize: 13.5)),
                       const SizedBox(height: 4),
-                      Text('Aapke minute: ${v['my_minutes'] ?? 0} / ${v['my_minutes_cap'] ?? 0}',
+                      Text('Your minutes: ${v['my_minutes'] ?? 0} / ${v['my_minutes_cap'] ?? 0}',
                           style: const TextStyle(fontSize: 13.5)),
                       const SizedBox(height: 8),
-                      const Text('Budget ya minute khatam hone par call apne aap Gemini awaaz par chalti hai.',
+                      const Text('When the budget or minutes run out, the call automatically uses the Gemini voice.',
                           style: TextStyle(color: C.muted, fontSize: 12.5)),
                     ]),
                   ),
                 const Padding(
                   padding: EdgeInsets.only(top: 14),
-                  child: Text('Badlaav agli call se lagta hai.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                  child: Text('The change takes effect from the next call.', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 ),
               ]),
             ),

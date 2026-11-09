@@ -67,12 +67,12 @@ class _RenderScreenState extends State<RenderScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: SC.card,
-        title: Text('Baaki shots rok dein?', style: sora(17)),
-        content: Text('Jo ban chuke woh rahenge. Jo provider par shuru ho chuka tha, uska paisa provider le sakta hai.',
+        title: Text('Pause the remaining shots?', style: sora(17)),
+        content: Text('What is already made stays. The provider may charge for what had already started.',
             style: body(13.5, color: C.muted, height: 1.4)),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Chalne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Rok do', style: TextStyle(color: C.bad))),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Let it run')),
+          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Stop', style: TextStyle(color: C.bad))),
         ],
       ),
     );
@@ -80,7 +80,7 @@ class _RenderScreenState extends State<RenderScreen> {
     setState(() => _busy = true);
     try {
       final r = await app.api!.studioCancel(widget.name);
-      if (mounted) studioSnack(context, '${r['say'] ?? 'Rok diya'}');
+      if (mounted) studioSnack(context, '${r['say'] ?? 'Stopped'}');
     } catch (e) {
       if (mounted) studioSnack(context, '$e');
     }
@@ -92,7 +92,7 @@ class _RenderScreenState extends State<RenderScreen> {
     setState(() => _busy = true);
     try {
       await app.api!.studioAssemble(widget.name);
-      if (mounted) studioSnack(context, 'Final video jod raha hoon (1-3 minute)');
+      if (mounted) studioSnack(context, 'Joining the final video (1-3 minutes)');
     } catch (e) {
       if (mounted) studioSnack(context, '$e'.replaceFirst('Exception: ', ''));
     }
@@ -132,7 +132,7 @@ class _RenderScreenState extends State<RenderScreen> {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(widget.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: sora(17)),
               Text('${qualityLabel['${prog['quality'] ?? v['quality_pref']}'] ?? ''} · '
-                  '${live ? (phase == 'assembling' ? 'jod raha hai' : 'ban raha hai') : phase == 'ready' ? 'taiyaar' : 'ruka hua'}',
+                  '${live ? (phase == 'assembling' ? 'joining' : 'being made') : phase == 'ready' ? 'ready' : 'paused'}',
                   style: body(11.5, color: C.faint)),
             ]),
           ),
@@ -158,15 +158,15 @@ class _RenderScreenState extends State<RenderScreen> {
                 const SizedBox(width: 18),
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('$done / ${shots.length} shots taiyaar', style: sora(16)),
+                    Text('$done / ${shots.length} shots ready', style: sora(16)),
                     const SizedBox(height: 6),
                     Text(live
-                        ? (eta > 0 ? 'Lagbhag ${eta < 60 ? '$eta sec' : '${(eta / 60).ceil()} min'} aur' : 'Bas ho gaya')
-                        : phase == 'ready' ? 'Final video taiyaar' : 'Abhi kuch nahi chal raha',
+                        ? (eta > 0 ? 'About ${eta < 60 ? '$eta sec' : '${(eta / 60).ceil()} min'} more' : 'Just done')
+                        : phase == 'ready' ? 'Final video ready' : 'Nothing is running right now',
                         style: body(12.5, color: C.muted)),
                     const SizedBox(height: 3),
                     Text.rich(TextSpan(style: body(12.5, color: C.muted), children: [
-                      const TextSpan(text: 'Kharch abhi tak '),
+                      const TextSpan(text: 'Cost so far'),
                       TextSpan(text: rupees(prog['spent_inr'] ?? v['spent_inr']), style: body(12.5, w: FontWeight.w800)),
                       if (prog['inr'] != null) TextSpan(text: ' / ${rupees(prog['inr'])}'),
                     ])),
@@ -182,7 +182,7 @@ class _RenderScreenState extends State<RenderScreen> {
                     Container(height: 4, decoration: BoxDecoration(
                         color: i < step ? C.ok : i == step && live ? C.accent : Colors.white12, borderRadius: BorderRadius.circular(2))),
                     const SizedBox(height: 6),
-                    Text(const ['Tasveer', 'Video', 'Lip sync', 'AI jaanch', 'Jodna'][i], style: body(10.5,
+                    Text(const ['Picture', 'Video', 'Lip sync', 'AI check', 'Add'][i], style: body(10.5,
                         w: i == step && live ? FontWeight.w800 : FontWeight.w700,
                         color: i < step ? C.ok : i == step && live ? C.accentSoft : C.faint)),
                   ]),
@@ -196,19 +196,19 @@ class _RenderScreenState extends State<RenderScreen> {
         ),
       ),
       SBottomBar(
-        note: live ? 'App band kar sakti hain. Taiyaar hote hi notification aayega.' : null,
+        note: live ? 'You can close the app. A notification will come when it is ready.' : null,
         child: Row(children: [
           if (live)
-            Expanded(child: SButton(label: 'Rok do', primary: false, danger: true, busy: _busy, onTap: phase == 'assembling' ? null : _stop)),
+            Expanded(child: SButton(label: 'Stop', primary: false, danger: true, busy: _busy, onTap: phase == 'assembling' ? null : _stop)),
           if (live) const SizedBox(width: 10),
           Expanded(
             flex: 2,
             child: nxt == 'assemble' && !live
-                ? SButton(label: 'Final video jodo · free', icon: Icons.movie_creation_rounded, busy: _busy, onTap: _assemble)
+                ? SButton(label: 'Join final video · free', icon: Icons.movie_creation_rounded, busy: _busy, onTap: _assemble)
                 : phase == 'ready'
-                    ? SButton(label: 'Final dekho', icon: Icons.play_arrow_rounded, onTap: () => Navigator.of(context)
+                    ? SButton(label: 'See final', icon: Icons.play_arrow_rounded, onTap: () => Navigator.of(context)
                         .pushReplacement(MaterialPageRoute(builder: (_) => FinalScreen(app: app, name: widget.name))))
-                    : SButton(label: 'Taiyaar shots dekhiye', light: true, primary: false,
+                    : SButton(label: 'See the ready shots', light: true, primary: false,
                         onTap: done == 0 ? null : () {
                           final s = shots.firstWhere((x) => x['phase'] == 'done');
                           Navigator.of(context).push(MaterialPageRoute(builder: (_) => TakesScreen(app: app, name: widget.name, shotId: '${s['id']}')));
@@ -226,25 +226,25 @@ class _RenderScreenState extends State<RenderScreen> {
     String sub;
     switch (phase) {
       case 'paint':
-        sub = 'Pehli tasveer ban rahi';
+        sub = 'First picture being made';
         break;
       case 'queued':
-        sub = 'Line mein · ${s['model_label'] ?? ''}';
+        sub = 'In queue · ${s['model_label'] ?? ''}';
         break;
       case 'video':
-        sub = '${s['model_label'] ?? ''} par ban raha${s['pct'] == null ? '' : ' · ${s['pct']}%'}';
+        sub = 'Being made on ${s['model_label'] ?? ''}${s['pct'] == null ? '' : ' · ${s['pct']}%'}';
         break;
       case 'lipsync':
-        sub = 'Awaaz taiyaar → Sync 3 lip sync';
+        sub = 'Voice ready → Sync 3 lip sync';
         break;
       case 'retrying':
-        sub = 'Provider dheema, dobara koshish';
+        sub = 'Provider is slow, trying again';
         break;
       case 'failed':
-        sub = 'Nahi bana: ${s['error'] ?? ''}';
+        sub = 'Not made: ${s['error'] ?? ''}';
         break;
       case 'cancelled':
-        sub = 'Roka gaya';
+        sub = 'Stopped';
         break;
       case 'done':
         final t = takes.where((x) => x['picked'] == true).toList();
@@ -288,9 +288,9 @@ class _RenderScreenState extends State<RenderScreen> {
               ]),
             ),
             if (score != null)
-              Tag((score as num) < 6 ? '$score · dekhiye' : '$score', fg: score < 6 ? C.warn : C.ok, size: 12)
+              Tag((score as num) < 6 ? '$score · view' : '$score', fg: score < 6 ? C.warn : C.ok, size: 12)
             else if (phase == 'queued')
-              Text('line mein', style: body(11, color: C.faint)),
+              Text('in queue', style: body(11, color: C.faint)),
           ]),
           if (phase == 'video' && s['pct'] != null) ...[
             const SizedBox(height: 8),

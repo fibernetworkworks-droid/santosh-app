@@ -19,7 +19,7 @@ List<Map<String, dynamic>> _list(dynamic l) =>
     List<Map<String, dynamic>>.from(((l as List?) ?? const []).whereType<Map>().map((e) => Map<String, dynamic>.from(e)));
 List<String> _strs(dynamic l) => ((l as List?) ?? const []).map((e) => '$e').toList();
 num? _n(String? v) => (v == null || v.trim().isEmpty) ? null : num.tryParse(v.replaceAll(',', '').replaceAll('₹', '').trim());
-String _rs(dynamic v) => v == null ? '[daam?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
+String _rs(dynamic v) => v == null ? '[price?]' : '₹${(v is num ? v : num.tryParse('$v') ?? 0).toStringAsFixed(0)}';
 
 void _snack(BuildContext c, String t) {
   if (t.trim().isEmpty) return;
@@ -27,7 +27,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   const long = {'text', 'brief', 'terms', 'rules', 'notes', 'lines'};
   final res = await showDialog<bool>(
@@ -41,7 +41,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -69,7 +69,7 @@ Widget _draftButtons(Map<String, dynamic> draft) {
     if (wa.isNotEmpty) GlassButton(label: 'WhatsApp draft', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: wa)),
     if (sms.isNotEmpty) GlassButton(label: 'SMS', icon: Icons.sms_rounded, height: 40, onTap: () => Native.openExternal(url: sms)),
     if (mail.isNotEmpty) GlassButton(label: 'Email', icon: Icons.mail_rounded, height: 40, onTap: () => Native.openExternal(url: mail)),
-    if (upi.isNotEmpty) const Pill('UPI link aapke UPI ID ka'),
+    if (upi.isNotEmpty) const Pill('UPI link of your UPI ID'),
   ]);
 }
 
@@ -118,12 +118,12 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
       .then((_) => _load());
 
   Future<void> _newProject() async {
-    final f = await _form(context, 'Naya project', const [
-      ('client', 'Client ka naam'),
-      ('title', 'Project ka naam'),
-      ('brief', 'Brief (client ke shabd: platform, length, tareekh, style)'),
-      ('due', 'Delivery tareekh (optional)'),
-    ], ok: 'Banao');
+    final f = await _form(context, 'New project', const [
+      ('client', 'Client name'),
+      ('title', 'Project name'),
+      ('brief', 'Brief (client\'s words: platform, length, date, style)'),
+      ('due', 'Delivery date (optional)'),
+    ], ok: 'Create');
     if (f == null || !mounted) return;
     final r = await _call(context, widget.app, 'POST', '/api/editdesk/projects', f);
     final p = _m(r?['project']);
@@ -136,11 +136,11 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR APPROVAL'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: EditdeskCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      for (final (k, label) in const [('late', 'LATE'), ('due_soon', '2 DIN MEIN DELIVERY'), ('review_silent', 'CLIENT KA JAWAB NAHI'),
-        ('unpaid', 'PAISE BAAKI'), ('licences_soon', 'LICENCE KHATAM HONE WALE')])
+      for (final (k, label) in const [('late', 'LATE'), ('due_soon', 'DELIVERY IN 2 DAYS'), ('review_silent', 'NO REPLY FROM CLIENT'),
+        ('unpaid', 'PAYMENTS PENDING'), ('licences_soon', 'LICENCES EXPIRING')])
         if (_strs(day[k]).isNotEmpty) ...[
           Caption(label),
           for (final x in _strs(day[k])) Text('• $x', style: const TextStyle(fontSize: 13)),
@@ -152,9 +152,9 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
   Widget _projects() {
     final ps = _list(_d?['projects']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Naya project', icon: Icons.add_rounded, height: 46, onTap: _newProject),
+      GradientButton(label: 'New project', icon: Icons.add_rounded, height: 46, onTap: _newProject),
       const SizedBox(height: 12),
-      if (ps.isEmpty) const Text('Abhi koi project nahi.', style: TextStyle(color: C.muted)),
+      if (ps.isEmpty) const Text('No projects yet.', style: TextStyle(color: C.muted)),
       for (final p in ps)
         Glass(
           margin: const EdgeInsets.only(bottom: 8),
@@ -181,10 +181,10 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
   Widget _licences() {
     final ls = _list(_d?['licences']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      const Text('Har gaana / stock clip / font jo video mein laga, uska licence yahan. Instagram / YouTube ki in-app library ka gaana '
-          'brand video mein nahi chalta.', style: TextStyle(fontSize: 12.5, color: C.muted)),
+      const Text('Keep here the licence of every song / stock clip / font used in the video. Songs from the in-app library of Instagram / YouTube'
+          'cannot be used in a brand video.', style: TextStyle(fontSize: 12.5, color: C.muted)),
       const SizedBox(height: 10),
-      GlassButton(label: 'Licence jodo', icon: Icons.add_rounded, height: 42, onTap: () async {
+      GlassButton(label: 'Add licence', icon: Icons.add_rounded, height: 42, onTap: () async {
         await addLicence(context, widget.app, '');
         _load();
       }),
@@ -199,17 +199,17 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['studio']).isEmpty ? 'Studio ka naam nahi' : _s(st['studio']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['studio']).isEmpty ? 'No studio name' : _s(st['studio']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('GSTIN ${_s(st['gstin']).isEmpty ? '-' : _s(st['gstin'])} · GST ${st['gst_on'] == true ? 'on' : 'off'} · UPI ${_s(st['upi_id'])}',
               style: const TextStyle(fontSize: 12.5)),
-          Text('Quote mein ${_s(st['rounds'])} rounds · extra round ${_rs(st['extra_round_fee'])} · advance ${_s(st['advance_pct'])}%',
+          Text('${_s(st['rounds'])} rounds in the quote · extra round ${_rs(st['extra_round_fee'])} · advance ${_s(st['advance_pct'])}%',
               style: const TextStyle(fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: () async {
-            final f = await _form(context, 'Niyam', const [
-              ('studio', 'Studio / aapka naam'), ('gstin', 'GSTIN'), ('upi_id', 'UPI ID'), ('phone', 'Phone'), ('email', 'Email'),
-              ('rounds', 'Quote mein revision rounds'), ('extra_round_fee', 'Extra round ka daam (₹)'), ('advance_pct', 'Advance %'),
-              ('terms', 'Aapki terms'),
+          GlassButton(label: 'Edit', icon: Icons.edit_rounded, height: 40, onTap: () async {
+            final f = await _form(context, 'Rules', const [
+              ('studio', 'Studio / your name'), ('gstin', 'GSTIN'), ('upi_id', 'UPI ID'), ('phone', 'Phone'), ('email', 'Email'),
+              ('rounds', 'Revision rounds in the quote'), ('extra_round_fee', 'Price of an extra round (₹)'), ('advance_pct', 'Advance %'),
+              ('terms', 'Your terms'),
             ], initial: {
               for (final k in ['studio', 'gstin', 'upi_id', 'phone', 'email', 'rounds', 'extra_round_fee', 'advance_pct', 'terms'])
                 if (_s(st[k]).isNotEmpty) k: _s(st[k]),
@@ -227,7 +227,7 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
       const SizedBox(height: 8),
       SwitchListTile(
         value: st['gst_on'] == true,
-        title: const Text('GST lagao (registered hoon)'),
+        title: const Text('Add GST (I am registered)'),
         onChanged: (v) async {
           await _call(context, widget.app, 'PUT', '/api/editdesk/settings', {'gst_on': v});
           _load();
@@ -235,17 +235,17 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
       ),
       SwitchListTile(
         value: st['hold_final_unpaid'] == true,
-        title: const Text('Poore paise ke baad hi final files'),
+        title: const Text('Final files only after full payment'),
         onChanged: (v) async {
           await _call(context, widget.app, 'PUT', '/api/editdesk/settings', {'hold_final_unpaid': v});
           _load();
         },
       ),
-      const Caption('RATE CARD (AAPKE DAAM)'),
+      const Caption('RATE CARD (YOUR PRICES)'),
       for (final r in cards) Text('• ${_s(r['what'])} · ${_rs(r['rate'])} / ${_s(r['unit'])}', style: const TextStyle(fontSize: 13)),
       const SizedBox(height: 6),
-      GlassButton(label: 'Rate card likho', icon: Icons.price_change_rounded, height: 40, onTap: () async {
-        final f = await _form(context, 'Rate card', const [('lines', 'Har line: kaam, daam (jaise "Reel edit, 3000")')], ok: 'Save');
+      GlassButton(label: 'Write rate card', icon: Icons.price_change_rounded, height: 40, onTap: () async {
+        final f = await _form(context, 'Rate card', const [('lines', 'One per line: work, price (e.g. "Reel edit, 3000")')], ok: 'Save');
         if (f == null || !mounted) return;
         final rows = <Map<String, dynamic>>[];
         for (final raw in (f['lines'] ?? '').split('\n')) {
@@ -263,7 +263,7 @@ class _EditdeskScreenState extends State<EditdeskScreen> {
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Projects', 'Licence', 'Niyam'];
+    const tabs = ['Today', 'Projects', 'Licence', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Edit desk'),
@@ -296,7 +296,7 @@ Widget _licTile(Map<String, dynamic> x) => Glass(
           Expanded(child: Text('${_s(x['number'])} · ${_s(x['title'])}', style: const TextStyle(fontWeight: FontWeight.w700))),
           Pill(_s(x['kind'])),
         ]),
-        Text('${_s(x['source'])} · ${_s(x['type_label'])}${_s(x['expires']).isEmpty ? '' : ' · ${_s(x['expires'])} tak'}',
+        Text('${_s(x['source'])} · ${_s(x['type_label'])}${_s(x['expires']).isEmpty ? '' : ' · until ${_s(x['expires'])}'}',
             style: const TextStyle(fontSize: 12, color: C.muted)),
         for (final b in _strs(x['blockers'])) Text('✗ $b', style: const TextStyle(fontSize: 12, color: C.bad)),
         for (final w in _strs(x['warnings'])) Text('! $w', style: const TextStyle(fontSize: 11.5, color: C.warn)),
@@ -305,13 +305,13 @@ Widget _licTile(Map<String, dynamic> x) => Glass(
 
 Future<void> addLicence(BuildContext context, Santosh app, String project) async {
   final f = await _form(context, 'Licence', const [
-    ('title', 'Gaana / clip / font ka naam'),
-    ('kind', 'Kya: music / stock_video / stock_photo / sfx / font'),
-    ('source', 'Kahan se (Artlist, Epidemic, Pixabay, client ne diya ...)'),
+    ('title', 'Song / clip / font name'),
+    ('kind', 'What: music / stock_video / stock_photo / sfx / font'),
+    ('source', 'From where (Artlist, Epidemic, Pixabay, given by client ...)'),
     ('licence_type', 'Type: royalty_free / subscription / sync / cc / client_owned / own / platform_only'),
     ('licence_ref', 'Licence / order number'),
-    ('expires', 'Kab tak (optional)'),
-    ('file_id', 'Music file ka file_id (optional)'),
+    ('expires', 'Valid until (optional)'),
+    ('file_id', 'file_id of the music file (optional)'),
   ], ok: 'Save');
   if (f == null || !context.mounted) return;
   await _call(context, app, 'POST', '/api/editdesk/licences', {...f, if (project.isNotEmpty) 'project': project});
@@ -376,10 +376,10 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
         const SizedBox(height: 6),
         Wrap(spacing: 8, runSpacing: 6, children: [
           if (_s(d['job_id']).isEmpty)
-            GlassButton(label: 'Edit shuru', icon: Icons.play_arrow_rounded, height: 38,
+            GlassButton(label: 'Edit started', icon: Icons.play_arrow_rounded, height: 38,
                 onTap: _busy ? null : () => _run('POST', '$_base/edit', {'deliverable': d['id']})),
           if (vs.isNotEmpty)
-            GlassButton(label: 'Client ne OK kiya', icon: Icons.thumb_up_rounded, height: 38,
+            GlassButton(label: 'Client approved', icon: Icons.thumb_up_rounded, height: 38,
                 onTap: _busy ? null : () => _run('POST', '$_base/client_ok', {'deliverable': d['id']})),
         ]),
       ]),
@@ -400,25 +400,25 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
               child: ListView(padding: const EdgeInsets.all(16), children: [
                 Text(_s(p['title']), style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
                 Text('${_s(_m(p['client'])['name'])} · ${_s(p['kind_label'])} · ${_s(p['status_label'])}'
-                    '${_s(p['due']).isEmpty ? '' : ' · ${_s(p['due'])} tak'}', style: const TextStyle(color: C.muted)),
+                    '${_s(p['due']).isEmpty ? '' : ' · until ${_s(p['due'])}'}', style: const TextStyle(color: C.muted)),
                 const SizedBox(height: 8),
-                Pill('Revision rounds ${_s(p['rounds_used'])} / ${_s(p['rounds_quoted'])} · baaki ${_s(p['rounds_left'])}', fg: C.accent),
+                Pill('Revision rounds ${_s(p['rounds_used'])} / ${_s(p['rounds_quoted'])} · ${_s(p['rounds_left'])} left', fg: C.accent),
                 const SizedBox(height: 10),
                 for (final c in _list(p['cards']))
                   Padding(padding: const EdgeInsets.only(bottom: 10), child: EditdeskCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
                 if (_strs(p['questions']).isNotEmpty) ...[
-                  const Caption('BRIEF MEIN BAAKI'),
+                  const Caption('PENDING IN THE BRIEF'),
                   for (final q in _strs(p['questions'])) Text('• $q', style: const TextStyle(fontSize: 12.5)),
                   const SizedBox(height: 8),
                 ],
-                GlassButton(label: 'Brief mein jodo', icon: Icons.notes_rounded, height: 40, onTap: () async {
-                  final f = await _form(context, 'Brief', const [('brief', 'Client ke shabd (data)')], ok: 'Jodo');
+                GlassButton(label: 'Add to brief', icon: Icons.notes_rounded, height: 40, onTap: () async {
+                  final f = await _form(context, 'Brief', const [('brief', 'Client\'s words (data)')], ok: 'Add');
                   if (f != null) await _run('PATCH', _base, f);
                 }),
                 const SizedBox(height: 12),
                 const Caption('DELIVERABLES (HAR PLATFORM)'),
                 for (final d in _list(p['deliverables'])) _deliverable(d),
-                GlassButton(label: 'Platform jodo', icon: Icons.add_rounded, height: 38, onTap: () async {
+                GlassButton(label: 'Add platform', icon: Icons.add_rounded, height: 38, onTap: () async {
                   final f = await _form(context, 'Platform', const [('platform', 'reel / short / status / youtube / square / portrait')]);
                   if (f != null && f['platform'] != null) await _run('PATCH', _base, {'platforms': [f['platform']]});
                 }),
@@ -432,16 +432,16 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
                     onChanged: (v) => _run('POST', '$_base/footage', {'item': x['item'], 'have': v == true}),
                   ),
                 Text('Footage files: ${_strs(p['files']).length} '
-                    '(chat mein attach karke "is project mein jodo" boliye)', style: const TextStyle(fontSize: 12, color: C.faint)),
+                    '(attach it in chat and say "add to this project")', style: const TextStyle(fontSize: 12, color: C.faint)),
                 const SizedBox(height: 12),
-                const Caption('CLIENT KE NOTES'),
+                const Caption('CLIENT NOTES'),
                 for (final c in _list(p['comments']))
                   ListTile(
                     dense: true,
                     contentPadding: EdgeInsets.zero,
                     leading: Text(_s(c['at']).isEmpty ? '—' : _s(c['at']), style: const TextStyle(fontWeight: FontWeight.w700, color: C.accent)),
                     title: Text(_s(c['text'])),
-                    subtitle: Text('${_s(c['status'])}${c['scope'] == 'extra' ? ' · quote se bahar?' : ''}'
+                    subtitle: Text('${_s(c['status'])}${c['scope'] == 'extra' ? ' · outside the quote?' : ''}'
                         '${(c['round'] ?? 0) != 0 ? ' · round ${_s(c['round'])}' : ''}'),
                     trailing: _s(c['status']) == 'sent'
                         ? IconButton(icon: const Icon(Icons.check_rounded),
@@ -449,35 +449,35 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
                         : null,
                   ),
                 Wrap(spacing: 8, runSpacing: 6, children: [
-                  GlassButton(label: 'Client notes daalo', icon: Icons.rate_review_rounded, height: 40, onTap: () async {
-                    final f = await _form(context, 'Client ke notes', const [('text', 'Har line: 0:15 logo chhota karo')], ok: 'Jodo');
+                  GlassButton(label: 'Add client notes', icon: Icons.rate_review_rounded, height: 40, onTap: () async {
+                    final f = await _form(context, 'Client notes', const [('text', 'One per line: 0:15 make the logo smaller')], ok: 'Add');
                     if (f != null) await _run('POST', '$_base/comments', f);
                   }),
-                  GradientButton(label: 'Badlav round chalao', icon: Icons.autorenew_rounded, height: 40,
+                  GradientButton(label: 'Run the change round', icon: Icons.autorenew_rounded, height: 40,
                       onTap: _busy ? null : () => _run('POST', '$_base/revise', {})),
                   GlassButton(label: 'Free round do', height: 40, onTap: _busy ? null : () => _run('POST', '$_base/revise', {'free': true})),
                 ]),
                 const SizedBox(height: 12),
                 const Caption('LICENCE'),
                 for (final x in _list(p['licences'])) _licTile(x),
-                GlassButton(label: 'Licence jodo', icon: Icons.library_music_rounded, height: 38, onTap: () async {
+                GlassButton(label: 'Add licence', icon: Icons.library_music_rounded, height: 38, onTap: () async {
                   await addLicence(context, widget.app, _s(p['number']));
                   _load();
                 }),
                 const SizedBox(height: 12),
-                const Caption('PAISA'),
+                const Caption('MONEY'),
                 _money(p),
                 const SizedBox(height: 12),
-                const Caption('CLIENT KO (AAPKI HAAN SE)'),
+                const Caption('TO THE CLIENT (WITH YOUR APPROVAL)'),
                 Wrap(spacing: 8, runSpacing: 6, children: [
                   GlassButton(label: 'Review link', icon: Icons.link_rounded, height: 40, onTap: () => _run('POST', '$_base/review', {})),
                   GlassButton(label: 'Message', icon: Icons.chat_rounded, height: 40, onTap: () async {
-                    final f = await _form(context, 'Client ko message', const [('text', 'Message')]);
+                    final f = await _form(context, 'Message to client', const [('text', 'Message')]);
                     if (f != null) await _run('POST', '$_base/message', f);
                   }),
                   GradientButton(label: 'Final delivery', icon: Icons.send_rounded, height: 40, onTap: () => _run('POST', '$_base/deliver')),
-                  GlassButton(label: 'Radd karo', icon: Icons.cancel_rounded, height: 40, color: C.bad, onTap: () async {
-                    final f = await _form(context, 'Radd', const [('reason', 'Wajah'), ('refund', 'Refund ₹ (optional)')], ok: 'Radd');
+                  GlassButton(label: 'Cancel', icon: Icons.cancel_rounded, height: 40, color: C.bad, onTap: () async {
+                    final f = await _form(context, 'Cancel', const [('reason', 'Reason'), ('refund', 'Refund ₹ (optional)')], ok: 'Cancel');
                     if (f != null) await _run('POST', '$_base/cancel', {'reason': f['reason'], 'refund': _n(f['refund'])});
                   }),
                 ]),
@@ -493,30 +493,30 @@ class _EditdeskProjectPageState extends State<EditdeskProjectPage> {
     final m = _m(p['money']);
     return Glass(
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Tay: ${_s(m['agreed_text'])} · Mile: ${_rs(m['received'])} · Baaki: ${_rs(m['balance'])}',
+        Text('Agreed: ${_s(m['agreed_text'])} · Received: ${_rs(m['received'])} · Due: ${_rs(m['balance'])}',
             style: const TextStyle(fontWeight: FontWeight.w700)),
         for (final q in _list(p['quotes'])) Text('Quote ${_s(q['number'])} · ${_s(q['total_text'])} · ${_s(q['status'])}', style: const TextStyle(fontSize: 12.5)),
         for (final i in _list(p['invoices']))
           Text('${_s(i['number'])} (${_s(i['kind'])}) ${_rs(i['total'])} · ${_s(i['status'])} · mile ${_rs(i['received'])}', style: const TextStyle(fontSize: 12.5)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 6, children: [
-          GlassButton(label: 'Quote banao', icon: Icons.request_quote_rounded, height: 38, onTap: () async {
+          GlassButton(label: 'Make quote', icon: Icons.request_quote_rounded, height: 38, onTap: () async {
             final f = await _form(context, 'Quote', const [
-              ('lines', 'Har line: kaam, qty, daam (daam khaali = rate card)'), ('rounds', 'Revision rounds'),
+              ('lines', 'One per line: work, qty, price (empty price = rate card)'), ('rounds', 'Revision rounds'),
             ], ok: 'Draft');
             if (f == null) return;
             await _run('POST', '$_base/quote', {'lines': _parseLines(f['lines'] ?? ''), if (f['rounds'] != null) 'rounds': _n(f['rounds'])});
           }),
-          GlassButton(label: 'Quote bhejo', height: 38, onTap: () => _run('POST', '$_base/quote_send')),
-          GlassButton(label: 'Client ne quote maana', height: 38, onTap: () => _run('POST', '$_base/quote_accept')),
-          GlassButton(label: 'Advance maango', height: 38, onTap: () => _run('POST', '$_base/invoice', {'kind': 'advance'})),
+          GlassButton(label: 'Send quote', height: 38, onTap: () => _run('POST', '$_base/quote_send')),
+          GlassButton(label: 'Client accepted the quote', height: 38, onTap: () => _run('POST', '$_base/quote_accept')),
+          GlassButton(label: 'Ask for advance', height: 38, onTap: () => _run('POST', '$_base/invoice', {'kind': 'advance'})),
           GlassButton(label: 'Final invoice', height: 38, onTap: () => _run('POST', '$_base/invoice', {'kind': 'final'})),
           GlassButton(label: 'Extra charge', height: 38, onTap: () async {
-            final f = await _form(context, 'Extra kaam', const [('what', 'Kya kaam'), ('amount', 'Daam ₹')]);
+            final f = await _form(context, 'Extra work', const [('what', 'What work'), ('amount', 'Price ₹')]);
             if (f != null) await _run('POST', '$_base/charge', {'what': f['what'], 'amount': _n(f['amount'])});
           }),
-          GradientButton(label: 'Paise mile', icon: Icons.currency_rupee_rounded, height: 38, onTap: () async {
-            final f = await _form(context, 'Paise mile', const [('amount', 'Kitne ₹ aaye'), ('tds', 'TDS kaata ₹ (optional)'), ('utr', 'UTR (optional)')]);
+          GradientButton(label: 'Money received', icon: Icons.currency_rupee_rounded, height: 38, onTap: () async {
+            final f = await _form(context, 'Money received', const [('amount', 'How many ₹ received'), ('tds', 'TDS deducted ₹ (optional)'), ('utr', 'UTR (optional)')]);
             if (f != null) await _run('POST', '$_base/paid', {'amount': _n(f['amount']), 'tds': _n(f['tds']), 'utr': f['utr']});
           }),
         ]),
@@ -547,9 +547,9 @@ class _EditdeskCardCardState extends State<EditdeskCardCard> {
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -559,7 +559,7 @@ class _EditdeskCardCardState extends State<EditdeskCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -607,13 +607,13 @@ class _EditdeskCardCardState extends State<EditdeskCardCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])} · ${_s(sh['project'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'stale', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         Text('${_s(sh['client'])} · ${_s(sh['title'])}', style: const TextStyle(fontSize: 12.5)),
         if (amount.isNotEmpty) Text(amount, style: const TextStyle(fontWeight: FontWeight.w700)),
         if (_s(sh['what']).isNotEmpty) Text(_s(sh['what'])),
-        if (kind == 'quote') Text('${_s(sh['rounds'])} revision rounds · advance ${_s(sh['advance_pct'])}% · ${_s(sh['valid_until'])} tak',
+        if (kind == 'quote') Text('${_s(sh['rounds'])} revision rounds · advance ${_s(sh['advance_pct'])}% · until ${_s(sh['valid_until'])}',
             style: const TextStyle(fontSize: 12)),
         for (final v in _list(sh['versions'])) Text('• ${_s(v['label'])}', style: const TextStyle(fontSize: 12)),
         for (final f in _list(sh['files'])) Text('• ${_s(f['label'])} v${_s(f['n'])}', style: const TextStyle(fontSize: 12)),
@@ -624,12 +624,12 @@ class _EditdeskCardCardState extends State<EditdeskCardCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: money ? 'Haan (fingerprint)' : 'Haan', height: 42,
+            GradientButton(label: money ? 'Yes (fingerprint)' : 'Yes', height: 42,
                 onTap: (_busy || blockers.isNotEmpty) ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_draft.isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_draft)],
-        const Text('Hoola khud kuch nahi bhejta, paise nahi leta / deta: message aap bhejti hain.',
+        const Text('Hoola does not send anything or take or give money: you send the messages.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
@@ -654,7 +654,7 @@ class EditdeskNoteCard extends StatelessWidget {
           if (project.isNotEmpty)
             TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EditdeskProjectPage(app: app, ref: project))),
-              child: Text('$project kholo'),
+              child: Text('Open $project'),
             ),
         ])),
       ]),

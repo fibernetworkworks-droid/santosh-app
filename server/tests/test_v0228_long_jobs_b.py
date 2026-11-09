@@ -171,7 +171,7 @@ def test_kaam_plan_finish_returns_the_report_for_her_final_answer(gz):  # noqa: 
 # ---------------------------------------------------------------- the phone + console + wiring
 def test_phone_and_console_show_report_and_continue():
     card = (ROOT / "lib/ui/goal_card.dart").read_text()
-    assert "Aage badhao" in card and "continueGoal" in card and "KYA BANA" in card and "AAPKO KYA KARNA HAI" in card
+    assert "Move ahead" in card and "continueGoal" in card and "WHAT WAS MADE" in card and "WHAT YOU NEED TO DO" in card
     assert "continueGoal" in (ROOT / "lib/api.dart").read_text()
     js = (ROOT / "server/app/static/console/v2.js").read_text()
     assert "function goalReport" in js and "goalReport(p.report)" in js

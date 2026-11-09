@@ -132,7 +132,7 @@ def test_phone_soch_card_wiring():
     assert "case 'think':" in st and "void _onThink" in st and "void _thinkFold" in st
     assert "snap?['think']" in st                          # a reload mid-thought reopens the card
     card = (ROOT / "lib/ui/think_card.dart").read_text()
-    assert "Soch raha hoon" in card and "ne socha" in card
+    assert "Thinking" in card and "thought" in card
     chat = (ROOT / "lib/ui/chat_screen.dart").read_text()
     assert "ThinkCard(" in chat and "import 'think_card.dart';" in chat
 

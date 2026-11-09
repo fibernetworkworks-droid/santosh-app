@@ -29,7 +29,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -45,7 +45,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -129,15 +129,15 @@ class _SocietyScreenState extends State<SocietyScreen> {
       .then((_) => _load());
 
   Future<void> _addFlat() async {
-    final f = await _form(context, 'Naya flat / member', const [
+    final f = await _form(context, 'New flat / member', const [
       ('unit', 'Flat no (A-101)'),
-      ('owner_name', 'Member ka naam'),
+      ('owner_name', 'Member name'),
       ('owner_phone', 'Mobile'),
       ('carpet_sqft', 'Carpet area (sq ft)'),
-      ('taps', 'Nal / inlet ki ginti'),
+      ('taps', 'Number of taps / inlets'),
       ('cost', 'Construction cost ₹ (architect certificate)'),
-      ('opening_due', 'Pichhla baaki ₹ (ho to)'),
-    ], ok: 'Jodo');
+      ('opening_due', 'Previous dues ₹ (if any)'),
+    ], ok: 'Add');
     if (f == null || (f['unit'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
     for (final k in ['carpet_sqft', 'taps', 'cost', 'opening_due']) {
@@ -161,20 +161,20 @@ class _SocietyScreenState extends State<SocietyScreen> {
   }
 
   Future<void> _makeBills() async {
-    final f = await _form(context, 'Is mahine ke bill', const [('period', 'Mahina (YYYY-MM, khaali = is mahine)')], ok: 'Bill banao');
+    final f = await _form(context, 'This month\'s bills', const [('period', 'Month (YYYY-MM, empty = this month)')], ok: 'Make bills');
     if (f == null) return;
     await _run('POST', '/api/society/bills', {'period': f['period'] ?? ''});
   }
 
   Future<void> _remind() async {
-    final f = await _form(context, 'Baaki ki yaad', const [('min_days', 'Kam se kam kitne din purana baaki'), ('text', 'Apna message (khaali = Hoola ka)')],
-        ok: 'Card banao');
+    final f = await _form(context, 'Dues reminder', const [('min_days', 'Minimum age of dues (days)'), ('text', 'Your own message (empty = Hoola\'s)')],
+        ok: 'Make card');
     if (f == null) return;
     await _run('POST', '/api/society/remind', {'min_days': int.tryParse(f['min_days'] ?? '') ?? 0, 'text': f['text'] ?? ''});
   }
 
   Future<void> _complaint() async {
-    final f = await _form(context, 'Nayi shikayat / request', const [('flat', 'Flat (ho to)'), ('text', 'Kya dikkat hai')], ok: 'Darj karo');
+    final f = await _form(context, 'New complaint / request', const [('flat', 'Flat (if any)'), ('text', 'What is the problem')], ok: 'Record it');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run('POST', '/api/society/complaints', f);
   }
@@ -185,7 +185,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
       backgroundColor: C.bgBottom,
       builder: (_) => SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          for (final (k, l) in const [('assigned', 'Vendor ko di'), ('working', 'Kaam chal raha'), ('resolved', 'Theek hui'), ('closed', 'Band')])
+          for (final (k, l) in const [('assigned', 'Given to vendor'), ('working', 'Work in progress'), ('resolved', 'Fixed'), ('closed', 'Band')])
             ListTile(title: Text(l), onTap: () => Navigator.pop(context, k)),
         ]),
       ),
@@ -195,13 +195,13 @@ class _SocietyScreenState extends State<SocietyScreen> {
   }
 
   Future<void> _meeting() async {
-    final f = await _form(context, 'Nayi meeting', const [
+    final f = await _form(context, 'New meeting', const [
       ('kind', 'agm / sgm / committee'),
-      ('day', 'Taarikh (YYYY-MM-DD)'),
-      ('time', 'Samay (HH:MM)'),
-      ('place', 'Jagah'),
-      ('agenda', 'Agenda: har line ek vishay (AGM khaali = standard)'),
-    ], ok: 'Plan karo');
+      ('day', 'Date (YYYY-MM-DD)'),
+      ('time', 'Time (HH:MM)'),
+      ('place', 'Place'),
+      ('agenda', 'Agenda: one topic per line (empty for AGM = standard)'),
+    ], ok: 'Plan');
     if (f == null || (f['day'] ?? '').isEmpty) return;
     final agenda = (f['agenda'] ?? '').split('\n').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
     final r = await _run('POST', '/api/society/meetings',
@@ -215,8 +215,8 @@ class _SocietyScreenState extends State<SocietyScreen> {
       .then((_) => _load());
 
   Future<void> _notice() async {
-    final f = await _form(context, 'Notice / circular', const [('kind', 'notice / circular / defaulters'), ('title', 'Vishay'), ('body', 'Text')],
-        ok: 'Draft banao');
+    final f = await _form(context, 'Notice / circular', const [('kind', 'notice / circular / defaulters'), ('title', 'Subject'), ('body', 'Text')],
+        ok: 'Make draft');
     if (f == null) return;
     final r = await _run('POST', '/api/society/notices', {'kind': f['kind'] ?? 'notice', 'title': f['title'] ?? '', 'body': f['body'] ?? ''});
     final n = _m(r?['notice']);
@@ -227,8 +227,8 @@ class _SocietyScreenState extends State<SocietyScreen> {
                 title: Text(_s(n['title'])),
                 content: SingleChildScrollView(child: Text([_s(n['body']), ..._strs(n['checks']).map((c) => '⚠ $c')].join('\n\n'))),
                 actions: [
-                  TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Abhi nahi')),
-                  TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan ke liye card')),
+                  TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Not now')),
+                  TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Card for your approval')),
                 ],
               ));
       if (go == true) await _run('POST', '/api/society/notices/${_s(n['id'])}/send');
@@ -237,51 +237,51 @@ class _SocietyScreenState extends State<SocietyScreen> {
 
   Future<void> _contract() async {
     final f = await _form(context, 'Vendor / AMC', const [
-      ('vendor', 'Vendor ka naam'),
+      ('vendor', 'Vendor name'),
       ('kind', 'lift / security / housekeeping / water_tank / pest / fire / cctv / generator / pump / other'),
       ('phone', 'Mobile'),
-      ('amount', 'Rakam ₹ (contract ki)'),
+      ('amount', 'Amount ₹ (of the contract)'),
       ('per', 'month / year / visit'),
-      ('start', 'Shuru (YYYY-MM-DD)'),
-      ('end', 'Khatam (YYYY-MM-DD)'),
+      ('start', 'Start (YYYY-MM-DD)'),
+      ('end', 'End (YYYY-MM-DD)'),
     ], ok: 'Save');
     if (f == null || (f['vendor'] ?? '').isEmpty) return;
     await _run('POST', '/api/society/contracts', {...f, if (f['amount'] != null) 'amount': _n(f['amount'])});
   }
 
   Future<void> _spend() async {
-    final f = await _form(context, 'Naya kharcha (aapki haan se)', const [
+    final f = await _form(context, 'New expense (with your approval)', const [
       ('kind', 'repair / amc / purchase / tax / utility / audit / other'),
-      ('what', 'Kis cheez ka'),
-      ('amount', 'Rakam ₹ (quote / bill se)'),
+      ('what', 'For what'),
+      ('amount', 'Amount ₹ (from quote / bill)'),
       ('vendor', 'Vendor'),
       ('fund', 'general / repair / sinking'),
-      ('resolution', 'General body resolution (sinking / bada repair)'),
-    ], ok: 'Card banao');
+      ('resolution', 'General body resolution (sinking / major repair)'),
+    ], ok: 'Make card');
     if (f == null || (f['what'] ?? '').isEmpty) return;
     await _run('POST', '/api/society/spends', {...f, 'amount': _n(f['amount'])});
   }
 
   Future<void> _visitor() async {
     final f = await _form(context, 'Gate entry', const [
-      ('name', 'Naam'),
-      ('flat', 'Kis flat mein'),
-      ('purpose', 'Kaam'),
-      ('phone', 'Mobile (sirf aakhri 4 rakhe jayenge)'),
-      ('vehicle', 'Gaadi no'),
+      ('name', 'Name'),
+      ('flat', 'Which flat'),
+      ('purpose', 'Work'),
+      ('phone', 'Mobile (only the last 4 digits are kept)'),
+      ('vehicle', 'Vehicle no.'),
       ('kind', 'visitor / delivery / staff / vendor'),
-    ], ok: 'Andar');
+    ], ok: 'Inside');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     await _run('POST', '/api/society/visits', f);
   }
 
   Future<void> _staff() async {
     final f = await _form(context, 'Society staff', const [
-      ('name', 'Naam'),
+      ('name', 'Name'),
       ('role', 'guard / housekeeping / lift_operator / gardener / plumber / electrician / maid / driver / other'),
       ('agency', 'Agency'),
       ('phone', 'Mobile'),
-      ('verified_on', 'Police verification ki taarikh'),
+      ('verified_on', 'Police verification date'),
     ], ok: 'Save');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     await _run('POST', '/api/society/staff', f);
@@ -289,22 +289,22 @@ class _SocietyScreenState extends State<SocietyScreen> {
 
   Future<void> _settings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Society ki jaankari aur niyam', const [
-      ('name', 'Society ka naam'),
+    final f = await _form(context, 'Society details and rules', const [
+      ('name', 'Society name'),
       ('reg_no', 'Registration no'),
-      ('address', 'Pata'),
-      ('state', 'Rajya (MH...)'),
-      ('upi_id', 'Society ka UPI ID'),
-      ('upi_name', 'UPI par naam'),
+      ('address', 'Address'),
+      ('state', 'State (MH...)'),
+      ('upi_id', 'Society UPI ID'),
+      ('upi_name', 'Name on UPI'),
       ('noc_pct', 'Non-occupancy % (MH max 10)'),
-      ('interest_pct', 'Vyaaj % saalana (GB ka rate, MH max 12)'),
-      ('grace_days', 'Vyaaj se pehle chhoot ke din'),
-      ('due_days', 'Bill ke kitne din baad due'),
-      ('bill_day', 'Bill banane ka din (1-28)'),
-      ('term_ends', 'Committee term khatam (YYYY-MM-DD)'),
+      ('interest_pct', 'Interest % per year (GB rate, MH max 12)'),
+      ('grace_days', 'Grace days before interest'),
+      ('due_days', 'Days after the bill when it is due'),
+      ('bill_day', 'Day to make bills (1-28)'),
+      ('term_ends', 'Committee term ends (YYYY-MM-DD)'),
       ('auditor', 'Statutory auditor'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
-      ('rules', 'Aapke bye-law notes'),
+      ('morning_time', 'Morning note (HH:MM)'),
+      ('rules', 'Your bye-law notes'),
     ], ok: 'Save', initial: {for (final e in st.entries) if (e.value != null && e.value is! Map && e.value is! List) e.key: '${e.value}'});
     if (f == null) return;
     final body = <String, dynamic>{...f};
@@ -315,7 +315,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
   }
 
   Future<void> _head(Map<String, dynamic> h) async {
-    final f = await _form(context, _s(h['label']), const [('rate', 'Rate (aapka number)'), ('label', 'Naam')],
+    final f = await _form(context, _s(h['label']), const [('rate', 'Rate (your number)'), ('label', 'Name')],
         ok: 'Save', initial: {'rate': h['rate'] is Map ? '' : _s(h['rate']), 'label': _s(h['label'])});
     if (f == null) return;
     final rate = h['basis'] == 'parking' ? {'car': _n(f['rate'])} : _n(f['rate']);
@@ -332,23 +332,23 @@ class _SocietyScreenState extends State<SocietyScreen> {
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 12),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Bill banao', icon: Icons.receipt_long_rounded, height: 46, onTap: _busy ? null : _makeBills)),
+        Expanded(child: GradientButton(label: 'Make bills', icon: Icons.receipt_long_rounded, height: 46, onTap: _busy ? null : _makeBills)),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'Shikayat', icon: Icons.report_problem_rounded, onTap: _busy ? null : _complaint)),
+        Expanded(child: GlassButton(label: 'Complaint', icon: Icons.report_problem_rounded, onTap: _busy ? null : _complaint)),
       ]),
       const SizedBox(height: 12),
-      if (_list(day['cards']).isNotEmpty) ...[const Caption('AAPKI HAAN CHAHIYE'), _cardsList(_list(day['cards']))],
+      if (_list(day['cards']).isNotEmpty) ...[const Caption('NEEDS YOUR APPROVAL'), _cardsList(_list(day['cards']))],
       if (_list(day['calendar']).isNotEmpty) ...[
-        const Caption('TAARIKHEIN'),
+        const Caption('DATES'),
         for (final c in _list(day['calendar']))
           ListTile(
               dense: true,
               leading: Icon(Icons.event_rounded, color: (c['days_left'] ?? 0) < 0 ? C.bad : C.warn),
               title: Text(_s(c['what'])),
-              subtitle: Text('${_s(c['on'])} · ${(c['days_left'] ?? 0) < 0 ? 'nikal gayi' : '${c['days_left']} din'}')),
+              subtitle: Text('${_s(c['on'])} · ${(c['days_left'] ?? 0) < 0 ? 'expired' : '${c['days_left']} din'}')),
       ],
       if (_complaints.isNotEmpty) ...[
-        const Caption('KHULI SHIKAYAT'),
+        const Caption('OPEN COMPLAINTS'),
         for (final c in _complaints.take(5)) SocietyComplaintCard(app: widget.app, data: {'complaint': c}),
       ],
     ]);
@@ -356,7 +356,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
 
   Widget _flatsTab() => ListView(padding: const EdgeInsets.all(16), children: [
         Row(children: [
-          Expanded(child: GradientButton(label: 'Flat jodo', icon: Icons.add_home_rounded, height: 46, onTap: _busy ? null : _addFlat)),
+          Expanded(child: GradientButton(label: 'Add flat', icon: Icons.add_home_rounded, height: 46, onTap: _busy ? null : _addFlat)),
           const SizedBox(width: 8),
           Expanded(child: GlassButton(label: 'Member sheet', icon: Icons.upload_file_rounded, onTap: _busy ? null : _importFlats)),
         ]),
@@ -376,9 +376,9 @@ class _SocietyScreenState extends State<SocietyScreen> {
                     Text('${_s(f['unit'])} · ${_s(f['owner_name'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
                     Text(
                         [
-                          if (f['occupancy'] == 'tenant') 'kirayedar',
+                          if (f['occupancy'] == 'tenant') 'tenant',
                           if (_list(f['parking']).isNotEmpty) 'parking ${_list(f['parking']).map((p) => _s(p['slot'])).join(', ')}',
-                          if (_strs(f['missing']).isNotEmpty) 'baaki: ${_strs(f['missing']).join(', ')}',
+                          if (_strs(f['missing']).isNotEmpty) 'pending: ${_strs(f['missing']).join(', ')}',
                         ].join(' · '),
                         style: const TextStyle(color: C.muted, fontSize: 12)),
                   ])),
@@ -387,7 +387,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
               ),
             ),
           ),
-        if (_list(_d?['flats']).isEmpty) const Text('Abhi koi flat nahi. Jodiye ya member list ki sheet daaliye.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['flats']).isEmpty) const Text('No flats yet. Add one or add the member list sheet.', style: TextStyle(color: C.muted)),
       ]);
 
   Widget _billsTab() {
@@ -395,7 +395,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Kul baaki: ${_s(_dues['total_text'])}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          Text('Total dues: ${_s(_dues['total_text'])}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
           Text('0-30: ₹${_s(b['0-30'])} · 31-90: ₹${_s(b['31-90'])} · 91-180: ₹${_s(b['91-180'])} · 180+: ₹${_s(b['180+'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           if (_s(_dues['recovery']).isNotEmpty && _list(_dues['defaulters']).isNotEmpty)
@@ -404,42 +404,42 @@ class _SocietyScreenState extends State<SocietyScreen> {
       ),
       const SizedBox(height: 10),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Bill banao', icon: Icons.receipt_long_rounded, height: 46, onTap: _busy ? null : _makeBills)),
+        Expanded(child: GradientButton(label: 'Make bills', icon: Icons.receipt_long_rounded, height: 46, onTap: _busy ? null : _makeBills)),
         const SizedBox(width: 8),
-        Expanded(child: GlassButton(label: 'Yaad dilao', icon: Icons.notifications_active_rounded, onTap: _busy ? null : _remind)),
+        Expanded(child: GlassButton(label: 'Remind', icon: Icons.notifications_active_rounded, onTap: _busy ? null : _remind)),
       ]),
       const SizedBox(height: 12),
-      const Caption('BAAKI (FLAT KE HISAAB SE)'),
+      const Caption('DUES (BY FLAT)'),
       for (final r in _list(_dues['flats']))
         ListTile(
           dense: true,
           leading: Icon(Icons.circle, size: 12, color: r['defaulter'] == true ? C.bad : C.warn),
           title: Text('${_s(r['unit'])} · ${_s(r['owner'])}'),
-          subtitle: Text('${_s(r['days'])} din · ${_s(r['bucket'])}${r['no_messages'] == true ? ' · message nahi chahte' : ''}'),
+          subtitle: Text('${_s(r['days'])} din · ${_s(r['bucket'])}${r['no_messages'] == true ? ' · do not want messages' : ''}'),
           trailing: Text(_s(r['due_text']), style: const TextStyle(fontWeight: FontWeight.w800)),
           onTap: () {
             final f = _list(_d?['flats']).where((x) => x['unit'] == r['unit']).toList();
             if (f.isNotEmpty) _openFlat(_s(f.first['id']));
           },
         ),
-      if (_list(_dues['flats']).isEmpty) const Text('Kisi par baaki nahi.', style: TextStyle(color: C.muted)),
+      if (_list(_dues['flats']).isEmpty) const Text('No dues on anyone.', style: TextStyle(color: C.muted)),
     ]);
   }
 
   Widget _complaintsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Nayi shikayat / request', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _complaint),
+        GradientButton(label: 'New complaint / request', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _complaint),
         const SizedBox(height: 12),
         for (final c in _complaints)
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Press(onTap: () => _complaintStatus(c), child: SocietyComplaintCard(app: widget.app, data: {'complaint': c})),
           ),
-        if (_complaints.isEmpty) const Text('Koi khuli shikayat nahi.', style: TextStyle(color: C.muted)),
+        if (_complaints.isEmpty) const Text('No open complaints.', style: TextStyle(color: C.muted)),
       ]);
 
   Widget _meetingsTab() => ListView(padding: const EdgeInsets.all(16), children: [
         Row(children: [
-          Expanded(child: GradientButton(label: 'Nayi meeting', icon: Icons.groups_rounded, height: 46, onTap: _busy ? null : _meeting)),
+          Expanded(child: GradientButton(label: 'New meeting', icon: Icons.groups_rounded, height: 46, onTap: _busy ? null : _meeting)),
           const SizedBox(width: 8),
           Expanded(child: GlassButton(label: 'Notice / circular', icon: Icons.campaign_rounded, onTap: _busy ? null : _notice)),
         ]),
@@ -467,7 +467,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
 
   Widget _spendTab() => ListView(padding: const EdgeInsets.all(16), children: [
         Row(children: [
-          Expanded(child: GradientButton(label: 'Kharcha card', icon: Icons.payments_rounded, height: 46, onTap: _busy ? null : _spend)),
+          Expanded(child: GradientButton(label: 'Expense card', icon: Icons.payments_rounded, height: 46, onTap: _busy ? null : _spend)),
           const SizedBox(width: 8),
           Expanded(child: GlassButton(label: 'Vendor / AMC', icon: Icons.handyman_rounded, onTap: _busy ? null : _contract)),
         ]),
@@ -480,14 +480,14 @@ class _SocietyScreenState extends State<SocietyScreen> {
             title: Text('${_s(c['vendor'])} · ${_s(c['kind_label'])}'),
             subtitle: Text([
               if (_s(c['amount_text']).isNotEmpty) '${_s(c['amount_text'])}/${_s(c['per'])}',
-              if (_s(c['end']).isNotEmpty) 'khatam ${_s(c['end'])} (${_s(c['days_left'])} din)',
+              if (_s(c['end']).isNotEmpty) 'ends ${_s(c['end'])} (${_s(c['days_left'])} days)',
             ].join(' · ')),
             trailing: _s(c['phone']).isEmpty
                 ? null
                 : IconButton(icon: const Icon(Icons.call_rounded), onPressed: () => Native.openExternal(url: 'tel:${_s(c['phone'])}')),
           ),
         const SizedBox(height: 8),
-        const Caption('KHARCHE'),
+        const Caption('EXPENSES'),
         for (final x in _spends)
           ListTile(
             dense: true,
@@ -495,9 +495,9 @@ class _SocietyScreenState extends State<SocietyScreen> {
             subtitle: Text('${_s(x['kind_label'])} · ${_s(x['fund_label'])} · ${_s(x['status'])}'),
             trailing: x['status'] == 'approved'
                 ? TextButton(
-                    child: const Text('Maine de diya'),
+                    child: const Text('I have paid'),
                     onPressed: () async {
-                      final f = await _form(context, 'Maine de diya', const [('amount', 'Kitna diya'), ('ref', 'UTR / cheque no')],
+                      final f = await _form(context, 'I have paid', const [('amount', 'How much paid'), ('ref', 'UTR / cheque no')],
                           initial: {'amount': _s(x['amount'])});
                       if (f != null) await _run('POST', '/api/society/spends/${_s(x['id'])}/done', {'amount': _n(f['amount']), 'ref': f['ref'] ?? ''});
                     })
@@ -509,19 +509,19 @@ class _SocietyScreenState extends State<SocietyScreen> {
         Row(children: [
           Expanded(child: GradientButton(label: 'Gate entry', icon: Icons.login_rounded, height: 46, onTap: _busy ? null : _visitor)),
           const SizedBox(width: 8),
-          Expanded(child: GlassButton(label: 'Staff jodo', icon: Icons.badge_rounded, onTap: _busy ? null : _staff)),
+          Expanded(child: GlassButton(label: 'Add staff', icon: Icons.badge_rounded, onTap: _busy ? null : _staff)),
         ]),
         const SizedBox(height: 12),
-        const Caption('ABHI ANDAR'),
+        const Caption('INSIDE NOW'),
         for (final v in _visits)
           ListTile(
             dense: true,
             leading: const Icon(Icons.person_pin_circle_rounded, color: C.accent),
             title: Text('${_s(v['name'])} · ${_s(v['unit'])}'),
             subtitle: Text([_s(v['kind']), _s(v['purpose']), _s(v['vehicle'])].where((x) => x.isNotEmpty).join(' · ')),
-            trailing: TextButton(child: const Text('Bahar'), onPressed: () => _run('POST', '/api/society/visits/${_s(v['id'])}/out')),
+            trailing: TextButton(child: const Text('Outside'), onPressed: () => _run('POST', '/api/society/visits/${_s(v['id'])}/out')),
           ),
-        if (_visits.isEmpty) const Text('Abhi koi andar nahi.', style: TextStyle(color: C.muted)),
+        if (_visits.isEmpty) const Text('Nobody inside right now.', style: TextStyle(color: C.muted)),
         const SizedBox(height: 8),
         const Caption('STAFF'),
         for (final x in _list(_d?['staff']))
@@ -529,9 +529,9 @@ class _SocietyScreenState extends State<SocietyScreen> {
             dense: true,
             leading: Icon(Icons.badge_rounded, color: x['recheck_due'] == true ? C.warn : C.ok),
             title: Text('${_s(x['name'])} · ${_s(x['role'])}'),
-            subtitle: Text(_s(x['verified_on']).isEmpty ? 'Police verification nahi' : 'Verified ${_s(x['verified_on'])} · dobara ${_s(x['recheck_on'])}'),
+            subtitle: Text(_s(x['verified_on']).isEmpty ? 'No police verification' : 'Verified ${_s(x['verified_on'])} · again ${_s(x['recheck_on'])}'),
           ),
-        const Text('Gate register ki entries aapke rakhe din (DPDP) ke baad apne aap mit jaati hain; phone ke sirf aakhri 4 ank.',
+        const Text('Gate register entries are deleted automatically after the days you set (DPDP); only the last 4 digits of the phone are kept.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ]);
 
@@ -546,30 +546,30 @@ class _SocietyScreenState extends State<SocietyScreen> {
           Text(_s(st['name']).isEmpty ? 'Society' : _s(st['name']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text(_s(st['law']), style: const TextStyle(color: C.muted, fontSize: 12)),
           Text(
-              'UPI: ${_s(st['upi_id']).isEmpty ? 'nahi diya' : _s(st['upi_id'])} · Non-occupancy ${_s(st['noc_pct'])}% · Vyaaj ${_s(st['interest_pct'])}%'
-              '${caps['noc_cap_pct'] != null ? ' (seema ${caps['noc_cap_pct']}% / ${caps['interest_cap_pct']}%)' : ''}',
+              'UPI: ${_s(st['upi_id']).isEmpty ? 'not given' : _s(st['upi_id'])} · Non-occupancy ${_s(st['noc_pct'])}% · Interest ${_s(st['interest_pct'])}%'
+              '${caps['noc_cap_pct'] != null ? ' (limit ${caps['noc_cap_pct']}% / ${caps['interest_cap_pct']}%)' : ''}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           for (final p in _strs(st['warnings'])) Text('⚠ $p', style: const TextStyle(color: C.warn, fontSize: 12)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _settings),
+          GlassButton(label: 'Edit', icon: Icons.edit_rounded, onTap: _settings),
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('BILL KE HEADS (TAP = RATE)'),
+      const Caption('BILL HEADS (TAP = RATE)'),
       for (final h in _list(st['heads']))
         ListTile(
           dense: true,
           title: Text(_s(h['label'])),
           subtitle: Text(_s(_m(st['bases'])[h['basis']])),
-          trailing: Text(h['rate'] == null ? 'rate nahi' : (h['rate'] is Map ? _m(h['rate']).entries.map((e) => '${e.key} ₹${e.value}').join(', ') : _s(h['rate']))),
+          trailing: Text(h['rate'] == null ? 'no rate' : (h['rate'] is Map ? _m(h['rate']).entries.map((e) => '${e.key} ₹${e.value}').join(', ') : _s(h['rate']))),
           onTap: () => _head(h),
         ),
       const SizedBox(height: 12),
-      Caption('HISAAB FY ${_s(_acc['fy'])} (AUDITOR KE LIYE)'),
+      Caption('ACCOUNTS FY ${_s(_acc['fy'])} (FOR THE AUDITOR)'),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           for (final e in inc.entries) Text('${e.key}: ₹${e.value}', style: const TextStyle(fontSize: 12.5)),
-          Text('Aamdani: ₹${_s(_acc['income_total'])} · Kharcha: ₹${_s(_acc['expenditure_total'])} · Surplus: ₹${_s(_acc['surplus'])}',
+          Text('Income: ₹${_s(_acc['income_total'])} · Expense: ₹${_s(_acc['expenditure_total'])} · Surplus: ₹${_s(_acc['surplus'])}',
               style: const TextStyle(fontWeight: FontWeight.w700)),
           for (final e in exp.entries) Text('− ${e.key}: ₹${e.value}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           for (final n in _strs(_acc['notes'])) Text(n, style: const TextStyle(fontSize: 11.5, color: C.faint)),
@@ -578,7 +578,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
       const SizedBox(height: 8),
       GlassButton(label: 'Excel register', icon: Icons.table_view_rounded, onTap: _busy ? null : () => _run('POST', '/api/society/register')),
       const SizedBox(height: 12),
-      const Caption('TAARIKHEIN'),
+      const Caption('DATES'),
       for (final c in _calendar)
         ListTile(
             dense: true,
@@ -590,7 +590,7 @@ class _SocietyScreenState extends State<SocietyScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Flats', 'Bills', 'Shikayat', 'Meeting', 'Kharcha', 'Gate', 'Niyam'];
+    final tabs = ['Today', 'Flats', 'Bills', 'Complaints', 'Meeting', 'Expenses', 'Gate', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -671,13 +671,13 @@ class _SocietyFlatPageState extends State<SocietyFlatPage> {
       ('owner_phone', 'Mobile'),
       ('owner_email', 'Email'),
       ('carpet_sqft', 'Carpet sq ft'),
-      ('taps', 'Nal'),
+      ('taps', 'Tap'),
       ('cost', 'Construction cost ₹'),
       ('share_cert', 'Share certificate no'),
       ('shares', 'Shares (101-105)'),
       ('occupancy', 'self / tenant / vacant'),
-      ('tenant_name', 'Kirayedar ka naam'),
-      ('tenant_phone', 'Kirayedar ka mobile'),
+      ('tenant_name', 'Tenant name'),
+      ('tenant_phone', 'Tenant mobile'),
     ], ok: 'Save', initial: {for (final e in f.entries) if (e.value != null && e.value is! Map && e.value is! List) e.key: '${e.value}'});
     if (r == null) return;
     final body = <String, dynamic>{...r};
@@ -688,14 +688,14 @@ class _SocietyFlatPageState extends State<SocietyFlatPage> {
   }
 
   Future<void> _receipt() async {
-    final r = await _form(context, 'Paisa mila', const [('amount', 'Kitne ₹'), ('mode', 'upi / cash / cheque / neft'), ('ref', 'UTR / cheque no'), ('day', 'Taarikh (khaali = aaj)')],
-        ok: 'Receipt banao', initial: {'amount': _s(_f?['due'])});
+    final r = await _form(context, 'Money received', const [('amount', 'How many ₹'), ('mode', 'upi / cash / cheque / neft'), ('ref', 'UTR / cheque no'), ('day', 'Date (empty = today)')],
+        ok: 'Make receipt', initial: {'amount': _s(_f?['due'])});
     if (r == null) return;
     await _do('POST', '/api/society/flats/${widget.id}/receipt', {...r, 'amount': _n(r['amount'])});
   }
 
   Future<void> _nominate() async {
-    final r = await _form(context, 'Nomination (member ka sign kiya form)', const [('name', 'Nominee'), ('relation', 'Rishta'), ('share_pct', 'Hissa %')], ok: 'Save');
+    final r = await _form(context, 'Nomination (form signed by the member)', const [('name', 'Nominee'), ('relation', 'Relation'), ('share_pct', 'Share %')], ok: 'Save');
     if (r == null || (r['name'] ?? '').isEmpty) return;
     await _do('POST', '/api/society/flats/${widget.id}/nominate', {...r, 'share_pct': _n(r['share_pct'])});
   }
@@ -707,7 +707,7 @@ class _SocietyFlatPageState extends State<SocietyFlatPage> {
   }
 
   Future<void> _transfer() async {
-    final r = await _form(context, 'Flat transfer (naya member)', const [('new_owner', 'Naya member'), ('phone', 'Mobile'), ('premium', 'Transfer premium ₹'), ('on', 'Taarikh')],
+    final r = await _form(context, 'Flat transfer (new member)', const [('new_owner', 'New member'), ('phone', 'Mobile'), ('premium', 'Transfer premium ₹'), ('on', 'Date')],
         ok: 'Transfer');
     if (r == null || (r['new_owner'] ?? '').isEmpty) return;
     await _do('POST', '/api/society/flats/${widget.id}/transfer', {...r, 'premium': _n(r['premium'])});
@@ -727,21 +727,21 @@ class _SocietyFlatPageState extends State<SocietyFlatPage> {
                   Text(_s(f['owner_name']), style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                   Text([_s(f['owner_phone']), if (f['carpet_sqft'] != null) '${f['carpet_sqft']} sq ft', _s(f['occupancy'])].where((x) => x.isNotEmpty).join(' · '),
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
-                  if (f['occupancy'] == 'tenant') Text('Kirayedar: ${_s(f['tenant_name'])}', style: const TextStyle(fontSize: 12.5)),
-                  Text('Baaki: ${_s(f['due_text']).isEmpty ? '₹0' : _s(f['due_text'])}${(f['advance'] ?? 0) > 0 ? ' · advance ₹${f['advance']}' : ''}',
+                  if (f['occupancy'] == 'tenant') Text('Tenant: ${_s(f['tenant_name'])}', style: const TextStyle(fontSize: 12.5)),
+                  Text('Due: ${_s(f['due_text']).isEmpty ? '₹0' : _s(f['due_text'])}${(f['advance'] ?? 0) > 0 ? ' · advance ₹${f['advance']}' : ''}',
                       style: const TextStyle(fontWeight: FontWeight.w700)),
-                  for (final x in _strs(f['missing'])) Text('• baaki: $x', style: const TextStyle(color: C.warn, fontSize: 12)),
+                  for (final x in _strs(f['missing'])) Text('• pending: $x', style: const TextStyle(color: C.warn, fontSize: 12)),
                 ]),
               ),
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
-                GradientButton(label: 'Paisa mila', icon: Icons.currency_rupee_rounded, height: 42, onTap: _receipt),
-                GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _edit),
+                GradientButton(label: 'Money received', icon: Icons.currency_rupee_rounded, height: 42, onTap: _receipt),
+                GlassButton(label: 'Edit', icon: Icons.edit_rounded, onTap: _edit),
                 GlassButton(label: 'Nomination', icon: Icons.family_restroom_rounded, onTap: _nominate),
                 GlassButton(label: 'Parking', icon: Icons.local_parking_rounded, onTap: _parking),
                 GlassButton(label: 'Transfer', icon: Icons.swap_horiz_rounded, onTap: _transfer),
                 if (f['occupancy'] == 'tenant' || _s(f['tenant_name']).isNotEmpty)
-                  GlassButton(label: 'Kirayedar bhoolo', icon: Icons.person_remove_rounded,
+                  GlassButton(label: 'Forget tenant', icon: Icons.person_remove_rounded,
                       onTap: () => _do('POST', '/api/society/flats/${widget.id}/forget', {'who': 'tenant'})),
               ]),
               const SizedBox(height: 12),
@@ -757,7 +757,7 @@ class _SocietyFlatPageState extends State<SocietyFlatPage> {
                   dense: true,
                   title: Text('${_s(b['number'])} · ${_s(b['period'])}'),
                   subtitle: Text('${_s(b['status'])} · due ${_s(b['due_date'])}'),
-                  trailing: Text('₹${_s(b['total'])}${(b['paid'] ?? 0) > 0 ? ' (mila ₹${b['paid']})' : ''}'),
+                  trailing: Text('₹${_s(b['total'])}${(b['paid'] ?? 0) > 0 ? ' (received ₹${b['paid']})' : ''}'),
                 ),
               const Caption('RECEIPTS'),
               for (final r in _list(f['receipts']))
@@ -807,7 +807,7 @@ class _SocietyMeetingPageState extends State<SocietyMeetingPage> {
   }
 
   Future<void> _held() async {
-    final r = await _form(context, 'Meeting hui', const [('present', 'Upasthit flats / naam (comma se)'), ('chair', 'Adhyaksh'), ('notes', 'Charcha ke notes')],
+    final r = await _form(context, 'Meeting held', const [('present', 'Flats / names present (comma separated)'), ('chair', 'Chairman'), ('notes', 'Discussion notes')],
         ok: 'Minutes draft');
     if (r == null) return;
     final present = (r['present'] ?? '').split(',').map((x) => x.trim()).where((x) => x.isNotEmpty).toList();
@@ -815,8 +815,8 @@ class _SocietyMeetingPageState extends State<SocietyMeetingPage> {
   }
 
   Future<void> _resolution() async {
-    final r = await _form(context, 'Resolution', const [('text', 'Prastav'), ('proposer', 'Proposer'), ('seconder', 'Seconder'), ('for', 'Paksh mein'), ('against', 'Vipaksh')],
-        ok: 'Jodo');
+    final r = await _form(context, 'Resolution', const [('text', 'Proposed by'), ('proposer', 'Proposer'), ('seconder', 'Seconder'), ('for', 'In favour'), ('against', 'Opposed by')],
+        ok: 'Add');
     if (r == null || (r['text'] ?? '').isEmpty) return;
     await _do('POST', '/api/society/meetings/${widget.id}/resolution', {...r, 'for': int.tryParse(r['for'] ?? '') ?? 0, 'against': int.tryParse(r['against'] ?? '') ?? 0});
   }
@@ -826,11 +826,11 @@ class _SocietyMeetingPageState extends State<SocietyMeetingPage> {
     final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-              title: const Text('Minutes pakke karein'),
+              title: const Text('Confirm the minutes'),
               content: TextField(controller: c, maxLines: 14),
               actions: [
-                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Pakke')),
+                TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+                TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Confirmed')),
               ],
             ));
     if (ok == true) await _do('POST', '/api/society/meetings/${widget.id}/minutes', {'text': c.text});
@@ -849,17 +849,17 @@ class _SocietyMeetingPageState extends State<SocietyMeetingPage> {
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Text('${_s(m['day'])} ${_s(m['time'])} · ${_s(m['place'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  Text('Quorum ${_s(m['quorum'])} · aaye ${_s(m['present_count'])} · $st', style: const TextStyle(color: C.muted, fontSize: 12.5)),
+                  Text('Quorum ${_s(m['quorum'])} · present ${_s(m['present_count'])} · $st', style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   const SizedBox(height: 6),
                   for (final (i, a) in _strs(m['agenda']).indexed) Text('${i + 1}. $a', style: const TextStyle(fontSize: 13)),
                 ]),
               ),
               const SizedBox(height: 10),
               Wrap(spacing: 8, runSpacing: 8, children: [
-                if (st == 'planned' && _s(m['notice_id']).isEmpty) GradientButton(label: 'Notice (haan ke liye)', icon: Icons.campaign_rounded, height: 42, onTap: _notice),
-                if (st == 'planned' || st == 'held') GlassButton(label: 'Meeting hui', icon: Icons.how_to_reg_rounded, onTap: _held),
+                if (st == 'planned' && _s(m['notice_id']).isEmpty) GradientButton(label: 'Notice (for your approval)', icon: Icons.campaign_rounded, height: 42, onTap: _notice),
+                if (st == 'planned' || st == 'held') GlassButton(label: 'Meeting held', icon: Icons.how_to_reg_rounded, onTap: _held),
                 if (st == 'planned' || st == 'held') GlassButton(label: 'Resolution', icon: Icons.gavel_rounded, onTap: _resolution),
-                if (st == 'held') GradientButton(label: 'Minutes pakke', icon: Icons.task_alt_rounded, height: 42, onTap: _final),
+                if (st == 'held') GradientButton(label: 'Confirm the minutes', icon: Icons.task_alt_rounded, height: 42, onTap: _final),
               ]),
               const SizedBox(height: 12),
               if (_list(m['resolutions']).isNotEmpty) ...[
@@ -869,7 +869,7 @@ class _SocietyMeetingPageState extends State<SocietyMeetingPage> {
                       dense: true,
                       leading: Icon(r['passed'] == true ? Icons.check_circle_rounded : Icons.cancel_rounded, color: r['passed'] == true ? C.ok : C.bad),
                       title: Text('${_s(r['no'])}. ${_s(r['text'])}'),
-                      subtitle: Text('Paksh ${_s(r['for'])} · Vipaksh ${_s(r['against'])}')),
+                      subtitle: Text('For ${_s(r['for'])} · Against ${_s(r['against'])}')),
               ],
               if (_s(m['minutes']).isNotEmpty) ...[
                 const Caption('MINUTES'),
@@ -900,13 +900,13 @@ class _SocietyApprovalCardState extends State<SocietyApprovalCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/society/cards/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Society kharcha' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Society expense' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -916,7 +916,7 @@ class _SocietyApprovalCardState extends State<SocietyApprovalCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon nahi', const [('reason', 'Wajah (aapke liye)')]);
+      final f = await _form(context, 'Why not', const [('reason', 'Reason (for you)')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -953,11 +953,11 @@ class _SocietyApprovalCardState extends State<SocietyApprovalCard> {
     switch (kind) {
       case 'bills':
         return [
-          Text('${_s(d['count'])} bill · kul ${_s(d['total_text'])} · due ${_s(d['due_date'])}', style: t),
+          Text('${_s(d['count'])} bills · total ${_s(d['total_text'])} · due ${_s(d['due_date'])}', style: t),
           for (final b in _list(d['sample']))
             Text('${_s(b['unit'])}: ${_s(b['total_text'])} (${_list(b['lines']).map((l) => _s(l['label']).split(' (').first).join(', ')})',
                 style: const TextStyle(fontSize: 12, color: C.muted)),
-          if (d['upi'] != true) const Text('Society ka UPI ID nahi diya: bill mein pay link nahi hoga.', style: TextStyle(fontSize: 12, color: C.warn)),
+          if (d['upi'] != true) const Text('The society UPI ID was not given: the bill will have no pay link.', style: TextStyle(fontSize: 12, color: C.warn)),
           for (final p in [..._strs(d['problems']).take(6), ..._strs(d['warnings'])]) Text('⚠ $p', style: const TextStyle(fontSize: 12, color: C.warn)),
         ];
       case 'notice':
@@ -973,25 +973,25 @@ class _SocietyApprovalCardState extends State<SocietyApprovalCard> {
         ];
       case 'message':
         return [
-          Text('${_s(d['count'])} members · ${d['via'] == 'business' ? 'business WhatsApp' : 'aap khud bhejengi'}', style: t),
+          Text('${_s(d['count'])} members · ${d['via'] == 'business' ? 'business WhatsApp' : 'you will send it yourself'}', style: t),
           for (final p in _list(d['preview']))
             Text('${_s(p['unit'])}: ${_s(p['text'])}', style: const TextStyle(fontSize: 12, color: C.muted), maxLines: 4, overflow: TextOverflow.ellipsis),
-          for (final p in _strs(d['skipped'])) Text('Chhoot gaye: $p', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+          for (final p in _strs(d['skipped'])) Text('Left out: $p', style: const TextStyle(fontSize: 11.5, color: C.faint)),
         ];
       case 'spend':
         return [
           Text('${_s(d['kind_label'])} · ${_s(d['amount_text'])} · ${_s(d['fund_label'])}', style: t),
           Text(_s(d['what']), style: t),
-          if (_s(d['vendor']).isNotEmpty) Text('Kisko: ${_s(d['vendor'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (_s(d['vendor']).isNotEmpty) Text('To whom: ${_s(d['vendor'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           if (_s(d['resolution']).isNotEmpty) Text('Resolution: ${_s(d['resolution'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
           for (final p in _strs(d['checks'])) Text('⚠ $p', style: const TextStyle(fontSize: 12, color: C.warn)),
-          const Text('Hoola khud paise nahi deta; aap / treasurer society ke account se dijiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+          const Text('Hoola does not pay money itself; you / the treasurer pay from the society account.', style: TextStyle(fontSize: 11, color: C.faint)),
         ];
       case 'penalty':
         return [
           Text('${_s(d['unit'])} · ${_s(d['amount_text'])}', style: t),
           Text(_s(d['what']), style: t),
-          Text('Niyam: ${_s(d['rule'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          Text('Rule: ${_s(d['rule'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         ];
     }
     return [];
@@ -1017,7 +1017,7 @@ class _SocietyApprovalCardState extends State<SocietyApprovalCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text(_s(c['title']), style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'stale', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'approved' ? C.ok : C.bad)),
         ]),
         ..._details(kind, d),
@@ -1026,21 +1026,21 @@ class _SocietyApprovalCardState extends State<SocietyApprovalCard> {
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: canBusiness ? 'Haan, drafts do' : 'Haan', height: 42, onTap: _busy ? null : () => _decide(true, via: 'self'))),
+                    label: canBusiness ? 'Yes, make the drafts' : 'Yes', height: 42, onTap: _busy ? null : () => _decide(true, via: 'self'))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
           if (canBusiness) ...[
             const SizedBox(height: 6),
             GlassButton(
-                label: 'Haan, business WhatsApp se',
+                label: 'Yes, from business WhatsApp',
                 icon: Icons.send_rounded,
                 onTap: _busy ? null : () => _decide(true, via: 'business')),
           ],
         ],
         if (_sendList.isNotEmpty) ...[
           const SizedBox(height: 8),
-          const Text('Har member ko aap bhejiye:', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+          const Text('You send to each member:', style: TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
           for (final x in _sendList)
             ListTile(
               dense: true,
@@ -1049,17 +1049,17 @@ class _SocietyApprovalCardState extends State<SocietyApprovalCard> {
               trailing: x['sent'] == true
                   ? const Icon(Icons.done_all_rounded, color: C.ok)
                   : (_s(x['wa']).isEmpty
-                      ? const Text('phone nahi', style: TextStyle(fontSize: 11, color: C.faint))
+                      ? const Text('no phone', style: TextStyle(fontSize: 11, color: C.faint))
                       : TextButton(child: const Text('WhatsApp'), onPressed: () => Native.openExternal(url: _s(x['wa'])))),
             ),
         ],
         if (_groupText.isNotEmpty)
           GlassButton(
-              label: 'Group ke liye text copy',
+              label: 'Copy text for the group',
               icon: Icons.copy_rounded,
               onTap: () {
                 Clipboard.setData(ClipboardData(text: _groupText));
-                _snack(context, 'Copy ho gaya: society group / notice board mein lagaiye.');
+                _snack(context, 'Copied: paste it in the society group / notice board.');
               }),
       ]),
     );
@@ -1088,7 +1088,7 @@ class SocietyComplaintCard extends StatelessWidget {
           Pill(_s(c['status_label'])),
         ]),
         Text(_s(c['text']), style: const TextStyle(fontSize: 13)),
-        Text([if (_s(c['vendor']).isNotEmpty) 'Vendor: ${_s(c['vendor'])}', '${_s(c['age_days'])} din purani'].join(' · '),
+        Text([if (_s(c['vendor']).isNotEmpty) 'Vendor: ${_s(c['vendor'])}', '${_s(c['age_days'])} days old'].join(' · '),
             style: const TextStyle(fontSize: 11.5, color: C.faint)),
       ]),
     );
@@ -1128,13 +1128,13 @@ class SocietyDayCard extends StatelessWidget {
           const Row(children: [
             Icon(Icons.apartment_rounded, color: C.accent),
             SizedBox(width: 8),
-            Text('Aaj society mein', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Today in the society', style: TextStyle(fontWeight: FontWeight.w800)),
           ]),
           const SizedBox(height: 6),
           Text(_s(data['say']), style: const TextStyle(fontSize: 13.5, height: 1.4)),
           const SizedBox(height: 8),
           GlassButton(
-              label: 'Society kholo',
+              label: 'Open society',
               icon: Icons.open_in_new_rounded,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => SocietyScreen(app: app)))),
         ]),

@@ -70,7 +70,7 @@ class _ThinkCardState extends State<ThinkCard> {
     final showText = !_done || _open;
     // live: only the newest part, so the card stays small; folded and opened: all of it
     final shown = !_done && text.length > 420 ? '…${text.substring(text.length - 420)}' : text;
-    final head = _done ? '${widget.name} ne socha · ${clock(secs)}' : 'Soch raha hoon · ${clock(secs)}';
+    final head = _done ? '${widget.name} thought · ${clock(secs)}' : 'Thinking · ${clock(secs)}';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Align(

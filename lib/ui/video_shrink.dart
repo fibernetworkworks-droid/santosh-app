@@ -24,7 +24,7 @@ Future<String?> shrinkVideo(BuildContext context, String path, String name, {int
       try {
         if (await File(out).length() <= 25 * 1024 * 1024) return out;
       } catch (_) {}
-      _snack(context, '$name: chhota karke bhi 25 MB se badi hai. Drive link se bhejiye.');
+      _snack(context, '$name: still larger than 25 MB even after shrinking. Send it with a Drive link.');
       return null;
     }
     if (err == 'cancelled' || r == null) return null;
@@ -36,12 +36,12 @@ Future<String?> shrinkVideo(BuildContext context, String path, String name, {int
         context: context,
         builder: (ctx) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: const Text('Video bahut lambi hai'),
-          content: Text('25 MB mein poori video saaf nahi aayegi. Pehle $mins minute bhej doon?\n'
-              '(Poori video ke liye Google Drive link sabse achha hai.)'),
+          title: const Text('The video is very long'),
+          content: Text('The full video will not fit clearly in 25 MB. Send the first $mins minutes?\n'
+              '(A Google Drive link is best for the full video.)'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Rehne do')),
-            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Pehle $mins min bhejo')),
+            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+            FilledButton(onPressed: () => Navigator.pop(ctx, true), child: Text('Send first $mins min')),
           ],
         ),
       );
@@ -49,7 +49,7 @@ Future<String?> shrinkVideo(BuildContext context, String path, String name, {int
       clipMs = mins * 60000;
       continue;
     }
-    _snack(context, '$name: ${err ?? 'video chhota nahi ho paya'}');
+    _snack(context, '$name: ${err ?? 'could not shrink the video'}');
     return null;
   }
   return null;
@@ -104,7 +104,7 @@ class _ShrinkDialogState extends State<_ShrinkDialog> {
     if (_pct < 5) return '';
     final spent = DateTime.now().difference(_started).inSeconds;
     final left = (spent * (100 - _pct) / _pct).round();
-    return left < 60 ? ' · ~$left sec baaki' : ' · ~${(left / 60).ceil()} min baaki';
+    return left < 60 ? ' · ~$left sec left' : ' · ~${(left / 60).ceil()} min left';
   }
 
   @override
@@ -114,9 +114,9 @@ class _ShrinkDialogState extends State<_ShrinkDialog> {
       canPop: false,
       child: AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Video chhoti kar raha hoon'),
+        title: const Text('Shrinking the video'),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('${widget.name}$mb → 25 MB se kam${widget.clipMs > 0 ? ' (pehle ${widget.clipMs ~/ 60000} min)' : ''}',
+          Text('${widget.name}$mb → under 25 MB${widget.clipMs > 0 ? ' (first ${widget.clipMs ~/ 60000} min)' : ''}',
               style: const TextStyle(fontSize: 13, color: C.muted)),
           const SizedBox(height: 14),
           ClipRRect(
@@ -126,7 +126,7 @@ class _ShrinkDialogState extends State<_ShrinkDialog> {
           const SizedBox(height: 8),
           Text('$_pct%$_eta', style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
           const SizedBox(height: 6),
-          const Text('Phone par hi hota hai — video kahin upload nahi hoti jab tak aap bhejein nahi.',
+          const Text('This happens on the phone itself — the video is not uploaded anywhere until you send it.',
               style: TextStyle(fontSize: 11.5, color: C.faint)),
         ]),
         actions: [
@@ -138,7 +138,7 @@ class _ShrinkDialogState extends State<_ShrinkDialog> {
                     await Native.compressCancel();
                     _close(<String, dynamic>{'error': 'cancelled'});
                   },
-            child: const Text('Rok do'),
+            child: const Text('Stop'),
           ),
         ],
       ),

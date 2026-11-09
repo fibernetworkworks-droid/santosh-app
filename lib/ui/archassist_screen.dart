@@ -34,7 +34,7 @@ Color _stColor(String st) => switch (st) {
     };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -50,7 +50,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -86,11 +86,11 @@ Future<void> _openLinks(BuildContext context, Map<String, dynamic> r) async {
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: GlassButton(
-                label: switch (e.key) { 'whatsapp' => 'WhatsApp draft kholo', 'email' => 'Email draft kholo', 'upi' => 'UPI link', _ => e.key },
+                label: switch (e.key) { 'whatsapp' => 'Open WhatsApp draft', 'email' => 'Open email draft', 'upi' => 'UPI link', _ => e.key },
                 icon: Icons.open_in_new_rounded,
                 onTap: () => Native.openExternal(url: _s(e.value))),
           ),
-        const Text('Hoola khud nahi bhejta: aap bhejiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('Hoola does not send it itself: you send it.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     ),
   );
@@ -136,18 +136,18 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
       .then((_) => _load());
 
   Future<void> _newProject() async {
-    final f = await _form(context, 'Naya project', const [
-      ('name', 'Project ka naam'),
+    final f = await _form(context, 'New project', const [
+      ('name', 'Project name'),
       ('client', 'Client'),
-      ('client_phone', 'Client ka mobile'),
-      ('site', 'Site ka pata'),
+      ('client_phone', 'Client mobile'),
+      ('site', 'Site address'),
       ('pin', 'PIN code'),
-      ('city', 'Shehar'),
-      ('area', 'Plot area (jaise 1000 sqm / 2400 sqft / 5 guntha)'),
-      ('road_width_m', 'Saamne ki road (metre)'),
+      ('city', 'City'),
+      ('area', 'Plot area (e.g. 1000 sqm / 2400 sqft / 5 guntha)'),
+      ('road_width_m', 'Road in front (metres)'),
       ('survey_no', 'Survey / gat no.'),
       ('cts_no', 'CTS no.'),
-    ], ok: 'Banao');
+    ], ok: 'Create');
     if (f == null || (f['name'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
     if (f['road_width_m'] != null) body['road_width_m'] = _n(f['road_width_m']);
@@ -160,9 +160,9 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 12),
-      GradientButton(label: 'Naya project', icon: Icons.add_home_work_rounded, height: 46, onTap: _busy ? null : _newProject),
+      GradientButton(label: 'New project', icon: Icons.add_home_work_rounded, height: 46, onTap: _busy ? null : _newProject),
       const SizedBox(height: 12),
-      for (final (key, title) in const [('waiting', 'AAPKI HAAN BAAKI'), ('rfi_late', 'RFI LATE'), ('expiring', 'APPROVAL KI TAREEKH'), ('unpaid', 'PAYMENT BAAKI')])
+      for (final (key, title) in const [('waiting', 'YOUR APPROVAL PENDING'), ('rfi_late', 'RFI LATE'), ('expiring', 'APPROVAL DATE'), ('unpaid', 'PAYMENT PENDING')])
         if (_strs(day[key]).isNotEmpty) ...[
           Caption(title),
           for (final t in _strs(day[key])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
@@ -172,7 +172,7 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
   }
 
   Widget _projectsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya project', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newProject),
+        GradientButton(label: 'New project', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _newProject),
         const SizedBox(height: 12),
         for (final p in _list(_d?['projects']))
           Padding(
@@ -197,18 +197,18 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
                       ].where((x) => x.isNotEmpty).join(' · '),
                       style: const TextStyle(color: C.muted, fontSize: 12.5)),
                   if (_strs(p['docs_missing']).isNotEmpty)
-                    Text('Kaagaz baaki: ${_strs(p['docs_missing']).take(3).join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
+                    Text('Documents pending: ${_strs(p['docs_missing']).take(3).join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
                 ]),
               ),
             ),
           ),
-        if (_list(_d?['projects']).isEmpty) const Text('Abhi koi project nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['projects']).isEmpty) const Text('No projects yet.', style: TextStyle(color: C.muted)),
       ]);
 
   Future<void> _addConsultant() async {
     final f = await _form(context, 'Consultant', const [
-      ('name', 'Naam'),
-      ('kind', 'Kaun: structural / mep / electrical / plumbing / hvac / fire / landscape'),
+      ('name', 'Name'),
+      ('kind', 'Who: structural / mep / electrical / plumbing / hvac / fire / landscape'),
       ('firm', 'Firm'),
       ('phone', 'Mobile'),
       ('email', 'Email'),
@@ -219,7 +219,7 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
   }
 
   Widget _consultantsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Consultant jodo', icon: Icons.engineering_rounded, height: 46, onTap: _busy ? null : _addConsultant),
+        GradientButton(label: 'Add consultant', icon: Icons.engineering_rounded, height: 46, onTap: _busy ? null : _addConsultant),
         const SizedBox(height: 12),
         for (final c in _list(_d?['consultants']))
           ListTile(
@@ -231,19 +231,19 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
 
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Niyam / firm', const [
-      ('firm', 'Firm ka naam'),
-      ('architect', 'Architect ka naam'),
+    final f = await _form(context, 'Rules / firm', const [
+      ('firm', 'Firm name'),
+      ('architect', 'Architect name'),
       ('coa_no', 'CoA registration no.'),
       ('coa_valid_to', 'CoA registration valid till (YYYY-MM-DD)'),
-      ('gstin', 'GSTIN (ho to)'),
+      ('gstin', 'GSTIN (if any)'),
       ('address', 'Office address'),
       ('phone', 'Office mobile'),
       ('email', 'Email'),
-      ('upi_id', 'UPI ID (invoice par)'),
+      ('upi_id', 'UPI ID (on invoices)'),
       ('ruleset', 'Rule set: udcpr / udcpr_congested / dcpr_suburbs / dcpr_island / custom'),
       ('inv_prefix', 'Invoice prefix'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
+      ('morning_time', 'Morning note (HH:MM)'),
       ('terms', 'Invoice terms'),
     ], ok: 'Save', initial: {for (final k in ['firm', 'architect', 'coa_no', 'coa_valid_to', 'gstin', 'address', 'phone', 'email', 'upi_id', 'ruleset', 'inv_prefix', 'morning_time', 'terms']) k: _s(st[k])});
     if (f == null) return;
@@ -255,28 +255,28 @@ class _ArchassistScreenState extends State<ArchassistScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_s(st['firm']).isEmpty ? 'Firm ka naam daaliye' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(_s(st['firm']).isEmpty ? 'Enter the firm name' : _s(st['firm']), style: const TextStyle(fontWeight: FontWeight.w800)),
           Text('CoA: ${_s(st['coa_no']).isEmpty ? '—' : _s(st['coa_no'])} · GSTIN: ${_s(st['gstin']).isEmpty ? '—' : _s(st['gstin'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           Text('Rule set: ${_s(_m(st['rulesets'])[_s(st['ruleset'])])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
+          GlassButton(label: 'Edit', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
       const Caption('FEE STAGES'),
       for (final x in _list(st['fee_stages'])) Text('• ${_s(x['label'])}: ${_s(x['pct'])}%', style: const TextStyle(fontSize: 13)),
       if (st['fee_starter'] == true)
-        const Text('CoA reference wala starter split; aapke agreement ke hisaab se project mein badaliye.', style: TextStyle(fontSize: 11.5, color: C.faint)),
+        const Text('Starter split with CoA reference; change it in the project to match your agreement.', style: TextStyle(fontSize: 11.5, color: C.faint)),
       const SizedBox(height: 12),
-      const Caption('HOOLA KABHI NAHI'),
+      const Caption('HOOLA NEVER DOES'),
       for (final t in _strs(_d?['never'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Projects', 'Consultants', 'Niyam'];
+    final tabs = ['Today', 'Projects', 'Consultants', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -351,7 +351,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
   Future<String?> _pickFile() async {
     final conv = widget.app.conversationId;
     if (conv == null) {
-      _snack(context, 'Pehle chat khulne dijiye.');
+      _snack(context, 'Let the chat open first.');
       return null;
     }
     final files = await pickAttachmentsOfType(context, FileType.any);
@@ -371,14 +371,14 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
     final f = await _form(context, 'Plot', const [
       ('area', 'Plot area (sqm / sqft / guntha)'),
       ('road_width_m', 'Road width (m)'),
-      ('road_widening_sqm', 'Road widening mein jaane wala (sq m)'),
+      ('road_widening_sqm', 'Part lost to road widening (sq m)'),
       ('reservation_sqm', 'Reservation (sq m)'),
       ('survey_no', 'Survey / gat no.'),
       ('cts_no', 'CTS no.'),
       ('ruleset', 'Rule set (udcpr / dcpr_suburbs / ...)'),
       ('authority', 'Authority (maha_bpms / mcgm_autodcr / pmrda / midc_bpams)'),
-      ('rera_no', 'RERA no. (ho to)'),
-      ('client_gstin', 'Client GSTIN (ho to)'),
+      ('rera_no', 'RERA no. (if any)'),
+      ('client_gstin', 'Client GSTIN (if any)'),
     ], ok: 'Save', initial: {
       'area': _s(plot['area_sqm']),
       'road_width_m': _s(plot['road_width_m']),
@@ -404,10 +404,10 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
       backgroundColor: C.bgBottom,
       builder: (c) => Column(mainAxisSize: MainAxisSize.min, children: [
         ListTile(title: Text(_s(d['label']))),
-        ListTile(leading: const Icon(Icons.check_rounded, color: C.ok), title: const Text('Mil gaya'), onTap: () => Navigator.pop(c, 'have')),
-        ListTile(leading: const Icon(Icons.attach_file_rounded), title: const Text('File jodo (mil gaya)'), onTap: () => Navigator.pop(c, 'file')),
-        ListTile(leading: const Icon(Icons.hourglass_empty_rounded, color: C.warn), title: const Text('Baaki'), onTap: () => Navigator.pop(c, 'missing')),
-        ListTile(leading: const Icon(Icons.block_rounded), title: const Text('Zaroori nahi'), onTap: () => Navigator.pop(c, 'na')),
+        ListTile(leading: const Icon(Icons.check_rounded, color: C.ok), title: const Text('Received'), onTap: () => Navigator.pop(c, 'have')),
+        ListTile(leading: const Icon(Icons.attach_file_rounded), title: const Text('Add file (received)'), onTap: () => Navigator.pop(c, 'file')),
+        ListTile(leading: const Icon(Icons.hourglass_empty_rounded, color: C.warn), title: const Text('Pending'), onTap: () => Navigator.pop(c, 'missing')),
+        ListTile(leading: const Icon(Icons.block_rounded), title: const Text('Not needed'), onTap: () => Navigator.pop(c, 'na')),
       ]),
     );
     if (choice == null) return;
@@ -437,16 +437,16 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           Text('${_s(_p?['ruleset_label'])} · ${_s(_p?['authority_label'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Plot badlo', icon: Icons.edit_rounded, onTap: _editPlot),
+          GlassButton(label: 'Change plot', icon: Icons.edit_rounded, onTap: _editPlot),
         ]),
       ),
       const SizedBox(height: 8),
       Wrap(spacing: 6, runSpacing: 6, children: [
-        for (final (k, label) in const [('trees', 'Ped hain'), ('near_airport', 'Airport ke paas'), ('heritage', 'Heritage'), ('coastal', 'CRZ / samundar'), ('railway', 'Railway paas'), ('highway', 'Highway paas'), ('promoter', 'Bechne ke liye (RERA)')])
+        for (final (k, label) in const [('trees', 'There are trees'), ('near_airport', 'Near an airport'), ('heritage', 'Heritage'), ('coastal', 'CRZ / coastal'), ('railway', 'Near railway'), ('highway', 'Near highway'), ('promoter', 'For sale (RERA)')])
           FilterChip(label: Text(label), selected: plot[k] == true, onSelected: (v) => _flag(k, v)),
       ]),
       const SizedBox(height: 12),
-      const Caption('KAAGAZ (7/12, PROPERTY CARD, TITLE...)'),
+      const Caption('DOCUMENTS (7/12, PROPERTY CARD, TITLE...)'),
       for (final d in _list(_p?['docs']))
         ListTile(
           dense: true,
@@ -454,7 +454,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
               switch (_s(d['state'])) { 'have' => Icons.check_circle_rounded, 'na' => Icons.remove_circle_outline_rounded, _ => Icons.radio_button_unchecked_rounded },
               color: switch (_s(d['state'])) { 'have' => C.ok, 'na' => C.faint, _ => C.warn }),
           title: Text(_s(d['label'])),
-          subtitle: _s(d['file_id']).isEmpty ? null : const Text('File judi'),
+          subtitle: _s(d['file_id']).isEmpty ? null : const Text('File added'),
           onTap: () => _docTap(d),
         ),
     ]);
@@ -463,19 +463,19 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
   // ---- area statement
   Future<void> _area() async {
     final prop = _m(_p?['proposal']);
-    final f = await _form(context, 'Area statement (aapke number)', const [
+    final f = await _form(context, 'Area statement (your numbers)', const [
       ('bua_sqm', 'Proposed total built-up (sq m)'),
       ('height_m', 'Building height (m)'),
       ('front_m', 'Front margin (m)'),
       ('side_m', 'Side margin (m)'),
       ('rear_m', 'Rear margin (m)'),
       ('units', 'Flats / units'),
-      ('parking', 'Parking (kitni)'),
-      ('basic', 'Apna basic FSI (khaali = table)'),
-      ('premium', 'Apna premium FSI (khaali = table)'),
-      ('tdr', 'Apna TDR (khaali = table)'),
-      ('parking_per_unit', 'Parking per unit (aapki table se)'),
-    ], ok: 'Jaancho', initial: {for (final k in ['bua_sqm', 'height_m', 'front_m', 'side_m', 'rear_m', 'units', 'parking']) k: _s(prop[k])});
+      ('parking', 'Parking (how many)'),
+      ('basic', 'Your own basic FSI (empty = table)'),
+      ('premium', 'Your own premium FSI (empty = table)'),
+      ('tdr', 'Your own TDR (empty = table)'),
+      ('parking_per_unit', 'Parking per unit (from your table)'),
+    ], ok: 'Check', initial: {for (final k in ['bua_sqm', 'height_m', 'front_m', 'side_m', 'rear_m', 'units', 'parking']) k: _s(prop[k])});
     if (f == null) return;
     final proposal = <String, dynamic>{};
     final overrides = <String, dynamic>{};
@@ -492,10 +492,10 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
     final a = _m(_p?['area']);
     final st = _m(a['statement']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Area statement / FSI jaancho', icon: Icons.square_foot_rounded, height: 46, onTap: _busy ? null : _area),
+      GradientButton(label: 'Check area statement / FSI', icon: Icons.square_foot_rounded, height: 46, onTap: _busy ? null : _area),
       const SizedBox(height: 12),
       if (a.isNotEmpty) ArchAreaCard(app: widget.app, data: {'say': a['say'], 'checks': a['checks'], 'statement': st, 'project': _p?['number']}),
-      if (a.isEmpty) const Text('Abhi area statement nahi bana.', style: TextStyle(color: C.muted)),
+      if (a.isEmpty) const Text('No area statement made yet.', style: TextStyle(color: C.muted)),
       const SizedBox(height: 8),
       for (final n in _strs(a['notes'])) Text('• $n', style: const TextStyle(fontSize: 12.5, color: C.muted)),
     ]);
@@ -503,13 +503,13 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
 
   // ---- drawings + transmittals
   Future<void> _addDrawing({Map<String, dynamic>? d}) async {
-    final f = await _form(context, d == null ? 'Nayi sheet' : 'Nayi revision: ${_s(d['sheet'])}', [
+    final f = await _form(context, d == null ? 'New sheet' : 'New revision: ${_s(d['sheet'])}', [
       if (d == null) ('sheet', 'Sheet no. (A-101)'),
       if (d == null) ('title', 'Title'),
       if (d == null) ('scale', 'Scale (1:100)'),
-      ('note', d == null ? 'Note (ho to)' : 'Kya badla'),
+      ('note', d == null ? 'Note (if any)' : 'What changed'),
       ('status', 'Status: draft / for_approval / for_construction'),
-    ], ok: 'Aage');
+    ], ok: 'Continue');
     if (f == null) return;
     final fid = await _pickFile();
     final body = <String, dynamic>{...f, 'file_id': fid ?? ''};
@@ -523,17 +523,17 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
   Future<void> _transmittal() async {
     final sheets = _list(_p?['drawings']).where((d) => _s(d['status']) != 'superseded').map((d) => _s(d['sheet'])).toList();
     if (sheets.isEmpty) {
-      _snack(context, 'Pehle drawing register mein sheets daaliye.');
+      _snack(context, 'First add sheets to the drawing register.');
       return;
     }
     final f = await _form(context, 'Transmittal', [
-      ('to_kind', 'Kise: client / authority / consultant / contractor'),
-      ('to_name', 'Naam'),
+      ('to_kind', 'To whom: client / authority / consultant / contractor'),
+      ('to_name', 'Name'),
       ('to_contact', 'Mobile / email'),
-      ('sheets', 'Sheets (comma se): ${sheets.join(', ')}'),
+      ('sheets', 'Sheets (comma separated): ${sheets.join(', ')}'),
       ('purpose', 'for_approval / for_construction / for_information / for_submission'),
       ('note', 'Note'),
-    ], ok: 'Card banao', initial: {'to_kind': 'client', 'to_name': _s(_p?['client']), 'sheets': sheets.join(', '), 'purpose': 'for_approval'});
+    ], ok: 'Make card', initial: {'to_kind': 'client', 'to_name': _s(_p?['client']), 'sheets': sheets.join(', '), 'purpose': 'for_approval'});
     if (f == null) return;
     final body = <String, dynamic>{...f, 'sheets': (f['sheets'] ?? '').split(',').map((x) => x.trim()).where((x) => x.isNotEmpty).toList()};
     final r = await _run('POST', '/api/archassist/projects/$_ref/transmittals', body);
@@ -550,7 +550,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
 
   Widget _drawingsTab() => ListView(padding: const EdgeInsets.all(16), children: [
         Row(children: [
-          Expanded(child: GradientButton(label: 'Sheet jodo', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : () => _addDrawing())),
+          Expanded(child: GradientButton(label: 'Add sheet', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : () => _addDrawing())),
           const SizedBox(width: 8),
           Expanded(child: GlassButton(label: 'Transmittal', icon: Icons.send_rounded, onTap: _busy ? null : _transmittal)),
         ]),
@@ -566,7 +566,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
               for (final x in _list(d['issued']))
                 ListTile(dense: true, leading: const Icon(Icons.outbox_rounded, size: 18), title: Text('${_s(x['transmittal'])} · ${_s(x['rev'])} → ${_s(x['to'])}'),
                     subtitle: Text(_s(x['on']))),
-              Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => _addDrawing(d: d), icon: const Icon(Icons.history_edu_rounded), label: const Text('Nayi revision'))),
+              Align(alignment: Alignment.centerLeft, child: TextButton.icon(onPressed: () => _addDrawing(d: d), icon: const Icon(Icons.history_edu_rounded), label: const Text('New revision'))),
             ],
           ),
         const SizedBox(height: 8),
@@ -579,7 +579,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
     final f = await _form(context, _s(a['label']), const [
       ('status', 'pending / needed / applied / query / granted / refused / not_needed'),
       ('ref_no', 'Number / inward no.'),
-      ('on', 'Tareekh (YYYY-MM-DD)'),
+      ('on', 'Date (YYYY-MM-DD)'),
       ('valid_to', 'Valid till (YYYY-MM-DD)'),
     ], ok: 'Save', initial: {'status': _s(a['status']), 'ref_no': _s(a['ref']), 'valid_to': _s(a['valid_to'])});
     if (f == null) return;
@@ -620,7 +620,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
         ]),
       ),
       const SizedBox(height: 8),
-      GradientButton(label: 'Submission ka card banao', icon: Icons.fact_check_rounded, height: 46, onTap: _busy ? null : _submit),
+      GradientButton(label: 'Make submission card', icon: Icons.fact_check_rounded, height: 46, onTap: _busy ? null : _submit),
       const SizedBox(height: 12),
       for (final a in _list(ap['items']))
         ListTile(
@@ -639,12 +639,12 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
   // ---- RFIs + minutes
   Future<void> _rfi() async {
     final f = await _form(context, 'RFI', const [
-      ('party', 'Kisse (consultant / contractor)'),
-      ('subject', 'Vishay'),
-      ('question', 'Sawaal'),
-      ('sheets', 'Sheets (comma se)'),
-      ('due', 'Jawab kab tak (YYYY-MM-DD)'),
-    ], ok: 'Banao');
+      ('party', 'From whom (consultant / contractor)'),
+      ('subject', 'Subject'),
+      ('question', 'Question'),
+      ('sheets', 'Sheets (comma separated)'),
+      ('due', 'Reply by (YYYY-MM-DD)'),
+    ], ok: 'Create');
     if (f == null) return;
     final r = await _run('POST', '/api/archassist/projects/$_ref/rfis',
         {...f, 'sheets': (f['sheets'] ?? '').split(',').map((x) => x.trim()).where((x) => x.isNotEmpty).toList()});
@@ -652,17 +652,17 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
   }
 
   Future<void> _answer(Map<String, dynamic> r) async {
-    final f = await _form(context, '${_s(r['number'])} jawab', const [('answer', 'Jawab')], ok: 'Save');
+    final f = await _form(context, '${_s(r['number'])} answer', const [('answer', 'Answer')], ok: 'Save');
     if (f == null) return;
     await _run('POST', '/api/archassist/rfis/${_s(r['id'])}/answer', {'answer': f['answer'] ?? '', 'close': true});
   }
 
   Future<void> _meeting() async {
     final f = await _form(context, 'Meeting minutes', const [
-      ('attendees', 'Kaun the (comma se)'),
-      ('place', 'Jagah'),
-      ('points', 'Points: har line "point - kaun - tareekh"'),
-    ], ok: 'Minutes banao');
+      ('attendees', 'Who attended (comma separated)'),
+      ('place', 'Place'),
+      ('points', 'Points: one per line "point - who - date"'),
+    ], ok: 'Make minutes');
     if (f == null) return;
     final pts = <Map<String, dynamic>>[];
     for (final line in (f['points'] ?? '').split('\n')) {
@@ -688,7 +688,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
             dense: true,
             leading: Icon(Icons.help_outline_rounded, color: r['late'] == true ? C.bad : (_s(r['status']) == 'open' ? C.warn : C.ok)),
             title: Text('${_s(r['number'])} · ${_s(r['party'])}: ${_s(r['subject'])}'),
-            subtitle: Text(_s(r['answer']).isNotEmpty ? 'Jawab: ${_s(r['answer'])}' : (_s(r['due']).isEmpty ? _s(r['status']) : 'Due ${_s(r['due'])}')),
+            subtitle: Text(_s(r['answer']).isNotEmpty ? 'Answer: ${_s(r['answer'])}' : (_s(r['due']).isEmpty ? _s(r['status']) : 'Due ${_s(r['due'])}')),
             onTap: _s(r['status']) == 'open' ? () => _answer(r) : null,
           ),
         const SizedBox(height: 8),
@@ -712,9 +712,9 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
   // ---- fee + invoices
   Future<void> _fee() async {
     final fee = _m(_p?['fee']);
-    final f = await _form(context, 'Fee (aapke agreement se)', const [
+    final f = await _form(context, 'Fee (from your agreement)', const [
       ('basis', 'percent / lump'),
-      ('percent', 'Fee % (project cost ka)'),
+      ('percent', 'Fee % (of project cost)'),
       ('project_cost', 'Project cost (Rs)'),
       ('lump', 'Lump sum (Rs)'),
     ], ok: 'Save', initial: {'basis': _s(fee['basis']).isEmpty ? 'percent' : _s(fee['basis']), 'percent': _s(fee['percent']), 'project_cost': _s(fee['project_cost']), 'lump': _s(fee['lump'])});
@@ -744,7 +744,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
     final fee = _m(_p?['fee']);
     final stages = _list(fee['stages']);
     return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(label: 'Fee set karo', icon: Icons.currency_rupee_rounded, height: 46, onTap: _busy ? null : _fee),
+      GradientButton(label: 'Set fee', icon: Icons.currency_rupee_rounded, height: 46, onTap: _busy ? null : _fee),
       const SizedBox(height: 12),
       for (final x in stages)
         ListTile(
@@ -754,7 +754,7 @@ class _ArchProjectPageState extends State<ArchProjectPage> {
               ? TextButton(onPressed: _busy ? null : () => _invoice(_s(x['key'])), child: const Text('Invoice'))
               : const Icon(Icons.receipt_long_rounded, color: C.ok),
         ),
-      if (stages.isEmpty) const Text('Pehle fee set kijiye (percent + project cost, ya lump sum).', style: TextStyle(color: C.muted)),
+      if (stages.isEmpty) const Text('First set the fee (percent + project cost, or a lump sum).', style: TextStyle(color: C.muted)),
       const SizedBox(height: 12),
       const Caption('INVOICES'),
       for (final i in _list(_p?['invoices'])) ...[ArchInvoiceCard(app: widget.app, data: {'invoice': i}, onDone: _load), const SizedBox(height: 8)],
@@ -833,11 +833,11 @@ class ArchAreaCard extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 3),
             child: Text(
                 '${switch (_s(c['status'])) { 'ok' => '✓', 'fail' => '✗', _ => '!' }} ${_s(c['item'])}'
-                '${c['got'] != null ? ': ${c['got']}' : ''}${c['need'] != null ? ' (chahiye ${c['need']})' : ''} ${_s(c['note'])}',
+                '${c['got'] != null ? ': ${c['got']}' : ''}${c['need'] != null ? ' (needs ${c['need']})' : ''} ${_s(c['note'])}',
                 style: TextStyle(fontSize: 12.5, color: _stColor(_s(c['status'])))),
           ),
         const SizedBox(height: 4),
-        const Text('Andaaza hai, final nahi: rule book aur authority se pakka kijiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+        const Text('This is an estimate, not final: confirm with the rule book and the authority.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -885,7 +885,7 @@ class _ArchTransmittalCardState extends State<ArchTransmittalCard> {
           const Icon(Icons.outbox_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(t['number'])} → ${_s(t['to_name'])} (${_s(t['to_label'])})', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'issued' => 'issue', 'stale' => 'purana', 'rejected' => 'nahi', _ => st }, fg: _stColor(st)),
+          Pill(switch (st) { 'waiting' => 'your approval?', 'issued' => 'issue', 'stale' => 'stale', 'rejected' => 'no', _ => st }, fg: _stColor(st)),
         ]),
         Text(_s(t['purpose_label']), style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final i in _list(t['items'])) Text('• ${_s(i['sheet'])} rev ${_s(i['rev'])} ${_s(i['title'])}', style: const TextStyle(fontSize: 12.5)),
@@ -894,12 +894,12 @@ class _ArchTransmittalCardState extends State<ArchTransmittalCard> {
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, issue karo', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, issue it', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
-        if (st == 'stale') const Text('Sheet ki revision badal gayi: naya transmittal banaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
-        const Text('Issue = transmittal PDF + message draft; bhejna aap khud.', style: TextStyle(fontSize: 11, color: C.faint)),
+        if (st == 'stale') const Text('The sheet revision changed: make a new transmittal.', style: TextStyle(fontSize: 12, color: C.warn)),
+        const Text('Issue = transmittal PDF + message draft; you send it yourself.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -936,10 +936,10 @@ class _ArchSubmissionCardState extends State<ArchSubmissionCard> {
   }
 
   Future<void> _update() async {
-    final f = await _form(context, 'Portal ka haal', const [
+    final f = await _form(context, 'Portal status', const [
       ('status', 'submitted / query / granted / refused'),
       ('ref_no', 'Inward / application / permission no.'),
-      ('valid_to', 'Valid till (granted ho to)'),
+      ('valid_to', 'Valid till (if granted)'),
     ], ok: 'Save', initial: {'status': 'submitted'});
     if (f == null) return;
     await _post('/api/archassist/submissions/${_s(_x['id'])}/update', f);
@@ -957,7 +957,7 @@ class _ArchSubmissionCardState extends State<ArchSubmissionCard> {
           const Icon(Icons.fact_check_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(x['number'])} · ${_s(x['stage_label'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(st == 'waiting' ? 'aapki haan?' : st, fg: _stColor(st)),
+          Pill(st == 'waiting' ? 'your approval?' : st, fg: _stColor(st)),
         ]),
         Text('${_s(x['project'])} · ${_s(x['authority'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final b in blockers) Text('✗ $b', style: const TextStyle(fontSize: 12.5, color: C.bad)),
@@ -968,19 +968,19 @@ class _ArchSubmissionCardState extends State<ArchSubmissionCard> {
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: 'Haan, submit karna hai',
+                    label: 'Yes, submit',
                     height: 42,
                     onTap: _busy ? null : () => _post('/api/archassist/submissions/${_s(x['id'])}/decide', {'yes': true, 'hash': _s(x['hash'])}))),
             const SizedBox(width: 8),
             GlassButton(
-                label: 'Nahi',
+                label: 'No',
                 height: 42,
                 onTap: _busy ? null : () => _post('/api/archassist/submissions/${_s(x['id'])}/decide', {'yes': false, 'hash': _s(x['hash'])})),
           ]),
-        if (st == 'waiting' && blockers.isNotEmpty) const Text('Pehle rukawat hataiye, phir naya card banaiye.', style: TextStyle(fontSize: 12, color: C.warn)),
+        if (st == 'waiting' && blockers.isNotEmpty) const Text('First remove the blockers, then make a new card.', style: TextStyle(fontSize: 12, color: C.warn)),
         if (['approved', 'submitted', 'query'].contains(st))
-          GlassButton(label: 'Portal ka haal batao', icon: Icons.update_rounded, height: 42, onTap: _busy ? null : _update),
-        const Text('Portal login, fee aur OTP aap khud; Hoola sirf taiyaari karta hai.', style: TextStyle(fontSize: 11, color: C.faint)),
+          GlassButton(label: 'Tell me the portal status', icon: Icons.update_rounded, height: 42, onTap: _busy ? null : _update),
+        const Text('You do the portal login, fee and OTP yourself; Hoola only prepares.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -1003,13 +1003,13 @@ class _ArchInvoiceCardState extends State<ArchInvoiceCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/archassist/invoices/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Invoice ki haan' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Invoice approval' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -1043,7 +1043,7 @@ class _ArchInvoiceCardState extends State<ArchInvoiceCard> {
   }
 
   Future<void> _paid() async {
-    final f = await _form(context, 'Paise aaye', const [('amount', 'Kitne aaye (bank / UPI)'), ('tds', 'TDS kata (ho to)'), ('ref', 'UTR (ho to)')]);
+    final f = await _form(context, 'Money received', const [('amount', 'How much received (bank / UPI)'), ('tds', 'TDS deducted (if any)'), ('ref', 'UTR (if any)')]);
     if (f == null) return;
     setState(() => _busy = true);
     try {
@@ -1073,21 +1073,21 @@ class _ArchInvoiceCardState extends State<ArchInvoiceCard> {
           const Icon(Icons.receipt_long_rounded, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(i['number']).isEmpty ? 'Invoice' : _s(i['number'])} · ${_s(i['amount_text'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(st == 'waiting' ? 'aapki haan?' : st, fg: _stColor(st)),
+          Pill(st == 'waiting' ? 'your approval?' : st, fg: _stColor(st)),
         ]),
         Text(_s(i['label']), style: const TextStyle(fontSize: 12.5)),
         if (_s(i['client']).isNotEmpty) Text('Client: ${_s(i['client'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         Text('Fee ${_s(i['amount'])} · ${_s(tax['note'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
-        if ((i['tds'] ?? 0) != 0) Text('Client ~${_s(i['tds'])} TDS kaatega · ${_s(tax['tds_note'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if ((i['tds'] ?? 0) != 0) Text('Client will deduct ~${_s(i['tds'])} TDS · ${_s(tax['tds_note'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, invoice banao', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, make the invoice', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
-        if (st == 'issued') GlassButton(label: 'Paise aaye', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : _paid),
-        const Text('Hoola paise nahi leta; client aapko seedha deta hai.', style: TextStyle(fontSize: 11, color: C.faint)),
+        if (st == 'issued') GlassButton(label: 'Money received', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : _paid),
+        const Text('Hoola does not take money; the client pays you directly.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }

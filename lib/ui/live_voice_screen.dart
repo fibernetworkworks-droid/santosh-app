@@ -77,16 +77,16 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
     if (call.inCall && call.linkNote != null) return call.linkNote!;
     if (call.inCall && call.onHold) {   // v0.142 talk she has with someone else is not for Hoola
       return call.holdReason == 'phone_call'
-          ? app.g('${app.aName} chup hai · aapki call khatam hote hi wapas aa jayega')
-          : app.g('${app.aName} chup hai · "${app.aName}" bolkar bulaiye');
+          ? app.g('${app.aName} is quiet · will be back when your call ends')
+          : app.g('${app.aName} is quiet · say "${app.aName}" to call');
     }
     return switch (call.act) {
-      CallAct.idle => call.note ?? 'Call button dabaiye aur ${app.aName} se seedhe baat kijiye',
-      CallAct.connecting => '${app.aName} ko call lag raha hai…',
-      CallAct.listening => call.muted ? 'Mic band hai' : app.g('Boliye, ${app.aName} sun raha hai'),
+      CallAct.idle => call.note ?? 'Press the call button and talk to ${app.aName} directly',
+      CallAct.connecting => 'Calling ${app.aName}…',
+      CallAct.listening => call.muted ? 'Mic is off' : app.g('Speak, ${app.aName} is listening'),
       CallAct.userTalking => app.g('Sun raha hoon…'),
-      CallAct.working => '${call.tool ?? app.g('Kaam kar raha hoon')}…',
-      CallAct.speaking => app.g('${app.aName} bol raha hai · beech mein bol sakte hain'),
+      CallAct.working => '${call.tool ?? app.g('Working on it')}…',
+      CallAct.speaking => app.g('${app.aName} is speaking · you can interrupt'),
     };
   }
 
@@ -113,8 +113,8 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               child: Row(children: [
                 Expanded(
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Baat karein', style: display(28)),
-                    Text('Card bhara ja raha hai · call chalu hai',
+                    Text('Talk', style: display(28)),
+                    Text('Filling the card · call is on',
                         style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
                   ]),
                 ),
@@ -131,8 +131,8 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Baat karein', style: display(28)),
-                  Text('Live call · awaaz: ${voice['id']}${voice['style'] != null ? ' (${voice['style']})' : ''}',
+                  Text('Talk', style: display(28)),
+                  Text('Live call · voice: ${voice['id']}${voice['style'] != null ? ' (${voice['style']})' : ''}',
                       style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w600)),
                 ]),
               ),
@@ -143,17 +143,17 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           if (call.inCall)
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 4, 20, 0),
-              child: Text('Doosre section mein jaane par bhi call chalti rahegi.',
+              child: Text('The call keeps running even if you go to another section.',
                   style: TextStyle(color: C.faint, fontSize: 11.5, fontWeight: FontWeight.w600)),
             ),
           if (!tray && call.backgroundCount > 0)   // v0.158 other work moving in the background: one quiet chip
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Tooltip(
-                message: 'Yeh sab chat mein hai; call ke beech nahi dikhate',
+                message: 'All this is in the chat; it is not shown during the call',
                 child: Chip(
                   avatar: const Icon(Icons.sync_rounded, size: 16, color: C.muted),
-                  label: Text('${call.backgroundCount} kaam chat mein chal rahe hain',
+                  label: Text('${call.backgroundCount} tasks are running in the chat',
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: C.muted)),
                   backgroundColor: const Color(0x14FFFFFF),
                   side: BorderSide.none,
@@ -196,7 +196,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                 Icon(call.speakerIsOwner ? Icons.verified_user_rounded : Icons.record_voice_over_rounded,
                     size: 16, color: call.speakerIsOwner ? C.ok : C.accentSoft),
                 const SizedBox(width: 6),
-                Text('Awaaz se pehchana: ${call.speaker}',
+                Text('Recognised by voice: ${call.speaker}',
                     style: TextStyle(color: call.speakerIsOwner ? C.ok : C.accentSoft, fontSize: 12.5, fontWeight: FontWeight.w700)),
               ]),
             ),
@@ -211,7 +211,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                       size: 18, color: C.accentSoft),
                   const SizedBox(width: 8),
                   Flexible(
-                    child: Text(call.holdSay ?? 'Aap kisi aur se baat kar rahi hain',
+                    child: Text(call.holdSay ?? 'You are talking to someone else',
                         style: const TextStyle(color: C.accentSoft, fontSize: 12.5, fontWeight: FontWeight.w700)),
                   ),
                 ]),
@@ -231,19 +231,19 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-              _small(call.muted ? Icons.mic_off_rounded : Icons.mic_none_rounded, call.muted ? 'Mic chalu karo' : 'Mic band karo',
+              _small(call.muted ? Icons.mic_off_rounded : Icons.mic_none_rounded, call.muted ? 'Turn mic on' : 'Turn mic off',
                   !call.inCall ? null : call.toggleMute),
               const SizedBox(width: 26),
               _orb(),
               const SizedBox(width: 26),
-              _small(Icons.front_hand_rounded, '${app.aName} ko roko', call.act == CallAct.speaking ? call.cutSpeech : null),
+              _small(Icons.front_hand_rounded, 'Stop ${app.aName}', call.act == CallAct.speaking ? call.cutSpeech : null),
             ]),
           ),
           if (call.inCall && call.holdReason != 'phone_call')
             TextButton.icon(
               onPressed: call.toggleHold,
               icon: Icon(call.onHold ? Icons.record_voice_over_rounded : Icons.voice_over_off_rounded, color: C.chip),
-              label: Text(call.onHold ? 'Wapas aao' : 'Chup karao (kisi aur se baat)',
+              label: Text(call.onHold ? 'Come back' : 'Mute (talking to someone else)',
                   style: const TextStyle(color: C.chip, fontWeight: FontWeight.w600)),
             ),
           if (call.inCall && !call.onHold) _typeBar(),
@@ -254,7 +254,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
               icon: call.uploading
                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                   : const Icon(Icons.attach_file_rounded, color: C.chip),
-              label: Text(call.uploading ? 'File ja rahi hai…' : 'Photo / PDF / file dikhaiye',
+              label: Text(call.uploading ? 'Sending file…' : 'Show a photo / PDF / file',
                   style: const TextStyle(color: C.chip, fontWeight: FontWeight.w600)),
             ),
           ),
@@ -272,7 +272,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         child: TextButton.icon(
           onPressed: () => setState(() => _typing = true),
           icon: const Icon(Icons.keyboard_rounded, color: C.chip, size: 18),
-          label: const Text('Call mein likhiye (spelling, address, theek-karo)',
+          label: const Text('Write in the call (spelling, address, correction)',
               style: TextStyle(color: C.chip, fontWeight: FontWeight.w600)),
         ),
       );
@@ -289,7 +289,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             style: const TextStyle(color: Colors.white, fontSize: 14),
             decoration: InputDecoration(
               isDense: true,
-              hintText: '${app.aName} ko likhiye…',
+              hintText: 'Write to ${app.aName}…',
               hintStyle: const TextStyle(color: C.faint, fontSize: 13.5),
               filled: true,
               fillColor: const Color(0x14FFFFFF),
@@ -302,7 +302,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
         IconButton(
           onPressed: _sendTyped,
           icon: const Icon(Icons.send_rounded, color: C.accent),
-          tooltip: 'Bhejiye',
+          tooltip: 'Send',
         ),
         IconButton(
           onPressed: () => setState(() {
@@ -310,7 +310,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
             _typeCtrl.clear();
           }),
           icon: const Icon(Icons.keyboard_hide_rounded, color: C.muted),
-          tooltip: 'Band kijiye',
+          tooltip: 'Close',
         ),
       ]),
     );
@@ -343,7 +343,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           child: ActionChip(
             avatar: const Icon(Icons.style_rounded, size: 18, color: C.onAccent),
             backgroundColor: C.accent,
-            label: Text('${cards.length} card${cards.length > 1 ? 's' : ''} dekhiye',
+            label: Text('See ${cards.length} card${cards.length > 1 ? 's' : ''}',
                 style: const TextStyle(color: C.onAccent, fontWeight: FontWeight.w800)),
             onPressed: () => setState(() => _cardsOpen = true),
           ),
@@ -364,8 +364,8 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           child: Row(children: [
             const Icon(Icons.style_rounded, color: C.accentSoft, size: 18),
             const SizedBox(width: 8),
-            Expanded(child: Text('Call ke dauraan · ${cards.length}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5))),
-            TextButton(onPressed: () => setState(() => _cardsOpen = false), child: const Text('Chhota karo')),
+            Expanded(child: Text('During the call · ${cards.length}', style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5))),
+            TextButton(onPressed: () => setState(() => _cardsOpen = false), child: const Text('Minimise')),
           ]),
         ),
         if (cards.length > 1)   // v0.158 one card open at a time; the others wait as chips
@@ -402,7 +402,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
                   Positioned(
                     right: 0, top: 6,
                     child: IconButton(
-                      tooltip: 'Hataiye',
+                      tooltip: 'Remove',
                       visualDensity: VisualDensity.compact,
                       onPressed: () => call.dismiss(it),
                       icon: const Icon(Icons.close_rounded, size: 18, color: C.faint),
@@ -427,7 +427,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
           reverse: true,
           child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
             if (call.heard.isNotEmpty) ...[
-              const Text('AAP', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.muted)),
+              const Text('YOU', style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800, letterSpacing: 1.2, color: C.muted)),
               Text(call.heard, style: const TextStyle(fontSize: 15, height: 1.35, color: C.ink)),
             ],
             if (call.reply.isNotEmpty) ...[
@@ -461,7 +461,7 @@ class _LiveVoiceScreenState extends State<LiveVoiceScreen> with SingleTickerProv
 
   Widget _orb() => Semantics(
         button: true,
-        label: call.inCall ? 'Call khatam karo' : '${app.aName} ko call karo',
+        label: call.inCall ? 'End call' : 'Call ${app.aName}',
         child: GestureDetector(
           onTap: call.act == CallAct.connecting ? null : (call.inCall ? call.end : call.start),
           child: AnimatedBuilder(
@@ -506,11 +506,11 @@ class CallBar extends StatelessWidget {
         final t = '${e.inMinutes}:${(e.inSeconds % 60).toString().padLeft(2, '0')}';
         final n = call.cards.length;
         final what = switch (call.act) {
-          CallAct.connecting => 'call lag raha hai…',
-          CallAct.speaking => 'bol raha hai',
-          CallAct.userTalking => 'sun raha hai',
-          CallAct.working => call.tool ?? 'kaam kar raha hai',
-          _ => call.muted ? 'mic band' : 'call chal rahi hai',
+          CallAct.connecting => 'calling…',
+          CallAct.speaking => 'speaking',
+          CallAct.userTalking => 'listening',
+          CallAct.working => call.tool ?? 'working',
+          _ => call.muted ? 'mic band' : 'call in progress',
         };
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 6),
@@ -530,12 +530,12 @@ class CallBar extends StatelessWidget {
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 13.5)),
                   ),
                   IconButton(
-                    tooltip: call.muted ? 'Mic chalu karo' : 'Mic band karo',
+                    tooltip: call.muted ? 'Turn mic on' : 'Turn mic off',
                     onPressed: call.toggleMute,
                     icon: Icon(call.muted ? Icons.mic_off_rounded : Icons.mic_rounded, color: Colors.white),
                   ),
                   IconButton(
-                    tooltip: 'Call khatam karo',
+                    tooltip: 'End call',
                     onPressed: call.end,
                     style: IconButton.styleFrom(backgroundColor: const Color(0xFFDC2626)),
                     icon: const Icon(Icons.call_end_rounded, color: Colors.white),

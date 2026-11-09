@@ -11,8 +11,8 @@ import 'employee_inbox.dart';
 import 'glass.dart';
 
 const _levelColor = {'seekh': C.warn, 'saathi': C.teal, 'bharosa': C.ok};
-const _levelShort = {'seekh': 'Seekh', 'saathi': 'Saathi', 'bharosa': 'Bharosa'};
-const _days = ['Som', 'Mangal', 'Budh', 'Guru', 'Shukra', 'Shani', 'Ravi'];
+const _levelShort = {'seekh': 'Learning', 'saathi': 'Partner', 'bharosa': 'Trusted'};
+const _days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
 List<Map<String, dynamic>> _list(Object? o) =>
     List<Map<String, dynamic>>.from(((o as List?) ?? const []).map((e) => Map<String, dynamic>.from(e as Map)));
@@ -87,12 +87,12 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
           backgroundColor: Colors.transparent,
           title: Text('${widget.app.aName} · Employee'),
           bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-            Tab(text: 'Kaam'),
+            Tab(text: 'Work'),
             Tab(text: 'Inbox'),
-            Tab(text: 'Bharosa'),
+            Tab(text: 'Trusted'),
             Tab(text: 'Team'),
-            Tab(text: 'Hisaab'),
-            Tab(text: 'Naukri'),
+            Tab(text: 'Accounts'),
+            Tab(text: 'Job'),
           ]),
         ),
         body: Aurora(
@@ -117,15 +117,15 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
   Widget _notReady() => ListView(padding: const EdgeInsets.all(16), children: [
         Glass(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('${widget.app.aName} ko naukri dijiye', style: display(20)),
+            Text('Hire ${widget.app.aName}', style: display(20)),
             const SizedBox(height: 8),
             Text(
-                '${widget.app.aName} aapke business mein front desk ya support + vasooli ka kaam karega. Shuru mein har kaam aapse '
-                'poochkar karega (Seekh). Jaise-jaise aap "Haan" dabayengi, aap bharosa badha sakti hain. Paise kabhi apne aap nahi; '
-                'ek tap mein sab rok sakti hain.',
+                '${widget.app.aName} will do front desk or support + collections work in your business. At first it asks you before every task'
+                '(Learning). As you keep pressing "Yes", you can raise the trust. It never moves money on its own;'
+                'you can stop everything with one tap.',
                 style: const TextStyle(color: C.chip, height: 1.35)),
             const SizedBox(height: 12),
-            const Text('"Naukri" tab mein business ka naam aur kaam chuniye.', style: TextStyle(color: C.muted)),
+            const Text('Choose the business name and tasks in the "Job" tab.', style: TextStyle(color: C.muted)),
           ]),
         ),
       ]);
@@ -146,12 +146,12 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(paused ? 'Kaam ruka hua hai' : '${st['business']} mein kaam chalu',
+                Text(paused ? 'Work is paused' : 'Working in ${st['business']}',
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
                 Text(
                     paused
-                        ? 'Naukri ka koi kaam nahi hoga. Aapke apne kaam chalte rahenge.'
-                        : '${st['role']} · aaj ${st['done_today']} kaam · ${st['pending_asks']} aapki haan ke liye',
+                        ? 'There will be no job work. Your own work keeps running.'
+                        : '${st['role']} · today ${st['done_today']} tasks · ${st['pending_asks']} waiting for your approval',
                     style: const TextStyle(color: C.muted, fontSize: 12.5)),
               ]),
             ),
@@ -159,15 +159,15 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
         ),
         const SizedBox(height: 10),
         GradientButton(
-          label: paused ? 'Kaam shuru karo' : 'Sab kaam roko',
+          label: paused ? 'Start work' : 'Stop all work',
           icon: paused ? Icons.play_arrow_rounded : Icons.pause_rounded,
           onTap: _busy ? null : () => _run(() => _api.employeePause(!paused)),
         ),
         const SizedBox(height: 18),
-        Text('Aapki haan chahiye · ${asks.length}', style: display(17)),
+        Text('Needs your approval · ${asks.length}', style: display(17)),
         const SizedBox(height: 8),
         if (asks.isEmpty)
-          const Glass(child: Text('Abhi kuch nahi ruka hai.', style: TextStyle(color: C.muted)))
+          const Glass(child: Text('Nothing is waiting right now.', style: TextStyle(color: C.muted)))
         else
           for (final a in asks)
             Padding(
@@ -178,7 +178,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
         _ReportCard(api: _api),
         if ((st['team_tasks_waiting'] as num? ?? 0) > 0) ...[
           const SizedBox(height: 10),
-          Glass(child: Text('Team ke ${st['team_tasks_waiting']} kaam line mein hain.', style: const TextStyle(color: C.muted))),
+          Glass(child: Text('${st['team_tasks_waiting']} team tasks are in the queue.', style: const TextStyle(color: C.muted))),
         ],
       ]),
     );
@@ -189,8 +189,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     final trust = _list(_o!['trust']);
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
       const Text(
-          'Har kaam ka alag bharosa. Seekh = har baar poochega. Saathi = roz ke kaam khud, bade kaam (sabko bhejna, delete, share, '
-          'paise) poochkar. Bharosa = din ki seemaa tak sab khud. Aap kisi kaam ko "Galat tha" bolengi to woh ek level neeche aa jayega.',
+          'Separate trust for each task. Learning = asks every time. Partner = does daily tasks by itself, asks for big ones (send to all, delete, share,'
+          'money). Trusted = does everything by itself up to the daily limit. If you mark a task "Was wrong", it drops one level.',
           style: TextStyle(color: C.muted, fontSize: 12.5, height: 1.35)),
       const SizedBox(height: 12),
       for (final t in trust)
@@ -208,9 +208,9 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
               SegmentedButton<String>(
                 showSelectedIcon: false,
                 segments: const [
-                  ButtonSegment(value: 'seekh', label: Text('Seekh')),
-                  ButtonSegment(value: 'saathi', label: Text('Saathi')),
-                  ButtonSegment(value: 'bharosa', label: Text('Bharosa')),
+                  ButtonSegment(value: 'seekh', label: Text('Learning')),
+                  ButtonSegment(value: 'saathi', label: Text('Partner')),
+                  ButtonSegment(value: 'bharosa', label: Text('Trusted')),
                 ],
                 selected: {t['level'] as String},
                 onSelectionChanged: _busy
@@ -221,8 +221,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
               ),
               const SizedBox(height: 6),
               Text(
-                  '${t['level'] == 'seekh' ? 'Har kaam poochega' : 'Din mein ${t['per_day']} kaam tak'} · '
-                  '${t['approved']} baar haan${(t['corrections'] as num? ?? 0) > 0 ? ' · ${t['corrections']} galti' : ''}',
+                  '${t['level'] == 'seekh' ? 'Asks for every task' : 'Up to ${t['per_day']} tasks a day'} · '
+                  '${t['approved']} approvals${(t['corrections'] as num? ?? 0) > 0 ? ' · ${t['corrections']} mistakes' : ''}',
                   style: const TextStyle(color: C.muted, fontSize: 12)),
               if ((t['suggest'] as String? ?? '').isNotEmpty) ...[
                 const SizedBox(height: 8),
@@ -230,11 +230,11 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                   const Icon(Icons.trending_up_rounded, color: C.ok, size: 18),
                   const SizedBox(width: 6),
                   Expanded(
-                      child: Text('${t['approved']} baar sahi raha. ${_levelShort[t['suggest']]} kar dein?',
+                      child: Text('${t['approved']} times correct. Move to ${_levelShort[t['suggest']]}?',
                           style: const TextStyle(color: C.ok, fontSize: 12.5))),
                   TextButton(
                       onPressed: _busy ? null : () => _run(() async => _api.employeeTrust(t['duty'] as String, level: t['suggest'] as String)),
-                      child: const Text('Haan')),
+                      child: const Text('Yes')),
                 ]),
               ],
             ]),
@@ -251,8 +251,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
     String dl(String id) => (duties.firstWhere((d) => d['id'] == id, orElse: () => {'label': id}))['label'] as String;
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 32), children: [
       Text(
-          'Team ke log apne Hoola se ${widget.app.aName} ko kaam de sakte hain (Hoola Network par judna zaroori). Manager naukri ke '
-          'saare kaam de sakta hai, staff sirf jo aap chunein. Bade kaam hamesha aapki haan se.',
+          'Your team can give ${widget.app.aName} tasks from their own Hoola (they must join the Hoola Network). A manager can give all of'
+          'the job\'s tasks, staff only the ones you choose. Big tasks always need your approval.',
           style: const TextStyle(color: C.muted, fontSize: 12.5, height: 1.35)),
       const SizedBox(height: 12),
       for (final m in team)
@@ -268,8 +268,8 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
               title: Text('${m['name']}${m['active'] == true ? '' : ' (band)'}', style: const TextStyle(fontWeight: FontWeight.w700)),
               subtitle: Text(
                   [
-                    m['role'] == 'manager' ? 'Manager · saare kaam' : 'Staff · ${List<String>.from(m['duties'] as List).map(dl).join(', ')}',
-                    if ((m['address'] as String? ?? '').isNotEmpty) m['address'] as String else 'Hoola ID nahi: kaam nahi bhej sakte',
+                    m['role'] == 'manager' ? 'Manager · all tasks' : 'Staff · ${List<String>.from(m['duties'] as List).map(dl).join(', ')}',
+                    if ((m['address'] as String? ?? '').isNotEmpty) m['address'] as String else 'No Hoola ID: cannot send tasks',
                   ].join('\n'),
                   style: const TextStyle(fontSize: 12)),
               isThreeLine: true,
@@ -278,7 +278,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
             ),
           ),
         ),
-      GlassButton(label: 'Team mein jodiye', icon: Icons.person_add_alt_1_rounded, onTap: () => _editMember(null, duties, mine)),
+      GlassButton(label: 'Add to team', icon: Icons.person_add_alt_1_rounded, onTap: () => _editMember(null, duties, mine)),
     ]);
   }
 
@@ -294,12 +294,12 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, set) => AlertDialog(
           backgroundColor: C.bgBottom,
-          title: Text(m == null ? 'Naya team member' : '${m['name']}'),
+          title: Text(m == null ? 'New team member' : '${m['name']}'),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Naam')),
-              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone (zaroori nahi)')),
-              TextField(controller: addr, decoration: const InputDecoration(labelText: 'Unka Hoola ID (naam@server)')),
+              TextField(controller: name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Name')),
+              TextField(controller: phone, keyboardType: TextInputType.phone, decoration: const InputDecoration(labelText: 'Phone (optional)')),
+              TextField(controller: addr, decoration: const InputDecoration(labelText: 'Their Hoola ID (name@server)')),
               const SizedBox(height: 10),
               SegmentedButton<String>(
                 showSelectedIcon: false,
@@ -309,7 +309,7 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
               ),
               if (role == 'staff') ...[
                 const SizedBox(height: 8),
-                const Text('Yeh kaam de sakte hain:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+                const Text('They can give these tasks:', style: TextStyle(color: C.muted, fontSize: 12.5)),
                 Wrap(spacing: 6, runSpacing: 4, children: [
                   for (final d in duties.where((d) => mine.contains(d['id'])))
                     FilterChip(
@@ -320,12 +320,12 @@ class _EmployeeScreenState extends State<EmployeeScreen> {
                 ]),
               ],
               if (m != null)
-                SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Chalu'), value: active, onChanged: (v) => set(() => active = v)),
+                SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('Active'), value: active, onChanged: (v) => set(() => active = v)),
             ]),
           ),
           actions: [
-            if (m != null) TextButton(onPressed: () => Navigator.pop(ctx, 'delete'), child: const Text('Hatao', style: TextStyle(color: C.bad))),
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
+            if (m != null) TextButton(onPressed: () => Navigator.pop(ctx, 'delete'), child: const Text('Remove', style: TextStyle(color: C.bad))),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
             TextButton(onPressed: () => Navigator.pop(ctx, 'save'), child: const Text('Save')),
           ],
         ),
@@ -384,18 +384,18 @@ class EmployeeAskTile extends StatelessWidget {
         const SizedBox(height: 10),
         if (status == 'pending' && onDecide != null)
           Row(children: [
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, color: C.bad, onTap: () => onDecide!(false))),
+            Expanded(child: GlassButton(label: 'Declined', icon: Icons.close_rounded, color: C.bad, onTap: () => onDecide!(false))),
             const SizedBox(width: 10),
-            Expanded(child: GradientButton(label: 'Haan, karo', icon: Icons.check_rounded, height: 48, onTap: () => onDecide!(true))),
+            Expanded(child: GradientButton(label: 'Yes, do it', icon: Icons.check_rounded, height: 48, onTap: () => onDecide!(true))),
           ])
         else
           Pill(
               {
-                    'done': 'Ho gaya',
-                    'running': 'Ho raha hai…',
-                    'failed': 'Nahi ho paya',
-                    'declined': 'Mana kiya',
-                    'expired': 'Purana ho gaya'
+                    'done': 'Done',
+                    'running': 'Doing it…',
+                    'failed': 'Failed',
+                    'declined': 'Declined',
+                    'expired': 'Expired'
                   }[status] ??
                   status,
               fg: status == 'done' ? C.ok : (status == 'failed' || status == 'declined' ? C.bad : C.chip)),
@@ -429,7 +429,7 @@ class _ReportCardState extends State<_ReportCard> {
           Row(children: [
             const Icon(Icons.summarize_rounded, color: C.accent2, size: 20),
             const SizedBox(width: 8),
-            Text('Aaj ki report', style: display(16)),
+            Text('Today\'s report', style: display(16)),
           ]),
           const SizedBox(height: 8),
           Text(_r == null ? '…' : '${_r!['text']}', style: const TextStyle(color: C.chip, height: 1.4)),
@@ -471,14 +471,14 @@ class _AuditTabState extends State<_AuditTab> {
       context: context,
       builder: (ctx) => AlertDialog(
         backgroundColor: C.bgBottom,
-        title: const Text('Kya galat tha?'),
+        title: const Text('What was wrong?'),
         content: TextField(
             controller: c,
             maxLines: 3,
-            decoration: const InputDecoration(hintText: 'Jaise: patient ko subah 8 se pehle message nahi (yeh niyam ban jayega)')),
+            decoration: const InputDecoration(hintText: 'e.g. do not message patients before 8 am (this will become a rule)')),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Rehne do')),
-          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Galat tha')),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.pop(ctx, c.text.trim()), child: const Text('Was wrong')),
         ],
       ),
     );
@@ -488,7 +488,7 @@ class _AuditTabState extends State<_AuditTab> {
       final t = r['trust'] as Map?;
       if (mounted && t != null) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('${t['label']}: ab ${_levelShort[t['level']] ?? t['level']}. Seekh liya.')));
+            .showSnackBar(SnackBar(content: Text('${t['label']}: now ${_levelShort[t['level']] ?? t['level']}. Learned.')));
       }
     } catch (err) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$err')));
@@ -513,7 +513,7 @@ class _AuditTabState extends State<_AuditTab> {
     return RefreshIndicator(
       onRefresh: _load,
       child: rows.isEmpty
-          ? ListView(children: const [Padding(padding: EdgeInsets.all(30), child: Center(child: Text('Abhi koi hisaab nahi.', style: TextStyle(color: C.muted))))])
+          ? ListView(children: const [Padding(padding: EdgeInsets.all(30), child: Center(child: Text('No records yet.', style: TextStyle(color: C.muted))))])
           : ListView.separated(
               padding: const EdgeInsets.fromLTRB(12, 12, 12, 32),
               itemCount: rows.length,
@@ -529,14 +529,14 @@ class _AuditTabState extends State<_AuditTab> {
                       decoration: e['wrong'] == true ? TextDecoration.lineThrough : null)),
                   subtitle: Text(
                       [
-                        '${_when(e['at'] as String?)} · ${e['who']}${(e['approved_by'] as String? ?? '').isNotEmpty ? ' · aapki haan se' : ''}',
+                        '${_when(e['at'] as String?)} · ${e['who']}${(e['approved_by'] as String? ?? '').isNotEmpty ? ' · with your approval' : ''}',
                         if ((e['detail'] as String? ?? '').isNotEmpty) '${e['detail']}',
-                        if (e['wrong'] == true) 'Galat bataya${(e['wrong_note'] as String? ?? '').isNotEmpty ? ': ${e['wrong_note']}' : ''}',
+                        if (e['wrong'] == true) 'Marked wrong${(e['wrong_note'] as String? ?? '').isNotEmpty ? ': ${e['wrong_note']}' : ''}',
                       ].join('\n'),
                       maxLines: 4,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(fontSize: 12)),
-                  trailing: canWrong ? TextButton(onPressed: () => _wrong(e), child: const Text('Galat tha')) : null,
+                  trailing: canWrong ? TextButton(onPressed: () => _wrong(e), child: const Text('Was wrong')) : null,
                 );
               },
             ),
@@ -637,7 +637,7 @@ class _SetupTabState extends State<_SetupTab> {
       if (_kind.text.isEmpty) _kind.text = saved['business_kind'] as String? ?? '';
       await widget.onSaved();
       await _loadSheet();
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Save ho gaya')));
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Saved')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
     }
@@ -649,7 +649,7 @@ class _SetupTabState extends State<_SetupTab> {
     final r = await Navigator.of(context).push<String>(MaterialPageRoute(
       builder: (ctx) => Scaffold(
         appBar: AppBar(title: const Text('Job sheet'), actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, ''), child: const Text('Apne aap wali')),
+          TextButton(onPressed: () => Navigator.pop(ctx, ''), child: const Text('Self-made')),
           TextButton(onPressed: () => Navigator.pop(ctx, c.text), child: const Text('Save')),
         ]),
         body: Padding(
@@ -680,8 +680,8 @@ class _SetupTabState extends State<_SetupTab> {
     return ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Business ka prakaar', style: display(17)),
-          const Text('Ek tap mein kaam, samay aur shuruaati niyam bhar jayenge. Baad mein sab badal sakti hain.',
+          Text('Type of business', style: display(17)),
+          const Text('One tap fills in tasks, timings and starter rules. You can change everything later.',
               style: TextStyle(color: C.muted, fontSize: 12.5)),
           Wrap(spacing: 6, runSpacing: 4, children: [
             for (final pr in presets)
@@ -703,17 +703,17 @@ class _SetupTabState extends State<_SetupTab> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text('Business', style: display(17)),
-          TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Business ka naam')),
-          TextField(controller: _kind, decoration: const InputDecoration(labelText: 'Kya business hai (clinic, dukaan, ISP…)')),
+          TextField(controller: _name, textCapitalization: TextCapitalization.words, decoration: const InputDecoration(labelText: 'Business name')),
+          TextField(controller: _kind, decoration: const InputDecoration(labelText: 'What business is it (clinic, shop, ISP…)')),
           TextField(
               controller: _about,
               maxLines: 4,
               minLines: 2,
-              decoration: InputDecoration(labelText: 'Graahakon ko kya batana hai (daam, services, pata…)', helperText: hint, helperMaxLines: 2)),
+              decoration: InputDecoration(labelText: 'What to tell customers (prices, services, address…)', helperText: hint, helperMaxLines: 2)),
         ]),
       ),
       const SizedBox(height: 12),
-      Text('Kaam', style: display(17)),
+      Text('Work', style: display(17)),
       const SizedBox(height: 6),
       for (final r in roles)
         Padding(
@@ -748,12 +748,12 @@ class _SetupTabState extends State<_SetupTab> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Samay', style: display(17)),
+          Text('Time', style: display(17)),
           Row(children: [
             Expanded(
                 child: ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Khulta hai'),
+                    title: const Text('Opens at'),
                     subtitle: Text(_open),
                     onTap: () async {
                       final t = await _pickTime(_open);
@@ -762,7 +762,7 @@ class _SetupTabState extends State<_SetupTab> {
             Expanded(
                 child: ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Band hota hai'),
+                    title: const Text('Closes at'),
                     subtitle: Text(_close),
                     onTap: () async {
                       final t = await _pickTime(_close);
@@ -777,22 +777,22 @@ class _SetupTabState extends State<_SetupTab> {
                   onSelected: (on) => setState(() => on ? _dayset.add(i) : _dayset.remove(i))),
           ]),
           const SizedBox(height: 8),
-          const Text('Band samay mein:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const Text('When closed:', style: TextStyle(color: C.muted, fontSize: 12.5)),
           DropdownButton<String>(
             value: _after,
             isExpanded: true,
             dropdownColor: C.bgBottom,
             items: const [
-              DropdownMenuItem(value: 'note', child: Text('Sandesh likh le, subah bataye')),
-              DropdownMenuItem(value: 'answer', child: Text('Aam sawaalon ka jawab de')),
-              DropdownMenuItem(value: 'quiet', child: Text('Kuch na kare')),
+              DropdownMenuItem(value: 'note', child: Text('Take the message and tell me in the morning')),
+              DropdownMenuItem(value: 'answer', child: Text('Answer common questions')),
+              DropdownMenuItem(value: 'quiet', child: Text('Do nothing')),
             ],
             onChanged: (v) => setState(() => _after = v ?? 'note'),
           ),
           ListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Roz ki report'),
-            subtitle: Text('$_report baje'),
+            title: const Text('Daily report'),
+            subtitle: Text('$_report daily'),
             trailing: const Icon(Icons.schedule_rounded),
             onTap: () async {
               final t = await _pickTime(_report);
@@ -801,8 +801,8 @@ class _SetupTabState extends State<_SetupTab> {
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Team ko kaam ka jawab bheje'),
-            subtitle: const Text('Phone number, email jaisi cheezein hata kar', style: TextStyle(fontSize: 12)),
+            title: const Text('Send the team a reply on tasks'),
+            subtitle: const Text('Remove things like phone number and email', style: TextStyle(fontSize: 12)),
             value: _replyStaff,
             onChanged: (v) => setState(() => _replyStaff = v),
           ),
@@ -811,11 +811,11 @@ class _SetupTabState extends State<_SetupTab> {
       const SizedBox(height: 12),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('WhatsApp par graahak', style: display(17)),
+          Text('Customers on WhatsApp', style: display(17)),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: Text('${widget.app.aName} graahakon ko jawab de'),
-            subtitle: const Text('Business number par aaye message: sawaal, appointment, shikayat, baaki paisa. Bharosa ke hisaab se.',
+            title: Text('${widget.app.aName} replies to customers'),
+            subtitle: const Text('Messages that come to the business number: questions, appointments, complaints, dues. According to the trust level.',
                 style: TextStyle(fontSize: 12)),
             value: _inboxOn,
             onChanged: (v) => setState(() => _inboxOn = v),
@@ -829,10 +829,10 @@ class _SetupTabState extends State<_SetupTab> {
               onChanged: (v) => setState(() => _slot = v ?? 30),
             ),
           ]),
-          TextField(controller: _upi, decoration: const InputDecoration(labelText: 'Paisa lene ka UPI ID (naam@bank)')),
-          TextField(controller: _upiName, decoration: const InputDecoration(labelText: 'UPI par naam')),
+          TextField(controller: _upi, decoration: const InputDecoration(labelText: 'UPI ID to receive money (name@bank)')),
+          TextField(controller: _upiName, decoration: const InputDecoration(labelText: 'Name on UPI')),
           const SizedBox(height: 4),
-          const Text('Graahak apne UPI app se khud bharta hai. Hoola kabhi paisa nahi bhejta ya leta.',
+          const Text('The customer pays by themselves from their UPI app. Hoola never sends or takes money.',
               style: TextStyle(color: C.faint, fontSize: 11.5)),
         ]),
       ),
@@ -844,24 +844,24 @@ class _SetupTabState extends State<_SetupTab> {
             controller: _rules,
             maxLines: 5,
             minLines: 2,
-            decoration: const InputDecoration(labelText: 'Aapke niyam (har line ek niyam)', hintText: '- 500 se zyada ki chhoot kabhi nahi')),
+            decoration: const InputDecoration(labelText: 'Your rules (one rule per line)', hintText: '- Never give a discount of more than 500')),
       ),
       const SizedBox(height: 14),
       GradientButton(
-        label: enabled ? 'Save karo' : 'Save karke naukri shuru karo',
+        label: enabled ? 'Save' : 'Save and start the job',
         icon: Icons.check_rounded,
         onTap: _busy ? null : () => _save(enable: enabled ? null : true),
       ),
       if (enabled) ...[
         const SizedBox(height: 10),
-        GlassButton(label: 'Employee mode band karo', icon: Icons.power_settings_new_rounded, color: C.bad,
+        GlassButton(label: 'Turn off employee mode', icon: Icons.power_settings_new_rounded, color: C.bad,
             onTap: _busy ? null : () => _save(enable: false)),
       ],
       if (_sheet != null) ...[
         const SizedBox(height: 18),
         Row(children: [
-          Expanded(child: Text('Job sheet${_sheetEdited ? ' (aapki likhi)' : ''}', style: display(17))),
-          TextButton.icon(onPressed: _editSheet, icon: const Icon(Icons.edit_rounded, size: 16), label: const Text('Badlo')),
+          Expanded(child: Text('Job sheet${_sheetEdited ? ' (written by you)' : ''}', style: display(17))),
+          TextButton.icon(onPressed: _editSheet, icon: const Icon(Icons.edit_rounded, size: 16), label: const Text('Edit')),
         ]),
         Glass(child: SelectableText(_sheet!, style: const TextStyle(color: C.chip, fontSize: 13, height: 1.4))),
       ],
@@ -909,7 +909,7 @@ class EmployeeReportCard extends StatelessWidget {
           Row(children: [
             const Icon(Icons.summarize_rounded, color: C.accent2, size: 20),
             const SizedBox(width: 8),
-            Expanded(child: Text('${app.aName} ki report', style: display(16))),
+            Expanded(child: Text('${app.aName}\'s report', style: display(16))),
           ]),
           const SizedBox(height: 8),
           Text('${v['text'] ?? ''}', style: const TextStyle(color: C.chip, height: 1.4)),
@@ -918,7 +918,7 @@ class EmployeeReportCard extends StatelessWidget {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => EmployeeScreen(app: app))),
-              child: const Text('Poora hisaab'),
+              child: const Text('Full details'),
             ),
           ),
         ]),

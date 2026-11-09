@@ -18,16 +18,16 @@ Map<String, dynamic> _map(dynamic m) => m is Map ? Map<String, dynamic>.from(m) 
 void _snack(BuildContext c, String t) => ScaffoldMessenger.of(c).showSnackBar(SnackBar(content: Text(t)));
 
 const _outcomeSay = {
-  'answered': 'AI ne jawab diya',
+  'answered': 'AI answered',
   'appointment': 'Appointment book',
-  'message': 'Message liya',
-  'complaint': 'Shikayat darj',
-  'transferred': 'Insaan ko di',
+  'message': 'Message taken',
+  'complaint': 'Complaint recorded',
+  'transferred': 'Given to a person',
   'callback': 'Call-back',
   'busy': 'Line busy',
-  'closed': 'Band samay',
-  'dropped': 'Kat gayi',
-  'failed': 'AI nahi chala',
+  'closed': 'Closed hours',
+  'dropped': 'Dropped',
+  'failed': 'AI did not run',
 };
 
 Color _outcomeColor(String o) => switch (o) {
@@ -37,7 +37,7 @@ Color _outcomeColor(String o) => switch (o) {
     };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {Map<String, String> initial = const {}, Set<String> secret = const {}, String ok = 'Aage'}) async {
+    {Map<String, String> initial = const {}, Set<String> secret = const {}, String ok = 'Continue'}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -55,7 +55,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -138,14 +138,14 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
             Icon(on ? Icons.support_agent_rounded : Icons.phone_disabled_rounded, color: on ? C.ok : C.muted),
             const SizedBox(width: 10),
             Expanded(
-                child: Text(on ? 'AI line chalu' : 'AI line band',
+                child: Text(on ? 'AI line is on' : 'AI line band',
                     style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 16))),
             Switch(
                 value: on,
                 onChanged: _busy ? null : (v) => _run('POST', '/api/callcentre/line', {'on': v})),
           ]),
           Text(_s(rep['say']), style: const TextStyle(fontSize: 13, height: 1.35)),
-          if ((d['live'] ?? 0) > 0) Text('Abhi ${d['live']} call chal rahi hai', style: const TextStyle(color: C.teal, fontSize: 12.5)),
+          if ((d['live'] ?? 0) > 0) Text('${d['live']} calls in progress now', style: const TextStyle(color: C.teal, fontSize: 12.5)),
           if (_s(_st['number']).isNotEmpty)
             Text('Number: ${_s(_st['number'])} · ${_s(_st['hours_text'])}', style: const TextStyle(color: C.muted, fontSize: 12.5)),
         ]),
@@ -161,12 +161,12 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
         ),
       const SizedBox(height: 12),
       Text('Call-back / message', style: display(15)),
-      if (_list(d['messages']).isEmpty) const Text('Koi baaki nahi.', style: TextStyle(color: C.muted, fontSize: 12.5)),
+      if (_list(d['messages']).isEmpty) const Text('None pending.', style: TextStyle(color: C.muted, fontSize: 12.5)),
       for (final m in _list(d['messages']))
         Padding(padding: const EdgeInsets.only(top: 8), child: CallCentreMessageCard(app: widget.app, data: m, onDone: _load)),
       const SizedBox(height: 12),
       if (_list(rep['unanswered']).isNotEmpty) ...[
-        Text('Callers ne poocha, script mein nahi tha', style: display(15)),
+        Text('Callers asked, not in the script', style: display(15)),
         for (final q in _list(rep['unanswered']))
           Padding(
             padding: const EdgeInsets.only(top: 6),
@@ -174,7 +174,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
               padding: const EdgeInsets.all(10),
               child: Row(children: [
                 Expanded(child: Text('${_s(q['q'])} (${q['times']}x)', style: const TextStyle(fontSize: 13))),
-                TextButton(onPressed: _busy ? null : () => _addFaq(_s(q['q'])), child: const Text('Jawab jodo')),
+                TextButton(onPressed: _busy ? null : () => _addFaq(_s(q['q'])), child: const Text('Add answer')),
               ]),
             ),
           ),
@@ -183,7 +183,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
   }
 
   Future<void> _addFaq([String q = '']) async {
-    final f = await _form(context, 'Naya sawal-jawab', const [('q', 'Sawal (jaise caller poochte hain)'), ('a', 'Aapka jawab'), ('words', 'Aur shabd (comma se)')],
+    final f = await _form(context, 'New question and answer', const [('q', 'Question (as callers ask)'), ('a', 'Your answer'), ('words', 'More words (comma separated)')],
         initial: {'q': q});
     if (f == null || (f['q'] ?? '').isEmpty) return;
     await _run('PUT', '/api/callcentre/script', {
@@ -206,7 +206,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(_s(f['q']), style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              Text(blank ? 'Jawab khaali: bhariye' : a, style: TextStyle(fontSize: 12.5, color: blank ? C.warn : C.muted)),
+              Text(blank ? 'Answer is empty: fill it in' : a, style: TextStyle(fontSize: 12.5, color: blank ? C.warn : C.muted)),
             ]),
           ),
           if (editable) ...[
@@ -215,7 +215,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
                 onPressed: _busy
                     ? null
                     : () async {
-                        final g = await _form(context, 'Jawab badlo', const [('a', 'Jawab')], initial: {'a': blank ? '' : a});
+                        final g = await _form(context, 'Edit answer', const [('a', 'Answer')], initial: {'a': blank ? '' : a});
                         if (g != null && (g['a'] ?? '').isNotEmpty) {
                           await _run('PUT', '/api/callcentre/script', {
                             'faq_add': [
@@ -241,23 +241,23 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(
-            label: 'Business ke baare mein batao',
+            label: 'Tell about the business',
             icon: Icons.record_voice_over_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Aapke shabdon mein',
-                        const [('words', 'Kya karte ho, timing, daam (jo bolna hai), aam sawal + jawab, appointment de sakte hain?')]);
+                    final f = await _form(context, 'In your words',
+                        const [('words', 'What you do, timings, prices (what to say), common questions + answers, can it book appointments?')]);
                     if (f != null && (f['words'] ?? '').isNotEmpty) await _run('POST', '/api/callcentre/script', {'words': f['words']});
                   }),
-        GlassButton(label: 'Sawal jodo', icon: Icons.add_comment_rounded, onTap: _busy ? null : () => _addFaq()),
+        GlassButton(label: 'Add question', icon: Icons.add_comment_rounded, onTap: _busy ? null : () => _addFaq()),
       ]),
       const SizedBox(height: 10),
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Aazmao: caller yeh poochhe to?', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Test: if a caller asks this?', style: TextStyle(fontWeight: FontWeight.w700)),
           Row(children: [
-            Expanded(child: TextField(controller: _tryCtl, decoration: const InputDecoration(hintText: 'jaise: fees kitni hai'))),
+            Expanded(child: TextField(controller: _tryCtl, decoration: const InputDecoration(hintText: 'e.g. what are the fees'))),
             IconButton(
                 icon: const Icon(Icons.search_rounded),
                 onPressed: () async {
@@ -270,7 +270,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
                 }),
           ]),
           if (_tryRes != null)
-            Text(_tryRes!['found'] == true ? 'Line bolegi: ${_s(_tryRes!['a'])}' : _s(_tryRes!['say']),
+            Text(_tryRes!['found'] == true ? 'The line will say: ${_s(_tryRes!['a'])}' : _s(_tryRes!['say']),
                 style: TextStyle(fontSize: 12.5, color: _tryRes!['found'] == true ? C.ok : C.warn)),
         ]),
       ),
@@ -285,7 +285,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
         const SizedBox(height: 8),
         if (_s(dr['status']) == 'draft')
           GradientButton(
-              label: 'Haan ke liye card bhejo',
+              label: 'Send card for approval',
               icon: Icons.fact_check_rounded,
               onTap: _busy ? null : () => _run('POST', '/api/callcentre/script/submit')),
         if (_s(dr['status']) == 'waiting')
@@ -300,15 +300,15 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
           }, onDone: _load),
         const SizedBox(height: 14),
       ],
-      Text(run == null ? 'Line par koi script nahi' : 'Line par chal raha: v${run['version']}', style: display(15)),
+      Text(run == null ? 'No script on the line' : 'Running on the line: v${run['version']}', style: display(15)),
       if (run != null) ...[
         Text(
-            'Kar sakti hai: ${[
-              'sawal-jawab',
+            'Can handle: ${[
+              'Q&A',
               'message',
               if (_map(rc['can'])['appointments'] == true) 'appointment',
               if (_map(rc['can'])['ticket_status'] == true) 'ticket status',
-              if (_map(rc['can'])['complaints'] == true) 'shikayat',
+              if (_map(rc['can'])['complaints'] == true) 'complaint',
             ].join(', ')}',
             style: const TextStyle(color: C.muted, fontSize: 12.5)),
         for (final f in _list(rc['faqs'])) _faqTile(f),
@@ -318,7 +318,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
 
   // ---------------------------------------------------------------- Calls
   Widget _calls() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        if (_list(_d?['calls']).isEmpty) const Text('Abhi koi call nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['calls']).isEmpty) const Text('No calls yet.', style: TextStyle(color: C.muted)),
         for (final c in _list(_d?['calls']))
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
@@ -350,7 +350,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
       'exotel' => const [('api_key', 'Exotel API key'), ('api_token', 'Exotel API token'), ('sid', 'Account SID'), ('subdomain', 'Subdomain (api.in.exotel.com)')],
       _ => const [('secret', 'Test line secret')],
     };
-    final f = await _form(context, 'Provider ki keys (sirf yahan)', fields, secret: {'auth_token', 'api_token', 'secret'}, ok: 'Save');
+    final f = await _form(context, 'Provider keys (only here)', fields, secret: {'auth_token', 'api_token', 'secret'}, ok: 'Save');
     if (f == null) return;
     await _run('PUT', '/api/callcentre/keys', {'provider': p, ...f});
   }
@@ -375,16 +375,16 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(
-            label: st['creds_set'] == true ? 'Keys badlo' : 'Keys daalo',
+            label: st['creds_set'] == true ? 'Change keys' : 'Add keys',
             icon: Icons.key_rounded,
             onTap: _busy ? null : _keys),
         GlassButton(
-            label: _s(st['number']).isEmpty ? 'Number daalo' : _s(st['number']),
+            label: _s(st['number']).isEmpty ? 'Add number' : _s(st['number']),
             icon: Icons.dialpad_rounded,
             onTap: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Provider ka number', const [('number', 'Number (jaise 020 4567 8901)')]);
+                    final f = await _form(context, 'Provider number', const [('number', 'Number (e.g. 020 4567 8901)')]);
                     if (f != null) await _settings({'number': f['number'] ?? ''});
                   }),
       ]),
@@ -397,25 +397,25 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
               icon: const Icon(Icons.copy_rounded, size: 16),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: '${e.value}'));
-                _snack(context, 'Copy ho gaya');
+                _snack(context, 'Copied');
               }),
         ]),
       const SizedBox(height: 12),
-      Text('Samay', style: display(15)),
+      Text('Time', style: display(15)),
       Row(children: [
-        Expanded(child: Text('Khula: ${_s(st['hours_text'])}', style: const TextStyle(fontSize: 13))),
+        Expanded(child: Text('Open: ${_s(st['hours_text'])}', style: const TextStyle(fontSize: 13))),
         TextButton(
             onPressed: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Khulne ka samay', const [('open', 'Khulta (10:00)'), ('close', 'Band (19:00)')],
+                    final f = await _form(context, 'Opening hours', const [('open', 'Opens (10:00)'), ('close', 'Band (19:00)')],
                         initial: {'open': _s(h['open']), 'close': _s(h['close'])});
                     if (f != null) await _settings({'hours': {'open': f['open'] ?? '10:00', 'close': f['close'] ?? '19:00', 'days': days.toList()}});
                   },
-            child: const Text('Badlo')),
+            child: const Text('Edit')),
       ]),
       Wrap(spacing: 4, children: [
-        for (final (i, n) in const ['Som', 'Mangal', 'Budh', 'Guru', 'Shukra', 'Shani', 'Ravi'].indexed)
+        for (final (i, n) in const ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexed)
           FilterChip(
               label: Text(n),
               selected: days.contains(i),
@@ -429,19 +429,19 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
       ]),
       const SizedBox(height: 6),
       Wrap(spacing: 6, children: [
-        const Text('Band samay mein: ', style: TextStyle(fontSize: 13)),
+        const Text('When closed:', style: TextStyle(fontSize: 13)),
         ChoiceChip(label: const Text('AI message le'), selected: st['after_hours'] == 'message', onSelected: (_) => _settings({'after_hours': 'message'})),
-        ChoiceChip(label: const Text('Sirf "band hai"'), selected: st['after_hours'] == 'closed', onSelected: (_) => _settings({'after_hours': 'closed'})),
+        ChoiceChip(label: const Text('Only "we are closed"'), selected: st['after_hours'] == 'closed', onSelected: (_) => _settings({'after_hours': 'closed'})),
       ]),
       const SizedBox(height: 12),
-      Text('Bheed', style: display(15)),
+      Text('Busy', style: display(15)),
       Row(children: [
-        Expanded(child: Text('Ek saath AI calls: ${st['max_concurrent']} · hold: ${st['queue_max']} baar', style: const TextStyle(fontSize: 13))),
+        Expanded(child: Text('AI calls at once: ${st['max_concurrent']} · hold: ${st['queue_max']} times', style: const TextStyle(fontSize: 13))),
         TextButton(
             onPressed: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Bheed', const [('max_concurrent', 'Ek saath kitni calls (1-10)'), ('queue_max', 'Hold kitni baar (15 sec each)')],
+                    final f = await _form(context, 'Busy', const [('max_concurrent', 'How many calls at once (1-10)'), ('queue_max', 'How many holds (15 sec each)')],
                         initial: {'max_concurrent': _s(st['max_concurrent']), 'queue_max': _s(st['queue_max'])});
                     if (f != null) {
                       await _settings({
@@ -450,15 +450,15 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
                       });
                     }
                   },
-            child: const Text('Badlo')),
+            child: const Text('Edit')),
       ]),
       Wrap(spacing: 6, children: [
-        const Text('Sab busy ho to: ', style: TextStyle(fontSize: 13)),
+        const Text('When all are busy:', style: TextStyle(fontSize: 13)),
         ChoiceChip(label: const Text('Call-back'), selected: st['overflow'] == 'callback', onSelected: (_) => _settings({'overflow': 'callback'})),
-        ChoiceChip(label: const Text('Insaan ko do'), selected: st['overflow'] == 'transfer', onSelected: (_) => _settings({'overflow': 'transfer'})),
+        ChoiceChip(label: const Text('Give to a person'), selected: st['overflow'] == 'transfer', onSelected: (_) => _settings({'overflow': 'transfer'})),
       ]),
       const SizedBox(height: 12),
-      Text('Insaan kaun lega', style: display(15)),
+      Text('Who will take it', style: display(15)),
       for (final p in _list(st['handover']))
         Row(children: [
           Expanded(child: Text('${_s(p['name'])} · ${_s(p['phone'])}${_s(p['role']).isNotEmpty ? ' (${_s(p['role'])})' : ''}', style: const TextStyle(fontSize: 13))),
@@ -470,33 +470,33 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
         ]),
       TextButton.icon(
           icon: const Icon(Icons.person_add_alt_1_rounded),
-          label: const Text('Jodo'),
+          label: const Text('Add'),
           onPressed: _busy
               ? null
               : () async {
-                  final f = await _form(context, 'Call kisko jaaye', const [('name', 'Naam'), ('phone', 'Mobile'), ('role', 'Kaam (owner / reception)')]);
+                  final f = await _form(context, 'Who gets the call', const [('name', 'Name'), ('phone', 'Mobile'), ('role', 'Role (owner / reception)')]);
                   if (f != null && (f['phone'] ?? '').isNotEmpty) await _settings({'handover': [..._list(st['handover']), f]});
                 }),
       SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Insaan ko call transfer karo (khule samay)'),
+          title: const Text('Transfer call to a person (in open hours)'),
           value: st['transfer_on'] == true,
           onChanged: _busy ? null : (v) => _settings({'transfer_on': v})),
       SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Call record karo (provider par)'),
-          subtitle: const Text('Shuru mein caller ko bataya jaata hai. Hoola khud awaaz nahi rakhta.'),
+          title: const Text('Record the call (at the provider)'),
+          subtitle: const Text('The caller is told at the start. Hoola does not keep the audio itself.'),
           value: st['record'] == true,
           onChanged: _busy ? null : (v) => _settings({'record': v})),
       Row(children: [
         Expanded(
-            child: Text('Provider ka rate: ${(st['rate_inr_per_min'] ?? 0) == 0 ? 'nahi bataya' : '₹${st['rate_inr_per_min']}/min'} · max ${st['max_minutes']} min',
+            child: Text('Provider rate: ${(st['rate_inr_per_min'] ?? 0) == 0 ? 'not given' : '₹${st['rate_inr_per_min']}/min'} · max ${st['max_minutes']} min',
                 style: const TextStyle(fontSize: 13))),
         TextButton(
             onPressed: _busy
                 ? null
                 : () async {
-                    final f = await _form(context, 'Kharcha', const [('rate', '₹ per minute (bill se)'), ('max', 'Ek call max minute')],
+                    final f = await _form(context, 'Cost', const [('rate', '₹ per minute (bill se)'), ('max', 'Ek call max minute')],
                         initial: {'rate': _s(st['rate_inr_per_min']), 'max': _s(st['max_minutes'])});
                     if (f != null) {
                       await _settings({
@@ -505,7 +505,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
                       });
                     }
                   },
-            child: const Text('Badlo')),
+            child: const Text('Edit')),
       ]),
     ]);
   }
@@ -518,7 +518,7 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Script'), (2, 'Calls'), (3, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Script'), (2, 'Calls'), (3, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -526,8 +526,8 @@ class _CallCentreScreenState extends State<CallCentreScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _script(), _calls(), _rules()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Har call ki shuruaat mein bataya jaata hai ki yeh AI sahayak hai. Line sirf aapki Haan wali script se bolti hai; '
-                  'baaki sab message ya insaan ko. OTP / PIN / card kabhi nahi liya jaata. Paisa line par kabhi nahi.',
+                  'At the start of every call, the caller is told this is an AI assistant. The line speaks only from the script you approved;'
+                  'everything else goes to a message or a person. OTP / PIN / card are never taken. Money is never handled on the line.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -578,21 +578,21 @@ class _CallCentreCallPageState extends State<CallCentreCallPage> {
                       Pill(_outcomeSay[_s(c['outcome'])] ?? _s(c['outcome']), fg: _outcomeColor(_s(c['outcome']))),
                     ]),
                     Text(_s(c['summary']), style: const TextStyle(fontSize: 13)),
-                    Text('${c['seconds']} sec · ${_s(c['lang'])} · script v${c['script_version']}${c['disclosed'] == true ? ' · AI bataya' : ''}',
+                    Text('${c['seconds']} sec · ${_s(c['lang'])} · script v${c['script_version']}${c['disclosed'] == true ? ' · AI disclosed' : ''}',
                         style: const TextStyle(color: C.muted, fontSize: 12)),
-                    if (_s(c['handover_say']).isNotEmpty) Text('Insaan ko kyun: ${_s(c['handover_say'])}', style: const TextStyle(fontSize: 12.5)),
+                    if (_s(c['handover_say']).isNotEmpty) Text('Why handed to a person: ${_s(c['handover_say'])}', style: const TextStyle(fontSize: 12.5)),
                   ]),
                 ),
                 const SizedBox(height: 8),
                 if (_s(c['caller']).isNotEmpty)
-                  GlassButton(label: 'Wapas call karo', icon: Icons.call_rounded, onTap: () => _dial(context, _s(c['caller']))),
+                  GlassButton(label: 'Call back', icon: Icons.call_rounded, onTap: () => _dial(context, _s(c['caller']))),
                 for (final f in _list(c['flags']))
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
                     child: Text('⚠ ${_s(f['kind'])}: ${_s(f['text'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
                   ),
                 const SizedBox(height: 10),
-                Text('Baatcheet (number chhupe hue)', style: display(15)),
+                Text('Conversation (numbers hidden)', style: display(15)),
                 for (final t in (c['transcript'] as List? ?? const []))
                   if (t is List && t.length >= 2)
                     Padding(
@@ -663,24 +663,24 @@ class _CallCentreScriptCardState extends State<CallCentreScriptCard> {
         if (faqs.isEmpty && _s(v['say']).isNotEmpty) Text(_s(v['say']), style: const TextStyle(fontSize: 12.5)),
         if (faqs.isNotEmpty) ...[
           const SizedBox(height: 6),
-          Text('Line par sirf yahi bolega (${faqs.length} sawal):', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          Text('The line will say only this (${faqs.length} questions):', style: const TextStyle(fontSize: 12.5, color: C.muted)),
           for (final f in shown)
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text('• ${_s(f['q'])} → ${_s(f['a'])}', style: const TextStyle(fontSize: 12.5)),
             ),
           if (faqs.length > 5)
-            TextButton(onPressed: () => setState(() => _all = !_all), child: Text(_all ? 'Kam dikhao' : 'Saare dekho')),
+            TextButton(onPressed: () => setState(() => _all = !_all), child: Text(_all ? 'Show less' : 'Show all')),
           Text(
-              'Kar sakti hai: sawal-jawab, message${can['appointments'] == true ? ', appointment' : ''}${can['ticket_status'] == true ? ', ticket status' : ''}${can['complaints'] == true ? ', shikayat' : ''}',
+              'Can handle: Q&A, message${can['appointments'] == true ? ', appointment' : ''}${can['ticket_status'] == true ? ', ticket status' : ''}${can['complaints'] == true ? ', complaint' : ''}',
               style: const TextStyle(fontSize: 12, color: C.muted)),
         ],
         for (final ch in (v['changes'] as List? ?? const []).take(6)) Text('· $ch', style: const TextStyle(fontSize: 12, color: C.teal)),
         if (_status == 'waiting') ...[
           const SizedBox(height: 8),
-          GradientButton(label: 'Haan, yahi script chalao', icon: Icons.check_rounded, onTap: _busy ? null : () => _decide(true)),
+          GradientButton(label: 'Yes, run this script', icon: Icons.check_rounded, onTap: _busy ? null : () => _decide(true)),
           const SizedBox(height: 6),
-          GlassButton(label: 'Mana', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false)),
+          GlassButton(label: 'Declined', icon: Icons.close_rounded, onTap: _busy ? null : () => _decide(false)),
         ],
       ]),
     );
@@ -714,10 +714,10 @@ class CallCentreCallCard extends StatelessWidget {
             Pill(_outcomeSay[o] ?? o, fg: _outcomeColor(o)),
           ]),
           if (_s(v['summary']).isNotEmpty) Text(_s(v['summary']), style: const TextStyle(fontSize: 13)),
-          if (_s(v['handover_say']).isNotEmpty) Text('Insaan ko: ${_s(v['handover_say'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
-          if (un.isNotEmpty) Text('Script mein nahi tha: ${un.join('; ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
-          if (flags.isNotEmpty) Text('⚠ ${flags.length} dhyaan dene wali baat', style: const TextStyle(fontSize: 12, color: C.warn)),
-          Text('${v['seconds'] ?? 0} sec${v['disclosed'] == true ? ' · AI bataya' : ''}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
+          if (_s(v['handover_say']).isNotEmpty) Text('To a person: ${_s(v['handover_say'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          if (un.isNotEmpty) Text('Not in the script: ${un.join('; ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+          if (flags.isNotEmpty) Text('⚠ ${flags.length} things to note', style: const TextStyle(fontSize: 12, color: C.warn)),
+          Text('${v['seconds'] ?? 0} sec${v['disclosed'] == true ? ' · AI disclosed' : ''}', style: const TextStyle(fontSize: 11.5, color: C.faint)),
         ]),
       ),
     );
@@ -764,16 +764,16 @@ class _CallCentreMessageCardState extends State<CallCentreMessageCard> {
           Expanded(
               child: Text('${_s(m['name']).isNotEmpty ? '${_s(m['name'])} · ' : ''}${_s(m['caller_masked'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
-          if (done) const Pill('ho gaya', fg: C.ok),
+          if (done) const Pill('done', fg: C.ok),
         ]),
         Text(_s(m['text']), style: const TextStyle(fontSize: 13)),
         if (_s(m['callback_at']).isNotEmpty) Text('Call-back: ${_s(m['callback_at'])}', style: const TextStyle(fontSize: 12.5, color: C.teal)),
         if (!done) ...[
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GlassButton(label: 'Call karo', icon: Icons.call_rounded, onTap: () => _dial(context, _s(m['caller'])))),
+            Expanded(child: GlassButton(label: 'Call', icon: Icons.call_rounded, onTap: () => _dial(context, _s(m['caller'])))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Ho gaya', icon: Icons.check_rounded, onTap: _busy ? null : _mark)),
+            Expanded(child: GlassButton(label: 'Done', icon: Icons.check_rounded, onTap: _busy ? null : _mark)),
           ]),
         ],
       ]),
