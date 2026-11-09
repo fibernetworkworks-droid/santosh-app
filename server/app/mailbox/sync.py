@@ -606,7 +606,7 @@ def sync_account(tenant: str, box: Box) -> int:
     if not fresh or not calibrated:          # pehli baar: watermark bharo, khabar nahi
         _save_recent(tenant, box.key, native_ids, recent)
         return 0
-    conv = convs.current(tenant)
+    conv = convs.notice_chat(tenant)   # v0.714 new-mail news goes to her updates chat, not the chat she has open
     rules = rules_for(tenant)
     mute = set(muted(tenant))
     known = _vip_senders(tenant)

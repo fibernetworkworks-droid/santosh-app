@@ -2474,3 +2474,10 @@ Agent: Claude (web session)
 Ask: "NOW LETS WORK ON A HOOLA AI AGENT THAT WILL SEE THE YOUTUBVIDEO FROM LINK, SHORTS, MP4 OR ANY VIDEO FORMAT ... AI WILL LEARN THAT TRAIN ITSELF KEEP IN MEMORY AND IF TASK GIVEN RELATED TO IT IT WILL PERFORM SMOOTHLY" + "GO" on the SEEKH MANCH plan.
 Built: ONE tool seekh_video (616 -> 617, family seekh); server/app/seekh.py (classify -> Gemini perceive -> Claude distill -> store) + agent/seekh_tools.py + procedures.save_video; operator recipe DRAFTS through the public Memory.save format (runs=0, proven recipes never clobbered); evidence law, digit masking, value variables, day/size/length caps, seekh_enabled switch; routing words kept off 'kya seekha' / 'banana sikhao' / hoola_seekha; 40 offline tests (test_v0713_seekh_manch.py, born v0711 in the collision round).
 Deploy: the owner's vps-ops dispatch; healthz must grep 0.713.0.
+
+---
+Task ID: v0.714.0 HAR CHAT ALAG
+Ask: other chats' messages / daily coworker updates land in new chats - keep every chat independent.
+Found: every background notice used convs.current = the chat she had open; chat-turn memory read other chats' jobs / cards.
+Fixed: convs.notice_chat -> turn chat or the pinned 'Hoola updates' chat; routines + briefing run there; own-chat jobs / cards / diary / coder notes; switch chat_alone.
+Not verified live.

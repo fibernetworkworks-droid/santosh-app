@@ -260,10 +260,23 @@ def primer(tenant: str, conv: str | None = None, compact: bool = False, query: s
     if sk:
         header += "\n" + sk
     work = _work_lines(tenant)
+    own = False
+    if compact and conv:
+        try:   # v0.714 HAR CHAT ALAG: a chat turn sees only its own chat's work notes, never the cross-chat to-do lists
+            from .. import fence
+            own = fence.alone()
+        except Exception:   # noqa: BLE001
+            own = False
+    if own:
+        work = []
     if work:
         header += "\nStill open:\n" + "\n".join(work[:6])
     limit = 6 if compact else 30
-    rows = store.recent_observations(tenant, limit=limit, convs=_scope(tenant, conv))
+    scope = _scope(tenant, conv)
+    if own:
+        from .. import fence
+        scope = fence.own_chat(tenant, conv) or scope
+    rows = store.recent_observations(tenant, limit=limit, convs=scope)
     if not rows and not work and not sk:
         return ""
     rows = [_decode(r) for r in rows]

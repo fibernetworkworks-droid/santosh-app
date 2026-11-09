@@ -46,9 +46,10 @@ def _utc(dt: datetime | None) -> datetime | None:
 
 # ---------------------------------------------------------------- telling the owner
 def home_conv(tenant: str) -> str:
-    """The conversation where this owner's avatar talks to them (v0.158: the chat she is in; made if none)."""
+    """The conversation where this owner's avatar talks to them. v0.714 HAR CHAT ALAG: inside her turn = that chat;
+    outside one (a desk's daily job, a network message) = her pinned 'Hoola updates' chat, never the chat she has open."""
     from .. import convs
-    return convs.current_or_new(tenant)
+    return convs.notice_chat(tenant)
 
 
 def _note(tenant: str, conv: str, text: str) -> None:

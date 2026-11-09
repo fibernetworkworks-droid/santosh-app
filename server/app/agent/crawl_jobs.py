@@ -241,7 +241,7 @@ def claim(tenant_id: str, job_id: str, tries_max: int) -> bool:
             try:
                 row = con.execute("SELECT seed FROM crawl_jobs WHERE id = ?", (job_id,)).fetchone()
                 from .. import convs, events
-                conv = convs.current(tenant_id)
+                conv = convs.notice_chat(tenant_id)   # v0.714
                 if conv:
                     events.notify(conv, f"Crawl ({(row[0] if row else '')[:80]}) kai baar ki koshish ke baad bhi nahi "
                                         f"ho paya, isliye band kar diya (job {job_id}).")

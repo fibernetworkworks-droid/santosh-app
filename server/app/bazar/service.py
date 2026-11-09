@@ -1269,7 +1269,7 @@ def _conv_of_txn(s, txn: Transaction) -> str:
 def latest_conversation(s, tenant_id: str) -> str:
     """v0.158 the chat she is in (was: the newest chat created, often an empty console chat)."""
     from .. import convs
-    cid = convs.current(tenant_id)
+    cid = convs.notice_chat(tenant_id)   # v0.714 her updates chat outside a turn
     if cid:
         return cid
     c = s.scalars(select(CoreConversation).where(CoreConversation.tenant_id == tenant_id)

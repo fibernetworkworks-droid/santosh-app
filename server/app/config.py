@@ -161,6 +161,7 @@ class Settings(BaseSettings):
     chat_context_max_tokens: int = 0       # v0.244 cost cap: compact at this many tokens whatever the model's window (0 = off)
     # v0.242 FULL CLAUDE MODE Phase 2 (agent/compact.py): Claude-style compaction at the full_at line
     about_me: bool = True                  # v0.250 "Mere baare mein" page rebuilt daily for active owners (false = never rebuilt)
+    chat_alone: bool = True                # v0.714 HAR CHAT ALAG: background / daily messages go to her pinned 'Hoola updates' chat (never the chat she has open), and a chat turn reads only ITS OWN chat's jobs / cards / diary; false = the old shared behaviour
     memory_fence: bool = True              # v0.246 PHASE 3C: Hoola's own memory stays inside its Session (fence.py); false = all chats share
     chat_compact: bool = True              # false = Phase 1 only (the safety net shortens instead of a summary)
     chat_compact_prepare_at: float = 0.6   # past this share a draft summary is written in the background

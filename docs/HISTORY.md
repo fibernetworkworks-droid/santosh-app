@@ -1,3 +1,32 @@
+## v0.714.0 HAR CHAT ALAG — every chat on its own (9 Nov 2026; owner: "IN WEB CONSOLE CHAT SECTION :: 1ST CHECK WHY OTHER CHAT MSG IS COME IN OTHER SESSION CHAT MSG --- EXAMPLE UPDATES KEEP EVERY THING INDEPENDENT. DAILY COWORKER MSG SHOULD NOT TO BE MERGE WITH NEW CHAT OR ANY OTHER CHAT. KEEP EVERY SESSION INDEPENDENT")
+
+ROOT CAUSE: the console marks the open chat as "the chat she is in" on every stream (`convs.mark(..., "stream")`), and
+every message that was not an answer to her used `convs.current` = that open chat: the AI-employee desks' daily reports
+(`net.service.home_conv`, ~100 desk modules), new-mail notes (`mailbox/sync`), calendar alerts, the Google reconnect
+notice, crawl failures, payment confirmations without a task, share asks, and (`worker._home_conv`) reminders / routines /
+briefings whose chat was gone. A new chat therefore filled up with daily-coworker news, and because those lines are in
+its history the brain answered her real ask ("video se seekho...") with "Good morning Meghana. Quick state: ...".
+On top, a chat turn's memory read other chats' work: `kaamwatch.block` (all chats outside a Session + jobs with no chat),
+`events.card_news_block` (the OPEN chat's story + every other chat's cards), `yaad.diary` jobs, and the coder primer's
+cross-chat to-do lists.
+
+FIX:
+- `convs.notice_chat(tenant)` = the running turn's own chat (`convs.TURN`, set in `santosh._run_turn`, so a tool that
+  tells her mid-turn still speaks where she asked), else her ONE pinned **"Hoola updates"** chat (`convs.updates_chat`,
+  Conversation kind `updates`, title + pinned so it is listed; never picked by `current()`'s newest-chat fallback).
+  Every background sender above now uses it.
+- Routines and the morning briefing RUN in the updates chat (their stored chat is kept; the run and its history live
+  in the updates chat).
+- A chat turn reads only its own chat's work: `fence.own_chat` (the chat + a call record's origin) with `keep(strict=)`
+  in kaamwatch.block and yaad.diary jobs / website jobs; `card_news_block(..., conversation_id)` reads that chat's own
+  cards; the compact coder primer drops cross-chat work lists and fences observations to the chat. Her facts stay shared
+  (they are about her).
+- Switch `chat_alone` (default on); off = the old rule everywhere.
+
+Not changed: messages already merged into old chats stay where they are; the phone's one-chat card rule (v0.158); the
+console already dropped other chats' live cards client-side (v0.227.4). Tests: `test_v0714_har_chat_alag.py` (8).
+NOT VERIFIED live.
+
 ## v0.713.0 SEEKH MANCH — learn a way of working from a video (9 Nov 2026; owner: "NOW LETS WORK ON A HOOLA AI AGENT THAT WILL SEE THE YOUTUBVIDEO FROM LINK, SHORTS, MP4 OR ANY VIDEO FORMAT. EXAMPLE FEELING THE FORM OR ANY WORK --- AI WILL LEARN THAT TRAIN ITSELF KEEP IN MEMORY AND IF TASK GIVEN RELATED TO IT IT WILL PERFORM SMOOTHLY" + "GO" on the SEEKH MANCH plan; built as v0.711.0, their SIRF JO POOCHA CHAT took v0.711.0 and their HAR PROMPT KA PLAN took v0.712.0 while it sat built — REBASE PROTOCOL onto their tip, all kept)
 
 She sends a video — a YouTube link, a Shorts, an MP4 she attached, a direct video URL — and says "isse
