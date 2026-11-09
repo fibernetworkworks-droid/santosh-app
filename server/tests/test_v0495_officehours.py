@@ -79,7 +79,7 @@ def test_story_and_prompts_pins():
     # story tokens live in git history (the v0.497 chain moved them here from v0.479)
     assert "HOOLA MIDDLEWARE" in story and "server/app/aep" in story   # the newest-story precedent (the newest story carries the marker)
     ptxt = Path(prompts.__file__).read_text()
-    assert "OFFICE HOURS (v0.495" in ptxt and "eng HAMESHA aakhri" in ptxt
+    assert "OFFICE HOURS (v0.495" in ptxt and "eng is ALWAYS last" in ptxt
     assert "`officehours` action=start" in ptxt
 
 

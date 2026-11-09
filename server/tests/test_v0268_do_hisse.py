@@ -74,12 +74,12 @@ def test_the_rulebook_bans_the_filler_and_the_machine_words():
 # ---------------------------------------------------------------- the system prompt
 def test_the_prompt_asks_for_the_opener_and_both_halves():
     p = (ROOT / "server/app/agent/prompts.py").read_text()
-    assert "CHALTE CHALTE BOLO" in p
-    assert "pehla kadam kya hai" in p                   # the opener names the first move too
-    assert "DO HISSON mein" in p
-    assert "bina asli figure wali line mat likho" in p
-    assert "15-30 shabd" in p
-    assert "machine ke\n  andar ki koi baat" in p or "machine ke andar ki koi baat" in p.replace("\n  ", " ")
+    assert "TALK AS YOU WORK" in p
+    assert "and the first step" in p                    # the opener names the first move too
+    assert "TWO HALVES" in p
+    assert "never write a line without a real figure" in p
+    assert "15-30 words" in p
+    assert "anything from inside the\n  machine" in p or "anything from inside the machine" in p.replace("\n  ", " ")
 
 
 # ---------------------------------------------------------------- nothing earlier is undone

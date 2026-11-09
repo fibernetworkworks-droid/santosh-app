@@ -109,7 +109,7 @@ def test_the_between_step_narration_still_stands():
     assert "asli number / id / naam / link" in G.NARRATE
     assert "12 naye mails aaye" in G.narrate_line(["12 naye mails aaye"])
     p = (ROOT / "server/app/agent/prompts.py").read_text()
-    assert "CHALTE CHALTE BOLO" in p and "bade kaam se PEHLE ek vaakya" in p
+    assert "TALK AS YOU WORK" in p and "BEFORE a big job, one sentence" in p
 
 
 def test_version():
