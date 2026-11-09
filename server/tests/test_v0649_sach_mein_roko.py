@@ -62,7 +62,7 @@ def test_cancel_newest_marks_it_stopped_everywhere(env, monkeypatch):
     assert stopped == ["new"]                                   # the kind's own stop really ran
     assert _row("site_board:new") == ("stopped", "cancelled")
     assert _row("site_board:old")[0] == "working"               # only what she meant
-    assert "rok diya: Website Clinic site" in out["say"] and "Bakery site" in out["say"]   # what still runs is named
+    assert "stopped: Website Clinic site" in out["say"] and "Bakery site" in out["say"]   # what still runs is named
     with session() as s:
         assert s.query(kaam_followup.KaamFollowup).filter_by(key="site_board:new").one().status == "skipped"
 
@@ -143,7 +143,7 @@ def test_her_words_stop_the_job_before_the_turn_waits(env, monkeypatch):
             lk.release()
     say = asyncio.run(go())
     santosh._stopped.discard("c5")
-    assert say.startswith("Theek hai, rok diya") and "Bakery site" in say
+    assert say.startswith("Okay, stopped") and "Bakery site" in say
     assert _row("site_board:b1") == ("stopped", "cancelled")
     with session() as s:
         shown = [m.display for m in s.query(Message).filter_by(conversation_id="c5").order_by(Message.id)]

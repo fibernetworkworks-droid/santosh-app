@@ -31,7 +31,7 @@ from .events import notify
 
 log = logging.getLogger("santosh.kaam_followup")
 
-STATE_WORD = {"done": "poora ho gaya", "failed": "ruk gaya, dikkat aayi", "stopped": "band kar diya gaya"}
+STATE_WORD = {"done": "finished", "failed": "stopped, ran into a problem", "stopped": "was stopped"}
 _LOCK = threading.Lock()
 _SENDING: set[int] = set()
 STATS: dict[str, int] = {"enqueued": 0, "sent": 0, "fallback": 0, "skipped": 0, "postponed": 0, "dup": 0,
@@ -241,12 +241,12 @@ def _canned(r: KaamFollowup) -> str:
 def _canned_raw(r: KaamFollowup) -> str:
     head = f"{r.label} {r.title}".strip()
     if r.state == "failed":
-        return f"❌ {head}: ruk gaya, dikkat aayi." + (f" ({r.detail})" if r.detail else "") + \
-            " Bataiye to dobara koshish karun ya doosra raasta lun."
+        return f"❌ {head}: stopped, ran into a problem." + (f" ({r.detail})" if r.detail else "") + \
+            " Tell me if you want me to try again or take another route."
     if r.state == "stopped":
-        return f"⏹ {head}: band kar diya gaya." + (f" ({r.detail})" if r.detail else "") + \
-            " Jab chahiye, bas bol dena - phir shuru kar dunga."
-    return f"✅ {head}: ho gaya." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
+        return f"⏹ {head}: was stopped." + (f" ({r.detail})" if r.detail else "") + \
+            " Whenever you want it, just say so and I will start it again."
+    return f"✅ {head}: done." + (f" {r.detail}" if r.detail else "") + (f" {r.link}" if r.link else "")
 
 
 _ONE_SHOT_SYSTEM = (   # v0.193 the delivery brief lives in ONE place so tests pin it

@@ -345,11 +345,11 @@ def _save_pre(conversation_id: str, role: str, content, display: str | None = No
 # (a finished job's wake report, a routine) could not tell it from a real answer and marked the work delivered.
 # Every failed ending stamps the time here; `turn_failed_since(conv, t0)` asks "did the turn I started fail?".
 _FAILED: dict[str, float] = {}
-TIMEOUT_TEXT = ("Yeh kaam bahut der se chal raha tha, isliye maine ise beech mein rok diya. Jo kadam us waqt chal raha tha "
-                "woh shayad aadha hua ho - dobara bolne se pehle dekh lijiye kya ho chuka hai (aap kahein to main check "
-                "karke bata deta hoon), taaki koi mail ya message do baar na jaaye.")
-TIMEOUT_GOAL = ("Is round ka samay khatam ho gaya, beech ka kadam roka gaya. Agla round pehle dekhega kya ho chuka hai, "
-                "phir wahin se aage badhega - aapko kuch dobara bolne ki zaroorat nahi.")
+TIMEOUT_TEXT = ("This task had been running for too long, so I stopped it midway. The step that was running at that moment "
+                "may be half done - please check what has already happened before asking again (or ask me and I will "
+                "check and tell you), so that no email or message goes out twice.")
+TIMEOUT_GOAL = ("This round ran out of time and the step in progress was stopped. The next round will first check what is "
+                "already done and carry on from there - you do not need to say anything again.")
 
 
 def _mark_failed(conversation_id: str) -> None:
@@ -566,8 +566,8 @@ def _hard_held(state: dict, settings, conversation_id: str = "") -> bool:
 
 # wave 13: said under a corrected answer that still fails the free check (it used to go out as if checked)
 STATS_HARD_UNSURE = {"n": 0}
-HARD_UNSURE = ("\n\n_Dhyan dijiye: is jawab ke kuch aankde pakke nahi ho paye - use karne se pehle ek baar "
-               "jaanch lijiye._")
+HARD_UNSURE = ("\n\n_Please note: some figures in this answer could not be confirmed - check them once before "
+               "you use them._")
 
 
 async def _hard_check(conversation_id: str, state: dict, draft: str, history: list[dict], settings,
@@ -575,7 +575,7 @@ async def _hard_check(conversation_id: str, state: dict, draft: str, history: li
     """v0.436 SOCH KE JAWAB step 5: the free code check, then ONE independent reviewer call. Problems or [].
     wave 13 free_only = the corrected answer's re-check: code + claim checks only, no model call."""
     from . import hard as _hardc
-    bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Jawab jaanch raha hoon", "state": "running",
+    bus.publish(conversation_id, "step", {"tool": "jaanch", "label": "Checking the answer", "state": "running",
                                           "id": "hard-check"})
     try:
         ev, names = _hardc.evidence(history)
@@ -962,7 +962,7 @@ async def _think(brain: str, system: str, history: list[dict], settings, tools: 
     raise last
 
 
-OUTAGE_TEXT = "Hoola ki AI service thodi der ke liye ruki hui hai - hum ise theek kar rahe hain. Thodi der baad phir boliye."
+OUTAGE_TEXT = "The Hoola AI service is paused for a little while - we are fixing it. Please try again in a moment."
 
 
 def _operator(tenant_id: str | None) -> bool:
@@ -989,15 +989,15 @@ def _friendly_error(e: BaseException, tenant_id: str | None = None, who: str = "
         # v0.631 her account is out of credit: say it plainly, it is not a bug and waiting will not fix it
         log.error("ANTHROPIC CREDIT IS OUT - every Claude turn on this server fails until it is recharged")
         if _operator(tenant_id) and (who or "owner") == "owner":
-            head = "Anthropic ka credit khatam ho gaya hai - console.anthropic.com > Plans & Billing par recharge kijiye, phir dobara boliye."
+            head = "The Anthropic credit has run out - recharge it at console.anthropic.com > Plans & Billing, then try again."
         else:
             head = OUTAGE_TEXT
     elif _ctx.is_overflow(s):
-        head = "Yeh chat bahut lambi ho gayi hai. Naya chat shuru karke wahi baat bolein - pichhli baatein yaad rahengi."
+        head = "This chat has become too long. Start a new chat and say the same thing there - I will still remember the earlier parts."
     elif busy:
-        head = "Abhi AI service busy ya unreachable hai, thodi der baad phir boliye."
+        head = "The AI service is busy or unreachable right now. Please try again in a moment."
     else:
-        head = "Maaf kijiye, abhi kuch gadbad ho gayi."
+        head = "Sorry, something went wrong just now."
     if not s:
         return head
     ref = format(random.getrandbits(24), "06x")
@@ -1059,8 +1059,8 @@ async def _watched(work, conversation_id: str, ctx: Ctx, state: dict | None = No
 
 
 # wave 13: an error AFTER tools ran used to give only the generic line - she repeated the ask and a mail went twice
-AFTER_TOOLS = (" Isse pehle kuch kadam chal chuke the - dobara bolne se pehle dekh lijiye kya ho chuka hai, taaki koi mail "
-               "ya message do baar na jaaye.")
+AFTER_TOOLS = (" Some steps had already run before this - please check what has happened before asking again, so that "
+               "no email or message goes out twice.")
 
 
 def _tools_since(history: list[dict], h0: int) -> list[str]:
@@ -1073,8 +1073,8 @@ def _tools_since(history: list[dict], h0: int) -> list[str]:
     return names
 
 
-HALTED_TEXT = {"stop": "Theek hai, maine kaam rok diya.",
-               "pause": "Aapne kaam rok diya (Pause), isliye main yahin ruk gaya. 'Kaam shuru' hone par aage karunga."}
+HALTED_TEXT = {"stop": "Okay, I stopped the work.",
+               "pause": "You paused the work, so I have stopped here. I will carry on when the work is started again."}
 
 # v0.189 Tools that may run TOGETHER when one step asks for several (dsh's bounded pool, Claude Code's
 # concurrency-safe read batching - kept deliberately small): pure look-ups only. Anything that writes,
@@ -1218,12 +1218,12 @@ async def _steps(conversation_id: str, ctx: Ctx, gender: str, history: list[dict
     g = _goal.active_for(conversation_id) if settings.agent_goal else None
     if g is not None and _goal.steps_left(g):
         ok = False
-        state["left"] = (f"goal '{g['goal']}': {g['done']}/{g['total']} steps ho gaye, "
-                         f"{len(_goal.steps_left(g))} baaki ({g['stage'] or 'aage badhega'})")
+        state["left"] = (f"goal '{g['goal']}': {g['done']}/{g['total']} steps done, "
+                         f"{len(_goal.steps_left(g))} left ({g['stage'] or 'will carry on'})")
     else:
         ok = (bool(text.strip()) and not state["breaker"].stopped and conversation_id not in _stopped
               and not state.get("halted")
-              and not text.startswith(("Yeh kaam lamba", "Maaf kijiye")))
+              and not text.startswith(("This task has become long", "Sorry")))
     if user_text:
         # wave 11: a reply the honesty check caught, or a turn that left work undone, is never LEARNED from as a good run
         # (the outcome itself is unchanged)
@@ -1998,8 +1998,8 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                        "through. For a read-only step, a lighter way or another tool is fine.")
                 log.warning("tool %s timed out", b["name"])
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error",
-                                                      "id": b["id"], "detail": "bahut der lag rahi thi, rok diya"})
-                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Bahut der lag rahi thi, rok diya")
+                                                      "id": b["id"], "detail": "it was taking too long, so I stopped it"})
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="It was taking too long, so I stopped it")
                 return {"type": "tool_result", "tool_use_id": b["id"], "content": msg, "is_error": True}
             except Exception as e:  # unexpected bug: tell the model, keep the turn alive
                 breaker.after(b["name"], False)
@@ -2008,7 +2008,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                 log.exception("tool %s crashed", b["name"])
                 help_ = await pakka.on_failure(tenant_id, b["name"], f"internal error: {e}", state.get("request", ""), state)
                 bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "error", "id": b["id"]})
-                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Kuch gadbad ho gayi")
+                _work(conversation_id, b["id"], shown, label, "error", args_in, error="Something went wrong")
                 return {"type": "tool_result", "tool_use_id": b["id"],
                         "content": f"Internal error in {b['name']}: {e}" + help_, "is_error": True}
 
@@ -2094,7 +2094,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             history[-1] = {"role": "user", "content": results + [{"type": "text", "text": note}]}
             if live is not None:
                 live.new_text_block()
-            bus.publish(conversation_id, "message", {"role": "assistant", "text": gendered("Soch badal raha hoon — doosra raasta try karta hoon.", gender),
+            bus.publish(conversation_id, "message", {"role": "assistant", "text": gendered("Changing my approach - taking a different route.", gender),
                                                      "source": "agent", **_tag(live, True)})
         _save(conversation_id, "user", results)
         if breaker.stopped:                # stuck: stop here and say so plainly
@@ -2124,7 +2124,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         if conversation_id in _stopped or state.get("halted"):
             final_text = gendered(HALTED_TEXT.get(state.get("halted") or "stop", HALTED_TEXT["stop"]), gender)
             if state.get("halted"):
-                final_text += " Jo kadam chal raha tha woh beech mein roka gaya; dobara karne se pehle dekh lijiye kitna hua."
+                final_text += " The step that was running was stopped midway; please check how much got done before doing it again."
             bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                      **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -2134,16 +2134,16 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         g = _goal.active_for(conversation_id) if settings.agent_goal else None
         if g is not None and _goal.steps_left(g):
             state["goal"] = g
-            honest = (f"Goal jaari hai: {g['done']}/{g['total']} steps ho gaye ({g['goal'][:120]}); "
-                      f"{len(_goal.steps_left(g))} baaki hain — main background mein aage badh raha hoon.")
+            honest = (f"Goal in progress: {g['done']}/{g['total']} steps done ({g['goal'][:120]}); "
+                      f"{len(_goal.steps_left(g))} left - I am carrying on in the background.")
             final_text = (final_text + "\n\n" + honest).strip() if final_text else honest
             bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent", **_tag(live, True)})
             _save(conversation_id, "assistant", [{"type": "text", "text": honest}], display=honest)
             return final_text
         # v0.665 SACH KA HISAAB: the honest line is said EVERY time (a mid-task "ab doosra hissa bhej raha hoon" used to
         # be returned as the final answer and the turn recorded "done"), and the outcome is partial, never done
-        state["left"] = state.get("left") or "steps ki had poori ho gayi, kaam poora nahi hua"
-        honest = "Yeh kaam lamba ho gaya aur abhi poora nahi hua - main yahin ruk raha hoon. Aage badhaun?"
+        state["left"] = state.get("left") or "the step limit was reached, the work is not finished"
+        honest = "This task has become long and is not finished yet - I am stopping here. Shall I carry on?"
         bus.publish(conversation_id, "message", {"role": "assistant", "text": honest, "source": "agent",
                                                  **_tag(live, True)})
         # v0.473 saved too: the next turn must know the work stopped half-way (before, only she saw this line)
@@ -2155,16 +2155,16 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
         _cs = state.get("calls") or []
         _bad = [c for c in _cs if not c.get("ok")]
         if ran_tools and _cs and len(_bad) == len(_cs):
-            state["left"] = state.get("left") or "koi kadam poora nahi hua"
-            final_text = ("Maaf kijiye, yeh kaam nahi ho paya - jo kadam chalaye woh atak gaye ("
-                          + (str(_bad[-1].get("error") or "")[:120] or "galti") + "). Dobara koshish karun?")
+            state["left"] = state.get("left") or "no step finished"
+            final_text = ("Sorry, I could not do this - the steps I ran got stuck ("
+                          + (str(_bad[-1].get("error") or "")[:120] or "error") + "). Shall I try again?")
         elif ran_tools and _bad:
-            state["left"] = state.get("left") or "kuch kadam atak gaye"
-            final_text = gendered("Kuch hissa ho gaya, par sab nahi - kuch kadam atak gaye. Baaki dobara karun?", gender)
+            state["left"] = state.get("left") or "some steps got stuck"
+            final_text = gendered("Part of it is done, but not all - some steps got stuck. Shall I redo the rest?", gender)
         else:
             # wave 13: no "Aur kuch karna hai?" tail (the reply rule forbids it), and the not-understood line gendered too
-            final_text = "Kaam ho gaya." if ran_tools else \
-                gendered("Maaf kijiye, main samajh nahi paya. Ek baar phir bata dein?", gender)
+            final_text = "Done." if ran_tools else \
+                gendered("Sorry, I did not understand that. Could you say it once more?", gender)
         bus.publish(conversation_id, "message", {"role": "assistant", "text": final_text, "source": "agent",
                                                  **_tag(live, True)})
         _save(conversation_id, "assistant", [{"type": "text", "text": final_text}], display=final_text)
@@ -2197,8 +2197,8 @@ _NO_STREAM: set[str] = set()
 # line ("Ek second, dekh rahi hoon…") as an EPHEMERAL message - no Event row, no push, never in history, the
 # real reply replaces it. One ack per turn, owner chats only (voice calls have their own ack clips).
 _ACKED: set[str] = set()
-ACK_LINES = ("Ek second, dekh raha hoon…", "Ho raha hai, bas thodi der…", "Soch raha hoon, ek minute…",
-             "Shuru kar diya, chal raha hai…", "Dekh li jiye, abhi laaya…", "Kaam pakda, chal padta hoon…")
+ACK_LINES = ("One second, looking into it…", "On it, just a moment…", "Thinking, one minute…",
+             "Started, it is running…", "Let me check, back in a moment…", "Got the task, getting going…")
 
 
 def _assistant_spoke_recently(conversation_id: str, seconds: float) -> bool:
@@ -2335,12 +2335,12 @@ async def _pakka_check(state: dict, final_text: str, settings, ran_tools: bool, 
                 "If it truly cannot be done, say plainly what is done, what is left and what she can do.")
     if not v["claim_ok"]:
         pakka.STATS["corrected_claims"] += 1
-        state["correct"] = "(Saaf baat: abhi yeh baaki hai — " + (v["missing"] or "kuch hissa") + ".)"
+        state["correct"] = "(To be clear: this is still left - " + (v["missing"] or "some part") + ".)"
     return ""
 
 
 _STOP_AT: dict[str, float] = {}
-STOPPED_IN_PREP = "Theek hai, rok diya - is baar kuch shuru nahi kiya."
+STOPPED_IN_PREP = "Okay, stopped - nothing was started this time."
 
 
 def stop(conversation_id: str) -> None:

@@ -139,7 +139,7 @@ def test_finish_builds_the_four_part_report(gz):  # noqa: F811
     assert "report.pdf" in r["bana"]
     assert r["baaki"] == ["bhejo"] and r["aapka"] == "Report dekh ke haan bolo"
     text = goal.report_text(r)
-    for part in ("✅ Kya hua", "📎 Kya bana", "⏳ Kya baaki hai", "👉 Aapko kya karna hai"):
+    for part in ("✅ What was done", "📎 What was made", "⏳ What is left", "👉 What you need to do"):
         assert part in text
     last = _goal_events(conv)[-1]
     assert last["report"]["aapka"] == "Report dekh ke haan bolo"
@@ -149,7 +149,7 @@ def test_finish_builds_the_four_part_report(gz):  # noqa: F811
     v2 = goal.set_goal("default", conv, "Chhota", ["a"], origin="owner")
     goal.mark_step("default", v2["id"], 1, "done")
     r2 = goal.finish("default", v2["id"], "done", "ho gaya")["report"]
-    assert r2["baaki"] == [] and r2["aapka"].startswith("Kuch nahi")
+    assert r2["baaki"] == [] and r2["aapka"].startswith("Nothing")
 
 
 def test_kaam_plan_finish_returns_the_report_for_her_final_answer(gz):  # noqa: F811
@@ -162,7 +162,7 @@ def test_kaam_plan_finish_returns_the_report_for_her_final_answer(gz):  # noqa: 
     out = asyncio.run(kaam_plan(ctx, action="finish", outcome="blocked_on_her", reason="Aapka OTP chahiye",
                                 made=["draft-42"]))
     # v0.240 the four parts stay on her CARD; the chat gets one short human line
-    assert "👉 Aapko kya karna hai: Aapka OTP chahiye" in out["card_shows"]
+    assert "👉 What you need to do: Aapka OTP chahiye" in out["card_shows"]
     assert "report" not in out
     assert "chaar hisson" not in out["note"]
     assert "EK chhoti insaani line" in out["note"] and "Bullet list" in out["note"]

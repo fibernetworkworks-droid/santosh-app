@@ -122,10 +122,10 @@ def test_the_fixed_lines_follow_her_avatar():
     from app.agent import santosh
     from app.avatar.service import gendered
     assert "Owner" not in santosh.HALTED_TEXT["pause"]
-    assert "ruk gayi" in gendered(santosh.HALTED_TEXT["pause"], "f") and "karungi" in gendered(santosh.HALTED_TEXT["pause"], "f")
-    assert "bata deti hoon" in gendered(santosh.TIMEOUT_TEXT, "f")
+    assert gendered(santosh.HALTED_TEXT["pause"], "f") == santosh.HALTED_TEXT["pause"] and "stopped here" in santosh.HALTED_TEXT["pause"]
+    assert gendered(santosh.TIMEOUT_TEXT, "f") == santosh.TIMEOUT_TEXT
     src = inspect.getsource(santosh._steps_inner)
-    assert 'gendered(HALTED_TEXT' in src and 'gendered("Soch badal raha hoon' in src
+    assert 'gendered(HALTED_TEXT' in src and 'gendered("Changing my approach' in src
     assert "gendered(TIMEOUT_TEXT, _gender)" in inspect.getsource(santosh)
 
 
@@ -186,7 +186,7 @@ def test_her_mood_is_heard():
 def test_no_contradicting_lines():
     from app.agent import santosh, prompts
     src = inspect.getsource(santosh)
-    assert 'gendered("Kaam ho gaya. Aur kuch karna hai?"' not in src and 'final_text = "Kaam ho gaya." if ran_tools' in src
+    assert 'final_text = "Done." if ran_tools' in src
     assert "phir bolna" not in src
     assert "uljhan ho)" not in inspect.getsource(prompts)
 
@@ -197,7 +197,7 @@ def test_an_error_after_tools_warns_before_a_repeat():
     h = [{"role": "user", "content": "mail bhejo"},
          {"role": "assistant", "content": [{"type": "tool_use", "id": "1", "name": "email_send", "input": {}}]}]
     assert santosh._tools_since(h, 1) == ["email_send"] and santosh._tools_since(h, 2) == []
-    assert "do baar na jaaye" in santosh.AFTER_TOOLS
+    assert "twice" in santosh.AFTER_TOOLS
     assert "_tools_since(history, _h0)" in inspect.getsource(santosh)
 
 

@@ -33,7 +33,7 @@ log = logging.getLogger("santosh.draftcheck")
 STATS = {"fake_done": 0, "fake_done_said": 0, "gated": 0, "checked": 0, "missed": 0, "unsupported": 0,
          "skipped_cap": 0, "quiet": 0}
 
-NOTE_MARKS = ("(Saaf baat:", "(Dhyaan:", "(Ek baat reh gayi:")
+NOTE_MARKS = ("(Saaf baat:", "(Dhyaan:", "(Ek baat reh gayi:", "(To be clear:", "(Please note:", "(One thing left:")
 
 # ---------------------------------------------------------------- 1. a claim with nothing behind it
 
@@ -319,18 +319,19 @@ NUDGE_CARD = ("[System check, not the user] Your message says it is already done
 NUDGE_PART = ("[System check, not the user] Your message says \"{what}\" is done, but no tool that does THAT ran - "
               "the tools this turn did other parts of the ask. Either do that part NOW with the right tool (every card, "
               "approval and OTP rule as usual), or say plainly which part is done and which is NOT done yet.")
-SAID_CARD = "(Saaf baat: yeh abhi hua nahi hai - card / draft aapki haan (tap) ke intezaar mein hai.)"
 SAID_CARD_EN = "(To be clear: nothing has happened yet - the card / draft is waiting for your tap.)"
-SAID = "(Saaf baat: yeh kaam abhi hua nahi hai - ab bhi karna baaki hai.)"
 # v0.287: the note followed her into English conversations as a Hinglish line. v0.260 made HER LANGUAGE the first
 # rule of a reply, and this note is part of the reply.
 SAID_EN = "(To be clear: this is not done yet - it still has to be carried out.)"
+# owner: everything in English - the English twins are the only notes used; the old names stay as aliases
+SAID = SAID_EN
+SAID_CARD = SAID_CARD_EN
 _HINGLISH = re.compile(r"[ऀ-ॿ]|\b(hai|hain|nahi|kar|karo|kiya|aap|main|maine|diya|gaya|raha|rahi|ho|ka|ki|ke)\b", re.I)
 
 
 def said_line(text: str) -> str:
     """The honest line, in the language the reply is written in."""
-    return SAID if _HINGLISH.search(text or "") else SAID_EN
+    return SAID_EN
 
 
 _PROMISE_REMIND = re.compile(r"(yaad\s*dila\s*(?:dunga|dungi|doonga|doongi|denge|deta|deti)|i'?ll\s+remind\s+you"
@@ -387,7 +388,7 @@ def fake_done(state: dict, text: str, conv: str = "", since=None) -> str:
         return NUDGE
     if seen == 2 and not state.get("correct"):
         STATS["fake_done_said"] += 1
-        state["correct"] = ((SAID_CARD if _HINGLISH.search(text or "") else SAID_CARD_EN) if card else said_line(text))
+        state["correct"] = (SAID_CARD_EN if card else said_line(text))
     return ""
 
 
@@ -546,11 +547,11 @@ def note_of(v: dict, loose: list[str], sources: str = "") -> str:
     uns = [u for u in (v.get("unsupported") or []) if _backs(u, seen, low)]
     if uns:
         STATS["unsupported"] += 1
-        return ("(Dhyaan: " + " aur ".join(uns[:2])
-                + " - yeh mujhe kisi pakke source se nahi mila; ek baar khud dekh lijiye.)")
+        return ("(Please note: " + " and ".join(uns[:2])
+                + " - I could not find this in any reliable source; please check it yourself once.)")
     if v.get("missed"):
         STATS["missed"] += 1
-        return "(Ek baat reh gayi: " + v["missed"] + " - bataun?)"
+        return "(One thing left: " + v["missed"] + " - shall I tell you?)"
     return ""
 
 
@@ -582,7 +583,7 @@ async def after_turn(conversation_id: str, tenant_id: str | None, ask: str, repl
     from .santosh import _stopped
     if not getattr(settings, "draft_check", True) or conversation_id in _stopped or state.get("halted"):
         return ""
-    if str(reply or "").startswith(("Maaf kijiye", "Yeh kaam lamba", "Theek, rok")):
+    if str(reply or "").startswith(("Maaf kijiye", "Yeh kaam lamba", "Theek, rok", "Sorry", "This task has become long", "Okay, I stopped", "Okay, stopped")):
         return ""
     g = worth_checking(ask, reply, state.get("calls"), state.get("chat_tail", ""))
     if not g or not may_speak(conversation_id, settings):

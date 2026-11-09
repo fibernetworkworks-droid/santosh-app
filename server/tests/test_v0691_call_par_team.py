@@ -166,7 +166,7 @@ def test_fixed_lines_in_her_forms(monkeypatch):
     import app.avatar.service as av
     r = types.SimpleNamespace(tenant_id="t-f", label="Team", title="prices", state="stopped", detail="", link="")
     monkeypatch.setattr(av, "persona", lambda t: ("Priya", "f"))
-    assert "shuru kar dungi" in kaam_followup._canned(r)
+    assert "I will start it again" in kaam_followup._canned(r)
     assert "'bataungi' if getattr(self, 'gender', 'm') == 'f'" in inspect.getsource(voice.Call._late_result)
 
 

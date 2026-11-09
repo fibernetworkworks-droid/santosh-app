@@ -107,7 +107,7 @@ def _running_turns(tenant: str, skip: str = "") -> list[dict[str, Any]]:
                     what, at = r.text or "", _utc(r.created_at)
         except Exception:
             log.debug("inbox read failed", exc_info=True)
-        out.append({"type": "turn", "conversation_id": c, "title": re.sub(r"\s+", " ", what).strip()[:140] or "chal raha kaam",
+        out.append({"type": "turn", "conversation_id": c, "title": re.sub(r"\s+", " ", what).strip()[:140] or "work in progress",
                     "label": "Kaam", "at": at})
     return out
 
@@ -226,7 +226,7 @@ def cancel(tenant: str, words: str = "", here: str = "", skip_turn: str = "") ->
     if not picked:
         STATS["nothing" if how == "nothing" else "unmatched"] += 1
         return {"stopped": [], "how": how, "left": [x["title"] for x in items][:5],
-                "say": ("Abhi koi kaam chal nahi raha jise roka ja sake." if how == "nothing" else "")}
+                "say": ("Nothing is running right now that I could stop." if how == "nothing" else "")}
     done, partial = [], []
     turns_done: set[str] = set()
     job_convs = {x.get("conversation_id") for x in picked if x["type"] == "job"}
@@ -256,16 +256,16 @@ def cancel(tenant: str, words: str = "", here: str = "", skip_turn: str = "") ->
     STATS["stopped"] += len(picked)
     left = [x["title"] for x in items if x not in picked][:3]
     names = "; ".join(done + partial)
-    say = f"Theek hai, rok diya: {names}."
+    say = f"Okay, stopped: {names}."
     if partial:
-        say += (" Iska jo hissa pehle se chal raha tha woh shayad khud poora ho jaaye; main ispar aage kuch nahi karunga "
-                "aur iske baare mein bataunga bhi nahi.")
+        say += (" The part of it that was already running may finish on its own; I will not do anything more on it "
+                "and will not report back on it.")
     try:   # wave 13: her avatar's own forms ("nahi karungi" for a female avatar)
         from .avatar.service import gendered, persona
         say = gendered(say, persona(tenant)[1])
     except Exception:
         pass
     if left:
-        say += " Abhi bhi chal raha hai: " + "; ".join(left) + "."
+        say += " Still running: " + "; ".join(left) + "."
     log.info("kaam cancelled for %s (%s): %s", tenant, how, names)
     return {"stopped": done + partial, "how": how, "left": left, "say": say}

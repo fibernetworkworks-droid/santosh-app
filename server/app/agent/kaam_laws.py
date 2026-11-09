@@ -90,7 +90,7 @@ def ledger(state: dict, ran_steps: int, cap: int, plan_left: int | None = None,
             done_n = max(int(plan_total) - int(plan_left or 0), 0)
             parts.append(f"plan {done_n}/{int(plan_total)}")
         if state.get("left"):
-            parts.append("baaki: " + str(state["left"])[:40])
+            parts.append("left: " + str(state["left"])[:40])
         elif not state.get("kept_going"):
             parts.append("done ✓")
         per: list[str] = []
@@ -128,7 +128,7 @@ def done_note(state: dict, final_text: str) -> str:
             return ""
         if any(c.get("ok") for c in calls):
             return ""
-        return ("(Kaam: is turn ke saare tools fail hue the — jo maanga gaya tha woh poora nahi "
-                "hua. Jo bhi hua hai, saaf bolo: kya try hua, kahan atka, aur ab kya karna chahiye.)")
+        return ("(Kaam: every tool in this turn failed - what was asked is not done. "
+                "To be clear about what did happen: what was tried, where it got stuck, and what should be done now.)")
     except Exception:
         return ""

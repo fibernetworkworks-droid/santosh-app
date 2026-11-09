@@ -229,9 +229,9 @@ def test_every_failure_exit_stamps_failed():
 
 # ---------------------------------------------------------------- 12 timeout words
 def test_the_timeout_line_warns_about_a_half_done_step():
-    assert "aadha" in santosh.TIMEOUT_TEXT and "do baar" in santosh.TIMEOUT_TEXT
+    assert "half done" in santosh.TIMEOUT_TEXT and "twice" in santosh.TIMEOUT_TEXT
     assert "chhota karke phir bolein" not in santosh.TIMEOUT_TEXT
-    assert "dobara bolne ki zaroorat nahi" in santosh.TIMEOUT_GOAL
+    assert "you do not need to say anything again" in santosh.TIMEOUT_GOAL
 
 
 # ---------------------------------------------------------------- 5 approval cards

@@ -202,8 +202,8 @@ def test_the_auto_plan_closes_with_the_truth(env, text, calls, status):
 def test_step_cap_and_empty_endings_are_honest():
     from app.agent import santosh
     src = inspect.getsource(santosh._steps_inner)
-    assert "Yeh kaam lamba ho gaya aur abhi poora nahi hua" in src and 'state["left"] = state.get("left") or "steps ki had' in src
-    assert "yeh kaam nahi ho paya" in src and "len(_bad) == len(_cs)" in src
+    assert "This task has become long and is not finished yet" in src and 'state["left"] = state.get("left") or "the step limit' in src
+    assert "I could not do this" in src and "len(_bad) == len(_cs)" in src
 
 
 # ---------------------------------------------------------------- 11 a goal round's outcome

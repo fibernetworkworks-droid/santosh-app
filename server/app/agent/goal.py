@@ -173,7 +173,7 @@ def set_goal(tenant: str, conv: str, goal: str, steps: list[str], origin: str = 
     _STOPPED.discard(conv)
     with session() as s:
         for r in s.scalars(select(GoalRun).where(GoalRun.conversation_id == conv, GoalRun.status == "working")).all():
-            r.status, r.reason, r.updated_at = "stopped", "naya plan ban gaya", now()
+            r.status, r.reason, r.updated_at = "stopped", "a new plan was made", now()
         r = GoalRun(tenant_id=tenant, conversation_id=conv, goal=goal.strip()[:500],
                     steps=json.dumps([{"n": i + 1, "text": t, "state": "pending", "note": "", "check": c}
                                       for i, (t, c) in enumerate(pairs)], ensure_ascii=False),
@@ -277,12 +277,12 @@ def build_report(steps: list[dict[str, Any]], status: str, summary: str = "", ma
             hit = hit.strip()[:240]
             if hit and hit not in bana:
                 bana.append(hit)
-    baaki = [f"{x['text']}" + (" (atka)" if x.get("state") == "failed" else "") for x in not_done][:10]
+    baaki = [f"{x['text']}" + (" (stuck)" if x.get("state") == "failed" else "") for x in not_done][:10]
     if left.strip():
         baaki.append(left.strip()[:300])
     turn = your_turn.strip()[:300] or (
-        "Kuch nahi — sab ho gaya." if status == "done" and not baaki else
-        "Aage badhane ke liye bas 'haan aage badho' likhiye ya boliye." if baaki and status != "blocked" else "")
+        "Nothing - everything is done." if status == "done" and not baaki else
+        "To carry on, just say or type 'yes, carry on'." if baaki and status != "blocked" else "")
     return {"summary": str(summary or "").strip()[:400], "hua": hua, "bana": bana[:10], "baaki": baaki[:10],
             "aapka": turn}
 
@@ -293,13 +293,13 @@ def report_text(rep: dict[str, Any]) -> str:
     if rep.get("summary"):
         out.append(rep["summary"])
     if rep.get("hua"):
-        out.append("✅ Kya hua:\n" + "\n".join(f"• {x}" for x in rep["hua"]))
+        out.append("✅ What was done:\n" + "\n".join(f"• {x}" for x in rep["hua"]))
     if rep.get("bana"):
-        out.append("📎 Kya bana:\n" + "\n".join(f"• {x}" for x in rep["bana"]))
+        out.append("📎 What was made:\n" + "\n".join(f"• {x}" for x in rep["bana"]))
     if rep.get("baaki"):
-        out.append("⏳ Kya baaki hai:\n" + "\n".join(f"• {x}" for x in rep["baaki"]))
+        out.append("⏳ What is left:\n" + "\n".join(f"• {x}" for x in rep["baaki"]))
     if rep.get("aapka"):
-        out.append("👉 Aapko kya karna hai: " + rep["aapka"])
+        out.append("👉 What you need to do: " + rep["aapka"])
     return "\n\n".join(out)
 
 
@@ -365,10 +365,10 @@ def _verify_done(tenant: str, goal_id: str, conv: str, made: list[str] | None,
             hit = (done[-1] if done else None) or (sts[0] if sts else None)
         if hit is not None:
             hit["state"] = "current"
-            hit["note"] = ("jaanch mein nahi mila: " + out["line"])[:200]
+            hit["note"] = ("not found in the check: " + out["line"])[:200]
         row.steps = json.dumps(sts, ensure_ascii=False)
         row.status, row.hold = "working", None
-        row.reason = ("Jaanch baaki: " + out["line"])[:400]
+        row.reason = ("Check pending: " + out["line"])[:400]
 
     view = _mutate(tenant, goal_id, fn)
     return {**view, "verified": False, "verify": out}
@@ -390,7 +390,7 @@ def active_for(conv: str) -> dict[str, Any] | None:
         hours = max(1, int(getattr(get_settings(), "agent_goal_resume_hours", 24) or 24))
         upd = _aware(r.updated_at)
         if r.paused_at is not None and upd is not None and upd < now() - timedelta(hours=hours):
-            r.status, r.reason = "blocked", "Kaafi der se ruka tha (aapke jawab ka intezaar) - aaram par rakha gaya"
+            r.status, r.reason = "blocked", "It had been waiting for a long time (for your answer) - put on hold"
             STATS["stale_rested"] = STATS.get("stale_rested", 0) + 1
             return None
         return _row_view(r)
@@ -654,7 +654,7 @@ def _schedule(conv: str, tenant: str, view: dict[str, Any], count_round: bool) -
     finally:
         _s.VOICE_BRAIN_NOW.reset(_v)
         _s._MODEL_NOW.reset(_m)
-    LAST_OUTCOME[conv] = {"outcome": "continuing", "left": f"{view['done']}/{view['total']} steps done, {len(left)} baaki",
+    LAST_OUTCOME[conv] = {"outcome": "continuing", "left": f"{view['done']}/{view['total']} steps done, {len(left)} left",
                           "goal": view["goal"], "at": time.time()}
     STATS["continued"] += 1
     return True
@@ -736,9 +736,9 @@ def _hold_for_limit(tenant: str, view: dict[str, Any]) -> None:
     """The rounds / minutes budget is used up: the job STOPS AND ASKS (status blocked, hold=limit) instead of being
     marked failed. Her "haan aage badho" (or the card's button) gives it a fresh budget from where it stopped."""
     left = steps_left(view)
-    reason = (f"Itna kaam ho gaya ({view['done']}/{view['total']} steps). Baaki: "
+    reason = (f"This much is done ({view['done']}/{view['total']} steps). Left: "
               + "; ".join(x["text"] for x in left[:3]) + (" ..." if len(left) > 3 else "")
-              + ". Aage badhaun? Bas 'haan aage badho' likhiye / boliye.")
+              + ". Shall I carry on? Just say or type 'yes, carry on'.")
 
     def fn(r: GoalRun):
         r.status, r.hold, r.reason = "blocked", LIMIT, reason[:400]
@@ -894,11 +894,11 @@ def recover_tick() -> int:
             # v0.667 "server dobara chalu hua" only when it really restarted (the job last moved before this process
             # began); a round that simply ended (a wake report, a cut turn) is said as what it is
             if upd < _BOOT_AT:
-                line = f"Server dobara chalu hua — aapka kaam \"{view['goal'][:80]}\" wahin se aage badha raha hoon " \
-                       f"({view['done']}/{view['total']} steps ho chuke)."
+                line = f"The server restarted - I am carrying on with your task \"{view['goal'][:80]}\" from where it stopped " \
+                       f"({view['done']}/{view['total']} steps done)."
             else:
-                line = f"Aapka kaam \"{view['goal'][:80]}\" kuch der se ruka tha — wahin se aage badha raha hoon " \
-                       f"({view['done']}/{view['total']} steps ho chuke)."
+                line = f"Your task \"{view['goal'][:80]}\" had paused for a while - I am carrying on from where it stopped " \
+                       f"({view['done']}/{view['total']} steps done)."
             with session() as s:
                 s.add(Message(conversation_id=conv, role="assistant", content=line, display=line,
                               in_history=False, delivered_to_agent=True))

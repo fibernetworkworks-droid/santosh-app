@@ -98,7 +98,7 @@ def test_v0260_fixes_are_untouched():
     from app.agent.goal_tools import GOAL_TOOLS
     spec = [t for t in GOAL_TOOLS if t["name"] == "kaam_plan"][0]
     assert "current, reason)" in spec["description"] and "current, note)" not in spec["description"]
-    assert 'say = "Yeh raasta nahi chala — ek doosra tareeka try karta hoon…"' in \
+    assert 'say = "That route did not work - trying another way…"' in \
         (ROOT / "server/app/agent/pakka.py").read_text()
     assert "def _answered_since" in (ROOT / "server/app/kaam_followup.py").read_text()
 
