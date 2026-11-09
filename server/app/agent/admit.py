@@ -603,7 +603,8 @@ class AdmitSet:
         self.extra: set[str] = set()          # tool names admitted directly (beyond their family)
         if self.core:
             from .core_tools import CORE
-            self.extra.update(n for n in CORE if n in HANDLERS)
+            direct = bool(getattr(settings, "chat_artifact_direct", False))   # Phase 6 on = the direct page tool
+            self.extra.update(n for n in CORE if n in HANDLERS and (n != "artifact" or direct))
         self.why: dict[str, str] = {}         # v0.245 family -> how it got in (word / intent / meaning / place)
 
     def admit_families(self, tags) -> list[str]:

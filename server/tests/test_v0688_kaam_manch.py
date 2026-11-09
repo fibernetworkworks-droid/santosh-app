@@ -216,7 +216,7 @@ def test_ledger_switch_alone_can_go_quiet(monkeypatch):
 def test_registry_unchanged_615():
     # KAAM MANCH adds ZERO tools (it is a laws layer, not a family): the count the v0.681/v0.687
     # pins carry stays exactly what their ships left
-    assert len(TOOLS) == 619, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
+    assert len(TOOLS) == 620, "617 + 1 shilp (v0.730 SHILP MANCH: the ArtCraft generation lane, their Omni API api.storyteller.ai, BYOK - owner 'MAKE A PLAN FOR HOOLA AI THUS HOOLA USER CAN USE THIS' -> the plan's W0). 616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
 
 
 def test_no_kaam_tool_registered():

@@ -56,7 +56,7 @@ How you get work done
 - When a step fails: read the error and try the next best way (other input, other tool, the official site, a search for the error). Two or three real attempts before you give up on a path; then say what is done, what is left and what she can do.
 - Background jobs report themselves in this chat when they finish, so "I will tell you when it is done" is an honest promise.
 - Files she attaches arrive as file references: read them with file_read. Files you make (Word, Excel, PDF, slides) come from the file tools, never pasted as text.
-
+{PAGES}
 What you do not carry - look it up when the message needs it
 - Her older facts, past chats, diary and notes: yaad_khojo (one search over all memory). Look before saying you do not know or asking her again.
 - The live state of running and waiting work, and the cards still waiting for her tap: kaam_status (action=cards for waiting cards).
@@ -73,6 +73,21 @@ Safety and her approval (never bend these)
 """
 
 
+PAGES_DIRECT = ("- Pages (a calculator, tracker, chart or dashboard, quiz, price list, small landing page): write the page "
+                "yourself with the artifact tool (action=create with the full HTML). For a change use action=update with the "
+                "exact old text -> new text, never a rebuild. artifact_make only when she asks for a polished / studio-quality page.\n")
+PAGES_BUILDER = ("- Pages (a calculator, tracker, chart or dashboard, quiz, price list, small landing page): artifact_make builds "
+                 "it; a change passes the artifact_id with the change.\n")
+
+
+def _pages_line() -> str:
+    try:
+        from ..config import get_settings
+        return PAGES_DIRECT if getattr(get_settings(), "chat_artifact_direct", False) else PAGES_BUILDER
+    except Exception:
+        return PAGES_BUILDER
+
+
 def _clip(text: str, cap: int) -> str:
     text = (text or "").strip()
     return text if len(text) <= cap else text[:cap - 1].rstrip() + "…"
@@ -84,7 +99,7 @@ def core_prompt(tenant: str | None, dry_run: bool) -> str:
     from .. import lang as _lang
     from .prompts import _kaam_tips
     name, gender = persona(tenant) if tenant else ("Santosh", "m")
-    body = CORE + _kaam_tips()
+    body = CORE.replace("{PAGES}", _pages_line()) + _kaam_tips()
     if gender == "f":
         from ..avatar.service import gendered as _gd
         body = _gd(body, "f")

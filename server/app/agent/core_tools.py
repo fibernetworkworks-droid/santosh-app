@@ -28,7 +28,8 @@ CORE = (
     "google_search",       # web search
     "web_fetch",           # the ONE web reader
     "pylab",               # Python sandbox: every worked-out number, data analysis, charts, files
-    "artifact_make",       # interactive pages (calculator, tracker, chart, quiz)
+    "artifact",            # parity Phase 6: a page the chat model writes itself (create / update / rewrite)
+    "artifact_make",       # interactive pages (calculator, tracker, chart, quiz) - the studio-polish builder
     "file_read",           # a file she attached in this chat
     "yaad_khojo",          # the ONE memory search (facts, past chats / calls / jobs, work notes)
     "haal_ki_chats",       # her other chats by date
@@ -144,7 +145,8 @@ CORE_DESC: dict[str, str] = {
         "checklist, a chart or small dashboard from her numbers, a quiz, a poster or price list, a mini landing page, "
         "a simple game. Use it when she wants something to USE, KEEP, SEE or SHARE. Not for a document to read or "
         "print (find doc_studio with tool_search) and not for a full website. A card with an Open button appears; "
-        "building takes 20-90 seconds. To change a page pass its artifact_id with the change. "
+        "building takes 20-90 seconds. To change a page pass its artifact_id with the change. When the `artifact` "
+        "tool is in view, write pages yourself with it and use artifact_make only for a polished / studio-quality ask. "
         "Example: {\"request\": \"EMI calculator in English, loan amount, rate, years; show a yearly table\"}"),
     "file_read": (
         "Read a file she attached in this chat (file_id from the [Attached by the owner] line): text of PDF, Word, "
