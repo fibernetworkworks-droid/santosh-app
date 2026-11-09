@@ -7,8 +7,8 @@ from typing import Any
 from ..packs.registry import Pack
 from .base import Ctx, NeedsApproval, ToolError, ToolSpec
 
-TITLES = {"create": "Invite bhejein?", "update": "Meeting badlein aur sabko batayein?",
-          "cancel": "Event cancel karein?", "decline": "Meeting ke liye mana karein?"}
+TITLES = {"create": "Send invite?", "update": "Change meeting and tell everyone?",
+          "cancel": "Cancel event?", "decline": "Decline the meeting?"}
 
 
 class CalendarExecutor:
@@ -24,18 +24,18 @@ class CalendarExecutor:
             raise ToolError(f"Unknown tool {tool}")
         p = cs.pending(ctx.user.id, str(args.get("pending_id", "")))
         if p is None or p["status"] != "pending":
-            raise ToolError("Yeh calendar badlav taiyaar nahi hai; dobara boliye.")
+            raise ToolError("This calendar change is not ready; please ask again.")
         sm = p["summary"]
         items = [{"name": sm.get("title", "")}, {"name": sm.get("when", "")}]
         if sm.get("location"):
-            items.append({"name": f"Jagah: {sm['location']}"})
+            items.append({"name": f"Place: {sm['location']}"})
         if sm.get("people"):
-            items.append({"name": "Logon ko email jayega: " + ", ".join(sm["people"])[:200]})
+            items.append({"name": "These people will get an email: " + ", ".join(sm["people"])[:200]})
         if sm.get("meet"):
-            items.append({"name": "Google Meet link banega"})
+            items.append({"name": "A Google Meet link will be created"})
         if sm.get("note"):
             items.append({"name": sm["note"][:200]})
-        return NeedsApproval(tier=2, title=TITLES.get(p["action"], "Calendar badlav?"), payee="Google Calendar",
+        return NeedsApproval(tier=2, title=TITLES.get(p["action"], "Calendar change?"), payee="Google Calendar",
                              amount_paise=0, items=[i for i in items if i["name"]], pay_method="Santosh Calendar",
                              preview={"message": f"Approve to {p['action']} '{sm.get('title', '')}' on Google Calendar."},
                              action={"executor": "cal", "pack_id": pack.id, "name": "run", "args": {"pending_id": p["id"]}})

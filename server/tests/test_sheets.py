@@ -341,7 +341,7 @@ def test_delete_rows_and_share_need_the_tap(bz, gs):  # noqa: F811
     grid = gs.books[SID]["tabs"]["Customers"]["grid"]
     assert len(grid) == 5                                                    # nothing deleted yet
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Rows hatayein?" and "Gupta & Sons" in json.dumps(card)
+    assert card["title"] == "Delete rows?" and "Gupta & Sons" in json.dumps(card)
     bz["svc"].decide("default", card["id"], "approve")
     assert [r[0] for r in grid] == ["Name", "Sharma Traders", "Patil Stores", "Rao Electricals"]
     from app.mailbox import contacts
@@ -417,7 +417,7 @@ def test_clear_card_flow(bz, gs):  # noqa: F811
     assert out["needs_approval"]
     assert gs.clears == []     # nothing cleared yet
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Values saaf karein?"
+    assert card["title"] == "Clear values?"
     bz["svc"].decide("default", card["id"], "approve")
     assert gs.clears == [(SID, ["'Customers'!A2:C3"])]    # q_tab() quotes the tab name
 
@@ -452,7 +452,7 @@ def test_delete_tab_card_flow(bz, gs):  # noqa: F811
     assert out["needs_approval"]
     assert "Notes" in gs.books[SID]["tabs"]    # nothing deleted yet
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Tab hatayein?"
+    assert card["title"] == "Delete tab?"
     bz["svc"].decide("default", card["id"], "approve")
     assert "Notes" not in gs.books[SID]["tabs"]
 
@@ -489,7 +489,7 @@ def test_protect_card_with_editors(bz, gs):  # noqa: F811
     assert out["needs_approval"]
     assert gs.protects == []     # not locked yet
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Lock kar dein?"
+    assert card["title"] == "Lock it?"
     bz["svc"].decide("default", card["id"], "approve")
     assert len(gs.protects) == 1
     sid, tab_id, rng, editors = gs.protects[0]

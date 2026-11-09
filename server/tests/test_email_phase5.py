@@ -318,12 +318,12 @@ def test_alias_add_and_list(gb, bz):  # noqa: F811
 
 def test_alias_remove_primary_refused_secondary_card(gb, bz):  # noqa: F811
     ctx = Ctx("default", bz["conv"])
-    with pytest.raises(ToolError, match="Primary"):
+    with pytest.raises(ToolError, match="primary address"):
         run("email_alias", {"action": "remove", "email": "meghana@fnw.in"}, ctx)
     out = run("email_alias", {"action": "remove", "email": "hello@newtika.in"}, ctx)
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Alias 'hello@newtika.in' hatayein?"
+    assert card["title"] == "Remove alias 'hello@newtika.in'?"
     assert gb.sendas[-1]["sendAsEmail"] == "hello@newtika.in"     # nothing removed before the tap
     bz["svc"].decide("default", card["id"], "approve")
     assert all(sa["sendAsEmail"] != "hello@newtika.in" for sa in gb.sendas)
@@ -407,10 +407,10 @@ def test_draft_send_card_then_real_send(gb, draft, bz):  # noqa: F811
     out = run("email_drafts", {"action": "send", "id": "d1"}, ctx)
     assert out["needs_approval"] and gb.sent_drafts == []
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Yeh Gmail draft bhejein?"
+    assert card["title"] == "Send this Gmail draft?"
     flat = json.dumps(card, ensure_ascii=False)
     assert "ramesh@vendor.in" in flat and "Quotation for 10 routers" in flat and "price.xlsx" in flat
-    assert "undo nahi" in flat                                    # the card says no undo, in plain words
+    assert "cannot be undone" in flat                                    # the card says no undo, in plain words
     assert not any(m == "POST" and p == "/drafts/send" for m, p in gb.calls)
     bz["svc"].decide("default", card["id"], "approve")
     assert gb.sent_drafts == ["d1"] and "d1" not in gb.drafts     # drafts.send really ran, draft gone
@@ -463,17 +463,17 @@ def test_delete_normal_trash_vs_forever_card_and_execute(gb, bz):  # noqa: F811
     ctx = Ctx("default", bz["conv"])
     out = run("email_delete", {"ids": [ref("201")]}, ctx)
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "1 email delete karein?" and "Trash" in json.dumps(card, ensure_ascii=False)
-    assert "HAMESHA" not in json.dumps(card, ensure_ascii=False)
+    assert card["title"] == "Delete 1 email(s)?" and "Trash" in json.dumps(card, ensure_ascii=False)
+    assert "FOREVER" not in json.dumps(card, ensure_ascii=False)
     assert gb.deleted_forever == []                               # nothing permanent before the tap
     bz["svc"].decide("default", card["id"], "approve")
     assert gb.deleted_forever == [] and "201" in gb.msgs and gb.trashed == ["201"]   # normal delete = Trash
 
     out = run("email_delete", {"ids": [ref("201")], "forever": True}, ctx)
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "1 email HAMESHA KE LIYE delete karein?"
+    assert card["title"] == "Delete 1 email(s) FOREVER?"
     flat = json.dumps(card, ensure_ascii=False)
-    assert "wapas NAHI aayengi" in flat and "Trash mein bhi nahi" in flat
+    assert "will NOT come back" in flat and "not even in Trash" in flat
     assert not any(m == "DELETE" and p.startswith("/messages/") for m, p in gb.calls)
     bz["svc"].decide("default", card["id"], "approve")
     assert gb.deleted_forever == ["201"] and "201" not in gb.msgs

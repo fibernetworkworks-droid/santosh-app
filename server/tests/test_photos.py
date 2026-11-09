@@ -199,7 +199,7 @@ def test_big_upload_needs_the_tap(ph):
     bctx = SimpleNamespace(user=SimpleNamespace(id="default"))
     ex = PhotosExecutor()
     card = ex.call(pack, "confirm_change", {"pending_id": res["pending_id"]}, bctx)
-    assert card.title == "Itni photos upload karein?" and "21" in card.items[0]["name"]
+    assert card.title == "Upload these photos?" and "21" in card.items[0]["name"]
     out = ex.execute(pack, card.action["name"], card.action["args"], bctx)
     assert out["uploaded"] == 21 and len(ph.items) == 21
     from app.bazar.connectors.base import ToolError as BzErr

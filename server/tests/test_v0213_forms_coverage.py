@@ -54,8 +54,8 @@ def test_old_gdrive_path_still_registers_nothing():
 
 def test_card_backed_actions_have_bazar_copy():
     """The Bazar santosh-forms pack grew from 2 to 3 confirm-card actions (added delete_form)."""
-    for act, title in {"share": "Form share karein?", "delete_questions": "Jawab wale sawaal hatayein?",
-                       "delete_form": "Form delete karein?"}.items():
+    for act, title in {"share": "Share form?", "delete_questions": "Delete questions that have answers?",
+                       "delete_form": "Delete form?"}.items():
         assert TITLES.get(act) == title
 
 

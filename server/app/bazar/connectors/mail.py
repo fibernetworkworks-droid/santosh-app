@@ -54,9 +54,9 @@ class MailExecutor:
             ids = [str(i) for i in (args.get("ids") or []) if str(i).strip()]
             forever = bool(args.get("forever"))
             if not ids:
-                raise ToolError("Kaunsi emails delete karni hain? ids do.")
+                raise ToolError("Which emails should be deleted? Give the ids.")
             if len(ids) > MAX_DELETE:
-                raise ToolError(f"Ek baar mein {MAX_DELETE} se zyada emails delete nahi.")
+                raise ToolError(f"No more than {MAX_DELETE} emails can be deleted at once.")
             items = []
             try:
                 for ref in ids[:5]:
@@ -67,14 +67,14 @@ class MailExecutor:
             except MailError as e:
                 raise ToolError(str(e))
             if len(ids) > 5:
-                items.append({"name": f"+ {len(ids) - 5} aur emails"})
+                items.append({"name": f"+ {len(ids) - 5} more emails"})
             if forever:
-                items.append({"name": "HAMESHA KE LIYE delete hongi — Trash mein bhi nahi milengi, wapas NAHI aayengi."})
-                items.append({"name": "Pakka? Agar shak ho to forever ke bina wahi delete Trash mein jaati (30 din tak wapas la sakte hain)."})
+                items.append({"name": "They will be deleted FOREVER — not even in Trash, and they will NOT come back."})
+                items.append({"name": "Sure? If in doubt, the same delete without 'forever' moves them to Trash (you can bring them back for 30 days)."})
             else:
-                items.append({"name": "Trash mein jayengi (30 din tak wapas la sakte hain)."})
-            title = (f"{len(ids)} email HAMESHA KE LIYE delete karein?" if forever
-                     else f"{len(ids)} email delete karein?")
+                items.append({"name": "They will go to Trash (you can bring them back for 30 days)."})
+            title = (f"Delete {len(ids)} email(s) FOREVER?" if forever
+                     else f"Delete {len(ids)} email(s)?")
             return NeedsApproval(tier=2, title=title, payee="Email", amount_paise=0,
                                  items=items, pay_method="Santosh Email",
                                  preview={"message": (f"Approve to permanently delete {len(ids)} email(s) — no Trash."
@@ -84,17 +84,17 @@ class MailExecutor:
         if tool == "confirm_bulk":
             v = ms.bulk_view(tenant, str(args.get("bulk_id", "")))
             if v is None or v["status"] != "pending":
-                raise ToolError("Yeh bulk email taiyaar nahi hai (ya pehle hi chal chuka hai). email_bulk se dobara banaiye.")
+                raise ToolError("This bulk email is not ready (or has already run). Create it again with email_bulk.")
             first = v["first"][0] if v["first"] else {"email": "", "fields": {}}
-            items = [{"name": f"Vishay: {ms.render(v['subject'], first['fields'])[:90]}"},
-                     {"name": f"Pehla: {first['email']}"},
+            items = [{"name": f"Subject: {ms.render(v['subject'], first['fields'])[:90]}"},
+                     {"name": f"First: {first['email']}"},
                      {"name": ms.render(v["body"], first["fields"])[:300]}]
             if v["attachments"]:
                 items.append({"name": "Attachment: " + ", ".join(v["attachments"])[:120]})
             from ...config import get_settings
-            items.append({"name": f"Har vyakti ko alag email (kisi ko doosron ka address nahi dikhega), "
+            items.append({"name": f"Each person gets a separate email (nobody sees anyone else's address), "
                                   f"~{get_settings().mail_bulk_per_minute} per minute."})
-            return NeedsApproval(tier=2, title=f"{v['total']} logon ko email bhejein?", payee=v["source"] or "Email list",
+            return NeedsApproval(tier=2, title=f"Send email to {v['total']} people?", payee=v["source"] or "Email list",
                                  amount_paise=0, items=items, pay_method="Santosh Email",
                                  preview={"message": f"Approve to send '{v['subject'][:80]}' to {v['total']} people."},
                                  action={"executor": "mail", "pack_id": pack.id, "name": "bulk_send",
@@ -102,10 +102,10 @@ class MailExecutor:
         if tool == "confirm_label_delete":
             name = str(args.get("name") or "").strip()
             if not name:
-                raise ToolError("Kaunsa label? naam do.")
-            return NeedsApproval(tier=2, title=f"Label '{name}' hatayein?", payee="Email", amount_paise=0,
-                                 items=[{"name": f"Gmail label '{name}' delete hogi."},
-                                        {"name": "Mails delete nahi hongi; sirf yeh label un par se hat jayegi."}],
+                raise ToolError("Which label? Give the name.")
+            return NeedsApproval(tier=2, title=f"Delete label '{name}'?", payee="Email", amount_paise=0,
+                                 items=[{"name": f"The Gmail label '{name}' will be deleted."},
+                                        {"name": "No emails will be deleted; only this label will be removed from them."}],
                                  pay_method="Santosh Email",
                                  preview={"message": f"Approve to delete the label '{name}'."},
                                  action={"executor": "mail", "pack_id": pack.id, "name": "label_delete",
@@ -113,10 +113,10 @@ class MailExecutor:
         if tool == "confirm_draft_delete":
             did = str(args.get("id") or "").strip()
             if not did:
-                raise ToolError("Kaunsa draft? id do (email_drafts list se).")
-            return NeedsApproval(tier=2, title="Gmail draft delete karein?", payee="Email", amount_paise=0,
-                                 items=[{"name": "Yeh Gmail ke Drafts folder se hamesha ke liye hat jayega."},
-                                        {"name": "(Gmail ke drafts Trash mein nahi jaate.)"}],
+                raise ToolError("Which draft? Give the id (from the email_drafts list).")
+            return NeedsApproval(tier=2, title="Delete Gmail draft?", payee="Email", amount_paise=0,
+                                 items=[{"name": "This will be removed from the Gmail Drafts folder forever."},
+                                        {"name": "(Gmail drafts do not go to Trash.)"}],
                                  pay_method="Santosh Email",
                                  preview={"message": "Approve to delete this draft from the Gmail Drafts folder."},
                                  action={"executor": "mail", "pack_id": pack.id, "name": "draft_delete",
@@ -124,20 +124,20 @@ class MailExecutor:
         if tool == "confirm_draft_send":
             did = str(args.get("id") or "").strip()
             if not did:
-                raise ToolError("Kaunsa draft? id do (email_drafts list se).")
+                raise ToolError("Which draft? Give the id (from the email_drafts list).")
             try:
                 v = ms.gmail_draft_view(tenant, did, str(args.get("account") or "") or None)
             except MailError as e:
                 raise ToolError(str(e))
-            items = [{"name": f"Kiske liye: {v['to'][:90]}"}]
+            items = [{"name": f"To: {v['to'][:90]}"}]
             if v.get("cc"):
                 items.append({"name": f"Cc: {v['cc'][:90]}"})
-            items.append({"name": f"Vishay: {v['subject'][:90]}"})
+            items.append({"name": f"Subject: {v['subject'][:90]}"})
             items.append({"name": (v.get("body") or "")[:240] + ("…" if len(v.get("body") or "") > 240 else "")})
             if v.get("attachments"):
                 items.append({"name": "Attachments: " + ", ".join(v["attachments"])[:120]})
-            items.append({"name": "Yeh Gmail ke Drafts folder wala draft seedha BHEJEGI — baad mein undo nahi hoga."})
-            return NeedsApproval(tier=2, title="Yeh Gmail draft bhejein?", payee=v.get("account") or "Gmail",
+            items.append({"name": "This will SEND the draft from the Gmail Drafts folder right away — it cannot be undone."})
+            return NeedsApproval(tier=2, title="Send this Gmail draft?", payee=v.get("account") or "Gmail",
                                  amount_paise=0, items=items, pay_method="Santosh Email",
                                  preview={"message": f"Approve to send the Gmail draft '{v['subject'][:60]}'."},
                                  action={"executor": "mail", "pack_id": pack.id, "name": "draft_send",
@@ -145,16 +145,16 @@ class MailExecutor:
         if tool == "confirm_alias_delete":
             em = str(args.get("email") or "").strip().lower()
             if not em:
-                raise ToolError("Kaunsa alias? email do (email_alias list se).")
+                raise ToolError("Which alias? Give the email (from the email_alias list).")
             me = ms.alias_find(tenant, em, str(args.get("account") or "") or None)
             if me is None:
-                raise ToolError(f"'{em}' naam ka alias is Gmail mein nahi hai.")
+                raise ToolError(f"There is no alias '{em}' in this Gmail.")
             if me.get("isPrimary"):
-                raise ToolError("Primary address kabhi hat nahi sakta — woh khud Gmail ka login hai.")
-            return NeedsApproval(tier=2, title=f"Alias '{em}' hatayein?", payee="Gmail", amount_paise=0,
-                                 items=[{"name": f"Gmail ka send-as alias '{em}' hata degi."},
-                                        {"name": "Is address se ab mail nahi bhej paayengi (purane mails waise hi hain)."},
-                                        {"name": "Dobara jodna ho to email_alias action='add' se hoga."}],
+                raise ToolError("The primary address can never be removed — it is the Gmail login itself.")
+            return NeedsApproval(tier=2, title=f"Remove alias '{em}'?", payee="Gmail", amount_paise=0,
+                                 items=[{"name": f"The Gmail send-as alias '{em}' will be removed."},
+                                        {"name": "You will no longer be able to send mail from this address (old mails stay as they are)."},
+                                        {"name": "To add it back, use email_alias action='add'."}],
                                  pay_method="Santosh Email",
                                  preview={"message": f"Approve to remove the send-as alias '{em}'."},
                                  action={"executor": "mail", "pack_id": pack.id, "name": "alias_delete",
@@ -169,30 +169,29 @@ class MailExecutor:
             except MailError as e:
                 raise ToolError(str(e))
             if box.kind != "gmail":
-                raise ToolError("Vacation reply sirf Gmail mailbox ki setting hai.")
+                raise ToolError("Vacation reply is a setting for Gmail mailboxes only.")
             if enable and not message:
-                raise ToolError("Vacation reply ON karne ke liye message do (wahi sabko auto-jawab jayega).")
-            items = [{"name": ("Vacation auto-reply ON hoga" if enable else "Vacation auto-reply BAND hoga")
+                raise ToolError("To turn the vacation reply ON, give a message (that is the auto-reply everyone will get).")
+            items = [{"name": ("Vacation auto-reply will be turned ON" if enable else "Vacation auto-reply will be turned OFF")
                            + f" — {box.address}"}]
             if enable:
-                items.append({"name": "Auto-jawab: " + (message[:220] + ("…" if len(message) > 220 else ""))})
+                items.append({"name": "Auto-reply: " + (message[:220] + ("…" if len(message) > 220 else ""))})
                 if str(args.get("subject") or "").strip():
-                    items.append({"name": f"Vishay: {str(args['subject']).strip()[:80]}"})
-                window = "Abhi se" if not str(args.get("start") or "").strip() else f"{args['start']} se"
+                    items.append({"name": f"Subject: {str(args['subject']).strip()[:80]}"})
+                window = "From now" if not str(args.get("start") or "").strip() else f"From {args['start']}"
                 if str(args.get("end") or "").strip():
-                    window += f" {args['end']} tak"
+                    window += f" until {args['end']}"
                 else:
-                    window += ", band karne tak"
+                    window += ", until turned off"
                 items.append({"name": window})
                 if args.get("contacts_only"):
-                    items.append({"name": "Sirf saved contacts ko jawab jayega."})
-                items.append({"name": "Gmail aane wali HAR mail ko yeh jawab bhejega (ek baar hi, har sender ko)."})
+                    items.append({"name": "Only saved contacts will get a reply."})
+                items.append({"name": "Gmail will send this reply to EVERY incoming mail (only once per sender)."})
             else:
-                items.append({"name": "Aane wali mails par ab koi auto-jawab nahi jayega."})
+                items.append({"name": "Incoming mails will no longer get an auto-reply."})
             if not settings_scope_ok(tenant, box):
-                items.append({"name": "(Pehle is Gmail ko ek baar dobara jodna hoga — Profile > Email; mail pehle jaisa "
-                                      "chalega.)"})
-            return NeedsApproval(tier=2, title="Vacation reply " + ("chalu karein?" if enable else "band karein?"),
+                items.append({"name": "(You will first need to reconnect this Gmail once — Profile > Email; mail keeps working as before.)"})
+            return NeedsApproval(tier=2, title="Turn vacation reply " + ("on?" if enable else "off?"),
                                  payee="Gmail", amount_paise=0, items=items, pay_method="Santosh Email",
                                  preview={"message": ("Approve to switch the vacation auto-reply "
                                                       + ("ON." if enable else "OFF."))},
@@ -211,11 +210,11 @@ class MailExecutor:
                 raise ToolError(str(e))
             sig = (str(args.get("signature") or "").strip() or (box.signature or "").strip())
             if not sig:
-                raise ToolError("Is mailbox ka signature khaali hai — pehle email_accounts signature='...' se set kijiye.")
-            return NeedsApproval(tier=2, title="Signature Gmail mein daalein?", payee="Gmail", amount_paise=0,
-                                 items=[{"name": f"{box.address} ka Gmail signature badlega:"},
+                raise ToolError("This mailbox has no signature — set one first with email_accounts signature='...'.")
+            return NeedsApproval(tier=2, title="Put signature into Gmail?", payee="Gmail", amount_paise=0,
+                                 items=[{"name": f"The Gmail signature for {box.address} will change to:"},
                                         {"name": sig[:220] + ("…" if len(sig) > 220 else "")},
-                                        {"name": "(Gmail web + Gmail app, sab jagah yahi dikhega.)"}],
+                                        {"name": "(It will show everywhere: Gmail web and the Gmail app.)"}],
                                  pay_method="Santosh Email",
                                  preview={"message": "Approve to push this signature into Gmail itself."},
                                  action={"executor": "mail", "pack_id": pack.id, "name": "signature_push",
@@ -229,18 +228,18 @@ class MailExecutor:
             except MailError as e:
                 raise ToolError(str(e))
             if box.kind != "gmail":
-                raise ToolError("Auto-forward sirf Gmail mailbox ki setting hai.")
+                raise ToolError("Auto-forward is a setting for Gmail mailboxes only.")
             if enable:
                 from ...mailbox import contacts
                 if not to or not contacts.valid(to):
-                    raise ToolError("Forward kis address par? Sahi email do.")
-            items = ([{"name": f"{box.address} ki har nayi mail {to} par bhi jayegi (Gmail ka apna auto-forward)."},
-                      {"name": "Gmail inbox mein mail rakhta hai (copy ke saath)."},
-                      {"name": "Yeh Gmail ki apni setting hai — Gmail web ke Forwarding mein bhi dikhegi."}]
+                    raise ToolError("Forward to which address? Give a valid email.")
+            items = ([{"name": f"Every new mail to {box.address} will also go to {to} (Gmail's own auto-forward)."},
+                      {"name": "Gmail keeps the mail in the inbox (a copy is forwarded)."},
+                      {"name": "This is Gmail's own setting — it will also show in Gmail web under Forwarding."}]
                      if enable else
-                     [{"name": f"{box.address} ka auto-forward band hoga."},
-                      {"name": "Aane wali mails sirf is mailbox mein aayengi."}])
-            return NeedsApproval(tier=2, title="Auto-forward " + ("chalu karein?" if enable else "band karein?"),
+                     [{"name": f"Auto-forward for {box.address} will be turned off."},
+                      {"name": "Incoming mails will arrive only in this mailbox."}])
+            return NeedsApproval(tier=2, title="Turn auto-forward " + ("on?" if enable else "off?"),
                                  payee="Gmail", amount_paise=0, items=items, pay_method="Santosh Email",
                                  preview={"message": ("Approve to switch auto-forwarding "
                                                       + (f"ON to {to}." if enable else "OFF."))},
@@ -255,10 +254,10 @@ class MailExecutor:
         try:
             if action == "delete":
                 n = ms.trash(tenant, list(args["ids"]))
-                return {"message": f"{n} email Trash mein daal di."}
+                return {"message": f"Moved {n} email(s) to Trash."}
             if action == "delete_forever":
                 n = ms.delete_forever(tenant, list(args["ids"]))
-                return {"message": f"{n} email hamesha ke liye delete kar di (Trash mein bhi nahi)."}
+                return {"message": f"Deleted {n} email(s) forever (not even in Trash)."}
             if action == "draft_send":
                 out = ms.send_gmail_draft(tenant, str(args.get("id") or ""), str(args.get("account") or "") or None)
                 return {"message": out["note"]}
@@ -267,13 +266,13 @@ class MailExecutor:
                 return {"message": out["note"]}
             if action == "bulk_send":
                 out = ms.start_bulk(tenant, args["bulk_id"])
-                return {"message": f"{out.get('total', '')} logon ko email bhejna shuru kar diya.".strip()}
+                return {"message": f"Started sending email to {out.get('total', '')} people.".strip()}
             if action == "label_delete":
                 ms.label_op(tenant, "delete", str(args.get("name") or ""))
-                return {"message": "Label hata di (mails waisi hi padi hain)."}
+                return {"message": "Label removed (the mails are untouched)."}
             if action == "draft_delete":
                 ms.delete_gmail_draft(tenant, str(args.get("id") or ""))
-                return {"message": "Gmail ka draft hata diya."}
+                return {"message": "Gmail draft deleted."}
             if action == "vacation_set":
                 out = ms.vacation_set(tenant, str(args.get("account") or "") or None, bool(args.get("enable")),
                                       str(args.get("message") or ""), str(args.get("subject") or ""),

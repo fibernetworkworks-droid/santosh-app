@@ -194,7 +194,7 @@ def test_organise_and_delete_needs_approval(bz, box):  # noqa: F811
     out = run("email_delete", {"ids": [ref("102")]}, ctx)
     assert out["needs_approval"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "1 email delete karein?" and "Your OTP for login" in json.dumps(card)
+    assert card["title"] == "Delete 1 email(s)?" and "Your OTP for login" in json.dumps(card)
     assert box.msgs["102"]["folder"] == "inbox"                   # not deleted before the tap
     bz["svc"].decide("default", card["id"], "approve")
     assert box.msgs["102"]["folder"] == "trash"
@@ -308,7 +308,7 @@ def test_bulk_mail_from_excel_after_approval(bz, box, monkeypatch):  # noqa: F81
     assert out["recipients"] == 2 and out["invalid_skipped"] == 1        # duplicate and bad address dropped
     assert out["sample_body"].startswith("Namaste Raju, aapka balance Rs 500")
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "2 logon ko email bhejein?"
+    assert card["title"] == "Send email to 2 people?"
     assert ms.bulk_tick() == 0 and box.sent == []                         # nothing before approval
     bz["svc"].decide("default", card["id"], "approve")
     for _ in range(5):

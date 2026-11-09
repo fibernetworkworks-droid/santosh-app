@@ -144,7 +144,7 @@ def test_checkin_checkout_bill_only_on_her_tap(fo, monkeypatch):
         S.check_in(T, b["number"])
     S.set_room_status(T, "101", "dirty")
     S.set_room_status(T, "102", "dirty")
-    with pytest.raises(S.FoError, match="ganda"):
+    with pytest.raises(S.FoError, match="dirty"):
         S.check_in(T, b["number"], id_kind="aadhaar", id_number="2345 6789 0124")
     S.set_room_status(T, "102", "inspected")
     ci = S.check_in(T, b["number"], id_kind="aadhaar", id_number="2345 6789 0124", coming_from="Pune", purpose="business")
@@ -168,7 +168,7 @@ def test_checkin_checkout_bill_only_on_her_tap(fo, monkeypatch):
     with pytest.raises(S.FoError):
         S.received(T, b["number"], 100, actor="staff:x")                              # only she says money came
     S.received(T, b["number"], 1000, mode="cash")
-    with pytest.raises(S.FoError, match="badal"):
+    with pytest.raises(S.FoError, match="changed"):
         S.decide(T, co["card"]["id"], True, co["card"]["hash"], by_tap=True)          # payment after the card: stale
     c2 = S.bill_request(T, b["number"])["card"]
     monkeypatch.setattr("app.chatfiles.store", lambda tenant, name, data, ct="": {"file_id": "f1", "name": name, "size": len(data)})
@@ -260,11 +260,11 @@ def test_foreign_guest_formc_clock_and_forget(fo):
     assert S.tick(S.CLOCK["t"])["formc"] == 0
     S.CLOCK["t"] = NOW + timedelta(hours=25)
     S.tick(S.CLOCK["t"])
-    assert any(p.get("kind") == "formc" and "nikal gaya" in p["say"] for k, p in S.EVENTS if k == "frontoffice_alert")
+    assert any(p.get("kind") == "formc" and "deadline has passed" in p["say"] for k, p in S.EVENTS if k == "frontoffice_alert")
     S.formc_done(T, fc["id"], "FRRO-REF-9")
     co = S.check_out(T, b["number"])
     assert co["formc"]["kind"] == "departure"
-    with pytest.raises(S.FoError, match="1 saal"):
+    with pytest.raises(S.FoError, match="1 year"):
         S.forget(T, ci["booking"]["guest_number"])
     # an Indian guest can be forgotten after the stay; locker entry deleted
     b2 = S.book(T, "STE", "2026-10-25", nights=1, name="Forget Me", phone="9822012399")["booking"]
@@ -275,7 +275,7 @@ def test_foreign_guest_formc_clock_and_forget(fo):
     from app import idvault
     before = len(idvault.list_(T))
     out = S.forget(T, S.booking_view(T, b2["number"])["guest_number"])
-    assert "mita di" in out["say"] and len(idvault.list_(T)) == before - 1
+    assert "erased" in out["say"] and len(idvault.list_(T)) == before - 1
     assert S.booking_view(T, b2["number"])["phone"] == ""
 
 
