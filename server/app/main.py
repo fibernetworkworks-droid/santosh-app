@@ -753,6 +753,26 @@ def harness_events(conversation_id: str, after: int = 0, limit: int = 100, tenan
     return {"events": rows, "last_id": rows[-1]["id"] if rows else after}
 
 
+@app.get("/api/conversations/{conversation_id}/request", dependencies=[Depends(require_key)])
+def request_dump_list(conversation_id: str, tenant: str = Depends(current_tenant)):
+    """v0.732 PARITY Phase 0: the turns whose model requests were kept (newest request_dump_turns), with their brains."""
+    _conv_or_404(conversation_id, tenant)
+    from . import reqdump
+    return {"turns": reqdump.turns(conversation_id, tenant), "on": reqdump.on()}
+
+
+@app.get("/api/conversations/{conversation_id}/request/{turn}", dependencies=[Depends(require_key)])
+def request_dump_turn(conversation_id: str, turn: str, tenant: str = Depends(current_tenant)):
+    """v0.732 PARITY Phase 0: exactly what the model received on that turn (number 1..n, -1 = newest, or the turn id):
+    every step's system prompt text, tool names, messages, brain / model and max_tokens - secrets masked."""
+    _conv_or_404(conversation_id, tenant)
+    from . import reqdump
+    got = reqdump.turn(conversation_id, tenant, turn)
+    if got is None:
+        raise HTTPException(404, "No request kept for that turn")
+    return got
+
+
 @app.post("/api/conversations/{conversation_id}/messages", status_code=202, dependencies=[Depends(require_key)])
 async def post_message(conversation_id: str, body: NewMessage, background: BackgroundTasks, tenant: str = Depends(current_tenant)):
     _conv_or_404(conversation_id, tenant)

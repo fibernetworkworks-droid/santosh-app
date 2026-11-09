@@ -700,6 +700,65 @@ def _think_refused(e: Exception) -> bool:
 
 async def _call_brain(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
                       live=None, max_tokens: int | None = None, think: bool = False) -> tuple[list[dict], str]:
+    """v0.732 PARITY Phase 0: the one model-call funnel also keeps WHAT THE MODEL RECEIVED (reqdump: system text, tool
+    names, messages, brain / model, max_tokens) for GET /api/conversations/{id}/request/{turn}. Fail-open and off the
+    loop; behaviour unchanged (switch `request_dump`)."""
+    _mark("request")      # v0.639 the step's request was built (prune / trim / sanitize)
+    handle = _dump_start(brain, system, history, settings, tools, max_tokens)
+    try:
+        out = await _call_brain_once(brain, system, history, settings, tools, live, max_tokens, think)
+    except BaseException as e:   # noqa: BLE001 - recorded, then re-raised untouched
+        _dump_done(handle, False, f"{type(e).__name__}: {str(e)[:300]}")
+        raise
+    _dump_done(handle, True)
+    return out
+
+
+def _dump_model(brain: str, settings) -> str:
+    """The brain / model this call goes to, as the request dump names it (the SDK door's GLM said when it answers)."""
+    if brain == "omniroute":
+        return str(getattr(settings, "omniroute_model", "") or "")
+    if brain == "glm":
+        return str(getattr(settings, "glm_model", "") or "")
+    sent = _sent_model(_MODEL_NOW.get() or settings.anthropic_model)
+    try:
+        from .. import glmdoor
+        if glmdoor.active():
+            b = glmdoor.brain()
+            m = settings.omniroute_model if b == "omniroute" else settings.glm_model
+            return f"{b}:{m} via SDK door (asked {sent})"
+    except Exception:
+        pass
+    return sent
+
+
+def _dump_start(brain, system, history, settings, tools, max_tokens):
+    try:
+        from .. import reqdump
+        if not reqdump.on():
+            return None
+        tl = tools if tools is not None else TOOLS
+        if brain in ("glm", "omniroute"):
+            from . import toolsearch as _ts
+            tl = _ts.loaded(tl)
+        return reqdump.start(brain, _dump_model(brain, settings), int(max_tokens or settings.agent_max_tokens or 0),
+                             system, tl, history, prep=_api_ready)
+    except Exception:
+        return None
+
+
+def _dump_done(handle, ok: bool, error: str = "") -> None:
+    if handle is None:
+        return
+    try:
+        from .. import reqdump
+        reqdump.done(handle, ok, error)
+    except Exception:
+        pass
+
+
+async def _call_brain_once(brain: str, system: str, history: list[dict], settings, tools: list[dict] | None = None,
+                           live=None, max_tokens: int | None = None, think: bool = False) -> tuple[list[dict], str]:
     """One model call on one brain. Raises when that brain fails. With `live` (v0.161) the words stream as written.
     v0.187 goal mode raises max_tokens (6000) so a plan's steps are not cut at the chat-size 2000.
     v0.213 the prefill guard: the production model refuses a conversation whose LAST message is an assistant
@@ -709,7 +768,6 @@ async def _call_brain(brain: str, system: str, history: list[dict], settings, to
     error: 'tool_use ids were found without tool_result blocks immediately after'), mid-array partial pairs
     are rebuilt and orphan results dropped, always on a COPY so no caller's history list is ever mutated
     behind its back (team sub-agents share their history list across steps)."""
-    _mark("request")      # v0.639 the step's request was built (prune / trim / sanitize)
     history = _api_ready(history)
     tools = tools if tools is not None else TOOLS
     cap = max_tokens or settings.agent_max_tokens

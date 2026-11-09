@@ -46,6 +46,8 @@ on:
           - maps_card
           - research_card
           - research_runoff_check
+          - parity_card_check
+          - parity_card
           - long_jobs
           - long_card_try
           - long_card_try_haiku
@@ -430,6 +432,24 @@ jobs:
                 echo 'cd $CORE && echo "== free card"; timeout 180 .venv/bin/python -m app.quality research 2>&1 | tail -20'
                 echo 'echo "== live, 4 topics"; cd $CORE && timeout 1500 .venv/bin/python -m app.quality research --live --only official_cpi,rule_gst_einvoice,calc_smartphones,scholarly_rag --label vps-ops 2>&1 | tail -30'
                 echo 'echo "== live, the traps"; cd $CORE && timeout 900 .venv/bin/python -m app.quality research --live --kind trap --label vps-ops 2>&1 | tail -20' ;;
+              parity_card_check)
+                # v0.732 CLAUDE PARITY Phase 0: the FREE part (60 conversations valid, the scorer calibrated on planted
+                # transcripts - an honest one passes, every planted fault fails for its own reason - and the expected tool in
+                # view for every first ask) + the newest saved live card (also while one is still running) + its log tail.
+                echo 'cd $CORE && echo "== free check"; timeout 180 .venv/bin/python -m app.quality parity --check 2>&1 | tail -20'
+                echo '(pgrep -af "app.quality parity --live" >/dev/null && echo "== a live parity card is running" || echo "== no live parity card running")'
+                echo 'echo "== newest saved card"; timeout 60 .venv/bin/python -m app.quality parity --status 2>&1 | tail -70'
+                echo 'echo "== runner log (last 15)"; tail -15 data/quality/parity.log 2>/dev/null || echo "(no live run yet - start parity_card)"' ;;
+              parity_card)
+                # v0.732 CLAUDE PARITY Phase 0: the LIVE card - all 60 conversations through the REAL run_turn on tenant
+                # __paritycard__ (never her chats or budget), on WHATEVER brain the server runs (GLM via OpenRouter today),
+                # with the brain / model of every step recorded. Real model calls + minutes (an hour or more): it starts
+                # DETACHED; read it with parity_card_check. The free check must pass first.
+                echo 'cd $CORE && mkdir -p data/quality'
+                echo 'if pgrep -f "app.quality parity --live" >/dev/null; then echo "== a parity card is already running:"; pgrep -af "app.quality parity --live"; exit 0; fi'
+                echo 'timeout 180 .venv/bin/python -m app.quality parity --check > data/quality/parity-check.txt 2>&1; rc=$?; tail -5 data/quality/parity-check.txt; [ $rc = 0 ] || exit 1'
+                echo 'nohup setsid .venv/bin/python -m app.quality parity --live --label vps-ops > data/quality/parity.log 2>&1 < /dev/null &'
+                echo 'sleep 5; echo "== started (pid $(pgrep -f "app.quality parity --live" | head -1)); read it with the parity_card_check job"' ;;
               research_runoff_check)
                 # v0.478 R7: the FREE part of the run-off - which engines may run (every R6 gate), what the card would cost for the engine alone, the newest saved table and
                 # its decision. A LIVE run-off spends real model / web / vendor money: run it on the VPS with an explicit budget -
