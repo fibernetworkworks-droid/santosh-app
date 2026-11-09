@@ -108,4 +108,4 @@ def test_new_chat_greets_with_her_avatars_name(env):
     cid = client.post("/api/conversations").json()["id"]
     with session() as s:
         g = s.query(Message).filter(Message.conversation_id == cid).first()
-    assert g.display.startswith("Namaskar! Main Riya hoon") and "Santosh" not in g.display
+    assert g.display.startswith("Hello! I am Riya") and "Santosh" not in g.display

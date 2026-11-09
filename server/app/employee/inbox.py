@@ -63,11 +63,11 @@ def _rupees(paise: int) -> str:
 def set_channel(tenant: str, phone_number_id: str, display_number: str = "", token: str = "") -> dict[str, Any]:
     pnid = _digits(phone_number_id)
     if not 6 <= len(pnid) <= 30:
-        raise InboxError("Phone number ID Meta ke WhatsApp Manager se (sirf ank).")
+        raise InboxError("Phone number ID from Meta WhatsApp Manager (digits only).")
     with session() as s:
         c = s.get(BizChannel, pnid)
         if c is not None and c.tenant_id != tenant:
-            raise InboxError("Yeh number kisi aur business se juda hai.")
+            raise InboxError("This number is linked to another business.")
         if c is None:
             c = BizChannel(phone_number_id=pnid, tenant_id=tenant)
             s.add(c)
@@ -88,7 +88,7 @@ def remove_channel(tenant: str, phone_number_id: str) -> None:
     with session() as s:
         c = s.get(BizChannel, _digits(phone_number_id))
         if c is None or c.tenant_id != tenant:
-            raise InboxError("Yeh number nahi mila.")
+            raise InboxError("This number was not found.")
         s.delete(c)
 
 
@@ -149,7 +149,7 @@ def thread(tenant: str, contact_id: str, limit: int = 100, mark_read: bool = Tru
     with session() as s:
         c = s.get(BizContact, contact_id)
         if c is None or c.tenant_id != tenant:
-            raise InboxError("Yeh graahak nahi mila.")
+            raise InboxError("This customer was not found.")
         if mark_read:
             c.unread = 0
         rows = s.scalars(select(BizMessage).where(BizMessage.contact_id == contact_id)
@@ -165,7 +165,7 @@ def set_human(tenant: str, contact_id: str, human: bool, note: str | None = None
     with session() as s:
         c = s.get(BizContact, contact_id)
         if c is None or c.tenant_id != tenant:
-            raise InboxError("Yeh graahak nahi mila.")
+            raise InboxError("This customer was not found.")
         c.human = bool(human)
         if not human:
             c.needs_reply = False
@@ -247,7 +247,7 @@ def receive(value: dict[str, Any]) -> int:
         stored += 1
         _publish_msg(tenant, cv, mv)
         if stop:
-            queue_notice(tenant, cid, "Theek hai, ab aapko yahan se koi message nahi aayega. Dobara chahiye to START likhiye.",
+            queue_notice(tenant, cid, "Okay, you will not get any more messages from here. If you want them again, write START.",
                          by="system", force=True)
     return stored
 
@@ -277,18 +277,18 @@ async def send(tenant: str, contact_id: str, text: str, by: str = "owner", force
     from ..whatsapp import WhatsAppError, get_whatsapp
     text = str(text or "").strip()[:4000]
     if not text:
-        raise InboxError("Khaali message nahi jaata.")
+        raise InboxError("An empty message cannot be sent.")
     if policy.secret_found(text):
-        raise InboxError("Isme OTP / PIN / card / Aadhaar jaisi jaankari hai; yeh kabhi nahi bheja jaata.")
+        raise InboxError("This has information like an OTP / PIN / card / Aadhaar; that is never sent.")
     with session() as s:
         c = s.get(BizContact, contact_id)
         if c is None or c.tenant_id != tenant:
-            raise InboxError("Yeh graahak nahi mila.")
+            raise InboxError("This customer was not found.")
         if c.opted_out and not force:
-            raise InboxError("Is graahak ne STOP likha hai; unhe message nahi bhejte.")
+            raise InboxError("This customer wrote STOP; we do not send them messages.")
         if not _window_open(c):
-            raise InboxError("24 ghante se graahak ka koi message nahi aaya: WhatsApp ke niyam se ab sirf approved "
-                             "template bhej sakte hain.")
+            raise InboxError("The customer has sent no message for 24 hours: under WhatsApp rules only an approved "
+                             "template can be sent now.")
         wa, pnid = c.wa_id, c.channel
     pnid, token = _channel_auth(tenant, pnid)
     try:
@@ -308,7 +308,7 @@ async def send(tenant: str, contact_id: str, text: str, by: str = "owner", force
         mv, cv = _msg_view(m), _contact_view(c)
     _publish_msg(tenant, cv, mv)
     if status == "failed":
-        raise InboxError("WhatsApp ne message nahi liya (number / token / Meta setting dekhiye).")
+        raise InboxError("WhatsApp did not accept the message (check the number / token / Meta setting).")
     return mv
 
 
@@ -334,7 +334,7 @@ async def flush_queued(limit: int = 20) -> int:
         except InboxError as e:
             with session() as s:
                 s.add(BizMessage(tenant_id=tenant, contact_id=cid, direction="out", by=by, text=text, status="held"))
-            emp._note(tenant, "", f"WhatsApp par graahak ko yeh nahi gaya ({e}): \"{text[:200]}\"")
+            emp._note(tenant, "", f"This did not reach the customer on WhatsApp ({e}): \"{text[:200]}\"")
     return sent
 
 
@@ -412,20 +412,20 @@ def book(tenant: str, start: str, name: str = "", phone: str = "", contact_id: s
     try:   # stored and compared in UTC (SQLite compares the text)
         t = datetime.fromisoformat(str(start).strip().replace(" ", "T")[:16]).replace(tzinfo=tz)
     except ValueError:
-        raise InboxError("Samay aise likhiye: 2026-10-21 10:30")
+        raise InboxError("Write the time like this: 2026-10-21 10:30")
     with session() as s:
         p = s.get(EmployeeProfile, tenant)
         step = (p.slot_minutes if p else None) or 30
     if t < now():
-        raise InboxError("Yeh samay nikal chuka hai.")
+        raise InboxError("This time has already passed.")
     if t > now() + timedelta(days=60):
-        raise InboxError("60 din ke andar ka samay chuniye.")
+        raise InboxError("Pick a time within 60 days.")
     if p is not None:
         o, c, days = _hours(p)
         hm = t.strftime("%H:%M")
         end_hm = (t + timedelta(minutes=step)).strftime("%H:%M")
         if t.weekday() not in days or not (o <= hm and end_hm <= c):
-            raise InboxError(f"Is samay band rehta hai (khula {o}-{c}).")
+            raise InboxError(f"The business is closed at this time (open {o}-{c}).")
     t = t.astimezone(timezone.utc)
     e = t + timedelta(minutes=step)
     with session() as s:
@@ -433,12 +433,12 @@ def book(tenant: str, start: str, name: str = "", phone: str = "", contact_id: s
             BizAppointment.tenant_id == tenant, BizAppointment.status == "booked",
             BizAppointment.start < e, BizAppointment.start > t - timedelta(hours=6))).all()
         if any(_utc(a.start) < e and t < _utc(a.start) + timedelta(minutes=a.minutes) for a in clash):
-            raise InboxError("Yeh samay pehle se book hai. Doosra samay chuniye.")
+            raise InboxError("This time is already booked. Pick another time.")
         if contact_id:
             mine = s.scalar(select(func.count()).select_from(BizAppointment).where(
                 BizAppointment.contact_id == contact_id, BizAppointment.status == "booked", BizAppointment.start > now())) or 0
             if mine >= 3:
-                raise InboxError("Aapke pehle se 3 appointment hain.")
+                raise InboxError("You already have 3 appointments.")
         a = BizAppointment(tenant_id=tenant, contact_id=contact_id, name=str(name)[:80], phone=_digits(phone)[:15], start=t,
                            minutes=step, note=str(note)[:500], by=by)
         s.add(a)
@@ -466,7 +466,7 @@ def set_appointment(tenant: str, appt_id: str, status: str, contact_id: str = ""
     with session() as s:
         a = s.get(BizAppointment, appt_id)
         if a is None or a.tenant_id != tenant or (contact_id and a.contact_id != contact_id):
-            raise InboxError("Yeh appointment nahi mila.")
+            raise InboxError("This appointment was not found.")
         a.status = status
         out = _appt_view(a)
     emp._publish(tenant, "biz_appointment", out | {"event": status})
@@ -487,20 +487,20 @@ def _dues_for(s, tenant: str, wa_id: str) -> list[BizDue]:
 def add_due(tenant: str, name: str, phone: str, amount: float, due_date: str = "", note: str = "") -> dict[str, Any]:
     ph = _digits(phone)
     if len(ph) < 10:
-        raise InboxError("Phone number 10 ank ka.")
+        raise InboxError("The phone number must be 10 digits.")
     if len(ph) == 10:
         ph = "91" + ph
     try:
         paise = int(round(float(amount) * 100))
     except (TypeError, ValueError):
-        raise InboxError("Rakam galat hai.")
+        raise InboxError("The amount is wrong.")
     if not 0 < paise <= 100_000_000:
-        raise InboxError("Rakam ₹1 se ₹10 lakh tak.")
+        raise InboxError("The amount must be from ₹1 to ₹10 lakh.")
     if due_date:
         try:
             datetime.fromisoformat(due_date)
         except ValueError:
-            raise InboxError("Tareekh YYYY-MM-DD mein.")
+            raise InboxError("Date as YYYY-MM-DD.")
     with session() as s:
         d = BizDue(tenant_id=tenant, name=str(name)[:80], phone=ph, amount_paise=paise, due_date=str(due_date)[:10],
                    note=str(note)[:500])
@@ -514,7 +514,7 @@ def import_dues(tenant: str, data: bytes) -> dict[str, Any]:
     text = data.decode("utf-8-sig", errors="replace")
     rows = list(csv.DictReader(io.StringIO(text)))
     if not rows:
-        raise InboxError("CSV khaali hai.")
+        raise InboxError("The CSV is empty.")
     def pick(r, *keys):
         for k, v in r.items():
             if k and any(x in k.strip().lower() for x in keys):
@@ -544,7 +544,7 @@ def set_due(tenant: str, due_id: str, status: str | None = None, promised_on: st
     with session() as s:
         d = s.get(BizDue, due_id)
         if d is None or d.tenant_id != tenant:
-            raise InboxError("Yeh baaki nahi mila.")
+            raise InboxError("This due was not found.")
         if status is not None:
             if status not in ("open", "promised", "paid", "disputed", "written_off"):
                 raise InboxError("status: open, promised, paid, disputed, written_off")
@@ -571,12 +571,12 @@ def _contact(ctx) -> BizContact:
         actor = emp._ask_actor(actor[9:])
     if not actor.startswith("customer:"):
         from ..agent.tools import ToolError
-        raise ToolError("Yeh sirf WhatsApp graahak ke liye hai.")
+        raise ToolError("This is only for WhatsApp customers.")
     with session() as s:
         c = s.get(BizContact, actor[9:])
         if c is None or c.tenant_id != ctx.tenant_id:
             from ..agent.tools import ToolError
-            raise ToolError("Graahak nahi mila.")
+            raise ToolError("Customer not found.")
         s.expunge(c)
         return c
 
@@ -591,7 +591,7 @@ async def biz_free_slots(ctx, date: str = "", days: int = 3, **_):
     try:
         slots = await asyncio.to_thread(free_slots, ctx.tenant_id, date, int(days or 3))
     except ValueError:
-        raise _te(InboxError("date YYYY-MM-DD mein."))
+        raise _te(InboxError("date as YYYY-MM-DD."))
     return {"free": slots, "note": "2-3 samay sujhao; graahak chune tab biz_book."}
 
 
@@ -602,7 +602,7 @@ async def biz_book(ctx, start: str, note: str = "", **_):
     except InboxError as e:
         raise _te(e)
     when = datetime.fromisoformat(a["start"]).astimezone(_tz(ctx.tenant_id)).strftime("%a %d %b, %I:%M %p")
-    emp._note(ctx.tenant_id, "", f"WhatsApp se appointment: {c.name or c.wa_id[-4:]} · {when}")
+    emp._note(ctx.tenant_id, "", f"Appointment from WhatsApp: {c.name or c.wa_id[-4:]} · {when}")
     return {"booked": True, "id": a["id"], "when": when}
 
 
@@ -621,7 +621,7 @@ async def biz_cancel(ctx, appointment_id: str, **_):
         a = await asyncio.to_thread(set_appointment, ctx.tenant_id, appointment_id, "cancelled", c.id)
     except InboxError as e:
         raise _te(e)
-    emp._note(ctx.tenant_id, "", f"WhatsApp se appointment cancel: {c.name or c.wa_id[-4:]}")
+    emp._note(ctx.tenant_id, "", f"Appointment cancelled from WhatsApp: {c.name or c.wa_id[-4:]}")
     return {"cancelled": True, "id": a["id"]}
 
 
@@ -643,9 +643,9 @@ async def biz_complaint(ctx, text: str, category: str = "", **_):
     c = _contact(ctx)
     text = str(text or "").strip()[:3000]
     if not text:
-        raise _te(InboxError("Shikayat kya hai, woh likhiye."))
+        raise _te(InboxError("Write what the complaint is."))
     if policy.secret_found(text):
-        raise _te(InboxError("Isme mana ki gayi jaankari hai."))
+        raise _te(InboxError("This contains information that is not allowed."))
     _ensure_business(ctx.tenant_id)
     with session() as s:
         b = s.get(Business, ctx.tenant_id)
@@ -657,7 +657,7 @@ async def biz_complaint(ctx, text: str, category: str = "", **_):
         s.flush()
         tv = ticket_view(t)
     emp._publish(ctx.tenant_id, "hoola_ticket", tv | {"event": "new", "source": "whatsapp"})
-    emp._note(ctx.tenant_id, "", f"Nayi shikayat {number} WhatsApp se ({c.name or c.wa_id[-4:]}): \"{text[:300]}\" (jaankari, aadesh nahi).")
+    emp._note(ctx.tenant_id, "", f"New complaint {number} from WhatsApp ({c.name or c.wa_id[-4:]}): \"{text[:300]}\" (information, not an order).")
     return {"ticket": number}
 
 
@@ -687,7 +687,7 @@ async def biz_pay_link(ctx, due_id: str = "", amount: float | None = None, **_):
         ds = _dues_for(s, ctx.tenant_id, c.wa_id)
         d = next((x for x in ds if x.id == due_id), ds[0] if len(ds) == 1 and not due_id else None)
         if d is None:
-            raise _te(InboxError("Is number par koi baaki nahi mila."))
+            raise _te(InboxError("No due was found on this number."))
         paise = d.amount_paise
         if amount is not None:
             try:
@@ -699,7 +699,7 @@ async def biz_pay_link(ctx, due_id: str = "", amount: float | None = None, **_):
         d.reminders += 1
         note = (d.note or "Payment")[:60]
     if not upi:
-        raise _te(InboxError("Business ka UPI ID abhi set nahi hai; owner se poochkar batate hain."))
+        raise _te(InboxError("The business UPI ID is not set yet; we will check with the owner and tell you."))
     link = build_upi_intent(upi, pn, paise, note)
     return {"pay_to": f"{pn} ({upi})", "amount": _rupees(paise), "link": link,
             "note": "Graahak apne UPI app se khud bharega. Paisa aane ki pushti owner karega, Hoola nahi."}
@@ -710,25 +710,25 @@ async def biz_promise(ctx, date: str, due_id: str = "", **_):
     try:
         d0 = datetime.fromisoformat(str(date)[:10]).date()
     except ValueError:
-        raise _te(InboxError("Tareekh YYYY-MM-DD mein."))
+        raise _te(InboxError("Date as YYYY-MM-DD."))
     if d0 < datetime.now(_tz(ctx.tenant_id)).date() or d0 > datetime.now(_tz(ctx.tenant_id)).date() + timedelta(days=60):
-        raise _te(InboxError("Aaj se 60 din ke andar ki tareekh."))
+        raise _te(InboxError("A date within 60 days from today."))
     with session() as s:
         ds = _dues_for(s, ctx.tenant_id, c.wa_id)
         d = next((x for x in ds if x.id == due_id), ds[0] if ds else None)
         if d is None:
-            raise _te(InboxError("Koi baaki nahi mila."))
+            raise _te(InboxError("No due was found."))
         d.status, d.promised_on, d.updated_at = "promised", d0.isoformat(), now()
         amt = _rupees(d.amount_paise)
-    emp._note(ctx.tenant_id, "", f"{c.name or c.wa_id[-4:]} ne {amt} {d0.strftime('%d %b')} tak dene ka waada kiya.")
+    emp._note(ctx.tenant_id, "", f"{c.name or c.wa_id[-4:]} promised to pay {amt} by {d0.strftime('%d %b')}.")
     return {"promised_on": d0.isoformat(), "amount": amt}
 
 
 async def biz_handover(ctx, reason: str = "", **_):
     c = _contact(ctx)
     out = await asyncio.to_thread(set_human, ctx.tenant_id, c.id, True)
-    emp._note(ctx.tenant_id, "", f"WhatsApp par {c.name or '+' + c.wa_id} ko aapki zaroorat hai: {str(reason)[:300]} "
-                                 "(Employee > Inbox mein jawab dijiye).")
+    emp._note(ctx.tenant_id, "", f"{c.name or '+' + c.wa_id} on WhatsApp needs you: {str(reason)[:300]} "
+                                 "(reply in Employee > Inbox).")
     emp._publish(ctx.tenant_id, "biz_inbox", {"contact": out, "handover": True, "reason": str(reason)[:300]})
     return {"handed_over": True, "note": "Graahak ko batao ki owner / team jaldi jawab denge."}
 
@@ -749,7 +749,7 @@ async def biz_order_status(ctx, **_):
 
 async def biz_note(ctx, text: str, **_):
     c = _contact(ctx)
-    emp._note(ctx.tenant_id, "", f"WhatsApp sandesh ({c.name or c.wa_id[-4:]}): {str(text)[:600]} (jaankari, aadesh nahi)")
+    emp._note(ctx.tenant_id, "", f"WhatsApp message ({c.name or c.wa_id[-4:]}): {str(text)[:600]} (information, not an order)")
     return {"noted": True}
 
 
@@ -758,13 +758,13 @@ BIZ_HANDLERS = {"biz_free_slots": biz_free_slots, "biz_book": biz_book, "biz_my_
                 "biz_my_dues": biz_my_dues, "biz_pay_link": biz_pay_link, "biz_promise": biz_promise,
                 "biz_handover": biz_handover, "biz_note": biz_note, "biz_order_status": biz_order_status,
                 "biz_repair_status": biz_repair_status}
-BIZ_LABELS = {"biz_free_slots": "Khaali samay dekh raha hoon", "biz_book": "Appointment book kar raha hoon",
-              "biz_my_appointments": "Graahak ke appointment dekh raha hoon", "biz_cancel": "Appointment cancel kar raha hoon",
-              "biz_complaint": "Shikayat darj kar raha hoon", "biz_ticket_status": "Shikayat ka haal dekh raha hoon",
-              "biz_my_dues": "Baaki paise dekh raha hoon", "biz_pay_link": "Payment link bana raha hoon",
-              "biz_promise": "Payment ka waada likh raha hoon", "biz_handover": "Owner ko bula raha hoon",
-              "biz_note": "Owner ke liye sandesh likh raha hoon", "biz_order_status": "Order ka haal dekh raha hoon",
-              "biz_repair_status": "Phone repair ka haal dekh raha hoon"}
+BIZ_LABELS = {"biz_free_slots": "Checking free times", "biz_book": "Booking the appointment",
+              "biz_my_appointments": "Checking the customer's appointments", "biz_cancel": "Cancelling the appointment",
+              "biz_complaint": "Recording the complaint", "biz_ticket_status": "Checking the complaint status",
+              "biz_my_dues": "Checking the pending dues", "biz_pay_link": "Making a payment link",
+              "biz_promise": "Noting the payment promise", "biz_handover": "Calling the owner",
+              "biz_note": "Writing a note for the owner", "biz_order_status": "Checking the order status",
+              "biz_repair_status": "Checking the phone repair status"}
 BIZ_TOOLS = [
     {"name": "biz_repair_status", "description": ("This customer's phone repair jobs at a mobile shop: device, status, ready or not, "
                                                   "promised date, approved amount, warranty date. Only theirs."),
@@ -876,19 +876,19 @@ async def _brain(system: str, history: list[dict], tools: list[dict]) -> tuple[l
 def _can_answer(tenant: str, c: BizContact) -> str:
     p = emp.profile(tenant)
     if not p or not p["enabled"]:
-        return "employee mode band"
+        return "employee mode is off"
     if not p["inbox_on"]:
-        return "inbox band"
+        return "inbox is off"
     if p["paused"]:
-        return "pause"
+        return "paused"
     if "customers" not in p["duties"]:
-        return "naukri mein graahak nahi"
+        return "customers are not in the job duties"
     if c.human:
-        return "owner sambhal rahe hain"
+        return "the owner is handling it"
     if c.opted_out:
         return "STOP"
     if not _window_open(c):
-        return "24 ghante ki khidki band"
+        return "the 24-hour window is closed"
     return ""
 
 
@@ -962,7 +962,7 @@ async def answer(tenant: str, contact_id: str, extra: str = "") -> str:
     try:
         await send(tenant, contact_id, final, by="hoola")
     except InboxError as e:
-        emp._note(tenant, "", f"WhatsApp jawab nahi gaya ({e}).")
+        emp._note(tenant, "", f"The WhatsApp reply was not sent ({e}).")
         return ""
     return final
 
@@ -980,7 +980,7 @@ async def answer_pending(limit: int = 5) -> int:
                 c = s.get(BizContact, cid)
                 if c is not None:
                     c.needs_reply = False
-            emp._note(tenant, "", "WhatsApp graahak ko jawab dene mein gadbad hui; Employee > Inbox dekhiye.")
+            emp._note(tenant, "", "Something went wrong replying to the WhatsApp customer; see Employee > Inbox.")
     return len(jobs)
 
 

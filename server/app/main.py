@@ -523,10 +523,10 @@ def create_conversation(tenant: str = Depends(current_tenant), project_id: str =
         s.flush()
         cid = c.id
     from .avatar.service import persona   # v0.244 her avatar's own name (was always "Santosh")
-    greeting = f"Namaskar! Main {persona(tenant)[0]} hoon, aapka AI coworker. Aaj kya kaam poora karna hai?"
+    greeting = f"Hello! I am {persona(tenant)[0]}, your AI coworker. What shall we get done today?"
     if incognito:   # v0.250 she must see it is incognito from the first line
-        greeting = (f"🕶 Incognito chat. Main {persona(tenant)[0]} hoon - yahan ki baatein aapki yaad mein nahi jayengi "
-                    "aur doosri chats ko pata nahi chalega. Bataiye, kya karna hai?")
+        greeting = (f"🕶 Incognito chat. I am {persona(tenant)[0]} - what is said here will not go into your memory "
+                    "and other chats will not know about it. Tell me, what would you like to do?")
     with session() as s:
         s.add(Message(conversation_id=cid, role="assistant", content=greeting, display=greeting,
                       in_history=False, delivered_to_agent=True))
@@ -726,7 +726,7 @@ def continue_goal(conversation_id: str, tenant: str = Depends(current_tenant)):
     from .agent import goal
     v = goal.continue_now(tenant, conversation_id)
     if v is None:
-        raise HTTPException(409, "Is chat mein koi kaam 'aage badhaun?' ka intezaar nahi kar raha.")
+        raise HTTPException(409, "No job in this chat is waiting for 'shall I go on?'.")
     return {"goal": v}
 
 @app.get("/api/conversations/{conversation_id}/messages", dependencies=[Depends(require_key)])
@@ -1153,7 +1153,7 @@ def chat_takeback(conversation_id: str, body: TakebackIn, tenant: str = Depends(
     _conv_or_404(conversation_id, tenant)
     from .agent import santosh
     if santosh.message_running(conversation_id, body.client_id):
-        raise HTTPException(409, "Yeh message chal padi hai. Rokne ke liye 'Rokiye' dabaiye.")
+        raise HTTPException(409, "This message is already running. Tap 'Stop' to stop it.")
     from .db import Event
     with session() as s:
         rows = s.scalars(select(Event).where(Event.conversation_id == conversation_id, Event.kind == "message")
@@ -1161,7 +1161,7 @@ def chat_takeback(conversation_id: str, body: TakebackIn, tenant: str = Depends(
         hit = next((e for e in rows if isinstance(e.payload, dict) and e.payload.get("client_id") == body.client_id
                     and e.payload.get("role") == "user" and not e.payload.get("taken_back")), None)
         if hit is None:
-            raise HTTPException(404, "Woh message nahi mili (shayad pehle hi le li gayi).")
+            raise HTTPException(404, "That message was not found (maybe it was already taken back).")
         hit.payload = {**hit.payload, "taken_back": True}
         eid = hit.id
     santosh.hold_message(conversation_id, body.client_id)
@@ -1369,7 +1369,7 @@ async def bahar_setup(channel: str, body: BaharIn, request: Request, tenant: str
 def bahar_remove(channel: str, tenant: str = Depends(current_tenant)):
     from . import bahar
     if not bahar.remove(tenant, channel):
-        raise HTTPException(404, "Yeh channel juda nahi hai.")
+        raise HTTPException(404, "This channel is not connected.")
     return {"ok": True}
 
 
@@ -2079,7 +2079,7 @@ def voice_eartest_mark(test_id: str, body: EarMark, tenant: str = Depends(curren
     try:
         return callquality.eartest_mark(tenant, test_id, body.result, body.note)
     except KeyError:
-        raise HTTPException(404, "Aisa koi test nahi")
+        raise HTTPException(404, "No such test")
     except ValueError as e:
         raise HTTPException(400, str(e))
 
@@ -2149,7 +2149,7 @@ def voice_word_add(body: VoiceWordBody, tenant: str = Depends(current_tenant)):
 def voice_word_remove(word_id: int, tenant: str = Depends(current_tenant)):
     from . import voicestyle
     if not voicestyle.remove_word(tenant, word_id):
-        raise HTTPException(404, "Shabd nahi mila")
+        raise HTTPException(404, "Word not found")
     return {"ok": True}
 
 
@@ -2169,7 +2169,7 @@ def voice_fix_confirm(fix_id: int, tenant: str = Depends(current_tenant)):
 def voice_fix_remove(fix_id: int, tenant: str = Depends(current_tenant)):
     from . import voicestyle
     if not voicestyle.remove_fix(tenant, fix_id):
-        raise HTTPException(404, "Sudhaar nahi mila")
+        raise HTTPException(404, "Correction not found")
     return {"ok": True}
 
 
@@ -2189,7 +2189,7 @@ def usage_get(days: int = 30, tenant: str = Depends(current_tenant)):
 def usage_limit(body: UsageLimit, tenant: str = Depends(current_tenant)):
     from . import usage
     if body.month_inr is None and body.month_usd is None:
-        raise HTTPException(400, "month_inr ya month_usd dijiye (0 = koi seema nahi)")
+        raise HTTPException(400, "give month_inr or month_usd (0 = no limit)")
     return usage.set_limit(tenant, month_usd=body.month_usd, month_inr=body.month_inr)
 
 
@@ -2198,7 +2198,7 @@ def usage_all(days: int = 30, tenant: str = Depends(current_tenant)):
     """The server owner's view: spend per owner (counts only). Only for the main account."""
     from . import usage
     if tenant != get_settings().tenant_id:
-        raise HTTPException(403, "Sirf server ke maalik ke liye")
+        raise HTTPException(403, "Only for the server owner")
     return {"tenants": usage.all_tenants(days), "usd_inr": usage.usd_inr()}
 
 
@@ -2329,7 +2329,7 @@ async def add_email_attachment(draft_id: str, file: UploadFile = File(...), tena
         if not d or d.tenant_id != tenant:
             raise HTTPException(404, "Draft not found")
         if d.status not in ("pending", "failed"):
-            raise HTTPException(409, "Yeh email ab badla nahi ja sakta")
+            raise HTTPException(409, "This email can no longer be changed")
     try:
         row = await pcs.store_upload(file, tenant, "", "mail")
     except pcs.PairError as e:
@@ -2940,7 +2940,7 @@ async def net_upload(file: UploadFile = File(...), to: str = Form(""), thread_id
     from .net.share import MAX_MB
     data = await file.read(MAX_MB * 1024 * 1024 + 1)
     if len(data) > MAX_MB * 1024 * 1024:
-        raise HTTPException(413, f"File {MAX_MB} MB se badi hai; Drive link bhejiye.")
+        raise HTTPException(413, f"The file is bigger than {MAX_MB} MB; send a Drive link.")
     if not data:
         raise HTTPException(400, "File khaali hai.")
     if thread_id and not to:
@@ -3037,7 +3037,7 @@ def video_file(job_id: str, name: str, exp: int = 0, sig: str = ""):
     from .videoedit import service as vs
     p = vs.file_for(job_id, name, exp, sig)
     if p is None:
-        raise HTTPException(404, "Yeh video link purana ho gaya ya galat hai.")
+        raise HTTPException(404, "This video link is old or wrong.")
     media = "video/mp4" if p.suffix == ".mp4" else "image/png" if p.suffix == ".png" else None
     return FileResponse(str(p), media_type=media, filename=p.name)
 
@@ -3567,7 +3567,7 @@ async def create_item_text(item_id: str, body: dict, tenant: str = Depends(curre
     except jobs.JobError as e:
         raise HTTPException(404, str(e))
     if it["kind"] != "script":
-        raise HTTPException(400, "Sirf script badli ja sakti hai")
+        raise HTTPException(400, "Only the script can be changed")
     path.write_text(text, encoding="utf-8")
     return {"ok": True, "size": len(text.encode("utf-8"))}
 
@@ -3612,7 +3612,7 @@ def create_item_file(item_id: str, tenant: str = Depends(current_tenant)):
 def create_item_delete(item_id: str, tenant: str = Depends(current_tenant)):
     from .create import jobs
     if not jobs.forget(tenant, item_id):
-        raise HTTPException(404, "Yeh creation nahi mili")
+        raise HTTPException(404, "This creation was not found")
     return {"ok": True}
 
 
@@ -4170,7 +4170,7 @@ def net_chain_act(cid: str, body: ChainActIn, tenant: str = Depends(current_tena
 def net_operator_queue(tenant: str = Depends(current_tenant)):
     from .net import business as biz
     if tenant != get_settings().tenant_id:
-        raise HTTPException(403, "Sirf server operator")
+        raise HTTPException(403, "Server operator only")
     return {"requests": biz.verification_queue()}
 
 
@@ -4179,7 +4179,7 @@ def net_operator_verify(biz_tenant: str, body: NetAnswerIn, bank_name_ok: bool =
                         tenant: str = Depends(current_tenant)):
     from .net import business as biz
     if tenant != get_settings().tenant_id:
-        raise HTTPException(403, "Sirf server operator")
+        raise HTTPException(403, "Server operator only")
     return _net(biz.operator_verify, biz_tenant, body.action == "approve", bank_name_ok)
 
 
@@ -4322,7 +4322,7 @@ async def net_deal_photo(deal_id: str, file: UploadFile = File(...), stage: str 
     from .net import job as jb
     data = await file.read()
     if len(data) > 12 * 1024 * 1024:
-        raise HTTPException(413, "Photo 12 MB se badi hai.")
+        raise HTTPException(413, "The photo is bigger than 12 MB.")
     return _net(jb.add_photo, tenant, deal_id, data, file.filename or "photo.jpg", stage)
 
 
@@ -4686,7 +4686,7 @@ async def net_stock_import(file: UploadFile = File(...), tenant: str = Depends(c
     from .net import deal as dl
     data = await file.read()
     if len(data) > 10 * 1024 * 1024:
-        raise HTTPException(413, "File 10 MB se badi hai.")
+        raise HTTPException(413, "The file is bigger than 10 MB.")
     return _net(dl.import_stock, tenant, file.filename or "stock.csv", data)
 
 
@@ -5106,7 +5106,7 @@ async def voiceid_enrol_finish(enrol_id: str, file: UploadFile = File(...), tena
     from .voiceid import service as vs
     data = await file.read(12 * 1024 * 1024 + 1)
     if len(data) > 12 * 1024 * 1024:
-        raise HTTPException(413, "Recording bahut badi hai.")
+        raise HTTPException(413, "The recording is too big.")
     return await asyncio.to_thread(_vid, vs.finish_enrol, tenant, enrol_id, data)
 
 
@@ -5120,7 +5120,7 @@ def voiceid_member_update(member_id: str, body: VoiceIdMemberIn, tenant: str = D
 def voiceid_member_delete(member_id: str, tenant: str = Depends(current_tenant)):
     from .voiceid import service as vs
     if not vs.delete(tenant, member_id):
-        raise HTTPException(404, "Yeh vyakti nahi mila.")
+        raise HTTPException(404, "This person was not found.")
     return {"deleted": True}
 
 
@@ -5172,7 +5172,7 @@ async def avatar_rules_parse(body: RulesTextIn, tenant: str = Depends(current_te
     except av.AvatarError as e:
         raise HTTPException(400, str(e))
     except Exception:
-        raise HTTPException(503, "Abhi niyam samajh nahi paaye; neeche se khud chuniye.")
+        raise HTTPException(503, "Could not understand the rule just now; pick it yourself from below.")
     return {"rules": rules, "rules_summary": av.rules_summary(rules, cur["name"])}
 
 
@@ -5190,7 +5190,7 @@ async def appcheck_upload(file: UploadFile = File(...), conversation_id: str = F
     from .appcheck.runner import ReaError
     from .pc import service as pcs
     if not acs.status()["enabled"]:
-        raise HTTPException(503, "App Jaanch abhi server par chalu nahi hai.")
+        raise HTTPException(503, "App Check is not running on the server right now.")
     try:
         row = await pcs.store_upload(file, tenant, "", "to_phone", limit_mb=get_settings().appcheck_max_mb)
     except pcs.PairError as e:
@@ -5497,7 +5497,7 @@ def memory_unremember(body: UnrememberIn, tenant: str = Depends(current_tenant))
     from . import memory
     out = memory.unremember(tenant, body.source, body.id, body.conversation_id, body.text)
     if not out.get("ok") and out.get("why") == "not found":
-        raise HTTPException(404, "Yeh yaad nahi mili.")
+        raise HTTPException(404, "This memory was not found.")
     return out
 
 
@@ -5509,7 +5509,7 @@ class MemoryResetIn(BaseModel):
 def memory_reset(body: MemoryResetIn, tenant: str = Depends(current_tenant)):
     """v0.605 EK YAAD: Claude's 'reset memory' - every store forgets her (her chats stay). Needs confirm='RESET'."""
     if (body.confirm or "").strip().upper() != "RESET":
-        raise HTTPException(400, "Sab yaad mitane ke liye confirm='RESET' bhejiye. Aapki chats nahi mitengi.")
+        raise HTTPException(400, "To erase all memory, send confirm='RESET'. Your chats will not be deleted.")
     from . import memory
     return {"ok": True, "removed": memory.reset_all(tenant)}
 
@@ -6080,7 +6080,7 @@ async def galla_statement(file: UploadFile = File(...), tenant: str = Depends(cu
     from .galla import service as galla
     data = await file.read()
     if len(data) > 10 * 1024 * 1024:
-        raise HTTPException(400, "Statement 10 MB se bada hai.")
+        raise HTTPException(400, "The statement is bigger than 10 MB.")
     return _galla(galla.import_statement, tenant, file.filename or "statement.csv", data)
 
 
@@ -7294,7 +7294,7 @@ async def seo_intel_dfs(what: str, body: dict | None = None, tenant: str = Depen
     if what not in calls:
         raise HTTPException(404, "what: overview | competitors | gap | backlinks")
     if what == "gap" and not b.get("competitor"):
-        raise HTTPException(400, "Kis competitor se milaana hai? (domain)")
+        raise HTTPException(400, "Which competitor to compare with? (domain)")
     out = await asyncio.to_thread(_intel_call, calls[what])
     return {**out, "spend": dfs.status(tenant, sv["id"])}
 
@@ -7351,10 +7351,10 @@ def seo_run(job: str, body: dict | None = None, tenant: str = Depends(current_te
     if job not in ("first", "hourly", "daily", "weekly", "monthly", "roadmap", "index", "speed_history", "indexnow"):
         raise HTTPException(404, "job: first | hourly | daily | weekly | monthly | roadmap | index | speed_history | indexnow")
     if not hire.is_hired(tenant, desk.KEY):
-        raise HTTPException(400, "SEO Specialist abhi hired nahi hai.")
+        raise HTTPException(400, "The SEO Specialist is not hired yet.")
     sid = _hire_call(lambda: seo.sites(tenant) and desk.desk_view(tenant, str((body or {}).get("site") or ""))["site"]["id"])
     if not sid:
-        raise HTTPException(400, "Pehle onboarding: website ka address.")
+        raise HTTPException(400, "First onboarding: the website address.")
     if job == "roadmap":
         return _hire_call(desk.build_roadmap, tenant, sid)
     if job == "indexnow":             # v0.319 her IndexNow key + is the file live on her site
@@ -7560,7 +7560,7 @@ def social_post_publish(pid: str, tenant: str = Depends(current_tenant)):
     with social.session() as s:
         p = s.get(social.SocialPost, pid)
         if p is None or p.tenant_id != tenant:
-            raise HTTPException(404, "Yeh post nahi mila.")
+            raise HTTPException(404, "This post was not found.")
         bad = SP.problems(p)
     if bad:
         raise HTTPException(400, " ".join(bad))
@@ -7825,9 +7825,9 @@ def social_run(job: str, tenant: str = Depends(current_tenant)):
     if job not in ("first", "hourly", "daily", "weekly", "plan", "publish", "inbox", "morning", "monthly", "growth"):
         raise HTTPException(404, "job: first | hourly | daily | weekly | plan | publish | inbox | morning | monthly | growth")
     if not hire.is_hired(tenant, social.KEY):
-        raise HTTPException(400, "Social Media Manager abhi hired nahi hai.")
+        raise HTTPException(400, "The Social Media Manager is not hired yet.")
     if not social.accounts(tenant):
-        raise HTTPException(400, "Pehle Instagram ya Facebook Page connect kijiye.")
+        raise HTTPException(400, "First connect Instagram or a Facebook Page.")
     threading.Thread(target=lambda: social.run_now(tenant, job), daemon=True).start()
     return {"started": job}
 
@@ -8363,7 +8363,7 @@ def gst_client_save(body: dict, tenant: str = Depends(current_tenant)):
     """Add / update a client. A portal password is never accepted or stored."""
     from .gstp import service as gstp
     if any(k in body for k in ("password", "portal_password", "otp")):
-        raise HTTPException(400, "Portal ka password / OTP Hoola nahi rakhta.")
+        raise HTTPException(400, "Hoola does not keep the portal password / OTP.")
     return _gst(gstp.add_client, tenant, str(body.get("name") or ""), str(body.get("gstin") or ""), str(body.get("scheme") or ""),
                 body.get("aato"), str(body.get("portal_user") or ""), str(body.get("login_as") or ""), str(body.get("contact_name") or ""),
                 str(body.get("contact_phone") or ""), body.get("fee"), str(body.get("notes") or ""), body.get("einvoice"),
@@ -8455,7 +8455,7 @@ def gst_return_json(return_id: str, tenant: str = Depends(current_tenant)):
     with _sess() as s:
         r = s.get(gstp.GstReturn, return_id)
         if not r or r.tenant_id != tenant or not r.portal_json:
-            raise HTTPException(404, "JSON nahi hai")
+            raise HTTPException(404, "No JSON")
         return Response(r.portal_json, media_type="application/json",
                         headers={"Content-Disposition": f'attachment; filename="GSTR1_{r.period}.json"'})
 
@@ -8660,7 +8660,7 @@ async def ads_import(file: UploadFile | None = File(None), file_id: str = Form("
     from .ads import service as ads
     data = await file.read() if file is not None else None
     if data is not None and len(data) > 30 * 1024 * 1024:
-        raise HTTPException(413, "Report 30 MB se badi hai.")
+        raise HTTPException(413, "The report is bigger than 30 MB.")
     return await asyncio.to_thread(_ads, ads.import_report, tenant, file_id, data, (file.filename if file else "report.csv"),
                                    platform, start, end, conversation_id)
 
@@ -8927,7 +8927,7 @@ async def sites_photo(ref: str, file: UploadFile = File(...), about: str = Form(
     from .site import service as S
     data = await file.read()
     if len(data) > 25 * 1024 * 1024:
-        raise HTTPException(413, "Photo 25 MB se badi hai")
+        raise HTTPException(413, "The photo is bigger than 25 MB")
     return await asyncio.to_thread(_site, S.add_photo, tenant, ref, data, "", about, "")
 
 
@@ -8960,7 +8960,7 @@ async def sites_media(ref: str, file: UploadFile = File(...), about: str = Form(
     from .site import service as S
     data = await file.read(60 * 1024 * 1024 + 1)
     if len(data) > 60 * 1024 * 1024:
-        raise HTTPException(413, "File 60 MB se badi hai; video chhota karke bhejiye.")
+        raise HTTPException(413, "The file is bigger than 60 MB; make the video smaller and send it again.")
     return await asyncio.to_thread(_site, S.add_media, tenant, ref, data, file.filename or "file", about)
 
 
@@ -9284,7 +9284,7 @@ async def site_app_matrix(site_id: str, request: Request):
 async def site_app_upload(site_id: str, request: Request):
     raw = await request.body()
     if len(raw) > 12 * 1024 * 1024:
-        raise HTTPException(413, "File bahut badi hai (12 MB tak).")
+        raise HTTPException(413, "The file is too big (up to 12 MB).")
     return await _site_pub(site_id, "upload", request, raw=raw)
 
 
@@ -9505,7 +9505,7 @@ async def sites_app_role(ref: str, member_id: str, body: dict, tenant: str = Dep
 # ---- v0.306 HOOLA DESIGN ARENA: fixed briefs built + judged, runs compared, blind duels vs other builders (owner only)
 def _arena_owner(tenant: str) -> None:
     if tenant != get_settings().tenant_id:
-        raise HTTPException(403, "Design Arena sirf Hoola ke owner ke liye hai.")
+        raise HTTPException(403, "Design Arena is only for the Hoola owner.")
 
 
 def _arena(fn, *a, **k):
@@ -9581,7 +9581,7 @@ async def arena_run(run_id: str, tenant: str = Depends(current_tenant)):
     _arena_owner(tenant)
     run = next((x for x in await asyncio.to_thread(A.runs, 200) if x["run"] == run_id), None)
     if run is None:
-        raise HTTPException(404, "run nahi mila")
+        raise HTTPException(404, "run not found")
     cards = await asyncio.to_thread(A.items, run_id)
     return {**run, "items": [{**{k: v for k, v in c.items() if k != "dna"}, **A.brief_info(c.get("brief", ""))} for c in cards],
             "say": A.report_text(run["summary"]) if run["summary"] else "Abhi chal raha hai."}
@@ -9600,7 +9600,7 @@ async def arena_compare(a: str, b: str, tenant: str = Depends(current_tenant)):
     _arena_owner(tenant)
     rs = {x["run"]: x for x in await asyncio.to_thread(A.runs, 200)}
     if a not in rs or b not in rs:
-        raise HTTPException(404, "run nahi mila")
+        raise HTTPException(404, "run not found")
     return {"a": a, "b": b, **A.compare(rs[a]["summary"], rs[b]["summary"])}
 
 
@@ -9618,7 +9618,7 @@ async def arena_shot(site_id: str, w: str = "390", tenant: str = Depends(current
     _arena_owner(tenant)
     img = await asyncio.to_thread(A.shot, site_id, w)
     if not img:
-        raise HTTPException(404, "screenshot nahi mila")
+        raise HTTPException(404, "screenshot not found")
     return Response(img, media_type="image/jpeg", headers={"Cache-Control": "private, max-age=3600"})
 
 
@@ -9975,7 +9975,7 @@ async def sites_catalog_preview(ref: str, request: Request, tenant: str = Depend
         form = await request.form()
         up = form.get("file")
         if up is None or not hasattr(up, "read"):
-            raise HTTPException(400, "File chuniye (CSV / Excel).")
+            raise HTTPException(400, "Choose a file (CSV / Excel).")
         raw = await up.read()
         b = {k: str(form.get(k) or "") for k in ("coll", "label", "item_label", "mapping")}
         try:
@@ -10641,7 +10641,7 @@ async def sites_uptime_report(request: Request):
         raise HTTPException(400, "bad json")
     results = body.get("results") if isinstance(body, dict) else None
     if not isinstance(results, list):
-        raise HTTPException(400, "results list chahiye")
+        raise HTTPException(400, "a results list is needed")
     return {"ok": True, "recorded": await asyncio.to_thread(H.outside_report, [r for r in results if isinstance(r, dict)])}
 
 
@@ -13309,7 +13309,7 @@ async def brand_photo(ref: str, file: UploadFile = File(...), conversation_id: s
     from .brand import service as brand
     data = await file.read()
     if len(data) > 25 * 1024 * 1024:
-        raise HTTPException(413, "Photo 25 MB se badi hai.")
+        raise HTTPException(413, "The photo is bigger than 25 MB.")
     return await asyncio.to_thread(_brand, brand.set_photo, tenant, ref, "", data, conversation_id)
 
 
@@ -13364,7 +13364,7 @@ async def brand_logo(file: UploadFile | None = File(None), file_id: str = Form("
     from .brand import service as brand
     data = await file.read() if file is not None else None
     if data is not None and len(data) > 15 * 1024 * 1024:
-        raise HTTPException(413, "Logo 15 MB se bada hai.")
+        raise HTTPException(413, "The logo is bigger than 15 MB.")
     return await asyncio.to_thread(_brand, brand.set_logo, tenant, data, file_id, (file.filename if file else "logo.png"), clean_bg)
 
 
@@ -13508,7 +13508,7 @@ def kalam_page(token: str):
     from .kalam import service as kalam
     html_text = kalam.page_by_token(token)
     if not html_text:
-        raise HTTPException(404, "Page nahi mila")
+        raise HTTPException(404, "Page not found")
     return HTMLResponse(html_text, headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; img-src https: data:",
                                             "X-Content-Type-Options": "nosniff", "Referrer-Policy": "no-referrer"})
 
@@ -13645,8 +13645,8 @@ def action_result(action_id: str, body: ActionResult, tenant: str = Depends(curr
     bus.publish(conv, "device_action_result", {"id": action_id, "type": typ, "status": status, "detail": body.detail})
     if status == "failed":
         from .events import notify
-        notify(conv, f"Phone par yeh nahi ho paya ({typ.replace('_', ' ')}): {body.detail or 'permission ya app ki dikkat'}. "
-                     "Phone settings mein Santosh ko permission dekh lijiye.")
+        notify(conv, f"This could not be done on the phone ({typ.replace('_', ' ')}): {body.detail or 'a permission or app problem'}. "
+                     "Please check the permissions for Santosh in the phone settings.")
     return {"status": status}
 
 
@@ -14183,7 +14183,7 @@ def enterprise_run_resolve(role: str, run_id: str, body: dict,
     back in the queue for exactly one more attempt."""
     from .enterprise import run as entrun
     if "landed" not in body:
-        raise HTTPException(400, "landed true/false batana zaroori hai.")
+        raise HTTPException(400, "landed true/false is required.")
     return _entrun(entrun.resolve, tenant, run_id, int(body.get("n") or 0), bool(body.get("landed")))
 
 
@@ -14195,7 +14195,7 @@ def enterprise_deploy_validate(role: str, body: dict, tenant: str = Depends(curr
     from .enterprise import run as entrun
     comps = body.get("components")
     if not isinstance(comps, list) or not comps:
-        raise HTTPException(400, "components chahiye: [{type, name, body}].")
+        raise HTTPException(400, "components are needed: [{type, name, body}].")
     return _entrun(entrun.deploy_validate, tenant, role, comps, str(body.get("test_level") or ""))
 
 
@@ -14589,7 +14589,7 @@ async def reel_shop(reel_id: str, body: ReelShopIn, tenant: str = Depends(curren
     from .reels import service as rs
     items = await asyncio.to_thread(_reel, rs.shop_items, tenant, reel_id, body.items or None)
     if not items:
-        raise HTTPException(400, "Is reel mein khareedne layak cheez nahi mili.")
+        raise HTTPException(400, "No buyable item was found in this reel.")
     r = await list_add(Ctx(tenant, await asyncio.to_thread(_tv_conv, tenant)), "shopping", items)
     return {"list": r["list"], "added": r["added"], "items": r["items"],
             "say": f"{len(r['added'])} cheezein shopping list mein daal di." if r["added"] else "Yeh sab pehle se list mein hai."}
@@ -14764,10 +14764,10 @@ def motion_file(name: str, exp: int = 0, sig: str = ""):
     from .motion import service as mo
     m = re.fullmatch(r"(mv_[A-Za-z0-9]+)\.(mp4|jpg)", name)
     if not m or not mo.check_sig(m.group(1), m.group(2), exp, sig):
-        raise HTTPException(403, "Link purana ho gaya.")
+        raise HTTPException(403, "The link is old.")
     p = mo.file_path(m.group(1), m.group(2))
     if p is None:
-        raise HTTPException(404, "Video nahi mili.")
+        raise HTTPException(404, "Video not found.")
     return FileResponse(p, media_type="video/mp4" if m.group(2) == "mp4" else "image/jpeg",
                         filename=f"hoola-{m.group(1)}.{m.group(2)}" if m.group(2) == "mp4" else None)
 
@@ -15469,7 +15469,7 @@ async def artifact_ask(aid: str, body: ArtAskIn, tenant: str = Depends(current_t
     except ValueError as e:
         raise HTTPException(429 if "sawaal" in str(e) else 400, str(e))
     except Exception as e:
-        raise HTTPException(503, f"Santosh abhi jawab nahi de pa raha ({type(e).__name__})")
+        raise HTTPException(503, f"Santosh cannot answer right now ({type(e).__name__})")
 
 
 @app.post("/api/artifacts/{aid}/revise", dependencies=[Depends(require_key)])
@@ -15491,7 +15491,7 @@ def artifact_page(aid: str, version: int, exp: int = 0, sig: str = "", panel: in
     from . import artifacts
     from .db import Artifact, session as dbs
     if not artifacts.check(aid, version, exp, sig):
-        raise HTTPException(403, "Link expired. Santosh app se dobara kholiye.")
+        raise HTTPException(403, "Link expired. Open it again from the Santosh app.")
     with dbs() as s:
         a = s.get(Artifact, aid)
         if a is None or a.deleted:
