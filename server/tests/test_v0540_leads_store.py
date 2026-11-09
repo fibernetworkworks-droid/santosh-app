@@ -19,10 +19,10 @@ from app.leads.models import LeadContact, LeadRun, LeadOutreach, ensure_tables
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.716.0"
+    assert APP_VERSION == "0.717.0"
     from pathlib import Path
     pub = Path(__file__).resolve().parents[2] / "pubspec.yaml"
-    assert "0.716.0+715" in pub.read_text()
+    assert "0.717.0+716" in pub.read_text()
 
 
 # ---------------------------------------------------------------- the move did not break the old lane

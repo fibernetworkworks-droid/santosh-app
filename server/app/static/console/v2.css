@@ -3190,7 +3190,7 @@ body.albon{overflow:hidden}
 @keyframes hmCard{from{opacity:0;transform:translateY(10px) scale(.99)}to{opacity:1;transform:none}}
 
 /* 4: a file Hoola made = one card: page picture, name, what it is, Open / Download */
-#app .result-card.hmfile{display:flex;align-items:center;gap:14px;padding:10px 12px 10px 10px;max-width:480px;border-radius:14px;cursor:pointer;animation:hmCard .45s cubic-bezier(.2,.7,.2,1) both}
+#app .result-card.hmfile{display:flex;flex-direction:row;align-items:center;justify-content:flex-start;width:auto;text-align:left;gap:14px;padding:10px 12px 10px 10px;max-width:480px;border-radius:14px;cursor:pointer;animation:hmCard .45s cubic-bezier(.2,.7,.2,1) both}
 #app .result-card.hmfile:hover{border-color:var(--dim)}
 #app .hmthumb{width:46px;height:58px;flex:none;border-radius:5px;background:#FFFFFF;border:1px solid #E4E4E1;box-shadow:0 1px 3px rgb(0 0 0 / .08);position:relative;overflow:hidden;padding:7px 6px;display:flex;flex-direction:column;gap:3px}
 #app .hmthumb i{display:block;height:2.5px;border-radius:2px;background:#D9D9DE}
@@ -3202,6 +3202,8 @@ body.albon{overflow:hidden}
 #app .hmfile .fsub{font-size:13px;color:var(--mut)}
 #app .hmfile .result-actions{display:flex;gap:4px;flex:none;margin:0;padding:0;border:0}
 #app .hmfile .result-actions .btn{padding:6px 12px;font-size:13px}
+#app .hmfile .result-actions .btn.hmico{width:32px;height:32px;padding:0;display:grid;place-items:center;border-radius:9px}
+#app .hmfile .result-actions .hmico svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 @media (max-width:520px){#app .result-card.hmfile{flex-wrap:wrap}#app .hmfile .result-actions{width:100%}}
 @media (prefers-reduced-motion:reduce){#app .mu,#app .cd.hmplan,#app .result-card.hmfile,#app .tools.hmlive .ts{animation:none}}
 #app .hmplan li.old .hm-tick svg{animation:none;stroke-dashoffset:0}

@@ -2498,3 +2498,8 @@ Task ID: v0.716.0 NAYA ROOP
 Ask: her new logo as the 3D thinking icon + app logo everywhere, and the chat feel picked on the preview page.
 Built: mark.js (one drawing) + make_mark.js -> every logo size; 3D thinking mark (console + phone); Calm pace; soft-focus word landing; file card; live steps folding into Worked for; Plan card; small motions.
 Not verified live; phone compiles on CI.
+
+---
+Task ID: v0.717.0 FILE CARD SAHI
+Ask: her live PDF card stacked in a column - make it like the approved design.
+Fixed: row direction (the old .cd column rule won), Open + download icon, no Use as reference, doubled name cleaned. Checked in a browser.
