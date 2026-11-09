@@ -132,7 +132,7 @@ def test_a_call_claim_after_a_failed_or_unrelated_tool_is_corrected(did):
     c, said = _call()
     c.did = did
     c._check_spoken_claim("Haan, mail bhej diya.")
-    assert said and "Sudhaar" in said[0]
+    assert said and "Correction:" in said[0]
 
 
 def test_a_call_claim_after_the_real_tool_stands():

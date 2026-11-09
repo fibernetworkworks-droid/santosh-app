@@ -100,7 +100,7 @@ def _fake_call(did=0, news_ago=1000.0, started_ago=1000.0):
 def test_a_call_that_says_done_with_no_tool_is_corrected():
     c, said, voice = _fake_call()
     voice.Call._check_spoken_claim(c, "Haan, maine Sharma ji ko mail bhej diya.")
-    assert said and "Sudhaar" in said[0] and "kuch nahi hua hai" in said[0] and c.stats["voice_fake_done"] == 1
+    assert said and "Correction:" in said[0] and "nothing has happened" in said[0] and c.stats["voice_fake_done"] == 1
 
 
 def test_a_call_relaying_news_or_using_a_tool_is_left_alone():
