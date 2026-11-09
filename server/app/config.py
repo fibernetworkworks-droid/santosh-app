@@ -378,6 +378,12 @@ class Settings(BaseSettings):
     kala_catalog_ttl_seconds: int = 300    # tool, the google/skills catalog) - index.json fetched byte-exact
                                            # behind this in-process TTL; documents fetched fresh every read;
                                            # off means off (honest NEED_SETUP)
+    shilp_enabled: bool = True             # v0.730 SHILP MANCH: the ArtCraft generation lane (the `shilp` tool,
+                                           # their Omni API api.storyteller.ai) - video + image generation and
+                                           # job status; off means off (honest NEED_SETUP)
+    artcraft_api_key: str = ""             # BYOK: VPS .env only (ARTCRAFT_API_KEY), never in chat or the repo -
+                                           # gated per account by the ArtCraft team (app.getartcraft.com)
+    artcraft_base_url: str = "https://api.storyteller.ai"  # their doc's own emphasis: NOT api.getartcraft.com
     kaam_enabled: bool = True              # v0.688 KAAM MANCH: the work-discipline layer (OWL-derived, IDEA-ONLY
                                            # from camel-ai/owl@2df367e, zero upstream code): the search/verify
                                            # tips on the system prompt + the done-needs-proof backstop + the

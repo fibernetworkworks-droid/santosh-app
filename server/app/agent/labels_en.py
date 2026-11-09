@@ -387,6 +387,7 @@ LABELS_EN = {
     'kala': "Kala: Google's public skill catalog, read on demand (no login, no key)",
     'kalam': 'Writing',
     'kalam_dekho': 'Checking written pieces',
+    'shilp': 'Shilp: ArtCraft image/video generation (their Omni API; spends credits; BYOK)',
     'kgmemory': 'Sandarbh: the knowledge-graph memory',
     'kitab': 'Working on the ledger book',
     'kitab_dekho': 'Checking the ledger book',

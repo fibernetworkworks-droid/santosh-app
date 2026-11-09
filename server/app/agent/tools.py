@@ -416,6 +416,14 @@ TOOLS.extend(KALA_TOOLS)
 TOOL_LABELS.update(KALA_LABELS)
 HANDLERS.update(KALA_HANDLERS)
 
+from .shilp_tools import (  # noqa: E402  v0.730 SHILP MANCH - the ArtCraft generation lane (their Omni API, api.storyteller.ai, BYOK): ONE door over their documented surface - video / image generation (job tokens, credits spent on her explicit ask) + job / jobs status polling + status / models (zero network), the key in the VPS .env only, reference urls behind the lane's own wall (http(s), no credentials, no private hosts), idempotency minted here, 402 PAYMENT final
+    SHILP_HANDLERS, SHILP_LABELS, SHILP_TOOLS,
+)
+
+TOOLS.extend(SHILP_TOOLS)
+TOOL_LABELS.update(SHILP_LABELS)
+HANDLERS.update(SHILP_HANDLERS)
+
 from .scrape_tools import SCRAPE_HANDLERS, SCRAPE_LABELS, SCRAPE_TOOLS  # noqa: E402  v0.474 Scrapling
 
 TOOLS.extend(SCRAPE_TOOLS)
