@@ -237,7 +237,7 @@ class AttachTray extends StatelessWidget {
 bool filesOnlyText(String text, List files) {
   final t = text.trim();
   if (files.isEmpty) return false;
-  if (t == fileOnlyText) return true;
+  if (t == fileOnlyText || t == 'Ye file dekho') return true;   // the old Hinglish stand-in is still recognised
   final lines = t.split('\n').where((l) => l.trim().isNotEmpty).toList();
   return lines.isNotEmpty && lines.every((l) => l.trim().startsWith('📎 '));
 }

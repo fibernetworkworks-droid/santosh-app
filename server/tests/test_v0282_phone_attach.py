@@ -11,7 +11,7 @@ LIB = ROOT / "lib"
 def test_module_parts():
     d = (LIB / "ui" / "chat_attach.dart").read_text()
     for part in ("class TrayFile", "class AttachTray", "class SentFiles", "void openAttachment(", "class AttachViewer",
-                 "InteractiveViewer", "VideoPlayerController.networkUrl", "const fileOnlyText = 'Ye file dekho'",
+                 "InteractiveViewer", "VideoPlayerController.networkUrl", "const fileOnlyText = 'Look at this file'",
                  "bool filesOnlyText(", "LinearProgressIndicator"):
         assert part in d, part
 
