@@ -23140,3 +23140,29 @@ WAITING cards list to EVERY chat turn's memory block, and the model led with it.
 words are about pending work / cards (`_ASKS_PENDING`: card, pending, baaki, approve, status, kya hua, draft...); the
 answered-cards note (what she tapped since the last reply) stays, marked BACKGROUND and never the opening. Tests: the v0.704
 suite updated + test_a_normal_ask_gets_no_waiting_list (her exact ask gets no list).
+
+## v0.712.0 HAR PROMPT KA PLAN
+
+Owner after v0.710 went live (healthz 0.710.0): "BUT WHY EVERY PROMPT GIVES PLAN FOR LANDING MARKETING PAGE --- CHECK
+ROOT CAUSE". Built as 0.711; their SIRF JO POOCHA CHAT took 0.711.0 - REBASE PROTOCOL, both kept.
+
+ROOT CAUSE: the Web Studio home opens in BUILD mode by default (Plan is the opt-in). v0.709 sent a Build ask to the
+architect only when `architect.wants_plan` saw portal / web app / dashboard / login words (or 3+ app words); every other
+ask went to `service.new()` -> `make_plan(L.brief(field, goal, style))` = the library's fixed page set for that business
+type, and the workspace shows exactly that as "The plan is ready" (Home / About / Services / Gallery / Contact pills) before
+the looks. So for almost every prompt the "plan" she saw was never written for her words. v0.709 / v0.710 fixed the Plan
+mode path (deep spec, the plan's own structure, Opus) - the path she was mostly not on.
+
+FIX:
+- POST /api/sites with `deep` (the Studio's Build mode) now sends EVERY ask through `architect.build_now` (switch
+  `studio_build_architect`, default on): the Opus plan is drawn quietly and built at once on her Build tap, so the site's
+  pages and sections come from her words. A template pick (carries its own field) keeps the library path.
+- `architect.needs_data`: a brochure / lead site with no signed-in pages and no records gets NO data draft (saves an Opus
+  call; card `data_none`, data module "No data lists needed"), so it is never told "Data ki lists abhi nahi lage".
+- `build_now` falls back to the plain path when the architect gives back nothing usable, saying "Gehra plan abhi nahi
+  bana; seedha website bana rahi hoon" (her refused words still refuse).
+- `SECTION_SYSTEM` said "building ONE section of a small business website" for every section of every site; it now says
+  the kind the plan says (portal, web app, shop, clinic system or business site), never a generic marketing page for a system.
+Cost / time: one Opus plan call (+ at most one deepen) before the looks on every Build ask - about 1-3 minutes longer.
+Tests: test_v0709_plan_shape.py grows 3 (brochure gets its own plan and no data draft, the fallback, the section prompt) and
+the Build-mode test now expects every ask planned. NOT VERIFIED on her server yet.

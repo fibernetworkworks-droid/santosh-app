@@ -318,7 +318,7 @@ def draft(tenant: str, words: str, conv: str = "", logic_ask=None, quiet: bool =
         raise ArchError("Plan samajh nahi aaya; thoda aur bataiye (kaun use karega, kya karega).", 502)
     spec = _deepen(spec, words, tier)
     p = _new_project(tenant, spec, conv)
-    data = _data_draft(p, spec, logic_ask)
+    data = _data_draft(p, spec, logic_ask) if needs_data(spec) else dict(NO_DATA)
     return _save_card(p.id, spec, data, publish=not quiet)
 
 
@@ -395,6 +395,19 @@ def _deepen(spec: dict[str, Any], words: str, tier: str) -> dict[str, Any]:
     return spec
 
 
+NO_DATA = {"hash": "", "errors": [], "lines": [], "summary": "", "none": True}
+
+
+def needs_data(spec: dict[str, Any]) -> bool:
+    """v0.711 a brochure / lead site keeps no lists of its own (its enquiry form is the site's own form) - drafting a data
+    model for it cost an Opus call and then warned her 'lists not added'. Lists only where someone signs in or the plan
+    describes records."""
+    if spec.get("kind") in APP_KINDS or any(p["for"] != "public" for p in spec.get("pages") or []):
+        return True
+    lines = [x for x in re.split(r"[\n;]+", spec.get("app_words") or "") if x.strip()]
+    return len(lines) >= 3 and spec.get("kind") not in ("brochure", "lead_site", "content_site")
+
+
 def _new_project(tenant: str, spec: dict[str, Any], conv: str):
     from ..appmaker import backend as BE
     from ..appmaker import service as AS
@@ -451,7 +464,7 @@ def _save_card(pid: str, spec: dict[str, Any], data: dict[str, Any], publish: bo
         p = s.get(AppProject, pid)
         plan = _j(p.plan, {})
         a = plan.get("architect") or {}
-        a.update({"spec": spec, "data": {k: data.get(k) for k in ("hash", "summary", "lines", "errors", "warnings", "schema_changes", "questions")},
+        a.update({"spec": spec, "data": {k: data.get(k) for k in ("hash", "summary", "lines", "errors", "warnings", "schema_changes", "questions", "none")},
                   "status": "waiting", "at": now().isoformat()})
         plan["architect"] = a
         p.plan = json.dumps(plan, ensure_ascii=False)
@@ -494,6 +507,7 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
         from . import lang as LG
         feats.append("Bhashayen: " + ", ".join(LG.LANGS.get(c, c) for c in f["languages"]))
     data_ok = bool(data.get("hash")) and not data.get("errors")
+    no_data = bool(data.get("none"))
     pay = spec.get("payments") or {}
     PAYL = {"none": "Koi payment nahi", "record": "Staff payment record karega (office mein diya paisa)",
             "upi": "Aapke UPI ID ka QR - har payment aap confirm karengi", "cod": "Cash on delivery"}
@@ -518,8 +532,10 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
         {"key": "flows", "title": f"User journeys ({len(spec.get('flows') or [])})", "info": True, "required": True,
          "lines": [f"{x['who']} - {x['name']}: " + " -> ".join(x["steps"]) for x in spec.get("flows") or []] or ["(koi journey nahi)"],
          "items": [{"title": x["name"], "sub": x["who"], "steps": x["steps"]} for x in spec.get("flows") or []]},
-        {"key": "data", "title": f"Data ({len(lists)} lists)", "ready": data_ok,
-         "lines": [f"{c['label']}: {', '.join(c['fields'])}" for c in lists] or (data.get("errors") or ["Data ka draft nahi bana"])[:2]},
+        {"key": "data", "title": f"Data ({len(lists)} lists)", "ready": data_ok or no_data,
+         "lines": [f"{c['label']}: {', '.join(c['fields'])}" for c in lists] or
+                  (["No data lists needed: nobody signs in; enquiries arrive through the site's own form"] if no_data else
+                   (data.get("errors") or ["Data ka draft nahi bana"])[:2])},
         {"key": "logic", "title": "Niyam, workflow, approvals", "ready": data_ok,
          "lines": (data.get("lines") or [])[:14] or ["Koi niyam nahi"]},
         {"key": "payments", "title": "Payment", "lines": [PAYL[pay.get("mode") or "none"] + (f": {pay['what']}" if pay.get("what") else ""),
@@ -543,7 +559,7 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
     body = {"spec": spec, "data_hash": data.get("hash") or "", "modules": [m["key"] for m in modules]}
     return {"id": p.id, "number": p.number, "status": a.get("status") or "waiting", "name": spec.get("name") or p.name,
             "summary": spec.get("summary") or "", "questions": (spec.get("questions") or []) + (data.get("questions") or [])[:2],
-            "modules": modules, "hash": _hash(body), "data_ready": data_ok, "site": a.get("site") or "",
+            "modules": modules, "hash": _hash(body), "data_ready": data_ok, "data_none": no_data, "site": a.get("site") or "",
             "kind": spec.get("kind") or "", "complexity": spec.get("complexity") or "",
             "depth": spec.get("depth") or depth(spec) if spec.get("pages") else {},
             "warnings": (data.get("warnings") or [])[:6],
@@ -593,7 +609,8 @@ def revise(tenant: str, ref: str, words: str, logic_ask=None) -> dict[str, Any]:
     data_moved = new["app_words"].strip() != (old.get("app_words") or "").strip() or \
         new["notifications"] != old.get("notifications") or new["payments"] != old.get("payments")
     if a.get("status") != "built":
-        data = _data_draft(p, new, logic_ask) if data_moved else (a.get("data") or {})
+        data = (_data_draft(p, new, logic_ask) if needs_data(new) else dict(NO_DATA)) if data_moved or \
+            (needs_data(new) and (a.get("data") or {}).get("none")) else (a.get("data") or {})
         c = _save_card(p.id, new, data)
         return {**c, "say": "Spec badal diya. " + c["say"]}
     # built: rebuild only what the change touches
@@ -652,7 +669,10 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     if "logic" in on and "data" not in on:
         on.discard("logic")                      # rules need their lists
     data_later = False
-    if ("data" in on) and not c["data_ready"]:
+    if c.get("data_none"):                       # v0.711 a site that keeps no lists: nothing to attach, nothing to warn
+        on.discard("data")
+        on.discard("logic")
+    elif ("data" in on) and not c["data_ready"]:
         # v0.707 her "Build this plan" never dies on the data draft: the website is built now, the lists + rules wait
         # for their own fix (App & data tab, 'Data dobara') - the old 422 left her on the plan with nothing built
         on.discard("data")
@@ -777,10 +797,17 @@ def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) ->
 
 
 def build_now(tenant: str, words: str, conv: str = "") -> dict[str, Any]:
-    """v0.708 Build mode for a web app / portal ask: her Build tap IS the yes, so the same deep plan is drawn (quietly)
+    """v0.711 Build mode for EVERY ask (v0.708: web app / portal asks only): her Build tap IS the yes, so the same deep plan is drawn (quietly)
     and built at once - the site gets the plan's structure instead of the library's marketing page set."""
     from . import service as S
-    c = draft(tenant, words, conv, quiet=True)
+    try:
+        c = draft(tenant, words, conv, quiet=True)
+    except ArchError as e:
+        if e.code == 400:                        # her words were refused (guard / too short): say it, build nothing
+            raise
+        log.warning("build mode: architect plan failed, plain site path: %s", e)
+        v = S.new(tenant, words, conv)
+        return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
     got = approve(tenant, c["id"], c["hash"], None, conv)
     v = S.view(S._load(got["site"]))
     return {**v, "spec": c["id"], "spec_number": c["number"], "say": got["say"]}

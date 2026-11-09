@@ -2460,3 +2460,10 @@ Work Log:
 - events.card_news_block takes her words; waiting list only on pending-work words; answered note marked background
 Stage Summary:
 - v0704 + v0650 suites 12 passed
+
+---
+Task ID: v0.712.0 HAR PROMPT KA PLAN
+Ask: every prompt still gives a landing-page plan after v0.710.
+Found: Build mode (the default) only used the architect for portal words; everything else = library page set.
+Fixed: every Build ask planned by the architect (Opus), brochure no data draft, fallback, section prompt neutral.
+Not verified live.

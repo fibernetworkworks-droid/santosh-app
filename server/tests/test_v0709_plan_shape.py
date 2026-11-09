@@ -177,9 +177,67 @@ def test_build_mode_gives_a_system_ask_the_deep_plan(deep_env):
     plan = json.loads(S._load(v["id"]).plan)
     assert plan["spec"]["kind"] == "portal" and [p["slug"] for p in plan["pages"]][:2] == ["home", "admissions"]
     assert v["status"] == "looks" and v["spec"]
-    n = len(deep_env)
-    b = c.post("/api/sites", json={"brief": "mithai dukaan ki website", "deep": True}).json()   # a brochure stays fast
-    assert len(deep_env) == n and "spec" not in json.loads(S._load(b["id"]).plan)
+    n = len(deep_env)                                                   # v0.711: EVERY Build ask is planned now
+    b = c.post("/api/sites", json={"brief": "mithai dukaan ki website", "deep": True}).json()
+    assert len(deep_env) > n and "spec" in json.loads(S._load(b["id"]).plan)
+    t = c.post("/api/sites", json={"brief": "[Hoola template #12] mithai dukaan", "deep": True, "field": "sweet_shop"})
+    assert t.status_code in (200, 400) and len(deep_env) == n + 1         # a template carries its own field: library path
+
+
+BROCHURE = {"name": "Sharma Sweets", "summary": "Mithai dukaan ki website", "field_hint": "sweet shop", "kind": "lead_site",
+            "complexity": "simple", "goal": "order", "roles": [],
+            "pages": [{"slug": "home", "title": "Home", "purpose": "the shop", "for": "public",
+                       "sections": [{"type": "hero", "design": "SWEETS HERO: kaju katli close-up"}, {"type": "products_grid"},
+                                    {"type": "reviews"}, {"type": "contact_block"}]},
+                      {"slug": "festive-boxes", "title": "Festive boxes", "purpose": "Diwali gift boxes", "for": "public",
+                       "sections": [{"type": "hero"}, {"type": "pricing_table"}, {"type": "faq"}]}],
+            "flows": [{"name": "Order a box", "who": "Customer", "steps": ["opens Festive boxes", "taps WhatsApp", "shop confirms"]}],
+            "stories": [{"who": "Customer", "want": "order a gift box", "so": "Diwali gifts"}], "app_words": "", "page_count": 2}
+
+
+def test_a_brochure_build_gets_its_own_plan_and_no_data_draft(site_env, monkeypatch):
+    from app.appmaker import ai as AAI
+    from app.site import ai as AI
+    from app.site import architect as AR
+    from app.site import service as S
+    logic = []
+
+    def ask(system, prompt, max_tokens=6000, kind="build"):
+        if system.startswith(AR.ARCH_SYSTEM[:40]):
+            return json.loads(json.dumps(BROCHURE))
+        return site_env(system, prompt, max_tokens, kind)
+    monkeypatch.setattr(AI, "ask_json", ask)
+    monkeypatch.setattr(AAI, "ask_json", lambda *a, **k: logic.append(1) or json.loads(json.dumps(SCHOOL_LOGIC)))
+    c = TestClient(__import__("app.main", fromlist=["app"]).app)
+    v = c.post("/api/sites", json={"brief": "mithai dukaan ki website, diwali boxes", "deep": True}).json()
+    plan = json.loads(S._load(v["id"]).plan)
+    assert [p["slug"] for p in plan["pages"] if p["slug"] not in ("privacy", "terms", "refund", "disclaimer")] == ["home", "festive-boxes"]
+    assert plan["pages"][0]["sections"][0]["design"].startswith("SWEETS HERO")
+    assert not logic                                                    # no data model drafted for a brochure
+    assert "Data ki lists" not in v.get("say", "") and v["status"] == "looks"
+    card = AR.card(T, v["spec"])
+    assert card["data_none"] and next(m for m in card["modules"] if m["key"] == "data")["ready"]
+
+
+def test_build_mode_falls_back_when_the_architect_cannot_plan(site_env, monkeypatch):
+    from app.site import ai as AI
+    from app.site import architect as AR
+    from app.site import service as S
+
+    def ask(system, prompt, max_tokens=6000, kind="build"):
+        if system.startswith(AR.ARCH_SYSTEM[:40]):
+            return {}                                                    # nothing usable came back
+        return site_env(system, prompt, max_tokens, kind)
+    monkeypatch.setattr(AI, "ask_json", ask)
+    c = TestClient(__import__("app.main", fromlist=["app"]).app)
+    r = c.post("/api/sites", json={"brief": "mithai dukaan ki website", "deep": True})
+    assert r.status_code == 200 and "Gehra plan abhi nahi bana" in r.json()["say"]
+    assert "spec" not in json.loads(S._load(r.json()["id"]).plan)
+
+
+def test_section_writer_is_not_told_every_site_is_a_small_business_page():
+    from app.site import ai as AI
+    assert "small business website" not in AI.SECTION_SYSTEM and "never a generic marketing page" in AI.SECTION_SYSTEM
 
 
 def test_studio_draws_the_plan_as_a_document():
