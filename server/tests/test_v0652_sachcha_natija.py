@@ -49,7 +49,7 @@ def test_the_call_never_reads_an_earlier_asks_done():
         f.set_result("Yeh kaam bahut der se chal raha tha, isliye maine ise rok diya.")
         voice.Call._late_result(fake, f, "website banao", time.time())
     asyncio.run(go(time.time() - 300))
-    assert said and "ho gaya:" not in said[0] and "jawab aaya" in said[0] and "'Ho gaya' sirf tab" in said[0]
+    assert said and "is done:" not in said[0] and "answer of that big job" in said[0] and "Say 'it is done' only if" in said[0]
 
 
 def test_a_fresh_stuck_outcome_is_said_as_stuck():
@@ -66,7 +66,7 @@ def test_a_fresh_stuck_outcome_is_said_as_stuck():
         f.set_result("rok diya")
         voice.Call._late_result(fake, f, "website banao", since)
     asyncio.run(go())
-    assert "atka hai: time limit par roka gaya" in said[0] and "'Ho gaya' bilkul mat kehna" in said[0]
+    assert "is stuck: time limit par roka gaya" in said[0] and "Do NOT say it is done" in said[0]
 
 
 # ---------------------------------------------------------------- 2. every job kind's own words are understood
