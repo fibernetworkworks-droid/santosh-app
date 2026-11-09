@@ -413,8 +413,21 @@ def _save_recipe_draft(tenant: str, sk: dict[str, Any], source: str) -> dict[str
 
 
 # ---------------------------------------------------------------- the pipeline
-def watch(tenant: str, ref: str, title: str = "", actor: str = "owner") -> dict[str, Any]:
-    """Watch one video and keep its way of working. Raises SeekhError honestly; never fakes a step."""
+def _emit(on_stage, stage: str, data: dict[str, Any] | None = None) -> None:
+    """v0.718: the console lane's progress door - a no-op for every existing caller (the tool, the tests)."""
+    try:
+        if on_stage:
+            on_stage(stage, data or {})                        # never let a UI sink break the watch
+    except Exception:                                       # noqa: BLE001
+        log.exception("seekh on_stage %s failed", stage)
+
+
+def watch(tenant: str, ref: str, title: str = "", actor: str = "owner",
+          on_stage=None) -> dict[str, Any]:
+    """Watch one video and keep its way of working. Raises SeekhError honestly; never fakes a step.
+    on_stage(stage, data) is called at every real pipeline boundary so a UI can show live progress:
+    classify -> fetch -> notes (the perception text) -> distill_start -> distill (the salvaged recipe)
+    -> memory (procedure + recipe names) -> done (the result)."""
     from .config import get_settings
     st = get_settings()
     if not st.seekh_enabled:
@@ -422,16 +435,21 @@ def watch(tenant: str, ref: str, title: str = "", actor: str = "owner") -> dict[
     if (actor or "owner") != "owner":
         raise SeekhError("Sirf owner ka bheja video seekha ja sakta hai.")
     kind, key = _classify(ref)
+    _emit(on_stage, "classify", {"kind": kind, "key": str(key)[:200]})
     today = dt.date.today().isoformat()
     if sum(1 for r in _load(tenant) if str(r.get("day", "")) == today) >= int(st.seekh_max_per_day):
         raise SeekhError(f"Aaj ke liye {st.seekh_max_per_day} video seekh liye - kal phir try kijiye.")
+    _emit(on_stage, "fetch", {"kind": kind})
     if kind == "youtube":
         perception = _perceive_youtube(key, tenant)
     elif kind == "file":
         perception = _perceive_file(tenant, key, st)
     else:
         perception = _perceive_url(key, st)
+    _emit(on_stage, "notes", {"perception": perception})
+    _emit(on_stage, "distill_start", {})
     sk = _distill(perception)
+    _emit(on_stage, "distill", {"steps": len(sk["steps"]), "title": sk["title"]})
     if str(title or "").strip():
         sk["title"] = re.sub(r"\s+", " ", str(title)).strip()[:TITLE_MAX]
     proc = _save_procedure(tenant, sk, ref)
@@ -441,12 +459,13 @@ def watch(tenant: str, ref: str, title: str = "", actor: str = "owner") -> dict[
             recipe = _save_recipe_draft(tenant, sk, f"{kind}:{key}")["name"]
         except Exception:                               # noqa: BLE001 - the procedure stands without it
             log.exception("seekh recipe draft failed")
+    _emit(on_stage, "memory", {"procedure_id": proc["id"], "recipe": recipe})
     rows = _load(tenant)
     rows.append({"ts": dt.datetime.now().isoformat(timespec="seconds"), "day": today,
                  "source": f"{kind}:{key}"[:200], "title": sk["title"], "procedure_id": proc["id"],
                  "recipe": recipe, "steps": len(sk["steps"]), "confidence": sk["confidence"]})
     _save(tenant, rows)
-    return {"learned": sk["title"], "kind": sk["kind"], "site": sk["site"], "procedure_id": proc["id"],
+    out = {"learned": sk["title"], "kind": sk["kind"], "site": sk["site"], "procedure_id": proc["id"],
             "recipe": recipe,
             "steps": [{"n": s.get("n"), "action": s.get("action"), "note": s.get("note", ""),
                        "evidence": s.get("evidence", []), "value_hint": s.get("value_hint", "")}
@@ -460,3 +479,5 @@ def watch(tenant: str, ref: str, title: str = "", actor: str = "owner") -> dict[
                             "the steps with their timestamps, the gotchas and what you are unsure about. For "
                             "website work the operator may use the draft as a guide, checking every step "
                             "against the live page."}
+    _emit(on_stage, "done", {"learned": out["learned"]})
+    return out

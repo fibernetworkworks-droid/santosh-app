@@ -1,3 +1,45 @@
+## v0.718.0 SEEKH MANCH ON THE CONSOLE — the HOOLA AI Video Learner page (9 Nov 2026; owner: "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT — CHECK THE EXISTING CONSOLE DESIGN AND IN AI EMPLOYEE SECTION BUILD THE HOOLA AI VIDEO LEARNER. In that, a panel where user can load a video and HOOLA AI will see this and note in REALTIME. Once done, HOOLA AI will prepare a MEMORY for this. And IN THIS PAGE ONLY user will tell HOOLA to PERFORM THIS TASK NOW — then HOOLA will use HIS BROWSER for doing that task" + "PERFECT START THE DEPLOYMENT" on the prototype shown in chat; built as v0.716.0, their NAYA ROOP took 0.716.0 and their FILE CARD SAHI took 0.717.0 while it sat built — REBASE PROTOCOL onto their tip, all kept)
+
+v0.713 taught Hoola to learn a way of working from a video (SEEKH MANCH, the `seekh_video` tool). This
+release gives that power its own page on the web console: **AI Employees → HOOLA AI Video Learner**.
+She loads a video — a YouTube link, a Shorts, a direct URL, or a file she picks (≤ 25 MB through the
+chat lane) — presses **Watch & Learn**, and watches Hoola watch: a five-step stepper tracks the real
+pipeline (Pehchana → Video dekh rahi hoon → Notes likh rahi hoon → Steps ban rahi hoon → Memory) with
+real elapsed stamps, and **HOOLA KI NOTES** fills with exactly what her Gemini eyes returned — the
+[m:ss] moments included — paced in word by word. Every stage the page shows is a real `on_stage`
+boundary of `seekh.watch`, never a guess.
+
+- **THE MEMORY CARD** — when the watch lands: the title, website/other-work kind, the steps each with
+  its `:ss]` evidence chip, preconditions, gotchas, what she is unsure about, the confidence meter, and
+  the honesty line — *learned is NOT proven; the first real run verifies it*. Below, **Seekhe hue
+  kaam** lists every past watch with its recipe badge.
+- **PERFORM THIS TASK NOW — ON THE SAME PAGE** — her instruction (the learned kaam's fill-in variables
+  offered as hints) becomes ONE honest chat turn through the same `/api/conversations/{id}/messages`
+  the composer uses. The task runs through the agent; the computer operator reads the video-learned
+  **draft recipe** at job start and drives its **own browser**, checking every step against the live
+  page; anything that sends or submits still waits for her tap. The panel stays put, shows the sent
+  state, and offers Live activity + Chat.
+- **THE LANE IS THIN** — NEW `server/app/seekh_console.py` (`/api/seekh/console/*`: `POST /watch` → job
+  id, `GET /progress?id=` the 1.2 s pulse, `GET /watches` the memory list with caps; key-protected,
+  tenant-scoped, one watch at a time per tenant — a second start **adopts** the running job, a page
+  reload re-adopts it; an in-process ring, so a restart drops jobs but the learned kaam lives in the
+  two real memories). `seekh.watch` grew ONLY an additive `on_stage` callback (a no-op for the tool and
+  every existing test; a broken sink never breaks the watch). **PERFORM is deliberately not an
+  endpoint** — the panel composes a chat turn, so the operator lane stays the only doer (pinned by
+  test).
+- **NO NEW ORGANS** — no new tool (registry stays 617), no new pip, no new keys, no new settings; the
+  frozen PC zone untouched (the lane never imports the operator stack, pinned by test). The console
+  files: `seekh.js` (the panel), the `#v-seekh` view in `v2.html`, the hub card in `employees.js`, the
+  `send`/`upload` helpers in `v2.js` (both ride the chat doors — no new server surface), the styles in
+  `v2.css`.
+- Tests: `test_v0718_seekh_console.py` (25: lane guards 401/422/403/404, the job lifecycle with the
+  perception/distill doors patched at the module seam, stage order, adoption of the running job, honest
+  errors, the console file pins, the version pins; born as v0716 in the collision round, ships as
+  v0718) and the v0713 suite re-run green (40 — the tool path unchanged). The console COUNT pins
+  brought to the true 25 (their mark.js + this release's seekh.js): calm_brand healed from a stale 22,
+  sessions from 23, frames from 24. Deploy: the owner's vps-ops dispatch; healthz must grep 0.718.0.
+
+
 ## v0.717.0 FILE CARD SAHI — the made-file card the way she approved it (9 Nov 2026; owner sent a live screenshot of a PDF card stacked in a column: "MAKE IT SAME AS DESIGNED IN PREVIOUS PLAN")
 
 The v0.716 `.hmfile` card never set a row direction, and the console's old `.cd` rule (`flex-direction:column`)

@@ -116,6 +116,8 @@ IC.archdesk = '<path d="M3 21h18M5 21V10l7-6 7 6v11M9 21v-6h6v6M9 13h.01M15 13h.
 IC.gamedesk = '<path d="M6 12h4M8 10v4M15 13h.01M18 11h.01M17.3 5H6.7A4.7 4.7 0 0 0 2 9.7v4.1A3.2 3.2 0 0 0 5.2 17c1 0 2-.5 2.6-1.4L9 14h6l1.2 1.6c.6.9 1.6 1.4 2.6 1.4a3.2 3.2 0 0 0 3.2-3.2V9.7A4.7 4.7 0 0 0 17.3 5z"/>';   // v0.370 Game Desk
 IC.socialdesk = '<path d="M18 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM6 15a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM18 22a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';   // v0.353 Social Desk
 let EMP = null;
+let SKH = null;         // v0.718 the HOOLA AI Video Learner (seekh.js) - opens from the AI Employees hub
+IC.seekh = '<path d="M2 5.5a2 2 0 0 1 2-2h9l2.5 2.5H20a2 2 0 0 1 2 2V16a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2z"/><path d="M10 9.5l4 2.5-4 2.5z" fill="currentColor" stroke="none"/>';   // v0.718 a video folder with a play
 let SK = null;         // v0.481 the Skill Desk (account menu > Skills)
 let FD = null;         // v0.565 the Film Desk (filmdesk.js)
 IC.appdev = '<rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10.5 18.5h3M9.5 9l-2 2 2 2M14.5 9l2 2-2 2"/>';   // v0.693 App Development (phone + code)
@@ -155,7 +157,7 @@ function go(v, arg) {
   if (v === 'appdev') { location.assign('/console/apps' + (arg ? '#/app/' + encodeURIComponent(arg) : '')); return; }   // v0.693 App Studio = its own app
   if (v === 'webdev') { location.assign('/console/web' + (arg ? '#/site/' + encodeURIComponent(arg) : '')); return; }   // v0.649 Web Studio = its own app
   VIEW = v; $$('.view').forEach(x => x.hidden = x.id !== 'v-' + v);
-  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
+  $('#ttl').textContent = {chat: chatFolder(), aaj:'· Today', kaam:'· All tools', baat:'· Baat', main:'· Main', bana:'· Creations', project:'· Folder', arena:'· Design Arena', lab:'· Prayogshala', hire:'· AI Employees', seekh:'· Video Learner', seodesk:'· SEO Desk', socialdesk:'· Social Desk', caddesk:'· CAD Desk', gamedesk:'· Game Desk', archdesk:'· Architecture Desk', edudesk:'· Education Desk', skills:'· Skills', filmdesk:'· Film Desk', leadsdesk:'· Leads Desk'}[v] || '';
   if (v !== 'project') PJ?.draw();
   drawNav(); $('#app').classList.remove('drawer');
   if (v === 'aaj') drawToday(); if (v === 'main') drawMain(); if (v === 'baat') drawBaat();
@@ -165,6 +167,7 @@ function go(v, arg) {
   else if (v === 'lab' && !$('#labframe').src) $('#labframe').src = '/static/prayog/index.html';   // Prayogshala (public labs)
   if (v === 'systems') ENT?.open($('#systems'), arg || 'erp');   // v0.453 an Enterprise employee's Open desk lands on its own role   // v0.396 CONNECT: her own ERP / CRM address + key
   if (v === 'hire') EMP?.hub($('#hire'));
+  if (v === 'seekh') SKH?.open($('#seekh'));   // v0.718 the HOOLA AI Video Learner (from the AI Employees hub)
   if (v === 'seodesk') EMP?.desk($('#seodesk'));
   if (v === 'socialdesk') EMP?.social($('#socialdesk'));
   if (v === 'caddesk') EMP?.cad($('#caddesk'));
@@ -262,6 +265,21 @@ async function enter() {
     EMP = HoolaEmployees({api, esc, toast, changed: syncEmployees, open: (v, arg) => go(v, arg),   // v0.453 desks open Systems / a lab directly
                           say: text => { go('chat'); msg.value = text; msg.dispatchEvent(new Event('input')); composer.requestSubmit(); }});
     if (!NAV.some(([k]) => k === 'hire')) NAV.unshift(['hire', 'AI Employees']);   // v0.443 her AI staff is the FIRST section
+  }
+  if (window.HoolaSeekh && !SKH) {               // v0.718 the Video Learner: stays on its page while Hoola works
+    SKH = HoolaSeekh({api, esc, toast, open: (v, arg) => go(v, arg), live: () => $('#app').classList.add('open'),
+                      send: async text => {        // one honest chat turn without leaving the panel
+                        let id = CONV;
+                        if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
+                        return api('POST', `/api/conversations/${encodeURIComponent(id)}/messages`,
+                                   {text: String(text || ''), client_id: (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random())), files: [], hints: []});
+                      },
+                      upload: async file => {      // the panel's video picker rides the chat file lane (25 MB)
+                        let id = CONV;
+                        if (!id) { const c = await api('POST', '/api/conversations?reuse=1'); id = c.id; }
+                        const fd = new FormData(); fd.append('file', file, file.name);
+                        return api('POST', `/api/conversations/${encodeURIComponent(id)}/files`, undefined, {form: fd});
+                      }});
   }
   syncEmployees(ME.employees || {});
   if (window.HoolaEnterprise && !ENT) {        // v0.396 CONNECT: the only door an enterprise credential has
@@ -405,7 +423,7 @@ function replayStep(p) {
   if (p.args) STEPS_ARGS.set(id, p.args);
   if (p.state === 'running') return;      // the done / error step of the same call follows it
   if (!STEPBUF) {
-    STEPBUF = document.createElement('details'); STEPBUF.className = 'tools hmfold'; STEPBUF.open = false;   // v0.716 the same fold as a live turn
+    STEPBUF = document.createElement('details'); STEPBUF.className = 'tools hmfold'; STEPBUF.open = false;   // v0.718 the same fold as a live turn
     STEPBUF.innerHTML = `<summary>${HM_CHEV}<span class="sm"></span></summary><div class="tl"></div>`;
     SINK.appendChild(STEPBUF);
   }
@@ -570,7 +588,7 @@ function simpleProgress(kind,p={}) {
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
     SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
-    const mark=document.createElement('span');mark.className='progress-mark';mark.setAttribute('aria-hidden','true');   // v0.716 the 3D Hoola mark while she waits
+    const mark=document.createElement('span');mark.className='progress-mark';mark.setAttribute('aria-hidden','true');   // v0.718 the 3D Hoola mark while she waits
     if(window.HoolaMark)mark.innerHTML=HoolaMark.think(24);
     const label=document.createElement('span');label.className='progress-label';   // v0.299: no avatar here either
     const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
@@ -689,12 +707,12 @@ function reply(turnId) {
 function seg(R, n) {
   let S = R.segs.get(n);
   if (S) return S;
-  foldLive(R.t);                                                         // v0.716 the steps so far fold into one line
+  foldLive(R.t);                                                         // v0.718 the steps so far fold into one line
   const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.seg = n;
   put(R.t, el); R.t.afterText = true;
   if (TYPING && TYPING.parentNode === R.t.bd) TYPING.hidden = true;    // the words themselves show that it is working
   if (SIMPLE_PROGRESS) SIMPLE_PROGRESS.hidden = true;                    // v0.227.3 one row: the streaming words replace the progress line
-  const view = new HoolaMD.Live(el, {soft: true});   // v0.716 the newest words land out of a soft focus
+  const view = new HoolaMD.Live(el, {soft: true});   // v0.718 the newest words land out of a soft focus
   S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => {
     view.update(text, !fin);
     LAST_WORD_AT = Date.now();                       // v0.302 feeds the watchdog in progressTick
