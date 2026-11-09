@@ -201,7 +201,7 @@ def _home_conv(s, tenant: str, conv: str) -> str:
             return o.id
     try:
         from . import convs
-        return convs.current(tenant) or conv
+        return convs.notice_chat(tenant) or conv   # v0.714 her updates chat, never the chat she has open
     except Exception:   # noqa: BLE001
         return conv
 
@@ -341,6 +341,12 @@ async def morning_briefings() -> None:
             home = _home_conv(s, tenant, conv)   # v0.667 a deleted chat / a call record -> the chat she is in
             if home != conv:
                 p.briefing_conversation_id = conv = home
+        try:   # v0.714 HAR CHAT ALAG: the morning briefing lives in her 'Hoola updates' chat
+            from . import convs as _cv_b
+            if _cv_b._alone():
+                conv = _cv_b.updates_chat(tenant) or conv
+        except Exception:   # noqa: BLE001
+            log.exception("briefing updates chat")
         text = await life.compose_briefing(tenant)
         notify(conv, text)
         bus.publish(conv, "briefing", {"text": text, "date": today})
@@ -377,7 +383,15 @@ async def run_routines() -> None:
                 home = _home_conv(s, r.tenant_id, r.conversation_id)
                 if home and home != r.conversation_id:
                     r.conversation_id = home
-                jobs.append((r.id, r.tenant_id, r.conversation_id, r.title, r.instruction))
+                run_in = r.conversation_id
+                try:   # v0.714 HAR CHAT ALAG: a daily / scheduled job speaks in her 'Hoola updates' chat, never inside
+                    # one of her working chats (its reply and its history used to land in the chat she was using)
+                    from . import convs as _cv_r
+                    if _cv_r._alone():
+                        run_in = _cv_r.updates_chat(r.tenant_id) or run_in
+                except Exception:   # noqa: BLE001
+                    log.exception("routine updates chat")
+                jobs.append((r.id, r.tenant_id, run_in, r.title, r.instruction))
     for rid, tenant, conv, title, instruction in jobs:
         prompt = (f'[Automatic job "{title}" is running now at its scheduled time. The user is not in the chat and '
                   f"will read your reply as a phone notification. Do the task with your tools, then reply with the result "

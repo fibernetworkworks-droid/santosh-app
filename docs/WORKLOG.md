@@ -2460,3 +2460,24 @@ Work Log:
 - events.card_news_block takes her words; waiting list only on pending-work words; answered note marked background
 Stage Summary:
 - v0704 + v0650 suites 12 passed
+
+---
+Task ID: v0.712.0 HAR PROMPT KA PLAN
+Ask: every prompt still gives a landing-page plan after v0.710.
+Found: Build mode (the default) only used the architect for portal words; everything else = library page set.
+Fixed: every Build ask planned by the architect (Opus), brochure no data draft, fallback, section prompt neutral.
+Not verified live.
+
+---
+Task ID: v0.713.0 SEEKH MANCH (re-ship; built as 0.711, their SIRF JO POOCHA CHAT took 0.711 and HAR PROMPT KA PLAN took 0.712 - REBASE PROTOCOL onto their tip, all kept)
+Agent: Claude (web session)
+Ask: "NOW LETS WORK ON A HOOLA AI AGENT THAT WILL SEE THE YOUTUBVIDEO FROM LINK, SHORTS, MP4 OR ANY VIDEO FORMAT ... AI WILL LEARN THAT TRAIN ITSELF KEEP IN MEMORY AND IF TASK GIVEN RELATED TO IT IT WILL PERFORM SMOOTHLY" + "GO" on the SEEKH MANCH plan.
+Built: ONE tool seekh_video (616 -> 617, family seekh); server/app/seekh.py (classify -> Gemini perceive -> Claude distill -> store) + agent/seekh_tools.py + procedures.save_video; operator recipe DRAFTS through the public Memory.save format (runs=0, proven recipes never clobbered); evidence law, digit masking, value variables, day/size/length caps, seekh_enabled switch; routing words kept off 'kya seekha' / 'banana sikhao' / hoola_seekha; 40 offline tests (test_v0713_seekh_manch.py, born v0711 in the collision round).
+Deploy: the owner's vps-ops dispatch; healthz must grep 0.713.0.
+
+---
+Task ID: v0.714.0 HAR CHAT ALAG
+Ask: other chats' messages / daily coworker updates land in new chats - keep every chat independent.
+Found: every background notice used convs.current = the chat she had open; chat-turn memory read other chats' jobs / cards.
+Fixed: convs.notice_chat -> turn chat or the pinned 'Hoola updates' chat; routines + briefing run there; own-chat jobs / cards / diary / coder notes; switch chat_alone.
+Not verified live.

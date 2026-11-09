@@ -1454,7 +1454,7 @@ async def _chat_memory(tenant_id: str, conversation_id: str, user_text: str, set
     from .. import coder as _coder
 
     def _cards():
-        return _ev.card_news_block(tenant_id, _last_reply_at(conversation_id), user_text or "")
+        return _ev.card_news_block(tenant_id, _last_reply_at(conversation_id), user_text or "", conversation_id)
 
     parts = [("yaad", lambda: yaad.turn_block(tenant_id, conversation_id, user_text)),
              ("kaam", lambda: kaamwatch.block(tenant_id, conversation_id)),
@@ -2397,6 +2397,11 @@ async def _run_turn(conversation_id: str, user_text: str, tenant_id: str | None 
     """Handle one user message end to end. Returns Santosh's final reply text.
     v0.173 `client_id` (the console's steering): a message she took back while queued returns at once — nothing
     runs, nothing is published (the take-back endpoint already hid the bubble)."""
+    try:   # v0.714 HAR CHAT ALAG: a tool that tells her something during this turn speaks in THIS chat
+        from .. import convs as _cv_turn
+        _cv_turn.TURN.set(conversation_id)
+    except Exception:   # noqa: BLE001
+        pass
     if client_id and (conversation_id, client_id) in _held:
         _held.discard((conversation_id, client_id))
         return ""

@@ -261,3 +261,28 @@ def forget_all(tenant: str) -> int:
         for r in rows:
             s.delete(r)
         return len(rows)
+
+
+def save_video(tenant: str, title: str, trigger: str, steps: list[dict[str, Any]],
+               watch_out: list[str] | None = None) -> dict[str, Any]:
+    """v0.713 SEEKH MANCH: a way of working learned by WATCHING a video (seekh.py), kept exactly like a
+    learned procedure so hint() offers it on the next similar ask. Unproven by definition: wins come only
+    from real runs (after_turn scores them like any other procedure)."""
+    clean = [s for s in (steps or []) if isinstance(s, dict) and str(s.get("label") or "").strip()][:12]
+    if not clean:
+        raise ProcedureError("Video mein koi kadam nahi mila jo save ho.")
+    with session() as s:
+        n = s.scalar(select(func.count()).select_from(Procedure).where(Procedure.tenant_id == tenant)) or 0
+        if n >= MAX_PER_OWNER:                             # make room: drop the least useful one
+            worst = s.scalars(select(Procedure).where(Procedure.tenant_id == tenant)
+                              .order_by(Procedure.wins, Procedure.uses, Procedure.created_at)).first()
+            if worst is not None:
+                s.delete(worst)
+        p = Procedure(tenant_id=tenant, title=_title(title or "Video se seekha kaam"),
+                      trigger=_mask(_request(trigger), 240),
+                      steps=json.dumps(clean, ensure_ascii=False),
+                      watch_out=json.dumps([str(w)[:200] for w in (watch_out or [])[:8]], ensure_ascii=False))
+        s.add(p)
+        s.flush()
+        STATS["learned"] += 1
+        return view(p)

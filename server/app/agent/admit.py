@@ -103,6 +103,12 @@ EXTRA_KEYS: dict[str, tuple[str, ...]] = {
     "graphic": ("graphic", "banner", "poster", "logo", "thumbnail", "design", "creativ"),
     "video": ("video", "clip", "trim", "subtitle", "edit", "reel"),
     "reel": ("reel", "shorts", "youtube short", "short video", "instagram", "status video"),   # wave 12: not "short" ("short mein batao")
+    # v0.713 SEEKH MANCH: learn-from-video words. Deliberately NOT a bare "seekh" ('kya seekha' = the
+    # seekhe_kaam list, 'banana sikhao' = the build family, hoola_seekha = voice style: all keep their routing);
+    # every key here says video next to seekh.
+    "seekh": ("isse seekh", "is video se seekh", "video se seekh", "video sikhao", "sikhao video",
+              "video seekh kar", "learn this video", "learn from this video", "learn from the video",
+              "सीख लो वीडियो", "वीडियो सीख"),
     "motion": ("motion", "animat", "animate"),
     "studio": ("studio", "ai video", "video shoot"),
     "cstudio": ("shot brief", "site visualisation", "site visualization", "render brief", "walkthrough brief", "asset checklist"),   # FINAL CHECK: the construction Studio desk (its tools were filed under "studio")
@@ -606,6 +612,12 @@ APPFILE = re.compile(r"\.(?:" + _EXT + r")\b|\b(?:exe|dll|apk|apks|xapk|ipa|jar|
                      r"(?:app|apk|program|software|game|tool|file|exe|model)\b.{0,40}(?:kaise kaam|kaise bana|andar kya|"
                      r"kya karta|kya hota|ke andar|internals?|how (?:does it|it) works?|under the hood)", re.I)
 INTENTS: list[tuple[re.Pattern, tuple[str, ...], str]] = [
+    # v0.713 SEEKH MANCH: a video to LEARN from (watch -> keep the way of working in memory). Not playing
+    # (youtube_play), not editing (video_edit), not summarising (youtube_watch): the learn word must sit
+    # next to a video word, so 'kya seekha' (the list) and 'banana sikhao' (the build family) never match.
+    (re.compile(r"(?:seekh|sikh[a-z]?|learn)\w*.{0,40}(?:video|youtube|shorts?|clip|mp4|recording)"
+                r"|(?:video|youtube|shorts?|clip|mp4|recording).{0,40}(?:seekh|sikh[a-z]?|learn)", re.I),
+     ("seekh",), "learn from video"),
     # a file to MAKE (pdf / word / excel / ppt): the design studio
     (re.compile(_D, re.I), ("docstudio",), "document"),
     # work ON a pdf she has: merge / split / shrink / rotate / pages / lock

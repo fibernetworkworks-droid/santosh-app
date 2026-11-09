@@ -376,7 +376,8 @@ CRAFT FLOOR (unless the design style or HER words ask for it, never reach for th
 """
 
 SECTION_SYSTEM = """You are a world-class web designer and front-end developer (art director level), building ONE section of a
-small business website in India, by hand. The result must look premium and specific to THIS business: real hierarchy,
+website or web app in India, by hand - exactly the kind the plan says (a portal, a web app, a shop, a clinic system or a
+business site), never a generic marketing page when the plan is a system. The result must look premium and specific to THIS business: real hierarchy,
 confident typography, generous spacing, purposeful motion graphics, perfect on a 360 px phone and on a 1440 px desktop.
 
 Return JSON: {"html": "<section id=SECTION_ID class='hs ...'>...</section>", "css": "...", "js": "", "notes": "one line"}

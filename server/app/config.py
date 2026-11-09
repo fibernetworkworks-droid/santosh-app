@@ -161,6 +161,7 @@ class Settings(BaseSettings):
     chat_context_max_tokens: int = 0       # v0.244 cost cap: compact at this many tokens whatever the model's window (0 = off)
     # v0.242 FULL CLAUDE MODE Phase 2 (agent/compact.py): Claude-style compaction at the full_at line
     about_me: bool = True                  # v0.250 "Mere baare mein" page rebuilt daily for active owners (false = never rebuilt)
+    chat_alone: bool = True                # v0.714 HAR CHAT ALAG: background / daily messages go to her pinned 'Hoola updates' chat (never the chat she has open), and a chat turn reads only ITS OWN chat's jobs / cards / diary; false = the old shared behaviour
     memory_fence: bool = True              # v0.246 PHASE 3C: Hoola's own memory stays inside its Session (fence.py); false = all chats share
     chat_compact: bool = True              # false = Phase 1 only (the safety net shortens instead of a summary)
     chat_compact_prepare_at: float = 0.6   # past this share a draft summary is written in the background
@@ -325,6 +326,7 @@ class Settings(BaseSettings):
     # fails (claude_all_glm_fallback) or a call carries pictures / PDFs. For NVIDIA set GLM_BASE_URL to
     # https://integrate.api.nvidia.com/v1, GLM_MODEL=z-ai/glm-5.3-flash, GLM_API_KEY=nvapi-... and CHAT_LLM=glm.
     claude_all_glm: bool = False
+    studio_build_architect: bool = True   # v0.711 Web Studio Build mode: every ask is planned by the architect first (not the library's page set for its business type)
     architect_opus: bool = True   # v0.710: the website architect's plan always on the Website Sahayak's Opus (the GLM door + claude_one_model stand aside for that one call)
     claude_all_glm_fallback: bool = True
     claude_all_brain: str = ""              # "" = OmniRoute when OMNIROUTE_URL is set, else GLM | "glm" | "omniroute"
@@ -375,6 +377,10 @@ class Settings(BaseSettings):
                                            # tips on the system prompt + the done-needs-proof backstop + the
                                            # (Kaam: ...) ledger note - no tool, no key, no network
     kaam_ledger_enabled: bool = True       # ... the ledger note alone can go quiet without touching the rest
+    seekh_enabled: bool = True             # v0.713 SEEKH MANCH: learn a way of working from a video (the
+    seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
+    seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
+    seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)

@@ -535,7 +535,7 @@ def test_registry_579_and_dispatch(env):
     for n in ("const_bim", "const_bim_dekho", "const_predesign", "const_predesign_dekho", "const_survey",
               "const_survey_dekho", "const_delay", "const_delay_dekho", "const_green", "const_green_dekho"):
         assert n in names and n in HANDLERS and n in TOOL_LABELS, n
-    assert len(TOOLS) == 616, "608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
+    assert len(TOOLS) == 617, "616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " "581 + 1 paisa_sahayak (their v0.587) + 2 sandarbh (v0.590 SANDARBH MANCH: workspace + kgmemory). Was: 570 (their 0.559 base) + 10 construction Wave 3 + 1 speckit (v0.569 SPEC SUTRA)"
 
 
 def test_bim_tool_end_to_end(env):
@@ -611,6 +611,6 @@ def test_version_pins():
     from pathlib import Path
     REPO = Path(__file__).resolve().parents[2]
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.711.0"
-    assert 'APP_VERSION = "0.711.0"' in (REPO / "server" / "app" / "main.py").read_text()
-    assert "version: 0.711.0+710" in (REPO / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.714.0"
+    assert 'APP_VERSION = "0.714.0"' in (REPO / "server" / "app" / "main.py").read_text()
+    assert "version: 0.714.0+713" in (REPO / "pubspec.yaml").read_text()

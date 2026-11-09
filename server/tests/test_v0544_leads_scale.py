@@ -434,7 +434,7 @@ def test_enrich_fanout_through_the_api(env, monkeypatch):
 def test_registry_stays_562_and_the_tool_schemas_carry_p4(env):
     from app.agent.leads_tools import LEADS_TOOLS, LEADS_HANDLERS
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 616                                    # the registry pin: no new tool, the lane rode leads_run
+    assert len(TOOLS) == 617                                    # +1 seekh_video (v0.713 SEEKH MANCH); the registry pin, the lane rode leads_run
     for t in LEADS_TOOLS:
         assert t["name"] in LEADS_HANDLERS
     run_tool = next(t for t in LEADS_TOOLS if t["name"] == "leads_run")

@@ -690,6 +690,13 @@ TOOLS.extend(PROCEDURE_TOOLS)
 TOOL_LABELS.update(PROCEDURE_LABELS)
 HANDLERS.update(PROCEDURE_HANDLERS)
 
+# v0.713 SEEKH MANCH: learn a way of working from a video (the bridge tool; the eyes and memories ship already)
+from .seekh_tools import SEEKH_HANDLERS, SEEKH_LABELS, SEEKH_TOOLS  # noqa: E402
+
+TOOLS.extend(SEEKH_TOOLS)
+TOOL_LABELS.update(SEEKH_LABELS)
+HANDLERS.update(SEEKH_HANDLERS)
+
 # v0.59 the WhatsApp customer's tools: callable (customer turns, owner-approved asks) but never offered to the owner's model
 from ..employee.inbox import BIZ_HANDLERS, BIZ_LABELS  # noqa: E402
 

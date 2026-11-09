@@ -1,3 +1,73 @@
+## v0.714.0 HAR CHAT ALAG — every chat on its own (9 Nov 2026; owner: "IN WEB CONSOLE CHAT SECTION :: 1ST CHECK WHY OTHER CHAT MSG IS COME IN OTHER SESSION CHAT MSG --- EXAMPLE UPDATES KEEP EVERY THING INDEPENDENT. DAILY COWORKER MSG SHOULD NOT TO BE MERGE WITH NEW CHAT OR ANY OTHER CHAT. KEEP EVERY SESSION INDEPENDENT")
+
+ROOT CAUSE: the console marks the open chat as "the chat she is in" on every stream (`convs.mark(..., "stream")`), and
+every message that was not an answer to her used `convs.current` = that open chat: the AI-employee desks' daily reports
+(`net.service.home_conv`, ~100 desk modules), new-mail notes (`mailbox/sync`), calendar alerts, the Google reconnect
+notice, crawl failures, payment confirmations without a task, share asks, and (`worker._home_conv`) reminders / routines /
+briefings whose chat was gone. A new chat therefore filled up with daily-coworker news, and because those lines are in
+its history the brain answered her real ask ("video se seekho...") with "Good morning Meghana. Quick state: ...".
+On top, a chat turn's memory read other chats' work: `kaamwatch.block` (all chats outside a Session + jobs with no chat),
+`events.card_news_block` (the OPEN chat's story + every other chat's cards), `yaad.diary` jobs, and the coder primer's
+cross-chat to-do lists.
+
+FIX:
+- `convs.notice_chat(tenant)` = the running turn's own chat (`convs.TURN`, set in `santosh._run_turn`, so a tool that
+  tells her mid-turn still speaks where she asked), else her ONE pinned **"Hoola updates"** chat (`convs.updates_chat`,
+  Conversation kind `updates`, title + pinned so it is listed; never picked by `current()`'s newest-chat fallback).
+  Every background sender above now uses it.
+- Routines and the morning briefing RUN in the updates chat (their stored chat is kept; the run and its history live
+  in the updates chat).
+- A chat turn reads only its own chat's work: `fence.own_chat` (the chat + a call record's origin) with `keep(strict=)`
+  in kaamwatch.block and yaad.diary jobs / website jobs; `card_news_block(..., conversation_id)` reads that chat's own
+  cards; the compact coder primer drops cross-chat work lists and fences observations to the chat. Her facts stay shared
+  (they are about her).
+- Switch `chat_alone` (default on); off = the old rule everywhere.
+
+Not changed: messages already merged into old chats stay where they are; the phone's one-chat card rule (v0.158); the
+console already dropped other chats' live cards client-side (v0.227.4). Tests: `test_v0714_har_chat_alag.py` (8).
+NOT VERIFIED live.
+
+## v0.713.0 SEEKH MANCH — learn a way of working from a video (9 Nov 2026; owner: "NOW LETS WORK ON A HOOLA AI AGENT THAT WILL SEE THE YOUTUBVIDEO FROM LINK, SHORTS, MP4 OR ANY VIDEO FORMAT. EXAMPLE FEELING THE FORM OR ANY WORK --- AI WILL LEARN THAT TRAIN ITSELF KEEP IN MEMORY AND IF TASK GIVEN RELATED TO IT IT WILL PERFORM SMOOTHLY" + "GO" on the SEEKH MANCH plan; built as v0.711.0, their SIRF JO POOCHA CHAT took v0.711.0 and their HAR PROMPT KA PLAN took v0.712.0 while it sat built — REBASE PROTOCOL onto their tip, all kept)
+
+She sends a video — a YouTube link, a Shorts, an MP4 she attached, a direct video URL — and says "isse
+seekh lo". Hoola watches it, writes down the way of working as steps (each stamped with the [m:ss]
+moment it was seen at), and keeps them in the two memories that already ship: "Seekhe hue kaam" (the
+procedures list — `hint()` reads it into every owner turn) and, for website work, the computer
+operator's recipe box as a **draft** (`find()` reads it at every job start). Weeks later a related ask
+finds the learned way already suggested; the operator follows the draft as a guide, checking every step
+against the live page — and the first real run that works **overwrites the draft with reality**
+(`from_trace`, versioned, `.v1` backup kept). Learned is never claimed as proven until then.
+
+- **THE BRIDGE, NOT A SECOND BRAIN** — the perception doors, the memories and the replay all shipped
+  before this; SEEKH adds only the middle. ONE new tool `seekh_video` (family `seekh`, registry 616 →
+  617). NEW `server/app/seekh.py` (~330 LOC: classify → perceive → distill → store, pure functions, lazy
+  imports) + `agent/seekh_tools.py` + `procedures.save_video`. Zero new pip, zero new keys, the frozen
+  PC zone untouched (pinned by test).
+- **THE LAWS** (tested): every distilled step carries ≥1 `[m:ss]` evidence timestamp or is demoted to
+  `gotchas`; no literal personal value survives anywhere (3+ digit runs masked, filled values become
+  `{variables}` with hints — the same law as operator recipes and procedures); a draft recipe has
+  `runs=0`, a DRAFT note, and never clobbers a proven recipe (it sits beside it as "<name> (video)");
+  caps (20 watches/day, file ≤ 200 MB and ≤ 30 min, YouTube ≤ 3 h like `youtube_watch`) and the
+  `seekh_enabled` kill switch (off = the tool errors honestly, the prompt bullet is family-gated away).
+- **THE HONEST LADDER** — watched → distilled → *(one real run worked)* → "smoothly". The tool's reply
+  always says "seekh liya — pehle ek baar sahi se chal ke dekhein" until `wins ≥ 1`; `unsure` and low
+  confidence are surfaced, never hidden.
+- **ROUTING** — admit `EXTRA_KEYS["seekh"]` + an INTENTS entry where the learn word must sit next to a
+  video word, so "kya seekha" (the list), "banana sikhao" (the build family) and `hoola_seekha` (voice
+  style) keep their own lanes (pinned by test).
+- Tests: `test_v0713_seekh_manch.py` (40, zero network — the perception and distill doors patched at
+  the module seam; born as v0711 in the collision round, ships as v0713). Neighbours green on the
+  merged tree: kaam 32, kala 34, webclone 21, officehours 30, console frames 14, kaan_w5 23,
+  leads_scale 30+1 skip, duniya 39, jharokha 27, aep1 10, w35 17, basics 4; test_v063_learning's 4
+  reds WORKTREE-PROVEN pre-existing on pristine origin/main (environment class, recorded not swept).
+  Version rituals `scripts/ritual_0711.py` + `ritual_0711_finish.py` (the pre-collision pair, kept as
+  the record — the first run's registry-clause insert broke 29 string literals by closing an
+  already-open quote; the finisher's regex repaired all 29 and py_compile proved zero breakage) and
+  this `scripts/ritual_0713.py` (the collision re-ship: their v0.712 base + my carried files, all four
+  registry-pin syntaxes handled, py_compile over every test file). Deploy: the owner's vps-ops
+  dispatch; healthz must grep 0.713.0.
+
+
 ## v0.694.0 WEB CLONE — point at a website, get a clean Next.js rebuild with its endpoints documented (8 Nov 2026; owner: "DOES ALL WORK DONE -- DOES NOW HOOLA AI WILL CLONE ANY WEBSITE PERFECTLY" -> the deploy ask "PERFECT IS IT DEPLOYED"; built as 0.621.0, their chain took 0.621.0-0.693.0 while it sat built, and the sandbox recycle ate the first rebuild mid-flight — the rebuilt-from-spec lane)
 
 ONE new tool, `web_clone` (family webclone, tools 615 -> 616), in three stages:
@@ -23140,3 +23210,29 @@ WAITING cards list to EVERY chat turn's memory block, and the model led with it.
 words are about pending work / cards (`_ASKS_PENDING`: card, pending, baaki, approve, status, kya hua, draft...); the
 answered-cards note (what she tapped since the last reply) stays, marked BACKGROUND and never the opening. Tests: the v0.704
 suite updated + test_a_normal_ask_gets_no_waiting_list (her exact ask gets no list).
+
+## v0.712.0 HAR PROMPT KA PLAN
+
+Owner after v0.710 went live (healthz 0.710.0): "BUT WHY EVERY PROMPT GIVES PLAN FOR LANDING MARKETING PAGE --- CHECK
+ROOT CAUSE". Built as 0.711; their SIRF JO POOCHA CHAT took 0.711.0 - REBASE PROTOCOL, both kept.
+
+ROOT CAUSE: the Web Studio home opens in BUILD mode by default (Plan is the opt-in). v0.709 sent a Build ask to the
+architect only when `architect.wants_plan` saw portal / web app / dashboard / login words (or 3+ app words); every other
+ask went to `service.new()` -> `make_plan(L.brief(field, goal, style))` = the library's fixed page set for that business
+type, and the workspace shows exactly that as "The plan is ready" (Home / About / Services / Gallery / Contact pills) before
+the looks. So for almost every prompt the "plan" she saw was never written for her words. v0.709 / v0.710 fixed the Plan
+mode path (deep spec, the plan's own structure, Opus) - the path she was mostly not on.
+
+FIX:
+- POST /api/sites with `deep` (the Studio's Build mode) now sends EVERY ask through `architect.build_now` (switch
+  `studio_build_architect`, default on): the Opus plan is drawn quietly and built at once on her Build tap, so the site's
+  pages and sections come from her words. A template pick (carries its own field) keeps the library path.
+- `architect.needs_data`: a brochure / lead site with no signed-in pages and no records gets NO data draft (saves an Opus
+  call; card `data_none`, data module "No data lists needed"), so it is never told "Data ki lists abhi nahi lage".
+- `build_now` falls back to the plain path when the architect gives back nothing usable, saying "Gehra plan abhi nahi
+  bana; seedha website bana rahi hoon" (her refused words still refuse).
+- `SECTION_SYSTEM` said "building ONE section of a small business website" for every section of every site; it now says
+  the kind the plan says (portal, web app, shop, clinic system or business site), never a generic marketing page for a system.
+Cost / time: one Opus plan call (+ at most one deepen) before the looks on every Build ask - about 1-3 minutes longer.
+Tests: test_v0709_plan_shape.py grows 3 (brochure gets its own plan and no data draft, the fallback, the section prompt) and
+the Build-mode test now expects every ask planned. NOT VERIFIED on her server yet.

@@ -55,6 +55,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("VOICE_BRAIN", "false")         # v0.630 older call suites pin Gemini as the brain; test_v0630 turns it on
     monkeypatch.setenv("CLAUDE_ONE_MODEL", "")        # v0.631 older suites pin each part's own model; test_v0631 checks the lock
     monkeypatch.setenv("CHAT_SIMPLE_MODEL", "")       # v0.630 older chat suites pin the chat model; test_v0630 checks Haiku
+    monkeypatch.setenv("CHAT_ALONE", "false")         # v0.714 older suites pin "the chat she is in"; test_v0714 turns it on
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()
