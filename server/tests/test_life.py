@@ -88,7 +88,7 @@ def test_phone_actions_and_results(env, monkeypatch):
         assert {p["id"] for p in pend} >= {a["action_id"], t["action_id"], c["action_id"]}
         assert cl.post(f"/api/device-actions/{a['action_id']}/result", json={"ok": True}).json()["status"] == "done"
         assert cl.post(f"/api/device-actions/{t['action_id']}/result", json={"ok": False, "detail": "no clock app"}).json()["status"] == "failed"
-    assert any("nahi ho paya" in x for x in notes(ctx.conversation_id))
+    assert any("could not be done on the phone" in x for x in notes(ctx.conversation_id))
     # the calendar action was never confirmed: it expires and the user is told
     with session() as s:
         s.get(DeviceAction, c["action_id"]).created_at = now() - timedelta(minutes=20)

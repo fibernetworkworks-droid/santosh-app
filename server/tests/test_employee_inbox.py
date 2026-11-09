@@ -152,8 +152,8 @@ def test_booking_rules(env, monkeypatch):
     run(inbox.answer_pending())
     results = [c["history"][-1]["content"][0] for c in brain.calls[1:4]]
     assert "booked" in results[0]["content"]
-    assert results[1].get("is_error") and "pehle se book" in results[1]["content"]
-    assert results[2].get("is_error") and "band rehta" in results[2]["content"]
+    assert results[1].get("is_error") and "already booked" in results[1]["content"]
+    assert results[2].get("is_error") and "closed at this time" in results[2]["content"]
     assert _tomorrow("11:00") not in inbox.free_slots("default", _tomorrow()[:10], 1)
 
 
@@ -185,7 +185,7 @@ def test_stop_window_and_takeover(env, monkeypatch):
         s.get(BizContact, c["id"]).last_in_at = datetime.now(timezone.utc) - timedelta(hours=25)   # SQLite keeps the wall clock: write UTC like the app
     with pytest.raises(inbox.InboxError) as e:
         run(inbox.send("default", c["id"], "Hello"))
-    assert "24 ghante" in str(e.value)
+    assert "24 hours" in str(e.value)
     with pytest.raises(inbox.InboxError):
         run(inbox.send("default", c["id"], "Aapka OTP 482913 hai"))
 

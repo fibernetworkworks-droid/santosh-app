@@ -147,7 +147,7 @@ def test_sheet_milaan_end_to_end_on_her_pc(pc):
     assert len(files) == 3 and files[-1].pc_path == str(saved)
     from app import yaad
     blk = yaad.diary_block("default", c)
-    assert "1. MAC data.xlsx" in blk and "Sheet Milaan" in blk
+    assert "1. MAC data.xlsx" in blk and "Sheet compare" in blk
 
 
 def test_mac_as_key_and_every_common_column(pc):
@@ -304,7 +304,7 @@ def test_pdf_becomes_a_corrected_new_file(pc):
     cv.drawString(72, 700, "Total amount Rs 500 only")
     cv.save()
     res = asyncio.run(dd.propose_edit("default", c, str(p), [{"find": "Rs 500", "replace": "Rs 560"}]))
-    assert res["changes"] == 1 and any("saada" in w for w in res["warnings"])
+    assert res["changes"] == 1 and any("plain" in w for w in res["warnings"])
     card = asyncio.run(dd.decide("default", res["edit_id"], True))
     out = Path(card["out"]["saved_path"])
     assert out.suffix in (".pdf", ".docx") and out.stat().st_size > 500
