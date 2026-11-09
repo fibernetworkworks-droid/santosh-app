@@ -162,7 +162,7 @@ def test_delete_needs_the_tap(bz, ai):  # noqa: F811
     run("notebook_delete", {"notebook": "Temp"}, ctx)
     assert run("notebook_list", {}, ctx)["notebooks"]
     card = _events(bz["conv"], "bazar_approval")[-1]
-    assert card["title"] == "Notebook delete karein?"
+    assert card["title"] == "Delete notebook?"
     bz["svc"].decide("default", card["id"], "approve")
     assert run("notebook_list", {}, ctx)["notebooks"] == []
 

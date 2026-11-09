@@ -254,7 +254,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("gstin"):
             g = _s(kw["gstin"]).upper()
             if not gstin_ok(g):
-                raise LogiError(f"GSTIN galat lagta hai: {g}")
+                raise LogiError(f"The GSTIN looks wrong: {g}")
             r.gstin = g
         for k in ("firm", "address", "place", "carrier_reg", "terms"):
             if kw.get(k) is not None:
@@ -266,17 +266,17 @@ def save_settings(tenant: str, **kw: Any) -> dict:
         if kw.get("pincode"):
             p = re.sub(r"\D", "", _s(kw["pincode"]))
             if len(p) != 6:
-                raise LogiError("PIN code 6 ank ka.")
+                raise LogiError("The PIN code must be 6 digits.")
             r.pincode = p
         if kw.get("phone"):
             p = _phone(kw["phone"])
             if not p:
-                raise LogiError("Phone 10 ank ka chahiye.")
+                raise LogiError("The phone must be 10 digits.")
             r.phone = p
         if kw.get("gta_rate") not in (None, ""):
             g = float(kw["gta_rate"])
             if g not in (0.0,) + R.GTA_RATES:
-                raise LogiError("GTA GST: 5 (bina ITC) ya 18 (ITC ke saath), ya 0 agar aap GTA nahi.")
+                raise LogiError("GTA GST: 5 (without ITC) or 18 (with ITC), or 0 if you are not a GTA.")
             r.gta_rate = g
         for k in ("lr_prefix", "dc_prefix"):
             if kw.get(k):
@@ -288,7 +288,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 setattr(r, k, max(0.5, min(72.0, float(kw[k]))))
         if kw.get("morning_time"):
             if not re.fullmatch(r"\d{1,2}:\d{2}", _s(kw["morning_time"])):
-                raise LogiError("Subah ka samay HH:MM.")
+                raise LogiError("Give the morning time as HH:MM.")
             r.morning_time = _s(kw["morning_time"]).zfill(5)
         return _sv(r)
 
@@ -307,9 +307,9 @@ def set_ewb_keys(tenant: str, provider: str, creds: dict | None = None) -> dict:
         c = {k: _s(v) for k, v in (creds or {}).items() if k in E.Gsp.needs + ("auth_path", "api_path")}
         missing = [k for k in E.Gsp.needs if not c.get(k)]
         if missing:
-            raise LogiError("GSP ke liye chahiye: " + ", ".join(missing))
+            raise LogiError("Needed for the GSP: " + ", ".join(missing))
         if not c["base_url"].startswith("https://"):
-            raise LogiError("GSP ka address https:// wala.")
+            raise LogiError("The GSP address must start with https://.")
         r.ewb_provider, r.ewb_sealed = "gsp", vault().seal(_d(c))
         host = re.sub(r"^https://", "", c["base_url"]).split("/")[0]
         r.ewb_label = f"{host} · {c['gstin'][:2]}XXXX{c['gstin'][-4:]}"
@@ -353,10 +353,10 @@ def save_party(tenant: str, name: str = "", party: str = "", **kw: Any) -> dict:
     with session() as s:
         p = _party(s, tenant, party) if party else None
         if party and not p:
-            raise LogiError("Party nahi mili.")
+            raise LogiError("Party not found.")
         if p is None:
             if not _s(name):
-                raise LogiError("Party ka naam chahiye.")
+                raise LogiError("The party name is needed.")
             p = _party(s, tenant, name)
             if p is None or p.name.lower() != _s(name).lower():
                 p = LogiParty(tenant_id=tenant, name=_s(name)[:160])
@@ -365,7 +365,7 @@ def save_party(tenant: str, name: str = "", party: str = "", **kw: Any) -> dict:
         if kw.get("gstin"):
             g = _s(kw["gstin"]).upper()
             if not gstin_ok(g):
-                raise LogiError(f"GSTIN galat lagta hai ({g}): check digit / state code mel nahi kha raha.")
+                raise LogiError(f"The GSTIN looks wrong ({g}): the check digit / state code does not match.")
             p.gstin, p.state = g, g[:2]
         if kw.get("state"):
             st = re.sub(r"\D", "", _s(kw["state"]))[:2]
@@ -377,12 +377,12 @@ def save_party(tenant: str, name: str = "", party: str = "", **kw: Any) -> dict:
         if kw.get("pincode"):
             pc = re.sub(r"\D", "", _s(kw["pincode"]))
             if len(pc) != 6:
-                raise LogiError("PIN code 6 ank ka.")
+                raise LogiError("The PIN code must be 6 digits.")
             p.pincode = pc
         if kw.get("phone"):
             ph = _phone(kw["phone"])
             if not ph:
-                warn.append("Phone number samajh nahi aaya (10 ank).")
+                warn.append("Could not understand the phone number (10 digits).")
             else:
                 p.phone = ph
         if kw.get("kind") in ("customer", "supplier", "transporter"):
@@ -453,7 +453,7 @@ def _sh(s, tenant: str, ref: str) -> LogiShipment:
                     return x
         if sh:
             return sh
-    raise LogiError("Shipment nahi mila (S-0001 / LR / invoice / gaadi no. bataiye).")
+    raise LogiError("Shipment not found (give S-0001 / LR / invoice / vehicle no.).")
 
 
 SHIP_KEYS = ("direction", "doc_type", "doc_no", "doc_date", "reason", "weight_kg", "packages", "package_kind", "mode", "fleet",
@@ -473,12 +473,12 @@ def _apply(s, tenant: str, sh: LogiShipment, kw: dict) -> list[str]:
     if kw.get("doc_no"):
         dn = _s(kw["doc_no"])
         if len(dn) > 16:
-            raise LogiError("Invoice / challan number 16 akshar se lamba nahi ho sakta (GST niyam).")
+            raise LogiError("The invoice / challan number cannot be longer than 16 characters (GST rule).")
         sh.doc_no = dn
     if kw.get("doc_date"):
         d = _date(kw["doc_date"])
         if not d:
-            raise LogiError("Invoice ki tareekh samajh nahi aayi.")
+            raise LogiError("Could not understand the invoice date.")
         sh.doc_date = d.isoformat()
     if kw.get("reason"):
         if kw["reason"] not in R.SUB_SUPPLY:
@@ -517,9 +517,9 @@ def _apply(s, tenant: str, sh: LogiShipment, kw: dict) -> list[str]:
     if kw.get("vehicle_no") is not None:
         v = R.clean_vehicle(kw["vehicle_no"])
         if v and not R.vehicle_ok(v):
-            warn.append(f"Gaadi no. {v} ka format ajeeb hai (jaise MH30AB1234); e-way bill mein galat no. = maal ruk sakta hai.")
+            warn.append(f"The vehicle no. {v} has an odd format (like MH30AB1234); a wrong number on the e-way bill can get the goods stopped.")
         if v and sh.vehicle_no and v != sh.vehicle_no and _j(sh.ewb, {}).get("no"):
-            warn.append("Gaadi badli: e-way bill ka Part B update karna padega (card bhejiye: action=ewb kind=part_b).")
+            warn.append("Vehicle changed: Part B of the e-way bill must be updated (send the card: action=ewb kind=part_b).")
         sh.vehicle_no = v
     tr = _j(sh.transporter, {})
     for k_in, k in (("transporter_name", "name"), ("transporter_gstin", "gstin"), ("transporter_phone", "phone")):
@@ -531,7 +531,7 @@ def _apply(s, tenant: str, sh: LogiShipment, kw: dict) -> list[str]:
                 val = val.upper()
                 from ..india.money import gstin_ok
                 if not gstin_ok(val) and not re.fullmatch(r"\d{2}[A-Z0-9]{13}", val):
-                    warn.append("Transporter ka GSTIN / Transporter ID galat lagta hai.")
+                    warn.append("The transporter's GSTIN / Transporter ID looks wrong.")
             tr[k] = val
     sh.transporter = _d(tr)
     dr = _j(sh.driver, {})
@@ -542,13 +542,13 @@ def _apply(s, tenant: str, sh: LogiShipment, kw: dict) -> list[str]:
         if p:
             dr["phone"] = p
         else:
-            warn.append("Driver ka phone 10 ank ka chahiye.")
+            warn.append("The driver's phone must be 10 digits.")
     sh.driver = _d(dr)
     for k in ("dispatch", "eta"):
         if kw.get(k):
             t = when(kw[k], tenant)
             if not t:
-                warn.append(f"{'Nikalne' if k == 'dispatch' else 'Pahunchne'} ka samay samajh nahi aaya: '{kw[k]}'.")
+                warn.append(f"Could not understand the {'dispatch' if k == 'dispatch' else 'arrival'} time: '{kw[k]}'.")
             elif k == "eta":
                 sh.eta = t
             else:
@@ -562,9 +562,9 @@ def new_shipment(tenant: str, consignee: str = "", goods: list | None = None, go
     from ..india.money import gstin_ok
     g = _s(kw.get("consignee_gstin")).upper()
     if g and not gstin_ok(g):
-        raise LogiError(f"Consignee ka GSTIN galat lagta hai ({g}): check digit / state code mel nahi kha raha.")
+        raise LogiError(f"The consignee's GSTIN looks wrong ({g}): the check digit / state code does not match.")
     if kw.get("consignee_pincode") and len(re.sub(r"\D", "", _s(kw["consignee_pincode"]))) != 6:
-        raise LogiError("Consignee ka PIN code 6 ank ka.")
+        raise LogiError("The consignee's PIN code must be 6 digits.")
     th: dict = {}
     if thok_order:
         from ..thok import service as TS
@@ -573,12 +573,12 @@ def new_shipment(tenant: str, consignee: str = "", goods: list | None = None, go
         except TS.ThokError as e:
             raise LogiError(str(e))
         if th.get("status") != "billed":
-            raise LogiError("Yeh Thok order abhi bill nahi hua: pehle bill banaiye (aapki haan se).")
+            raise LogiError("This Thok order has not been billed yet: make the bill first (with your yes).")
     with _LOCK, session() as s:
         st = _st(s, tenant)
         cname = _s(consignee) or th.get("party", "")
         if not cname:
-            raise LogiError("Maal kisko jaana hai (consignee) bataiye.")
+            raise LogiError("Who are the goods going to (consignee)?")
         p = _party(s, tenant, cname)
         if p is None:
             p = LogiParty(tenant_id=tenant, name=cname[:160])
@@ -619,7 +619,7 @@ def new_shipment(tenant: str, consignee: str = "", goods: list | None = None, go
         if sh.direction == "carry" and kw.get("consignor"):
             sh.consignor = _d({"name": _s(kw["consignor"]), "gstin": _s(kw.get("consignor_gstin")).upper(), "place": _s(kw.get("consignor_place")),
                                "state": _s(kw.get("consignor_gstin"))[:2]})
-        sh.timeline = _d([{"at": _now().isoformat(), "status": "booked", "text": "Shipment banaya", "by": "owner", "source": "her"}])
+        sh.timeline = _d([{"at": _now().isoformat(), "status": "booked", "text": "Shipment created", "by": "owner", "source": "her"}])
         sh.last_update_at = _now()
         s.flush()
         v = _view(s, tenant, sh)
@@ -632,7 +632,7 @@ def update_shipment(tenant: str, ref: str, conv: str = "", **kw: Any) -> dict:
     with _LOCK, session() as s:
         sh = _sh(s, tenant, ref)
         if sh.status in ("delivered", "cancelled") and not kw.get("note"):
-            raise LogiError("Yeh shipment band ho chuka hai.")
+            raise LogiError("This shipment is already closed.")
         if kw.get("goods") or kw.get("goods_text"):
             sh.goods = _d(_goods(kw.get("goods"), _s(kw.get("goods_text"))))
             if not kw.get("value"):
@@ -669,30 +669,30 @@ def _checks(tenant: str, sh: LogiShipment) -> list[dict]:
     ce = _j(sh.consignee, {})
     goods = _j(sh.goods, [])
     if ce.get("gstin") and not gstin_ok(ce["gstin"]):
-        out.append({"level": "bad", "text": "Consignee ka GSTIN galat."})
+        out.append({"level": "bad", "text": "The consignee's GSTIN is wrong."})
     if not goods:
-        out.append({"level": "warn", "text": "Maal ki list nahi (naam, HSN, maatra)."})
+        out.append({"level": "warn", "text": "No goods list (name, HSN, quantity)."})
     if not sh.value:
-        out.append({"level": "warn", "text": "Maal ki keemat nahi: e-way bill zaroori hai ya nahi, pata nahi chalega."})
+        out.append({"level": "warn", "text": "No goods value: cannot tell whether an e-way bill is needed."})
     e = _ewb_view(tenant, sh)
     if e["needed"] and not e["no"]:
         out.append({"level": "bad" if sh.status in R.MOVING else "warn",
-                    "text": "E-way bill chahiye, abhi bana nahi." + (" Maal raste mein hai: Rs 10,000 ya tax ka jurmana ho sakta hai." if sh.status in R.MOVING else "")})
+                    "text": "An e-way bill is needed and has not been made yet." + (" The goods are on the way: a penalty of Rs 10,000 or the tax may apply." if sh.status in R.MOVING else "")})
     if e["needed"]:
         if any(not g.get("hsn") for g in goods):
-            out.append({"level": "warn", "text": "Kuch items ka HSN nahi (e-way bill mein zaroori)."})
+            out.append({"level": "warn", "text": "Some items have no HSN (required for the e-way bill)."})
         if not sh.distance_km:
-            out.append({"level": "warn", "text": "Doori (km) nahi: e-way bill ki validity isi se banti hai."})
+            out.append({"level": "warn", "text": "No distance (km): the e-way bill validity is based on it."})
         if not ce.get("pincode"):
-            out.append({"level": "warn", "text": "Consignee ka PIN code nahi."})
+            out.append({"level": "warn", "text": "The consignee has no PIN code."})
         if sh.mode == "road" and not sh.vehicle_no:
-            out.append({"level": "warn", "text": "Gaadi no. nahi: Part B ke bina maal nahi chal sakta (50 km tak transporter ke paas chhodkar)."})
+            out.append({"level": "warn", "text": "No vehicle no.: the goods cannot move without Part B (except up to 50 km with the transporter)."})
     if sh.doc_date and R.doc_too_old(_date(sh.doc_date), today(tenant)):
-        out.append({"level": "bad", "text": "Invoice / challan 180 din se purana: is par e-way bill nahi banega."})
+        out.append({"level": "bad", "text": "The invoice / challan is older than 180 days: no e-way bill can be made on it."})
     if sh.vehicle_no and not R.vehicle_ok(sh.vehicle_no):
-        out.append({"level": "warn", "text": f"Gaadi no. {sh.vehicle_no} sahi format mein nahi lagta."})
+        out.append({"level": "warn", "text": f"The vehicle no. {sh.vehicle_no} does not look like a valid format."})
     if sh.status in R.MOVING and not sh.eta:
-        out.append({"level": "info", "text": "Pahunchne ka andaaza (ETA) nahi diya: der pakadne ke liye bataiye."})
+        out.append({"level": "info", "text": "No arrival estimate (ETA) given: give one so delays can be caught."})
     return out
 
 
@@ -732,15 +732,15 @@ def _view(s, tenant: str, sh: LogiShipment) -> dict:
          "warnings": [c["text"] for c in checks if c["level"] in ("bad", "warn")]}
     bits = [f"{sh.number} {ce.get('name', '')}: {v['status_label']}"]
     if sh.vehicle_no:
-        bits.append(f"gaadi {sh.vehicle_no}")
+        bits.append(f"vehicle {sh.vehicle_no}")
     if v["eta"] and sh.status in R.OPEN:
         bits.append(f"ETA {v['eta']}")
     if late:
-        bits.append(f"{late:g} ghante late")
+        bits.append(f"{late:g} hours late")
     if ewb.get("alert"):
         bits.append(ewb["alert"]["text"])
     elif ewb["needed"] and not ewb["no"]:
-        bits.append("e-way bill baaki")
+        bits.append("e-way bill pending")
     v["say"] = ", ".join(bits) + "."
     return v
 
@@ -791,21 +791,21 @@ def update(tenant: str, ref: str, status: str = "", text: str = "", where: str =
     if st_new and st_new not in R.STATUSES:
         raise LogiError("status: " + " | ".join(R.STATUSES))
     if not st_new and not _s(text) and not _s(where) and not _s(eta):
-        raise LogiError("Kya update hai? (jaise 'nikal gaya', 'Nagpur cross kiya', 'kal shaam tak pahunchega')")
+        raise LogiError("What is the update? (like 'left', 'crossed Nagpur', 'will arrive by tomorrow evening')")
     loc = R.parse_location(text) or R.parse_location(where)
     drafts = []
     with _LOCK, session() as s:
         sh = _sh(s, tenant, ref)
         if sh.status in ("delivered", "cancelled") and st_new not in ("", "returned"):
-            raise LogiError(f"{sh.number} pehle hi {R.LABEL[sh.status]}.")
+            raise LogiError(f"{sh.number} is already {R.LABEL[sh.status]}.")
         t_at = when(at, tenant) if at else None
         if eta:
             e = when(eta, tenant)
             if not e:
-                raise LogiError(f"ETA samajh nahi aaya: '{eta}'.")
+                raise LogiError(f"Could not understand the ETA: '{eta}'.")
             sh.eta = e
         if st_new == "delayed" and not (reason or text):
-            raise LogiError("Der ki wajah bataiye (jaam / gaadi kharab / naka...), andaaza nahi lagata.")
+            raise LogiError("Give the reason for the delay (jam / breakdown / checkpost...); I do not guess.")
         _add_event(sh, st_new or sh.status, text or (f"ETA {_local(tenant, sh.eta)}" if eta else where), by, source, t_at,
                    where if not loc else "")
         if loc:
@@ -827,7 +827,7 @@ def update(tenant: str, ref: str, status: str = "", text: str = "", where: str =
             drafts.append(m["message"])
     v = get(tenant, sid)
     _publish(tenant, "logistics_shipment", {"shipment": v, "say": v["say"]}, conv)
-    say = v["say"] + (" Graahak ke liye message taiyaar (aap bhejiye)." if drafts else "")
+    say = v["say"] + (" The customer message is ready (you send it)." if drafts else "")
     return {"shipment": v, "drafts": drafts, "say": say}
 
 
@@ -835,15 +835,15 @@ def location(tenant: str, ref: str, text: str, by: str = "driver", conv: str = "
     """A location share she forwarded (driver's live / current location link or 'lat, lng')."""
     loc = R.parse_location(text)
     if not loc:
-        raise LogiError("Isme location nahi mili: driver se WhatsApp 'Location' share karwa kar link bhejiye.")
+        raise LogiError("No location found in this: ask the driver to share a WhatsApp 'Location' and send the link.")
     with _LOCK, session() as s:
         sh = _sh(s, tenant, ref)
         sh.last_location = _d({**loc, "at": _now().isoformat(), "by": by})
-        _add_event(sh, sh.status, "Location mili", "owner", by)
+        _add_event(sh, sh.status, "Location received", "owner", by)
         s.flush()
         sid = sh.id
     v = get(tenant, sid)
-    return {"location": loc, "shipment": v, "say": f"{v['number']} ki location save ki: {loc['maps']}"}
+    return {"location": loc, "shipment": v, "say": f"Saved the location of {v['number']}: {loc['maps']}"}
 
 
 def _courier_track(tenant: str, courier: str, awb: str) -> dict | None:
@@ -871,13 +871,13 @@ def track(tenant: str, ref: str, conv: str = "") -> dict:
         sh = _sh(s, tenant, ref)
         awb, cou, sid, num = sh.awb, sh.courier, sh.id, sh.number
     if not awb:
-        return {"say": f"{num} courier se nahi gaya (AWB nahi). Gaadi ki khabar driver / transporter se lijiye.", "shipment": get(tenant, sid)}
+        return {"say": f"{num} did not go by courier (no AWB). Get vehicle news from the driver / transporter.", "shipment": get(tenant, sid)}
     r = _courier_track(tenant, cou, awb)
     if r is None:
-        return {"say": f"Courier tracking Courier desk se judti hai (abhi juda nahi). AWB {awb} apne courier app mein dekhiye, phir status bataiye.",
+        return {"say": f"Courier tracking works through the Courier desk (not connected yet). Check AWB {awb} in your courier app, then tell me the status.",
                 "shipment": get(tenant, sid)}
     if r.get("error"):
-        return {"say": f"Courier desk: {r['error']} Wahan jo likha ho mujhe bataiye (`update`).", "shipment": get(tenant, sid)}
+        return {"say": f"Courier desk: {r['error']} Tell me what it says there (`update`).", "shipment": get(tenant, sid)}
     new = 0
     with _LOCK, session() as s:
         sh = s.get(LogiShipment, sid)
@@ -903,7 +903,7 @@ def track(tenant: str, ref: str, conv: str = "") -> dict:
     if st and st != old and st in ("delivered", "out_for_delivery"):
         draft(tenant, sid, st if st == "out_for_delivery" else "delivered", conv=conv)
     v = get(tenant, sid)
-    return {"shipment": v, "new_events": new, "say": f"Courier: {R.LABEL.get(v['status'], v['status'])}; {new} nayi entry."}
+    return {"shipment": v, "new_events": new, "say": f"Courier: {R.LABEL.get(v['status'], v['status'])}; {new} new entries."}
 
 
 # ---------------------------------------------------------------- customer messages (drafts she sends)
@@ -922,7 +922,7 @@ def draft(tenant: str, ref: str, kind: str, conv: str = "", reason: str = "", wh
         ce = _j(sh.consignee, {})
         p = s.get(LogiParty, sh.consignee_id) if sh.consignee_id else None
         if p is not None and p.no_messages:
-            return {"say": f"{ce.get('name', '')} ne message mana kiya hai: draft nahi banaya.", "message": None}
+            return {"say": f"{ce.get('name', '')} has asked not to be messaged: no draft made.", "message": None}
         dr, e = _j(sh.driver, {}), _j(sh.ewb, {})
         f = {"name": ce.get("name", ""), "business": st.firm, "ref": f"({sh.doc_no})" if sh.doc_no else f"({sh.number})", "lr": sh.lr_no,
              "goods": _goods_line(_j(sh.goods, []), sh.packages, sh.package_kind), "vehicle": sh.vehicle_no,
@@ -931,10 +931,10 @@ def draft(tenant: str, ref: str, kind: str, conv: str = "", reason: str = "", wh
              "receiver": _j(sh.pod, {}).get("receiver", "")}
         body = _s(text) if kind == "custom" else R.customer_text(kind, f)
         if not body:
-            raise LogiError("Message ka text chahiye.")
+            raise LogiError("The message text is needed.")
         from ..net import policy
         if policy.secret_found(body):
-            raise LogiError("Isme OTP / PIN / card jaisi baat hai: aisa message nahi banta.")
+            raise LogiError("This contains something like an OTP / PIN / card: such a message is not made.")
         for old in s.scalars(select(LogiMessage).where(LogiMessage.shipment_id == sh.id, LogiMessage.kind == kind,
                                                        LogiMessage.status == "draft")).all():
             old.status = "dropped"
@@ -946,8 +946,8 @@ def draft(tenant: str, ref: str, kind: str, conv: str = "", reason: str = "", wh
         mv = _mv(m)
         num = sh.number
     blanks = re.findall(r"\[[^\]]+\]", body)
-    say = f"{num}: graahak ke liye message taiyaar." + (f" Bhejne se pehle bhariye: {', '.join(blanks)}." if blanks else "") + \
-        ("" if phone else " Graahak ka phone nahi: copy karke bhejiye.")
+    say = f"{num}: the customer message is ready." + (f" Fill in before sending: {', '.join(blanks)}." if blanks else "") + \
+        ("" if phone else " The customer has no phone: copy it and send it yourself.")
     _publish(tenant, "logistics_update", {"message": mv, "number": num, "blanks": blanks, "say": say}, conv)
     return {"message": mv, "blanks": blanks, "say": say}
 
@@ -967,9 +967,9 @@ def edit_message(tenant: str, msg_id: str, text: str) -> dict:
     with session() as s:
         m = s.get(LogiMessage, msg_id)
         if not m or m.tenant_id != tenant or m.status != "draft":
-            raise LogiError("Draft nahi mila.")
+            raise LogiError("Draft not found.")
         if policy.secret_found(text):
-            raise LogiError("Isme OTP / PIN / card jaisi baat hai.")
+            raise LogiError("This contains something like an OTP / PIN / card.")
         m.text = _s(text)[:1500]
         m.hash = _hash(m.id, m.phone, m.text)
         return {"message": _mv(m), "say": "Draft badla."}
@@ -980,32 +980,32 @@ def message_sent(tenant: str, msg_id: str) -> dict:
     with session() as s:
         m = s.get(LogiMessage, msg_id)
         if not m or m.tenant_id != tenant:
-            raise LogiError("Message nahi mila.")
+            raise LogiError("Message not found.")
         if m.status == "draft":
             m.status, m.via = "sent", "self"
-        return {"message": _mv(m), "say": "Theek, bhej diya mark kiya."}
+        return {"message": _mv(m), "say": "Okay, marked as sent."}
 
 
 async def send_business(tenant: str, msg_id: str, hash_: str, by_tap: bool = False) -> dict:
     """Business WhatsApp (official Cloud API, inside Meta's 24 h window) — ONLY from her tap in the app."""
     if not by_tap:
-        raise LogiError("Graahak ko message sirf aapke tap se jaata hai.")
+        raise LogiError("A message to a customer goes only on your tap.")
     from ..employee import inbox
     from ..employee.models import BizContact
     with session() as s:
         m = s.get(LogiMessage, msg_id)
         if not m or m.tenant_id != tenant or m.status != "draft":
-            raise LogiError("Draft nahi mila / pehle hi gaya.")
+            raise LogiError("Draft not found / already sent.")
         if not hash_ or hash_ != m.hash:
-            raise LogiError("Draft badal gaya: naya dekh kar tap kijiye.")
+            raise LogiError("The draft has changed: look at the new one and tap.")
         if not m.phone:
-            raise LogiError("Graahak ka phone nahi.")
+            raise LogiError("The customer has no phone.")
         c = s.scalars(select(BizContact).where(BizContact.tenant_id == tenant, BizContact.wa_id.in_((m.phone, "91" + m.phone)))).first()
         cid, text = (c.id if c else ""), m.text
     if not cid:
-        raise LogiError("Is graahak ne business WhatsApp par kabhi message nahi kiya: apne WhatsApp se (wa.me) bhejiye.")
+        raise LogiError("This customer has never messaged the business WhatsApp: send from your own WhatsApp (wa.me).")
     if re.search(r"\[[^\]]+\]", text):
-        raise LogiError("Message mein khaali jagah [..] baaki hai: pehle bhariye.")
+        raise LogiError("The message still has blanks [..]: fill them in first.")
     try:
         await inbox.send(tenant, cid, text, by="owner")
     except inbox.InboxError as e:
@@ -1013,7 +1013,7 @@ async def send_business(tenant: str, msg_id: str, hash_: str, by_tap: bool = Fal
     with session() as s:
         m = s.get(LogiMessage, msg_id)
         m.status, m.via = "sent", "business"
-        return {"message": _mv(m), "say": "Business WhatsApp se bhej diya."}
+        return {"message": _mv(m), "say": "Sent from Business WhatsApp."}
 
 
 # ---------------------------------------------------------------- e-way bill
@@ -1071,36 +1071,36 @@ def ewb_ready(tenant: str, ref: str) -> dict:
         num, status, odc, ddate = sh.number, sh.status, sh.odc, _date(sh.doc_date)
     block, warn = [], []
     if not p["docNo"]:
-        block.append("Invoice / challan number nahi.")
+        block.append("No invoice / challan number.")
     if not p["docDate"]:
-        block.append("Invoice / challan ki tareekh nahi.")
+        block.append("No invoice / challan date.")
     elif R.doc_too_old(ddate, today(tenant)):
-        block.append("Document 180 din se purana: e-way bill nahi banega (1 Jan 2025 se).")
+        block.append("The document is older than 180 days: no e-way bill can be made (from 1 Jan 2025).")
     if p["fromGstin"] == "URP" and p["supplyType"] == "O":
-        block.append("Aapka GSTIN Niyam mein daaliye.")
+        block.append("Enter your GSTIN in Rules.")
     if not p["toPincode"]:
-        block.append("Consignee ka PIN code nahi.")
+        block.append("The consignee has no PIN code.")
     if not p["fromPincode"]:
-        block.append("Aapka PIN code (Niyam) nahi.")
+        block.append("Your PIN code (Rules) is missing.")
     if not p["itemList"]:
-        block.append("Maal ki list nahi.")
+        block.append("No goods list.")
     if any(not it["hsnCode"] for it in p["itemList"]):
-        block.append("Har item ka HSN chahiye.")
+        block.append("Every item needs an HSN.")
     if not p["totalValue"]:
-        block.append("Maal ki keemat nahi.")
+        block.append("No goods value.")
     if not p["transDistance"]:
-        block.append("Doori (km) nahi: portal PIN se andaaza dikhata hai, sahi doori aap bataiye.")
+        block.append("No distance (km): the portal shows an estimate from the PIN, give the correct distance.")
     if not p["vehicleNo"] and not p["transporterId"] and p["transMode"] == 1:
-        warn.append("Gaadi no. / transporter ID nahi: sirf Part A banega, maal chalane se pehle Part B zaroori.")
+        warn.append("No vehicle no. / transporter ID: only Part A can be made; Part B is required before the goods move.")
     if not e["needed"]:
         warn.append(e["why"])
     if e["no"]:
-        warn.append(f"Is shipment ka EWB {e['no']} pehle se hai.")
+        warn.append(f"This shipment already has EWB {e['no']}.")
     days = R.validity_days(p["transDistance"], odc)
     return {"number": num, "status": status, "needed": e["needed"], "why": e["why"], "blockers": block, "warnings": warn,
             "validity_days": days, "payload": p,
-            "say": (f"{num}: e-way bill ke liye {len(block)} cheez baaki: " + "; ".join(block)) if block else
-                   f"{num}: e-way bill ka data taiyaar ({days} din ki validity, {p['transDistance']} km)."}
+            "say": (f"{num}: {len(block)} things pending for the e-way bill: " + "; ".join(block)) if block else
+                   f"{num}: e-way bill data is ready ({days} days validity, {p['transDistance']} km)."}
 
 
 def _av(a: LogiEwbAsk) -> dict:
@@ -1108,7 +1108,7 @@ def _av(a: LogiEwbAsk) -> dict:
             "result": _j(a.result, {}), "payload": _j(a.payload, {})}
 
 
-EWB_KIND_LABEL = {"generate": "E-way bill banana", "part_b": "Part B (gaadi) badalna", "extend": "E-way bill ki validity badhana",
+EWB_KIND_LABEL = {"generate": "Generate e-way bill", "part_b": "Change Part B (vehicle)", "extend": "Extend e-way bill validity",
                   "consolidated": "Consolidated e-way bill"}
 
 
@@ -1128,30 +1128,30 @@ def ewb_request(tenant: str, ref: str, kind: str = "generate", vehicle_no: str =
         elif kind == "part_b":
             v = R.clean_vehicle(vehicle_no or sh.vehicle_no)
             if not e.get("no"):
-                raise LogiError("Pehle e-way bill ka number chahiye.")
+                raise LogiError("The e-way bill number is needed first.")
             if not R.vehicle_ok(v):
-                raise LogiError("Nayi gaadi ka sahi number bataiye (jaise MH30AB1234).")
+                raise LogiError("Give a valid number for the new vehicle (like MH30AB1234).")
             if not reason:
-                raise LogiError("Gaadi badalne ki wajah bataiye (breakdown / transhipment / other).")
+                raise LogiError("Give the reason for the vehicle change (breakdown / transhipment / other).")
             payload = {"ewbNo": int(e["no"]), "vehicleNo": v, "fromPlace": from_place or sh.from_place, "fromState": int(from_state or (st_["state"] or 0) or 0),
                        "reasonCode": {"breakdown": "1", "transhipment": "2", "others": "3", "first_time": "4"}.get(reason, "3"),
                        "reasonRem": reason[:50], "transDocNo": "", "transDocDate": "", "transMode": "1"}
         elif kind == "extend":
             if not e.get("no"):
-                raise LogiError("Pehle e-way bill ka number chahiye.")
+                raise LogiError("The e-way bill number is needed first.")
             upto = when(e.get("valid_upto"), tenant) if e.get("valid_upto") else None
             if upto:
                 a, b = R.extend_window(upto)
                 if not (a <= _now() <= b):
-                    raise LogiError(f"Extension sirf {a.astimezone(_tz(tenant)).strftime('%d %b %H:%M')} se "
-                                    f"{b.astimezone(_tz(tenant)).strftime('%d %b %H:%M')} tak maang sakte hain.")
+                    raise LogiError(f"An extension can only be requested from {a.astimezone(_tz(tenant)).strftime('%d %b %H:%M')} "
+                                    f"to {b.astimezone(_tz(tenant)).strftime('%d %b %H:%M')}.")
             km = _num(remaining_km)
             if not km:
-                raise LogiError("Baaki doori (km) bataiye.")
+                raise LogiError("Give the remaining distance (km).")
             if not (from_place and from_pincode):
-                raise LogiError("Maal abhi kahan hai (shehar + PIN) bataiye.")
+                raise LogiError("Where are the goods now (city + PIN)?")
             if not reason:
-                raise LogiError("Extension ki wajah (natural calamity / law and order / transhipment / accident / others).")
+                raise LogiError("The reason for the extension (natural calamity / law and order / transhipment / accident / others).")
             payload = {"ewbNo": int(e["no"]), "vehicleNo": sh.vehicle_no, "fromPlace": from_place, "fromState": int(from_state or (st_["state"] or 0) or 0),
                        "remainingDistance": int(km), "transDocNo": "", "transDocDate": "", "transMode": "1",
                        "extnRsnCode": {"natural_calamity": 1, "law_order": 2, "transhipment": 4, "accident": 5, "others": 99}.get(reason, 99),
@@ -1164,13 +1164,13 @@ def ewb_request(tenant: str, ref: str, kind: str = "generate", vehicle_no: str =
             for x in others:
                 n = _j(x.ewb, {}).get("no")
                 if not n:
-                    raise LogiError(f"{x.number} ka e-way bill nahi: consolidated ke liye har maal ka EWB chahiye.")
+                    raise LogiError(f"{x.number} has no e-way bill: a consolidated one needs an EWB for every consignment.")
                 nos.append({"ewbNo": int(n)})
             v = R.clean_vehicle(vehicle_no or sh.vehicle_no)
             if not R.vehicle_ok(v):
-                raise LogiError("Ek gaadi ka sahi number chahiye.")
+                raise LogiError("A valid vehicle number is needed.")
             if len(nos) < 2:
-                raise LogiError("Consolidated mein kam se kam do e-way bill.")
+                raise LogiError("A consolidated e-way bill needs at least two e-way bills.")
             payload = {"fromPlace": from_place or sh.from_place, "fromState": int(from_state or (st_["state"] or 0) or 0), "vehicleNo": v,
                        "transMode": "1", "transDocNo": "", "transDocDate": "", "tripSheetEwbBills": nos}
             checks["shipments"] = [x.number for x in others]
@@ -1190,9 +1190,9 @@ def ewb_request(tenant: str, ref: str, kind: str = "generate", vehicle_no: str =
         s.flush()
         av = _av(a)
     prov = st_["ewb"]["provider"] if st_["ewb"]["joined"] else "manual"
-    how = ("Haan karte hi aapke GSP se portal par jaayega." if prov == "gsp" else
-           "Haan karne par JSON file + portal ke steps milenge; aap portal par upload / bharti hain (OTP aapka), ya Computer Operator se bharwaiye.")
-    say = f"{num}: {EWB_KIND_LABEL[kind]} ka card bheja: aapke tap ke bina portal par kuch nahi jaata. {how}"
+    how = ("As soon as you say yes it goes to the portal through your GSP." if prov == "gsp" else
+           "After your yes you get a JSON file + the portal steps; you upload / fill it on the portal (the OTP is yours), or have the Computer Operator do it.")
+    say = f"{num}: {EWB_KIND_LABEL[kind]} card sent: nothing goes to the portal without your tap. {how}"
     _publish(tenant, "logistics_ewb", {"ask": av, "number": num, "label": EWB_KIND_LABEL[kind], "how": how, "provider": prov, "say": say}, conv)
     return {"ask": av, "status": "needs_tap", "say": say}
 
@@ -1200,24 +1200,24 @@ def ewb_request(tenant: str, ref: str, kind: str = "generate", vehicle_no: str =
 def decide_ewb(tenant: str, ask_id: str, yes: bool, hash_: str, by_tap: bool = False, conv: str = "") -> dict:
     """ONLY her tap in the app. Rebuilt payload must still match the card (a changed shipment = stale card)."""
     if not by_tap:
-        raise LogiError("E-way bill portal par sirf aapke tap se jaata hai.")
+        raise LogiError("An e-way bill goes to the portal only on your tap.")
     with _LOCK, session() as s:
         a = s.get(LogiEwbAsk, ask_id)
         if not a or a.tenant_id != tenant:
-            raise LogiError("Card nahi mila.")
+            raise LogiError("Card not found.")
         if a.status != "waiting":
-            raise LogiError(f"Yeh card pehle hi {a.status}.")
+            raise LogiError(f"This card is already {a.status}.")
         if not hash_ or hash_ != a.hash:
-            raise LogiError("Card badal gaya: naya card dekhiye.")
+            raise LogiError("The card has changed: look at the new card.")
         if not yes:
             a.status, a.decided_at = "rejected", _now()
-            return {"ask": _av(a), "say": "Theek, portal par kuch nahi bheja."}
+            return {"ask": _av(a), "say": "Okay, nothing was sent to the portal."}
         kind, payload, sid = a.kind, _j(a.payload, {}), a.shipment_id
         if kind == "generate":
             sh = s.get(LogiShipment, sid)
             if _hash(a.id, kind, _ewb_payload(tenant, sh)) != a.hash:
                 a.status = "stale"
-                raise LogiError("Card ke baad shipment badla: naya card banaiye.")
+                raise LogiError("The shipment changed after the card: create a new card.")
     from . import ewb as E
     client = _ewb_client(tenant)
     try:
@@ -1247,7 +1247,7 @@ def decide_ewb(tenant: str, ask_id: str, yes: bool, hash_: str, by_tap: bool = F
             elif kind == "consolidated":
                 ev["cewb"] = res.get("ewb_no", "")
             sh.ewb = _d(ev)
-            _add_event(sh, sh.status, f"{EWB_KIND_LABEL[kind]}: ho gaya" + (f" (EWB {ev.get('no')})" if ev.get("no") else ""), "owner", "her")
+            _add_event(sh, sh.status, f"{EWB_KIND_LABEL[kind]}: done" + (f" (EWB {ev.get('no')})" if ev.get("no") else ""), "owner", "her")
         else:
             a.status = "manual"
         a.result = _d({k: v for k, v in res.items() if k != "json"} | ({"json_chars": len(res.get("json", ""))} if res.get("json") else {}))
@@ -1258,8 +1258,8 @@ def decide_ewb(tenant: str, ask_id: str, yes: bool, hash_: str, by_tap: bool = F
         f = chatfiles.store(tenant, f"EWB-{num}-{kind}.json", res["json"].encode(), "application/json")
         files.append(f)
         _publish(tenant, "pc_file", {**f, "source": "logistics", "title": f"{num} e-way bill JSON"}, conv)
-    say = (f"{num}: {EWB_KIND_LABEL[kind]} ho gaya." if res["mode"] == "gsp" else
-           f"{num}: JSON taiyaar. Portal par: " + " → ".join(res.get("steps", [])[:2]) + ". Phir EWB number bataiye.")
+    say = (f"{num}: {EWB_KIND_LABEL[kind]} done." if res["mode"] == "gsp" else
+           f"{num}: JSON is ready. On the portal: " + " → ".join(res.get("steps", [])[:2]) + ". Then give me the EWB number.")
     v = get(tenant, sid)
     _publish(tenant, "logistics_shipment", {"shipment": v, "say": v["say"]}, conv)
     return {"ask": av, "result": {k: v for k, v in res.items() if k != "json"}, "files": files, "shipment": v, "say": say}
@@ -1283,14 +1283,14 @@ def ewb_set(tenant: str, ref: str, ewb_no: str, valid_upto: str = "", generated:
     """She made it on the portal herself and tells the number + 'Valid Upto' (or Hoola works it out from the distance)."""
     n = re.sub(r"\D", "", _s(ewb_no))
     if len(n) != 12:
-        raise LogiError("E-way bill number 12 ank ka hota hai.")
+        raise LogiError("An e-way bill number has 12 digits.")
     with _LOCK, session() as s:
         sh = _sh(s, tenant, ref)
         gen = when(generated, tenant) if generated else _now()
         upto = when(valid_upto, tenant) if valid_upto else None
         computed = False
         if valid_upto and not upto:
-            raise LogiError("'Valid Upto' samajh nahi aaya.")
+            raise LogiError("Could not understand 'Valid Upto'.")
         if not upto and sh.distance_km and sh.vehicle_no:
             upto = R.valid_upto(gen.astimezone(_tz(tenant)), sh.distance_km, sh.odc).astimezone(UTC)
             computed = True
@@ -1303,8 +1303,8 @@ def ewb_set(tenant: str, ref: str, ewb_no: str, valid_upto: str = "", generated:
                                                     LogiEwbAsk.status.in_(("manual", "waiting")))).all():
             a.status = "done"
     v = get(tenant, sid)
-    extra = " (Valid Upto doori se nikala; portal wala alag ho to bataiye.)" if computed else "" if upto else " Valid Upto bataiye taaki expiry yaad dila sakoon."
-    return {"shipment": v, "say": f"{v['number']}: EWB {n} save. Valid {v['ewb']['valid_upto'] or 'pata nahi'}.{extra}"}
+    extra = " (Valid Upto worked out from the distance; tell me if the portal shows a different one.)" if computed else "" if upto else " Give me Valid Upto so I can remind you before expiry."
+    return {"shipment": v, "say": f"{v['number']}: EWB {n} saved. Valid until {v['ewb']['valid_upto'] or 'unknown'}.{extra}"}
 
 
 # ---------------------------------------------------------------- documents (PDF by code)
@@ -1511,7 +1511,7 @@ def documents(tenant: str, ref: str, which: list | str | None = None, conv: str 
             title = f"LR {no}"
         elif k == "challan":
             if thok and dtype == "invoice":
-                notes.append("Is maal ka tax invoice (Thok) hai: challan ki zaroorat nahi.")
+                notes.append("This consignment has a tax invoice (Thok): no challan is needed.")
                 continue
             data, no = challan_pdf(tenant, sid)
             f = chatfiles.store(tenant, f"Challan-{no.replace('/', '-')}.pdf", data, "application/pdf")
@@ -1522,7 +1522,7 @@ def documents(tenant: str, ref: str, which: list | str | None = None, conv: str 
             title = f"Packing list {num}"
         elif k == "invoice":
             if not thok:
-                notes.append("Tax invoice Thok Sahayak se banta hai (bill aapki haan se); yeh shipment kisi Thok bill se nahi juda.")
+                notes.append("A tax invoice is made by Thok Sahayak (the bill goes with your yes); this shipment is not linked to any Thok bill.")
                 continue
             from ..thok import service as TS
             r = TS.invoice_file(tenant, thok, conv)
@@ -1538,7 +1538,7 @@ def documents(tenant: str, ref: str, which: list | str | None = None, conv: str 
             title = f"{num} e-way bill JSON"
         _publish(tenant, "pc_file", {**f, "source": "logistics", "title": title}, conv)
         out.append(f)
-    return {"files": out, "notes": notes, "say": f"{num}: {len(out)} kaagaz taiyaar." + (" " + " ".join(notes) if notes else "")}
+    return {"files": out, "notes": notes, "say": f"{num}: {len(out)} documents ready." + (" " + " ".join(notes) if notes else "")}
 
 
 # ---------------------------------------------------------------- POD
@@ -1553,12 +1553,12 @@ def _clean_image(data: bytes) -> bytes:
     """Re-encode from pixels (JPEG <= 1600 px): EXIF / GPS / camera details gone."""
     from PIL import Image, ImageOps
     if not data or len(data) > 20 * 1024 * 1024:
-        raise LogiError("Photo khaali ya 20 MB se badi.")
+        raise LogiError("The photo is empty or larger than 20 MB.")
     try:
         im = Image.open(io.BytesIO(data))
         im.load()
     except Exception:
-        raise LogiError("Yeh photo khul nahi rahi (JPG / PNG / WEBP).")
+        raise LogiError("This photo cannot be opened (JPG / PNG / WEBP).")
     im = ImageOps.exif_transpose(im).convert("RGB")
     im.thumbnail((1600, 1600))
     out = io.BytesIO()
@@ -1576,7 +1576,7 @@ def add_photo(tenant: str, ref: str, data: bytes, stage: str = "pod", receiver: 
         sh = _sh(s, tenant, ref)
         n = s.scalars(select(LogiPhoto.id).where(LogiPhoto.shipment_id == sh.id)).all()
         if len(n) >= 20:
-            raise LogiError("Ek shipment par 20 photo tak.")
+            raise LogiError("Up to 20 photos per shipment.")
         path = _dir(tenant, sh.id) / f"{stage}_{len(n) + 1:02d}.jpg"
         path.write_bytes(clean)
         ph = LogiPhoto(tenant_id=tenant, shipment_id=sh.id, stage=stage, path=str(path))
@@ -1598,7 +1598,7 @@ def add_photo(tenant: str, ref: str, data: bytes, stage: str = "pod", receiver: 
             sh.pod = _d(pod)
         if stage == "pod" and sh.status != "delivered":
             sh.status, sh.delivered_at, newly = "delivered", _now(), True
-            _add_event(sh, "delivered", "POD mila" + (f" ({receiver})" if receiver else ""), "owner", "her")
+            _add_event(sh, "delivered", "POD received" + (f" ({receiver})" if receiver else ""), "owner", "her")
         s.flush()
         pod = _j(sh.pod, {})
         freight, val = sh.freight, sh.value + sh.tax
@@ -1606,14 +1606,14 @@ def add_photo(tenant: str, ref: str, data: bytes, stage: str = "pod", receiver: 
     if pod.get("damaged") or pod.get("short"):
         cb = R.claim_by(created.astimezone(_tz(tenant)).date() if created else today(tenant))
         cap = R.liability_cap(freight, val)
-        notes.append(f"Kami / nuksaan likha gaya: transporter ko likhit claim notice {cb.strftime('%d %b %Y')} se pehle (booking ke 180 din, "
+        notes.append(f"Shortage / damage recorded: send the transporter a written claim notice before {cb.strftime('%d %b %Y')} (180 days from booking, "
                      f"Carriage by Road Act s.16). {cap['text']}")
     if newly:
         draft(tenant, sid, "delivered", conv=conv)
     v = get(tenant, sid)
     _publish(tenant, "logistics_shipment", {"shipment": v, "say": v["say"]}, conv)
     return {"photo": {"id": ph.id, "stage": stage}, "shipment": v, "notes": notes,
-            "say": f"{num}: photo save (location / camera details hata diye)." + (" Deliver mark kiya." if newly else "") + (" " + " ".join(notes) if notes else "")}
+            "say": f"{num}: photo saved (location / camera details removed)." + (" Marked as delivered." if newly else "") + (" " + " ".join(notes) if notes else "")}
 
 
 def add_photo_file(tenant: str, ref: str, file_id: str, **kw) -> dict:
@@ -1623,7 +1623,7 @@ def add_photo_file(tenant: str, ref: str, file_id: str, **kw) -> dict:
         f = ms._file_row(tenant, str(file_id))
         data = Path(f.stored_path).read_bytes()
     except Exception:
-        raise LogiError("Woh photo nahi mili (file_id).")
+        raise LogiError("That photo was not found (file_id).")
     return add_photo(tenant, ref, data, **kw)
 
 
@@ -1631,7 +1631,7 @@ def photo_file(tenant: str, photo_id: str) -> Path:
     with session() as s:
         p = s.get(LogiPhoto, photo_id)
         if not p or p.tenant_id != tenant or not Path(p.path).exists():
-            raise LogiError("Photo nahi mili.")
+            raise LogiError("Photo not found.")
         return Path(p.path)
 
 
@@ -1639,13 +1639,13 @@ def cancel(tenant: str, ref: str, reason: str = "", conv: str = "") -> dict:
     with _LOCK, session() as s:
         sh = _sh(s, tenant, ref)
         if sh.status == "delivered":
-            raise LogiError("Deliver ho chuka maal cancel nahi hota.")
+            raise LogiError("Delivered goods cannot be cancelled.")
         sh.status = "cancelled"
         _add_event(sh, "cancelled", reason or "Cancel", "owner", "her")
         e = _j(sh.ewb, {})
         sid = sh.id
     v = get(tenant, sid)
-    note = " E-way bill bana tha: portal par 24 ghante ke andar cancel kijiye (aapka login)." if e.get("no") else ""
+    note = " An e-way bill was made: cancel it on the portal within 24 hours (your login)." if e.get("no") else ""
     return {"shipment": v, "say": f"{v['number']} cancel.{note}"}
 
 
@@ -1656,7 +1656,7 @@ def _ontime(tenant: str) -> dict:
     with session() as s:
         rows = s.scalars(select(LogiShipment).where(LogiShipment.tenant_id == tenant, LogiShipment.status == "delivered")).all()
         for sh in rows:
-            key = _j(sh.transporter, {}).get("name") or sh.courier or ("Apni gaadi" if sh.fleet == "own" else "")
+            key = _j(sh.transporter, {}).get("name") or sh.courier or ("Own vehicle" if sh.fleet == "own" else "")
             if not key or not sh.eta or not sh.delivered_at:
                 continue
             d = stats.setdefault(key, {"trips": 0, "on_time": 0, "late_h": []})
@@ -1700,23 +1700,23 @@ def board(tenant: str) -> dict:
         out["waiting"] = {"ewb_cards": len(asks), "drafts": len(drafts)}
     bits = []
     if out["today"]:
-        bits.append(f"aaj {len(out['today'])} maal nikalna hai")
+        bits.append(f"{len(out['today'])} to dispatch today")
     if out["moving"]:
-        bits.append(f"{len(out['moving'])} raste mein")
+        bits.append(f"{len(out['moving'])} on the way")
     if out["late"]:
         bits.append(f"{len(out['late'])} late ({', '.join(x['number'] for x in out['late'][:3])})")
     if out["ewb"]:
-        bits.append(f"{len(out['ewb'])} e-way bill par dhyaan")
+        bits.append(f"{len(out['ewb'])} e-way bills need attention")
     if out["ewb_missing"]:
-        bits.append(f"{len(out['ewb_missing'])} ka e-way bill baaki")
+        bits.append(f"{len(out['ewb_missing'])} still need an e-way bill")
     if out["no_pod"]:
-        bits.append(f"{len(out['no_pod'])} deliver par POD nahi")
+        bits.append(f"{len(out['no_pod'])} delivered with no POD")
     if asks:
-        bits.append(f"{len(asks)} e-way bill card aapke tap ka intezaar")
+        bits.append(f"{len(asks)} e-way bill cards waiting for your tap")
     if drafts:
-        bits.append(f"{len(drafts)} graahak message bhejne baaki")
+        bits.append(f"{len(drafts)} customer messages still to send")
     out["ontime"] = _ontime(tenant)
-    out["say"] = ("Logistics: " + ", ".join(bits) + ".") if bits else "Logistics: aaj kuch baaki nahi."
+    out["say"] = ("Logistics: " + ", ".join(bits) + ".") if bits else "Logistics: nothing pending today."
     return out
 
 
@@ -1759,7 +1759,7 @@ def register_file(tenant: str, days: int = 90, conv: str = "") -> dict:
     f = chatfiles.store(tenant, "Logistics-register.xlsx", buf.getvalue(),
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "logistics", "title": "Logistics register"}, conv)
-    return {"file": f, "say": "Register Excel taiyaar."}
+    return {"file": f, "say": "Register Excel is ready."}
 
 
 # ---------------------------------------------------------------- worker
@@ -1785,8 +1785,8 @@ def check_alerts(tenant: str, at: datetime | None = None) -> list[dict]:
             late = R.delay_of(_aw(sh.eta), at, grace) if sh.status in R.MOVING else 0
             if late and _once(sh, f"late:{_aw(sh.eta).isoformat() if sh.eta else ''}"):
                 out.append({"kind": "late", "id": sh.id, "number": sh.number,
-                            "text": f"{sh.number} ({ce.get('name', '')}) ETA {_local(tenant, sh.eta)} se {late:g} ghante upar: driver / transporter se poochhiye; "
-                                    f"graahak ke liye der ka draft bana sakte hain."})
+                            "text": f"{sh.number} ({ce.get('name', '')}) ETA {_local(tenant, sh.eta)} is {late:g} hours overdue: ask the driver / transporter; "
+                                    f"a delay draft can be made for the customer."})
             e = _j(sh.ewb, {})
             if e.get("no") and e.get("valid_upto"):
                 al = R.ewb_alert(when(e["valid_upto"], tenant), at, when(e.get("date"), tenant) if e.get("date") else None)
@@ -1797,8 +1797,8 @@ def check_alerts(tenant: str, at: datetime | None = None) -> list[dict]:
                     _once(sh, f"silent:{last.isoformat()[:13]}"):
                 dr = _j(sh.driver, {})
                 out.append({"kind": "silent", "id": sh.id, "number": sh.number, "phone": dr.get("phone", ""),
-                            "text": f"{sh.number}: {int((at - last).total_seconds() // 3600)} ghante se koi khabar nahi. Driver"
-                                    f"{(' ' + dr['name']) if dr.get('name') else ''} se location share karwaiye."})
+                            "text": f"{sh.number}: {int((at - last).total_seconds() // 3600)} hours with no news. Ask driver"
+                                    f"{(' ' + dr['name']) if dr.get('name') else ''} to share a location."})
     return out
 
 

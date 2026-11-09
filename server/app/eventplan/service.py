@@ -48,8 +48,8 @@ from .models import (
 
 log = logging.getLogger("santosh.eventplan")
 _LOCK = threading.RLock()
-STATUS = {"enquiry": "Enquiry", "planning": "Planning", "confirmed": "Pakka", "live": "Aaj event", "done": "Ho gaya",
-          "cancelled": "Radd"}
+STATUS = {"enquiry": "Enquiry", "planning": "Planning", "confirmed": "Confirmed", "live": "Event today", "done": "Done",
+          "cancelled": "Cancelled"}
 MAX_GUESTS = 3000
 
 
@@ -172,7 +172,7 @@ def _load_file(tenant: str, file_id: str) -> tuple[str, bytes]:
         name, _m, data = ms.load_files(tenant, [{"type": "file", "file_id": file_id}])[0]
         return name, data
     except Exception as e:
-        raise EventError(f"File {file_id} nahi mili: {e}")
+        raise EventError(f"File {file_id} not found: {e}")
 
 
 def _store(tenant: str, name: str, data: bytes, mime: str, conv: str = "", title: str = "") -> dict:
@@ -262,13 +262,13 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise EventError("GSTIN sahi nahi lagta (check digit / format).")
+                        raise EventError("The GSTIN does not look valid (check digit / format).")
                     r.state_code = g[:2]
                 r.gstin = g
             elif k in ("margin_pct", "fee_pct", "gst_pct"):
                 n = R.num(v)
                 if n is None or n < 0 or n > (40 if k == "gst_pct" else 300):
-                    raise EventError(f"{k} sahi number nahi.")
+                    raise EventError(f"{k} is not a valid number.")
                 setattr(r, k, n)
             elif k == "head_margins":
                 if not isinstance(v, dict):
@@ -280,7 +280,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
                     if hv in (None, ""):
                         cur.pop(hk, None)
                     elif n is None or n < 0 or n > 300:
-                        raise EventError(f"{hk} ka margin sahi nahi.")
+                        raise EventError(f"The margin for {hk} is not valid.")
                     else:
                         cur[hk] = n
                 r.head_margins = _dump(cur)
@@ -293,9 +293,9 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             elif k in ("sound_till", "morning_time"):
                 t = R.hhmm(str(v))
                 if not t:
-                    raise EventError(f"{k} HH:MM mein likhiye.")
+                    raise EventError(f"Write {k} as HH:MM.")
                 if k == "sound_till" and not ("22:00" <= t <= "23:59" or t == "00:00"):
-                    raise EventError("Sound ki seema 22:00 se raat 12 tak hi (Noise Rules 2000; 22:00 ke baad sirf state ki chhoot se).")
+                    raise EventError("The sound limit can only be 22:00 to midnight (Noise Rules 2000; after 22:00 only with a state exemption).")
                 setattr(r, k, t)
             elif k == "team":
                 if not isinstance(v, list):
@@ -309,7 +309,7 @@ def save_settings(tenant: str, **kw: Any) -> dict:
             else:
                 setattr(r, k, R.clean(v, 2000) if k in ("terms", "rules", "address") else R.clean(v, 160))
         view = _settings_view(r)
-    return {"settings": view, "say": "Niyam save ho gaye."}
+    return {"settings": view, "say": "Rules saved."}
 
 
 # ---------------------------------------------------------------- vendors
@@ -327,11 +327,11 @@ def vendor_save(tenant: str, name: str, head: str = "", phone: str = "", upi_id:
             v = s.scalars(select(EpVendor).where(EpVendor.tenant_id == tenant, EpVendor.name == name)).first()
         if v is None:
             if not name:
-                raise EventError("Vendor ka naam chahiye.")
+                raise EventError("The vendor's name is needed.")
             v = EpVendor(tenant_id=tenant, name=name)
             s.add(v)
         elif v.tenant_id != tenant:
-            raise EventError("Vendor nahi mila.")
+            raise EventError("Vendor not found.")
         if name:
             v.name = name
         if head:
@@ -341,23 +341,23 @@ def vendor_save(tenant: str, name: str, head: str = "", phone: str = "", upi_id:
         if phone:
             p = R.phone(phone)
             if not p:
-                raise EventError("Phone 10 ankon ka mobile number nahi lagta.")
+                raise EventError("The phone does not look like a 10-digit mobile number.")
             v.phone = p
         if upi_id:
             u = str(upi_id).strip()
             if not re.fullmatch(r"[\w.\-]{2,64}@[A-Za-z]{2,32}", u):
-                raise EventError("UPI ID sahi nahi lagta (naam@bank).")
+                raise EventError("The UPI ID does not look valid (name@bank).")
             v.upi_id = u
         if gstin:
             from ..india.money import gstin_ok
             g = gstin.strip().upper()
             if not gstin_ok(g):
-                raise EventError("Vendor ka GSTIN sahi nahi lagta.")
+                raise EventError("The vendor's GSTIN does not look valid.")
             v.gstin = g
         if fssai:
             f = re.sub(r"\D", "", fssai)
             if len(f) != 14:
-                raise EventError("FSSAI number 14 ankon ka hota hai.")
+                raise EventError("An FSSAI number has 14 digits.")
             v.fssai = f
         if notes:
             v.notes = R.clean(notes, 500)
@@ -381,7 +381,7 @@ def _vendor(s, tenant: str, ref: str) -> EpVendor:
         low = ref.strip().lower()
         v = next((x for x in rows if x.name.lower() == low), None) or next((x for x in rows if low in x.name.lower()), None)
     if v is None or v.tenant_id != tenant:
-        raise EventError(f"Vendor '{ref}' nahi mila; pehle vendor jodiye.")
+        raise EventError(f"Vendor '{ref}' not found; add the vendor first.")
     return v
 
 
@@ -404,7 +404,7 @@ def _ev(s, tenant: str, ref: str) -> EpEvent:
         if len(rows) == 1:
             e = rows[0]
     if e is None or e.tenant_id != tenant:
-        raise EventError("Event nahi mila (number / naam bataiye).")
+        raise EventError("Event not found (give the number / name).")
     return e
 
 
@@ -456,7 +456,7 @@ def event_save(tenant: str, name: str = "", event: str = "", actor: str = "owner
             e = _ev(s, tenant, event)
         else:
             if not R.clean(name, 160):
-                raise EventError("Event ka naam chahiye.")
+                raise EventError("The event name is needed.")
             st = _st(s, tenant)
             st.ev_seq += 1
             e = EpEvent(tenant_id=tenant, number=f"E-{st.ev_seq:04d}", name=R.clean(name, 160), conv=conv,
@@ -475,32 +475,32 @@ def event_save(tenant: str, name: str = "", event: str = "", actor: str = "owner
             elif k == "day":
                 d = _date(v)
                 if not d:
-                    raise EventError("Tareekh samajh nahi aayi (DD-MM-YYYY).")
+                    raise EventError("Could not understand the date (DD-MM-YYYY).")
                 if d < today(tenant) and e.status not in ("done", "cancelled"):
-                    raise EventError("Event ki tareekh beet chuki hai.")
+                    raise EventError("The event date has already passed.")
                 e.day = d.isoformat()
             elif k in ("start", "end"):
                 t = R.hhmm(str(v))
                 if not t:
-                    raise EventError(f"{k} samay HH:MM mein.")
+                    raise EventError(f"Give {k} time as HH:MM.")
                 setattr(e, k, t)
             elif k == "headcount":
                 n = R.num(v)
                 if n is None or n < 0 or n > 200000:
-                    raise EventError("Headcount sahi number nahi.")
+                    raise EventError("The headcount is not a valid number.")
                 e.headcount = int(n)
             elif k == "budget":
                 e.budget = R.num(v)
             elif k == "client_phone":
                 e.client_phone = R.phone(v) or ""
                 if v and not e.client_phone:
-                    notes.append("client ka phone 10 ankon ka mobile nahi lagta, save nahi kiya")
+                    notes.append("the client's phone does not look like a 10-digit mobile number, not saved")
             elif k == "client_gstin":
                 g = str(v).strip().upper()
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise EventError("Client ka GSTIN sahi nahi lagta.")
+                        raise EventError("The client's GSTIN does not look valid.")
                     e.client_state = g[:2]
                 e.client_gstin = g
             elif k == "client_state":
@@ -517,14 +517,14 @@ def event_save(tenant: str, name: str = "", event: str = "", actor: str = "owner
                 if v not in STATUS:
                     raise EventError("status = " + " | ".join(STATUS))
                 if v == "confirmed" and not is_owner(actor):
-                    raise EventError("Event pakka sirf owner karti hain.")
+                    raise EventError("Only the owner can confirm an event.")
                 e.status = v
             elif k == "brief":
                 e.brief = R.clean(v, 4000)
             else:
                 setattr(e, k, R.clean(v, 400 if k == "venue" else 120))
         if e.end and e.start and e.end < e.start:
-            notes.append("event aadhi raat ke baad tak (end < start) maana")
+            notes.append("treated the event as running past midnight (end < start)")
         _refresh_permits(s, tenant, e)
         if e.day and e.day != old_day:
             _plan_tasks(s, tenant, e)
@@ -532,7 +532,7 @@ def event_save(tenant: str, name: str = "", event: str = "", actor: str = "owner
         view = _ev_view(s, e, True)
     say = f"{view['number']} {view['name']} save." + (" " + "; ".join(notes) + "." if notes else "")
     if not view["day"]:
-        say += " Tareekh batayiye to task plan ban jayega."
+        say += " Give me the date and the task plan can be made."
     return {"event": view, "say": say}
 
 
@@ -551,18 +551,18 @@ def _vq_total(q: EpVendorQuote) -> tuple[float | None, float | None, str]:
     amt = q.amount
     if q.per in ("plate", "person", "hour", "day"):
         if q.qty is None:
-            return None, None, f"per {q.per} rate hai; kitne {q.per} chahiye pata nahi"
+            return None, None, f"the rate is per {q.per}; the number of {q.per} needed is not known"
         amt = q.amount * q.qty
     if q.gst_included is True:
         if q.gst_pct is None:
-            return R.r2(amt), None, "GST shamil bataya, par kitne % pata nahi"
+            return R.r2(amt), None, "GST said to be included, but the % is not known"
         base = R.r2(amt / (1 + q.gst_pct / 100))
         return base, R.r2(amt - base), ""
     if q.gst_included is False:
         if q.gst_pct is None:
-            return R.r2(amt), None, "GST alag lagega, % pata nahi"
+            return R.r2(amt), None, "GST will be extra, % not known"
         return R.r2(amt), R.r2(amt * q.gst_pct / 100), ""
-    return R.r2(amt), None, "GST shamil hai ya alag, vendor se poochhiye"
+    return R.r2(amt), None, "Ask the vendor whether GST is included or extra"
 
 
 def _vq_view(s, q: EpVendorQuote) -> dict:
@@ -581,7 +581,7 @@ def vquote_add(tenant: str, event: str, vendor: str, amount=None, head: str = ""
     """A vendor's quote exactly as SHE got it. No amount = refused (Hoola never guesses a vendor's price)."""
     a = R.num(amount)
     if a is None or a <= 0:
-        raise EventError("Vendor ne kitna bataya? Rakam chahiye (Hoola daam nahi gadhta).")
+        raise EventError("What did the vendor quote? An amount is needed (Hoola does not invent prices).")
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         v = _vendor(s, tenant, vendor)
@@ -598,7 +598,7 @@ def vquote_add(tenant: str, event: str, vendor: str, amount=None, head: str = ""
             e.status = "planning"
         s.flush()
         view = _vq_view(s, q)
-    return {"quote": view, "say": f"{view['vendor']} ka {view['head_label']} quote: {_rs(view['total'] if view['total'] is not None else view['base'])}"
+    return {"quote": view, "say": f"{view['vendor']} {view['head_label']} quote: {_rs(view['total'] if view['total'] is not None else view['base'])}"
                                   + (f" ({view['note']})" if view["note"] else "") + "."}
 
 
@@ -619,18 +619,18 @@ def compare(tenant: str, event: str, head: str = "") -> dict:
         for r in qs:
             miss = []
             if r["gst"] is None:
-                miss.append("GST saaf nahi")
+                miss.append("GST not clear")
             if r["advance_pct"] is None:
-                miss.append("advance kitna")
+                miss.append("how much advance")
             if not r["cancel_terms"]:
-                miss.append("radd karne ki shart")
+                miss.append("cancellation terms")
             if not r["includes"]:
-                miss.append("kya shamil hai")
+                miss.append("what is included")
             r["missing"] = miss
         planned = sum((ln.get("cost") or 0) for ln in lines if ln.get("head") == h)
         out.append({"head": h, "label": R.HEADS.get(h, R.HEADS["misc"])["label"], "quotes": qs, "budget_cost": planned or None})
     say = "; ".join(f"{g['label']}: " + ", ".join(f"{q['vendor']} {_rs(q['total'] if q['total'] is not None else q['base'])}"
-                                                  for q in g["quotes"]) for g in out) or "Abhi koi vendor quote nahi."
+                                                  for q in g["quotes"]) for g in out) or "No vendor quotes yet."
     return {"heads": out, "say": say}
 
 
@@ -639,7 +639,7 @@ def choose_quote(tenant: str, quote_id: str, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         q = s.get(EpVendorQuote, quote_id)
         if q is None or q.tenant_id != tenant:
-            raise EventError("Quote nahi mila.")
+            raise EventError("Quote not found.")
         e = s.get(EpEvent, q.event_id)
         for o in s.scalars(select(EpVendorQuote).where(EpVendorQuote.event_id == e.id, EpVendorQuote.head == q.head)).all():
             o.chosen = o.id == q.id
@@ -654,7 +654,7 @@ def choose_quote(tenant: str, quote_id: str, actor: str = "owner") -> dict:
         e.budget_lines = _dump(lines)
         _log(e, f"quote chuna: {view['vendor']} ({view['head_label']})", actor_name(tenant, actor))
     b = budget(tenant, e.id)
-    return {"quote": view, "budget": b, "say": f"{view['vendor']} chuna; budget mein {view['head_label']} {_rs(view['base'])} (GST se pehle)."}
+    return {"quote": view, "budget": b, "say": f"{view['vendor']} chosen; {view['head_label']} {_rs(view['base'])} in the budget (before GST)."}
 
 
 # ---------------------------------------------------------------- budget
@@ -670,14 +670,14 @@ def _line(st: EpSettings, ln: dict) -> dict:
     m = float(m) if m is not None else (0.0 if pure or st.fee_mode != "markup" else _margin(st, ln.get("head", "misc")))
     price = None if cost is None else R.r2(cost * (1 + m / 100))
     return {**ln, "pure_agent": pure, "margin_pct": m, "client_price": price, "head_label": R.HEADS.get(ln.get("head"), R.HEADS["misc"])["label"],
-            "blanks": [] if cost is not None else ["kharcha (vendor ka quote / aapka rate)"]}
+            "blanks": [] if cost is not None else ["cost (vendor quote / your rate)"]}
 
 
 def budget_set(tenant: str, event: str, lines: list | None, replace: bool = False, actor: str = "owner") -> dict:
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         if e.accepted_doc and not is_owner(actor):
-            raise EventError("Quote client ne maan liya hai; budget sirf owner badalti hain.")
+            raise EventError("The client has accepted the quote; only the owner can change the budget.")
         cur = [] if replace else _j(e.budget_lines, [])
         by_id = {x["id"]: x for x in cur}
         n = max([int(re.sub(r"\D", "", x["id"]) or 0) for x in cur] + [0])
@@ -743,15 +743,15 @@ def budget(tenant: str, event: str) -> dict:
         blanks = [f"{ln['id']} {ln['item']}" for ln in lines if ln["blanks"]]
         warn = []
         if e.budget is not None and client + fee > e.budget:
-            warn.append(f"Client ka budget {_rs(e.budget)}, plan {_rs(client + fee)} (GST se pehle) - {_rs(client + fee - e.budget)} zyada.")
+            warn.append(f"Client budget is {_rs(e.budget)}, the plan is {_rs(client + fee)} (before GST) - {_rs(client + fee - e.budget)} over.")
         for v in heads.values():
             if v["over"]:
-                warn.append(f"{v['label']}: asli kharcha {_rs(v['actual'])} plan {_rs(v['cost'])} se zyada.")
+                warn.append(f"{v['label']}: actual cost {_rs(v['actual'])} is more than the plan {_rs(v['cost'])}.")
         view = {"event": e.number, "event_id": e.id, "lines": lines, "heads": list(heads.values()), "cost": cost, "client": client,
                 "fee": fee, "fee_mode": st.fee_mode, "margin": R.r2(client + fee - cost), "client_budget": e.budget, "blanks": blanks,
                 "warnings": warn, "actual": R.r2(sum(act.values()))}
-    view["say"] = (f"{view['event']}: kharcha {_rs(cost)}, client ko {_rs(client + fee)} (GST se pehle), margin {_rs(view['margin'])}."
-                   + (f" {len(blanks)} line ka kharcha khaali." if blanks else "") + (" " + " ".join(warn) if warn else ""))
+    view["say"] = (f"{view['event']}: cost {_rs(cost)}, to the client {_rs(client + fee)} (before GST), margin {_rs(view['margin'])}."
+                   + (f" {len(blanks)} lines have no cost." if blanks else "") + (" " + " ".join(warn) if warn else ""))
     return view
 
 
@@ -761,7 +761,7 @@ def _doc_lines(st: EpSettings, lines: list[dict]) -> tuple[list[dict], list[str]
     for ln in lines:
         L = _line(st, ln)
         if L["cost"] is None:
-            blanks.append(f"{L['id']} {L['item']}: kharcha")
+            blanks.append(f"{L['id']} {L['item']}: cost")
         out.append({"id": L["id"], "head": L["head"], "item": L["item"], "qty": L.get("qty"), "unit": L.get("unit", ""),
                     "amount": L["client_price"] if st.fee_mode == "markup" else L["cost"], "pure_agent": L["pure_agent"]})
     return out, blanks
@@ -791,7 +791,7 @@ def _doc_show(d: EpDoc, e: EpEvent) -> dict:
 def _doc_view(s, d: EpDoc) -> dict:
     e = s.get(EpEvent, d.event_id)
     t = _j(d.totals, {})
-    return {"id": d.id, "kind": d.kind, "number": d.number or "(haan par number milega)", "event": e.number if e else "", "event_id": d.event_id,
+    return {"id": d.id, "kind": d.kind, "number": d.number or "(the number comes after your yes)", "event": e.number if e else "", "event_id": d.event_id,
             "event_name": e.name if e else "", "client": e.client if e else "", "lines": _j(d.lines, []), "totals": t,
             "total_text": _rs(t.get("total")), "blanks": _j(d.blanks, []), "status": d.status, "hash": d.hash, "valid_until": d.valid_until,
             "file_id": d.file_id, "reason": d.reason}
@@ -802,16 +802,16 @@ def quote_make(tenant: str, event: str, conv: str = "", actor: str = "owner") ->
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         if e.accepted_doc:
-            raise EventError("Client ne quote maan liya hai; ab badlav budget + invoice mein.")
+            raise EventError("The client has accepted the quote; changes now go in the budget + invoice.")
         st = _st(s, tenant)
         src = _j(e.budget_lines, [])
         if not src:
-            raise EventError("Pehle budget banaiye (vendor quotes / aapke rate).")
+            raise EventError("Create the budget first (vendor quotes / your rates).")
         lines, blanks = _doc_lines(st, src)
         if not e.client:
-            blanks.append("client ka naam")
+            blanks.append("client name")
         if not e.day:
-            blanks.append("event ki tareekh")
+            blanks.append("event date")
         totals = _doc_totals(st, e, lines)
         olds = s.scalars(select(EpDoc).where(EpDoc.event_id == e.id, EpDoc.kind == "quote")).all()
         for o in olds:
@@ -829,8 +829,8 @@ def quote_make(tenant: str, event: str, conv: str = "", actor: str = "owner") ->
         s.flush()
         d.hash = R.digest(_doc_show(d, e))
         view = _doc_view(s, d)
-    say = f"{view['number']} draft: {view['total_text']} (GST samet)." + (
-        f" {len(blanks)} khaali jagah bhariye, tabhi client ko jayega." if blanks else " Client ko bhejne ke liye haan ka card maangiye.")
+    say = f"{view['number']} draft: {view['total_text']} (incl. GST)." + (
+        f" Fill in {len(blanks)} blanks; only then will it go to the client." if blanks else " Ask for the approval card to send it to the client.")
     return {"doc": view, "say": say}
 
 
@@ -839,7 +839,7 @@ def _doc(s, tenant: str, ref: str) -> EpDoc:
     if d is None:
         d = s.scalars(select(EpDoc).where(EpDoc.tenant_id == tenant, EpDoc.number == ref)).first()
     if d is None or d.tenant_id != tenant:
-        raise EventError("Quotation / invoice nahi mila.")
+        raise EventError("Quotation / invoice not found.")
     return d
 
 
@@ -854,32 +854,32 @@ def doc_request(tenant: str, ref: str, conv: str = "", actor: str = "owner") -> 
         d = _doc(s, tenant, ref)
         e = s.get(EpEvent, d.event_id)
         if d.status not in ("draft", "waiting"):
-            raise EventError(f"{d.number} '{d.status}' hai.")
+            raise EventError(f"{d.number} is '{d.status}'.")
         blanks = _j(d.blanks, [])
         if blanks:
-            raise EventError("Pehle khaali jagah bhariye: " + "; ".join(blanks[:6]))
+            raise EventError("Fill in the blanks first: " + "; ".join(blanks[:6]))
         d.status = "waiting"
         d.hash = R.digest(_doc_show(d, e))
         view = _doc_view(s, d)
     what = "quotation" if view["kind"] == "quote" else "invoice"
-    say = f"{view['event']} ki {what} ({view['total_text']}) client {view['client']} ko bhejne se pehle aapki haan ka card bheja hai."
+    say = f"The {what} for {view['event']} ({view['total_text']}) needs your yes before it goes to client {view['client']}; the approval card has been sent."
     _publish(tenant, "eventplan_doc", {"doc": view, "say": say}, conv)
     return {"doc": view, "status": "needs_tap", "say": say}
 
 
 def decide_doc(tenant: str, ref: str, yes: bool, card_hash: str = "", reason: str = "", by_tap: bool = False, conv: str = "") -> dict:
     if not by_tap:
-        raise EventError("Quotation / invoice client ko sirf aapke tap se (app ka card).")
+        raise EventError("A quotation / invoice goes to the client only on your tap (the app card).")
     with _LOCK, session() as s:
         d = _doc(s, tenant, ref)
         e = s.get(EpEvent, d.event_id)
         if d.status != "waiting":
-            return {"doc": _doc_view(s, d), "say": f"{d.number} pehle hi '{d.status}' hai."}
+            return {"doc": _doc_view(s, d), "say": f"{d.number} is already '{d.status}'."}
         if not card_hash or card_hash != d.hash or R.digest(_doc_show(d, e)) != d.hash:
-            raise EventError("Card badal gaya hai; naya card dekhiye.")
+            raise EventError("The card has changed; look at the new card.")
         if not yes:
             d.status, d.reason = "rejected", R.clean(reason, 300)
-            return {"doc": _doc_view(s, d), "say": "Theek hai, nahi bheja."}
+            return {"doc": _doc_view(s, d), "say": "Okay, not sent."}
         if d.kind == "invoice" and not d.number:
             st = _st(s, tenant)
             st.inv_seq += 1
@@ -906,7 +906,7 @@ def decide_doc(tenant: str, ref: str, yes: bool, card_hash: str = "", reason: st
                     + (f" UPI: {upi}" if upi else "") + f" Dhanyavaad, {st.firm or ''}".rstrip(", "))
         draft = {"text": text, "wa": _wa(e.client_phone, text), "sms": _sms(e.client_phone, text), "file_id": d.file_id, "upi": upi}
         view = _doc_view(s, d)
-    return {"doc": view, "draft": draft, "say": f"{view['number']} final PDF bana. Message draft taiyaar: aap khud bhejiye (PDF saath lagaiye)."}
+    return {"doc": view, "draft": draft, "say": f"{view['number']} final PDF made. The message draft is ready: send it yourself (attach the PDF)."}
 
 
 def doc_mark(tenant: str, ref: str, what: str, actor: str = "owner") -> dict:
@@ -916,13 +916,13 @@ def doc_mark(tenant: str, ref: str, what: str, actor: str = "owner") -> dict:
         e = s.get(EpEvent, d.event_id)
         if what == "sent":
             if d.status != "approved":
-                raise EventError("Pehle aapki haan (card), phir bhejna.")
+                raise EventError("First your yes (card), then send.")
             d.status = "sent"
         elif what == "accepted":
             if not is_owner(actor):
-                raise EventError("Client ki manzoori sirf owner darj karti hain.")
+                raise EventError("Only the owner can record the client's approval.")
             if d.kind != "quote" or d.status not in ("approved", "sent"):
-                raise EventError("Yeh quotation aapki haan se client ko gaya hi nahi.")
+                raise EventError("This quotation was never sent to the client with your yes.")
             d.status = "accepted"
             e.accepted_doc = d.id
             if e.status in ("enquiry", "planning"):
@@ -938,10 +938,10 @@ def doc_mark(tenant: str, ref: str, what: str, actor: str = "owner") -> dict:
 
 def client_paid(tenant: str, event: str, amount=None, ref: str = "", day: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise EventError("Client se paise mile, yeh sirf owner darj karti hain.")
+        raise EventError("Only the owner can record money received from the client.")
     a = R.num(amount)
     if a is None or a <= 0:
-        raise EventError("Kitne mile?")
+        raise EventError("How much was received?")
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         paid = _j(e.client_paid, [])
@@ -949,7 +949,7 @@ def client_paid(tenant: str, event: str, amount=None, ref: str = "", day: str = 
         e.client_paid = _dump(paid)
         tot = sum(x["amount"] for x in paid)
         num = e.number
-    return {"paid": paid, "say": f"{num}: {_rs(a)} mila darj (kul {_rs(tot)}). Hoola paise nahi leta, sirf hisaab."}
+    return {"paid": paid, "say": f"{num}: {_rs(a)} received and recorded (total {_rs(tot)}). Hoola does not take money, only keeps the accounts."}
 
 
 def invoice_make(tenant: str, event: str, conv: str = "", actor: str = "owner") -> dict:
@@ -960,13 +960,13 @@ def invoice_make(tenant: str, event: str, conv: str = "", actor: str = "owner") 
         st = _st(s, tenant)
         d0 = _date(e.day)
         if not d0 or d0 > today(tenant):
-            raise EventError("Invoice event ke baad (ya event ke din) banta hai.")
+            raise EventError("The invoice is made after the event (or on the event day).")
         src = _j(e.budget_lines, [])
         if not src:
-            raise EventError("Budget khaali hai.")
+            raise EventError("The budget is empty.")
         lines, blanks = _doc_lines(st, src)
         if not e.client:
-            blanks.append("client ka naam")
+            blanks.append("client name")
         totals = _doc_totals(st, e, lines)
         paid = R.r2(sum(x["amount"] for x in _j(e.client_paid, [])))
         totals["paid"] = paid
@@ -983,10 +983,10 @@ def invoice_make(tenant: str, event: str, conv: str = "", actor: str = "owner") 
         s.flush()
         d.hash = R.digest(_doc_show(d, e))
         view = _doc_view(s, d)
-    say = f"Invoice draft: {view['total_text']}, baaki {_rs(totals['balance'])}."
+    say = f"Invoice draft: {view['total_text']}, pending {_rs(totals['balance'])}."
     if totals.get("vs_quote"):
-        say += f" Quote se {_rs(abs(totals['vs_quote']))} {'zyada' if totals['vs_quote'] > 0 else 'kam'} (client ko batayiye)."
-    return {"doc": view, "say": say + " Bhejne ke liye haan ka card maangiye."}
+        say += f" It is {_rs(abs(totals['vs_quote']))} {'more' if totals['vs_quote'] > 0 else 'less'} than the quote (tell the client)."
+    return {"doc": view, "say": say + " Ask for the approval card to send it."}
 
 
 # ---------------------------------------------------------------- PDFs
@@ -1123,13 +1123,13 @@ def booking_request(tenant: str, event: str, vendor: str = "", quote: str = "", 
             if qv["note"]:
                 checks.append(qv["note"])
         if amt is None or amt <= 0:
-            raise EventError("Booking ki rakam chahiye (vendor ka quote). Hoola daam nahi gadhta.")
+            raise EventError("The booking amount is needed (the vendor's quote). Hoola does not invent prices.")
         adv = R.num(advance)
         if adv is None and q is not None and q.advance_pct:
             adv = R.r2(amt * q.advance_pct / 100)
         adv = adv or 0.0
         if adv > amt:
-            raise EventError("Advance kul rakam se zyada nahi ho sakta.")
+            raise EventError("The advance cannot be more than the total amount.")
         h = head if head in R.HEADS else (q.head if q is not None else v.head)
         # double booking: the same venue on the same day for another of her live events
         if h == "venue" and e.day:
@@ -1138,22 +1138,22 @@ def booking_request(tenant: str, event: str, vendor: str = "", quote: str = "", 
                                                        EpBooking.event_id != e.id)).all():
                 oe = s.get(EpEvent, o.event_id)
                 if oe and oe.day == e.day and oe.status not in ("cancelled", "done"):
-                    raise EventError(f"{v.name} {e.day} ko pehle se {oe.number} ke liye book hai: double booking nahi.")
+                    raise EventError(f"{v.name} is already booked for {oe.number} on {e.day}: no double booking.")
         for o in s.scalars(select(EpBooking).where(EpBooking.event_id == e.id, EpBooking.vendor_id == v.id,
                                                    EpBooking.status == "waiting")).all():
-            return {"booking": _bk_view(s, o), "existing": True, "say": f"{o.number} ka card pehle se aapki haan ka intezaar kar raha hai."}
+            return {"booking": _bk_view(s, o), "existing": True, "say": f"The card for {o.number} is already waiting for your yes."}
         if h == "catering" and not v.fssai:
-            checks.append("Caterer ka FSSAI number nahi likha (vendor mein jodiye).")
+            checks.append("The caterer's FSSAI number is not entered (add it to the vendor).")
         if not v.phone:
-            checks.append("Vendor ka phone nahi; confirmation draft nahi banega.")
+            checks.append("The vendor has no phone; no confirmation draft will be made.")
         if not e.accepted_doc:
-            checks.append("Client ne abhi quotation nahi maana.")
+            checks.append("The client has not accepted the quotation yet.")
         planned = sum((ln.get("cost") or 0) for ln in _j(e.budget_lines, []) if ln.get("head") == h)
         if planned and amt > planned * 1.18 + 1:
-            checks.append(f"Budget mein {R.HEADS[h]['label']} {_rs(planned)} (GST se pehle) tha; booking {_rs(amt)}.")
+            checks.append(f"{R.HEADS[h]['label']} was {_rs(planned)} (before GST) in the budget; the booking is {_rs(amt)}.")
         ad = _date(advance_due)
         if advance_due and not ad:
-            raise EventError("Advance ki tareekh samajh nahi aayi.")
+            raise EventError("Could not understand the advance date.")
         ar = R.hhmm(arrive) if arrive else ""
         st = _st(s, tenant)
         st.bk_seq += 1
@@ -1165,8 +1165,8 @@ def booking_request(tenant: str, event: str, vendor: str = "", quote: str = "", 
         b.hash = R.digest(_bk_show(s, b))
         view = _bk_view(s, b)
     say = (f"{view['number']}: {view['vendor']} ({view['head_label']}) {view['amount_text']}"
-           + (f", advance {view['advance_text']}" if view["advance"] else "") + " - aapki haan ka card bheja hai."
-           + (" Dhyaan: " + " ".join(checks) if checks else ""))
+           + (f", advance {view['advance_text']}" if view["advance"] else "") + " - the approval card has been sent."
+           + (" Note: " + " ".join(checks) if checks else ""))
     _publish(tenant, "eventplan_booking", {"booking": view, "say": say}, conv)
     return {"booking": view, "status": "needs_tap", "say": say}
 
@@ -1199,7 +1199,7 @@ def booking_challenge(tenant: str, booking_id: str) -> dict:
     with session() as s:
         b = s.get(EpBooking, booking_id)
         if b is None or b.tenant_id != tenant or b.status != "waiting":
-            raise EventError("Yeh card ab baaki nahi hai.")
+            raise EventError("This card is no longer pending.")
         v = _bk_view(s, b)
     return _challenge(tenant, booking_id, v["hash"], f"Vendor booking {v['number']}", v["advance_text"] if v["advance"] else v["amount_text"], v["vendor"])
 
@@ -1207,15 +1207,15 @@ def booking_challenge(tenant: str, booking_id: str) -> dict:
 def decide_booking(tenant: str, booking_id: str, yes: bool, card_hash: str = "", reason: str = "", proof: dict | None = None,
                    by_tap: bool = False) -> dict:
     if not by_tap:
-        raise EventError("Vendor booking sirf aapke tap se (app ka card).")
+        raise EventError("A vendor booking happens only on your tap (the app card).")
     with session() as s:
         b = s.get(EpBooking, booking_id)
         if b is None or b.tenant_id != tenant:
-            raise EventError("Card nahi mila.")
+            raise EventError("Card not found.")
         if b.status != "waiting":
-            return {"booking": _bk_view(s, b), "say": f"{b.number} pehle hi '{b.status}' hai."}
+            return {"booking": _bk_view(s, b), "say": f"{b.number} is already '{b.status}'."}
         if not card_hash or card_hash != b.hash or R.digest(_bk_show(s, b)) != b.hash:
-            raise EventError("Card badal gaya hai; naya card dekhiye.")
+            raise EventError("The card has changed; look at the new card.")
         adv = b.advance
     if yes and adv > 0:
         from .. import approvekey as ak
@@ -1231,35 +1231,35 @@ def decide_booking(tenant: str, booking_id: str, yes: bool, card_hash: str = "",
                 for o in s.scalars(select(EpVendorQuote).where(EpVendorQuote.event_id == b.event_id, EpVendorQuote.head == q.head)).all():
                     o.chosen = o.id == q.id
         e = s.get(EpEvent, b.event_id)
-        _log(e, f"booking {b.number} {'haan' if yes else 'nahi'}", "Owner")
+        _log(e, f"booking {b.number} {'yes' if yes else 'no'}", "Owner")
         view = _bk_view(s, b)
         firm = _st(s, tenant).firm
     if not yes:
-        return {"booking": view, "say": f"{view['number']}: booking nahi."}
+        return {"booking": view, "say": f"{view['number']}: no booking."}
     text = (f"Namaste {view['vendor']} ji, {view['event']} ({view['day']}) ke liye {view['head_label']} booking pakki: {view['amount_text']}"
             + (f", advance {view['advance_text']}" + (f" {view['advance_due']} tak" if view["advance_due"] else "") if view["advance"] else "")
             + (f". Aapko {view['arrive']} baje pahunchna hai" if view["arrive"] else "") + f". - {firm or ''}".rstrip(" -"))
     upi = _upi_link(view["vendor_upi"], view["vendor"], view["advance"], f"{view['event']} advance") if view["advance"] else ""
     return {"booking": view, "draft": {"text": text, "wa": _wa(view["vendor_phone"], text), "sms": _sms(view["vendor_phone"], text), "upi": upi},
-            "say": f"{view['number']} maana. Vendor ko message draft" + (" + advance ka UPI link (aap apne UPI app se dengi)" if upi else "")
-                   + ". Hoola khud paise nahi deta."}
+            "say": f"{view['number']} accepted. Message draft for the vendor" + (" + UPI link for the advance (you pay from your own UPI app)" if upi else "")
+                   + ". Hoola never pays money itself."}
 
 
 def booking_paid(tenant: str, booking_id: str, amount=None, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise EventError("Paise diye, yeh sirf owner darj karti hain.")
+        raise EventError("Only the owner can record that money was paid.")
     with _LOCK, session() as s:
         b = s.get(EpBooking, booking_id)
         if b is None or b.tenant_id != tenant:
-            raise EventError("Booking nahi mili.")
+            raise EventError("Booking not found.")
         if b.status not in ("approved", "advance_paid"):
-            raise EventError("Pehle aapki haan (card), phir paisa.")
+            raise EventError("First your yes (card), then the payment.")
         a = R.num(amount)
         b.paid = R.r2(b.paid + (a if a is not None else b.advance))
         b.paid_ref = R.clean(ref, 80)
         b.status = "advance_paid"
         v = _bk_view(s, b)
-    return {"booking": v, "say": f"{v['number']}: {_rs(v['paid'])} diya darj (kul {v['amount_text']})."}
+    return {"booking": v, "say": f"{v['number']}: {_rs(v['paid'])} paid and recorded (total {v['amount_text']})."}
 
 
 def bookings(tenant: str, event: str = "", status: str = "") -> list[dict]:
@@ -1288,23 +1288,23 @@ def spend_request(tenant: str, event: str, what: str, amount=None, payee: str = 
                   conv: str = "") -> dict:
     a = R.num(amount)
     if a is None or a <= 0:
-        raise EventError("Kitna kharcha? Rakam chahiye (bill / quote se).")
+        raise EventError("How much was spent? An amount is needed (from the bill / quote).")
     what = R.clean(what, 300)
     if not what:
-        raise EventError("Kis cheez ka kharcha?")
+        raise EventError("What was the expense for?")
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         h = head if head in R.HEADS else R.head_of(head + " " + what)
         for o in s.scalars(select(EpSpend).where(EpSpend.event_id == e.id, EpSpend.status == "waiting")).all():
             if o.what == what and abs(o.amount - a) < 0.5:
-                return {"spend": _sp_view(s, o), "existing": True, "say": f"{o.number} ka card pehle se intezaar mein."}
+                return {"spend": _sp_view(s, o), "existing": True, "say": f"The card for {o.number} is already waiting."}
         checks = []
         planned = sum((ln.get("cost") or 0) for ln in _j(e.budget_lines, []) if ln.get("head") == h)
         act = _actuals(s, e).get(h, 0)
         if planned and act + a > planned + 0.5:
-            checks.append(f"{R.HEADS[h]['label']}: plan {_rs(planned)}, is kharche ke baad {_rs(act + a)}.")
+            checks.append(f"{R.HEADS[h]['label']}: plan {_rs(planned)}, after this expense {_rs(act + a)}.")
         if not planned:
-            checks.append(f"{R.HEADS[h]['label']} budget mein nahi tha.")
+            checks.append(f"{R.HEADS[h]['label']} was not in the budget.")
         st = _st(s, tenant)
         st.sp_seq += 1
         x = EpSpend(tenant_id=tenant, event_id=e.id, number=f"ES-{st.sp_seq:04d}", head=h, what=what, payee=R.clean(payee, 120), amount=R.r2(a),
@@ -1313,7 +1313,7 @@ def spend_request(tenant: str, event: str, what: str, amount=None, payee: str = 
         s.flush()
         x.hash = R.digest(_sp_show(s, x))
         view = _sp_view(s, x)
-    say = f"{view['number']}: {view['what']} {view['amount_text']} - aapki haan ka card bheja hai." + (" " + " ".join(checks) if checks else "")
+    say = f"{view['number']}: {view['what']} {view['amount_text']} - the approval card has been sent." + (" " + " ".join(checks) if checks else "")
     _publish(tenant, "eventplan_spend", {"spend": view, "say": say}, conv)
     return {"spend": view, "status": "needs_tap", "say": say}
 
@@ -1322,22 +1322,22 @@ def spend_challenge(tenant: str, spend_id: str) -> dict:
     with session() as s:
         x = s.get(EpSpend, spend_id)
         if x is None or x.tenant_id != tenant or x.status != "waiting":
-            raise EventError("Yeh card ab baaki nahi hai.")
+            raise EventError("This card is no longer pending.")
         v = _sp_view(s, x)
-    return _challenge(tenant, spend_id, v["hash"], f"Kharcha {v['number']}", v["amount_text"], v["payee"] or v["what"])
+    return _challenge(tenant, spend_id, v["hash"], f"Expense {v['number']}", v["amount_text"], v["payee"] or v["what"])
 
 
 def decide_spend(tenant: str, spend_id: str, yes: bool, card_hash: str = "", proof: dict | None = None, by_tap: bool = False) -> dict:
     if not by_tap:
-        raise EventError("Kharcha sirf aapke tap se (app ka card).")
+        raise EventError("An expense is recorded only on your tap (the app card).")
     with session() as s:
         x = s.get(EpSpend, spend_id)
         if x is None or x.tenant_id != tenant:
-            raise EventError("Card nahi mila.")
+            raise EventError("Card not found.")
         if x.status != "waiting":
-            return {"spend": _sp_view(s, x), "say": f"{x.number} pehle hi '{x.status}' hai."}
+            return {"spend": _sp_view(s, x), "say": f"{x.number} is already '{x.status}'."}
         if not card_hash or card_hash != x.hash or R.digest(_sp_show(s, x)) != x.hash:
-            raise EventError("Card badal gaya hai; naya card dekhiye.")
+            raise EventError("The card has changed; look at the new card.")
     if yes:
         from .. import approvekey as ak
         if ak.active_on(tenant):
@@ -1346,21 +1346,21 @@ def decide_spend(tenant: str, spend_id: str, yes: bool, card_hash: str = "", pro
         x = s.get(EpSpend, spend_id)
         x.status = "approved" if yes else "rejected"
         v = _sp_view(s, x)
-    return {"spend": v, "say": f"{v['number']}: " + ("haan; aap khud dijiye, phir 'diya' darj kijiye." if yes else "nahi.")}
+    return {"spend": v, "say": f"{v['number']}: " + ("yes; pay it yourself, then record it as paid." if yes else "no.")}
 
 
 def spend_paid(tenant: str, spend_id: str, ref: str = "", actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise EventError("Sirf owner.")
+        raise EventError("Owner only.")
     with _LOCK, session() as s:
         x = s.get(EpSpend, spend_id)
         if x is None or x.tenant_id != tenant:
-            raise EventError("Kharcha nahi mila.")
+            raise EventError("Expense not found.")
         if x.status != "approved":
-            raise EventError("Pehle aapki haan (card).")
+            raise EventError("First your yes (card).")
         x.status, x.paid_ref = "paid", R.clean(ref, 80)
         v = _sp_view(s, x)
-    return {"spend": v, "say": f"{v['number']} diya darj."}
+    return {"spend": v, "say": f"{v['number']} recorded as paid."}
 
 
 def spends(tenant: str, event: str = "", status: str = "") -> list[dict]:
@@ -1406,7 +1406,7 @@ def guests_add(tenant: str, event: str, rows: list | None = None, text: str = ""
             return None
         ci, cp, cg = col("name", "naam", "guest"), col("phone", "mobile", "number", "whatsapp"), col("group", "side", "company", "team")
         if ci is None:
-            raise EventError("Sheet mein 'Name' column nahi mila.")
+            raise EventError("No 'Name' column found in the sheet.")
         for r in rows2[1:]:
             if ci < len(r) and r[ci]:
                 items.append({"name": str(r[ci]), "phone": str(r[cp]) if cp is not None and cp < len(r) and r[cp] else "",
@@ -1422,17 +1422,17 @@ def guests_add(tenant: str, event: str, rows: list | None = None, text: str = ""
             if not nm:
                 continue
             if it.get("phone") and not ph:
-                bad.append(f"{nm}: phone sahi nahi")
+                bad.append(f"{nm}: invalid phone")
             if (nm.lower(), ph) in have:
                 continue
             if n >= MAX_GUESTS:
-                bad.append("guest list ki seema 3000")
+                bad.append("the guest list limit is 3000")
                 break
             s.add(EpGuest(tenant_id=tenant, event_id=e.id, name=nm, phone=ph, group=R.clean(it.get("group"), 60)))
             have.add((nm.lower(), ph))
             added += 1
             n += 1
-    return {"added": added, "bad": bad, "say": f"{added} mehmaan jude." + (f" {len(bad)} line mein dikkat." if bad else "")}
+    return {"added": added, "bad": bad, "say": f"{added} guests added." + (f" {len(bad)} lines had problems." if bad else "")}
 
 
 def _guest(s, tenant: str, e: EpEvent, ref: str) -> EpGuest:
@@ -1443,10 +1443,10 @@ def _guest(s, tenant: str, e: EpEvent, ref: str) -> EpGuest:
         ph = R.phone(ref)
         cands = [x for x in rows if (ph and x.phone == ph) or x.name.lower() == low] or [x for x in rows if low in x.name.lower()]
         if len(cands) > 1:
-            raise EventError(f"'{ref}' naam ke {len(cands)} mehmaan; phone ya poora naam bataiye.")
+            raise EventError(f"{len(cands)} guests match '{ref}'; give the phone or the full name.")
         g = cands[0] if cands else None
     if g is None or g.tenant_id != tenant or g.event_id != e.id:
-        raise EventError(f"Mehmaan '{ref}' nahi mila.")
+        raise EventError(f"Guest '{ref}' not found.")
     return g
 
 
@@ -1460,7 +1460,7 @@ def rsvp(tenant: str, event: str, guest: str, words: str = "", status: str = "",
     if plus is not None and R.num(plus) is not None:
         pl = int(R.num(plus) or 0)
     if not st and pl is None and came is None:
-        raise EventError("Jawab samajh nahi aaya (haan / nahi / shayad, +N).")
+        raise EventError("Could not understand the reply (yes / no / maybe, +N).")
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         g = _guest(s, tenant, e, guest)
@@ -1490,8 +1490,8 @@ def guests(tenant: str, event: str, status: str = "") -> dict:
     if status:
         gl = [g for g in gl if (g["status"] or "pending") == status]
     return {"event": num, "guests": gl, "summary": sm,
-            "say": f"{num}: {sm['total']} mehmaan, {sm['yes']} haan (log {sm['heads_yes']}), {sm['no']} nahi, {sm['maybe']} shayad, "
-                   f"{sm['pending']} jawab baaki. Caterer ko {sm['heads_yes']} (+ shayad {sm['maybe']}) bataiye."}
+            "say": f"{num}: {sm['total']} guests, {sm['yes']} yes ({sm['heads_yes']} people), {sm['no']} no, {sm['maybe']} maybe, "
+                   f"{sm['pending']} replies pending. Tell the caterer {sm['heads_yes']} (+ maybe {sm['maybe']})."}
 
 
 # ---------------------------------------------------------------- messages: invites / vendors / client (her tap)
@@ -1526,10 +1526,10 @@ def message_request(tenant: str, event: str, kind: str = "invite", text: str = "
         if kind == "reminder" and not body:
             body = f"Namaste {{name}} ji, yaad dila rahe hain: {e.name} {e.day or '[tareekh?]'} {e.start or ''} {e.venue or ''}. Aap aa rahe hain na?"
         if not body:
-            raise EventError("Message ke shabd chahiye.")
+            raise EventError("The message text is needed.")
         blanks = R.blanks_in(body)
         if blanks:
-            raise EventError("Message mein khaali jagah: " + ", ".join(blanks) + " (event ki details bhariye).")
+            raise EventError("Blanks in the message: " + ", ".join(blanks) + " (fill in the event details).")
         rec: list[dict] = []
         skipped = 0
         if kind in ("invite", "reminder", "custom") and not to:
@@ -1547,21 +1547,21 @@ def message_request(tenant: str, event: str, kind: str = "invite", text: str = "
                 rec.append({"name": g.name, "phone": g.phone, "guest_id": g.id})
         elif kind == "client" or to == "client":
             if not e.client_phone:
-                raise EventError("Client ka phone nahi.")
+                raise EventError("The client has no phone.")
             rec = [{"name": e.client, "phone": e.client_phone}]
         else:
             v = _vendor(s, tenant, to)
             if not v.phone:
-                raise EventError(f"{v.name} ka phone nahi.")
+                raise EventError(f"{v.name} has no phone.")
             rec = [{"name": v.name, "phone": v.phone, "vendor_id": v.id}]
         if not rec:
-            raise EventError("Kisi ko bhejne layak nahi mila (phone nahi / pehle bhej chuke / mana kiya)." )
+            raise EventError("No one is eligible to receive it (no phone / already sent / declined)." )
         m = EpMessage(tenant_id=tenant, event_id=e.id, kind=kind, text=body, to=_dump(rec), asked_by=actor_name(tenant, actor))
         s.add(m)
         s.flush()
         m.hash = R.digest(_msg_show(m))
         view = _msg_view(s, m)
-    say = f"{view['count']} logon ko {kind} ka draft - aapki haan ka card bheja hai." + (f" {skipped} ko nahi (phone nahi / mana)." if skipped else "")
+    say = f"{kind} draft for {view['count']} people - the approval card has been sent." + (f" {skipped} skipped (no phone / declined)." if skipped else "")
     _publish(tenant, "eventplan_message", {"message": view, "say": say}, conv)
     return {"message": view, "status": "needs_tap", "say": say}
 
@@ -1569,18 +1569,18 @@ def message_request(tenant: str, event: str, kind: str = "invite", text: str = "
 def decide_message(tenant: str, message_id: str, yes: bool, card_hash: str = "", by_tap: bool = False) -> dict:
     """Her Haan -> one WhatsApp / SMS link per person (she sends each from her own phone). Nothing is sent by Hoola."""
     if not by_tap:
-        raise EventError("Message sirf aapke tap se (app ka card).")
+        raise EventError("A message goes only on your tap (the app card).")
     with _LOCK, session() as s:
         m = s.get(EpMessage, message_id)
         if m is None or m.tenant_id != tenant:
-            raise EventError("Card nahi mila.")
+            raise EventError("Card not found.")
         if m.status != "waiting":
-            return {"message": _msg_view(s, m), "say": f"Yeh card '{m.status}' hai."}
+            return {"message": _msg_view(s, m), "say": f"This card is '{m.status}'."}
         if not card_hash or card_hash != m.hash or R.digest(_msg_show(m)) != m.hash:
-            raise EventError("Card badal gaya hai; naya card dekhiye.")
+            raise EventError("The card has changed; look at the new card.")
         if not yes:
             m.status = "rejected"
-            return {"message": _msg_view(s, m), "say": "Theek hai, nahi bheja."}
+            return {"message": _msg_view(s, m), "say": "Okay, not sent."}
         m.status = "approved"
         links = []
         for x in _j(m.to, []):
@@ -1591,19 +1591,19 @@ def decide_message(tenant: str, message_id: str, yes: bool, card_hash: str = "",
                 if g is not None:
                     g.invited = True
         view = _msg_view(s, m)
-    return {"message": view, "links": links, "say": f"{len(links)} draft link taiyaar: har ek aap apne phone se bhejiye."}
+    return {"message": view, "links": links, "say": f"{len(links)} draft links are ready: send each from your own phone."}
 
 
 def message_sent(tenant: str, message_id: str) -> dict:
     with _LOCK, session() as s:
         m = s.get(EpMessage, message_id)
         if m is None or m.tenant_id != tenant:
-            raise EventError("Card nahi mila.")
+            raise EventError("Card not found.")
         if m.status != "approved":
-            raise EventError("Pehle aapki haan (card).")
+            raise EventError("First your yes (card).")
         m.status = "sent"
         v = _msg_view(s, m)
-    return {"message": v, "say": "Bhej diya darj."}
+    return {"message": v, "say": "Recorded as sent."}
 
 
 def guest_optout(tenant: str, event: str, guest: str) -> dict:
@@ -1612,7 +1612,7 @@ def guest_optout(tenant: str, event: str, guest: str) -> dict:
         g = _guest(s, tenant, e, guest)
         g.no_messages = True
         nm = g.name
-    return {"say": f"{nm} ko aage koi message nahi."}
+    return {"say": f"No more messages to {nm}."}
 
 
 # ---------------------------------------------------------------- tasks
@@ -1628,16 +1628,16 @@ def tasks(tenant: str, event: str) -> dict:
     late = [t for t in rows if t["status"] == "open" and t["due"] and t["due"] < on]
     no_owner = [t for t in rows if t["status"] == "open" and not t["owner"]]
     return {"tasks": rows, "late": len(late), "no_owner": len(no_owner),
-            "say": f"{len(rows)} kaam, {len(late)} der se, {len(no_owner)} ka koi zimmedar nahi."}
+            "say": f"{len(rows)} tasks, {len(late)} late, {len(no_owner)} with no owner."}
 
 
 def task_add(tenant: str, event: str, what: str, owner: str = "", due: str = "") -> dict:
     what = R.clean(what, 200)
     if not what:
-        raise EventError("Kaam kya hai?")
+        raise EventError("What is the task?")
     d = _date(due)
     if due and not d:
-        raise EventError("Tareekh samajh nahi aayi.")
+        raise EventError("Could not understand the date.")
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         if d is None and _date(e.day):
@@ -1646,14 +1646,14 @@ def task_add(tenant: str, event: str, what: str, owner: str = "", due: str = "")
         s.add(t)
         s.flush()
         v = _t_view(t)
-    return {"task": v, "say": f"Kaam juda: {what}" + (f" ({v['owner']}, {v['due']})" if v["owner"] or v["due"] else "") + "."}
+    return {"task": v, "say": f"Task added: {what}" + (f" ({v['owner']}, {v['due']})" if v["owner"] or v["due"] else "") + "."}
 
 
 def task_update(tenant: str, task_id: str, status: str = "", owner: str = "", due: str = "") -> dict:
     with _LOCK, session() as s:
         t = s.get(EpTask, task_id)
         if t is None or t.tenant_id != tenant:
-            raise EventError("Kaam nahi mila.")
+            raise EventError("Task not found.")
         if status:
             if status not in ("open", "done", "skipped"):
                 raise EventError("status = open | done | skipped")
@@ -1663,7 +1663,7 @@ def task_update(tenant: str, task_id: str, status: str = "", owner: str = "", du
         if due:
             d = _date(due)
             if not d:
-                raise EventError("Tareekh samajh nahi aayi.")
+                raise EventError("Could not understand the date.")
             t.due = d.isoformat()
         v = _t_view(t)
     return {"task": v, "say": f"{v['what']}: {v['status']}."}
@@ -1685,8 +1685,8 @@ def permits(tenant: str, event: str) -> dict:
         p["apply_by"] = (d - timedelta(days=lead)).isoformat() if d else ""
         p["late"] = bool(d and p["status"] in ("pending",) and d - timedelta(days=lead) < on)
     open_ = [p for p in rows if p["status"] in ("pending", "applied")]
-    return {"event": num, "permits": rows, "note": "Yeh starter list hai: aapke shahar / thane / venue ke niyam faisla karte hain.",
-            "say": f"{num}: {len(rows)} permission, {len(open_)} baaki" + (f", {sum(1 for p in rows if p['late'])} der se." if any(p['late'] for p in rows) else ".")}
+    return {"event": num, "permits": rows, "note": "This is a starter list: your city / police area / venue rules decide.",
+            "say": f"{num}: {len(rows)} permissions, {len(open_)} pending" + (f", {sum(1 for p in rows if p['late'])} late." if any(p['late'] for p in rows) else ".")}
 
 
 def permit_update(tenant: str, event: str, key: str, status: str = "", ref: str = "", note: str = "", label: str = "") -> dict:
@@ -1698,7 +1698,7 @@ def permit_update(tenant: str, event: str, key: str, status: str = "", ref: str 
         p = next((x for x in rows if x["key"] == key or x["label"].lower() == str(key).lower()), None)
         if p is None:
             if not label and key not in R.PERMITS:
-                raise EventError("Yeh permission list mein nahi; naya jodne ke liye label dijiye.")
+                raise EventError("That permission is not in the list; give a label to add a new one.")
             p = {"key": key if key in R.PERMITS else f"c{len(rows) + 1}", "label": R.PERMITS.get(key, {}).get("label") or R.clean(label, 120),
                  "status": "pending", "ref": "", "note": "", "custom": key not in R.PERMITS}
             rows.append(p)
@@ -1722,7 +1722,7 @@ def show_set(tenant: str, event: str, text: str = "", cues: list | None = None, 
                            "who": R.clean(c.get("who"), 60), "where": R.clean(c.get("where"), 60),
                            "av": [a for a in (c.get("av") or []) if a in R._AV_WORDS]})
     if not parsed:
-        raise EventError("Koi cue nahi samjha. Har line samay se shuru: '18:30 Welcome (10 min) - Riya | stage'.")
+        raise EventError("No cues understood. Start each line with a time: '18:30 Welcome (10 min) - Riya | stage'.")
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         cur = [] if replace else _j(e.cues, [])
@@ -1731,7 +1731,7 @@ def show_set(tenant: str, event: str, text: str = "", cues: list | None = None, 
     out = show(tenant, event)
     if bad:
         out["bad"] = bad
-        out["say"] += f" {len(bad)} line mein samay nahi tha (chhodi)."
+        out["say"] += f" {len(bad)} lines had no time (skipped)."
     return out
 
 
@@ -1749,7 +1749,7 @@ def show(tenant: str, event: str) -> dict:
     problems = R.cue_problems(cues, sound_till)
     timeline = sorted([{**c, "kind": "cue"} for c in cues] + arrivals, key=lambda c: c["time"])
     return {"event": num, "cues": cues, "timeline": timeline, "problems": problems, "sound_till": sound_till,
-            "say": f"{num}: {len(cues)} cue" + (f", {len(problems)} dikkat: " + "; ".join(problems[:3]) if problems else ", sab theek.")}
+            "say": f"{num}: {len(cues)} cue" + (f", {len(problems)} problems: " + "; ".join(problems[:3]) if problems else ", all fine.")}
 
 
 def show_pdf(tenant: str, event: str) -> bytes:
@@ -1788,7 +1788,7 @@ def report(tenant: str, event: str, attended=None, notes: str = "", issues: list
         e = _ev(s, tenant, event)
         d = _date(e.day)
         if not d or d > today(tenant):
-            raise EventError("Report event ke baad.")
+            raise EventError("The report comes after the event.")
         att = R.num(attended)
         rep = {"attended": int(att) if att is not None else (g["came"] or None), "rsvp_yes": g["heads_yes"], "invited": g["invited"],
                "plan_cost": b["cost"], "actual": b["actual"], "client": b["client"] + b["fee"], "margin": b["margin"],
@@ -1817,19 +1817,19 @@ def report(tenant: str, event: str, attended=None, notes: str = "", issues: list
         num = e.number
     pdf = _pdf(f"Report {num}", blocks)
     f = _store(tenant, f"{num}_report.pdf", pdf, "application/pdf", conv, f"{num} post-event report")
-    say = (f"{num} report: aaye {rep['attended'] or '?'} / RSVP {rep['rsvp_yes']}, kharcha {_rs(rep['actual'])} (plan {_rs(rep['plan_cost'])}), "
-           f"margin {_rs(rep['margin'])}. Invoice ke liye 'invoice' boliye.")
+    say = (f"{num} report: attended {rep['attended'] or '?'} / RSVP {rep['rsvp_yes']}, cost {_rs(rep['actual'])} (plan {_rs(rep['plan_cost'])}), "
+           f"margin {_rs(rep['margin'])}. Say 'invoice' to make the invoice.")
     return {"report": rep, "file": f, "say": say}
 
 
 def forget(tenant: str, event: str, actor: str = "owner") -> dict:
     """DPDP: after the event, guests' and the client's personal details go; numbers / amounts stay for accounts."""
     if not is_owner(actor):
-        raise EventError("Sirf owner.")
+        raise EventError("Owner only.")
     with _LOCK, session() as s:
         e = _ev(s, tenant, event)
         if e.status not in ("done", "cancelled"):
-            raise EventError("Event poora / radd hone ke baad hi.")
+            raise EventError("Only after the event is done / cancelled.")
         n = 0
         for g in s.scalars(select(EpGuest).where(EpGuest.event_id == e.id)).all():
             s.delete(g)
@@ -1838,7 +1838,7 @@ def forget(tenant: str, event: str, actor: str = "owner") -> dict:
             m.to, m.text = "[]", ""
         e.client, e.client_phone, e.client_email, e.forgotten = "Client (hataya)", "", "", True
         num = e.number
-    return {"say": f"{num}: {n} mehmaanon aur client ki personal details hata di (hisaab rakha)."}
+    return {"say": f"{num}: personal details of {n} guests and the client removed (accounts kept)."}
 
 
 # ---------------------------------------------------------------- views / day / worker
@@ -1889,20 +1889,20 @@ def day(tenant: str) -> dict:
     w = waiting(tenant)
     parts = []
     if upcoming:
-        parts.append("Is hafte: " + "; ".join(f"{n} {nm} ({d})" for d, n, nm in upcoming[:5]))
+        parts.append("This week: " + "; ".join(f"{n} {nm} ({d})" for d, n, nm in upcoming[:5]))
     if due_today:
-        parts.append("Aaj ka kaam: " + "; ".join(f"{n} {w_}" + (f" ({o})" if o else "") for n, w_, o in due_today[:6]))
+        parts.append("Today's tasks: " + "; ".join(f"{n} {w_}" + (f" ({o})" if o else "") for n, w_, o in due_today[:6]))
     if late:
-        parts.append("Der se: " + "; ".join(f"{n} {w_}" for n, w_, _d in late[:6]))
+        parts.append("Late: " + "; ".join(f"{n} {w_}" for n, w_, _d in late[:6]))
     if permit_late:
-        parts.append("Permission ki arzi der se: " + ", ".join(permit_late[:5]))
+        parts.append("Permission applications late: " + ", ".join(permit_late[:5]))
     if adv:
-        parts.append("Advance dene ki tareekh: " + "; ".join(f"{b['vendor']} {b['advance_text']}" for b in adv[:4]))
+        parts.append("Advance due dates: " + "; ".join(f"{b['vendor']} {b['advance_text']}" for b in adv[:4]))
     nw = sum(len(v) for v in w.values())
     if nw:
-        parts.append(f"{nw} card aapki haan ka intezaar kar rahe")
+        parts.append(f"{nw} cards waiting for your yes")
     return {"events": len(evs), "upcoming": upcoming, "due_today": due_today, "late": late, "permits_late": permit_late, "advances": adv,
-            "waiting": w, "say": (". ".join(parts) + ".") if parts else "Events ka aaj sab theek."}
+            "waiting": w, "say": (". ".join(parts) + ".") if parts else "All events are fine today."}
 
 
 def overview(tenant: str) -> dict:
@@ -1937,17 +1937,17 @@ def tick(when: datetime | None = None) -> dict:
                                                                          EpEvent.status.notin_(("done", "cancelled")))).all()}
                 for t in s.scalars(select(EpTask).where(EpTask.tenant_id == tenant, EpTask.status == "open")).all():
                     if t.event_id in evs and t.due and t.due < on.isoformat() and _once(s, tenant, f"late:{t.id}:{t.due}"):
-                        alerts.append({"kind": "late", "say": f"{evs[t.event_id].number}: '{t.what}' {t.due} tak hona tha"
-                                                              + (f" ({t.owner})" if t.owner else " (koi zimmedar nahi)") + "."})
+                        alerts.append({"kind": "late", "say": f"{evs[t.event_id].number}: '{t.what}' was due by {t.due}"
+                                                              + (f" ({t.owner})" if t.owner else " (no owner)") + "."})
                 for e in evs.values():
                     d = _date(e.day)
                     if d and d == on + timedelta(days=1) and _once(s, tenant, f"eve:{e.id}:{e.day}"):
-                        alerts.append({"kind": "tomorrow", "say": f"Kal {e.number} {e.name}: cue sheet, vendor timings aur emergency number dekh lijiye."})
+                        alerts.append({"kind": "tomorrow", "say": f"Tomorrow {e.number} {e.name}: check the cue sheet, vendor timings and emergency numbers."})
                     if d:
                         for p in _j(e.permits, []):
                             lead = R.PERMITS.get(p["key"], {}).get("lead", 10)
                             if p["status"] == "pending" and d - timedelta(days=lead) <= on and _once(s, tenant, f"permit:{e.id}:{p['key']}"):
-                                alerts.append({"kind": "permit", "say": f"{e.number}: '{p['label']}' ki arzi ka samay aa gaya ({R.PERMITS.get(p['key'], {}).get('who', '')})."})
+                                alerts.append({"kind": "permit", "say": f"{e.number}: time to apply for '{p['label']}' ({R.PERMITS.get(p['key'], {}).get('who', '')})."})
             for a in alerts:
                 _publish(tenant, "eventplan_alert", a)
                 out["alerts"] += 1
@@ -1964,7 +1964,7 @@ def tick(when: datetime | None = None) -> dict:
                         r.last_morning = on.isoformat()
             if due_m:
                 d = day(tenant)
-                if d["say"] != "Events ka aaj sab theek.":
+                if d["say"] != "All events are fine today.":
                     _publish(tenant, "eventplan_day", {"say": d["say"], "events": d["events"], "late": len(d["late"])})
                     out["morning"] += 1
         except Exception:

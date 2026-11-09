@@ -55,7 +55,7 @@ from .models import (
 log = logging.getLogger("santosh.rentdesk")
 _LOCK = threading.RLock()
 MONEY_KINDS = ("deduction", "repair")
-APPROVAL_LABEL = {"deduction": "Deposit se katauti", "rent_change": "Kiraya badlav", "notice": "Notice", "repair": "Repair kharcha"}
+APPROVAL_LABEL = {"deduction": "Deduction from deposit", "rent_change": "Rent change", "notice": "Notice", "repair": "Repair expense"}
 TENANCY_STATUS = {"draft": "Draft", "active": "Chalu", "notice": "Notice par", "ended": "Khatam", "cancelled": "Radd"}
 MAX_PHOTOS = 40
 
@@ -195,7 +195,7 @@ def _pan_masked(r: RdSettings) -> str:
                 return x["masked"]
     except Exception:
         pass
-    return "(locker mein)"
+    return "(in the locker)"
 
 
 def _upi(r: RdSettings) -> tuple[str, str]:
@@ -222,7 +222,7 @@ def save_settings(tenant: str, pan: str = "", **kw: Any) -> dict:
         try:
             ref = idvault.save(tenant, "pan", pan, "self", "Rentdesk receipts")["ref"]
         except Exception as e:
-            raise RentError(f"PAN sahi nahi: {e}")
+            raise RentError(f"Invalid PAN: {e}")
     with _LOCK, session() as s:
         r = _st(s, tenant)
         for k in _SET_KEYS:
@@ -241,7 +241,7 @@ def save_settings(tenant: str, pan: str = "", **kw: Any) -> dict:
                 r.renewal_windows = _dump(ws or [60, 30, 15, 7])
             elif k == "morning_time":
                 if not re.fullmatch(r"\d{1,2}:\d{2}", str(v)):
-                    raise RentError("Subah ka samay HH:MM mein.")
+                    raise RentError("Give the morning time as HH:MM.")
                 r.morning_time = str(v)
             elif k == "state":
                 r.state = str(v).upper()[:4]
@@ -250,7 +250,7 @@ def save_settings(tenant: str, pan: str = "", **kw: Any) -> dict:
                 if g:
                     from ..india.money import gstin_ok
                     if not gstin_ok(g):
-                        raise RentError("GSTIN sahi nahi (check digit).")
+                        raise RentError("Invalid GSTIN (check digit).")
                 r.gstin = g
             elif k == "landlord_phone":
                 r.landlord_phone = R.phone10(v)
@@ -258,14 +258,14 @@ def save_settings(tenant: str, pan: str = "", **kw: Any) -> dict:
                 setattr(r, k, _clean(str(v), 2000))
         if ref:
             r.pan_ref = ref
-    return {"settings": settings(tenant), "say": "Rentdesk ki settings save."}
+    return {"settings": settings(tenant), "say": "Rentdesk settings saved."}
 
 
 # ---------------------------------------------------------------- units
 def _unit(s, tenant: str, ref: str) -> RdUnit:
     ref = str(ref or "").strip()
     if not ref:
-        raise RentError("Kaun sa unit? (U-001 / naam)")
+        raise RentError("Which unit? (U-001 / name)")
     u = s.get(RdUnit, ref)
     if u is not None and u.tenant_id == tenant:
         return u
@@ -278,8 +278,8 @@ def _unit(s, tenant: str, ref: str) -> RdUnit:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise RentError(f"'{ref}' se {len(hits)} unit milte hain: " + ", ".join(f"{u.number} {u.label}" for u in hits[:6]))
-    raise RentError(f"Unit '{ref}' nahi mila.")
+        raise RentError(f"{len(hits)} units match '{ref}': " + ", ".join(f"{u.number} {u.label}" for u in hits[:6]))
+    raise RentError(f"Unit '{ref}' not found.")
 
 
 def _live_tenancy(s, unit_id: str) -> RdTenancy | None:
@@ -309,7 +309,7 @@ def save_unit(tenant: str, unit: str = "", **kw: Any) -> dict:
             new = False
         else:
             if not str(kw.get("label") or "").strip():
-                raise RentError("Unit ka naam chahiye (Flat 302 / Shop 4 / Bed B2).")
+                raise RentError("A unit name is needed (Flat 302 / Shop 4 / Bed B2).")
             u = RdUnit(tenant_id=tenant, number=f"U-{_next(s, tenant, 'unit'):03d}")
             s.add(u)
             new = True
@@ -328,7 +328,7 @@ def save_unit(tenant: str, unit: str = "", **kw: Any) -> dict:
             elif k == "pin":
                 p = re.sub(r"\D", "", str(v))
                 if p and not re.fullmatch(r"[1-9]\d{5}", p):
-                    raise RentError("PIN code 6 ank ka.")
+                    raise RentError("The PIN code must be 6 digits.")
                 u.pin = p
             elif k == "owner_phone":
                 u.owner_phone = R.phone10(v)
@@ -344,13 +344,13 @@ def save_unit(tenant: str, unit: str = "", **kw: Any) -> dict:
                 u.inventory = _dump([x for x in out if x["item"]])
             elif k == "archived":
                 if v and _live_tenancy(s, u.id):
-                    raise RentError("Is unit mein abhi kirayedar hai.")
+                    raise RentError("This unit has a tenant right now.")
                 u.archived = bool(v)
             else:
                 setattr(u, k, _clean(str(v), 1000))
         s.flush()
         view = _unit_view(s, u)
-    return {"unit": view, "new": new, "say": f"{view['number']} {view['label']} save" + (" (naya)." if new else ".")}
+    return {"unit": view, "new": new, "say": f"{view['number']} {view['label']} saved" + (" (new)." if new else ".")}
 
 
 def units(tenant: str, status: str = "") -> list[dict]:
@@ -375,8 +375,8 @@ def _person(s, tenant: str, ref: str) -> RdPerson:
     if len(hits) == 1:
         return hits[0]
     if len(hits) > 1:
-        raise RentError(f"'{ref}' naam ke {len(hits)} log: " + ", ".join(f"{p.number} {p.name}" for p in hits[:6]))
-    raise RentError(f"Kirayedar '{ref}' nahi mila.")
+        raise RentError(f"{len(hits)} people match '{ref}': " + ", ".join(f"{p.number} {p.name}" for p in hits[:6]))
+    raise RentError(f"Tenant '{ref}' not found.")
 
 
 def _person_view(p: RdPerson, full: bool = False) -> dict:
@@ -398,10 +398,10 @@ def save_person(tenant: str, person: str = "", name: str = "", phone: str = "", 
             new = False
         else:
             if not name.strip():
-                raise RentError("Kirayedar ka naam chahiye.")
+                raise RentError("The tenant's name is needed.")
             ph = R.phone10(phone)
             if phone and not ph:
-                raise RentError("Mobile 10 ank ka (6-9 se shuru).")
+                raise RentError("The mobile number must be 10 digits (starting with 6-9).")
             if ph:
                 dup = s.scalars(select(RdPerson).where(RdPerson.tenant_id == tenant, RdPerson.phone == ph,
                                                        RdPerson.forgotten.is_(False))).first()
@@ -414,13 +414,13 @@ def save_person(tenant: str, person: str = "", name: str = "", phone: str = "", 
                 p, new = RdPerson(tenant_id=tenant, number=f"P-{_next(s, tenant, 'person'):03d}"), True
                 s.add(p)
         if p.forgotten:
-            raise RentError("Is kirayedar ki jaankari mita di gayi thi.")
+            raise RentError("This tenant's details had been erased.")
         if name:
             p.name = _clean(name, 160)
         if phone:
             ph = R.phone10(phone)
             if not ph:
-                raise RentError("Mobile 10 ank ka (6-9 se shuru).")
+                raise RentError("The mobile number must be 10 digits (starting with 6-9).")
             p.phone = ph
         for k in ("email", "kind", "employer", "address", "emergency", "lang", "notes", "gstin"):
             if kw.get(k) is not None:
@@ -432,7 +432,7 @@ def save_person(tenant: str, person: str = "", name: str = "", phone: str = "", 
                     if v:
                         from ..india.money import gstin_ok
                         if not gstin_ok(v):
-                            raise RentError("Kirayedar ka GSTIN sahi nahi.")
+                            raise RentError("The tenant's GSTIN is invalid.")
                 setattr(p, k, _clean(v, 1000))
         for k in ("no_messages", "composition"):
             if kw.get(k) is not None:
@@ -450,15 +450,15 @@ def save_person(tenant: str, person: str = "", name: str = "", phone: str = "", 
         try:
             rec = idvault.save(tenant, kind, val, f"kirayedar {pnum}", f"Rentdesk {pname}"[:120])
         except Exception as e:
-            raise RentError(f"{kind.upper()} sahi nahi: {e}")
+            raise RentError(f"Invalid {kind.upper()}: {e}")
         got[kind] = {"ref": rec["ref"], "masked": rec["masked"], "record": rec["id"]}
     with _LOCK, session() as s:
         p = s.get(RdPerson, pid)
         if got:
             p.ids = _dump({**_j(p.ids, {}), **got})
         view = _person_view(p, True)
-    return {"person": view, "new": new, "say": f"{view['number']} {view['name']} save" + (" (naya)." if new else ".")
-            + (" ID locker mein (masked)." if aadhaar or pan else "")}
+    return {"person": view, "new": new, "say": f"{view['number']} {view['name']} saved" + (" (new)." if new else ".")
+            + (" ID is in the locker (masked)." if aadhaar or pan else "")}
 
 
 def people(tenant: str, q: str = "") -> list[dict]:
@@ -486,7 +486,7 @@ def _tenancy(s, tenant: str, ref: str) -> RdTenancy:
         hay = f"{u.number if u else ''} {u.label if u else ''} {p.name if p else ''}".lower()
         if ref and ref.lower() in hay:
             return t
-    raise RentError(f"Tenancy '{ref}' nahi mili (T-0001 / unit / kirayedar ka naam).")
+    raise RentError(f"Tenancy '{ref}' not found (T-0001 / unit / tenant name).")
 
 
 def _rent_on(t: RdTenancy, d: date) -> float:
@@ -521,12 +521,12 @@ def _notes(s, t: RdTenancy, u: RdUnit, p: RdPerson, st: RdSettings) -> list[str]
     out.append(R.tds_note(p.kind, t.rent, u.use))
     out.append(R.gst_note(u.kind, u.use, bool(p.gstin), p.composition, st.gstin, t.rent if u.kind == "pg_bed" else 0.0))
     if (st.state or "").upper() == "MH" and t.kind == "leave_licence":
-        out.append("Maharashtra: L&L likhit aur registered hona zaroori (Rent Control Act s.55, landlord ki zimmedari; na ho to "
-                   "kirayedar ki baat maani jaati hai; 3 mahine tak jail / Rs 5,000). IGR par online e-registration.")
+        out.append("Maharashtra: the L&L must be written and registered (Rent Control Act s.55, the landlord's duty; if not, "
+                   "the tenant's version is accepted; up to 3 months' jail / Rs 5,000). Online e-registration on IGR.")
     if R.is_mta(st.state):
-        out.append("Model Tenancy Act wala rajya: agreement 2 mahine mein Rent Authority ko; kiraya badhane se 3 mahine pehle likhit notice.")
+        out.append("Model Tenancy Act state: the agreement goes to the Rent Authority within 2 months; a rent rise needs written notice 3 months before.")
     if not st.state:
-        out.append("Niyam mein apna rajya (MH ...) likhiye: checklist / kanoon ki baatein usi se.")
+        out.append("Enter your state (MH ...) in Rules: the checklist and legal points depend on it.")
     return [x for x in out if x]
 
 
@@ -575,18 +575,18 @@ def _apply_tenancy(t: RdTenancy, kw: dict) -> None:
         elif k == "start":
             d = _date(v)
             if not d:
-                raise RentError("Shuru ki taarikh DD-MM-YYYY mein.")
+                raise RentError("Give the start date as DD-MM-YYYY.")
             t.start = d.isoformat()
         elif k in ("months", "due_day", "escalation_every", "lock_in_months", "notice_months"):
             n = int(R.money(v))
             lim = {"months": (1, 600), "due_day": (0, 28), "escalation_every": (0, 120), "lock_in_months": (0, 120), "notice_months": (0, 12)}[k]
             if not lim[0] <= n <= lim[1]:
-                raise RentError(f"{k}: {lim[0]}-{lim[1]} ke beech.")
+                raise RentError(f"{k}: must be between {lim[0]} and {lim[1]}.")
             setattr(t, k, n)
         elif k in ("rent", "deposit", "maintenance", "escalation_pct"):
             x = R.money(v)
             if x < 0 or (k == "escalation_pct" and x > 50) or x > 50_000_000:
-                raise RentError(f"{k}: {v} sahi nahi lagta.")
+                raise RentError(f"{k}: {v} does not look right.")
             setattr(t, k, x)
         elif k in ("stamp_duty", "reg_fee"):
             setattr(t, k, max(0.0, R.money(v)))
@@ -611,16 +611,16 @@ def new_tenancy(tenant: str, unit: str, person: str, actor: str = "owner", conv:
             kw["maintenance"] = u.maintenance
         _apply_tenancy(t, kw)
         if not t.start:
-            raise RentError("Shuru ki taarikh chahiye.")
+            raise RentError("A start date is needed.")
         s.add(t)
         s.flush()
         view = _tenancy_view(s, t, True)
-    blanks = [w for w, ok in (("kiraya", view["rent"] > 0), ("deposit", view["deposit"] > 0)) if not ok]
-    say = (f"{view['number']}: {view['unit']} {view['unit_label']} -> {view['tenant_name']}, {view['start']} se {view['end']} "
-           f"({view['months']} mahine), kiraya {view['rent_text'] or '[?]'}, deposit {view['deposit_text'] or '[?]'}. Draft hai; "
-           "agreement banaiye aur 'activate' kijiye.")
+    blanks = [w for w, ok in (("rent", view["rent"] > 0), ("deposit", view["deposit"] > 0)) if not ok]
+    say = (f"{view['number']}: {view['unit']} {view['unit_label']} -> {view['tenant_name']}, {view['start']} to {view['end']} "
+           f"({view['months']} months), rent {view['rent_text'] or '[?]'}, deposit {view['deposit_text'] or '[?]'}. It is a draft; "
+           "create the agreement and 'activate' it.")
     if blanks:
-        say += " Baaki: " + ", ".join(blanks) + " (aapka number)."
+        say += " Still missing: " + ", ".join(blanks) + " (your figure)."
     return {"tenancy": view, "say": say}
 
 
@@ -633,19 +633,19 @@ def from_propagent_deal(tenant: str, deal: str, start: str = "", actor: str = "o
         D = s.scalars(select(PropagentDeal).where(PropagentDeal.tenant_id == tenant,
                                                   (PropagentDeal.id == deal) | (PropagentDeal.number == deal.upper()))).first()
         if D is None:
-            raise RentError("Woh property deal nahi mili.")
+            raise RentError("That property deal was not found.")
         if D.purpose not in ("rent", "lease"):
-            raise RentError("Yeh sale deal hai; kirayedari sirf rent / lease deal se banti hai.")
+            raise RentError("This is a sale deal; a tenancy can only be made from a rent / lease deal.")
         if D.status not in ("agreement", "registered", "done"):
-            raise RentError("Deal abhi pakki nahi (agreement / registry ke baad hi kirayedari banaiye).")
+            raise RentError("The deal is not final yet (create the tenancy only after the agreement / registry).")
         L = s.get(PropagentListing, D.listing_id)
         l = s.get(PropagentLead, D.lead_id) if D.lead_id else None
         if L is None or l is None or l.forgotten:
-            raise RentError("Deal mein listing ya kirayedar ki jaankari nahi bachi.")
+            raise RentError("The deal no longer has the listing or tenant details.")
         tag = f"[propagent {D.number}]"
         old = s.scalars(select(RdTenancy).where(RdTenancy.tenant_id == tenant, RdTenancy.notes.contains(tag))).first()
         if old is not None:
-            raise RentError(f"Is deal se kirayedari {old.number} pehle hi bani hai.")
+            raise RentError(f"Tenancy {old.number} has already been made from this deal.")
         unit_kw = {"label": (L.title or f"{L.kind} {L.locality}").strip()[:120], "kind": L.kind if L.kind in R.UNIT_KINDS else "other",
                    "address": L.address, "city": L.city, "pin": L.pin, "area_sqft": L.carpet_sqft or None,
                    "furnished": L.furnishing, "owner_name": L.owner_name, "owner_phone": L.owner_phone,
@@ -657,7 +657,7 @@ def from_propagent_deal(tenant: str, deal: str, start: str = "", actor: str = "o
     start = start or avail or today(tenant).isoformat()
     out = new_tenancy(tenant, u["number"], p["number"], actor, conv, start=start, rent=rent, deposit=dep,
                       notes=f"{tag} property deal se bani")
-    out["say"] = f"Deal {num} se: " + out["say"]
+    out["say"] = f"From deal {num}: " + out["say"]
     return out
 
 
@@ -665,10 +665,10 @@ def update_tenancy(tenant: str, tenancy: str, **kw: Any) -> dict:
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
         if t.status in ("ended", "cancelled"):
-            raise RentError(f"{t.number} khatam ho chuki hai.")
+            raise RentError(f"{t.number} has already ended.")
         if t.status != "draft" and any(k in kw and kw[k] not in (None, "") for k in MONEY_LOCKED):
-            raise RentError("Chalu tenancy mein kiraya / deposit / taarikh seedhe nahi badalte: kiraya badlav ka card (action=rent_change) "
-                            "ya naya agreement.")
+            raise RentError("Rent / deposit / dates of a running tenancy cannot be changed directly: use the rent-change card (action=rent_change) "
+                            "or a new agreement.")
         _apply_tenancy(t, kw)
         view = _tenancy_view(s, t, True)
     return {"tenancy": view, "say": f"{view['number']} update."}
@@ -679,14 +679,14 @@ def activate(tenant: str, tenancy: str, conv: str = "") -> dict:
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
         if t.status != "draft":
-            raise RentError(f"{t.number} pehle se {TENANCY_STATUS.get(t.status, t.status)}.")
+            raise RentError(f"{t.number} is already {TENANCY_STATUS.get(t.status, t.status)}.")
         if t.rent <= 0:
-            raise RentError("Kiraya (aapka number) chahiye.")
+            raise RentError("Rent (your figure) is needed.")
         other = _live_tenancy(s, t.unit_id)
         if other is not None:
             end = _date(other.end)
             if not end or end >= _date(t.start):
-                raise RentError(f"Is unit mein {other.number} abhi chalu hai ({other.end} tak). Pehle use khatam kijiye.")
+                raise RentError(f"{other.number} is running in this unit (until {other.end}). End it first.")
         t.status = "active"
         if not _j(t.rent_history, []):
             t.rent_history = _dump([{"from": t.start, "rent": t.rent, "why": "agreement"}])
@@ -699,9 +699,9 @@ def activate(tenant: str, tenancy: str, conv: str = "") -> dict:
     with session() as s:
         view = _tenancy_view(s, s.get(RdTenancy, tid), True)
     pend = [i["what"] for i in view["checklist"] if not i["done"] and i["id"] in ("registration", "police", "agreement")]
-    say = f"{view['number']} chalu. {made['made']} charge bane (deposit + kiraya)."
+    say = f"{view['number']} is active. {made['made']} charges created (deposit + rent)."
     if pend:
-        say += " Abhi baaki: " + "; ".join(pend[:3])
+        say += " Still pending: " + "; ".join(pend[:3])
     return {"tenancy": view, "say": say}
 
 
@@ -737,7 +737,7 @@ def check_item(tenant: str, tenancy: str, item: str, done: bool = True, ref: str
             rec = {"status": "done" if done else "pending", "ref": _clean(ref, 60), "date": d if done else "", "office": _clean(office, 120)}
             setattr(t, item, _dump(rec))
         view = _tenancy_view(s, t, True)
-    return {"tenancy": view, "say": f"{view['number']}: '{item}' {'ho gaya' if done else 'baaki'}."}
+    return {"tenancy": view, "say": f"{view['number']}: '{item}' {'done' if done else 'pending'}."}
 
 
 # ---------------------------------------------------------------- ledger
@@ -825,7 +825,7 @@ def _galla_hint(tenant: str, amount: float, on: date) -> str:
             hit = [g for g in rows if g.day in days]
         if hit:
             g = hit[0]
-            return f"Galla mein {g.day} ko {_rs(amount)} ki UPI aayi thi" + (f" ({g.payer})" if g.payer else "") + ": sirf ishaara, saboot nahi."
+            return f"A UPI payment of {_rs(amount)} came into the till on {g.day}" + (f" ({g.payer})" if g.payer else "") + ": only a hint, not proof."
     except Exception:
         pass
     return ""
@@ -835,16 +835,16 @@ def receive(tenant: str, tenancy: str, amount, on: str = "", mode: str = "upi", 
             actor: str = "owner", conv: str = "") -> dict:
     """She says money came (UPI / bank / cash / cheque). Allocated to the oldest dues (or the charge she names), receipt numbered."""
     if not is_owner(actor):
-        raise RentError("Paisa mila sirf owner bata sakti hain.")
+        raise RentError("Only the owner can say money was received.")
     a = R.money(amount)
     if a <= 0:
-        raise RentError("Kitne mile? (rakam)")
+        raise RentError("How much was received? (amount)")
     mode = mode if mode in ("upi", "bank", "cash", "cheque") else "upi"
     d = _date(on) or today(tenant)
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
         if t.status in ("draft", "cancelled"):
-            raise RentError(f"{t.number} abhi chalu nahi.")
+            raise RentError(f"{t.number} is not active right now.")
         opens = _open_charges(s, t)
         if charge:
             opens = [c for c in opens if c.id == charge] + [c for c in opens if c.id != charge]
@@ -878,9 +878,9 @@ def receive(tenant: str, tenancy: str, amount, on: str = "", mode: str = "upi", 
         x = s.get(RdPayment, pid)
         x.hint = hint[:300]
         view = _pay_view(x)
-    say = f"{view['receipt_no']}: {view['amount_text']} mila ({tv['tenant_name']}, {tv['unit_label']})."
+    say = f"{view['receipt_no']}: {view['amount_text']} received ({tv['tenant_name']}, {tv['unit_label']})."
     if tv["due_now"] > 0:
-        say += f" Abhi bhi baaki {tv['due_now_text']}."
+        say += f" Still pending: {tv['due_now_text']}."
     if hint:
         say += " " + hint
     if notes:
@@ -891,16 +891,16 @@ def receive(tenant: str, tenancy: str, amount, on: str = "", mode: str = "upi", 
         msg = {}
     pub = {"payment": view, "tenancy": tv["number"], "tenancy_id": tv["id"], "message": msg.get("message"), "say": say}
     _publish(tenant, "rentdesk_receipt", pub, conv)
-    return {"payment": view, "tenancy": tv, "notes": notes, "message": msg.get("message"), "say": say + " Receipt ka message draft taiyaar (aapke tap se jaayega)."}
+    return {"payment": view, "tenancy": tv, "notes": notes, "message": msg.get("message"), "say": say + " The receipt message draft is ready (it goes only on your tap)."}
 
 
 def void_payment(tenant: str, payment: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise RentError("Sirf owner.")
+        raise RentError("Owner only.")
     with _LOCK, session() as s:
         x = s.get(RdPayment, payment)
         if x is None or x.tenant_id != tenant or x.void:
-            raise RentError("Payment nahi mili.")
+            raise RentError("Payment not found.")
         t = s.get(RdTenancy, x.tenancy_id)
         for al in _j(x.alloc, []):
             if al.get("kind") == "advance":
@@ -911,17 +911,17 @@ def void_payment(tenant: str, payment: str, actor: str = "owner") -> dict:
                 c.paid = _r2(max(0.0, c.paid - al["amount"]))
                 c.status = "open" if c.paid <= 0.005 else "part"
         x.void = True
-        return {"payment": _pay_view(x), "say": f"{x.receipt_no} radd; dues wapas khule."}
+        return {"payment": _pay_view(x), "say": f"{x.receipt_no} cancelled; the dues are open again."}
 
 
 def add_charge(tenant: str, tenancy: str, kind: str, amount, due_on: str = "", note: str = "", actor: str = "owner") -> dict:
     """A one-off bill she adds (electricity / water / late fee as per agreement). Owner only: it is a charge to the tenant."""
     if not is_owner(actor):
-        raise RentError("Kirayedar par charge sirf owner laga sakti hain.")
+        raise RentError("Only the owner can add a charge to a tenant.")
     k = kind if kind in R.CHARGE_KINDS and kind not in ("rent", "deposit") else "other"
     a = R.money(amount)
     if a <= 0:
-        raise RentError("Rakam (bill / agreement se) chahiye.")
+        raise RentError("An amount (from the bill / agreement) is needed.")
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
         c = RdCharge(tenant_id=tenant, tenancy_id=t.id, kind=k, due_on=(_date(due_on) or today(tenant)).isoformat(), amount=_r2(a),
@@ -930,18 +930,18 @@ def add_charge(tenant: str, tenancy: str, kind: str, amount, due_on: str = "", n
         s.flush()
         jobs = []
         _mirror_due(s, tenant, c, t, jobs)
-        out = {"charge": _charge_view(c), "say": f"{t.number}: {R.CHARGE_KINDS[k]} {_rs(a)} joda."}
+        out = {"charge": _charge_view(c), "say": f"{t.number}: {R.CHARGE_KINDS[k]} {_rs(a)} added."}
     _run_mirrors(tenant, jobs)
     return out
 
 
 def waive(tenant: str, charge: str, actor: str = "owner") -> dict:
     if not is_owner(actor):
-        raise RentError("Sirf owner maaf kar sakti hain.")
+        raise RentError("Only the owner can waive this.")
     with _LOCK, session() as s:
         c = s.get(RdCharge, charge)
         if c is None or c.tenant_id != tenant:
-            raise RentError("Charge nahi mila.")
+            raise RentError("Charge not found.")
         c.status = "waived"
         jobs = []
         _mirror_paid(c, jobs)
@@ -958,12 +958,12 @@ def pay_link(tenant: str, tenancy: str) -> dict:
         upi, nm = _upi(st)
         v = _tenancy_view(s, t)
     if not upi:
-        raise RentError("Aapka UPI ID nahi hai (Niyam ya Employee profile mein daaliye).")
+        raise RentError("You have no UPI ID (add it in Rules or the Employee profile).")
     amt = v["due_now"]
     if amt <= 0:
-        return {"url": "", "say": "Abhi kuch baaki nahi."}
+        return {"url": "", "say": "Nothing is pending right now."}
     url = f"upi://pay?pa={quote(upi)}&pn={quote(nm or '')}&am={amt:.2f}&cu=INR&tn={quote(('Rent ' + v['unit'] + ' ' + v['number'])[:40])}"
-    return {"url": url, "amount": amt, "upi_id": upi, "say": f"{_rs(amt)} ka UPI link (paise seedhe aapke UPI ID par)."}
+    return {"url": url, "amount": amt, "upi_id": upi, "say": f"UPI link for {_rs(amt)} (the money goes straight to your UPI ID)."}
 
 
 def statement(tenant: str, tenancy: str) -> dict:
@@ -974,7 +974,7 @@ def statement(tenant: str, tenancy: str) -> dict:
     paid = sum(c["paid"] for c in v["charges"])
     return {"tenancy": v["number"], "charges": v["charges"], "payments": v["payments"], "billed": _r2(billed), "paid": _r2(paid),
             "due_now": v["due_now"], "deposit_held": v["deposit_held"], "advance": v["advance"],
-            "say": f"{v['number']}: bill {_rs(billed)}, mila {_rs(paid)}, abhi baaki {v['due_now_text'] or _rs(0)}, deposit paas {_rs(v['deposit_held'])}."}
+            "say": f"{v['number']}: billed {_rs(billed)}, received {_rs(paid)}, pending {v['due_now_text'] or _rs(0)}, deposit held {_rs(v['deposit_held'])}."}
 
 
 def _latin(t) -> str:
@@ -990,7 +990,7 @@ def receipt_pdf(tenant: str, payment: str) -> bytes:
     with session() as s:
         x = s.get(RdPayment, payment)
         if x is None or x.tenant_id != tenant:
-            raise RentError("Receipt nahi mili.")
+            raise RentError("Receipt not found.")
         t = s.get(RdTenancy, x.tenancy_id)
         u, p, st = s.get(RdUnit, t.unit_id), s.get(RdPerson, t.person_id), _st(s, tenant)
         pan, full_ref = "", (st.pan_ref if st.receipt_full_pan else "")
@@ -1075,7 +1075,7 @@ def _msg_view(s, m: RdMessage) -> dict:
 def _msg_text(s, t: RdTenancy, kind: str, ref: str, extra: dict) -> str:
     u, p, st = s.get(RdUnit, t.unit_id), s.get(RdPerson, t.person_id), _st(s, t.tenant_id)
     nm = (p.name.split()[0] if p and p.name else "ji")
-    who = st.landlord_name or st.business or "aapke makaan malik"
+    who = st.landlord_name or st.business or "your landlord"
     unit = f"{u.label}{', ' + u.building if u and u.building else ''}" if u else ""
     en = p is not None and p.lang == "en"
     opens = [c for c in _open_charges(s, t) if c.kind != "deposit" or t.status == "active"]
@@ -1109,17 +1109,17 @@ def draft_message(tenant: str, tenancy: str, kind: str = "custom", text: str = "
     """A DRAFT for the tenant. Nothing is sent here: only `send_message(by_tap=True)` from her app."""
     from ..net import policy
     if text and (policy.secret_found(text) or re.search(r"\b(otp|pin|cvv|password|mpin)\b", text, re.I)):
-        raise RentError("Message mein OTP / PIN / card / Aadhaar jaisi cheez hai; yeh kabhi nahi bheja jaata.")
+        raise RentError("The message contains something like an OTP / PIN / card / Aadhaar; these are never sent.")
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
         p = s.get(RdPerson, t.person_id)
         if p is None or p.forgotten:
-            raise RentError("Kirayedar ki jaankari nahi.")
+            raise RentError("No tenant details.")
         body = _clean(text, 1500) if kind == "custom" else _msg_text(s, t, kind, ref, {**extra, "text": _clean(text, 3000)})
         if not body.strip():
-            raise RentError("Message khaali hai.")
+            raise RentError("The message is empty.")
         if policy.secret_found(body):
-            raise RentError("Message mein OTP / PIN / card / Aadhaar jaisi cheez hai; yeh kabhi nahi bheja jaata.")
+            raise RentError("The message contains something like an OTP / PIN / card / Aadhaar; these are never sent.")
         old = s.scalars(select(RdMessage).where(RdMessage.tenancy_id == t.id, RdMessage.kind == kind, RdMessage.status == "draft",
                                                 RdMessage.ref == str(ref))).all()
         for o in old:
@@ -1130,9 +1130,9 @@ def draft_message(tenant: str, tenancy: str, kind: str = "custom", text: str = "
         s.flush()
         m.hash = _hash({"id": m.id, "text": m.text, "phone": p.phone})
         view = _msg_view(s, m)
-    say = f"{view['to']} ke liye message draft: aapke tap se hi jaayega."
+    say = f"Message draft for {view['to']}: it goes only on your tap."
     if view["no_messages"]:
-        say += " (Inhone message mana kiya hai; sirf apne phone se, soch kar.)"
+        say += " (They have asked not to be messaged; send only from your own phone, after thinking.)"
     if publish:
         _publish(tenant, "rentdesk_message", {"message": view, "say": say}, conv)
     return {"message": view, "status": "needs_tap", "say": say}
@@ -1142,10 +1142,10 @@ def edit_message(tenant: str, msg: str, text: str) -> dict:
     with _LOCK, session() as s:
         m = s.get(RdMessage, msg)
         if m is None or m.tenant_id != tenant or m.status != "draft":
-            raise RentError("Draft nahi mila.")
+            raise RentError("Draft not found.")
         from ..net import policy
         if policy.secret_found(text) or re.search(r"\b(otp|pin|cvv|password|mpin)\b", text, re.I):
-            raise RentError("Message mein OTP / PIN / card jaisi cheez hai; yeh kabhi nahi bheja jaata.")
+            raise RentError("The message contains something like an OTP / PIN / card; these are never sent.")
         m.text = _clean(text, 3000)
         p = s.get(RdPerson, m.person_id)
         m.hash = _hash({"id": m.id, "text": m.text, "phone": p.phone if p else ""})
@@ -1156,19 +1156,19 @@ async def send_message(tenant: str, msg: str, via: str = "self", card_hash: str 
     """ONLY her tap. via=self: she sends it from her own WhatsApp / SMS (the app opens the link; this marks it sent).
     via=business: her business WhatsApp number, only if the tenant wrote to it (Meta's 24 h window, enforced by the inbox)."""
     if not by_tap:
-        raise RentError("Kirayedar ko message sirf aapke tap se jaata hai.")
+        raise RentError("A message to a tenant goes only on your tap.")
     with session() as s:
         m = s.get(RdMessage, msg)
         if m is None or m.tenant_id != tenant:
-            raise RentError("Message nahi mila.")
+            raise RentError("Message not found.")
         if m.status != "draft":
-            raise RentError(f"Yeh message {m.status} hai.")
+            raise RentError(f"This message is {m.status}.")
         p = s.get(RdPerson, m.person_id)
         now_hash = _hash({"id": m.id, "text": m.text, "phone": p.phone if p else ""})
         if not card_hash or card_hash != m.hash or now_hash != m.hash:
-            raise RentError("Message badal gaya hai; naya draft dekhiye.")
+            raise RentError("The message has changed; look at the new draft.")
         if p is None or not p.phone:
-            raise RentError("Kirayedar ka mobile nahi.")
+            raise RentError("The tenant has no mobile number.")
         text, phone = m.text, p.phone
     if via == "business":
         from ..employee import inbox
@@ -1177,7 +1177,7 @@ async def send_message(tenant: str, msg: str, via: str = "self", card_hash: str 
             bc = s.scalars(select(BizContact).where(BizContact.tenant_id == tenant, BizContact.wa_id == "91" + phone)).first()
             bid = bc.id if bc else ""
         if not bid:
-            raise RentError("Kirayedar ne business number par kabhi message nahi kiya: apne phone se bhejiye.")
+            raise RentError("The tenant has never messaged the business number: send from your own phone.")
         try:
             await inbox.send(tenant, bid, text, by="owner")
         except inbox.InboxError as e:
@@ -1187,14 +1187,14 @@ async def send_message(tenant: str, msg: str, via: str = "self", card_hash: str 
     with session() as s:
         m = s.get(RdMessage, msg)
         m.status, m.via, m.sent_at = "sent", via, now()
-        return {"message": _msg_view(s, m), "say": "Bhej diya (aapke tap se)." if via == "business" else "Aapke phone se bheja, darj kiya."}
+        return {"message": _msg_view(s, m), "say": "Sent (on your tap)." if via == "business" else "Sent from your phone and recorded."}
 
 
 def drop_message(tenant: str, msg: str) -> dict:
     with session() as s:
         m = s.get(RdMessage, msg)
         if m is None or m.tenant_id != tenant:
-            raise RentError("Message nahi mila.")
+            raise RentError("Message not found.")
         if m.status == "draft":
             m.status = "dropped"
         return {"message": _msg_view(s, m), "say": "Draft hataya."}
@@ -1250,8 +1250,8 @@ def _make_approval(s, tenant: str, kind: str, target: str, show: dict, actor: st
 
 def _ask(tenant: str, view: dict, existing: bool, conv: str) -> dict:
     if existing:
-        return {"approval": view, "status": "needs_tap", "existing": True, "say": f"{view['number']} pehle se aapki haan ka intezaar kar raha hai."}
-    say = f"{view['number']}: {view['kind_label']} - {view['show'].get('title', '')}. Aapki haan ka card bheja hai."
+        return {"approval": view, "status": "needs_tap", "existing": True, "say": f"{view['number']} is already waiting for your yes."}
+    say = f"{view['number']}: {view['kind_label']} - {view['show'].get('title', '')}. The approval card has been sent."
     if view["show"].get("checks"):
         say += " Dhyaan: " + " ".join(view["show"]["checks"])
     _publish(tenant, "rentdesk_approval", {"approval": view, "say": say}, conv)
@@ -1275,7 +1275,7 @@ def challenge(tenant: str, aid: str) -> dict:
     from .. import approvekey as ak
     c = approval_card(tenant, aid)
     if not c or c["status"] != "waiting":
-        raise RentError("Yeh card ab baaki nahi hai.")
+        raise RentError("This card is no longer pending.")
     nonce = secrets.token_urlsafe(18)
     exp = datetime.now(timezone.utc) + ak.CHALLENGE_TTL
     msg = f"hoola-approve|v1|{tenant}|rentdesk|{aid}|{c['hash']}|{nonce}|{int(exp.timestamp())}"
@@ -1304,18 +1304,18 @@ def decide(tenant: str, aid: str, yes: bool, card_hash: str = "", reason: str = 
            by_tap: bool = False, conv: str = "") -> dict:
     """ONLY her tap in the app (API). Deductions and repair spends need her fingerprint once a phone key is active."""
     if not by_tap:
-        raise RentError("Yeh faisla sirf aapke tap se (app ka card).")
+        raise RentError("This decision can only be made by your tap (the app card).")
     with session() as s:
         a = s.get(RdApproval, aid)
         if a is None or a.tenant_id != tenant:
-            raise RentError("Card nahi mila.")
+            raise RentError("Card not found.")
         if a.status != "waiting":
-            return {"approval": _approval_view(a), "say": f"{a.number} pehle hi '{a.status}' hai."}
+            return {"approval": _approval_view(a), "say": f"{a.number} is already '{a.status}'."}
         now_hash = _hash({"show": _j(a.show, {}), "basis": _basis(s, a.kind, a.target)})
         if not card_hash or card_hash != a.hash or now_hash != a.hash:
             if now_hash != a.hash:
                 a.status = "stale"
-            raise RentError("Card ke baad cheezein badal gayi; naya card banaiye.")
+            raise RentError("Things changed after the card; create a new card.")
         kind = a.kind
     if yes and kind in MONEY_KINDS:
         from .. import approvekey as ak
@@ -1329,7 +1329,7 @@ def decide(tenant: str, aid: str, yes: bool, card_hash: str = "", reason: str = 
         view = _approval_view(a)
         effect = _apply(s, tenant, a) if yes else _reject(s, tenant, a)
     out = {"approval": view, **effect}
-    out.setdefault("say", f"{view['number']}: {'haan' if yes else 'nahi'}.")
+    out.setdefault("say", f"{view['number']}: {'yes' if yes else 'no'}.")
     _run_mirrors(tenant, out.pop("_jobs", []))
     letter = out.pop("_letter", None)
     if letter:
@@ -1340,9 +1340,9 @@ def decide(tenant: str, aid: str, yes: bool, card_hash: str = "", reason: str = 
             d = draft_message(tenant, follow["tenancy"], follow["kind"], follow.get("text", ""), ref=follow.get("ref", ""),
                               conv=conv or view.get("conv", ""), summary=follow.get("summary", ""))
             out["message"] = d["message"]
-            out["say"] += " Kirayedar ke liye message draft taiyaar (aapke tap se jaayega)."
+            out["say"] += " A message draft for the tenant is ready (it goes only on your tap)."
         except RentError as e:
-            out["say"] += f" (Message draft nahi bana: {e})"
+            out["say"] += f" (Could not make the message draft: {e})"
     return out
 
 
@@ -1355,8 +1355,8 @@ def _reject(s, tenant: str, a: RdApproval) -> dict:
         r = s.get(RdRequest, a.target)
         if r:
             r.status = "rejected"
-            _rlog(r, "Owner ne kharcha mana kiya")
-    return {"say": f"{a.number}: nahi kiya" + (f" ({a.reason})" if a.reason else "") + "."}
+            _rlog(r, "Owner declined the expense")
+    return {"say": f"{a.number}: declined" + (f" ({a.reason})" if a.reason else "") + "."}
 
 
 def _apply(s, tenant: str, a: RdApproval) -> dict:
@@ -1375,7 +1375,7 @@ def _apply(s, tenant: str, a: RdApproval) -> dict:
         st = _st(s, tenant)
         text = R.notice_text("rent_increase", {**_letter_facts(s, t, st), "old": show["old"], "new": show["new"], "from": show["from"],
                                                "clause": show.get("clause", "")})
-        return {"say": f"{a.number}: kiraya {_rs(show['old'])} -> {_rs(show['new'])} {show['from']} se.", "_letter": (t.id, "Rent_revision", text),
+        return {"say": f"{a.number}: rent {_rs(show['old'])} -> {_rs(show['new'])} from {show['from']}.", "_letter": (t.id, "Rent_revision", text),
                 "_draft": {"tenancy": t.id, "kind": "rent_change", "text": _short_letter(text), "ref": a.id}}
     if a.kind == "notice":
         t = s.get(RdTenancy, a.target)
@@ -1386,13 +1386,13 @@ def _apply(s, tenant: str, a: RdApproval) -> dict:
         text = R.notice_text("renewal" if nk == "renewal" else "vacate", facts)
         if nk == "vacate":
             t.status, t.notice_on, t.notice_by, t.vacate_on = "notice", today(tenant).isoformat(), "owner", show.get("vacate_on", "")
-        return {"say": f"{a.number}: {show.get('title', '')} ki chitthi taiyaar.", "_letter": (t.id, "Notice" if nk == "vacate" else "Renewal", text),
+        return {"say": f"{a.number}: letter for {show.get('title', '')} is ready.", "_letter": (t.id, "Notice" if nk == "vacate" else "Renewal", text),
                 "_draft": {"tenancy": t.id, "kind": "renewal" if nk == "renewal" else "notice", "text": _short_letter(text), "ref": a.id}}
     if a.kind == "repair":
         r = s.get(RdRequest, a.target)
         r.status = "approved"
-        _rlog(r, f"Owner ne {_rs(r.quote)} maana ({'kirayedar dega' if r.who_pays == 'tenant' else 'owner dengi'})")
-        out = {"say": f"{a.number}: repair {_rs(r.quote)} maana. Vendor ko aap batayiye / bulaiye (draft link card par)."}
+        _rlog(r, f"Owner accepted {_rs(r.quote)} ({'tenant pays' if r.who_pays == 'tenant' else 'owner pays'})")
+        out = {"say": f"{a.number}: repair {_rs(r.quote)} accepted. Tell / call the vendor yourself (draft link is on the card)."}
         if r.who_pays == "tenant" and r.tenancy_id:
             t = s.get(RdTenancy, r.tenancy_id)
             c = RdCharge(tenant_id=tenant, tenancy_id=t.id, kind="repair", due_on=today(tenant).isoformat(), amount=_r2(r.quote),
@@ -1401,7 +1401,7 @@ def _apply(s, tenant: str, a: RdApproval) -> dict:
             s.flush()
             out["_jobs"] = []
             _mirror_due(s, tenant, c, t, out["_jobs"])
-            out["say"] += " Agreement ke hisaab se kirayedar par charge joda."
+            out["say"] += " Charge added to the tenant as per the agreement."
         return out
     if a.kind == "deduction":
         se = s.get(RdSettlement, a.target)
@@ -1416,11 +1416,11 @@ def _apply(s, tenant: str, a: RdApproval) -> dict:
             _mirror_paid(c, jobs)
         if alloc:
             s.add(RdPayment(tenant_id=tenant, tenancy_id=t.id, receipt_no="", amount=_r2(sum(x["amount"] for x in alloc)),
-                            on=today(tenant).isoformat(), mode="deposit", alloc=_dump(alloc), by="Deposit se (aapki haan)"))
+                            on=today(tenant).isoformat(), mode="deposit", alloc=_dump(alloc), by="From deposit (your yes)"))
         se.status = "approved"
-        summ = (f"deposit {_rs(calc['held'])}, baaki kiraya / bill {_rs(calc['dues'])}, katauti {_rs(calc['deductions'])}"
-                f" -> {'wapas ' + _rs(calc['refund']) if calc['refund'] >= 0 else 'aapko dena ' + _rs(-calc['refund'])}")
-        return {"say": f"{a.number}: deposit hisaab maana ({summ}). Wapas paise aap khud bhejiye, phir 'Maine de diya'.",
+        summ = (f"deposit {_rs(calc['held'])}, pending rent / bills {_rs(calc['dues'])}, deductions {_rs(calc['deductions'])}"
+                f" -> {'refund ' + _rs(calc['refund']) if calc['refund'] >= 0 else 'you receive ' + _rs(-calc['refund'])}")
+        return {"say": f"{a.number}: deposit settlement accepted ({summ}). Send the refund yourself, then tap 'I have paid'.",
                 "settlement": _settle_view(s, se), "_jobs": jobs,
                 "_draft": {"tenancy": t.id, "kind": "refund", "summary": summ, "ref": se.id}}
     return {}
@@ -1486,32 +1486,32 @@ def rent_change(tenant: str, tenancy: str, new_rent=None, from_date: str = "", w
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
         if t.status not in ("active", "notice"):
-            raise RentError(f"{t.number} chalu nahi.")
+            raise RentError(f"{t.number} is not active.")
         d = _date(from_date)
         if not d:
             nxt = [x for x in _escalation_dates(t) if x >= today(tenant).isoformat()]
             d = _date(nxt[0]) if nxt else None
         if not d:
-            raise RentError("Kab se? (taarikh)")
+            raise RentError("From when? (date)")
         old = _rent_on(t, d)
         new = R.money(new_rent)
         auto = False
         if new <= 0:
             if not t.escalation_pct:
-                raise RentError("Naya kiraya batayiye (agreement mein escalation % nahi hai).")
+                raise RentError("Give the new rent (the agreement has no escalation %).")
             new, auto = round(old * (1 + t.escalation_pct / 100)), True
         if new <= 0 or new > 50_000_000:
-            raise RentError("Naya kiraya sahi nahi.")
+            raise RentError("The new rent is not valid.")
         st = _st(s, tenant)
         checks = []
         if R.is_mta(st.state) and (d - today(tenant)).days < 90:
-            checks.append("Model Tenancy Act: kiraya badhane se 3 mahine pehle likhit notice.")
+            checks.append("Model Tenancy Act: written notice 3 months before a rent rise.")
         if t.escalation_pct and not auto and old and (new / old - 1) * 100 > t.escalation_pct + 0.01:
-            checks.append(f"Agreement mein {t.escalation_pct:g}% likha hai; yeh {((new / old - 1) * 100):.1f}% hai.")
+            checks.append(f"The agreement says {t.escalation_pct:g}%; this is {((new / old - 1) * 100):.1f}%.")
         if t.lock_in_months and t.escalation_every and _date(t.start) and d < R.add_months(_date(t.start), t.escalation_every):
-            checks.append("Agreement ke escalation samay se pehle.")
+            checks.append("Before the agreement's escalation date.")
         p = s.get(RdPerson, t.person_id)
-        show = {"title": f"{t.number} {p.name if p else ''}: {_rs(old)} -> {_rs(new)} {d.isoformat()} se", "tenancy": t.number,
+        show = {"title": f"{t.number} {p.name if p else ''}: {_rs(old)} -> {_rs(new)} from {d.isoformat()}", "tenancy": t.number,
                 "old": old, "new": float(new), "from": d.isoformat(), "why": _clean(why, 200) or (f"agreement {t.escalation_pct:g}%" if auto else ""),
                 "clause": _clean(clause, 40), "checks": checks}
         view, existing = _make_approval(s, tenant, "rent_change", t.id, show, actor, conv)
@@ -1525,22 +1525,22 @@ def notice_request(tenant: str, tenancy: str, notice_kind: str = "vacate", vacat
     with _LOCK, session() as s:
         t = _tenancy(s, tenant, tenancy)
         if t.status not in ("active", "notice"):
-            raise RentError(f"{t.number} chalu nahi.")
+            raise RentError(f"{t.number} is not active.")
         p = s.get(RdPerson, t.person_id)
         checks = []
         if nk == "vacate":
             d = _date(vacate_on) or (R.add_months(today(tenant), max(t.notice_months, 1)))
             if (d - today(tenant)).days < 30 * max(t.notice_months, 0) - 2:
-                checks.append(f"Agreement mein {t.notice_months} mahine ka notice hai; yeh {(d - today(tenant)).days} din hai.")
+                checks.append(f"The agreement has a {t.notice_months}-month notice; this is {(d - today(tenant)).days} days.")
             lock = R.add_months(_date(t.start), t.lock_in_months) if t.lock_in_months and _date(t.start) else None
             if lock and d < lock:
-                checks.append(f"Lock-in {lock.isoformat()} tak hai.")
-            show = {"title": f"{t.number} {p.name if p else ''}: ghar khali karne ka notice, {d.isoformat()} tak", "notice_kind": nk,
+                checks.append(f"Lock-in runs until {lock.isoformat()}.")
+            show = {"title": f"{t.number} {p.name if p else ''}: notice to vacate, by {d.isoformat()}", "notice_kind": nk,
                     "vacate_on": d.isoformat(), "reason": _clean(reason, 300), "checks": checks}
         else:
             nr = R.money(new_rent)
             frm = _date(from_date) or (_date(t.end) + timedelta(days=1) if _date(t.end) else today(tenant))
-            show = {"title": f"{t.number} {p.name if p else ''}: renewal {frm.isoformat()} se" + (f", {_rs(nr)}" if nr else ""),
+            show = {"title": f"{t.number} {p.name if p else ''}: renewal from {frm.isoformat()}" + (f", {_rs(nr)}" if nr else ""),
                     "notice_kind": nk, "from": frm.isoformat(), "new_rent": nr or None, "checks": checks}
         view, existing = _make_approval(s, tenant, "notice", t.id, show, actor, conv)
     return _ask(tenant, view, existing, conv)
@@ -1552,18 +1552,18 @@ def tenant_notice(tenant: str, tenancy: str, vacate_on: str, on: str = "", actor
         t = _tenancy(s, tenant, tenancy)
         d = _date(vacate_on)
         if not d:
-            raise RentError("Kab khali karenge? (taarikh)")
+            raise RentError("When will they vacate? (date)")
         t.status, t.notice_on, t.notice_by, t.vacate_on = "notice", (_date(on) or today(tenant)).isoformat(), "tenant", d.isoformat()
         checks = []
         days = (d - _date(t.notice_on)).days
         if days < 30 * t.notice_months - 2:
-            checks.append(f"Agreement mein {t.notice_months} mahine ka notice; yeh {days} din ka hai (agreement dekhiye, faisla aapka).")
+            checks.append(f"The agreement has a {t.notice_months}-month notice; this is {days} days (check the agreement, the decision is yours).")
         lock = R.add_months(_date(t.start), t.lock_in_months) if t.lock_in_months and _date(t.start) else None
         if lock and d < lock:
-            checks.append(f"Lock-in {lock.isoformat()} tak tha (agreement ki shart aapke vakil se).")
+            checks.append(f"Lock-in ran until {lock.isoformat()} (ask your lawyer about the agreement terms).")
         view = _tenancy_view(s, t)
-    return {"tenancy": view, "checks": checks, "say": f"{view['number']}: kirayedar {d.isoformat()} ko khali karenge. Move-out inspection "
-            "us din kijiye." + (" Dhyaan: " + " ".join(checks) if checks else "")}
+    return {"tenancy": view, "checks": checks, "say": f"{view['number']}: the tenant will vacate on {d.isoformat()}. Do the move-out inspection "
+            "that day." + (" Note: " + " ".join(checks) if checks else "")}
 
 
 # ---------------------------------------------------------------- vendors + repairs
@@ -1572,7 +1572,7 @@ def save_vendor(tenant: str, name: str, phone: str = "", trade: str = "other", n
         v = s.get(RdVendor, vendor) if vendor else None
         if v is None:
             if not name.strip():
-                raise RentError("Vendor ka naam.")
+                raise RentError("The vendor's name is needed.")
             v = RdVendor(tenant_id=tenant)
             s.add(v)
         if name:
@@ -1580,7 +1580,7 @@ def save_vendor(tenant: str, name: str, phone: str = "", trade: str = "other", n
         if phone:
             v.phone = R.phone10(phone)
             if not v.phone:
-                raise RentError("Vendor ka mobile 10 ank ka.")
+                raise RentError("The vendor's mobile number must be 10 digits.")
         v.trade = trade if trade in R.TRADES else "other"
         if notes:
             v.notes = _clean(notes, 500)
@@ -1622,7 +1622,7 @@ def _req_view(s, r: RdRequest) -> dict:
 def request_new(tenant: str, unit: str, text: str, actor: str = "owner", by: str = "", conv: str = "") -> dict:
     t_ = _clean(text, 1500)
     if not t_:
-        raise RentError("Kya kharab hai?")
+        raise RentError("What is broken?")
     cat, urgent = R.repair_category(t_)
     with _LOCK, session() as s:
         u = _unit(s, tenant, unit)
@@ -1630,8 +1630,8 @@ def request_new(tenant: str, unit: str, text: str, actor: str = "owner", by: str
         same = s.scalars(select(RdRequest).where(RdRequest.unit_id == u.id, RdRequest.status.in_(("open", "assigned", "waiting_haan")),
                                                  RdRequest.category == cat)).first()
         if same and cat != "other":
-            _rlog(same, f"Phir se bataya: {t_[:120]}")
-            return {"request": _req_view(s, same), "existing": True, "say": f"{same.number} pehle se khula hai ({R.TRADES.get(cat)}); usi mein joda."}
+            _rlog(same, f"Reported again: {t_[:120]}")
+            return {"request": _req_view(s, same), "existing": True, "say": f"{same.number} is already open ({R.TRADES.get(cat)}); added to it."}
         r = RdRequest(tenant_id=tenant, number=f"M-{_next(s, tenant, 'request'):04d}", unit_id=u.id, tenancy_id=lt.id if lt else "",
                       text=t_, category=cat, urgent=urgent, raised_by=by or actor_name(tenant, actor))
         s.add(r)
@@ -1639,9 +1639,9 @@ def request_new(tenant: str, unit: str, text: str, actor: str = "owner", by: str
         _rlog(r, "Shikayat darj")
         vs = s.scalars(select(RdVendor).where(RdVendor.tenant_id == tenant, RdVendor.trade == cat)).all()
         view = _req_view(s, r)
-    say = f"{view['number']}: {view['unit_label']} - {view['category_label']}" + (" (JALDI)" if urgent else "") + " darj."
+    say = f"{view['number']}: {view['unit_label']} - {view['category_label']}" + (" (URGENT)" if urgent else "") + " recorded."
     if urgent:
-        say += " Gas / bijli / paani ka khatra ho to pehle main switch / valve band karwaiye; zaroorat ho to 112 / gas agency emergency."
+        say += " If there is a gas / electricity / water danger, first switch off the main switch / valve; if needed call 112 / the gas agency emergency line."
     if vs:
         say += " Vendor: " + ", ".join(v.name for v in vs[:3]) + "."
     _publish(tenant, "rentdesk_alert", {"kind": "repair", "request": view, "say": say}, conv)
@@ -1657,14 +1657,14 @@ def request_assign(tenant: str, request: str, vendor: str = "", quote_amount=Non
             rows = s.scalars(select(RdRequest).where(RdRequest.tenant_id == tenant, RdRequest.number == str(request).upper())).all()
             r = rows[0] if rows else None
         if r is None:
-            raise RentError("Repair request nahi mili.")
+            raise RentError("Repair request not found.")
         if r.status in ("done", "closed"):
-            raise RentError(f"{r.number} band ho chuki.")
+            raise RentError(f"{r.number} is already closed.")
         if vendor:
             v = s.get(RdVendor, vendor) or next((x for x in s.scalars(select(RdVendor).where(RdVendor.tenant_id == tenant)).all()
                                                  if x.name.lower() == vendor.lower() or x.phone == R.phone10(vendor)), None)
             if v is None:
-                raise RentError(f"Vendor '{vendor}' nahi mila (pehle vendor jodiye).")
+                raise RentError(f"Vendor '{vendor}' not found (add the vendor first).")
             r.vendor_id = v.id
             r.status = "assigned"
             _rlog(r, f"Vendor: {v.name}")
@@ -1686,9 +1686,9 @@ def request_assign(tenant: str, request: str, vendor: str = "", quote_amount=Non
             if len(past) >= 2:
                 med = sorted(past)[len(past) // 2]
                 if q > med * 1.3:
-                    checks.append(f"Is kaam ka aam kharcha {_rs(med)}; yeh {round((q / med - 1) * 100)}% zyada.")
+                    checks.append(f"The usual cost for this job is {_rs(med)}; this is {round((q / med - 1) * 100)}% more.")
             if r.who_pays == "tenant":
-                checks.append("Kirayedar par charge lagega (agreement ki shart dekhiye).")
+                checks.append("The tenant will be charged (check the agreement terms).")
             show = {"title": f"{r.number} {u.label if u else ''}: {R.TRADES.get(r.category, r.category)} {_rs(q)}", "amount": q,
                     "amount_text": _rs(q), "payee": vend.name if vend else "", "who_pays": r.who_pays, "what": r.text[:200], "checks": checks}
             view, existing = _make_approval(s, tenant, "repair", r.id, show, actor, conv)
@@ -1706,16 +1706,16 @@ def request_done(tenant: str, request: str, paid=None, note: str = "", actor: st
     with _LOCK, session() as s:
         r = s.get(RdRequest, request)
         if r is None or r.tenant_id != tenant:
-            raise RentError("Repair request nahi mili.")
+            raise RentError("Repair request not found.")
         if r.quote > 0 and r.status not in ("approved",) and not is_owner(actor):
-            raise RentError("Kharche par pehle owner ki haan chahiye.")
+            raise RentError("The owner's yes is needed on the cost first.")
         if r.quote > 0 and r.status == "waiting_haan":
-            raise RentError(f"{r.number}: kharche ka card abhi aapki haan ka intezaar kar raha hai.")
+            raise RentError(f"{r.number}: the cost card is waiting for your yes.")
         r.status = "done"
         r.paid = R.money(paid) or r.paid
-        _rlog(r, "Kaam poora" + (f", diya {_rs(r.paid)}" if r.paid else "") + (f": {_clean(note, 120)}" if note else ""))
+        _rlog(r, "Work done" + (f", paid {_rs(r.paid)}" if r.paid else "") + (f": {_clean(note, 120)}" if note else ""))
         view = _req_view(s, r)
-    return {"request": view, "say": f"{view['number']} poora." + (" Kirayedar ko batane ka draft chahiye to action=message kind=repair." if view["tenancy_id"] else "")}
+    return {"request": view, "say": f"{view['number']} is done." + (" For a draft to tell the tenant, use action=message kind=repair." if view["tenancy_id"] else "")}
 
 
 def requests(tenant: str, status: str = "") -> list[dict]:
@@ -1742,19 +1742,19 @@ def add_photo(tenant: str, owner_kind: str, owner_id: str, data: bytes, item: st
     if owner_kind not in ("inspection", "request"):
         raise RentError("photo: inspection | request")
     if not data or len(data) > 15 * 1024 * 1024:
-        raise RentError("Photo khaali hai ya 15 MB se badi.")
+        raise RentError("The photo is empty or larger than 15 MB.")
     try:
         im = Image.open(io.BytesIO(data))
         im.load()
     except Exception:
-        raise RentError("Yeh photo nahi khuli (JPG / PNG / WEBP).")
+        raise RentError("This photo could not be opened (JPG / PNG / WEBP).")
     with _LOCK, session() as s:
         obj = s.get(RdInspection if owner_kind == "inspection" else RdRequest, owner_id)
         if obj is None or obj.tenant_id != tenant:
-            raise RentError("Inspection / request nahi mili.")
+            raise RentError("Inspection / request not found.")
         n = len(s.scalars(select(RdPhoto).where(RdPhoto.owner_id == owner_id)).all())
         if n >= MAX_PHOTOS:
-            raise RentError(f"{MAX_PHOTOS} photo tak.")
+            raise RentError(f"Up to {MAX_PHOTOS} photos.")
         im = ImageOps.exif_transpose(im).convert("RGB")
         im.thumbnail((1600, 1600))
         pid = new_id("rdf")
@@ -1770,14 +1770,14 @@ def add_photo(tenant: str, owner_kind: str, owner_id: str, data: bytes, item: st
                     it.setdefault("photos", []).append(pid)
             obj.items = _dump(items)
         s.flush()
-        return {"photo": {"id": pid, "item": ph.item, "width": im.width, "height": im.height}, "say": "Photo save (location / camera ki jaankari hata di)."}
+        return {"photo": {"id": pid, "item": ph.item, "width": im.width, "height": im.height}, "say": "Photo saved (location / camera details removed)."}
 
 
 def photo_bytes(tenant: str, pid: str) -> bytes:
     with session() as s:
         p = s.get(RdPhoto, pid)
         if p is None or p.tenant_id != tenant:
-            raise RentError("Photo nahi mili.")
+            raise RentError("Photo not found.")
         return Path(p.path).read_bytes()
 
 
@@ -1794,7 +1794,7 @@ def inspection_start(tenant: str, tenancy: str, kind: str = "move_in", on: str =
         t = _tenancy(s, tenant, tenancy)
         ex = s.scalars(select(RdInspection).where(RdInspection.tenancy_id == t.id, RdInspection.kind == kind)).first()
         if ex:
-            return {"inspection": _insp_view(s, ex), "existing": True, "say": f"{t.number} ka {kind} inspection pehle se hai."}
+            return {"inspection": _insp_view(s, ex), "existing": True, "say": f"{t.number} already has a {kind} inspection."}
         u = s.get(RdUnit, t.unit_id)
         items = [{"key": f"i{i}", "room": r, "item": it, "condition": "", "note": "", "photos": []} for i, (r, it) in enumerate(R.STANDARD_ITEMS)]
         for j, inv in enumerate(_j(u.inventory, []) if u else []):
@@ -1806,8 +1806,8 @@ def inspection_start(tenant: str, tenancy: str, kind: str = "move_in", on: str =
         x = RdInspection(tenant_id=tenant, tenancy_id=t.id, kind=kind, on=(_date(on) or today(tenant)).isoformat(), items=_dump(items))
         s.add(x)
         s.flush()
-        return {"inspection": _insp_view(s, x), "say": f"{t.number}: {kind.replace('_', '-')} inspection shuru ({len(items)} cheezein). "
-                "Har cheez ki halat (good / fair / damaged / missing) aur photo."}
+        return {"inspection": _insp_view(s, x), "say": f"{t.number}: {kind.replace('_', '-')} inspection started ({len(items)} items). "
+                "Give each item's condition (good / fair / damaged / missing) and a photo."}
 
 
 def inspection_update(tenant: str, inspection: str, items: list | None = None, meters: dict | None = None, keys=None,
@@ -1815,9 +1815,9 @@ def inspection_update(tenant: str, inspection: str, items: list | None = None, m
     with _LOCK, session() as s:
         x = s.get(RdInspection, inspection)
         if x is None or x.tenant_id != tenant:
-            raise RentError("Inspection nahi mili.")
+            raise RentError("Inspection not found.")
         if x.status == "closed":
-            raise RentError("Inspection band ho chuki.")
+            raise RentError("The inspection is already closed.")
         cur = _j(x.items, [])
         for it in items or []:
             if not isinstance(it, dict):
@@ -1856,7 +1856,7 @@ def inspection_update(tenant: str, inspection: str, items: list | None = None, m
                 c = _j(t.checklist, {})
                 c["move_in"] = x.on
                 t.checklist = _dump(c)
-        return {"inspection": _insp_view(s, x), "say": "Inspection update" + (" aur band." if close else ".")}
+        return {"inspection": _insp_view(s, x), "say": "Inspection updated" + (" and closed." if close else ".")}
 
 
 def inspection_compare(tenant: str, tenancy: str) -> dict:
@@ -1865,13 +1865,13 @@ def inspection_compare(tenant: str, tenancy: str) -> dict:
         mi = s.scalars(select(RdInspection).where(RdInspection.tenancy_id == t.id, RdInspection.kind == "move_in")).first()
         mo = s.scalars(select(RdInspection).where(RdInspection.tenancy_id == t.id, RdInspection.kind == "move_out")).first()
         if not mo:
-            raise RentError("Move-out inspection abhi nahi hui.")
+            raise RentError("The move-out inspection has not been done yet.")
         worse = R.compare_inspections(_j(mi.items, []) if mi else [], _j(mo.items, []))
         meters = {"move_in": _j(mi.meters, {}) if mi else {}, "move_out": _j(mo.meters, {})}
-    say = (f"{len(worse)} cheezein pehle se kharab dikh rahi hain: " + "; ".join(f"{w['room']} {w['item']} ({w['was']} -> {w['now']})" for w in worse[:6])
-           + ". Rakam aap likhiye (aam ghisaav nahi katta).") if worse else "Move-in se koi nayi kharabi darj nahi."
+    say = (f"{len(worse)} items look worse than before: " + "; ".join(f"{w['room']} {w['item']} ({w['was']} -> {w['now']})" for w in worse[:6])
+           + ". Enter the amount yourself (normal wear and tear is not deducted).") if worse else "No new damage recorded since move-in."
     if not mi:
-        say += " (Move-in inspection darj nahi thi, isliye tulna kamzor hai.)"
+        say += " (There was no move-in inspection recorded, so the comparison is weak.)"
     return {"worse": worse, "meters": meters, "say": say}
 
 
@@ -1905,8 +1905,8 @@ def settlement_start(tenant: str, tenancy: str) -> dict:
     except RentError:
         cmp = []
     view["suggest"] = cmp
-    return {"settlement": view, "say": f"{view['tenancy']}: deposit {view['held_text']}, baaki kiraya / bill {view['dues_text']}. "
-            + (f"{len(cmp)} kharab cheezein: rakam aap likhiye." if cmp else "Katauti ho to rakam aur wajah aap likhiye.")}
+    return {"settlement": view, "say": f"{view['tenancy']}: deposit {view['held_text']}, pending rent / bills {view['dues_text']}. "
+            + (f"{len(cmp)} damaged items: enter the amount yourself." if cmp else "If there is a deduction, enter the amount and reason.")}
 
 
 def settlement_line(tenant: str, settlement: str, what: str, amount, reason: str = "", photos: list | None = None,
@@ -1915,9 +1915,9 @@ def settlement_line(tenant: str, settlement: str, what: str, amount, reason: str
     with _LOCK, session() as s:
         se = s.get(RdSettlement, settlement)
         if se is None or se.tenant_id != tenant:
-            raise RentError("Settlement nahi mila.")
+            raise RentError("Settlement not found.")
         if se.status not in ("draft", "waiting"):
-            raise RentError("Settlement par faisla ho chuka.")
+            raise RentError("The settlement has already been decided.")
         lines = _j(se.lines, [])
         w = _clean(what, 120)
         if remove:
@@ -1925,15 +1925,15 @@ def settlement_line(tenant: str, settlement: str, what: str, amount, reason: str
         else:
             a = R.money(amount)
             if a <= 0:
-                raise RentError("Katauti ki rakam (aapka number / bill) chahiye.")
+                raise RentError("The deduction amount (your figure / bill) is needed.")
             if not w:
-                raise RentError("Kis cheez ki katauti?")
+                raise RentError("Deduction for what?")
             lines = [x for x in lines if x.get("what", "").lower() != w.lower()]
             lines.append({"what": w, "amount": _r2(a), "reason": _clean(reason, 200), "photos": [str(p) for p in (photos or [])][:10]})
         se.lines = _dump(lines)
         if se.status == "waiting":
             se.status = "draft"                  # the card no longer matches: a new one is needed
-        return {"settlement": _settle_view(s, se), "say": "Katauti line save."}
+        return {"settlement": _settle_view(s, se), "say": "Deduction line saved."}
 
 
 def settlement_request(tenant: str, settlement: str, actor: str = "owner", conv: str = "") -> dict:
@@ -1941,23 +1941,23 @@ def settlement_request(tenant: str, settlement: str, actor: str = "owner", conv:
     with _LOCK, session() as s:
         se = s.get(RdSettlement, settlement)
         if se is None or se.tenant_id != tenant:
-            raise RentError("Settlement nahi mila.")
+            raise RentError("Settlement not found.")
         if se.status not in ("draft", "waiting"):
-            raise RentError(f"Settlement {se.status} hai.")
+            raise RentError(f"The settlement is {se.status}.")
         t = s.get(RdTenancy, se.tenancy_id)
         c = _settle_calc(s, t, se)
         if c["deductions"] <= 0 and c["dues"] <= 0:
             se.status, se.calc = "approved", _dump(c)
             view = _settle_view(s, se)
-            return {"settlement": view, "say": f"Koi katauti nahi: poora deposit {view['held_text']} wapas. Aap khud bhejiye, phir 'Maine de diya'."}
+            return {"settlement": view, "say": f"No deduction: the full deposit {view['held_text']} is refunded. Send it yourself, then tap 'I have paid'."}
         p = s.get(RdPerson, t.person_id)
         checks = []
         if c["refund"] < 0:
-            checks.append(f"Deposit se zyada: kirayedar ko {_rs(-c['refund'])} aur dena hoga.")
+            checks.append(f"More than the deposit: the tenant must pay {_rs(-c['refund'])} more.")
         if any(not x.get("reason") for x in _j(se.lines, [])):
-            checks.append("Kuch katauti bina wajah ke hain.")
+            checks.append("Some deductions have no reason.")
         if not s.scalars(select(RdInspection).where(RdInspection.tenancy_id == t.id, RdInspection.kind == "move_in")).first():
-            checks.append("Move-in inspection darj nahi: nuksaan ka saboot kamzor.")
+            checks.append("No move-in inspection recorded: the proof of damage is weak.")
         show = {"title": f"{t.number} {p.name if p else ''}: deposit {_rs(c['held'])} - dues {_rs(c['dues'])} - katauti {_rs(c['deductions'])}",
                 "amount": c["deductions"] + c["dues"], "amount_text": _rs(c["deductions"] + c["dues"]), "payee": p.name if p else "",
                 "lines": _j(se.lines, []), **c, "checks": checks}
@@ -1969,13 +1969,13 @@ def settlement_request(tenant: str, settlement: str, actor: str = "owner", conv:
 def refund_paid(tenant: str, settlement: str, amount=None, ref: str = "", actor: str = "owner") -> dict:
     """She sent the refund herself. Ends the tenancy (unit vacant)."""
     if not is_owner(actor):
-        raise RentError("Sirf owner.")
+        raise RentError("Owner only.")
     with _LOCK, session() as s:
         se = s.get(RdSettlement, settlement)
         if se is None or se.tenant_id != tenant:
-            raise RentError("Settlement nahi mila.")
+            raise RentError("Settlement not found.")
         if se.status != "approved":
-            raise RentError("Pehle deposit hisaab par aapki haan (card).")
+            raise RentError("First give your yes on the deposit settlement (card).")
         t = s.get(RdTenancy, se.tenancy_id)
         c = _j(se.calc, {}) or _settle_calc(s, t, se)
         se.refund_paid = R.money(amount) if amount not in (None, "") else max(0.0, c["refund"])
@@ -1987,8 +1987,8 @@ def refund_paid(tenant: str, settlement: str, amount=None, ref: str = "", actor:
         if not t.vacate_on:
             t.vacate_on = today(tenant).isoformat()
         view = _settle_view(s, se)
-    return {"settlement": view, "say": f"Deposit wapas {_rs(view['refund_paid'] or 0)} darj; {view['tenancy']} khatam, unit khali. "
-            "Kuch din baad kirayedar ki jaankari mitane (DPDP) ke liye `forget`."}
+    return {"settlement": view, "say": f"Deposit refund of {_rs(view['refund_paid'] or 0)} recorded; {view['tenancy']} ended, unit vacant. "
+            "After a few days use `forget` to erase the tenant's details (DPDP)."}
 
 
 def settlement_pdf(tenant: str, settlement: str) -> bytes:
@@ -1998,7 +1998,7 @@ def settlement_pdf(tenant: str, settlement: str) -> bytes:
     with session() as s:
         se = s.get(RdSettlement, settlement)
         if se is None or se.tenant_id != tenant:
-            raise RentError("Settlement nahi mila.")
+            raise RentError("Settlement not found.")
         v = _settle_view(s, se)
         t = s.get(RdTenancy, se.tenancy_id)
         u, p, st = s.get(RdUnit, t.unit_id), s.get(RdPerson, t.person_id), _st(s, tenant)
@@ -2040,7 +2040,7 @@ def settlement_file(tenant: str, settlement: str, conv: str = "") -> dict:
     pdf = settlement_pdf(tenant, settlement)
     f = chatfiles.store(tenant, f"Deposit_settlement_{settlement[-6:]}.pdf", pdf, "application/pdf")
     _publish(tenant, "pc_file", {**f, "source": "rentdesk", "title": "Deposit settlement"}, conv)
-    return {"file": f, "say": "Deposit hisaab ka PDF."}
+    return {"file": f, "say": "Deposit settlement PDF."}
 
 
 # ---------------------------------------------------------------- agreement draft
@@ -2136,9 +2136,9 @@ def agreement_file(tenant: str, tenancy: str, conv: str = "") -> dict:
         t.files = _dump(files[-30:])
         num = t.number
     _publish(tenant, "pc_file", {**f, "source": "rentdesk", "title": f"Agreement draft {num}"}, conv)
-    say = f"{num}: agreement ka Word draft (vakil se padhwaiye)."
+    say = f"{num}: Word draft of the agreement (have a lawyer read it)."
     if blanks:
-        say += " Khaali jagah: " + ", ".join(blanks[:8]) + "."
+        say += " Blanks: " + ", ".join(blanks[:8]) + "."
     return {"file": f, "blanks": blanks, "say": say}
 
 
@@ -2146,17 +2146,17 @@ def agreement_file(tenant: str, tenancy: str, conv: str = "") -> dict:
 def forget(tenant: str, person: str, actor: str = "owner") -> dict:
     """Erase a past tenant's personal details (DPDP: purpose over). Amounts / receipt numbers stay for her accounts."""
     if not is_owner(actor):
-        raise RentError("Sirf owner.")
+        raise RentError("Owner only.")
     with _LOCK, session() as s:
         p = _person(s, tenant, person)
         live = s.scalars(select(RdTenancy).where(RdTenancy.person_id == p.id, RdTenancy.status.in_(("draft", "active", "notice")))).all()
         if live:
-            raise RentError("Is kirayedar ki tenancy abhi chalu hai.")
+            raise RentError("This tenant's tenancy is still active.")
         ten_ids = [t.id for t in s.scalars(select(RdTenancy).where(RdTenancy.person_id == p.id)).all()]
         open_se = s.scalars(select(RdSettlement).where(RdSettlement.tenancy_id.in_(ten_ids), RdSettlement.status.in_(("draft", "waiting", "approved")))).all() \
             if ten_ids else []
         if open_se:
-            raise RentError("Deposit hisaab abhi poora nahi (pehle 'Maine de diya').")
+            raise RentError("The deposit settlement is not complete yet (first 'I have paid').")
         recs = [x.get("record", "") for x in _j(p.ids, {}).values()]
         for ph in s.scalars(select(RdPhoto).where(RdPhoto.tenant_id == tenant)).all():
             insp = s.get(RdInspection, ph.owner_id)
@@ -2169,7 +2169,7 @@ def forget(tenant: str, person: str, actor: str = "owner") -> dict:
         for m in s.scalars(select(RdMessage).where(RdMessage.person_id == p.id)).all():
             m.text, m.status = "[mitaya]", "dropped" if m.status == "draft" else m.status
         num = p.number
-        p.name, p.phone, p.email, p.address, p.members, p.emergency, p.employer = f"Purana kirayedar {num}", "", "", "", "[]", "", ""
+        p.name, p.phone, p.email, p.address, p.members, p.emergency, p.employer = f"Former tenant {num}", "", "", "", "[]", "", ""
         p.ids, p.notes, p.gstin, p.forgotten = "{}", "", "", True
     from .. import idvault
     for rid in recs:
@@ -2177,7 +2177,7 @@ def forget(tenant: str, person: str, actor: str = "owner") -> dict:
             idvault.delete(tenant, rid)
         except Exception:
             pass
-    return {"say": f"{num} ki niji jaankari mita di (naam, phone, ID, photo). Kiraye ke amount / receipt number hisaab ke liye rahe."}
+    return {"say": f"Personal details for {num} erased (name, phone, ID, photo). Rent amounts / receipt numbers are kept for accounts."}
 
 
 # ---------------------------------------------------------------- tenants on her business WhatsApp
@@ -2201,7 +2201,7 @@ def customer_status(tenant: str, wa_id: str) -> dict:
             link = ""
     for o in out:
         o.pop("id", None)
-    return {"tenancies": out, "pay_link": link, "note": "Sirf isi number ki tenancy. Paise unke apne UPI app se; Hoola paise nahi leta."}
+    return {"tenancies": out, "pay_link": link, "note": "Only the tenancy for this number. Payment goes through their own UPI app; Hoola does not take money."}
 
 
 def customer_repair(tenant: str, wa_id: str, text: str) -> dict:
@@ -2216,11 +2216,11 @@ def customer_repair(tenant: str, wa_id: str, text: str) -> dict:
                 who = p.name
                 break
     if not unit:
-        raise RentError("Is number par koi chalu kirayedari nahi mili.")
-    r = request_new(tenant, unit, text, actor="customer", by=f"Kirayedar {who}")
+        raise RentError("No active tenancy found for this number.")
+    r = request_new(tenant, unit, text, actor="customer", by=f"Tenant {who}")
     rq = r["request"]
     return {"number": rq["number"], "category": rq["category_label"], "urgent": rq["urgent"],
-            "say": f"Shikayat {rq['number']} darj; malik ko bata diya. Kharche ka faisla unka."}
+            "say": f"Complaint {rq['number']} recorded; the owner has been told. The cost decision is theirs."}
 
 
 # ---------------------------------------------------------------- day / overview / register
@@ -2255,25 +2255,25 @@ def day(tenant: str) -> dict:
                       if _live_tenancy(s, u.id) is None])
     parts = []
     if overdue:
-        parts.append(f"Baaki: {len(overdue)} ({_rs(sum(x['left'] for x in overdue))})")
+        parts.append(f"Pending: {len(overdue)} ({_rs(sum(x['left'] for x in overdue))})")
     if due_today:
-        parts.append(f"Aaj due: {len(due_today)}")
+        parts.append(f"Due today: {len(due_today)}")
     if drafts:
-        parts.append(f"{drafts} message draft aapke tap ka intezaar")
+        parts.append(f"{drafts} message drafts waiting for your tap")
     if waiting:
-        parts.append(f"{waiting} card aapki haan ke liye")
+        parts.append(f"{waiting} cards waiting for your yes")
     if renew:
-        parts.append("Renewal jaldi: " + ", ".join(f"{x['tenancy']} ({x['days_left']} din)" for x in renew[:3]))
+        parts.append("Renewal soon: " + ", ".join(f"{x['tenancy']} ({x['days_left']} days)" for x in renew[:3]))
     if pending:
-        parts.append("Registration / police baaki: " + ", ".join(x["tenancy"] for x in pending[:4]))
+        parts.append("Registration / police pending: " + ", ".join(x["tenancy"] for x in pending[:4]))
     if repairs:
-        parts.append(f"{repairs} repair khule")
+        parts.append(f"{repairs} repairs open")
     if vacating:
-        parts.append("Khali honge: " + ", ".join(f"{x['tenancy']} {x['on']}" for x in vacating[:3]))
+        parts.append("Will be vacated: " + ", ".join(f"{x['tenancy']} {x['on']}" for x in vacating[:3]))
     if vacant:
-        parts.append(f"{vacant} unit khali")
+        parts.append(f"{vacant} units vacant")
     return {"overdue": overdue, "due_today": due_today, "renewals": renew, "pending": pending, "vacating": vacating, "drafts": drafts,
-            "waiting": waiting, "repairs": repairs, "vacant": vacant, "say": ". ".join(parts) + "." if parts else "Kiraye ka sab theek."}
+            "waiting": waiting, "repairs": repairs, "vacant": vacant, "say": ". ".join(parts) + "." if parts else "Rent is all fine."}
 
 
 def overview(tenant: str) -> dict:
@@ -2302,7 +2302,7 @@ def register_file(tenant: str, conv: str = "") -> dict:
     f = chatfiles.store(tenant, f"Rent_register_{today(tenant).isoformat()}.xlsx", data,
                         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     _publish(tenant, "pc_file", {**f, "source": "rentdesk", "title": "Rent register"}, conv)
-    return {"file": f, "say": "Units, tenancies aur payments ka Excel."}
+    return {"file": f, "say": "Excel of units, tenancies and payments."}
 
 
 # ---------------------------------------------------------------- worker
@@ -2368,7 +2368,7 @@ def _date_alerts(tenant: str, on: date) -> int:
                 left = (end - on).days
                 ws = [w for w in wins if 0 <= left <= w]
                 if ws and _once(s, tenant, f"ren:{t.id}:{t.end}:{min(ws)}"):
-                    pubs.append({"kind": "renewal", "tenancy": t.number, "say": f"{t.number} {who}: agreement {t.end} ko khatam ({left} din). "
+                    pubs.append({"kind": "renewal", "tenancy": t.number, "say": f"{t.number} {who}: agreement ends on {t.end} ({left} days). "
                                  "Renewal / notice? (action=notice kind=renewal | vacate)"})
             for d in _escalation_dates(t):
                 dd = _date(d)
@@ -2379,13 +2379,13 @@ def _date_alerts(tenant: str, on: date) -> int:
             if start and (on - start).days >= 7:
                 miss = [i for i in ("registration", "police") if i not in done]
                 if miss and _once(s, tenant, f"chk:{t.id}:{','.join(miss)}"):
-                    pubs.append({"kind": "checklist", "tenancy": t.number, "say": f"{t.number} {who}: abhi baaki - " + ", ".join(miss)
-                                 + (" (MH: s.55 registration landlord ki zimmedari; police jaankari BNS s.223)." if (st.state or '').upper() == "MH" else ".")})
+                    pubs.append({"kind": "checklist", "tenancy": t.number, "say": f"{t.number} {who}: still pending - " + ", ".join(miss)
+                                 + (" (MH: s.55 registration is the landlord's duty; police information BNS s.223)." if (st.state or '').upper() == "MH" else ".")})
         for se in s.scalars(select(RdSettlement).where(RdSettlement.tenant_id == tenant, RdSettlement.status == "paid")).all():
             t = s.get(RdTenancy, se.tenancy_id)
             p = s.get(RdPerson, t.person_id) if t else None
             if t and p and not p.forgotten and _date(t.vacate_on) and (on - _date(t.vacate_on)).days >= 90 and _once(s, tenant, f"dpdp:{p.id}"):
-                pubs.append({"kind": "forget", "tenancy": t.number, "say": f"{t.number} khatam hue 90 din: {p.number} ki niji jaankari mita dein? (action=forget)"})
+                pubs.append({"kind": "forget", "tenancy": t.number, "say": f"{t.number} ended 90 days ago: erase the personal details of {p.number}? (action=forget)"})
     for a in pubs:
         _publish(tenant, "rentdesk_alert", a)
         n += 1
@@ -2426,7 +2426,7 @@ def tick(when: datetime | None = None) -> dict:
                 d = day(tenant)
                 with session() as s:
                     _st(s, tenant).last_morning = on.isoformat()
-                if d["say"] != "Kiraye ka sab theek.":
+                if d["say"] != "Rent is all fine.":
                     _publish(tenant, "rentdesk_day", {"say": d["say"], "overdue": len(d["overdue"]), "drafts": d["drafts"],
                                                       "waiting": d["waiting"], "renewals": len(d["renewals"]), "repairs": d["repairs"]})
                     out["morning"] += 1

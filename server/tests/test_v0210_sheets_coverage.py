@@ -52,9 +52,9 @@ def test_old_gdrive_path_registers_nothing():
 def test_card_backed_actions_have_bazar_copy():
     """The Bazar santosh-sheets pack grew from 3 confirm-card actions (update/delete/share) to 6 (added clear /
     delete_tab / protect). Every title is hand-written Hinglish, never model text."""
-    for act, title in {"update": "Itni rows badlein?", "delete": "Rows hatayein?",
-                       "share": "Sheet share karein?", "clear": "Values saaf karein?",
-                       "delete_tab": "Tab hatayein?", "protect": "Lock kar dein?"}.items():
+    for act, title in {"update": "Change these rows?", "delete": "Delete rows?",
+                       "share": "Share sheet?", "clear": "Clear values?",
+                       "delete_tab": "Delete tab?", "protect": "Lock it?"}.items():
         assert TITLES.get(act) == title
 
 

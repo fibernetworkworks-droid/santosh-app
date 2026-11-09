@@ -328,7 +328,7 @@ def test_removing_answered_question_needs_card(fake, monkeypatch):
     out = run("form_edit", {"form": fid, "remove": ["B"]}, ctx)
     assert out["needs_approval"] and len(fake.forms[fid]["items"]) == 2      # not removed yet
     na = seen["na"]
-    assert na.title == "Jawab wale sawaal hatayein?" and "B" in json.dumps(na.items)
+    assert na.title == "Delete questions that have answers?" and "B" in json.dumps(na.items)
     res = ex.execute(pack, na.action["name"], na.action["args"], bctx)
     assert "1 sawaal" in res["message"] and [i["title"] for i in fake.forms[fid]["items"]] == ["A"]
     from app.bazar.connectors.base import ToolError as BzErr
@@ -521,7 +521,7 @@ def test_form_delete_card_flow(fake, monkeypatch):
     out = run("form_delete", {"form": fid}, ctx)
     assert out["needs_approval"] and fake.trashed == []
     na = seen["na"]
-    assert na.title == "Form delete karein?" and "Trash" in json.dumps(na.items)
+    assert na.title == "Delete form?" and "Trash" in json.dumps(na.items)
     res = ex.execute(pack, na.action["name"], na.action["args"], bctx)
     assert "Trash" in res["message"] and fake.trashed == [fid]
 

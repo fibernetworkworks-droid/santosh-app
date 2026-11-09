@@ -107,12 +107,12 @@ class UpiExecutor:
             amt = rupees(args["amount_paise"])
             return {"status": "copy_pay", "android_package": pkg, "txn_ref": txn.txn_ref, "vpa": args["vpa"],
                     "payee_name": args["name"], "amount": amt, "app": pack.name,
-                    "message": (f"{pack.name} kisi vyakti ko link se payment rok deta hai, isliye {pack.name} seedha khul "
-                                f"raha hai. {args['name']} ka UPI ID ({args['vpa']}) copy ho gaya hai: 'To UPI ID' mein paste "
-                                f"karke {amt} bhejiye, PIN wahin daaliye. Ho jaane par yahan 'Ho gaya' dabaiye.")}
+                    "message": (f"{pack.name} blocks link payments to a person, so {pack.name} is opening directly. "
+                                f"{args['name']}'s UPI ID ({args['vpa']}) has been copied: paste it in 'To UPI ID', "
+                                f"send {amt}, and enter your PIN there. When it is done, tap 'Done' here.")}
         link = build_upi_intent(args["vpa"], args["name"], args["amount_paise"], args.get("note", ""), tr=txn.txn_ref,
                                 scheme=pack.config.get("scheme", "upi"), max_paise=ctx.settings.upi_max_amount_paise)
         return {"status": "open_app", "intent_url": link, "android_package": pack.config.get("android_package"),
                 "txn_ref": txn.txn_ref, "vpa": args["vpa"], "payee_name": args["name"], "amount": rupees(args["amount_paise"]),
-                "message": f"{pack.name} khul raha hai: {args['name']} aur {rupees(args['amount_paise'])} bhare hue honge. "
-                           f"UPI PIN wahin daaliye; ho jaane par Hoola yahan bata dega."}
+                "message": f"{pack.name} is opening: {args['name']} and {rupees(args['amount_paise'])} will be filled in. "
+                           f"Enter your UPI PIN there; Hoola will tell you here when it is done."}
