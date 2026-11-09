@@ -1,3 +1,31 @@
+## v0.716.0 NAYA ROOP — her new Hoola logo + the chat feel she picked (9 Nov 2026; owner, after the preview page: "0 :: PERFECT, 1 : Calm, 2 : Hoola mark, 3 : Fade with soft focus, 4 :: recommended, 5 : recommended, 6 : recommended")
+
+Built from the preview she approved (artifact "Hoola Chat Feel"):
+- **0 The mark.** Her new logo redrawn as vector in `server/app/static/console/mark.js` (the ONE drawing): `HoolaMark.svg()`
+  (glossy: highlighted core, a light ridge along every arc), `HoolaMark.think(px)` = the 3D thinking mark - four layers at
+  different depths on one tilting stage: T3 tilt + half turn + rest, T1 outer / inner arcs orbit opposite ways, T2 arcs
+  breathe outward while the core floats in front and pulses (still mark under reduced motion). Every class is `hm3-`
+  prefixed: the console already owns `.spin` / `.live` / `.turn`, and a bare `.spin` drew a plain ring (found in the
+  browser walk). `tool/make_mark.js` renders the navy master (`assets/images/hoola_logo.png`), the phone's four layer PNGs
+  (`assets/images/mark_*.png`) and the status-bar silhouette (`ic_stat_santosh.xml`, viewport 100); `tool/make_logo.py`
+  builds every size from the master (adaptive fg, favicon, 192 / 512, Apple touch, console brand mark).
+- **1 Calm.** Console pacer 34 ms a word (`stream.js`), phone `_Reveal` 34 ms a word with a 10 s ceiling.
+- **2 Thinking.** The console working row = the 3D mark (24px) + shimmering label + clock (the three dots retired); the
+  phone `_Typing` bubble = `HoolaMark` (`lib/ui/hoola_mark.dart`, one 6 s clock drives all parts).
+- **3 Soft focus.** `HoolaMD.Live(el, {soft: true})` wraps only the newest words in `.w` (opacity + 3px blur -> clear,
+  .46 s); each word keeps its first-seen time so the fade survives the per-tick re-render (negative animation-delay);
+  code / pre / maths never wrapped; without `soft` the renderer is byte-identical.
+- **4 File card.** `results.js fileCard`: PDF / Word / Excel / Slides as one card - page picture with a type tag, name,
+  type + pages + size, Open / Download, the whole card opens it in the workspace.
+- **5 Long job.** Live tool steps are rows during the turn (spinner -> drawn tick + time) and fold into
+  "Worked for Ns · n steps" when the words start or the turn ends (`liveStep` / `foldLive`; before, a live turn showed
+  only the one-line label). The goal card is a Plan card (mark, "Working · 1 of 4", spinner / tick / ring per step,
+  a tick draws once). Replayed turns use the same fold.
+- **6 Small motions.** Her bubble rises in, cards rise in, ticks draw themselves.
+Tests: `test_v0716_naya_roop.py` (10, incl. a real-browser check of the soft landing + the 3D layers); v0283 pace pins and
+v0462's status-bar pin moved to the new truth. Checked in a real browser against a local server (plan card, live steps,
+fold, soft landing, mark). NOT VERIFIED: the phone mark + pace compile first on CI; the file card on a real made PDF.
+
 ## v0.714.0 HAR CHAT ALAG — every chat on its own (9 Nov 2026; owner: "IN WEB CONSOLE CHAT SECTION :: 1ST CHECK WHY OTHER CHAT MSG IS COME IN OTHER SESSION CHAT MSG --- EXAMPLE UPDATES KEEP EVERY THING INDEPENDENT. DAILY COWORKER MSG SHOULD NOT TO BE MERGE WITH NEW CHAT OR ANY OTHER CHAT. KEEP EVERY SESSION INDEPENDENT")
 
 ROOT CAUSE: the console marks the open chat as "the chat she is in" on every stream (`convs.mark(..., "stream")`), and

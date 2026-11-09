@@ -136,11 +136,11 @@ def test_the_console_already_folds_the_tool_noise_like_claude():
     """The UI needed no work: the step rows were already a collapsed, expandable group."""
     js = (ROOT / "server/app/static/console/v2.js").read_text()
     assert "STEPBUF = document.createElement('details')" in js
-    assert "STEPBUF.className = 'tools'" in js and "STEPBUF.open = false" in js
-    assert "`${n} step${n > 1 ? \"s\" : \"\"}`" in js
+    assert "STEPBUF.className = 'tools hmfold'" in js and "STEPBUF.open = false" in js   # v0.716 the same fold as a live turn
+    assert "`Worked · ${n} step${n > 1 ? \"s\" : \"\"}`" in js
 
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
-    assert "0.715.0+714" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.716.0"
+    assert "0.716.0+715" in (ROOT / "pubspec.yaml").read_text()

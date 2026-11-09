@@ -2491,3 +2491,10 @@ Work: taxonomy.SCREENS (9 types), architect main_screen + SCREENS FIRST prompt +
 main screen, looks show screens (APP_LOOK_NOTE), SCREEN_NOTE for the writer, [data-sample] counted + launch blocker,
 Studio "Main screen" pill; test_v0714_screens_first.py (5), v0709 fixture updated.
 Deploy: vps-ops deploy; healthz must read 0.715.0.
+
+
+---
+Task ID: v0.716.0 NAYA ROOP
+Ask: her new logo as the 3D thinking icon + app logo everywhere, and the chat feel picked on the preview page.
+Built: mark.js (one drawing) + make_mark.js -> every logo size; 3D thinking mark (console + phone); Calm pace; soft-focus word landing; file card; live steps folding into Worked for; Plan card; small motions.
+Not verified live; phone compiles on CI.

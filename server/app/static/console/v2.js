@@ -405,8 +405,8 @@ function replayStep(p) {
   if (p.args) STEPS_ARGS.set(id, p.args);
   if (p.state === 'running') return;      // the done / error step of the same call follows it
   if (!STEPBUF) {
-    STEPBUF = document.createElement('details'); STEPBUF.className = 'tools'; STEPBUF.open = false;
-    STEPBUF.innerHTML = `<summary><span class="ic" style="width:18px;height:18px;font-size:10px">✓</span><span class="sm"></span><span class="chev">⌄</span></summary><div class="tl"></div>`;
+    STEPBUF = document.createElement('details'); STEPBUF.className = 'tools hmfold'; STEPBUF.open = false;   // v0.716 the same fold as a live turn
+    STEPBUF.innerHTML = `<summary>${HM_CHEV}<span class="sm"></span></summary><div class="tl"></div>`;
     SINK.appendChild(STEPBUF);
   }
   const row = p.state === 'error' ? `<span class="ic" style="background:rgba(248,113,113,.18);color:var(--bad)">!</span>${esc(p.label || p.tool)} <code>${esc(p.tool || '')}</code>${p.detail ? `<span class="tm">${esc(String(p.detail).slice(0, 60))}</span>` : ''}`
@@ -421,7 +421,7 @@ function flushStepBuf() {
   if (!STEPBUF) return;
   const n = STEPBUF.querySelectorAll('.ts').length;
   if (!n) STEPBUF.remove();
-  else STEPBUF.querySelector('.sm').textContent = `${n} step${n > 1 ? "s" : ""}`;
+  else STEPBUF.querySelector('.sm').textContent = `Worked · ${n} step${n > 1 ? "s" : ""}`;
   STEPBUF = null;
 }
 // v0.279 attach.js: her files as Claude-style tiles (composer tray, above her sent bubble, full-screen viewer)
@@ -570,10 +570,12 @@ function simpleProgress(kind,p={}) {
   if (!SIMPLE_PROGRESS) {
     SIMPLE_PROGRESS=document.createElement('div');SIMPLE_PROGRESS.className='simple-progress';
     SIMPLE_PROGRESS.setAttribute('role','status');SIMPLE_PROGRESS.setAttribute('aria-live','polite');SIMPLE_PROGRESS.setAttribute('aria-atomic','true');
+    const mark=document.createElement('span');mark.className='progress-mark';mark.setAttribute('aria-hidden','true');   // v0.716 the 3D Hoola mark while she waits
+    if(window.HoolaMark)mark.innerHTML=HoolaMark.think(24);
     const label=document.createElement('span');label.className='progress-label';   // v0.299: no avatar here either
     const dots=document.createElement('span');dots.className='progress-dots';dots.setAttribute('aria-hidden','true');dots.innerHTML='<i></i><i></i><i></i>';
     const secs=document.createElement('span');secs.className='progress-secs';secs.setAttribute('aria-hidden','true');   // v0.293 the clock is decoration; the label is what a screen reader reads
-    SIMPLE_PROGRESS.append(label,dots,secs);
+    SIMPLE_PROGRESS.append(mark,label,dots,secs);
     PROGRESS_T0=Date.now();clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=setInterval(progressTick,1000);
   }
   placeProgress();
@@ -594,7 +596,51 @@ function placeProgress(){
   SIMPLE_PROGRESS.hidden=false;
 }
 function clearSimpleProgress(){SIMPLE_PROGRESS?.remove();SIMPLE_PROGRESS=null;clearInterval(PROGRESS_TIMER);PROGRESS_TIMER=0;}
-function stepEvent(p) { simpleProgress('step',p); }
+/* v0.716 NAYA ROOP (her pick 5): like Claude, the turn's tool steps show LIVE as rows - a spinner while a step runs,
+   a tick that draws itself when it is done - and fold into one "Worked for 12s · 3 steps" line the moment the words
+   start (or the turn ends). Before, a live turn showed only the one-line progress label; the rows existed only on a
+   reload (replayStep). */
+const HM_TICK = '<svg viewBox="0 0 16 16"><path d="M3 8.5l3.2 3L13 5"/></svg>';
+const HM_CHEV = '<svg class="hm-chev" viewBox="0 0 12 12"><path d="M4 2l4 4-4 4"/></svg>';
+function liveStep(p) {
+  if (!TYPING) return;
+  const t = turn();
+  let g = t.live;
+  if (!g) {
+    const el = document.createElement('details'); el.className = 'tools hmlive'; el.open = true;
+    el.innerHTML = `<summary>${HM_CHEV}<span class="sm">Working</span></summary><div class="tl"></div>`;
+    g = t.live = {el, rows: new Map(), t0: Date.now(), n: 0};
+    put(t, el);
+    if (SIMPLE_PROGRESS) placeProgress();
+  }
+  const id = String(p.id || p.tool || g.n);
+  let r = g.rows.get(id);
+  if (!r) {
+    r = document.createElement('div'); r.className = 'ts run';
+    r.innerHTML = '<span class="ic"><span class="hm-spin"></span></span><span class="tx"></span><span class="tm"></span>';
+    r._t0 = Date.now(); g.rows.set(id, r); g.n++; g.el.querySelector('.tl').appendChild(r);
+  }
+  r.querySelector('.tx').textContent = p.label || p.tool || 'Working';
+  if (p.state === 'done' || p.state === 'error') {
+    r.classList.remove('run'); r.classList.toggle('err', p.state === 'error');
+    const ic = r.querySelector('.ic'); ic.className = p.state === 'error' ? 'ic' : 'ic hm-tick';
+    ic.innerHTML = p.state === 'error' ? '!' : HM_TICK;
+    const s = (Date.now() - r._t0) / 1000; r.querySelector('.tm').textContent = s < 1 ? '<1s' : s.toFixed(1) + 's';
+  }
+  scrollDown();
+}
+function foldLive(t = TURN) {
+  const g = t?.live; if (!g) return;
+  t.live = null;
+  const secs = Math.max(1, Math.round((Date.now() - g.t0) / 1000));
+  g.el.classList.remove('hmlive'); g.el.classList.add('hmfold'); g.el.open = false;
+  g.el.querySelector('.sm').textContent = `Worked for ${fmtSecs(secs)} · ${g.n} step${g.n > 1 ? 's' : ''}`;
+  g.el.querySelectorAll('.ts.run').forEach(r => { r.classList.remove('run'); });
+  // the rows keep their live look inside the fold (spinner never left spinning)
+  g.el.querySelectorAll('.ts .hm-spin').forEach(sp => { sp.parentElement.className = 'ic hm-tick'; sp.parentElement.innerHTML = HM_TICK; });
+  g.el.querySelector('.tl').classList.add('hmrows');
+}
+function stepEvent(p) { liveStep(p); simpleProgress('step',p); }
 function closeTurnTools(t = TURN) {
   if (!t) return;
   for (const g of t.groups || []) {
@@ -609,7 +655,7 @@ function typing(on) {
   $('#stopBtn').hidden=!on;
   if(on){TYPING ||= document.createElement('div');simpleProgress('typing');live('run');}
   else {
-    TYPING=null;clearSimpleProgress();closeTurnTools();
+    foldLive();TYPING=null;clearSimpleProgress();closeTurnTools();
     for(const [cid,R] of [...RCPTS])if(R.state==='queue')receiptUpdate(cid,'sent');
     live(QUEUE.length?'ask':'idle');TURN=null;
   }
@@ -643,11 +689,12 @@ function reply(turnId) {
 function seg(R, n) {
   let S = R.segs.get(n);
   if (S) return S;
+  foldLive(R.t);                                                         // v0.716 the steps so far fold into one line
   const el = document.createElement('div'); el.className = 'txt textmd'; el.dataset.seg = n;
   put(R.t, el); R.t.afterText = true;
   if (TYPING && TYPING.parentNode === R.t.bd) TYPING.hidden = true;    // the words themselves show that it is working
   if (SIMPLE_PROGRESS) SIMPLE_PROGRESS.hidden = true;                    // v0.227.3 one row: the streaming words replace the progress line
-  const view = new HoolaMD.Live(el);
+  const view = new HoolaMD.Live(el, {soft: true});   // v0.716 the newest words land out of a soft focus
   S = {el, view, pacer: new HoolaStream.Pacer((text, fin) => {
     view.update(text, !fin);
     LAST_WORD_AT = Date.now();                       // v0.302 feeds the watchdog in progressTick
@@ -848,22 +895,28 @@ function renderCard(kind, p, at, live) {
     const el = cardShell(kind, p); RESULTS.card(kind, p, el); if (live) PN.update(kind, p); scrollDown(); return;
   }
   if (kind === 'goal') {   // v0.186 lamba kaam pakka: live checklist, one card per goal id
-    const el = cardShell(kind, p);
+    // v0.716 NAYA ROOP (her pick 5): drawn as Claude's to-do list - a Plan card with the mark, n of m, and each step
+    // ticking itself off (spinner while current, a drawn tick when done). HEAD stays the job's state for readers.
+    const el = cardShell(kind, p); el.classList.add('hmplan');
     const st = p.status || 'working';
     const HEAD = {working: 'LONG JOB RUNNING', done: 'LONG JOB DONE', blocked: 'WAITING FOR YOUR ANSWER',
                   failed: 'LONG JOB INCOMPLETE', stopped: 'LONG JOB STOPPED'};
+    const SAY = {working: 'Working', done: 'Done', blocked: 'Waiting for you', failed: 'Not finished', stopped: 'Stopped'};
     const steps = Array.isArray(p.steps) ? p.steps : [];
     const done = p.done != null ? p.done : steps.filter(x => x.state === 'done').length;
     const total = p.total != null ? p.total : steps.length;
-    const ico = {done: '\u2713', current: '\u23F3', failed: '\u2715', skipped: '\u2013', pending: '\u2022'};
-    el.innerHTML = head(HEAD[st] || HEAD.working, total ? (done + '/' + total) : '', st === 'done' ? 'ok' : st === 'failed' ? 'bad' : 'v') +
-      `<div class="bd" style="margin-top:4px"><b>${esc(p.title || p.goal || 'Long job')}</b>` +
-      (total ? `<div class="pbar"><i style="width:${Math.max(0, Math.min(100, p.pct ?? Math.round(100 * done / total)))}%"></i></div>` : '') +
-      steps.slice(0, 15).map(x => `<div class="gstep ${esc(x.state || 'pending')}"><span>${ico[x.state] || '\u2022'}</span> ${esc(x.text || '')}` +
-        (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</div>`).join('') +
+    const box = {done: `<span class="b hm-tick">${HM_TICK}</span>`, current: '<span class="b"><span class="hm-spin"></span></span>',
+                 failed: '<span class="b">!</span>', skipped: '<span class="b">–</span>', pending: '<span class="b"><span class="r0"></span></span>'};
+    const mark = window.HoolaMark ? (st === 'working' ? HoolaMark.think(16) : `<span style="width:16px;height:16px;display:inline-block">${HoolaMark.svg()}</span>`) : '';
+    el.setAttribute('aria-label', HEAD[st] || HEAD.working);
+    el.innerHTML = `<div class="ph">${mark}<span>Plan</span><span class="pc">${esc(SAY[st] || SAY.working)}${total ? ' · ' + done + ' of ' + total : ''}</span></div>` +
+      `<div class="pt">${esc(p.title || p.goal || 'Long job')}</div>` +
+      `<ol>` + steps.slice(0, 15).map((x, i) => `<li class="${esc(x.state || 'pending')}${x.state === 'done' && el._done?.has(i) ? ' old' : ''}">${box[x.state] || box.pending}<span>${esc(x.text || '')}` +
+        (x.note ? ` <small>(${esc(x.note)})</small>` : '') + `</span></li>`).join('') + `</ol>` +
       (p.reason && st !== 'working' && !p.report ? `<div class="note">${esc(p.reason)}</div>` : '') +
       goalReport(p.report) +
-      (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '') + `</div>`;
+      (st === 'blocked' && p.hold === 'limit' ? `<div class="row" style="margin-top:8px"><button class="btn" type="button" data-goal-go>Continue</button></div>` : '');
+    el._done = new Set(steps.slice(0, 15).map((x, i) => x.state === 'done' ? i : -1).filter(i => i >= 0));   // a tick draws once
     const go = el.querySelector('[data-goal-go]');   // v0.223 the budget ran out: the job ASKS, her tap carries it on
     if (go) go.onclick = async () => {
       go.disabled = true;
