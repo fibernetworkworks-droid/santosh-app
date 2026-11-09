@@ -102,178 +102,178 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (name, text[:400]) if text else None
     if kind == "goal":   # v0.186 lamba kaam: push only when it blocks on her, or it is done
         st = p.get("status")
-        title = str(p.get("title") or p.get("goal") or "Lamba kaam")[:80]
+        title = str(p.get("title") or p.get("goal") or "Long task")[:80]
         if st == "blocked":
-            return (f"{name}: aapki zaroorat", f"Lamba kaam ruka hai: {title} — {str(p.get('reason') or 'aapka jawab chahiye')[:200]}")
+            return (f"{name}: needs you", f"Long task is blocked: {title} — {str(p.get('reason') or 'your answer is needed')[:200]}")
         if st == "done":
             rep = p.get("report") if isinstance(p.get("report"), dict) else {}
             extra = (" · " + str(rep.get("aapka"))[:120]) if rep.get("aapka") and "Kuch nahi" not in str(rep.get("aapka")) else ""
-            return (f"{name}: kaam poora", f"Lamba kaam ho gaya: {title}{extra}")
+            return (f"{name}: task complete", f"Long task done: {title}{extra}")
         if st == "working" and p.get("milestone"):   # v0.228 a real milestone, at most a few per job (never every step)
             stage = str(p.get("stage") or "")[:100]
-            return (f"{name}: kaam aage badh raha hai",
-                    f"{title} — {p['milestone']} steps ho gaye" + (f". Ab: {stage}" if stage else ""))
+            return (f"{name}: task in progress",
+                    f"{title} — {p['milestone']} steps done" + (f". Now: {stage}" if stage else ""))
         return None
     if kind == "bazar_approval":
         if p.get("status") not in (None, "", "pending") or p.get("result"):
             return None
-        return ("Approve karein", f"{p.get('title', '')} {p.get('amount', '')}".strip())
+        return ("Please approve", f"{p.get('title', '')} {p.get('amount', '')}".strip())
     if kind == "artifact":
-        return (f"{name} ne banaya", str(p.get("title") or "Page taiyaar hai")) if p.get("status") == "ready" else None
+        return (f"{name} made this", str(p.get("title") or "Page is ready")) if p.get("status") == "ready" else None
     if kind == "pc_file":
-        return (f"{name} ne PDF banaya" if p.get("source") == "bazar" else "PC se file aayi", str(p.get("name") or ""))
+        return (f"{name} made a PDF" if p.get("source") == "bazar" else "File from your PC", str(p.get("name") or ""))
     if kind == "photo_made":
-        return (f"{name} ne photo {'badli' if p.get('edit') else 'banayi'}", str(p.get("prompt") or "")[:120])
+        return (f"{name} {'edited' if p.get('edit') else 'made'} a photo", str(p.get("prompt") or "")[:120])
     if kind == "pg_write":
         if p.get("status") != "pending" or p.get("again"):
             return None
-        return (f"{name}: database badlav ke liye haan chahiye", str(p.get("say") or "")[:200])
+        return (f"{name}: database change needs your yes", str(p.get("say") or "")[:200])
     if kind == "blender3d":
         if not p.get("push") or p.get("status") != "done":
             return None
-        return (f"{name} ne 3D banaya", str(p.get("say") or p.get("title") or "")[:200])
+        return (f"{name} made a 3D model", str(p.get("say") or p.get("title") or "")[:200])
     if kind == "notebook_output":
         if not p.get("push") or p.get("status") not in ("ready", "failed"):
             return None
-        head = f"{p.get('icon', '📒')} {p.get('label', 'Notebook')} taiyaar" if p.get("status") == "ready" else f"{p.get('label', 'Notebook')} nahi bana"
+        head = f"{p.get('icon', '📒')} {p.get('label', 'Notebook')} ready" if p.get("status") == "ready" else f"{p.get('label', 'Notebook')} could not be made"
         return (head, str(p.get("title") if p.get("status") == "ready" else p.get("error") or "")[:200])
     if kind == "email_draft":
-        return ("Email draft taiyaar", str(p.get("subject") or "Dekh kar bhejiye"))
+        return ("Email draft ready", str(p.get("subject") or "Review and send"))
     if kind == "email_new":
         if p.get("digest"):
-            return (str(p.get("subject") or "Nayi mail"), str(p.get("snippet") or "")[:200])
-        return (f"Nayi mail: {str(p.get('from') or p.get('from_email') or '')[:60]}",
+            return (str(p.get("subject") or "New email"), str(p.get("snippet") or "")[:200])
+        return (f"New email: {str(p.get('from') or p.get('from_email') or '')[:60]}",
                 str(p.get("subject") or "").strip()[:200])
     if kind == "email_snooze":
-        return ("Snooze khatam", str(p.get("subject") or "Mail wapas inbox mein"))
+        return ("Snooze ended", str(p.get("subject") or "Email is back in your inbox"))
     if kind == "hoola_knock" and not p.get("quiet") and p.get("status") in (None, "pending"):
         b = p.get("body") or {}
         said = str(b.get("text") or "")[:200] or (f"📎 {b.get('name')}" if b.get("name") else "")
         return (f"{p.get('from', 'Hoola')}", f"{p.get('what', '')}: {said}".strip(": "))
     if kind == "hoola_connect" and p.get("status") == "incoming" and not p.get("quiet"):
-        return ("Connect request", f"{p.get('label', '')} judna chahte hain")
+        return ("Connect request", f"{p.get('label', '')} wants to connect")
     if kind == "hoola_msg" and not p.get("quiet") and not p.get("fyi"):
         return (f"{name}: {p.get('from', '')}", str(p.get("text") or "")[:300])
     if kind == "employee_ask" and p.get("status") == "pending":
-        return ("Aapki haan chahiye", f"{p.get('what', '')} · {p.get('who', '')}: {p.get('detail', '')}"[:300])
+        return ("Needs your yes", f"{p.get('what', '')} · {p.get('who', '')}: {p.get('detail', '')}"[:300])
     if kind == "darzi_quote" and p.get("status") == "pending":
-        return (f"{name}: naya daam, aapki haan?", f"{p.get('customer', '')} · {p.get('label', '')}: {p.get('price') or 'daam bataiye'}"[:300])
+        return (f"{name}: new price, your yes?", f"{p.get('customer', '')} · {p.get('label', '')}: {p.get('price') or 'enter the price'}"[:300])
     if kind == "chai_plan":
-        return (f"{name}: kal ka saamaan", str(p.get("say") or "")[:300])
+        return (f"{name}: tomorrow's supplies", str(p.get("say") or "")[:300])
     if kind == "darzi_day":
-        return (f"{name}: aaj ki silai", str(p.get("text") or "")[:300])
+        return (f"{name}: today's tailoring", str(p.get("text") or "")[:300])
     if kind == "office_spend" and p.get("status") == "pending":
-        return (f"{name}: kharcha, aapki haan?", f"{p.get('number', '')} {p.get('title', '')}: {p.get('amount') or 'rakam bataiye'}"[:300])
+        return (f"{name}: expense, your yes?", f"{p.get('number', '')} {p.get('title', '')}: {p.get('amount') or 'enter the amount'}"[:300])
     if kind == "mshop_bill" and p.get("status") == "pending":
-        return (f"{name}: bill par aapki haan?", f"{p.get('number', '')} {p.get('customer', '')} · {p.get('device', '')}: {p.get('total', '')}"[:300])
+        return (f"{name}: bill needs your yes", f"{p.get('number', '')} {p.get('customer', '')} · {p.get('device', '')}: {p.get('total', '')}"[:300])
     if kind == "theka_bill":
-        return (f"{name}: {p.get('label', 'RA bill')} taiyaar", f"{p.get('project', '')}: haath mein ~Rs {p.get('net', 0):,.0f}; department ko dene se pehle aapki haan")
+        return (f"{name}: {p.get('label', 'RA bill')} ready", f"{p.get('project', '')}: net in hand ~Rs {p.get('net', 0):,.0f}; needs your yes before it goes to the department")
     if kind == "theka_letter":
-        return (f"{name}: chitthi ka draft", f"{p.get('project', '')}: {p.get('title', '')}")
+        return (f"{name}: letter draft", f"{p.get('project', '')}: {p.get('title', '')}")
     if kind == "theka_day":
-        return (f"{name}: theka", str(p.get("text") or "")[:300])
+        return (f"{name}: contract work", str(p.get("text") or "")[:300])
     if kind == "fr_statement":
-        return (f"{name}: royalty statement", f"{p.get('brand', '')} {p.get('month', '')}: dena Rs {p.get('payable', 0):,.0f}; report bhejne se pehle aapki haan")
+        return (f"{name}: royalty statement", f"{p.get('brand', '')} {p.get('month', '')}: payable Rs {p.get('payable', 0):,.0f}; needs your yes before the report is sent")
     if kind == "fr_day":
         return (f"{name}: outlets", str(p.get("text") or "")[:300])
     if kind == "niryat_pi":
-        return (f"{name}: PI taiyaar", f"{p.get('buyer', '')}: {p.get('currency', '')} {p.get('total', 0):,.2f}; bhejne se pehle aapki haan")
+        return (f"{name}: PI ready", f"{p.get('buyer', '')}: {p.get('currency', '')} {p.get('total', 0):,.2f}; needs your yes before sending")
     if kind == "niryat_day":
-        return (f"{name}: export", str(p.get("text") or "")[:300])
+        return (f"{name}: exports", str(p.get("text") or "")[:300])
     if kind == "thok_order":
-        return (f"{name}: order, bill banaun?", f"{p.get('party', '')}: Rs {p.get('total', 0):,.0f}" + (" (credit dekhiye)" if p.get("level") != "ok" else ""))
+        return (f"{name}: order, make the bill?", f"{p.get('party', '')}: Rs {p.get('total', 0):,.0f}" + (" (check credit)" if p.get("level") != "ok" else ""))
     if kind in ("thok_alert", "thok_day"):
-        return (f"{name}: thok", str(p.get("text") or "")[:300])
+        return (f"{name}: wholesale", str(p.get("text") or "")[:300])
     if kind in ("seo_week", "seo_alert"):
         return (f"{name}: SEO", str(p.get("text") or "")[:300])
     if kind == "social_lead":
-        return (f"{name}: Instagram / Facebook par lead", str(p.get("text") or "")[:300])
+        return (f"{name}: lead on Instagram / Facebook", str(p.get("text") or "")[:300])
     if kind in ("social_alert", "social_day", "social_week"):
         return (f"{name}: social media", str(p.get("text") or "")[:300])
     if kind == "seo_draft":
-        return (f"{name}: SEO draft", f"{p.get('title', '')}: final karne ke liye aapki haan")
+        return (f"{name}: SEO draft", f"{p.get('title', '')}: needs your yes to finalize")
     if kind == "ins_day":
-        return (f"{name}: bima", str(p.get("text") or "")[:300])
+        return (f"{name}: insurance", str(p.get("text") or "")[:300])
     if kind == "ins_advice":
-        return (f"{name}: salah taiyaar", f"{p.get('client', '')} ke liye options; bhejne se pehle aapki haan")
+        return (f"{name}: advice ready", f"Options for {p.get('client', '')}; needs your yes before sending")
     if kind == "brand_approval":
         dd = p.get("design") or {}
-        return (f"{name}: poster final karein?", f"{dd.get('number', '')} {dd.get('title', '')}: proof dekh kar haan dijiye"[:300])
+        return (f"{name}: finalize the poster?", f"{dd.get('number', '')} {dd.get('title', '')}: review the proof and say yes"[:300])
     if kind == "brand_idea":
-        return (f"{name}: tyohar ka poster?", str(p.get("say") or "")[:300])
+        return (f"{name}: festival poster?", str(p.get("say") or "")[:300])
     # v0.133 Seva suite
     if kind == "seva_exception" and p.get("status") in (None, "", "pending", "waiting"):
-        return (f"{name}: aapki haan chahiye: {p.get('kind_label', 'arzi')}", str(p.get("say") or "")[:300])
+        return (f"{name}: needs your yes: {p.get('kind_label', 'request')}", str(p.get("say") or "")[:300])
     if kind == "seva_sla" and p.get("breach"):
-        return (f"{name}: shikayat ka samay: {p.get('ticket', '')}", str(p.get("text") or "")[:300])
+        return (f"{name}: complaint deadline: {p.get('ticket', '')}", str(p.get("text") or "")[:300])
     if kind == "seva_ticket" and p.get("event") == "new" and p.get("priority") == "urgent":
-        return (f"{name}: nayi shikayat {p.get('number', '')}", f"{p.get('customer', '')}: {p.get('text', '')}"[:300])
+        return (f"{name}: new complaint {p.get('number', '')}", f"{p.get('customer', '')}: {p.get('text', '')}"[:300])
     if kind == "seva_day":
-        return (f"{name}: seva aaj", str(p.get("text") or "")[:300])
+        return (f"{name}: service today", str(p.get("text") or "")[:300])
     if kind == "helpdesk_change" and (p.get("change") or {}).get("status") in (None, "", "waiting"):
-        return (f"{name}: IT: aapki haan chahiye", str(p.get("say") or "")[:300])
+        return (f"{name}: IT: needs your yes", str(p.get("say") or "")[:300])
     if kind == "helpdesk_alert":
-        return (f"{name}: IT / suraksha", str(p.get("say") or "")[:300])
+        return (f"{name}: IT / security", str(p.get("say") or "")[:300])
     if kind == "helpdesk_escalate":
-        return (f"{name}: technician ke liye message taiyaar", str(p.get("say") or "")[:300])
+        return (f"{name}: message for the technician is ready", str(p.get("say") or "")[:300])
     if kind == "helpdesk_day":
-        return (f"{name}: aaj ka IT note", str(p.get("say") or "")[:300])
+        return (f"{name}: today's IT note", str(p.get("say") or "")[:300])
     if kind == "shikayat_comp" and not p.get("event"):
         c = p.get("comp") or {}
         sh = p.get("show") or {}
-        return (f"{name}: muavze ki haan chahiye", f"{sh.get('case') or c.get('number', '')}: {c.get('kind_label', '')} {c.get('amount_text', '')}".strip()[:300])
+        return (f"{name}: compensation needs your yes", f"{sh.get('case') or c.get('number', '')}: {c.get('kind_label', '')} {c.get('amount_text', '')}".strip()[:300])
     if kind == "shikayat_case" and p.get("event") == "new":
         c = p.get("case") or {}
         causes = c.get("cause_labels") or []
         causes = ", ".join(causes) if isinstance(causes, list) else str(causes)
-        return (f"{name}: nayi shikayat {c.get('number', '')}", f"{c.get('customer', '')} · {causes}"[:300])
+        return (f"{name}: new complaint {c.get('number', '')}", f"{c.get('customer', '')} · {causes}"[:300])
     if kind in ("shikayat_alert", "shikayat_day"):
-        return (f"{name}: {'shikayat ki samay-seema' if kind == 'shikayat_alert' else 'aaj ki shikayatein'}", str(p.get("text") or "")[:300])
+        return (f"{name}: {'complaint deadline' if kind == 'shikayat_alert' else 'today\'s complaints'}", str(p.get("text") or "")[:300])
     if kind == "aftersales_charge" and p.get("status") in ("pending", "needs_price"):
         tot = p.get("total") or 0
-        body = f"{p.get('number', '')} {p.get('customer', '')}: " + (f"Rs {tot:,.0f} graahak se lena hai?" if p.get("status") == "pending"
-                                                                     else "daam likhiye")
-        return (f"{name}: charge par aapki haan", body[:300])
+        body = f"{p.get('number', '')} {p.get('customer', '')}: " + (f"Charge the customer Rs {tot:,.0f}?" if p.get("status") == "pending"
+                                                                     else "enter the price")
+        return (f"{name}: charge needs your yes", body[:300])
     if kind == "aftersales_reminders" and p.get("count"):
-        return (f"{name}: service reminder", f"{p.get('count')} reminder draft bhejne ke liye taiyaar")
+        return (f"{name}: service reminder", f"{p.get('count')} reminder drafts ready to send")
     if kind == "aftersales_visit" and p.get("status") in (None, "booked"):
-        return (f"{name}: visit book", f"{p.get('number', '')} {p.get('customer', '')}: {p.get('when', '')}, {p.get('tech', '')}"[:300])
+        return (f"{name}: visit booked", f"{p.get('number', '')} {p.get('customer', '')}: {p.get('when', '')}, {p.get('tech', '')}"[:300])
     if kind == "aftersales_day":
-        return (f"{name}: after-sales aaj", str(p.get("text") or "")[:300])
+        return (f"{name}: after-sales today", str(p.get("text") or "")[:300])
     if kind == "feedback_reply" and p.get("status") in (None, "draft"):
         it = p.get("item") or {}
         stars = f" {it.get('stars')}*" if it.get("stars") else ""
-        return (f"{name}: review ka jawab", f"Jawab ka draft taiyaar: {it.get('source_label', '')}{stars} - Haan dabaiye to jaayega"[:300])
+        return (f"{name}: review reply", f"Reply draft ready: {it.get('source_label', '')}{stars} - it goes out when you tap Yes"[:300])
     if kind in ("feedback_alert", "feedback_report"):
-        return (f"{name}: {'graahak ki shikayat' if kind == 'feedback_alert' else 'feedback report'}", str(p.get("text") or "")[:300])
+        return (f"{name}: {'customer complaint' if kind == 'feedback_alert' else 'feedback report'}", str(p.get("text") or "")[:300])
     if kind == "wapsi_return" and p.get("event") == "new":
         r = p.get("return") or {}
         cust = r.get("customer") or {}
         cust = cust.get("name", "") if isinstance(cust, dict) else str(cust)
-        verdict = {"approve": "return theek lagta hai", "ask_more": "aur saboot chahiye", "reject_suggest": "niyam ke bahar lagta hai"}.get(
-            str((r.get("check") or {}).get("verdict") or ""), "dekhiye")
+        verdict = {"approve": "return looks fine", "ask_more": "needs more proof", "reject_suggest": "looks outside the rules"}.get(
+            str((r.get("check") or {}).get("verdict") or ""), "take a look")
         return (f"{name}: return {r.get('number', '')}", f"{cust}: {r.get('reason_label', '')} - {verdict}"[:300])
     if kind == "wapsi_refund" and (p.get("refund") or {}).get("status") == "waiting" and not p.get("event"):
         f = p.get("refund") or {}
-        return (f"{name}: refund ki haan chahiye", f"{p.get('return_number', '')} {p.get('customer', '')}: Rs {f.get('amount') or 0:,.0f} - card par haan (fingerprint)"[:300])
+        return (f"{name}: refund needs your yes", f"{p.get('return_number', '')} {p.get('customer', '')}: Rs {f.get('amount') or 0:,.0f} - approve on the card (fingerprint)"[:300])
     if kind == "wapsi_day":
-        return (f"{name}: wapsi", str(p.get("text") or "")[:300])
+        return (f"{name}: returns", str(p.get("text") or "")[:300])
     if kind == "samudaay_alert" and p.get("status") in (None, "", "open", "new"):
-        return (f"{name}: group mein {p.get('kind', 'alert')}", str(p.get("title") or "")[:300])
+        return (f"{name}: {p.get('kind', 'alert')} in the group", str(p.get("title") or "")[:300])
     if kind == "samudaay_action" and p.get("status") in (None, "", "pending", "waiting"):
-        return (f"{name}: aapki haan chahiye", f"{p.get('label', '')}: {p.get('member', '')} ({p.get('community', '')})"[:300])
+        return (f"{name}: needs your yes", f"{p.get('label', '')}: {p.get('member', '')} ({p.get('community', '')})"[:300])
     if kind == "samudaay_question":
-        return (f"{name}: group mein sawal", f"{p.get('member', '')}: {p.get('text', '')}"[:300])
+        return (f"{name}: question in the group", f"{p.get('member', '')}: {p.get('text', '')}"[:300])
     if kind == "samudaay_join":
-        return (f"{name}: join request", f"{p.get('name', '')} {p.get('community', '')} mein judna chahte hain"[:300])
+        return (f"{name}: join request", f"{p.get('name', '')} wants to join {p.get('community', '')}"[:300])
     if kind == "samudaay_template" and p.get("status") in (None, "", "draft", "waiting"):
-        return (f"{name}: welcome message", "Dekh kar 'Haan' dabaiye, tabhi naye logon ko jayega")
+        return (f"{name}: welcome message", "Review it and tap Yes; only then will it go to new members")
     if kind == "samudaay_week":
-        return (f"{name}: group ki hafte ki sehat", str(p.get("say") or "")[:300])
+        return (f"{name}: group's weekly health", str(p.get("say") or "")[:300])
     if kind == "callcentre_script" and p.get("status") == "waiting":
-        return (f"{name}: call centre script v{p.get('version', '')}", f"Line par chalane ke liye Haan chahiye: {p.get('say', '')}"[:300])
+        return (f"{name}: call centre script v{p.get('version', '')}", f"Needs your Yes to go live: {p.get('say', '')}"[:300])
     if kind == "callcentre_message":
-        return (f"{name}: call se message", str(p.get("say") or "")[:300])
+        return (f"{name}: message from a call", str(p.get("say") or "")[:300])
     if kind == "callcentre_call" and (p.get("outcome") in ("transferred", "message", "complaint", "failed", "callback") or p.get("flags")):
         return (f"{name}: call: {p.get('caller_masked', '')}", str(p.get("summary") or "")[:300])
     # v0.137 Tech suite
@@ -283,44 +283,44 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         if t.get("status") in ("checks_failed", "refused", "explained") or (t.get("number") and _say.startswith(str(t.get("number"))) and "CI" in _say):
             return (f"{name}: Developer: {t.get('number', '')}", _say)
         return None
-    _tech = {"devsahayak_merge": "Merge ke liye aapki haan", "devsahayak_deploy": "Deploy ke liye aapki haan",
-             "devsahayak_push": "PR kholne ki haan chahiye", "devsahayak_plan": "Plan taiyaar: shuru karne ki haan chahiye", "devsahayak_review": "Code review taiyaar",
-             "qa_bug": "Naya bug mila", "qa_export": "GitHub issue: aapki haan chahiye",
-             "itadmin_change": "IT: aapki haan chahiye", "itadmin_renewal": "Renewal aa raha hai",
-             "itadmin_checklist": "Joiner / leaver checklist", "itadmin_review": "Access review ka samay",
-             "itadmin_day": "Aaj ka IT admin note", "ispnoc_change": "Network: aapki haan chahiye", "ispnoc_alert": "Network alert",
-             "ispnoc_day": "Aaj ka network", "cyber_action": "Suraksha: aapki haan chahiye", "cyber_alerts": "Zaroori suraksha alert",
-             "cyber_incident": "Cyber incident khula", "cyber_advisory": "Software mein khatra", "cyber_day": "Aaj ki suraksha",
-             "devops_build": "Build fail hua", "devops_day": "Aaj ka DevOps note", "docwriter_publish": "Docs public karein?",
-             "docwriter_sync": "Product badla: docs update", "appreview_handoff": "App review: aapki haan chahiye",
-             "appreview_alert": "App review", "product_publish": "Bahar bhejna hai: aapki haan", "product_day": "Aaj ka product note",
-             "product_backlog": "Nayi dikkatein backlog mein"}
+    _tech = {"devsahayak_merge": "Merge needs your yes", "devsahayak_deploy": "Deploy needs your yes",
+             "devsahayak_push": "Opening a PR needs your yes", "devsahayak_plan": "Plan ready: needs your yes to start", "devsahayak_review": "Code review ready",
+             "qa_bug": "New bug found", "qa_export": "GitHub issue: needs your yes",
+             "itadmin_change": "IT: needs your yes", "itadmin_renewal": "Renewal coming up",
+             "itadmin_checklist": "Joiner / leaver checklist", "itadmin_review": "Time for an access review",
+             "itadmin_day": "Today's IT admin note", "ispnoc_change": "Network: needs your yes", "ispnoc_alert": "Network alert",
+             "ispnoc_day": "Today's network", "cyber_action": "Security: needs your yes", "cyber_alerts": "Important security alert",
+             "cyber_incident": "Cyber incident opened", "cyber_advisory": "Software risk", "cyber_day": "Today's security",
+             "devops_build": "Build failed", "devops_day": "Today's DevOps note", "docwriter_publish": "Make the docs public?",
+             "docwriter_sync": "Product changed: update the docs", "appreview_handoff": "App review: needs your yes",
+             "appreview_alert": "App review", "product_publish": "Sending out: needs your yes", "product_day": "Today's product note",
+             "product_backlog": "New issues in the backlog"}
     if kind in _tech:
         return (f"{name}: {_tech[kind]}", _say)
     if kind == "qa_run":
         r = p.get("run") or {}
         if (r.get("counts") or {}).get("fail") or r.get("status") == "failed":
-            return (f"{name}: Test ho gaya", _say)
+            return (f"{name}: Test finished", _say)
         return None
     if kind == "ispnoc_fault":
-        return (f"{name}: Network mein dikkat", _say) if p.get("new") else None
+        return (f"{name}: Network problem", _say) if p.get("new") else None
     if kind == "devops_deploy":
-        return (f"{name}: Deploy: aapki haan chahiye", _say) if p.get("push") else None
+        return (f"{name}: Deploy: needs your yes", _say) if p.get("push") else None
     if kind == "devops_alert":
         return (f"{name}: DevOps alert", _say) if p.get("push") else None
     # v0.139 Safar suite
     if kind == "customs_filing":
-        return (f"{name}: Import filing: aapki haan chahiye", _say) if (p.get("filing") or {}).get("status") == "waiting" else None
+        return (f"{name}: Import filing: needs your yes", _say) if (p.get("filing") or {}).get("status") == "waiting" else None
     if kind == "travel_booking":
-        return (f"{name}: Yatra: booking ki haan chahiye", _say) if p.get("status") == "waiting" else None
+        return (f"{name}: Travel: booking needs your yes", _say) if p.get("status") == "waiting" else None
     if kind == "warehouse_adjust":
-        return (f"{name}: Godown: stock badlav aapki haan ka", _say) if (p.get("adjust") or {}).get("status") == "waiting" else None
+        return (f"{name}: Warehouse: stock change needs your yes", _say) if (p.get("adjust") or {}).get("status") == "waiting" else None
     if kind == "courier_card":
         c = p.get("card") or {}
         if c.get("status") != "waiting":
             return None
         b = c.get("body") or {}
-        return (f"{name}: Courier: aapki haan chahiye", f"{b.get('title', '')} - {b.get('say', '')}"[:300])
+        return (f"{name}: Courier: needs your yes", f"{b.get('title', '')} - {b.get('say', '')}"[:300])
     if kind == "courier_parcel":
         if p.get("event") not in ("exception", "rto", "delivered", "out_for_delivery"):
             return None
@@ -328,83 +328,83 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: Parcel: {pc.get('number', '')}", f"{pc.get('status_label', '')}: {pc.get('raw', '')}"[:300])
     if kind == "logistics_alert":
         return (f"{name}: Logistics · {p.get('number', '')}", str(p.get("text") or "")[:300])
-    _safar_text = {"courier_day": "Aaj ka courier note", "logistics_day": "Aaj ka dispatch"}
+    _safar_text = {"courier_day": "Today's courier note", "logistics_day": "Today's dispatch"}
     if kind in _safar_text:
         return (f"{name}: {_safar_text[kind]}", str(p.get("text") or "")[:300])
-    _safar = {"customs_alert": "Import / customs", "customs_day": "Aaj ka import desk", "travel_quote": "Graahak ka quote taiyaar",
-              "travel_reminder": "Yatra yaad", "travel_day": "Aaj ki yatra", "warehouse_day": "Aaj ka godown note",
-              "fleet_spend": "Fleet: kharche ki haan chahiye", "fleet_alert": "Fleet", "fleet_day": "Aaj ka fleet note",
-              "drivers_alert": "Driver ke kaagaz", "drivers_plan": "Driver duty: bhejne ke liye taiyaar", "drivers_day": "Aaj ke driver",
-              "logistics_ewb": "E-way bill: aapka tap chahiye"}
+    _safar = {"customs_alert": "Import / customs", "customs_day": "Today's import desk", "travel_quote": "Customer quote ready",
+              "travel_reminder": "Travel reminder", "travel_day": "Today's travel", "warehouse_day": "Today's warehouse note",
+              "fleet_spend": "Fleet: expense needs your yes", "fleet_alert": "Fleet", "fleet_day": "Today's fleet note",
+              "drivers_alert": "Driver documents", "drivers_plan": "Driver duty: ready to send", "drivers_day": "Today's drivers",
+              "logistics_ewb": "E-way bill: needs your tap"}
     if kind in _safar:
         return (f"{name}: {_safar[kind]}", _say)
     # v0.144 Makaan suite: cards push only while they wait for her (the same card is re-published when decided)
-    _makaan_wait = {"propagent_card": ("card", "Property: aapki haan chahiye"),
-                    "rentdesk_approval": ("approval", "Kiraya: aapki haan chahiye"),
-                    "sitesup_indent": ("indent", "Site: indent aapki haan chahiye"), "sitesup_stop": ("stop", "Site: kaam rokna hai?"),
-                    "sitesup_report": ("report", "Client ke liye report taiyaar"),
-                    "interior_quote": ("quote", "Quotation: aapki haan chahiye"), "interior_order": ("order", "Vendor order: aapki haan chahiye"),
-                    "interior_change": ("change", "Badlav se daam badla: aapki haan chahiye"),
-                    "interior_payment": ("stage", "Client se paise maangne ki haan"),
-                    "archassist_transmittal": ("transmittal", "Drawings issue karne ki haan?"),
-                    "archassist_submission": ("submission", "Submission ki taiyaari"), "archassist_invoice": ("invoice", "Invoice ki haan chahiye"),
-                    "society_card": ("card", "Society: aapki haan chahiye")}
+    _makaan_wait = {"propagent_card": ("card", "Property: needs your yes"),
+                    "rentdesk_approval": ("approval", "Rent: needs your yes"),
+                    "sitesup_indent": ("indent", "Site: indent needs your yes"), "sitesup_stop": ("stop", "Site: stop work?"),
+                    "sitesup_report": ("report", "Report ready for the client"),
+                    "interior_quote": ("quote", "Quotation: needs your yes"), "interior_order": ("order", "Vendor order: needs your yes"),
+                    "interior_change": ("change", "Change affects the price: needs your yes"),
+                    "interior_payment": ("stage", "Ask the client for payment: needs your yes"),
+                    "archassist_transmittal": ("transmittal", "Issue the drawings?"),
+                    "archassist_submission": ("submission", "Submission prep"), "archassist_invoice": ("invoice", "Invoice needs your yes"),
+                    "society_card": ("card", "Society: needs your yes")}
     if kind in _makaan_wait:
         key, title = _makaan_wait[kind]
         return (f"{name}: {title}", _say) if (p.get(key) or {}).get("status") == "waiting" else None
     if kind == "rentdesk_message":
-        return (f"{name}: Kirayedar ke liye message taiyaar", _say) if (p.get("message") or {}).get("status") == "draft" else None
+        return (f"{name}: Message for the tenant is ready", _say) if (p.get("message") or {}).get("status") == "draft" else None
     if kind == "rentdesk_alert":
         ok = p.get("kind") in ("renewal", "checklist", "forget") or bool((p.get("request") or {}).get("urgent"))
-        return (f"{name}: Kiraya / property", _say) if ok else None
+        return (f"{name}: Rent / property", _say) if ok else None
     if kind == "society_complaint":
-        return (f"{name}: Zaroori shikayat", _say) if (p.get("complaint") or {}).get("urgent") else None
-    _makaan = {"propagent_alert": "Property", "propagent_day": "Aaj ka property note", "rentdesk_day": "Aaj ka kiraya note",
-               "sitesup_alert": "Site", "sitesup_day": "Aaj ka site note", "interior_alert": "Interior", "interior_day": "Aaj ka interior note",
-               "archassist_alert": "Architect office", "archassist_day": "Aaj ka office note", "society_alert": "Society",
-               "society_day": "Aaj society mein"}
+        return (f"{name}: Urgent complaint", _say) if (p.get("complaint") or {}).get("urgent") else None
+    _makaan = {"propagent_alert": "Property", "propagent_day": "Today's property note", "rentdesk_day": "Today's rent note",
+               "sitesup_alert": "Site", "sitesup_day": "Today's site note", "interior_alert": "Interior", "interior_day": "Today's interior note",
+               "archassist_alert": "Architect office", "archassist_day": "Today's office note", "society_alert": "Society",
+               "society_day": "Today in the society"}
     if kind in _makaan:
         return (f"{name}: {_makaan[kind]}", _say)
     # v0.150 Kanoon suite: cards push only while they wait for her (the same card is re-published when decided)
-    _kanoon_wait = {"vakil_card": ("card", "waiting", "Vakil: aapki haan chahiye"),
-                    "legalres_share": ("share", "waiting", "Memo bhejne ki aapki haan chahiye"),
-                    "pathyakram_share": ("share", "waiting", "Paper / plan bhejne ki aapki haan chahiye"),
-                    "guru_report": ("share", "waiting", "Padhai ki report: guardian ko bhejne ki aapki haan"),
-                    "daftar_share": ("share", "waiting", "School: guardian ko bhejne ki aapki haan"),   # v0.381
-                    "compliance_filing": ("filing", "waiting", "Compliance: aapki haan chahiye"),
+    _kanoon_wait = {"vakil_card": ("card", "waiting", "Lawyer: needs your yes"),
+                    "legalres_share": ("share", "waiting", "Sending the memo needs your yes"),
+                    "pathyakram_share": ("share", "waiting", "Sending the paper / plan needs your yes"),
+                    "guru_report": ("share", "waiting", "Study report: sending to the guardian needs your yes"),
+                    "daftar_share": ("share", "waiting", "School: sending to the guardian needs your yes"),   # v0.381
+                    "compliance_filing": ("filing", "waiting", "Compliance: needs your yes"),
                     "compliance_cert": ("cert", "waiting", "Compliance certificate: sign-off"),
-                    "contracts_card": ("card", "waiting", "Contract: aapki haan chahiye"),
-                    "cosec_filing": ("filing", "waiting", "MCA filing: aapki haan chahiye"),
-                    "cosec_notice": ("meeting", "notice_waiting", "Meeting notice: aapki haan chahiye"),
-                    "cosec_minutes": ("meeting", "minutes_waiting", "Minutes: aapki haan chahiye"),
-                    "notary_print": ("doc", "waiting", "Notary: final print ke liye aapki haan"),
-                    "pidesk_share": ("share", "waiting", "PI desk: aapki haan chahiye"),
-                    "dpo_card": ("card", "waiting", "Data suraksha: aapki haan chahiye")}
+                    "contracts_card": ("card", "waiting", "Contract: needs your yes"),
+                    "cosec_filing": ("filing", "waiting", "MCA filing: needs your yes"),
+                    "cosec_notice": ("meeting", "notice_waiting", "Meeting notice: needs your yes"),
+                    "cosec_minutes": ("meeting", "minutes_waiting", "Minutes: need your yes"),
+                    "notary_print": ("doc", "waiting", "Notary: final print needs your yes"),
+                    "pidesk_share": ("share", "waiting", "PI desk: needs your yes"),
+                    "dpo_card": ("card", "waiting", "Data protection: needs your yes")}
     if kind in _kanoon_wait:
         key, st, title = _kanoon_wait[kind]
         c = p.get(key) or {}
         if c.get("status") != st:
             return None
         return (f"{name}: {title}", (c.get("title") or _say) if kind == "dpo_card" else _say)
-    _kanoon = {"pathyakram_paper": "Paper taiyaar", "pathyakram_plan": "Plan taiyaar", "vakil_alert": "Court diary", "vakil_day": "Aaj ki court diary", "legalres_memo": "Research memo taiyaar",
-               "compliance_alert": "Compliance yaad", "compliance_day": "Aaj ka compliance note", "contracts_alert": "Contract ki tareekh",
-               "contracts_day": "Aaj ke contracts", "cosec_alert": "Company filing yaad", "cosec_day": "Aaj ka company secretary note",
-               "notary_alert": "Notary: yaad dilana", "notary_day": "Aaj ka notary desk", "pidesk_alert": "PI desk",
-               "dpo_breach": "Data breach: 72 ghante ka clock", "dpo_alert": "Data suraksha", "dpo_day": "Aaj data suraksha mein",
-               "dpo_request": "Nayi data maang"}
+    _kanoon = {"pathyakram_paper": "Paper ready", "pathyakram_plan": "Plan ready", "vakil_alert": "Court diary", "vakil_day": "Today's court diary", "legalres_memo": "Research memo ready",
+               "compliance_alert": "Compliance reminder", "compliance_day": "Today's compliance note", "contracts_alert": "Contract date",
+               "contracts_day": "Today's contracts", "cosec_alert": "Company filing reminder", "cosec_day": "Today's company secretary note",
+               "notary_alert": "Notary: reminder", "notary_day": "Today's notary desk", "pidesk_alert": "PI desk",
+               "dpo_breach": "Data breach: 72-hour clock", "dpo_alert": "Data protection", "dpo_day": "Today in data protection",
+               "dpo_request": "New data request"}
     if kind in _kanoon:
         return (f"{name}: {_kanoon[kind]}", _say)
     # v0.152 Mehmaan suite: cards / drafts push only while they wait for her
-    _mehmaan_wait = {"frontoffice_card": ("card", "waiting", "Hotel: aapki haan chahiye"),
-                     "frontoffice_message": ("message", "draft", "Mehmaan ke liye message draft"),
-                     "eventplan_booking": ("booking", "waiting", "Vendor booking: aapki haan chahiye"),
-                     "eventplan_doc": ("doc", "waiting", "Client ko quotation / invoice: aapki haan chahiye"),
-                     "eventplan_message": ("message", "waiting", "Invite / message: aapki haan chahiye"),
-                     "eventplan_spend": ("spend", "waiting", "Event ka kharcha: aapki haan chahiye"),
-                     "shaadi_card": ("card", "waiting", "Shaadi: aapki haan chahiye"),
-                     "tourguide_card": ("card", "waiting", "Tour: aapki haan chahiye"),
-                     "homestay_card": ("card", "waiting", "Homestay: aapke tap ka card"),
-                     "banquet_card": ("card", "waiting", "Banquet: aapki haan chahiye")}
+    _mehmaan_wait = {"frontoffice_card": ("card", "waiting", "Hotel: needs your yes"),
+                     "frontoffice_message": ("message", "draft", "Guest message draft"),
+                     "eventplan_booking": ("booking", "waiting", "Vendor booking: needs your yes"),
+                     "eventplan_doc": ("doc", "waiting", "Quotation / invoice to the client: needs your yes"),
+                     "eventplan_message": ("message", "waiting", "Invite / message: needs your yes"),
+                     "eventplan_spend": ("spend", "waiting", "Event expense: needs your yes"),
+                     "shaadi_card": ("card", "waiting", "Wedding: needs your yes"),
+                     "tourguide_card": ("card", "waiting", "Tour: needs your yes"),
+                     "homestay_card": ("card", "waiting", "Homestay: card for your tap"),
+                     "banquet_card": ("card", "waiting", "Banquet: needs your yes")}
     if kind in _mehmaan_wait:
         key, st, title = _mehmaan_wait[kind]
         if (p.get(key) or {}).get("status") != st:
@@ -412,32 +412,32 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
         return (f"{name}: {title}", _say)
     if kind == "frontoffice_alert" and p.get("kind") not in ("overbook", "formc", "no_show", "hold_released"):
         return None
-    _mehmaan = {"frontoffice_alert": "Front desk", "frontoffice_day": "Aaj ka front desk", "eventplan_alert": "Event",
-                "eventplan_day": "Aaj ka event note", "shaadi_alert": "Shaadi", "shaadi_day": "Aaj ka shaadi note",
-                "tourguide_alert": "Tour", "tourguide_day": "Aaj ke tour", "homestay_alert": "Homestay", "homestay_day": "Aaj ka homestay",
-                "banquet_alert": "Banquet", "banquet_day": "Aaj ka banquet note"}
+    _mehmaan = {"frontoffice_alert": "Front desk", "frontoffice_day": "Today's front desk", "eventplan_alert": "Event",
+                "eventplan_day": "Today's event note", "shaadi_alert": "Wedding", "shaadi_day": "Today's wedding note",
+                "tourguide_alert": "Tour", "tourguide_day": "Today's tours", "homestay_alert": "Homestay", "homestay_day": "Today's homestay",
+                "banquet_alert": "Banquet", "banquet_day": "Today's banquet note"}
     if kind in _mehmaan:
         return (f"{name}: {_mehmaan[kind]}", _say)
     # v0.156 Kala suite: cards push only while they wait for her
-    _kala_wait = {"editdesk_card": "Edit desk: aapki haan chahiye", "motiondesk_card": "Motion studio: aapki haan chahiye",
-                  "filmdesk_card": "Film desk: aapki haan chahiye", "patrakar_card": "Khabar: aapki haan chahiye",
-                  "photoassist_card": "Photo: aapki haan chahiye", "graphic_card": "Design: aapki haan chahiye",
-                  "artistmgr_card": "Artist: aapki haan chahiye", "kitab_card": "Kitaab: aapki haan chahiye",
-                  "podcast_card": "Podcast: aapki haan chahiye", "influencer_card": "Influencer: aapki haan chahiye"}
+    _kala_wait = {"editdesk_card": "Edit desk: needs your yes", "motiondesk_card": "Motion studio: needs your yes",
+                  "filmdesk_card": "Film desk: needs your yes", "patrakar_card": "News: needs your yes",
+                  "photoassist_card": "Photo: needs your yes", "graphic_card": "Design: needs your yes",
+                  "artistmgr_card": "Artist: needs your yes", "kitab_card": "Book: needs your yes",
+                  "podcast_card": "Podcast: needs your yes", "influencer_card": "Influencer: needs your yes"}
     if kind in _kala_wait:
         if (p.get("card") or {}).get("status") != "waiting":
             return None
         return (f"{name}: {_kala_wait[kind]}", _say)
     if kind == "motiondesk_update" and p.get("kind") not in (None, "", "rendered"):
         return None
-    _kala = {"editdesk_alert": "Edit desk", "editdesk_day": "Aaj ka edit desk", "editdesk_note": "Naya edit version taiyaar",
-             "motiondesk_alert": "Motion studio", "motiondesk_day": "Aaj ka studio note", "motiondesk_update": "Render taiyaar",
-             "filmdesk_alert": "Film desk", "filmdesk_day": "Aaj ka film desk note", "patrakar_alert": "Khabar desk",
-             "patrakar_day": "Aaj ka khabar note", "photoassist_alert": "Photo studio", "photoassist_day": "Aaj ka photo note",
-             "graphic_alert": "Design desk", "graphic_day": "Aaj ka design note", "artistmgr_alert": "Artist manager",
-             "artistmgr_day": "Aaj ka artist note", "kitab_alert": "Kitaab", "kitab_day": "Aaj ka kitaab note",
-             "podcast_alert": "Podcast", "podcast_day": "Aaj ka podcast note", "influencer_alert": "Influencer",
-             "influencer_day": "Aaj ka influencer note"}
+    _kala = {"editdesk_alert": "Edit desk", "editdesk_day": "Today's edit desk", "editdesk_note": "New edit version ready",
+             "motiondesk_alert": "Motion studio", "motiondesk_day": "Today's studio note", "motiondesk_update": "Render ready",
+             "filmdesk_alert": "Film desk", "filmdesk_day": "Today's film desk note", "patrakar_alert": "News desk",
+             "patrakar_day": "Today's news note", "photoassist_alert": "Photo studio", "photoassist_day": "Today's photo note",
+             "graphic_alert": "Design desk", "graphic_day": "Today's design note", "artistmgr_alert": "Artist manager",
+             "artistmgr_day": "Today's artist note", "kitab_alert": "Book", "kitab_day": "Today's book note",
+             "podcast_alert": "Podcast", "podcast_day": "Today's podcast note", "influencer_alert": "Influencer",
+             "influencer_day": "Today's influencer note"}
     if kind in _kala:
         return (f"{name}: {_kala[kind]}", _say)
     if kind == "site_board":
@@ -457,114 +457,114 @@ def render(kind: str, p: dict[str, Any], name: str = "Santosh") -> tuple[str, st
             return None
         return (f"{name}: iPhone app {p.get('number', '')}", str(p.get("say") or "")[:300])
     if kind == "site_lead":
-        return (f"{name}: website par {'booking request' if p.get('booking') else 'enquiry'}", str(p.get("say") or "")[:300])
+        return (f"{name}: {'booking request' if p.get('booking') else 'enquiry'} on the website", str(p.get("say") or "")[:300])
     if kind in ("site_launch", "site_dns", "site_down"):
         if not p.get("push"):
             return None
-        title = {"site_launch": "website live karein?", "site_dns": "domain ke DNS badlav", "site_down": "website nahi khul rahi"}[kind]
+        title = {"site_launch": "go live with the website?", "site_dns": "domain DNS changes", "site_down": "website is not opening"}[kind]
         return (f"{name}: {title}", str(p.get("say") or "")[:300])
     if kind == "site_live":
-        return (f"{name}: website live!", str(p.get("say") or "")[:300])
+        return (f"{name}: website is live!", str(p.get("say") or "")[:300])
     if kind == "site_ops":                        # v0.564 her website: an error spike / slow pages / a backup that did not come back
         if not p.get("push"):
             return None
-        title = {"errors": "website par galtiyan", "slow": "website dheemi", "backup": "backup jaanch fail"}.get(p.get("kind"), "website")
+        title = {"errors": "errors on the website", "slow": "website is slow", "backup": "backup check failed"}.get(p.get("kind"), "website")
         return (f"{name}: {title}", str(p.get("say") or "")[:300])
     if kind in ("site_care", "site_github"):       # v0.124 monthly care note / GitHub export card
         if not p.get("push"):
             return None
-        return (f"{name}: {'website ka mahina' if kind == 'site_care' else 'GitHub mein daalein?'}", str(p.get("say") or "")[:300])
+        return (f"{name}: {'website monthly note' if kind == 'site_care' else 'Add to GitHub?'}", str(p.get("say") or "")[:300])
     if kind == "site_domain":                     # v0.123 domain card / bought / KYC / renewal reminders
         if not p.get("push"):
             return None
-        title = {"domain": "domain lena hai?", "domain_done": "domain", "domain_reminder": "domain yaad dilana"}.get(p.get("kind"), "domain")
+        title = {"domain": "buy the domain?", "domain_done": "domain", "domain_reminder": "domain reminder"}.get(p.get("kind"), "domain")
         return (f"{name}: {title}", str(p.get("say") or "")[:300])
     if kind == "ads_change" and not p.get("decided"):
-        return (f"{name}: ads mein badlav ki haan?", str(p.get("say") or "")[:300])
+        return (f"{name}: ads change, your yes?", str(p.get("say") or "")[:300])
     if kind == "ads_report" and p.get("kind") in ("daily", "weekly"):
-        return (f"{name}: ads ka hisaab", str(p.get("say") or "")[:300])
+        return (f"{name}: ads report", str(p.get("say") or "")[:300])
     if kind == "kalam_publish" and not p.get("decided"):
-        return (f"{name}: publish karne ki haan?", f"{p.get('number', '')} {p.get('kind_label', '')}: {p.get('title', '')} · {p.get('where_label', '')}"[:300])
+        return (f"{name}: publish, your yes?", f"{p.get('number', '')} {p.get('kind_label', '')}: {p.get('title', '')} · {p.get('where_label', '')}"[:300])
     if kind == "hoola_deal" and p.get("card") in ("quote", "confirm", "accept", "ready", "pack", "pay", "money", "receipt",
                                                    "check", "dispute", "resolve", "cancel_req", "mandate",
                                                    "booked", "estimate", "photo", "slots", "resched", "warranty"):
-        head = {"quote": "list aayi, quote bhejun?", "confirm": "quote aaya, aapki haan?", "accept": "order aaya, pakka karein?",
-                "ready": "parcel taiyaar", "pack": "order pakka, pack karna hai", "pay": "payment card aaya",
-                "money": "graahak ne paisa bheja?", "receipt": "rasid aayi", "check": "sab sahi mila?",
-                "dispute": "shikayat aayi", "resolve": "shikayat ka jawab", "cancel_req": "cancel ki request",
-                "mandate": "standing order khud pakka hoga", "booked": "booking pakki", "estimate": "extra kaam: haan / na?",
-                "photo": "kaam ki photo", "slots": "naye samay", "resched": "samay badalna hai", "warranty": "warranty shikayat"}[p["card"]]
+        head = {"quote": "list received, send a quote?", "confirm": "quote received, your yes?", "accept": "order received, confirm it?",
+                "ready": "parcel ready", "pack": "order confirmed, pack it", "pay": "payment card received",
+                "money": "customer sent the money?", "receipt": "receipt received", "check": "everything correct?",
+                "dispute": "complaint received", "resolve": "complaint reply", "cancel_req": "cancel request",
+                "mandate": "standing order will confirm itself", "booked": "booking confirmed", "estimate": "extra work: yes / no?",
+                "photo": "photo of the work", "slots": "new time slots", "resched": "needs a new time", "warranty": "warranty complaint"}[p["card"]]
         return (f"{name}: {head}", f"{p.get('with', '')} · {p.get('say', '')}"[:300])
     if kind == "hoola_rfq" and p.get("card") == "compare":
-        return (f"{name}: quotes ki tulna taiyaar", str(p.get("say") or "")[:300])
+        return (f"{name}: quote comparison ready", str(p.get("say") or "")[:300])
     if kind == "hoola_promo" and p.get("card") == "offer":
-        return (f"{name}: {p.get('with', '')} ka offer", str(p.get("title") or "")[:300])
+        return (f"{name}: offer from {p.get('with', '')}", str(p.get("title") or "")[:300])
     if kind == "hoola_mandate":
         return (f"{name}: standing order", str(p.get("say") or "")[:300])
     if kind == "hoola_dosti" and p.get("card") in ("doc_ask", "skill", "paused", "msg"):
-        head = {"doc_ask": "document maanga gaya: bhej doon?", "skill": "dost ki skill: seekhoon?",
-                "paused": "dosti ki baat ruki", "msg": "dost ke avatar ka message"}[p["card"]]
+        head = {"doc_ask": "document requested: send it?", "skill": "friend's skill: learn it?",
+                "paused": "friend chat paused", "msg": "message from a friend's avatar"}[p["card"]]
         return (f"{name}: {head}", f"{p.get('with', '')} · {p.get('say', '')}"[:300])
     if kind == "a2a_task" and (p.get("task") or {}).get("waiting"):
-        head = {"reply": "bahar ke AI agent ka sawaal", "quote": "bahar se order list aayi", "accept": "bahar ka order: pakka karein?"}
-        return (f"{name}: {head.get(p['task']['waiting'], 'bahar ka AI agent')}", str(p.get("say") or "")[:300])
+        head = {"reply": "question from an outside AI agent", "quote": "order list from outside", "accept": "outside order: confirm it?"}
+        return (f"{name}: {head.get(p['task']['waiting'], 'outside AI agent')}", str(p.get("say") or "")[:300])
     if kind == "a2a_out":
         return (f"{name}: {(p.get('out') or {}).get('agent', 'agent')}", str(p.get("say") or "")[:300])
     if kind == "handoff_reminder":
-        return (f"{name}: consent revoke karein?", str(p.get("say") or "")[:300])
+        return (f"{name}: revoke consent?", str(p.get("say") or "")[:300])
     if kind == "digilocker":
         return (f"{name}: DigiLocker", str(p.get("say") or "")[:300])
     if kind == "hoola_khata" and p.get("card") in ("pay", "money", "receipt", "due"):
-        head = {"pay": "khata ka payment card", "money": "khata ka paisa bheja?", "receipt": "khata ki rasid",
-                "due": "khata ki taareekh"}[p["card"]]
+        head = {"pay": "ledger payment card", "money": "ledger payment sent?", "receipt": "ledger receipt",
+                "due": "ledger due date"}[p["card"]]
         return (f"{name}: {head}", f"{p.get('with', '')} · {p.get('say', '')}"[:300])
     if kind == "hoola_pick" and p.get("card") in ("task", "ready"):
-        return (f"{name}: {'pick list' if p.get('card') == 'task' else 'parcel taiyaar'}", str(p.get("say") or "")[:300])
+        return (f"{name}: {'pick list' if p.get('card') == 'task' else 'parcel ready'}", str(p.get("say") or "")[:300])
     if kind in ("sheet_milaan", "doc_edit") and p.get("status") == "ready":
-        head = "Sheet Milaan taiyaar" if kind == "sheet_milaan" else "file mein badlav taiyaar"
+        head = "Sheet match ready" if kind == "sheet_milaan" else "file changes ready"
         return (f"{name}: {head}", f"{p.get('name', '')}: {p.get('say', '')}"[:300])
     if kind == "tele_day":
-        return (f"{name}: aaj ki call list", str(p.get("text") or "")[:300])
+        return (f"{name}: today's call list", str(p.get("text") or "")[:300])
     if kind == "audit_update":
-        return (f"{name}: audit jaanch poori", f"{p.get('findings', 0)} baatein dekhni hain")
+        return (f"{name}: audit check complete", f"{p.get('findings', 0)} findings to review")
     if kind == "fin_alert":
-        return (f"{name}: paisa", str(p.get("text") or "")[:300])
+        return (f"{name}: money", str(p.get("text") or "")[:300])
     if kind == "voice_alert":   # v0.234 voice Phase 5: the call's slow tail / broken calls, once a day
-        return (f"{name}: call ki jaanch", str(p.get("text") or "")[:300])
+        return (f"{name}: call check", str(p.get("text") or "")[:300])
     if kind == "payroll_run" and p.get("status") == "ready":
-        return (f"{name}: salary par aapki haan?", "Payroll taiyaar hai, dekhkar haan dijiye")
+        return (f"{name}: salary needs your yes", "Payroll is ready, review it and say yes")
     if kind == "payroll_day":
         return (f"{name}: payroll", str(p.get("text") or "")[:300])
     if kind == "gst_day":
-        return (f"{name}: aaj ka GST", str(p.get("text") or "")[:300])
+        return (f"{name}: today's GST", str(p.get("text") or "")[:300])
     if kind == "gst_return" and p.get("status") == "ready":
-        return (f"{name}: return par aapki haan?", "GST return taiyaar hai, dekhkar haan dijiye")
+        return (f"{name}: return needs your yes", "GST return is ready, review it and say yes")
     if kind == "mshop_day":
-        return (f"{name}: aaj ki dukaan", str(p.get("text") or "")[:300])
+        return (f"{name}: today's shop", str(p.get("text") or "")[:300])
     if kind == "office_day":
-        return (f"{name}: aaj ka office", str(p.get("text") or "")[:300])
+        return (f"{name}: today's office", str(p.get("text") or "")[:300])
     if kind == "office_note":
-        return (f"{name}: hafte ka office note", "Note taiyaar hai, dekhiye")
+        return (f"{name}: weekly office note", "The note is ready, take a look")
     if kind == "lekhak_sign" and p.get("status") == "waiting_sign":
-        return (f"{name}: letter sign karna hai?", f"{p.get('number', '')} {p.get('title', '')}: final dekhkar Haan dabaiye"[:300])
+        return (f"{name}: sign the letter?", f"{p.get('number', '')} {p.get('title', '')}: review the final and tap Yes"[:300])
     if kind == "ask_form" and p.get("status") == "pending":
-        return (f"{name}: ek form bhariye", f"{p.get('title', '')}: {len(p.get('fields') or [])} sawaal, ek baar mein"[:300])
+        return (f"{name}: please fill in a form", f"{p.get('title', '')}: {len(p.get('fields') or [])} questions, all at once"[:300])
     if kind == "google_reconnect":
-        return (f"{name}: Google dobara jodiye", str(p.get("text") or "")[:300])
+        return (f"{name}: reconnect Google", str(p.get("text") or "")[:300])
     if kind == "studio_approval" and p.get("status") == "pending":
-        return (f"{name}: video ka kharcha ₹{p.get('inr', '')}", f"{p.get('project', '')}: {p.get('shots', 0)} shot, Haan dabaiye tabhi banega"[:300])
+        return (f"{name}: video cost ₹{p.get('inr', '')}", f"{p.get('project', '')}: {p.get('shots', 0)} shots, it is made only after you tap Yes"[:300])
     if kind == "operator_ask" and p.get("status") == "pending":
-        title = {"otp": "OTP chahiye", "captcha": "CAPTCHA bhariye", "secret": "Aap khud bhariye", "payment": "Payment aap kijiye",
-                 "approve": "Aapki haan chahiye"}.get(p.get("kind", ""), "Aapse sawaal")
+        title = {"otp": "OTP needed", "captcha": "Fill in the CAPTCHA", "secret": "Please enter it yourself", "payment": "Please make the payment yourself",
+                 "approve": "Needs your yes"}.get(p.get("kind", ""), "A question for you")
         return (f"{name}: {title}", f"{p.get('site', '')}: {p.get('reason', '')}"[:300])
     if kind == "biz_inbox" and p.get("handover"):
         c = p.get("contact") or {}
-        return ("WhatsApp: aapki zaroorat hai", f"{c.get('name', '')}: {p.get('reason', '')}"[:300])
+        return ("WhatsApp: needs you", f"{c.get('name', '')}: {p.get('reason', '')}"[:300])
     if kind == "biz_inbox" and (p.get("message") or {}).get("direction") == "in" and (p.get("contact") or {}).get("human"):
         c = p.get("contact") or {}
         return (f"WhatsApp: {c.get('name', '')}", str((p.get('message') or {}).get('text') or "")[:300])
     if kind == "employee_report":
-        return (f"{name} ki aaj ki report", str(p.get("text") or "")[:600])
+        return (f"{name}'s report for today", str(p.get("text") or "")[:600])
     if kind == "bazar_open":
         msg = str(p.get("message") or "").strip()
         return (name, msg[:300]) if msg else None
