@@ -114,6 +114,15 @@ window.HoolaEmployees = function ({api, esc, toast, changed, say, open: openView
         ${team.length ? `<div class="ae-members">${team.map(e => { const d = deptOf(e.group); return `<button class="ae-member ae-pop ae-d-${d.id}" type="button" data-ae="role" data-key="${esc(e.key)}"><span class="ae-mono">${esc(ini(e.name))}<i class="${e.status === 'paused' ? 'ae-dot-paused' : 'ae-live'}"></i></span><span><b>${esc(e.name)}</b><small>${e.status === 'paused' ? 'Paused' : 'Working'} · ${esc((TRUST[e.trust] || TRUST.seekh)[0])}</small></span></button>`; }).join('')}</div>`
           : `<div class="ae-empty-team"><span class="ae-seats" aria-hidden="true"><i></i><i></i><i></i></span><p>No one hired yet. Open a department, pick a role and press Hire.</p>${ds[0] ? `<button class="btn soft ae-btn" type="button" data-ae="dept" data-id="${esc(ds[0].id)}">Start with ${esc(ds[0].name)}${arrow}</button>` : ''}</div>`}
       </section>
+      <section class="ae-team ae-up" style="animation-delay:.2s" aria-labelledby="aeSeekhH">
+        <div class="ae-row"><h3 id="aeSeekhH">HOOLA AI Video Learner</h3><span class="ae-mut">Learn any way of working from a video</span></div>
+        <button class="ae-seekh ae-pop" type="button" data-v="seekh" aria-label="Open the HOOLA AI Video Learner">
+          <span class="ae-seekh-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="14" height="14" rx="2"/><path d="M16 10l6-3v10l-6-3"/><path d="M6 13.5l2.5 2.5L13 11"/></svg></span>
+          <span class="ae-seekh-bd"><b>Load a video — Hoola learns the kaam</b>
+            <small>YouTube link, Shorts, MP4 ya koi bhi video. Hoola use REALTIME mein dekh kar notes banati hai, tareeke ko MEMORY mein rakhti hai — aur isi page pe aap use bol sakte hain “PERFORM THIS TASK NOW”, to woh APNE BROWSER se kaam karti hai.</small></span>
+          <span class="ae-seekh-go">Open Video Learner${arrow}</span>
+        </button>
+      </section>
       ${q ? `<section class="ae-sec" aria-labelledby="aeResH"><h3 id="aeResH" class="ae-sech">${results.length} ${results.length === 1 ? 'role matches' : 'roles match'} “${esc(HS.q.trim())}”</h3>
           ${results.length ? `<div class="ae-roles">${results.map((e, i) => roleCard(e, i, true)).join('')}</div>` : '<p class="ae-mut">No role matches that yet. Try a job title or a word like “Instagram”, “3D” or “server”.</p>'}</section>`
         : `<section class="ae-sec" aria-labelledby="aeDeptH"><div class="ae-row ae-up" style="animation-delay:.22s"><h3 id="aeDeptH" class="ae-sech">Departments</h3><span class="ae-mut">Open one to meet its employees</span></div>

@@ -104,16 +104,17 @@ def test_panel_knows_mp4_is_video():
 # ---------- Version layer ----------
 
 def test_console_stamps_0_4_8_5():
-    # 21 stamps = the 20 originals + the skills.js tag added by v0.485 SKILL DESK.
+    # 24 stamps = the 20 originals + skills.js (v0.485) + seekh.js (v0.716 the HOOLA AI Video Learner).
     # The COUNT is the guard; the version they carry follows APP_VERSION (see below).
     s = src(V2)
     from app.main import APP_VERSION
     # v0.537: this pinned the literal v=0.487.0 and had gone red on main, which ships the stamps at
     # APP_VERSION. Two sessions' conventions disagreed; CLAUDE.md's version ritual lists the console
     # stamps as part of the bump, so the typed number goes and the COUNT - the real guard - stays.
-    assert s.count(f'v={APP_VERSION}') == 23, f"expected 23 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
+    assert s.count(f'v={APP_VERSION}') == 24, f"expected 24 stamps at {APP_VERSION}, got {s.count(f'v={APP_VERSION}')}"
     assert 'v=0.482.0' not in s and 'v=0.473.0' not in s
     assert f'console/skills.js?v={APP_VERSION}' in s and 'id="v-skills"' in s
+    assert f'console/seekh.js?v={APP_VERSION}' in s and 'id="v-seekh"' in s   # v0.716 the Video Learner
 
 
 def test_app_version_story():
@@ -122,11 +123,11 @@ def test_app_version_story():
     assert f'APP_VERSION = "{APP_VERSION}"' in main    # v0.537: was a typed 0.535.0, two releases behind
     # story pin moved to the v0.555 story (the v0.476 precedent: the newest release's story carries the
     # marker; the older stories live in git history)
-    assert 'SCREENS FIRST' in main and '0.715.0' in main  # the newest-story precedent (v0.715.0 carries the marker; older stories live in git history)
+    assert 'SEEKH MANCH ON THE CONSOLE' in main and '0.716.0' in main  # the newest-story precedent (v0.716.0 carries the marker; SCREENS FIRST rides the Previous chain; older stories live in git history)
 
 
 def test_pubspec_pin():
     pub = (ROOT.parents[0] / 'pubspec.yaml').read_text(encoding='utf-8') if (ROOT.parents[0] / 'pubspec.yaml').exists() else None
     if pub is None:  # tests dir is server/tests; pubspec is at repo root
         pub = (ROOT / 'pubspec.yaml').read_text(encoding='utf-8')
-    assert 'version: 0.715.0+714' in pub
+    assert 'version: 0.716.0+715' in pub

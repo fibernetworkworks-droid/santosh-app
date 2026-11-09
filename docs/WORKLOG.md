@@ -2491,3 +2491,10 @@ Work: taxonomy.SCREENS (9 types), architect main_screen + SCREENS FIRST prompt +
 main screen, looks show screens (APP_LOOK_NOTE), SCREEN_NOTE for the writer, [data-sample] counted + launch blocker,
 Studio "Main screen" pill; test_v0714_screens_first.py (5), v0709 fixture updated.
 Deploy: vps-ops deploy; healthz must read 0.715.0.
+
+---
+Task ID: v0.716.0 SEEKH MANCH ON THE CONSOLE (the HOOLA AI Video Learner page)
+Agent: Claude (web session)
+Ask: "NOW WE WILL DEVELOP A CONSOLE PAGE FOR IT ... IN AI EMPLOYEE SECTION BUILD THE HOOLA AI VIDEO LEARNER ... load a video and HOOLA AI will see this and note in REALTIME ... prepare a MEMORY ... IN THIS PAGE ONLY user will tell HOOLA to PERFORM THIS TASK NOW - then HOOLA will use HIS BROWSER" + "PERFECT START THE DEPLOYMENT" on the prototype shown in chat.
+Built: the #v-seekh console view + seekh.js (load video -> live five-step stepper + HOOLA KI NOTES paced in -> the memory card -> Perform-this-task-NOW on the same page through one chat turn, the operator's own browser); the AI Employees hub card (employees.js); NEW server/app/seekh_console.py (/api/seekh/console/*: watch job + progress pulse + watches list; key-protected, tenant-scoped, one watch at a time, adoption on reload); seekh.watch grew only an additive on_stage callback (no-op for the tool and the old tests); no new tool (617), no new pip/keys/settings; frozen PC zone untouched (pinned). 25 tests test_v0716_seekh_console.py + v0713 re-run 40/40.
+Deploy: the owner's vps-ops dispatch; healthz must grep 0.716.0.

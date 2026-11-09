@@ -12,9 +12,9 @@ def _read(name):
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.715.0"
-    assert "0.715.0+714" in (ROOT / "pubspec.yaml").read_text()
-    assert _read("v2.html").count(f"?v={APP_VERSION}") == 22   # v0.312 + arena.js, v0.317 + employees.js, v0.5xx + one more (v0.370: follows APP_VERSION, never a typed number)
+    assert APP_VERSION == "0.716.0"
+    assert "0.716.0+715" in (ROOT / "pubspec.yaml").read_text()
+    assert _read("v2.html").count(f"?v={APP_VERSION}") == 24   # v0.716 + seekh.js (the HOOLA AI Video Learner); the pin sat at 22 while main shipped 23 (red on pristine origin/main, healed here like the dev healed the v0649 pin); v0.370: follows APP_VERSION, never a typed number
 
 
 def test_theme_loads_before_first_paint_without_inline_script():
