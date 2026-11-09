@@ -96,11 +96,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..frontoffice import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Hotel desk ka kaam graahak ke liye nahi.")
+        raise ToolError("Hotel desk work is not for customers.")
     if action in OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if a.get("force") and not _owner(ctx):
-        raise ToolError("force sirf owner ki marzi se.")
+        raise ToolError("force only at the owner's will.")
     bk = _s(a.get("booking"))
     try:
         if action == "settings":
@@ -168,7 +168,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..frontoffice import service as S
     t = ctx.tenant_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Hotel desk ki jaankari graahak ke liye nahi.")
+        raise ToolError("Hotel desk information is not for customers.")
     try:
         if what == "day":
             return S.day(t)

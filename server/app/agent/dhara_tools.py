@@ -313,7 +313,7 @@ def _walk_steps(steps: list, depth: int = 0) -> "list[tuple[dict, int]]":
     out = []
     for s in steps or []:
         if not isinstance(s, dict):
-            raise ToolError("Har step ek object hona chahiye ({}), mila: " + type(s).__name__)
+            raise ToolError("Every step must be an object ({}), got: " + type(s).__name__)
         out.append((s, depth))
         for key in ("then", "else", "body"):
             sub = s.get(key)
@@ -329,61 +329,61 @@ def validate_steps(steps: list) -> list[dict]:
     max_steps = int(getattr(s, "dhara_max_steps", _MAX_STEPS))
     loop_max = int(getattr(s, "dhara_loop_max", _LOOP_MAX))
     if not isinstance(steps, list) or not steps:
-        raise ToolError("steps ek non-empty list honi chahiye")
+        raise ToolError("steps must be a non-empty list")
     if len(json.dumps(steps)) > _GRAPH_CHARS:
-        raise ToolError(f"Workflow graph bohot bada hai ({len(json.dumps(steps))} chars; cap {_GRAPH_CHARS})")
+        raise ToolError(f"The workflow graph is too big ({len(json.dumps(steps))} chars; cap {_GRAPH_CHARS})")
     top = [s for s in steps]
     if len(top) > max_steps:
         raise ToolError(f"Zyada se zyada {max_steps} steps (mila {len(top)})")
     seen: set[str] = set()
     for st_, depth in _walk_steps(top):
         if depth > _MAX_DEPTH:
-            raise ToolError("Condition/loop ke andar ek hi level tak steps chal sakte hain (nesting cap 1)")
+            raise ToolError("Steps inside a condition/loop can go only one level deep (nesting cap 1)")
         sid = str(st_.get("id") or "").strip()
         typ = str(st_.get("type") or "").strip().lower()
         if not sid or not _PATH_RE.match(sid):
-            raise ToolError(f"Har step ko ek chhota id chahiye (lowercase_with_underscores) — mila: {sid!r}")
+            raise ToolError(f"Every step needs a short id (lowercase_with_underscores) — got: {sid!r}")
         if sid in seen:
-            raise ToolError(f"Step id '{sid}' do baar hai — ids unique rakhein")
+            raise ToolError(f"Step id '{sid}' appears twice — keep ids unique")
         seen.add(sid)
         if typ not in _STEP_TYPES:
             raise ToolError(f"Step '{sid}': anjaan type '{typ}' — inme se chunein: {', '.join(_STEP_TYPES)}")
         if typ == "tool":
             name = str(st_.get("name") or "").strip()
             if not name:
-                raise ToolError(f"Step '{sid}': tool step ko tool ka naam chahiye")
+                raise ToolError(f"Step '{sid}': a tool step needs a tool name")
             if name in _TOOL_STEP_DENY:
-                raise ToolError(f"Step '{sid}': {name} ek same-turn card hai — background run mein nahi chalta")
+                raise ToolError(f"Step '{sid}': {name} is a same-turn card — it cannot run in a background run")
         elif typ == "code":
             if not str(st_.get("code") or "").strip():
-                raise ToolError(f"Step '{sid}': code step mein python code do")
+                raise ToolError(f"Step '{sid}': give a code step python code")
         elif typ == "condition":
             if str(st_.get("op") or "") not in _COND_OPS:
-                raise ToolError(f"Step '{sid}': op inme se hona chahiye: {', '.join(_COND_OPS)}")
+                raise ToolError(f"Step '{sid}': op must be one of: {', '.join(_COND_OPS)}")
             if not isinstance(st_.get("then"), list) and not isinstance(st_.get("else"), list):
-                raise ToolError(f"Step '{sid}': condition mein then ya else steps ki list do")
+                raise ToolError(f"Step '{sid}': give a condition a list of then or else steps")
         elif typ == "loop":
             if not isinstance(st_.get("body"), list) or not st_.get("body"):
-                raise ToolError(f"Step '{sid}': loop mein body steps ki list do")
+                raise ToolError(f"Step '{sid}': give a loop a list of body steps")
             if "items" not in st_:
-                raise ToolError(f"Step '{sid}': loop ko items chahiye (expression jo list de)")
+                raise ToolError(f"Step '{sid}': a loop needs items (an expression that gives a list)")
         elif typ == "wait":
             if not st_.get("duration_s") and not st_.get("until"):
-                raise ToolError(f"Step '{sid}': wait ko duration_s (<= 3600) ya until 'HH:MM' do")
+                raise ToolError(f"Step '{sid}': give wait a duration_s (<= 3600) or until 'HH:MM'")
         elif typ == "notify":
             if not str(st_.get("text") or "").strip():
-                raise ToolError(f"Step '{sid}': notify ko text chahiye")
+                raise ToolError(f"Step '{sid}': notify needs text")
         elif typ == "approval":
             if not str(st_.get("question") or "").strip():
-                raise ToolError(f"Step '{sid}': approval ko question chahiye")
+                raise ToolError(f"Step '{sid}': approval needs a question")
         elif typ == "set":
             if not _PATH_RE.match(str(st_.get("name") or "")):
-                raise ToolError(f"Step '{sid}': set ko variable ka naam do (lowercase_with_underscores)")
+                raise ToolError(f"Step '{sid}': give set a variable name (lowercase_with_underscores)")
         elif typ == "http":
             if not str(st_.get("url") or "").strip():
-                raise ToolError(f"Step '{sid}': http ko url chahiye")
+                raise ToolError(f"Step '{sid}': http needs a url")
             if str(st_.get("method") or "GET").upper() not in ("GET", "POST"):
-                raise ToolError(f"Step '{sid}': http method sirf GET ya POST (v1)")
+                raise ToolError(f"Step '{sid}': http method can be only GET or POST (v1)")
         # expression size cap on every string field
         for v in st_.values():
             if isinstance(v, str) and len(v) > _EXPR_CHARS:
@@ -569,10 +569,10 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
             from .tools import HANDLERS
             name = str(step.get("name") or "")
             if name not in HANDLERS:
-                return False, None, f"tool '{name}' registry mein nahi hai"
+                return False, None, f"tool '{name}' is not in the registry"
             args = resolve(step.get("args") or {}, ctx)
             if not isinstance(args, dict):
-                return False, None, "tool args ek object hone chahiye"
+                return False, None, "tool args must be an object"
             tool_ctx = Ctx(tenant_id=tenant_id, conversation_id=conv, actor="routine")
             out = await HANDLERS[name](tool_ctx, **args)
             ctx["steps"][sid] = {"output": out}
@@ -598,7 +598,7 @@ async def _exec_one(tenant_id: str, conv: str, step: dict, ctx: dict, run_id: st
         if typ == "loop":
             items = resolve(step.get("items"), ctx)
             if not isinstance(items, list):
-                return False, None, "loop items ne list nahi di"
+                return False, None, "the loop items did not give a list"
             cap = int(getattr(s, "dhara_loop_max", _LOOP_MAX))
             if len(items) > cap:
                 return False, None, f"loop items {len(items)} > cap {cap}"
@@ -698,7 +698,7 @@ async def execute_run(tenant_id: str, run_id: str) -> None:
         try:
             update_run(tenant_id, run_id, status="failed", error=f"{type(e).__name__}: {e}"[:800])
             _runs_tell(tenant_id, "r.id = ?", (run_id,),   # wave 10: a crashed run is told, never silent
-                       'DHARA "{name}" beech mein ruk gaya (andar ki galti) - run {run}. Dobara chalaun?')
+                       'DHARA "{name}" stopped midway (internal error) - run {run}. Shall I run it again?')
         except Exception:
             pass
     finally:
@@ -754,8 +754,8 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
                 run["pause_reason"] = "waiting_approval"  # v0.512: typed, not implied
                 _save_checkpoint(tenant_id, run)
                 hrs = int(getattr(s, "dhara_approval_hours", 24))
-                _notify(conv, f'DHARA "{wf["name"]}" (run {run_id}) ruki hai: {str(step.get("question") or "aage badhun?")} '
-                              f'Chat mein "haan" likhiye (ya rokna ho to "rok do"); {hrs} ghante ke andar.')
+                _notify(conv, f'DHARA "{wf["name"]}" (run {run_id}) is waiting: {str(step.get("question") or "shall I go ahead?")} '
+                              f'Reply "yes" in the chat (or "stop" to cancel) within {hrs} hours.')
                 return
             _log_step(run, step["id"], step["type"], "ok" if ok else "error", ms,
                       output=(out if ok and out is not None else None), error="" if ok else serr,
@@ -773,8 +773,8 @@ async def _execute_run(tenant_id: str, run_id: str, s, acc: dict) -> None:
         if run["cursor"] >= len(steps) and not err:
             _save_checkpoint(tenant_id, run)
             _finish(tenant_id, run_id, run, len(steps), "done", "", acc)
-            _notify(conv, f'DHARA "{wf["name"]}" poora ho gaya ({len(steps)} steps, run {run_id}).'
-                    f'{" (missed schedule se) " if run.get("missed") else ""}')
+            _notify(conv, f'DHARA "{wf["name"]}" is complete ({len(steps)} steps, run {run_id}).'
+                    f'{" (from a missed schedule) " if run.get("missed") else ""}')
         else:
             run["status"] = "failed"
             run["error"] = err
@@ -892,8 +892,8 @@ async def tick() -> int:
                 # expire approvals that waited too long
                 cut = time.time() - int(getattr(s, "dhara_approval_hours", 24)) * 3600
                 _runs_tell(tenant, "r.status = 'waiting_approval' AND r.updated_at < ?", (cut,),
-                           'DHARA "{name}" ruk gaya: aapki haan ka intezaar bahut lamba ho gaya (run {run}). '
-                           'Chahein to dobara chalaiye.')
+                           'DHARA "{name}" stopped: the wait for your approval became too long (run {run}). '
+                           'Run it again if you want.')
                 con.execute("UPDATE runs SET status = 'failed', pause_reason = 'approval_expired', "
                             "error = 'approval ka intezaar khatam (dhara_approval_hours paar)', updated_at = ? "
                             "WHERE status = 'waiting_approval' AND updated_at < ?", (time.time(), cut))
@@ -912,7 +912,7 @@ async def tick() -> int:
                     budget -= 1
                     started += 1
             _runs_tell(tenant, "r.status = 'queued' AND r.tries >= ?", (int(tries_max),),
-                       'DHARA "{name}" kai baar koshish ke baad bhi nahi chala, isliye chhod diya (run {run}).')
+                       'DHARA "{name}" did not run even after several tries, so it was dropped (run {run}).')
             con = _con(tenant)
             try:
                 con.execute("UPDATE runs SET status = 'failed', error = 'tries poore (dhara_tries) — run chhoda gaya', "
@@ -938,7 +938,7 @@ def webhook_enqueue(token: str, body: dict) -> dict:
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "dhara_enabled", True) or not getattr(s, "dhara_webhook_enabled", True):
-        return {"ok": False, "status": 503, "error": "DHARA webhook band hai"}
+        return {"ok": False, "status": 503, "error": "The DHARA webhook is off"}
     th = hashlib.sha256(str(token or "").encode()).hexdigest()
     root = Path("data") / "dhara"
     wf = None
@@ -951,7 +951,7 @@ def webhook_enqueue(token: str, body: dict) -> dict:
                 wf, tenant = hit, t
                 break
     if wf is None:
-        return {"ok": False, "status": 401, "error": "token nahi mila / workflow band hai"}
+        return {"ok": False, "status": 401, "error": "token not found / workflow is off"}
     con = _con(tenant)
     try:
         last = con.execute("SELECT created_at FROM runs WHERE workflow_id = ? ORDER BY created_at DESC LIMIT 1",
@@ -983,17 +983,17 @@ async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", tr
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "dhara_enabled", True):
-        raise ToolError("DHARA is server par band hai (dhara_enabled=false)")
+        raise ToolError("DHARA is turned off on this server (dhara_enabled=false)")
     nm = str(name or "").strip().lower().replace(" ", "_")
     if not nm or not _PATH_RE.match(nm):
-        raise ToolError("Workflow ka naam lowercase_with_underscores dein (jaise roz_subah_report)")
+        raise ToolError("Give the workflow name in lowercase_with_underscores (like daily_morning_report)")
     kind = str(trigger or "manual").lower()
     if kind not in ("manual", "schedule", "webhook"):
         raise ToolError("trigger manual | schedule | webhook (v1)")
     spec = dict(trigger_spec or {})
     if kind == "schedule":
         if not (spec.get("every_hours") or spec.get("at")):
-            raise ToolError("schedule trigger ko every_hours (1-720) ya at ['HH:MM', ...] (IST) dein")
+            raise ToolError("Give a schedule trigger every_hours (1-720) or at ['HH:MM', ...] (IST)")
     if kind == "webhook":
         spec = {}
     norm = validate_steps(steps)
@@ -1010,12 +1010,12 @@ async def dhara_save(ctx: Ctx, name, steps, description="", trigger="manual", tr
         wf = get_workflow(ctx.tenant_id, wf_id=wf["id"])
     out = _fmt_wf(wf)
     out["created"] = created
-    out["note"] = ("Workflow ban gaya — dhara_run se abhi chala kar dekhein"
-                   if created else "Workflow update ho gaya (wahi naam, wahi id)")
+    out["note"] = ("Workflow created — try it now with dhara_run"
+                   if created else "Workflow updated (same name, same id)")
     if wf["trigger_kind"] == "webhook":
-        out["webhook_note"] = ("Token sirf ab dikhaya jayega — isko sambhal kar rakhein (dobara nahi milega): "
+        out["webhook_note"] = ("The token is shown only now — keep it safe (it cannot be shown again): "
                                + webhook_token_reveal(ctx.tenant_id, wf["id"])) if created else \
-                              "Webhook token wahi purana hai (naya nahi bana)"
+                              "The webhook token is the old one (no new one was made)"
     return out
 
 
@@ -1038,19 +1038,19 @@ async def dhara_run(ctx: Ctx, name="", workflow_id="", vars=None, **_):
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "dhara_enabled", True):
-        raise ToolError("DHARA is server par band hai (dhara_enabled=false)")
+        raise ToolError("DHARA is turned off on this server (dhara_enabled=false)")
     wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
     if wf is None:
-        raise ToolError("Yeh naam ka workflow nahi mila — dhara_list se dekhein")
+        raise ToolError("No workflow with this name found — check dhara_list")
     if not wf.get("enabled", 0):
-        raise ToolError(f'"{wf["name"]}" abhi disabled hai — dhara_control action=enable se chalu karein')
+        raise ToolError(f'"{wf["name"]}" is disabled right now — turn it on with dhara_control action=enable')
     v = dict(vars) if isinstance(vars, dict) else {}
     rid = create_run(ctx.tenant_id, wf, vars_=v)
     t = asyncio.ensure_future(execute_run(ctx.tenant_id, rid))
     _TASKS.add(t)
     t.add_done_callback(lambda _t: _TASKS.discard(_t))
     return {"run_id": rid, "workflow": wf["name"], "status": "queued",
-            "note": "Run shuru — dhara_runs run_id=" + rid + " se har step ka haal dekhein"}
+            "note": "Run started — see every step's status with dhara_runs run_id=" + rid + ""}
 
 
 async def dhara_runs(ctx: Ctx, run_id="", workflow_id="", limit=8, **_):
@@ -1058,17 +1058,17 @@ async def dhara_runs(ctx: Ctx, run_id="", workflow_id="", limit=8, **_):
     if run_id:
         r = get_run(ctx.tenant_id, str(run_id))
         if r is None:
-            raise ToolError("Yeh run_id nahi mila")
+            raise ToolError("This run_id was not found")
         return _masked({"run_id": r["id"], "workflow": r["wf_name"], "status": r["status"],
                 "cursor": r["cursor"], "error": r.get("error") or "",
                 "pause_reason": r.get("pause_reason") or "",
                 "summary": r.get("summary"),
                 "steps_log": r["steps_log"][-40:],
-                "note": ("Abhi chal raha hai — thodi der baad phir dekhein"
+                "note": ("Still running — check again in a little while"
                          if r["status"] in ("queued", "running") else "")})
     wf_id = str(workflow_id or "")
     if wf_id and get_workflow(ctx.tenant_id, wf_id=wf_id) is None:
-        raise ToolError("Yeh workflow_id nahi mila")
+        raise ToolError("This workflow_id was not found")
     rows = list_runs(ctx.tenant_id, wf_id=wf_id, limit=max(1, min(int(limit or 8), 20)))
     return _masked({"count": len(rows), "runs": [
         {"run_id": x["id"], "workflow": x["wf_name"], "status": x["status"], "steps_done": x["cursor"],
@@ -1083,30 +1083,30 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
     if act in ("enable", "disable"):
         wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
         if wf is None:
-            raise ToolError("Workflow nahi mila — dhara_list se naam dekhein")
+            raise ToolError("Workflow not found — check the name with dhara_list")
         set_enabled(ctx.tenant_id, wf["id"], act == "enable")
         return {"workflow": wf["name"], "enabled": act == "enable",
-                "note": "Trigger chalu ho gaya" if act == "enable" else "Trigger band — dhara_run se phir bhi manually chala sakte hain"}
+                "note": "Trigger is on" if act == "enable" else "Trigger is off — you can still run it manually with dhara_run"}
     if act == "stop":
         r = get_run(ctx.tenant_id, str(run_id)) if run_id else None
         if r is None:
             wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
             r = latest_run(ctx.tenant_id, wf["id"]) if wf else None
         if r is None:
-            raise ToolError("Run nahi mila — run_id (ya workflow ka naam) dein")
+            raise ToolError("Run not found — give a run_id (or the workflow name)")
         if r["status"] in ("done", "failed", "stopped"):
-            return {"run_id": r["id"], "status": r["status"], "note": "Yeh run pehle hi ruk chuka tha"}
+            return {"run_id": r["id"], "status": r["status"], "note": "This run had already stopped"}
         update_run(ctx.tenant_id, r["id"], status="stopped", error="uski Malika ne rokna kaha")
         wf = get_workflow(ctx.tenant_id, wf_id=r["workflow_id"])
         _finish(ctx.tenant_id, r["id"], r, len(wf["steps"]) if wf else 0, "stopped", "uski Malika ne rokna kaha",
                 error="uski Malika ne rokna kaha")
-        return {"run_id": r["id"], "status": "stopped", "note": "Run ke beech mein ruk gaya — jo steps ho chuke hain woh log mein hain"}
+        return {"run_id": r["id"], "status": "stopped", "note": "The run was stopped midway — the steps already done are in the log"}
     if act == "approve":
         r = get_run(ctx.tenant_id, str(run_id)) if run_id else None
         if r is None:
-            raise ToolError("approve ke liye run_id dein (dhara_runs se)")
+            raise ToolError("Give a run_id for approve (from dhara_runs)")
         if r["status"] != "waiting_approval":
-            return {"run_id": r["id"], "status": r["status"], "note": "Yeh run approval ka intezaar nahi kar raha tha"}
+            return {"run_id": r["id"], "status": r["status"], "note": "This run was not waiting for approval"}
         # her haan = the gate is passed: the cursor moves PAST the approval step, else the resumed run
         # would hit the same gate and park forever (the resume executes from the checkpoint).
         r["steps_log"].append({"id": str(r["cursor"]), "type": "approval", "status": "approved", "at": time.strftime("%H:%M:%S")})
@@ -1115,7 +1115,7 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
         t = asyncio.ensure_future(execute_run(ctx.tenant_id, r["id"]))
         _TASKS.add(t)
         t.add_done_callback(lambda _t: _TASKS.discard(_t))
-        return {"run_id": r["id"], "status": "queued", "note": "Uski haan mil gayi — run wahin se aage badha"}
+        return {"run_id": r["id"], "status": "queued", "note": "Her approval is received — the run continued from the same place"}
     if act == "retry":
         # v0.512 (the Dify node-retry idea): a failed/stopped run re-queues FROM ITS CURSOR — the
         # checkpoint law makes this safe by construction: a finished step never runs twice.
@@ -1124,14 +1124,14 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
             wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
             r = latest_run(ctx.tenant_id, wf["id"]) if wf else None
         if r is None:
-            raise ToolError("retry ke liye run_id (ya workflow ka naam) dein")
+            raise ToolError("Give a run_id (or the workflow name) for retry")
         if r["status"] not in ("failed", "stopped"):
             return {"run_id": r["id"], "status": r["status"],
-                    "note": "retry sirf ruke hue (failed / stopped) run par chalta hai"}
+                    "note": "retry works only on a stopped (failed / stopped) run"}
         if (r.get("pause_reason") or "") == "approval_expired":
             return {"run_id": r["id"], "status": r["status"], "ok": False,
-                    "note": "approval ka time nikal gaya tha — gate ke aage dobara approve kiye bina nahi badhte; "
-                            "workflow ko dhara_run se nayi run mein chalayein"}
+                    "note": "the approval time had run out — it cannot go past the gate without approving again; "
+                            "run the workflow again as a new run with dhara_run"}
         r["steps_log"].append({"id": str(r["cursor"]), "type": "retry", "status": "retry",
                                "at": time.strftime("%H:%M:%S")})
         update_run(ctx.tenant_id, r["id"], status="queued", tries=0, error="", pause_reason=None,
@@ -1140,7 +1140,7 @@ async def dhara_control(ctx: Ctx, action, name="", workflow_id="", run_id="", **
         _TASKS.add(t)
         t.add_done_callback(lambda _t: _TASKS.discard(_t))
         return {"run_id": r["id"], "status": "queued",
-                "note": "Wahin se chalu (checkpoint) — jo steps ho chuke hain woh dobara nahi chalenge"}
+                "note": "Resumed from the checkpoint — the steps already done will not run again"}
     raise ToolError("action: enable | disable | stop | approve | retry")
 
 
@@ -1149,14 +1149,14 @@ async def dhara_list(ctx: Ctx, **_):
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "dhara_enabled", True):
-        raise ToolError("DHARA is server par band hai (dhara_enabled=false)")
+        raise ToolError("DHARA is turned off on this server (dhara_enabled=false)")
     wfs = list_workflows(ctx.tenant_id, 20)
     out = []
     for wf in wfs:
         last = latest_run(ctx.tenant_id, wf["id"])
         out.append(_fmt_wf(wf, last))
     return {"count": len(out), "workflows": out,
-            "note": ("Naya banane ke liye dhara_save use karein" if out else "Abhi koi workflow nahi — pehla dhara_save se banao")}
+            "note": ("Use dhara_save to make a new one" if out else "No workflow yet — make the first one with dhara_save")}
 
 
 # --------------------------------------------------------------------------- DSL (v0.512, the Dify DSL idea)
@@ -1186,32 +1186,32 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "dhara_enabled", True) or not getattr(s, "dhara_dsl_enabled", True):
-        raise ToolError("DHARA DSL is server par band hai (dhara_dsl_enabled=false)")
+        raise ToolError("DHARA DSL is turned off on this server (dhara_dsl_enabled=false)")
     max_kb = int(getattr(s, "dhara_dsl_max_kb", 64) or 64)
     if str(action).lower() == "export":
         wf = get_workflow(ctx.tenant_id, name=str(name or "").lower(), wf_id=str(workflow_id or ""))
         if wf is None:
-            raise ToolError("Yeh naam ka workflow nahi mila — dhara_list se dekhein")
+            raise ToolError("No workflow with this name found — check dhara_list")
         env = dsl_export(ctx.tenant_id, wf)
         raw = json.dumps(env, ensure_ascii=False)
         if len(raw.encode()) > max_kb * 1024:
-            raise ToolError(f"Export bohot bada hai ({len(raw.encode()) // 1024} KB; cap {max_kb} KB) — "
-                            "workflow chhote hisso mein rakhein")
+            raise ToolError(f"The export is too big ({len(raw.encode()) // 1024} KB; cap {max_kb} KB) — "
+                            "keep the workflow in smaller parts")
         return {"ok": True, "dsl": env, "bytes": len(raw.encode()),
-                "note": "Yeh file sambhal kar rakhein — isme uske workflow ke steps hain, RAAZ nahi "
-                        "(webhook ka token kabhi export mein nahi jaata). Dusre tenant mein lene ke liye: "
-                        "dhara_dsl action=import dsl=<yehi envelope>"}
+                "note": "Keep this file safe — it has the workflow's steps, NOT secrets "
+                        "(a webhook token is never in an export). To bring it into another tenant: "
+                        "dhara_dsl action=import dsl=<this same envelope>"}
     if str(action).lower() == "import":
         if isinstance(dsl, str):
             try:
                 dsl = json.loads(dsl)
             except Exception:
-                raise ToolError("dsl ek JSON object (ya uska JSON string) hona chahiye")
+                raise ToolError("dsl must be a JSON object (or its JSON string)")
         if not isinstance(dsl, dict) or dsl.get("dhara_dsl") != _DSL_VERSION:
-            raise ToolError(f"Yeh DHARA DSL file nahi lagti (dhara_dsl={_DSL_VERSION} chahiye)")
+            raise ToolError(f"This does not look like a DHARA DSL file (needs dhara_dsl={_DSL_VERSION})")
         raw = json.dumps(dsl, ensure_ascii=False)
         if len(raw.encode()) > max_kb * 1024:
-            raise ToolError(f"DSL file bohot badi hai (cap {max_kb} KB)")
+            raise ToolError(f"The DSL file is too big (cap {max_kb} KB)")
         nm = str(new_name or dsl.get("name") or "").strip().lower().replace(" ", "_")
         if not nm or not _PATH_RE.match(nm):
             raise ToolError("Workflow ka naam lowercase_with_underscores dein")
@@ -1222,11 +1222,11 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
         if kind == "webhook":
             spec = {}   # a new token is minted here and shown ONCE in this reply
         if kind == "schedule" and not (spec.get("every_hours") or spec.get("at")):
-            raise ToolError("schedule trigger ko every_hours ya at ['HH:MM', ...] chahiye")
+            raise ToolError("a schedule trigger needs every_hours or at ['HH:MM', ...]")
         if get_workflow(ctx.tenant_id, name=nm) is not None:
             return {"ok": False, "already_exists": True, "existing": nm,
-                    "note": f"'{nm}' naam ka workflow pehle se hai — doosre naam se laane ke liye "
-                            f"new_name='{nm}_2' dein (ya pehle uska naam badlein)"}
+                    "note": f"'{nm}' already exists — to bring it in under another name "
+                            f"give new_name='{nm}_2' (or rename the old one first)"}
         norm_steps = validate_steps(dsl.get("steps"))   # THE SAME hard validator as dhara_save
         wf, _created = save_workflow(ctx.tenant_id, nm, str(dsl.get("description") or "")[:500], kind, spec,
                                      norm_steps, str(ctx.conversation_id or ""))
@@ -1240,9 +1240,9 @@ async def dhara_dsl(ctx: Ctx, action: str, name: str = "", workflow_id: str = ""
                 con.close()
         out = _fmt_wf(get_workflow(ctx.tenant_id, wf_id=wf["id"]))
         out["ok"] = True
-        out["note"] = "Import ho gaya lekin BAND hai — steps dekh kar dhara_control action=enable se chalu karein"
+        out["note"] = "Imported but it is OFF — check the steps, then turn it on with dhara_control action=enable"
         if kind == "webhook":
-            out["webhook_note"] = ("Naya webhook token (sirf ek baar dikhega): "
+            out["webhook_note"] = ("New webhook token (shown only once): "
                                    + webhook_token_reveal(ctx.tenant_id, wf["id"]))
         return out
     raise ToolError("action: export | import")
@@ -1253,14 +1253,14 @@ DHARA_TOOLS = [
         "Create or update one of her WORKFLOWS (v0.502, the n8n idea house-sized): a named, saved graph of steps "
         "that runs on a trigger without anyone asking again. Steps (max 40): tool (ANY registered tool by name + args), "
         "code (python in the pylab sandbox), condition (left/op/right with then/else), loop (items + body, cap 50), "
-        "wait (duration_s / until HH:MM), notify (a chat line to her), approval (pauses until SHE says haan), set (a "
+        "wait (duration_s / until HH:MM), notify (a chat line to her), approval (pauses until SHE says yes), set (a "
         "variable), http (SSRF-guarded GET/POST). Expressions like {{steps.get_data.output.total}} / {{vars.x}} / "
         "{{item}} / {{now}}. Triggers: manual | schedule (every_hours + at ['HH:MM'] IST) | webhook (token minted "
         "once). Validate-first: unknown step types / caps / unsafe names are refused with the exact problem."),
      "input_schema": {"type": "object", "properties": {
          "name": {"type": "string", "description": "lowercase_with_underscores, unique, e.g. roz_subah_notice_check"},
          "steps": {"type": "array", "description": "The steps: [{id, type, ...}] — see the tool guide for each type's fields"},
-         "description": {"type": "string", "description": "One line: yeh kya karti hai"},
+         "description": {"type": "string", "description": "One line: what it does"},
          "trigger": {"type": "string", "enum": ["manual", "schedule", "webhook"], "description": "Default manual"},
          "trigger_spec": {"type": "object", "description": "schedule: {every_hours: 24, at: ['09:30']}; webhook: none"}},
          "required": ["name", "steps"]}},
@@ -1282,8 +1282,8 @@ DHARA_TOOLS = [
          "limit": {"type": "integer", "description": "Default 8, cap 20"}},
          "required": []}},
     {"name": "dhara_control", "description": (
-        "Turn a workflow's trigger on/off, stop a run, or relay HER haan (v0.502). action=approve run_id=... when "
-        "she answered a waiting approval step in chat ('haan') — the run resumes from the same step. action=stop "
+        "Turn a workflow's trigger on/off, stop a run, or relay HER yes (v0.502). action=approve run_id=... when "
+        "she answered a waiting approval step in chat ('yes' / 'haan') — the run resumes from the same step. action=stop "
         "lands between steps; finished steps stay in the log. action=retry (v0.512) re-runs a failed/stopped run "
         "FROM its checkpoint — finished steps never run twice; an approval-expired run is honestly refused. "
         "Never approve without her word."),
@@ -1295,7 +1295,7 @@ DHARA_TOOLS = [
          "required": ["action"]}},
     {"name": "dhara_list", "description": (
         "Her workflows — the mini-board (v0.502): name, trigger, enabled, step count, next schedule due, last run's "
-        "status and error. Use before building (kya pehle se hai) and when she asks 'mere workflows kaise hain'."),
+        "status and error. Use before building (what already exists) and when she asks 'how are my workflows'."),
      "input_schema": {"type": "object", "properties": {}, "required": []}},
     {"name": "dhara_dsl", "description": (
         "Export or import her WORKFLOWS as portable files (v0.512, the Dify DSL idea). action=export name=... gives a "

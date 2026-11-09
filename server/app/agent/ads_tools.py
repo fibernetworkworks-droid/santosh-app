@@ -81,7 +81,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action in _OWNER_ONLY and actor != "owner" and not actor.startswith("approved:"):
-            raise ToolError("Yeh sirf owner kar sakti hain.")
+            raise ToolError("Only the owner can do this.")
         if action == "import":
             r = A.import_report(t, _s(a.get("file_id")), platform=_s(a.get("platform")), start=_s(a.get("start")),
                                 end=_s(a.get("end")), conv=conv)
@@ -120,8 +120,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 d = M.new_draft(t, _s(a.get("goal")) or "whatsapp", **{k: a[k] for k in keys if a.get(k) is not None})
             except M.MetaAdsError as e:
                 raise ToolError(str(e))
-            return {"draft": d, "say": "Draft Hoola mein bana - Meta mein abhi kuch nahi gaya. App mein Social Desk > Facebook & "
-                    "Instagram ads par photo jodiye, 'Check with Meta', phir 'Create (paused)' aur Start - sab aapke tap par."}
+            return {"draft": d, "say": "Draft made in Hoola - nothing has gone to Meta yet. In the app, open Social Desk > Facebook & "
+                    "Instagram ads, add a photo, 'Check with Meta', then 'Create (paused)' and Start - all on your tap."}
         if action in ("google_draft", "google_ideas"):
             from ..ads import gads as G
             try:
@@ -135,8 +135,8 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                 d = G.new_draft(t, _s(a.get("video_id")), _s(a.get("kind")) or "search", **kw)
             except G.GAdsError as e:
                 raise ToolError(str(e))
-            return {"draft": d, "say": "Draft Hoola mein bana - Google mein abhi kuch nahi gaya. App mein Social Desk > Google ads "
-                    "par dekhiye, 'Check with Google', phir 'Create (paused)' aur Start - sab aapke tap par."}
+            return {"draft": d, "say": "Draft made in Hoola - nothing has gone to Google yet. In the app, open Social Desk > Google ads "
+                    "'Check with Google', then 'Create (paused)' and Start - all on your tap."}
     except A.AdsError as e:
         raise ToolError(str(e))
     raise ToolError("action = import | fetch | plan | done | copies | live | result | sale | settings | meta_forget | meta_draft "
@@ -148,7 +148,7 @@ def _change_id(tenant: str, ref: str) -> str:
     for c in A.changes(tenant, limit=200):
         if ref and (c["id"] == ref or c["number"].lower() == ref.lower()):
             return c["id"]
-    raise ToolError(f"Badlav '{ref}' nahi mila.")
+    raise ToolError(f"Change '{ref}' was not found.")
 
 
 def _short(rep: dict) -> dict:

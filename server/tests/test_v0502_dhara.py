@@ -127,7 +127,7 @@ def test_save_schedule_trigger_needs_spec_and_webhook_hides_token():
     with pytest.raises(Exception):
         _run(D.dhara_save(CTX, name="s2", steps=_flow1_steps(), trigger="cron"))
     out = _run(D.dhara_save(CTX, name="s3", steps=_flow1_steps(), trigger="webhook"))
-    assert "webhook_note" in out and "sambhal" in out["webhook_note"]
+    assert "webhook_note" in out and "keep it safe" in out["webhook_note"]
     wf = D.get_workflow(CTX.tenant_id, name="s3")
     assert wf["token_hash"] and len(wf["token_hash"]) == 64  # sha256 hex, never the token itself
 
@@ -212,7 +212,7 @@ def test_run_unknown_tool_fails_honestly():
     r = _run(D.dhara_run(CTX, name="bad"))
     _run(D.drain())
     run = D.get_run(CTX.tenant_id, r["run_id"])
-    assert run["status"] == "failed" and "registry mein nahi" in run["error"]
+    assert run["status"] == "failed" and "not in the registry" in run["error"]
     assert run["steps_log"][-1]["status"] == "error"
 
 
@@ -292,7 +292,7 @@ def test_approval_approve_on_non_waiting_is_honest():
     r = _run(D.dhara_run(CTX, name="plain"))
     _run(D.drain())
     out = _run(D.dhara_control(CTX, action="approve", run_id=r["run_id"]))
-    assert "intezaar nahi" in out["note"]
+    assert "not waiting" in out["note"]
 
 
 def test_stop_between_steps_keeps_finished_log():
@@ -307,7 +307,7 @@ def test_stop_between_steps_keeps_finished_log():
     out = _run(D.dhara_control(CTX, action="stop", run_id=r["run_id"]))
     assert out["status"] == "stopped"
     again = _run(D.dhara_control(CTX, action="stop", run_id=r["run_id"]))
-    assert "pehle hi" in again["note"]
+    assert "already stopped" in again["note"]
     run = D.get_run(CTX.tenant_id, r["run_id"])
     assert run["status"] == "stopped" and len(run["steps_log"]) == 2
     assert "never" not in [s["id"] for s in run["steps_log"]]
@@ -503,7 +503,7 @@ def test_webhook_enqueues_with_body_and_refuses_bad_tokens():
 def test_webhook_kill_switch(monkeypatch):
     _patch_settings(monkeypatch, dhara_webhook_enabled=False)
     out = D.webhook_enqueue("anything", {})
-    assert out["status"] == 503 and "band" in out["error"]
+    assert out["status"] == 503 and "off" in out["error"]
 
 
 # ---------------------------------------------------------------- tools: runs / list / control / disabled
@@ -548,7 +548,7 @@ def test_disabled_flag_honest(monkeypatch):
     _patch_settings(monkeypatch, dhara_enabled=False)
     with pytest.raises(Exception) as e:
         _run(D.dhara_save(CTX, name="nope", steps=_flow1_steps()))
-    assert "band" in str(e.value)
+    assert "turned off" in str(e.value)
     with pytest.raises(Exception):
         _run(D.dhara_list(CTX))
     assert _run(D.tick()) == 0

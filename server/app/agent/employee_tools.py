@@ -11,7 +11,7 @@ EMPLOYEE_TOOLS = [
     {"name": "employee", "description": (
         "Hoola Employee: your job in the owner's business. action=status (is it on, paused, what waits for her), "
         "pause (the owner says ruk jao / kaam roko / sab band: stops every job action at once), resume (only the owner), "
-        "report (today's work report), job_sheet (what you do and never do), asks (actions waiting for her Haan), "
+        "report (today's work report), job_sheet (what you do and never do), asks (actions waiting for her yes), "
         "trust (change how far you may go alone in one duty: level seekh | saathi | bharosa; only when the owner clearly "
         "says so), send_task (the owner works somewhere: send a task to her workplace's Hoola, to = their Hoola ID). "
         "Business WhatsApp inbox: chats (customer chats), chat (one chat), take_over / give_back (owner answers herself / "
@@ -48,9 +48,9 @@ async def employee(ctx: Ctx, action: str = "status", duty: str = "", level: str 
             return emp.status(ctx.tenant_id)
         if action == "pause":
             p = await asyncio.to_thread(emp.set_pause, ctx.tenant_id, True, ctx.actor or "owner")
-            return {"paused": p["paused"], "note": "Naukri ke saare kaam ruk gaye. Owner 'kaam shuru' kahe ya app mein dabaye tab chalenge."}
+            return {"paused": p["paused"], "note": "All job work is paused. It resumes when the owner says 'start work' or taps it in the app."}
         if not owner and action not in ("report", "job_sheet"):
-            raise ToolError("Yeh sirf owner kar sakti / sakta hai.")
+            raise ToolError("Only the owner can do this.")
         if action == "resume":
             p = await asyncio.to_thread(emp.set_pause, ctx.tenant_id, False, "owner")
             return {"paused": p["paused"]}
@@ -61,10 +61,10 @@ async def employee(ctx: Ctx, action: str = "status", duty: str = "", level: str 
             return {"text": emp.job_sheet(ctx.tenant_id)["text"][:3000]}
         if action == "asks":
             return {"waiting": [{k: a[k] for k in ("what", "who", "why", "detail")} for a in emp.asks(ctx.tenant_id)[:10]],
-                    "note": "Haan / Mana owner app ke card se deti hain (Profile > Hoola Employee)."}
+                    "note": "The owner approves / declines from the card in the app (Profile > Hoola Employee)."}
         if action == "trust":
             if not duty or not level:
-                raise ToolError("duty aur level dono chahiye.")
+                raise ToolError("Both duty and level are needed.")
             t = await asyncio.to_thread(emp.set_trust, ctx.tenant_id, duty, level)
             return {"duty": t["label"], "level": t["level_label"]}
         if action in ("chats", "chat", "appointments", "book", "dues", "add_due", "due_paid", "take_over", "give_back"):

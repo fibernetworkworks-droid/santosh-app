@@ -91,7 +91,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return A.make_confirmations(t, e, int(a.get("top") or 10), a.get("min_amount"))
         if action == "approve_confirmations":
             if not _owner(ctx):
-                raise ToolError("Confirmation bhejne ki haan sirf owner.")
+                raise ToolError("Only the owner can approve sending a confirmation.")
             return A.approve_confirmations(t, e, bool(a.get("approve", True)))
         if action == "confirmation_reply":
             return A.confirmation_reply(t, _s(a.get("confirm_id")), a.get("amount"), _s(a.get("note")))
@@ -99,7 +99,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return A.query_list(t, e)
         if action == "asked":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Only the owner can do this.")
             return A.mark_asked(t, e)
         if action == "rep_letter":
             return A.rep_letter(t, e)

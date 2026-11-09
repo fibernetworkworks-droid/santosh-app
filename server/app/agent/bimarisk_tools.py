@@ -65,13 +65,13 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return E.fraud_audit(g("decisions") or [], g("max_gap", 1.25), g("min_group", 30))
     if action == "scheme_anomalies":
         return E.scheme_anomalies(g("claims") or [], g("z", 3), g("min_n", 10))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 async def _bima_risk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Yeh insurance risk desk ki team ke liye hai.")
+        raise ToolError("This is for the insurance risk desk team.")
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     try:

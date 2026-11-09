@@ -93,9 +93,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Fleet ka kaam graahak ke liye nahi.")
+        raise ToolError("Fleet work is not for customers.")
     if action in OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     v = _s(a.get("vehicle"))
     try:
         if action == "settings":
@@ -110,7 +110,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                               _s(a.get("station")), actor=actor, conv=conv)
         if action == "fuel_import":
             if not a.get("file_id"):
-                raise ToolError("file_id chahiye (fuel card ki statement).")
+                raise ToolError("file_id needed (the fuel card statement).")
             return S.import_fuel(t, _s(a.get("file_id")), vehicle=v, actor=actor, conv=conv)
         if action == "service_set":
             return S.service_set(t, v, _s(a.get("item")), a.get("every_km"), a.get("every_months"), a.get("last_km"), _s(a.get("last_on")),
@@ -158,7 +158,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..fleet import service as S
     t, v = ctx.tenant_id, _s(a.get("vehicle"))
     if (getattr(ctx, "actor", "owner") or "").startswith("customer:"):
-        raise ToolError("Fleet ki jaankari graahak ke liye nahi.")
+        raise ToolError("Fleet information is not for customers.")
     days = int(a.get("days") or 30)
     try:
         if what == "day":

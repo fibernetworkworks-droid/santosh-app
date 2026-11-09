@@ -7,8 +7,8 @@ from .tools import Ctx
 
 GOOGLE_TOOLS = [
     {"name": "google_status", "description": (
-        "Check her Google connection when Drive / Gmail / Calendar / Sheets don't work or she asks 'Drive kyun nahi chal "
-        "raha': which permissions she gave, whether Google refused the login (expired / revoked), which Drive accounts "
+        "Check her Google connection when Drive / Gmail / Calendar / Sheets don't work or she asks 'why is Drive not working "
+        "now': which permissions she gave, whether Google refused the login (expired / revoked), which Drive accounts "
         "are linked, and a live test. Tell her the 'say' line and the fix in simple words."),
      "input_schema": {"type": "object", "properties": {}}},
 ]

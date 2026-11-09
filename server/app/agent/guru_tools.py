@@ -55,7 +55,7 @@ def _s(v: Any) -> str:
 def _actor(ctx: Ctx) -> str:
     a = getattr(ctx, "actor", "owner") or "owner"
     if a.startswith("customer:"):
-        raise ToolError("Tutor sirf ghar / school ke team ke liye; graahak ke liye nahi.")
+        raise ToolError("The tutor is only for the home / school team; not for customers.")
     return a
 
 

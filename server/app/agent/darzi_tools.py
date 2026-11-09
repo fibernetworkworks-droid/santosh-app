@@ -30,7 +30,7 @@ DARZI_TOOLS = [
         "kamar 30 bahi 11 1/2'), person, note (fitting / style), unit. Old measurements are kept; big changes come back "
         "to point out. Photo of the measurement book: file_read first, then measure. "
         "action=status: order (D-0012 / 12 / id), status new|cutting|stitching|trial|ready|delivered|cancelled, note. "
-        "ready = a 'taiyaar hai' message draft card for HER to send (never say it was sent). "
+        "ready = a 'it is ready' message draft card for HER to send (never say it was sent). "
         "action=update: order + deliver_on / trial_on / notes / items. action=pay: order, amount, how (cash / UPI): "
         "money she received. action=deliver: order, paid_now: closes it with a log. action=cancel: order, reason. "
         "action=slip: PDF job slip for an order. action=ready_message: the draft card again. "
@@ -84,7 +84,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     conv = ctx.conversation_id
     try:
         if action in _OWNER_ONLY and actor not in ("owner",) and not actor.startswith("approved:"):
-            raise ToolError("Daam aur niyam sirf owner badal sakti hain.")
+            raise ToolError("Only the owner can change prices and rules.")
         if action == "new_order":
             return D.new_order(ctx.tenant_id, a.get("items") or ([{"garment": a["garment"]}] if a.get("garment") else []),
                                _s(a.get("customer")), _s(a.get("name")), _s(a.get("phone")), _s(a.get("deliver_on")),
@@ -109,7 +109,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return D.slip_file(ctx.tenant_id, _s(a.get("order")), conv)
         if action == "ready_message":
             card = D.ready_card(ctx.tenant_id, _s(a.get("order")), conv)
-            return {"card": card, "say": "Message draft card par hai: aap tap karengi tabhi jayega."}
+            return {"card": card, "say": "The message draft is on the card: it goes only when you tap."}
         if action == "rules":
             keys = ("shop_name", "unit", "pieces_per_day", "closed_days", "rush_percent", "min_days", "prices", "rules",
                     "ready_template", "morning_time", "remeasure_months")

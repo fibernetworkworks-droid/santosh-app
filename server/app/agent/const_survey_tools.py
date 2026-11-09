@@ -14,24 +14,23 @@ SURVEY_TOOLS = [
     {"name": "const_survey", "description": (
         "Survey & measurement desk - traverse/area/volume/deviation arithmetic + RERA carpet statement. "
         "action=pts_add: project, name, source_kind coords|landxml, text ('id,x,y,z' lines ya LandXML "
-        "CgPoints) -> survey job (surfaces/observations parse NAHI hote - said on the tin). action=traverse: "
+        "CgPoints) -> survey job (surfaces/observations are NOT parsed - said on the tin). action=traverse: "
         "project, job (id), order [point ids] -> loop closure + precision. action=area: project, job, order, "
         "record_m2 (optional), record_source (7/12 etc), tolerance_pct -> shoelace area + boundary-vs-record. "
         "action=volume: project, name, elevations [z...], design_level, cell_area_m2 -> cut/fill alag-alag "
         "(readings survey lead ki). action=deviations: project, name, rows [x,y,z_asbuilt,x,y,z_design], "
-        "tolerance_mm -> RMS + out-of-tolerance (E57/LAS parse nahi hota - CSV in). action=carpet_new: project, "
-        "unit_no, wall_policy (AAPKA word, recorded), declared_m2, declared_source -> statement khulti hai. "
+        "tolerance_mm -> RMS + out-of-tolerance (E57/LAS is not parsed - CSV in). action=carpet_new: project, "
+        "unit_no, wall_policy (YOUR word, recorded), declared_m2, declared_source -> a statement is opened. "
         "action=carpet_room: carpet (id), room, length_m, breadth_m. action=carpet_calc: carpet (id), "
         "tolerance_pct (optional; default state pack row) -> computed vs declared, within/exceeds. "
-        "action=carpet_pack: carpet (id) -> discrepancy report PDF, sign line khaali (architect/CE ke liye). "
+        "action=carpet_pack: carpet (id) -> discrepancy report PDF, sign line empty (for the architect/CE). "
         "Wave 3.5: action=gis_add: project, name, geojson (GeoJSON text, Polygon/MultiPolygon), crs, units "
-        "m|deg (default deg - RFC 7946; area sirf projected metre CRS par) -> layer (#27, maps fetch/interpret "
-        "NAHI hote). action=gis_area: layer (id), record_m2, record_source, tolerance_pct -> shoelace outer "
+        "m|deg (default deg - RFC 7946; area only on a projected metre CRS) -> layer (#27, maps are NOT fetched/interpreted). action=gis_area: layer (id), record_m2, record_source, tolerance_pct -> shoelace outer "
         "rings (deg layers REFUSE). action=gis_overlay: project, layer (id), hazard flood|seismic|zoning|other, "
         "zone_value (AAPNE map se padhi), source -> reading record. action=setout_add: project, name, "
         "design_rows [id, x, y(, z)] -> setting-out sheet (#77). action=setout_check: project, job (id), "
         "aslaid_rows [id, x, y(, z)], tolerance_mm -> plan deviation, RMS, out-of-tolerance. action=level_check: "
-        "project, job (id), obs_rows [id, z_obs], tolerance_mm -> dz sign ke saath (design z sheet points par)."),
+        "project, job (id), obs_rows [id, z_obs], tolerance_mm -> dz with its sign (design z on the sheet points)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["pts_add", "traverse", "area", "volume", "deviations",
                                                "carpet_new", "carpet_room", "carpet_calc", "carpet_pack",
@@ -185,7 +184,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             with session() as s:
                 c = s.get(CsurCarpet, _s(a.get("carpet")))
                 if not c or c.tenant_id != t:
-                    raise S.CstError("Carpet statement nahi mili.")
+                    raise S.CstError("Carpet statement not found.")
                 rooms = s.scalars(select(CsurCarpetRoom).where(CsurCarpetRoom.tenant_id == t,
                                                                CsurCarpetRoom.carpet_id == c.id)).all()
             return {"carpet": {"id": c.id, "unit_no": c.unit_no, "policy": c.wall_policy,

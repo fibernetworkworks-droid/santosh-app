@@ -223,13 +223,13 @@ async def drive_share(ctx: Ctx, file, people=None, role="reader", message="", pu
         pid = await _t(ds.plan_share, ctx.tenant_id, ctx.conversation_id, str(file), list(people or []), role or "reader",
                        str(message or ""))
     card = await asyncio.to_thread(_card, ctx, pid)
-    return {**card, "status": "needs_approval", "note": "Confirm card chat mein hai; tap ke baad hi share hoga."}
+    return {**card, "status": "needs_approval", "note": "The confirm card is in the chat; it is shared only after the tap."}
 
 
 async def drive_trash(ctx: Ctx, files, **_):
     pid = await _t(ds.plan_trash, ctx.tenant_id, ctx.conversation_id, [str(f) for f in files or []])
     card = await asyncio.to_thread(_card, ctx, pid)
-    return {**card, "status": "needs_approval", "note": "Confirm card chat mein hai; tap ke baad hi Trash mein jayegi."}
+    return {**card, "status": "needs_approval", "note": "The confirm card is in the chat; it goes to Trash only after the tap."}
 
 
 async def drive_storage(ctx: Ctx, **_):
@@ -248,7 +248,7 @@ async def drive_access(ctx: Ctx, file, action, person=None, role=None, **_):
     pid = await _t(ds.plan_access, ctx.tenant_id, ctx.conversation_id, str(file), str(action), person or None,
                    role or None)
     card = await asyncio.to_thread(_card, ctx, pid)
-    return {**card, "status": "needs_approval", "note": "Confirm card chat mein hai; tap ke baad hi access badlega."}
+    return {**card, "status": "needs_approval", "note": "The confirm card is in the chat; access changes only after the tap."}
 
 
 async def drive_trash_list(ctx: Ctx, limit=50, **_):
@@ -259,7 +259,7 @@ async def drive_delete(ctx: Ctx, files=None, empty=False, account=None, **_):
     pid = await _t(ds.plan_delete, ctx.tenant_id, ctx.conversation_id, [str(f) for f in files or []], bool(empty),
                    account or None)
     card = await asyncio.to_thread(_card, ctx, pid)
-    return {**card, "status": "needs_approval", "note": "Confirm card chat mein hai; tap ke baad hi delete hoga."}
+    return {**card, "status": "needs_approval", "note": "The confirm card is in the chat; it is deleted only after the tap."}
 
 
 async def drive_comments(ctx: Ctx, file, action="list", text=None, comment=None, **_):
@@ -277,7 +277,7 @@ async def drive_comments(ctx: Ctx, file, action="list", text=None, comment=None,
     else:
         raise ToolError("action: list, add, reply, resolve, reopen, delete")
     card = await asyncio.to_thread(_card, ctx, pid)
-    return {**card, "status": "needs_approval", "note": "Confirm card chat mein hai; tap ke baad hi comment jayega."}
+    return {**card, "status": "needs_approval", "note": "The confirm card is in the chat; the comment goes only after the tap."}
 
 
 async def drive_revisions(ctx: Ctx, file, revision=None, keep=None, **_):

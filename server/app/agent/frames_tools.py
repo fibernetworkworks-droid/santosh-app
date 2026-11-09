@@ -8,8 +8,7 @@ come from files she already has — the SAME owner-checked intake as every other
 project, never re-uploads anything, never fetches the web mid-render.
 
 A render is minutes of CPU at the lowest priority, one at a time on the whole box — so on
-a VOICE CALL it goes through santosh_kaam exactly like rea_khoj: the call hears "video ban
-rahi hai", the full brain's goal turn runs it, the MP4 lands as a file card she taps.
+a VOICE CALL it goes through santosh_kaam exactly like rea_khoj: the call hears "the video is being made", the full brain's goal turn runs it, the MP4 lands as a file card she taps.
 """
 from __future__ import annotations
 
@@ -25,7 +24,7 @@ FRAMES_TOOLS = [
         "Make a REAL MP4 video from chat: you write the HTML composition (timing in data "
         "attributes, one paused GSAP timeline on window.__timelines), the server checks it and "
         "renders it deterministically with the HyperFrames engine. Use when she asks for a "
-        "video: 'is product ka video banao', 'ek chhota promo film', 'yeh script ka video', "
+        "video: 'make a video of this product', 'a short promo film', 'a video of this script', "
         "reels, launch films, explainers, kinetic captions. Actions: render (html -> MP4 file "
         "card in chat), check (the quality gate before rendering - run it first on any new "
         "composition and fix every error), timeline (what plays when), snapshot (a few PNG "
@@ -78,7 +77,7 @@ def _resolve_files(ctx: Ctx, files: list[dict[str, Any]] | None) -> list[dict[st
     out: list[dict[str, Any]] = []
     for f in files or []:
         if not isinstance(f, dict) or not str(f.get("name", "")).strip():
-            raise ToolError("har file mein name (assets/... ya compositions/...) hona chahiye.")
+            raise ToolError("every file needs a name (assets/... or compositions/...).")
         fid = str(f.get("file_id", "") or "")
         item = {"name": str(f.get("name", ""))}
         if f.get("text") is not None:
@@ -90,7 +89,7 @@ def _resolve_files(ctx: Ctx, files: list[dict[str, Any]] | None) -> list[dict[st
                 raise ToolError(f"file {fid}: {e}")
             item["path"] = str(Path(row.stored_path))
         else:
-            raise ToolError(f"{item['name']}: file_id ya text ek dijiye.")
+            raise ToolError(f"{item['name']}: give either a file_id or text.")
         out.append(item)
     return out
 
@@ -104,7 +103,7 @@ def _resolve_spec(ctx: Ctx, spec: dict[str, Any]) -> tuple[dict[str, Any], list[
     the real bytes from `files`. Photos only - png/jpg/webp, the engine draws everything else."""
     from ..mailbox import service as ms
     if not isinstance(spec, dict):
-        raise ToolError("spec ek object hona chahiye (shape, script, ...).")
+        raise ToolError("spec must be an object (shape, script, ...).")
     spec = dict(spec)
     files: list[dict[str, Any]] = []
 
@@ -116,7 +115,7 @@ def _resolve_spec(ctx: Ctx, spec: dict[str, Any]) -> tuple[dict[str, Any], list[
         p = Path(row.stored_path)
         ext = p.suffix.lower()
         if ext not in _IMG_EXT:
-            raise ToolError(f"{kind} ke liye photo png/jpg/webp honi chahiye (mili: {ext or 'bina ext'}).")
+            raise ToolError(f"{kind}: the photo must be png/jpg/webp (got: {ext or 'no extension'}).")
         name = f"assets/{kind}" + (f"-{idx}" if idx else "") + ext
         files.append({"name": name, "path": str(p)})
         return name
@@ -126,7 +125,7 @@ def _resolve_spec(ctx: Ctx, spec: dict[str, Any]) -> tuple[dict[str, Any], list[
     items = []
     for i, it in enumerate(spec.get("items") or []):
         if not isinstance(it, dict):
-            raise ToolError(f"item {i + 1} ek object hona chahiye.")
+            raise ToolError(f"item {i + 1} must be an object.")
         it = dict(it)
         if it.get("file_id"):
             it["photo"] = take(it.pop("file_id"), "item", i + 1)
@@ -155,14 +154,14 @@ async def hoola_frames(ctx: Ctx, action: str = "status", html: str = "", files: 
         return await asyncio.to_thread(frames.status)
     if action == "add":
         if not (block or "").strip():
-            raise ToolError("Kaunsa block? action=add ko block naam dijiye (status mein list).")
+            raise ToolError("Which block? Give action=add a block name (the list is in status).")
         try:
             return await asyncio.to_thread(frames.run, ctx.tenant_id, "add", block=block)
         except frames.FramesError as e:
             raise ToolError(str(e))
     if action == "avatar_film":
         if not spec:
-            raise ToolError("Spec kahaan hai? avatar_film ko dijiye: {shape, script, ...} - HTML ki zaroorat nahi.")
+            raise ToolError("Where is the spec? Give avatar_film: {shape, script, ...} - no HTML needed.")
         spec, files = await asyncio.to_thread(_resolve_spec, ctx, spec)
         try:
             res = await asyncio.to_thread(frames.run, ctx.tenant_id, "avatar_film",
@@ -174,15 +173,15 @@ async def hoola_frames(ctx: Ctx, action: str = "status", html: str = "", files: 
         if not res.get("ok"):
             return {"ok": False, "stage": "check",
                     "errors": res.get("errors") or [],
-                    "note": "check pe fail hua - yeh errors theek karke dobara avatar_film kijiye."}
+                    "note": "The check failed - fix these errors and run avatar_film again."}
         view = await asyncio.to_thread(_deliver_mp4, ctx, name, res["mp4_path"])
         return view | {"made": "mp4", "shape": res.get("shape"), "scenes": res.get("scenes"),
                        "duration_s": res.get("duration_s") or res.get("total_s"),
                        "size_mb": round(res.get("size_bytes", 0) / 1048576, 1),
                        "words_estimated": res.get("words_estimated"), "silent": res.get("silent"),
-                       "note": "Video ka file card chat mein hai."}
+                       "note": "The video's file card is in the chat."}
     if not (html or "").strip():
-        raise ToolError("Composition kahaan hai? html (poora index.html) dijiye - pehle action=check, phir render.")
+        raise ToolError("Where is the composition? Give html (the full index.html) - first action=check, then render.")
     resolved = await asyncio.to_thread(_resolve_files, ctx, files)
     try:
         if action == "render":
@@ -191,11 +190,11 @@ async def hoola_frames(ctx: Ctx, action: str = "status", html: str = "", files: 
             if not res.get("ok"):
                 return {"ok": False, "stage": "check",
                         "errors": res.get("errors") or [],
-                        "note": "check pe fail hua - yeh errors theek karke dobara render kijiye."}
+                        "note": "The check failed - fix these errors and render again."}
             view = await asyncio.to_thread(_deliver_mp4, ctx, name, res["mp4_path"])
             return view | {"made": "mp4", "duration_s": res.get("duration_s"),
                            "size_mb": round(res.get("size_bytes", 0) / 1048576, 1),
-                           "note": "Video ka file card chat mein hai."}
+                           "note": "The video's file card is in the chat."}
         return await asyncio.to_thread(frames.run, ctx.tenant_id, action, html=html,
                                        files=resolved, times=times)
     except frames.NotConfigured as e:

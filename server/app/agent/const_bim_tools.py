@@ -15,25 +15,25 @@ from .tools import Ctx, ToolError
 BIM_TOOLS = [
     {"name": "const_bim", "description": (
         "BIM / information desk - open formats only (IFC read, BCF write, IDS subset). action=ifc_add: project, "
-        "name, ifc_text (STEP text; FILE_SCHEMA hona chahiye), file_ref -> honest parse + health gaps. "
+        "name, ifc_text (STEP text; FILE_SCHEMA is required), file_ref -> honest parse + health gaps. "
         "action=health: model -> what it has, what it lacks (duplicate GUIDs, nameless, no quantities). "
         "action=naming: filenames [list], pattern (default Project-Originator-Volume-Level-Type-Role-Number) -> "
         "ISO 19650 violations. action=cde_add: project, code, title, rev, status wip|shared|published|archived -> "
         "CDE register (same code+new rev superscedes the old). action=cde_status: cde (id), status, note. "
-        "action=transmit: project, codes [list], to_whom, note -> transmittal RECORD (bhejna aapke tap se). "
+        "action=transmit: project, codes [list], to_whom, note -> transmittal RECORD (sending only on your tap). "
         "action=clash_scan: model, clearance_m -> overlap candidates on declared extents (axis-aligned; "
         "rotation ignored; not-checkable counted). action=clash_mark: clash (id), status assigned|resolved|"
         "accepted, by (BIM coordinator ka NAAM), note. action=bcf: model -> BCF 2.1 zip of open candidates. "
         "action=link4d: model, activity, match_kind class|storey|name, match_value, start, finish -> 4D mapping "
-        "(schedule AAPKI). action=report4d: model -> per-activity element/volume report. action=qty5d: model "
+        "(the schedule is YOURS). action=report4d: model -> per-activity element/volume report. action=qty5d: model "
         "(match_kind/match_value optional) -> model's own Volume/Area rows with GUID trail. action=cost5d: "
         "takeoff (id), rate, rate_source (SOR/quote) -> qty x rate, the ONLY arithmetic. action=ids: model, "
         "ids_text (IDS XML) -> entity+property facets checked, rest UNVERIFIED. Wave 3.5: "
         "action=asbuilt_set: project, name, required [codes ya 'CODE | Title'] -> as-built set (#25, "
-        "completeness AAPKI list par). action=asbuilt_mark: set (id), code, status received|pending|na, "
+        "completeness against YOUR list). action=asbuilt_mark: set (id), code, status received|pending|na, "
         "by (NAAM), note. action=asbuilt_check: set (id) -> received/na/pending + missing + % (approval "
         "site architect/QS ka, tier C). action=twin_asset: project, asset_id, guid (IFC GlobalId), name, "
-        "kind, space, model -> data-link row (#109, twin = register, 3D view nahi). action=twin_read: "
+        "kind, space, model -> data-link row (#109, twin = a register, not a 3D view). action=twin_read: "
         "project, rows [asset_id, sensor, value], unit, band_min, band_max, band_source (band dena ho to "
         "source zaroori) -> out-of-band flagged. action=cobie_check: project, csv_text (Component sheet "
         "CSV) -> required headers + rows bina AssetIdentifier/TypeName."),
@@ -205,7 +205,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             with session() as s:
                 st = s.get(CBimAsbuilt, _s(a.get("set")))
                 if not st or st.tenant_id != t:
-                    raise B.CstError("As-built set nahi mili.")
+                    raise B.CstError("As-built set not found.")
                 docs = s.scalars(select(CBimAsbuiltDoc).where(CBimAsbuiltDoc.tenant_id == t,
                                                               CBimAsbuiltDoc.set_id == st.id)).all()
             return {"set": {"id": st.id, "project": st.project, "name": st.name},

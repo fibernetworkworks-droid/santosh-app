@@ -13,14 +13,14 @@ from .tools import Ctx, ToolError
 CUSTOMER_TOOLS = [
     {"name": "const_customer", "description": (
         "Grahak ke paise + possession desk (builder's customer side). action=demand: project, unit, customer, phone, "
-        "milestone (plinth / slab / registration), amount, due, interest_pct (aapke agreement ka clause), note -> DRAFT "
+        "milestone (plinth / slab / registration), amount, due, interest_pct (the clause of your agreement), note -> DRAFT "
         "demand. action=letter: demand (id) -> the demand-letter PDF (file). action=demand_send: demand (id) - OWNER ONLY, "
-        "bhejne ki haan. action=receipt: demand (id) or project+unit, amount, mode neft|rtgs|cheque|upi|loan, day, note. "
+        "approval to send. action=receipt: demand (id) or project+unit, amount, mode neft|rtgs|cheque|upi|loan, day, note. "
         "action=handover: project, unit, customer, items [{item, done, day, note}] (checklist), keys_on, utilities, status "
         "open|ready|handed. action=dlp_open: project, unit, issue, trade, vendor, dlp_months (agreement), possession_on -> "
-        "DLP ticket with the window arithmetic. action=dlp_sent: ticket (id) - OWNER ONLY, vendor ko bhejne ka record. "
-        "action=dlp_close: ticket (id), day, note. Hoola demand nahi bhejta, vendor ko nahi bhejta, byaaj ka legal faisla "
-        "nahi karta - sirf draft + record + hisaab."),
+        "DLP ticket with the window arithmetic. action=dlp_sent: ticket (id) - OWNER ONLY, record of sending to the vendor. "
+        "action=dlp_close: ticket (id), day, note. Hoola does not send demands, does not send to the vendor, does not make the legal decision on interest "
+        "- only draft + record + arithmetic."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["demand", "letter", "demand_send", "receipt", "handover", "dlp_open",
                                                "dlp_sent", "dlp_close", "lead_add", "inventory_mark",
@@ -64,7 +64,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             did = _s(a.get("demand"))
             pdf = C.demand_letter(t, did)
             f = chatfiles.store(t, f"Demand-{did[:8]}.pdf", pdf, "application/pdf")
-            return {"file": f, "say": "Demand letter PDF ban gaya. Bhejna aapki haan se (demand_send owner-only)."}
+            return {"file": f, "say": "The demand letter PDF is ready. Sending only on your approval (demand_send is owner-only)."}
         if action == "demand_send":
             return C.demand_send(t, _s(a.get("demand")), ctx.actor, _s(a.get("day")), conv)
         if action == "receipt":

@@ -26,8 +26,8 @@ KAAM_PLAN_DEF = {
         "file:<name>, link_ok, artifact, reminder>=3, list:<name>>=5, tool:<name>. After every big step write "
         "ONE short line to her (what you found / made, what is next), then the next tool. blocked_on_her is only when you truly need "
         "HER: her tap on a card, an OTP, or a fact only she knows. "
-        "On a CALL, show / add / step reach the job already running in the chat the call came from: 'isme ye bhi jodo' = "
-        "add (never a second set), 'kahan tak pahuncha' = show."),
+        "On a CALL, show / add / step reach the job already running in the chat the call came from: 'add this too' = "
+        "add (never a second set), 'how far has it got' = show."),
     "input_schema": {
         "type": "object",
         "properties": {
@@ -57,7 +57,7 @@ KAAM_PLAN_DEF = {
 
 def _goal_for(conv: str):
     """CALL PAR TEAM: the running job THIS conversation can act on - its own, or (on a call record) the job running in
-    the chat the call came from, so "isme ye bhi jodo" / "kahan tak pahuncha" on a call reaches her chat's long job."""
+    the chat the call came from, so "add this too" / "how far has it got" on a call reaches her chat's long job."""
     a = goal_mod.active_for(conv)
     if a is not None:
         return a
@@ -87,7 +87,7 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
             if not goal_id:
                 a = _goal_for(conv)
                 if a is None:
-                    raise ToolError("Is chat ka koi goal chal nahi raha; pehle kaam_plan set karo.")
+                    raise ToolError("No goal is running in this chat; set a kaam_plan first.")
                 goal_id = a["id"]
                 conv = a.get("conversation_id") or conv
             if not state:
@@ -104,23 +104,23 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
             if not goal_id:
                 a = _goal_for(conv)
                 if a is None:
-                    raise ToolError("Is chat ka koi goal chal nahi raha; pehle kaam_plan set karo.")
+                    raise ToolError("No goal is running in this chat; set a kaam_plan first.")
                 goal_id = a["id"]
                 conv = a.get("conversation_id") or conv
             v = goal_mod.add_step(tenant, goal_id, text, conv, check=check)
         elif action == "show":
             v = goal_mod.show(tenant, goal_id) if goal_id else (_goal_for(conv) or {})
             if not v:
-                raise ToolError("Is chat ka koi goal chal nahi raha.")
+                raise ToolError("No goal is running in this chat.")
         elif action == "finish":
             if not goal_id:
                 a = _goal_for(conv)
                 if a is None:
-                    raise ToolError("Is chat ka koi goal chal nahi raha.")
+                    raise ToolError("No goal is running in this chat.")
                 goal_id = a["id"]
                 conv = a.get("conversation_id") or conv
             if not outcome:
-                raise ToolError("outcome chahiye: done | blocked_on_her | failed | stopped")
+                raise ToolError("outcome is needed: done | blocked_on_her | failed | stopped")
             v = goal_mod.finish(tenant, goal_id, outcome, reason, conv, made=made or [], left=left,
                                 your_turn=your_turn, calls=getattr(ctx, "calls", None))
         else:
@@ -133,11 +133,11 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
         # v0.443 DONE = VERIFIED: the job stays open; the model must really do the failing part
         from . import verify as _verify
         g = v.get("verify") or {}
-        return {"result": "goal band NAHI hua - jaanch fail", "goal_id": v["id"], "status": v["status"],
+        return {"result": "goal NOT closed - check failed", "goal_id": v["id"], "status": v["status"],
                 "done": f"{v['done']}/{v['total']}", "verified": False,
                 "failures": [{"item": f["item"], "why": f["why"]} for f in (g.get("failures") or [])][:6],
                 "unknown": [{"item": u["item"], "why": u["why"]} for u in (g.get("unknown") or [])][:3],
-                "note": _verify.NUDGE.format(line=g.get("line") or "jaanch fail")}
+                "note": _verify.NUDGE.format(line=g.get("line") or "check failed")}
     left = goal_mod.steps_left(v)
     say = (f"plan ban gaya: {v['total']} steps" if action == "set" else
            f"step {n} = {state}" if action == "step" else
@@ -147,26 +147,26 @@ async def kaam_plan(ctx: Ctx, action: str = "set", goal: str = "", steps: list[s
            "steps": [{ "n": x["n"], "state": x["state"], "text": x["text"]} for x in (v.get("steps") or [])]}
     if left:
         out["baaki"] = "; ".join(f"{x['n']}. {x['text']}" for x in left[:10])
-        out["note"] = ("Steps baaki hain: tools se kaam karte raho, text par mat ruko. Poora hone par kaam_plan finish done. "
-                       "Sirf uska tap / OTP / uska fact chahiye to finish blocked_on_her.")
+        out["note"] = ("Steps are left: keep working with tools, do not stop at text. When everything is done, kaam_plan finish done. "
+                       "Only if you need her tap / OTP / a fact only she knows, use finish blocked_on_her.")
     if action == "step" and state == "done" and left:
         # v0.258 CHALTE CHALTE BOLO: v0.240 said "write no line for this step", which contradicted PLAN_FIRST in the
         # same turn and left her staring at a silent card. Claude writes one line per step - the finding, not the dump.
-        out["note"] += (" Ab ek chhoti line: is step se jo asli cheez mili (number / id / link) aur ab kya kar rahe "
-                        "ho - ek vaakya, koi bullet ya heading nahi. Phir agla tool.")
+        out["note"] += (" Now one short line: the real finding from this step (number / id / link) and what you are doing now "
+                        "- one sentence, no bullet or heading. Then the next tool.")
     elif action == "step" and v["done"] == v["total"]:
-        out["note"] = ("Sab steps done: kaam_plan finish done laga do — made mein asli links / files, aur your_turn "
-                       "mein agar use kuch karna hai.")
+        out["note"] = ("All steps are done: call kaam_plan finish done - put the real links / files in made, and in your_turn "
+                       "anything she has to do.")
     if action == "finish" and v.get("report"):
         # v0.240 CHHOTA JAWAB: the four parts are ALREADY on her card (phone _Report + console goalReport). The chat
         # gets ONE short human line, like Claude's end-of-work sentence - never the bullets again. The text rides as
         # `card_shows` (what she is already looking at), not as a template to echo.
         out["card_shows"] = goal_mod.report_text(v["report"])
-        out["note"] = ("Yeh report uske CARD par pehle se dikh rahi hai. Chat mein sirf EK chhoti insaani line do - "
-                       "ek ya do vaakya: kaam ho gaya (ya kahan atka), aur agar uska khud ka koi kaam baaki hai to "
-                       "woh. Bullet list, '✅ Kya hua' / '📎 Kya bana' / '⏳ Kya baaki' / '👉 Aapko kya karna hai' "
-                       "heading, step-by-step detail, links ki list - kuch bhi nahi. Card par jo hai usey chat mein "
-                       "dohraao mat.")
+        out["note"] = ("This report is already shown on her CARD. In the chat give only ONE short human line - "
+                       "one or two sentences: the work is done (or where it is stuck), and if she has something left to do "
+                       "say that. No bullet list, no '✅ What happened' / '📎 What was made' / '⏳ What is left' / '👉 What you need to do' "
+                       "headings, no step-by-step detail, no list of links. Do not repeat in the chat "
+                       "what is on the card.")
     return out
 
 

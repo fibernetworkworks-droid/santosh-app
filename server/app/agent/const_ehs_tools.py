@@ -13,11 +13,11 @@ EHS_TOOLS = [
         "EHS & welfare desk (#83/#84/#86). action=training_add: project, rows [name, trade, training, "
         "date, valid_till]. action=training_due: project (optional) -> expired / due-30-days / valid "
         "(refresher EHS head schedule karega). action=env_add: project, kind env_read|env_limit, rows "
-        "- env_read [parameter, value, unit] (aapki monitoring report se), env_limit [parameter, "
+        "- env_read [parameter, value, unit] (from your monitoring report), env_limit [parameter, "
         "limit, unit] + source (CPCB/SPCB norm) zaroori. action=env_check: project -> exceedance "
         "arithmetic fed limits par. action=camp_add: project, rows [block, capacity, occupancy]. "
         "action=camp_check: project, rows [item, status], by (checker ka naam zaroori - clash_mark "
-        "law; welfare ka verdict officer ka)."),
+        "law; the welfare verdict is the officer's)."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["training_add", "training_due", "env_add", "env_check",
                                                "camp_add", "camp_check"]},

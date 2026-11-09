@@ -398,7 +398,7 @@ def test_draft_read_and_edit_keeps_attachment(gb, draft, bz):  # noqa: F811
 
 def test_draft_edit_needs_a_field(gb, draft, bz):  # noqa: F811
     ctx = conv_ctx()
-    with pytest.raises(ToolError, match="Kya badalna hai"):
+    with pytest.raises(ToolError, match="What should change"):
         run("email_drafts", {"action": "edit", "id": "d1"}, ctx)
 
 

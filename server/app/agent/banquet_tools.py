@@ -19,7 +19,7 @@ _OWNER_ONLY = {"settings", "hall", "package", "extra", "close", "open", "paid", 
 BANQUET_TOOLS = [
     {"name": "banquet", "description": (
         "Banquet hall / lawn sales coworker. NEVER invent a price, date, capacity or availability; ask her. Cards = only her tap "
-        "decides (say 'aapki haan ka card bheja hai', never 'sent / confirmed'). action=settings*: venue, gstin, upi_id, specified "
+        "decides (say 'I have sent a card for your approval', never 'sent / confirmed'). action=settings*: venue, gstin, upi_id, specified "
         "(GST specified premises), gst_food, gst_hall, gst_extra, slots {morning|evening|full: {from,to}}, hold_hours, lock_days, "
         "stages [{label,pct,days_before}], cancel [{days_before,refund_pct}], terms, music_end, morning_time. action=hall*: name, "
         "kind hall|lawn|terrace|poolside|room, seated, floating, rent, rent_full. action=package*: name, diet veg|nonveg|jain, price "
@@ -92,9 +92,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..banquet import service as S
     t, conv, actor = ctx.tenant_id, ctx.conversation_id, _actor(ctx)
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     bk = _s(a.get("booking"))
     try:
         if action == "settings":
@@ -156,7 +156,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, bk, actor)
     except S.BanquetError as e:
         raise ToolError(str(e))
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"Unknown action '{action}'.")
 
 
 def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -189,7 +189,7 @@ def _see(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
     except S.BanquetError as e:
         raise ToolError(str(e))
-    raise ToolError(f"what '{what}' nahi pehchana.")
+    raise ToolError(f"Unknown what '{what}'.")
 
 
 async def _banquet(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:

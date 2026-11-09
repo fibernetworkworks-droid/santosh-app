@@ -84,7 +84,7 @@ BAZAR_TOOLS = [
         "Dropbox, Figma, Airtable, Zendesk, CRMs, accounting, HR, marketing ...) linked through Hoola's "
         "Composio connection (she never makes a Composio account; she signs in on the app's own page). "
         "action=list [query=app name or job, e.g. 'zoho', 'invoice', 'crm']: matching apps + status (ready / needs_link / "
-        "needs_key = she types HER key for that app in the Hoola app (Connect > MCP servers > Apps > the app > Key daaliye), "
+        "needs_key = she types HER key for that app in the Hoola app (Connect > MCP servers > Apps > the app > Enter key), "
         "never in chat; needs_setup = Newtika must add it once in the Composio dashboard, say so in one line) + her calls this month. "
         "action=connect toolkit=<slug, e.g. slack>: "
         "an Open button in the chat for her sign-in. action=tools toolkit=<slug> [query]: tool slugs with input_schema "

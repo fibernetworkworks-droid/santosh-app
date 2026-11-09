@@ -20,7 +20,7 @@ DEV_TOOLS = [
         "= owner/name (default: her default repo). action=begin (task: start a DRAFT task, e.g. from App Review; the PR still needs her tap), revise (task + text: change the PR by her words), fix_ci (task: CI failed -> "
         "try a fix commit), refresh (task: PR + CI state), cancel (task). action=review (repo + pr: review her / her team's PR -> a DRAFT "
         "review card; it goes to GitHub only on her tap). action=merge (task or repo + pr, method merge|squash|rebase) and action=deploy "
-        "(repo, workflow, ref, inputs) ONLY prepare a card for HER tap: say 'card bheja hai', never that it is merged / deployed. "
+        "(repo, workflow, ref, inputs) ONLY prepare a card for HER tap: say 'I have sent a card', never that it is merged / deployed. "
         "action=repo_add (repo, deploy_workflow = her workflow_dispatch file, deploy_ref) | repo_remove | settings (review_post draft|"
         "direct, ask_before_pr, draft_pr, allow_workflows, merge_method, max_files, max_lines, rules, default_repo; owner only)."),
      "input_schema": {"type": "object", "properties": {
@@ -61,10 +61,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Yeh kaam graahak ke liye nahi.")
+        raise ToolError("This work is not for customers.")
     for v in a.values():
         if isinstance(v, str) and R.looks_token(v):
-            raise ToolError("GitHub token chat / tool mein kabhi nahi: sirf app ke Developer > Niyam mein. Is token ko turant badal dijiye.")
+            raise ToolError("Never put a GitHub token in chat / tools: only in the app under Developer > Rules. Change this token immediately.")
     try:
         if action in S.KINDS:
             return S.start(t, action, _s(a.get("text")), _s(a.get("repo")), int(a.get("issue") or 0),
@@ -73,10 +73,10 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.begin(t, _s(a.get("task")), _s(a.get("repo")), conv, actor)
         if action == "plan_ok":    # v0.451 ECC PHASE 4: her Haan on a LARGE job's plan (she said it herself, in chat)
             if not _owner(ctx):
-                raise ToolError("Plan par haan sirf owner de sakti hain.")
+                raise ToolError("Only the owner can approve the plan.")
             v = S.get_task(t, _s(a.get("task")))
             if v.get("status") != "plan_wait":
-                raise ToolError(f"Yeh kaam '{v.get('status_label') or v.get('status')}' hai; plan ka intezaar nahi hai.")
+                raise ToolError(f"This job is '{v.get('status_label') or v.get('status')}'; it is not waiting for a plan.")
             return S.plan_ok(t, _s(a.get("task")), str(v.get("hash") or ""), by_tap=True, note=_s(a.get("text")), conv=conv)
         if action == "revise":
             return S.revise(t, _s(a.get("task")), _s(a.get("text")), conv)
@@ -99,15 +99,15 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return v
         if action == "repo_add":
             if not _owner(ctx):
-                raise ToolError("Repo sirf owner jod sakti hain.")
+                raise ToolError("Only the owner can connect a repo.")
             return S.add_repo(t, _s(a.get("repo")), _s(a.get("deploy_workflow")), _s(a.get("deploy_ref")), _s(a.get("notes")))
         if action == "repo_remove":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Only the owner can do this.")
             return S.remove_repo(t, _s(a.get("repo")))
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Niyam sirf owner badal sakti hain.")
+                raise ToolError("Only the owner can change the rules.")
             keys = ("review_post", "ask_before_pr", "draft_pr", "allow_workflows", "merge_method", "max_files", "max_lines", "rules", "default_repo")
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
     except (S.DevError, ValueError) as ex:

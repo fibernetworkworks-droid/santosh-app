@@ -11,7 +11,7 @@ from .tools import Ctx, ToolError
 ARCHASSIST_TOOLS = [
     {"name": "archassist", "description": (
         "Architect's assistant, end to end. Her numbers only (plot area, road width, fee, % done): never invent; FSI / setback / "
-        "parking checks are 'rule book se pakka kijiye', never final. action=settings*: firm, architect, coa_no, coa_valid_to, gstin, "
+        "parking checks are 'confirm from the rule book', never final. action=settings*: firm, architect, coa_no, coa_valid_to, gstin, "
         "address, phone, email, upi_id, ruleset udcpr|udcpr_congested|dcpr_suburbs|dcpr_island|custom, terms, inv_prefix, morning_time. "
         "action=project: name (new) or project (number / name to update), client, client_phone, client_email, client_gstin, site, pin, "
         "city, authority maha_bpms|mcgm_autodcr|pmrda|midc_bpams|custom, ruleset, use, survey_no, cts_no, area (+ area_unit sqm|sqft|"
@@ -97,16 +97,16 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..archassist import service as S
     t, conv = ctx.tenant_id, ctx.conversation_id
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh architect office ka andar ka kaam hai.")
+        raise ToolError("This is internal work of the architect office.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Sirf owner.")
+        raise ToolError("Only the owner can do this.")
     pr = _s(a.get("project"))
     try:
         if action == "settings":
             return S.save_settings(t, **{k: a[k] for k in S._SET_KEYS if k in a})
         if action == "project":
             if a.get("status") in ("done", "dropped") and not _owner(ctx):
-                raise ToolError("Project band karna sirf owner.")
+                raise ToolError("Only the owner can close a project.")
             return S.save_project(t, _s(a.get("name")), pr, **{k: a[k] for k in _PROJECT_KEYS if k in a})
         if action == "doc":
             return S.doc(t, pr, _s(a.get("key")), _s(a.get("state") or "have"), _s(a.get("file_id")), _s(a.get("note")))
@@ -114,7 +114,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.area_check(t, pr, a.get("proposal") or {}, a.get("overrides") or {}, conv)
         if action == "approval":
             if _s(a.get("status")) in ("granted", "not_needed") and not _owner(ctx):
-                raise ToolError("Approval 'granted / not_needed' sirf owner bataye.")
+                raise ToolError("Only the owner can state the approval as 'granted / not_needed'.")
             return S.approval_set(t, pr, _s(a.get("key")), _s(a.get("status")), _s(a.get("ref_no")), _s(a.get("on")), _s(a.get("valid_to")),
                                   _s(a.get("file_id")), _s(a.get("note")))
         if action == "submit":
@@ -162,7 +162,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..archassist import service as S
     t, pr = ctx.tenant_id, _s(a.get("project"))
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Yeh architect office ka andar ka kaam hai.")
+        raise ToolError("This is internal work of the architect office.")
     try:
         if what == "day":
             return S.day(t)
@@ -172,7 +172,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.project_view(t, pr)
         if what == "area":
             v = S.project_view(t, pr)
-            return v.get("area") or {"say": "Area statement abhi nahi bana."}
+            return v.get("area") or {"say": "The area statement is not ready yet."}
         if what == "drawings":
             return {"drawings": S.drawings(t, pr)}
         if what == "approvals":
