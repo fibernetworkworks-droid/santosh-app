@@ -416,6 +416,14 @@ TOOLS.extend(KALA_TOOLS)
 TOOL_LABELS.update(KALA_LABELS)
 HANDLERS.update(KALA_HANDLERS)
 
+from .core_tools import (  # noqa: E402  Parity Phase 3 CLEAN TOOLS: web_fetch = the ONE web reader (mode fast | browser | stealth) over the readers that already exist; they stay registered, out of the core view, reachable by tool_search
+    WEBFETCH_HANDLERS, WEBFETCH_LABELS, WEBFETCH_TOOLS,
+)
+
+TOOLS.extend(WEBFETCH_TOOLS)
+TOOL_LABELS.update(WEBFETCH_LABELS)
+HANDLERS.update(WEBFETCH_HANDLERS)
+
 from .shilp_tools import (  # noqa: E402  v0.730 SHILP MANCH - the ArtCraft generation lane (their Omni API, api.storyteller.ai, BYOK): ONE door over their documented surface - video / image generation (job tokens, credits spent on her explicit ask) + job / jobs status polling + status / models (zero network), the key in the VPS .env only, reference urls behind the lane's own wall (http(s), no credentials, no private hosts), idempotency minted here, 402 PAYMENT final
     SHILP_HANDLERS, SHILP_LABELS, SHILP_TOOLS,
 )
