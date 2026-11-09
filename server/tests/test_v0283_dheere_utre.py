@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parents[2]
 
 def test_the_console_paces_at_reading_speed():
     js = (ROOT / "server/app/static/console/stream.js").read_text()
-    assert "Math.floor((now - this.t) / 20)" in js          # 20 ms a word, not 10
+    assert "Math.floor((now - this.t) / 34)" in js          # v0.716 Calm: 34 ms a word (was 20, never 10)
     assert "Math.min(2, Math.floor(this.queue.length / 80))" in js   # catch-up capped, and only above 80
     assert "this.queue.length / 25" not in js               # the uncapped term is gone
     assert "/ 10)" not in js
@@ -28,7 +28,7 @@ def test_the_console_paces_at_reading_speed():
 
 def test_the_phone_paces_the_same_way():
     d = (ROOT / "lib/ui/chat_screen.dart").read_text()
-    assert "(_words.length * 14).clamp(250, 5000)" in d
+    assert "(_words.length * 34).clamp(300, 10000)" in d   # v0.716 Calm
     assert "(_words.length * 28).clamp(250, 1600)" not in d  # the ceiling that dumped long replies
 
 
@@ -42,5 +42,5 @@ def test_the_three_instant_paths_are_untouched():
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.714.0"
-    assert "0.714.0+713" in (ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.716.0"
+    assert "0.716.0+715" in (ROOT / "pubspec.yaml").read_text()

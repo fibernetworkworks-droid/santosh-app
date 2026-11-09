@@ -496,7 +496,7 @@
   function modBody(m) {
     if (S(m.key) === 'pages' && L(m.items).length) {
       return `<ul>${L(m.lines).map(x => `<li>${esc(S(x))}</li>`).join('')}</ul>
-        <div class="pgs">${L(m.items).map(x => `<div class="pg" data-page><div class="pgh"><b>${esc(S(x.title))}</b>${pill(FOR[S(x.for)] || 'Everyone', S(x.for) === 'public' ? '' : 'v')}</div>
+        <div class="pgs">${L(m.items).map(x => `<div class="pg" data-page><div class="pgh"><b>${esc(S(x.title))}</b>${x.main ? pill('Main screen', 'ok') : ''}${pill(FOR[S(x.for)] || 'Everyone', S(x.for) === 'public' ? '' : 'v')}</div>
           ${x.sub ? `<p class="sm mut">${esc(S(x.sub))}</p>` : ''}
           ${L(x.lines).length ? `<ol class="secs">${L(x.lines).map(y => `<li>${esc(S(y))}</li>`).join('')}</ol>` : ''}</div>`).join('')}</div>`;
     }

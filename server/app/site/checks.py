@@ -130,7 +130,7 @@ def _serve(out: Path, counter: dict[str, int]):
 PAGE_JS = r"""() => {
   const out = {issues: [], warn: [], h1: document.querySelectorAll('h1').length,
     title: document.title || '', desc: (document.querySelector('meta[name=description]')||{}).content || '',
-    blanks: document.querySelectorAll('.blank').length, links: []};
+    blanks: document.querySelectorAll('.blank').length, samples: document.querySelectorAll('[data-sample]').length, links: []};
   const sid = el => { const s = el.closest('section'); return s ? s.id : ''; };
   const vw = window.innerWidth;
   if (document.scrollingElement.scrollWidth > vw + 1) {
@@ -225,7 +225,7 @@ def _check_page(b, out: Path, slug: str, shots_dir: Path | None, axe, report: di
                 pr["issues"].append(it)
         pr["warnings"] += [w for w in res["warn"] if not any(x["text"] == w["text"] for x in pr["warnings"])]
         if vw == 390:
-            pr.update({"h1": res["h1"], "title": res["title"], "desc": res["desc"], "blanks": res["blanks"],
+            pr.update({"h1": res["h1"], "title": res["title"], "desc": res["desc"], "blanks": res["blanks"], "samples": res.get("samples", 0),
                        "links": res["links"]})
             if axe:
                 try:
@@ -384,7 +384,8 @@ def run(out: Path, plan: dict[str, Any], shots_dir: Path | None = None, video: b
     home = report["pages"].get("home", {})
     report["scores"].update({"lcp_ms": home.get("lcp_ms", 0), "cls": home.get("cls", 0), "fps": home.get("fps", 0),
                              "first_load_kb": home.get("first_load_kb", 0),
-                             "blanks": sum(pr.get("blanks", 0) for pr in report["pages"].values())})
+                             "blanks": sum(pr.get("blanks", 0) for pr in report["pages"].values()),
+                             "samples": sum(pr.get("samples", 0) for pr in report["pages"].values())})
     lh = lighthouse(out)
     if lh:
         report["scores"].update(lh)

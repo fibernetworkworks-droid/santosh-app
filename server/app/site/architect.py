@@ -47,6 +47,12 @@ THE STRUCTURE IS THE PRODUCT. A web app / portal is NOT a marketing landing page
 system (what it is, sign-in, the main actions for each kind of user, live notices / lists where they help), and its
 logged-in pages are the app's screens. Only a pure brochure site gets a marketing home. Every page lists its OWN
 sections in order, each with a design line that says exactly what that section shows and does for THIS business.
+SCREENS FIRST (v0.714): for a web_app / portal / marketplace, design the app's screens from the APP SCREENS types
+(screen_dashboard, screen_table, screen_form, screen_detail, screen_board, screen_calendar, screen_approvals,
+screen_signin, screen_settings) - each design line names the list it shows and what each row / tile / field is. Name the
+system's MAIN SCREEN (main_screen = the slug of the page that is the heart of the product, usually the main user's
+dashboard): the owner sees THAT screen, filled with sample data, before anything else. The home of a system is the front
+door (a compact hero) followed by its main screen; marketing pages (about, contact) are optional extras.
 
 Return JSON only:
 {"name": "the business / portal name if she gave one, else a short fitting name",
@@ -74,16 +80,17 @@ Return JSON only:
  "risks": [{"risk": "what could go wrong", "plan": "how the design handles it"}],
  "assumptions": ["what you assumed because she did not say"],
  "content_needed": ["what she must give: photos, prices, fee table, doctor list..."],
+ "main_screen": "slug of the main screen page (web_app / portal / marketplace only, else \"\")",
  "page_count": 8,
  "questions": ["only a question whose answer changes the build, else []"]}
 
 SECTION TYPES (use these; for anything else use {"type": "custom", "name": "...", "design": "..."}, max 3 a page):
 @@SECTIONS@@
 Every page starts with "hero" (home: the front door; other pages: a compact header). 3-8 sections a page, each type once
-a page. The data screens of the app (forms, lists, dashboards, approvals) live on member / staff pages - give each of
-those pages custom sections that name the list they show ("custom" name "Fee status", design "her child's fee rows from
-the fees list, paid / due, receipt link"). Hoola places the real forms, lists and logins there; never design a
-password / OTP field yourself.
+a page. The data screens of the app (forms, lists, dashboards, approvals) are APP SCREENS types on member / staff pages
+(and the main screen on the home): {"type": "screen_table", "design": "her child's fee rows from the fees list: month,
+amount, paid / due pill, receipt link"}; a custom section only when no screen type fits. Hoola places the real forms,
+lists and logins there; never design a password / OTP field yourself (screen_signin uses Hoola's sign-in).
 stories 4-24 (each who / want / so, short), at least one per role. flows: every important journey end to end, 3-8 steps
 each, at least one per role (complex: 4+ flows). payments.mode: none = nothing is paid; record = staff record payments
 (fees paid at the office); upi = her own UPI ID QR, she confirms each payment; cod = cash on delivery. integrations only
@@ -295,9 +302,28 @@ def clean(raw: Any, words: str, tier: str = "") -> dict[str, Any]:
             "payments": {"mode": mode, "what": _t(pay.get("what"), 160)}, "notifications": notes, "integrations": ints,
             "features": {"shop": bool(f.get("shop")), "blog": bool(f.get("blog")), "booking": bool(f.get("booking")),
                          "languages": langs},
+            "main_screen": _main_screen(raw.get("main_screen"), pages, kind),
             "app_words": str(raw.get("app_words") or "").strip()[:3000], "page_count": pc,
             "questions": [_t(q, 200) for q in (raw.get("questions") or []) if _t(q, 200)][:3],
             "words": _t(words, 2000)}
+
+
+def _main_screen(raw: Any, pages: list[dict[str, Any]], kind: str) -> str:
+    """v0.714 the page that IS the product (her pick if it names a real page with screens, else the first page whose
+    sections are app screens, member pages first). Only systems have one."""
+    from . import taxonomy as TX
+    if kind not in APP_KINDS:
+        return ""
+    has = lambda p: any(TX.is_screen(x["type"]) for x in p.get("sections") or [])   # noqa: E731
+    want = SM_slug(raw)
+    hit = next((p for p in pages if p["slug"] == want and has(p)), None)
+    hit = hit or next((p for p in pages if p["for"] != "public" and has(p)), None) or next((p for p in pages if has(p)), None)
+    return hit["slug"] if hit else ""
+
+
+def SM_slug(x: Any) -> str:   # noqa: N802
+    from . import sitemap as SM
+    return SM.slug(str(x or "")) if x else ""
 
 
 # ---------------------------------------------------------------- 1. draft (nothing is built)
@@ -350,6 +376,8 @@ def checks(spec: dict[str, Any]) -> list[tuple[str, bool]]:
     for pg in pages:
         out.append((f"sections of page {pg['title']}", len(pg.get("sections") or []) >= (3 if pg["slug"] == "home" else 2)))
     out.append(("a home page", any(p["slug"] == "home" for p in pub)))
+    if spec.get("kind") in APP_KINDS:          # v0.714 SCREENS FIRST: a system shows its real main screen first
+        out.append(("a main screen built from app screens", bool(spec.get("main_screen"))))
     appish = spec.get("kind") in APP_KINDS or any(p["for"] != "public" for p in pages)
     if tier >= 1 and appish:
         out.append(("logged-in pages for the users", any(p["for"] == "member" for p in pages) or not _outside(spec)))
@@ -524,6 +552,7 @@ def card(tenant: str, ref: str) -> dict[str, Any]:
                   + ([f"Staff (/admin/): {', '.join(by['staff'][:16])}"] if by["staff"] else [])
                   + ([f"Kul {spec['page_count']} public pages (badi website: pehle site map)"] if spec.get("page_count", 0) >= 10 else []),
          "items": [{"title": pg["title"], "for": pg["for"], "sub": pg.get("purpose") or "",
+                    "main": pg["slug"] == spec.get("main_screen"),
                     "tags": [x.get("label") or x["type"] for x in pg.get("sections") or []],
                     "lines": [f"{x.get('label') or x['type']}: {x.get('design') or ''}".strip(": ") for x in pg.get("sections") or []]}
                    for pg in (spec.get("pages") or [])[:60]]},
@@ -751,6 +780,10 @@ def approve(tenant: str, ref: str, h: str, modules: list[str] | None = None, con
     return {"site": sid, "number": v["number"], "app": p.id, "app_number": p.number, "modules": sorted(on), "say": say}
 
 
+APP_FRONT_DOOR = ("compact app front door, NOT a marketing hero: the system's name, one line of what it does, a Sign in "
+                  "button and the main user's top action - like the top bar + title of a real app; no big photo, no slogan")
+
+
 def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) -> dict[str, Any]:
     """v0.708 THE ROOT FIX: the approved plan IS the site's structure. Until now approve() flattened the spec into a line
     of page titles and the builder used the library's page set for the business type (home / about / services /
@@ -784,6 +817,23 @@ def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) ->
         pages.append({"slug": pg["slug"], "title": pg["title"] if pg["slug"] != "home" or len(pg["title"]) <= 24 else "Home",
                       "nav": "Home" if pg["slug"] == "home" else pg["title"][:24], "why": pg.get("purpose") or "",
                       "sections": secs[:8]})
+    main = spec.get("main_screen") or ""
+    if (spec.get("kind") in APP_KINDS) and pages and pages[0]["slug"] == "home":   # v0.714 SCREENS FIRST
+        src = next((p for p in spec.get("pages") or [] if p["slug"] == main), None)
+        home = pages[0]
+        keep = [x for x in home["sections"][1:]]
+        screens = [dict(x) for x in (src.get("sections") if src else []) if TX.is_screen(x["type"])]
+        if not any(TX.is_screen(x["type"]) for x in keep) and not screens:
+            screens = [{"type": "screen_dashboard", "label": TX.SECTIONS["screen_dashboard"]["label"],
+                        "design": "the main user's dashboard: their key numbers, today's items and the actions they take most"}]
+        seen, secs = set(), []
+        for x in screens + keep:            # the main screen right under the front door, then the rest of the home
+            if x["type"] not in seen:
+                seen.add(x["type"])
+                secs.append(x)
+        own = home["sections"][0].get("design") or ""      # her architect's own front door, held to the app rule
+        home["sections"] = [hero(f"{own} - {APP_FRONT_DOOR}" if own and own != "the front door of the site" else APP_FRONT_DOOR)] + secs[:7]
+        home["main_screen"] = True
     legal = [p for p in base.get("pages") or [] if p["slug"] in B.LEGAL_PAGES]
     app_pages = [{"title": p["title"], "for": p["for"], "why": p.get("purpose") or "",
                   "shows": [x.get("label") or x["type"] for x in p.get("sections") or [] if x["type"] != "hero"]}
@@ -793,7 +843,8 @@ def site_plan(spec: dict[str, Any], br: dict[str, Any], base: dict[str, Any]) ->
                      "summary": spec.get("summary") or "", "name": spec.get("name") or "",
                      "roles": [f"{r['label']}: {r['can']}" for r in spec.get("roles") or []][:8],
                      "flows": [f"{x['who']} - {x['name']}: " + " -> ".join(x["steps"]) for x in spec.get("flows") or []][:10],
-                     "app_pages": app_pages[:30]}}
+                     "app_pages": app_pages[:30], "main_screen": main,
+                     "main_title": next((p["title"] for p in spec.get("pages") or [] if p["slug"] == main), "")}}
 
 
 def build_now(tenant: str, words: str, conv: str = "") -> dict[str, Any]:
@@ -806,6 +857,10 @@ def build_now(tenant: str, words: str, conv: str = "") -> dict[str, Any]:
         if e.code == 400:                        # her words were refused (guard / too short): say it, build nothing
             raise
         log.warning("build mode: architect plan failed, plain site path: %s", e)
+        v = S.new(tenant, words, conv)
+        return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
+    except Exception:                            # v0.715 any other failure of the plan never kills her Build tap
+        log.exception("build mode: architect plan crashed, plain site path")
         v = S.new(tenant, words, conv)
         return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
     got = approve(tenant, c["id"], c["hash"], None, conv)

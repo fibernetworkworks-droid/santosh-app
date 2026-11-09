@@ -764,10 +764,10 @@ def test_debug_prints_the_walk(capsys):
 
 def test_version_pins():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.714.0"
-    assert "0.714.0+713" in (REPO_ROOT / "pubspec.yaml").read_text()
+    assert APP_VERSION == "0.716.0"
+    assert "0.716.0+715" in (REPO_ROOT / "pubspec.yaml").read_text()
     line = (SERVER / "app" / "main.py").read_text().splitlines()[35]
-    assert line.startswith('APP_VERSION = "0.714.0"')
+    assert line.startswith('APP_VERSION = "0.716.0"')
     # the story-token pin rides the NEWEST story (the newest-story precedent)
     assert "HOOLA AGENT" in line                              # named in the Previous chain (the story trimmed its detail)
     assert "HOOLA GRAPH" in line and "HOOLA TRACE" in line   # the Previous chain

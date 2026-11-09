@@ -1,3 +1,31 @@
+## v0.716.0 NAYA ROOP — her new Hoola logo + the chat feel she picked (9 Nov 2026; owner, after the preview page: "0 :: PERFECT, 1 : Calm, 2 : Hoola mark, 3 : Fade with soft focus, 4 :: recommended, 5 : recommended, 6 : recommended")
+
+Built from the preview she approved (artifact "Hoola Chat Feel"):
+- **0 The mark.** Her new logo redrawn as vector in `server/app/static/console/mark.js` (the ONE drawing): `HoolaMark.svg()`
+  (glossy: highlighted core, a light ridge along every arc), `HoolaMark.think(px)` = the 3D thinking mark - four layers at
+  different depths on one tilting stage: T3 tilt + half turn + rest, T1 outer / inner arcs orbit opposite ways, T2 arcs
+  breathe outward while the core floats in front and pulses (still mark under reduced motion). Every class is `hm3-`
+  prefixed: the console already owns `.spin` / `.live` / `.turn`, and a bare `.spin` drew a plain ring (found in the
+  browser walk). `tool/make_mark.js` renders the navy master (`assets/images/hoola_logo.png`), the phone's four layer PNGs
+  (`assets/images/mark_*.png`) and the status-bar silhouette (`ic_stat_santosh.xml`, viewport 100); `tool/make_logo.py`
+  builds every size from the master (adaptive fg, favicon, 192 / 512, Apple touch, console brand mark).
+- **1 Calm.** Console pacer 34 ms a word (`stream.js`), phone `_Reveal` 34 ms a word with a 10 s ceiling.
+- **2 Thinking.** The console working row = the 3D mark (24px) + shimmering label + clock (the three dots retired); the
+  phone `_Typing` bubble = `HoolaMark` (`lib/ui/hoola_mark.dart`, one 6 s clock drives all parts).
+- **3 Soft focus.** `HoolaMD.Live(el, {soft: true})` wraps only the newest words in `.w` (opacity + 3px blur -> clear,
+  .46 s); each word keeps its first-seen time so the fade survives the per-tick re-render (negative animation-delay);
+  code / pre / maths never wrapped; without `soft` the renderer is byte-identical.
+- **4 File card.** `results.js fileCard`: PDF / Word / Excel / Slides as one card - page picture with a type tag, name,
+  type + pages + size, Open / Download, the whole card opens it in the workspace.
+- **5 Long job.** Live tool steps are rows during the turn (spinner -> drawn tick + time) and fold into
+  "Worked for Ns · n steps" when the words start or the turn ends (`liveStep` / `foldLive`; before, a live turn showed
+  only the one-line label). The goal card is a Plan card (mark, "Working · 1 of 4", spinner / tick / ring per step,
+  a tick draws once). Replayed turns use the same fold.
+- **6 Small motions.** Her bubble rises in, cards rise in, ticks draw themselves.
+Tests: `test_v0716_naya_roop.py` (10, incl. a real-browser check of the soft landing + the 3D layers); v0283 pace pins and
+v0462's status-bar pin moved to the new truth. Checked in a real browser against a local server (plan card, live steps,
+fold, soft landing, mark). NOT VERIFIED: the phone mark + pace compile first on CI; the file card on a real made PDF.
+
 ## v0.714.0 HAR CHAT ALAG — every chat on its own (9 Nov 2026; owner: "IN WEB CONSOLE CHAT SECTION :: 1ST CHECK WHY OTHER CHAT MSG IS COME IN OTHER SESSION CHAT MSG --- EXAMPLE UPDATES KEEP EVERY THING INDEPENDENT. DAILY COWORKER MSG SHOULD NOT TO BE MERGE WITH NEW CHAT OR ANY OTHER CHAT. KEEP EVERY SESSION INDEPENDENT")
 
 ROOT CAUSE: the console marks the open chat as "the chat she is in" on every stream (`convs.mark(..., "stream")`), and
@@ -23236,3 +23264,39 @@ FIX:
 Cost / time: one Opus plan call (+ at most one deepen) before the looks on every Build ask - about 1-3 minutes longer.
 Tests: test_v0709_plan_shape.py grows 3 (brochure gets its own plan and no data draft, the fallback, the section prompt) and
 the Build-mode test now expects every ask planned. NOT VERIFIED on her server yet.
+
+
+## v0.715.0 SCREENS FIRST (built as 0.714; their HAR CHAT ALAG took 0.714.0 - REBASE PROTOCOL) - a system is planned, built and previewed from its real screens (owner: "STILL SAME :: CHECK HOW LOVABLE AND EMERGENT HANDLE THIS SMOOTHLY... DO DEEP RESEARCH" -> "GO" on points 1 + 2)
+
+ROOT CAUSE (after v0.709-v0.712 made the plan the site's structure): every page was still BUILT from a marketing-only
+section library (hero, services, pricing, reviews...) and the three looks were only the home top - a hero written with
+HERO_LOOK_NOTE ("strong, distinct") plus two sections. A school portal's preview was therefore a landing page whatever
+the plan said. The research (Lovable / Emergent): they start from the app's real screens and routes, fill them with mock
+data that does not feel hollow, and show those first; the marketing page is optional.
+
+1. APP SCREENS (`site/taxonomy.py` SCREENS, merged into SECTIONS with `screen: True`, `is_screen()`): screen_dashboard,
+   screen_table, screen_form, screen_detail, screen_board, screen_calendar, screen_approvals, screen_signin,
+   screen_settings, 3 designs each. The marketing library's 300 designs and `check()` are unchanged (screens counted
+   apart); `sitemap.section_lines()` lists them on their own "APP SCREENS" line.
+2. THE ARCHITECT plans with them: ARCH_SYSTEM "SCREENS FIRST" paragraph, data screens are screen_* types (custom only
+   when none fits), a new `main_screen` field; `clean()` keeps it via `_main_screen()` (her pick if it names a page with
+   screens, else the first member / any page with screens; only web_app / portal / marketplace); `checks()` adds "a main
+   screen built from app screens" for systems (so a thin plan goes back in the deepen round); the Studio plan's page
+   card shows a "Main screen" pill.
+3. SCREENS FIRST in `site_plan()`: a system's home = a compact front door (`APP_FRONT_DOOR`, her architect's own hero line
+   kept in front of it) + the main screen's screen sections + the rest of the home (types once, max 8); no screen at
+   all -> a dashboard. plan.spec carries main_screen + main_title. Brochures unchanged.
+4. THE LOOKS: `service.is_app_plan()`; `_look_sections()` puts screens first and always shows at least one (even at
+   SITE_LOOK_SECTIONS=1); the look's top is written with `AI.APP_LOOK_NOTE` (an app front door, no photo, no slogan).
+5. THE WRITER: `_section_prompt()` adds `AI.SCREEN_NOTE` for a screen: a real working screen in
+   `<div class="hoola-screen" data-hoola-screen="TYPE" data-sample>`, a visible "Sample data" chip, 4-8 believable Indian
+   sample rows as plain text, styled inputs but no <form>, never a password / OTP / card field, sign-in = Hoola's widget.
+6. HONEST: sample rows never go live as fact - `checks.py` counts `[data-sample]` (scores.samples) and
+   `hosting.blockers()` holds launch with "N app screen abhi sample data dikha rahi hai".
+
+Tests: NEW test_v0714_screens_first.py (5); test_v0709_plan_shape.py fixture moved to the new truth (mark-attendance is a
+screen_table and the main screen; the home's second section is that screen; the looks show "Data table").
+NOT YET (points 3 + 4 of the research, waiting for her word): a clarify card with up to 4 skippable questions; the build
+order (screens with sample data -> real data + rules wired into the screens -> a browser walk of each main journey with a
+fix round). Until point 4, a portal's sample screens block launch - said plainly in the launch blockers.
+NOT VERIFIED on a real Opus build on her server.

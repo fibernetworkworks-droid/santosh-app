@@ -11,6 +11,7 @@ import 'package:speech_to_text/speech_to_text.dart';
 import '../state.dart';
 import 'any_card.dart';
 import 'calls_sheet.dart';
+import 'hoola_mark.dart';
 import 'kaam_sheet.dart';
 import 'employee_inbox.dart';
 import 'think_card.dart';
@@ -2037,9 +2038,9 @@ class _RevealState extends State<_Reveal> with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
     // v0.283: 28 ms a word was right, but the 1600 ms ceiling dumped anything long - a 300-word reply landed
-    // in 1.6 s = 188 words a second. 14 ms a word with a 5 s ceiling holds ~70 a second at every length,
-    // which is what the console now does and what Claude reads like.
-    duration: Duration(milliseconds: (_words.length * 14).clamp(250, 5000)),
+    // in 1.6 s = 188 words a second. v0.716 her pick "Calm": 34 ms a word (~29 a second, the console's pace too)
+    // with a 10 s ceiling so a very long reply still lands in reasonable time.
+    duration: Duration(milliseconds: (_words.length * 34).clamp(300, 10000)),
   )..forward();
 
   @override
@@ -2154,21 +2155,7 @@ class _TypingState extends State<_Typing> with SingleTickerProviderStateMixin {
               radius: 18,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                AnimatedBuilder(
-                  animation: _t,
-                  builder: (context, _) => Row(mainAxisSize: MainAxisSize.min, children: [
-                    for (var i = 0; i < 3; i++)
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(
-                          color: C.accent.withOpacity(.35 + .65 * (math.sin((_t.value - i * .18) * 2 * math.pi) * .5 + .5)),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                  ]),
-                ),
+                const HoolaMark(size: 22),   // v0.716 the 3D Hoola mark (T1 + T2 + T3) instead of three dots
                 if (widget.step != null) ...[
                   const SizedBox(width: 10),
                   Flexible(child: Text(widget.step!, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12.5, color: C.chip))),
