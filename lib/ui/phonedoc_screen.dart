@@ -112,7 +112,7 @@ class _PhoneDocScreenState extends State<PhoneDocScreen> {
   Future<void> _start({String issue = ''}) async {
     final t = _text.text.trim();
     if (t.isEmpty && issue.isEmpty) {
-      _snack(context, 'Dikkat chuniye ya apne shabdon mein likhiye');
+      _snack(context, 'Pick a problem or write it in your words');
       return;
     }
     setState(() => _busy = true);
@@ -148,14 +148,14 @@ class _PhoneDocScreenState extends State<PhoneDocScreen> {
         Row(children: [
           const Icon(Icons.health_and_safety_rounded, color: C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text('Phone ki jaanch', style: display(16))),
+          Expanded(child: Text('Phone check', style: display(16))),
           if (_checking)
             const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
           else
-            IconButton(onPressed: _runCheck, icon: const Icon(Icons.refresh_rounded, color: C.muted), tooltip: 'Phir jaancho'),
+            IconButton(onPressed: _runCheck, icon: const Icon(Icons.refresh_rounded, color: C.muted), tooltip: 'Check again'),
         ]),
         if (snap.isEmpty && !_checking)
-          const Text('Jaanch nahi ho payi (yeh sirf Android phone par chalti hai).', style: TextStyle(color: C.muted)),
+          const Text('The check could not run (it works only on an Android phone).', style: TextStyle(color: C.muted)),
         if (snap.isNotEmpty) ...[
           Wrap(spacing: 6, runSpacing: 6, children: [
             if (snap['battery_pct'] != null) Pill('Battery ${snap['battery_pct']}%'),
@@ -165,7 +165,7 @@ class _PhoneDocScreenState extends State<PhoneDocScreen> {
             if (_s(snap['on']).isNotEmpty) Pill('Net: ${snap['on']}'),
           ]),
           const SizedBox(height: 8),
-          if (f.isEmpty) const Text('Sab theek dikh raha hai.', style: TextStyle(color: C.ok)),
+          if (f.isEmpty) const Text('Everything looks fine.', style: TextStyle(color: C.ok)),
           for (final x in f.take(6))
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -189,21 +189,21 @@ class _PhoneDocScreenState extends State<PhoneDocScreen> {
             const SizedBox(height: 14),
             Glass(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('Kya dikkat hai?', style: display(16)),
+                Text('What is the problem?', style: display(16)),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _text,
                   minLines: 1,
                   maxLines: 3,
-                  decoration: const InputDecoration(hintText: 'Jaise: phone bahut garam hota hai, OTP nahi aata...'),
+                  decoration: const InputDecoration(hintText: 'e.g. phone gets very hot, OTP does not come...'),
                 ),
                 const SizedBox(height: 8),
                 TextField(
                   onChanged: (v) => _forWhom = v,
-                  decoration: const InputDecoration(hintText: 'Kiska phone? (khaali = mera hi)', isDense: true),
+                  decoration: const InputDecoration(hintText: 'Whose phone? (empty = mine)', isDense: true),
                 ),
                 const SizedBox(height: 10),
-                GradientButton(label: _busy ? 'Ruko...' : 'Ilaaj shuru karo', icon: Icons.build_rounded, onTap: _busy ? null : _start),
+                GradientButton(label: _busy ? 'Wait...' : 'Start the fix', icon: Icons.build_rounded, onTap: _busy ? null : _start),
                 const SizedBox(height: 12),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   for (final i in _issues)
@@ -217,7 +217,7 @@ class _PhoneDocScreenState extends State<PhoneDocScreen> {
             ),
             if (_cases.isNotEmpty) ...[
               const SizedBox(height: 16),
-              Text('Pichhle case', style: display(15)),
+              Text('Past cases', style: display(15)),
               const SizedBox(height: 8),
               for (final c in _cases)
                 Padding(
@@ -258,7 +258,7 @@ class PhoneDocCasePage extends StatelessWidget {
   final String id;
   @override
   Widget build(BuildContext context) => Scaffold(
-        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Phone ka ilaaj')),
+        appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Phone fix')),
         body: Aurora(
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [PhoneDocCaseView(app: app, id: id)]),
         ),
@@ -343,11 +343,11 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Pakka?'),
-          content: const Text('Is step mein data / settings mit sakti hain. Backup ho gaya?'),
+          title: const Text('Sure?'),
+          content: const Text('This step can erase data / settings. Is the backup done?'),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Ruko')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Haan, ho gaya')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Wait')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Yes, done')),
           ],
         ),
       );
@@ -392,19 +392,19 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
         if (st['matched'] == true)
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Phone check mein yahi wajah dikhi.', style: TextStyle(color: C.warn, fontSize: 12.5)),
+            child: Text('This was the cause shown in the phone check.', style: TextStyle(color: C.warn, fontSize: 12.5)),
           ),
         if (st['careful'] == true)
           const Padding(
             padding: EdgeInsets.only(top: 6),
-            child: Text('Isme data mit sakta hai: pehle backup, phir aapki haan.', style: TextStyle(color: C.bad, fontSize: 12.5)),
+            child: Text('This can erase data: backup first, then your approval.', style: TextStyle(color: C.bad, fontSize: 12.5)),
           ),
         const SizedBox(height: 10),
         if (hasScreen && (own || _s(st['url']).isNotEmpty))
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: GlassButton(
-              label: _s(st['setting_label']).isNotEmpty ? 'Kholo: ${st['setting_label']}' : 'Kholo',
+              label: _s(st['setting_label']).isNotEmpty ? 'Open: ${st['setting_label']}' : 'Open',
               icon: Icons.open_in_new_rounded,
               color: C.accent,
               onTap: () => app.openPhoneScreen(_s(st['setting']), package: _s(st['pkg']), url: _s(st['url'])),
@@ -413,18 +413,18 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
         Row(children: [
           Expanded(
             child: GlassButton(
-                label: 'Theek hua', icon: Icons.check_rounded, color: C.ok, onTap: _busy ? null : () => _result(st, 'fixed')),
+                label: 'Fixed', icon: Icons.check_rounded, color: C.ok, onTap: _busy ? null : () => _result(st, 'fixed')),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: GlassButton(
-                label: 'Nahi hua', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _result(st, 'not_fixed')),
+                label: 'Did not work', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _result(st, 'not_fixed')),
           ),
         ]),
         Row(children: [
-          TextButton(onPressed: _busy ? null : () => _result(st, 'skipped'), child: const Text('Chhodo, agla')),
+          TextButton(onPressed: _busy ? null : () => _result(st, 'skipped'), child: const Text('Skip, next')),
           const Spacer(),
-          if (own) TextButton.icon(onPressed: _busy ? null : _recheck, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Phone phir jaancho')),
+          if (own) TextButton.icon(onPressed: _busy ? null : _recheck, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Check the phone again')),
         ]),
       ]),
     );
@@ -441,9 +441,9 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Text(
             switch (_s(e['kind'])) {
-              'official' => 'Sarkari / zaroori madad',
-              'operator' => 'Operator se baat',
-              _ => 'Dukaan / service centre',
+              'official' => 'Official / urgent help',
+              'operator' => 'Talk to the operator',
+              _ => 'Shop / service centre',
             },
             style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
         for (final n in notes)
@@ -457,7 +457,7 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
         if (n1930(notes))
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: GlassButton(label: '1930 par call', icon: Icons.call_rounded, color: C.bad,
+            child: GlassButton(label: 'Call 1930', icon: Icons.call_rounded, color: C.bad,
                 onTap: () => Native.openExternal(url: 'tel:1930')),
           ),
         for (final l in links)
@@ -468,14 +468,14 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
           ),
         if (_s(e['tell']).isNotEmpty) ...[
           const SizedBox(height: 10),
-          const Text('Dukaan ko yeh bataiye:', style: TextStyle(color: C.muted, fontSize: 12.5)),
+          const Text('Tell the shop this:', style: TextStyle(color: C.muted, fontSize: 12.5)),
           Row(children: [
             Expanded(child: Text(_s(e['tell']), style: const TextStyle(color: C.ink))),
             IconButton(
               icon: const Icon(Icons.copy_rounded, size: 18, color: C.muted),
               onPressed: () {
                 Clipboard.setData(ClipboardData(text: _s(e['tell'])));
-                _snack(context, 'Copy ho gaya');
+                _snack(context, 'Copied');
               },
             ),
           ]),
@@ -484,7 +484,7 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
           TextButton.icon(
             onPressed: _busy ? null : () => _act('escalate', {'kind': 'repair', 'make_job': true}),
             icon: const Icon(Icons.add_task_rounded, size: 18),
-            label: const Text('Meri dukaan mein repair job banao'),
+            label: const Text('Make a repair job in my shop'),
           ),
       ]),
     );
@@ -537,7 +537,7 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                    'Theek ho gaya${done.isNotEmpty ? ': ${_s(done.last['title'])}' : ''}. Yeh tareeka agli baar pehle aayega.',
+                    'Fixed${done.isNotEmpty ? ': ${_s(done.last['title'])}' : ''}. This method will be tried first next time.',
                     style: const TextStyle(color: C.ok)),
               ),
             ]),
@@ -545,7 +545,7 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
         if (st == 'escalated') _escalation(c),
         if (!widget.compact && done.isNotEmpty) ...[
           const SizedBox(height: 12),
-          const Text('Kiya gaya', style: TextStyle(color: C.muted, fontWeight: FontWeight.w700)),
+          const Text('Done', style: TextStyle(color: C.muted, fontWeight: FontWeight.w700)),
           for (final d in done)
             Padding(
               padding: const EdgeInsets.only(top: 4),
@@ -568,7 +568,7 @@ class _PhoneDocCaseViewState extends State<PhoneDocCaseView> {
             alignment: Alignment.centerRight,
             child: TextButton(
               onPressed: _busy ? null : () => _act('escalate'),
-              child: const Text('Seedha dukaan / madad dikhao'),
+              child: const Text('Show shop / help directly'),
             ),
           ),
       ]),

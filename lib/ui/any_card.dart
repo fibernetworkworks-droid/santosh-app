@@ -85,9 +85,9 @@ class AnyEventCard extends StatelessWidget {
   static String _ago(DateTime? at) {
     if (at == null) return '';
     final s = DateTime.now().toUtc().difference(at.toUtc()).inSeconds;
-    if (s < 60) return 'abhi';
-    if (s < 3600) return '${s ~/ 60} min pehle';
-    if (s < 86400) return '${s ~/ 3600} ghante pehle';
+    if (s < 60) return 'just now';
+    if (s < 3600) return '${s ~/ 60} min ago';
+    if (s < 86400) return '${s ~/ 3600} hours ago';
     return '${at.day}/${at.month}';
   }
 
@@ -100,12 +100,12 @@ class AnyEventCard extends StatelessWidget {
         ? C.accent
         : switch (st) { 'ask' => _vio, 'work' => C.teal, 'failed' => C.bad, 'stopped' => C.faint, 'other' => _vio, _ => C.ok };
     final words = switch (st) {
-      'ask' => 'Aapki haan chahiye',
-      'work' => 'Chal raha hai',
-      'failed' => 'Ruk gaya, dikkat aayi',
-      'stopped' => 'Band kar diya',
+      'ask' => 'Needs your OK',
+      'work' => 'Running',
+      'failed' => 'Stopped, a problem came up',
+      'stopped' => 'Closed',
       'other' => _str(v['status'] ?? v['state']).replaceAll('_', ' '),
-      _ => 'Taiyaar',
+      _ => 'Ready',
     };
     final icon = money && st == 'ask'
         ? Icons.bolt_rounded
@@ -155,7 +155,7 @@ class AnyEventCard extends StatelessWidget {
       if (told) ...[
         const Icon(Icons.check_rounded, size: 12, color: C.ok),
         const SizedBox(width: 3),
-        const Text('Call par bataya', style: TextStyle(fontSize: 11, color: C.ok, fontWeight: FontWeight.w500)),
+        const Text('Told on the call', style: TextStyle(fontSize: 11, color: C.ok, fontWeight: FontWeight.w500)),
         const SizedBox(width: 8),
       ],
       if (when.isNotEmpty) Text(when, style: const TextStyle(fontSize: 11, color: C.faint, fontWeight: FontWeight.w500)),
@@ -256,7 +256,7 @@ class AnyEventCard extends StatelessWidget {
           child: const Row(children: [
             Icon(Icons.lock_outline_rounded, size: 15, color: C.accent),
             SizedBox(width: 9),
-            Expanded(child: Text('Fingerprint se haan. Call par bolkar yeh nahi hota.', style: TextStyle(fontSize: 12, color: C.muted))),
+            Expanded(child: Text('Approve with fingerprint. This cannot be done by voice on a call.', style: TextStyle(fontSize: 12, color: C.muted))),
           ]),
         ),
     ];
@@ -297,7 +297,7 @@ class AnyEventCard extends StatelessWidget {
                           begin: Alignment.topCenter, end: Alignment.bottomCenter),
                       boxShadow: const [BoxShadow(color: Color(0x66FFA046), blurRadius: 16, offset: Offset(0, 6), spreadRadius: -8)],
                     ),
-                    child: const Text('Kholo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.onAccent)),
+                    child: const Text('Open', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: C.onAccent)),
                   ),
                 ),
               ]),

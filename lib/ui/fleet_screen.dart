@@ -29,7 +29,7 @@ void _snack(BuildContext c, String t) {
 Color _docColor(String st) => switch (st) { 'expired' => C.bad, 'due' => C.warn, 'missing' => C.faint, 'ok' => C.ok, _ => C.chip };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -42,7 +42,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -130,15 +130,15 @@ class _FleetScreenState extends State<FleetScreen> {
       .then((_) => _load());
 
   Future<void> _addVehicle() async {
-    final f = await _form(context, 'Nayi gaadi', const [
-      ('reg', 'Gaadi number (MH 30 AB 1234)'),
+    final f = await _form(context, 'New vehicle', const [
+      ('reg', 'Vehicle number (MH 30 AB 1234)'),
       ('type', 'Type: truck / tempo / pickup / bus / taxi / car'),
       ('make', 'Company / model'),
       ('capacity_t', 'Capacity (tonne)'),
-      ('capacity_cbm', 'Body (cbm, ho to)'),
+      ('capacity_cbm', 'Body (cbm, if any)'),
       ('tank_l', 'Tank (litre)'),
       ('reg_date', 'Registration date (DD-MM-YYYY)'),
-    ], ok: 'Jodo');
+    ], ok: 'Add');
     if (f == null || (f['reg'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
     for (final k in ['capacity_t', 'capacity_cbm', 'tank_l']) {
@@ -150,19 +150,19 @@ class _FleetScreenState extends State<FleetScreen> {
   }
 
   Future<void> _newTrip() async {
-    final f = await _form(context, 'Nayi trip', const [
-      ('origin', 'Kahan se'),
-      ('destination', 'Kahan tak'),
-      ('day', 'Taarikh (YYYY-MM-DD, khaali = aaj)'),
-      ('items', 'Maal: har line "naam 50kg x 100 0.04cbm"'),
-      ('vehicle', 'Gaadi (number, ho to)'),
-      ('driver', 'Driver ka naam'),
-      ('driver_phone', 'Driver ka phone'),
-      ('km', 'Distance km (aapka number, ho to)'),
-      ('toll', 'Toll (aapka number, ho to)'),
-      ('dest_state', 'Kis rajya mein (MP, GJ...)'),
+    final f = await _form(context, 'New trip', const [
+      ('origin', 'From where'),
+      ('destination', 'Destination'),
+      ('day', 'Date (YYYY-MM-DD, empty = today)'),
+      ('items', 'Goods: one per line "name 50kg x 100 0.04cbm"'),
+      ('vehicle', 'Vehicle (number, if known)'),
+      ('driver', 'Driver name'),
+      ('driver_phone', 'Driver phone'),
+      ('km', 'Distance km (your number, if known)'),
+      ('toll', 'Toll (your number, if known)'),
+      ('dest_state', 'Which state (MP, GJ...)'),
       ('ref', 'LR / order no'),
-    ], ok: 'Plan karo');
+    ], ok: 'Plan');
     if (f == null || (f['origin'] ?? '').isEmpty || (f['destination'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f};
     body['items'] = _parseItems(f['items'] ?? '');
@@ -219,8 +219,8 @@ class _FleetScreenState extends State<FleetScreen> {
                   if (_s(v['driver']).isNotEmpty) _s(v['driver']),
                 ].join(' · '),
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
-            if (bad.isNotEmpty) Text('Rukawat: ${bad.join(', ')}', style: const TextStyle(color: C.bad, fontSize: 12.5)),
-            if (due.isNotEmpty) Text('Jaldi: ${due.join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
+            if (bad.isNotEmpty) Text('Blocked: ${bad.join(', ')}', style: const TextStyle(color: C.bad, fontSize: 12.5)),
+            if (due.isNotEmpty) Text('Soon: ${due.join(', ')}', style: const TextStyle(color: C.warn, fontSize: 12.5)),
           ]),
         ),
       ),
@@ -264,7 +264,7 @@ class _FleetScreenState extends State<FleetScreen> {
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14.5, height: 1.4))),
       const SizedBox(height: 12),
       Row(children: [
-        Expanded(child: GradientButton(label: 'Nayi trip', icon: Icons.route_rounded, height: 46, onTap: _busy ? null : _newTrip)),
+        Expanded(child: GradientButton(label: 'New trip', icon: Icons.route_rounded, height: 46, onTap: _busy ? null : _newTrip)),
         const SizedBox(width: 8),
         Expanded(child: GlassButton(label: 'Diesel sheet', icon: Icons.local_gas_station_rounded, onTap: _busy ? null : _importFuel)),
       ]),
@@ -273,15 +273,15 @@ class _FleetScreenState extends State<FleetScreen> {
         FleetSpendCard(app: widget.app, data: {'spend': x}, onDone: _load),
         const SizedBox(height: 8),
       ],
-      if (_list(day['trips']).isNotEmpty) ...[const Caption('AAJ KI TRIPS'), for (final t in _list(day['trips'])) _tripTile(t)],
+      if (_list(day['trips']).isNotEmpty) ...[const Caption('TODAY\'S TRIPS'), for (final t in _list(day['trips'])) _tripTile(t)],
       if (_list(day['expired']).isNotEmpty || _list(day['due']).isNotEmpty) ...[
-        const Caption('KAAGAZ'),
+        const Caption('DOCUMENTS'),
         for (final d in [..._list(day['expired']), ..._list(day['due'])])
           ListTile(
             dense: true,
             leading: Icon(Icons.description_rounded, color: _docColor(_s(d['state']))),
             title: Text('${_s(d['vehicle'])} · ${_s(d['label'])}'),
-            subtitle: Text(_s(d['state']) == 'expired' ? 'Khatam: ${_s(d['expires'])}' : '${_s(d['days_left'])} din baaki (${_s(d['expires'])})'),
+            subtitle: Text(_s(d['state']) == 'expired' ? 'Expires: ${_s(d['expires'])}' : '${_s(d['days_left'])} days left (${_s(d['expires'])})'),
             onTap: () => _openVehicle(_s(d['vehicle_id'])),
           ),
       ],
@@ -295,7 +295,7 @@ class _FleetScreenState extends State<FleetScreen> {
               subtitle: Text(_s(x['why']))),
       ],
       if (_list(day['fuel_flags']).isNotEmpty) ...[
-        const Caption('DIESEL KE ISHAARE'),
+        const Caption('DIESEL ALERTS'),
         for (final x in _list(day['fuel_flags']))
           ListTile(
               dense: true,
@@ -304,7 +304,7 @@ class _FleetScreenState extends State<FleetScreen> {
               subtitle: Text(_list(x['flags']).map((f) => _s(f['say'])).join(' '))),
       ],
       if (_list(day['idle']).isNotEmpty) ...[
-        const Caption('KHADI GAADIYAN'),
+        const Caption('IDLE VEHICLES'),
         Wrap(spacing: 6, runSpacing: 6, children: [
           for (final x in _list(day['idle'])) Pill('${_s(x['vehicle'])}${x['days'] != null ? ' · ${x['days']} din' : ''}', fg: C.warn),
         ]),
@@ -313,22 +313,22 @@ class _FleetScreenState extends State<FleetScreen> {
   }
 
   Widget _vehiclesTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Nayi gaadi jodo', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _addVehicle),
+        GradientButton(label: 'Add new vehicle', icon: Icons.add_rounded, height: 46, onTap: _busy ? null : _addVehicle),
         const SizedBox(height: 12),
         for (final v in _list(_d?['vehicles'])) _vehicleTile(v),
-        if (_list(_d?['vehicles']).isEmpty) const Text('Abhi koi gaadi nahi. Number se jodiye.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['vehicles']).isEmpty) const Text('No vehicles yet. Add one by its number.', style: TextStyle(color: C.muted)),
       ]);
 
   Widget _tripsTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Nayi trip / load plan', icon: Icons.route_rounded, height: 46, onTap: _busy ? null : _newTrip),
+        GradientButton(label: 'New trip / load plan', icon: Icons.route_rounded, height: 46, onTap: _busy ? null : _newTrip),
         const SizedBox(height: 12),
         for (final t in _list(_d?['trips'])) _tripTile(t),
       ]);
 
   Widget _spendTab() => ListView(padding: const EdgeInsets.all(16), children: [
-        const Caption('KHARCHE (AAPKI HAAN SE)'),
+        const Caption('EXPENSES (WITH YOUR APPROVAL)'),
         for (final x in _list(_d?['spends'])) ...[FleetSpendCard(app: widget.app, data: {'spend': x}, onDone: _load), const SizedBox(height: 8)],
-        if (_list(_d?['spends']).isEmpty) const Text('Koi kharcha card nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['spends']).isEmpty) const Text('No expense cards.', style: TextStyle(color: C.muted)),
         const SizedBox(height: 12),
         const Caption('COST PER KM (30 DIN)'),
         for (final r in _list(_cost?['vehicles']))
@@ -339,7 +339,7 @@ class _FleetScreenState extends State<FleetScreen> {
               if (r['km'] != null) '${r['km']} km',
               '₹${_s(r['total'])}',
               if (r['kmpl'] != null) '${r['kmpl']} km/l',
-              'khadi ${_s(r['idle_days'])} din',
+              'idle ${_s(r['idle_days'])} days',
             ].join(' · ')),
             trailing: Text(r['per_km'] == null ? '—' : '₹${r['per_km']}/km', style: const TextStyle(fontWeight: FontWeight.w800)),
           ),
@@ -349,16 +349,16 @@ class _FleetScreenState extends State<FleetScreen> {
 
   Future<void> _editSettings() async {
     final st = _m(_d?['settings']);
-    final f = await _form(context, 'Aapke rate aur niyam', const [
-      ('business', 'Business ka naam'),
-      ('home_state', 'Ghar ka rajya (MH...)'),
-      ('diesel_rate', 'Diesel rate ₹/litre (aapka)'),
+    final f = await _form(context, 'Your rates and rules', const [
+      ('business', 'Business name'),
+      ('home_state', 'Home state (MH...)'),
+      ('diesel_rate', 'Diesel rate ₹/litre (yours)'),
       ('petrol_rate', 'Petrol rate ₹/litre'),
       ('cng_rate', 'CNG rate ₹/kg'),
-      ('avg_speed', 'Plan ki speed km/h (ho to)'),
-      ('idle_days', 'Kitne din khadi = idle'),
-      ('morning_time', 'Subah ka note (HH:MM)'),
-      ('rules', 'Aapke niyam'),
+      ('avg_speed', 'Plan speed km/h (if any)'),
+      ('idle_days', 'Days parked = idle'),
+      ('morning_time', 'Morning note (HH:MM)'),
+      ('rules', 'Your rules'),
     ], ok: 'Save', initial: {for (final e in st.entries) if (e.value != null && e.value is! Map) e.key: '${e.value}'});
     if (f == null) return;
     final body = <String, dynamic>{...f};
@@ -374,29 +374,29 @@ class _FleetScreenState extends State<FleetScreen> {
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_s(st['business']).isEmpty ? 'Fleet' : _s(st['business']), style: const TextStyle(fontWeight: FontWeight.w800)),
-          Text('Diesel: ${st['diesel_rate'] == null ? 'rate nahi diya' : '₹${st['diesel_rate']}/L'} · Subah ${_s(st['morning_time'])}',
+          Text('Diesel: ${st['diesel_rate'] == null ? 'rate not given' : '₹${st['diesel_rate']}/L'} · Morning ${_s(st['morning_time'])}',
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           const SizedBox(height: 8),
-          GlassButton(label: 'Badlo', icon: Icons.edit_rounded, onTap: _editSettings),
+          GlassButton(label: 'Edit', icon: Icons.edit_rounded, onTap: _editSettings),
         ]),
       ),
       const SizedBox(height: 12),
-      const Caption('HOOLA KABHI NAHI'),
+      const Caption('HOOLA WILL NEVER DO'),
       for (final t in _strs(_d?['never'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
       const SizedBox(height: 12),
-      const Caption('ECHALLAN DEKHNA (AAP KHUD)'),
+      const Caption('CHECK ECHALLAN (YOU DO IT)'),
       for (final t in _strs(_d?['echallan_steps'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
-      GlassButton(label: 'eChallan kholo', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: 'https://echallan.parivahan.gov.in/')),
+      GlassButton(label: 'Open eChallan', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: 'https://echallan.parivahan.gov.in/')),
       const SizedBox(height: 12),
       const Caption('VAHAN / MPARIVAHAN'),
       for (final t in _strs(_d?['vahan_steps'])) Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('• $t', style: const TextStyle(fontSize: 13))),
-      GlassButton(label: 'Vahan kholo', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: 'https://vahan.parivahan.gov.in/vahanservice/')),
+      GlassButton(label: 'Open Vahan', icon: Icons.open_in_new_rounded, onTap: () => Native.openExternal(url: 'https://vahan.parivahan.gov.in/vahanservice/')),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    final tabs = ['Aaj', 'Gaadiyan', 'Trips', 'Kharcha', 'Niyam'];
+    final tabs = ['Today', 'Vehicles', 'Trips', 'Expenses', 'Rules'];
     return Scaffold(
       backgroundColor: C.bgTop,
       appBar: AppBar(
@@ -467,10 +467,10 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
 
   Future<void> _doc(Map<String, dynamic> d) async {
     final f = await _form(context, _s(d['label']), const [
-      ('expires', 'Expiry (kaagaz par jo likha, DD-MM-YYYY)'),
+      ('expires', 'Expiry (as written on the paper, DD-MM-YYYY)'),
       ('issued', 'Issue / renewal date'),
       ('number', 'Number'),
-      ('issuer', 'Kisne diya (insurer / RTO)'),
+      ('issuer', 'Issued by (insurer / RTO)'),
     ], ok: 'Save', initial: {'expires': d['guess'] == true ? '' : _s(d['expires']), 'number': _s(d['number']), 'issuer': _s(d['issuer'])});
     if (f == null) return;
     await _post('docs', {'kind': _s(d['kind']), ...f});
@@ -479,22 +479,22 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
   Future<void> _fuel() async {
     final f = await _form(context, 'Diesel / fuel', const [
       ('litres', 'Litre'),
-      ('amount', 'Rupaye'),
+      ('amount', 'Rupees'),
       ('odo', 'Odometer (km)'),
       ('station', 'Pump'),
-      ('day', 'Taarikh (khaali = aaj)'),
-    ], ok: 'Darj karo');
+      ('day', 'Date (empty = today)'),
+    ], ok: 'Record');
     if (f == null || f['litres'] == null) return;
     await _post('fuel', {'litres': _n(f['litres']), 'amount': _n(f['amount']), 'odo': _n(f['odo']), 'station': f['station'] ?? '', 'day': f['day'] ?? ''});
   }
 
   Future<void> _serviceDone() async {
-    final f = await _form(context, 'Service ho gayi', const [
-      ('items', 'Kya kiya (comma se; "all" = sab)'),
+    final f = await _form(context, 'Service done', const [
+      ('items', 'What was done (comma separated; "all" = everything)'),
       ('odo', 'Odometer'),
-      ('amount', 'Kitna laga (aapne diya)'),
+      ('amount', 'Cost (as you gave)'),
       ('workshop', 'Workshop'),
-    ], ok: 'Darj karo');
+    ], ok: 'Record');
     if (f == null) return;
     await _post('service_done', {
       'items': (f['items'] ?? '').split(',').map((e) => e.trim()).where((e) => e.isNotEmpty).toList(),
@@ -505,41 +505,41 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
   }
 
   Future<void> _tyre() async {
-    final f = await _form(context, 'Naya tyre', const [
+    final f = await _form(context, 'New tyre', const [
       ('position', 'Position (front-left, rear-2-outer...)'),
       ('brand', 'Brand'),
       ('serial', 'Serial'),
       ('odo', 'Odometer'),
-      ('life_km', 'Kitne km chalna chahiye (aapka andaaza)'),
-    ], ok: 'Darj karo');
+      ('life_km', 'How many km it should run (your estimate)'),
+    ], ok: 'Record');
     if (f == null || (f['position'] ?? '').isEmpty) return;
     await _post('tyre', {...f, 'odo': _n(f['odo']), 'life_km': _n(f['life_km'])});
   }
 
   Future<void> _breakdown() async {
-    final f = await _form(context, 'Breakdown', const [('what', 'Kya hua'), ('place', 'Kahan'), ('hours', 'Kitne ghante ruki')], ok: 'Darj karo');
+    final f = await _form(context, 'Breakdown', const [('what', 'What happened'), ('place', 'Where'), ('hours', 'How many hours it stood')], ok: 'Record');
     if (f == null || (f['what'] ?? '').isEmpty) return;
     await _post('breakdown', {...f, 'hours': _n(f['hours'])});
   }
 
   Future<void> _challan() async {
-    final f = await _form(context, 'Challan (eChallan par dekha)', const [
+    final f = await _form(context, 'Challan (as seen on eChallan)', const [
       ('number', 'Challan number'),
-      ('amount', 'Rakam'),
-      ('offence', 'Kis baat ka'),
-      ('day', 'Taarikh'),
-    ], ok: 'Darj karo');
+      ('amount', 'Amount'),
+      ('offence', 'For what'),
+      ('day', 'Date'),
+    ], ok: 'Record');
     if (f == null) return;
     await _post('challan', {...f, 'amount': _n(f['amount'])});
   }
 
   Future<void> _spend({String kind = 'other', String what = '', String link = ''}) async {
-    final f = await _form(context, 'Kharche ka card', const [
-      ('kind', 'Kis cheez ka: service / tyre / permit / tax / insurance / challan / repair'),
-      ('what', 'Kya'),
-      ('amount', 'Rakam (bill / portal se)'),
-      ('vendor', 'Kisko (workshop / dukaan)'),
-    ], ok: 'Card banao', initial: {'kind': kind, 'what': what});
+    final f = await _form(context, 'Expense card', const [
+      ('kind', 'For what: service / tyre / permit / tax / insurance / challan / repair'),
+      ('what', 'What'),
+      ('amount', 'Amount (from the bill / portal)'),
+      ('vendor', 'Paid to (workshop / shop)'),
+    ], ok: 'Make card', initial: {'kind': kind, 'what': what});
     if (f == null || _n(f['amount']) == null) return;
     setState(() => _busy = true);
     await _call(context, widget.app, 'POST', '/api/fleet/spends',
@@ -553,7 +553,7 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
     final v = _v;
     return Scaffold(
       backgroundColor: C.bgTop,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Gaadi' : _s(v['reg']))),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(v == null ? 'Vehicle' : _s(v['reg']))),
       body: v == null
           ? const Center(child: CircularProgressIndicator())
           : RefreshIndicator(
@@ -577,29 +577,29 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
                 const SizedBox(height: 10),
                 Wrap(spacing: 8, runSpacing: 8, children: [
                   GlassButton(label: 'Diesel', icon: Icons.local_gas_station_rounded, onTap: _fuel, height: 40),
-                  GlassButton(label: 'Service hui', icon: Icons.build_rounded, onTap: _serviceDone, height: 40),
+                  GlassButton(label: 'Service done', icon: Icons.build_rounded, onTap: _serviceDone, height: 40),
                   GlassButton(label: 'Tyre', icon: Icons.tire_repair_rounded, onTap: _tyre, height: 40),
                   GlassButton(label: 'Breakdown', icon: Icons.car_crash_rounded, onTap: _breakdown, height: 40),
                   GlassButton(label: 'Challan', icon: Icons.receipt_long_rounded, onTap: _challan, height: 40),
-                  GlassButton(label: 'Kharcha card', icon: Icons.payments_rounded, onTap: () => _spend(), height: 40, color: C.accent),
+                  GlassButton(label: 'Expense card', icon: Icons.payments_rounded, onTap: () => _spend(), height: 40, color: C.accent),
                 ]),
                 const SizedBox(height: 16),
-                const Caption('KAAGAZ'),
+                const Caption('DOCUMENTS'),
                 for (final d in _list(v['docs']))
                   ListTile(
                     dense: true,
                     leading: Icon(Icons.description_rounded, color: _docColor(_s(d['state']))),
                     title: Text(_s(d['label'])),
                     subtitle: Text(switch (_s(d['state'])) {
-                      'missing' => 'Expiry darj nahi: tap karke likhiye',
-                      'expired' => 'Khatam ${_s(d['expires'])}',
-                      'not_needed' => 'Zaroori nahi',
+                      'missing' => 'Expiry not recorded: tap and write it',
+                      'expired' => 'Expires ${_s(d['expires'])}',
+                      'not_needed' => 'Not needed',
                       'note' => _s(d['notes']).isEmpty ? 'Balance note' : _s(d['notes']),
-                      _ => '${_s(d['expires'])}${d['guess'] == true ? ' (andaaza)' : ''} · ${_s(d['days_left'])} din',
+                      _ => '${_s(d['expires'])}${d['guess'] == true ? ' (estimate)' : ''} · ${_s(d['days_left'])} din',
                     }),
                     trailing: _s(d['state']) == 'expired' || _s(d['state']) == 'due'
                         ? IconButton(
-                            tooltip: 'Renewal ka kharcha card',
+                            tooltip: 'Renewal expense card',
                             icon: const Icon(Icons.payments_rounded, color: C.accent),
                             onPressed: () => _spend(
                                 kind: switch (_s(d['kind'])) {
@@ -631,7 +631,7 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
                       dense: true,
                       leading: Icon(Icons.tire_repair_rounded, color: t['due'] == true ? C.warn : C.chip),
                       title: Text('${_s(t['position'])} · ${_s(t['brand'])}'),
-                      subtitle: Text(t['km_run'] == null ? '' : '${t['km_run']} km chala${t['life_km'] != null ? ' / ${t['life_km']}' : ''}'),
+                      subtitle: Text(t['km_run'] == null ? '' : '${t['km_run']} km run${t['life_km'] != null ? ' / ${t['life_km']}' : ''}'),
                     ),
                 ],
                 const Caption('DIESEL'),
@@ -662,7 +662,7 @@ class _FleetVehiclePageState extends State<FleetVehiclePage> {
                                   await _call(context, widget.app, 'POST', '/api/fleet/events/${_s(e['id'])}/close', {});
                                   await _load();
                                 },
-                                child: const Text('Theek hui'))
+                                child: const Text('Fixed'))
                             : null),
                   ),
               ]),
@@ -688,13 +688,13 @@ class _FleetSpendCardState extends State<FleetSpendCard> {
   Future<Map<String, dynamic>> _proof(String id) async {
     final ch = _m(await widget.app.api!.call('POST', '/api/fleet/spends/$id/challenge'));
     final show = _m(ch['show']);
-    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Kharche ki haan' : _s(show['title']),
+    final r = await Native.approveKeySign(_s(ch['message']), _s(show['title']).isEmpty ? 'Expense approval' : _s(show['title']),
         [show['amount'], show['payee']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -704,7 +704,7 @@ class _FleetSpendCardState extends State<FleetSpendCard> {
     final id = _s(_x['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyon nahi', const [('reason', 'Wajah (aapke liye)')]);
+      final f = await _form(context, 'Why not', const [('reason', 'Reason (for you)')]);
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -733,7 +733,7 @@ class _FleetSpendCardState extends State<FleetSpendCard> {
   }
 
   Future<void> _paid() async {
-    final f = await _form(context, 'Maine de diya', const [('amount', 'Kitna diya'), ('ref', 'UTR / receipt no (ho to)')],
+    final f = await _form(context, 'I have paid', const [('amount', 'How much paid'), ('ref', 'UTR / receipt no (if any)')],
         initial: {'amount': _s(_x['amount'])});
     if (f == null) return;
     setState(() => _busy = true);
@@ -764,24 +764,24 @@ class _FleetSpendCardState extends State<FleetSpendCard> {
           Expanded(
               child: Text('${_s(x['number'])} · ${_s(x['kind_label'])} ${_s(x['amount_text'])}',
                   style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'maana', 'done' => 'diya', 'rejected' => 'nahi', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'accepted', 'done' => 'paid', 'rejected' => 'no', _ => st },
               fg: st == 'waiting' ? C.accent : (st == 'rejected' ? C.bad : C.ok)),
         ]),
-        if (_s(x['vehicle']).isNotEmpty) Text('Gaadi: ${_s(x['vehicle'])}', style: const TextStyle(fontSize: 12.5)),
+        if (_s(x['vehicle']).isNotEmpty) Text('Vehicle: ${_s(x['vehicle'])}', style: const TextStyle(fontSize: 12.5)),
         Text(_s(x['what']), style: const TextStyle(fontSize: 13)),
-        if (_s(x['vendor']).isNotEmpty) Text('Kisko: ${_s(x['vendor'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+        if (_s(x['vendor']).isNotEmpty) Text('To whom: ${_s(x['vendor'])}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         for (final c in _strs(x['checks'])) Text('⚠ $c', style: const TextStyle(fontSize: 12.5, color: C.warn)),
         if (_s(x['where']).isNotEmpty) Text(_s(x['where']), style: const TextStyle(fontSize: 12, color: C.faint)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, maana', height: 42, onTap: _busy ? null : () => _decide(true))),
+            Expanded(child: GradientButton(label: 'Yes, agreed', height: 42, onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (st == 'approved')
-          GlassButton(label: 'Maine de diya', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : _paid),
-        const Text('Hoola khud paise nahi deta; aap khud dijiye.', style: TextStyle(fontSize: 11, color: C.faint)),
+          GlassButton(label: 'I have paid', icon: Icons.check_rounded, height: 42, onTap: _busy ? null : _paid),
+        const Text('Hoola does not pay money itself; you pay yourself.', style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
   }
@@ -794,14 +794,14 @@ class FleetTripCard extends StatelessWidget {
   final Map<String, dynamic> data;
 
   Future<void> _status(BuildContext context, String id, String status) async {
-    final f = await _form(context, status == 'started' ? 'Trip shuru' : 'Trip poori', const [('odo', 'Odometer (km)')], ok: 'Haan');
+    final f = await _form(context, status == 'started' ? 'Trip started' : 'Trip done', const [('odo', 'Odometer (km)')], ok: 'Yes');
     if (f == null || !context.mounted) return;
     await _call(context, app, 'POST', '/api/fleet/trips/$id/status', {'status': status, 'odo': _n(f['odo'])});
   }
 
   Future<void> _assign(BuildContext context, String id, List<String> suggest) async {
-    final f = await _form(context, 'Gaadi aur driver', const [('vehicle', 'Gaadi number'), ('driver', 'Driver'), ('driver_phone', 'Driver ka phone')],
-        ok: 'Tay karo', initial: {'vehicle': suggest.isEmpty ? '' : suggest.first});
+    final f = await _form(context, 'Vehicle and driver', const [('vehicle', 'Vehicle number'), ('driver', 'Driver'), ('driver_phone', 'Driver phone')],
+        ok: 'Confirm', initial: {'vehicle': suggest.isEmpty ? '' : suggest.first});
     if (f == null || !context.mounted) return;
     await _call(context, app, 'POST', '/api/fleet/trips/$id/assign', f);
   }
@@ -835,27 +835,27 @@ class FleetTripCard extends StatelessWidget {
             ].join(' · '),
             style: const TextStyle(fontSize: 12.5, color: C.muted)),
         if (fit.isNotEmpty)
-          Text('Load: ${_s(fit['weight_kg'])} kg${fit['weight_pct'] != null ? ' (${fit['weight_pct']}% wazan)' : ''}',
+          Text('Load: ${_s(fit['weight_kg'])} kg${fit['weight_pct'] != null ? ' (${fit['weight_pct']}% of weight)' : ''}',
               style: const TextStyle(fontSize: 12.5)),
         for (final b in _strs(ch['block'])) Text('⛔ $b', style: const TextStyle(fontSize: 12.5, color: C.bad)),
         for (final w in _strs(ch['warn'])) Text('⚠ $w', style: const TextStyle(fontSize: 12.5, color: C.warn)),
-        if (suggest.isNotEmpty && _s(t['vehicle']).isEmpty) Text('Sahi gaadi: ${suggest.join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.ok)),
+        if (suggest.isNotEmpty && _s(t['vehicle']).isEmpty) Text('Right vehicle: ${suggest.join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.ok)),
         if (split.isNotEmpty)
-          Text('Baantkar: ${_list(split['plan']).map((p) => '${_s(p['vehicle'])} ${_s(p['weight_kg'])} kg').join('; ')}',
+          Text('Split: ${_list(split['plan']).map((p) => '${_s(p['vehicle'])} ${_s(p['weight_kg'])} kg').join('; ')}',
               style: const TextStyle(fontSize: 12.5)),
         if (est['total_rs'] != null)
-          Text('Andaaza (aapke rate): diesel ₹${_s(est['fuel_rs'])} + toll ₹${_s(est['toll_rs'])} = ₹${_s(est['total_rs'])}',
+          Text('Estimate (your rates): diesel ₹${_s(est['fuel_rs'])} + toll ₹${_s(est['toll_rs'])} = ₹${_s(est['total_rs'])}',
               style: const TextStyle(fontSize: 12.5))
         else if (_strs(est['missing']).isNotEmpty)
-          Text('Andaaza ke liye chahiye: ${_strs(est['missing']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.faint)),
+          Text('Needed for the estimate: ${_strs(est['missing']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.faint)),
         const SizedBox(height: 8),
         Wrap(spacing: 8, runSpacing: 8, children: [
           if (st == 'planned' || st == 'assigned')
-            GlassButton(label: 'Gaadi / driver', height: 38, onTap: () => _assign(context, _s(t['id']), suggest)),
-          if (st == 'assigned') GlassButton(label: 'Shuru', height: 38, onTap: () => _status(context, _s(t['id']), 'started')),
-          if (st == 'started') GlassButton(label: 'Poori', height: 38, onTap: () => _status(context, _s(t['id']), 'done')),
+            GlassButton(label: 'Vehicle / driver', height: 38, onTap: () => _assign(context, _s(t['id']), suggest)),
+          if (st == 'assigned') GlassButton(label: 'Start', height: 38, onTap: () => _status(context, _s(t['id']), 'started')),
+          if (st == 'started') GlassButton(label: 'Done', height: 38, onTap: () => _status(context, _s(t['id']), 'done')),
           if (_s(t['driver_phone']).isNotEmpty)
-            GlassButton(label: 'Driver ko call', icon: Icons.call_rounded, height: 38, onTap: () => Native.openExternal(url: 'tel:${_s(t['driver_phone'])}')),
+            GlassButton(label: 'Call the driver', icon: Icons.call_rounded, height: 38, onTap: () => Native.openExternal(url: 'tel:${_s(t['driver_phone'])}')),
         ]),
       ]),
     );
@@ -899,13 +899,13 @@ class FleetDayCard extends StatelessWidget {
           const Row(children: [
             Icon(Icons.wb_sunny_rounded, color: C.accent),
             SizedBox(width: 8),
-            Text('Aaj ka fleet note', style: TextStyle(fontWeight: FontWeight.w800)),
+            Text('Today\'s fleet note', style: TextStyle(fontWeight: FontWeight.w800)),
           ]),
           const SizedBox(height: 6),
           Text(_s(data['say']), style: const TextStyle(fontSize: 13.5, height: 1.35)),
           const SizedBox(height: 8),
           GlassButton(
-              label: 'Fleet kholo',
+              label: 'Open fleet',
               height: 38,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => FleetScreen(app: app)))),
         ]),

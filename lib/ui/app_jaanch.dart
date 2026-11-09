@@ -52,11 +52,11 @@ class _AppJaanchPanelState extends State<AppJaanchPanel> {
     } catch (_) {}
   }
 
-  Future<void> _do(String path, {Map<String, dynamic>? body, String working = 'Chal raha hai…'}) async {
+  Future<void> _do(String path, {Map<String, dynamic>? body, String working = 'Running…'}) async {
     setState(() { _busy = true; _out = working; });
     try {
       final v = _m(await widget.app.api!.call('POST', '$_base/$path', body: body ?? {}));
-      if (mounted) setState(() => _out = _s(v['says']).isNotEmpty ? _s(v['says']) : 'Ho gaya.');
+      if (mounted) setState(() => _out = _s(v['says']).isNotEmpty ? _s(v['says']) : 'Done.');
       await _load();
     } catch (e) {
       if (mounted) setState(() => _out = '$e');
@@ -71,8 +71,8 @@ class _AppJaanchPanelState extends State<AppJaanchPanel> {
         builder: (c) => AlertDialog(
           content: Text(q),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan')),
+            TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+            FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes')),
           ],
         ),
       ) ??
@@ -88,44 +88,44 @@ class _AppJaanchPanelState extends State<AppJaanchPanel> {
     final pct = ((_m(_ro['rollout'])['fraction'] ?? 0) as num) * 100;
     final running = _s(rl['status']) == 'inProgress';
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text('Jaanch', style: display(15)),
-      const _Dim('Aapki app saabit hoti hai, maani nahi jaati: har kahani ek copy par chal kar dekhi jaati hai - '
-          'sign up, order, aur doosre customer ko MANA hona. Aapka asli data kabhi chhua nahi jata.'),
+      Text('Check', style: display(15)),
+      const _Dim('Your app is proved, not just assumed: every story is run on a copy -'
+          'sign up, order, and another customer being REFUSED. Your real data is never touched.'),
       const SizedBox(height: 6),
       if (last.isEmpty)
-        const _Dim('Abhi tak ek baar bhi nahi chali.')
+        const _Dim('It has not run even once yet.')
       else
-        Text('${_i(last['pass'])}/${_i(last['total'])} kahaniyan pass'
+        Text('${_i(last['pass'])}/${_i(last['total'])} stories passed'
             '${_i(last['fail']) > 0 ? " · ${_i(last['fail'])} fail" : ''}'
-            '${_i(last['not_run']) > 0 ? " · ${_i(last['not_run'])} chal nahi payi" : ''}',
+            '${_i(last['not_run']) > 0 ? " · ${_i(last['not_run'])} could not run" : ''}',
             style: const TextStyle(fontWeight: FontWeight.w600)),
       if (_s(last['says']).isNotEmpty) _Dim(_s(last['says'])),
       for (final f in _l(last['failed'])) _Dim('• ${_s(f['story'])}: ${_s(f['why'])}'),
       const SizedBox(height: 6),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        OutlinedButton(onPressed: _busy ? null : () => _do('jaanch/stories', working: 'Kahaniyan likh rahi hoon…'),
-            child: const Text('Kahaniyan banao')),
-        FilledButton(onPressed: _busy ? null : () => _do('jaanch/run', working: 'Chala rahi hoon…'),
-            child: const Text('Jaanch chalao')),
-        OutlinedButton(onPressed: _busy ? null : () => _do('jaanch/rules', working: 'Rules dekh rahi hoon…'),
-            child: const Text('Rules dekho')),
+        OutlinedButton(onPressed: _busy ? null : () => _do('jaanch/stories', working: 'Writing the stories…'),
+            child: const Text('Make stories')),
+        FilledButton(onPressed: _busy ? null : () => _do('jaanch/run', working: 'Running…'),
+            child: const Text('Run the check')),
+        OutlinedButton(onPressed: _busy ? null : () => _do('jaanch/rules', working: 'Looking at the rules…'),
+            child: const Text('See rules')),
       ]),
       if (_out.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: _Dim(_out)),
       const SizedBox(height: 10),
-      Text('Asli phones se', style: display(15)),
+      Text('From real phones', style: display(15)),
       _Dim(_s(field['says'])),
       for (final c in _l(field['top']).take(3))
         _Dim('• ${_s(c['kind'])} ×${_i(c['count'])} · ${_s(c['what'])}'),
-      if (gaps.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: _Dim('Abhi tak nahi hua: ${gaps.join('; ')}.')),
+      if (gaps.isNotEmpty) Padding(padding: const EdgeInsets.only(top: 6), child: _Dim('Not done yet: ${gaps.join('; ')}.')),
       const SizedBox(height: 10),
-      Text('Dheere chhodna', style: display(15)),
-      const _Dim('Nayi version pehle 5% logon ko, phir 20, 50, 100 - har kadam aapka tap. Galat lage to turant rokiye. '
-          'Jin phones mein chali gayi hai unse Play version hata nahi sakta; rok dene se baaki sabko nahi jayegi.'),
+      Text('Staged rollout', style: display(15)),
+      const _Dim('A new version goes first to 5% of people, then 20, 50, 100 - every step is your tap. Stop at once if it looks wrong.'
+          'Play cannot remove the version from phones that already have it; stopping keeps it from going to everyone else.'),
       if (rl['version_code'] == null)
-        const _Dim('Abhi koi staged rollout nahi chal raha.')
+        const _Dim('No staged rollout is running right now.')
       else
         Text('v${_s(rl['version_name']).isNotEmpty ? _s(rl['version_name']) : _s(rl['version_code'])} · '
-            '${_s(rl['status']) == 'halted' ? 'ROKA hua' : '${pct.round()}% users'}',
+            '${_s(rl['status']) == 'halted' ? 'STOPPED' : '${pct.round()}% users'}',
             style: const TextStyle(fontWeight: FontWeight.w600)),
       Wrap(spacing: 8, runSpacing: 8, children: [
         if (running)
@@ -133,29 +133,29 @@ class _AppJaanchPanelState extends State<AppJaanchPanel> {
               onPressed: _busy
                   ? null
                   : () async {
-                      if (await _ask('Is version ko aur logon tak pahunchaun?')) _do('rollout/advance', body: {'her_tap': true});
+                      if (await _ask('Reach more people with this version?')) _do('rollout/advance', body: {'her_tap': true});
                     },
-              child: const Text('Aur logon ko do')),
-        if (running) OutlinedButton(onPressed: _busy ? null : () => _do('rollout/halt'), child: const Text('Roko')),
+              child: const Text('Give to more people')),
+        if (running) OutlinedButton(onPressed: _busy ? null : () => _do('rollout/halt'), child: const Text('Stop')),
         if (_ro['can_rollback'] == true)
           OutlinedButton(
               onPressed: _busy
                   ? null
                   : () async {
-                      if (await _ask('Purani build wapas sabko bhejun?')) _do('rollout/rollback', body: {'her_tap': true});
+                      if (await _ask('Send the old build back to everyone?')) _do('rollout/rollback', body: {'her_tap': true});
                     },
-              child: const Text('Purani wapas')),
+              child: const Text('Bring back old')),
       ]),
       if (flags.isNotEmpty) ...[
         const SizedBox(height: 10),
         Text('Feature switch', style: display(15)),
-        const _Dim('Bina nayi build ke kuch band kijiye - yahi ek badlav hai jo minuton mein har phone tak pahunchta hai.'),
+        const _Dim('Turn something off without a new build - this is the one change that reaches every phone in minutes.'),
         for (final f in flags)
           SwitchListTile(
             dense: true,
             contentPadding: EdgeInsets.zero,
             title: Text(_s(f['label']).isNotEmpty ? _s(f['label']) : _s(f['key'])),
-            subtitle: _Dim(_i(f['percent']) < 100 ? '${_i(f['percent'])}% users' : 'sab users'),
+            subtitle: _Dim(_i(f['percent']) < 100 ? '${_i(f['percent'])}% users' : 'all users'),
             value: f['on'] == true,
             onChanged: _busy ? null : (v) => _do('rollout/flag', body: {'key': _s(f['key']), 'on': v}, working: ''),
           ),

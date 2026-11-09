@@ -74,10 +74,10 @@ class PayrollScreen extends StatelessWidget {
             backgroundColor: Colors.transparent,
             title: const Text('Payroll officer'),
             bottom: const TabBar(isScrollable: true, tabAlignment: TabAlignment.start, tabs: [
-              Tab(text: 'Aaj'),
+              Tab(text: 'Today'),
               Tab(text: 'Log'),
               Tab(text: 'Salary'),
-              Tab(text: 'Niyam'),
+              Tab(text: 'Rules'),
             ]),
           ),
           body: Aurora(
@@ -147,7 +147,7 @@ class _TodayTabState extends State<_TodayTab> with _PayLive {
         const SizedBox(height: 12),
         if ((d['employees'] ?? 0) == 0)
           const Glass(
-              child: Text('Pehle log jodiye (Log > Naya employee), ya Hoola se boliye: "Ramesh Patil, 1 Jan 2019 se, 30,000 mahina, '
+              child: Text('First add people (People > New employee), or tell Hoola: "Ramesh Patil, from 1 Jan 2019, 30,000 a month,'
                   'basic 15,000".', style: TextStyle(color: C.muted))),
         for (final x in _list(d['late'])) row(x, true),
         for (final x in _list(d['due'])) row(x, false),
@@ -202,18 +202,18 @@ class _PeopleTabState extends State<_PeopleTab> with _PayLive {
     var gender = _s(e?['gender']).isEmpty ? 'M' : _s(e?['gender']);
     var regime = _s(e?['regime']).isEmpty ? 'new' : _s(e?['regime']);
     const labels = {
-      'name': 'Naam',
+      'name': 'Name',
       'phone': 'Phone',
-      'designation': 'Kaam / pad',
+      'designation': 'Job / post',
       'doj': 'Joining date (2025-01-31)',
-      'basic': 'Basic (mahina)',
+      'basic': 'Basic (monthly)',
       'da': 'DA',
       'hra': 'HRA',
-      'special': 'Special / baaki',
-      'uan': 'UAN (12 ank)',
-      'esic_ip': 'ESIC IP (10 ank)',
-      'pan': 'PAN (sirf naya daalna ho to)',
-      'account': 'Bank account (sirf naya ho to)',
+      'special': 'Special / other',
+      'uan': 'UAN (12 digits)',
+      'esic_ip': 'ESIC IP (10 digits)',
+      'pan': 'PAN (only if adding a new one)',
+      'account': 'Bank account (only if new)',
       'ifsc': 'IFSC',
     };
     final ok = await showModalBottomSheet<bool>(
@@ -226,7 +226,7 @@ class _PeopleTabState extends State<_PeopleTab> with _PayLive {
           child: Glass(
             child: SingleChildScrollView(
               child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(e == null ? 'Naya employee' : _s(e['name']), style: display(17)),
+                Text(e == null ? 'New employee' : _s(e['name']), style: display(17)),
                 for (final k in c.keys)
                   TextField(
                     controller: c[k],
@@ -237,15 +237,15 @@ class _PeopleTabState extends State<_PeopleTab> with _PayLive {
                     decoration: InputDecoration(
                         labelText: labels[k],
                         helperText: k == 'pan' && e != null
-                            ? 'Abhi: ${_s(e['pan'])}'
+                            ? 'Current: ${_s(e['pan'])}'
                             : k == 'account' && e != null
-                                ? 'Abhi: ${_s((e['bank'] as Map?)?['account'])}'
+                                ? 'Current: ${_s((e['bank'] as Map?)?['account'])}'
                                 : null),
                   ),
                 const SizedBox(height: 8),
                 Wrap(spacing: 8, children: [
                   for (final g in const ['M', 'F'])
-                    ChoiceChip(label: Text(g == 'M' ? 'Purush' : 'Mahila'), selected: gender == g, onSelected: (_) => setS(() => gender = g)),
+                    ChoiceChip(label: Text(g == 'M' ? 'Male' : 'Female'), selected: gender == g, onSelected: (_) => setS(() => gender = g)),
                   for (final r in const ['new', 'old'])
                     ChoiceChip(label: Text('$r regime'), selected: regime == r, onSelected: (_) => setS(() => regime = r)),
                 ]),
@@ -280,7 +280,7 @@ class _PeopleTabState extends State<_PeopleTab> with _PayLive {
 
   @override
   Widget build(BuildContext context) => ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
-        GradientButton(label: 'Naya employee', icon: Icons.person_add_alt_1_rounded, onTap: () => _edit()),
+        GradientButton(label: 'New employee', icon: Icons.person_add_alt_1_rounded, onTap: () => _edit()),
         const SizedBox(height: 12),
         for (final e in _e)
           Padding(
@@ -298,8 +298,8 @@ class _PeopleTabState extends State<_PeopleTab> with _PayLive {
                           [
                             rs(e['monthly_gross'] ?? 0),
                             if (_s(e['designation']).isNotEmpty) _s(e['designation']),
-                            if (_s(e['uan']).isEmpty) 'UAN nahi',
-                            if (_s((e['bank'] as Map?)?['account']).isEmpty) 'bank nahi',
+                            if (_s(e['uan']).isEmpty) 'no UAN',
+                            if (_s((e['bank'] as Map?)?['account']).isEmpty) 'no bank',
                           ].join(' · '),
                           style: const TextStyle(color: C.muted, fontSize: 12.5)),
                     ]),
@@ -383,12 +383,12 @@ class _RunsTabState extends State<_RunsTab> with _PayLive {
               items: [for (final p in _months()) DropdownMenuItem(value: p, child: Text(_nice(p)))],
               onChanged: (v) => setState(() => _period = v ?? _period),
             ),
-            const Text('Chhutti / OT chat mein bataiye ("Ramesh 2 din chhutti, Suresh 6 ghante OT") ya hazri ki sheet daaliye.',
+            const Text('Tell leave / OT in chat ("Ramesh 2 days leave, Suresh 6 hours OT") or add the attendance sheet.',
                 style: TextStyle(color: C.faint, fontSize: 12)),
             const SizedBox(height: 8),
             Wrap(spacing: 8, runSpacing: 8, children: [
-              GlassButton(label: 'Hazri sheet', icon: Icons.upload_file_rounded, onTap: _sheet),
-              GradientButton(label: _busy ? 'Ruko...' : 'Salary banao', icon: Icons.payments_rounded, onTap: _busy ? null : _make),
+              GlassButton(label: 'Attendance sheet', icon: Icons.upload_file_rounded, onTap: _sheet),
+              GradientButton(label: _busy ? 'Wait...' : 'Make salary', icon: Icons.payments_rounded, onTap: _busy ? null : _make),
             ]),
           ]),
         ),
@@ -497,7 +497,7 @@ class _PayRunViewState extends State<PayRunView> with _PayLive {
       if (a == 'drafts' && mounted) {
         final text = _list(r['drafts']).map((d) => '${_s(d['employee'])} (${_s(d['to'])}):\n${_s(d['text'])}').join('\n\n');
         await Clipboard.setData(ClipboardData(text: text));
-        if (mounted) _snack(context, 'Sab payslip message copy ho gaye');
+        if (mounted) _snack(context, 'All payslip messages copied');
       }
       await reload();
     } catch (e) {
@@ -533,12 +533,12 @@ class _PayRunViewState extends State<PayRunView> with _PayLive {
         ]),
         const SizedBox(height: 6),
         _kv('Log', '${t['employees'] ?? 0}'),
-        _kv('Kul pagaar (gross)', rs(t['gross'] ?? 0)),
-        _kv('Haath mein (net)', rs(t['net'] ?? 0), c: C.accent),
+        _kv('Total pay (gross)', rs(t['gross'] ?? 0)),
+        _kv('Take-home (net)', rs(t['net'] ?? 0), c: C.accent),
         if (t['pf_challan'] != null) _kv('PF challan', rs(t['pf_challan'] ?? 0)),
         if (t['esi_challan'] != null) _kv('ESIC', rs(t['esi_challan'] ?? 0)),
         if (t['tds'] != null) _kv('TDS / PT', '${rs(t['tds'] ?? 0)} / ${rs(t['pt'] ?? 0)}'),
-        if (t['cost'] != null) _kv('Company ka kharcha', rs(t['cost'] ?? 0)),
+        if (t['cost'] != null) _kv('Company cost', rs(t['cost'] ?? 0)),
         for (final c in checks.take(widget.compact ? 3 : 30))
           Padding(
             padding: const EdgeInsets.only(top: 5),
@@ -567,9 +567,9 @@ class _PayRunViewState extends State<PayRunView> with _PayLive {
                     style: const TextStyle(color: C.muted, fontSize: 12)),
                 if ((ln['fnf'] as Map?) != null)
                   Text(
-                      'Full & final: chhutti ${rs((ln['fnf'] as Map)['leave_encashment'] ?? 0)}, gratuity '
+                      'Full & final: leave ${rs((ln['fnf'] as Map)['leave_encashment'] ?? 0)}, gratuity '
                       '${rs(((ln['fnf'] as Map)['gratuity'] as Map?)?['amount'] ?? 0)}, recovery ${rs((ln['fnf'] as Map)['recoveries'] ?? 0)} = '
-                      '${rs((ln['fnf'] as Map)['net_payable'] ?? 0)} · ${_s((ln['fnf'] as Map)['pay_by'])} tak',
+                      '${rs((ln['fnf'] as Map)['net_payable'] ?? 0)} · by ${_s((ln['fnf'] as Map)['pay_by'])}',
                       style: const TextStyle(color: C.warn, fontSize: 12)),
               ]),
             ),
@@ -577,9 +577,9 @@ class _PayRunViewState extends State<PayRunView> with _PayLive {
         const SizedBox(height: 10),
         if (st == 'ready' || st == 'rejected')
           Row(children: [
-            Expanded(child: GlassButton(label: 'Haan, theek hai', icon: Icons.check_rounded, color: C.ok, onTap: _busy ? null : () => _act('decide', {'approve': true}))),
+            Expanded(child: GlassButton(label: 'Yes, it is correct', icon: Icons.check_rounded, color: C.ok, onTap: _busy ? null : () => _act('decide', {'approve': true}))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _act('decide', {'approve': false}))),
+            Expanded(child: GlassButton(label: 'Declined', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _act('decide', {'approve': false}))),
           ]),
         if (st == 'approved' || st == 'paid')
           Wrap(spacing: 8, runSpacing: 8, children: [
@@ -589,16 +589,16 @@ class _PayRunViewState extends State<PayRunView> with _PayLive {
         if (st == 'approved')
           Padding(
             padding: const EdgeInsets.only(top: 8),
-            child: GradientButton(label: 'Maine salary de di', icon: Icons.verified_rounded, onTap: _busy ? null : () => _act('paid')),
+            child: GradientButton(label: 'I have paid the salary', icon: Icons.verified_rounded, onTap: _busy ? null : () => _act('paid')),
           ),
         if (widget.compact)
           Align(
             alignment: Alignment.centerRight,
             child: TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => PayRunPage(app: app, id: widget.id))),
-                child: const Text('Har ek ki salary dekho')),
+                child: const Text('See each person\'s salary')),
           ),
-        const Text('Payment aap apne bank se karengi (bank file upload). Hoola paise nahi bhejta, bank mein login nahi karta.',
+        const Text('You make the payment from your own bank (bank file upload). Hoola does not send money or log in to the bank.',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
       ]),
     );
@@ -667,12 +667,12 @@ class _RulesTabState extends State<_RulesTab> {
       : ListView(padding: const EdgeInsets.fromLTRB(16, 12, 16, 40), children: [
           Glass(
             child: Column(children: [
-              TextField(controller: _company, decoration: const InputDecoration(labelText: 'Company / dukaan ka naam')),
-              TextField(controller: _state, decoration: const InputDecoration(labelText: 'State (professional tax ke liye)')),
+              TextField(controller: _company, decoration: const InputDecoration(labelText: 'Company / shop name')),
+              TextField(controller: _state, decoration: const InputDecoration(labelText: 'State (for professional tax)')),
               TextField(
                   controller: _min,
                   keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(labelText: 'Minimum wage (mahina, state notification)')),
+                  decoration: const InputDecoration(labelText: 'Minimum wage (monthly, state notification)')),
               SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('PF (EPFO) registered'), value: _pf, onChanged: (v) => setState(() => _pf = v)),
               if (_pf) TextField(controller: _pfc, decoration: const InputDecoration(labelText: 'PF establishment code')),
               SwitchListTile(contentPadding: EdgeInsets.zero, title: const Text('ESIC registered'), value: _esi, onChanged: (v) => setState(() => _esi = v)),
@@ -685,9 +685,9 @@ class _RulesTabState extends State<_RulesTab> {
           const SizedBox(height: 10),
           const Glass(
               child: Text(
-                  'Hoola ke niyam: Code on Wages (pagaar 7 tareekh tak, basic+DA kam se kam aadha, OT dugna), PF ki seema ₹25,000 '
-                  '(17 Sep 2026 se), ESIC ₹21,000 tak, state ka PT, TDS Sec 392 (naya Income-tax Act). PAN aur bank number taale mein, '
-                  'sirf aakhri 4 ank dikhte hain.',
+                  'Hoola\'s rules: Code on Wages (pay by the 7th, basic+DA at least half, double OT), PF limit ₹25,000'
+                  '(from 17 Sep 2026), ESIC up to ₹21,000, state PT, TDS Sec 392 (new Income-tax Act). PAN and bank numbers are hidden,'
+                  'only the last 4 digits show.',
                   style: TextStyle(color: C.muted, fontSize: 12.5))),
         ]);
 }

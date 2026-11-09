@@ -48,7 +48,7 @@ class _ApproveSheet extends StatelessWidget {
             const SizedBox(width: 10),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(money ? 'Aapki approval chahiye' : 'Aapki haan chahiye',
+                Text(money ? 'Your approval is needed' : 'Needs your OK',
                     style: const TextStyle(color: C.muted, fontSize: 12.5, fontWeight: FontWeight.w700)),
                 const SizedBox(height: 2),
                 Text('$title?', maxLines: 3, overflow: TextOverflow.ellipsis, style: display(17)),
@@ -62,7 +62,7 @@ class _ApproveSheet extends StatelessWidget {
                 if (amount.isNotEmpty)
                   Center(
                     child: Column(children: [
-                      const Text('KUL RAKAM', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.muted, letterSpacing: .8)),
+                      const Text('TOTAL AMOUNT', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: C.muted, letterSpacing: .8)),
                       TweenAnimationBuilder<double>(
                         tween: Tween(begin: .85, end: 1),
                         duration: const Duration(milliseconds: 500),
@@ -76,7 +76,7 @@ class _ApproveSheet extends StatelessWidget {
                   const Center(
                     child: Padding(
                       padding: EdgeInsets.only(top: 6),
-                      child: Pill('DEMO · ASLI PAISE NAHI KATENGE', fg: C.accentSoft, bg: Color(0x24FFB15C)),
+                      child: Pill('DEMO · NO REAL MONEY WILL BE CUT', fg: C.accentSoft, bg: Color(0x24FFB15C)),
                     ),
                   ),
                 if (amount.isNotEmpty || demo) const SizedBox(height: 12),
@@ -84,10 +84,10 @@ class _ApproveSheet extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
                   decoration: BoxDecoration(color: C.panel, borderRadius: BorderRadius.circular(18), border: Border.all(color: const Color(0x1FFFFFFF))),
                   child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-                    if ((v['payee'] as String? ?? '').isNotEmpty) _row(money ? 'Kisko' : 'Kahan', v['payee'] as String),
+                    if ((v['payee'] as String? ?? '').isNotEmpty) _row(money ? 'To' : 'Where', v['payee'] as String),
                     for (final i in items.take(12))
                       (i['price'] as String? ?? '').isEmpty ? _line(i['name'] as String? ?? '') : _row(i['name'] as String? ?? '', i['price'] as String),
-                    if (payMethod.isNotEmpty) _row(money ? 'Payment' : 'Kaise', payMethod, last: true),
+                    if (payMethod.isNotEmpty) _row(money ? 'Payment' : 'How', payMethod, last: true),
                   ]),
                 ),
                 if (disclosures.isNotEmpty) ...[
@@ -112,8 +112,8 @@ class _ApproveSheet extends StatelessWidget {
                   Expanded(
                     child: Text(
                         money
-                            ? 'Rakam aur payee server ke record se hain. Hoola kabhi PIN, OTP ya card number nahi maangega.'
-                            : 'Yeh kadam aapki haan ke bina nahi hoga. Password, PIN aur payment Hoola kabhi khud nahi bharta.',
+                            ? 'The amount and payee are from the server\'s record. Hoola will never ask for a PIN, OTP or card number.'
+                            : 'This step will not happen without your approval. Hoola never enters passwords, PINs or payments itself.',
                         style: const TextStyle(fontSize: 12.5, color: C.muted, height: 1.4)),
                   ),
                 ]),
@@ -122,7 +122,7 @@ class _ApproveSheet extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           SlideToApprove(
-            label: money ? 'Slide karke approve karein' : 'Slide karke haan karein',
+            label: money ? 'Slide to approve' : 'Slide to say yes',
             onDone: () async {
               Navigator.of(context).pop();
               // money never moves from the lock screen: the phone's own PIN/fingerprint first
@@ -137,13 +137,13 @@ class _ApproveSheet extends StatelessWidget {
                   Navigator.of(context).pop();
                   app.decideBazar(v['id'] as String, 'reject');
                 },
-                child: const Text('Mana karein', style: TextStyle(color: C.muted, fontWeight: FontWeight.w700)),
+                child: const Text('Decline', style: TextStyle(color: C.muted, fontWeight: FontWeight.w700)),
               ),
             ),
             Expanded(
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text('Abhi nahi', style: TextStyle(color: C.chip, fontWeight: FontWeight.w700)),
+                child: const Text('Not now', style: TextStyle(color: C.chip, fontWeight: FontWeight.w700)),
               ),
             ),
           ]),
@@ -210,7 +210,7 @@ class _SlideToApproveState extends State<SlideToApprove> with SingleTickerProvid
                 child: AnimatedOpacity(
                   opacity: (1 - _x / max * 1.4).clamp(0.0, 1.0),
                   duration: const Duration(milliseconds: 80),
-                  child: Text(_done ? 'Ho raha hai…' : widget.label,
+                  child: Text(_done ? 'Doing it…' : widget.label,
                       style: const TextStyle(color: C.onAccent, fontWeight: FontWeight.w800, fontSize: 15.5)),
                 ),
               ),

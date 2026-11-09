@@ -41,7 +41,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -102,15 +102,15 @@ class _DriversScreenState extends State<DriversScreen> {
 
   // ---------------------------------------------------------------- duty
   Future<void> _newDuty() async {
-    final f = await _form(context, 'Nayi duty', const [
-      ('driver', 'Driver (naam / D-001)'),
-      ('day', 'Din (dd-mm-yyyy / aaj / kal)'),
-      ('start', 'Shuru (6:00)'),
-      ('end', 'Khatam (14:00)'),
-      ('vehicle', 'Gaadi number'),
+    final f = await _form(context, 'New duty', const [
+      ('driver', 'Driver (name / D-001)'),
+      ('day', 'Day (dd-mm-yyyy / today / tomorrow)'),
+      ('start', 'Start (6:00)'),
+      ('end', 'End (14:00)'),
+      ('vehicle', 'Vehicle number'),
       ('route', 'Route (Pune - Nashik)'),
-      ('break_min', 'Aaraam (minute)'),
-    ], ok: 'Check karke lagao');
+      ('break_min', 'Rest (minutes)'),
+    ], ok: 'Check and assign');
     if (f == null || (f['driver'] ?? '').isEmpty) return;
     final body = <String, dynamic>{...f, 'break_min': int.tryParse(f['break_min'] ?? '') ?? 0};
     final r = await _run('POST', '/api/drivers/duties', body);
@@ -118,29 +118,29 @@ class _DriversScreenState extends State<DriversScreen> {
       final ok = await showDialog<bool>(
         context: context,
         builder: (d) => AlertDialog(
-          title: const Text('Niyam se bahar'),
+          title: const Text('Outside the rules'),
           content: Text(_s(r['say'])),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Badal deti hoon')),
-            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Phir bhi lagao (wajah ke saath)')),
+            TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('I will change it')),
+            TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Assign anyway (with a reason)')),
           ],
         ),
       );
       if (ok != true || !mounted) return;
-      final w = await _form(context, 'Wajah (log mein rahegi)', const [('reason', 'Kyun zaroori hai')], ok: 'Lagao');
+      final w = await _form(context, 'Reason (will stay in the log)', const [('reason', 'Why it is needed')], ok: 'Assign');
       if (w == null || (w['reason'] ?? '').length < 5) return;
       await _run('POST', '/api/drivers/duties', {...body, 'force': true, 'reason': w['reason']});
     }
   }
 
   Future<void> _plan() async {
-    final f = await _form(context, 'Kaun le sakta hai?', const [
-      ('day', 'Din (kal / dd-mm-yyyy)'),
-      ('start', 'Shuru'),
-      ('end', 'Khatam'),
-      ('vehicle', 'Gaadi'),
+    final f = await _form(context, 'Who can take it?', const [
+      ('day', 'Day (tomorrow / dd-mm-yyyy)'),
+      ('start', 'Start'),
+      ('end', 'End'),
+      ('vehicle', 'Vehicle'),
       ('route', 'Route'),
-    ], ok: 'Dekho');
+    ], ok: 'View');
     if (f == null) return;
     final r = await _run('POST', '/api/drivers/plan', {
       'day': f['day'] ?? 'kal',
@@ -161,7 +161,7 @@ class _DriversScreenState extends State<DriversScreen> {
               dense: true,
               leading: Icon(c['ok'] == true ? Icons.check_circle_rounded : (c['can'] == true ? Icons.warning_amber_rounded : Icons.block_rounded),
                   color: c['ok'] == true ? C.ok : (c['can'] == true ? C.warn : C.bad)),
-              title: Text('${_s(c['code'])} ${_s(c['name'])} · hafte ${_num(c['week_h'])} ghante'),
+              title: Text('${_s(c['code'])} ${_s(c['name'])} · week ${_num(c['week_h'])} hours'),
               subtitle: Text([...((c['why_not'] as List?) ?? const []), ...((c['tips'] as List?) ?? const [])].join(' ')),
             ),
       ]),
@@ -183,17 +183,17 @@ class _DriversScreenState extends State<DriversScreen> {
                     style: const TextStyle(fontWeight: FontWeight.w800))),
             Pill(_s(x['status'])),
           ]),
-          Text([_s(x['vehicle']), _s(x['route']), if (c['ot_h'] != null && (c['ot_h'] as num) > 0) 'OT ${_num(c['ot_h'])} h', if (x['told'] == true) 'bata diya']
+          Text([_s(x['vehicle']), _s(x['route']), if (c['ot_h'] != null && (c['ot_h'] as num) > 0) 'OT ${_num(c['ot_h'])} h', if (x['told'] == true) 'told']
               .where((e) => e.isNotEmpty)
               .join(' · '),
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           for (final l in law) Text('• $l', style: const TextStyle(fontSize: 12, color: C.warn)),
-          if (_s(x['forced']).isNotEmpty) Text('Aapki wajah: ${_s(x['forced'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+          if (_s(x['forced']).isNotEmpty) Text('Your reason: ${_s(x['forced'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
           if (_s(x['status']) == 'planned')
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (st, label) in const [('done', 'Ho gayi'), ('absent', 'Nahi aaya'), ('cancelled', 'Radd')])
+                for (final (st, label) in const [('done', 'Done'), ('absent', 'Did not come'), ('cancelled', 'Cancel')])
                   ActionChip(label: Text(label), onPressed: _busy ? null : () => _run('POST', '/api/drivers/duties/${_s(x['id'])}/status', {'status': st})),
               ]),
             ),
@@ -206,16 +206,16 @@ class _DriversScreenState extends State<DriversScreen> {
   Future<void> _newTrip() async {
     final f = await _form(context, 'Trip sheet', const [
       ('driver', 'Driver'),
-      ('day', 'Din (aaj / dd-mm-yyyy)'),
-      ('vehicle', 'Gaadi'),
-      ('text', 'Jaisa likha hai: start 45210 end 45480, diesel 40 L 3800, toll 450'),
-    ], ok: 'Check karo');
+      ('day', 'Day (today / dd-mm-yyyy)'),
+      ('vehicle', 'Vehicle'),
+      ('text', 'As written: start 45210 end 45480, diesel 40 L 3800, toll 450'),
+    ], ok: 'Check');
     if (f == null || (f['driver'] ?? '').isEmpty) return;
     await _run('POST', '/api/drivers/trips', f);
   }
 
   Future<void> _tripPhoto(ImageSource src) async {
-    final f = await _form(context, 'Kiski trip sheet?', const [('driver', 'Driver'), ('day', 'Din'), ('vehicle', 'Gaadi')], ok: 'Photo lo');
+    final f = await _form(context, 'Whose trip sheet?', const [('driver', 'Driver'), ('day', 'Din'), ('vehicle', 'Vehicle')], ok: 'Photo lo');
     if (f == null || (f['driver'] ?? '').isEmpty) return;
     try {
       final x = await ImagePicker().pickImage(source: src, imageQuality: 80, maxWidth: 2000);
@@ -242,7 +242,7 @@ class _DriversScreenState extends State<DriversScreen> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text('${_s(t['number'])} · ${_s(t['driver'])} · ${_s(t['day'])}', style: const TextStyle(fontWeight: FontWeight.w800))),
-            Pill(t['status'] == 'draft' ? 'jaanchiye' : _s(t['status'])),
+            Pill(t['status'] == 'draft' ? 'check' : _s(t['status'])),
           ]),
           Text(
               [
@@ -250,7 +250,7 @@ class _DriversScreenState extends State<DriversScreen> {
                 if (t['km'] != null) '${_num(t['km'])} km (${_num(t['start_km'])}-${_num(t['end_km'])})',
                 if (_s(t['start_time']).isNotEmpty) '${_s(t['start_time'])}-${_s(t['end_time'])}',
                 if (t['fuel_l'] != null) 'fuel ${_num(t['fuel_l'])} L',
-                if ((t['spent'] ?? 0) != 0) 'kharcha Rs ${_num(t['spent'])}',
+                if ((t['spent'] ?? 0) != 0) 'expenses Rs ${_num(t['spent'])}',
               ].where((e) => e.isNotEmpty).join(' · '),
               style: const TextStyle(color: C.muted, fontSize: 12.5)),
           for (final f in flags) Text('• ${_s(f['say'])}', style: TextStyle(fontSize: 12, color: _flagColor(_s(f['level'])))),
@@ -258,8 +258,8 @@ class _DriversScreenState extends State<DriversScreen> {
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Wrap(spacing: 6, children: [
-                ActionChip(label: const Text('Sahi hai'), onPressed: _busy ? null : () => _run('POST', '/api/drivers/trips/${_s(t['id'])}/ok', {'ok': true})),
-                ActionChip(label: const Text('Galat'), onPressed: _busy ? null : () => _run('POST', '/api/drivers/trips/${_s(t['id'])}/ok', {'ok': false})),
+                ActionChip(label: const Text('Correct'), onPressed: _busy ? null : () => _run('POST', '/api/drivers/trips/${_s(t['id'])}/ok', {'ok': true})),
+                ActionChip(label: const Text('Wrong'), onPressed: _busy ? null : () => _run('POST', '/api/drivers/trips/${_s(t['id'])}/ok', {'ok': false})),
               ]),
             ),
         ]),
@@ -271,19 +271,19 @@ class _DriversScreenState extends State<DriversScreen> {
   Future<void> _editDriver([Map<String, dynamic>? d]) async {
     final f = await _form(
         context,
-        d == null ? 'Naya driver' : '${_s(d['code'])} ${_s(d['name'])}',
+        d == null ? 'New driver' : '${_s(d['code'])} ${_s(d['name'])}',
         [
-          ('name', 'Naam'),
-          ('phone', 'Mobile (10 ank)'),
-          ('licence', d == null ? 'Licence number (Locker mein band rahega)' : 'Naya licence number (sirf badalna ho to)'),
+          ('name', 'Name'),
+          ('phone', 'Mobile (10 digits)'),
+          ('licence', d == null ? 'Licence number (kept locked in the Locker)' : 'New licence number (only if changing)'),
           ('classes', 'Licence class (LMV, HGV, TRANS, hazardous...)'),
-          ('dl_valid_to', 'Licence kab tak (dd-mm-yyyy)'),
-          ('medical_valid_to', 'Medical (Form 1A) kab tak'),
-          ('badge_valid_to', 'Badge kab tak'),
-          ('police_on', 'Police verification kab hua'),
-          ('vehicle', 'Aam gaadi'),
-          ('payroll_name', 'Payroll mein naam / code'),
-          ('member', 'Hoola team member (naam / Hoola ID)'),
+          ('dl_valid_to', 'Licence valid until (dd-mm-yyyy)'),
+          ('medical_valid_to', 'Medical (Form 1A) valid until'),
+          ('badge_valid_to', 'Badge valid until'),
+          ('police_on', 'When police verification was done'),
+          ('vehicle', 'Ordinary vehicle'),
+          ('payroll_name', 'Name / code in payroll'),
+          ('member', 'Hoola team member (name / Hoola ID)'),
         ],
         initial: d == null
             ? const {}
@@ -307,12 +307,12 @@ class _DriversScreenState extends State<DriversScreen> {
   }
 
   Future<void> _leave(Map<String, dynamic> d) async {
-    final f = await _form(context, '${_s(d['name'])}: chhutti', const [
-      ('start', 'Kab se'),
-      ('end', 'Kab tak (ek din ho to khaali)'),
+    final f = await _form(context, '${_s(d['name'])}: leave', const [
+      ('start', 'Since when'),
+      ('end', 'Until when (empty if one day)'),
       ('kind', 'leave / sick / off / unpaid'),
       ('note', 'Note'),
-    ], ok: 'Darj karo');
+    ], ok: 'Record');
     if (f == null || (f['start'] ?? '').isEmpty) return;
     await _run('POST', '/api/drivers/leaves', {...f, 'driver': _s(d['id'])});
   }
@@ -343,12 +343,12 @@ class _DriversScreenState extends State<DriversScreen> {
                 style: const TextStyle(color: C.muted, fontSize: 12.5)),
             for (final x in docs.where((x) => x['state'] != 'ok'))
               Text(
-                  '• ${_s(x['label'])}: ${x['state'] == 'missing' ? 'taareekh darj nahi' : (x['state'] == 'expired' ? 'khatam (${_s(x['on'])})' : '${x['days_left']} din (${_s(x['on'])})')}',
+                  '• ${_s(x['label'])}: ${x['state'] == 'missing' ? 'date not recorded' : (x['state'] == 'expired' ? 'expired (${_s(x['on'])})' : '${x['days_left']} din (${_s(x['on'])})')}',
                   style: TextStyle(fontSize: 12, color: x['state'] == 'soon' ? C.warn : C.bad)),
             Padding(
               padding: const EdgeInsets.only(top: 6),
               child: Wrap(spacing: 6, children: [
-                ActionChip(label: const Text('Chhutti'), onPressed: _busy ? null : () => _leave(d)),
+                ActionChip(label: const Text('Leave'), onPressed: _busy ? null : () => _leave(d)),
                 ActionChip(label: const Text('Message'), onPressed: _busy ? null : () => _message(d)),
               ]),
             ),
@@ -359,7 +359,7 @@ class _DriversScreenState extends State<DriversScreen> {
   }
 
   Future<void> _message(Map<String, dynamic> d) async {
-    final f = await _form(context, '${_s(d['name'])} ko message (draft)', const [('text', 'Kya likhna hai')], ok: 'Draft banao');
+    final f = await _form(context, 'Message to ${_s(d['name'])} (draft)', const [('text', 'What to write')], ok: 'Make draft');
     if (f == null || (f['text'] ?? '').isEmpty) return;
     await _run('POST', '/api/drivers/messages', {'driver': _s(d['id']), 'text': f['text']});
   }
@@ -371,43 +371,43 @@ class _DriversScreenState extends State<DriversScreen> {
       Glass(child: Text(_s(d['say']), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700, height: 1.35))),
       const SizedBox(height: 10),
       Wrap(spacing: 8, runSpacing: 8, children: [
-        GlassButton(label: 'Kal ki duty bhejo', icon: Icons.send_rounded, onTap: _busy ? null : () => _run('POST', '/api/drivers/day_plan', {'day': 'kal'})),
-        GlassButton(label: 'Trip sheet maango', icon: Icons.receipt_long_rounded, onTap: _busy ? null : () => _run('POST', '/api/drivers/sheet_reminders')),
+        GlassButton(label: 'Send tomorrow\'s duty', icon: Icons.send_rounded, onTap: _busy ? null : () => _run('POST', '/api/drivers/day_plan', {'day': 'kal'})),
+        GlassButton(label: 'Ask for trip sheet', icon: Icons.receipt_long_rounded, onTap: _busy ? null : () => _run('POST', '/api/drivers/sheet_reminders')),
       ]),
       const SizedBox(height: 10),
-      if (_list(d['drafts']).isNotEmpty) Text('Bhejne ke liye taiyaar', style: display(15)),
+      if (_list(d['drafts']).isNotEmpty) Text('Ready to send', style: display(15)),
       for (final m in _list(d['drafts'])) Padding(padding: const EdgeInsets.only(top: 6), child: DriversMessageTile(app: widget.app, m: m, onDone: _load)),
-      if (_list(d['duties']).isNotEmpty) ...[const SizedBox(height: 10), Text('Aaj ki duty', style: display(15))],
+      if (_list(d['duties']).isNotEmpty) ...[const SizedBox(height: 10), Text('Today\'s duty', style: display(15))],
       for (final x in _list(d['duties'])) _dutyTile(x),
-      if (_list(d['missing_sheets']).isNotEmpty) ...[const SizedBox(height: 6), Text('Trip sheet baaki', style: display(14))],
+      if (_list(d['missing_sheets']).isNotEmpty) ...[const SizedBox(height: 6), Text('Trip sheet pending', style: display(14))],
       for (final x in _list(d['missing_sheets']))
         Text('• ${_s(x['driver'])} ${_s(x['day'])} ${_s(x['start'])}-${_s(x['end'])} ${_s(x['vehicle'])}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
-      if (_list(d['docs']).isNotEmpty) ...[const SizedBox(height: 6), Text('Kaagaz', style: display(14))],
+      if (_list(d['docs']).isNotEmpty) ...[const SizedBox(height: 6), Text('Documents', style: display(14))],
       for (final x in _list(d['docs']))
-        Text('• ${_s(x['driver'])}: ${_s(x['label'])} ${x['state'] == 'missing' ? 'darj nahi' : (x['state'] == 'expired' ? 'khatam' : '${x['days_left']} din')}',
+        Text('• ${_s(x['driver'])}: ${_s(x['label'])} ${x['state'] == 'missing' ? 'not recorded' : (x['state'] == 'expired' ? 'expired' : '${x['days_left']} din')}',
             style: TextStyle(fontSize: 12.5, color: x['state'] == 'soon' ? C.warn : C.bad)),
       if (((d['free'] as List?) ?? const []).isNotEmpty)
         Padding(
           padding: const EdgeInsets.only(top: 8),
-          child: Text('Aaj khaali: ${((d['free'] as List?) ?? const []).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
+          child: Text('Free today: ${((d['free'] as List?) ?? const []).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.muted)),
         ),
     ]);
   }
 
   Widget _roster() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Row(children: [
-          Expanded(child: GradientButton(label: 'Nayi duty', icon: Icons.add_rounded, height: 48, onTap: _busy ? null : _newDuty)),
+          Expanded(child: GradientButton(label: 'New duty', icon: Icons.add_rounded, height: 48, onTap: _busy ? null : _newDuty)),
           const SizedBox(width: 8),
-          Expanded(child: GlassButton(label: 'Kaun khaali?', icon: Icons.person_search_rounded, onTap: _busy ? null : _plan)),
+          Expanded(child: GlassButton(label: 'Who is free?', icon: Icons.person_search_rounded, onTap: _busy ? null : _plan)),
         ]),
         const SizedBox(height: 10),
-        if (_list(_d?['week']).isEmpty) const Text('Agle 7 din ki koi duty nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['week']).isEmpty) const Text('No duties in the next 7 days.', style: TextStyle(color: C.muted)),
         for (final x in _list(_d?['week'])) _dutyTile(x),
       ]);
 
   Widget _trips() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, runSpacing: 8, children: [
-          GradientButton(label: 'Likh kar', icon: Icons.edit_note_rounded, height: 48, onTap: _busy ? null : _newTrip),
+          GradientButton(label: 'In writing', icon: Icons.edit_note_rounded, height: 48, onTap: _busy ? null : _newTrip),
           GlassButton(label: 'Photo lo', icon: Icons.photo_camera_rounded, onTap: _busy ? null : () => _tripPhoto(ImageSource.camera)),
           GlassButton(label: 'Gallery', icon: Icons.photo_library_rounded, onTap: _busy ? null : () => _tripPhoto(ImageSource.gallery)),
         ]),
@@ -416,10 +416,10 @@ class _DriversScreenState extends State<DriversScreen> {
       ]);
 
   Widget _drivers() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GradientButton(label: 'Naya driver', icon: Icons.person_add_alt_1_rounded, height: 48, onTap: _busy ? null : () => _editDriver()),
+        GradientButton(label: 'New driver', icon: Icons.person_add_alt_1_rounded, height: 48, onTap: _busy ? null : () => _editDriver()),
         const SizedBox(height: 10),
         for (final d in _list(_d?['drivers'])) _driverTile(d),
-        if (_list(_d?['leaves_all']).isNotEmpty) Text('Chhutti', style: display(14)),
+        if (_list(_d?['leaves_all']).isNotEmpty) Text('Leave', style: display(14)),
         for (final l in _list(_d?['leaves_all']))
           ListTile(
             dense: true,
@@ -451,13 +451,13 @@ class _DriversScreenState extends State<DriversScreen> {
     final a = _att!;
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: Text('Mahina ${_s(a['month'])}', style: display(15))),
+        Expanded(child: Text('Month ${_s(a['month'])}', style: display(15))),
         TextButton(
             onPressed: () async {
-              final f = await _form(context, 'Kaun sa mahina?', const [('month', 'YYYY-MM (2026-10)')], ok: 'Dekho');
+              final f = await _form(context, 'Which month?', const [('month', 'YYYY-MM (2026-10)')], ok: 'View');
               if (f != null) await _loadAtt(f['month'] ?? '');
             },
-            child: const Text('Badlo')),
+            child: const Text('Edit')),
       ]),
       for (final r in _list(a['rows']))
         Glass(
@@ -466,14 +466,14 @@ class _DriversScreenState extends State<DriversScreen> {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${_s(r['code'])} · ${_s(r['name'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
             Text(
-                'Kaam ${r['present']} din · chhutti ${r['paid_leave']} · LOP ${r['lop']} · OT ${_num(r['ot_hours'])} h · ${_num(r['km'])} km · kharcha Rs ${_num(r['spent'])}',
+                'Worked ${r['present']} days · leave ${r['paid_leave']} · LOP ${r['lop']} · OT ${_num(r['ot_hours'])} h · ${_num(r['km'])} km · expenses Rs ${_num(r['spent'])}',
                 style: const TextStyle(fontSize: 12.5, color: C.muted)),
-            if ((r['sheets_missing'] ?? 0) != 0) Text('${r['sheets_missing']} trip sheet nahi mili', style: const TextStyle(fontSize: 12, color: C.warn)),
+            if ((r['sheets_missing'] ?? 0) != 0) Text('${r['sheets_missing']} trip sheets not found', style: const TextStyle(fontSize: 12, color: C.warn)),
           ]),
         ),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(label: 'Excel', icon: Icons.table_view_rounded, onTap: _busy ? null : () => _run('POST', '/api/drivers/attendance/file', {'month': _s(a['month'])})),
-        GlassButton(label: 'Payroll mein daalo', icon: Icons.payments_outlined, onTap: _busy ? null : () => _run('POST', '/api/drivers/attendance/payroll', {'month': _s(a['month'])})),
+        GlassButton(label: 'Add to payroll', icon: Icons.payments_outlined, onTap: _busy ? null : () => _run('POST', '/api/drivers/attendance/payroll', {'month': _s(a['month'])})),
       ]),
       const SizedBox(height: 6),
       Text(_s(a['say']), style: const TextStyle(fontSize: 12, color: C.faint)),
@@ -487,8 +487,8 @@ class _DriversScreenState extends State<DriversScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('Jo seema check hoti hai', style: display(14)),
-          Text('Din ${_num(lim['day_h'])} h · hafta ${_num(lim['week_h'])} h · spread-over ${_num(lim['spread_h'])} h · do duty ke beech ${_num(lim['between_h'])} h · lagaatar ${_num(lim['days_row'])} din',
+          Text('Limits that are checked', style: display(14)),
+          Text('Day ${_num(lim['day_h'])} h · week ${_num(lim['week_h'])} h · spread-over ${_num(lim['spread_h'])} h · between two duties ${_num(lim['between_h'])} h · consecutive ${_num(lim['days_row'])} days',
               style: const TextStyle(fontSize: 12.5)),
           for (final n in notes.values) Text('• $n', style: const TextStyle(fontSize: 11.5, color: C.muted)),
         ]),
@@ -496,18 +496,18 @@ class _DriversScreenState extends State<DriversScreen> {
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(
-            label: 'Mere niyam',
+            label: 'My rules',
             icon: Icons.rule_rounded,
             onTap: () async {
-              final f = await _form(context, 'Aapke niyam (kaanoon se sakht hi chalenge)', const [
-                ('business', 'Business ka naam'),
-                ('day_h', 'Din mein max ghante'),
-                ('week_h', 'Hafte mein max ghante'),
-                ('between_h', 'Do duty ke beech kam se kam ghante'),
-                ('morning_time', 'Subah ka note (07:00)'),
-                ('evening_time', 'Kal ki duty ke drafts (19:00)'),
-                ('police_months', 'Police verification har kitne mahine'),
-                ('note', 'Apna niyam (shabdon mein)'),
+              final f = await _form(context, 'Your rules (they will be applied more strictly than the law)', const [
+                ('business', 'Business name'),
+                ('day_h', 'Max hours in a day'),
+                ('week_h', 'Max hours in a week'),
+                ('between_h', 'Minimum hours between two duties'),
+                ('morning_time', 'Morning note (07:00)'),
+                ('evening_time', 'Drafts for tomorrow\'s duty (19:00)'),
+                ('police_months', 'Police verification every how many months'),
+                ('note', 'Your own rule (in words)'),
               ], initial: {'business': _s(st['business']), 'morning_time': _s(st['morning_time']), 'evening_time': _s(st['evening_time'])});
               if (f == null || f.isEmpty) return;
               final body = <String, dynamic>{...f};
@@ -518,14 +518,14 @@ class _DriversScreenState extends State<DriversScreen> {
               await _run('PUT', '/api/drivers/settings', body);
             }),
         GlassButton(
-            label: 'Gaadi',
+            label: 'Vehicle',
             icon: Icons.local_shipping_rounded,
             onTap: () async {
-              final f = await _form(context, 'Gaadi (licence class / fuel check ke liye)', const [
+              final f = await _form(context, 'Vehicle (for licence class / fuel check)', const [
                 ('number', 'Number'),
-                ('gvw_kg', 'Gross weight kg (RC par)'),
+                ('gvw_kg', 'Gross weight kg (on the RC)'),
                 ('kind', 'truck / tempo / car / bus'),
-                ('kmpl', 'Aam km / litre (pata ho to)'),
+                ('kmpl', 'Usual km / litre (if known)'),
               ]);
               if (f == null || (f['number'] ?? '').isEmpty) return;
               await _run('PUT', '/api/drivers/vehicles', {
@@ -549,7 +549,7 @@ class _DriversScreenState extends State<DriversScreen> {
   Widget build(BuildContext context) => Scaffold(
         appBar: AppBar(backgroundColor: Colors.transparent, title: const Text('Driver Sahayak')),
         floatingActionButton: _tab <= 1
-            ? FloatingActionButton.extended(onPressed: _busy ? null : _newDuty, icon: const Icon(Icons.event_note_rounded), label: const Text('Duty lagao'))
+            ? FloatingActionButton.extended(onPressed: _busy ? null : _newDuty, icon: const Icon(Icons.event_note_rounded), label: const Text('Assign duty'))
             : null,
         body: Aurora(
           child: RefreshIndicator(
@@ -559,7 +559,7 @@ class _DriversScreenState extends State<DriversScreen> {
             },
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Duty'), (2, 'Trip sheet'), (3, 'Driver'), (4, 'Hazri'), (5, 'Niyam')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Duty'), (2, 'Trip sheet'), (3, 'Driver'), (4, 'Attendance'), (5, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -567,7 +567,7 @@ class _DriversScreenState extends State<DriversScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_today(), _roster(), _trips(), _drivers(), _hazri(), _rules()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Duty kaanoon ki seema (OSH Code: 8 ghante / din, 48 / hafta) aur aapke niyam se check hoti hai. Driver ko message aap bhejti hain ya aapke tap se jaata hai. Paise / advance Hoola nahi deta. Licence number Locker mein band.',
+                  'A duty is checked against the legal limits (OSH Code: 8 hours / day, 48 / week) and your rules. You send the message to the driver, or it goes with your tap. Hoola does not give money / advances. The licence number is locked in the Locker.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -625,20 +625,20 @@ class _DriversMessageTileState extends State<DriversMessageTile> {
         ]),
         const SizedBox(height: 4),
         Text(_s(m['text']), style: const TextStyle(fontSize: 12.5, height: 1.3)),
-        if (m['no_messages'] == true) const Text('Is driver ne message mana kiya hai: apne phone se baat kijiye.', style: TextStyle(fontSize: 12, color: C.warn)),
+        if (m['no_messages'] == true) const Text('This driver has declined messages: talk from your own phone.', style: TextStyle(fontSize: 12, color: C.warn)),
         if (draft)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Wrap(spacing: 6, runSpacing: 6, children: [
-              if (_s(m['wa']).isNotEmpty) ActionChip(label: const Text('WhatsApp kholo'), onPressed: () => _open(_s(m['wa']))),
+              if (_s(m['wa']).isNotEmpty) ActionChip(label: const Text('Open WhatsApp'), onPressed: () => _open(_s(m['wa']))),
               if (_s(m['sms']).isNotEmpty) ActionChip(label: const Text('SMS'), onPressed: () => _open(_s(m['sms']))),
-              if (_opened || _s(m['wa']).isEmpty) ActionChip(label: const Text('Maine bhej diya'), onPressed: _busy ? null : () => _send('self')),
+              if (_opened || _s(m['wa']).isEmpty) ActionChip(label: const Text('I have sent it'), onPressed: _busy ? null : () => _send('self')),
               if (m['can_business'] == true && m['no_messages'] != true)
-                ActionChip(label: const Text('Business WhatsApp se bhejo'), onPressed: _busy ? null : () => _send('business')),
+                ActionChip(label: const Text('Send from business WhatsApp'), onPressed: _busy ? null : () => _send('business')),
               if (m['can_hoola'] == true && m['no_messages'] != true)
-                ActionChip(label: const Text('Hoola Network se bhejo'), onPressed: _busy ? null : () => _send('hoola')),
+                ActionChip(label: const Text('Send through Hoola Network'), onPressed: _busy ? null : () => _send('hoola')),
               ActionChip(
-                  label: const Text('Hatao'),
+                  label: const Text('Remove'),
                   onPressed: _busy
                       ? null
                       : () async {
@@ -672,7 +672,7 @@ class DriversPlanCard extends StatelessWidget {
           for (final m in _list(data['messages'])) Padding(padding: const EdgeInsets.only(top: 8), child: DriversMessageTile(app: app, m: m)),
           TextButton(
               onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DriversScreen(app: app))),
-              child: const Text('Driver Sahayak kholo')),
+              child: const Text('Open Driver Helper')),
         ]),
       );
 }
@@ -698,7 +698,7 @@ class DriversAlertCard extends StatelessWidget {
           const Row(children: [
             Icon(Icons.badge_rounded, color: C.warn),
             SizedBox(width: 8),
-            Expanded(child: Text('Driver ke kaagaz', style: TextStyle(fontWeight: FontWeight.w800))),
+            Expanded(child: Text('Driver documents', style: TextStyle(fontWeight: FontWeight.w800))),
           ]),
           for (final i in _list(data['items'])) ...[
             Padding(
@@ -723,13 +723,13 @@ class DriversDayCard extends StatelessWidget {
             const Row(children: [
               Icon(Icons.local_shipping_rounded, color: C.accent),
               SizedBox(width: 8),
-              Expanded(child: Text('Aaj ke driver', style: TextStyle(fontWeight: FontWeight.w800))),
+              Expanded(child: Text('Today\'s drivers', style: TextStyle(fontWeight: FontWeight.w800))),
             ]),
             Text(_s(data['say']), style: const TextStyle(fontSize: 12.5)),
             for (final x in _list(data['duties']).take(8))
               Text('• ${_s(x['driver'])} ${_s(x['start'])}-${_s(x['end'])} ${_s(x['vehicle'])} ${_s(x['route'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
             for (final x in _list(data['missing_sheets']).take(5))
-              Text('• Trip sheet baaki: ${_s(x['driver'])} ${_s(x['day'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
+              Text('• Trip sheet pending: ${_s(x['driver'])} ${_s(x['day'])}', style: const TextStyle(fontSize: 12, color: C.warn)),
           ]),
         ),
       );

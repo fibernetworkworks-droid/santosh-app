@@ -14,14 +14,14 @@ import 'glass.dart';
 /// Submit / send / delete: her tap. Payments: she presses the button herself in the live view.
 
 const _kindTitle = {
-  'approve': 'Aapki haan chahiye',
-  'payment': 'Payment aap khud kijiye',
-  'otp': 'OTP bhariye',
-  'captcha': 'CAPTCHA check kijiye',
-  'secret': 'Yeh aap khud bhariye',
-  'question': 'Ek sawaal',
-  'choice': 'Aap chuniye',
-  'takeover': 'Yeh step aap kijiye',
+  'approve': 'Needs your OK',
+  'payment': 'Make the payment yourself',
+  'otp': 'Enter the OTP',
+  'captcha': 'Check the CAPTCHA',
+  'secret': 'Enter this yourself',
+  'question': 'One question',
+  'choice': 'You choose',
+  'takeover': 'Do this step yourself',
 };
 const _kindIcon = {
   'approve': Icons.task_alt_rounded,
@@ -102,7 +102,7 @@ class _OperatorFrameState extends State<OperatorFrame> {
           child: img == null
               ? Center(
                   child: _gone
-                      ? const Text('Browser abhi band hai', style: TextStyle(color: C.faint))
+                      ? const Text('Browser is closed now', style: TextStyle(color: C.faint))
                       : const CircularProgressIndicator(strokeWidth: 2))
               : LayoutBuilder(
                   builder: (context, box) => GestureDetector(
@@ -156,7 +156,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
     setState(() => _busy = true);
     try {
       final ok = await widget.app.api!.operatorCaptchaRefresh('${widget.v['id']}');
-      if (!ok && mounted) _snack(context, 'Naya CAPTCHA ka button nahi mila; live view mein dekhiye');
+      if (!ok && mounted) _snack(context, 'No new CAPTCHA button found; check the live view');
       await _loadCaptcha();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -223,9 +223,9 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
         Row(children: [
           Icon(_kindIcon[kind] ?? Icons.help_rounded, color: kind == 'payment' ? C.warn : C.accent),
           const SizedBox(width: 8),
-          Expanded(child: Text(_kindTitle[kind] ?? 'Aapse sawaal', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
+          Expanded(child: Text(_kindTitle[kind] ?? 'Question for you', style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15))),
           if (!pending)
-            Pill(status == 'approved' || status == 'done' ? 'Ho gaya' : status == 'expired' ? 'Samay khatam' : 'Mana kiya',
+            Pill(status == 'approved' || status == 'done' ? 'Done' : status == 'expired' ? 'Time is up' : 'Declined',
                 fg: status == 'approved' || status == 'done' ? C.ok : C.faint),
         ]),
         if ('${v['site'] ?? ''}'.isNotEmpty || '${v['target_name'] ?? ''}'.isNotEmpty)
@@ -253,7 +253,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
               ]),
             ),
             const SizedBox(height: 6),
-            Text('Hoola ne padha: "$suggestedAnswer". Sahi hai toh "Haan" dabaiye, galat ho toh neeche sahi jawab likhiye.',
+            Text('Hoola read: "$suggestedAnswer". If it is right press "Yes"; if wrong, write the correct answer below.',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
             const SizedBox(height: 8),
             TextField(
@@ -262,7 +262,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
               autocorrect: false,
               keyboardType: TextInputType.visiblePassword,
               decoration: InputDecoration(
-                hintText: 'Sahi CAPTCHA (agar galat padha ho)',
+                hintText: 'Correct CAPTCHA (if it was read wrong)',
                 isDense: true,
                 filled: true,
                 fillColor: C.panel,
@@ -271,7 +271,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
             ),
           ] else ...[
             const SizedBox(height: 6),
-            const Text('Hoola padh nahi paaya. Neeche CAPTCHA likhiye ya chat / call mein bol dijiye.',
+            const Text('Hoola could not read it. Write the CAPTCHA below, or say it in chat / call.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
             const SizedBox(height: 8),
             TextField(
@@ -280,7 +280,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
               autocorrect: false,
               keyboardType: TextInputType.visiblePassword,
               decoration: InputDecoration(
-                hintText: 'CAPTCHA likhiye',
+                hintText: 'Write the CAPTCHA',
                 isDense: true,
                 filled: true,
                 fillColor: C.panel,
@@ -290,7 +290,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
           ],
           Row(mainAxisAlignment: MainAxisAlignment.end, children: [
             TextButton.icon(
-                onPressed: _busy ? null : _newCaptcha, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('Naya')),
+                onPressed: _busy ? null : _newCaptcha, icon: const Icon(Icons.refresh_rounded, size: 18), label: const Text('New')),
           ]),
         ],
         if (pending && typed) ...[
@@ -302,7 +302,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
             autocorrect: false,
             keyboardType: kind == 'otp' ? TextInputType.number : TextInputType.visiblePassword,
             decoration: InputDecoration(
-              hintText: kind == 'otp' ? 'OTP' : 'Yahan likhiye',
+              hintText: kind == 'otp' ? 'OTP' : 'Write here',
               isDense: true,
               filled: true,
               fillColor: C.panel,
@@ -315,8 +315,8 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
             padding: const EdgeInsets.only(top: 4),
             child: Text(
                 kind == 'otp'
-                    ? 'SMS aate hi Android "Allow" poochhega: dabaiye, OTP apne aap bhar jayega. Ya yahan likhiye / chat mein likhiye / call mein bol dijiye. Seedha website ke box mein jayega, kahin save nahi hota.'
-                    : 'Yeh seedha website ke box mein jayega. Hoola ise kabhi dekhta ya rakhta nahi.',
+                    ? 'When the SMS arrives Android will ask "Allow": tap it and the OTP fills in by itself. Or write it here / in chat / say it on the call. It goes straight into the website box and is not saved anywhere.'
+                    : 'This goes straight into the website box. Hoola never sees or keeps it.',
                 style: const TextStyle(color: C.faint, fontSize: 11.5)),
           ),
         ],
@@ -327,7 +327,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
             minLines: 1,
             maxLines: 3,
             decoration: InputDecoration(
-              hintText: 'Jawab',
+              hintText: 'Answer',
               isDense: true,
               filled: true,
               fillColor: C.panel,
@@ -347,7 +347,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
             if (kind == 'payment' || kind == 'takeover' || (!widget.inLive && kind != 'question' && kind != 'choice'))
               Expanded(
                 child: GlassButton(
-                  label: kind == 'payment' ? 'Live kholo' : 'Live dekho',
+                  label: kind == 'payment' ? 'Open live view' : 'Watch live',
                   icon: Icons.open_in_full_rounded,
                   onTap: widget.inLive ? null : () => openOperatorLive(context, widget.app),
                 ),
@@ -359,11 +359,11 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
                 child: GradientButton(
                   height: 48,
                   label: switch (kind) {
-                    'approve' => 'Haan, karo',
-                    'payment' || 'takeover' => 'Maine kar diya',
-                    'question' => 'Bhejo',
-                    'captcha' => suggestedAnswer.isNotEmpty ? 'Haan, sahi hai' : 'Page mein bharo',
-                    _ => 'Page mein bharo',
+                    'approve' => 'Yes, do it',
+                    'payment' || 'takeover' => 'I did it',
+                    'question' => 'Send',
+                    'captcha' => suggestedAnswer.isNotEmpty ? 'Yes, correct' : 'Fill into page',
+                    _ => 'Fill into page',
                   },
                   onTap: _busy
                       ? null
@@ -373,7 +373,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
                             final corrected = _box.text.trim();
                             final value = corrected.isNotEmpty ? corrected : suggestedAnswer;
                             if (value.isEmpty) {
-                              _snack(context, 'CAPTCHA likhiye');
+                              _snack(context, 'Write the CAPTCHA');
                               return;
                             }
                             _captchaFill(value);
@@ -381,7 +381,7 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
                           }
                           final t = _box.text.trim();
                           if ((typed || kind == 'question') && t.isEmpty) {
-                            _snack(context, 'Pehle box mein likhiye');
+                            _snack(context, 'Write in the box first');
                             return;
                           }
                           _answer(true, answer: t);
@@ -391,10 +391,10 @@ class _OperatorAskCardState extends State<OperatorAskCard> {
           ]),
           Align(
             alignment: Alignment.centerRight,
-            child: TextButton(onPressed: _busy ? null : () => _answer(false), child: Text(kind == 'approve' ? 'Mana' : 'Nahi karna')),
+            child: TextButton(onPressed: _busy ? null : () => _answer(false), child: Text(kind == 'approve' ? 'Decline' : 'Do not do it')),
           ),
           if (kind == 'payment')
-            const Text('Live screen par khud "Pay" dabaiye aur apne tareeke se pay kijiye. Hoola kabhi pay nahi karta.',
+            const Text('On the live screen press "Pay" yourself and pay your own way. Hoola never pays.',
                 style: TextStyle(color: C.faint, fontSize: 11.5)),
         ],
       ]),
@@ -445,24 +445,24 @@ class _OperatorTaskCardState extends State<OperatorTaskCard> {
               Text('${v['task'] ?? ''}', maxLines: 2, overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14.5)),
               // v0.93 this job runs in Hoola's own browser on the server, never on her PC
-              Text('${widget.app.aName} ka browser · server par (aapka PC nahi)',
+              Text('${widget.app.aName}\'s browser · on the server (not your PC)',
                   style: const TextStyle(color: C.muted, fontSize: 11.5)),
             ]),
           ),
           Pill(switch (status) {
-            'queued' => 'Line mein',
-            'running' => 'Kaam chalu',
-            'waiting' => 'Aapka intezaar',
-            'done' => 'Ho gaya',
-            'cancelled' => 'Rok diya',
-            'stopped' => 'Ruk gaya',
-            _ => 'Nahi hua',
+            'queued' => 'In queue',
+            'running' => 'Work in progress',
+            'waiting' => 'Waiting for you',
+            'done' => 'Done',
+            'cancelled' => 'Stopped',
+            'stopped' => 'Stopped',
+            _ => 'Did not happen',
           }, fg: status == 'done' ? C.ok : status == 'waiting' ? C.warn : status == 'failed' ? C.bad : C.accent),
         ]),
         const SizedBox(height: 4),
         Text([
           if ('${v['site'] ?? ''}'.isNotEmpty) '${v['site']}',
-          if ((v['steps'] as num? ?? 0) > 0) '${v['steps']} kadam',
+          if ((v['steps'] as num? ?? 0) > 0) '${v['steps']} steps',
           if ('${v['stage'] ?? ''}'.isNotEmpty) '${v['stage']}',
         ].join(' · '), style: const TextStyle(color: C.faint, fontSize: 12), maxLines: 2, overflow: TextOverflow.ellipsis),
         if (live && status != 'queued') ...[
@@ -472,7 +472,7 @@ class _OperatorTaskCardState extends State<OperatorTaskCard> {
             TextButton.icon(onPressed: () => openOperatorLive(context, widget.app), icon: const Icon(Icons.open_in_full_rounded, size: 16),
                 label: const Text('Live')),
             const Spacer(),
-            TextButton(onPressed: _stop, child: const Text('Rok do')),
+            TextButton(onPressed: _stop, child: const Text('Stop')),
           ]),
         ],
         if (!live && '${v['summary'] ?? ''}'.isNotEmpty) ...[
@@ -497,7 +497,7 @@ class _OperatorTaskCardState extends State<OperatorTaskCard> {
         if ('${v['recipe'] ?? ''}'.isNotEmpty && !live)
           Padding(
             padding: const EdgeInsets.only(top: 6),
-            child: Text('Seekh liya: ${v['recipe']} (agli baar tez)', style: const TextStyle(color: C.teal, fontSize: 12)),
+            child: Text('Learned: ${v['recipe']} (faster next time)', style: const TextStyle(color: C.teal, fontSize: 12)),
           ),
         if (status == 'failed' && '${v['error'] ?? ''}'.isNotEmpty)
           Padding(padding: const EdgeInsets.only(top: 6), child: Text('${v['error']}', style: const TextStyle(color: C.bad, fontSize: 12.5))),
@@ -561,7 +561,7 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
     final pending = job == null ? null : job['pending'];
     return Scaffold(
       backgroundColor: C.bgBottom,
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${app.aName} ka browser')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text('${app.aName}\'s browser')),
       body: ListView(padding: const EdgeInsets.fromLTRB(12, 4, 12, 28), children: [
         if (job != null)
           Padding(
@@ -571,7 +571,7 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
           ),
         OperatorFrame(app: app, every: 500, onTapPage: (x, y) => _input('click', x: x, y: y)),
         const SizedBox(height: 6),
-        const Text('Page par tap = aapka click. Hoola tab tak ruka rehta hai jab tak aap "Maine kar diya" na dabayein.',
+        const Text('A tap on the page = your click. Hoola waits until you press "I did it".',
             style: TextStyle(color: C.faint, fontSize: 11.5)),
         const SizedBox(height: 10),
         Row(children: [
@@ -582,7 +582,7 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
               enableSuggestions: false,
               autocorrect: false,
               decoration: InputDecoration(
-                hintText: 'Page mein likhiye (jahan aapne tap kiya)',
+                hintText: 'Write into the page (where you tapped)',
                 isDense: true,
                 filled: true,
                 fillColor: C.panel,
@@ -595,7 +595,7 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
           const SizedBox(width: 6),
           IconButton(
             icon: const Icon(Icons.keyboard_return_rounded, color: C.accent),
-            tooltip: 'Likho',
+            tooltip: 'Write',
             onPressed: () {
               final t = _txt.text;
               _txt.clear();
@@ -610,7 +610,7 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
         const SizedBox(height: 12),
         if (pending is Map) OperatorAskCard(key: ValueKey('live${pending['id']}'), v: Map<String, dynamic>.from(pending), app: app, inLive: true),
         if (job == null)
-          const Padding(padding: EdgeInsets.all(16), child: Text('Abhi koi website ka kaam nahi chal raha.', style: TextStyle(color: C.faint))),
+          const Padding(padding: EdgeInsets.all(16), child: Text('No website task is running right now.', style: TextStyle(color: C.faint))),
         if (job != null)
           Align(
             alignment: Alignment.centerRight,
@@ -619,7 +619,7 @@ class _OperatorLiveScreenState extends State<OperatorLiveScreen> {
                 await app.api!.operatorCancel('${job['id']}');
                 _load();
               },
-              child: const Text('Kaam rok do'),
+              child: const Text('Stop the task'),
             ),
           ),
       ]),
@@ -686,7 +686,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
         final r = await app.attachChatFile(f.name, f.bytes);
         setState(() => _files.add((id: '${r['file_id']}', name: f.name)));
       } catch (e) {
-        if (mounted) _snack(context, 'Upload nahi hua: $e');
+        if (mounted) _snack(context, 'Upload failed: $e');
       }
     }
   }
@@ -694,7 +694,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
   Future<void> _start() async {
     final t = _task.text.trim();
     if (t.length < 6) {
-      _snack(context, 'Kya karna hai, thoda saaf likhiye');
+      _snack(context, 'Write a little more clearly what to do');
       return;
     }
     setState(() => _busy = true);
@@ -704,7 +704,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
       _task.clear();
       _url.clear();
       _files.clear();
-      if (mounted) _snack(context, '${app.aName} kaam par lag gaya. Chat mein live card hai.');
+      if (mounted) _snack(context, '${app.aName} has started the task. There is a live card in chat.');
       await _load();
     } catch (e) {
       if (mounted) _snack(context, '$e');
@@ -725,32 +725,32 @@ class _OperatorScreenState extends State<OperatorScreen> {
         child: ListView(padding: const EdgeInsets.fromLTRB(16, 4, 16, 28), children: [
           Glass(
             child: Text(
-              'Cyber cafe wale bhaiya ki tarah: online form, sarkari portal, bill / certificate / statement download, '
-              'status check, application. ${app.aName} apne browser mein kaam karta hai (aapke login wahin save rehte hain), '
-              'official help padhta hai aur har poora kaam seekh leta hai. CAPTCHA Hoola khud padhta hai aur aapko dikhaata hai — '
-              'aap sirf "Haan" kaho. Password aur OTP aap deti hain; submit se pehle aapki haan; payment aap khud dabati hain.',
+              'Like the neighbourhood cyber cafe helper: online forms, government portals, downloading bills / certificates / statements,'
+              'status checks, applications. ${app.aName} works in its own browser (your logins stay saved there),'
+              'reads the official help and learns every finished task. Hoola reads the CAPTCHA itself and shows it to you —'
+              'you just say "Yes". You enter passwords and OTPs; it needs your approval before submitting; you press payment yourself.',
               style: const TextStyle(fontSize: 13, height: 1.4, color: C.muted),
             ),
           ),
           if (_home['available'] == false)
             const Padding(
               padding: EdgeInsets.only(top: 10),
-              child: Text('Is server par Computer Operator abhi chalu nahi hai (Chromium install karna hoga).', style: TextStyle(color: C.bad)),
+              child: Text('The Computer Operator is not running on this server yet (Chromium must be installed).', style: TextStyle(color: C.bad)),
             ),
           const SizedBox(height: 14),
           if (active is Map) ...[
             OperatorTaskCard(key: ValueKey('act${active['id']}${active['updated_at']}'), v: Map<String, dynamic>.from(active), app: app),
             const SizedBox(height: 10),
           ] else ...[
-            const Text('Naya kaam', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('New task', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             TextField(
               controller: _task,
               minLines: 3,
               maxLines: 6,
               decoration: InputDecoration(
-                hintText: 'Jaise: "MSEDCL site se is mahine ka bill PDF download karo, consumer no. 1234..." ya '
-                    '"Passport seva par appointment ka status dekho". Password / Aadhaar yahan mat likhiye.',
+                hintText: 'e.g. "Download this month\'s bill PDF from the MSEDCL site, consumer no. 1234..." or'
+                    '"Check appointment status on Passport Seva". Do not write passwords / Aadhaar here.',
                 hintStyle: const TextStyle(color: C.faint, fontSize: 13),
                 filled: true,
                 fillColor: C.panel,
@@ -762,7 +762,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
               controller: _url,
               keyboardType: TextInputType.url,
               decoration: InputDecoration(
-                hintText: 'Website (optional), jaise www.mahadiscom.in',
+                hintText: 'Website (optional), e.g. www.mahadiscom.in',
                 isDense: true,
                 filled: true,
                 fillColor: C.panel,
@@ -775,11 +775,11 @@ class _OperatorScreenState extends State<OperatorScreen> {
               ActionChip(avatar: const Icon(Icons.attach_file_rounded, size: 18), label: const Text('Documents / photo'), onPressed: _attach),
             ]),
             const SizedBox(height: 12),
-            GradientButton(label: _busy ? 'Shuru ho raha hai...' : 'Kaam do', icon: Icons.play_arrow_rounded, onTap: _busy ? null : _start),
+            GradientButton(label: _busy ? 'Starting...' : 'Give task', icon: Icons.play_arrow_rounded, onTap: _busy ? null : _start),
           ],
           const SizedBox(height: 18),
           if (recipes.isNotEmpty) ...[
-            const Text('Seekhe hue kaam', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Learned tasks', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final r in recipes)
               Glass(
@@ -790,7 +790,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
                   Expanded(
                     child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('${r['name']}', style: const TextStyle(fontWeight: FontWeight.w600)),
-                      Text('${r['site'] ?? ''} · ${r['runs'] ?? 0} baar · ${((r['variables'] as List?) ?? const []).length} cheezein poochta hai',
+                      Text('${r['site'] ?? ''} · ${r['runs'] ?? 0} runs · asks for ${((r['variables'] as List?) ?? const []).length} things',
                           style: const TextStyle(color: C.faint, fontSize: 12)),
                     ]),
                   ),
@@ -805,7 +805,7 @@ class _OperatorScreenState extends State<OperatorScreen> {
               ),
             const SizedBox(height: 10),
           ],
-          if (tasks.isNotEmpty) const Text('Pichhle kaam', style: TextStyle(fontWeight: FontWeight.w700)),
+          if (tasks.isNotEmpty) const Text('Past tasks', style: TextStyle(fontWeight: FontWeight.w700)),
           if (_loading) const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator())),
           for (final t in tasks.where((t) => !_active.contains(t['status'])))
             OperatorTaskCard(key: ValueKey('t${t['id']}${t['updated_at']}'), v: t, app: app),

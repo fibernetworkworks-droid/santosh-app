@@ -26,7 +26,7 @@ void _snack(BuildContext c, String t) {
 }
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -40,7 +40,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -68,7 +68,7 @@ Widget _draftButtons(Map<String, dynamic> d, {String name = ''}) {
   return Wrap(spacing: 8, runSpacing: 6, children: [
     if (wa.isNotEmpty) GlassButton(label: 'WhatsApp draft$who', icon: Icons.chat_rounded, height: 40, onTap: () => Native.openExternal(url: wa)),
     if (sms.isNotEmpty) GlassButton(label: 'SMS draft$who', icon: Icons.sms_rounded, height: 40, onTap: () => Native.openExternal(url: sms)),
-    if (_s(d['upi']).isNotEmpty) const Pill('UPI link aapke UPI ID ka'),
+    if (_s(d['upi']).isNotEmpty) const Pill('UPI link of your UPI ID'),
   ]);
 }
 
@@ -97,7 +97,7 @@ Widget _gigTile(BuildContext context, Map<String, dynamic> g, VoidCallback onTap
             const SizedBox(width: 10),
             Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text('${_s(g['number'])} · ${_s(g['artist'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
-              Text('${_s(g['day']).isEmpty ? 'tareekh?' : _s(g['day'])} ${_s(g['start'])} · ${_s(g['city'])} ${_s(g['venue'])}',
+              Text('${_s(g['day']).isEmpty ? 'date?' : _s(g['day'])} ${_s(g['start'])} · ${_s(g['city'])} ${_s(g['venue'])}',
                   style: const TextStyle(fontSize: 12.5)),
               Text('${_s(g['promoter'])} · fee ${_s(g['fee_text'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
             ])),
@@ -147,9 +147,9 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
       .then((_) => _load());
 
   Future<void> _offer() async {
-    final f = await _form(context, 'Naya offer', const [
-      ('text', 'Promoter ka message (paste karein)'), ('artist', 'Artist'), ('day', 'Tareekh (YYYY-MM-DD)'), ('start', 'Shuru (HH:MM)'),
-      ('end', 'Khatam (HH:MM)'), ('city', 'Shehar'), ('venue', 'Venue'), ('fee', 'Fee (₹)'), ('promoter', 'Promoter'), ('phone', 'Promoter phone'),
+    final f = await _form(context, 'New offer', const [
+      ('text', 'Promoter\'s message (paste)'), ('artist', 'Artist'), ('day', 'Date (YYYY-MM-DD)'), ('start', 'Start (HH:MM)'),
+      ('end', 'End (HH:MM)'), ('city', 'City'), ('venue', 'Venue'), ('fee', 'Fee (₹)'), ('promoter', 'Promoter'), ('phone', 'Promoter phone'),
     ]);
     if (f == null) return;
     final body = <String, dynamic>{...f};
@@ -164,27 +164,27 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Text(_s(day['say']), style: const TextStyle(fontSize: 14))),
       const SizedBox(height: 12),
-      if (_list(_d?['cards']).isNotEmpty) const Caption('AAPKI HAAN KA INTEZAAR'),
+      if (_list(_d?['cards']).isNotEmpty) const Caption('WAITING FOR YOUR APPROVAL'),
       for (final c in _list(_d?['cards']))
         Padding(padding: const EdgeInsets.only(bottom: 10), child: ArtistmgrCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-      for (final (k, label) in const [('today', 'AAJ KE SHOW'), ('tomorrow', 'KAL KE SHOW'), ('holds', 'HOLD 24 GHANTE MEIN KHATAM')])
+      for (final (k, label) in const [('today', 'TODAY\'S SHOWS'), ('tomorrow', 'TOMORROW\'S SHOWS'), ('holds', 'HOLD EXPIRES IN 24 HOURS')])
         if (_list(day[k]).isNotEmpty) ...[
           Caption(label),
           for (final g in _list(day[k])) _gigTile(context, g, () => _openGig(_s(g['number']))),
           const SizedBox(height: 8),
         ],
-      for (final (k, label) in const [('balances', 'BAAKI PAYMENT'), ('unsettled', 'SETTLEMENT BAAKI'), ('releases', 'RELEASE KE KAAM'),
-        ('regs_missing', 'REGISTRATION BAAKI')])
+      for (final (k, label) in const [('balances', 'PAYMENTS PENDING'), ('unsettled', 'SETTLEMENT PENDING'), ('releases', 'RELEASE TASKS'),
+        ('regs_missing', 'REGISTRATION PENDING')])
         if (_strs(day[k]).isNotEmpty) ...[Caption(label), for (final x in _strs(day[k])) Text('• $x'), const SizedBox(height: 8)],
       if (day['no_commission'] == true)
-        const Text('Commission % Niyam mein nahi: settlement mein commission ki line nahi banegi.', style: TextStyle(fontSize: 12, color: C.muted)),
+        const Text('Commission % is not in Rules: the settlement will have no commission line.', style: TextStyle(fontSize: 12, color: C.muted)),
     ]);
   }
 
   Widget _gigs() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya offer / gig', icon: Icons.add_rounded, height: 44, onTap: _busy ? null : _offer),
+        GradientButton(label: 'New offer / gig', icon: Icons.add_rounded, height: 44, onTap: _busy ? null : _offer),
         const SizedBox(height: 12),
-        if (_list(_d?['gigs']).isEmpty) const Text('Aage ka koi gig nahi.', style: TextStyle(color: C.muted)),
+        if (_list(_d?['gigs']).isEmpty) const Text('No upcoming gigs.', style: TextStyle(color: C.muted)),
         for (final g in _list(_d?['gigs'])) _gigTile(context, g, () => _openGig(_s(g['number']))),
       ]);
 
@@ -196,9 +196,9 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
         'members': _list(a['members']).map((m) => [m['name'], m['role'], m['phone'], m['split_pct']].map(_s).join(', ')).join('\n'),
       }
     };
-    final f = await _form(context, a == null ? 'Naya artist' : 'Artist badlo', const [
-      ('name', 'Naam'), ('kind', 'Kism (singer / band / dj / instrumentalist / composer / lyricist / classical / folk)'), ('genre', 'Genre'),
-      ('city', 'Shehar'), ('phone', 'Phone'), ('min_fee', 'Kam se kam fee (₹)'), ('members', 'Members: naam, role, phone, split % (har line)'),
+    final f = await _form(context, a == null ? 'New artist' : 'Edit artist', const [
+      ('name', 'Name'), ('kind', 'Type (singer / band / dj / instrumentalist / composer / lyricist / classical / folk)'), ('genre', 'Genre'),
+      ('city', 'City'), ('phone', 'Phone'), ('min_fee', 'Minimum fee (₹)'), ('members', 'Members: name, role, phone, split % (one per line)'),
     ], initial: init, ok: 'Save');
     if (f == null) return;
     final body = <String, dynamic>{...f, if (a != null) 'id': a['id']};
@@ -213,7 +213,7 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
       .then((_) => _load());
 
   Widget _artists() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya artist', icon: Icons.person_add_alt_1_rounded, height: 44, onTap: _busy ? null : () => _artistForm()),
+        GradientButton(label: 'New artist', icon: Icons.person_add_alt_1_rounded, height: 44, onTap: _busy ? null : () => _artistForm()),
         const SizedBox(height: 12),
         for (final a in _list(_d?['artists']))
           Padding(
@@ -244,19 +244,19 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
                 if (_s(p['status']) == 'approved')
                   TextButton(
                       onPressed: () async {
-                        final f = await _form(context, 'Payout bhej diya?', const [('ref', 'UTR / ref')], ok: 'Haan, bhej diya');
+                        final f = await _form(context, 'Payout sent?', const [('ref', 'UTR / ref')], ok: 'Yes, sent');
                         if (f != null) await _run('POST', '/api/artistmgr/payouts/${_s(p['id'])}/paid', f);
                       },
-                      child: const Text('Bhej diya')),
+                      child: const Text('Sent')),
               ]),
             ),
         ],
       ]);
 
   Future<void> _releaseForm([Map<String, dynamic>? r]) async {
-    final f = await _form(context, r == null ? 'Naya release' : 'Release badlo', const [
-      ('artist', 'Artist'), ('title', 'Naam'), ('kind', 'single / ep / album'), ('day', 'Release date (YYYY-MM-DD)'),
-      ('distributor', 'Distributor'), ('upc', 'UPC (distributor deta hai)'), ('tracks', 'Gaane: title | ISRC (har line)'),
+    final f = await _form(context, r == null ? 'New release' : 'Edit release', const [
+      ('artist', 'Artist'), ('title', 'Name'), ('kind', 'single / ep / album'), ('day', 'Release date (YYYY-MM-DD)'),
+      ('distributor', 'Distributor'), ('upc', 'UPC (given by the distributor)'), ('tracks', 'Songs: title | ISRC (one per line)'),
     ], initial: {
       if (r != null) ...{'artist': _s(r['artist']), 'title': _s(r['title']), 'kind': _s(r['kind']), 'day': _s(r['day']),
         'distributor': _s(r['distributor']), 'upc': _s(r['upc'])}
@@ -275,7 +275,7 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
   }
 
   Widget _releases() => ListView(padding: const EdgeInsets.all(16), children: [
-        GradientButton(label: 'Naya release', icon: Icons.album_rounded, height: 44, onTap: _busy ? null : () => _releaseForm()),
+        GradientButton(label: 'New release', icon: Icons.album_rounded, height: 44, onTap: _busy ? null : () => _releaseForm()),
         const SizedBox(height: 12),
         for (final r in _list(_d?['releases']))
           Padding(
@@ -300,25 +300,25 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
     final st = _m(_d?['settings']);
     return ListView(padding: const EdgeInsets.all(16), children: [
       Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(_s(st['agency']).isEmpty ? 'Agency ka naam nahi' : _s(st['agency']), style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text(_s(st['agency']).isEmpty ? 'No agency name' : _s(st['agency']), style: const TextStyle(fontWeight: FontWeight.w800)),
         Text('UPI ${_s(st['upi_id']).isEmpty ? '?' : _s(st['upi_id'])} · commission ${_s(st['commission_pct']).isEmpty ? '?' : '${_s(st['commission_pct'])}%'}'),
-        Text('Same shehar gap ${_s(st['same_city_gap'])} min · alag shehar ${_s(st['travel_gap'])} min · hold ${_s(st['hold_hours'])} ghante'),
-        Text('Advance ${_s(st['advance_pct'])}% · baaki show se ${_s(st['balance_days'])} din pehle'),
+        Text('Same city gap ${_s(st['same_city_gap'])} min · different city ${_s(st['travel_gap'])} min · hold ${_s(st['hold_hours'])} hours'),
+        Text('Advance ${_s(st['advance_pct'])}% · balance ${_s(st['balance_days'])} days before the show'),
         for (final d in _list(st['distributors']))
-          Text('• ${_s(d['name'])}: ${_s(d['share_pct'])}% · ${_s(d['lead_days'])} din pehle', style: const TextStyle(fontSize: 12.5)),
-        if (_s(st['terms']).isNotEmpty) Text('Shartein: ${_s(st['terms'])}', style: const TextStyle(fontSize: 12.5)),
+          Text('• ${_s(d['name'])}: ${_s(d['share_pct'])}% · ${_s(d['lead_days'])} days before', style: const TextStyle(fontSize: 12.5)),
+        if (_s(st['terms']).isNotEmpty) Text('Terms: ${_s(st['terms'])}', style: const TextStyle(fontSize: 12.5)),
       ])),
       const SizedBox(height: 10),
       GlassButton(
-        label: 'Niyam badlo',
+        label: 'Edit rules',
         icon: Icons.tune_rounded,
         height: 44,
         onTap: () async {
-          final f = await _form(context, 'Niyam', const [
+          final f = await _form(context, 'Rules', const [
             ('agency', 'Agency'), ('gstin', 'GSTIN'), ('upi_id', 'UPI ID'), ('commission_pct', 'Commission %'), ('royalty_pct', 'Royalty commission %'),
-            ('same_city_gap', 'Same shehar gap (min)'), ('travel_gap', 'Alag shehar gap (min)'), ('hold_hours', 'Hold ghante'),
-            ('advance_pct', 'Advance %'), ('balance_days', 'Baaki: show se kitne din pehle'), ('morning_time', 'Subah ka note (HH:MM)'),
-            ('terms', 'Cancellation / shartein'), ('rules', 'Aapke niyam'),
+            ('same_city_gap', 'Same city gap (min)'), ('travel_gap', 'Different city gap (min)'), ('hold_hours', 'Hold hours'),
+            ('advance_pct', 'Advance %'), ('balance_days', 'Balance: how many days before the show'), ('morning_time', 'Morning note (HH:MM)'),
+            ('terms', 'Cancellation / terms'), ('rules', 'Your rules'),
           ], initial: {for (final k in st.keys) if (st[k] is String || st[k] is num) k: _s(st[k])}, ok: 'Save');
           if (f == null) return;
           final body = <String, dynamic>{...f};
@@ -330,15 +330,15 @@ class _ArtistmgrScreenState extends State<ArtistmgrScreen> {
       ),
       const SizedBox(height: 12),
       const Text(
-          'Fee, tareekh, royalty, ISRC kabhi andaaze se nahi. Promoter / artist ko kuch bhi aapki haan ke baad hi; message aap bhejti hain. '
-          'Hoola paise nahi leta / deta.',
+          'Fee, date, royalty, ISRC are never guessed. Anything to a promoter / artist goes only after your approval; you send the messages.'
+          'Hoola does not take or give money.',
           style: TextStyle(fontSize: 12, color: C.muted)),
     ]);
   }
 
   @override
   Widget build(BuildContext context) {
-    const tabs = ['Aaj', 'Gigs', 'Artists', 'Release', 'Niyam'];
+    const tabs = ['Today', 'Gigs', 'Artists', 'Release', 'Rules'];
     return Scaffold(
       appBar: AppBar(title: Text('${widget.app.aName} · Artist manager')),
       body: _d == null
@@ -425,17 +425,17 @@ class _ArtistmgrGigPageState extends State<ArtistmgrGigPage> {
               Expanded(child: Text(_s(g['event']).isEmpty ? 'Show' : _s(g['event']), style: const TextStyle(fontWeight: FontWeight.w800))),
               Pill(_s(g['status_label']).isEmpty ? st : _s(g['status_label'])),
             ]),
-            Text('${_s(g['day']).isEmpty ? 'tareekh?' : _s(g['day'])} ${_s(g['start'])}-${_s(g['end'])} · ${_s(g['city'])} ${_s(g['venue'])}'),
+            Text('${_s(g['day']).isEmpty ? 'date?' : _s(g['day'])} ${_s(g['start'])}-${_s(g['end'])} · ${_s(g['city'])} ${_s(g['venue'])}'),
             Text('Promoter: ${_s(g['promoter'])} ${_s(g['phone'])}', style: const TextStyle(fontSize: 12.5)),
             if (_strs(g['blanks']).isNotEmpty)
-              Text('Abhi nahi pata: ${_strs(g['blanks']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.accent)),
+              Text('Not known yet: ${_strs(g['blanks']).join(', ')}', style: const TextStyle(fontSize: 12, color: C.accent)),
           ])),
           const SizedBox(height: 10),
-          const Caption('PAISA'),
+          const Caption('MONEY'),
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Fee ${_s(g['fee_text'])} · advance ${rs(money['advance'])} · baaki ${rs(money['balance'])} (${_s(money['balance_due'])} tak)'),
-            Text('Mila ${rs(money['received'])} · TDS ${rs(money['tds'])} · promoter se baaki ${rs(money['due_from_promoter'])}'),
-            Text('Commission ${rs(money['commission'])} · kharcha ${rs(money['expenses_recover'])} · artist ko ${rs(money['net_to_artist'])}'),
+            Text('Fee ${_s(g['fee_text'])} · advance ${rs(money['advance'])} · balance ${rs(money['balance'])} (until ${_s(money['balance_due'])})'),
+            Text('Received ${rs(money['received'])} · TDS ${rs(money['tds'])} · due from promoter ${rs(money['due_from_promoter'])}'),
+            Text('Commission ${rs(money['commission'])} · expenses ${rs(money['expenses_recover'])} · to artist ${rs(money['net_to_artist'])}'),
             if (_s(g['tds_note']).isNotEmpty) Text(_s(g['tds_note']), style: const TextStyle(fontSize: 11.5, color: C.muted)),
           ])),
           if (rider.isNotEmpty) ...[
@@ -448,27 +448,27 @@ class _ArtistmgrGigPageState extends State<ArtistmgrGigPage> {
           const SizedBox(height: 10),
           for (final c in _list(g['cards']))
             Padding(padding: const EdgeInsets.only(bottom: 10), child: ArtistmgrCardCard(app: widget.app, data: {'card': c}, onDone: _load)),
-          const Caption('AAGE KYA'),
+          const Caption('WHAT NEXT'),
           Wrap(spacing: 8, runSpacing: 8, children: [
-            if (st == 'enquiry') GlassButton(label: 'Hold karo', height: 40, onTap: () => _act('hold')),
-            if (st == 'enquiry' || st == 'hold') GlassButton(label: 'Jawab (card)', height: 40, onTap: () => _ask('reply', 'Promoter ko jawab', const [('text', 'Apna text (khaali = Hoola banaye)')])),
+            if (st == 'enquiry') GlassButton(label: 'Hold', height: 40, onTap: () => _act('hold')),
+            if (st == 'enquiry' || st == 'hold') GlassButton(label: 'Reply (card)', height: 40, onTap: () => _ask('reply', 'Reply to promoter', const [('text', 'Your own text (empty = Hoola writes)')])),
             if (st == 'hold') ...[
-              GlassButton(label: 'Pakka (card)', height: 40, onTap: () => _act('confirm')),
-              GlassButton(label: 'Hold chhodo', height: 40, onTap: () => _act('release')),
+              GlassButton(label: 'Confirm (card)', height: 40, onTap: () => _act('confirm')),
+              GlassButton(label: 'Release hold', height: 40, onTap: () => _act('release')),
             ],
             if (st == 'hold' || st == 'confirmed') GlassButton(label: 'Contract (card)', height: 40, onTap: () => _act('contract')),
             if (st == 'confirmed' || st == 'done') ...[
               GlassButton(label: 'Invoice (card)', height: 40, onTap: () => _act('invoice')),
-              GlassButton(label: 'Paise maango (card)', height: 40, onTap: () => _ask('pay', 'Kaunsa paisa?', const [('stage', 'advance / balance'), ('amount', 'Ya amount (₹)')], nums: {'amount'})),
-              GlassButton(label: 'Paise mile', height: 40, onTap: () => _ask('paid', 'Paise mile', const [('amount', 'Kitne (₹)'), ('mode', 'upi / cash / bank / cheque'), ('ref', 'UTR / ref')], nums: {'amount'})),
-              GlassButton(label: 'TDS kata', height: 40, onTap: () => _ask('tds', 'Promoter ne TDS kaata', const [('amount', 'Kitna (₹)')], nums: {'amount'})),
-              GlassButton(label: 'Kharcha', height: 40, onTap: () => _ask('expense', 'Kharcha', const [('what', 'Kya'), ('amount', 'Kitna (₹)'), ('paid_by', 'manager / artist / promoter')], nums: {'amount'})),
-              GlassButton(label: 'Travel', height: 40, onTap: () => _ask('travel', 'Kahan se?', const [('origin', 'Shehar')])),
+              GlassButton(label: 'Ask for money (card)', height: 40, onTap: () => _ask('pay', 'Which payment?', const [('stage', 'advance / balance'), ('amount', 'Ya amount (₹)')], nums: {'amount'})),
+              GlassButton(label: 'Money received', height: 40, onTap: () => _ask('paid', 'Money received', const [('amount', 'How much (₹)'), ('mode', 'upi / cash / bank / cheque'), ('ref', 'UTR / ref')], nums: {'amount'})),
+              GlassButton(label: 'TDS deducted', height: 40, onTap: () => _ask('tds', 'Promoter deducted TDS', const [('amount', 'How much (₹)')], nums: {'amount'})),
+              GlassButton(label: 'Expense', height: 40, onTap: () => _ask('expense', 'Expense', const [('what', 'What'), ('amount', 'How much (₹)'), ('paid_by', 'manager / artist / promoter')], nums: {'amount'})),
+              GlassButton(label: 'Travel', height: 40, onTap: () => _ask('travel', 'From where?', const [('origin', 'City')])),
             ],
-            if (st == 'confirmed') GlassButton(label: 'Show ho gaya', height: 40, onTap: () => _act('done')),
-            GlassButton(label: 'Message (card)', height: 40, onTap: () => _ask('message', 'Message', const [('to', 'promoter / artist / member ka naam'), ('text', 'Text')])),
+            if (st == 'confirmed') GlassButton(label: 'Show done', height: 40, onTap: () => _act('done')),
+            GlassButton(label: 'Message (card)', height: 40, onTap: () => _ask('message', 'Message', const [('to', 'name of promoter / artist / member'), ('text', 'Text')])),
             if (st != 'done' && st != 'cancelled')
-              GlassButton(label: 'Radd', height: 40, onTap: () => _ask('cancel', 'Radd kyun?', const [('reason', 'Wajah'), ('by', 'promoter / artist')])),
+              GlassButton(label: 'Cancel', height: 40, onTap: () => _ask('cancel', 'Why cancel?', const [('reason', 'Reason'), ('by', 'promoter / artist')])),
             GlassButton(
                 label: 'Contract PDF (draft)',
                 icon: Icons.picture_as_pdf_rounded,
@@ -530,7 +530,7 @@ class _ArtistmgrArtistPageState extends State<ArtistmgrArtistPage> {
         child: ListView(padding: const EdgeInsets.all(16), children: [
           Glass(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('${_s(a['kind_label'])} · ${_s(a['genre'])} · ${_s(a['city'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
-            if (_s(a['min_fee']).isNotEmpty) Text('Kam se kam fee ₹${_s(a['min_fee'])}'),
+            if (_s(a['min_fee']).isNotEmpty) Text('Minimum fee ₹${_s(a['min_fee'])}'),
             for (final m in _list(a['members']))
               Text('• ${_s(m['name'])} ${_s(m['role'])}${_s(m['split_pct']).isEmpty ? '' : ' · ${_s(m['split_pct'])}%'}',
                   style: const TextStyle(fontSize: 12.5)),
@@ -548,10 +548,10 @@ class _ArtistmgrArtistPageState extends State<ArtistmgrArtistPage> {
                 PopupMenuButton<String>(
                   onSelected: (v) => _post('/api/artistmgr/artists/${widget.id}/regs', {'key': r['key'], 'status': v}),
                   itemBuilder: (_) => const [
-                    PopupMenuItem(value: 'none', child: Text('Nahi hua')),
-                    PopupMenuItem(value: 'applied', child: Text('Apply kiya')),
-                    PopupMenuItem(value: 'done', child: Text('Ho gaya')),
-                    PopupMenuItem(value: 'na', child: Text('Lagu nahi')),
+                    PopupMenuItem(value: 'none', child: Text('Did not happen')),
+                    PopupMenuItem(value: 'applied', child: Text('Applied')),
+                    PopupMenuItem(value: 'done', child: Text('Done')),
+                    PopupMenuItem(value: 'na', child: Text('Not applicable')),
                   ],
                   child: Pill(_s(r['status'])),
                 ),
@@ -560,29 +560,29 @@ class _ArtistmgrArtistPageState extends State<ArtistmgrArtistPage> {
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
             if (widget.onEdit != null)
-              GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: () async {
+              GlassButton(label: 'Edit', icon: Icons.edit_rounded, height: 40, onTap: () async {
                 await widget.onEdit!(a);
                 await _load();
               }),
-            GlassButton(label: 'Din band karo', icon: Icons.event_busy_rounded, height: 40, onTap: () async {
-              final f = await _form(context, 'Artist kab free nahi?', const [('from', 'Se (YYYY-MM-DD)'), ('to', 'Tak (YYYY-MM-DD)'), ('note', 'Kyun')]);
+            GlassButton(label: 'Close the day', icon: Icons.event_busy_rounded, height: 40, onTap: () async {
+              final f = await _form(context, 'When is the artist not free?', const [('from', 'Se (YYYY-MM-DD)'), ('to', 'Until (YYYY-MM-DD)'), ('note', 'Why')]);
               if (f != null) await _post('/api/artistmgr/artists/${widget.id}/block', f);
             }),
             GlassButton(label: 'Payout statement (card)', icon: Icons.payments_rounded, height: 40,
                 onTap: () => _post('/api/artistmgr/artists/${widget.id}/payout')),
             GlassButton(label: 'Message (card)', icon: Icons.chat_rounded, height: 40, onTap: () async {
-              final f = await _form(context, 'Message', const [('to', 'artist / member ka naam'), ('text', 'Text')]);
+              final f = await _form(context, 'Message', const [('to', 'name of artist / member'), ('text', 'Text')]);
               if (f != null) await _post('/api/artistmgr/artists/${widget.id}/message', f);
             }),
-            GlassButton(label: 'Bhool jao (DPDP)', icon: Icons.delete_outline_rounded, height: 40, onTap: () async {
+            GlassButton(label: 'Forget me (DPDP)', icon: Icons.delete_outline_rounded, height: 40, onTap: () async {
               final ok = await showDialog<bool>(
                   context: context,
                   builder: (d) => AlertDialog(
-                        title: const Text('Is artist ki personal jaankari mitayein?'),
-                        content: const Text('Naam / phone / members hat jayenge; hisaab ke number rahenge.'),
+                        title: const Text('Delete this artist\'s personal information?'),
+                        content: const Text('Name / phone / members will be removed; the accounting numbers stay.'),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
-                          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Mitao')),
+                          TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
+                          TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Delete')),
                         ],
                       ));
               if (ok == true) await _post('/api/artistmgr/artists/${widget.id}/forget');
@@ -661,7 +661,7 @@ class _ArtistmgrReleasePageState extends State<ArtistmgrReleasePage> {
             Pill(_s(r['status'])),
           ])),
           const SizedBox(height: 10),
-          const Caption('GAANE'),
+          const Caption('SONGS'),
           for (final t in _list(r['tracks']))
             Text('• ${_s(t['title'])} · ${_s(t['isrc']).isEmpty ? 'ISRC?' : _s(t['isrc'])}', style: const TextStyle(fontSize: 13)),
           const SizedBox(height: 10),
@@ -674,17 +674,17 @@ class _ArtistmgrReleasePageState extends State<ArtistmgrReleasePage> {
               title: Text(_s(p['what'])),
               subtitle: Text(_s(p['by'])),
               trailing: _s(p['done']).isEmpty && r['final'] == true
-                  ? TextButton(onPressed: () => _post('/api/artistmgr/releases/${widget.ref}/step', {'step': p['key']}), child: const Text('Ho gaya'))
+                  ? TextButton(onPressed: () => _post('/api/artistmgr/releases/${widget.ref}/step', {'step': p['key']}), child: const Text('Done'))
                   : null,
             ),
           if (_strs(r['problems']).isNotEmpty) ...[
-            const Caption('BAAKI'),
+            const Caption('PENDING'),
             for (final x in _strs(r['problems'])) Text('• $x', style: const TextStyle(color: C.accent)),
           ],
           const SizedBox(height: 10),
           Wrap(spacing: 8, runSpacing: 8, children: [
             if (widget.onEdit != null)
-              GlassButton(label: 'Badlo', icon: Icons.edit_rounded, height: 40, onTap: () async {
+              GlassButton(label: 'Edit', icon: Icons.edit_rounded, height: 40, onTap: () async {
                 await widget.onEdit!(r);
                 await _load();
               }),
@@ -730,9 +730,9 @@ class _ArtistmgrCardCardState extends State<ArtistmgrCardCard> {
         [show['amount'] ?? show['total_text'], show['payee'] ?? show['artist']].where((x) => x != null && '$x'.isNotEmpty).join(' · '));
     if (r['signature'] == null) {
       throw ApiException(428, switch (_s(r['error'])) {
-        'cancelled' => 'Fingerprint nahi diya, isliye haan nahi hui.',
-        'key_invalidated' => 'Phone mein naya fingerprint juda hai: Profile > Fingerprint se haan mein phone phir se jodiye.',
-        _ => 'Fingerprint se haan nahi ho payi (${_s(r['error'])}).',
+        'cancelled' => 'No fingerprint given, so it was not approved.',
+        'key_invalidated' => 'A new fingerprint was added to the phone: re-link this phone in Profile > Fingerprint approval.',
+        _ => 'Could not approve with fingerprint (${_s(r['error'])}).',
       });
     }
     return {'challenge_id': ch['challenge_id'], 'device_id': r['device_id'], 'signature': r['signature']};
@@ -742,7 +742,7 @@ class _ArtistmgrCardCardState extends State<ArtistmgrCardCard> {
     final id = _s(_c['id']);
     String reason = '';
     if (!yes) {
-      final f = await _form(context, 'Kyun nahi?', const [('reason', 'Wajah (optional)')], ok: 'Nahi');
+      final f = await _form(context, 'Why not?', const [('reason', 'Reason (optional)')], ok: 'No');
       if (f == null) return;
       reason = f['reason'] ?? '';
     }
@@ -792,16 +792,16 @@ class _ArtistmgrCardCardState extends State<ArtistmgrCardCard> {
           }, color: C.accent),
           const SizedBox(width: 8),
           Expanded(child: Text('${_s(c['title'])}${tag.isEmpty ? '' : ' · $tag'}', style: const TextStyle(fontWeight: FontWeight.w800))),
-          Pill(switch (st) { 'waiting' => 'aapki haan?', 'approved' => 'haan', 'rejected' => 'nahi', 'stale' => 'purana', _ => st },
+          Pill(switch (st) { 'waiting' => 'your approval?', 'approved' => 'yes', 'rejected' => 'no', 'stale' => 'stale', _ => st },
               fg: st == 'waiting' ? C.accent : C.chip),
         ]),
         if (_s(sh['day']).isNotEmpty || _s(sh['city']).isNotEmpty)
           Text('${_s(sh['promoter'])} · ${_s(sh['day'])} ${_s(sh['start'])} · ${_s(sh['city'])} ${_s(sh['venue'])}', style: const TextStyle(fontSize: 12.5)),
         if (amount.isNotEmpty) Text(amount, style: const TextStyle(fontWeight: FontWeight.w700)),
-        if (kind == 'contract') Text('Advance ${_s(sh['advance_text'])} · baaki ${_s(sh['balance_text'])} (${_s(sh['balance_due'])} tak)', style: const TextStyle(fontSize: 12.5)),
-        if (kind == 'invoice' && inv.isNotEmpty) Text('Invoice ${_s(inv['number'])} · kul ${_s(inv['total_text'])}', style: const TextStyle(fontSize: 12.5)),
+        if (kind == 'contract') Text('Advance ${_s(sh['advance_text'])} · balance ${_s(sh['balance_text'])} (until ${_s(sh['balance_due'])})', style: const TextStyle(fontSize: 12.5)),
+        if (kind == 'invoice' && inv.isNotEmpty) Text('Invoice ${_s(inv['number'])} · total ${_s(inv['total_text'])}', style: const TextStyle(fontSize: 12.5)),
         if (kind == 'payout') ...[
-          Text('Kul ${_s(sh['total_text'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
+          Text('Total ${_s(sh['total_text'])}', style: const TextStyle(fontWeight: FontWeight.w700)),
           for (final x in _list(sh['splits']))
             Text('• ${_s(x['name'])}${_s(x['split_pct']).isEmpty ? '' : ' (${_s(x['split_pct'])}%)'}: ₹${_s(x['amount'])}', style: const TextStyle(fontSize: 12.5)),
         ],
@@ -810,16 +810,16 @@ class _ArtistmgrCardCardState extends State<ArtistmgrCardCard> {
           for (final p in _strs(sh['problems'])) Text('• $p', style: const TextStyle(fontSize: 12, color: C.accent)),
         ],
         if (_s(sh['text']).isNotEmpty) Text('“${_s(sh['text'])}”', style: const TextStyle(fontSize: 12.5)),
-        if (_s(c['reason']).isNotEmpty) Text('Wajah: ${_s(c['reason'])}', style: const TextStyle(fontSize: 12)),
+        if (_s(c['reason']).isNotEmpty) Text('Reason: ${_s(c['reason'])}', style: const TextStyle(fontSize: 12)),
         const SizedBox(height: 8),
         if (st == 'waiting')
           Wrap(spacing: 8, runSpacing: 6, children: [
-            GradientButton(label: money ? 'Haan (fingerprint)' : 'Haan', height: 42, onTap: _busy ? null : () => _decide(true)),
-            GlassButton(label: 'Nahi', height: 42, onTap: _busy ? null : () => _decide(false)),
+            GradientButton(label: money ? 'Yes (fingerprint)' : 'Yes', height: 42, onTap: _busy ? null : () => _decide(true)),
+            GlassButton(label: 'No', height: 42, onTap: _busy ? null : () => _decide(false)),
           ]),
         if (_m(_res['draft']).isNotEmpty) ...[const SizedBox(height: 6), _draftButtons(_m(_res['draft']))],
         for (final d in _list(_res['drafts'])) ...[const SizedBox(height: 6), _draftButtons(d, name: _s(d['name']))],
-        const Text('Hoola khud kuch nahi bhejta, paise nahi leta / deta: message aap bhejti hain.',
+        const Text('Hoola does not send anything or take or give money: you send the messages.',
             style: TextStyle(fontSize: 11, color: C.faint)),
       ]),
     );
@@ -844,7 +844,7 @@ class ArtistmgrNoteCard extends StatelessWidget {
           if (gig.isNotEmpty)
             TextButton(
                 onPressed: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => ArtistmgrGigPage(app: app, ref: gig))),
-                child: Text('$gig kholo')),
+                child: Text('Open $gig')),
         ])),
       ]),
     );

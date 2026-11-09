@@ -88,7 +88,7 @@ class _DriveScreenState extends State<DriveScreen> {
       Row(children: [
         Icon(ok ? Icons.check_circle_rounded : Icons.error_outline_rounded, color: ok ? C.teal : C.bad),
         const SizedBox(width: 8),
-        Expanded(child: Text(ok ? 'Google Drive theek chal raha hai' : 'Drive nahi chal raha',
+        Expanded(child: Text(ok ? 'Google Drive is working fine' : 'Drive is not working',
             style: const TextStyle(fontWeight: FontWeight.w700))),
       ]),
       if (signin != null) ...[
@@ -123,7 +123,7 @@ class _DriveScreenState extends State<DriveScreen> {
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('Jagah: ${s['used'] ?? '-'} / ${s['limit'] ?? '-'}', style: const TextStyle(color: C.chip, fontSize: 12.5)),
+        Text('Space: ${s['used'] ?? '-'} / ${s['limit'] ?? '-'}', style: const TextStyle(color: C.chip, fontSize: 12.5)),
         if (pct != null) ...[
           const SizedBox(height: 6),
           ClipRRect(
@@ -153,8 +153,8 @@ class _DriveScreenState extends State<DriveScreen> {
         child: RefreshIndicator(
           onRefresh: _load,
           child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 32), children: [
-            const Text('Hoola aapke Google Drive mein files dhoondhta, padhta, phone / PC / email par bhejta, upload karta, '
-                'folder sambhalta aur Google Doc banata hai. Share karna, public link aur Trash hamesha aapke tap ke baad hi.',
+            const Text('Hoola finds and reads files in your Google Drive, sends them to your phone / PC / email, uploads,'
+                'manages folders and makes Google Docs. Sharing, public links and Trash always go only after your tap.',
                 style: TextStyle(color: C.muted, fontSize: 13)),
             const SizedBox(height: 14),
             if (_err != null) Padding(padding: const EdgeInsets.only(bottom: 10), child: Text(_err!, style: const TextStyle(color: C.bad))),
@@ -168,12 +168,12 @@ class _DriveScreenState extends State<DriveScreen> {
                     const SizedBox(width: 10),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text(a['address'] as String? ?? '', style: const TextStyle(fontWeight: FontWeight.w700)),
-                      Text(a['kind'] == 'service' ? 'Server ka service account: sirf share kiya hua folder' : 'Google Drive',
+                      Text(a['kind'] == 'service' ? 'Server service account: only the shared folder' : 'Google Drive',
                           style: const TextStyle(color: C.muted, fontSize: 12.5)),
                       if (a['status'] == 'error') Text(a['error'] as String? ?? 'Login fail', style: const TextStyle(color: C.bad, fontSize: 12)),
                     ])),
                     if (a['removable'] == true)
-                      IconButton(tooltip: 'Hataiye', icon: const Icon(Icons.close_rounded, color: C.muted),
+                      IconButton(tooltip: 'Remove', icon: const Icon(Icons.close_rounded, color: C.muted),
                           onPressed: () => _remove(a['key'] as String)),
                   ]),
                   for (final s in storage.where((s) => s['account'] == a['address'] && s['error'] == null)) _storage(s),
@@ -181,25 +181,25 @@ class _DriveScreenState extends State<DriveScreen> {
               ),
             if (_loaded) ...[
               if (!hasOwn)
-                GradientButton(label: 'Google Drive jodiye', icon: Icons.add_to_drive_rounded, height: 50, onTap: canLink ? _link : null)
+                GradientButton(label: 'Link Google Drive', icon: Icons.add_to_drive_rounded, height: 50, onTap: canLink ? _link : null)
               else
-                GlassButton(label: 'Doosra Google account jodiye', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
+                GlassButton(label: 'Link another Google account', icon: Icons.add_rounded, height: 44, onTap: canLink ? _link : null),
               if (!canLink)
                 const Padding(
                   padding: EdgeInsets.only(top: 8),
-                  child: Text('Is server par Google sign-in abhi chalu nahi hai (GOOGLE_OAUTH_CLIENT_ID / SECRET).',
+                  child: Text('Google sign-in is not on yet on this server (GOOGLE_OAUTH_CLIENT_ID / SECRET).',
                       style: TextStyle(color: C.faint, fontSize: 12)),
                 ),
             ],
             if (_loaded) ...[
               const SizedBox(height: 10),
-              GlassButton(label: _checking ? 'Jaanch ho rahi hai...' : 'Jaanch karo: Drive kyun nahi chal raha?',
+              GlassButton(label: _checking ? 'Checking...' : 'Check: why is Drive not working?',
                   icon: Icons.health_and_safety_outlined, height: 44, onTap: _checking ? null : _diagnose),
               if (_check != null) Padding(padding: const EdgeInsets.only(top: 10), child: _checkView(_check!)),
             ],
             if (recent.isNotEmpty) ...[
               const SizedBox(height: 18),
-              const Text('Haal ki files', style: TextStyle(fontWeight: FontWeight.w700)),
+              const Text('Recent files', style: TextStyle(fontWeight: FontWeight.w700)),
               const SizedBox(height: 6),
               Glass(child: Column(children: [
                 for (final f in recent)
@@ -213,16 +213,16 @@ class _DriveScreenState extends State<DriveScreen> {
               ])),
             ],
             const SizedBox(height: 18),
-            const Text('Bolkar dekhiye', style: TextStyle(fontWeight: FontWeight.w700)),
+            const Text('Try by voice', style: TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             for (final t in const [
-              '"Drive mein Sharma Traders ka quotation dhoondho"',
-              '"Bijli bill wali PDF padho, kitna dena hai?"',
-              '"Woh quotation PDF banakar Ramesh ko mail karo"',
-              '"Is mail ka attachment Drive ke Invoices folder mein daal do"',
-              '"Diwali 2026 naam ka folder banao"',
-              '"Report Swati ke saath share karo, sirf dekh sake"',
-              '"Drive mein kitni jagah bachi hai?"',
+              '"Find the Sharma Traders quotation in Drive"',
+              '"Read the electricity bill PDF, how much do I have to pay?"',
+              '"Make that quotation a PDF and email it to Ramesh"',
+              '"Put this mail\'s attachment in the Invoices folder in Drive"',
+              '"Make a folder named Diwali 2026"',
+              '"Share the report with Swati, view only"',
+              '"How much space is left in Drive?"',
             ])
               Padding(padding: const EdgeInsets.symmetric(vertical: 2), child: Text(t, style: const TextStyle(color: C.chip, fontSize: 13))),
           ]),
@@ -247,13 +247,13 @@ class GoogleReconnectCard extends StatelessWidget {
         const Row(children: [
           Icon(Icons.link_off_rounded, color: C.warn),
           SizedBox(width: 8),
-          Expanded(child: Text('Google dobara jodiye', style: TextStyle(fontWeight: FontWeight.w700))),
+          Expanded(child: Text('Reconnect Google', style: TextStyle(fontWeight: FontWeight.w700))),
         ]),
         const SizedBox(height: 6),
         Text('${v['text'] ?? ''}', style: const TextStyle(color: C.chip, fontSize: 13)),
         const SizedBox(height: 10),
         Row(children: [
-          Expanded(child: GradientButton(label: 'Google jodiye', icon: Icons.add_to_drive_rounded, height: 44, onTap: () async {
+          Expanded(child: GradientButton(label: 'Link Google', icon: Icons.add_to_drive_rounded, height: 44, onTap: () async {
             try {
               final url = await app.api!.driveLinkUrl();
               await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -262,7 +262,7 @@ class GoogleReconnectCard extends StatelessWidget {
             }
           })),
           const SizedBox(width: 8),
-          GlassButton(label: 'Jaanch', icon: Icons.health_and_safety_outlined, height: 44,
+          GlassButton(label: 'Check', icon: Icons.health_and_safety_outlined, height: 44,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (_) => DriveScreen(app: app)))),
         ]),
       ])),

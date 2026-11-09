@@ -96,7 +96,7 @@ class _ThokScreenState extends State<ThokScreen> {
               TextField(controller: c[k], maxLines: k == 'text' ? 4 : 1, decoration: InputDecoration(labelText: label)),
           ]),
         ),
-        actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Aage'))],
+        actions: [TextButton(onPressed: () => Navigator.pop(d, true), child: const Text('Continue'))],
       ),
     );
     if (ok != true) return null;
@@ -105,15 +105,15 @@ class _ThokScreenState extends State<ThokScreen> {
 
   Future<void> _settings() async {
     final st = Map<String, dynamic>.from((_day?['settings'] as Map?) ?? const {});
-    final f = await _form('Firm ki jaankari', const [
-      ('firm', 'Firm ka naam'),
+    final f = await _form('Firm details', const [
+      ('firm', 'Firm name'),
       ('gstin', 'GSTIN'),
       ('address', 'Address'),
       ('phone', 'Phone'),
-      ('bank', 'Bank (bill par chhapega)'),
-      ('prefix', 'Bill prefix (jaise IT)'),
-      ('credit_days', 'Udhaar kitne din (aam)'),
-      ('aato', 'Saal ka turnover (Rs)'),
+      ('bank', 'Bank (will be printed on the bill)'),
+      ('prefix', 'Bill prefix (e.g. IT)'),
+      ('credit_days', 'Credit days (usual)'),
+      ('aato', 'Turnover for the year (Rs)'),
     ], init: {for (final k in ['firm', 'gstin', 'address', 'phone', 'bank', 'prefix']) k: _s(st[k]), 'credit_days': _s(st['credit_days'])});
     if (f == null) return;
     await _run(() => widget.app.api!.thokSettings({
@@ -124,14 +124,14 @@ class _ThokScreenState extends State<ThokScreen> {
   }
 
   Future<void> _newParty() async {
-    final f = await _form('Nayi party', const [
-      ('name', 'Naam'),
+    final f = await _form('New party', const [
+      ('name', 'Name'),
       ('phone', 'Mobile'),
-      ('gstin', 'GSTIN (ho to)'),
+      ('gstin', 'GSTIN (if any)'),
       ('kind', 'customer / supplier'),
       ('credit_limit', 'Credit limit (Rs)'),
       ('credit_days', 'Udhaar din'),
-      ('route', 'Route / beat (jaise Mon)'),
+      ('route', 'Route / beat (e.g. Mon)'),
     ]);
     if (f == null) return;
     await _run(() => widget.app.api!.thokParty({
@@ -141,14 +141,14 @@ class _ThokScreenState extends State<ThokScreen> {
   }
 
   Future<void> _newItem() async {
-    final f = await _form('Maal / daam', const [
-      ('name', 'Naam (jaise Atta 50kg)'),
-      ('price', 'Bechne ka daam (GST ke bina)'),
+    final f = await _form('Goods / price', const [
+      ('name', 'Name (e.g. Atta 50kg)'),
+      ('price', 'Selling price (without GST)'),
       ('gst_pct', 'GST % (0 / 5 / 18 / 40)'),
       ('unit', 'Unit (bag / kg / box / tin)'),
-      ('qty', 'Abhi stock'),
+      ('qty', 'Stock now'),
       ('hsn', 'HSN'),
-      ('cost', 'Kharid ka daam'),
+      ('cost', 'Purchase price'),
     ]);
     if (f == null) return;
     await _run(() => widget.app.api!.thokItem({
@@ -159,7 +159,7 @@ class _ThokScreenState extends State<ThokScreen> {
   }
 
   Future<void> _newOrder() async {
-    final f = await _form('Naya order', const [('party', 'Party ka naam / phone'), ('text', 'Order (jaise: atta 10 bori, cheeni 5 bag)')]);
+    final f = await _form('New order', const [('party', 'Party name / phone'), ('text', 'Order (e.g. atta 10 bags, sugar 5 bags)')]);
     if (f == null) return;
     final r = await _run(() => widget.app.api!.thokOrder({'party': f['party'] ?? '', 'text': f['text'] ?? ''}));
     if (r != null && mounted) {
@@ -177,11 +177,11 @@ class _ThokScreenState extends State<ThokScreen> {
   }
 
   Future<void> _paid(Map<String, dynamic> p) async {
-    final f = await _form('${_s(p['party'])} se paisa mila', const [
-      ('amount', 'Rakam'),
+    final f = await _form('Received money from ${_s(p['party'])}', const [
+      ('amount', 'Amount'),
       ('mode', 'cash / upi / neft / cheque'),
-      ('cheque_no', 'Cheque no (cheque ho to)'),
-      ('cheque_date', 'Cheque ki tareekh'),
+      ('cheque_no', 'Cheque no (if by cheque)'),
+      ('cheque_date', 'Cheque date'),
     ]);
     if (f == null || f['amount'] == null) return;
     await _run(() => widget.app.api!.thokReceive({'party': p['party_id'], ...f}));
@@ -200,10 +200,10 @@ class _ThokScreenState extends State<ThokScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Row(children: [
-          _stat('aaj bikri', rs(d['sales'] ?? 0)),
-          _stat('vasooli', rs(d['collected'] ?? 0)),
-          _stat('bazaar mein', rs(d['outstanding'] ?? 0)),
-          _stat('due paar', rs(d['overdue'] ?? 0), c: (d['overdue'] ?? 0) > 0 ? C.warn : null),
+          _stat('today\'s sales', rs(d['sales'] ?? 0)),
+          _stat('collected', rs(d['collected'] ?? 0)),
+          _stat('in the market', rs(d['outstanding'] ?? 0)),
+          _stat('overdue', rs(d['overdue'] ?? 0), c: (d['overdue'] ?? 0) > 0 ? C.warn : null),
         ]),
       ),
       const SizedBox(height: 8),
@@ -217,7 +217,7 @@ class _ThokScreenState extends State<ThokScreen> {
           padding: const EdgeInsets.only(top: 6),
           child: Glass(
             padding: const EdgeInsets.all(10),
-            child: Text('Bank mein daaliye: ${_s(c['party'])} cheque ${_s(c['cheque_no'])} ${rs(c['amount'])}'),
+            child: Text('Deposit in the bank: ${_s(c['party'])} cheque ${_s(c['cheque_no'])} ${rs(c['amount'])}'),
           ),
         ),
       for (final b in _list(d['bounced']))
@@ -226,12 +226,12 @@ class _ThokScreenState extends State<ThokScreen> {
           child: Glass(
             padding: const EdgeInsets.all(10),
             border: C.bad,
-            child: Text('Bounce: ${_s(b['party'])} ${rs(b['amount'])} - notice ${_s(b['notice_by'])} tak (vakil se)'),
+            child: Text('Bounced: ${_s(b['party'])} ${rs(b['amount'])} - notice by ${_s(b['notice_by'])} (through a lawyer)'),
           ),
         ),
       if (_drafts.isNotEmpty) ...[
         const SizedBox(height: 12),
-        Text('Bill ke liye aapki haan', style: display(15)),
+        Text('Your approval for the bill', style: display(15)),
         for (final o in _drafts)
           Padding(
             padding: const EdgeInsets.only(top: 8),
@@ -248,7 +248,7 @@ class _ThokScreenState extends State<ThokScreen> {
       Text(_s(o['say']), style: const TextStyle(fontSize: 13)),
       const SizedBox(height: 8),
       GlassButton(
-        label: 'Vasooli ke message',
+        label: 'Collection messages',
         icon: Icons.send_rounded,
         onTap: _busy
             ? null
@@ -282,12 +282,12 @@ class _ThokScreenState extends State<ThokScreen> {
               ]),
               Text(
                   [
-                    if ((r['overdue'] ?? 0) > 0) 'due paar ${rs(r['overdue'])} (${r['oldest_overdue_days']} din)',
-                    if (r['avg_days_to_pay'] != null) 'aam taur par ${r['avg_days_to_pay']} din mein deta hai',
-                    if ((r['cheques_pending'] ?? 0) > 0) 'cheque baaki ${rs(r['cheques_pending'])}',
+                    if ((r['overdue'] ?? 0) > 0) 'overdue ${rs(r['overdue'])} (${r['oldest_overdue_days']} days)',
+                    if (r['avg_days_to_pay'] != null) 'usually pays in ${r['avg_days_to_pay']} days',
+                    if ((r['cheques_pending'] ?? 0) > 0) 'cheques pending ${rs(r['cheques_pending'])}',
                   ].join(' · '),
                   style: const TextStyle(color: C.muted, fontSize: 12.5)),
-              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _paid(r), child: const Text('Paisa mila'))),
+              Align(alignment: Alignment.centerRight, child: TextButton(onPressed: _busy ? null : () => _paid(r), child: const Text('Money received'))),
             ]),
           ),
         ),
@@ -296,7 +296,7 @@ class _ThokScreenState extends State<ThokScreen> {
 
   Widget _partiesTab() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, children: [
-          GlassButton(label: 'Nayi party', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newParty),
+          GlassButton(label: 'New party', icon: Icons.person_add_alt_rounded, onTap: _busy ? null : _newParty),
           GlassButton(label: 'Firm', icon: Icons.storefront_rounded, onTap: _busy ? null : _settings),
         ]),
         const SizedBox(height: 8),
@@ -316,7 +316,7 @@ class _ThokScreenState extends State<ThokScreen> {
                   ]),
                 ),
                 if (p['ledger'] != null) Text(rs((p['ledger'] as Map)['outstanding']), style: const TextStyle(fontWeight: FontWeight.w700)),
-                if (p['supplier'] != null) Text('dena ${rs((p['supplier'] as Map)['payable'])}', style: const TextStyle(fontSize: 12)),
+                if (p['supplier'] != null) Text('to pay ${rs((p['supplier'] as Map)['payable'])}', style: const TextStyle(fontSize: 12)),
               ]),
             ),
           ),
@@ -324,9 +324,9 @@ class _ThokScreenState extends State<ThokScreen> {
 
   Widget _stock() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 8, children: [
-          GlassButton(label: 'Maal jodo', icon: Icons.add_box_rounded, onTap: _busy ? null : _newItem),
+          GlassButton(label: 'Add goods', icon: Icons.add_box_rounded, onTap: _busy ? null : _newItem),
           GlassButton(
-              label: 'Kya mangwana hai',
+              label: 'What to order',
               icon: Icons.shopping_cart_checkout_rounded,
               onTap: _busy
                   ? null
@@ -358,7 +358,7 @@ class _ThokScreenState extends State<ThokScreen> {
                   child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(_s(it['name']), style: const TextStyle(fontWeight: FontWeight.w700)),
                     Text('${rs(it['price'])}/${_s(it['unit'])} · GST ${it['gst_pct']}%${_s(it['hsn']).isNotEmpty ? ' · HSN ${it['hsn']}' : ''}'
-                        '${it['margin_pct'] != null ? ' · munafa ${it['margin_pct']}%' : ''}',
+                        '${it['margin_pct'] != null ? ' · margin ${it['margin_pct']}%' : ''}',
                         style: const TextStyle(color: C.muted, fontSize: 12)),
                   ]),
                 ),
@@ -381,7 +381,7 @@ class _ThokScreenState extends State<ThokScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, children: [
-                for (final (i, t) in const [(0, 'Aaj'), (1, 'Udhaar'), (2, 'Party'), (3, 'Stock')])
+                for (final (i, t) in const [(0, 'Today'), (1, 'Udhaar'), (2, 'Party'), (3, 'Stock')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -389,8 +389,8 @@ class _ThokScreenState extends State<ThokScreen> {
               if (_day == null) const Center(child: CircularProgressIndicator()) else [_today(), _udhaar(), _partiesTab(), _stock()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Bill aapki haan se banta hai, message aap bhejti hain. Hoola paisa nahi leta / bhejta. E-way bill aur IRN portal par aap / CA banate hain. '
-                  'Rs 2 lakh ya zyada nakad ek party se ek din mein nahi.',
+                  'The bill is made with your approval, and you send the messages. Hoola does not take or send money. You / your CA make the e-way bill and IRN on the portal.'
+                  'Cash of Rs 2 lakh or more from one party in one day is not allowed.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -465,23 +465,23 @@ class _ThokOrderCardState extends State<ThokOrderCard> {
         ]),
         const SizedBox(height: 6),
         for (final l in _list(o['lines']))
-          Text('${_s(l['item'])}  ${l['qty']} ${_s(l['unit'])} x ${rs(l['rate'])}  = ${rs(l['taxable'])}${l['short'] == true ? '  (stock kam)' : ''}',
+          Text('${_s(l['item'])}  ${l['qty']} ${_s(l['unit'])} x ${rs(l['rate'])}  = ${rs(l['taxable'])}${l['short'] == true ? '  (low stock)' : ''}',
               style: TextStyle(fontSize: 12.5, color: l['short'] == true ? C.warn : C.ink)),
         const SizedBox(height: 4),
-        Text('GST ${rs(o['tax'])} (${o['intra'] == true ? 'CGST+SGST' : 'IGST'}) · Kul ${rs(o['total'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
+        Text('GST ${rs(o['tax'])} (${o['intra'] == true ? 'CGST+SGST' : 'IGST'}) · Total ${rs(o['total'])}', style: const TextStyle(fontWeight: FontWeight.w800)),
         if (credit.isNotEmpty) Text(_s(credit['text']), style: TextStyle(fontSize: 12.5, color: _lvl(_s(credit['level'])))),
-        if (((ck['missing'] as List?) ?? const []).isNotEmpty) Text('List mein nahi: ${(ck['missing'] as List).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
-        if ((ck['eway'] as Map?)?['needed'] == true) const Text('E-way bill chahiye (portal par aap banayengi).', style: TextStyle(fontSize: 12.5, color: C.warn)),
-        if (ck['einvoice'] == true) const Text('IRN (e-invoice) bhi chahiye.', style: TextStyle(fontSize: 12.5, color: C.warn)),
+        if (((ck['missing'] as List?) ?? const []).isNotEmpty) Text('Not in the list: ${(ck['missing'] as List).join(', ')}', style: const TextStyle(fontSize: 12.5, color: C.warn)),
+        if ((ck['eway'] as Map?)?['needed'] == true) const Text('An e-way bill is needed (you make it on the portal).', style: TextStyle(fontSize: 12.5, color: C.warn)),
+        if (ck['einvoice'] == true) const Text('An IRN (e-invoice) is needed too.', style: TextStyle(fontSize: 12.5, color: C.warn)),
         const SizedBox(height: 8),
         if (o['status'] == 'draft')
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, bill banao', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('bill'))),
+            Expanded(child: GradientButton(label: 'Yes, make the bill', icon: Icons.check_rounded, onTap: _busy ? null : () => _act('bill'))),
             const SizedBox(width: 8),
             TextButton(onPressed: _busy ? null : () => _act('cancel'), child: const Text('Cancel')),
           ]),
         if (draft.isNotEmpty)
-          GlassButton(label: 'Party ko WhatsApp', icon: Icons.send_rounded, onTap: () => _wa(_s(draft['to']), _s(draft['text']))),
+          GlassButton(label: 'WhatsApp the party', icon: Icons.send_rounded, onTap: () => _wa(_s(draft['to']), _s(draft['text']))),
       ]),
     );
   }

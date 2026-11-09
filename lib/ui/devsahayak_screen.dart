@@ -21,10 +21,10 @@ void _snack(BuildContext c, String t) {
 }
 
 Color _ciColor(String s) => switch (s) { 'success' => C.ok, 'failure' => C.bad, 'pending' => C.warn, _ => C.muted };
-String _ciLabel(String s) => switch (s) { 'success' => 'CI pass', 'failure' => 'CI fail', 'pending' => 'CI chal raha', _ => 'CI nahi' };
+String _ciLabel(String s) => switch (s) { 'success' => 'CI pass', 'failure' => 'CI fail', 'pending' => 'CI running', _ => 'No CI' };
 
 Future<Map<String, String>?> _form(BuildContext context, String title, List<(String, String)> fields,
-    {String ok = 'Aage', bool obscureFirst = false, Map<String, String> initial = const {}}) async {
+    {String ok = 'Continue', bool obscureFirst = false, Map<String, String> initial = const {}}) async {
   final c = {for (final (k, _) in fields) k: TextEditingController(text: initial[k] ?? '')};
   final res = await showDialog<bool>(
     context: context,
@@ -44,7 +44,7 @@ Future<Map<String, String>?> _form(BuildContext context, String title, List<(Str
         ]),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Rehne do')),
+        TextButton(onPressed: () => Navigator.pop(d, false), child: const Text('Cancel')),
         TextButton(onPressed: () => Navigator.pop(d, true), child: Text(ok)),
       ],
     ),
@@ -113,12 +113,12 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
 
   Future<void> _newTask(String kind) async {
     final label = _s(_m(_d?['kinds'])[kind]);
-    final f = await _form(context, label.isEmpty ? 'Naya kaam' : label, [
-      ('text', kind == 'fix' || kind == 'explain' ? 'Kya dikkat hai + error / log yahan chipkaiye' : 'Kya chahiye (apne shabdon mein)'),
-      ('repo', 'Repo (owner/naam; khaali = ${_s(_st['default_repo']).isEmpty ? 'pehla' : _s(_st['default_repo'])})'),
-      if (kind == 'fix' || kind == 'explain') ('issue', 'GitHub issue number (ho to)'),
-      ('files', 'Files (comma se, ho to)'),
-    ], ok: 'Shuru karo');
+    final f = await _form(context, label.isEmpty ? 'New task' : label, [
+      ('text', kind == 'fix' || kind == 'explain' ? 'What is the problem + paste the error / log here' : 'What you want (in your words)'),
+      ('repo', 'Repo (owner/name; empty = ${_s(_st['default_repo']).isEmpty ? 'first one' : _s(_st['default_repo'])})'),
+      if (kind == 'fix' || kind == 'explain') ('issue', 'GitHub issue number (if any)'),
+      ('files', 'Files (comma separated, if any)'),
+    ], ok: 'Start');
     if (f == null || ((f['text'] ?? '').isEmpty && (f['issue'] ?? '').isEmpty)) return;
     final r = await _run('POST', '/api/devsahayak/tasks', {
       'kind': kind,
@@ -164,19 +164,19 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
       if (_st['github'] != true)
         Glass(
           border: C.warn,
-          child: const Text('Pehle Niyam mein apna GitHub fine-grained token daaliye (sirf chune hue repos ke liye).',
+          child: const Text('First add your GitHub fine-grained token in Rules (only for the chosen repos).',
               style: TextStyle(fontSize: 13)),
         ),
       const SizedBox(height: 8),
       Wrap(spacing: 8, runSpacing: 8, children: [
         GlassButton(label: 'Bug fix', icon: Icons.bug_report_rounded, onTap: _busy ? null : () => _newTask('fix')),
-        GlassButton(label: 'Naya code', icon: Icons.code_rounded, onTap: _busy ? null : () => _newTask('write')),
+        GlassButton(label: 'New code', icon: Icons.code_rounded, onTap: _busy ? null : () => _newTask('write')),
         GlassButton(label: 'Tests', icon: Icons.science_rounded, onTap: _busy ? null : () => _newTask('tests')),
         GlassButton(label: 'Docs', icon: Icons.menu_book_rounded, onTap: _busy ? null : () => _newTask('docs')),
-        GlassButton(label: 'Sirf samjhao', icon: Icons.lightbulb_rounded, onTap: _busy ? null : () => _newTask('explain')),
+        GlassButton(label: 'Only explain', icon: Icons.lightbulb_rounded, onTap: _busy ? null : () => _newTask('explain')),
       ]),
       const SizedBox(height: 10),
-      if (tasks.isEmpty) const Text('Abhi koi kaam nahi.', style: TextStyle(color: C.muted)),
+      if (tasks.isEmpty) const Text('No tasks yet.', style: TextStyle(color: C.muted)),
       for (final t in tasks) _taskTile(t),
     ]);
   }
@@ -194,7 +194,7 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
     final reviews = _list(_d?['reviews']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Row(children: [
-        Expanded(child: GlassButton(label: 'Khule PR dekho', icon: Icons.call_split_rounded, onTap: _busy ? null : () => _loadPrs(''))),
+        Expanded(child: GlassButton(label: 'See open PRs', icon: Icons.call_split_rounded, onTap: _busy ? null : () => _loadPrs(''))),
       ]),
       const SizedBox(height: 8),
       for (final p in _prs)
@@ -202,10 +202,10 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
           contentPadding: EdgeInsets.zero,
           dense: true,
           title: Text('#${p['number']} ${_s(p['title'])}'),
-          subtitle: Text('${_s(p['author'])}${p['by_hoola'] == true ? ' · Hoola ka' : ''}${p['draft'] == true ? ' · draft' : ''}'),
+          subtitle: Text('${_s(p['author'])}${p['by_hoola'] == true ? ' · Hoola\'s' : ''}${p['draft'] == true ? ' · draft' : ''}'),
           trailing: Wrap(spacing: 4, children: [
             IconButton(
-                tooltip: 'Review karo',
+                tooltip: 'Review',
                 icon: const Icon(Icons.rate_review_rounded),
                 onPressed: _busy ? null : () => _run('POST', '/api/devsahayak/reviews', {'pr': p['number']})),
             IconButton(
@@ -217,28 +217,28 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
       const SizedBox(height: 8),
       for (final r in reviews)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: DevReviewCard(app: widget.app, data: {'review': r}, onDone: _load)),
-      if (reviews.isEmpty) const Text('Abhi koi review nahi.', style: TextStyle(color: C.muted)),
+      if (reviews.isEmpty) const Text('No reviews yet.', style: TextStyle(color: C.muted)),
     ]);
   }
 
   Widget _actions() {
     final acts = _list(_d?['actions']);
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      GlassButton(label: 'Deploy card mangao', icon: Icons.rocket_launch_rounded, onTap: _busy ? null : _deploy),
+      GlassButton(label: 'Ask for a deploy card', icon: Icons.rocket_launch_rounded, onTap: _busy ? null : _deploy),
       const SizedBox(height: 10),
-      if (acts.isEmpty) const Text('Koi merge / deploy card nahi.', style: TextStyle(color: C.muted)),
+      if (acts.isEmpty) const Text('No merge / deploy cards.', style: TextStyle(color: C.muted)),
       for (final a in acts)
         Padding(padding: const EdgeInsets.only(bottom: 8), child: DevActionCard(app: widget.app, data: {'action': a}, onDone: _load)),
     ]);
   }
 
   Future<void> _deploy() async {
-    final f = await _form(context, 'Deploy (aapke repo ka apna workflow)', const [
-      ('repo', 'Repo (khaali = default)'),
-      ('workflow', 'Workflow file (khaali = repo mein set wala)'),
-      ('ref', 'Branch (khaali = default)'),
-      ('env', "Input 'env' (ho to)"),
-    ], ok: 'Card banao');
+    final f = await _form(context, 'Deploy (your repo\'s own workflow)', const [
+      ('repo', 'Repo (empty = default)'),
+      ('workflow', 'Workflow file (empty = the one set in the repo)'),
+      ('ref', 'Branch (empty = default)'),
+      ('env', "Input 'env' (if any)"),
+    ], ok: 'Make card');
     if (f == null) return;
     await _run('POST', '/api/devsahayak/deploy_request', {
       for (final k in ['repo', 'workflow', 'ref']) if ((f[k] ?? '').isNotEmpty) k: f[k],
@@ -247,17 +247,17 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
   }
 
   Future<void> _addRepo() async {
-    final f = await _form(context, 'Repo jodo', const [
-      ('repo', 'owner/naam'),
-      ('deploy_workflow', 'Deploy workflow file (workflow_dispatch wala, ho to)'),
-      ('deploy_ref', 'Deploy branch (khaali = default)'),
-    ], ok: 'Jodo');
+    final f = await _form(context, 'Add repo', const [
+      ('repo', 'owner/name'),
+      ('deploy_workflow', 'Deploy workflow file (with workflow_dispatch, if any)'),
+      ('deploy_ref', 'Deploy branch (empty = default)'),
+    ], ok: 'Add');
     if (f == null || (f['repo'] ?? '').isEmpty) return;
     await _run('POST', '/api/devsahayak/repos', f);
   }
 
   Widget _repos() => Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        GlassButton(label: 'Repo jodo', icon: Icons.add_rounded, onTap: _busy ? null : _addRepo),
+        GlassButton(label: 'Add repo', icon: Icons.add_rounded, onTap: _busy ? null : _addRepo),
         const SizedBox(height: 8),
         for (final r in _list(_d?['repos']))
           Glass(
@@ -273,14 +273,14 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
                       [
                         _s(r['default_branch']),
                         if (_s(r['language']).isNotEmpty) _s(r['language']),
-                        r['private'] == true ? 'private' : 'PUBLIC (PR aapki haan se)',
+                        r['private'] == true ? 'private' : 'PUBLIC (PR needs your approval)',
                         if (_s(r['deploy_workflow']).isNotEmpty) 'deploy: ${_s(r['deploy_workflow'])}',
                       ].join(' · '),
                       style: const TextStyle(fontSize: 12, color: C.muted)),
                 ]),
               ),
               IconButton(
-                  tooltip: 'Hatao',
+                  tooltip: 'Remove',
                   icon: const Icon(Icons.delete_outline_rounded),
                   onPressed: _busy ? null : () => _run('DELETE', '/api/devsahayak/repos/${_s(r['repo'])}')),
             ]),
@@ -288,8 +288,8 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
       ]);
 
   Future<void> _token() async {
-    final f = await _form(context, 'GitHub token (sirf yahan)', const [('token', 'Fine-grained token (github_pat_...)')],
-        ok: 'Jodo', obscureFirst: true);
+    final f = await _form(context, 'GitHub token (only here)', const [('token', 'Fine-grained token (github_pat_...)')],
+        ok: 'Add', obscureFirst: true);
     if (f == null || (f['token'] ?? '').isEmpty) return;
     await _run('PUT', '/api/devsahayak/token', {'token': f['token']});
   }
@@ -299,43 +299,43 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       Glass(
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(st['github'] == true ? 'GitHub: ${_s(st['token_label'])}' : 'GitHub juda nahi', style: const TextStyle(fontWeight: FontWeight.w800)),
+          Text(st['github'] == true ? 'GitHub: ${_s(st['token_label'])}' : 'GitHub not linked', style: const TextStyle(fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
-          const Text('Token mein sirf yeh ijazat dijiye (chune hue repos):', style: TextStyle(fontSize: 12.5, color: C.muted)),
+          const Text('Give the token only these permissions (for the chosen repos):', style: TextStyle(fontSize: 12.5, color: C.muted)),
           for (final p in (st['permissions'] as List?) ?? const []) Text('• $p', style: const TextStyle(fontSize: 12.5)),
           const SizedBox(height: 8),
           Row(children: [
-            Expanded(child: GradientButton(label: 'Token daalo', icon: Icons.key_rounded, height: 44, onTap: _busy ? null : _token)),
+            Expanded(child: GradientButton(label: 'Add token', icon: Icons.key_rounded, height: 44, onTap: _busy ? null : _token)),
             const SizedBox(width: 8),
             if (st['github'] == true)
-              Expanded(child: GlassButton(label: 'Hatao', icon: Icons.link_off_rounded, onTap: _busy ? null : () => _run('DELETE', '/api/devsahayak/token'))),
+              Expanded(child: GlassButton(label: 'Remove', icon: Icons.link_off_rounded, onTap: _busy ? null : () => _run('DELETE', '/api/devsahayak/token'))),
           ]),
         ]),
       ),
       const SizedBox(height: 8),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
-        title: const Text('Review seedha post karo (sirf COMMENT)'),
-        subtitle: const Text('Band = har review aapke tap se jata hai. Approve hamesha aapke tap se.'),
+        title: const Text('Post the review directly (COMMENT only)'),
+        subtitle: const Text('Off = every review goes with your tap. Approve is always with your tap.'),
         value: st['review_post'] == 'direct',
         onChanged: _busy ? null : (v) => _run('PUT', '/api/devsahayak/settings', {'review_post': v ? 'direct' : 'draft'}),
       ),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
-        title: const Text('Private repo mein bhi PR se pehle poochho'),
+        title: const Text('Ask first even for a PR in a private repo'),
         value: st['ask_before_pr'] == true,
         onChanged: _busy ? null : (v) => _run('PUT', '/api/devsahayak/settings', {'ask_before_pr': v}),
       ),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
-        title: const Text('PR draft ke roop mein kholo'),
+        title: const Text('Open the PR as a draft'),
         value: st['draft_pr'] == true,
         onChanged: _busy ? null : (v) => _run('PUT', '/api/devsahayak/settings', {'draft_pr': v}),
       ),
       SwitchListTile(
         contentPadding: EdgeInsets.zero,
-        title: const Text('CI workflow files badal sakta hai'),
-        subtitle: const Text('Khatra: workflow repo ki ijazat se chalta hai (supply chain). Token ko Workflows: write bhi chahiye.'),
+        title: const Text('Can change CI workflow files'),
+        subtitle: const Text('Risk: a workflow runs with the repo\'s permissions (supply chain). The token also needs Workflows: write.'),
         value: st['allow_workflows'] == true,
         onChanged: _busy ? null : (v) => _run('PUT', '/api/devsahayak/settings', {'allow_workflows': v}),
       ),
@@ -348,16 +348,16 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
       ]),
       const SizedBox(height: 8),
       GlassButton(
-          label: 'Seemayein aur coding niyam',
+          label: 'Limits and coding rules',
           icon: Icons.rule_rounded,
           onTap: _busy
               ? null
               : () async {
-                  final f = await _form(context, 'Niyam', const [
-                    ('max_files', 'Ek PR mein max files'),
-                    ('max_lines', 'Ek PR mein max lines'),
+                  final f = await _form(context, 'Rules', const [
+                    ('max_files', 'Max files in one PR'),
+                    ('max_lines', 'Max lines in one PR'),
                     ('default_repo', 'Default repo'),
-                    ('rules', 'Coding niyam (style, stack, kya na karein)'),
+                    ('rules', 'Coding rules (style, stack, what not to do)'),
                   ], ok: 'Save', initial: {
                     'max_files': _s(st['max_files']),
                     'max_lines': _s(st['max_lines']),
@@ -385,7 +385,7 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
             onRefresh: _load,
             child: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 90), children: [
               Wrap(spacing: 6, runSpacing: 6, children: [
-                for (final (i, t) in const [(0, 'Kaam'), (1, 'Review'), (2, 'Merge / Deploy'), (3, 'Repos'), (4, 'Niyam')])
+                for (final (i, t) in const [(0, 'Work'), (1, 'Review'), (2, 'Merge / Deploy'), (3, 'Repos'), (4, 'Rules')])
                   ChoiceChip(label: Text(t), selected: _tab == i, onSelected: (_) => setState(() => _tab = i)),
               ]),
               const SizedBox(height: 10),
@@ -393,8 +393,8 @@ class _DevsahayakScreenState extends State<DevsahayakScreen> {
               if (_d == null) const Center(child: CircularProgressIndicator()) else [_work(), _review(), _actions(), _repos(), _rules()][_tab],
               const SizedBox(height: 14),
               const Text(
-                  'Hoola sirf hoola/* branch par kaam karke pull request kholta hai; main par seedha kabhi nahi. Tests aapke GitHub CI mein chalte hain. '
-                  'Merge aur deploy sirf aapke tap se. Token kabhi chat mein mat bhejiye.',
+                  'Hoola works only on a hoola/* branch and opens a pull request; never directly on main. Tests run in your GitHub CI.'
+                  'Merge and deploy only with your tap. Never send the token in chat.',
                   style: TextStyle(color: C.faint, fontSize: 11.5)),
             ]),
           ),
@@ -442,7 +442,7 @@ class _DevTaskPageState extends State<DevTaskPage> {
   Widget build(BuildContext context) {
     final t = _t;
     return Scaffold(
-      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(t == null ? 'Kaam' : '${_s(t['number'])} · ${_s(t['kind_label'])}')),
+      appBar: AppBar(backgroundColor: Colors.transparent, title: Text(t == null ? 'Work' : '${_s(t['number'])} · ${_s(t['kind_label'])}')),
       body: Aurora(
         child: t == null
             ? const Center(child: CircularProgressIndicator())
@@ -457,33 +457,33 @@ class _DevTaskPageState extends State<DevTaskPage> {
                   const SizedBox(height: 8),
                   Wrap(spacing: 8, runSpacing: 8, children: [
                     if ((t['pr_number'] ?? 0) != 0)
-                      GlassButton(label: 'CI dekho', icon: Icons.sync_rounded, onTap: _busy ? null : () => _run('POST', '/api/devsahayak/tasks/${widget.id}/refresh')),
+                      GlassButton(label: 'See CI', icon: Icons.sync_rounded, onTap: _busy ? null : () => _run('POST', '/api/devsahayak/tasks/${widget.id}/refresh')),
                     if (t['status'] == 'checks_failed')
-                      GlassButton(label: 'CI theek karo', icon: Icons.build_rounded, onTap: _busy ? null : () => _run('POST', '/api/devsahayak/tasks/${widget.id}/fix_ci')),
+                      GlassButton(label: 'Fix CI', icon: Icons.build_rounded, onTap: _busy ? null : () => _run('POST', '/api/devsahayak/tasks/${widget.id}/fix_ci')),
                     if (const ['pr_open', 'checks_failed', 'ready', 'refused'].contains(t['status']))
                       GlassButton(
-                          label: 'Badlav bolo',
+                          label: 'Request a change',
                           icon: Icons.edit_note_rounded,
                           onTap: _busy
                               ? null
                               : () async {
-                                  final f = await _form(context, 'Kya badalna hai', const [('text', 'Apne shabdon mein')], ok: 'Bhejo');
+                                  final f = await _form(context, 'What to change', const [('text', 'In your words')], ok: 'Send');
                                   if (f == null || (f['text'] ?? '').isEmpty) return;
                                   await _run('POST', '/api/devsahayak/tasks/${widget.id}/revise', {'text': f['text']});
                                 }),
                     if (const ['pr_open', 'checks_failed'].contains(t['status']))
                       GlassButton(label: 'Merge card', icon: Icons.merge_rounded, onTap: _busy ? null : () => _run('POST', '/api/devsahayak/tasks/${widget.id}/merge_request')),
                     if (_s(t['pr_url']).isNotEmpty)
-                      GlassButton(label: 'GitHub par', icon: Icons.open_in_new_rounded, onTap: () => _open(_s(t['pr_url']))),
+                      GlassButton(label: 'On GitHub', icon: Icons.open_in_new_rounded, onTap: () => _open(_s(t['pr_url']))),
                     if (!const ['merged', 'cancelled'].contains(t['status']))
-                      GlassButton(label: 'Band karo', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _run('POST', '/api/devsahayak/tasks/${widget.id}/cancel')),
+                      GlassButton(label: 'Close', icon: Icons.close_rounded, color: C.bad, onTap: _busy ? null : () => _run('POST', '/api/devsahayak/tasks/${widget.id}/cancel')),
                   ]),
                   const SizedBox(height: 10),
                   if (_s(t['diff']).isNotEmpty) ...[
                     Row(children: [
                       Text('Diff', style: display(14)),
                       const Spacer(),
-                      TextButton(onPressed: () => setState(() => _diff = !_diff), child: Text(_diff ? 'Chhupao' : 'Dikhao')),
+                      TextButton(onPressed: () => setState(() => _diff = !_diff), child: Text(_diff ? 'Hide' : 'Show')),
                       IconButton(
                           tooltip: 'Copy',
                           icon: const Icon(Icons.copy_rounded, size: 18),
@@ -584,17 +584,17 @@ class _DevTaskCardState extends State<DevTaskCard> {
             Text(_s(plan['goal']), style: const TextStyle(fontSize: 13, height: 1.35, fontWeight: FontWeight.w600)),
           ],
           for (final f in _list(plan['files']).take(12))
-            Text('• ${_s(f['path'])}${f['new'] == true ? ' (nayi)' : ''} — ${_s(f['why'])}',
+            Text('• ${_s(f['path'])}${f['new'] == true ? ' (new)' : ''} — ${_s(f['why'])}',
                 style: const TextStyle(fontSize: 12, height: 1.3)),
           if (_list(plan['steps']).isNotEmpty) ...[
             const SizedBox(height: 4),
-            const Text('Kadam', style: TextStyle(fontSize: 12, color: C.muted)),
+            const Text('Step', style: TextStyle(fontSize: 12, color: C.muted)),
             for (var i = 0; i < _list(plan['steps']).length && i < 12; i++)
               Text('${i + 1}. ${_s(_list(plan['steps'])[i])}', style: const TextStyle(fontSize: 12, height: 1.3)),
           ],
           if (_list(plan['done_when']).isNotEmpty) ...[
             const SizedBox(height: 4),
-            const Text('Kaam poora kab mana jayega', style: TextStyle(fontSize: 12, color: C.muted)),
+            const Text('When the task counts as done', style: TextStyle(fontSize: 12, color: C.muted)),
             for (final d in _list(plan['done_when']).take(8))
               Text('✓ ${_s(d)}', style: const TextStyle(fontSize: 12, height: 1.3)),
           ],
@@ -602,7 +602,7 @@ class _DevTaskCardState extends State<DevTaskCard> {
             Text('? ${_s(q)}', style: const TextStyle(fontSize: 12.5, height: 1.3, color: C.warn)),
         ],
         for (final f in _list(t['files']))
-          Text('• ${_s(f['path'])}  +${f['added'] ?? 0} −${f['removed'] ?? 0}${f['new'] == true ? ' (nayi)' : ''}',
+          Text('• ${_s(f['path'])}  +${f['added'] ?? 0} −${f['removed'] ?? 0}${f['new'] == true ? ' (new)' : ''}',
               style: const TextStyle(fontSize: 12, fontFamily: 'monospace')),
         for (final c in _list(t['checks']).take(6))
           Text('⚠ ${_s(c['owasp'])} ${_s(c['path'])}: ${_s(c['say'])}', style: const TextStyle(fontSize: 11.5, color: C.warn)),
@@ -610,15 +610,15 @@ class _DevTaskCardState extends State<DevTaskCard> {
           Text(_s(t['error']), style: const TextStyle(fontSize: 12, color: C.bad)),
         if ((t['pr_number'] ?? 0) != 0 && _s(ci['say']).isNotEmpty)
           Text(_s(ci['say']), style: TextStyle(fontSize: 12.5, color: _ciColor(_s(ci['state'])))),
-        if (_s(t['risk']).isNotEmpty) Text('Khatra: ${_s(t['risk'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(t['risk']).isNotEmpty) Text('Risk: ${_s(t['risk'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         const SizedBox(height: 8),
         if (planWait)
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, shuru karo', icon: Icons.play_arrow_rounded, height: 44, onTap: _busy ? null : _planOk)),
+            Expanded(child: GradientButton(label: 'Yes, start', icon: Icons.play_arrow_rounded, height: 44, onTap: _busy ? null : _planOk)),
             const SizedBox(width: 8),
             Expanded(
                 child: GlassButton(
-                    label: 'Mana',
+                    label: 'Declined',
                     icon: Icons.close_rounded,
                     height: 44,
                     onTap: _busy
@@ -630,11 +630,11 @@ class _DevTaskCardState extends State<DevTaskCard> {
           ])
         else if (ready)
           Row(children: [
-            Expanded(child: GradientButton(label: 'Haan, PR kholo', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : _push)),
+            Expanded(child: GradientButton(label: 'Yes, open the PR', icon: Icons.check_rounded, height: 44, onTap: _busy ? null : _push)),
             const SizedBox(width: 8),
             Expanded(
                 child: GlassButton(
-                    label: 'Mana',
+                    label: 'Declined',
                     icon: Icons.close_rounded,
                     height: 44,
                     onTap: _busy
@@ -647,7 +647,7 @@ class _DevTaskCardState extends State<DevTaskCard> {
         else if (_s(t['pr_url']).isNotEmpty)
           Align(
               alignment: Alignment.centerLeft,
-              child: TextButton.icon(onPressed: () => _open(_s(t['pr_url'])), icon: const Icon(Icons.open_in_new_rounded, size: 16), label: const Text('PR dekho'))),
+              child: TextButton.icon(onPressed: () => _open(_s(t['pr_url'])), icon: const Icon(Icons.open_in_new_rounded, size: 16), label: const Text('See PR'))),
       ]),
     );
   }
@@ -712,17 +712,17 @@ class _DevReviewCardState extends State<DevReviewCard> {
         const SizedBox(height: 8),
         if (draft) ...[
           Wrap(spacing: 6, children: [
-            for (final (e, l) in const [('COMMENT', 'Comment'), ('REQUEST_CHANGES', 'Badlav maango'), ('APPROVE', 'Approve')])
+            for (final (e, l) in const [('COMMENT', 'Comment'), ('REQUEST_CHANGES', 'Request a change'), ('APPROVE', 'Approve')])
               ChoiceChip(label: Text(l), selected: _event == e, onSelected: (_) => setState(() => _event = e)),
           ]),
           const SizedBox(height: 6),
           Row(children: [
-            Expanded(child: GradientButton(label: 'GitHub par post karo', icon: Icons.send_rounded, height: 44, onTap: _busy ? null : _post)),
+            Expanded(child: GradientButton(label: 'Post on GitHub', icon: Icons.send_rounded, height: 44, onTap: _busy ? null : _post)),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Rehne do', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : _discard)),
+            Expanded(child: GlassButton(label: 'Cancel', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : _discard)),
           ]),
         ] else if (_s(r['url']).isNotEmpty)
-          TextButton.icon(onPressed: () => _open(_s(r['url'])), icon: const Icon(Icons.open_in_new_rounded, size: 16), label: const Text('GitHub par dekho')),
+          TextButton.icon(onPressed: () => _open(_s(r['url'])), icon: const Icon(Icons.open_in_new_rounded, size: 16), label: const Text('See on GitHub')),
       ]),
     );
   }
@@ -748,9 +748,9 @@ class _DevActionCardState extends State<DevActionCard> {
     final a = _a;
     String reason = '';
     if (yes && a['needs_force'] == true) {
-      final f = await _form(context, 'CI ${_ciLabel(_s(a['ci_state']))}: phir bhi kyun?', const [('reason', 'Wajah (zaroori)')], ok: 'Phir bhi karo');
+      final f = await _form(context, 'CI ${_ciLabel(_s(a['ci_state']))}: why continue anyway?', const [('reason', 'Reason (required)')], ok: 'Do it anyway');
       if (f == null || (f['reason'] ?? '').length < 8) {
-        if (mounted) _snack(context, 'Kam se kam 8 akshar ki wajah chahiye.');
+        if (mounted) _snack(context, 'A reason of at least 8 characters is needed.');
         return;
       }
       reason = f['reason']!;
@@ -785,30 +785,30 @@ class _DevActionCardState extends State<DevActionCard> {
         ]),
         Text(
             merge
-                ? '${_s(a['repo'])} · ${_s(a['base'])} mein ${_s(a['method'])} · commit ${_s(a['head_sha'])}'
+                ? '${_s(a['repo'])} · ${_s(a['method'])} into ${_s(a['base'])} · commit ${_s(a['head_sha'])}'
                 : '${_s(a['workflow'])} · ${_s(a['ref'])} · commit ${_s(a['head_sha'])}',
             style: const TextStyle(fontSize: 12, color: C.muted)),
         Text(_s(_m(a['ci'])['say']).isEmpty ? _ciLabel(_s(a['ci_state'])) : _s(_m(a['ci'])['say']),
             style: TextStyle(fontSize: 12.5, color: _ciColor(_s(a['ci_state'])))),
         for (final n in (a['notes'] as List?) ?? const []) Text('• $n', style: const TextStyle(fontSize: 12, color: C.warn)),
         if (_m(a['inputs']).isNotEmpty) Text('Inputs: ${_m(a['inputs']).entries.map((e) => '${e.key}=${e.value}').join(', ')}', style: const TextStyle(fontSize: 12)),
-        if (_s(a['force_reason']).isNotEmpty) Text('Phir bhi ki wajah: ${_s(a['force_reason'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
+        if (_s(a['force_reason']).isNotEmpty) Text('Reason for going ahead: ${_s(a['force_reason'])}', style: const TextStyle(fontSize: 12, color: C.muted)),
         if (_s(res['error']).isNotEmpty) Text(_s(res['error']), style: const TextStyle(fontSize: 12, color: C.bad)),
-        if (_s(res['conclusion']).isNotEmpty) Text('Nateeja: ${_s(res['conclusion'])}', style: TextStyle(fontSize: 12.5, color: res['conclusion'] == 'success' ? C.ok : C.bad)),
+        if (_s(res['conclusion']).isNotEmpty) Text('Result: ${_s(res['conclusion'])}', style: TextStyle(fontSize: 12.5, color: res['conclusion'] == 'success' ? C.ok : C.bad)),
         const SizedBox(height: 8),
         if (waiting)
           Row(children: [
             Expanded(
                 child: GradientButton(
-                    label: a['needs_force'] == true ? 'Phir bhi ${merge ? 'merge' : 'deploy'}' : (merge ? 'Haan, merge karo' : 'Haan, deploy karo'),
+                    label: a['needs_force'] == true ? '${merge ? 'Merge' : 'Deploy'} anyway' : (merge ? 'Yes, merge' : 'Yes, deploy'),
                     icon: Icons.check_rounded,
                     height: 44,
                     onTap: _busy ? null : () => _decide(true))),
             const SizedBox(width: 8),
-            Expanded(child: GlassButton(label: 'Mana', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
+            Expanded(child: GlassButton(label: 'Declined', icon: Icons.close_rounded, height: 44, onTap: _busy ? null : () => _decide(false))),
           ])
         else if (_s(res['url']).isNotEmpty)
-          TextButton.icon(onPressed: () => _open(_s(res['url'])), icon: const Icon(Icons.open_in_new_rounded, size: 16), label: const Text('Run dekho')),
+          TextButton.icon(onPressed: () => _open(_s(res['url'])), icon: const Icon(Icons.open_in_new_rounded, size: 16), label: const Text('See run')),
       ]),
     );
   }

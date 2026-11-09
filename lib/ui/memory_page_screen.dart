@@ -54,7 +54,7 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
       });
     } catch (e) {
       if (mounted) setState(() {
-        _note = 'Abhi load nahi ho saka: $e';
+        _note = 'Could not load right now: $e';
         _loaded = true;
       });
     }
@@ -70,7 +70,7 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
         _note = ok;
       });
     } catch (e) {
-      if (mounted) setState(() => _note = 'Nahi ho saka: $e');
+      if (mounted) setState(() => _note = 'Could not do it: $e');
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -84,7 +84,7 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
         _sensitive = sw['sensitive'] == true;
       });
     } catch (e) {
-      if (mounted) setState(() => _note = 'Nahi badla: $e');
+      if (mounted) setState(() => _note = 'Not changed: $e');
     }
   }
 
@@ -93,12 +93,12 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
     final yes = await showDialog<bool>(
       context: context,
       builder: (c) => AlertDialog(
-        title: const Text('Saari yaad mitayein?'),
-        content: const Text('Hoola aapke baare mein jo bhi yaad rakhta hai - facts, yeh page, purani chats ki yaad, kaam '
-            'ke notes - sab mit jayega. Aapki chats nahi mitengi. Yeh wapas nahi hoga.'),
+        title: const Text('Delete all memory?'),
+        content: const Text('Everything Hoola remembers about you - facts, this page, memory of old chats, notes'
+            'about work - will be deleted. Your chats will not be deleted. This cannot be undone.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Nahi')),
-          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Haan, mitao')),
+          TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('No')),
+          FilledButton(onPressed: () => Navigator.pop(c, true), child: const Text('Yes, delete')),
         ],
       ),
     );
@@ -109,10 +109,10 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
       if (!mounted) return;
       setState(() {
         _text.text = '';
-        _note = 'Saari yaad mita di. Aapki chats waise hi hain.';
+        _note = 'All memory deleted. Your chats are as they were.';
       });
     } catch (e) {
-      if (mounted) setState(() => _note = 'Nahi ho saka: $e');
+      if (mounted) setState(() => _note = 'Could not do it: $e');
     }
     if (mounted) setState(() => _busy = false);
   }
@@ -121,19 +121,19 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
   Widget build(BuildContext context) {
     final api = widget.app.api!;
     return Scaffold(
-      appBar: AppBar(title: const Text('Hoola ki yaad')),
+      appBar: AppBar(title: const Text('Hoola\'s memory')),
       body: !_loaded
           ? const Center(child: CircularProgressIndicator())
           : ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 40), children: [
               Glass(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  const Text('Mere baare mein', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
+                  const Text('About me', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16)),
                   const SizedBox(height: 4),
                   Text(
                       _by == 'her'
-                          ? 'Aapne ise badla hai. Hoola aapki baat ko sach maanta hai.'
-                          : 'Hoola ise roz ek baar aapki baaton se likhta hai. Har chat aur call ise padhti hai. '
-                              'Galat ho to yahin sudhaar dijiye.',
+                          ? 'You have edited this. Hoola treats what you wrote as true.'
+                          : 'Hoola writes this once a day from your conversations. Every chat and call reads it.'
+                              'If something is wrong, correct it right here.',
                       style: const TextStyle(color: C.faint, fontSize: 12)),
                   const SizedBox(height: 10),
                   TextField(
@@ -143,25 +143,25 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
                     maxLength: 1600,
                     style: const TextStyle(fontSize: 13.5, height: 1.4),
                     decoration: const InputDecoration(
-                        hintText: 'Abhi khaali hai. Jaise: KAAM - bakery, Pune. PASAND - reports Marathi mein.',
+                        hintText: 'It is empty for now. For example: WORK - bakery, Pune. LIKES - reports in Marathi.',
                         border: OutlineInputBorder()),
                   ),
                   if (_note.isNotEmpty) Text(_note, style: const TextStyle(color: C.teal, fontSize: 12)),
                   const SizedBox(height: 6),
                   Wrap(spacing: 8, runSpacing: 4, children: [
                     FilledButton.icon(
-                      onPressed: _busy ? null : () => _run(() => api.aboutMeSave(_text.text), 'Save ho gaya.'),
+                      onPressed: _busy ? null : () => _run(() => api.aboutMeSave(_text.text), 'Saved.'),
                       icon: const Icon(Icons.check_rounded, size: 18),
                       label: const Text('Save'),
                     ),
                     OutlinedButton.icon(
-                      onPressed: _busy ? null : () => _run(api.aboutMeRebuild, 'Naya likh diya.'),
+                      onPressed: _busy ? null : () => _run(api.aboutMeRebuild, 'Wrote a new one.'),
                       icon: const Icon(Icons.auto_awesome_rounded, size: 18),
-                      label: Text(_busy ? 'Ho raha hai...' : 'Hoola se naya likhwao'),
+                      label: Text(_busy ? 'Working...' : 'Have Hoola write a new one'),
                     ),
                     TextButton(
-                      onPressed: _busy ? null : () => _run(() => api.aboutMeSave(''), 'Saaf kar diya.'),
-                      child: const Text('Saaf karo'),
+                      onPressed: _busy ? null : () => _run(() => api.aboutMeSave(''), 'Cleared.'),
+                      child: const Text('Clear'),
                     ),
                   ]),
                 ]),
@@ -172,25 +172,25 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _auto,
-                    title: const Text('Khud yaad rakhna', style: TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: const Text('Hoola baaton se pakki baatein khud yaad rakhe aur yeh page likhe.',
+                    title: const Text('Remember on its own', style: TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: const Text('Let Hoola remember solid facts from conversations by itself and write this page.',
                         style: TextStyle(fontSize: 12)),
                     onChanged: (v) => _switch(auto: v),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _recall,
-                    title: const Text('Purani chats se yaad', style: TextStyle(fontWeight: FontWeight.w700)),
-                    subtitle: const Text('Hoola pichhli chats dhoondh sake aur yeh page har chat mein padhe.',
+                    title: const Text('Memory from past chats', style: TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: const Text('Let Hoola search past chats and read this page in every chat.',
                         style: TextStyle(fontSize: 12)),
                     onChanged: (v) => _switch(recall: v),
                   ),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     value: _sensitive,
-                    title: const Text('Sensitive baatein bhi', style: TextStyle(fontWeight: FontWeight.w700)),
+                    title: const Text('Sensitive topics too', style: TextStyle(fontWeight: FontWeight.w700)),
                     subtitle: const Text(
-                        'Sehat, dharm, rajneeti jaisi pakki baatein bhi yaad rakhe. Paise, ID number, password kabhi nahi.',
+                        'Let it remember firm facts such as health, religion, politics. Never money, ID numbers or passwords.',
                         style: TextStyle(fontSize: 12)),
                     onChanged: (v) => _switch(sensitive: v),
                   ),
@@ -200,12 +200,12 @@ class _MemoryPageScreenState extends State<MemoryPageScreen> {
               OutlinedButton.icon(
                 onPressed: _busy ? null : _resetAll,
                 icon: const Icon(Icons.delete_sweep_rounded, size: 18),
-                label: const Text('Saari yaad mitao'),
+                label: const Text('Delete all memory'),
               ),
               const SizedBox(height: 12),
               const Text(
-                  'Kisi baat ko bilkul yaad na rakhwana ho? "Aapki chats" mein 🕶 Incognito chat kholiye: wahan ki baatein '
-                  'kahin save nahi hoti. Session (folder) ki baatein usi Session tak rehti hain.',
+                  'Want something not remembered at all? Open a 🕶 Incognito chat in "Your chats": nothing there'
+                  'is saved anywhere. What is said in a Session (folder) stays within that Session.',
                   style: TextStyle(color: C.faint, fontSize: 12)),
             ]),
     );
