@@ -40,7 +40,7 @@ class SantoshPush : FirebaseMessagingService() {
                     if (actionId.isEmpty() || !Store.claim(this, actionId)) return
                     val (ok, detail) = Actions.run(this, payload)
                     postResult(actionId, ok, detail)
-                    if (!ok) Notify.message(this, "Phone par yeh nahi ho paya: $detail", eventId)
+                    if (!ok) Notify.message(this, "This could not be done on the phone: $detail", eventId)
                 }
                 "home_device", "bt_request" -> {
                     val payload = try { JSONObject(d["payload"] ?: "{}") } catch (_: Exception) { JSONObject() }

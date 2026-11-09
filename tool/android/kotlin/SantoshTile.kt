@@ -12,7 +12,7 @@ class SantoshTile : TileService() {
         qsTile?.apply {
             state = Tile.STATE_ACTIVE
             label = "Hoola"
-            if (Build.VERSION.SDK_INT >= 29) subtitle = "Baat karein"
+            if (Build.VERSION.SDK_INT >= 29) subtitle = "Talk"
             updateTile()
         }
     }
