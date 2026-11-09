@@ -1,3 +1,21 @@
+## v0.728.0 SAB ENGLISH wave 1 — Hoola writes and speaks English (9 Nov 2026; owner: "MAKE ENTIRE HOOLA IN ENGLISH - MOST IMPORTANT")
+
+MEASURED first: lines carrying Hinglish words - ~18,700 in server code across ~950 files (prompts, tool status and
+card text, notifications, errors), ~4,200 in the phone app across 217 Dart files, ~370 in the console + Android. Too
+much for one safe change, so waves; wave 1 = what she reads most. ONE SWITCH `hoola_language` (`en` default = English
+everywhere; `auto` = the old rule, answer in her own language and script). `app/lang.py`: `apply()` swaps the system
+prompt's "Reply in the user's language and script ..." sentence and the reply rulebook's "Answer in the language and
+script SHE used ..." rule for "clear, simple English whatever language she writes in; another language only when she
+asks or asks for a translation; names and Indian terms stay as they are" (the rest of the prompt untouched, applied in
+`prompts.system_prompt`); `label()` gives every tool's working-row label in English - all 644 labels translated into
+`agent/labels_en.py` (four parallel helper agents, then checked: same keys, no Hinglish word left), read wherever a
+label is shown (santosh step events, pakka ladder lines, procedures, the voice call's tool line; a tool missing from
+the table shows its name in plain words); `call_lang()` locks a voice call to Indian English (en-IN) and the persona's
+"Spoken Hinglish ..." line becomes "speak simple, warm Indian English ... switch only when she clearly asks". conftest
+pins `HOOLA_LANGUAGE=auto` for the older suites that pin Hinglish text. Tests test_v0728_sab_english.py (7). NEXT WAVES
+(not done): server texts she reads directly (cards, notifications, errors, follow-up lines), the phone app's own
+strings, the model-facing Hinglish nudges and wake texts. NOT VERIFIED live.
+
 ## v0.727.0 VAADA PAKKA — "starting the build now" with nothing started is sent back to do it (9 Nov 2026; owner, screenshot: "I WANT DEMO HERE ONLY NOT FULL BUILD... STOP PAST WORK" -> "...Now starting one fresh, simple demo-only NetMitra build." -> "WHERE TO CHECK THAT" -> "Starting one fresh, simple demo-only NetMitra build now." -> "NOT SHOWING THE CARD ... HOW USER WILL KNOW THAT WORKING IS GOING OR NOT")
 
 The page card (v0.725) appears only when artifact_make runs - and it never ran: the first turn called kaam_status (the

@@ -782,6 +782,12 @@ def persona_prompt(name: str = "Santosh", gender: str = "m") -> str:
             p = p.replace(a, b)
         # her example lines use her own verb forms ("kar deti hoon", "dekhti hoon")
         p = "\n".join(ln if ln.startswith(("User: ", "- You are female")) else gendered(ln, "f") for ln in p.split("\n"))
+    from . import lang as _lang   # v0.728 SAB ENGLISH: the call speaks simple Indian English
+    if _lang.english():
+        p = re.sub(r"- Spoken Hinglish the way people really talk:[^\n]*",
+                   "- Speak simple, warm Indian English in short sentences, whatever language she speaks in; switch only "
+                   "when she clearly asks you to speak another language. Your language is fixed by the LANGUAGE LOCK at "
+                   "the top and the end; it changes only when a 'Language note' says so.", p, count=1)
     # the avatar note goes before "About the user" so {context} stays last
     head, sep, tail = p.rpartition("\n\nAbout the user")
     body = personalise(head, name, gender)
@@ -846,6 +852,10 @@ def live_config(voice: str, lang: str, context: str, handle: str | None, name: s
     from . import voicelang
     st = get_settings()
     tz = life.tz_of(st.tenant_id)
+    from . import lang as _lang   # v0.728 SAB ENGLISH: the call speaks Indian English when Hoola is set to English
+    lang = _lang.call_lang(lang)
+    if _lang.english():
+        langst = voicelang.LangState(lang)
     langst = langst or voicelang.LangState(lang)
     prompt = persona_prompt(name, gender).format(lang=langst.name, now=datetime.now(tz).strftime("%A %d %B %Y, %I:%M %p"), context=context or "(nothing saved yet)")
     # v0.114 the language is the server's decision: Google's lock line + examples at the top AND the end
@@ -3364,7 +3374,9 @@ class Call:
         else:
             from .agent import where   # v0.93 name the place where it REALLY runs (her PC vs own browser)
             shown = where.shown(name, args, self._place(str(args.get("task") or ""))) if name != "santosh_kaam" else name
-            raw = f"{self.name} kaam kar {'rahi' if self.gender == 'f' else 'raha'} hai" if name == "santosh_kaam" else TOOL_LABELS.get(shown, shown)   # wave 13 her avatar's own form
+            from . import lang as _lang   # v0.728 SAB ENGLISH
+            raw = ((f"{self.name} is working on it" if _lang.english() else f"{self.name} kaam kar {'rahi' if self.gender == 'f' else 'raha'} hai")
+                   if name == "santosh_kaam" else _lang.label(shown))   # wave 13 her avatar's own form
         label = gendered(raw, self.gender)
         await self.send_json({"type": "tool", "label": label, "state": "running"})
         from . import livework

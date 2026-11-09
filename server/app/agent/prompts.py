@@ -558,4 +558,5 @@ def system_prompt(dry_run: bool, context: str = "", tenant: str | None = None, f
     if gender == "f":   # wave 13: the chat prompt's own example lines in her avatar's forms (the voice prompt had this)
         from ..avatar.service import gendered as _gd
         _body = _gd(_body, "f")
-    return personalise(_body, name, gender) + f"\nToday: {when}. The exact current time is given with her newest message." + mode + ctx + learned + job + ids
+    from .. import lang as _lang   # v0.728 SAB ENGLISH: the language rules set to English
+    return _lang.apply(personalise(_body, name, gender)) + f"\nToday: {when}. The exact current time is given with her newest message." + mode + ctx + learned + job + ids

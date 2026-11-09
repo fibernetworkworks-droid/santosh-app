@@ -63,4 +63,4 @@ def test_a_promise_with_no_tool_at_all_is_pushed_to_do_it(gz, monkeypatch):  # n
 
 def test_version():
     from app.main import APP_VERSION
-    assert APP_VERSION.startswith("0.727.0")
+    assert APP_VERSION.split(".")[1] >= "727"

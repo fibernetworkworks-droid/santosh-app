@@ -130,7 +130,8 @@ def lessons_for(tenant: str, tool: str, error: str, limit: int = 2) -> list[dict
 def _label(tool: str) -> str:
     try:
         from .tools import TOOL_LABELS
-        return TOOL_LABELS.get(tool, tool.replace("_", " "))
+        from .. import lang as _lang
+        return _lang.label(tool)
     except Exception:
         return tool
 

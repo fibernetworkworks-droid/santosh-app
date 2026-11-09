@@ -170,7 +170,8 @@ def _after_turn(tenant, user_text, calls, used, ok, actor):
     from .agent.tools import TOOL_LABELS
 
     def label_for(tool: str) -> str:
-        return TOOL_LABELS.get(tool, tool.replace("_", " "))
+        from . import lang as _lang
+        return _lang.label(tool)
     steps, seen = [], set()
     for c in good:                                         # each tool once, in the order it first worked
         if c["tool"] in seen:

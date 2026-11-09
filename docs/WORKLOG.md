@@ -2567,3 +2567,10 @@ Task ID: v0.727.0 VAADA PAKKA
 Ask: no card when she asked for the rebuild - Hoola only said "starting".
 Built: promise guard catches subject-less English promises and runs on tool-less turns too.
 Deploy: the usual vps-ops ritual; healthz must grep 0.727.0.
+
+
+---
+Task ID: v0.728.0 SAB ENGLISH wave 1
+Ask: make the entire Hoola English.
+Built: hoola_language switch; English reply rules; 644 English step labels; voice calls in Indian English. Next waves: server card/notification texts, phone app strings.
+Deploy: the usual vps-ops ritual; healthz must grep 0.728.0.

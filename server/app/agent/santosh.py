@@ -1311,6 +1311,12 @@ def _ask_steps(req: str) -> tuple[str, list[str]]:
     return (head.strip(" .") or req), parts[:8]
 
 
+def _lang_label(name: str) -> str:
+    """v0.728 SAB ENGLISH: the working-row label in English when Hoola is set to English."""
+    from .. import lang as _lang
+    return _lang.label(name)
+
+
 def _aage_promised(text: str) -> bool:
     from . import aage as _aage
     return _aage.promised(text)
@@ -1906,7 +1912,7 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
             from . import where as _where   # v0.93 the card / work line name the place where it REALLY runs
             shown = _where.shown(b["name"], args_in, getattr(ctx, "place", "") or _where.working(conversation_id))
             label = gendered(mcp_live.label(b["name"], mcp_route, mcp_snap) if b["name"] in mcp_route
-                             else TOOL_LABELS.get(shown, shown), gender)
+                             else _lang_label(shown), gender)
             bus.publish(conversation_id, "step", {"tool": shown, "label": label, "state": "running", "id": b["id"],
                                                   "args": livework.args_brief(args_in)})   # v0.171 masked, display-safe
             _work(conversation_id, b["id"], shown, label, "start", args_in)
