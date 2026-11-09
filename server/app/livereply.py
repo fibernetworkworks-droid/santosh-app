@@ -86,6 +86,66 @@ def _safe_end(raw: str) -> int:
     return max(0, end)
 
 
+DRAFT_S = 0.4          # parity Phase 6: a page being written reaches the panel about this often
+DRAFT_MAX = 300_000
+
+
+def draft_on() -> bool:
+    try:
+        return bool(get_settings().chat_artifact_direct)
+    except Exception:
+        return False
+
+
+_ESC = {'"': '"', "\\": "\\", "/": "/", "b": "\b", "f": "\f", "n": "\n", "r": "\r", "t": "\t"}
+
+
+def _json_str_prefix(src: str, start: int) -> tuple[str, bool]:
+    """The decoded JSON string that starts at src[start] (just after its opening quote), as far as it is written.
+    Returns (text, complete)."""
+    out: list[str] = []
+    i, n = start, len(src)
+    while i < n:
+        ch = src[i]
+        if ch == '"':
+            return "".join(out), True
+        if ch != "\\":
+            out.append(ch)
+            i += 1
+            continue
+        if i + 1 >= n:
+            break                      # an escape cut in half: wait for the rest
+        e = src[i + 1]
+        if e == "u":
+            hx = src[i + 2:i + 6]
+            if len(hx) < 4:
+                break
+            try:
+                out.append(chr(int(hx, 16)))
+            except ValueError:
+                pass
+            i += 6
+            continue
+        out.append(_ESC.get(e, e))
+        i += 2
+    return "".join(out), False
+
+
+def draft_fields(args: str) -> dict[str, str]:
+    """The fields of a half-written `artifact` call (partial JSON): content as far as it is written, the short ones
+    only when complete."""
+    import re as _re
+    out: dict[str, str] = {}
+    for key in ("action", "title", "type", "artifact_id", "content"):
+        m = _re.search(r'"%s"\s*:\s*"' % key, args or "")
+        if not m:
+            continue
+        val, done = _json_str_prefix(args, m.end())
+        if done or key == "content":
+            out[key] = val
+    return out
+
+
 class Live:
     def __init__(self, conversation_id: str, tenant: str):
         self.conv, self.tenant = conversation_id, tenant
@@ -209,6 +269,27 @@ class Live:
     def partial(self) -> str:
         """What she saw of the block being written (cleaned), e.g. when she stopped it."""
         return clean(self.tenant, self.raw).strip() if self.raw else ""
+
+    def feed_tool(self, index: int, name: str, args: str) -> None:
+        """parity Phase 6: the `artifact` tool's arguments while the model writes them - the page's content so far
+        goes to the console's panel (`artifact_draft`, live-only, never stored), cleaned like the words. About every
+        0.4 s; the stored version (the `artifact` card) replaces it the moment the call completes."""
+        if name != "artifact" or not draft_on():
+            return
+        tnow = time.monotonic()
+        last = getattr(self, "_dlast", {})
+        if tnow - last.get(index, 0.0) < DRAFT_S:
+            return
+        d = draft_fields(args)
+        if d.get("action") == "update" or not d.get("content"):
+            return                     # an exact edit is tiny: the ready card shows it
+        last[index] = tnow
+        self._dlast = last
+        STATS["drafts"] = STATS.get("drafts", 0) + 1
+        bus.publish_live(self.conv, "artifact_draft", {
+            "turn": self.turn, "idx": int(index), "title": d.get("title", "")[:120], "type": d.get("type") or "html",
+            "action": d.get("action") or "create", "artifact_id": d.get("artifact_id", "")[:40],
+            "text": clean(self.tenant, d["content"][:DRAFT_MAX]), "chars": len(d["content"])})
 
     def feed_say(self, line: str) -> None:
         """v0.187 one short true line about what a tool just really returned, shown while the next model call

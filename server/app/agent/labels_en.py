@@ -20,6 +20,7 @@ LABELS_EN = {
     'app_review_dekho': 'Viewing the app review',
     'archassist': 'Doing architect office work',
     'archassist_dekho': 'Viewing the project file',
+    'artifact': 'Writing the page',
     'artifact_list': 'Looking at your pages',
     'artifact_make': 'Building the page',
     'artist_manager': 'Doing artist management work',

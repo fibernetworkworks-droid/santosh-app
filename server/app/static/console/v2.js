@@ -950,8 +950,8 @@ function pageCard(p, live) {
   let sub, acts = '', below = '';
   if (building) {
     const cur = Math.max(1, PAGE_STEPS.findIndex(x => x[0] === stage));
-    sub = `<span data-step>${esc(PAGE_STEPS[cur][1])}</span><span class="sep">·</span><span class="hp-clock" data-clock>${t0 ? pageClock((Date.now() + skew - t0) / 1000) : '0:00'}</span><span class="sep">·</span><span>usually 20–90 s</span>`;
-    acts = '<button class="btn soft" type="button" data-stop>Stop</button>';
+    sub = `<span data-step>${esc(PAGE_STEPS[cur][1])}</span><span class="sep">·</span><span class="hp-clock" data-clock>${t0 ? pageClock((Date.now() + skew - t0) / 1000) : '0:00'}</span><span class="sep">·</span><span>${p.draft ? `${Number(p.chars || 0).toLocaleString('en-IN')} characters` : 'usually 20–90 s'}</span>`;
+    acts = p.draft ? '' : '<button class="btn soft" type="button" data-stop>Stop</button>';
     below = '<div class="hp-bar" aria-hidden="true"><span></span></div><div class="hp-steps">' + PAGE_STEPS.map((x, i) =>
       `<span class="hp-st${i < cur ? ' done' : i === cur ? ' now' : ''}"><span class="ic">${i < cur ? '✓' : ''}</span>${esc(x[1])}</span>`).join('') + '</div>';
   } else if (failed) {
@@ -988,7 +988,21 @@ function pageCard(p, live) {
   scrollDown();
 }
 
+/* parity Phase 6: while the chat model writes a page in its tool call, its card shows Writing + the size so far; the
+   stored version's own card takes its place (an edit of an existing page updates that page's card in place). */
+const DRAFT_T0 = new Map();
+function draftCard(p) {
+  const key = p.artifact_id || ('draft:' + p.turn + ':' + p.idx);
+  if (!DRAFT_T0.has(key)) DRAFT_T0.set(key, new Date().toISOString());
+  pageCard({id: key, draft: true, status: 'building', stage: 'writing', title: p.title || 'Page', chars: p.chars,
+            started_at: DRAFT_T0.get(key), now: new Date().toISOString()}, false);
+}
+function endDraftCards(p) {
+  DRAFT_T0.delete(p.id);
+  if (p.status === 'ready') for (const [k, el] of [...CARDS]) if (k.startsWith('artifact:draft:')) { el.remove(); CARDS.delete(k); DRAFT_T0.delete(k.slice(9)); }
+}
 function renderCard(kind, p, at, live) {
+  if (kind === 'artifact' && p && p.id && !p.draft) endDraftCards(p);
   if (kind === 'artifact' && p && p.id) { pageCard(p, live); return; }
   if(PROGRESS_POLICY.quiet(kind,p)){if(live)simpleProgress(kind,p);return;}
   if (B && B.kinds.has(kind)) { const el = cardShell(kind, p); B.card(kind, p, el, !!live); scrollDown(); return; }
@@ -1257,6 +1271,7 @@ function onEvent(ev) {
       $('#stageCap').textContent = p.text || 'Working…'; return;
     }
     case 'think': landing(false); thinkEvent(p); return;   // v0.171 the model's reasoning, live in its card
+    case 'artifact_draft': landing(false); draftCard(p); PN?.draft?.(p); return;   // parity Phase 6: a page being written
     default: landing(false); renderCard(ev.kind, p, ev.at, true);
       if (/ask|approval|draft|_sign|quote|confirm|knock/.test(ev.kind)) refreshPending();
   }
@@ -1505,7 +1520,7 @@ addEventListener('resize', drawRail);
 /* ================= one stream for all her chats (CHAT_SESSIONS; on with CONSOLE_V2) ================= */
 // kinds that belong to their own chat only (events.LOCAL_KINDS). v0.227.4 a card of another chat never lands in the open chat;
 // that chat gets the unread dot instead (Today still counts every approval)
-const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'message', 'upload',
+const LOCAL = new Set(['typing', 'step', 'work', 'log', 'reply_start', 'delta', 'delta_reset', 'reply_end', 'think', 'say', 'artifact_draft', 'message', 'upload',
   'reminders', 'routines', 'lists', 'email_sent', 'hoola_update', 'galla', 'mshop', 'office', 'employee', 'darzi_order',
   'phonedoc_open', 'phonedoc_check', 'device_action', 'device_action_result', 'home_device', 'bt_request', 'bazar_open',
   'bazar_link', 'gyaan_sources', 'memory_saved', 'memory_used', 'procedure', 'compact', 'open', 'link', 'call_receipt', 'speaker', 'voice',

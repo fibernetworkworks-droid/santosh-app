@@ -309,6 +309,9 @@ class Settings(BaseSettings):
     browser_wait_seconds: int = 20          # v0.86 how long a chat turn waits before "I'll message you when done" (was 150)
     pc_wait_seconds: int = 12               # v0.86 same for the PC operator (the chat stays free for new questions)
     artifact_wait_seconds: int = 20         # v0.86 same for pages (the card opens when ready)
+    chat_artifact_direct: bool = True       # parity Phase 6: the chat model writes pages itself (tool `artifact`: create /
+                                            # update old->new / rewrite, a version per change, streamed into the panel);
+                                            # artifact_make (the separate builder) only for a 'polish / studio quality' ask
     hoola_language: str = "en"              # v0.728 SAB ENGLISH: en = Hoola writes and speaks English; auto = her own language
     quick_lane: bool = False                # v0.86 answer new chat messages at once while a long job runs. v0.724 CLAUDE
                                             # JAISA: off - a smaller no-tools brain answered from 10 lines and the pair was

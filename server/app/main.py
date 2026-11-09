@@ -15430,6 +15430,19 @@ def artifact_stop(aid: str, tenant: str = Depends(current_tenant)):
     return {"stopped": artifacts.stop(tenant, aid)}
 
 
+@app.post("/api/artifacts/{aid}/undo", dependencies=[Depends(require_key)])
+def artifact_undo(aid: str, tenant: str = Depends(current_tenant)):
+    """parity Phase 6: Undo in the panel - the version before the newest comes back as a new version."""
+    from . import artifacts
+    try:
+        r = artifacts.undo(tenant, aid)
+    except artifacts.EditError as e:
+        raise HTTPException(409, str(e))
+    if r is None:
+        raise HTTPException(404, "Not found")
+    return r
+
+
 @app.delete("/api/artifacts/{aid}", dependencies=[Depends(require_key)])
 def artifact_delete(aid: str, tenant: str = Depends(current_tenant)):
     from . import artifacts
