@@ -173,19 +173,19 @@ def test_hard_step_decays_after_an_hour(monkeypatch):
 
 def test_followup_greeting_opens_with_the_news():
     g = greeting("default", "m", followup="sheet update ho gayi thi, 12 rows")
-    assert "natija aaya tha" in g and "sheet update ho gayi thi, 12 rows" in g
-    assert "EK chhoti line" in g                  # the news comes FIRST, in one short line
+    assert "a job result came in" in g and "sheet update ho gayi thi, 12 rows" in g
+    assert "ONE short line" in g                  # the news comes FIRST, in one short line
 
 
 def test_fresh_greeting_allows_continuity():
     g = greeting("default", "m")
-    assert "HOOLA KI YAAD" in g and "wahi kaam pe chalte hain" in g
+    assert "HOOLA KI YAAD" in g and "carry on with that work" in g
     assert "do not bring up anything from before" not in g   # the amnesia order is GONE
 
 
 def test_continuation_greeting_unchanged():
     g = greeting("default", "m", continuation="aakhri poori baat: pizza order karna tha")
-    assert "KOI NAYA CALL NAHI" in g
+    assert "NOT A NEW CALL" in g
 
 
 def test_run_uses_drop_then_followup():
@@ -306,7 +306,7 @@ def test_note_result_on_closed_call_becomes_a_followup(monkeypatch):
 
 def test_quiet_notes_pending_at_end_are_saved(monkeypatch):
     src = open(voice.__file__).read()
-    assert "_quiet_pending" in src and "call ke ant tak yeh notes useh nahi bataye ja sake" in src
+    assert "_quiet_pending" in src and "these notes could not be told to her" in src
 
 
 def test_followup_notes_roundtrip(env):

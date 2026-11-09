@@ -171,10 +171,10 @@ def test_abandoned_dial_writes_no_note(env):
 
 def test_greeting_continuation_vs_fresh(env):
     cont = greeting("default", "m", continuation="aakhri poori baat: march.xlsx ke rows")
-    assert "NAYA CALL NAHI HAI" in cont and "march.xlsx" in cont
+    assert "NOT A NEW CALL" in cont and "march.xlsx" in cont
     assert "good morning" not in cont.lower()
     fresh = greeting("default", "m")
-    assert "NAYA CALL NAHI HAI" not in fresh
+    assert "NOT A NEW CALL" not in fresh
     assert "The call just connected" in fresh
 
 

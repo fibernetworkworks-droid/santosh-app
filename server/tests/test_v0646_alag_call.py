@@ -85,14 +85,14 @@ def test_memory_both_ways(env):
     _save("chatD", "assistant", [{"type": "text", "text": "Theek hai"}], display="Theek hai")
     cid = callconv.open_for(T, "chatD", "")
     blk = callconv.chat_block(cid)                # chat -> call
-    assert "CHAT MEIN HAAL HI MEIN" in blk and "4 baje" in blk
+    assert "RECENT IN THE CHAT" in blk and "4 baje" in blk
     assert callconv.chat_block("chatD") == ""     # a chat turn does not read itself this way
     callconv.save_summary(cid, "📞 Call ka hisaab (3 min): Sharma ji ko mail\nHo gaya: mail bheja", 180)
     with session() as s:
         c = s.get(Conversation, cid)
         assert c.title == "📞 Sharma ji ko mail" and c.call_seconds == 180
     rb = callconv.recent_block(T, "chatD")        # call -> chat
-    assert "HAAL KI CALLS" in rb and "Sharma ji ko mail" in rb
+    assert "RECENT CALLS" in rb and "Sharma ji ko mail" in rb
     assert callconv.recent_block(T, cid) == ""    # a call record's own turns do not list calls
     rows = callconv.recent(T)
     assert rows[0]["id"] == cid and rows[0]["seconds"] == 180

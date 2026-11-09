@@ -130,7 +130,7 @@ def test_delivery_end_rides_last(env):
 def test_ack_clip_filename_carries_generation():
     f = voice._ack_file("Puck", "m", 3)
     assert f.name == "Puck_m_3_a3.pcm" and f.parent == voice.ACK_DIR
-    assert voice._ACK_GEN == "a3"   # v0.250 a2 -> a3: every clip re-rendered through the read-aloud check
+    assert voice._ACK_GEN == "a4"   # v0.250 a2 -> a3: every clip re-rendered through the read-aloud check
 
 
 # ---------------- the kaamwatch rider grew a breath ----------------
