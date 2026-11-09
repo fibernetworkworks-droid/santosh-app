@@ -43,7 +43,7 @@ class AlarmActivity : Activity() {
         root.addView(text(intent.getStringExtra("time") ?: "", 72f, true))
         root.addView(text(intent.getStringExtra("label") ?: "Alarm", 22f, false, .95f))
         val stop = Button(this).apply {
-            text = "Band karo"
+            text = "Stop"
             textSize = 20f
             setTextColor(Color.parseColor("#4C1D95"))
             background = GradientDrawable().apply { cornerRadius = 40 * d; setColor(Color.WHITE) }

@@ -248,7 +248,7 @@
         <service
             android:name=".HoolaRecognition"
             android:exported="true"
-            android:label="Hoola (phone ki awaaz pehchaan)">
+            android:label="Hoola (phone voice recognition)">
             <intent-filter>
                 <action android:name="android.speech.RecognitionService" />
                 <category android:name="android.intent.category.DEFAULT" />

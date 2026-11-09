@@ -68,10 +68,10 @@ object VideoShrink {
 
     fun run(ctx: Context, path: String, targetMb: Int, clipMs: Long = 0, done: (String?, String?) -> Unit) {
         main.post {
-            if (job != null) { done(null, "ek video pehle se chhoti ho rahi hai"); return@post }
+            if (job != null) { done(null, "another video is already being shrunk"); return@post }
             try {
                 val src = File(path)
-                if (!src.exists()) { done(null, "file nahi mili"); return@post }
+                if (!src.exists()) { done(null, "file not found"); return@post }
                 var durMs = 0L
                 var fps = 30f
                 try {
@@ -85,14 +85,14 @@ object VideoShrink {
                         release()
                     }
                 } catch (_: Exception) {}
-                if (durMs <= 0) { done(null, "video ki lambai pata nahi chali"); return@post }
+                if (durMs <= 0) { done(null, "could not read the video length"); return@post }
                 val useMs = if (clipMs in 1 until durMs) clipMs else durMs
                 if (useMs > maxMs(targetMb)) { done(null, "too_long:${maxMs(targetMb)}"); return@post }
                 jobDone = done
                 passBase = 0; passSpan = 100
                 start(ctx, src, targetMb, useMs, if (useMs < durMs) useMs else 0L, fps, 1.0, safe = false, pass = 1)
             } catch (e: Exception) {
-                finish(null, "video chhota nahi ho paya (${e.javaClass.simpleName})")
+                finish(null, "could not shrink the video (${e.javaClass.simpleName})")
             }
         }
     }
@@ -136,7 +136,7 @@ object VideoShrink {
                         main.post { start(ctx, src, targetMb, useMs, clipMs, fps, again, safe, 2) }
                         return
                     }
-                    if (size > limit) { out.delete(); finish(null, "chhota karke bhi 25 MB se badi hai"); return }
+                    if (size > limit) { out.delete(); finish(null, "still bigger than 25 MB after shrinking"); return }
                     finish(out.absolutePath, null)
                 }
 
@@ -148,7 +148,7 @@ object VideoShrink {
                         main.post { start(ctx, src, targetMb, useMs, clipMs, 30f, scale, safe = true, pass = pass) }
                         return
                     }
-                    finish(null, "video chhota nahi ho paya (${exportException.errorCodeName})")
+                    finish(null, "could not shrink the video (${exportException.errorCodeName})")
                 }
             })
             .build()
