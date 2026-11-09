@@ -317,6 +317,9 @@ def blockers(r: Site) -> list[str]:
     blanks = (chk.get("scores") or {}).get("blanks", 0)
     if blanks:
         out.append(f"{blanks} jagah [blank] baaki hai - preview mein Hoola ki sample value dikh rahi hai (phone / daam / naam jo pata nahi tha); asli bata dijiye, phir live")
+    samples = (chk.get("scores") or {}).get("samples", 0)     # v0.714 app screens drawn with sample rows
+    if samples:
+        out.append(f"{samples} app screen abhi sample data dikha rahi hai - asli list judne ke baad hi live")
     if r.status != "ready":
         out.append(f"website abhi '{r.status}' hai")
     if not r.version:

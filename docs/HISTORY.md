@@ -23207,3 +23207,39 @@ FIX:
 Cost / time: one Opus plan call (+ at most one deepen) before the looks on every Build ask - about 1-3 minutes longer.
 Tests: test_v0709_plan_shape.py grows 3 (brochure gets its own plan and no data draft, the fallback, the section prompt) and
 the Build-mode test now expects every ask planned. NOT VERIFIED on her server yet.
+
+
+## v0.714.0 SCREENS FIRST - a system is planned, built and previewed from its real screens (owner: "STILL SAME :: CHECK HOW LOVABLE AND EMERGENT HANDLE THIS SMOOTHLY... DO DEEP RESEARCH" -> "GO" on points 1 + 2)
+
+ROOT CAUSE (after v0.709-v0.712 made the plan the site's structure): every page was still BUILT from a marketing-only
+section library (hero, services, pricing, reviews...) and the three looks were only the home top - a hero written with
+HERO_LOOK_NOTE ("strong, distinct") plus two sections. A school portal's preview was therefore a landing page whatever
+the plan said. The research (Lovable / Emergent): they start from the app's real screens and routes, fill them with mock
+data that does not feel hollow, and show those first; the marketing page is optional.
+
+1. APP SCREENS (`site/taxonomy.py` SCREENS, merged into SECTIONS with `screen: True`, `is_screen()`): screen_dashboard,
+   screen_table, screen_form, screen_detail, screen_board, screen_calendar, screen_approvals, screen_signin,
+   screen_settings, 3 designs each. The marketing library's 300 designs and `check()` are unchanged (screens counted
+   apart); `sitemap.section_lines()` lists them on their own "APP SCREENS" line.
+2. THE ARCHITECT plans with them: ARCH_SYSTEM "SCREENS FIRST" paragraph, data screens are screen_* types (custom only
+   when none fits), a new `main_screen` field; `clean()` keeps it via `_main_screen()` (her pick if it names a page with
+   screens, else the first member / any page with screens; only web_app / portal / marketplace); `checks()` adds "a main
+   screen built from app screens" for systems (so a thin plan goes back in the deepen round); the Studio plan's page
+   card shows a "Main screen" pill.
+3. SCREENS FIRST in `site_plan()`: a system's home = a compact front door (`APP_FRONT_DOOR`, her architect's own hero line
+   kept in front of it) + the main screen's screen sections + the rest of the home (types once, max 8); no screen at
+   all -> a dashboard. plan.spec carries main_screen + main_title. Brochures unchanged.
+4. THE LOOKS: `service.is_app_plan()`; `_look_sections()` puts screens first and always shows at least one (even at
+   SITE_LOOK_SECTIONS=1); the look's top is written with `AI.APP_LOOK_NOTE` (an app front door, no photo, no slogan).
+5. THE WRITER: `_section_prompt()` adds `AI.SCREEN_NOTE` for a screen: a real working screen in
+   `<div class="hoola-screen" data-hoola-screen="TYPE" data-sample>`, a visible "Sample data" chip, 4-8 believable Indian
+   sample rows as plain text, styled inputs but no <form>, never a password / OTP / card field, sign-in = Hoola's widget.
+6. HONEST: sample rows never go live as fact - `checks.py` counts `[data-sample]` (scores.samples) and
+   `hosting.blockers()` holds launch with "N app screen abhi sample data dikha rahi hai".
+
+Tests: NEW test_v0714_screens_first.py (5); test_v0709_plan_shape.py fixture moved to the new truth (mark-attendance is a
+screen_table and the main screen; the home's second section is that screen; the looks show "Data table").
+NOT YET (points 3 + 4 of the research, waiting for her word): a clarify card with up to 4 skippable questions; the build
+order (screens with sample data -> real data + rules wired into the screens -> a browser walk of each main journey with a
+fix round). Until point 4, a portal's sample screens block launch - said plainly in the launch blockers.
+NOT VERIFIED on a real Opus build on her server.

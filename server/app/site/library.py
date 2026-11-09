@@ -133,7 +133,7 @@ def counts() -> dict[str, int]:
     f = fields()
     return {"fields": len(f), "industries": len(T.INDUSTRIES), "goals": len(T.GOALS), "styles": len(T.STYLES),
             "briefs": len(f) * len(T.GOALS) * len(T.STYLES),
-            "section_designs": sum(len(s["variants"]) for s in T.SECTIONS.values()),
+            "section_designs": sum(len(s["variants"]) for k, s in T.SECTIONS.items() if k not in T.SCREENS),
             "motion_presets": len(T.MOTION_PRESETS), "palettes": len(T.PALETTES), "font_pairs": len(T.FONTS),
             "hero_types": len(T.HEROES), "phrases": len(phrases())}
 

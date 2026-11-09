@@ -44,7 +44,8 @@ PORTAL = {
         {"slug": "my-child", "title": "My child", "purpose": "fees + attendance of her child", "for": "member",
          "sections": [{"type": "custom", "name": "Fee status", "design": "paid / due rows"}]},
         {"slug": "mark-attendance", "title": "Mark attendance", "purpose": "teacher marks the class", "for": "staff",
-         "sections": [{"type": "custom", "name": "Class register", "design": "today's class list with present / absent"}]}],
+         "sections": [{"type": "screen_table", "design": "Class register: today's class list with present / absent"}]}],
+    "main_screen": "mark-attendance",
     "flows": [{"name": "Online admission", "who": "Parent", "steps": ["opens Admissions", "fills the form", "office reviews", "parent sees the decision"]},
               {"name": "Daily attendance", "who": "Teacher", "steps": ["signs in", "opens Mark attendance", "marks the class", "parents see it"]}],
     "features": {"shop": False, "blog": False, "booking": False, "languages": ["hi"]},
@@ -142,8 +143,7 @@ def test_build_this_plan_builds_the_plans_own_structure(deep_env):
     assert slugs[:4] == ["home", "admissions", "fee-structure", "contact"]                   # the PLAN's pages, in order
     assert not {"about", "services", "gallery", "reviews"} & set(slugs)                      # not the library's marketing set
     home = plan["pages"][0]
-    assert [x["type"] for x in home["sections"]][:2] == ["hero", "custom_quick_actions"] or \
-        home["sections"][1]["label"] == "Quick actions"
+    assert [x["type"] for x in home["sections"]][:3] == ["hero", "screen_table", "custom_quick_actions"]   # v0.714 main screen first
     assert "PORTAL FRONT DOOR" in home["sections"][0]["design"]
     from app.site import architect as AR                                                     # a page with no sections: library fallback
     base = {"pages": [{"slug": "home", "sections": []}], "cta": "call"}
@@ -165,7 +165,7 @@ def test_build_this_plan_builds_the_plans_own_structure(deep_env):
     st = get_settings()
     old, st.site_look_sections = st.site_look_sections, 3
     try:
-        assert [s["label"] for s in S._look_sections(r)][:1] == ["Quick actions"]           # the looks show the plan's top
+        assert [s["label"] for s in S._look_sections(r)][:1] == ["Data table"]           # the looks show the plan's top
     finally:
         st.site_look_sections = old
 
