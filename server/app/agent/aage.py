@@ -30,6 +30,15 @@ _PROMISE = re.compile(
     r"|(?:रहा|रही)\s+(?:हूँ|हूं)|(?:करता|करती|देखता|देखती)\s+(?:हूँ|हूं)|(?:करूँगा|करूंगा|करूँगी|करूंगी)",
     re.I)
 
+# v0.727 the same promise with no "I": "Now starting one fresh, simple demo-only build." / "Starting the build now." /
+# "Rebuilding it now." - her NetMitra chat ended twice on such a line with no build ever started (no card, no work)
+_PROMISE_LEAD = re.compile(
+    r"^(?:(?:ok(?:ay)?|so|and|now|right|great|sure|theek\s+hai|ab|abhi),?\s+)*"
+    r"(?:starting|building|rebuilding|creating|making|working\s+on|setting\s+up|launching|preparing|generating|"
+    r"restarting|kicking\s+off|writing|drafting|fetching|pulling|running|opening|searching|looking\s+into|"
+    r"moving\s+on\s+to|on\s+it)\b",
+    re.I)
+
 # the turn really waits on her: never pushed back to work
 _WAITS_ON_HER = re.compile(
     r"\?|intezaar|intzaar|wait(?:ing)?\s+for\s+(?:you|your)|aap(?:ka|ke|ki)?\s+(?:jawab|haan|tap|otp|reply)|"
@@ -49,7 +58,7 @@ def promised(text: str) -> bool:
     last = parts[-1] if parts else t
     if _WAITS_ON_HER.search(last):
         return False
-    return bool(_PROMISE.search(last))
+    return bool(_PROMISE.search(last) or _PROMISE_LEAD.search(last.strip(" -–—*_")))
 
 
 NUDGE = ("[System: tumne abhi likha ki aage kaam kar rahe ho, par koi tool call nahi kiya - is tarah kaam yahin ruk "

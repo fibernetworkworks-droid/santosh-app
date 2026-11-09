@@ -2560,3 +2560,10 @@ Task ID: v0.726.0 PAGE CARD NARROW
 Ask: page card messy when the side panel narrows the chat.
 Built: card sizes by its own width (container query); browser test at 4 widths that fails on the old CSS.
 Deploy: the usual vps-ops ritual; healthz must grep 0.726.0; hard refresh the console.
+
+
+---
+Task ID: v0.727.0 VAADA PAKKA
+Ask: no card when she asked for the rebuild - Hoola only said "starting".
+Built: promise guard catches subject-less English promises and runs on tool-less turns too.
+Deploy: the usual vps-ops ritual; healthz must grep 0.727.0.

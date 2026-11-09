@@ -1,3 +1,19 @@
+## v0.727.0 VAADA PAKKA — "starting the build now" with nothing started is sent back to do it (9 Nov 2026; owner, screenshot: "I WANT DEMO HERE ONLY NOT FULL BUILD... STOP PAST WORK" -> "...Now starting one fresh, simple demo-only NetMitra build." -> "WHERE TO CHECK THAT" -> "Starting one fresh, simple demo-only NetMitra build now." -> "NOT SHOWING THE CARD ... HOW USER WILL KNOW THAT WORKING IS GOING OR NOT")
+
+The page card (v0.725) appears only when artifact_make runs - and it never ran: the first turn called kaam_status (the
+stop) and ended on a promise, the second ran no tool at all and repeated it. ROOT CAUSE in the v0.311 AAGE BADHO guard
+(`agent/aage.py`, the check that sends a "more work" line back to the model to actually do it): (1) `_PROMISE` knew
+first-person forms ("dekh raha hoon", "karunga", "I'll", "let me", "I'm building") but not an English line with no
+subject - "Now starting one fresh ... build.", "Starting ... now.", "Rebuilding it now.", "On it."; (2) the nudge in
+`santosh._run_turn` was gated on `ran_tools`, so a reply that ran nothing was never checked. FIX: `_PROMISE_LEAD`
+(a sentence that OPENS with starting / building / rebuilding / creating / working on / setting up / launching /
+preparing / generating / restarting / kicking off / writing / fetching / running / opening / searching / on it, after
+optional now / ok / so / ab / abhi), and the nudge runs whatever the turn did. Unchanged: a last sentence that waits on
+her (a question, a card, an OTP) is never a promise; at most 2 nudges a turn. Tests test_v0727_vaada_pakka.py (11: her
+two lines + 3 more caught, 4 finished answers / questions left alone, her second turn replayed: nudged once, then the
+work runs). test_v0186's max-tokens case got one more scripted reply (its line "Shuru kar raha hoon ..." is a promise
+with no tool and is now nudged, as it should be). NOT VERIFIED live.
+
 ## v0.726.0 PAGE CARD NARROW — the page card stays clean when the side panel narrows the chat (9 Nov 2026; owner, screenshot: "CHECK WHEN SIDE SECTION WIDTH MOVES --- THE CARD GET MESSY FIX THIS")
 
 v0.725's page card used a VIEWPORT media query for its narrow layout, but opening the side panel narrows the chat column

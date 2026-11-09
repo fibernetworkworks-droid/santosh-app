@@ -245,6 +245,8 @@ def test_max_tokens_cut_continues_exactly_where_it_stopped(gz, monkeypatch):  # 
     brain = _set_brain(monkeypatch, FakeBrain([
         ([txt("Shuru kar raha hoon, pehle data —")], "max_tokens"),
         ([txt("Shuru kar raha hoon, pehle data — phir draft, phir check.")], "end_turn"),
+        # v0.727 that line is a promise with no tool: the guard asks once more, the job's honest answer follows
+        ([txt("Data, draft, phir check - teeno ho gaye.")], "end_turn"),
     ]))
     from app.agent.santosh import run_turn
     out = asyncio.run(run_turn(conv, "kaam shuru karo", tenant_id="default"))

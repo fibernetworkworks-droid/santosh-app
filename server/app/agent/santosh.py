@@ -1852,7 +1852,9 @@ async def _steps_inner(conversation_id: str, ctx: Ctx, gender: str, history: lis
                     state["goal"] = g
                     state["goal_nudges"] = state.get("goal_nudges", 0) + 1
                     nudge = _goal.nudge_text(g)
-            if not nudge and ran_tools and getattr(settings, "agent_aage", True) \
+            # v0.727 a promise with NO tool at all is checked too: "Starting one fresh build now." after "where do I
+            # check that" ran nothing and nothing ever started (was gated on ran_tools)
+            if not nudge and getattr(settings, "agent_aage", True) \
                     and conversation_id not in _stopped and not state.get("halted"):
                 # v0.311 AAGE BADHO: a text-only reply that only PROMISES more work ("ab doosra hissa dekh raha
                 # hoon") is not a finished job - before, the loop took it as the answer and nothing more ran
