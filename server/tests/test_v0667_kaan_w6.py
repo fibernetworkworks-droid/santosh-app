@@ -352,7 +352,7 @@ def test_row_dict_carries_pinned(w6_env):
 
 def test_registry_and_enum_untouched(w6_env):
     from app.agent.tools import TOOLS
-    assert len(TOOLS) == 616, "W6 adds dials, not tools (608 = 607 + their duniya v0.667 growth)"
+    assert len(TOOLS) == 617, "616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). W6 adds dials, not tools (608 = 607 + their duniya v0.667 growth)"
     assert len(_ACTIONS) == 18 and "export" in _ACTIONS and "to_gyaan" in _ACTIONS
     props = KAAN_TOOLS[0]["input_schema"]["properties"]
     assert props["diarize"]["enum"] == ["", "pause_turns", "voiceprint"]
@@ -376,4 +376,4 @@ def test_no_new_tables():
 
 def test_app_version():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.712.0"
+    assert APP_VERSION == "0.713.0"

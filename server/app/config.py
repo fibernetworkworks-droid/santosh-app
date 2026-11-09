@@ -376,6 +376,10 @@ class Settings(BaseSettings):
                                            # tips on the system prompt + the done-needs-proof backstop + the
                                            # (Kaam: ...) ledger note - no tool, no key, no network
     kaam_ledger_enabled: bool = True       # ... the ledger note alone can go quiet without touching the rest
+    seekh_enabled: bool = True             # v0.713 SEEKH MANCH: learn a way of working from a video (the
+    seekh_max_per_day: int = 20            # `seekh_video` tool): the Gemini eyes watch, Claude distills the
+    seekh_file_max_mb: int = 200           # steps with [m:ss] evidence, and they land in the two memories
+    seekh_file_max_s: int = 1800           # that already ship (procedures + operator recipe drafts) - off = off
     voice_adapt: bool = True               # v0.119 her own pauses / style / words / mis-hearings shape the call
     site_model: str = "claude-opus-5-5"     # v0.121 Website Sahayak: model that designs and writes every section
     site_edit_model: str = ""              # v0.121 small website edits ('' = anthropic_model)
