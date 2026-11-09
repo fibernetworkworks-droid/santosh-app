@@ -1,3 +1,44 @@
+## v0.713.0 SEEKH MANCH — learn a way of working from a video (9 Nov 2026; owner: "NOW LETS WORK ON A HOOLA AI AGENT THAT WILL SEE THE YOUTUBVIDEO FROM LINK, SHORTS, MP4 OR ANY VIDEO FORMAT. EXAMPLE FEELING THE FORM OR ANY WORK --- AI WILL LEARN THAT TRAIN ITSELF KEEP IN MEMORY AND IF TASK GIVEN RELATED TO IT IT WILL PERFORM SMOOTHLY" + "GO" on the SEEKH MANCH plan; built as v0.711.0, their SIRF JO POOCHA CHAT took v0.711.0 and their HAR PROMPT KA PLAN took v0.712.0 while it sat built — REBASE PROTOCOL onto their tip, all kept)
+
+She sends a video — a YouTube link, a Shorts, an MP4 she attached, a direct video URL — and says "isse
+seekh lo". Hoola watches it, writes down the way of working as steps (each stamped with the [m:ss]
+moment it was seen at), and keeps them in the two memories that already ship: "Seekhe hue kaam" (the
+procedures list — `hint()` reads it into every owner turn) and, for website work, the computer
+operator's recipe box as a **draft** (`find()` reads it at every job start). Weeks later a related ask
+finds the learned way already suggested; the operator follows the draft as a guide, checking every step
+against the live page — and the first real run that works **overwrites the draft with reality**
+(`from_trace`, versioned, `.v1` backup kept). Learned is never claimed as proven until then.
+
+- **THE BRIDGE, NOT A SECOND BRAIN** — the perception doors, the memories and the replay all shipped
+  before this; SEEKH adds only the middle. ONE new tool `seekh_video` (family `seekh`, registry 616 →
+  617). NEW `server/app/seekh.py` (~330 LOC: classify → perceive → distill → store, pure functions, lazy
+  imports) + `agent/seekh_tools.py` + `procedures.save_video`. Zero new pip, zero new keys, the frozen
+  PC zone untouched (pinned by test).
+- **THE LAWS** (tested): every distilled step carries ≥1 `[m:ss]` evidence timestamp or is demoted to
+  `gotchas`; no literal personal value survives anywhere (3+ digit runs masked, filled values become
+  `{variables}` with hints — the same law as operator recipes and procedures); a draft recipe has
+  `runs=0`, a DRAFT note, and never clobbers a proven recipe (it sits beside it as "<name> (video)");
+  caps (20 watches/day, file ≤ 200 MB and ≤ 30 min, YouTube ≤ 3 h like `youtube_watch`) and the
+  `seekh_enabled` kill switch (off = the tool errors honestly, the prompt bullet is family-gated away).
+- **THE HONEST LADDER** — watched → distilled → *(one real run worked)* → "smoothly". The tool's reply
+  always says "seekh liya — pehle ek baar sahi se chal ke dekhein" until `wins ≥ 1`; `unsure` and low
+  confidence are surfaced, never hidden.
+- **ROUTING** — admit `EXTRA_KEYS["seekh"]` + an INTENTS entry where the learn word must sit next to a
+  video word, so "kya seekha" (the list), "banana sikhao" (the build family) and `hoola_seekha` (voice
+  style) keep their own lanes (pinned by test).
+- Tests: `test_v0713_seekh_manch.py` (40, zero network — the perception and distill doors patched at
+  the module seam; born as v0711 in the collision round, ships as v0713). Neighbours green on the
+  merged tree: kaam 32, kala 34, webclone 21, officehours 30, console frames 14, kaan_w5 23,
+  leads_scale 30+1 skip, duniya 39, jharokha 27, aep1 10, w35 17, basics 4; test_v063_learning's 4
+  reds WORKTREE-PROVEN pre-existing on pristine origin/main (environment class, recorded not swept).
+  Version rituals `scripts/ritual_0711.py` + `ritual_0711_finish.py` (the pre-collision pair, kept as
+  the record — the first run's registry-clause insert broke 29 string literals by closing an
+  already-open quote; the finisher's regex repaired all 29 and py_compile proved zero breakage) and
+  this `scripts/ritual_0713.py` (the collision re-ship: their v0.712 base + my carried files, all four
+  registry-pin syntaxes handled, py_compile over every test file). Deploy: the owner's vps-ops
+  dispatch; healthz must grep 0.713.0.
+
+
 ## v0.694.0 WEB CLONE — point at a website, get a clean Next.js rebuild with its endpoints documented (8 Nov 2026; owner: "DOES ALL WORK DONE -- DOES NOW HOOLA AI WILL CLONE ANY WEBSITE PERFECTLY" -> the deploy ask "PERFECT IS IT DEPLOYED"; built as 0.621.0, their chain took 0.621.0-0.693.0 while it sat built, and the sandbox recycle ate the first rebuild mid-flight — the rebuilt-from-spec lane)
 
 ONE new tool, `web_clone` (family webclone, tools 615 -> 616), in three stages:
@@ -23166,3 +23207,39 @@ FIX:
 Cost / time: one Opus plan call (+ at most one deepen) before the looks on every Build ask - about 1-3 minutes longer.
 Tests: test_v0709_plan_shape.py grows 3 (brochure gets its own plan and no data draft, the fallback, the section prompt) and
 the Build-mode test now expects every ask planned. NOT VERIFIED on her server yet.
+
+
+## v0.714.0 SCREENS FIRST - a system is planned, built and previewed from its real screens (owner: "STILL SAME :: CHECK HOW LOVABLE AND EMERGENT HANDLE THIS SMOOTHLY... DO DEEP RESEARCH" -> "GO" on points 1 + 2)
+
+ROOT CAUSE (after v0.709-v0.712 made the plan the site's structure): every page was still BUILT from a marketing-only
+section library (hero, services, pricing, reviews...) and the three looks were only the home top - a hero written with
+HERO_LOOK_NOTE ("strong, distinct") plus two sections. A school portal's preview was therefore a landing page whatever
+the plan said. The research (Lovable / Emergent): they start from the app's real screens and routes, fill them with mock
+data that does not feel hollow, and show those first; the marketing page is optional.
+
+1. APP SCREENS (`site/taxonomy.py` SCREENS, merged into SECTIONS with `screen: True`, `is_screen()`): screen_dashboard,
+   screen_table, screen_form, screen_detail, screen_board, screen_calendar, screen_approvals, screen_signin,
+   screen_settings, 3 designs each. The marketing library's 300 designs and `check()` are unchanged (screens counted
+   apart); `sitemap.section_lines()` lists them on their own "APP SCREENS" line.
+2. THE ARCHITECT plans with them: ARCH_SYSTEM "SCREENS FIRST" paragraph, data screens are screen_* types (custom only
+   when none fits), a new `main_screen` field; `clean()` keeps it via `_main_screen()` (her pick if it names a page with
+   screens, else the first member / any page with screens; only web_app / portal / marketplace); `checks()` adds "a main
+   screen built from app screens" for systems (so a thin plan goes back in the deepen round); the Studio plan's page
+   card shows a "Main screen" pill.
+3. SCREENS FIRST in `site_plan()`: a system's home = a compact front door (`APP_FRONT_DOOR`, her architect's own hero line
+   kept in front of it) + the main screen's screen sections + the rest of the home (types once, max 8); no screen at
+   all -> a dashboard. plan.spec carries main_screen + main_title. Brochures unchanged.
+4. THE LOOKS: `service.is_app_plan()`; `_look_sections()` puts screens first and always shows at least one (even at
+   SITE_LOOK_SECTIONS=1); the look's top is written with `AI.APP_LOOK_NOTE` (an app front door, no photo, no slogan).
+5. THE WRITER: `_section_prompt()` adds `AI.SCREEN_NOTE` for a screen: a real working screen in
+   `<div class="hoola-screen" data-hoola-screen="TYPE" data-sample>`, a visible "Sample data" chip, 4-8 believable Indian
+   sample rows as plain text, styled inputs but no <form>, never a password / OTP / card field, sign-in = Hoola's widget.
+6. HONEST: sample rows never go live as fact - `checks.py` counts `[data-sample]` (scores.samples) and
+   `hosting.blockers()` holds launch with "N app screen abhi sample data dikha rahi hai".
+
+Tests: NEW test_v0714_screens_first.py (5); test_v0709_plan_shape.py fixture moved to the new truth (mark-attendance is a
+screen_table and the main screen; the home's second section is that screen; the looks show "Data table").
+NOT YET (points 3 + 4 of the research, waiting for her word): a clarify card with up to 4 skippable questions; the build
+order (screens with sample data -> real data + rules wired into the screens -> a browser walk of each main journey with a
+fix round). Until point 4, a portal's sample screens block launch - said plainly in the launch blockers.
+NOT VERIFIED on a real Opus build on her server.

@@ -2467,3 +2467,20 @@ Ask: every prompt still gives a landing-page plan after v0.710.
 Found: Build mode (the default) only used the architect for portal words; everything else = library page set.
 Fixed: every Build ask planned by the architect (Opus), brochure no data draft, fallback, section prompt neutral.
 Not verified live.
+
+---
+Task ID: v0.713.0 SEEKH MANCH (re-ship; built as 0.711, their SIRF JO POOCHA CHAT took 0.711 and HAR PROMPT KA PLAN took 0.712 - REBASE PROTOCOL onto their tip, all kept)
+Agent: Claude (web session)
+Ask: "NOW LETS WORK ON A HOOLA AI AGENT THAT WILL SEE THE YOUTUBVIDEO FROM LINK, SHORTS, MP4 OR ANY VIDEO FORMAT ... AI WILL LEARN THAT TRAIN ITSELF KEEP IN MEMORY AND IF TASK GIVEN RELATED TO IT IT WILL PERFORM SMOOTHLY" + "GO" on the SEEKH MANCH plan.
+Built: ONE tool seekh_video (616 -> 617, family seekh); server/app/seekh.py (classify -> Gemini perceive -> Claude distill -> store) + agent/seekh_tools.py + procedures.save_video; operator recipe DRAFTS through the public Memory.save format (runs=0, proven recipes never clobbered); evidence law, digit masking, value variables, day/size/length caps, seekh_enabled switch; routing words kept off 'kya seekha' / 'banana sikhao' / hoola_seekha; 40 offline tests (test_v0713_seekh_manch.py, born v0711 in the collision round).
+Deploy: the owner's vps-ops dispatch; healthz must grep 0.713.0.
+
+
+---
+Task ID: v0.714.0 SCREENS FIRST
+Agent: Claude (web studio session)
+Task: owner "GO" on research points 1 + 2 - app-screen section types + screens-first plans and looks.
+Work: taxonomy.SCREENS (9 types), architect main_screen + SCREENS FIRST prompt + depth check, site_plan home = front door +
+main screen, looks show screens (APP_LOOK_NOTE), SCREEN_NOTE for the writer, [data-sample] counted + launch blocker,
+Studio "Main screen" pill; test_v0714_screens_first.py (5), v0709 fixture updated.
+Deploy: vps-ops deploy; healthz must read 0.714.0.

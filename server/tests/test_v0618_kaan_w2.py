@@ -254,7 +254,7 @@ def test_real_ffmpeg_decode_when_present(live_env):
 
 # ---------------------------------------------------------------- (4) the wiring + laws
 def test_actions_grew_registry_did_not():
-    assert len(tools.TOOLS) == 616, "608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
+    assert len(tools.TOOLS) == 617, "616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). 608 + 1 kala (v0.681 KALA MANCH: the T5 knowledge-skill catalog family, owner 'GO' on the google/skills deploy plan). " "607 + 1 duniya (v0.667 DUNIYA MANCH: the T4 keyless-public-web family, owner 'T4'). " "606 + 1 jharokha (v0.665 JHAROKHA MANCH: the T3 local-browser family). " + PIN
     spec = [t for t in tools.TOOLS if t["name"] == "kaan"][0]
     acts = spec["input_schema"]["properties"]["action"]["enum"]
     assert acts == ["transcribe", "diarize", "minutes", "status", "list", "get", "search",
@@ -304,4 +304,4 @@ def test_live_module_purity_and_laziness():
 
 def test_version_pin_v0618():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.712.0"
+    assert APP_VERSION == "0.714.0"

@@ -1238,6 +1238,7 @@ def _section_prompt(r: Site, slug: str, s: dict[str, Any], others: list[str], ex
         ("FREE-FORM SECTION (v0.330): no library pattern - design it from scratch for exactly this purpose, as a top studio "
          "would; use the interactive pieces (tabs, carousel, filter, toggle, calc) when they make it work better."
          if s["type"] not in T.SECTIONS else ""),
+        AI.SCREEN_NOTE.replace("@@TYPE@@", s["type"]) if T.is_screen(s["type"]) else "",
         f"Other sections on this page (don't repeat them): {', '.join(others) or 'none'}.",
         f"LANGUAGE: {_lang_line(_j(r.languages, ['en'])[0])}.",
         f"DESIGN TOKENS chosen: style {r.style}, colours {json.dumps({k: tk.get(k) for k in ('bg', 'surface', 'ink', 'primary', 'accent')})}, "
@@ -1360,7 +1361,16 @@ def _look_sections(r: Site) -> list[dict[str, Any]]:
     plan = _j(r.plan, {})
     home = next((p for p in plan.get("pages", []) if p["slug"] == "home"), {"sections": []})
     ok = (lambda t: T.is_section(t)) if plan.get("spec") else (lambda t: t in T.SECTIONS)   # v0.708 the plan's own customs
-    return [s for s in home.get("sections", []) if s["type"] != "hero" and ok(s["type"])][:n - 1]
+    rest = [s for s in home.get("sections", []) if s["type"] != "hero" and ok(s["type"])]
+    if is_app_plan(plan):                      # v0.714 SCREENS FIRST: a system's looks show its main screen, filled
+        rest = [s for s in rest if T.is_screen(s["type"])] + [s for s in rest if not T.is_screen(s["type"])]
+        n = max(n, 2)
+    return rest[:n - 1]
+
+
+def is_app_plan(plan: dict[str, Any]) -> bool:
+    sp = plan.get("spec") if isinstance(plan.get("spec"), dict) else {}
+    return bool(sp) and sp.get("kind") in APP_SITE_KINDS
 
 
 def _in_ctx(fn):
@@ -1434,6 +1444,7 @@ def _make_looks(r: Site) -> None:
 
     # wave 2: every look's hero + page-top sections at the same time
     hero_d = _home_hero(_j(r.plan, {}))       # v0.708 the plan's own front door, not the library's marketing hero
+    app_look = is_app_plan(_j(r.plan, {}))    # v0.714 a system's look = its front door + its main screen
     jobs = [(i, {"type": "hero", "design": hero_d or briefs[i]["designs"].get("hero") or T.HEROES[briefs[i]["hero"]]}, True)
             for i in range(len(styles))] + [(i, s, False) for i in range(len(styles)) for s in more]
     secs: list[dict[str, dict[str, Any]]] = [{} for _ in styles]
@@ -1450,7 +1461,8 @@ def _make_looks(r: Site) -> None:
             return
         k = sec_key("home", sec["type"])
         try:
-            out = (write_section(views[i], "home", sec, [], AI.HERO_LOOK_NOTE, live={"look": i}) if hero else
+            out = (write_section(views[i], "home", sec, [], AI.APP_LOOK_NOTE if app_look else AI.HERO_LOOK_NOTE,
+                                 live={"look": i}) if hero else
                    write_section(views[i], "home", sec, [x for x in labels if x != T.label_of(sec)], live={"look": i}))
         except Exception as e:
             if hero:

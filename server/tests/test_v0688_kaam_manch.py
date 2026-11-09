@@ -216,7 +216,7 @@ def test_ledger_switch_alone_can_go_quiet(monkeypatch):
 def test_registry_unchanged_615():
     # KAAM MANCH adds ZERO tools (it is a laws layer, not a family): the count the v0.681/v0.687
     # pins carry stays exactly what their ships left
-    assert len(TOOLS) == 616, "v0.688 KAAM MANCH must not add tools"
+    assert len(TOOLS) == 617, "616 + 1 seekh_video (v0.713 SEEKH MANCH: the learn-from-video bridge tool, owner 'GO' on the SEEKH MANCH plan). v0.688 KAAM MANCH must not add tools"
 
 
 def test_no_kaam_tool_registered():
@@ -250,9 +250,9 @@ def test_fresh_interpreter_import_inert():
 
 def test_app_version_pin():
     from app.main import APP_VERSION
-    assert APP_VERSION == "0.712.0"                        # conscious-bump guard: moves with every release
+    assert APP_VERSION == "0.714.0"                        # conscious-bump guard: moves with every release
 
 
 def test_pubspec_pin():
     pub = (ROOT / "pubspec.yaml").read_text()
-    assert "version: 0.712.0+711" in pub
+    assert "version: 0.714.0+713" in pub
