@@ -2588,8 +2588,8 @@ Built: notifications, server chat lines, cards / approvals / errors, approval ti
 Deploy: the usual vps-ops ritual; healthz must grep 0.729.0.
 
 ---
-Task ID: v0.730.0 SAB ENGLISH wave 3 + phone
+Task ID: v0.731.0 SAB ENGLISH wave 3 + phone (built as 0.730; their SHILP MANCH took 0.730.0)
 Ask: GO PHONE and GO WAVE 3 -- in parallel.
 Built: phone app (Dart + Kotlin + manifest) English, model-facing prompts / tool descriptions / nudges / voice persona English; i18n lookup keys kept; 9 worktree agents, merged + compared against v0.729.0.
 Incident: shared /tmp/pytest-of-root filled the disk (0 MB); deleted with the owner's OK.
-Deploy: the usual vps-ops ritual; healthz must grep 0.730.0; the APK build is the first compile of the phone text.
+Deploy: the usual vps-ops ritual; healthz must grep 0.731.0; the APK build is the first compile of the phone text.
