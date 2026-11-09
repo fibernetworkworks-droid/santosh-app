@@ -40,7 +40,7 @@ def test_studio_is_its_own_app():
     assert not (CONSOLE / "webdev.js").exists() and "webdev.js" not in v2h and 'id="v-webdev"' not in v2h
     assert "location.assign('/console/web'" in v2 and "HoolaWebDev" not in v2
     # Build | Plan, and both start with the three full looks
-    assert "api('POST', '/api/site-architect', {words: text" in js and "api('POST', '/api/sites', {brief: text" in js
+    assert "api('POST', '/api/site-architect', {words: text" in js and "const body = {brief: text" in js and "api('POST', '/api/sites', body)" in js
     assert "/plan`, {conversation_id: conv}" in js and "/approve`, {hash: d.hash" in js and "/revise`, {words: t}" in js
     assert "/look`, {index: LOOK" in js and "data-dev" in js and "tablet" in js
     # her own thread per site, never the home chat; every server value through esc(); colours only as #hex
