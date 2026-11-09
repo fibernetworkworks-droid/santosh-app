@@ -110,3 +110,14 @@ def test_sample_data_never_goes_live_and_the_studio_marks_the_main_screen(env):
     assert H.blockers(r) == []
     js = open(__import__("pathlib").Path(__file__).parents[1] / "app/static/console/webstudio.js", encoding="utf-8").read()
     assert "pill('Main screen', 'ok')" in js
+
+
+def test_a_crashing_plan_never_kills_the_build_tap(site_env, monkeypatch):
+    from app.site import architect as AR
+    from app.site import service as S
+
+    def boom(*a, **k):
+        raise RuntimeError("model door exploded")
+    monkeypatch.setattr(AR, "draft", boom)
+    v = AR.build_now(T, "Sharma Sweets mithai dukaan ki website")
+    assert v["say"].startswith("Gehra plan abhi nahi bana") and S._load(v["id"]) is not None

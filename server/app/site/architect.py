@@ -859,6 +859,10 @@ def build_now(tenant: str, words: str, conv: str = "") -> dict[str, Any]:
         log.warning("build mode: architect plan failed, plain site path: %s", e)
         v = S.new(tenant, words, conv)
         return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
+    except Exception:                            # v0.715 any other failure of the plan never kills her Build tap
+        log.exception("build mode: architect plan crashed, plain site path")
+        v = S.new(tenant, words, conv)
+        return {**v, "say": "Gehra plan abhi nahi bana; seedha website bana rahi hoon. " + (v.get("say") or "")}
     got = approve(tenant, c["id"], c["hash"], None, conv)
     v = S.view(S._load(got["site"]))
     return {**v, "spec": c["id"], "spec_number": c["number"], "say": got["say"]}
