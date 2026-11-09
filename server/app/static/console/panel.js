@@ -13,7 +13,7 @@ const $ = s => document.querySelector(s);
 const appEl = $('#app'), box = $('#panel');
 const TABS = [];          // {key, item, el, blobs: [], frame, aid, ver, view}
 let CUR = null;
-const ICON = {page: '📄', website: '🌐', app: '📱', image: '🖼', video: '🎬', audio: '🎵', pdf: '📕', doc: '📝', sheet: '📊',
+const ICON = {page: '📄', draft: '✏️', website: '🌐', app: '📱', image: '🖼', video: '🎬', audio: '🎵', pdf: '📕', doc: '📝', sheet: '📊',
               slides: '📽', text: '📃', file: '📎'};
 
 /* ---------- what can open ---------- */
@@ -151,6 +151,7 @@ function selectionIn(el) {
 function render(t) {
   const it = t.item;
   if (it.type === 'page') return renderPage(t);
+  if (it.type === 'draft') return renderDraft(t);
   if (it.type === 'website' || it.type === 'app') return renderPreview(t);
   if (it.url) return renderUrlVideo(t);
   return renderFile(t);
@@ -161,7 +162,7 @@ async function renderPage(t) {
   const it = t.item; t.aid = it.ref; t.view = 'preview';
   t.el.innerHTML = bar(t, `<select class="pnsel" aria-label="Version"></select>
       <div class="bseg" role="group" aria-label="View"><button type="button" data-v="preview" aria-pressed="true">Preview</button><button type="button" data-v="code" aria-pressed="false">Code</button></div>
-      ${devSeg(false)}<span class="sp"></span><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
+      ${devSeg(false)}<span class="sp"></span><button type="button" class="btn soft" data-a="undo" hidden title="Go back to the version before">Undo</button><button type="button" class="btn soft" data-a="share">Share</button><button type="button" class="btn soft" data-a="dl">Download</button>`)
     + `<div class="pnerr" hidden></div><div class="pnview"></div>
     <form class="pnchg"><input placeholder="What should change? (you can select part of the code too)" aria-label="Change request"><button class="btn go" type="submit">Edit</button></form>`;
   const sel = q(t, '.pnsel'), view = q(t, '.pnview');
@@ -170,7 +171,12 @@ async function renderPage(t) {
     t.ver = d.version; it.title = d.title || it.title; drawTabs();
     sel.innerHTML = (d.versions || []).map(v => `<option value="${v.version}">v${v.version}${v.note ? ' · ' + esc(String(v.note).slice(0, 40)) : ''}</option>`).join('');
     sel.value = String(t.ver);
+    q(t, '[data-a="undo"]').hidden = !((d.versions || []).length > 1);   // parity Phase 6: Undo = the version before, as a new version
   } catch (e) { view.innerHTML = err(e.message); return; }
+  q(t, '[data-a="undo"]').addEventListener('click', async e => {
+    const b = e.currentTarget; b.disabled = true;
+    try { const r = await api('POST', `/api/artifacts/${encodeURIComponent(t.aid)}/undo`); toast(`Back to the earlier version (now v${r.version}).`); renderPage(t); }
+    catch (er) { toast(er.message, true); b.disabled = false; } });
   sel.addEventListener('change', () => { t.ver = +sel.value; pageView(t); });
   q(t, '.bseg').addEventListener('click', e => { const b = e.target.closest('[data-v]'); if (!b) return; t.view = b.dataset.v;
     qa(t, '.bseg button').forEach(x => x.setAttribute('aria-pressed', x === b)); pageView(t); });
@@ -193,8 +199,9 @@ async function pageView(t) {
   try {
     if (t.view === 'code') {
       const s = await api('GET', `/api/panel/pages/${encodeURIComponent(t.aid)}/source?version=${t.ver}`);
-      view.innerHTML = `<div class="pncodebar"><button type="button" class="btn soft" data-copy-code>Copy</button></div>` + code(s.html, 'html');
-      view.querySelector('[data-copy-code]').addEventListener('click', async e => { try { await navigator.clipboard.writeText(s.html); e.target.textContent = 'Copied ✓'; } catch { toast('Could not copy', true); } });
+      const src = s.source ?? s.html, lang = s.kind === 'markdown' ? 'md' : (s.kind || 'html');   // parity Phase 6: what was written
+      view.innerHTML = `<div class="pncodebar"><button type="button" class="btn soft" data-copy-code>Copy</button></div>` + code(src, lang);
+      view.querySelector('[data-copy-code]').addEventListener('click', async e => { try { await navigator.clipboard.writeText(src); e.target.textContent = 'Copied ✓'; } catch { toast('Could not copy', true); } });
       return;
     }
     const v = await api('GET', `/api/panel/pages/${encodeURIComponent(t.aid)}/view?version=${t.ver}`);
@@ -314,9 +321,62 @@ async function renderFile(t) {
   } catch (e) { view.innerHTML = err(e.message); }
 }
 
+/* parity Phase 6: a page the chat model is WRITING (artifact_draft, live only) grows in its own tab; the stored
+   version replaces the tab the moment it is ready. The draft runs NO scripts (sandbox="" + the console's own CSP):
+   it shows the layout as it is written, and the real page (scripts and all) opens from the server when saved. */
+const DRAFTS = new Map();   // draft key -> {t, at, pending}
+function draftKey(p) { return p.artifact_id ? 'a:' + p.artifact_id : 'n:' + p.turn + ':' + p.idx; }
+function draftDoc(p) {
+  const x = String(p.text || ''), ty = p.type || 'html';
+  if (ty === 'html') return x;
+  if (ty === 'svg') return `<!doctype html><body style="margin:0;display:grid;place-items:center;min-height:95vh">${x}</body>`;
+  return `<!doctype html><body style="font:15px/1.6 system-ui,sans-serif;padding:16px"><pre style="white-space:pre-wrap">${esc(x)}</pre></body>`;
+}
+function drawDraft(t) {
+  const p = t.item.draft || {}, f = t.el.querySelector('.pnframe'), c = q(t, '[data-dchars]');
+  if (c) c.textContent = `${Number(p.chars || 0).toLocaleString('en-IN')} characters`;
+  if (f) f.srcdoc = draftDoc(p);
+}
+function renderDraft(t) {
+  t.el.innerHTML = bar(t, `<span class="hp-pill work"><span class="d"></span>Writing</span><span class="faint" data-dchars></span><span class="sp"></span>`)
+    + `<div class="pnview"></div>`;
+  const f = document.createElement('iframe');
+  f.className = 'pnframe'; f.title = t.item.title; f.setAttribute('sandbox', ''); f.setAttribute('referrerpolicy', 'no-referrer');
+  t.el.querySelector('.pnview').appendChild(browserFrame(f, `${t.item.title} · writing…`)); t.frame = null;
+  drawDraft(t);
+}
+function draft(p) {
+  if (!p || p.text == null) return;
+  const dk = draftKey(p), ref = 'draft:' + dk, title = p.title || 'Page';
+  let d = DRAFTS.get(dk);
+  if (!d) {
+    open({type: 'draft', ref, title, draft: p});
+    d = {t: TABS.find(x => x.key === 'draft:' + ref), at: Date.now(), pending: null};
+    DRAFTS.set(dk, d); return;
+  }
+  if (!d.t || d.t.closed) return;          // she closed the draft tab: it stays closed
+  d.t.item.draft = p; d.t.item.title = title;
+  if (Date.now() - d.at < 900) {          // a frame reload about once a second; the last piece always lands
+    clearTimeout(d.pending); d.pending = setTimeout(() => { d.at = Date.now(); drawDraft(d.t); }, 900); return;
+  }
+  d.at = Date.now(); drawDraft(d.t);
+}
+function endDrafts(p) {
+  let opened = false;
+  for (const [dk, d] of [...DRAFTS]) {
+    if (dk.startsWith('a:') && dk !== 'a:' + p.id) continue;
+    clearTimeout(d.pending); DRAFTS.delete(dk);
+    if (d.t && !d.t.closed) {
+      drop(d.t.key);
+      if (!opened && p.version) { open({type: 'page', ref: p.id, title: p.title || 'Page', version: p.version}); opened = true; }
+    }
+  }
+}
+
 /* a card changed (a new page version is ready): open tabs follow */
 function update(kind, p) {
   if (kind !== 'artifact' || !p?.id) return;
+  if (p.status === 'ready' && DRAFTS.size) endDrafts(p);
   const t = TABS.find(x => x.item.type === 'page' && x.aid === p.id);
   if (t && p.status === 'ready' && p.version && p.version !== t.ver) { toast(`${p.title || 'Page'}: new version v${p.version} is ready.`); renderPage(t); }
 }
@@ -349,5 +409,5 @@ function reset() {
   for (const t of [...TABS]) drop(t.key);
   CUR=null; close();
 }
-return {itemOf, open, update, library, isOpen, close, reset};
+return {itemOf, open, update, draft, library, isOpen, close, reset};
 };

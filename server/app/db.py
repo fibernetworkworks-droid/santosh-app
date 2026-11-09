@@ -709,6 +709,10 @@ class ArtifactVersion(Base):
     html: Mapped[str] = mapped_column(Text)
     note: Mapped[str] = mapped_column(String(300), default="")         # what was asked for this version
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    # parity Phase 6 (artifacts the Claude way): what the chat model wrote itself - html | markdown | svg | mermaid -
+    # and its own text (the page served is built from it). Nullable: builder versions have neither.
+    kind: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    source: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class ArtifactState(Base):

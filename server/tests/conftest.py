@@ -67,6 +67,7 @@ def _full_voice_menu(monkeypatch):
     monkeypatch.setenv("CHAT_CONTEXT_LIMIT_GLM", "200000")
     monkeypatch.setenv("CHAT_SMALL_PROMPT", "false")  # parity Phase 2: older suites pin the long per-turn prompt; test_parity_p2 checks the small one
     monkeypatch.setenv("CHAT_CONTEXT_MAX_TOKENS_GLM", "40000")  # v0.707 pin; test_v0724 checks the 1M / no-cap defaults
+    monkeypatch.setenv("CHAT_ARTIFACT_DIRECT", "false")  # parity Phase 6: older suites pin the builder-only pages line; test_parity6 turns it on
     get_settings.cache_clear()
     yield
     get_settings.cache_clear()

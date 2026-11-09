@@ -856,7 +856,8 @@ async def _call_brain_once(brain: str, system: str, history: list[dict], setting
         history = [{**m, "content": _no_think(m["content"])} for m in history]   # v0.232 Claude-only blocks
         if streaming:
             blocks, stop, usage = await llm.openai_stream(brain, system, tools, history, cap,
-                                                          live.feed, on_think=live.feed_think)   # v0.171 thinking
+                                                          live.feed, on_think=live.feed_think,   # v0.171 thinking
+                                                          on_tool=getattr(live, "feed_tool", None))   # parity Phase 6
         else:
             blocks, stop, usage = await llm.openai_create(brain, system, tools, history, cap)
         log.info("%s in=%s out=%s %s", llm.describe(), usage.get("prompt_tokens"), usage.get("completion_tokens"),
@@ -1046,17 +1047,30 @@ async def _claude_stream(api, kw: dict, live) -> tuple[list[dict], str]:
     the SDK, which parses it only when the block is complete. Prompt caching is the same request shape.
     v0.171 thinking deltas (adaptive / extended thinking) stream to the console's Soch card, never into the answer."""
     live = live if live is not None else _QuietLive()
+    on_tool = getattr(live, "feed_tool", None)   # parity Phase 6: a page written in a tool call shows as it grows
+    tool_in: dict[int, list] = {}
     async with api.stream(**kw) as st:
         async for ev in st:
             t = getattr(ev, "type", "")
-            if t == "content_block_start" and getattr(getattr(ev, "content_block", None), "type", "") == "text":
+            cb = getattr(ev, "content_block", None)
+            if t == "content_block_start" and getattr(cb, "type", "") == "text":
                 live.new_text_block()
+            elif t == "content_block_start" and getattr(cb, "type", "") == "tool_use" and on_tool:
+                tool_in[int(getattr(ev, "index", 0) or 0)] = [getattr(cb, "name", "") or "", ""]
             elif t == "content_block_delta":
                 dt = getattr(getattr(ev, "delta", None), "type", "")
                 if dt == "text_delta":
                     live.feed(ev.delta.text)
                 elif dt == "thinking_delta":
                     live.feed_think(getattr(ev.delta, "thinking", "") or "")
+                elif dt == "input_json_delta" and on_tool:
+                    i = int(getattr(ev, "index", 0) or 0)
+                    if i in tool_in:
+                        tool_in[i][1] += getattr(ev.delta, "partial_json", "") or ""
+                        try:
+                            on_tool(i, tool_in[i][0], tool_in[i][1])
+                        except Exception:
+                            pass
         msg = await st.get_final_message()
     from .. import usage   # the SDK wrapper counts messages.create only: a streamed answer is counted here
     usage.from_anthropic(_sent_model(kw.get("model", "")), msg)   # wave 9: the model the SDK door REALLY sent (SAB HAIKU)

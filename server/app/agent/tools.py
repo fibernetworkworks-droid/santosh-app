@@ -1542,8 +1542,11 @@ TOOL_LANES: dict[str, str] = {
                    "document -> doc_studio.",
     "hoola_make": "LANE: a file made FOR a connected person and sent on the Hoola Network. A file for her own chat -> "
                   "doc_studio.",
-    "artifact_make": "LANE: an interactive page (calculator, tracker, quiz) she opens and shares. A document to read "
-                     "or print -> doc_studio.",
+    "artifact_make": "LANE: the POLISH builder for a studio-quality page she asked to be polished. A page you can write "
+                     "yourself -> artifact. A document to read or print -> doc_studio.",
+    "artifact": "LANE: a page / dashboard / chart / tracker / diagram you write yourself, edited in place with "
+                "update old_str -> new_str. A polished / studio-quality page she asked for -> artifact_make; a "
+                "document to read or print -> doc_studio.",
     "notebook_make": "LANE: a quick item made FROM her notebook's sources (summary, FAQ, timeline). A designed file -> "
                      "doc_studio.",
     # memory: what to search

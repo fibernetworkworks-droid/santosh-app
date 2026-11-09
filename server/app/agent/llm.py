@@ -108,11 +108,11 @@ async def openai_create(brain: str, system: str, tools: list[dict], messages: li
 
 
 async def openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                        on_text, on_think=None) -> tuple[list[dict], str, dict]:
+                        on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
     if brain_paused(brain):
         raise LLMError(f"{brain} paused after repeated failures - another brain answers")
     try:
-        out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think)
+        out = await _openai_stream(brain, system, tools, messages, max_tokens, on_text, on_think, on_tool)
     except Exception:
         brain_result(brain, False)
         raise
@@ -469,7 +469,7 @@ def _assemble(text: str, calls: dict[int, dict], finish: str = "") -> dict:
 
 
 async def _openai_stream(brain: str, system: str, tools: list[dict], messages: list[dict], max_tokens: int,
-                         on_text, on_think=None) -> tuple[list[dict], str, dict]:
+                         on_text, on_think=None, on_tool=None) -> tuple[list[dict], str, dict]:
     """v0.161 the same answer as openai_create, but the words reach `on_text` as the model writes them. Tool-call
     arguments are joined and parsed only when the answer is complete (never partial JSON). Retries only before the
     first word arrived (after that the caller resets the words and falls back to the other brain).
@@ -523,6 +523,11 @@ async def _openai_stream(brain: str, system: str, tools: list[dict], messages: l
                             c["id"] = tc.get("id") or c["id"]
                             c["name"] += fn.get("name") or ""
                             c["args"] += fn.get("arguments") or ""
+                            if on_tool and c["name"]:   # parity Phase 6: a page written in a tool call shows as it grows
+                                try:
+                                    on_tool(int(tc.get("index") or 0), c["name"], c["args"])
+                                except Exception:
+                                    pass
         except httpx.HTTPError as e:
             if text or i + 1 >= tries:
                 raise LLMError(f"{label} not reachable: {e}") from e

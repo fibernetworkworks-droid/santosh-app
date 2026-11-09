@@ -26,7 +26,8 @@ CALL: contextvars.ContextVar[str] = contextvars.ContextVar("hoola_call", default
 
 # v0.161 a reply as it is being written: sent to open streams only, NEVER stored (the final `message` is the record)
 # v0.171 `think`: the model's reasoning as it thinks (Claude thinking / GLM reasoning), same live-only discipline
-STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think", "say"}
+STREAM_KINDS = {"reply_start", "delta", "delta_reset", "reply_end", "think", "say",
+                "artifact_draft"}   # parity Phase 6: a page the chat model is writing, as it grows (never stored)
 # never part of the chat's story (live-only noise) - still stored so a reconnect mid-turn catches up (except STREAM_KINDS)
 LIVE_ONLY = {"typing", "step", "work", "log"} | STREAM_KINDS
 # belong to the chat they were made in only (answers' sources, phone actions, list refreshes...): never copied to others
