@@ -62,7 +62,7 @@ async def rea_khoj(ctx: Ctx, action: str = "status", file_id: str = "", email_id
         return khoj.status()
     src = _src({"file_id": file_id, "email_id": email_id, "attachment_id": attachment_id, "drive": drive})
     if not src:
-        raise ToolError("Kaunsi file? file_id (phone / PC se aayi file), email attachment, ya Drive file dijiye.")
+        raise ToolError("Which file? Give a file_id (a file from the phone / PC), an email attachment, or a Drive file.")
     try:
         return await asyncio.to_thread(khoj.run, ctx.tenant_id, src, action,
                                        query=query, class_name=class_name, method_name=method_name,

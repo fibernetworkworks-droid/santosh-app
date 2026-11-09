@@ -70,13 +70,13 @@ def _sync(action: str, a: dict[str, Any]) -> dict[str, Any]:
         return watch.velocity(a.get("txns") or [], a.get("window_minutes", 10), a.get("max_count", 5), a.get("max_amount"))
     if action == "round_trips":
         return watch.wash(a.get("trades") or [])
-    raise ToolError(f"action '{action}' nahi pehchana.")
+    raise ToolError(f"action '{action}' not recognised.")
 
 
 async def _risk_desk(ctx: Ctx, action: str = "", **a: Any) -> dict[str, Any]:
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor != "owner" and not actor.startswith("approved:"):
-        raise ToolError("Risk Desk sirf owner ke liye.")
+        raise ToolError("Risk Desk is for the owner only.")
     if action not in _ACTIONS:
         raise ToolError(f"action: {', '.join(_ACTIONS)}")
     try:

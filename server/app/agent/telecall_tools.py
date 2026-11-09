@@ -67,7 +67,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     try:
         if action in _OWNER_ONLY and actor != "owner" and not actor.startswith("approved:"):
-            raise ToolError("Yeh sirf owner kar sakti hain.")
+            raise ToolError("Only the owner can do this.")
         if action == "add":
             return T.add_lead(t, _s(a.get("name")), _s(a.get("phone") or a.get("lead")), _s(a.get("source")) or "enquiry",
                               _s(a.get("purpose")) or "sales", _s(a.get("need")), _s(a.get("notes")), _s(a.get("city")),

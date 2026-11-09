@@ -52,7 +52,7 @@ def _s(v: Any) -> str:
 def _actor(ctx: Ctx) -> str:
     a = getattr(ctx, "actor", "owner") or "owner"
     if a.startswith("customer:"):
-        raise ToolError("Research assistant sirf owner / team ke liye.")
+        raise ToolError("The research assistant is for the owner / team only.")
     return a
 
 
@@ -86,7 +86,7 @@ async def shodh(ctx: Ctx, action, **a: Any):
             return await asyncio.to_thread(SH.save_settings, t, actor, a.get("email"), a.get("style"))
     except (SH.ShodhError, ValueError) as e:
         raise ToolError(str(e))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 async def shodh_dekho(ctx: Ctx, what, **a: Any):
@@ -107,7 +107,7 @@ async def shodh_dekho(ctx: Ctx, what, **a: Any):
             return SH.matrix(t, p)
         if what == "rules":
             return {"never": SH.NEVER, "ai_note": SH.AI_NOTE}
-        raise ToolError("what galat")
+        raise ToolError("invalid what")
     try:
         return await asyncio.to_thread(go)
     except (SH.ShodhError, ValueError) as e:

@@ -108,7 +108,7 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
         if not chk["ok"]:
             return {"status": "site_blocks_server", "site": chk["site"], "why": chk.get("why", ""),
                     "next": ("This site refuses Hoola's server. Finish the job with the sites that DO open, then tell "
-                             "her in one line and ASK 'Aapke PC par Chrome mein kar doon?'. Only on her yes: "
+                             "her in one line and ASK 'Shall I do it in Chrome on your PC?'. Only on her yes: "
                              "computer_operator action=start where=pc. Never move it to her PC or the cloud PC by "
                              "yourself (v0.315); open_on_phone is the other offer.")}
     from .. import idvault
@@ -123,7 +123,7 @@ async def browse_web(ctx: Ctx, task, start_url=None, _wait=None, **_):
     out = await asyncio.to_thread(browser.deliver, ctx.tenant_id, ctx.conversation_id, res, False)
     out = _masked(out)
     if isinstance(out, dict):
-        out.setdefault("where", "Hoola ka apna browser (server par) - not her PC, not her phone")
+        out.setdefault("where", "Hoola's own browser (on the server) - not her PC, not her phone")
     return out
 
 

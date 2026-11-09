@@ -29,10 +29,10 @@ SITESUP_TOOLS = [
         "[N/mm2], sample, lab. action=snag: site, text, location, trade, contractor, due. action=snag_status: snag, status open|fixed|verified. "
         "action=photo: site, file_id, ref (snag / incident / pour id or number), stage. action=dpr: site, day, weather, tomorrow, remarks, "
         "to_phone -> DPR PDF + text, card for HER tap before it goes to the client. action=message: site, text, to_phone (card). "
-        "action=forget*: site (DPDP, after the site is done). action=voice_log (v0.512 Wave 1): ek shaam ka roznama - activities "
-        "[{activity, qty, note, delay}], rows [{contractor, trade, count, hours}] hazari, material [{item, qty, kind, unit, supplier, "
-        "challan}], snags [{text, location, trade, due}], toolbox {topic, people}, note - sab apne rows mein likhta hai (progress / "
-        "attendance / material / snag / toolbox) aur summary + jo poochhna baaki wapas deta hai. * = owner only."),
+        "action=forget*: site (DPDP, after the site is done). action=voice_log (v0.512 Wave 1): one evening's daily log - activities "
+        "[{activity, qty, note, delay}], rows [{contractor, trade, count, hours}] attendance, material [{item, qty, kind, unit, supplier, "
+        "challan}], snags [{text, location, trade, due}], toolbox {topic, people}, note - writes everything into its own rows (progress / "
+        "attendance / material / snag / toolbox) and returns a summary + what is still to be asked. * = owner only."),
      "input_schema": {"type": "object", "properties": {
          "action": {"type": "string", "enum": ["settings", "site", "plan", "progress", "attendance", "register", "register_file", "material",
                                                "indent", "indent_ordered", "toolbox", "checklist", "incident", "reported", "stop", "pour", "cube",
@@ -94,16 +94,16 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     t, conv = ctx.tenant_id, ctx.conversation_id
     actor = getattr(ctx, "actor", "owner") or "owner"
     if actor.startswith("customer:"):
-        raise ToolError("Site ka kaam graahak ke liye nahi.")
+        raise ToolError("Site work is not for customers.")
     site = _s(a.get("site"))
     try:
         if action in ("settings", "reported", "forget") and not _owner(ctx):
-            raise ToolError("Sirf owner.")
+            raise ToolError("Owner only.")
         if action == "settings":
             return S.save_settings(t, **{k: a[k] for k in S._SET_KEYS if k in a})
         if action == "site":
             if a.get("status") in ("done", "closed") and not _owner(ctx):
-                raise ToolError("Site band karna sirf owner.")
+                raise ToolError("Only the owner can close a site.")
             kw = {k: a[k] for k in _SITE_KEYS if k in a}
             if not kw.get("finish") and a.get("end"):
                 kw["finish"] = a["end"]
@@ -157,7 +157,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.snag_status(t, _s(a.get("snag")), _s(a.get("status")), actor)
         if action == "photo":
             if not a.get("file_id"):
-                raise ToolError("Photo ka file_id chahiye (chat mein bheji photo).")
+                raise ToolError("The photo file_id is needed (the photo sent in chat).")
             return S.add_photo(t, b"", site, _s(a.get("ref")), _s(a.get("stage") or "site"), _s(a.get("note")), _s(a.get("file_id")))
         if action == "dpr":
             return S.dpr_request(t, site, _s(a.get("day")), _s(a.get("weather")), _s(a.get("tomorrow")), _s(a.get("remarks")),
@@ -171,7 +171,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget(t, site)
     except (S.SiteError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -179,7 +179,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..sitesup import service as S
     t, site = ctx.tenant_id, _s(a.get("site"))
     if (getattr(ctx, "actor", "owner") or "").startswith("customer:"):
-        raise ToolError("Site ka haal graahak ke liye nahi.")
+        raise ToolError("Site status is not for customers.")
     try:
         if what == "day":
             return S.day(t)
@@ -224,7 +224,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.settings(t)
     except (S.SiteError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def sitesup(ctx: Ctx, action, **a: Any):

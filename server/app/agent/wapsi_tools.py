@@ -74,9 +74,9 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..wapsi import service as S
     t, conv, ref = ctx.tenant_id, ctx.conversation_id, _s(a.get("ref"))
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner kar sakti hain.")
+        raise ToolError("Only the owner can do this.")
     if action == "settings" and any(k in a for k in ("password", "token", "key_secret", "secret", "api_key")):
-        raise ToolError("Courier / gateway ki chaabi chat mein nahi: app mein Wapsi > Niyam mein daaliye (aur jo chat mein likhi, use badal dijiye).")
+        raise ToolError("No courier / gateway key in chat: enter it in the app under Wapsi > Rules (and rotate any key that was written in chat).")
     try:
         if action == "policy":
             return S.set_policy(t, _s(a.get("text")))
@@ -91,7 +91,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.update_return(t, ref, **{k: a[k] for k in keys if a.get(k) not in (None, "")})
         if action == "photo":
             if not a.get("file_id"):
-                raise ToolError("file_id chahiye (photo / video jo usne bheji).")
+                raise ToolError("file_id is needed (the photo / video she sent).")
             return S.attach_file(t, ref, _s(a["file_id"]), _s(a.get("stage")) or "customer")
         if action == "check":
             S.look(t, ref)
@@ -111,7 +111,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                         _s(a.get("deduction_reason")), conv)
         if action == "refund":
             out = S.prepare_refund(t, ref, _s(a.get("mode")), _s(a.get("upi")), a.get("deduction"), _s(a.get("reason")), conv)
-            return out | {"next": "Card uske phone par hai; woh khud haan (fingerprint) karegi. Tum haan nahi kar sakte, dobara mat poochho."}
+            return out | {"next": "The card is on her phone; she will say yes herself (fingerprint). You cannot say yes; do not ask again."}
         if action == "refund_done":
             return S.refund_done(t, _s(a.get("refund_id")), _s(a.get("utr")), _s(a.get("note")))
         if action == "pg_check":
@@ -130,7 +130,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.forget_customer(t, ref)
     except (S.WapsiError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -155,7 +155,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"law": R.LAW, "never": list(R.NEVER), "reasons": {k: v["label"] for k, v in R.REASONS.items()}}
     except (S.WapsiError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def wapsi(ctx: Ctx, action, **a: Any):
@@ -176,7 +176,7 @@ async def biz_return_start(ctx, items: str = "", reason: str = "", order_ref: st
     from ..wapsi import service as S
     c = inbox._contact(ctx)
     if not str(items).strip() or not str(reason).strip():
-        raise ToolError("Kaun sa saamaan aur kya dikkat hai, dono chahiye.")
+        raise ToolError("Both are needed: which item and what the problem is.")
     try:
         return await asyncio.to_thread(S.customer_start, ctx.tenant_id, c.wa_id, c.name or "", str(order_ref)[:80], str(items)[:500],
                                        str(reason)[:600], want if want in ("refund", "exchange") else "refund", str(delivered_on)[:20])

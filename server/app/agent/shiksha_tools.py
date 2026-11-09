@@ -120,7 +120,7 @@ def _s(v: Any) -> str:
 def _actor(ctx: Ctx) -> str:
     a = getattr(ctx, "actor", "owner") or "owner"
     if a.startswith("customer:"):
-        raise ToolError("Yeh school / teacher ka kaam hai; graahak ke liye nahi.")
+        raise ToolError("This is school / teacher work; not for customers.")
     return a
 
 
@@ -170,7 +170,7 @@ async def shiksha(ctx: Ctx, action, **a: Any):
     if action == "review":
         refs = [str(x) for x in (a.get("refs") or ([ref] if ref else []))]
         return await asyncio.to_thread(S.set_status, t, refs, _s(a.get("status")) or "approved", actor)
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 @_err
@@ -201,7 +201,7 @@ async def shiksha_dekho(ctx: Ctx, what, **a: Any):
             return P.frameworks_view(_s(a.get("board")) or "CBSE", _s(a.get("grade")), _s(a.get("subject")))
         if what == "rules":
             return {"never": R.NEVER, "disclaimer": R.DISCLAIMER, "consent_methods": R.CONSENT_METHODS, "qtypes": R.QTYPES}
-        raise ToolError("what galat")
+        raise ToolError("invalid what")
     return await asyncio.to_thread(go)
 
 
@@ -247,7 +247,7 @@ async def pathyakram(ctx: Ctx, action, **a: Any):
         return await asyncio.to_thread(P.share_request, t, _s(a.get("what")) or "paper", _s(a.get("ref")),
                                        _s(a.get("via")) or "file", _s(a.get("to_name")), _s(a.get("to_contact")),
                                        bool(a.get("with_key")), _s(a.get("note")), actor, conv)
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 @_err
@@ -274,7 +274,7 @@ async def pathyakram_dekho(ctx: Ctx, what, **a: Any):
             return {"shares": P.shares(t, _s(a.get("status")))}
         if what == "rules":
             return {"never": R.NEVER, "disclaimer": R.DISCLAIMER}
-        raise ToolError("what galat")
+        raise ToolError("invalid what")
     return await asyncio.to_thread(go)
 
 

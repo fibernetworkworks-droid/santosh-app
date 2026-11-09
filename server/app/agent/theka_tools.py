@@ -81,7 +81,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     try:
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             keys = ("firm", "gstin", "individual", "udyam", "registration", "registration_valid_to", "address", "morning_time")
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
         if action == "tender":
@@ -96,7 +96,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.ra_bill(t, pr, _s(a.get("upto")), bool(a.get("final")), conv)
         if action == "bill_status":
             if _s(a.get("status")) == "submitted" and not _owner(ctx):
-                raise ToolError("Bill department ko dene ki haan sirf owner.")
+                raise ToolError("Only the owner can say yes to submitting the bill to the department.")
             return S.bill_status(t, _s(a.get("bill_id")), _s(a.get("status")), a.get("amount"), _s(a.get("on")))
         if action == "sub":
             return S.save_sub(t, _s(a.get("name")), _s(a.get("phone")), a.get("individual"), a.get("pan_ok"), _s(a.get("work")), a.get("retention_pct"),
@@ -119,7 +119,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.ThekaError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -149,7 +149,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                 subs = _s2.scalars(_sel(ThekaSub).where(ThekaSub.tenant_id == t)).all()
                 x = next((r for r in subs if _s(a.get("sub")).lower() in r.name.lower()), None) if subs else None
                 if not x:
-                    raise ToolError("Petty contractor nahi mila.")
+                    raise ToolError("Petty contractor not found.")
                 advs = _s2.scalars(_sel(ThekaSubAdvance).where(ThekaSubAdvance.tenant_id == t, ThekaSubAdvance.sub_id == x.id)).all()
                 bills = _s2.scalars(_sel(ThekaSubBill).where(ThekaSubBill.tenant_id == t, ThekaSubBill.sub_id == x.id)).all()
             return {"sub": {"name": x.name, "work": x.work, "rate_basis": x.rate_basis, "retention_pct": x.retention_pct,
@@ -163,7 +163,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
             return {"never": list(R.NEVER), "gst_works": R.GST_WORKS, "gst_tds": R.GST_TDS, "it_tds": R.IT_TDS, "labour_cess": R.LABOUR_CESS, "docs": R.DOCS}
     except (S.ThekaError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def theka(ctx: Ctx, action, **a: Any):

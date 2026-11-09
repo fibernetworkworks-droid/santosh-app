@@ -52,12 +52,12 @@ _LENS = ("ceo", "design", "devex", "eng")
 _EFFORT = ("hours", "day", "days", "week", "weeks")
 
 SIX_QUESTIONS = [
-    "Yeh dukh ka SABSE bura moment kab hota hai — ek REAL example (kal ka ya is hafte ka, hypothetical nahi)?",
-    "Yeh kaam aaj kaun karta hai, aur kitna time / paisa leta hai?",
-    "Sab theek ho gaya to SABSE pehla visible change kya hoga (kal subah kya alag hoga)?",
-    "Aaj log iske bajaye kya jugaad karte hain?",
-    "Sabse chhota hissa jo AKELA hi kaam ka ho (wedge) kya hai?",
-    "Kya ho to aap kahengi 'yeh bekaar tha' (kill criteria)?",
+    "When is this pain at its WORST - give one REAL example (from yesterday or this week, not hypothetical)?",
+    "Who does this work today, and how much time / money does it take?",
+    "If it were all fixed, what is the FIRST visible change (what would be different tomorrow morning)?",
+    "What workaround do people use instead today?",
+    "What is the smallest piece that is useful ALONE (the wedge)?",
+    "What would make you say 'this was useless' (kill criteria)?",
 ]
 
 
@@ -297,72 +297,72 @@ async def officehours(ctx: Ctx, action="start", topic="", her_words="", pain="",
     from ..config import get_settings
     s = get_settings()
     if not getattr(s, "officehours_enabled", True):
-        raise ToolError("Office hours abhi band hai (officehours_enabled=false)")
+        raise ToolError("Office hours is switched off (officehours_enabled=false)")
     act = str(action or "start").strip().lower()
     if act == "start":
         topic = str(topic or "").strip()[:_TOPIC_CAP]
         if not topic:
-            raise ToolError("Baithak ke liye topic chahiye — woh kya banana chahti hai, ek line mein")
+            raise ToolError("A topic is needed for the session - what does she want to build, in one line")
         row = start_doc(ctx.tenant_id, topic, str(her_words or "")[:_TEXT_CAP], str(pain or "")[:_TEXT_CAP],
                         keep=max(1, int(getattr(s, "officehours_keep_docs", 30) or 30)))
         fresh = bool(row.pop("_created", False))
         return {"officehours_id": row["id"], "topic": row["topic"], "status": row["status"],
                 "already_open": not fresh, "questions": row["questions"],
-                "note": ("Baithak khul gaya — chhah sawaal, EK EK karke puchhein (sab ek saath nahi), uske asli "
-                         "example ke saath; phir action=doc se design doc likhein"
+                "note": ("Session opened - six questions, ask them ONE BY ONE (not all together), with her real "
+                         "example; then write the design doc with action=doc"
                          if fresh else
-                         "Isi topic ki baithak pehle se khuli hai — wahi doc aage badhega (naya nahi bana)")}
+                         "A session on this topic is already open - the same doc continues (no new one was made)")}
     did = str(officehours_id or "").strip()
     if act in ("doc", "review", "decide", "stop") and not did:
         docs, _t = list_docs(ctx.tenant_id, 1)
         if not docs or docs[0]["status"] in ("decided", "stopped"):
-            raise ToolError("Koi khuli baithak nahi mili — pehle action=start")
+            raise ToolError("No open session found - do action=start first")
         did = docs[0]["id"]
     if act == "doc":
         if not get_doc(ctx.tenant_id, did):
-            raise ToolError(f"Yeh officehours_id nahi mila: {did}")
+            raise ToolError(f"This officehours_id was not found: {did}")
         row = save_doc(ctx.tenant_id, did, reframe, list(capabilities or []), list(premises or []),
                        list(options or []), recommendation, wedge)
         if row is None:
-            raise ToolError("Yeh baithak decided/stopped hai — naya doc chahiye to action=start se nayi baithak kholen")
+            raise ToolError("This session is decided/stopped - for a new doc open a new session with action=start")
         return {"officehours_id": row["id"], "status": row["status"],
                 "capabilities": len(row["capabilities"]), "premises": len(row["premises"]),
                 "options": [f"{o['name']} ({o['effort']})" for o in row["options"]],
                 "recommendation": row["recommendation"][:300],
-                "note": ("Design doc likhi gayi — ab lenses chalayein: action=review (ceo / design / devex / "
-                         "eng; eng SABSE AAKHIR mein, woh final amended plan dekhta hai)")}
+                "note": ("Design doc written - now run the lenses: action=review (ceo / design / devex / "
+                         "eng; eng LAST of all, it sees the final amended plan)")}
     if act == "review":
         if str(lens or "").strip().lower() not in _LENS:
-            raise ToolError("lens chahiye: ceo | design | devex | eng (eng hamesha aakhri)")
+            raise ToolError("lens is needed: ceo | design | devex | eng (eng always last)")
         cur = get_doc(ctx.tenant_id, did)
         if cur is None:
-            raise ToolError(f"Yeh officehours_id nahi mila: {did}")
+            raise ToolError(f"This officehours_id was not found: {did}")
         if cur["status"] == "draft":
-            raise ToolError("Pehle action=doc se design doc likhein — jo likha hi nahi uski review nahi hoti")
+            raise ToolError("Write the design doc with action=doc first - something not written cannot be reviewed")
         out = add_review(ctx.tenant_id, did, lens, verdict, list(findings or []), list(changes or []))
         if out is None:
-            raise ToolError("Yeh baithak decided/stopped hai — review band hai")
+            raise ToolError("This session is decided/stopped - review is closed")
         return {"officehours_id": did, "lens": out["lens"], "status": out["status"],
                 "reviews_so_far": [f"{r['lens']}:{(r['verdict'] or '')[:40]}" for r in out["reviews"]],
-                "note": ("Eng review ho gaya — ab plan reviewed hai. Faisla uska hai: action=decide uske "
-                         "shabdon mein" if out["status"] == "reviewed" else
-                         "Review notees jod di gayi — baaki lenses (eng aakhri)")}
+                "note": ("Eng review done - the plan is now reviewed. The decision is hers: action=decide in "
+                         "her words" if out["status"] == "reviewed" else
+                         "Review notes added - the remaining lenses next (eng last)")}
     if act == "decide":
         decision = str(decision or "").strip()
         if not decision:
-            raise ToolError("decision chahiye — USKE shabdon mein (Hoola faisla nahi karta)")
+            raise ToolError("a decision is needed - in HER words (Hoola does not decide)")
         out = decide_doc(ctx.tenant_id, did, decision, next_step)
         if out is None:
-            raise ToolError("Yeh baithak pehle se decided/stopped hai")
+            raise ToolError("This session is already decided/stopped")
         return {"officehours_id": out["id"], "status": out["status"], "decision": out["decision"],
                 "next_step": out["next_step"],
-                "note": "Faisal noted — doc officehours_dekho se hamesha wapas milega; aage ka kaam uski Haan par hoga"}
+                "note": "Decision noted - the doc can always be fetched again with officehours_dekho; further work happens on her yes"}
     if act == "stop":
         out = stop_doc(ctx.tenant_id, did)
         if out is None:
-            raise ToolError("Yeh baithak pehle se decided/stopped hai")
+            raise ToolError("This session is already decided/stopped")
         return {"officehours_id": out["id"], "status": out["status"], "note": "Baithak band"}
-    raise ToolError("action chahiye: start | doc | review | decide | stop")
+    raise ToolError("action is needed: start | doc | review | decide | stop")
 
 
 async def officehours_dekho(ctx: Ctx, what="list", officehours_id="", **_):
@@ -372,27 +372,27 @@ async def officehours_dekho(ctx: Ctx, what="list", officehours_id="", **_):
     if w == "list":
         docs, total = list_docs(ctx.tenant_id)
         return {"total": total, "count": len(docs), "docs": [_brief(d) for d in docs],
-                "note": ("Poora doc chahiye to what=doc, officehours_id saath dein" if docs
-                         else "Abhi koi baithak nahi hui — officehours action=start se kholen")}
+                "note": ("For the full doc use what=doc with officehours_id" if docs
+                         else "No session yet - open one with officehours action=start")}
     did = str(officehours_id or "").strip()
     if not did:
         docs, _t = list_docs(ctx.tenant_id, 1)
         if not docs:
-            raise ToolError("Koi baithak nahi hui — pehle officehours action=start")
+            raise ToolError("No session yet - do officehours action=start first")
         did = docs[0]["id"]
     if w == "doc":
         row = get_doc(ctx.tenant_id, did)
         if row is None:
-            raise ToolError(f"Yeh officehours_id nahi mila: {did}")
+            raise ToolError(f"This officehours_id was not found: {did}")
         revs = list_reviews(ctx.tenant_id, did)
         return {**row, "officehours_id": row["id"], "reviews_count": len(revs),
                 "reviews_brief": [f"{r['lens']}:{(r['verdict'] or '')[:40]}" for r in revs]}
     if w == "reviews":
         if get_doc(ctx.tenant_id, did) is None:
-            raise ToolError(f"Yeh officehours_id nahi mila: {did}")
+            raise ToolError(f"This officehours_id was not found: {did}")
         revs = list_reviews(ctx.tenant_id, did)
         return {"officehours_id": did, "count": len(revs), "reviews": revs}
-    raise ToolError("what chahiye: list | doc | reviews")
+    raise ToolError("what is needed: list | doc | reviews")
 
 
 OFFICEHOURS_TOOLS = [

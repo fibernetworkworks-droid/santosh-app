@@ -62,7 +62,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     try:
         if action == "settings":
             if not _owner(ctx):
-                raise ToolError("Sirf owner.")
+                raise ToolError("Owner only.")
             keys = ("firm", "address", "iec", "gstin", "phone", "email", "ad_bank", "lut_no", "rcmc", "rcmc_valid_to", "prefix")
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
         if action == "buyer":
@@ -74,11 +74,11 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                               _s(a.get("port_discharge")), _s(a.get("mode")) or "sea", _s(a.get("currency")), conv)
         if action == "send_pi":
             if not _owner(ctx):
-                raise ToolError("Buyer ko PI bhejne ki haan sirf owner.")
+                raise ToolError("Only the owner can say yes to sending the PI to the buyer.")
             return S.pi_draft(t, sh)
         if action == "confirm":
             if not _owner(ctx):
-                raise ToolError("Invoice banane ki haan sirf owner.")
+                raise ToolError("Only the owner can say yes to making the invoice.")
             return S.confirm(t, sh, _s(a.get("inv_date")), a.get("fx"), conv)
         if action == "shipped":
             return S.shipped(t, sh, _s(a.get("sb_no")), _s(a.get("sb_date")), _s(a.get("bl_no")), _s(a.get("ship_date")), a.get("fx"))
@@ -90,7 +90,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.register_file(t, conv)
     except (S.NiryatError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -117,7 +117,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "rodtep_until": R.RODTEP_UNTIL.isoformat(), "fta": R.FTA}
     except (S.NiryatError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def niryat(ctx: Ctx, action, **a: Any):

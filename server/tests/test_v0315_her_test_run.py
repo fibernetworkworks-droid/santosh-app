@@ -138,7 +138,7 @@ def test_a_refused_site_asks_before_her_pc(monkeypatch):
     monkeypatch.setattr(get_settings(), "operator_preflight", True, raising=False)
     r = asyncio.run(O.computer_operator(_ctx("c-site"), "start", task="iPhone price on amazon.in", where="auto"))
     assert called == [] and r["status"] == "site_blocks_server"
-    assert "Aapke PC par Chrome mein kar doon?" in r["say"] and "Never move it to her PC" in r["next"]
+    assert "Shall I do it in Chrome on your PC?" in r["say"] and "Never move it to her PC" in r["next"]
 
 
 def test_her_own_pc_word_still_goes_to_her_pc(monkeypatch):

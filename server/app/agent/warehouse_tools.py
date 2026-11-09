@@ -93,9 +93,9 @@ def _by(ctx: Ctx) -> str:
 def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     from ..warehouse import service as S
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Godown ka kaam graahak ke liye nahi.")
+        raise ToolError("Godown work is not for customers.")
     if action in _OWNER_ONLY and not _owner(ctx):
-        raise ToolError("Yeh sirf owner badal sakti hain.")
+        raise ToolError("Only the owner can change this.")
     t, conv, by = ctx.tenant_id, ctx.conversation_id, _by(ctx)
     try:
         if action == "bin":
@@ -108,7 +108,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
                                _s(a.get("kind")) or "pick", a.get("capacity"))
         if action == "sku":
             if a.get("abc") and not _owner(ctx):
-                raise ToolError("ABC class sirf owner badal sakti hain.")
+                raise ToolError("Only the owner can change the ABC class.")
             return S.save_sku(t, **{k: _s(a[k]) for k in ("name", "sku", "code", "barcode", "unit", "track", "abc", "home_bin", "note") if k in a})
         if action == "opening":
             return S.opening(t, a.get("lines"), _s(a.get("text")), _s(a.get("bin")), by)
@@ -142,7 +142,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "writeoff":
             r = S.writeoff_request(t, _s(a.get("item")), _s(a.get("bin")), a.get("qty"), _s(a.get("batch")), _s(a.get("reason")),
                                    _s(a.get("note")), by, conv)
-            return {**r, "status": "needs_tap", "say": r["say"] + " Card aapke app mein hai: haan / mana wahin se."}
+            return {**r, "status": "needs_tap", "say": r["say"] + " The card is in your app: say yes / no there."}
         if action == "labels":
             return S.labels(t, _s(a.get("what")) or "bins", a.get("codes"), conv)
         if action == "export":
@@ -153,7 +153,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
             return S.save_settings(t, **{k: a[k] for k in keys if k in a})
     except (S.WarehouseError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("action galat")
+    raise ToolError("invalid action")
 
 
 def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
@@ -204,7 +204,7 @@ def _read(ctx: Ctx, what: str, a: dict[str, Any]) -> dict[str, Any]:
                     "itc": R.ITC_NOTE, "records": R.RECORDS_NOTE, "food": R.FOOD_NOTE, "bin_kinds": R.BIN_KINDS, "reasons": R.REASONS}
     except (S.WarehouseError, ValueError) as ex:
         raise ToolError(str(ex))
-    raise ToolError("what galat")
+    raise ToolError("invalid what")
 
 
 async def warehouse(ctx: Ctx, action, **a: Any):
@@ -213,7 +213,7 @@ async def warehouse(ctx: Ctx, action, **a: Any):
 
 async def warehouse_dekho(ctx: Ctx, what, **a: Any):
     if _actor(ctx).startswith("customer:"):
-        raise ToolError("Godown ki jaankari graahak ke liye nahi.")
+        raise ToolError("Godown information is not for customers.")
     return await asyncio.to_thread(_read, ctx, str(what), a)
 
 

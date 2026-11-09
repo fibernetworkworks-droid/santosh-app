@@ -168,15 +168,15 @@ def test_delete_needs_a_yes_and_belongs_to_its_tenant_and_only_the_owner_may_wat
     wid = tool(**ADD, confirm=True)["id"]
     assert tool(action="delete", id=wid)["proposal"] is True and W.get(wid)["status"] == "active"
     assert tool(action="delete", id=wid, confirm=True)["done"] == "delete" and W.get(wid)["status"] == "deleted" and tool(action="list")["watches"] == []
-    with pytest.raises(ToolError, match="nahi mili"):
+    with pytest.raises(ToolError, match="was not found"):
         tool(action="pause", id=wid, tenant="t2")
-    with pytest.raises(ToolError, match="sirf malik"):
+    with pytest.raises(ToolError, match="Only the owner"):
         tool(action="list", actor="customer:3")
 
 
 def test_a_baseline_from_the_research_just_delivered_needs_one_and_waits_a_period(wx):
     from app.agent.tools import ToolError
-    with pytest.raises(ToolError, match="koi research nahi"):
+    with pytest.raises(ToolError, match="no research in this chat"):
         tool(**ADD, baseline="last", confirm=True)
     d, _ = deps(Script({"g": GOOD_PLAY}))
     E.remember("c1", run_(E.run("What is the Corvane Index?", ["g"], E.Policy(rounds=1), d)))
@@ -349,7 +349,7 @@ def test_the_result_tool_hands_over_the_digest_and_remembers_the_dossier_to_chec
     kept = E.recall("c1")
     assert kept is not None and any(f["id"].startswith("prior-c") for f in kept["fields"])
     from app.agent.tools import ToolError
-    with pytest.raises(ToolError, match="digest nahi mila"):
+    with pytest.raises(ToolError, match="No change digest found"):
         tool(action="result", run_id="rr_nope")
     with pytest.raises(ToolError):
         tool(action="result", run_id=rid, tenant="t2")

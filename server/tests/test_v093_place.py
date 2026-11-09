@@ -123,7 +123,7 @@ def test_operator_asks_before_moving_her_browser_job_to_her_pc(env, monkeypatch)
     ctx = Ctx(tenant_id="default", conversation_id=conv)
     monkeypatch.setattr(reach, "probe", lambda host, **k: (True, ""))
     r = asyncio.run(operator_tools.computer_operator(ctx, "start", task="MSEDCL bill download karo"))
-    assert started and r["place"] == "hoola" and "aapke PC par nahi" in r["say"]
+    assert started and r["place"] == "hoola" and "not on your PC" in r["say"]
     get_settings.cache_clear()
 
 
@@ -137,7 +137,7 @@ def test_her_pc_offline_is_said_as_her_pc(env, monkeypatch):
     monkeypatch.setattr(pc_tools, "pc_do", offline)
     r = asyncio.run(operator_tools.computer_operator(Ctx(tenant_id="default", conversation_id="c"), "start",
                                                      task="form bharo", where="pc"))
-    assert r["status"] == "pc_not_ready" and "Aapka PC" in r["say"] and "server" not in r["say"]
+    assert r["status"] == "pc_not_ready" and "Your PC" in r["say"] and "server" not in r["say"]
 
 
 def test_chat_turn_carries_the_place_to_the_model_and_the_tools(env, monkeypatch):

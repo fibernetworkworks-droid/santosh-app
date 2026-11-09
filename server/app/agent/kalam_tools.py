@@ -71,7 +71,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
     piece = _s(a.get("piece"))
     try:
         if action in _OWNER_ONLY and actor != "owner" and not actor.startswith("approved:"):
-            raise ToolError("Yeh sirf owner kar sakti hain.")
+            raise ToolError("Only the owner can do this.")
         if action == "write":
             return K.write(t, _s(a.get("brief") or a.get("text")), _s(a.get("kind")), _s(a.get("title")), _s(a.get("keyword")),
                            a.get("words"), _s(a.get("lang")), _s(a.get("audience")), a.get("file_ids"), a.get("urls"),
@@ -112,7 +112,7 @@ def _act(ctx: Ctx, action: str, a: dict[str, Any]) -> dict[str, Any]:
         if action == "wordpress":
             if a.get("forget"):
                 return K.forget_wordpress(t)
-            raise ToolError("WordPress app mein hi jodiye: Profile > Content writer > Niyam > WordPress (password chat mein nahi).")
+            raise ToolError("Connect WordPress in the app only: Profile > Content writer > Rules > WordPress (no password in chat).")
     except K.KalamError as e:
         raise ToolError(str(e))
     raise ToolError("action = write | revise | edit | check | publish | repurpose | files | result | fact | rule | voice | "

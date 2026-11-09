@@ -222,7 +222,7 @@ async def add_calendar_event(ctx: Ctx, title, start, end=None, location=None, no
         if r_at > now():
             with session() as s:
                 s.add(Reminder(tenant_id=ctx.tenant_id, conversation_id=_home(ctx),
-                               text=f"{title} ({int(remind_minutes_before)} min mein)", due_at=r_at))
+                               text=f"{title} (in {int(remind_minutes_before)} min)", due_at=r_at))
             _publish_reminders(ctx)
             out["reminder_at"] = life.fmt_local(r_at, tz)
     return out
@@ -244,15 +244,15 @@ def _mark_saved(conv: str) -> None:
 async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
     from ..fence import is_incognito
     if is_incognito(getattr(ctx, "conversation_id", "") or ""):   # v0.250 an incognito chat saves nothing
-        raise ToolError("Yeh incognito chat hai: yahan se kuch yaad nahi rakha jaata. Ise yaad rakhwana ho to "
-                        "normal chat mein boliye.")
+        raise ToolError("This is an incognito chat: nothing is remembered from here. To have it remembered, "
+                        "say it in a normal chat.")
     from ..idvault import capture
     from ..pii import describe, find
     fact, _ids = capture(ctx.tenant_id, str(fact))     # v0.75 ID numbers -> Pehchaan Locker, the fact keeps the reference
     low = f" {fact.lower()} "
     found = [k for k in find(str(fact)) if k in ("otp_pin", "password", "card", "cvv")]
     if found:
-        raise ToolError(f"Isme {describe(found)} hai. Hoola yeh yaad nahi rakhta; password manager mein rakhiye.")
+        raise ToolError(f"This contains {describe(found)}. Hoola does not remember this; keep it in a password manager.")
     if any(k in re.sub(r"pin\s*-?\s*code|pincode", " ", low) for k in SENSITIVE):   # wave 11: a PIN code is an address
         raise ToolError("This looks like a password, OTP, PIN or account/card number. Do not store it; tell the user to keep it in a password manager.")
     from .. import yaad
@@ -266,7 +266,7 @@ async def remember(ctx: Ctx, fact, pin=False, replaces=None, **_):
             return {"saved": True, "fact_id": int(replaces), "pinned": True, "replaced": old}
     elif await asyncio.to_thread(yaad.is_dupe, ctx.tenant_id, fact):
         # v0.661 'yaad rakhna X' twice = one fact, not two
-        return {"saved": True, "already_known": True, "note": "Yeh pehle se yaad hai."}
+        return {"saved": True, "already_known": True, "note": "This is already remembered."}
     with session() as s:
         m = MemoryFact(tenant_id=ctx.tenant_id, text=fact[:500])
         s.add(m)
